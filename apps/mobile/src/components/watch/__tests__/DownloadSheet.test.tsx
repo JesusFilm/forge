@@ -41,6 +41,13 @@ jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
+// feat-699 U11: each case sets the Liquid Glass gate; it is off by default.
+// A host stand-in makes the glass findable and its props readable.
+const mockGate = { glass: false }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 // ── Series route seams ──────────────────────────────────────────────
 const mockBack = jest.fn()
@@ -167,6 +174,7 @@ import {
 
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
+  DOWNLOAD_TERMS_GLASS_TINT,
   DownloadSheetContent,
   TermsAcceptanceRow,
   TermsModal,
@@ -1525,4 +1533,106 @@ describe("suspendedInRawMode", () => {
     expect(suspendedInRawMode("raw", true)).toBeUndefined()
     expect(suspendedInRawMode("offline", true)).toBe(true)
   })
+})
+
+// feat-699 U11, R16: on iOS 26 the terms window's near-black panel becomes one
+// full-panel glass. Elsewhere it keeps both of today's black fills.
+describe("the terms window panel", () => {
+  const OVERLAY_FILL = "rgba(0, 0, 0, 0.9)"
+  const PANEL_FILL = "rgba(0, 0, 0, 0.95)"
+
+  afterEach(() => {
+    mockGate.glass = false
+  })
+
+  async function openTerms(): Promise<TestInstance> {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <TermsModal visible onAccept={jest.fn()} onCancel={jest.fn()} />,
+      )
+    })
+    return renderer
+  }
+
+  function ancestors(node: RenderedNode): RenderedNode[] {
+    const chain: RenderedNode[] = []
+    for (let at = node.parent ?? null; at != null; at = at.parent ?? null) {
+      chain.push(at)
+    }
+    return chain
+  }
+
+  const styleOf = (node: RenderedNode) =>
+    StyleSheet.flatten(node.props.style as never) as
+      | { backgroundColor?: unknown; opacity?: unknown; flex?: unknown }
+      | undefined
+
+  /** Every view fill from the Accept button up to the window, inner first. */
+  function fillsAboveAccept(renderer: TestInstance): unknown[] {
+    return ancestors(pressableByLabel(renderer, "Accept terms of use"))
+      .filter((node) => typeof node.type === "string")
+      .map((node) => styleOf(node)?.backgroundColor)
+      .filter((fill) => fill !== undefined && fill !== "transparent")
+  }
+
+  it("draws the whole panel on one glass surface on iOS 26", async () => {
+    mockGate.glass = true
+    const renderer = await openTerms()
+
+    const glass = renderer.root.findAll((node) => node.type === "GlassView")
+    expect(glass).toHaveLength(1)
+    expect(
+      ancestors(pressableByLabel(renderer, "Accept terms of use")),
+    ).toContain(glass[0])
+    expect(hasText(renderer, TERMS_OF_USE_PARAGRAPHS[0]!)).toBe(true)
+    expect(glass[0]!.props).toMatchObject({
+      tintColor: DOWNLOAD_TERMS_GLASS_TINT,
+      colorScheme: "dark",
+      glassEffectStyle: { style: "regular" },
+    })
+    expect(styleOf(glass[0]!)).toMatchObject({ flex: 1 })
+    expect(styleOf(glass[0]!)?.backgroundColor).toBeUndefined()
+    expect(fillsAboveAccept(renderer)).toEqual([])
+    await unmount(renderer)
+  })
+
+  it("puts no opacity on any view above the glass", async () => {
+    mockGate.glass = true
+    const renderer = await openTerms()
+    const [glass] = renderer.root.findAll((node) => node.type === "GlassView")
+    const above = ancestors(glass!)
+    expect(above.length).toBeGreaterThan(0)
+    for (const node of above) {
+      expect(styleOf(node)?.opacity).toBeUndefined()
+    }
+    await unmount(renderer)
+  })
+
+  it("keeps today's two black fills without Liquid Glass", async () => {
+    const renderer = await openTerms()
+    expect(renderer.root.findAll((node) => node.type === "GlassView")).toEqual(
+      [],
+    )
+    expect(fillsAboveAccept(renderer)).toEqual([PANEL_FILL, OVERLAY_FILL])
+    await unmount(renderer)
+  })
+
+  it.each([true, false])(
+    "keeps the window's slide motion (Liquid Glass %s)",
+    async (glass) => {
+      mockGate.glass = glass
+      const renderer = await openTerms()
+      const [modal] = renderer.root.findAll(
+        (node) =>
+          typeof node.type !== "string" &&
+          node.props.animationType !== undefined,
+      )
+      expect(modal?.props).toMatchObject({
+        animationType: "slide",
+        transparent: true,
+      })
+      await unmount(renderer)
+    },
+  )
 })

@@ -13,20 +13,32 @@ import {
 import {
   readerTokens,
   resolveReaderTheme,
+  type ReaderTheme,
   type ReaderTokens,
 } from "../../../lib/bible/theme/palettes"
+import { sheetBackground } from "../../../lib/sheetOptions"
 
 /** KTD12: the sheets follow the reader's theme, not the app's. */
 export function useReaderSheetTheme(store: ReaderSettingsStore): {
   settings: ReaderSettingsSnapshot
   tokens: ReaderTokens
+  /** feat-699 KTD7: Dark and True Dark share `scheme`, so the name decides. */
+  theme: ReaderTheme
 } {
   const settings = useReaderSettings(store)
   const systemScheme = usePhoneColorScheme()
-  return {
-    settings,
-    tokens: readerTokens(resolveReaderTheme(settings.mode, systemScheme)),
-  }
+  const theme = resolveReaderTheme(settings.mode, systemScheme)
+  return { settings, tokens: readerTokens(theme), theme }
+}
+
+/**
+ * The fill of a reader sheet's screen and body (feat-699 KTD7, R15). Only
+ * Dark clears it for the system glass sheet: the dark app style would put dark
+ * glass behind a Light page, and True Dark stays pure black.
+ */
+export function readerSheetBackground(theme: ReaderTheme): string {
+  const solid = readerTokens(theme).background
+  return theme === "dark" ? sheetBackground(solid) : solid
 }
 
 export type SheetCatalogState =

@@ -3,6 +3,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 
 import { PassagePicker } from "../src/components/bible/sheets/PassagePicker"
 import {
+  readerSheetBackground,
   useReaderSheetTheme,
   useSheetCatalog,
 } from "../src/components/bible/sheets/useReaderSheetData"
@@ -20,7 +21,8 @@ export default function ReaderPassageRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { tokens } = useReaderSheetTheme(services.settingsStore)
+  const { tokens, theme } = useReaderSheetTheme(services.settingsStore)
+  const background = readerSheetBackground(theme)
   const { state } = useSheetCatalog(services.loadCatalog)
 
   // While a stand-in shows a book (R25), the picker follows the viewer's own
@@ -46,13 +48,14 @@ export default function ReaderPassageRoute() {
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: tokens.background } }}
+        options={{ contentStyle: { backgroundColor: background } }}
       />
       {state.status === "loading" ? (
-        <View style={{ flex: 1, backgroundColor: tokens.background }} />
+        <View style={{ flex: 1, backgroundColor: background }} />
       ) : (
         <PassagePicker
           tokens={tokens}
+          background={background}
           translation={translation}
           standIn={standInTranslation}
           bookNames={bookNames}

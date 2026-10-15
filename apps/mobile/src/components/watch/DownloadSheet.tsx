@@ -27,6 +27,7 @@ import {
 } from "../../lib/color"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 import { formatFileSize, tierDownloads } from "../../lib/downloadTiers"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import type { WatchDownload, WatchSubtitle } from "../../lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../lib/rawExportConstants"
 import { rawModeLabel } from "../../lib/rawModeLabel"
@@ -34,8 +35,13 @@ import {
   TERMS_OF_USE_LANGUAGE,
   TERMS_OF_USE_PARAGRAPHS,
 } from "../../lib/terms-of-use"
+import { GlassSurface } from "../ui/GlassSurface"
 
 type SheetT = UiT<"DownloadSheet">
+
+/** The terms panel's glass tint (feat-699 R16). A placeholder until the
+ *  contrast check over a bright frame on the simulator sets it (KTD10). */
+export const DOWNLOAD_TERMS_GLASS_TINT = "rgba(0, 0, 0, 0.5)"
 
 function formatDuration(seconds: number | null): string {
   if (seconds == null || seconds <= 0) return "0:00"
@@ -66,8 +72,13 @@ export function TermsModal({
       onRequestClose={onCancel}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.modalOverlay}>
-        <View
+      <View
+        style={[
+          styles.modalOverlay,
+          !canUseLiquidGlass() && styles.overlayFill,
+        ]}
+      >
+        <GlassSurface
           style={[
             styles.termsContainer,
             {
@@ -76,6 +87,8 @@ export function TermsModal({
               paddingBottom: insets.bottom + 16,
             },
           ]}
+          fallback={{ kind: "fill", style: styles.termsFill }}
+          tintColor={DOWNLOAD_TERMS_GLASS_TINT}
         >
           <Text style={[styles.termsTitle, typography.titleLarge]}>
             {t("termsTitle")}
@@ -127,7 +140,7 @@ export function TermsModal({
               </Text>
             </Pressable>
           </View>
-        </View>
+        </GlassSurface>
       </View>
     </Modal>
   )
@@ -1114,12 +1127,16 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
+  },
+  overlayFill: {
     backgroundColor: "rgba(0, 0, 0, 0.9)",
   },
   termsContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.95)",
     paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  termsFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.95)",
   },
   termsTitle: {
     color: TEXT_PRIMARY,

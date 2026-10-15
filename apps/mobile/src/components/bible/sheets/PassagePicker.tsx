@@ -49,6 +49,8 @@ export type PassagePickerProps = {
   /** Called once, in BSB numbering (R38). */
   onPick: (bsbRef: VerseRef) => void
   onClose: () => void
+  /** The sheet's fill, `tokens.background` by default (`readerSheetBackground`). */
+  background?: string
 }
 
 type Step =
@@ -66,6 +68,7 @@ export function PassagePicker({
   current,
   onPick,
   onClose,
+  background = tokens.background,
 }: PassagePickerProps) {
   const t = useT("BiblePassagePicker")
   const insets = useSafeAreaInsets()
@@ -154,7 +157,7 @@ export function PassagePicker({
   return (
     <View
       testID="reader-passage-picker"
-      style={[styles.root, { height, backgroundColor: tokens.background }]}
+      style={[styles.root, { height, backgroundColor: background }]}
     >
       <View style={styles.header}>
         <ReaderSheetHeader

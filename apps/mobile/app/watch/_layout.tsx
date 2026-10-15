@@ -2,6 +2,10 @@ import { Stack } from "expo-router"
 
 import { BACK_SWIPE_RESPONSE_DISTANCE } from "../../src/lib/backSwipe"
 import { BG_COLOR } from "../../src/lib/color"
+import {
+  formSheetBaseOptions,
+  sheetContentStyle,
+} from "../../src/lib/sheetOptions"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
@@ -11,12 +15,9 @@ import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 const DOWNLOAD_SHEET_DETENTS = [0.65, 1] as const
 
 const SHEET_BASE_OPTIONS = {
-  headerShown: false,
-  presentation: "formSheet",
-  sheetInitialDetentIndex: 0,
-  sheetGrabberVisible: true,
-  sheetCornerRadius: 16,
-} as const
+  ...formSheetBaseOptions(),
+  contentStyle: sheetContentStyle(),
+}
 
 // Long language/subtitle lists opt OUT of scroll-expands-to-edge: otherwise the
 // first scroll at the small detent snaps the sheet to full, making it useless.
