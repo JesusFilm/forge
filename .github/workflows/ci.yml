@@ -31,8 +31,16 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve tested PR baseline
+        id: pr-baseline
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/resolve-pr-baseline.mjs >> "$GITHUB_OUTPUT"
       - name: Validate commit messages
-        run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+        env:
+          COMMIT_BASE: ${{ steps.pr-baseline.outputs.commit_base }}
+          PR_HEAD: ${{ steps.pr-baseline.outputs.head }}
+        run: pnpm exec commitlint --from "$COMMIT_BASE" --to "$PR_HEAD"
 
   affected:
     runs-on: ubuntu-latest
@@ -500,10 +508,15 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test roadmap ID check
-        run: node --test scripts/check-new-roadmap-ids.test.mjs
+        run: node --test scripts/check-new-roadmap-ids.test.mjs scripts/resolve-pr-baseline.test.mjs
+      - name: Resolve tested PR baseline
+        id: pr-baseline
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/resolve-pr-baseline.mjs >> "$GITHUB_OUTPUT"
       - name: Check newly introduced roadmap IDs
         env:
-          ROADMAP_ID_BASE: ${{ github.event.pull_request.base.sha }}
+          ROADMAP_ID_BASE: ${{ steps.pr-baseline.outputs.target }}
         run: node scripts/check-new-roadmap-ids.mjs
 
   dev-port-contract:
