@@ -790,10 +790,14 @@ export function HeroPlayerControls({
   // focused button/link keeps its native activation.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return
+      // Only other native listeners can have claimed the event here: React
+      // handlers run later (root delegation), so this is not a guard for them.
+      if (event.defaultPrevented || event.isComposing) return
       if (event.ctrlKey || event.metaKey || event.altKey) return
       const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
       if (!PLAYER_SHORTCUT_KEYS.has(key)) return
+      // Held keys must not flap toggles (fullscreen/mute/play); seek repeats.
+      if (event.repeat && key !== "j" && key !== "l") return
       const target = event.target
       if (target instanceof Element) {
         if (
@@ -805,7 +809,9 @@ export function HeroPlayerControls({
         }
         if (
           key === " " &&
-          target.closest('button, a[href], summary, [role="button"]')
+          target.closest(
+            'button, a[href], summary, [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role^="menuitem"]',
+          )
         ) {
           return
         }

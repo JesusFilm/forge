@@ -1599,6 +1599,40 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
     expect(event.defaultPrevented).toBe(false)
   })
 
+  it("ignores auto-repeat for toggles but keeps repeating seeks", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false, currentTime: 50, duration: 100 }),
+    )
+    press(wrapperEl, "m", { repeat: true })
+    expect(player.muted).toBe(false)
+    press(wrapperEl, "l", { repeat: true })
+    expect(player.currentTime).toBe(60)
+  })
+
+  it("leaves Space on non-button ARIA controls to their own activation", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true }),
+    )
+    const sw = document.createElement("div")
+    sw.setAttribute("role", "switch")
+    wrapperEl.appendChild(sw)
+    press(sw, " ")
+    expect(player.play).not.toHaveBeenCalled()
+  })
+
+  it("handles shifted letters and Space from a focused slider", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true, currentTime: 30, duration: 100 }),
+    )
+    const slider = document.createElement("div")
+    slider.setAttribute("role", "slider")
+    wrapperEl.appendChild(slider)
+    press(slider, "L", { shiftKey: true })
+    expect(player.currentTime).toBe(40)
+    press(slider, " ")
+    expect(player.play).toHaveBeenCalledTimes(1)
+  })
+
   it("does not listen on window", () => {
     const { player } = renderControlsFixture(makePlayer({ muted: false }))
     press(document.body, "m")
