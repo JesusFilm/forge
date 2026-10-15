@@ -272,6 +272,63 @@ describe("RecommendationConsentShell", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps Tab and Shift+Tab inside the Cookie settings dialog and restores focus on Escape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(undecided))
+        .mockResolvedValueOnce(response(activeProfile)),
+    )
+    renderShell()
+    await flush()
+    const outside = document.createElement("button")
+    document.body.appendChild(outside)
+    const manage = button("Cookie settings")
+    manage.focus()
+    act(() => manage.click())
+
+    const tab = (shiftKey = false) => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      })
+      act(() => {
+        window.dispatchEvent(event)
+      })
+      return event
+    }
+    const checkbox = container.querySelector<HTMLInputElement>(
+      'input[name="recommendation-personalization"]',
+    )!
+    const cancel = button("Cancel")
+    const save = button("Save choices")
+
+    // Focus starts on the title; Tab enters the first control.
+    expect(tab().defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(checkbox)
+    save.focus()
+    expect(tab().defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(checkbox)
+    expect(tab(true).defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(save)
+    cancel.focus()
+    expect(tab().defaultPrevented).toBe(false)
+
+    // Focus that reaches the page behind the dialog is pulled back in.
+    act(() => outside.focus())
+    expect(container.contains(document.activeElement)).toBe(true)
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+    })
+    expect(container.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.activeElement).toBe(manage)
+    outside.remove()
+  })
+
   it("shows the defaulted optional choice in Cookie settings and persists nothing when cancelled", async () => {
     const fetchMock = vi
       .fn()
