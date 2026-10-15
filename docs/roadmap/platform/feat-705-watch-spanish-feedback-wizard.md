@@ -31,9 +31,13 @@ namespace and locale coverage. PR #2742 explicitly excludes `Feedback.*`.
    `apps/web/vitest.setup.ts` — existing interactive flow and real catalog mocks.
 4. `apps/web/src/i18n/__tests__/messages-parity.test.ts` — structural parity,
    placeholder checks, and translated-copy enforcement.
-5. `apps/web/scripts/translate-ui-catalogs.mjs` — exported `contentDigest` and
-   `flattenCatalog`; refresh only the Spanish digest in
-   `docs/i18n/watch-ui-provisional-catalogs.json` without invoking an API.
+5. `apps/web/src/lib/__tests__/watch-ui-provisional-catalogs.test.ts` — the
+   provenance contract excludes `pendingTranslationPaths` before hashing. Use
+   the exported `contentDigest` and `flattenCatalog` helpers from
+   `apps/web/scripts/translate-ui-catalogs.mjs` on that same filtered input;
+   these pending Feedback edits require no manifest digest change.
+6. `apps/web/src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.test.tsx`
+   — registering the real Spanish test catalog also exercises Spanish SEO.
 
 ## Grep These
 
@@ -51,9 +55,11 @@ namespace and locale coverage. PR #2742 explicitly excludes `Feedback.*`.
 3. Protect the completed Spanish namespace in the existing catalog test while
    retaining pending paths required by other locales. Spanish `Idea` is also
    the correct English spelling and is the sole intentional source match.
-4. Refresh the Spanish digest with the existing digest helper; verify the
-   focused tests, formatting, lint, types, and catalog/client payload byte and
-   gzip deltas. Complete the ticket after local verification.
+4. Verify Spanish provenance with the existing pending-path filter and leave
+   `docs/i18n/watch-ui-provisional-catalogs.json` unchanged: all changed paths
+   remain globally pending. Run the provenance and inventory-route suites as
+   well as the feedback/message suites, formatting, lint, types, and
+   catalog/client payload comparisons. Complete the ticket after verification.
 
 ## Constraints
 
@@ -68,8 +74,12 @@ namespace and locale coverage. PR #2742 explicitly excludes `Feedback.*`.
 
 - Existing `FeedbackLauncher.test.tsx`, including real Spanish five-step flow,
   category prompts, validation, and safely mocked delivery/follow-up states.
-- `src/i18n/__tests__/messages-parity.test.ts` and
-  `src/i18n/client-messages.test.ts` under the Web Vitest configuration.
+- `src/i18n/__tests__/messages-parity.test.ts`,
+  `src/i18n/client-messages.test.ts`,
+  `src/lib/__tests__/watch-ui-provisional-catalogs.test.ts`, and
+  `src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.test.tsx` under the
+  Web Vitest configuration. The provenance guard stays unchanged; Spanish SEO
+  must follow the requested catalog, matching the adjacent Russian control.
 - Web TypeScript check, touched-file ESLint, catalog generator drift check,
   Prettier checks, `git diff --check`, and normal commit hooks.
 - Compare UTF-8 and gzip sizes of the Spanish catalog and picked global client
@@ -80,15 +90,16 @@ namespace and locale coverage. PR #2742 explicitly excludes `Feedback.*`.
 The 103 wizard messages now use Spanish copy; 102 values changed because `Idea`
 is also correct Spanish. The seven existing launcher/loading translations,
 placeholders, category enums, runtime behavior, support URL, and all other
-catalogs are preserved. The Spanish digest was refreshed with the existing
-`contentDigest(flattenCatalog(...))` helper. Other locales retain their global
-pending paths; a Spanish namespace test now prevents English copy returning.
+catalogs are preserved. The provenance digest remains unchanged because its
+existing contract excludes globally pending Feedback paths before hashing.
+Other locales retain those pending paths; a Spanish namespace test separately
+prevents English copy returning to the completed Spanish wizard.
 
-Seven new regression cases failed against the original catalog, then all 537
-focused tests passed after translation, including the existing English tests.
-The real Spanish catalog drives all five steps, category prompts, validation,
-lookup failures, and mocked delivery/receipt/follow-up states. Web TypeScript,
-touched-file ESLint, UI catalog drift, and formatting checks passed.
+Seven new regression cases failed against the original catalog. The real
+Spanish catalog drives all five steps, category prompts, validation, lookup
+failures, and mocked delivery/receipt/follow-up states. The initial 537-test
+selection passed but omitted two impacted suites; the CI correction below
+records the expanded validation.
 
 Picked global client messages changed by +696 UTF-8 bytes and +93 gzip bytes. No runtime imports, requests, rendering, hydration, or loading logic changed.
 
@@ -97,3 +108,30 @@ material translation defects. Its optional grammar correction was applied.
 This is not a native-speaker review. Browser preview and deployed behavior
 remain with the calling workflow; no external feedback was submitted.
 FGE-189 remains open for broader translation work.
+
+## CI correction and validation learning
+
+CI run `38689021008` exposed two missed contracts. The initial digest update
+hashed every Spanish key; the existing provenance guard hashes only keys outside
+`pendingTranslationPaths`. Restoring the pending-filtered digest removes the
+manifest change. Do not change the guard or global pending policy to accept a
+full-catalog digest.
+
+Adding `es` to the shared test translator exposed an old English expectation in
+the Spanish inventory SEO test. `page.tsx` requests `LanguageInventory` for the
+selected locale, and the base Spanish catalog already contains Spanish metadata.
+The adjacent Russian case confirms that requested-catalog intent. The corrected
+Spanish assertion improves test fidelity without changing production behavior.
+
+The first validation selected feedback/message tests but missed the provenance
+consumer under `src/lib` and the inventory route affected by the shared mock.
+Self-review reused the updater's unfiltered digest assumption instead of reading
+the independent guard. For catalog edits, trace manifest consumers and shared
+translator users when choosing checks; compute provenance over the guard's exact
+filtered input. Include both suites alongside the original feedback/message tests.
+
+The expanded local validation passed all 557 tests: feedback (71), catalog
+parity/ICU (460), client messages (6), provenance (7), and inventory routes (13).
+UI/provisional catalog generator checks, Web TypeScript, touched-file ESLint,
+formatting, and diff checks also passed. Remote CI, independent review of the
+complete branch diff, and browser acceptance remain with the calling workflow.
