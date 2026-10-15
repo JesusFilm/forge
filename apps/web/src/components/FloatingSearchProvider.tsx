@@ -750,6 +750,19 @@ export function FloatingSearchProvider({
     },
     [closing, modalChromeHidden, resetSearch, setOpen],
   )
+  // While search is open the logo acts as a close control (feat-302), so it is
+  // exposed as a button named for that action rather than a Home link whose
+  // name would disagree with what activating it does (QA N46). It stays the
+  // same element so keyboard focus survives the close. Buttons also activate
+  // on Space, which an anchor does not do natively.
+  const handleLogoKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLAnchorElement>) => {
+      if (!modalChromeHidden || event.key !== " ") return
+      event.preventDefault()
+      if (!closing) setOpen(false)
+    },
+    [closing, modalChromeHidden, setOpen],
+  )
   useWatchModalActivity(modalChromeHidden, { releaseDelayMs: 0 })
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
@@ -993,9 +1006,11 @@ export function FloatingSearchProvider({
         >
           <Link
             href={logoHref as Route}
-            aria-label={t("home")}
+            role={modalChromeHidden ? "button" : undefined}
+            aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
             data-testid="floating-header-logo"
             onClick={handleLogoClick}
+            onKeyDown={handleLogoKeyDown}
             className={`pointer-events-auto flex ${logoSlotClass} ${
               modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
             } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
