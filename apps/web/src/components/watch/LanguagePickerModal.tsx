@@ -519,7 +519,12 @@ export function LanguagePickerModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-language-picker-modal"
-        aria-labelledby={headingId}
+        // Name from the one visible heading; with subtitles, keep the
+        // "Language & Subtitles" name (aria-label adds no second heading).
+        aria-label={
+          subtitles.length > 0 ? t("dialogTitleWithSubtitles") : undefined
+        }
+        aria-labelledby={subtitles.length > 0 ? undefined : headingId}
         className={LANGUAGE_PICKER_MODAL_CLASS}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
