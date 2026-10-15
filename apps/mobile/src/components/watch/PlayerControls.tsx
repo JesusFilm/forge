@@ -20,6 +20,7 @@ import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
+import { PLAYER_BAR_PADDING_H } from "../../lib/playerLayout"
 import {
   BLACK,
   SURFACE_COLOR,
@@ -89,10 +90,6 @@ type PlayerControlsProps = {
    *  glass (KTD5). Without it the glass stays shown. */
   visibleStore?: ControlsVisibleReader
 }
-
-// Side inset for the bar's text and icons. The inline seek bar cancels it so
-// the track reaches the player's edges.
-const BAR_PADDING_H = 12
 
 // Gap between the pill/exit row and the seek bar below it.
 const TIME_ROW_GAP = 6
@@ -827,7 +824,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: BAR_PADDING_H,
+    paddingHorizontal: PLAYER_BAR_PADDING_H,
     marginBottom: 12,
   },
   cornerButtons: {
@@ -838,7 +835,7 @@ const styles = StyleSheet.create({
   routeRow: {
     position: "absolute",
     top: 8,
-    right: BAR_PADDING_H,
+    right: PLAYER_BAR_PADDING_H,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,

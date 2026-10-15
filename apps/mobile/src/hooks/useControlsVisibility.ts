@@ -35,7 +35,7 @@ export type ControlsVisibility = {
   visibleStore: ControlsVisibleReader
   /** Hide chrome if currently visible (no-op if already hidden). */
   hide: () => void
-  /** Reveal only if currently hidden (immediate, e.g. on press-in). */
+  /** Reveal only if currently hidden (immediate, e.g. a resolved single tap). */
   revealIfHidden: () => void
   /** Ground-truth visibility (the store, not the lagging render state) so a
    *  tap landing mid-fade reads "hiding" and is routed to reveal, not hide. */

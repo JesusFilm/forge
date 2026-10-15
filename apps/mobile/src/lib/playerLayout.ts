@@ -10,3 +10,8 @@ export const BACK_BUTTON_PROPS = {
   topOffset: 10,
   sideOffset: 18,
 }
+
+// Side inset of the player's edge controls (time pill, fullscreen, route row);
+// the double-tap skip pill lines up with them. The inline seek bar cancels it
+// so the track reaches the player's edges.
+export const PLAYER_BAR_PADDING_H = 12

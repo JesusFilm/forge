@@ -195,6 +195,15 @@ const ALLOWED = [
     "The seek flash shows on the tapped side in the left-to-right player root (R12)",
   ),
   ...entries(
+    "src/components/watch/VideoPlayer.tsx",
+    "physical-side",
+    [
+      "left: seekFlashInset(insets.left)",
+      "right: seekFlashInset(insets.right)",
+    ],
+    "The seek flash clears the notch on its own physical side in the left-to-right player root (R12)",
+  ),
+  ...entries(
     "src/lib/bible/movement/gesture.ts",
     "horizontal-read",
     ["delta.dx"],

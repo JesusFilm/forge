@@ -46,6 +46,9 @@ const mockControls = {
   visibleStore: null as unknown,
   mounted: true,
   renders: 0,
+  visibleNow: true,
+  // The hide and reveal calls, in order.
+  calls: [] as string[],
 }
 jest.mock("../../../hooks/useControlsVisibility", () => ({
   ...jest.requireActual("../../../hooks/useControlsVisibility"),
@@ -56,9 +59,13 @@ jest.mock("../../../hooks/useControlsVisibility", () => ({
       mounted: mockControls.mounted,
       opacityAnim: mockControls.opacityAnim,
       visibleStore: mockControls.visibleStore,
-      hide: () => {},
-      revealIfHidden: () => {},
-      isVisibleNow: () => true,
+      hide: () => {
+        mockControls.calls.push("hide")
+      },
+      revealIfHidden: () => {
+        mockControls.calls.push("reveal")
+      },
+      isVisibleNow: () => mockControls.visibleNow,
       noteInteraction: () => {},
       isPlaying: true,
     }
@@ -71,6 +78,10 @@ jest.mock("../../../hooks/useEndedPosterFade", () => {
 })
 jest.mock("../../../hooks/useErrorRecovery", () => ({
   useErrorRecovery: () => () => {},
+}))
+const mockMotion = { reduce: false }
+jest.mock("../../../hooks/useReduceMotion", () => ({
+  useReduceMotion: () => mockMotion.reduce,
 }))
 jest.mock("../PlayerLoadingVeil", () => ({ PlayerLoadingVeil: () => null }))
 jest.mock("../SubtitleOverlay", () => ({ SubtitleOverlay: () => null }))
@@ -97,6 +108,7 @@ import {
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import { VideoPlayer } from "../VideoPlayer"
+import { DOUBLE_TAP_MS } from "../../../lib/tapSeek"
 import {
   createControlsVisibleStore,
   type ControlsVisibleStore,
@@ -188,6 +200,27 @@ function controlsLayer(renderer: TestInstance): RenderedNode {
   return layer
 }
 
+/** `count` taps at x 40 on a 300 pt wide player, inside one double-tap window. */
+async function tapLeft(renderer: TestInstance, count: 1 | 2) {
+  const tap = pressableByLabel(renderer, "Toggle player controls")
+    .props as unknown as {
+    onLayout: (e: unknown) => void
+    onPressIn: () => void
+    onPress: (e: unknown) => void
+  }
+  await act(async () => {
+    tap.onLayout({
+      nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 200 } },
+    })
+  })
+  await act(async () => {
+    for (let i = 0; i < count; i += 1) {
+      tap.onPressIn()
+      tap.onPress({ nativeEvent: { locationX: 40 } })
+    }
+  })
+}
+
 async function doubleTapLeft(renderer: TestInstance) {
   const tap = pressableByLabel(renderer, "Toggle player controls")
     .props as unknown as {
@@ -220,6 +253,9 @@ beforeEach(() => {
   mockControls.visibleStore = createControlsVisibleStore(true)
   mockControls.mounted = true
   mockControls.renders = 0
+  mockControls.visibleNow = true
+  mockControls.calls = []
+  mockMotion.reduce = false
 })
 
 describe("the controls layer (feat-705 U4, KTD6)", () => {
@@ -269,29 +305,55 @@ describe("the controls layer (feat-705 U4, KTD6)", () => {
   })
 })
 
-describe("the seek flash pill (feat-705 U5, R5)", () => {
-  function pillText(renderer: TestInstance): RenderedNode {
-    const [text] = renderer.root.findAll(
-      (n) => n.props.children === "10s" && typeof n.type === "string",
-    )
-    if (text == null) throw new Error("no seek flash text")
-    return text
-  }
+function pillText(renderer: TestInstance): RenderedNode {
+  const [text] = renderer.root.findAll(
+    (n) => n.props.children === "10s" && typeof n.type === "string",
+  )
+  if (text == null) throw new Error("no seek flash text")
+  return text
+}
 
+/** The host view that fades the pill's icon and label. */
+function pillLabelLayer(renderer: TestInstance): RenderedNode {
+  const layer = ancestors(pillText(renderer)).find(
+    (n) => typeof n.type === "string" && opacityOf(n) != null,
+  )
+  if (layer == null) throw new Error("no fading layer in the pill")
+  return layer
+}
+
+function pillGlassStyle(renderer: TestInstance): Record<string, unknown> {
+  const glass = ancestors(pillText(renderer)).find(
+    (n) => n.type === "GlassView",
+  )
+  if (glass == null) throw new Error("no glass on the pill")
+  return glass.props.glassEffectStyle as Record<string, unknown>
+}
+
+function hasSeekFlash(renderer: TestInstance): boolean {
+  return (
+    renderer.root.findAll((n) => n.props.testID === "seek-flash").length > 0
+  )
+}
+
+describe("the seek flash pill (feat-705 U5, R5)", () => {
   it("shows glass with no fading layer above it", async () => {
     const renderer = await render()
     await doubleTapLeft(renderer)
 
     const chain = ancestors(pillText(renderer))
-    const glass = chain.find((n) => n.type === "GlassView")
-    expect(glass).toBeDefined()
-    expect(glass!.props.glassEffectStyle).toMatchObject({ style: "regular" })
+    const glassAt = chain.findIndex((n) => n.type === "GlassView")
+    expect(glassAt).toBeGreaterThan(-1)
+    const glass = chain[glassAt]!
+    expect(glass.props.glassEffectStyle).toMatchObject({ style: "regular" })
     // The fill would cover the glass.
     expect(
-      StyleSheet.flatten(glass!.props.style as StyleProp<ViewStyle>)
+      StyleSheet.flatten(glass.props.style as StyleProp<ViewStyle>)
         ?.backgroundColor,
     ).toBeUndefined()
-    expect(chain.every((n) => opacityOf(n) == null)).toBe(true)
+    // Only the label's own view fades, inside the glass.
+    expect(chain.slice(glassAt).every((n) => opacityOf(n) == null)).toBe(true)
+    expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
     // It never takes a tap from the video beneath it.
     expect(hostByTestId(renderer, "seek-flash").props.pointerEvents).toBe(
       "none",
@@ -311,5 +373,166 @@ describe("the seek flash pill (feat-705 U5, R5)", () => {
           ?.backgroundColor === "rgba(0, 0, 0, 0.55)",
     )
     expect(filled).toHaveLength(1)
+  })
+})
+
+type TimingCall = {
+  value: unknown
+  config: Animated.TimingAnimationConfig
+  finish: () => void
+}
+
+describe("the seek flash pill's exit (owner, 2026-10-16)", () => {
+  let timings: TimingCall[] = []
+
+  beforeEach(() => {
+    jest.useFakeTimers()
+    timings = []
+    // Each fade waits for its `finish`, so a case can end it at a chosen time.
+    jest.spyOn(Animated, "timing").mockImplementation((value, config) => {
+      let done: Animated.EndCallback | undefined
+      timings.push({
+        value,
+        config,
+        finish: () => done?.({ finished: true }),
+      })
+      return {
+        start: (callback?: Animated.EndCallback) => {
+          done = callback
+        },
+        stop: () => {},
+        reset: () => {},
+      }
+    })
+  })
+  afterEach(() => {
+    jest.restoreAllMocks()
+    jest.useRealTimers()
+  })
+
+  async function advance(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  it("appears at full opacity, holds for 600 ms, then fades the label as the glass dissolves", async () => {
+    const renderer = await render()
+    await doubleTapLeft(renderer)
+    expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
+    expect(pillGlassStyle(renderer)).toMatchObject({ style: "regular" })
+
+    await advance(599)
+    expect(timings).toHaveLength(0)
+    expect(pillGlassStyle(renderer)).toMatchObject({ style: "regular" })
+
+    await advance(1)
+    expect(timings).toHaveLength(1)
+    expect(timings[0]!.config).toMatchObject({ toValue: 0, duration: 250 })
+    expect(pillGlassStyle(renderer)).toMatchObject({
+      style: "none",
+      animate: true,
+      animationDuration: 0.25,
+    })
+    expect(hasSeekFlash(renderer)).toBe(true)
+
+    await act(async () => timings[0]!.finish())
+    expect(hasSeekFlash(renderer)).toBe(false)
+  })
+
+  it("shows a new pill at full opacity during a fade, and the old fade does not end it", async () => {
+    const renderer = await render()
+    await doubleTapLeft(renderer)
+    await advance(600)
+    const [oldFade] = timings
+
+    await doubleTapLeft(renderer)
+    expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
+    expect(pillGlassStyle(renderer)).toMatchObject({ style: "regular" })
+
+    await act(async () => oldFade!.finish())
+    expect(hasSeekFlash(renderer)).toBe(true)
+  })
+
+  it("leaves at once with Reduce Motion on", async () => {
+    mockMotion.reduce = true
+    const renderer = await render()
+    await doubleTapLeft(renderer)
+
+    await advance(600)
+
+    expect(timings).toHaveLength(0)
+    expect(hasSeekFlash(renderer)).toBe(false)
+  })
+
+  it("fades the whole pill on the fallback path", async () => {
+    mockGate.glass = false
+    const renderer = await render()
+    await doubleTapLeft(renderer)
+    expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
+
+    await advance(600)
+    expect(timings).toHaveLength(1)
+    await act(async () => timings[0]!.finish())
+    expect(hasSeekFlash(renderer)).toBe(false)
+  })
+})
+
+describe("a tap on the video (owner, 2026-10-16)", () => {
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
+
+  async function advance(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  it("seeks on a double tap over hidden chrome and keeps the chrome hidden", async () => {
+    mockControls.visibleNow = false
+    const renderer = await render()
+
+    await tapLeft(renderer, 2)
+    expect(hasSeekFlash(renderer)).toBe(true)
+    await advance(DOUBLE_TAP_MS * 3)
+
+    expect(mockControls.calls).toEqual([])
+  })
+
+  it("reveals hidden chrome only when the double-tap window ends", async () => {
+    mockControls.visibleNow = false
+    const renderer = await render()
+
+    await tapLeft(renderer, 1)
+    expect(mockControls.calls).toEqual([])
+    await advance(DOUBLE_TAP_MS - 1)
+    expect(mockControls.calls).toEqual([])
+    await advance(1)
+
+    expect(mockControls.calls).toEqual(["reveal"])
+    expect(hasSeekFlash(renderer)).toBe(false)
+  })
+
+  it("hides visible chrome when the double-tap window ends", async () => {
+    const renderer = await render()
+
+    await tapLeft(renderer, 1)
+    await advance(DOUBLE_TAP_MS)
+
+    expect(mockControls.calls).toEqual(["hide"])
+  })
+
+  it("leaves visible chrome up on a double tap", async () => {
+    const renderer = await render()
+
+    await tapLeft(renderer, 2)
+    expect(hasSeekFlash(renderer)).toBe(true)
+    await advance(DOUBLE_TAP_MS * 3)
+
+    expect(mockControls.calls).toEqual([])
   })
 })
