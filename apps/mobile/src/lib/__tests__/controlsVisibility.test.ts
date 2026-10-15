@@ -1,4 +1,8 @@
-import { nextControlsState, type ControlsState } from "../controlsVisibility"
+import {
+  createControlsVisibleStore,
+  nextControlsState,
+  type ControlsState,
+} from "../controlsVisibility"
 
 // Locks the logical (visible, mounted) transitions — notably the fade-race
 // invariants from ce-code-review #7, only reachable by tapping inside a ~150ms
@@ -46,5 +50,32 @@ describe("nextControlsState", () => {
     s = nextControlsState(s, "reveal") // reveal mid-fade -> SHOWN
     s = nextControlsState(s, "hideDone") // stale completion -> stays SHOWN
     expect(s).toEqual(SHOWN)
+  })
+})
+
+describe("createControlsVisibleStore", () => {
+  it("starts at the given value and tells each subscriber about a set", () => {
+    const store = createControlsVisibleStore(true)
+    expect(store.get()).toBe(true)
+    const heard = jest.fn(() => store.get())
+
+    store.subscribe(heard)
+    store.set(false)
+
+    expect(store.get()).toBe(false)
+    expect(heard).toHaveBeenCalledTimes(1)
+    expect(heard).toHaveReturnedWith(false)
+  })
+
+  it("stops telling a listener once it unsubscribes", () => {
+    const store = createControlsVisibleStore(false)
+    const heard = jest.fn()
+    const unsubscribe = store.subscribe(heard)
+
+    unsubscribe()
+    store.set(true)
+
+    expect(heard).not.toHaveBeenCalled()
+    expect(store.get()).toBe(true)
   })
 })

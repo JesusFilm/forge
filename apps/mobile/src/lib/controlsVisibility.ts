@@ -25,3 +25,35 @@ export function nextControlsState(
         : { visible: false, mounted: false }
   }
 }
+
+/** Read side of the published `visible` value, for `useSyncExternalStore`. */
+export type ControlsVisibleReader = {
+  get: () => boolean
+  subscribe: (listener: () => void) => () => void
+}
+
+export type ControlsVisibleStore = ControlsVisibleReader & {
+  set: (visible: boolean) => void
+}
+
+/** Publishes the table's `visible` value, which also drives the player glass
+ *  (feat-699 KTD5). It changes at hide start, before React state does. */
+export function createControlsVisibleStore(
+  initial: boolean,
+): ControlsVisibleStore {
+  let visible = initial
+  const listeners = new Set<() => void>()
+  return {
+    get: () => visible,
+    set: (next) => {
+      visible = next
+      listeners.forEach((listener) => listener())
+    },
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+}
