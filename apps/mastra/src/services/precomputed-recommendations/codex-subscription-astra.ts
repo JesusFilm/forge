@@ -17,7 +17,6 @@ const MAX_ALLOWANCE_AGE_MS = 60_000
 // reservationFresh reserves this entire wait inside the 60s admission window.
 const MAX_RESERVATION_DELAY_MS = 45_000
 const DEFAULT_TIMEOUT_MS = 300_000
-const MIN_REMAINING_PERCENT = 25
 
 export type CodexAllowanceSnapshot = {
   observedAt: string
@@ -122,6 +121,8 @@ type Options = {
   concurrency?: number
   /** Pace new process starts without retrying calls or changing their concurrency. */
   minCallStartIntervalMs?: number
+  /** Explicit operator authorization to consume the usual 25% reserve. */
+  minimumRemainingPercent?: 0 | 25
 }
 
 function percent(value: number): boolean {
@@ -170,6 +171,7 @@ async function requireIdentity(options: Options): Promise<AttestedIdentity> {
 async function requireAllowance(
   read: Options["readAllowance"],
   accountRef: string,
+  minimumRemainingPercent: 0 | 25,
 ): Promise<CodexAllowanceSnapshot> {
   let snapshot: CodexAllowanceSnapshot
   try {
@@ -195,9 +197,9 @@ async function requireAllowance(
   if (!fresh(snapshot.observedAt))
     throw new CodexSubscriptionAstraError("allowance_stale")
   if (
-    snapshot.weeklyRemainingPercent <= MIN_REMAINING_PERCENT ||
+    snapshot.weeklyRemainingPercent <= minimumRemainingPercent ||
     (fiveHour.kind === "limited" &&
-      fiveHour.remainingPercent <= MIN_REMAINING_PERCENT)
+      fiveHour.remainingPercent <= minimumRemainingPercent)
   )
     throw new CodexSubscriptionAstraError("allowance_insufficient")
   return snapshot
@@ -522,6 +524,9 @@ async function runCodex(input: {
 export function createCodexSubscriptionAstraModel(
   options: Options,
 ): CodexSubscriptionAstraModel {
+  const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
+  if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
+    throw new CodexSubscriptionAstraError("operator_only")
   if (
     process.platform === "win32" ||
     !isAbsolute(options.codexExecutable) ||
@@ -595,6 +600,7 @@ export function createCodexSubscriptionAstraModel(
         const allowance = await requireAllowance(
           options.readAllowance,
           identity.accountRef,
+          minimumRemainingPercent,
         )
         provenance = {
           ...identity,
