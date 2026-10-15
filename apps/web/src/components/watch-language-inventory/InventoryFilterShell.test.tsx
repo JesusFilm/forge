@@ -56,6 +56,7 @@ describe("InventoryFilterShell", () => {
   })
 
   afterEach(() => {
+    window.history.replaceState(null, "", "/")
     act(() => root.unmount())
     container.remove()
   })
@@ -85,6 +86,57 @@ describe("InventoryFilterShell", () => {
     container
       .querySelector('[data-testid="language-inventory-filters-count"]')
       ?.textContent?.trim() ?? null
+
+  it("hydrates filter state from the query string", () => {
+    window.history.replaceState(null, "", "/?length=over30&type=bogus")
+    renderShell(
+      <>
+        <Item id="short" length="under5" />
+        <Item id="long" length="over30" />
+      </>,
+    )
+
+    expect(isHidden("short")).toBe(true)
+    expect(isHidden("long")).toBe(false)
+    expect(readout()).toBe("1 of 2 shown")
+  })
+
+  it("writes filter changes to the query, keeping other params and the hash", () => {
+    window.history.replaceState(null, "", "/?keep=1#top")
+    renderShell(<Item id="a" />)
+    expect(window.location.search).toBe("?keep=1")
+
+    expand()
+    click("language-inventory-filter-length-under5")
+    click("language-inventory-filter-added-60d")
+    expect(window.location.search).toBe("?keep=1&length=under5&added=60d")
+    expect(window.location.hash).toBe("#top")
+
+    click("language-inventory-filters-clear")
+    expect(window.location.search).toBe("?keep=1")
+  })
+
+  it("restores state on back/forward (popstate)", () => {
+    renderShell(
+      <>
+        <Item id="short" length="under5" />
+        <Item id="long" length="over30" />
+      </>,
+    )
+    expect(isHidden("long")).toBe(false)
+
+    act(() => {
+      window.history.replaceState(null, "", "/?length=under5")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+    })
+    expect(isHidden("long")).toBe(true)
+
+    act(() => {
+      window.history.replaceState(null, "", "/")
+      window.dispatchEvent(new PopStateEvent("popstate"))
+    })
+    expect(isHidden("long")).toBe(false)
+  })
 
   it("starts collapsed, with the options behind the disclosure", () => {
     renderShell(<Item id="a" />)
