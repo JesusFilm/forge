@@ -39,6 +39,10 @@ import {
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
+import {
+  type WatchAnalyticsAccessOutcome,
+  dispatchWatchAnalyticsEvent,
+} from "@/lib/watch-analytics-contract"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type DownloadModalDownload = WatchDownloadOption
@@ -245,6 +249,7 @@ export function DownloadModal({
     setError(null)
     downloadInFlight.current = true
     setAuthChecking(true)
+    let accessOutcome: WatchAnalyticsAccessOutcome = "open"
 
     if (accountGateEnabled) {
       const session = await resolveDownloadSessionAccess()
@@ -262,6 +267,9 @@ export function DownloadModal({
         setLocalAuthLoginUrl(session.loginUrl)
         return
       }
+      // The live session decides, not the prop: a gate that was switched off
+      // since the modal opened admitted this download openly.
+      if (session.accountGateEnabled) accessOutcome = "granted"
     }
     setAuthChecking(false)
 
@@ -293,6 +301,21 @@ export function DownloadModal({
     document.body.appendChild(a)
     a.click()
     a.remove()
+
+    // R15: the handoff was admitted and the browser download invoked. The
+    // in-flight guard above makes a double click one event; a denied or
+    // failed session returned earlier and emits nothing. Only the finite tier
+    // and gate outcome leave — never the filename, proxy URL, or session.
+    // Immediate: the browser's download handling can background or replace
+    // this document before a paint yield runs (R28).
+    dispatchWatchAnalyticsEvent(
+      {
+        type: "download_started",
+        qualityTier: selected.tier,
+        accessOutcome,
+      },
+      { mode: "immediate" },
+    )
 
     // The browser's download manager has taken over — close the dialog so
     // the user can resume watching while the file streams down.

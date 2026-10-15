@@ -18,6 +18,7 @@ import {
   resolveWatchAnalyticsRoute,
   sanitizeWatchAnalyticsCampaign,
   sanitizeWatchAnalyticsReferrer,
+  watchAnalyticsLanguageClassForSlug,
 } from "./watch-analytics-route"
 
 const jesus = "/watch/jesus.html"
@@ -790,5 +791,30 @@ describe("sanitizeWatchAnalyticsReferrer", () => {
         `${WATCH_CANONICAL_ORIGIN}/watch/eyJhbGciOiJIUzI1NiJ9.html`,
       ),
     ).toBeUndefined()
+  })
+})
+
+describe("watchAnalyticsLanguageClassForSlug (R14, R20)", () => {
+  it("classifies the default language and any other public slug", () => {
+    expect(watchAnalyticsLanguageClassForSlug("english")).toBe("english")
+    expect(watchAnalyticsLanguageClassForSlug("urdu")).toBe("non_english")
+  })
+
+  it("resolves aliases through the same table route projection uses", () => {
+    expect(watchAnalyticsLanguageClassForSlug("chinese-mandarin")).toBe(
+      "non_english",
+    )
+  })
+
+  it("never guesses a class for an absent or malformed slug", () => {
+    for (const value of [
+      null,
+      undefined,
+      "",
+      "Not A Slug",
+      "viewer@example.test",
+    ]) {
+      expect(watchAnalyticsLanguageClassForSlug(value)).toBe("none")
+    }
   })
 })

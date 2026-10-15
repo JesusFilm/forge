@@ -75,7 +75,16 @@ import {
 } from "@/lib/routes"
 import { buildFbShareUrl, resolveWatchShareUrl } from "@/lib/share"
 import { markWatchUrlAsShared } from "@/lib/playback-discovery"
-import { recordWatchShareAction } from "@/lib/recommendation-content-actions"
+import {
+  recordWatchShareAction,
+  type WatchShareActionDetail,
+} from "@/lib/recommendation-content-actions"
+import {
+  type WatchAnalyticsShareMethod,
+  dispatchWatchAnalyticsEvent,
+  isWatchAnalyticsContractV2Enabled,
+} from "@/lib/watch-analytics-contract"
+import { watchAnalyticsLanguageClassForSlug } from "@/lib/watch-analytics-route"
 import {
   readSubtitlePreference,
   writeSubtitlePreference,
@@ -87,6 +96,30 @@ import {
   loadWatchLanguageOptionsForVideo,
   shouldRefreshCachedWatchLanguageOptions,
 } from "@/lib/watch-interaction-loader"
+
+/**
+ * `share_completed` methods (R16). Each `ShareModal` action detail already
+ * marks a committed boundary — copy resolved, or a social target activated —
+ * so this is a rename onto the finite GA vocabulary, never an inference.
+ */
+const WATCH_SHARE_ANALYTICS_METHOD = {
+  link_copy: "copy_link",
+  embed_copy: "copy_embed",
+  facebook_intent: "facebook",
+  x_intent: "x",
+} as const satisfies Record<WatchShareActionDetail, WatchAnalyticsShareMethod>
+
+function reportWatchShareCompleted(detail: WatchShareActionDetail): void {
+  const method = WATCH_SHARE_ANALYTICS_METHOD[detail]
+  dispatchWatchAnalyticsEvent(
+    { type: "share_completed", method },
+    // A social target opens a new tab, which can background this one before
+    // a paint yield runs; a copy completes in place (R28).
+    {
+      mode: method === "facebook" || method === "x" ? "immediate" : "deferred",
+    },
+  )
+}
 
 function resolveSubtitleSlug(
   preferred: string | null,
@@ -719,11 +752,23 @@ export function WatchPageClient({
 
   const openDownload = useCallback(async () => {
     if (downloadPendingRef.current) return
-    reportGoogleAnalyticsEvent("watch_download_intent", {
-      language_slug: currentLanguageSlug,
-      video_id: video.documentId,
-      video_slug: videoSlug,
-    })
+    if (isWatchAnalyticsContractV2Enabled()) {
+      dispatchWatchAnalyticsEvent(
+        {
+          type: "download_intent",
+          languageClass:
+            watchAnalyticsLanguageClassForSlug(currentLanguageSlug),
+          contentId: video.documentId,
+        },
+        { mode: "deferred" },
+      )
+    } else {
+      reportGoogleAnalyticsEvent("watch_download_intent", {
+        language_slug: currentLanguageSlug,
+        video_id: video.documentId,
+        video_slug: videoSlug,
+      })
+    }
     setEnabledModalChunks((prev) => ({ ...prev, download: true }))
     void loadWatchInteraction("download").catch(() => {})
     downloadPendingRef.current = true
@@ -763,11 +808,22 @@ export function WatchPageClient({
   ])
   const openLanguage = useCallback(() => {
     cancelDownloadSessionRequest()
-    reportGoogleAnalyticsEvent("watch_language_picker_opened", {
-      language_slug: currentLanguageSlug,
-      video_id: video.documentId,
-      video_slug: videoSlug,
-    })
+    if (isWatchAnalyticsContractV2Enabled()) {
+      dispatchWatchAnalyticsEvent(
+        {
+          type: "language_picker_opened",
+          languageClass:
+            watchAnalyticsLanguageClassForSlug(currentLanguageSlug),
+        },
+        { mode: "deferred" },
+      )
+    } else {
+      reportGoogleAnalyticsEvent("watch_language_picker_opened", {
+        language_slug: currentLanguageSlug,
+        video_id: video.documentId,
+        video_slug: videoSlug,
+      })
+    }
     setEnabledModalChunks((prev) => ({ ...prev, language: true }))
     void loadWatchInteraction("language").catch(() => {})
     setModalState("language")
@@ -781,11 +837,18 @@ export function WatchPageClient({
   ])
   const openShare = useCallback(() => {
     cancelDownloadSessionRequest()
-    reportGoogleAnalyticsEvent("watch_share_opened", {
-      language_slug: currentLanguageSlug,
-      video_id: video.documentId,
-      video_slug: videoSlug,
-    })
+    if (isWatchAnalyticsContractV2Enabled()) {
+      dispatchWatchAnalyticsEvent(
+        { type: "share_opened" },
+        { mode: "deferred" },
+      )
+    } else {
+      reportGoogleAnalyticsEvent("watch_share_opened", {
+        language_slug: currentLanguageSlug,
+        video_id: video.documentId,
+        video_slug: videoSlug,
+      })
+    }
     setEnabledModalChunks((prev) => ({ ...prev, share: true }))
     void loadWatchInteraction("share").catch(() => {})
     setModalState("share")
@@ -918,9 +981,10 @@ export function WatchPageClient({
           videoDescription={video.snippet ?? video.description ?? null}
           posterUrl={posterUrl}
           playbackId={variant.muxVideo?.playbackId ?? null}
-          onShareAction={(detail) =>
+          onShareAction={(detail) => {
             recordWatchShareAction(video.documentId, detail)
-          }
+            reportWatchShareCompleted(detail)
+          }}
           onClose={closeModal}
         />
       ) : null}

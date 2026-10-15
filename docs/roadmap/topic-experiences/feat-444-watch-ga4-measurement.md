@@ -57,3 +57,19 @@ search, language, download, share, and CTA outcomes.
 - Tests cover event names, parameters, firing rules, and deduplication.
 - GA4 DebugView/Realtime validates representative canonical/localized journeys.
 - A monitoring query/dashboard reconciles legacy and canonical traffic.
+
+## Progress
+
+- 2026-09-12: U1–U3 landed in
+  [PR #2273](https://github.com/JesusFilm/forge/pull/2273) — search-click GA
+  leak fixed, route resolver, typed contract, explicit page views behind
+  `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2` (default off).
+- 2026-10-08: U4 (player), U5 (search, language, subtitle, download, share,
+  and study-CTA outcomes), and the U6 read-only reconciliation query
+  (`queryWatchMeasurementReconciliation`) implemented behind the same flag.
+  v2 SPA page views now take the previous Watch page as referrer.
+- Remaining, all operator-side: the property export, privacy audit,
+  custom-dimension registration, Enhanced Measurement change, DebugView
+  journeys, enablement, the 7-day and 28-day readouts, and the key-event
+  decision. Runbook: `docs/operations/watch-ga4-measurement.md` sections 3,
+  4, and 6. Close this ticket only after the 28-day classification.

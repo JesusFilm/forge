@@ -9,12 +9,19 @@ import {
 } from "@/lib/watch-event-actions"
 import { getViewerId } from "@/lib/viewer-id"
 import { reportGoogleAnalyticsEvent } from "@/components/GoogleAnalytics"
+import {
+  type WatchAnalyticsEventInput,
+  type WatchAnalyticsMilestonePercent,
+  WATCH_ANALYTICS_MILESTONE_PERCENTS,
+  dispatchWatchAnalyticsEvent,
+  isWatchAnalyticsContractV2Enabled,
+} from "@/lib/watch-analytics-contract"
 
 const QUEUE_STORAGE_KEY = "forge.watch.pending_events"
 const MAX_QUEUED_EVENTS = 8
 const MEANINGFUL_SECONDS = 30
 const MEANINGFUL_PROGRESS = 0.25
-const PLAYBACK_PROGRESS_MILESTONES = [10, 25, 50, 75, 90] as const
+const PLAYBACK_PROGRESS_MILESTONES = WATCH_ANALYTICS_MILESTONE_PERCENTS
 
 export type WatchEventRecorderProps = {
   playerRef: RefObject<MuxPlayerRef | null>
@@ -110,37 +117,69 @@ function buildEventInput({
   }
 }
 
+type PlaybackSnapshot = {
+  durationSeconds: number | null
+  positionSeconds: number | null
+}
+
+function readPlaybackSnapshot(
+  player: MuxPlayerRef | null,
+  fallbackDuration: number | null | undefined,
+): PlaybackSnapshot {
+  return {
+    durationSeconds: getMediaDuration(player, fallbackDuration),
+    positionSeconds:
+      typeof player?.currentTime === "number" &&
+      Number.isFinite(player.currentTime)
+        ? player.currentTime
+        : null,
+  }
+}
+
+function snapshotProgressPercent({
+  durationSeconds,
+  positionSeconds,
+}: PlaybackSnapshot): number | null {
+  return durationSeconds != null && positionSeconds != null
+    ? Math.min(
+        100,
+        Math.max(0, Math.round((positionSeconds / durationSeconds) * 100)),
+      )
+    : null
+}
+
+/** v1 wire parameters, unchanged since the characterization in U1. */
 function playbackAnalyticsParams({
-  player,
+  snapshot,
   videoDubId,
   videoId,
-  durationSeconds,
   progressPercent,
 }: {
-  player: MuxPlayerRef | null
+  snapshot: PlaybackSnapshot
   videoDubId: string
   videoId: string
-  durationSeconds?: number | null
   progressPercent?: number | null
 }) {
-  const duration = getMediaDuration(player, durationSeconds)
-  const position =
-    typeof player?.currentTime === "number" &&
-    Number.isFinite(player.currentTime)
-      ? player.currentTime
-      : null
-
+  const { durationSeconds, positionSeconds } = snapshot
   return {
-    duration_seconds: duration != null ? Math.round(duration) : null,
-    position_seconds: position != null ? Math.round(position) : null,
-    progress_percent:
-      progressPercent ??
-      (duration != null && position != null
-        ? Math.min(100, Math.max(0, Math.round((position / duration) * 100)))
-        : null),
+    duration_seconds:
+      durationSeconds != null ? Math.round(durationSeconds) : null,
+    position_seconds:
+      positionSeconds != null ? Math.round(positionSeconds) : null,
+    progress_percent: progressPercent ?? snapshotProgressPercent(snapshot),
     video_dub_id: videoDubId,
     video_id: videoId,
   }
+}
+
+/**
+ * Whether a `pause` is the browser's terminal pause. Media elements fire
+ * `pause` immediately before `ended` when playback reaches the end, with
+ * `ended` already true. v2 reports that moment once, as `videocomplete`,
+ * instead of also recording an analytical pause the viewer never made.
+ */
+function isTerminalPause(player: MuxPlayerRef): boolean {
+  return (player as { ended?: unknown }).ended === true
 }
 
 async function submitOrQueue(
@@ -183,10 +222,16 @@ export function WatchEventRecorder({
   videoDubId,
   durationSeconds,
 }: WatchEventRecorderProps) {
+  // Every guard below is scoped to the (videoId, videoDubId) playback
+  // identity: the identity effect resets them on a video or dub swap, and a
+  // rerender with the same identity leaves them alone (R12).
   const recordedRef = useRef(false)
   const startedRef = useRef(false)
   const completedRef = useRef(false)
-  const reportedMilestonesRef = useRef(new Set<number>())
+  // Index of the next milestone not yet reported. Milestones are ascending,
+  // so one integer is equivalent to a reported-set and lets the `timeupdate`
+  // non-firing path return after a single comparison (R28).
+  const nextMilestoneIndexRef = useRef(0)
 
   useEffect(() => {
     void flushQueue()
@@ -196,51 +241,69 @@ export function WatchEventRecorder({
     recordedRef.current = false
     startedRef.current = false
     completedRef.current = false
-    reportedMilestonesRef.current = new Set()
+    nextMilestoneIndexRef.current = 0
   }, [videoDubId, videoId])
 
   useEffect(() => {
     const player = playerRef.current
     if (!player) return
 
+    // KTD6: the build-time flag selects ONE path for every player event, so
+    // a v1 and a v2 emission of the same transition can never both run.
+    const contractV2 = isWatchAnalyticsContractV2Enabled()
     const requestSessionId = getViewerId()
+    const snapshot = () => readPlaybackSnapshot(player, durationSeconds)
+    const v1Params = (current: PlaybackSnapshot, progressPercent?: number) =>
+      playbackAnalyticsParams({
+        snapshot: current,
+        videoDubId,
+        videoId,
+        progressPercent,
+      })
+    // Player events are never followed by a document replacement, so they
+    // yield to paint; a backgrounded tab is covered by the seam's
+    // visibilitychange/pagehide flush (R28, KTD9).
+    const dispatch = (input: WatchAnalyticsEventInput) =>
+      dispatchWatchAnalyticsEvent(input, { mode: "deferred" })
+
     const reportPlaybackStarted = () => {
-      reportGoogleAnalyticsEvent(
-        "videoplay",
-        playbackAnalyticsParams({
-          player,
-          videoDubId,
-          videoId,
-          durationSeconds,
-        }),
-      )
+      const current = snapshot()
+      if (contractV2) {
+        dispatch({
+          type: "player_play",
+          durationSeconds: current.durationSeconds ?? undefined,
+          positionSeconds: current.positionSeconds ?? undefined,
+        })
+      } else {
+        reportGoogleAnalyticsEvent("videoplay", v1Params(current))
+      }
       if (startedRef.current) return
       startedRef.current = true
-      reportGoogleAnalyticsEvent(
-        "videostarts",
-        playbackAnalyticsParams({
-          player,
-          videoDubId,
-          videoId,
-          durationSeconds,
-          progressPercent: 0,
-        }),
-      )
+      if (contractV2) {
+        dispatch({
+          type: "player_started",
+          durationSeconds: current.durationSeconds ?? undefined,
+          positionSeconds: 0,
+          contentId: videoId,
+          dubId: videoDubId,
+        })
+      } else {
+        reportGoogleAnalyticsEvent("videostarts", v1Params(current, 0))
+      }
     }
-    const reportPlaybackMilestones = (progressPercent: number) => {
-      for (const milestone of PLAYBACK_PROGRESS_MILESTONES) {
-        if (progressPercent < milestone) continue
-        if (reportedMilestonesRef.current.has(milestone)) continue
-        reportedMilestonesRef.current.add(milestone)
+    const reportMilestone = (milestone: WatchAnalyticsMilestonePercent) => {
+      const current = snapshot()
+      if (contractV2) {
+        dispatch({
+          type: "player_milestone",
+          milestonePercent: milestone,
+          durationSeconds: current.durationSeconds ?? undefined,
+          positionSeconds: current.positionSeconds ?? undefined,
+        })
+      } else {
         reportGoogleAnalyticsEvent(
           `a_media_progress${milestone}`,
-          playbackAnalyticsParams({
-            player,
-            videoDubId,
-            videoId,
-            durationSeconds,
-            progressPercent: milestone,
-          }),
+          v1Params(current, milestone),
         )
       }
     }
@@ -252,22 +315,36 @@ export function WatchEventRecorder({
           ? player.currentTime
           : 0
       const progress = duration != null ? currentTime / duration : 0
-      reportPlaybackMilestones(Math.round(progress * 100))
+      const progressPercent = Math.round(progress * 100)
+      // A seek across several milestones reports each crossed one, in order,
+      // exactly once; seeking back and replaying cannot re-arm them.
+      while (
+        nextMilestoneIndexRef.current < PLAYBACK_PROGRESS_MILESTONES.length &&
+        progressPercent >=
+          PLAYBACK_PROGRESS_MILESTONES[nextMilestoneIndexRef.current]
+      ) {
+        const milestone =
+          PLAYBACK_PROGRESS_MILESTONES[nextMilestoneIndexRef.current]
+        nextMilestoneIndexRef.current += 1
+        reportMilestone(milestone)
+      }
+      if (recordedRef.current) return
       const meaningful =
         currentTime >= MEANINGFUL_SECONDS || progress >= MEANINGFUL_PROGRESS
-      if (recordedRef.current) return
       if (!meaningful) return
 
       recordedRef.current = true
-      reportGoogleAnalyticsEvent(
-        "video_progress",
-        playbackAnalyticsParams({
-          player,
-          videoDubId,
-          videoId,
-          durationSeconds,
-        }),
-      )
+      const current = snapshot()
+      if (contractV2) {
+        dispatch({
+          type: "player_meaningful_progress",
+          durationSeconds: current.durationSeconds ?? undefined,
+          positionSeconds: current.positionSeconds ?? undefined,
+          progressPercent: snapshotProgressPercent(current) ?? undefined,
+        })
+      } else {
+        reportGoogleAnalyticsEvent("video_progress", v1Params(current))
+      }
       void submitOrQueue(
         buildEventInput({
           player,
@@ -279,29 +356,32 @@ export function WatchEventRecorder({
       )
     }
     const reportPlaybackPaused = () => {
-      reportGoogleAnalyticsEvent(
-        "video_pause",
-        playbackAnalyticsParams({
-          player,
-          videoDubId,
-          videoId,
-          durationSeconds,
-        }),
-      )
+      const current = snapshot()
+      if (!contractV2) {
+        reportGoogleAnalyticsEvent("video_pause", v1Params(current))
+        return
+      }
+      if (isTerminalPause(player)) return
+      dispatch({
+        type: "player_pause",
+        durationSeconds: current.durationSeconds ?? undefined,
+        positionSeconds: current.positionSeconds ?? undefined,
+        progressPercent: snapshotProgressPercent(current) ?? undefined,
+      })
     }
     const complete = () => {
       if (completedRef.current) return
       completedRef.current = true
-      reportGoogleAnalyticsEvent(
-        "videocomplete",
-        playbackAnalyticsParams({
-          player,
-          videoDubId,
-          videoId,
-          durationSeconds,
+      const current = snapshot()
+      if (contractV2) {
+        dispatch({
+          type: "player_completed",
+          durationSeconds: current.durationSeconds ?? undefined,
           progressPercent: 100,
-        }),
-      )
+        })
+      } else {
+        reportGoogleAnalyticsEvent("videocomplete", v1Params(current, 100))
+      }
       evaluate()
     }
 

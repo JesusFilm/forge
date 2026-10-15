@@ -421,6 +421,298 @@ export async function queryWatchRouteNotFoundLane(input: {
   }
 }
 
+/**
+ * Watch GA4 wire names the FGE-115 reconciliation readout may count. Mirrors
+ * `WATCH_ANALYTICS_WIRE_NAMES` in `apps/web/src/lib/watch-analytics-contract.ts`
+ * (Mastra cannot import Web). An event name outside this list is rejected
+ * rather than queried, so the readout cannot become a general event browser.
+ */
+export const WATCH_MEASUREMENT_EVENT_NAMES = [
+  "page_view",
+  "videostarts",
+  "videoplay",
+  "video_pause",
+  "a_media_progress10",
+  "a_media_progress25",
+  "a_media_progress50",
+  "a_media_progress75",
+  "a_media_progress90",
+  "video_progress",
+  "videocomplete",
+  "search_completed",
+  "search_result_clicked",
+  "language_picker_opened",
+  "language_applied",
+  "subtitle_applied",
+  "download_intent",
+  "download_started",
+  "share_opened",
+  "share_completed",
+  "watch_cta_clicked",
+] as const
+export type WatchMeasurementEventName =
+  (typeof WATCH_MEASUREMENT_EVENT_NAMES)[number]
+
+/**
+ * Reporting grain for the reconciliation readout.
+ *
+ * - `standard` — `date`, `eventName`, `pagePath`. Needs no custom definition,
+ *   so it answers the v1 baseline and the migration boundary.
+ * - `contract` — adds the registered event-scoped custom dimensions for the
+ *   low-cardinality v2 route variant and contract version (R20). GA4 rejects
+ *   the query until both are registered, and registration is not retroactive:
+ *   rows before registration read `(not set)`.
+ *
+ * `pagePath` is query-free by definition; raw paths, slugs, and IDs (R21)
+ * are never requested here.
+ */
+export type WatchMeasurementGrain = "standard" | "contract"
+
+const WATCH_MEASUREMENT_ROUTE_VARIANT_DIMENSION =
+  "customEvent:watch_route_variant"
+const WATCH_MEASUREMENT_CONTRACT_VERSION_DIMENSION =
+  "customEvent:event_contract_version"
+const WATCH_MEASUREMENT_MAX_PAGE_PATHS = 20
+const WATCH_MEASUREMENT_PAGE_PATH = /^\/watch\/[A-Za-z0-9._~/-]{1,200}$/
+const GA4_NOT_SET = "(not set)"
+
+export type WatchMeasurementReconciliation = {
+  pagePath: string
+  eventName: string
+  /** Sum of every row for this page path and event, across dates and variants. */
+  total: number
+  /** Per route variant (`contract` grain only); `(not set)` stays visible. */
+  byRouteVariant: Record<string, number>
+  /** Share of `total` without a route variant — v1 rows, or pre-registration. */
+  unattributedShare: number | null
+}
+
+export type WatchMeasurementResult =
+  | {
+      ok: true
+      propertyId: string
+      grain: WatchMeasurementGrain
+      rows: Ga4Row[]
+      reconciliation: WatchMeasurementReconciliation[]
+      /** False whenever a caveat means totals cannot support a definitive conclusion. */
+      complete: boolean
+      caveats: string[]
+      propertyTimezone: string | null
+      propertyQuota: unknown
+    }
+  | SeoProviderFailure
+
+/**
+ * Fold report rows into one total per (page path, event name), keeping the
+ * per-route-variant breakdown (AE7). Pure, so the readout's arithmetic is
+ * testable without a provider. Canonical grouping already happened at
+ * collection time — v2 sends the canonical `page_path` — so canonical and
+ * compatibility traffic for one identity share a key here and differ only in
+ * `byRouteVariant`.
+ */
+export function reconcileWatchMeasurementRows(
+  rows: Ga4Row[],
+): WatchMeasurementReconciliation[] {
+  const groups = new Map<string, WatchMeasurementReconciliation>()
+  for (const row of rows) {
+    const pagePath = row.dimensions.pagePath ?? GA4_NOT_SET
+    const eventName = row.dimensions.eventName ?? GA4_NOT_SET
+    const count = row.metrics.eventCount ?? 0
+    const key = JSON.stringify([pagePath, eventName])
+    const group = groups.get(key) ?? {
+      pagePath,
+      eventName,
+      total: 0,
+      byRouteVariant: {},
+      unattributedShare: null,
+    }
+    group.total += count
+    const variant = row.dimensions[WATCH_MEASUREMENT_ROUTE_VARIANT_DIMENSION]
+    if (variant != null) {
+      group.byRouteVariant[variant] =
+        (group.byRouteVariant[variant] ?? 0) + count
+    }
+    groups.set(key, group)
+  }
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      unattributedShare:
+        Object.keys(group.byRouteVariant).length === 0 || group.total === 0
+          ? null
+          : (group.byRouteVariant[GA4_NOT_SET] ?? 0) / group.total,
+    }))
+    .sort(
+      (a, b) =>
+        a.pagePath.localeCompare(b.pagePath) ||
+        a.eventName.localeCompare(b.eventName),
+    )
+}
+
+/**
+ * Read-only FGE-115 reconciliation readout: Watch event counts by date, event
+ * name, and canonical page path, optionally split by route variant and
+ * contract version (U6, R26, KTD8).
+ *
+ * Bounded on every axis: allowlisted property, allowlisted event names, at
+ * most 20 exact `/watch/` page paths (or the whole `/watch/` prefix), the
+ * shared row cap, and the shared request budget. Thresholding, other-row data
+ * loss, capped rows, an exhausted budget, and inconsistent timezones each add
+ * a caveat and mark the result incomplete, so a partial result can never read
+ * as a definitive behavioral conclusion.
+ */
+export async function queryWatchMeasurementReconciliation(input: {
+  propertyId: string
+  startDate: string
+  endDate: string
+  grain?: WatchMeasurementGrain
+  eventNames?: readonly string[]
+  pagePaths?: readonly string[]
+  config?: SeoConfig
+  tokenProvider?: GoogleTokenProvider
+  fetchImpl?: typeof fetch
+  sleep?: (ms: number) => Promise<void>
+  requestBudget?: Ga4RequestBudget
+}): Promise<WatchMeasurementResult> {
+  const config = input.config ?? getSeoConfig()
+  if (!config.ga4PropertyIds.includes(input.propertyId)) {
+    return { ok: false, reason: "not_allowed", retryable: false }
+  }
+  const grain = input.grain ?? "standard"
+  const eventNames = [...new Set(input.eventNames ?? ["page_view"])]
+  const pagePaths = [...new Set(input.pagePaths ?? [])]
+  if (
+    !isGoogleApiDate(input.startDate) ||
+    !isGoogleApiDate(input.endDate) ||
+    input.startDate > input.endDate ||
+    (grain !== "standard" && grain !== "contract") ||
+    eventNames.length === 0 ||
+    eventNames.some(
+      (name) =>
+        !(WATCH_MEASUREMENT_EVENT_NAMES as readonly string[]).includes(name),
+    ) ||
+    pagePaths.length > WATCH_MEASUREMENT_MAX_PAGE_PATHS ||
+    pagePaths.some(
+      (path) =>
+        !WATCH_MEASUREMENT_PAGE_PATH.test(path) ||
+        path.includes("//") ||
+        path.split("/").includes(".."),
+    )
+  ) {
+    return { ok: false, reason: "rejected", retryable: false }
+  }
+  const token = await (
+    input.tokenProvider ?? ((scopes) => getGoogleAccessToken(scopes))
+  )([GA4_SCOPE])
+  if (!token.ok) return token
+
+  const dimensions = [
+    "date",
+    "eventName",
+    "pagePath",
+    ...(grain === "contract"
+      ? [
+          WATCH_MEASUREMENT_ROUTE_VARIANT_DIMENSION,
+          WATCH_MEASUREMENT_CONTRACT_VERSION_DIMENSION,
+        ]
+      : []),
+  ]
+  const pathFilter =
+    pagePaths.length > 0
+      ? {
+          filter: {
+            fieldName: "pagePath",
+            inListFilter: { values: pagePaths, caseSensitive: true },
+          },
+        }
+      : {
+          filter: {
+            fieldName: "pagePath",
+            stringFilter: {
+              matchType: "BEGINS_WITH",
+              value: "/watch/",
+              caseSensitive: true,
+            },
+          },
+        }
+  const report = await runGa4Report({
+    propertyId: input.propertyId,
+    startDate: input.startDate,
+    endDate: input.endDate,
+    dimensions,
+    metrics: ["eventCount"],
+    dimensionFilter: {
+      andGroup: {
+        expressions: [
+          pathFilter,
+          {
+            filter: {
+              fieldName: "eventName",
+              inListFilter: { values: eventNames, caseSensitive: true },
+            },
+          },
+        ],
+      },
+    },
+    accessToken: token.accessToken,
+    config,
+    fetchImpl: input.fetchImpl,
+    sleep: input.sleep,
+    requestBudget: input.requestBudget,
+  })
+  if (!report.ok) return report
+
+  // A row outside the requested scope means the provider did not apply the
+  // filter as sent; counting it would silently widen the readout.
+  const outOfScope = report.rows.some((row) => {
+    const pagePath = row.dimensions.pagePath ?? ""
+    const eventName = row.dimensions.eventName ?? ""
+    return (
+      !eventNames.includes(eventName) ||
+      (pagePaths.length > 0
+        ? !pagePaths.includes(pagePath)
+        : !pagePath.startsWith("/watch/"))
+    )
+  })
+  if (outOfScope) return { ok: false, reason: "parse_error", retryable: true }
+
+  const thresholded = report.metadata?.subjectToThresholding === true
+  const dataLoss = report.metadata?.dataLossFromOtherRow === true
+  const reconciliation = reconcileWatchMeasurementRows(report.rows)
+  const unattributed =
+    grain === "contract" &&
+    reconciliation.some((group) => (group.unattributedShare ?? 0) > 0)
+  const caveats = [
+    ...(thresholded
+      ? ["GA4 reports this result as subject to thresholding."]
+      : []),
+    ...(dataLoss
+      ? ["GA4 reports data loss from an aggregated other row."]
+      : []),
+    ...(report.capped ? ["Configured GA4 row cap was reached."] : []),
+    ...(report.requestBudgetExhausted
+      ? ["The bounded GA4 request budget was exhausted."]
+      : []),
+    ...(unattributed
+      ? [
+          "Some events carry no route variant: v1 traffic, or rows collected before the custom dimension was registered.",
+        ]
+      : []),
+    "Totals are GA4 aggregates after the property's filters; reconcile thresholded, filtered, and bot/internal traffic before comparing route variants.",
+  ]
+  return {
+    ok: true,
+    propertyId: input.propertyId,
+    grain,
+    rows: report.rows,
+    reconciliation,
+    complete: !thresholded && !dataLoss && !report.capped,
+    caveats,
+    propertyTimezone: report.metadata?.timeZone ?? null,
+    propertyQuota: report.propertyQuota ?? null,
+  }
+}
+
 export async function queryGoogleAnalytics(input: {
   propertyId: string
   startDate: string

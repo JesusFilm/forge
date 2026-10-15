@@ -13,6 +13,11 @@ import { ChevronDown, Mail as MailIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import { MessageCircleIcon } from "@/components/sections/RelatedQuestions"
+import {
+  type WatchAnalyticsCtaId,
+  dispatchWatchAnalyticsEvent,
+  watchAnalyticsCtaDispatchMode,
+} from "@/lib/watch-analytics-contract"
 import { Button } from "@/components/ui/button"
 import {
   WATCH_PILL_BUTTON_CLASS,
@@ -25,6 +30,18 @@ const ASK_BIBLE_QUESTION_URL =
   "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
 const ASK_YOURS_URL = "https://issuesiface.com/talk?utm_source=jesusfilm-watch"
 const PANEL_COLLAPSE_ANIMATION_MS = 300
+
+/**
+ * R16: a mission CTA reports only its allowlisted identifier; the contract
+ * resolves the destination class and, for an outbound link, dispatches
+ * immediately because the new tab can background this one first (R28).
+ */
+function reportStudyCtaClick(ctaId: WatchAnalyticsCtaId): void {
+  dispatchWatchAnalyticsEvent(
+    { type: "watch_cta_clicked", ctaId },
+    { mode: watchAnalyticsCtaDispatchMode(ctaId) },
+  )
+}
 
 function WatchQuestionIcon() {
   return (
@@ -91,6 +108,7 @@ export function WatchStudyQuestions({ prompts }: { prompts: string[] }) {
           className={WATCH_PILL_BUTTON_CLASS}
           aria-label={t("askYours")}
           data-testid="watch-study-questions-ask-yours"
+          onClick={() => reportStudyCtaClick("study_ask_yours")}
           render={
             <a
               href={ASK_YOURS_URL}
@@ -241,6 +259,7 @@ function StudyQuestionRow({
                 nativeButton={false}
                 className={WATCH_PILL_BUTTON_CLASS}
                 data-testid="watch-study-questions-chat-cta"
+                onClick={() => reportStudyCtaClick("study_chat_with_person")}
                 render={
                   <a
                     href={CHAT_WITH_PERSON_URL}
@@ -258,6 +277,7 @@ function StudyQuestionRow({
                 nativeButton={false}
                 className={WATCH_PILL_BUTTON_CLASS}
                 data-testid="watch-study-questions-ask-bible-cta"
+                onClick={() => reportStudyCtaClick("study_ask_bible_question")}
                 render={
                   <a
                     href={ASK_BIBLE_QUESTION_URL}
