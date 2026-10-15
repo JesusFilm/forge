@@ -20,7 +20,7 @@
  * The test alone makes slow connections WORSE. When no rung can load within
  * hls.js's 4-second start budget (`maxStarvationDelay`), hls.js gives up and
  * starts on `hls.firstLevel`, the first-listed variant: 720p again, now after
- * a wasted test download. On Slow 3G that measured 45.7 s to first frame
+ * a wasted test download. On Slow 3G that measured 45.5 s to first frame
  * versus 35.1 s without the test. `LowestRungFallbackAbrController` moves
  * that fallback to the lowest rung (19.4 s, 270p). Measured 2026-10-15 on the
  * JESUS film manifest in Chrome 1280x720, cache disabled.
@@ -40,6 +40,13 @@
  *
  * Scope: hls.js only. iOS Safari and other native-HLS players ignore hls.js
  * config entirely and choose their own start rung.
+ *
+ * Known limit: Mux serves segments with stable URLs and `max-age=604800`, so
+ * a viewer who reopens the same video within a week can get the test segment
+ * from the browser cache. hls.js then reads the near-instant download as a
+ * fast connection and starts on a high rung, as it did before this change.
+ * A slow returning viewer is no worse off than before, but not helped either.
+ * Forcing the test past the cache would need a custom hls.js fragment loader.
  */
 import type { Props as MuxVideoProps } from "@mux/mux-video-react"
 
