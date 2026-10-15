@@ -15,6 +15,7 @@ import {
   type ControlsEvent,
   type ControlsVisibleReader,
 } from "../lib/controlsVisibility"
+import { SEEK_LOADING_GRACE_MS } from "../lib/seekLoading"
 
 const HIDE_DELAY_MS = 3000
 const FADE_OUT_MS = 150
@@ -42,6 +43,9 @@ export type ControlsVisibility = {
   isVisibleNow: () => boolean
   /** A control was used — keep chrome up and restart the idle timer. */
   noteInteraction: () => void
+  /** A seek started. Its own loading edge does not reveal hidden chrome
+   *  unless the load outlasts SEEK_LOADING_GRACE_MS. */
+  noteSeek: () => void
   isPlaying: boolean
 }
 
@@ -65,6 +69,8 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   const reduceMotionRef = useRef(false)
   const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSeekAtRef = useRef<number | null>(null)
+  const seekGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
   const scheduleHideRef = useRef<() => void>(() => {})
   const revealRef = useRef<() => void>(() => {})
@@ -172,6 +178,10 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
 
   const isVisibleNow = useCallback(() => visibleStore.get(), [visibleStore])
 
+  const noteSeek = useCallback(() => {
+    lastSeekAtRef.current = Date.now()
+  }, [])
+
   // Show at full opacity at once and re-arm: a control press, and the return
   // from background. Stopping an in-flight hide fade keeps its completion
   // callback from unmounting the chrome the viewer just brought back.
@@ -222,7 +232,25 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         statusRef.current = next
         if (next === "loading") {
           clearTimer()
-          if (!visibleStore.get()) revealRef.current()
+          if (visibleStore.get()) return
+          // A double tap seeks with the chrome hidden, and the seek's own
+          // buffering must not show it. A stall past the grace still does.
+          const sinceSeek =
+            lastSeekAtRef.current == null
+              ? Infinity
+              : Date.now() - lastSeekAtRef.current
+          if (sinceSeek >= SEEK_LOADING_GRACE_MS) {
+            revealRef.current()
+            return
+          }
+          if (seekGraceTimerRef.current != null) {
+            clearTimeout(seekGraceTimerRef.current)
+          }
+          seekGraceTimerRef.current = setTimeout(() => {
+            seekGraceTimerRef.current = null
+            if (!isMountedRef.current || statusRef.current !== "loading") return
+            if (!visibleStore.get()) revealRef.current()
+          }, SEEK_LOADING_GRACE_MS - sinceSeek)
           return
         }
         if (next === "readyToPlay") scheduleHideRef.current()
@@ -314,6 +342,10 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         clearTimeout(timerRef.current)
         timerRef.current = null
       }
+      if (seekGraceTimerRef.current != null) {
+        clearTimeout(seekGraceTimerRef.current)
+        seekGraceTimerRef.current = null
+      }
       if (hideAnimRef.current != null) {
         hideAnimRef.current.stop()
         hideAnimRef.current = null
@@ -330,6 +362,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     revealIfHidden,
     isVisibleNow,
     noteInteraction: snapReveal,
+    noteSeek,
     isPlaying,
   }
 }

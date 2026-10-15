@@ -297,9 +297,9 @@ export function VideoPlayer({
   // One expression for both chrome render gates below, so they can't drift.
   const chromeMounted = controls.mounted && !awaitingAutostart
 
-  // Tap disambiguation (U4): a single tap toggles chrome once DOUBLE_TAP_MS
-  // passes with no second tap; a second tap seeks the tapped half ±10s with a
-  // brief pill, and the chrome stays as it was (owner, 2026-10-16; was KTD3).
+  // Tap disambiguation (U4): a single tap toggles the chrome when DOUBLE_TAP_MS
+  // passes with no second tap. A second tap seeks ±10 s on the tapped half and
+  // shows the pill. The chrome stays as it was (owner, 2026-10-16; was KTD3).
   const tapWidthRef = useRef(0)
   const wasVisibleRef = useRef(true)
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -698,13 +698,14 @@ export function VideoPlayer({
       }
       const target = applySkip(player.currentTime, delta, player.duration)
       if (target == null) return
+      controls.noteSeek()
       player.currentTime = target
       seekNonceRef.current += 1
       setSeekSignal({ time: target, n: seekNonceRef.current })
       const side = seekSideForTap(locationX, tapWidthRef.current)
       if (side) seekFlashRef.current?.show(side, delta)
     },
-    [player, castTarget],
+    [player, castTarget, controls],
   )
 
   const handleTapPressIn = useCallback(() => {

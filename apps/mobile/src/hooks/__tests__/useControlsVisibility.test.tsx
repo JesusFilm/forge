@@ -44,6 +44,7 @@ import {
   useControlsVisibility,
   type ControlsVisibility,
 } from "../useControlsVisibility"
+import { SEEK_LOADING_GRACE_MS } from "../../lib/seekLoading"
 import { makeFakePlayer, type FakePlayer } from "../../test-utils/expoVideoMock"
 import {
   TestRenderer,
@@ -341,5 +342,62 @@ describe("useControlsVisibility — a press during the hide fade", () => {
     expect(newFade.toValue).toBe(0)
     expect(newFade.stopped).toBe(false)
     expect(api().visibleStore.get()).toBe(false)
+  })
+})
+
+describe("useControlsVisibility — a seek's own loading edge", () => {
+  /** Hidden chrome, a seek, then the loading edge the seek causes. */
+  async function loadingAfterSeekOnHiddenChrome() {
+    const { player } = await render()
+    act(() => api().hide())
+    finishHideFade()
+    act(() => api().noteSeek())
+    act(() => player.__emit("statusChange", { status: "loading" }))
+    return player
+  }
+
+  it("keeps hidden chrome hidden when the load ends inside the grace", async () => {
+    const player = await loadingAfterSeekOnHiddenChrome()
+    expect(api().isVisibleNow()).toBe(false)
+
+    act(() => jest.advanceTimersByTime(SEEK_LOADING_GRACE_MS - 1))
+    act(() => player.__emit("statusChange", { status: "readyToPlay" }))
+    act(() => jest.advanceTimersByTime(SEEK_LOADING_GRACE_MS))
+
+    expect(api().isVisibleNow()).toBe(false)
+    expect(glass()).toBe(false)
+  })
+
+  it("reveals the chrome when the load outlasts the grace", async () => {
+    await loadingAfterSeekOnHiddenChrome()
+
+    act(() => jest.advanceTimersByTime(SEEK_LOADING_GRACE_MS - 1))
+    expect(api().isVisibleNow()).toBe(false)
+    act(() => jest.advanceTimersByTime(1))
+
+    expect(api().isVisibleNow()).toBe(true)
+    expect(glass()).toBe(true)
+  })
+
+  it("still reveals at once on a loading edge with no seek", async () => {
+    const { player } = await render()
+    act(() => api().hide())
+    finishHideFade()
+
+    act(() => player.__emit("statusChange", { status: "loading" }))
+
+    expect(api().isVisibleNow()).toBe(true)
+  })
+
+  it("reveals at once on a loading edge that comes after the grace", async () => {
+    const { player } = await render()
+    act(() => api().hide())
+    finishHideFade()
+    act(() => api().noteSeek())
+    act(() => jest.advanceTimersByTime(SEEK_LOADING_GRACE_MS))
+
+    act(() => player.__emit("statusChange", { status: "loading" }))
+
+    expect(api().isVisibleNow()).toBe(true)
   })
 })

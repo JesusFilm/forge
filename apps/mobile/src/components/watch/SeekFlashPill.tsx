@@ -29,6 +29,9 @@ const SEEK_FLASH_FADE_MS = 250
 const SEEK_FLASH_DISSOLVE = { in: 0, out: SEEK_FLASH_FADE_MS / 1000 }
 
 type SeekFlash = {
+  /** The pill's key. Fabric iOS ignores React opacity on a view that a native
+   *  fade drove, so each flash mounts fresh views. */
+  id: number
   side: SeekSide
   delta: number
   /** A new value per flash: a reset of a value that a native fade drove
@@ -42,9 +45,9 @@ export type SeekFlashPillHandle = {
   show: (side: SeekSide, delta: number) => void
 }
 
-// The pill's outer edge lines up with the time pill and the fullscreen
-// button, and clears the side notch in fullscreen as the bottom bar does.
-// On a narrow player it can overlap the skip buttons; that is accepted.
+// The pill's outer edge aligns with the time pill and the fullscreen button.
+// In fullscreen it clears the side notch, as the bottom bar does. On a narrow
+// player it can overlap the skip buttons (owner, 2026-10-16).
 function edgeInset(fullscreen: boolean, notch: number): number {
   return fullscreen
     ? Math.max(notch, PLAYER_BAR_PADDING_H)
@@ -67,6 +70,7 @@ export function SeekFlashPill({
   const insets = useSafeAreaInsets()
   const [flash, setFlash] = useState<SeekFlash | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const nextIdRef = useRef(0)
   const reduceMotion = useReduceMotion()
   const reduceMotionRef = useRef(reduceMotion)
   reduceMotionRef.current = reduceMotion
@@ -82,7 +86,8 @@ export function SeekFlashPill({
     () => ({
       show: (side, delta) => {
         const fade = new Animated.Value(1)
-        setFlash({ side, delta, fade, leaving: false })
+        nextIdRef.current += 1
+        setFlash({ id: nextIdRef.current, side, delta, fade, leaving: false })
         if (timerRef.current) clearTimeout(timerRef.current)
         // Each update checks `fade`, so a late step never changes a newer pill.
         const ifCurrent = (next: (current: SeekFlash) => SeekFlash | null) =>
@@ -117,6 +122,7 @@ export function SeekFlashPill({
 
   return (
     <View
+      key={flash.id}
       testID="seek-flash"
       pointerEvents="none"
       style={[styles.seekFlash, edge]}

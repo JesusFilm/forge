@@ -49,6 +49,7 @@ jest.mock("../../../hooks/useControlsVisibility", () => {
       hide: () => {},
       revealIfHidden: () => {},
       isVisibleNow: () => true,
+      noteSeek: () => {},
       noteInteraction: () => {},
       isPlaying: true,
     }),

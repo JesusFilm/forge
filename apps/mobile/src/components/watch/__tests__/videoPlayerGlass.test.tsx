@@ -49,6 +49,7 @@ const mockControls = {
   visibleNow: true,
   // The hide and reveal calls, in order.
   calls: [] as string[],
+  seeksNoted: 0,
 }
 jest.mock("../../../hooks/useControlsVisibility", () => ({
   ...jest.requireActual("../../../hooks/useControlsVisibility"),
@@ -66,6 +67,9 @@ jest.mock("../../../hooks/useControlsVisibility", () => ({
         mockControls.calls.push("reveal")
       },
       isVisibleNow: () => mockControls.visibleNow,
+      noteSeek: () => {
+        mockControls.seeksNoted += 1
+      },
       noteInteraction: () => {},
       isPlaying: true,
     }
@@ -242,6 +246,7 @@ beforeEach(() => {
   mockControls.renders = 0
   mockControls.visibleNow = true
   mockControls.calls = []
+  mockControls.seeksNoted = 0
   mockMotion.reduce = false
 })
 
@@ -426,13 +431,28 @@ describe("the seek flash pill's exit (owner, 2026-10-16)", () => {
     await tapLeft(renderer, 2)
     await advance(600)
     const [oldFade] = timings
+    const oldPill = hostByTestId(renderer, "seek-flash")
 
     await tapLeft(renderer, 2)
+    // A new view, not the old one: Fabric iOS keeps the old fade's native
+    // opacity on a view that a native fade drove, whatever React sends.
+    expect(hostByTestId(renderer, "seek-flash")).not.toBe(oldPill)
     expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
     expect(pillGlassStyle(renderer)).toMatchObject({ style: "regular" })
 
     await act(async () => oldFade!.finish())
     expect(hasSeekFlash(renderer)).toBe(true)
+  })
+
+  it("starts no fade after the player unmounts during the hold", async () => {
+    const renderer = await render()
+    await tapLeft(renderer, 2)
+
+    await unmount(renderer)
+    mounted = null
+    await advance(600)
+
+    expect(timings).toHaveLength(0)
   })
 
   it("leaves at once with Reduce Motion on", async () => {
@@ -473,6 +493,8 @@ describe("a tap on the video (owner, 2026-10-16)", () => {
 
     await tapLeft(renderer, 2)
     expect(hasSeekFlash(renderer)).toBe(true)
+    // The hook needs the seek, or the seek's own buffering shows the chrome.
+    expect(mockControls.seeksNoted).toBe(1)
     await advance(DOUBLE_TAP_MS * 3)
 
     expect(mockControls.calls).toEqual([])

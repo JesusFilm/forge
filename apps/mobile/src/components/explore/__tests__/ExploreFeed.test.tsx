@@ -197,9 +197,9 @@ import type {
 } from "../../../hooks/useExploreClipQueue"
 import {
   EXPLORE_QUALITY_TIER,
-  SEEK_LOADING_GRACE_MS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
 } from "../../../hooks/useFeedPlayers"
+import { SEEK_LOADING_GRACE_MS } from "../../../lib/seekLoading"
 import {
   refreshLocale,
   resetLocaleStoreForTests,

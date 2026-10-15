@@ -30,7 +30,6 @@ import {
 import {
   ACTIVE_TIME_UPDATE_INTERVAL_SECONDS,
   EXPLORE_QUALITY_TIER,
-  SEEK_LOADING_GRACE_MS,
   START_RESEEK_GRACE_MS,
   STANDBY_FORWARD_BUFFER_SECONDS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
@@ -38,6 +37,7 @@ import {
   type FeedPlayers,
   type FeedPlayersInput,
 } from "../useFeedPlayers"
+import { SEEK_LOADING_GRACE_MS } from "../../lib/seekLoading"
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
 const [A, B] = video.__players

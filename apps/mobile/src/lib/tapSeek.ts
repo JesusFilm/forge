@@ -41,9 +41,9 @@ export function classifyTap(singleTapPending: boolean): "double" | "single" {
   return singleTapPending ? "double" : "single"
 }
 
-/** What a single tap does once its window passes with no second tap: hide the
- *  chrome if it was visible when the press began, else reveal it. The reveal
- *  waits for the window, so a double tap on hidden chrome only seeks. */
+/** What a single tap does when its window passes with no second tap: hide the
+ *  chrome if it showed at the tap, else reveal it. The reveal waits for the
+ *  window, so a double tap on hidden chrome only seeks. */
 export function singleTapAction(wasVisible: boolean): "hide" | "reveal" {
   return wasVisible ? "hide" : "reveal"
 }

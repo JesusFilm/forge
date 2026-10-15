@@ -19,6 +19,7 @@ import {
   type PlayerId,
   type PlayerSlot,
 } from "../lib/explore/feedState"
+import { SEEK_LOADING_GRACE_MS } from "../lib/seekLoading"
 import { readOr, safely } from "../lib/explore/playerRead"
 import type { ExploreClipFailure } from "../lib/explore/telemetry"
 import type { ClipWindow, FeedClip } from "../lib/explore/types"
@@ -56,9 +57,6 @@ const ACTIVE_MIN_FORWARD_BUFFER_SECONDS = 2
 
 /** Ticks this soon after a loop seek can still show the old position. */
 const LOOP_SEEK_SETTLE_MS = 500
-
-/** A loading edge this soon after a seek is the seek's own, not a rebuffer. */
-export const SEEK_LOADING_GRACE_MS = 1_000
 
 /** An unplayable URL never reached a decoder, so it must never demote (KTD3). */
 const NO_SOURCE_SET_MS = Number.POSITIVE_INFINITY
