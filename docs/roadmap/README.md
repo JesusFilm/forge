@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 14, 2026)
+## Status (October 15, 2026)
 
-- **Total tickets:** 836
-- **Complete:** 621
+- **Total tickets:** 837
+- **Complete:** 622
 - **Cancelled:** 40
 - **In progress:** 67
 - **Not started:** 51
@@ -851,6 +851,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-630](topic-experiences/feat-630-tv-system-home-five-concept-rotation.md)              | Five-concept TV system Home rotation                                             | ekkasit       | P1       | 2026-10-02 | 7    | 2026-10-08 | in-progress |
 | [feat-615](topic-experiences/feat-615-tv-startup-logo-audio.md)                             | TV fresh-launch logo animation and sound                                         | ekkasit       | P1       | 2026-10-07 | 1    | 2026-10-07 | in-progress |
 | [feat-616](topic-experiences/feat-616-tv-animation-settings.md)                             | Watch startup and loading animation choices                                      | ekkasit       | P1       | 2026-10-07 | 2    | 2026-10-08 | in-progress |
+| [feat-632](topic-experiences/feat-632-watch-video-carousel-card-data.md)                    | Render linked video data in Watch experience carousels                           | vlad          | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
 | [feat-636](topic-experiences/feat-636-watch-auth-canonical-origin.md)                       | Use an allowlisted origin for Watch authentication                               | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-671](topic-experiences/feat-671-watch-home-compositor-progress-ring.md)               | Watch Home compositor progress ring                                              | codex         | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-681](topic-experiences/feat-681-watch-home-category-rail-reachability.md)             | Make every Watch home category reachable                                         | vlad          | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
