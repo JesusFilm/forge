@@ -234,7 +234,7 @@ describe("the auto-hide clock (KTD12)", () => {
   })
 })
 
-describe("the card's surface (feat-699 U5, R5)", () => {
+describe("the card's surface (feat-705 U5, R5)", () => {
   // SURFACE_COLOR, the card's solid fill today.
   const SURFACE = "#292524"
 

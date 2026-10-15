@@ -1,5 +1,5 @@
 /**
- * The reader's read of the phone setting (feat-699 KTD4). The subscription
+ * The reader's read of the phone setting (feat-705 KTD4). The subscription
  * is torn down in cleanup, so every case renders under StrictMode.
  */
 import { StrictMode, act } from "react"

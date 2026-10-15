@@ -30,7 +30,7 @@ export type ControlsVisibility = {
   mounted: boolean
   opacityAnim: Animated.Value
   /** The table's `visible` value, changed at hide start and on reveal; the
-   *  player glass reads it (feat-699 KTD5). Not React state, so a change
+   *  player glass reads it (feat-705 KTD5). Not React state, so a change
    *  re-renders only its readers. Read it with `useControlsGlassVisible`. */
   visibleStore: ControlsVisibleReader
   /** Hide chrome if currently visible (no-op if already hidden). */
@@ -281,7 +281,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   }, [visibleStore])
 
   // Foreground resume: through the table like any reveal, so the glass value
-  // comes back with the chrome (feat-699 AE1).
+  // comes back with the chrome (feat-705 AE1).
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (!isMountedRef.current || next !== "active") return

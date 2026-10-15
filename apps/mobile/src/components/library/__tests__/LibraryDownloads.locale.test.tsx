@@ -218,7 +218,7 @@ describe("the downloads list after a UI language change", () => {
   })
 })
 
-describe("the Select pill (feat-699 U8, R9)", () => {
+describe("the Select pill (feat-705 U8, R9)", () => {
   // Today's pill, pinned as it shipped before the glass.
   const PILL_BOX = {
     minHeight: 34,

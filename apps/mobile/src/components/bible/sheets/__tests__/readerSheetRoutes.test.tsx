@@ -70,12 +70,12 @@ jest.mock("../../../../contexts/WatchPreferencesProvider", () => ({
 jest.mock("../../../../hooks/useIsTabletLayout", () => ({
   useIsTabletLayout: () => mockRoute.tablet,
 }))
-// The phone's own setting, which System mode follows (feat-699 KTD4).
+// The phone's own setting, which System mode follows (feat-705 KTD4).
 const mockPhone: { scheme: "light" | "dark" | null } = { scheme: null }
 jest.mock("../../../../hooks/usePhoneColorScheme", () => ({
   usePhoneColorScheme: () => mockPhone.scheme,
 }))
-// feat-699 KTD10: each case sets the Liquid Glass gate; it is off by default.
+// feat-705 KTD10: each case sets the Liquid Glass gate; it is off by default.
 const mockGate = { glass: false }
 jest.mock("../../../../lib/liquidGlass", () => ({
   canUseLiquidGlass: () => mockGate.glass,
@@ -782,7 +782,7 @@ describe("reader-settings route", () => {
   })
 })
 
-// feat-699 U10, R15, KTD7: only the Dark theme shows the system glass sheet.
+// feat-705 U10, R15, KTD7: only the Dark theme shows the system glass sheet.
 // Light stays solid under the dark app style; True Dark stays pure black.
 describe("the system glass sheet in the reader's Dark theme", () => {
   const ROUTES = [

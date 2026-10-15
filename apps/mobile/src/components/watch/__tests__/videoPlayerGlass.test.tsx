@@ -1,5 +1,5 @@
 /**
- * VideoPlayer on Liquid Glass (feat-699 U4, U5). No glass may sit inside a
+ * VideoPlayer on Liquid Glass (feat-705 U4, U5). No glass may sit inside a
  * fading layer, so on the glass path the controls layer stops fading and hands
  * its fade to PlayerControls (KTD6). The fallback path keeps today's fade.
  * Jest cannot draw the material, so these cases pin the branch and its props.
@@ -222,7 +222,7 @@ beforeEach(() => {
   mockControls.renders = 0
 })
 
-describe("the controls layer (feat-699 U4, KTD6)", () => {
+describe("the controls layer (feat-705 U4, KTD6)", () => {
   it("does not fade on the glass path, and hands its fade and visible value to the controls", async () => {
     const renderer = await render()
 
@@ -269,7 +269,7 @@ describe("the controls layer (feat-699 U4, KTD6)", () => {
   })
 })
 
-describe("the seek flash pill (feat-699 U5, R5)", () => {
+describe("the seek flash pill (feat-705 U5, R5)", () => {
   function pillText(renderer: TestInstance): RenderedNode {
     const [text] = renderer.root.findAll(
       (n) => n.props.children === "10s" && typeof n.type === "string",

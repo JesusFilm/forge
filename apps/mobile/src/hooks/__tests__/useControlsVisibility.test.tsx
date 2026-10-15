@@ -1,5 +1,5 @@
 /**
- * The auto-hiding chrome and its published glass value (feat-699 U3, KTD5).
+ * The auto-hiding chrome and its published glass value (feat-705 U3, KTD5).
  * Animated is faked: native-driver fades never finish under jest.
  */
 

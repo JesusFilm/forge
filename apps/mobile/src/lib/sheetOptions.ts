@@ -5,7 +5,7 @@ import { canUseLiquidGlass } from "./liquidGlass"
 const SHEET_CORNER_RADIUS = 16
 
 /**
- * The options every native form sheet shares (feat-699 KTD7). On iOS 26 the
+ * The options every native form sheet shares (feat-705 KTD7). On iOS 26 the
  * sheet takes the system shape, so the custom corner goes.
  */
 export function formSheetBaseOptions() {

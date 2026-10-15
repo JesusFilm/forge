@@ -27,7 +27,7 @@ const ROOT_SHEETS = IN_APP_SHEET_ROUTE_PATTERNS.filter(
 )
 // Root sheets that are not the reader's, each with its own options source,
 // named one by one so a new root sheet is a deliberate edit here and never
-// passes as a reader sheet. feat-699 U9: the feedback options are built at
+// passes as a reader sheet. feat-705 U9: the feedback options are built at
 // render, because the shared sheet helper loads in the guarded require block.
 const NON_READER_ROOT_SHEETS = { feedback: "feedbackSheetOptions()" }
 const NON_READER_NAMES = Object.keys(NON_READER_ROOT_SHEETS)
@@ -97,7 +97,7 @@ describe("the reader's root sheet routes", () => {
     ).toEqual([])
   })
 
-  // feat-699 U9: the shared helper gives the form sheet, the system corner and
+  // feat-705 U9: the shared helper gives the form sheet, the system corner and
   // the transparent fill on iOS 26; sheetOptions.test.ts proves both paths.
   it("presents the feedback sheet as one full-height form sheet", () => {
     const body = optionsBuilderBody(ROOT_LAYOUT, "feedbackSheetOptions")

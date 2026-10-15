@@ -1066,7 +1066,7 @@ sheet closes.
   feeds `miniPlayerPresentation`'s `openInlineSheetCount`. The other three
   component-state sheets, the quiz, the player settings, and the player-door
   feedback sheet, are `Modal`s. On iOS 26 the delete confirm is the native
-  action sheet (`libraryDeleteActionSheet`, feat-699 U12). It is not inline,
+  action sheet (`libraryDeleteActionSheet`, feat-705 U12). It is not inline,
   because iOS draws it above the host, as it draws a `Modal`.
 - **Two mechanisms count the sheets, because the app presents them two
   ways.** The first is the ten sheet ROUTES in `IN_APP_SHEET_ROUTE_PATTERNS`
@@ -2173,13 +2173,13 @@ from there, so no two files can disagree about the bar's size.
   read `useTabLabels()` in `src/lib/tabBar.ts`, which maps each tab through
   `TAB_LABEL_KEYS` to the `Tabs` catalog namespace, so a rename is a one-line
   change and a language change relabels the bar without a remount.
-- **Do not put glass inside a fading layer; dissolve it instead (feat-699).**
+- **Do not put glass inside a fading layer; dissolve it instead (feat-705).**
   On `expo-glass-effect` 0.1.10, `GlassView` drew nothing inside a layer whose
   opacity an ancestor animates. On 57.0.4 it draws on some reveals only: in the
   player's fading layer, AirPlay drew on 5 of 5 reveals, Back 10 on 1 of 5, and
   the others on none. Keep the glass outside the fade, and dissolve it with
   `glassEffectStyle: { style: "none", animate: true }`, which worked on 5 of 5
-  changes. `GlassSurface` does this; see "Liquid Glass (feat-699)" below.
+  changes. `GlassSurface` does this; see "Liquid Glass (feat-705)" below.
   `TabBarBackground` still has no fade.
 - **Fast Refresh does not reliably apply changes to the material.** A branch
   swap looked applied and measured identically to the previous run; a magenta
@@ -2187,7 +2187,7 @@ from there, so no two files can disagree about the bar's size.
   client, and prove the reload landed with an unmistakable colour before
   trusting any measurement.
 
-## Liquid Glass (feat-699)
+## Liquid Glass (feat-705)
 
 On iOS 26 every floating control shows native Liquid Glass, every sheet is the
 native iOS 26 sheet, and every native system part is dark. Android and iOS
@@ -2257,7 +2257,7 @@ the R, AE and KTD numbers that the source comments cite.
   `app/(tabs)/watch/` with a `Stack` on iOS (`_layout.ios.tsx`) and a `Slot`
   elsewhere, and mounts `Stack.SearchBar` only on glass. On an iPhone the field
   sits at the bottom; on an iPad it is a button in the top navigation bar.
-  `react-native-screens` 4.26.2 cannot turn autocorrect off; `feat-704` tracks
+  `react-native-screens` 4.26.2 cannot turn autocorrect off; `feat-706` tracks
   the upgrade.
 - **No `GlassSurface` ships a tint.** On the iPhone Air simulator (2026-10-15),
   every reachable glass surface with text or an icon met its floor (text

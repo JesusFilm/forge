@@ -1,5 +1,5 @@
 ---
-id: "feat-704"
+id: "feat-706"
 title: "Upgrade react-native-screens to 4.30 or later for the iOS 26 search tab"
 owner: "urim"
 priority: "P2"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-11-02"
 duration: 3
 depends_on:
-  - "feat-699"
+  - "feat-705"
 blocks: []
 tags:
   - "mobile"
@@ -15,7 +15,7 @@ tags:
 
 ## Problem
 
-feat-699 built the iOS 26 search tab on `react-native-screens` 4.26.2. That version has three known gaps:
+feat-705 built the iOS 26 search tab on `react-native-screens` 4.26.2. That version has three known gaps:
 
 - `react-native-screens` issue #4671 says that a build with Xcode 27 may draw the search tab as a labelled tab in the main bar. Nobody has reproduced it in this app.
 - The native search field cannot turn autocorrect off. Discover's own field turned it off. The owner accepted the change on 2026-10-15, until this upgrade.
@@ -28,7 +28,7 @@ Do the upgrade when the app moves to Xcode 27, or earlier if the first TestFligh
 1. `apps/mobile/app/(tabs)/watch/index.tsx` — the `Stack.SearchBar` options and the uncontrolled field.
 2. `apps/mobile/app/(tabs)/watch/_layout.ios.tsx` — the iOS `Stack` and its header options.
 3. `apps/mobile/app/(tabs)/_layout.ios.tsx` — the `role="search"` trigger.
-4. `apps/mobile/CLAUDE.md`, section "Liquid Glass (feat-699)" — the search tab bullet.
+4. `apps/mobile/CLAUDE.md`, section "Liquid Glass (feat-705)" — the search tab bullet.
 5. `docs/plans/2026-10-15-1036-feat-mobile-native-liquid-glass-plan.md` — KTD9 and the Risks table.
 
 ## Grep These

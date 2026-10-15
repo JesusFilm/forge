@@ -32,7 +32,7 @@ export type ScrollTopButtonProps = {
 }
 
 /**
- * The watch page's scroll-to-top button (feat-699 R7). It stays mounted after
+ * The watch page's scroll-to-top button (feat-705 R7). It stays mounted after
  * its first show, so the glass can dissolve on a hide and return on a show.
  */
 export function ScrollTopButton({ visible, onPress }: ScrollTopButtonProps) {

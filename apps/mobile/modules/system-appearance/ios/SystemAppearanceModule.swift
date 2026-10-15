@@ -1,7 +1,7 @@
 import ExpoModulesCore
 import UIKit
 
-/// The phone's own light or dark setting, cached from the window scene (feat-699 KTD4).
+/// The phone's own light or dark setting, cached from the window scene (feat-705 KTD4).
 /// `Appearance.setColorScheme` overrides the style of each window, and an override does not
 /// reach the scene above the window, so the scene keeps the phone's setting.
 final class SystemAppearanceStore: @unchecked Sendable {

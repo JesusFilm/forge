@@ -26,7 +26,7 @@ jest.mock("../../../lib/datadog", () => ({
   },
   reportDatadogAction: jest.fn(),
 }))
-// The seek flash pill is glass on iOS 26 (feat-699); a host stand-in keeps the
+// The seek flash pill is glass on iOS 26 (feat-705); a host stand-in keeps the
 // pill findable. `videoPlayerGlass.test.tsx` covers both branches.
 jest.mock("../../../lib/liquidGlass", () => ({ canUseLiquidGlass: () => true }))
 jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))

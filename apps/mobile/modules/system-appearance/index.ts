@@ -5,7 +5,7 @@ export type SystemAppearanceModule = {
   /** False in Expo Go, older dev clients, Android, and Jest: the setting is null. */
   available: boolean
   /** The native cache of the window scene's style. It ignores the app's own
-   *  dark window override (feat-699 KTD3, KTD4). */
+   *  dark window override (feat-705 KTD3, KTD4). */
   getPhoneColorScheme(): PhoneColorScheme
   addChangeListener(listener: (scheme: PhoneColorScheme) => void): {
     remove(): void

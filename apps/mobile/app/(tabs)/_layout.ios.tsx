@@ -61,7 +61,7 @@ export default function TabLayout() {
           // KTD16: hide the trigger, never drop it. The gate is fixed per
           // bundle, because a change to `hidden` remounts the whole navigator.
           hidden={name === "explore" && !isExploreAvailable()}
-          // feat-699 R20: the separate search circle. The predicate is fixed
+          // feat-705 R20: the separate search circle. The predicate is fixed
           // per launch, because a change to `role` remounts the navigator.
           role={name === "watch" && canUseLiquidGlass() ? "search" : undefined}
           // UIKit's automatic inset only reaches a scroll view that is first in

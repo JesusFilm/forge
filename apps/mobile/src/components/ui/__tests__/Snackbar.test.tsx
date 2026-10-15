@@ -411,4 +411,79 @@ describe("Snackbar motion", () => {
       renderer.unmount()
     })
   })
+
+  // The timer starts at show time, before the glass height is measured, so it
+  // must reach the latest dismiss, not the one from the first render.
+  describe("the auto-dismiss timer", () => {
+    const DURATION = 3000
+
+    beforeEach(() => {
+      jest.useFakeTimers()
+    })
+    afterEach(() => {
+      jest.useRealTimers()
+    })
+
+    async function runTimer() {
+      await act(async () => {
+        jest.advanceTimersByTime(DURATION)
+      })
+    }
+
+    it("slides out by the measured height on Liquid Glass", async () => {
+      const { renderer, onDismiss } = await show({
+        duration: DURATION,
+        bottomOffset: PUSH_NOTICE_BOTTOM,
+      })
+      await layout(renderer, HEIGHT)
+      await finishAll()
+
+      await runTimer()
+
+      const [leave] = started("timing")
+      expect(leave).toBeDefined()
+      expect(leave!.config.toValue).toBeGreaterThanOrEqual(
+        PUSH_NOTICE_BOTTOM + HEIGHT,
+      )
+      expect(onDismiss).not.toHaveBeenCalled()
+      await finishAll()
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+      expect(renderer.toJSON()).toBeNull()
+      renderer.unmount()
+    })
+
+    it("leaves at once on Liquid Glass with Reduce Motion on (R24)", async () => {
+      mockMotion.reduce = true
+      const { renderer, onDismiss } = await show({ duration: DURATION })
+      await layout(renderer, HEIGHT)
+
+      await runTimer()
+
+      expect(started("timing")).toHaveLength(0)
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+      expect(renderer.toJSON()).toBeNull()
+      renderer.unmount()
+    })
+
+    it("keeps the fade and 100pt slide without Liquid Glass", async () => {
+      mockGate.glass = false
+      const { renderer, onDismiss } = await show({ duration: DURATION })
+      await finishAll()
+
+      await runTimer()
+
+      expect(
+        started("timing").map((call) => [
+          call.config.toValue,
+          call.config.duration,
+        ]),
+      ).toEqual([
+        [100, 250],
+        [0, 250],
+      ])
+      await finishAll()
+      expect(onDismiss).toHaveBeenCalledTimes(1)
+      renderer.unmount()
+    })
+  })
 })

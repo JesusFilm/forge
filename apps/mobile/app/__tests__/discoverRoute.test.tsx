@@ -1,5 +1,5 @@
 /**
- * The Discover tab is a folder with its own nested navigator (feat-699 U13,
+ * The Discover tab is a folder with its own nested navigator (feat-705 U13,
  * KTD9), beside the root `app/watch/` player folder. Both answer to "watch".
  * The route tree comes from the real `app/` files; the real Discover layouts
  * render, and every other route is a stub.

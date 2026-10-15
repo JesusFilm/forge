@@ -23,7 +23,7 @@ deepened: 2026-10-15
   - Stop any unit that would change Android's look. Scope Boundaries rule it out.
 - **Execution profile:** JavaScript and TypeScript in `apps/mobile`, one new local Expo module (`modules/system-appearance/`), docs, then simulator passes on iOS 26.5 and iOS 18.6 and one Android emulator pass. A new dev client build is needed for U2, because the module is native.
 - **Who finishes and ships:** The implementing agent builds, tests and runs the simulator passes. It renames the branch to `feat/mobile-native-liquid-glass` and opens one pull request. The owner merges and ships the TestFlight build.
-- **Roadmap ticket:** `docs/roadmap/platform/feat-699-mobile-native-liquid-glass-consistency.md`.
+- **Roadmap ticket:** `docs/roadmap/platform/feat-705-mobile-native-liquid-glass-consistency.md`.
 
 ---
 
@@ -323,7 +323,7 @@ The search route after U13:
 | U11  | JavaScript sheet panels                              | `PlayerSettingsSheet.tsx`, `FeedbackModal.tsx`, `DownloadSheet.tsx`, `QuizButtonRenderer.tsx`                                   | U1, U2     |
 | U12  | Native delete sheet                                  | `src/lib/library/deleteActionSheet.ts`, `LibraryDownloads.tsx`, `src/lib/miniPlayer/suppression.ts`                             | U1, U2     |
 | U13  | Native search tab                                    | `app/(tabs)/watch/`, `app/(tabs)/_layout.ios.tsx`                                                                               | U1, U2     |
-| U14  | Docs, roadmap and follow-up ticket                   | `apps/mobile/CLAUDE.md`, feat-699 ticket, a new roadmap ticket                                                                  | U1-U13     |
+| U14  | Docs, roadmap and follow-up ticket                   | `apps/mobile/CLAUDE.md`, feat-705 ticket, a new roadmap ticket                                                                  | U1-U13     |
 
 All paths in the units below are relative to `apps/mobile/` unless they start with `docs/`.
 
@@ -840,8 +840,8 @@ iOS 18.6 and Android show today's card. Note the change from TAP to CUSTOM actio
 
 - Modify `apps/mobile/CLAUDE.md`:
   - In the "Tab bar" section, replace the "A fade is not available on the material" bullet with the `'none'` dissolve rule and the 57.0.4 facts.
-  - Add a short "Liquid Glass (feat-699)" section on `GlassSurface`, the predicate, the dark override and the reader module.
-- Modify `docs/roadmap/platform/feat-699-mobile-native-liquid-glass-consistency.md`: set the status, link this plan and mark the answered owner questions.
+  - Add a short "Liquid Glass (feat-705)" section on `GlassSurface`, the predicate, the dark override and the reader module.
+- Modify `docs/roadmap/platform/feat-705-mobile-native-liquid-glass-consistency.md`: set the status, link this plan and mark the answered owner questions.
 - Create a new roadmap ticket under `docs/roadmap/platform/` for the `react-native-screens` upgrade to 4.30 or later with Xcode 27. Allocate its ID by scanning every `origin` branch.
 - Force-add `todos/026-pending-p2-player-drawn-over-root-route-opened-from-watch-deep-link.md` with the plan, because `todos/*.md` is gitignored and the existing todos are force-added.
 

@@ -1,4 +1,4 @@
-// The iOS 26 Downloads delete confirmation (feat-699 U12, KTD8): the native
+// The iOS 26 Downloads delete confirmation (feat-705 U12, KTD8): the native
 // action sheet in place of `DeleteConfirmSheet`. Android and iOS before 26
 // keep the card, which reports through its tap names.
 import { ActionSheetIOS } from "react-native"

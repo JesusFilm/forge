@@ -5,7 +5,7 @@
 const fs = require("fs")
 const path = require("path")
 
-// Guard (feat-699 KTD3, KTD4): the iOS app shows a dark window style, so
+// Guard (feat-705 KTD3, KTD4): the iOS app shows a dark window style, so
 // useColorScheme() is always "dark" on iOS. Only usePhoneColorScheme may read
 // the color scheme, because it reads the phone's own setting on iOS.
 const MOBILE_DIR = path.join(__dirname, "..", "..")
@@ -78,7 +78,7 @@ function appliesDarkStyleInGuardedBlock(source) {
   )
 }
 
-describe("color scheme readers (feat-699 KTD4)", () => {
+describe("color scheme readers (feat-705 KTD4)", () => {
   it.each([
     ["an import of the hook", `import { useColorScheme } from "react-native"`],
     ["a call of the hook", `const scheme = useColorScheme()`],
@@ -126,7 +126,7 @@ describe("color scheme readers (feat-699 KTD4)", () => {
   )
 })
 
-describe("the dark interface style (feat-699 KTD3)", () => {
+describe("the dark interface style (feat-705 KTD3)", () => {
   it("keeps app.json off the dark Info.plist style", () => {
     const config = JSON.parse(fs.readFileSync(APP_JSON, "utf8"))
     expect(forcesDarkStyle(config)).toBe(false)

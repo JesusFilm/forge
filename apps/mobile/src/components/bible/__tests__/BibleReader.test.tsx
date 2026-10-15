@@ -66,7 +66,7 @@ jest.mock("../../../contexts/WatchPreferencesProvider", () => ({
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
-// The phone's own setting, which System mode follows (feat-699 KTD4).
+// The phone's own setting, which System mode follows (feat-705 KTD4).
 const mockPhone: { scheme: "light" | "dark" | null } = { scheme: null }
 jest.mock("../../../hooks/usePhoneColorScheme", () => ({
   usePhoneColorScheme: () => mockPhone.scheme,

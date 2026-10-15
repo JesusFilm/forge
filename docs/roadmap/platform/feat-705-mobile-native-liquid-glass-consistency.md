@@ -1,5 +1,5 @@
 ---
-id: "feat-699"
+id: "feat-705"
 title: "Use native Liquid Glass consistently in the mobile app"
 owner: "urim"
 priority: "P2"
@@ -8,7 +8,7 @@ start_date: "2026-10-15"
 duration: 10
 depends_on: []
 blocks:
-  - "feat-704"
+  - "feat-706"
 tags:
   - "mobile"
 ---
@@ -99,4 +99,4 @@ Still open:
 
 - The device check on the first TestFlight build: the separate search circle, the delete sheet and the dark sheets.
 - The quiz window and the Experience hero mute could not be reached on local data. Unit tests cover both.
-- The `react-native-screens` upgrade for Xcode 27 is `feat-704`.
+- The `react-native-screens` upgrade for Xcode 27 is `feat-706`.

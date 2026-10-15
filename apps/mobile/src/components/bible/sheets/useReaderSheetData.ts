@@ -22,7 +22,7 @@ import { sheetBackground } from "../../../lib/sheetOptions"
 export function useReaderSheetTheme(store: ReaderSettingsStore): {
   settings: ReaderSettingsSnapshot
   tokens: ReaderTokens
-  /** The fill of the sheet's screen and body (feat-699 KTD7, R15). */
+  /** The fill of the sheet's screen and body (feat-705 KTD7, R15). */
   background: string
 } {
   const settings = useReaderSettings(store)

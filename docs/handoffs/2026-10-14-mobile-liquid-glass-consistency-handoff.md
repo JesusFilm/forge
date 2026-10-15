@@ -10,11 +10,11 @@ keywords:
     "GlassView",
     "ios-26",
     "apps-mobile",
-    "feat-699",
+    "feat-705",
     "design-qa",
   ]
 cwd: "/Users/urimchae/orca/workspaces/forge/mobile-app-polish"
-resume_focus: "Plan and build feat-699: native Liquid Glass for the non-glass controls in apps/mobile, starting with the two spikes"
+resume_focus: "Plan and build feat-705: native Liquid Glass for the non-glass controls in apps/mobile, starting with the two spikes"
 repository: "JesusFilm/forge"
 repo_root_sha: "d184d9ed865d45902a6b0d2c5ffef8efa560e623"
 branch: "Ur-imazing/mobile-liquid-glass"
@@ -39,7 +39,7 @@ The user did not choose the scope, the order, or any element to build. Every ord
 ## Current state
 
 - **Done:** an audit, by code reading only. It is in `docs/design-qa/mobile-liquid-glass-audit/index.html` (open it in a browser). The page has a summary table, two phone drawings per screen (today and with glass), and a verdict with the reason for each element. The same page is also a private Claude artifact, <https://claude.ai/artifact/9R4MUM791rmAXZaXePW6hS>. That artifact is a snapshot; the repo copy is newer by one note (the 2× cue line in the Explore section).
-- **Done:** roadmap ticket `docs/roadmap/platform/feat-699-mobile-native-liquid-glass-consistency.md`, status `not-started`. The previous agent wrote it and chose `P2`, the start date, and the 10-day duration. The user did not set these.
+- **Done:** roadmap ticket `docs/roadmap/platform/feat-705-mobile-native-liquid-glass-consistency.md`, status `not-started`. The previous agent wrote it and chose `P2`, the start date, and the 10-day duration. The user did not set these.
 - **Not started:** every code change. No glass change has been tried on a device or a simulator.
 - **Worktree prepared (machine-local):** `pnpm install` ran, and `bash scripts/setup-sim-env.sh mobile` seeded `apps/mobile/.env.local`. That file holds a bearer token; do not print or commit it. The commit hooks are live (`.husky/_` exists).
 
@@ -71,7 +71,7 @@ The previous agent raised these. The user has not answered them.
 - Do not trust Fast Refresh for material changes. Terminate and reopen the dev client, and prove the code path is live with a loud temporary `tintColor` (`apps/mobile/CLAUDE.md`, "Fast Refresh does not reliably apply changes to the material").
 - Do not set `isInteractive` inside a `Pressable` (`docs/solutions/best-practices/expo-glass-effect-interactive-flash-2026-04-08.md`).
 - Do not commit a regenerated `docs/roadmap/README.md` from this machine. The generator blanks every date in a UTC+ time zone.
-- Do not allocate a roadmap ID from `main` alone. `feat-699` came from a scan of every `origin` branch (highest 698 on 2026-10-14). Check again before a PR, because the CI job `roadmap-id-collisions-advisory` scans all branches.
+- Do not allocate a roadmap ID from `main` alone. `feat-705` came from a scan of every `origin` branch (highest 698 on 2026-10-14). Check again before a PR, because the CI job `roadmap-id-collisions-advisory` scans all branches.
 
 ## Simulator state (machine-local, 2026-10-14)
 
@@ -83,12 +83,12 @@ The previous agent raised these. The user has not answered them.
 
 ## Verification done in this session
 
-- All verdicts come from reading code on `Ur-imazing/mobile-app-polish` (main at `45d20673e`), then line numbers were taken again on main at `0c22078df` for `feat-699`.
+- All verdicts come from reading code on `Ur-imazing/mobile-app-polish` (main at `45d20673e`), then line numbers were taken again on main at `0c22078df` for `feat-705`.
 - The audit page was checked once in headless Chrome. Three layout bugs were fixed after that look, and the page was not checked again. The script in the repo copy parses after Prettier.
 
 ## Next step
 
-`CLAUDE.md` asks for a brainstorm against the ticket, then a plan, before code. The previous agent's recommendation is one path: ask the owner the four questions, then run the two spikes (the `'none'` style animation on one element, and one native sheet without its opaque options), because their results decide steps 2 and 3 of `feat-699`. The "Ready" items do not depend on the spikes and can go first or in parallel.
+`CLAUDE.md` asks for a brainstorm against the ticket, then a plan, before code. The previous agent's recommendation is one path: ask the owner the four questions, then run the two spikes (the `'none'` style animation on one element, and one native sheet without its opaque options), because their results decide steps 2 and 3 of `feat-705`. The "Ready" items do not depend on the spikes and can go first or in parallel.
 
 Skills that fit: `compound-engineering:ce-brainstorm`, `compound-engineering:ce-plan`, `compound-engineering:ce-work`, `compound-engineering:ce-code-review`, and `compound-engineering:ce-compound` at the end.
 

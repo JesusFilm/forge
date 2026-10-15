@@ -12,7 +12,7 @@ created_at: 2026-10-15
 
 # Problem
 
-Seen on 2026-10-15 on the iPhone Air simulator (iOS 26.5, dev client), during the feat-699 brainstorm.
+Seen on 2026-10-15 on the iPhone Air simulator (iOS 26.5, dev client), during the feat-705 brainstorm.
 
 1. Open `forgemobile://watch/the-birth-of-jesus` and let the video play.
 2. Open `forgemobile://downloads` while the watch page is still on screen.

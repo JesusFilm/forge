@@ -1,4 +1,4 @@
-// feat-699 KTD3: a dark window style makes iOS draw its own sheets, alerts,
+// feat-705 KTD3: a dark window style makes iOS draw its own sheets, alerts,
 // menus and keyboard dark. It is a window override, not the Info.plist key, so
 // the window scene still reports the phone's setting to usePhoneColorScheme.
 import { AppState, Appearance, Platform } from "react-native"

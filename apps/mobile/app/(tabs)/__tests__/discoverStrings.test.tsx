@@ -1,6 +1,6 @@
 /** Discover in the UI language: the search language of each generation (U7,
  *  R9, KTD16) and the catalog text, with one tap name per control (U10).
- *  On Liquid Glass, the native search field (feat-699 U13, KTD9).
+ *  On Liquid Glass, the native search field (feat-705 U13, KTD9).
  *  React re-points: "Component render tests". */
 
 jest.mock("react", () => {
@@ -516,7 +516,7 @@ describe("Discover text (U10)", () => {
   })
 })
 
-describe("Discover native search (feat-699 U13)", () => {
+describe("Discover native search (feat-705 U13)", () => {
   function searchBar(): Record<string, unknown> {
     expect(mockSearchBar.props).not.toBeNull()
     return mockSearchBar.props!

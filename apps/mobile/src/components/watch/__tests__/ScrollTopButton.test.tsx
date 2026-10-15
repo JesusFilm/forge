@@ -1,5 +1,5 @@
 /**
- * The watch page's scroll-to-top button (feat-699 U5, R7). It stays mounted
+ * The watch page's scroll-to-top button (feat-705 U5, R7). It stays mounted
  * after its first show, so its glass can dissolve. While hidden it takes no
  * touches and screen readers skip it. Jest cannot draw the material, so these
  * cases pin the branch and its props.
@@ -99,7 +99,7 @@ afterEach(async () => {
   mockMotion.reduce = false
 })
 
-describe("ScrollTopButton (feat-699 U5, R7)", () => {
+describe("ScrollTopButton (feat-705 U5, R7)", () => {
   it("is not mounted before the first show", async () => {
     const renderer = await render(false)
     expect(renderer.toJSON()).toBeNull()

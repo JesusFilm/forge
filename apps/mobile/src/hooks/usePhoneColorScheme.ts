@@ -15,7 +15,7 @@ function readPhoneScheme(): PhoneColorScheme {
   return getSystemAppearanceModule().getPhoneColorScheme()
 }
 
-/** The phone's own setting for the reader's System mode (feat-699 KTD4). The
+/** The phone's own setting for the reader's System mode (feat-705 KTD4). The
  *  iOS dark window style makes `useColorScheme()` always "dark", so iOS reads
  *  the native module. The only color scheme reader: a guard rejects others. */
 export function usePhoneColorScheme(): PhoneColorScheme {

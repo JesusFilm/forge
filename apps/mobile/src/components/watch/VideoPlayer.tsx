@@ -726,7 +726,7 @@ export function VideoPlayer({
   )
 
   const handleTapPressIn = useCallback(() => {
-    // Read ground-truth visibility (the ref), NOT controls.controlsVisible —
+    // Read ground-truth visibility (the store), NOT controls.controlsVisible —
     // the render state lags by one fade, so mid-auto-hide it still reads true
     // and the pending single-tap would hide the chrome this press just revealed.
     wasVisibleRef.current = controls.isVisibleNow()

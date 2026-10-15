@@ -714,12 +714,12 @@ describe("fullscreenCaptionOffset", () => {
 })
 
 /**
- * feat-699 U4 (R6): the eight frosted plates show Liquid Glass on iOS 26. No
+ * feat-705 U4 (R6): the eight frosted plates show Liquid Glass on iOS 26. No
  * glass may sit inside a fading layer, so the host pushes its fade down to the
  * parts (KTD6), and the published `visible` value dissolves the glass (KTD5).
  * Jest cannot draw the material, so these cases pin the branch and its props.
  */
-describe("Liquid Glass plates (feat-699 U4)", () => {
+describe("Liquid Glass plates (feat-705 U4)", () => {
   type SearchableNode = RenderedNode & {
     findAll(predicate: (node: RenderedNode) => boolean): RenderedNode[]
   }

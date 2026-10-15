@@ -223,7 +223,7 @@ describe("non-route sheet counter", () => {
     expect(counter.inlineCount()).toBe(0)
   })
 
-  // feat-699 U12: iOS draws the native action sheet above the host, as it
+  // feat-705 U12: iOS draws the native action sheet above the host, as it
   // draws a Modal, so the window stays in its corner under the dim.
   it("counts the native delete sheet as open but not inline", () => {
     const counter = createNonRouteSheetCounter()

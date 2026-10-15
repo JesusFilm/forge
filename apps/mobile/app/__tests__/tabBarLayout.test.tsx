@@ -359,7 +359,7 @@ describe("iOS — the native bar", () => {
     expect(trigger("explore").hidden).toBe(false)
   })
 
-  // feat-699 R20: the separate glass search circle at the end of the bar.
+  // feat-705 R20: the separate glass search circle at the end of the bar.
   it("makes Search the system search tab on Liquid Glass, and keeps its label", async () => {
     setPlatform("ios")
     mockGlass.current = true

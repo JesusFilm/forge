@@ -41,7 +41,7 @@ jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }))
-// feat-699 U11: each case sets the Liquid Glass gate; it is off by default.
+// feat-705 U11: each case sets the Liquid Glass gate; it is off by default.
 // A host stand-in makes the glass findable and its props readable.
 const mockGate = { glass: false }
 jest.mock("../../../lib/liquidGlass", () => ({
@@ -1534,7 +1534,7 @@ describe("suspendedInRawMode", () => {
   })
 })
 
-// feat-699 U11, R16: on iOS 26 the terms window's near-black panel becomes one
+// feat-705 U11, R16: on iOS 26 the terms window's near-black panel becomes one
 // full-panel glass. Elsewhere it keeps both of today's black fills.
 describe("the terms window panel", () => {
   const OVERLAY_FILL = "rgba(0, 0, 0, 0.9)"

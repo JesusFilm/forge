@@ -15,7 +15,7 @@ jest.mock("expo-blur", () => {
   const { View } = require("react-native")
   return { BlurView: View }
 })
-// The iOS 26 path: each control sits on glass (feat-699). The other branches
+// The iOS 26 path: each control sits on glass (feat-705). The other branches
 // live in `PlayerControls.test.tsx`.
 jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 jest.mock("../../../lib/liquidGlass", () => ({ canUseLiquidGlass: () => true }))

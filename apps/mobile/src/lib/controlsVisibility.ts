@@ -37,7 +37,7 @@ export type ControlsVisibleStore = ControlsVisibleReader & {
 }
 
 /** Publishes the table's `visible` value, which also drives the player glass
- *  (feat-699 KTD5). It changes at hide start, before React state does. */
+ *  (feat-705 KTD5). It changes at hide start, before React state does. */
 export function createControlsVisibleStore(
   initial: boolean,
 ): ControlsVisibleStore {
