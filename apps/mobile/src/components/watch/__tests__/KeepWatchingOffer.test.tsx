@@ -5,7 +5,12 @@
  */
 
 import { act, type ReactElement } from "react"
-import { AccessibilityInfo, StyleSheet } from "react-native"
+import {
+  AccessibilityInfo,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import {
   KeepWatchingOffer,
@@ -19,11 +24,19 @@ import {
   hasText,
   press,
   pressableByLabel,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
+}))
+// A host stand-in, so the glass is findable and its props readable.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
+// Each case pins the glass branch. The `mock` prefix lets jest hoist the name.
+const mockGate = { glass: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
 }))
 
 /** AE6: saved progress at 1:10:00. */
@@ -93,6 +106,7 @@ afterEach(async () => {
   }
   jest.useRealTimers()
   jest.restoreAllMocks()
+  mockGate.glass = true
 })
 
 describe("what the offer names (AE6)", () => {
@@ -217,6 +231,80 @@ describe("the auto-hide clock (KTD12)", () => {
     await advance(KEEP_WATCHING_OFFER_DURATION_MS + 1_000)
 
     expect(offer.onExpire).not.toHaveBeenCalled()
+  })
+})
+
+describe("the card's surface (feat-699 U5, R5)", () => {
+  // SURFACE_COLOR, the card's solid fill today.
+  const SURFACE = "#292524"
+
+  function resumeButtonHost(renderer: TestInstance): RenderedNode {
+    const [host] = renderer.root.findAll(
+      (n) =>
+        typeof n.type === "string" &&
+        n.props.accessibilityRole === "button" &&
+        n.props.accessibilityLabel === RESUME,
+    )
+    if (host == null) throw new Error("no resume button")
+    return host
+  }
+
+  function ancestors(node: RenderedNode): RenderedNode[] {
+    const chain: RenderedNode[] = []
+    for (let at = node.parent ?? null; at != null; at = at.parent ?? null) {
+      chain.push(at)
+    }
+    return chain
+  }
+
+  function fillOf(n: RenderedNode): unknown {
+    if (typeof n.type !== "string") return undefined
+    return StyleSheet.flatten(n.props.style as StyleProp<ViewStyle>)
+      ?.backgroundColor
+  }
+
+  it("shows the card on glass with the predicate true, with no solid fill", async () => {
+    const renderer = await render(<KeepWatchingOffer {...props()} />)
+    const chain = ancestors(resumeButtonHost(renderer))
+
+    const glass = chain.find((n) => n.type === "GlassView")
+    expect(glass).toBeDefined()
+    expect(glass!.props.glassEffectStyle).toMatchObject({ style: "regular" })
+    expect(chain.some((n) => fillOf(n) === SURFACE)).toBe(false)
+    // Polite announcements stay on the card.
+    expect(
+      chain.some((n) => n.props.accessibilityLiveRegion === "polite"),
+    ).toBe(true)
+  })
+
+  it("keeps its SURFACE_COLOR fill and shadow with the predicate false", async () => {
+    mockGate.glass = false
+    const renderer = await render(<KeepWatchingOffer {...props()} />)
+    const chain = ancestors(resumeButtonHost(renderer))
+
+    expect(renderer.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
+    const card = chain.find((n) => fillOf(n) === SURFACE)
+    expect(card).toBeDefined()
+    expect(
+      StyleSheet.flatten(card!.props.style as StyleProp<ViewStyle>),
+    ).toMatchObject({
+      borderRadius: 14,
+      shadowOpacity: 0.3,
+      elevation: 6,
+    })
+  })
+
+  it.each([
+    ["glass", true],
+    ["fallback", false],
+  ])("keeps the button's tap name and label (%s)", async (_name, glass) => {
+    mockGate.glass = glass as boolean
+    const renderer = await render(<KeepWatchingOffer {...props()} />)
+
+    expect(labels(renderer)).toEqual([RESUME])
+    expect(pressableByLabel(renderer, RESUME).props["dd-action-name"]).toBe(
+      "keep-watching-offer-resume",
+    )
   })
 })
 

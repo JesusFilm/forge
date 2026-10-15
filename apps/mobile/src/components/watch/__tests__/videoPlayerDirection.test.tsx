@@ -26,6 +26,10 @@ jest.mock("../../../lib/datadog", () => ({
   },
   reportDatadogAction: jest.fn(),
 }))
+// The seek flash pill is glass on iOS 26 (feat-699); a host stand-in keeps the
+// pill findable. `videoPlayerGlass.test.tsx` covers both branches.
+jest.mock("../../../lib/liquidGlass", () => ({ canUseLiquidGlass: () => true }))
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 // The chrome must be mounted for the settings opener to exist; the visibility
 // machine has its own suite.
 jest.mock("../../../hooks/useControlsVisibility", () => {
@@ -193,8 +197,15 @@ describe("the double-tap seek flash (feat-695 R12)", () => {
     const [label] = renderer.root.findAll(
       (n) => n.props.children === "10s" && typeof n.type === "string",
     )
-    let flash = label.parent
-    while (flash != null && typeof flash.type !== "string") flash = flash.parent
+    let inFlash = false
+    for (let n = label?.parent; n != null; n = n.parent) {
+      if (n.props.testID === "seek-flash") inFlash = true
+    }
+    expect(inFlash).toBe(true)
+    // The positioned view around the pill, which carries the side.
+    const [flash] = renderer.root.findAll(
+      (n) => n.props.testID === "seek-flash" && typeof n.type === "string",
+    )
     if (flash == null) throw new Error("no seek flash view")
     expect(StyleSheet.flatten(flash.props.style as never)).toMatchObject({
       left: "14%",

@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { appDirection } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { datadogLog, reportDatadogAction } from "../../lib/datadog"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
@@ -48,6 +49,7 @@ import {
   type PlaybackTarget,
 } from "../../lib/playbackTarget"
 import { FeedbackModal } from "../feedback/FeedbackModal"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 import type { FeedbackSheetContext } from "../feedback/feedbackFlow"
 import {
   PlayerControls,
@@ -69,6 +71,12 @@ const SUBTITLE_OFFSET_INLINE = 14
 
 // How long the pre-autostart veil may hold before it gives the chrome back.
 const AUTOSTART_VEIL_TIMEOUT_MS = 12000
+
+// The skip-amount pill's look where Liquid Glass is unavailable.
+const SEEK_FLASH_FALLBACK: GlassFallback = {
+  kind: "fill",
+  style: { backgroundColor: hexToRgba(BLACK, 0.55) },
+}
 
 type VideoPlayerProps = {
   /** The root-owned player (KD2). This component creates none: exactly one
@@ -283,6 +291,9 @@ export function VideoPlayer({
   })
 
   const controls = useControlsVisibility(player)
+  // Glass draws nothing inside a fading layer, so on the glass path the
+  // controls layer does not fade; PlayerControls fades its parts (KTD6).
+  const glass = canUseLiquidGlass()
 
   // Settings sheet (U4): component state, never a route — a routed form sheet
   // cannot present over the fullscreen player (KTD5). On Android the floating
@@ -808,6 +819,7 @@ export function VideoPlayer({
 
       {seekFlash != null && (
         <View
+          testID="seek-flash"
           pointerEvents="none"
           style={[
             styles.seekFlash,
@@ -816,14 +828,19 @@ export function VideoPlayer({
               : styles.seekFlashRight,
           ]}
         >
-          <Ionicons
-            name={seekFlash.delta < 0 ? "play-back" : "play-forward"}
-            size={22}
-            color={TEXT_ON_OVERLAY}
-          />
-          <Text style={styles.seekFlashText}>
-            {t("seekSeconds", { seconds: Math.abs(seekFlash.delta) })}
-          </Text>
+          <GlassSurface
+            style={styles.seekFlashPill}
+            fallback={SEEK_FLASH_FALLBACK}
+          >
+            <Ionicons
+              name={seekFlash.delta < 0 ? "play-back" : "play-forward"}
+              size={22}
+              color={TEXT_ON_OVERLAY}
+            />
+            <Text style={styles.seekFlashText}>
+              {t("seekSeconds", { seconds: Math.abs(seekFlash.delta) })}
+            </Text>
+          </GlassSurface>
         </View>
       )}
 
@@ -900,7 +917,10 @@ export function VideoPlayer({
           must stay visible). */}
       {chromeMounted && (
         <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
+          style={[
+            StyleSheet.absoluteFill,
+            !glass && { opacity: controls.opacityAnim },
+          ]}
           pointerEvents="box-none"
         >
           <PlayerControls
@@ -915,6 +935,8 @@ export function VideoPlayer({
             onOpenSettings={() => setSettingsOpen(true)}
             onRecover={handleRecover}
             isOnline={isOnline}
+            fade={glass ? controls.opacityAnim : null}
+            visibleStore={controls.visibleStore}
           />
         </Animated.View>
       )}
@@ -992,12 +1014,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: "50%",
     marginTop: -28,
+  },
+  seekFlashPill: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 999,
-    backgroundColor: hexToRgba(BLACK, 0.55),
   },
   seekFlashLeft: {
     left: "14%",
