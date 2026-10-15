@@ -301,7 +301,6 @@ export function VideoPlayer({
   // passes with no second tap. A second tap seeks ±10 s on the tapped half and
   // shows the pill. The chrome stays as it was (owner, 2026-10-16; was KTD3).
   const tapWidthRef = useRef(0)
-  const wasVisibleRef = useRef(true)
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const seekFlashRef = useRef<SeekFlashPillHandle>(null)
   // A monotonically-bumped signal so PlayerControls can reflect a double-tap
@@ -708,13 +707,6 @@ export function VideoPlayer({
     [player, castTarget, controls],
   )
 
-  const handleTapPressIn = useCallback(() => {
-    // Read ground-truth visibility (the store), NOT controls.controlsVisible —
-    // the render state lags by one fade, so mid-auto-hide it still reads true
-    // and the single tap would hide chrome that is leaving, not reveal it.
-    wasVisibleRef.current = controls.isVisibleNow()
-  }, [controls])
-
   const handleTapPress = useCallback(
     (e: GestureResponderEvent) => {
       const { locationX } = e.nativeEvent
@@ -728,7 +720,9 @@ export function VideoPlayer({
         doSideSeek(locationX)
         return
       }
-      const wasVisible = wasVisibleRef.current
+      // The store, not the render state, which lags one fade. Read it here,
+      // not on press-in: a TalkBack activation calls onPress with no press-in.
+      const wasVisible = controls.isVisibleNow()
       singleTapTimerRef.current = setTimeout(() => {
         singleTapTimerRef.current = null
         if (singleTapAction(wasVisible) === "reveal") {
@@ -793,7 +787,6 @@ export function VideoPlayer({
         onLayout={(e: LayoutChangeEvent) => {
           tapWidthRef.current = e.nativeEvent.layout.width
         }}
-        onPressIn={handleTapPressIn}
         onPress={handleTapPress}
         accessibilityRole="button"
         accessibilityLabel={t("toggleControlsAriaLabel")}

@@ -185,7 +185,6 @@ async function doubleTapAt(renderer: TestInstance, x: number) {
   const tap = pressableByLabel(renderer, "Toggle player controls")
     .props as unknown as {
     onLayout: (e: unknown) => void
-    onPressIn: () => void
     onPress: (e: unknown) => void
   }
   await act(async () => {
@@ -194,9 +193,7 @@ async function doubleTapAt(renderer: TestInstance, x: number) {
     })
   })
   await act(async () => {
-    tap.onPressIn()
     tap.onPress({ nativeEvent: { locationX: x } })
-    tap.onPressIn()
     tap.onPress({ nativeEvent: { locationX: x } })
   })
 }

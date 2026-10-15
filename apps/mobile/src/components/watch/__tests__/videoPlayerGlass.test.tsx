@@ -204,12 +204,12 @@ function controlsLayer(renderer: TestInstance): RenderedNode {
   return layer
 }
 
-/** `count` taps at x 40 on a 300 pt wide player, inside one double-tap window. */
+/** `count` taps at x 40 on a 300 pt wide player, inside one double-tap window.
+ *  A tap sends onPress only, as a TalkBack activation does. */
 async function tapLeft(renderer: TestInstance, count: 1 | 2) {
   const tap = pressableByLabel(renderer, "Toggle player controls")
     .props as unknown as {
     onLayout: (e: unknown) => void
-    onPressIn: () => void
     onPress: (e: unknown) => void
   }
   await act(async () => {
@@ -219,7 +219,6 @@ async function tapLeft(renderer: TestInstance, count: 1 | 2) {
   })
   await act(async () => {
     for (let i = 0; i < count; i += 1) {
-      tap.onPressIn()
       tap.onPress({ nativeEvent: { locationX: 40 } })
     }
   })
@@ -521,6 +520,21 @@ describe("a tap on the video (owner, 2026-10-16)", () => {
     await advance(DOUBLE_TAP_MS)
 
     expect(mockControls.calls).toEqual(["hide"])
+  })
+
+  it("toggles the chrome both ways for taps with no press-in (TalkBack)", async () => {
+    const renderer = await render()
+    expect(
+      pressableByLabel(renderer, "Toggle player controls").props.onPressIn,
+    ).toBeUndefined()
+
+    await tapLeft(renderer, 1)
+    await advance(DOUBLE_TAP_MS)
+    mockControls.visibleNow = false
+    await tapLeft(renderer, 1)
+    await advance(DOUBLE_TAP_MS)
+
+    expect(mockControls.calls).toEqual(["hide", "reveal"])
   })
 
   it("leaves visible chrome up on a double tap", async () => {
