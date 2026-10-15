@@ -32,7 +32,7 @@ function stripIndicatorInsets(source) {
 
 const SURFACES = [
   "src/components/home/HomeScreen.tsx",
-  "app/(tabs)/watch.tsx",
+  "app/(tabs)/watch/index.tsx",
   "src/components/search/BrowseTopics.tsx",
   "src/components/profile/MyWatchScreen.tsx",
   "src/components/ui/Snackbar.tsx",
@@ -80,7 +80,7 @@ const TAB_ROUTES = {
     surface: "src/components/explore/ClipOverlay.tsx",
     via: "src/components/explore/ExploreFeed.tsx",
   },
-  watch: { surface: "app/(tabs)/watch.tsx" },
+  watch: { surface: "app/(tabs)/watch/index.tsx" },
   profile: { surface: "src/components/profile/MyWatchScreen.tsx" },
   // feat-553: no scroll surface. The reader puts its footer above the bar
   // with readerBottomInset, from the tab screen's own inset (chrome.ts).
