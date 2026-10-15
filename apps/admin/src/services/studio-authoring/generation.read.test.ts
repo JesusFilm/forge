@@ -84,6 +84,7 @@ function fixture(commands = [command]) {
   }
   // Only storage/read methods exist: unexpected persistence fails this boundary fixture.
   const db = {
+    short: { findFirst: vi.fn(async () => ({ id: command.projectId })) },
     shortAttempt: { findUniqueOrThrow: vi.fn(async () => attempt) },
     shortRevision: { findUnique: vi.fn(async () => row) },
     shortAssetVersion: {

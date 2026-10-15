@@ -138,6 +138,7 @@
     "versesAriaValue": "Vearssat {first} rájes {last} rádjái, oktiibuot {total}, {chapter}",
     "demoVerse": "Gease bajás boahtte vearsii",
     "demoChapter": "Gease gurutbeallái boahtte kapihttalii",
+    "demoChapterRtl": "Gease olgešbeallái boahtte kapihttalii",
     "demoSkip": "Deaddil njuikestan dihte",
     "demoSkipAriaLabel": "Njuikes geassinčájeheami badjel",
     "selectVerseAriaHint": "Deaddil guktii vai válljet dán vearssa",
@@ -773,5 +774,8 @@
     "send": "Sádde",
     "sending": "Sáddemin…",
     "sendAriaLabel": "Sádde máhcahusa"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Áppa geavaha du báikkálaš neahta gávdnan dihtii ovttadagaid maidda sáhtát sáddet, vai sáhtát čuojahit videoid du TV:s."
   }
 }

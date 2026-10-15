@@ -111,7 +111,7 @@ before a PR.
 
 ## i18n
 
-Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. The URL is the sole public locale carrier — no cookie and no visible `/[locale]` URL prefix.
+Locale propagation flow: public URL (`/watch/{slug}.html` for eligible English, `/watch/{slug}.html/{raw-audio-slug}.html` otherwise) → `src/proxy.ts` canonicalizes, derives `resolveWatchLocaleIdentity(raw-audio-slug)`, and internally rewrites to `/{messageLocale}/{htmlLang}/{original-public-path}` → `src/app/[locale]/[htmlLang]/layout.tsx` calls `setRequestLocale(params.locale)` and renders `<html lang={params.htmlLang}>`. Language-less English is admitted by the route manifest and rewritten through the explicit `english.html` internal renderer while its browser URL remains unchanged. Explicit public URLs carry locale and never follow cookies or browser-language headers. Only the bare entry routes (`/watch`, `/languages`, `/history`, `/whats-new`) resolve a saved Watch language before `Accept-Language`, then default English. Preference redirects use private caching; the destination renderer stays statically cached. There is no visible `/[locale]` URL prefix.
 
 Public watch links must always pass the raw audio language slug, never the message-catalog key, into the route builders in `src/lib/routes.ts`. The canonical builder emits `/watch/{slug}.html` for eligible English and `/watch/{slug}.html/{language}.html` for non-English. Explicit English remains a direct compatibility URL and the internal renderer shape; a content slug colliding with a public language home also remains explicit-English. `/watch/{slug}.html/en.html` is an internal-locale leak and should be treated as a bug.
 
@@ -262,15 +262,10 @@ default and keeps anonymous downloads available through opaque download IDs;
 the gated path. Do not use this flag as restricted-content authorization; it is
 a UX/product rollout gate with a fail-open fallback.
 
-`forge.watch.globalBetaTesterCta` is a temporary LaunchDarkly-backed release
-flag for the global floating beta tester CTA. `false` omits the floating CTA
-while keeping the shared modal provider available to authored beta-tester
-links; `true` renders the floating CTA. Because public Watch routes are
-statically cached, evaluate this flag through the same-origin, no-store
-`/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
-layout. Keep
-`FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
-or rolling out the launcher.
+The Watch beta testing program was retired on 2026-10-08. Do not restore
+signup buttons, its Mailchimp modal, or the runtime CTA flag request.
+Authored CTA sections linking to the retired signup URL are suppressed by
+`src/lib/retired-watch-beta-signup.ts`. Other authored CTAs remain available.
 
 Watch Bible passage text is resolved by Admin through
 `BibleCitation.passage`; Web must not hold YouVersion provider keys or call the

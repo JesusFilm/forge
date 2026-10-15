@@ -28,6 +28,7 @@ import {
   TRANSLATION_MARGIN,
   TRANSLATION_MAX_LINES,
   VERSE_MARGIN,
+  cardRow,
   composeCardLabel,
   fitPassageCardRegions,
   passageCardStackHeight,
@@ -42,7 +43,11 @@ import {
 } from "../../lib/bibleCardTreatment"
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
-import { useTextDirection } from "../../i18n/textDirection"
+import { scrollPageIndex } from "../../lib/horizontalPaging"
+import {
+  explicitDirectionStyle,
+  useTextDirection,
+} from "../../i18n/textDirection"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -79,6 +84,8 @@ type QuoteItem = {
     | "translation"
     | "copyright"
     | "textLang"
+    | "verseDirection"
+    | "verseLang"
     | "citationStart"
     | "loading"
     | "artCandidates"
@@ -255,7 +262,36 @@ function QuoteCard({
   // R10: an English passage keeps its language mark. KTD13: the passage takes
   // its direction from its own language.
   const englishPassage = quote.textLang === "en"
-  const passageDirection = useTextDirection().text(quote.textLang).style
+  const direction = useTextDirection()
+  const adminDirection = direction.text(quote.textLang).style
+  // Plan 2026-10-08 KTD7: a card from the reader's translation takes its marks
+  // from the catalog, and its English credit stays left to right.
+  const verseDirection = quote.verseDirection ?? null
+  const verseLang = quote.verseLang ?? undefined
+  const readerCard = verseDirection != null
+  const passageDirection = readerCard
+    ? explicitDirectionStyle(verseDirection)
+    : adminDirection
+  // feat-695 R17: the verse is a paragraph; its reference and credit are short.
+  const verseParagraph = readerCard
+    ? explicitDirectionStyle(verseDirection, { kind: "paragraph" })
+    : direction.text(quote.textLang, { kind: "paragraph" }).style
+  const creditDirection = readerCard
+    ? explicitDirectionStyle("ltr")
+    : adminDirection
+  const cardLanguage = readerCard
+    ? verseLang
+    : englishPassage
+      ? "en"
+      : undefined
+  // A Turkish "İşleri" keeps its dotted capital only in its own locale.
+  const reference = readerCard
+    ? quote.reference.toLocaleUpperCase(verseLang)
+    : quote.reference.toUpperCase()
+  const linkLabel = t("readFullPassage")
+  const referenceRow = cardRow(typography.bodySmall, reference)
+  const translationRow = cardRow(typography.caption, quote.translation)
+  const linkRow = cardRow(typography.bodySmall, linkLabel)
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
@@ -267,6 +303,9 @@ function QuoteCard({
     hasTranslation: !loading && quote.translation != null,
     hasCopyright: !loading && quote.copyright != null,
     hasLink: !loading && citationStart != null,
+    referenceLineHeight: referenceRow.lineHeight,
+    translationLineHeight: translationRow.lineHeight,
+    linkLineHeight: linkRow.lineHeight,
   }
   const regions = fitPassageCardRegions(fitInput)
 
@@ -317,7 +356,7 @@ function QuoteCard({
           ? t("loadingCardAriaLabel", { reference: quote.reference })
           : composeCardLabel(quote.reference, verseText)
       }
-      accessibilityLanguage={englishPassage ? "en" : undefined}
+      accessibilityLanguage={cardLanguage}
     >
       {imageUrl != null && (
         <Image
@@ -391,14 +430,18 @@ function QuoteCard({
           </Text>
         )}
         <Text
-          style={[styles.reference, typography.bodySmall]}
+          style={[
+            styles.reference,
+            referenceRow.style,
+            readerCard && passageDirection,
+          ]}
           // The fit arithmetic budgets exactly REFERENCE_MAX_LINES for this
           // region. Without the clamp a long reference wraps past its budget,
           // the bottom-aligned stack overflows, and the clip takes the
           // reference off the TOP — the one region the drop order protects.
           numberOfLines={isWatchCard ? REFERENCE_MAX_LINES : undefined}
         >
-          {quote.reference.toUpperCase()}
+          {reference}
         </Text>
         {loading && <VerseLoading typography={typography} />}
         {/* `verseLines === 0` is the fit's "drop the verse" outcome. It must be
@@ -416,7 +459,7 @@ function QuoteCard({
               isWatchCard
                 ? [styles.passageVerse, verseTypography(typography)]
                 : [styles.authoredVerse, typography.body],
-              passageDirection,
+              verseParagraph,
             ]}
             numberOfLines={isWatchCard ? regions.verseLines : undefined}
           >
@@ -425,7 +468,7 @@ function QuoteCard({
         )}
         {regions.translation && quote.translation != null && (
           <Text
-            style={[styles.translation, typography.caption, passageDirection]}
+            style={[styles.translation, translationRow.style, passageDirection]}
             numberOfLines={TRANSLATION_MAX_LINES}
           >
             {quote.translation}
@@ -433,7 +476,7 @@ function QuoteCard({
         )}
         {regions.copyright && quote.copyright != null && (
           <Text
-            style={[styles.copyright, typography.caption, passageDirection]}
+            style={[styles.copyright, typography.caption, creditDirection]}
             numberOfLines={COPYRIGHT_MAX_LINES}
           >
             {quote.copyright}
@@ -451,11 +494,11 @@ function QuoteCard({
             disabled={onOpenReader == null}
             onPress={() => onOpenReader?.(citationStart)}
             accessibilityRole="link"
-            accessibilityLabel={t("readFullPassage")}
+            accessibilityLabel={linkLabel}
             {...{ "dd-action-name": READ_PASSAGE_ACTION_NAME }}
           >
-            <Text style={[styles.passageLinkText, typography.bodySmall]}>
-              {t("readFullPassage")}
+            <Text style={[styles.passageLinkText, linkRow.style]}>
+              {linkLabel}
             </Text>
           </Pressable>
         )}
@@ -478,7 +521,12 @@ function QuoteCard({
               accessibilityRole="link"
               accessibilityLabel={ctaLabel}
             >
-              <Text style={[styles.ctaText, typography.bodySmall]}>
+              <Text
+                style={[
+                  styles.ctaText,
+                  cardRow(typography.bodySmall, ctaLabel).style,
+                ]}
+              >
                 {ctaLabel}
               </Text>
             </Pressable>
@@ -543,8 +591,7 @@ export function BibleQuotesCarouselRenderer({
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = e.nativeEvent.contentOffset.x
-      const index = Math.round(offsetX / (cardWidth + CARD_GAP))
+      const index = scrollPageIndex(e.nativeEvent, cardWidth + CARD_GAP)
       setActiveIndex(Math.min(Math.max(index, 0), quotes.length - 1))
     },
     [quotes.length, cardWidth],

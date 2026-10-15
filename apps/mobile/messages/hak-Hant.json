@@ -138,6 +138,7 @@
     "versesAriaValue": "{chapter}，第 {first} 到 {last} 節，總共 {total} 節",
     "demoVerse": "向上滑看下一節",
     "demoChapter": "向左滑看下一章",
+    "demoChapterRtl": "向右滑看下一章",
     "demoSkip": "點一下跳過",
     "demoSkipAriaLabel": "跳過滑動示範",
     "selectVerseAriaHint": "點兩下揀這節",
@@ -773,5 +774,8 @@
     "send": "送出",
     "sending": "送出中…",
     "sendAriaLabel": "送出意見"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "應用程式會用你个區域網路尋投放裝置，分你在電視播放影片。"
   }
 }

@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} مان آيتون {first} کان {last}، {chapter}",
     "demoVerse": "ايندڙ آيت لاءِ مٿي سوائيپ ڪريو",
     "demoChapter": "ايندڙ باب لاءِ کاٻي پاسي سوائيپ ڪريو",
+    "demoChapterRtl": "ايندڙ باب لاءِ ساڄي پاسي سوائيپ ڪريو",
     "demoSkip": "ڇڏڻ لاءِ ٽيپ ڪريو",
     "demoSkipAriaLabel": "سوائيپ جو مظاهرو ڇڏيو",
     "selectVerseAriaHint": "هيءَ آيت چونڊڻ لاءِ ٻه ڀيرا ٽيپ ڪريو",
@@ -773,5 +774,8 @@
     "send": "موڪليو",
     "sending": "موڪلي رهيا آهيون…",
     "sendAriaLabel": "راءِ موڪليو"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ايپ ڪاسٽ ڊوائيسز ڳولڻ لاءِ توهان جو مقامي نيٽ ورڪ استعمال ڪري ٿي، ته جيئن توهان پنهنجي ٽي وي تي وڊيوز هلائي سگهو."
   }
 }

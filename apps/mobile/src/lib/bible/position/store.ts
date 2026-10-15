@@ -7,6 +7,7 @@ import { useSyncExternalStore } from "react"
 import type { VerseRef } from "../versification/convert"
 import {
   createPersistedRecordStore,
+  type RecordReadOutcome,
   type RecordSnapshot,
   type RecordStorage,
 } from "./persistedRecordStore"
@@ -34,8 +35,9 @@ export type ReadingPositionStore = {
   getSnapshot(): ReadingPositionSnapshot
   /** Also starts the read of the saved position, once. */
   subscribe(listener: () => void): () => void
-  /** Never rejects. A failed read opens John 3:16 and a later call retries. */
-  hydrate(): Promise<void>
+  /** Never rejects. A failed read opens John 3:16 and a later call retries.
+   *  A quote card reads `missed` as "the saved pick is unknown" (KTD8). */
+  hydrate(): Promise<RecordReadOutcome>
   /** Saves a move in BSB numbering (R38). False for a verse BSB lacks. */
   moveTo(ref: VerseRef): boolean
   /** The viewer's pick from the translation picker; null follows the default. */

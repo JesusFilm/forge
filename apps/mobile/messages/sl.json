@@ -138,6 +138,7 @@
     "versesAriaValue": "Vrstice {first} do {last} od {total}, {chapter}",
     "demoVerse": "Podrsajte navzgor za naslednjo vrstico",
     "demoChapter": "Podrsajte levo za naslednje poglavje",
+    "demoChapterRtl": "Podrsajte desno za naslednje poglavje",
     "demoSkip": "Tapnite za preskok",
     "demoSkipAriaLabel": "Preskoči prikaz drsenja",
     "selectVerseAriaHint": "Dvakrat tapnite, da izberete to vrstico",
@@ -773,5 +774,8 @@
     "send": "Pošlji",
     "sending": "Pošiljanje …",
     "sendAriaLabel": "Pošlji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija uporablja vaše lokalno omrežje za iskanje naprav za pretakanje, da lahko predvajate videoposnetke na svojem televizorju."
   }
 }

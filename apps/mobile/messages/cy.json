@@ -138,6 +138,7 @@
     "versesAriaValue": "Adnodau {first} i {last} o {total}, {chapter}",
     "demoVerse": "Sweipiwch i fyny am yr adnod nesaf",
     "demoChapter": "Sweipiwch i’r chwith am y bennod nesaf",
+    "demoChapterRtl": "Sweipiwch i’r dde am y bennod nesaf",
     "demoSkip": "Tapiwch i hepgor",
     "demoSkipAriaLabel": "Hepgor yr arddangosiad sweipio",
     "selectVerseAriaHint": "Tapiwch ddwywaith i ddewis yr adnod hon",
@@ -773,5 +774,8 @@
     "send": "Anfon",
     "sending": "Wrthi’n anfon…",
     "sendAriaLabel": "Anfon adborth"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Mae’r ap yn defnyddio’ch rhwydwaith lleol i ddod o hyd i ddyfeisiau castio, er mwyn i chi allu chwarae fideos ar eich teledu."
   }
 }

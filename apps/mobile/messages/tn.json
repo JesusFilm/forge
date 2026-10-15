@@ -138,6 +138,7 @@
     "versesAriaValue": "Ditemana {first} go ya go {last} tsa {total}, {chapter}",
     "demoVerse": "Sutisa monwana kwa godimo go bona temana e e latelang",
     "demoChapter": "Sutisa monwana kwa molemeng go bona kgaolo e e latelang",
+    "demoChapterRtl": "Sutisa monwana kwa mojeng go bona kgaolo e e latelang",
     "demoSkip": "Tobetsa go tlola",
     "demoSkipAriaLabel": "Tlola pontsho ya go sutisa monwana",
     "selectVerseAriaHint": "Tobetsa gabedi go tlhopha temana eno",
@@ -773,5 +774,8 @@
     "send": "Romela",
     "sending": "E a romelwa…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e dirisa neteweke ya gago ya selegae go batla didirisiwa tse o ka romelang dibidio kwa go tsone, gore o kgone go tshameka dibidio mo TV ya gago."
   }
 }

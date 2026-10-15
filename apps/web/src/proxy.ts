@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+import { WATCH_REFERRER_POLICY } from "../watch-security-headers.mjs"
 import {
   DEFAULT_LOCALE,
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  parseAcceptLanguage,
   publicWatchAudioLanguageSlugForLocale,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
+import { LANGUAGE_PREFERENCE_COOKIE } from "@/lib/language-preference-constants"
 import {
   asContentSlug,
   asLocaleSlug,
@@ -62,7 +65,7 @@ export type ProxyRequest = {
 
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
-const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
+const SAFE_PUBLIC_PATH = /^\/[\p{Ll}\p{Nd}A-Za-z0-9._\-/]+$/u
 const DEMO_PREFIXES = new Set([
   "demo-search",
   "demo-recommendations",
@@ -110,6 +113,7 @@ type RewriteDecision =
     }
   | { kind: "pass" }
   | { kind: "not-found" }
+  | { kind: "redirect"; pathname: string }
 
 type ManifestAdmissionDecision =
   | { kind: "admit"; internalPathname?: string }
@@ -155,10 +159,59 @@ function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
 }
 
+function preferredPublicLanguageSlug(request: ProxyRequest): string | null {
+  const cookieValues = (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .filter((cookie) => cookie.startsWith(`${LANGUAGE_PREFERENCE_COOKIE}=`))
+  if (cookieValues.length === 1) {
+    const rawValue = cookieValues[0]?.slice(
+      LANGUAGE_PREFERENCE_COOKIE.length + 1,
+    )
+    try {
+      const value = rawValue ? decodeURIComponent(rawValue) : ""
+      if (isPublicWatchLanguageSlug(value)) {
+        return value === publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+          ? null
+          : value
+      }
+    } catch {
+      // An invalid preference cookie falls back to Accept-Language.
+    }
+  }
+
+  const locale = parseAcceptLanguage(request.headers.get("accept-language"))
+  if (!locale) return null
+  const slug = publicWatchAudioLanguageSlugForLocale(locale)
+  return slug &&
+    isPublicWatchLanguageSlug(slug) &&
+    slug !== publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+    ? slug
+    : null
+}
+
+function isLanguageNegotiatedEntryPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/languages" ||
+    pathname === "/history" ||
+    pathname === "/whats-new"
+  )
+}
+
+function applyLanguagePreferenceHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Vary", "Accept-Language, Cookie")
+  return response
+}
+
 function buildRedirect(url: URL, status: 301 | 307 | 308): NextResponse {
   const response = NextResponse.redirect(url, status)
   response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
   return response
+}
+
+function buildLanguagePreferenceRedirect(url: URL): NextResponse {
+  return applyLanguagePreferenceHeaders(buildRedirect(url, 307))
 }
 
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
@@ -168,9 +221,25 @@ function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   return buildRedirect(url, 307)
 }
 
+/**
+ * The baseline security-header set lives in next.config.mjs `headers()` (see
+ * watch-security-headers.mjs), which covers every route including the basePath
+ * root this function never sees.
+ *
+ * Only `Referrer-Policy` is re-applied here, and deliberately NOT
+ * `Content-Security-Policy`. Next evaluates config `headers()` BEFORE
+ * middleware and merges middleware's headers over them with a plain
+ * last-write-wins assignment, so anything middleware sets clobbers the config
+ * value for the same key. That is harmless for Referrer-Policy, whose value is
+ * identical here and whose middleware-wins behaviour is what lets
+ * `applyExperiencePreviewHeaders` override it with `no-referrer`. It would be
+ * actively harmful for CSP: once an operator promotes the full policy with
+ * `WATCH_CSP_ENFORCE=true`, a static `frame-ancestors 'self'` written here
+ * would silently overwrite it on every rewritten content route, and the
+ * promotion would look done while doing nothing.
+ */
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
-  response.headers.set("Referrer-Policy", "strict-origin")
+  response.headers.set("Referrer-Policy", WATCH_REFERRER_POLICY)
   return response
 }
 
@@ -195,14 +264,33 @@ function shouldBypassLocaleRewrite(pathname: string): boolean {
 function isSafeCanonicalPath(pathname: string): boolean {
   if (pathname === "/") return true
   if (pathname.length > MAX_PATH_LEN) return false
-  if (UNSAFE_PATH_PATTERN.test(pathname)) return false
-  if (pathname.split("/").some((segment) => segment === "..")) return false
-  return SAFE_PUBLIC_PATH.test(pathname)
+  let decodedPathname: string
+  try {
+    // decodeURI preserves encoded separators and reserved URL characters.
+    decodedPathname = decodeURI(pathname)
+  } catch {
+    return false
+  }
+  // Admit one spelling per path so caches and canonical URL checks agree.
+  if (encodeURI(decodedPathname) !== pathname) return false
+  if (UNSAFE_PATH_PATTERN.test(decodedPathname)) return false
+  if (decodedPathname.split("/").some((segment) => segment === "..")) {
+    return false
+  }
+  return SAFE_PUBLIC_PATH.test(decodedPathname)
 }
 
 function stripSafeSlug(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function internalPrefixDecision(pathname: string): InternalPrefixDecision {
@@ -242,9 +330,11 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchVideoPath(
-        asContentSlug(contentSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchVideoPath(
+          asContentSlug(contentSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -258,10 +348,12 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchEpisodePath(
-        asContentSlug(parentSlug),
-        asContentSlug(childSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchEpisodePath(
+          asContentSlug(parentSlug),
+          asContentSlug(childSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -284,8 +376,18 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
 function classifyRewrite(
   pathname: string,
   manifest: WatchRouteManifest | null,
+  preferredLanguageSlug: string | null = null,
 ): RewriteDecision {
   if (shouldBypassLocaleRewrite(pathname)) return { kind: "pass" }
+  if (preferredLanguageSlug && isLanguageNegotiatedEntryPath(pathname)) {
+    return {
+      kind: "redirect",
+      pathname:
+        pathname === "/"
+          ? `/${preferredLanguageSlug}.html`
+          : `/${preferredLanguageSlug}.html${pathname}`,
+    }
+  }
   if (pathname === "/" || pathname === "") {
     return {
       kind: "rewrite",
@@ -333,7 +435,8 @@ function classifyRewrite(
     if (
       localeSegment === "videos" ||
       localeSegment === "languages" ||
-      localeSegment === "history"
+      localeSegment === "history" ||
+      localeSegment === "whats-new"
     ) {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
@@ -498,7 +601,11 @@ function internalRewritePathname(
   const subtitleSuffix = subtitleLanguageSlug
     ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
     : ""
-  return `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  const internalPathname = `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  // Keep one URL encoding across direct rewrites and re-entry admission. Some
+  // routes use a decoded manifest slug for their internal target while the
+  // public path arrived percent-encoded.
+  return encodeURI(decodeURI(internalPathname))
 }
 
 function subtitleIntentForRewrite(
@@ -797,7 +904,15 @@ async function isAdmittedInternalRewrite(
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
-  const { pathname } = request.nextUrl
+  // The production reverse proxy lowercases percent escapes before forwarding.
+  // Hex case does not change their bytes; restore the
+  // canonical spelling before the existing exact decoding/admission checks.
+  // Do not decode here: separators, malformed escapes and ASCII aliases must
+  // still fail the strict round-trip check below.
+  const pathname = request.nextUrl.pathname.replace(
+    /%[0-9a-f]{2}/gi,
+    (escape) => escape.toUpperCase(),
+  )
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
     return applyExperiencePreviewHeaders(NextResponse.next())
@@ -826,13 +941,21 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, 308)
   }
 
-  if (pathname === "/history") {
-    return rewriteToInternal(request, {
-      kind: "rewrite",
-      locale: DEFAULT_LOCALE,
-      htmlLang: DEFAULT_LOCALE,
+  const preferredLanguageSlug = isLanguageNegotiatedEntryPath(pathname)
+    ? preferredPublicLanguageSlug(request)
+    : null
+  if (preferredLanguageSlug) {
+    const preferenceDecision = classifyRewrite(
       pathname,
-    })
+      null,
+      preferredLanguageSlug,
+    )
+    if (preferenceDecision.kind === "redirect") {
+      const url = request.nextUrl.clone()
+      url.pathname = preferenceDecision.pathname
+      // Keep query state such as LOCALE_RESOLVED_PARAM intact across the 307.
+      return buildLanguagePreferenceRedirect(url)
+    }
   }
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
@@ -842,6 +965,19 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, canonical.status)
   }
 
+  // Default root rendering has no manifest admission requirement. Keep it
+  // independent of Admin latency, as the config-level root rewrite was.
+  if (pathname === "/" || pathname === "/history") {
+    return applyLanguagePreferenceHeaders(
+      rewriteToInternal(request, {
+        kind: "rewrite",
+        locale: DEFAULT_LOCALE,
+        htmlLang: DEFAULT_LOCALE,
+        pathname,
+      }),
+    )
+  }
+
   if (pathname === "/search") return redirectDeprecatedSearch(request)
 
   // Fetch once (60s in-process cache) and share it between shape
@@ -849,6 +985,11 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const manifest = await getWatchRouteManifest()
   const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
+  if (rewrite.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = rewrite.pathname
+    return buildLanguagePreferenceRedirect(url)
+  }
   if (rewrite.kind === "not-found") return buildNotFound(request)
   const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
@@ -862,7 +1003,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     url.pathname = admission.pathname
     return buildRedirect(url, admission.status ?? 301)
   }
-  return rewriteToInternal(
+  const response = rewriteToInternal(
     request,
     {
       ...rewrite,
@@ -870,6 +1011,9 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     },
     manifest,
   )
+  return isLanguageNegotiatedEntryPath(pathname)
+    ? applyLanguagePreferenceHeaders(response)
+    : response
 }
 
 export const config = {
@@ -878,5 +1022,8 @@ export const config = {
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
     "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|language-globe|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|manifest\\.webmanifest$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    // The generic matcher requires a slash after basePath. Explicitly admit
+    // bare /watch so entry-language negotiation runs before static rewrites.
+    "/",
   ],
 }

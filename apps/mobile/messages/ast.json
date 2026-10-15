@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículos {first} a {last} de {total}, {chapter}",
     "demoVerse": "Esliza p’arriba pal versículu siguiente",
     "demoChapter": "Esliza a la esquierda pal capítulu siguiente",
+    "demoChapterRtl": "Esliza a la drecha pal capítulu siguiente",
     "demoSkip": "Toca pa saltar",
     "demoSkipAriaLabel": "Saltar la demostración d’eslizamientu",
     "selectVerseAriaHint": "Toca dos vegaes pa esbillar esti versículu",
@@ -773,5 +774,8 @@
     "send": "Unviar",
     "sending": "Unviando…",
     "sendAriaLabel": "Unviar los comentarios"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’app usa la to rede llocal p’atopar preseos onde emitir, pa que puedas reproducir videos na to televisión."
   }
 }

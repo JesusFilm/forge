@@ -138,6 +138,7 @@
     "versesAriaValue": "Verše {first} až {last} z {total}, {chapter}",
     "demoVerse": "Přejeďte nahoru na další verš",
     "demoChapter": "Přejeďte doleva na další kapitolu",
+    "demoChapterRtl": "Přejeďte doprava na další kapitolu",
     "demoSkip": "Klepnutím přeskočíte",
     "demoSkipAriaLabel": "Přeskočit ukázku přejíždění",
     "selectVerseAriaHint": "Dvojitým klepnutím vyberete tento verš",
@@ -773,5 +774,8 @@
     "send": "Odeslat",
     "sending": "Odesílání…",
     "sendAriaLabel": "Odeslat zpětnou vazbu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikace používá vaši místní síť k vyhledání zařízení pro odesílání, abyste mohli přehrávat videa na své televizi."
   }
 }

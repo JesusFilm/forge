@@ -37,7 +37,7 @@ import {
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { languageCodeFor } from "@/lib/language-code"
+import { languageBadgeCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { getViewerId } from "@/lib/viewer-id"
@@ -1493,13 +1493,18 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
-  const explicitLanguageCode = languageCodeFor({ slug: languageSlug })
-  const variantLanguageCode = languageCodeFor({
+  const explicitLanguageCode = languageBadgeCodeFor({ slug: languageSlug })
+  const variantLanguageCode = languageBadgeCodeFor({
     bcp47: variant.language?.bcp47,
     iso3: variant.language?.iso3,
     slug: variant.language?.slug,
   })
   const languageCode = explicitLanguageCode ?? variantLanguageCode
+  const languageName = explicitLanguageCode
+    ? variant.language?.slug === languageSlug
+      ? (variant.language?.name ?? explicitLanguageCode)
+      : explicitLanguageCode
+    : variant.language?.name
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("hero-player-language-switcher"),
   ).current
@@ -1605,6 +1610,8 @@ export function HeroPlayer({
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
             languageCode: showTopLanguageSwitch ? languageCode : null,
+            languageName:
+              showTopLanguageSwitch && languageCode ? languageName : null,
             ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
@@ -1613,6 +1620,7 @@ export function HeroPlayer({
   }, [
     headerLanguageSwitcherOwnerToken,
     languageCode,
+    languageName,
     onLanguageClick,
     showTopLanguageSwitch,
   ])
@@ -1628,6 +1636,7 @@ export function HeroPlayer({
               visible: false,
               onClick: null,
               languageCode: null,
+              languageName: null,
               ownerToken: headerLanguageSwitcherOwnerToken,
             },
           },
@@ -1881,6 +1890,7 @@ export function HeroPlayer({
             playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
+            languageName={languageName}
             subtitleLanguageCode={subtitleLanguageCode}
             subtitleEnabled={Boolean(subtitleVttSrc)}
             // In-chrome audio control intentionally stays visible in fullscreen

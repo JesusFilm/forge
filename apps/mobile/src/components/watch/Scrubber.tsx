@@ -235,6 +235,7 @@ export function Scrubber({
     >
       <View style={styles.track}>
         <Animated.View
+          testID="scrubber-fill"
           style={[styles.fill, { transform: [{ scaleX: progress }] }]}
         />
       </View>
@@ -243,6 +244,7 @@ export function Scrubber({
           left while the fill shows the real position — a one-frame desync. */}
       {trackWidth > 0 && (
         <Animated.View
+          testID="scrubber-thumb"
           style={[
             styles.thumb,
             flush && styles.thumbBottom,
@@ -265,6 +267,9 @@ const styles = StyleSheet.create({
   hitArea: {
     height: SCRUBBER_HIT_HEIGHT,
     justifyContent: "center",
+    // Playback does not mirror (feat-695 R12). React Native swaps `left` and
+    // `right` in a right-to-left app, so the bar sets its own direction.
+    direction: "ltr",
   },
   hitAreaBottom: {
     justifyContent: "flex-end",
