@@ -6,13 +6,13 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 15, 2026)
 
-- **Total tickets:** 835
-- **Complete:** 621
+- **Total tickets:** 837
+- **Complete:** 622
 - **Cancelled:** 40
-- **In progress:** 66
+- **In progress:** 67
 - **Not started:** 51
 - **Blocked:** 57
-- **Overdue and open:** 159
+- **Overdue and open:** 160
 
 ## Feature Index
 
@@ -221,6 +221,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
 | [feat-612](content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
+| [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 
 ### Media Generation
@@ -776,6 +777,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
 | [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | 2026-10-13 | 10   | 2026-10-22 | complete    |
 | [feat-698](platform/feat-698-watch-chapter-progress-indicator.md)                      | Watch chapter thumbnail progress indicator                                         | vlad       | P2       | 2026-10-14 | 1    | 2026-10-14 | complete    |
+| [feat-703](platform/feat-703-ci-tested-target-baseline.md)                             | Compare PR CI checks against the tested target baseline                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-544](platform/feat-544-mobile-remove-sign-in-gate.md)                            | Remove the mobile sign-in gate when accounts open                                  | urim       | P2       | 2026-11-02 | 1    | 2026-11-02 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | not-started |
