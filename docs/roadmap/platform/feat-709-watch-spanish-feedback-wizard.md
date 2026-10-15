@@ -1,5 +1,5 @@
 ---
-id: "feat-708"
+id: "feat-709"
 title: "Localize the Watch feedback wizard in Spanish"
 owner: "vlad"
 priority: "P1"
@@ -135,3 +135,18 @@ parity/ICU (460), client messages (6), provenance (7), and inventory routes (13)
 UI/provisional catalog generator checks, Web TypeScript, touched-file ESLint,
 formatting, and diff checks also passed. Remote CI, independent review of the
 complete branch diff, and browser acceptance remain with the calling workflow.
+
+## Main integration and ID renumber
+
+Main added `feat-708-watch-url-only-language-routing.md` (PR #2758) while this
+ticket also used `feat-708`. This ticket now uses `feat-709`, the next ID after
+an active-PR, local-ref, and sibling-worktree allocation check. Main's
+`feat-707` and `feat-708` tickets and README rows stay unchanged.
+
+The merge also brings in the PR #2756 phone fix (`min-w-0` on the feedback form
+in `FeedbackModal.tsx`) and the URL-only routing change in `proxy.ts` and
+`locale.ts`. The Spanish catalog, tests, and provenance data are unchanged.
+After the merge, the 557 focused tests and 375 proxy, locale, language, and
+routing tests pass, together with generator checks, ESLint, TypeScript, and
+Prettier. Spanish mobile and desktop acceptance on a deployed preview stay with
+the calling workflow.
