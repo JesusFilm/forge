@@ -857,10 +857,14 @@ export function HeroPlayerControls({
             key === "j"
               ? -PLAYER_SHORTCUT_SEEK_SECONDS
               : PLAYER_SHORTCUT_SEEK_SECONDS
-          const dur = Number.isFinite(p.duration) ? p.duration : 0
-          const next = p.currentTime + delta
-          p.currentTime =
-            dur > 0 ? Math.min(dur, Math.max(0, next)) : Math.max(0, next)
+          // Before metadata loads there is no finite duration; writing a
+          // start position then could land past the end of a short clip.
+          if (!Number.isFinite(p.duration) || p.duration <= 0) break
+          if (!Number.isFinite(p.currentTime)) break
+          p.currentTime = Math.min(
+            p.duration,
+            Math.max(0, p.currentTime + delta),
+          )
           break
         }
         case "m":

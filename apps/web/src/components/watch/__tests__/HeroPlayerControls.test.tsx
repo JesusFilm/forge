@@ -1528,6 +1528,19 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
     expect(player.currentTime).toBe(100)
   })
 
+  it("does not write a seek position before the duration is known", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ currentTime: 0, duration: Number.NaN }),
+    )
+    press(wrapperEl, "l")
+    expect(player.currentTime).toBe(0)
+    const zero = renderControlsFixture(
+      makePlayer({ currentTime: 0, duration: 0 }),
+    )
+    press(zero.wrapperEl, "l")
+    expect(zero.player.currentTime).toBe(0)
+  })
+
   it("toggles mute with M", () => {
     const { wrapperEl, player } = renderControlsFixture(
       makePlayer({ muted: false }),
@@ -1732,17 +1745,6 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
       expect(player.muted).toBe(false)
     },
   )
-
-  it("seeks from the current time when the duration is unknown", () => {
-    const { wrapperEl, player } = renderControlsFixture(
-      makePlayer({ currentTime: 30, duration: Number.NaN }),
-    )
-    press(wrapperEl, "l")
-    expect(player.currentTime).toBe(40)
-    player.currentTime = 4
-    press(wrapperEl, "j")
-    expect(player.currentTime).toBe(0)
-  })
 
   it("does not listen on window", () => {
     const { player } = renderControlsFixture(makePlayer({ muted: false }))
