@@ -33,8 +33,10 @@ import type {
 } from "./search"
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
-// Server-side public search is bounded to ~2.3s (#2671); 12s leaves headroom
-// for a slow link without leaving the spinner up for most of a minute.
+// One wall-clock budget for the whole search, including the legacy-schema
+// retry. Admin bounds the search itself to 2.3s (#2671), but that clock starts
+// after DNS/TLS, Cloudflare, cold start and GraphQL parsing. 12s keeps ~9.7s
+// of headroom for those on a slow link without a near-minute spinner.
 export const WATCH_SEARCH_TIMEOUT_MS = 12_000
 const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 12
 const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
@@ -357,6 +359,8 @@ export async function searchWatchDirect({
       resultTypes,
     },
   }
+  // Shared by both attempts so the legacy retry cannot restart the clock.
+  const signal = timeoutSignal(WATCH_SEARCH_TIMEOUT_MS)
   const requestPage = async (
     document: string,
   ): Promise<GraphqlResponse<WatchSearchGraphqlResult>> => {
@@ -366,7 +370,7 @@ export async function searchWatchDirect({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ query: document, variables }),
-        signal: timeoutSignal(WATCH_SEARCH_TIMEOUT_MS),
+        signal,
       })
     } catch (error) {
       throw new WatchSearchRequestError(
