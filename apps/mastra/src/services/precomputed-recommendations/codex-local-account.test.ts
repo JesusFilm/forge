@@ -126,6 +126,34 @@ async function requests(capture: string) {
 }
 
 describe("read-only Codex account attestation", () => {
+  it.each([25, 1, 0])(
+    "reads %s percent under an explicit zero reserve",
+    async (remaining) => {
+      const fake = await fakeServer({
+        limits: limits("pro", weekly(100 - remaining)),
+      })
+      const result = await createLocalCodexAccountReader({
+        codexExecutable: fake.executable,
+        minimumRemainingPercent: 0,
+      }).readAttestation()
+      expect(result.allowance.weeklyRemainingPercent).toBe(remaining)
+      expect(result.admission).toBe(remaining > 0 ? "admitted" : "insufficient")
+    },
+  )
+
+  it("refuses an exhausted Plus window with zero reserve", async () => {
+    const fake = await fakeServer({
+      before: account("plus"),
+      after: account("plus"),
+      limits: limits("plus", fiveHour(100), weekly(75)),
+    })
+    const result = await createLocalCodexAccountReader({
+      codexExecutable: fake.executable,
+      minimumRemainingPercent: 0,
+    }).readAttestation()
+    expect(result.admission).toBe("insufficient")
+  })
+
   it("uses only approved RPCs, exact codex bucket, backend ID binding, and no API environment", async () => {
     vi.stubEnv("OPENAI_API_KEY", "secret-never-forward")
     vi.stubEnv("CODEX_ACCESS_TOKEN", "secret-never-forward")
@@ -150,6 +178,7 @@ describe("read-only Codex account attestation", () => {
       weeklyRemainingPercent: 68,
       fiveHour: { kind: "not_applicable", plan: "pro" },
       admission: "admitted",
+      minimumRemainingPercent: 25,
       billingBasis: "included_subscription",
       providerEnforcedIncludedOnlySpendCap: false,
     })
@@ -190,14 +219,16 @@ describe("read-only Codex account attestation", () => {
     ).toHaveLength(6)
   })
 
-  it("runs the package preflight against only read-only RPCs and no inference", async () => {
-    const fake = await fakeServer()
+  it("runs the zero-reserve package preflight with read-only RPCs and no inference", async () => {
+    const fake = await fakeServer({ limits: limits("pro", weekly(99)) })
     await symlink(fake.executable, join(dirname(fake.executable), "codex"))
     const output = execFileSync(
       process.execPath,
       [
         join(process.cwd(), "node_modules/tsx/dist/cli.mjs"),
         join(process.cwd(), "src/scripts/check-precomputed-subscription.ts"),
+        "--minimum-remaining-percent",
+        "0",
       ],
       {
         encoding: "utf8",
@@ -212,6 +243,8 @@ describe("read-only Codex account attestation", () => {
     expect(JSON.parse(output)).toMatchObject({
       modelId: "gpt-6-astra",
       admission: "admitted",
+      weeklyRemainingPercent: 1,
+      minimumRemainingPercent: 0,
     })
     const sent = await requests(fake.capture)
     expect(sent.map((item) => item.method)).toEqual([

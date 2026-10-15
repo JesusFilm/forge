@@ -152,8 +152,15 @@ It reports the current account reference, exact model route, billing basis and
 allowance admission without making a model call. The runner then checks the
 same initiating account and fresh identity/allowance again before inference;
 each reserved call also requires a fresh observation. Admission requires
-included-subscription billing, **more than 25% weekly allowance remaining**
-and, when a five-hour limit applies, **more than 25% of that window remaining**.
+included-subscription billing and, by default, **more than 25% remaining** in
+the weekly window and any applicable five-hour window. When the account owner
+explicitly authorizes consuming the reserve, set `minimumRemainingPercent: 0`
+in the local run config and check the same policy with
+`precomputed:subscription:check --minimum-remaining-percent 0`. Only `0` and
+`25` are supported; omission preserves 25. The account reader, catalog startup
+and every queued call enforce the selected floor. Zero remaining in either
+applicable window still refuses a new reservation. This is an admission check,
+not a provider-enforced spend cap; it does not authorize paid-credit fallback.
 Unknown, credit-only or insufficient allowance stops the run. Keep the
 operator's Codex login on their local computer; a browser Admin session or a
 shared service login is not authority to use it. Do not copy login material or
