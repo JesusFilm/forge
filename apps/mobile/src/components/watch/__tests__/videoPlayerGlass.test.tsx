@@ -221,23 +221,10 @@ async function tapLeft(renderer: TestInstance, count: 1 | 2) {
   })
 }
 
-async function doubleTapLeft(renderer: TestInstance) {
-  const tap = pressableByLabel(renderer, "Toggle player controls")
-    .props as unknown as {
-    onLayout: (e: unknown) => void
-    onPressIn: () => void
-    onPress: (e: unknown) => void
-  }
+/** Moves fake timers on; the cases that call it turn fake timers on. */
+async function advance(ms: number) {
   await act(async () => {
-    tap.onLayout({
-      nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 200 } },
-    })
-  })
-  await act(async () => {
-    tap.onPressIn()
-    tap.onPress({ nativeEvent: { locationX: 40 } })
-    tap.onPressIn()
-    tap.onPress({ nativeEvent: { locationX: 40 } })
+    jest.advanceTimersByTime(ms)
   })
 }
 
@@ -339,7 +326,7 @@ function hasSeekFlash(renderer: TestInstance): boolean {
 describe("the seek flash pill (feat-705 U5, R5)", () => {
   it("shows glass with no fading layer above it", async () => {
     const renderer = await render()
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
 
     const chain = ancestors(pillText(renderer))
     const glassAt = chain.findIndex((n) => n.type === "GlassView")
@@ -363,7 +350,7 @@ describe("the seek flash pill (feat-705 U5, R5)", () => {
   it("keeps today's dark fill on the fallback path", async () => {
     mockGate.glass = false
     const renderer = await render()
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
 
     expect(renderer.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
     const filled = ancestors(pillText(renderer)).filter(
@@ -410,15 +397,9 @@ describe("the seek flash pill's exit (owner, 2026-10-16)", () => {
     jest.useRealTimers()
   })
 
-  async function advance(ms: number) {
-    await act(async () => {
-      jest.advanceTimersByTime(ms)
-    })
-  }
-
   it("appears at full opacity, holds for 600 ms, then fades the label as the glass dissolves", async () => {
     const renderer = await render()
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
     expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
     expect(pillGlassStyle(renderer)).toMatchObject({ style: "regular" })
 
@@ -442,11 +423,11 @@ describe("the seek flash pill's exit (owner, 2026-10-16)", () => {
 
   it("shows a new pill at full opacity during a fade, and the old fade does not end it", async () => {
     const renderer = await render()
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
     await advance(600)
     const [oldFade] = timings
 
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
     expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
     expect(pillGlassStyle(renderer)).toMatchObject({ style: "regular" })
 
@@ -457,7 +438,7 @@ describe("the seek flash pill's exit (owner, 2026-10-16)", () => {
   it("leaves at once with Reduce Motion on", async () => {
     mockMotion.reduce = true
     const renderer = await render()
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
 
     await advance(600)
 
@@ -468,7 +449,7 @@ describe("the seek flash pill's exit (owner, 2026-10-16)", () => {
   it("fades the whole pill on the fallback path", async () => {
     mockGate.glass = false
     const renderer = await render()
-    await doubleTapLeft(renderer)
+    await tapLeft(renderer, 2)
     expect(opacityOf(pillLabelLayer(renderer))).toBe(1)
 
     await advance(600)
@@ -485,12 +466,6 @@ describe("a tap on the video (owner, 2026-10-16)", () => {
   afterEach(() => {
     jest.useRealTimers()
   })
-
-  async function advance(ms: number) {
-    await act(async () => {
-      jest.advanceTimersByTime(ms)
-    })
-  }
 
   it("seeks on a double tap over hidden chrome and keeps the chrome hidden", async () => {
     mockControls.visibleNow = false

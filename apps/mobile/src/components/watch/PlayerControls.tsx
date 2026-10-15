@@ -624,7 +624,10 @@ export function PlayerControls({
             styles.routeRow,
             fullscreen && {
               top: Math.max(insets.top, 8),
-              right: Math.max(insetPadding(insets).paddingRight, 12),
+              right: Math.max(
+                insetPadding(insets).paddingRight,
+                PLAYER_BAR_PADDING_H,
+              ),
             },
           ]}
           pointerEvents="box-none"
@@ -729,8 +732,8 @@ export function PlayerControls({
             // the home indicator.
             {
               paddingBottom: Math.max(insets.bottom, 8),
-              paddingLeft: Math.max(insets.left, 12),
-              paddingRight: Math.max(insets.right, 12),
+              paddingLeft: Math.max(insets.left, PLAYER_BAR_PADDING_H),
+              paddingRight: Math.max(insets.right, PLAYER_BAR_PADDING_H),
             },
           ]}
         >

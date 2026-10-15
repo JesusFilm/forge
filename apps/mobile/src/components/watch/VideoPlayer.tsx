@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Animated,
   AppState,
-  Easing,
   Pressable,
   StyleSheet,
   Text,
@@ -16,12 +15,10 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { appDirection } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { canUseLiquidGlass } from "../../lib/liquidGlass"
-import { PLAYER_BAR_PADDING_H } from "../../lib/playerLayout"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { datadogLog, reportDatadogAction } from "../../lib/datadog"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
@@ -33,7 +30,6 @@ import {
   seekDeltaForTap,
   seekSideForTap,
   singleTapAction,
-  type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { useEndedPosterFade } from "../../hooks/useEndedPosterFade"
@@ -52,7 +48,6 @@ import {
   type PlaybackTarget,
 } from "../../lib/playbackTarget"
 import { FeedbackModal } from "../feedback/FeedbackModal"
-import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 import type { FeedbackSheetContext } from "../feedback/feedbackFlow"
 import {
   PlayerControls,
@@ -62,6 +57,7 @@ import {
 } from "./PlayerControls"
 import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
 import { PlayerSettingsSheet } from "./PlayerSettingsSheet"
+import { SeekFlashPill, type SeekFlashPillHandle } from "./SeekFlashPill"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
 // Caption distance above the bottom edge (px). In fullscreen with the chrome up
@@ -74,27 +70,6 @@ const SUBTITLE_OFFSET_INLINE = 14
 
 // How long the pre-autostart veil may hold before it gives the chrome back.
 const AUTOSTART_VEIL_TIMEOUT_MS = 12000
-
-// The skip-amount pill's look where Liquid Glass is unavailable.
-const SEEK_FLASH_FALLBACK: GlassFallback = {
-  kind: "fill",
-  style: { backgroundColor: hexToRgba(BLACK, 0.55) },
-}
-
-// The skip pill appears at once, holds, then fades out (owner, 2026-10-16).
-// The glass dissolves over the same time as the label fades.
-const SEEK_FLASH_HOLD_MS = 600
-const SEEK_FLASH_FADE_MS = 250
-const SEEK_FLASH_DISSOLVE = { in: 0, out: SEEK_FLASH_FADE_MS / 1000 }
-
-type SeekFlash = {
-  side: SeekSide
-  delta: number
-  /** A new value per flash: a reset of a value that a native fade drove
-   *  lands one frame late, so a new pill would start dim. */
-  fade: Animated.Value
-  leaving: boolean
-}
 
 type VideoPlayerProps = {
   /** The root-owned player (KD2). This component creates none: exactly one
@@ -328,11 +303,7 @@ export function VideoPlayer({
   const tapWidthRef = useRef(0)
   const wasVisibleRef = useRef(true)
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [seekFlash, setSeekFlash] = useState<SeekFlash | null>(null)
-  const reduceMotion = useReduceMotion()
-  const reduceMotionRef = useRef(reduceMotion)
-  reduceMotionRef.current = reduceMotion
+  const seekFlashRef = useRef<SeekFlashPillHandle>(null)
   // A monotonically-bumped signal so PlayerControls can reflect a double-tap
   // seek in its time label/scrubber immediately — even while paused, when its
   // own 500ms poll is idle.
@@ -697,35 +668,7 @@ export function VideoPlayer({
   useEffect(() => {
     return () => {
       if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     }
-  }, [])
-
-  const showSeekFlash = useCallback((side: SeekSide, delta: number) => {
-    const fade = new Animated.Value(1)
-    setSeekFlash({ side, delta, fade, leaving: false })
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-    // Each update checks `fade`, so a late step never ends a newer pill.
-    const endIfCurrent = () =>
-      setSeekFlash((current) => (current?.fade === fade ? null : current))
-    flashTimerRef.current = setTimeout(() => {
-      flashTimerRef.current = null
-      if (reduceMotionRef.current) {
-        endIfCurrent()
-        return
-      }
-      setSeekFlash((current) =>
-        current?.fade === fade ? { ...current, leaving: true } : current,
-      )
-      Animated.timing(fade, {
-        toValue: 0,
-        duration: SEEK_FLASH_FADE_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) endIfCurrent()
-      })
-    }, SEEK_FLASH_HOLD_MS)
   }, [])
 
   const doSideSeek = useCallback(
@@ -750,7 +693,7 @@ export function VideoPlayer({
         seekNonceRef.current += 1
         setSeekSignal({ time: target, n: seekNonceRef.current })
         const side = seekSideForTap(locationX, tapWidthRef.current)
-        if (side) showSeekFlash(side, delta)
+        if (side) seekFlashRef.current?.show(side, delta)
         return
       }
       const target = applySkip(player.currentTime, delta, player.duration)
@@ -759,9 +702,9 @@ export function VideoPlayer({
       seekNonceRef.current += 1
       setSeekSignal({ time: target, n: seekNonceRef.current })
       const side = seekSideForTap(locationX, tapWidthRef.current)
-      if (side) showSeekFlash(side, delta)
+      if (side) seekFlashRef.current?.show(side, delta)
     },
-    [player, showSeekFlash, castTarget],
+    [player, castTarget],
   )
 
   const handleTapPressIn = useCallback(() => {
@@ -813,15 +756,6 @@ export function VideoPlayer({
     ? Math.max(insets.left, insets.right, 56)
     : 56
   const subtitleFontSize = fullscreen ? 22 : 16
-  // The skip pill's outer edge lines up with the time pill and the fullscreen
-  // button, and clears the side notch in fullscreen as the bottom bar does.
-  // On a narrow player it can overlap the skip buttons; that is accepted.
-  const seekFlashInset = (notch: number) =>
-    fullscreen ? Math.max(notch, PLAYER_BAR_PADDING_H) : PLAYER_BAR_PADDING_H
-  const seekFlashEdge =
-    seekFlash?.side === "left"
-      ? { left: seekFlashInset(insets.left) }
-      : { right: seekFlashInset(insets.right) }
 
   return (
     // absoluteFill, not a sized box: the host's frame owns the geometry (KTD17)
@@ -865,34 +799,7 @@ export function VideoPlayer({
         {...{ "dd-action-name": "player-toggle-controls" }}
       />
 
-      {seekFlash != null && (
-        <View
-          testID="seek-flash"
-          pointerEvents="none"
-          style={[styles.seekFlash, seekFlashEdge]}
-        >
-          <GlassSurface
-            style={styles.seekFlashPill}
-            fallback={SEEK_FLASH_FALLBACK}
-            visible={!seekFlash.leaving}
-            dissolveSeconds={SEEK_FLASH_DISSOLVE}
-            fade={seekFlash.fade}
-          >
-            {/* One box, so the icon stays centered over the label inside the
-                fade view that glass puts around the children. */}
-            <View style={styles.seekFlashContent}>
-              <Ionicons
-                name={seekFlash.delta < 0 ? "play-back" : "play-forward"}
-                size={22}
-                color={TEXT_ON_OVERLAY}
-              />
-              <Text style={styles.seekFlashText}>
-                {t("seekSeconds", { seconds: Math.abs(seekFlash.delta) })}
-              </Text>
-            </View>
-          </GlassSurface>
-        </View>
-      )}
+      <SeekFlashPill ref={seekFlashRef} fullscreen={fullscreen} />
 
       {/* R14: the route buttons stay reachable while the veil suppresses the
           chrome — a viewer may cast before local playback ever starts. */}
@@ -1059,27 +966,5 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: 13,
     fontWeight: "600",
-  },
-  seekFlash: {
-    position: "absolute",
-    top: "50%",
-    marginTop: -28,
-  },
-  seekFlashPill: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-  },
-  seekFlashContent: {
-    alignItems: "center",
-  },
-  seekFlashText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 2,
   },
 })
