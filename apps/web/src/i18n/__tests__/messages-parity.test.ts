@@ -139,7 +139,9 @@ describe("Arabic count plurals", () => {
     expect(counts.map((count) => formatArabic(key, { count }))).toEqual(forms)
   })
 
-  it("uses the singular accusative for 11-99 groups", () => {
+  it("keeps the counted group noun grammatical after the preposition", () => {
+    // After "في" the dual is genitive (مجموعتين); 11-99 keep the accusative
+    // singular tamyiz (مجموعةً).
     expect(
       formatArabic("LanguageInventory.videosInGroups", {
         videoCount: 673,
@@ -151,7 +153,7 @@ describe("Arabic count plurals", () => {
         videoCount: 3,
         groupCount: 2,
       }),
-    ).toBe("3 فيديوهات في 2 مجموعتان")
+    ).toBe("3 فيديوهات في 2 مجموعتين")
   })
 })
 

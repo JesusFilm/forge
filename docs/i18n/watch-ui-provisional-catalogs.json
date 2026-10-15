@@ -1186,7 +1186,7 @@
         "ar": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "8cdfb7829adefc14592091c348840620363d6b51af76b94f304e2a2def69c524",
+          "catalogDigest": "3cb9eec67c1366f8dc07a9e5f8accb7294fb20e22c7a07c92941f59f203c79f8",
           "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {

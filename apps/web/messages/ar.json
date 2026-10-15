@@ -275,7 +275,7 @@
     "languageCollection": "مجموعة اللغة",
     "itemCount": "{count, plural, zero {# عناصر} one {# عنصر} two {# عنصران} few {# عناصر} many {# عنصرًا} other {# عنصر}}",
     "videoCount": "{count, plural, zero {# فيديوهات} one {# فيديو} two {# فيديو} few {# فيديوهات} many {# فيديو} other {# فيديو}}",
-    "videosInGroups": "{videoCount, plural, zero {# فيديوهات} one {# فيديو} two {# فيديو} few {# فيديوهات} many {# فيديو} other {# فيديو}} في {groupCount, plural, zero {# مجموعات} one {# مجموعة} two {# مجموعتان} few {# مجموعات} many {# مجموعةً} other {# مجموعة}}",
+    "videosInGroups": "{videoCount, plural, zero {# فيديوهات} one {# فيديو} two {# فيديو} few {# فيديوهات} many {# فيديو} other {# فيديو}} في {groupCount, plural, zero {# مجموعات} one {# مجموعة} two {# مجموعتين} few {# مجموعات} many {# مجموعةً} other {# مجموعة}}",
     "sectionNavLabel": "أقسام فهرس اللغات",
     "sectionMetricLabel": "{label}: {count}",
     "new": "جديد",
