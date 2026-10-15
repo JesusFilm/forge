@@ -381,9 +381,8 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
 })
 
 // ---------------------------------------------------------------------------
-// Saved preferences apply only to the bare entry routes. An explicit locale
-// already named in a canonical watch URL must never be redirected to another
-// language, even when the preference cookie or browser header differs.
+// The URL is the sole locale carrier. Cookies and browser language headers
+// must never redirect either an entry route or an explicit localized route.
 // ---------------------------------------------------------------------------
 
 describe("proxy — explicit locale URLs are never language-redirected", () => {
@@ -416,7 +415,7 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   })
 
-  it("does not vary on language preferences for already-localized routes", async () => {
+  it("ignores language state for explicit and bare routes", async () => {
     const response = await proxy(
       makeRequest("/jesus.html/english.html", {
         acceptLanguage: "ar-EG,ar;q=0.9",
@@ -425,136 +424,26 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     )
     expect(response.headers.get("vary") ?? "").not.toContain("Cookie")
     expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
-  })
 
-  it("redirects the homepage to the Accept-Language public slug", async () => {
-    const response = await proxy(
-      makeRequest("/?source=email&_lr=1", {
-        acceptLanguage: "ar-EG,ar;q=0.9",
-      }),
-    )
-
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toBe(
-      "https://www.jesusfilm.org/arabic-modern-standard.html?source=email&_lr=1",
-    )
-    expect(response.headers.get("vary")).toBe("Accept-Language, Cookie")
-    expect(response.headers.get("cache-control")).toContain("private")
-  })
-
-  it("keeps default homepage rendering independent of manifest availability", async () => {
-    const manifestSource = vi.fn(async () => {
-      throw new Error("manifest unavailable")
-    })
-    resetManifestSource?.()
-    resetManifestSource = setWatchRouteManifestSourceForTest(manifestSource)
-
-    const response = await proxy(makeRequest("/", { acceptLanguage: "en" }))
-
-    expect(rewritePath(response)).toBe("/en/en")
-    expect(manifestSource).not.toHaveBeenCalled()
-  })
-
-  it("keeps the English default when the saved cookie selects English", async () => {
-    const response = await proxy(
-      makeRequest("/", {
-        acceptLanguage: "es-MX,es;q=0.9",
-        headers: { cookie: "forge_watch_lang=english" },
-      }),
-    )
-
-    expect(response.status).not.toBe(307)
-    expect(rewritePath(response)).toBe("/en/en")
-    expect(response.headers.get("vary")).toBe("Accept-Language, Cookie")
-  })
-
-  it("keeps default entry rewrites cache-separated by language inputs", async () => {
-    for (const [pathname, expectedRewrite] of [
+    for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
       ["/languages", "/en/en/languages"],
       ["/history", "/en/en/history"],
       ["/whats-new", "/en/en/whats-new"],
     ] as const) {
-      const response = await proxy(makeRequest(pathname))
-
-      expect(response.status).not.toBe(307)
-      expect(rewritePath(response)).toBe(expectedRewrite)
-      expect(response.headers.get("vary")).toBe("Accept-Language, Cookie")
-    }
-  })
-
-  it("falls back to a valid browser language for invalid or duplicate cookies", async () => {
-    for (const cookie of [
-      "forge_watch_lang=%2F%2Fevil.test",
-      "forge_watch_lang=arabic-modern-standard; forge_watch_lang=spanish-castilian",
-    ]) {
-      const response = await proxy(
-        makeRequest("/", {
-          acceptLanguage: "ar-EG,ar;q=0.9",
-          headers: { cookie },
+      const entryResponse = await proxy(
+        makeRequest(publicPath, {
+          acceptLanguage: "ja-JP,ja;q=0.9",
+          headers: { cookie: "forge_watch_lang=japanese" },
         }),
       )
-
-      expect(response.status).toBe(307)
-      expect(response.headers.get("location")).toContain(
-        "/arabic-modern-standard.html",
+      expect(entryResponse.status).not.toBe(307)
+      expect(rewritePath(entryResponse)).toBe(internalPath)
+      expect(entryResponse.headers.get("vary") ?? "").not.toContain("Cookie")
+      expect(entryResponse.headers.get("vary") ?? "").not.toContain(
+        "Accept-Language",
       )
     }
-  })
-
-  it("prefers the saved language cookie over Accept-Language on bare routes", async () => {
-    for (const pathname of ["/languages", "/history", "/whats-new"]) {
-      const response = await proxy(
-        makeRequest(`${pathname}?campaign=1&_lr=1`, {
-          acceptLanguage: "ar-EG,ar;q=0.9",
-          headers: { cookie: "forge_watch_lang=spanish-castilian" },
-        }),
-      )
-
-      expect(response.status).toBe(307)
-      expect(response.headers.get("location")).toBe(
-        `https://www.jesusfilm.org/spanish-castilian.html${pathname}?campaign=1&_lr=1`,
-      )
-      expect(response.headers.get("vary")).toBe("Accept-Language, Cookie")
-    }
-
-    const localizedWhatsNew = await proxy(
-      makeRequest("/spanish-castilian.html/whats-new", {
-        headers: { cookie: "forge_watch_lang=arabic-modern-standard" },
-      }),
-    )
-    expect(localizedWhatsNew.status).not.toBe(307)
-    expect(rewritePath(localizedWhatsNew)).toBe("/es/es-ES/whats-new")
-  })
-
-  it("negotiates browser language on each bare utility route", async () => {
-    for (const pathname of ["/languages", "/history", "/whats-new"]) {
-      const response = await proxy(
-        makeRequest(pathname, { acceptLanguage: "es-MX,es;q=0.9" }),
-      )
-
-      expect(response.status).toBe(307)
-      expect(response.headers.get("location")).toContain(
-        `/spanish-castilian.html${pathname}`,
-      )
-    }
-  })
-
-  it("falls back to the translated inventory when a language has no homepage", async () => {
-    const preferredHome = await proxy(
-      makeRequest("/", { acceptLanguage: "fr-FR,fr;q=0.9" }),
-    )
-    expect(preferredHome.status).toBe(307)
-    expect(preferredHome.headers.get("location")).toBe(
-      "https://www.jesusfilm.org/french.html",
-    )
-
-    const response = await proxy(makeRequest("/french.html"))
-
-    expect(response.status).toBe(307)
-    expect(response.headers.get("location")).toBe(
-      "https://www.jesusfilm.org/french.html/videos",
-    )
   })
 })
 

@@ -20,6 +20,12 @@ tags:
 
 # Next.js headers() in Page Routes Silently Defeats Full Route Cache
 
+> **Routing policy superseded 2026-10-15:** moving request-dependent work out
+> of cacheable page routes remains valid, but Watch no longer uses
+> `Accept-Language` or a language cookie to select a public route. The URL is
+> the sole language carrier. See
+> `docs/solutions/architecture-patterns/watch-language-routing-is-url-only.md`.
+
 ## Problem
 
 Experience pages at `/watch/*` loaded slowly — every request triggered a fresh server render and Strapi GraphQL call despite ISR being correctly configured with `revalidate` settings and an `/api/revalidate` webhook using `revalidatePath()`.

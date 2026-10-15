@@ -16,9 +16,10 @@ export {
 } from "../i18n/generated-ui-locales"
 
 /**
- * Query-param sentinel that signals "this URL's locale has already been
- * resolved server-side; do not re-apply the cookie-driven language
- * redirect for this request." Used as the contract between three sites:
+ * Query-param sentinel that marks a server-resolved language fallback so the
+ * client can remove the one-shot marker and analytics can classify the entry.
+ * It is not a cookie-routing bypass; Watch routing is URL-only. Used as the
+ * contract between three sites:
  *
  *   1. `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` — sets it
  *      on the server redirect when the requested audio slug has no matching
@@ -29,7 +30,7 @@ export {
  *      — strips the param via `history.replaceState` after hydration
  *      so the user-visible URL stays clean.
  *
- * Renaming the param requires editing all four sites in lockstep;
+ * Renaming the param requires editing all three sites in lockstep;
  * exporting one constant makes the contract explicit and grep-able.
  */
 export const LOCALE_RESOLVED_PARAM = "_lr"
