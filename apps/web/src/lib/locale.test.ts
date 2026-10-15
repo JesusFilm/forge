@@ -302,6 +302,22 @@ describe("resolveUiLocale (catalog-driven fallback)", () => {
     expect(resolveUiLocale("french-african")).toBe("fr")
   })
 
+  it("corrects invalid admin tags for kurmanji-standard and french-african", () => {
+    // Admin data: kurmanji-standard -> `ko-kmr` (invalid), french-african -> `fra`.
+    expect(LANGUAGE_BCP47_MAP["kurmanji-standard"]).toBe("ko-kmr")
+    expect(slugToBcp47Tag("kurmanji-standard")).toBe("kmr")
+    expect(slugToBcp47Primary("kurmanji-standard")).toBe("kmr")
+    expect(resolveUiLocale("kurmanji-standard")).not.toBe("ko")
+    expect(resolveWatchLocaleIdentity("kurmanji-standard")?.htmlLang).toBe(
+      "kmr",
+    )
+    expect(slugToBcp47Tag("french-african")).toBe("fr")
+    expect(resolveWatchLocaleIdentity("french-african")).toEqual({
+      locale: "fr",
+      htmlLang: "fr",
+    })
+  })
+
   it("resolves german-* slugs to the UI locale 'de'", () => {
     expect(resolveUiLocale("german-standard")).toBe("de")
     expect(resolveUiLocale("german")).toBeNull()

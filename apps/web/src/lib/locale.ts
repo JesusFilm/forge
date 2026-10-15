@@ -109,7 +109,41 @@ export function parseAcceptLanguage(
   return null
 }
 
+/**
+ * Slugs whose admin `Language.bcp47` (and so the generated
+ * `LANGUAGE_BCP47_MAP`) is not a valid tag. The generated map is overwritten
+ * by `generate:language-bcp47-map`, so the correction lives here and the
+ * source record should be fixed in Core.
+ *   - `kurmanji-standard` arrives as `ko-kmr` (not a valid tag; the `ko`
+ *     primary made Watch show Korean UI, a KO badge and a Korean name).
+ *
+ * `french-african` (`fra`, which BCP 47 replaces with `fr`) is deliberately
+ * NOT here: it only needs the HTML `lang` fix below, while its picker/badge
+ * code stays `FRA` so it remains distinguishable from French (`FR`).
+ */
+const LANGUAGE_TAG_CORRECTIONS: Readonly<Record<string, string>> =
+  Object.freeze({
+    "kurmanji-standard": "kmr",
+  })
+
+/**
+ * Return the corrected tag for a slug with a known-bad admin tag, else the
+ * tag as supplied. Use at every consumer that reads `bcp47` straight from
+ * admin data (picker rows, badges) rather than through `slugToBcp47Tag`.
+ */
+export function correctedBcp47(
+  slug: string | null | undefined,
+  bcp47: string | null | undefined,
+): string | null | undefined {
+  return slug && Object.hasOwn(LANGUAGE_TAG_CORRECTIONS, slug)
+    ? LANGUAGE_TAG_CORRECTIONS[slug]
+    : bcp47
+}
+
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
+  ...LANGUAGE_TAG_CORRECTIONS,
+  // Admin carries ISO 639-3 `fra`; BCP 47 canonicalizes it to `fr`.
+  "french-african": "fr",
   // Admin currently exposes generic `eng` for this regional public audio
   // slug. Keep the distinct British homepage on its actual regional identity
   // so HTML language and sitemap hreflang signals agree.
