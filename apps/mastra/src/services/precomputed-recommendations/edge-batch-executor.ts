@@ -1,3 +1,4 @@
+import { REVIEWED_EDGE_RECOVERIES } from "./reviewed-edge-recoveries"
 import { createHash } from "node:crypto"
 
 import { z } from "zod"
@@ -407,7 +408,9 @@ export function acknowledgedUnknownIsSafe(
   return (
     call.status === "pending" &&
     call.applicationState === "acknowledged_unknown" &&
-    call.callId === "8ab8a620-1608-4115-812e-200bb2fb4b6d" &&
+    REVIEWED_EDGE_RECOVERIES.some(
+      (scope) => scope.originalCallId === call.callId,
+    ) &&
     typeof call.recoveryReplacementCallId === "string" &&
     (call.recoveryReconciled === true ||
       (recovery?.originalCallId === call.callId &&
@@ -439,6 +442,21 @@ export function auditedNoDispatchIsSafe(
       ) &&
       call.reservationDisposition.evidenceDigest ===
         "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
+    )
+  }
+  if (call.callId === "734caa08-6a97-4704-b1a7-bab5b2b017e7") {
+    return (
+      call.attemptId === "b29eb01c-ba09-4ae2-8d32-a0fb5b581b15" &&
+      call.memberSourceVideoIds.length === 2 &&
+      call.memberSourceVideoIds[0] === "cmokmltnh0o4sqscc538f8ft5" &&
+      call.memberSourceVideoIds[1] === "cmokmlvtk0o5cqscc95pobxr0" &&
+      call.pageIndex === 9 &&
+      ((call.candidates.length === 3 &&
+        call.candidates.every((c, index) => c.poolRank === 32 + index)) ||
+        (call.candidates.length === 2 &&
+          call.candidates.every((c, index) => c.poolRank === 29 + index))) &&
+      call.reservationDisposition.evidenceDigest ===
+        "b988c277eb6acc82ef3cbacde68407292ae700d2143eba6199dceb55863b1d3f"
     )
   }
   return (
@@ -1002,18 +1020,33 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
       pageSize: member.pageSize,
     }),
   )
+  const reviewedRecovery = input.recovery
+    ? REVIEWED_EDGE_RECOVERIES.find(
+        (scope) =>
+          scope.generationId === input.generationId &&
+          scope.generationInputDigest === input.generationInputDigest &&
+          scope.originalCallId === input.recovery?.originalCallId,
+      )
+    : undefined
   if (
     input.recovery &&
     (input.callId !== input.recovery.replacementCallId ||
-      members.length !== 2 ||
-      planned.some(
-        (page) =>
-          page.pageIndex !== 0 ||
-          page.candidates.length !== 4 ||
+      !reviewedRecovery ||
+      members.length !== reviewedRecovery.sources.length ||
+      planned.some((page, index) => {
+        const reviewed = reviewedRecovery.sources[index]
+        return (
+          !reviewed ||
+          page.sourceVideoId !== reviewed.sourceVideoId ||
+          page.pageIndex !== reviewed.pageIndex ||
+          page.candidates.length !==
+            reviewed.exclusiveEndRank - reviewed.startRank ||
           page.candidates.some(
-            (candidate, index) => candidate.poolRank !== index,
-          ),
-      ))
+            (candidate, offset) =>
+              candidate.poolRank !== reviewed.startRank + offset,
+          )
+        )
+      }))
   )
     throw new EdgeBatchExecutionError("input_invalid")
   if (planned.some((page) => page.sourceCandidateCount === 0)) {
@@ -1120,10 +1153,12 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     spanOffers: spanPlan.promptOffers,
     spanOfferCoverage: spanPlan.coverage,
   } satisfies EdgePromptDocument
-  const renderedPrompt = input.recovery
+  const legacyRecovery =
+    reviewedRecovery?.generationId === "subscription-astra-budget2-20261008-v4"
+  const renderedPrompt = legacyRecovery
     ? null
     : renderEdgePrompt(promptDocument)
-  // The reviewed recovery call retains its original exact bytes. New calls
+  // The v4 recovery retains its original exact bytes. Current-generation calls
   // advertise their compact encoding inside the prompt; inputDigest still
   // binds every exact byte, while the generation's semantic v1 stays stable.
   const prompt =

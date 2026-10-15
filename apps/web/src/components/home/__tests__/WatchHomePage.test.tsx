@@ -36,6 +36,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import {
   WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
+  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
   WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS,
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
 } from "@/components/home/useWatchHomeTvCarousel"
@@ -60,6 +61,10 @@ import {
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
+import {
+  useWatchModalActivity,
+  WatchModalActivityProvider,
+} from "@/components/watch/WatchModalActivityProvider"
 
 vi.mock("next/image", () => ({
   default: ({
@@ -211,6 +216,11 @@ vi.mock("@/components/ui/carousel", () => ({
   ),
 }))
 
+function WatchModalOwner({ open }: { open: boolean }) {
+  useWatchModalActivity(open, { releaseDelayMs: 0 })
+  return null
+}
+
 function makeCard(overrides: Record<string, unknown> = {}) {
   return {
     id: "card-1",
@@ -356,6 +366,12 @@ beforeEach(() => {
   carouselApi.scrollTo.mockClear()
   muxVideoHlsConfigs.length = 0
   muxVideoRenders.length = 0
+  // jsdom does not implement media playback. The intro requests playback on a
+  // timer, so an element a test never stubs would otherwise log "Not
+  // implemented" on every turn that outlives the poster hold.
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() =>
+    Promise.resolve(),
+  )
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -567,6 +583,32 @@ describe("WatchHomePage", () => {
         configurable: true,
         value: seconds,
       })
+    }
+
+    async function renderWithoutCanPlay() {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await act(async () => {
+        root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+      })
+      return currentVideo()
+    }
+
+    function currentVideo() {
+      return container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+    }
+
+    function stubPlay(video: HTMLVideoElement) {
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play as unknown as HTMLVideoElement["play"]
+      return play
+    }
+
+    function loaderCount() {
+      return container.querySelectorAll(
+        '[data-testid="watch-home-progress-loading"]',
+      ).length
     }
 
     // The ticket's own regression. Fails against the 30-second cap this change
@@ -881,6 +923,584 @@ describe("WatchHomePage", () => {
       }
     })
 
+    // iOS Safari plays Mux HLS natively and buffers only metadata until
+    // `play()` is called, so `canplay` never arrives on its own there.
+    describe("when canplay never arrives before the poster hold ends", () => {
+      // A Watch modal pauses media that starts under it and resumes only
+      // media that was already playing when it opened, so a request made
+      // while one is open would leave the hero paused after it closes.
+      async function renderUnderWatchModal(modalOpen: boolean) {
+        await act(async () => {
+          root.render(
+            <WatchModalActivityProvider>
+              <WatchModalOwner open={modalOpen} />
+              <WatchHomePage model={makeTimedSequencedModel(123)} />
+            </WatchModalActivityProvider>,
+          )
+        })
+      }
+
+      it("holds its request while a Watch modal is open and makes it on close", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await renderUnderWatchModal(false)
+          const play = stubPlay(currentVideo())
+
+          await act(async () => {
+            vi.advanceTimersByTime(500)
+          })
+          await renderUnderWatchModal(true)
+          await act(async () => {
+            vi.advanceTimersByTime(1_000)
+          })
+          expect(play).not.toHaveBeenCalled()
+
+          await renderUnderWatchModal(false)
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("holds a canplay-path request while a Watch modal is open", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await renderUnderWatchModal(false)
+          const video = currentVideo()
+          const play = stubPlay(video)
+
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          await renderUnderWatchModal(true)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(play).not.toHaveBeenCalled()
+
+          await renderUnderWatchModal(false)
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("requests playback itself once the hold ends", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          const play = stubPlay(video)
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_499)
+          })
+          expect(play).not.toHaveBeenCalled()
+
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("is not cancelled by a loadedmetadata that lands during the hold", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          const play = stubPlay(video)
+
+          await act(async () => {
+            vi.advanceTimersByTime(500)
+          })
+          await act(async () => {
+            video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(1_000)
+          })
+
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("reveals the video as soon as it plays, without a second hold or play()", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          const play = stubPlay(video)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(video.classList.contains("opacity-0")).toBe(true)
+
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+            video.dispatchEvent(new Event("playing", { bubbles: true }))
+          })
+          expect(video.classList.contains("opacity-100")).toBe(true)
+          expect(loaderCount()).toBe(0)
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("keeps a revealed video visible through a late loadedmetadata", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          stubPlay(video)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          await act(async () => {
+            video.dispatchEvent(new Event("playing", { bubbles: true }))
+          })
+          expect(video.classList.contains("opacity-100")).toBe(true)
+
+          await act(async () => {
+            video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+          })
+          expect(video.classList.contains("opacity-100")).toBe(true)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("requests playback again on the slide the hero advances to", async () => {
+        vi.useFakeTimers()
+        try {
+          const first = await renderWithoutCanPlay()
+          stubPlay(first)
+          const openingTitle = carouselLabel()
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          await act(async () => {
+            first.dispatchEvent(new Event("playing", { bubbles: true }))
+            first.dispatchEvent(new Event("ended", { bubbles: true }))
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+
+          const second = currentVideo()
+          expect(second).not.toBe(first)
+          const play = stubPlay(second)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("never plays a slide whose turn ended before its hold did", async () => {
+        vi.useFakeTimers()
+        try {
+          const first = await renderWithoutCanPlay()
+          const firstPlay = stubPlay(first)
+          await act(async () => {
+            vi.advanceTimersByTime(500)
+          })
+          await act(async () => {
+            container
+              .querySelector('button[aria-label="Show Queued Two"]')
+              ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          })
+          const secondPlay = stubPlay(currentVideo())
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_499)
+          })
+          expect(firstPlay).not.toHaveBeenCalled()
+          expect(secondPlay).not.toHaveBeenCalled()
+
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(firstPlay).not.toHaveBeenCalled()
+          expect(secondPlay).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+    })
+
+    // iOS Low Power Mode refuses even muted inline video. The refusal is a
+    // steady state, not a stall: the poster stays and the slide takes an
+    // image slide's turn instead of the loading ring and the 12 s ceiling.
+    describe("when autoplay is refused", () => {
+      function refusal() {
+        return new DOMException("Playback denied", "NotAllowedError")
+      }
+
+      function refusePlay(video: HTMLVideoElement) {
+        const play = vi.fn(() => Promise.reject(refusal()))
+        video.play = play as unknown as HTMLVideoElement["play"]
+        return play
+      }
+
+      function ringDuration() {
+        return (
+          container.querySelector(
+            '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+          ) as SVGCircleElement
+        ).style.getPropertyValue("--watch-home-progress-duration")
+      }
+
+      const REFUSED_TURN_MS = WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000
+
+      async function refuseOpeningSlide() {
+        const video = await renderWithoutCanPlay()
+        const play = refusePlay(video)
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        return { play, video }
+      }
+
+      it("keeps the poster, drops the loader, and moves on after an image slide's turn", async () => {
+        vi.useFakeTimers()
+        try {
+          const { video } = await refuseOpeningSlide()
+          const openingTitle = carouselLabel()
+
+          expect(loaderCount()).toBe(0)
+          expect(video.classList.contains("opacity-0")).toBe(true)
+          expect(ringDuration()).toBe(
+            `${WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS}s`,
+          )
+
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS - 1)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("hides a video the canplay path had already revealed", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await act(async () => {
+            root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+          })
+          const video = currentVideo()
+          refusePlay(video)
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          expect(video.classList.contains("opacity-0")).toBe(true)
+          expect(loaderCount()).toBe(0)
+
+          // The 1.5 s the canplay path already spent does not count toward
+          // the refused turn: its clock starts at the refusal.
+          const openingTitle = carouselLabel()
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS - 1)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      // A seven-second video resolves to the same duration as the refused
+      // turn, so the duration alone cannot restart the ring.
+      it("restarts the ring on refusal even when the duration does not change", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await act(async () => {
+            root.render(
+              <WatchHomePage
+                model={makeTimedSequencedModel(
+                  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
+                )}
+              />,
+            )
+          })
+          const video = currentVideo()
+          refusePlay(video)
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          const readRing = () =>
+            container.querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+          const ringBefore = readRing()
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          expect(ringDuration()).toBe(
+            `${WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS}s`,
+          )
+          expect(readRing()).not.toBe(ringBefore)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("is not parked by a stalled or pause event on the refused element", async () => {
+        vi.useFakeTimers()
+        try {
+          const { video } = await refuseOpeningSlide()
+          const openingTitle = carouselLabel()
+
+          await act(async () => {
+            video.dispatchEvent(new Event("stalled", { bubbles: true }))
+            video.dispatchEvent(new Event("pause", { bubbles: true }))
+          })
+          expect(loaderCount()).toBe(0)
+
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS)
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("retries muted once for a viewer who had unmuted, and keeps playing", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          await act(async () => {
+            container
+              .querySelector('button[aria-label="Unmute preview"]')
+              ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          })
+          expect(video.muted).toBe(false)
+
+          const play = vi
+            .fn()
+            .mockImplementationOnce(() => Promise.reject(refusal()))
+            .mockImplementation(() => Promise.resolve())
+          video.play = play as unknown as HTMLVideoElement["play"]
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          expect(play).toHaveBeenCalledTimes(2)
+          expect(video.muted).toBe(true)
+          expect(
+            container.querySelector('button[aria-label="Unmute preview"]'),
+          ).not.toBeNull()
+          // Not refused: the turn is still the video's own.
+          expect(ringDuration()).toBe("123s")
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("treats the slide as refused when the muted retry is refused too", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          await act(async () => {
+            container
+              .querySelector('button[aria-label="Unmute preview"]')
+              ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          })
+          const play = refusePlay(video)
+          const openingTitle = carouselLabel()
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          expect(play).toHaveBeenCalledTimes(2)
+          expect(loaderCount()).toBe(0)
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS)
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("ignores an aborted play()", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          video.play = vi.fn(() =>
+            Promise.reject(new DOMException("Interrupted", "AbortError")),
+          ) as unknown as HTMLVideoElement["play"]
+          const openingTitle = carouselLabel()
+          // `canplay` first, so the loading ring is down when play() is
+          // aborted: only an abort treated as a failure would raise it again.
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          expect(video.play).toHaveBeenCalledTimes(1)
+          expect(loaderCount()).toBe(0)
+          expect(ringDuration()).toBe("123s")
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS + 1)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("ignores a refusal that lands after its turn ended", async () => {
+        let rejectFirstPlay: (reason?: unknown) => void = () => undefined
+        vi.useFakeTimers()
+        try {
+          const first = await renderWithoutCanPlay()
+          first.play = vi.fn(
+            () =>
+              new Promise<void>((_resolve, reject) => {
+                rejectFirstPlay = reject
+              }),
+          ) as unknown as HTMLVideoElement["play"]
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          await act(async () => {
+            container
+              .querySelector('button[aria-label="Show Queued Two"]')
+              ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          })
+          const second = currentVideo()
+          stubPlay(second)
+          await act(async () => {
+            second.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          const secondTitle = carouselLabel()
+
+          await act(async () => {
+            rejectFirstPlay(refusal())
+            await Promise.resolve()
+          })
+
+          expect(ringDuration()).toBe("123s")
+          expect(second.classList.contains("opacity-100")).toBe(true)
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS + 1)
+          })
+          expect(carouselLabel()).toBe(secondTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("starts the next slide unrefused", async () => {
+        vi.useFakeTimers()
+        try {
+          await refuseOpeningSlide()
+          await act(async () => {
+            vi.advanceTimersByTime(REFUSED_TURN_MS)
+          })
+
+          stubPlay(currentVideo())
+          expect(ringDuration()).toBe("123s")
+          expect(loaderCount()).toBeGreaterThan(0)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("hands the turn back to the video if it starts playing after all", async () => {
+        vi.useFakeTimers()
+        try {
+          const { video } = await refuseOpeningSlide()
+          expect(ringDuration()).toBe(
+            `${WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS}s`,
+          )
+
+          await act(async () => {
+            video.dispatchEvent(new Event("playing", { bubbles: true }))
+          })
+          expect(ringDuration()).toBe("123s")
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("takes the refused path when a same-slide replay is refused", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await act(async () => {
+            root.render(
+              <WatchHomePage
+                model={makeModel({
+                  carousel: {
+                    pools: [
+                      {
+                        id: "pool-a",
+                        collectionIds: ["pool-a"],
+                        videos: [makeCarouselSlide({ durationSeconds: 123 })],
+                      },
+                    ],
+                  },
+                })}
+              />,
+            )
+          })
+          const video = currentVideo()
+          stubPlay(video)
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          refusePlay(video)
+          await act(async () => {
+            video.dispatchEvent(new Event("ended", { bubbles: true }))
+          })
+
+          expect(loaderCount()).toBe(0)
+          expect(ringDuration()).toBe(
+            `${WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS}s`,
+          )
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+    })
+
     it("holds a paused slide's turn instead of spending it", async () => {
       vi.useFakeTimers()
       try {
@@ -1041,9 +1661,11 @@ describe("WatchHomePage", () => {
       }
     })
 
-    // A refused autoplay produces no `playing`, no `pause` and no `ended`, so
-    // without this the hero would sit on a still frame for a whole film.
-    it("gives up a slide whose play() was refused", async () => {
+    // A play() that fails for a reason other than an autoplay refusal produces
+    // no `playing`, no `pause` and no `ended`, so without this the hero would
+    // sit on a still frame for a whole film. It stays on the buffering path
+    // and its 12 s ceiling; refusals have their own path below.
+    it("gives up a slide whose play() failed for another reason", async () => {
       vi.useFakeTimers()
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
@@ -1054,7 +1676,7 @@ describe("WatchHomePage", () => {
           '[data-testid="watch-home-tv-video"]',
         ) as HTMLVideoElement
         video.play = vi.fn(() =>
-          Promise.reject(new DOMException("NotAllowedError")),
+          Promise.reject(new Error("decode failed")),
         ) as unknown as HTMLVideoElement["play"]
 
         await act(async () => {
@@ -1065,8 +1687,19 @@ describe("WatchHomePage", () => {
         await act(async () => {
           vi.advanceTimersByTime(1_500)
         })
+        // Not the refused-slide clock...
         await act(async () => {
-          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS + 1)
+          vi.advanceTimersByTime(
+            WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000 + 1,
+          )
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+        // ...but the dead-stream ceiling.
+        await act(async () => {
+          vi.advanceTimersByTime(
+            WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS -
+              WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000,
+          )
         })
 
         expect(carouselLabel()).not.toBe(openingTitle)
@@ -1227,7 +1860,9 @@ describe("WatchHomePage", () => {
           ),
         ).toBeNull()
 
-        // Now the abandoned turn's promise finally rejects.
+        // Now the abandoned turn's promise finally rejects. The one-argument
+        // DOMException is named "Error", so this pins the generic-failure
+        // branch; the refusal branch has its own late-rejection case.
         await act(async () => {
           rejectFirstPlay(new DOMException("NotAllowedError"))
           await Promise.resolve()
@@ -1433,7 +2068,8 @@ describe("WatchHomePage", () => {
 
     expect(container.textContent).toContain("Рекомендуем")
     expect(container.textContent).toContain("Полнометражный фильм")
-    expect(container.textContent).toContain(
+    expect(container.textContent).toContain("Создано для всемирной миссии")
+    expect(container.textContent).not.toContain(
       "Помогите создать новое поколение инструментов для миссии",
     )
     expect(container.textContent).not.toContain("Featured")
@@ -1984,6 +2620,123 @@ describe("WatchHomePage", () => {
     })
 
     expect(video.querySelector("track[data-subtitle-track]")).toBeNull()
+  })
+
+  describe("clicking the muted intro's video area", () => {
+    function click(element: Element | null) {
+      expect(element).not.toBeNull()
+      element?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    }
+
+    async function renderHero(model: WatchHomeModel = makeModel()) {
+      await act(async () => {
+        root.render(<WatchHomePage model={model} />)
+      })
+      return container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+    }
+
+    function muteButtonLabel() {
+      return container
+        .querySelector(
+          'button[aria-label="Unmute preview"], button[aria-label="Mute preview"]',
+        )
+        ?.getAttribute("aria-label")
+    }
+
+    it("unmutes exactly as the unmute button does", async () => {
+      const video = await renderHero()
+      expect(video.muted).toBe(true)
+      expect(muteButtonLabel()).toBe("Unmute preview")
+
+      await act(async () => {
+        click(
+          container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
+        )
+      })
+
+      expect(video.muted).toBe(false)
+      expect(muteButtonLabel()).toBe("Mute preview")
+    })
+
+    it("unmutes from the title copy laid over the video", async () => {
+      const video = await renderHero()
+
+      await act(async () => {
+        click(
+          container.querySelector('[data-testid="watch-home-tv-active-title"]'),
+        )
+      })
+
+      expect(video.muted).toBe(false)
+    })
+
+    it("never mutes an unmuted intro", async () => {
+      const video = await renderHero()
+      const frame = container.querySelector(
+        '[data-testid="watch-home-tv-media-frame"]',
+      )
+
+      await act(async () => {
+        click(frame)
+      })
+      await act(async () => {
+        click(frame)
+      })
+
+      expect(video.muted).toBe(false)
+      expect(muteButtonLabel()).toBe("Mute preview")
+    })
+
+    it("leaves the intro's own controls to do only their own job", async () => {
+      const video = await renderHero()
+
+      // The mute button toggles once — the surface must not also fire on the
+      // bubbled click and cancel it back out.
+      await act(async () => {
+        click(container.querySelector('button[aria-label="Unmute preview"]'))
+      })
+      expect(video.muted).toBe(false)
+      await act(async () => {
+        click(container.querySelector('button[aria-label="Mute preview"]'))
+      })
+      expect(video.muted).toBe(true)
+
+      const watchNow = container.querySelector(
+        "a[href='/jesus.html/english.html?autoplay=1']",
+      )
+      watchNow?.addEventListener("click", (event) => event.preventDefault())
+      await act(async () => {
+        click(watchNow)
+      })
+
+      expect(video.muted).toBe(true)
+      expect(muteButtonLabel()).toBe("Unmute preview")
+    })
+
+    it("lets a timeline circle change slide without unmuting", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await renderHero(makeSequencedModel())
+      const activeTitle = () =>
+        container.querySelector('[data-testid="watch-home-tv-active-title"]')
+          ?.textContent
+
+      // A different slide's circle, not the current one: the current circle's
+      // own handler is a no-op, so it could not show the click stayed its own.
+      await act(async () => {
+        click(container.querySelector('button[aria-label="Show Queued Two"]'))
+      })
+
+      expect(activeTitle()).toBe("Queued Two")
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      expect(video.muted).toBe(true)
+      expect(muteButtonLabel()).toBe("Unmute preview")
+    })
   })
 
   it("advances between pooled library videos with no branded slide in the sequence", async () => {

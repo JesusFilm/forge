@@ -373,7 +373,8 @@ function classifyRewrite(
     if (
       localeSegment === "videos" ||
       localeSegment === "languages" ||
-      localeSegment === "history"
+      localeSegment === "history" ||
+      localeSegment === "whats-new"
     ) {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
@@ -878,20 +879,22 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, 308)
   }
 
-  if (pathname === "/history") {
+  const canonical = canonicalizeWatchPath({ rawPathname: pathname })
+  if (canonical.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = canonical.pathname
+    return buildRedirect(url, canonical.status)
+  }
+
+  // Default root rendering has no manifest admission requirement. Keep it
+  // independent of Admin latency, as the config-level root rewrite was.
+  if (pathname === "/" || pathname === "/history") {
     return rewriteToInternal(request, {
       kind: "rewrite",
       locale: DEFAULT_LOCALE,
       htmlLang: DEFAULT_LOCALE,
       pathname,
     })
-  }
-
-  const canonical = canonicalizeWatchPath({ rawPathname: pathname })
-  if (canonical.kind === "redirect") {
-    const url = request.nextUrl.clone()
-    url.pathname = canonical.pathname
-    return buildRedirect(url, canonical.status)
   }
 
   if (pathname === "/search") return redirectDeprecatedSearch(request)

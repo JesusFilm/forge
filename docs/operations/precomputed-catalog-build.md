@@ -35,18 +35,80 @@ Keep one runner and one active attempt for a generation. Do not launch several
 copies of the command to add concurrency. Each call still obtains fresh account,
 allowance and durable reservation admission. A failed task stops new work;
 already-dispatched calls drain and save their receipts before the attempt closes.
-Capacity refreshes and lease heartbeats are shared within the runner.
+Capacity refreshes and lease heartbeats are shared within the runner. A protocol-4
+attempt that closes with all physical calls receipted releases its live leases in
+the same locked transaction, allowing immediate manual continuation. An attempt
+with any pending or incomplete receipt retains its leases until expiry. Replaying
+an older close does not release claims from a later attempt.
 
 For the updated CLI, send `SIGINT` or `SIGTERM` to the actual runner Node process
 to request a graceful pause. Wait for its `operator_paused` terminal result and
 reconcile receipts before resuming with a new attempt. The signal does not kill
 active model calls; those retain their existing timeout and usage handling.
+The optional `minCallStartIntervalMs` setting (0–30,000; default 0) spaces new
+model process starts while allowing existing calls to overlap. Use it alongside
+`concurrency` when the provider rejects bursts. The delay occurs before fresh
+identity and allowance checks and before reserving a call. It adds no retries:
+a failed call without a usage receipt still pauses admission and remains unknown.
+Choose the interval from observed results; no provider rate threshold is assumed.
+
+Reservation admission waits at most 45 seconds, covering Admin's 30-second
+transaction and response overhead. Identity and allowance observations must be
+at most 15 seconds old before reservation, and still within 60 seconds when its
+reply is handled. A timeout never launches the model after a late response.
+A proven no-dispatch incident needs its explicit reviewed Admin audit; it is not
+permission to retry an uncertain dispatched model call. The third sealed incident
+is `734caa08-6a97-4704-b1a7-bab5b2b017e7`, admitted by migration 0153. Its two
+members retain their original pending usage and resume the same candidate pages.
+
 Recovery and explicit manual profile replacement remain concurrency 1. Review
 physical overlap and observe throughput at the chosen concurrency before using
 it to forecast a completion time. Earlier CLI versions do not have this signal
 handler and must not be stopped using this procedure.
 
+## Reviewed interrupted-call recovery
+
+Seven interrupted calls in `production-astra-catalog-20261013-v6` have no usage
+receipt. Their exact identities and candidate pages are pinned in Admin's
+`precomputed/reviewed-edge-recoveries.ts`; the existing v4 exception is retained.
+Only these reviewed calls can receive `edge_manual_recovery_ack`. Each needs a
+new replacement UUID, a closed original attempt, no live source leases, ready
+profiles and an explicit operator attestation that the original process exited.
+
+Run one serial `resume` with `recovery` and the exact source/end-rank bounds in
+Mastra's matching manifest. Use the frozen catalog for v6. Finish and close that
+attempt before acknowledging the next call. A replacement may evaluate only the
+original candidate page; arbitrary retries or different candidates are rejected.
+The original remains pending with null usage, and its acknowledged call/member
+records become immutable. Readiness separately qualifies each exception only
+after its replacement has known usage, an applied receipt and a closed attempt.
+Seven qualified exceptions still mean seven original calls with unknown usage.
+Normal generation completion and public activation remain separate operations.
+
 ## Prepare a protocol-4 run
+
+An explicit `resume` may supply `frozenCatalog: { path, sha256 }` in the local
+command configuration. The absolute path identifies a private JSON file bounded
+to 32 MiB. Its envelope is `{ version: "frozen_catalog_v1", generationId,
+generationInputDigest, inputCutoff, entries: [{ video, chunks }] }`, with strictly
+sorted unique video IDs and complete selected chunks ordered by chunk ID. Use
+the original captured video objects, including their Watch route identities.
+The loader verifies file bytes, generation/cutoff identity and complete chunk
+coverage; normal preflight still verifies the source set, corpus, candidate pool,
+generation input digest and the sealed GA import's route mapping. It makes no
+live GA queries and cannot start a new generation.
+
+A nightly sync can change timestamps without changing profiled content. For
+protocol-4 edge writes and ready metadata registration, Admin compares current
+content against each video's single ready `complete-profile-v6` profile in the
+same generation, including when no later timestamp remains after a deletion.
+Metadata, complete selected transcript bytes and counts
+must match exactly, and each video must still be watchable. Changed or missing
+content, another generation/cutoff, an absent/ambiguous profile, or an older
+profile format still rejects the write. Ordinary catalog reads retain their
+strict timestamp fence. Never backdate production rows or move the cutoff to
+make a resume pass. Frozen route observations describe the original GA import;
+this resume permission does not certify public serving readiness.
 
 Use the target Admin's read-only catalog to review **every** eligible source at
 one fixed UTC `inputCutoff`. Supply its strictly sorted `sourceVideoIds`,
@@ -90,8 +152,15 @@ It reports the current account reference, exact model route, billing basis and
 allowance admission without making a model call. The runner then checks the
 same initiating account and fresh identity/allowance again before inference;
 each reserved call also requires a fresh observation. Admission requires
-included-subscription billing, **more than 25% weekly allowance remaining**
-and, when a five-hour limit applies, **more than 25% of that window remaining**.
+included-subscription billing and, by default, **more than 25% remaining** in
+the weekly window and any applicable five-hour window. When the account owner
+explicitly authorizes consuming the reserve, set `minimumRemainingPercent: 0`
+in the local run config and check the same policy with
+`precomputed:subscription:check --minimum-remaining-percent 0`. Only `0` and
+`25` are supported; omission preserves 25. The account reader, catalog startup
+and every queued call enforce the selected floor. Zero remaining in either
+applicable window still refuses a new reservation. This is an admission check,
+not a provider-enforced spend cap; it does not authorize paid-credit fallback.
 Unknown, credit-only or insufficient allowance stops the run. Keep the
 operator's Codex login on their local computer; a browser Admin session or a
 shared service login is not authority to use it. Do not copy login material or

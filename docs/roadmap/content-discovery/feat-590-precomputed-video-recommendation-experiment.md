@@ -18,6 +18,60 @@ tags:
 
 ## Problem
 
+October 15: the owner authorized using all remaining included subscription
+allowance. Add an explicit zero-reserve local option while preserving the 25%
+default, exhaustion checks and unchanged generation inputs. Resume from the
+5,533 saved comparisons after normal review and release. See
+`docs/plans/2026-10-15-008-feat-explicit-subscription-reserve-plan.md`.
+
+A known-usage rejected edge response stopped the run at 4,927 comparisons and
+89 finalized sources. Add a single durably bounded retry after fresh receipt
+verification, preserving all completed pages and original usage records.
+See `docs/plans/2026-10-15-007-fix-known-rejected-edge-resume-plan.md`.
+
+All seven interrupted batches recovered, then the full run reached 3,884
+comparisons and 73 finalized sources. An uppercase source slug exposed a
+source-only analytics mapping precondition that stops the entire catalog.
+Preserve unknown analytics and coverage counts through the existing per-row
+mapping checks while continuing content comparisons; retain frozen inputs.
+See `docs/plans/2026-10-15-006-fix-unmapped-source-history-coverage-plan.md`.
+
+The deployed recovery attempt exposed a producer guard still restricted to the
+older two-source first page. Validate each executor recovery against its reviewed
+source/page/rank bounds and preserve the current generation's lossless prompt
+format. Add execution tests for all seven v6 shapes before resuming recovery.
+Unaffected catalogue generation continues on the existing released producer.
+
+The frozen resume saved three model receipts and 21 comparisons, reaching 2,930
+comparisons and 42 finalized videos. A reservation then committed after 19.177s,
+beyond the local 15s deadline but within Admin's 30s transaction allowance. Align
+reservation waiting with the existing 60s freshness budget (45s wait, observations
+at most 15s old before reserving). Audit the exact third no-dispatch reservation;
+keep its original null usage and same-page continuation constraints. Release live
+leases after a fully receipted protocol-4 attempt closes, preserving unresolved
+leases and closed-attempt replay isolation, to avoid 20-minute gaps between clean
+manual recoveries.
+
+The frozen-catalog resume fix shipped through PR #2722. Recovery now extends the
+existing operator path to the seven exact interrupted v6 calls. Preserve original
+unknown usage, bind replacements to the same frozen pages, admit them serially,
+and qualify each only after a saved receipt and closed replacement attempt.
+Native proof covers two recoveries in one generation, immutable originals and
+rejection of live leases, changed seals and reused replacement IDs.
+
+October 15 continuation: metadata-only diagnostics confirmed provider rate-limit
+errors at concurrency twelve. Add optional bounded spacing between new model
+process starts, with fresh admission after waiting and no automatic retries.
+All 1,031 profiles and 2,909 comparisons are saved; seven interrupted calls across
+ten sources still require recovery. A later catalog sync also advanced observed
+timestamps. Read-only revalidation found all profile keys, selected transcripts,
+and candidate pools unchanged. The saved original catalog also matches the
+sealed route digest. Add a hash-pinned local resume reader and generation-bound
+Admin content revalidation, preserving strict discovery and changed-content
+rejection. Native tests exercise a paused build through finalization after
+timestamp-only sync and reject altered transcript text, metadata and eligibility.
+Complete deployment and observe saved comparisons before claiming generation runs.
+
 October 14 closeout: the owner requested a full-catalogue processing target below
 eight hours. Add bounded local concurrency (1–16; default 1) for independent
 profiles and source-pair batches, retain full profiles and the same Astra model,

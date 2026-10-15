@@ -37,7 +37,8 @@ import {
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { languageCodeFor } from "@/lib/language-code"
+import { isAutoplayBlockedError } from "@/lib/autoplay-refusal"
+import { languageBadgeCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { getViewerId } from "@/lib/viewer-id"
@@ -319,15 +320,6 @@ function shouldUseFastMobilePreview(windowRef: Window): boolean {
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
-
-// `<MuxVideo>` (bare `<video>`) emits a generic error and the autoplay refusal
-// surfaces as a Promise rejection from `play()` with
-// `DOMException("NotAllowedError")`.
-function isAutoplayBlockedError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false
-  const named = err as { name?: unknown }
-  return named.name === "NotAllowedError" || named.name === "AutoplayNotAllowed"
-}
 
 // Minimum number of playable language variants before the language-switch
 // audio button appears. With only one variant there's nothing to switch to.
@@ -1493,13 +1485,18 @@ export function HeroPlayer({
     typeof onLanguageClick === "function" && hasSubtitleOptions
   const showLanguageSwitch = hasLanguageSwitcher && !isFullscreen
   const showTopLanguageSwitch = showLanguageSwitch
-  const explicitLanguageCode = languageCodeFor({ slug: languageSlug })
-  const variantLanguageCode = languageCodeFor({
+  const explicitLanguageCode = languageBadgeCodeFor({ slug: languageSlug })
+  const variantLanguageCode = languageBadgeCodeFor({
     bcp47: variant.language?.bcp47,
     iso3: variant.language?.iso3,
     slug: variant.language?.slug,
   })
   const languageCode = explicitLanguageCode ?? variantLanguageCode
+  const languageName = explicitLanguageCode
+    ? variant.language?.slug === languageSlug
+      ? (variant.language?.name ?? explicitLanguageCode)
+      : explicitLanguageCode
+    : variant.language?.name
   const headerLanguageSwitcherOwnerToken = useRef(
     Symbol("hero-player-language-switcher"),
   ).current
@@ -1605,6 +1602,8 @@ export function HeroPlayer({
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
             languageCode: showTopLanguageSwitch ? languageCode : null,
+            languageName:
+              showTopLanguageSwitch && languageCode ? languageName : null,
             ownerToken: headerLanguageSwitcherOwnerToken,
           },
         },
@@ -1613,6 +1612,7 @@ export function HeroPlayer({
   }, [
     headerLanguageSwitcherOwnerToken,
     languageCode,
+    languageName,
     onLanguageClick,
     showTopLanguageSwitch,
   ])
@@ -1628,6 +1628,7 @@ export function HeroPlayer({
               visible: false,
               onClick: null,
               languageCode: null,
+              languageName: null,
               ownerToken: headerLanguageSwitcherOwnerToken,
             },
           },
@@ -1881,6 +1882,7 @@ export function HeroPlayer({
             playbackLoading={heroPlayerLoading}
             onLanguageClick={onLanguageClick}
             languageCode={languageCode}
+            languageName={languageName}
             subtitleLanguageCode={subtitleLanguageCode}
             subtitleEnabled={Boolean(subtitleVttSrc)}
             // In-chrome audio control intentionally stays visible in fullscreen

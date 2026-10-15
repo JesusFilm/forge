@@ -7,6 +7,11 @@ tags: [nextjs, isr, apollo, graphql, strapi, webhook, revalidation]
 
 # Route-Level ISR with Apollo GraphQL
 
+> **Routing policy superseded 2026-10-15:** the ISR guidance remains useful,
+> but its `Accept-Language` redirect examples are historical. Watch language is
+> now selected only by the public URL. See
+> `docs/solutions/architecture-patterns/watch-language-routing-is-url-only.md`.
+
 ## Problem
 
 Experience pages need ISR: cached indefinitely, revalidated on-demand when Strapi content changes. The data layer uses Apollo Client with gql.tada typed operations.

@@ -1,3 +1,4 @@
+import { REVIEWED_EDGE_RECOVERIES } from "./reviewed-edge-recoveries"
 import { createHash, randomUUID } from "node:crypto"
 
 import { z } from "zod"
@@ -42,8 +43,6 @@ const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex")
 // The operator-only command names this one reviewed recovery checkpoint.
 const RECOVERY_GENERATION_ID = "subscription-astra-budget2-20261008-v4"
-const RECOVERY_GENERATION_INPUT_DIGEST =
-  "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
 const RECOVERY_ORIGINAL_CALL_ID = "8ab8a620-1608-4115-812e-200bb2fb4b6d"
 const RECOVERY_SOURCE_IDS = [
   "cmokmj8ka0njkqsccfvhbto3g",
@@ -136,6 +135,8 @@ export type ManualSubscriptionCatalogPorts = {
 }
 
 export type ManualSubscriptionCatalogOptions = {
+  /** Must match the account reader and per-call model admission policy. */
+  minimumRemainingPercent?: 0 | 25
   /** Independent profiles/source pairs; calls within one profile stay ordered. */
   concurrency?: number
   /** Stop new work and drain dispatched calls before closing the attempt. */
@@ -459,13 +460,27 @@ type ActiveSource = {
   finalized: boolean
 }
 
+type EdgeCall = Awaited<
+  ReturnType<EdgeBatchPersistencePort["status"]>
+>["calls"][number]
+
+function knownRejectedCall(call: EdgeCall): boolean {
+  // Admin's terminal-call constraint requires a usage receipt before this state.
+  return (
+    call.status === "rejected" &&
+    call.applicationState === "rejected_unapplied" &&
+    call.finishedAt !== null &&
+    call.appliedRevision === null
+  )
+}
+
 async function sourceProgress(
   source: ActiveSource,
   edgePersistence: EdgeBatchPersistencePort,
   generationId: string,
   generationInputDigest: string,
   recovery?: { originalCallId: string; replacementCallId: string },
-): Promise<void> {
+): Promise<EdgeCall[]> {
   let afterCallId: string | undefined
   const calls: Awaited<
     ReturnType<EdgeBatchPersistencePort["status"]>
@@ -513,7 +528,13 @@ async function sourceProgress(
     )
   )
     throw new ManualSubscriptionCatalogError("usage_uncertain")
-  if (calls.some((call) => call.applicationState === "rejected_unapplied"))
+  if (
+    calls.some(
+      (call) =>
+        call.applicationState === "rejected_unapplied" &&
+        !knownRejectedCall(call),
+    )
+  )
     throw new ManualSubscriptionCatalogError("source_failed")
   if (calls.some((call) => call.applicationState === "stale_unapplied"))
     throw new ManualSubscriptionCatalogError("usage_uncertain")
@@ -567,6 +588,13 @@ async function sourceProgress(
   }
   source.startRank = rank
   source.pageIndex = applied.length
+  // One retry per unapplied page, counted from durable history across restarts.
+  if (
+    calls.filter(
+      (call) => knownRejectedCall(call) && call.pageIndex === source.pageIndex,
+    ).length >= 2
+  )
+    throw new ManualSubscriptionCatalogError("source_failed")
   if (
     applied.length > 0 &&
     applied.at(-1)!.appliedRevision !== firstStatus?.checkpointRevision
@@ -575,6 +603,7 @@ async function sourceProgress(
   if (firstStatus) source.checkpointRevision = firstStatus.checkpointRevision
   if (source.startRank > source.exclusiveEndRank)
     throw new ManualSubscriptionCatalogError("catalog_mismatch")
+  return calls
 }
 
 /** Explicit invocation only. Every external capability is injected by the local CLI. */
@@ -583,6 +612,9 @@ export async function runManualSubscriptionCatalog(
   ports: ManualSubscriptionCatalogPorts,
   options: ManualSubscriptionCatalogOptions = {},
 ): Promise<ManualSubscriptionCatalogResult> {
+  const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
+  if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
+    throw new ManualSubscriptionCatalogError("input_invalid")
   const concurrency = options.concurrency ?? 1
   if (
     !Number.isSafeInteger(concurrency) ||
@@ -614,21 +646,28 @@ export async function runManualSubscriptionCatalog(
       !input.reviewed.sourceVideoIds.includes(input.profileReplacement.videoId))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
+  const recoveryScope =
+    input.recovery &&
+    REVIEWED_EDGE_RECOVERIES.find(
+      (scope) =>
+        scope.generationId === input.generationId &&
+        scope.generationInputDigest === input.generationInputDigest &&
+        scope.originalCallId === input.recovery?.originalCallId,
+    )
   if (
     input.recovery &&
-    (input.invocation !== "resume" ||
-      input.generationId !== RECOVERY_GENERATION_ID ||
-      input.generationInputDigest !== RECOVERY_GENERATION_INPUT_DIGEST ||
-      input.recovery.originalCallId !== RECOVERY_ORIGINAL_CALL_ID ||
-      input.recovery.replacementCallId === RECOVERY_ORIGINAL_CALL_ID ||
+    (!recoveryScope ||
+      input.invocation !== "resume" ||
+      input.recovery.replacementCallId === input.recovery.originalCallId ||
       !z.uuid().safeParse(input.recovery.replacementCallId).success ||
       input.recovery.oldProcessExitedAttested !== true ||
       input.work.mode !== "pilot" ||
-      input.work.sources.length !== RECOVERY_SOURCE_IDS.length ||
-      input.work.sources.some(
-        (item, index) =>
-          item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
-          item.exclusiveEndRank !== 4,
+      !sameCanonicalJson(
+        input.work.sources,
+        recoveryScope.sources.map(({ sourceVideoId, exclusiveEndRank }) => ({
+          sourceVideoId,
+          exclusiveEndRank,
+        })),
       ))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
@@ -780,11 +819,12 @@ export async function runManualSubscriptionCatalog(
       },
     ) ||
     !Number.isFinite(attestation.allowance.weeklyRemainingPercent) ||
-    attestation.allowance.weeklyRemainingPercent <= 25 ||
+    attestation.allowance.weeklyRemainingPercent <= minimumRemainingPercent ||
     attestation.allowance.weeklyRemainingPercent > 100 ||
     (attestation.allowance.fiveHour.kind === "limited" &&
       (!Number.isFinite(attestation.allowance.fiveHour.remainingPercent) ||
-        attestation.allowance.fiveHour.remainingPercent <= 25 ||
+        attestation.allowance.fiveHour.remainingPercent <=
+          minimumRemainingPercent ||
         attestation.allowance.fiveHour.remainingPercent > 100))
   )
     throw new ManualSubscriptionCatalogError("admission_refused")
@@ -1078,8 +1118,8 @@ export async function runManualSubscriptionCatalog(
     if (input.recovery) {
       const acknowledged = await send(
         z.object({
-          generationId: z.literal(RECOVERY_GENERATION_ID),
-          originalCallId: z.literal(RECOVERY_ORIGINAL_CALL_ID),
+          generationId: z.literal(input.generationId),
+          originalCallId: z.literal(input.recovery.originalCallId),
           replacementCallId: z.uuid(),
           state: z.literal("acknowledged_unknown"),
           replay: z.boolean(),
@@ -1440,25 +1480,60 @@ export async function runManualSubscriptionCatalog(
         // An empty page finalizes inside the executor. Drain its heartbeat first.
         if (batch[0]!.orderedCandidateIds.length === 0)
           await stopHeartbeat(batch[0]!.source.id)
-        const result = await runEdgeBatch({
-          ...scope,
-          attemptId: input.attemptId,
-          callId: input.recovery?.replacementCallId ?? randomUUID(),
-          inputCutoff: input.inputCutoff,
-          selectedCorpusDigest: input.reviewed.selectedCorpusDigest,
-          candidatePoolDigest: input.reviewed.candidatePoolDigest,
-          captureRefDigest: importedHistory.importBinding.bindingDigest,
-          modelId: PRECOMPUTED_MODEL_ID,
-          backend: "codex_chatgpt_subscription",
-          promptVersion: EDGE_PROMPT_VERSION,
-          schemaVersion: EDGE_SCHEMA_VERSION,
-          members,
-          catalog: frozen.catalog,
-          model: admittedModel,
-          persistence: ports.edgePersistence,
-          historical,
-          ...(input.recovery ? { recovery: input.recovery } : {}),
-        })
+        const callId = input.recovery?.replacementCallId ?? randomUUID()
+        let result: Awaited<ReturnType<typeof runEdgeBatch>>
+        try {
+          result = await runEdgeBatch({
+            ...scope,
+            attemptId: input.attemptId,
+            callId,
+            inputCutoff: input.inputCutoff,
+            selectedCorpusDigest: input.reviewed.selectedCorpusDigest,
+            candidatePoolDigest: input.reviewed.candidatePoolDigest,
+            captureRefDigest: importedHistory.importBinding.bindingDigest,
+            modelId: PRECOMPUTED_MODEL_ID,
+            backend: "codex_chatgpt_subscription",
+            promptVersion: EDGE_PROMPT_VERSION,
+            schemaVersion: EDGE_SCHEMA_VERSION,
+            members,
+            catalog: frozen.catalog,
+            model: admittedModel,
+            persistence: ports.edgePersistence,
+            historical,
+            ...(input.recovery ? { recovery: input.recovery } : {}),
+          })
+        } catch (error) {
+          if (input.recovery) throw error
+          const rejected: Array<{ sourceVideoId: string; call: EdgeCall }> = []
+          for (const source of batch) {
+            const calls = await sourceProgress(
+              source,
+              ports.edgePersistence,
+              input.generationId,
+              input.generationInputDigest,
+            )
+            const call = calls.find((item) => item.callId === callId)
+            if (call) rejected.push({ sourceVideoId: source.source.id, call })
+          }
+          const rejectedSourceIds = rejected
+            .map((item) => item.sourceVideoId)
+            .sort()
+          if (
+            rejected.length === 0 ||
+            rejected.some(
+              ({ call }) =>
+                !knownRejectedCall(call) ||
+                !sameCanonicalJson(
+                  call.memberSourceVideoIds,
+                  rejectedSourceIds,
+                ),
+            )
+          )
+            throw error
+          // A fresh read proved every actual member unapplied with known usage.
+          // Shrunk batches may omit a source; the next loop still resumes its rank.
+          continue
+        }
         if (result.state !== "succeeded" && result.state !== "no_call")
           throw new ManualSubscriptionCatalogError("source_failed")
         for (const page of result.pages) {

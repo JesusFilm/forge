@@ -86,7 +86,7 @@ describe("contingent public Watch live readiness", () => {
     ).toEqual([])
   })
 
-  it("qualifies only one proven acknowledged unknown call without hiding its usage", () => {
+  it("qualifies the reviewed unknown calls without hiding their usage", () => {
     const facts = verified()
     const generation = {
       ...facts.generation,
@@ -97,6 +97,26 @@ describe("contingent public Watch live readiness", () => {
       qualifiedAcknowledgmentDigest: "f".repeat(64),
     }
     expect(evaluatePrecomputedLiveFacts({ ...facts, generation })).toEqual([])
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        generation: {
+          ...generation,
+          unknownModelCostCount: 7,
+          qualifiedAcknowledgedUnknownCount: 7,
+        },
+      }),
+    ).toEqual([])
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        generation: {
+          ...generation,
+          unknownModelCostCount: 8,
+          qualifiedAcknowledgedUnknownCount: 8,
+        },
+      }),
+    ).toContain("model_usage_unknown")
     expect(
       evaluatePrecomputedLiveFacts({
         ...facts,
