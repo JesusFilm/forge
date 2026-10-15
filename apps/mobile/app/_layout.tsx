@@ -134,6 +134,9 @@ try {
   // the layout returns a bare view and the host does not mount at all.
   nativeSplash.preventNativeSplashAutoHide()
   getSplashSession?.().start()
+  // feat-699 KTD3: iOS draws its own sheets, alerts and keyboard dark, from
+  // the first frame. The reader still follows the phone (usePhoneColorScheme).
+  require("../src/lib/appearance/darkInterfaceStyle").applyDarkInterfaceStyle()
   // KTD3: module scope, so the first frame and the first request use the
   // phone's language. A failed phone read keeps English and does not throw.
   const localeStore = require("../src/i18n/localeStore")

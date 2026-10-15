@@ -1,8 +1,8 @@
 // What the three reader sheet routes read (feat-553 U10): the reader's theme
 // and the bundled catalog.
 import { useCallback, useEffect, useState } from "react"
-import { useColorScheme } from "react-native"
 
+import { usePhoneColorScheme } from "../../../hooks/usePhoneColorScheme"
 import type { BundledResult } from "../../../lib/bible/data/bundled"
 import type { Catalog } from "../../../lib/bible/data/catalog"
 import {
@@ -22,7 +22,7 @@ export function useReaderSheetTheme(store: ReaderSettingsStore): {
   tokens: ReaderTokens
 } {
   const settings = useReaderSettings(store)
-  const systemScheme = useColorScheme()
+  const systemScheme = usePhoneColorScheme()
   return {
     settings,
     tokens: readerTokens(resolveReaderTheme(settings.mode, systemScheme)),

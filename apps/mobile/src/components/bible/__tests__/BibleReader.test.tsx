@@ -53,6 +53,11 @@ jest.mock("../../../contexts/WatchPreferencesProvider", () => ({
 jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }))
+// The phone's own setting, which System mode follows (feat-699 KTD4).
+const mockPhone: { scheme: "light" | "dark" | null } = { scheme: null }
+jest.mock("../../../hooks/usePhoneColorScheme", () => ({
+  usePhoneColorScheme: () => mockPhone.scheme,
+}))
 
 import { stubBookNamesStore } from "../../../test-utils/bookNamesStub"
 import { StrictMode, act } from "react"
@@ -389,6 +394,7 @@ beforeEach(() => {
     }),
   )
   mockStatusBars.length = 0
+  mockPhone.scheme = null
   mockFocus.focused = true
   mockWatchPrefs.audioLanguageIso3 = null
   mockWatchPrefs.isReady = true
@@ -1233,6 +1239,22 @@ describe("BibleReader — theme read from the rendered tree", () => {
         ).toBeGreaterThanOrEqual(4.5)
       }
       expect(page).toBe(readerTokens(mode).background)
+    },
+  )
+
+  it.each(["light", "dark"] as const)(
+    "covers AE2: in System mode, a %s phone gives the page that theme's tokens",
+    async (phone) => {
+      mockPhone.scheme = phone
+      const { services } = makeServices()
+      services.settingsStore.update({ mode: "system" })
+      const renderer = await render(services)
+
+      const [root] = byTestId(renderer, "bible-reader")
+      expect(String(flat(root!).backgroundColor)).toBe(
+        readerTokens(phone).background,
+      )
+      expect(mockStatusBars).toContain(readerTokens(phone).statusBarStyle)
     },
   )
 })

@@ -70,6 +70,11 @@ jest.mock("../../../../contexts/WatchPreferencesProvider", () => ({
 jest.mock("../../../../hooks/useIsTabletLayout", () => ({
   useIsTabletLayout: () => mockRoute.tablet,
 }))
+// The phone's own setting, which System mode follows (feat-699 KTD4).
+const mockPhone: { scheme: "light" | "dark" | null } = { scheme: null }
+jest.mock("../../../../hooks/usePhoneColorScheme", () => ({
+  usePhoneColorScheme: () => mockPhone.scheme,
+}))
 // FlashList virtualizes against a layout jest never measures, so render the
 // header and every row inline instead.
 const mockPresentDownload = jest.fn((_context: unknown) => Promise.resolve())
@@ -267,6 +272,7 @@ beforeEach(() => {
   mockRoute.screenOptions = []
   mockRoute.audioLanguage = null
   mockRoute.tablet = false
+  mockPhone.scheme = null
 })
 
 afterEach(async () => {
@@ -458,6 +464,17 @@ describe("reader-passage route", () => {
     await renderRoute(ReaderPassageRoute)
     expect(lastBackground()).toBe(readerTokens("trueDark").background)
   })
+
+  it.each(["light", "dark"] as const)(
+    "covers AE2: in System mode, a %s phone paints the sheet in that theme",
+    async (phone) => {
+      mockPhone.scheme = phone
+      const { settings } = install()
+      settings.update({ mode: "system" })
+      await renderRoute(ReaderPassageRoute)
+      expect(lastBackground()).toBe(readerTokens(phone).background)
+    },
+  )
 })
 
 describe("reader-translation route", () => {

@@ -13,7 +13,6 @@ import {
   StyleSheet,
   Text,
   View,
-  useColorScheme,
   useWindowDimensions,
   type LayoutChangeEvent,
 } from "react-native"
@@ -23,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { useIsTabletLayout } from "../../hooks/useIsTabletLayout"
+import { usePhoneColorScheme } from "../../hooks/usePhoneColorScheme"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useScreenReaderEnabled } from "../../hooks/useScreenReaderEnabled"
 import { useT } from "../../i18n/useT"
@@ -251,7 +251,7 @@ export function BibleReader(props: BibleReaderProps) {
   const onboarding = useReaderOnboarding(onboardingStore)
   const position = useReadingPosition(services.positionStore)
   useSavedStart(services.positionStore, props.startRef)
-  const systemScheme = useColorScheme()
+  const systemScheme = usePhoneColorScheme()
   const tokens = readerTokens(resolveReaderTheme(settings.mode, systemScheme))
   const focused = useIsFocused()
   const { audioLanguageIso3, isReady } = useWatchPreferences()
