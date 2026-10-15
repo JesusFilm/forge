@@ -77,6 +77,8 @@ vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
   return {
     ...actual,
+    useLocale: () => getLanguagePickerCatalogState().locale,
+    useMessages: () => getLanguagePickerCatalogState().messages,
     useTranslations: (namespace: string) => {
       const { locale, messages } = getLanguagePickerCatalogState()
       return actual.createTranslator({
@@ -1102,6 +1104,41 @@ describe("LanguagePickerModal — globe overlay", () => {
     const triggers = $$('[data-testid="language-combobox-trigger"]')
     expect(triggers.length).toBe(2)
     expect(triggers[1]?.textContent).toContain("English")
+  })
+
+  it("formats the subtitle language count from the shared table, not the browser's ICU", () => {
+    // Chromium has no Assamese number data and would format this count in the
+    // visitor's browser locale ("2"); the server uses Bengali digits ("২").
+    setLanguagePickerCatalog(enMessages, "as")
+    const NativeNumberFormat = Intl.NumberFormat
+    const numberFormatSpy = vi
+      .spyOn(Intl, "NumberFormat")
+      .mockImplementation(
+        ((_locales?: string | string[], options?: Intl.NumberFormatOptions) =>
+          new NativeNumberFormat(
+            "de",
+            options,
+          )) as unknown as typeof Intl.NumberFormat,
+      )
+    try {
+      renderModal({
+        open: true,
+        variants: baseVariants,
+        currentLanguageSlug: "english",
+        subtitles: [
+          makeSubtitle("sub-es", "spanish", "Spanish"),
+          makeSubtitle("sub-fr", "french", "French"),
+        ],
+        currentSubtitleEnabled: false,
+        currentSubtitleSlug: null,
+      })
+
+      expect(
+        $('[data-testid="watch-language-picker-subtitle-count"]')?.textContent,
+      ).toBe("২ languages")
+    } finally {
+      numberFormatSpy.mockRestore()
+    }
   })
 
   it("makes unavailable captions explicit while allowing translated subtitle selection", () => {

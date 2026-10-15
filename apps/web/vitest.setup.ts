@@ -4,7 +4,7 @@ import enMessages from "./messages/en.json"
 import ruMessages from "./messages/ru.json"
 import zhHansMessages from "./messages/zh-Hans.json"
 
-const { createTranslator } =
+const { _createCache, _createIntlFormatters, createTranslator } =
   await vi.importActual<typeof import("next-intl")>("next-intl")
 
 process.env.CI ??= "1"
@@ -37,7 +37,11 @@ function makeT(namespace: string, locale = activeLocale) {
 }
 
 vi.mock("next-intl", () => ({
+  _createCache,
+  _createIntlFormatters,
+  createTranslator,
   useLocale: () => activeLocale,
+  useMessages: () => catalogs[activeLocale] ?? catalogs.en,
   useTranslations: (namespace: string) => makeT(namespace),
   useFormatter: () => ({
     dateTime: (value: Date, options?: Intl.DateTimeFormatOptions) =>
@@ -53,6 +57,10 @@ vi.mock("next-intl/server", () => ({
     activeLocale = locale
   }),
   getLocale: vi.fn(async () => activeLocale),
+  getMessages: vi.fn(async (request?: { locale?: string }) => {
+    const locale = request?.locale ?? activeLocale
+    return catalogs[locale] ?? catalogs.en
+  }),
   getTranslations: vi.fn(
     async (request: string | { locale?: string; namespace: string }) => {
       const namespace =

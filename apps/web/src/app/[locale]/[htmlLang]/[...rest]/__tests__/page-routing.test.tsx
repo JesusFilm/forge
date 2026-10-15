@@ -155,7 +155,7 @@ import type { WatchVideoRecord } from "@/lib/content"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { asLocaleSlug, watchSubtitleIntentSegment } from "@/lib/routes"
 import { stripHtmlSuffix } from "@/lib/url-shape"
-import { getTranslations } from "next-intl/server"
+import { getMessages } from "next-intl/server"
 
 let container: HTMLDivElement
 let root: Root
@@ -2123,18 +2123,14 @@ describe("Catch-all routing — series branch (2-seg)", () => {
   })
 
   it("serializes route-localized Xhosa hero count labels deterministically", async () => {
-    vi.mocked(getTranslations).mockResolvedValueOnce(((
-      key: string,
-      values?: { count?: number },
-    ) => {
-      const count = values?.count ?? 0
-      const formattedCount = new Intl.NumberFormat("xh").format(count)
-      if (key === "audioTranslationCount") {
-        return `${formattedCount} iinguqulelo zesandi`
-      }
-      expect(key).toBe("subtitleCount")
-      return `${formattedCount} imibhalo engezantsi`
-    }) as never)
+    vi.mocked(getMessages).mockResolvedValueOnce({
+      HeroPlayer: {
+        audioTranslationCount:
+          "{count, plural, one {# inguqulelo yesandi} other {# iinguqulelo zesandi}}",
+        subtitleCount:
+          "{count, plural, one {# umbhalo ongezantsi} other {# imibhalo engezantsi}}",
+      },
+    })
     const watchVideoResult = makeWatchVideoResult("featureFilm", {
       slug: "xhosa",
       bcp47: "xh",
@@ -2174,13 +2170,26 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       },
     ]
     mockRouteVideo(watchVideoResult)
+    // The labels come from the shared count table, so a runtime whose ICU
+    // formats Xhosa differently (here: as German) cannot change them.
+    const NativeNumberFormat = Intl.NumberFormat
+    const numberFormatSpy = vi
+      .spyOn(Intl, "NumberFormat")
+      .mockImplementation(
+        ((_locales?: string | string[], options?: Intl.NumberFormatOptions) =>
+          new NativeNumberFormat(
+            "de",
+            options,
+          )) as unknown as typeof Intl.NumberFormat,
+      )
 
-    await render2Seg("storyclubs", "xhosa")
+    try {
+      await render2Seg("storyclubs", "xhosa")
+    } finally {
+      numberFormatSpy.mockRestore()
+    }
 
-    expect(vi.mocked(getTranslations)).toHaveBeenLastCalledWith({
-      locale: "xh",
-      namespace: "HeroPlayer",
-    })
+    expect(vi.mocked(getMessages)).toHaveBeenLastCalledWith({ locale: "xh" })
 
     const props = watchPageClientMock.mock.calls[0]?.[0] as {
       mergedBlocks: Array<{

@@ -11,6 +11,7 @@ import type {
   WatchLanguageIndexLanguage,
   WatchLanguageIndexRegion,
 } from "@/lib/language-index"
+import { useCountTranslations } from "@/i18n/use-count-translations"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { isDeclarableHtmlLangTag, textDirectionForLocale } from "@/lib/locale"
 import {
@@ -193,6 +194,7 @@ function CountryLanguages({
   regionName: string
 }) {
   const t = useTranslations("WatchLanguageIndex")
+  const tCount = useCountTranslations("WatchLanguageIndex")
   const hiddenLanguageCount = Math.max(
     0,
     country.languages.length - COUNTRY_LANGUAGE_PREVIEW_COUNT,
@@ -231,7 +233,7 @@ function CountryLanguages({
             </bdi>
           </h4>
           <p className="m-0 mt-0.5 text-base sm:text-sm leading-tight font-semibold text-stone-400">
-            {t("languageCount", { count: country.languages.length })}
+            {tCount("languageCount", { count: country.languages.length })}
           </p>
         </div>
       </header>
@@ -281,6 +283,7 @@ function RegionLanguages({
   region: WatchLanguageIndexRegion
 }) {
   const t = useTranslations("WatchLanguageIndex")
+  const tCount = useCountTranslations("WatchLanguageIndex")
   const artwork = REGION_ARTWORK[region.name] ?? FALLBACK_REGION_ARTWORK
 
   return (
@@ -303,7 +306,7 @@ function RegionLanguages({
             </bdi>
           </h3>
           <span className="mt-2 text-lg leading-none font-bold text-stone-200 [text-shadow:0_2px_12px_rgba(0,0,0,0.5)]">
-            {t("languageCount", { count: region.languages.length })}
+            {tCount("languageCount", { count: region.languages.length })}
           </span>
         </span>
       </header>
@@ -330,6 +333,7 @@ export function WatchLanguageIndexBrowser({
   regions,
 }: WatchLanguageIndexBrowserProps) {
   const t = useTranslations("WatchLanguageIndex")
+  const tCount = useCountTranslations("WatchLanguageIndex")
   const locale = useLocale()
   const [searchValue, setSearchValue] = useState("")
   const [expandedCountryKeys, setExpandedCountryKeys] = useState<
@@ -474,7 +478,7 @@ export function WatchLanguageIndexBrowser({
         className="m-0 mt-2 text-base sm:text-sm font-bold text-stone-400"
         aria-live="polite"
       >
-        {t("languageCount", { count: visibleLanguageCount })}
+        {tCount("languageCount", { count: visibleLanguageCount })}
       </p>
 
       {regionGroups.length > 0 ? (

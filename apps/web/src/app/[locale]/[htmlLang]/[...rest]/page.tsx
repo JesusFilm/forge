@@ -6,7 +6,7 @@ import {
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
-import { getTranslations, setRequestLocale } from "next-intl/server"
+import { getMessages, setRequestLocale } from "next-intl/server"
 import type { ReactNode } from "react"
 
 import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
@@ -22,6 +22,7 @@ import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
 import { resolveDownloadSequence } from "@/components/watch/download-link"
+import { createCountTranslator } from "@/i18n/count-format"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
@@ -689,7 +690,15 @@ export default async function SlugRestPage({ params }: PageProps) {
   const translateAvailabilityCountsPromise =
     shape.kind === "one-segment"
       ? null
-      : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
+      : getMessages({ locale: shape.locale }).then((heroMessages) =>
+          // Counts render through the shared table so these server-formatted
+          // labels match the client-formatted language-picker counts.
+          createCountTranslator({
+            locale: shape.locale,
+            messages: heroMessages,
+            namespace: "HeroPlayer",
+          }),
+        )
   // Started early so it overlaps the message load, but it is only awaited after
   // that load. Without a handler attached now, a rejection while the load is
   // pending (or after the load rejects and the page has already thrown) is an

@@ -25,7 +25,8 @@
     "probe:watch-urls": "tsx scripts/probe-watch-urls.ts",
     "probe:watch-video-snapshot": "tsx scripts/probe-watch-video-snapshot.ts",
     "generate:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts",
-    "check:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts --check"
+    "check:language-bcp47-map": "tsx scripts/generate-language-bcp47-map.ts --check",
+    "generate:count-number-formats": "node scripts/generate-count-number-formats.mjs"
   },
   "dependencies": {
     "@apollo/client": "^4.1.4",

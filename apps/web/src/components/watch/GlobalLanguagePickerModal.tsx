@@ -33,6 +33,7 @@ import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalView
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPublicWatchLanguageSlug } from "@/lib/locale"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
+import { useCountTranslations } from "@/i18n/use-count-translations"
 import {
   languageVideosIndexPath,
   languagesIndexPath,
@@ -108,6 +109,7 @@ export function GlobalLanguagePickerModal({
   returnFocusRef,
 }: GlobalLanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
+  const tCount = useCountTranslations("LanguagePickerModal")
   const searchT = useTranslations("SearchOverlay")
   const router = useRouter()
   const modalRef = useRef<HTMLDivElement>(null)
@@ -276,7 +278,7 @@ export function GlobalLanguagePickerModal({
       invalidSelection: searchT("tryDifferentKeywordsOrLanguage"),
       loading: searchT("loading"),
       unavailable: searchT("connectionHint"),
-      languageCount: (count) => t("languageCount", { count }),
+      languageCount: (count) => tCount("languageCount", { count }),
     },
   )
 
@@ -327,9 +329,9 @@ export function GlobalLanguagePickerModal({
               allLanguagesLabel={t("seeAllLanguages")}
               countLabel={
                 loadState.status === "ready"
-                  ? t("languageCount", { count: options.length })
+                  ? tCount("languageCount", { count: options.length })
                   : loadState.status === "empty"
-                    ? t("languageCount", { count: 0 })
+                    ? tCount("languageCount", { count: 0 })
                     : undefined
               }
               heading={t("languageHeading")}
@@ -353,7 +355,7 @@ export function GlobalLanguagePickerModal({
                 data-testid="global-language-picker-empty"
                 className="rounded-2xl border border-white/10 bg-white/5 p-5 text-stone-300"
               >
-                {t("languageCount", { count: 0 })}
+                {tCount("languageCount", { count: 0 })}
               </div>
             ) : null}
 
