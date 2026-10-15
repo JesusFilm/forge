@@ -1,4 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
+import type { SearchLanguageOption } from "@/lib/search-language"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import {
@@ -1000,14 +1001,16 @@ type AdminVideoRouteSnapshotParentRelation = {
     | null
 }
 
+type AdminRequestedLanguageRaw = {
+  slug?: string | null
+  name?: unknown
+  bcp47?: string | null
+} | null
+
 type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
-    requestedLanguage?: {
-      slug?: string | null
-      name?: unknown
-      bcp47?: string | null
-    } | null
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
@@ -2116,10 +2119,24 @@ async function queryWatchLanguagePickerVariantsBySlug(
   return result.data?.videoBySlug ?? null
 }
 
+// TEMPORARY (FGE-284): deploy-window shim for the additive
+// `WatchRouteSnapshot.requestedLanguage` field. Remove once admin with that
+// field is live in every environment plus one release: delete this cooldown,
+// `isRequestedLanguageSchemaLag`, the retry branches in
+// `queryWatchVideoRouteSnapshotBySlug`, and
+// `getLegacyWatchVideoRouteSnapshotBySlugOperation` (fragments/watch-video.ts,
+// its barrel export, the `visit` import and tests). Grep: `TEMPORARY (FGE-284)`.
+//
 // Retry only the exact additive-field validation failure during independent
 // deploys. A brief process-local cooldown avoids repeated failed probes; all
 // other GraphQL/server failures preserve their existing error behavior.
 let requestedLanguageSnapshotRetryAfter = 0
+function noteRequestedLanguageSchemaLag(videoSlug: string) {
+  requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+  logWatchServerEvent("watch_route_snapshot.requested_language_schema_lag", {
+    videoSlug,
+  })
+}
 function isRequestedLanguageSchemaLag(result: {
   error?: ErrorLike | null
   errors?: unknown[]
@@ -2172,11 +2189,11 @@ async function queryWatchVideoRouteSnapshotBySlug(
       !isRequestedLanguageSchemaLag({ error: error as ErrorLike })
     )
       throw error
-    requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+    noteRequestedLanguageSchemaLag(videoSlug)
     result = await query(true)
   }
   if (!useLegacy && isRequestedLanguageSchemaLag(result)) {
-    requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+    noteRequestedLanguageSchemaLag(videoSlug)
     result = await query(true)
   }
 
@@ -2269,13 +2286,7 @@ export const resolveWatchLanguagePickerVariants = cache(
 )
 
 export type WatchUnavailableRecoveryTarget = {
-  requestedLanguage: {
-    publicSlug: string
-    englishName: string
-    nativeName: string | null
-    bcp47: string | null
-    regionNames: string[]
-  } | null
+  requestedLanguage: SearchLanguageOption | null
   contentTitle: string | null
   imageUrl: string | null
 }
@@ -2400,11 +2411,7 @@ function mergeParentRelationsShellAndCopy(
 
 function mergeWatchVideoShellWithCopy(
   shell: AdminVideoRaw & {
-    requestedLanguage?: {
-      slug?: string | null
-      name?: unknown
-      bcp47?: string | null
-    } | null
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     variants?: AdminVideoVariantRaw[] | null

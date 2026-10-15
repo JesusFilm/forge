@@ -497,7 +497,8 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
   `,
 )
 
-// Admin and Web deploy independently. Keep the prior selection for the brief
+// TEMPORARY (FGE-284): removal recipe lives beside `requestedLanguageSnapshotRetryAfter`
+// in content.ts. Admin and Web deploy independently. Keep the prior selection for the brief
 // schema-lag window, derived from the same operation so the projection cannot drift.
 export const getLegacyWatchVideoRouteSnapshotBySlugOperation = visit(
   getWatchVideoRouteSnapshotBySlugOperation,
