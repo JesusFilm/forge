@@ -25,8 +25,20 @@ export type ReflectionEntry = {
 }
 
 export type ReflectionCorpora = {
-  ryleMatthew: ReflectionEntry[]
-  matthewHenry: ReflectionEntry[]
+  /**
+   * Passage-keyed commentary from any source and at any granularity. One pool
+   * rather than a bucket per author: `matchReflection` selects by how tightly an
+   * entry covers the passage, so a section-granular source (Ryle, ~10 verses)
+   * beats a chapter-granular one (Matthew Henry) on merit instead of by name.
+   * That is what lets a new commentary volume be added as data alone.
+   */
+  commentary: ReflectionEntry[]
+  /**
+   * Theme-keyed entries, matched by keyword and never by passage. Kept apart
+   * because such an entry is anchored to its OWN verse: pooled with commentary,
+   * its osisRef would make it selectable as a commentary on a passage it never
+   * discusses.
+   */
   spurgeon: ReflectionEntry[]
 }
 
@@ -103,6 +115,9 @@ export function parseOsis(osis: string): OsisParts | null {
   }
 }
 
+/** Above any real verse number, so it bounds a range at its chapter's end. */
+const LAST_VERSE_IN_CHAPTER = 999
+
 /** A comparable ordinal for (chapter, verse); missing verse = start of chapter. */
 function ordinal(chapter: number, verse: number | null): number {
   return chapter * 1000 + (verse ?? 0)
@@ -122,50 +137,80 @@ function rangeCovers(
   const target = ordinal(chapter, verse)
   // When the target has no verse, match on chapter overlap alone.
   if (verse == null) return chapter >= start.chapter && chapter <= end.chapter
+  // A verse-less END bound means "to the end of THAT chapter", never open-ended:
+  // `Number.MAX_SAFE_INTEGER` here would make a chapter-level entry such as
+  // `Luke.8` cover every later chapter too, so Henry on Luke 8 would answer a
+  // Luke 24 passage. Latent until commentary was pooled and matched by range;
+  // the old Mark/Luke/John branch compared chapter ids exactly and never asked.
   return (
     target >= ordinal(start.chapter, start.verse ?? 0) &&
-    target <= ordinal(end.chapter, end.verse ?? Number.MAX_SAFE_INTEGER)
+    target <= ordinal(end.chapter, end.verse ?? LAST_VERSE_IN_CHAPTER)
   )
 }
 
-const OSIS_TO_BOOK = new Set(["Matt", "Mark", "Luke", "John"])
+/** How many verses an entry's range spans; a chapter-level ref spans it all. */
+function verseSpan(osisRef: string): number {
+  const [startRaw, endRaw] = osisRef.split("-")
+  const start = parseOsis(startRaw)
+  const end = endRaw ? parseOsis(endRaw) : start
+  if (!start || !end) return Number.MAX_SAFE_INTEGER
+  if (start.verse == null || end.verse == null) return Number.MAX_SAFE_INTEGER
+  return ordinal(end.chapter, end.verse) - ordinal(start.chapter, start.verse)
+}
 
 /**
- * Match a passage to the best reflection source. Pure. Returns null when the
- * passage is outside the Gospels or nothing covers it.
+ * Match a passage to the best commentary entry. Pure. Returns null when nothing
+ * in the pool covers it — which is a real outcome, not an error: the JESUS-film
+ * catalogue includes a Genesis prologue that the Gospel volumes cannot serve.
+ * Callers that reserve a clip must check this FIRST (see
+ * `chaptersWithReflectionSource`); `composeDevotionalContent` throws on null.
+ *
+ * Preference is specificity, never authorship: the narrowest range that covers
+ * the passage wins, so Ryle's per-pericope sections are chosen over Matthew
+ * Henry's whole-chapter treatment of the same verses, and Henry remains the
+ * fallback wherever no section covers them. There is no book allowlist — the
+ * pool itself decides which books are servable, so adding a volume admits its
+ * book with no code change.
  */
 export function matchReflection(
   passageOsis: string,
-  corpora: Pick<ReflectionCorpora, "ryleMatthew" | "matthewHenry">,
+  corpora: Pick<ReflectionCorpora, "commentary">,
 ): ReflectionMatch | null {
   const parts = parseOsis(passageOsis)
-  if (!parts || !OSIS_TO_BOOK.has(parts.book)) return null
+  if (!parts) return null
 
-  if (parts.book === "Matt") {
-    // Prefer the section whose verse-range covers the passage; else the first
-    // section of that chapter.
-    const covering = corpora.ryleMatthew.find((e) =>
-      rangeCovers(e.osisRef, parts.chapter, parts.verse),
-    )
-    const chapterFirst =
-      covering ??
-      corpora.ryleMatthew.find((e) =>
-        rangeCovers(e.osisRef, parts.chapter, null),
-      )
-    if (!chapterFirst) return null
-    return {
-      source: chapterFirst.source,
-      reference: chapterFirst.reference,
-      osisRef: chapterFirst.osisRef,
-      text: chapterFirst.text,
-      focusReference: passageOsis,
-    }
-  }
+  const inBook = corpora.commentary.filter(
+    (entry) =>
+      entry.osisRef != null && parseOsis(entry.osisRef)?.book === parts.book,
+  )
+  if (inBook.length === 0) return null
 
-  // Mark / Luke / John → Matthew Henry whole-chapter.
   const chapterId = `${parts.book}.${parts.chapter}`
-  const entry = corpora.matthewHenry.find((e) => e.osisRef === chapterId)
+  const chapterLevel = inBook.find((entry) => entry.osisRef === chapterId)
+
+  // A passage with no verse names a whole chapter, so the chapter-level
+  // treatment is the tightest honest fit; picking the narrowest section instead
+  // would answer a chapter-wide passage with one arbitrary pericope.
+  const covering =
+    parts.verse == null
+      ? chapterLevel
+      : [...inBook]
+          .filter((entry) =>
+            rangeCovers(entry.osisRef, parts.chapter, parts.verse),
+          )
+          .sort(
+            (left, right) =>
+              verseSpan(left.osisRef!) - verseSpan(right.osisRef!),
+          )[0]
+
+  const entry =
+    covering ??
+    chapterLevel ??
+    inBook.find((candidate) =>
+      rangeCovers(candidate.osisRef, parts.chapter, null),
+    )
   if (!entry) return null
+
   return {
     source: entry.source,
     reference: entry.reference,
