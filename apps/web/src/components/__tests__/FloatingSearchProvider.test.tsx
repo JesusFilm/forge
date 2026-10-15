@@ -2127,7 +2127,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language: English (EN)",
+      "Select language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -2175,8 +2175,102 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )?.textContent,
     ).toBe("PT-MZ")
     expect(languageButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: Portuguese Mozambique (PT-MZ)",
+      "Select language: Portuguese Mozambique (PT-MZ)",
     )
+  })
+
+  it("announces the global language trigger as a dialog opener with its open state", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    expect(languageButton.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("true")
+  })
+
+  it("keeps the audio-language name and omits aria-expanded for the page-specific switcher", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        languageCode: "PT",
+      })
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(languageButton?.getAttribute("aria-label")).toContain(
+      "Change audio language",
+    )
+    expect(languageButton?.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton?.hasAttribute("aria-expanded")).toBe(false)
+  })
+
+  it("preselects the route language, not the chrome default, in the global picker", async () => {
+    navigationMocks.pathname = "/aari.html/languages"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document
+        .querySelector('[data-testid="global-language-picker-modal"]')
+        ?.getAttribute("data-current-language-slug"),
+    ).toBe("aari")
+  })
+
+  it("keeps the logo named Home while search is open", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("aria-label")).toBe("JesusFilm home")
+    await openSearchOverlay()
+    expect(
+      document
+        .querySelector('[data-testid="floating-header-logo"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("JesusFilm home")
   })
 
   it("recovers the global trigger after a module-load failure and retries", async () => {
@@ -4712,7 +4806,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
     expect(navigationAllowed).toBe(false)
     expect(click.defaultPrevented).toBe(true)
-    expect(logo?.getAttribute("aria-label")).toBe("Close search")
+    expect(logo?.getAttribute("aria-label")).toBe("JesusFilm home")
     expect(
       document.querySelector('[aria-label="Search and browse videos"]')
         ?.className,

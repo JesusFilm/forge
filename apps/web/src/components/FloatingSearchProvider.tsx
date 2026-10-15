@@ -216,6 +216,7 @@ export function FloatingSearchProvider({
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const languageT = useTranslations("LanguagePickerModal")
+  const languageComboboxT = useTranslations("LanguageCombobox")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = useMemo(() => parseWatchPath(pathname), [pathname])
@@ -783,9 +784,15 @@ export function FloatingSearchProvider({
       ? `${globalLanguageName} (${headerLanguageCode})`
       : headerLanguageCode
     : null
+  // The page-specific switcher changes the playback (audio) language; the
+  // global picker changes the site language and content, so it gets a
+  // neutral name.
+  const headerLanguageActionLabel = pageSpecificLanguageSwitcherActive
+    ? t("changeAudioLanguage")
+    : languageComboboxT("selectLanguage")
   const globalLanguageLabel = globalLanguageLoadFailed
-    ? `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
-    : `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
+    ? `${headerLanguageActionLabel}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
+    : `${headerLanguageActionLabel}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
@@ -986,7 +993,7 @@ export function FloatingSearchProvider({
         >
           <Link
             href={logoHref as Route}
-            aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
+            aria-label={t("home")}
             data-testid="floating-header-logo"
             onClick={handleLogoClick}
             className={`pointer-events-auto flex ${logoSlotClass} ${
@@ -1075,6 +1082,12 @@ export function FloatingSearchProvider({
                 ref={globalLanguageTriggerRef}
                 data-testid="floating-header-language-button"
                 onClick={headerLanguageClick}
+                aria-haspopup="dialog"
+                aria-expanded={
+                  pageSpecificLanguageSwitcherActive
+                    ? undefined
+                    : globalLanguageOpen
+                }
                 aria-busy={headerLanguageBusy}
                 disabled={headerLanguageBusy}
                 aria-label={globalLanguageLabel}
@@ -1163,7 +1176,7 @@ export function FloatingSearchProvider({
           <LazyGlobalLanguagePickerModal
             open={globalLanguageOpen}
             pathname={pathname}
-            currentLanguageSlug={currentLanguageSlug}
+            currentLanguageSlug={headerLanguageSlug}
             onClose={closeGlobalLanguage}
             returnFocusRef={globalLanguageTriggerRef}
           />
