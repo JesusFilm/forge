@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Платасыз христианонь видеот — {language} | Jesus Film Project",
-    "metadataDescription": "Jesus films, Bible stories, disciple-making series, and outreach videos with dubbed audio or subtitles in {language} vanny.",
+    "metadataDescription": "Iisus kolga filmat, Bible stories, disciple-making series, and outreach videos with dubbed audio or subtitles in {language} vanny.",
     "heroTitle": "Платасыз христианонь видеот — {language}",
-    "heroDescription": "Jesus films, Bible stories, disciple-making series, and outreach videos available in {language} vanny. Fully dubbed videos are highlighted first, with subtitle-only options below.",
+    "heroDescription": "Iisus kolga filmat, Bible stories, disciple-making series, and outreach videos available in {language} vanny. Fully dubbed videos are highlighted first, with subtitle-only options below.",
     "languageCollection": "Келень collection",
     "itemCount": "{count, plural, one {# тевлема} other {# тевлемат}}",
     "videoCount": "{count, plural, one {# video} other {# video-т}}",

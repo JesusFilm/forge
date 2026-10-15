@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { localizedSearchLanguageName } from "./search-language-display-name"
+import thaiMessages from "../../messages/th.json"
+import {
+  languageNameForUiTemplate,
+  localizedSearchLanguageName,
+} from "./search-language-display-name"
 
 const russian = {
   englishName: "Russian",
@@ -200,5 +204,59 @@ describe("localizedSearchLanguageName", () => {
       ),
     ).toBe("حسانية")
     displayNames.mockRestore()
+  })
+})
+
+describe("languageNameForUiTemplate", () => {
+  // Admin's own Thai name for Thai (watchLanguageInventory "thai" -> name.th).
+  const adminThaiName = "ภาษาไทย"
+
+  it("drops the leading Thai word for language that Thai templates already supply", () => {
+    expect(languageNameForUiTemplate(adminThaiName, "th")).toBe("ไทย")
+    expect(languageNameForUiTemplate(" ภาษา อังกฤษ ", "th-TH")).toBe("อังกฤษ")
+  })
+
+  it("leaves names alone outside Thai or when nothing else would remain", () => {
+    expect(languageNameForUiTemplate(adminThaiName, "en")).toBe(adminThaiName)
+    expect(languageNameForUiTemplate("ไทย", "th")).toBe("ไทย")
+    expect(languageNameForUiTemplate("ภาษา", "th")).toBe("ภาษา")
+    expect(languageNameForUiTemplate("English", "not a locale!")).toBe(
+      "English",
+    )
+  })
+
+  it("renders Thai language-page copy without doubling the word for language", async () => {
+    const { createTranslator } =
+      await vi.importActual<typeof import("next-intl")>("next-intl")
+    const translate = createTranslator({
+      locale: "th",
+      messages: thaiMessages,
+      namespace: "LanguageInventory",
+    })
+    const language = languageNameForUiTemplate(adminThaiName, "th")
+
+    for (const key of [
+      "heroTitle",
+      "heroDescription",
+      "metadataTitle",
+      "metadataDescription",
+      "subtitlesDescription",
+    ] as const) {
+      const rendered = translate(key, { language })
+      expect(rendered).toContain("ภาษาไทย")
+      expect(rendered).not.toContain("ภาษาภาษา")
+    }
+  })
+
+  it("strips the doubled word from Thai search names that fall back to the native name", () => {
+    const thai = {
+      englishName: "Thai",
+      nativeName: adminThaiName,
+      bcp47: null,
+      publicSlug: "thai",
+      regionNames: [],
+    }
+
+    expect(localizedSearchLanguageName(thai, "th", "ภาษา")).toBe("ไทย")
   })
 })

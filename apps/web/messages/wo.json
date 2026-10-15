@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Video yu xew ci {language} | Jesus Film Project",
-    "metadataDescription": "Seet Jesus films, xibaaru Biibël, series yu jàng, ak videos yu yéene ak audio bu ñu wax baat walla subtitles ci {language}.",
+    "metadataDescription": "Seet film yu jëm ci Yeesu, xibaaru Biibël, series yu jàng, ak videos yu yéene ak audio bu ñu wax baat walla subtitles ci {language}.",
     "heroTitle": "Video yu xew ci {language}",
-    "heroDescription": "Seet Jesus films, xibaaru Biibël, series yu jàng, ak videos yu yéene bu ñu def ci {language}. Videos yu am dubbing bu baax lañu jëllal ci kanam, te subtitles rekk la ñu wone ci suuf.",
+    "heroDescription": "Seet film yu jëm ci Yeesu, xibaaru Biibël, series yu jàng, ak videos yu yéene bu ñu def ci {language}. Videos yu am dubbing bu baax lañu jëllal ci kanam, te subtitles rekk la ñu wone ci suuf.",
     "languageCollection": "Bokk ci làkk",
     "itemCount": "{count, plural, one {# mbir} other {# mbir yi}}",
     "videoCount": "{count, plural, one {# widewo} other {# widewo yi}}",

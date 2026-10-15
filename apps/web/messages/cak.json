@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Man rajawaxik ta Christian taq video pa {language} | Jesus Film Project",
-    "metadataDescription": "Tatz'eta' Jesus films, Bible stories, disciple-making series, chuqa' outreach videos ri k'o dubbing audio o subtitles pa {language}.",
+    "metadataDescription": "Tatz'eta' taq película chrij ri Jesús, Bible stories, disciple-making series, chuqa' outreach videos ri k'o dubbing audio o subtitles pa {language}.",
     "heroTitle": "Man rajawaxik ta Christian taq video pa {language}",
-    "heroDescription": "Tatz'eta' Jesus films, Bible stories, disciple-making series, chuqa' outreach videos ri k'o pa {language}. Ri video ri k'o k'utuj audio nab'ey nitz'et, chuqa' taq subtitles-only options chupan.",
+    "heroDescription": "Tatz'eta' taq película chrij ri Jesús, Bible stories, disciple-making series, chuqa' outreach videos ri k'o pa {language}. Ri video ri k'o k'utuj audio nab'ey nitz'et, chuqa' taq subtitles-only options chupan.",
     "languageCollection": "K'amonel ch'ab'äl",
     "itemCount": "{count, plural, one {# taq'ij} other {# taq'ij}}",
     "videoCount": "{count, plural, one {# wachib'äl silonel} other {# taq wachib'äl silonel}}",

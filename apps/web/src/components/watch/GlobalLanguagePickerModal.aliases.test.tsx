@@ -3,6 +3,7 @@
  */
 
 import { act, useState } from "react"
+import { setRequestLocale } from "next-intl/server"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -219,5 +220,46 @@ describe("GlobalLanguagePickerModal Chinese aliases", () => {
     expect(
       document.querySelector('[data-testid="language-combobox-option"]'),
     ).toBeNull()
+  })
+})
+
+describe("GlobalLanguagePickerModal Thai inventory link", () => {
+  afterEach(() => {
+    setRequestLocale("en")
+  })
+
+  it("does not double the Thai word for language in the Thai UI", async () => {
+    setRequestLocale("th")
+    loadGlobalWatchLanguageOptionsMock.mockResolvedValue([
+      ...options,
+      {
+        slug: "thai",
+        aliasOwnerSlug: "thai",
+        englishName: "Thai",
+        // Admin's own Thai name for Thai.
+        nativeName: "ภาษาไทย",
+      },
+    ])
+    await act(async () => {
+      root.render(
+        <GlobalLanguagePickerModal
+          open
+          pathname="/languages"
+          currentLanguageSlug="thai"
+          onClose={() => {}}
+        />,
+      )
+    })
+
+    const label =
+      document
+        .querySelector(
+          '[data-testid="global-language-picker-selected-language-link"]',
+        )
+        ?.getAttribute("aria-label") ?? ""
+
+    expect(label.replace(/[\u2068\u2069]/g, "")).toBe(
+      "ดูวิดีโอทั้งหมดในภาษาไทย",
+    )
   })
 })

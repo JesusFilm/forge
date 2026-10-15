@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Video Christian pɔʔ nɔ in {language} | Jesus Film Project",
-    "metadataDescription": "Jesus films, Bible stories, discipleship series, kɛ outreach videos browse kɛ dubbed audio bɔ subtitles in {language}.",
+    "metadataDescription": "films mɛ Jesus, Bible stories, discipleship series, kɛ outreach videos browse kɛ dubbed audio bɔ subtitles in {language}.",
     "heroTitle": "Video Christian pɔʔ nɔ in {language}",
-    "heroDescription": "Jesus films, Bible stories, discipleship series, kɛ outreach videos available in {language} browse kɛ. Fully dubbed videos nɔ kɛ kpa, subtitles-only options mɔ bɔ.",
+    "heroDescription": "films mɛ Jesus, Bible stories, discipleship series, kɛ outreach videos available in {language} browse kɛ. Fully dubbed videos nɔ kɛ kpa, subtitles-only options mɔ bɔ.",
     "languageCollection": "Language collection a",
     "itemCount": "{count, plural, one {# item} other {# item mɛ}}",
     "videoCount": "{count, plural, one {# video} other {# video mɛ}}",

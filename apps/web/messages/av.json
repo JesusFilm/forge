@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language}-да тӏолаб гьечӏеб христианский видеол | Jesus Film Project",
-    "metadataDescription": "Jesus films, Библия гьалбал, discipleship сериял ва outreach видеол {language}-да дубляж аудио или субтитрал ниса къадалъан бие.",
+    "metadataDescription": "Иисусил фильмал, Библия гьалбал, discipleship сериял ва outreach видеол {language}-да дубляж аудио или субтитрал ниса къадалъан бие.",
     "heroTitle": "{language}-да тӏолаб гьечӏеб христианский видеол",
-    "heroDescription": "Jesus films, Библия гьалбал, discipleship сериял ва outreach видеол {language}-да къадалъан бие. Тӏолаб дубляж гьабураб видеол аввал хъвазе, субтитрал цӏикӏкӏараб чӏарал къваналъе.",
+    "heroDescription": "Иисусил фильмал, Библия гьалбал, discipleship сериял ва outreach видеол {language}-да къадалъан бие. Тӏолаб дубляж гьабураб видеол аввал хъвазе, субтитрал цӏикӏкӏараб чӏарал къваналъе.",
     "languageCollection": "Тилал коллекция",
     "itemCount": "{count, plural, one {# тӏубазе} other {# тӏубазал}}",
     "videoCount": "{count, plural, one {# видео} other {# видеол}}",

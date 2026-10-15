@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} भाषायां निःशुल्कानि ख्रीष्टीय-वीडियोनि | Jesus Film Project",
-    "metadataDescription": "{language} भाषायां डब्-श्रव्येण अथवा उपशीर्षकैः सह Jesus films, Bible stories, discipleship series, and outreach videos अन्वेषयतु।",
+    "metadataDescription": "{language} भाषायां डब्-श्रव्येण अथवा उपशीर्षकैः सह येशुचलचित्राणि, बाइबिलकथाः, शिष्यत्वमालिकाः, प्रचारवीडियोनि च अन्वेषयतु।",
     "heroTitle": "{language} भाषायां निःशुल्कानि ख्रीष्टीय-वीडियोनि",
-    "heroDescription": "{language} भाषायां उपलब्धान् Jesus films, Bible stories, discipleship series, and outreach videos अन्वेषयतु। पूर्णतया डब्-कृतानि वीडियोनि प्रथमतः प्रदर्श्यन्ते, ततः उपशीर्षक-मात्र विकल्पाः अधः।",
+    "heroDescription": "{language} भाषायां उपलब्धानि येशुचलचित्राणि, बाइबिलकथाः, शिष्यत्वमालिकाः, प्रचारवीडियोनि च अन्वेषयतु। पूर्णतया डब्-कृतानि वीडियोनि प्रथमतः प्रदर्श्यन्ते, ततः उपशीर्षक-मात्र विकल्पाः अधः।",
     "languageCollection": "भाषा-संग्रहः",
     "itemCount": "{count, plural, one {# वस्तु} other {# वस्तूनि}}",
     "videoCount": "{count, plural, one {# वीडियो} other {# वीडियोनि}}",

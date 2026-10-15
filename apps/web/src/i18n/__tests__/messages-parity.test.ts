@@ -63,6 +63,133 @@ describe("verified Turkmen subtitle labels", () => {
   })
 })
 
+function westernDigits(value: string): string {
+  return value.replace(/[٠-٩]/g, (digit) =>
+    String(digit.charCodeAt(0) - 0x0660),
+  )
+}
+
+describe("Arabic count plurals", () => {
+  // CLDR Arabic: 0 zero, 1 one, 2 two, 3-10 few, 11-99 many, 100-102 other.
+  const counts = [0, 1, 2, 3, 11, 52, 100, 673] as const
+
+  function formatArabic(key: string, values: Record<string, number>): string {
+    const translate = createTranslator({
+      locale: "ar",
+      messages: loadCatalog("ar") as AbstractIntlMessages,
+    }) as unknown as (key: string, values: Record<string, number>) => string
+    return westernDigits(translate(key, values))
+  }
+
+  it("samples every Arabic CLDR plural category", () => {
+    const rules = new Intl.PluralRules("ar")
+    expect(counts.map((count) => rules.select(count))).toEqual([
+      "zero",
+      "one",
+      "two",
+      "few",
+      "many",
+      "many",
+      "other",
+      "many",
+    ])
+  })
+
+  it.each([
+    [
+      "LanguageInventory.itemCount",
+      [
+        "0 عناصر",
+        "1 عنصر",
+        "2 عنصران",
+        "3 عناصر",
+        "11 عنصرًا",
+        "52 عنصرًا",
+        "100 عنصر",
+        "673 عنصرًا",
+      ],
+    ],
+    [
+      "LanguageInventory.videoCount",
+      [
+        "0 فيديوهات",
+        "1 فيديو",
+        "2 فيديو",
+        "3 فيديوهات",
+        "11 فيديو",
+        "52 فيديو",
+        "100 فيديو",
+        "673 فيديو",
+      ],
+    ],
+    [
+      "WatchLanguageIndex.languageCount",
+      [
+        "0 لغات",
+        "1 لغة",
+        "2 لغتان",
+        "3 لغات",
+        "11 لغةً",
+        "52 لغةً",
+        "100 لغة",
+        "673 لغةً",
+      ],
+    ],
+  ])("formats %s with the Arabic plural form for each count", (key, forms) => {
+    expect(counts.map((count) => formatArabic(key, { count }))).toEqual(forms)
+  })
+
+  it("uses the singular accusative for 11-99 groups", () => {
+    expect(
+      formatArabic("LanguageInventory.videosInGroups", {
+        videoCount: 673,
+        groupCount: 52,
+      }),
+    ).toBe("673 فيديو في 52 مجموعةً")
+    expect(
+      formatArabic("LanguageInventory.videosInGroups", {
+        videoCount: 3,
+        groupCount: 2,
+      }),
+    ).toBe("3 فيديوهات في 2 مجموعتان")
+  })
+})
+
+describe("Watch catalog copy corrections", () => {
+  const englishCatalogs = new Set(["en", ...provisionalLocales])
+
+  it("does not leave the English phrase 'Jesus films' in translated language pages", () => {
+    const leftovers = readdirSync(messagesDir)
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => file.slice(0, -5))
+      .filter((locale) => !englishCatalogs.has(locale))
+      .flatMap((locale) =>
+        ["heroDescription", "metadataDescription"]
+          .filter((key) =>
+            /Jesus film/i.test(
+              flattenCatalog(locale)[`LanguageInventory.${key}`] ?? "",
+            ),
+          )
+          .map((key) => `${locale}:${key}`),
+      )
+
+    expect(leftovers).toEqual([])
+  })
+
+  it("spells Spanish 'video' without the Spain-only accent where English copy allows it", () => {
+    // The two remaining accented messages would be byte-identical to English
+    // without the accent ("Video", "# video/# videos"), which the
+    // translated-copy gate below rejects. Aligning them needs a policy
+    // decision on a per-locale neutral exemption, so they are pinned here.
+    expect(
+      Object.entries(flattenCatalog("es"))
+        .filter(([, value]) => /vídeo/i.test(value))
+        .map(([path]) => path)
+        .sort(),
+    ).toEqual(["LanguageInventory.videoCount", "VideoLabels.video"])
+  })
+})
+
 type MessageTree = {
   [key: string]: string | MessageTree
 }

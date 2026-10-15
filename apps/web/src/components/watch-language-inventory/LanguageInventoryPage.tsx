@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from "react"
 import type { Route } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowUp,
   ArrowUpRight,
@@ -32,6 +32,7 @@ import {
   resolveBlurredBackdropUrl,
   resolveMuxFrameThumbnailUrl,
 } from "@/lib/url"
+import { languageNameForUiTemplate } from "@/lib/search-language-display-name"
 import { cn } from "@/lib/utils"
 import { videoLabelMessageKey } from "@/lib/video-labels"
 import {
@@ -1014,8 +1015,11 @@ export function LanguageInventoryPage({
   inventory,
 }: LanguageInventoryPageProps) {
   const t = useTranslations("LanguageInventory")
-  const languageDisplayName =
-    inventory.languageNativeName?.trim() || inventory.languageName
+  const locale = useLocale()
+  const languageDisplayName = languageNameForUiTemplate(
+    inventory.languageNativeName?.trim() || inventory.languageName,
+    locale,
+  )
   const now = new Date()
   const groupedAudioVideos = groupVideosByParent(
     inventory.audioVideos,

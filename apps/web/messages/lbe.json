@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} кылын тулыс христиан видеоос | Jesus Film Project",
-    "metadataDescription": "{language} кылын дубляжирован аудио но субтитръёс пыр Jesus film, Библия веранъёс, discipleship серияос но outreach видеоосэз кара.",
+    "metadataDescription": "{language} кылын дубляжирован аудио но субтитръёс пыр Иисус сярысь фильмъёс, Библия веранъёс, discipleship серияос но outreach видеоосэз кара.",
     "heroTitle": "{language} кылын тулыс христиан видеоос",
-    "heroDescription": "{language} кылын доступной Jesus film, Библия веранъёс, discipleship серияос но outreach видеоосэз кара. Тулыстэм дубляжирован видеоос йыртэм луоз, оло, субтитрлы видеолъёс со вӧлэн.",
+    "heroDescription": "{language} кылын доступной Иисус сярысь фильмъёс, Библия веранъёс, discipleship серияос но outreach видеоосэз кара. Тулыстэм дубляжирован видеоос йыртэм луоз, оло, субтитрлы видеолъёс со вӧлэн.",
     "languageCollection": "Кыл калекцыя",
     "itemCount": "{count, plural, one {# предмет} other {# предметъёс}}",
     "videoCount": "{count, plural, one {# видео} other {# видеоос}}",

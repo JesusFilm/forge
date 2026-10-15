@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos gratis ta {language} | Jesus Film Project",
-    "metadataDescription": "K'axpa' Jesus films, cuentos ta Bible, series ta discipulado, y videos ta outreach yoj audio doblado o subtitles ta {language}.",
+    "metadataDescription": "K'axpa' películas ta Jesús, cuentos ta Bible, series ta discipulado, y videos ta outreach yoj audio doblado o subtitles ta {language}.",
     "heroTitle": "Videos cristianos gratis ta {language}",
-    "heroDescription": "K'axpa' Jesus films, cuentos ta Bible, series ta discipulado, y videos ta outreach available ta {language}. Videos doblados ta uchb'il primero, subtitles-only options pa k'axk'uxur.",
+    "heroDescription": "K'axpa' películas ta Jesús, cuentos ta Bible, series ta discipulado, y videos ta outreach available ta {language}. Videos doblados ta uchb'il primero, subtitles-only options pa k'axk'uxur.",
     "languageCollection": "Colección ta ch'ab'äl",
     "itemCount": "{count, plural, one {# elemento} other {# elementos}}",
     "videoCount": "{count, plural, one {# k'axoj} other {# k'axoj}}",

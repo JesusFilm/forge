@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos ko ejellok wōnāer ilo {language} | Jesus Film Project",
-    "metadataDescription": "Bōk kin Jesus films, Bible stories, series in discipleship, im videos in outreach im audio dub ak subtitles ilo {language}.",
+    "metadataDescription": "Bōk kin pija ko kōn Jesus, Bible stories, series in discipleship, im videos in outreach im audio dub ak subtitles ilo {language}.",
     "heroTitle": "Christian videos ko ejellok wōnāer ilo {language}",
-    "heroDescription": "Bōk kin Jesus films, Bible stories, series in discipleship, im videos in outreach ewōr ilo {language}. Videos eo jarin dub full e kar kōmman ijo ilo kajojo, im subtitle-only options eo ijo ijoko.",
+    "heroDescription": "Bōk kin pija ko kōn Jesus, Bible stories, series in discipleship, im videos in outreach ewōr ilo {language}. Videos eo jarin dub full e kar kōmman ijo ilo kajojo, im subtitle-only options eo ijo ijoko.",
     "languageCollection": "Collection in language",
     "itemCount": "{count, plural, one {# men} other {# men ko}}",
     "videoCount": "{count, plural, one {# video} other {# video ko}}",

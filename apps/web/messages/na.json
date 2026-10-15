@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos tei {language} ne | Jesus Film Project",
-    "metadataDescription": "Jesus films, Bible stories, discipleship series, me outreach videos {language} ne dubbed audio me subtitles ne bika.",
+    "metadataDescription": "films ion Jesus, Bible stories, discipleship series, me outreach videos {language} ne dubbed audio me subtitles ne bika.",
     "heroTitle": "Christian videos tei {language} ne",
-    "heroDescription": "Jesus films, Bible stories, discipleship series, me outreach videos {language} ne aing wa. Dubbed videos re first e highlight ae, subtitles-only options re below.",
+    "heroDescription": "films ion Jesus, Bible stories, discipleship series, me outreach videos {language} ne aing wa. Dubbed videos re first e highlight ae, subtitles-only options re below.",
     "languageCollection": "Language collection eo",
     "itemCount": "{count, plural, one {# item eo} other {# items re}}",
     "videoCount": "{count, plural, one {# video eo} other {# videos re}}",

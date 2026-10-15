@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Fri Kristen video long {language} | Jesus Film Project",
-    "metadataDescription": "Painim ol Jesus film, Baibel stori, disiplesip series, na outreach video wantaim dubbing audio o sutaitol long {language}.",
+    "metadataDescription": "Painim ol filem bilong Jisas, Baibel stori, disiplesip series, na outreach video wantaim dubbing audio o sutaitol long {language}.",
     "heroTitle": "Fri Kristen video long {language}",
-    "heroDescription": "Painim ol Jesus film, Baibel stori, disiplesip series, na outreach video i stap long {language}. Ol video i fully dubbed i kamap pastaim, na ol opsi bilong sutaitol tasol i stap daun.",
+    "heroDescription": "Painim ol filem bilong Jisas, Baibel stori, disiplesip series, na outreach video i stap long {language}. Ol video i fully dubbed i kamap pastaim, na ol opsi bilong sutaitol tasol i stap daun.",
     "languageCollection": "Koleksen bilong tokples",
     "itemCount": "{count, plural, one {# samting} other {# samting}}",
     "videoCount": "{count, plural, one {# video} other {# video}}",

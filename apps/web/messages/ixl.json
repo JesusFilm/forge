@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos gratuitos chi {language} | Jesus Film Project",
-    "metadataDescription": "Jesus films, Bible stories, discipleship series, and outreach videos chi {language} dubbed audio o subtitles chi k'otz'ib'ej.",
+    "metadataDescription": "películas de Jesús, Bible stories, discipleship series, and outreach videos chi {language} dubbed audio o subtitles chi k'otz'ib'ej.",
     "heroTitle": "Videos cristianos gratuitos chi {language}",
-    "heroDescription": "Jesus films, Bible stories, discipleship series, and outreach videos chi {language} tz'ib'ej. Fully dubbed videos q'ax nab'e, subtitles-only options abajo.",
+    "heroDescription": "películas de Jesús, Bible stories, discipleship series, and outreach videos chi {language} tz'ib'ej. Fully dubbed videos q'ax nab'e, subtitles-only options abajo.",
     "languageCollection": "Colección re b'anob' tzij",
     "itemCount": "{count, plural, one {# elemento} other {# elementos}}",
     "videoCount": "{count, plural, one {# video} other {# taq video}}",

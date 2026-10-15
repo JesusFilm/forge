@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language}: Christian video gha náke nɛ | Jesus Film Project",
-    "metadataDescription": "{language}: Jesus films, Bible stories, discipleship series, ɂeyí outreach videos dubbed audio ɂeyíle subtitles t’á gho nats’edé.",
+    "metadataDescription": "{language}: Jesus gha films, Bible stories, discipleship series, ɂeyí outreach videos dubbed audio ɂeyíle subtitles t’á gho nats’edé.",
     "heroTitle": "{language}: Christian video gha náke nɛ",
-    "heroDescription": "{language}: Jesus films, Bible stories, discipleship series, ɂeyí outreach videos gho nats’edé. Fully dubbed video góɂǫ́ náhɂá, subtitles-only ɂeyí náhɂá.",
+    "heroDescription": "{language}: Jesus gha films, Bible stories, discipleship series, ɂeyí outreach videos gho nats’edé. Fully dubbed video góɂǫ́ náhɂá, subtitles-only ɂeyí náhɂá.",
     "languageCollection": "Yatı́ collection",
     "itemCount": "{count, plural, one {# ɂeyí} other {# ɂeyí}}",
     "videoCount": "{count, plural, one {# video} other {# videos}} góɂǫ́",

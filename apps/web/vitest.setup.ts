@@ -4,6 +4,7 @@ import enMessages from "./messages/en.json"
 import esMessages from "./messages/es.json"
 import hiMessages from "./messages/hi.json"
 import ruMessages from "./messages/ru.json"
+import thMessages from "./messages/th.json"
 import urMessages from "./messages/ur.json"
 import zhHansMessages from "./messages/zh-Hans.json"
 
@@ -25,6 +26,7 @@ const catalogs: Record<string, Record<string, Record<string, string>>> = {
   es: esMessages,
   hi: hiMessages,
   ru: ruMessages,
+  th: thMessages,
   ur: urMessages,
   "zh-Hans": zhHansMessages,
 }

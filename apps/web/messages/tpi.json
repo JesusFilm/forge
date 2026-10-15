@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Free Christian videos long {language} | Jesus Film Project",
-    "metadataDescription": "Painim ol Jesus film, ol stori bilong Baibel, ol discipleship series, na ol outreach video wantaim dubbed audio o subtitles long {language}.",
+    "metadataDescription": "Painim ol piksa bilong Jisas, ol stori bilong Baibel, ol discipleship series, na ol outreach video wantaim dubbed audio o subtitles long {language}.",
     "heroTitle": "Free Christian videos long {language}",
-    "heroDescription": "Painim ol Jesus film, ol stori bilong Baibel, ol discipleship series, na ol outreach video i stap long {language}. Ol video i gat full dubbed audio bai stap pastaim, na ol subtitle-only option bai stap daunbilo.",
+    "heroDescription": "Painim ol piksa bilong Jisas, ol stori bilong Baibel, ol discipleship series, na ol outreach video i stap long {language}. Ol video i gat full dubbed audio bai stap pastaim, na ol subtitle-only option bai stap daunbilo.",
     "languageCollection": "Collection bilong tokples",
     "itemCount": "{count, plural, one {# samting} other {# samting}}",
     "videoCount": "{count, plural, one {# video} other {# video}}",

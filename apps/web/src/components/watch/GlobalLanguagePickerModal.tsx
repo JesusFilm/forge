@@ -1,7 +1,7 @@
 "use client"
 
 import { LoaderCircle, RefreshCw } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import {
   useCallback,
   useEffect,
@@ -33,6 +33,7 @@ import {
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPublicWatchLanguageSlug } from "@/lib/locale"
+import { languageNameForUiTemplate } from "@/lib/search-language-display-name"
 import { loadGlobalWatchLanguageOptions } from "@/lib/watch-interaction-loader"
 import {
   languageVideosIndexPath,
@@ -111,6 +112,7 @@ export function GlobalLanguagePickerModal({
   const t = useTranslations("LanguagePickerModal")
   const searchT = useTranslations("SearchOverlay")
   const headingId = useId()
+  const uiLocale = useLocale()
   const router = useRouter()
   const modalRef = useRef<HTMLDivElement>(null)
   const navigatingRef = useRef(false)
@@ -223,7 +225,9 @@ export function GlobalLanguagePickerModal({
     selectedOption?.englishName ||
     draftSlug
   const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
-    language: isolateLanguageName(draftLanguageInventoryName),
+    language: isolateLanguageName(
+      languageNameForUiTemplate(draftLanguageInventoryName, uiLocale),
+    ),
   })
   const selectedTarget = selectedOption
     ? languageSwitcherTarget(pathname, selectedOption.slug)

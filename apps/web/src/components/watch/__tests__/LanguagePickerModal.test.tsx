@@ -22,6 +22,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import arMessages from "../../../../messages/ar.json"
 import enMessages from "../../../../messages/en.json"
 import ruMessages from "../../../../messages/ru.json"
+import thMessages from "../../../../messages/th.json"
 
 type LanguagePickerTestCatalog = AbstractIntlMessages & {
   LanguagePickerModal: Record<string, string>
@@ -77,6 +78,7 @@ vi.mock("next-intl", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-intl")>()
   return {
     ...actual,
+    useLocale: () => getLanguagePickerCatalogState().locale,
     useTranslations: (namespace: string) => {
       const { locale, messages } = getLanguagePickerCatalogState()
       return actual.createTranslator({
@@ -493,6 +495,35 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(selectedLanguageLink.textContent).toContain(expectedInventoryLabel)
     expect(selectedLanguageLink.textContent).not.toContain("See all videos")
     expect(selectedLanguageLink.textContent).not.toContain("Russian")
+  })
+
+  it("does not double the Thai word for language in the Thai inventory link", () => {
+    setLanguagePickerCatalog(thMessages, "th")
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({
+          documentId: "v-th",
+          languageSlug: "thai",
+          language: {
+            coreId: "thai",
+            slug: "thai",
+            name: "Thai",
+            // Admin's own Thai name for Thai.
+            nativeName: "ภาษาไทย",
+          },
+        }),
+      ],
+      currentLanguageSlug: "thai",
+    })
+
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+    const label = selectedLanguageLink.getAttribute("aria-label") ?? ""
+
+    expect(label).toBe(`ดูวิดีโอทั้งหมดในภาษา${isolate("ไทย")}`)
+    expect(label.replace(/[⁨⁩]/g, "")).not.toContain("ภาษาภาษา")
   })
 
   it("falls back to the primary language name when no native name exists", () => {

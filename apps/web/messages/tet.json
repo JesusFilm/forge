@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Vídeo kristaun lais iha {language} | Jesus Film Project",
-    "metadataDescription": "Haree Jesus films, istória Biblika, série disipuladu, no vídeo outreach ho áudio dubadu ka subtítulu iha {language}.",
+    "metadataDescription": "Haree filme kona-ba Jesus, istória Biblika, série disipuladu, no vídeo outreach ho áudio dubadu ka subtítulu iha {language}.",
     "heroTitle": "Vídeo kristaun lais iha {language}",
-    "heroDescription": "Haree Jesus films, istória Biblika, série disipuladu, no vídeo outreach ne'ebé disponível iha {language}. Vídeo dubadu total iha ulun liu, ho opsaun subtítulu deit iha kraik.",
+    "heroDescription": "Haree filme kona-ba Jesus, istória Biblika, série disipuladu, no vídeo outreach ne'ebé disponível iha {language}. Vídeo dubadu total iha ulun liu, ho opsaun subtítulu deit iha kraik.",
     "languageCollection": "Koleksaun língua",
     "itemCount": "{count, plural, one {# item} other {# item sira}}",
     "videoCount": "{count, plural, one {# vídeo} other {# vídeo sira}}",

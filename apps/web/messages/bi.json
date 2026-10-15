@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Ol fri Kristin video long {language} | Jesus Film Project",
-    "metadataDescription": "Explorem ol Jesus film, stori blong Baebol, discipleship series, mo ol outreach video wetem voice we i dub o subtitles long {language}.",
+    "metadataDescription": "Explorem ol film blong Jisas, stori blong Baebol, discipleship series, mo ol outreach video wetem voice we i dub o subtitles long {language}.",
     "heroTitle": "Ol fri Kristin video long {language}",
-    "heroDescription": "Explorem ol Jesus film, stori blong Baebol, discipleship series, mo ol outreach video we i stap long {language}. Ol video we i ful dub i stanap fastaem, mo ol subtitle-only option i stap daon.",
+    "heroDescription": "Explorem ol film blong Jisas, stori blong Baebol, discipleship series, mo ol outreach video we i stap long {language}. Ol video we i ful dub i stanap fastaem, mo ol subtitle-only option i stap daon.",
     "languageCollection": "Kolosen blong lanwis",
     "itemCount": "{count, plural, one {# item} other {# item}}",
     "videoCount": "{count, plural, one {# video} other {# video}}",

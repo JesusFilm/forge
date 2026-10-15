@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} मधील मोफत ख्रिस्ती व्हिडिओ | Jesus Film Project",
-    "metadataDescription": "{language} मधील डब केलेल्या ऑडिओसह किंवा सबटायटल्ससह Jesus films, बायबल कथा, शिष्यत्व मालिका आणि outreach व्हिडिओ शोधा.",
+    "metadataDescription": "{language} मधील डब केलेल्या ऑडिओसह किंवा सबटायटल्ससह येशूवरील चित्रपट, बायबल कथा, शिष्यत्व मालिका आणि outreach व्हिडिओ शोधा.",
     "heroTitle": "{language} मधील मोफत ख्रिस्ती व्हिडिओ",
-    "heroDescription": "{language} मध्ये उपलब्ध Jesus films, बायबल कथा, शिष्यत्व मालिका आणि outreach व्हिडिओ शोधा. पूर्ण डब केलेले व्हिडिओ आधी दाखवले जातील, आणि खाली फक्त सबटायटल्सचे पर्याय आहेत.",
+    "heroDescription": "{language} मध्ये उपलब्ध येशूवरील चित्रपट, बायबल कथा, शिष्यत्व मालिका आणि outreach व्हिडिओ शोधा. पूर्ण डब केलेले व्हिडिओ आधी दाखवले जातील, आणि खाली फक्त सबटायटल्सचे पर्याय आहेत.",
     "languageCollection": "भाषा संग्रह",
     "itemCount": "{count, plural, one {# आयटम} other {# आयटम्स}}",
     "videoCount": "{count, plural, one {# व्हिडिओ} other {# व्हिडिओ}}",
