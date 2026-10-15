@@ -104,6 +104,48 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               data: { parentId: series.id, childId: hiddenEpisode.id },
             })
 
+            // Each other parent shape that Watch renders as a series page,
+            // each with one child that plays LatAm. Only its own gate admits
+            // it: the COLLECTION label, and a NULL label (web's isSeriesRecord
+            // falls back to "has children" when the label is missing).
+            for (const [name, label] of [
+              ["collection", "COLLECTION"],
+              ["unlabeled", null],
+            ] as const) {
+              const parent = await createVideo(fixture, name, label)
+              const child = await createVideo(
+                fixture,
+                `${name}-child`,
+                "EPISODE",
+              )
+              await createDub(fixture, child.id, latam.id)
+              await tx.videoRelation.create({
+                data: { parentId: parent.id, childId: child.id },
+              })
+            }
+
+            // Watch-restricted series over a visible episode: the series
+            // page and the episode-under-series route both fail, while the
+            // episode's own page still serves.
+            const restrictedSeries = await createVideo(
+              fixture,
+              "restricted-series",
+              "SERIES",
+              { restricted: true },
+            )
+            const orphanEpisode = await createVideo(
+              fixture,
+              "orphan-episode",
+              "EPISODE",
+            )
+            await createDub(fixture, orphanEpisode.id, english.id)
+            await tx.videoRelation.create({
+              data: {
+                parentId: restrictedSeries.id,
+                childId: orphanEpisode.id,
+              },
+            })
+
             // Watch-restricted standalone video: the page 404s it.
             const restricted = await createVideo(
               fixture,
@@ -150,6 +192,22 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         episodeLanguages(result, slug("series"), slug("hidden-episode")),
       ).toEqual([])
       expect(videoLanguages(result, slug("restricted"))).toEqual([])
+
+      for (const name of ["collection", "unlabeled"]) {
+        expect(videoLanguages(result, slug(name))).toEqual([`${prefix}-latam`])
+      }
+
+      expect(videoLanguages(result, slug("restricted-series"))).toEqual([])
+      expect(
+        episodeLanguages(
+          result,
+          slug("restricted-series"),
+          slug("orphan-episode"),
+        ),
+      ).toEqual([])
+      expect(videoLanguages(result, slug("orphan-episode"))).toEqual([
+        `${prefix}-english`,
+      ])
     })
   },
 )
@@ -161,7 +219,14 @@ async function createVideo(
     english: { id: string; slug: string | null }
   },
   name: string,
-  label: "FEATURE_FILM" | "SEGMENT" | "SERIES" | "EPISODE" | "SHORT_FILM",
+  label:
+    | "COLLECTION"
+    | "FEATURE_FILM"
+    | "SEGMENT"
+    | "SERIES"
+    | "EPISODE"
+    | "SHORT_FILM"
+    | null,
   options: { restricted?: boolean } = {},
 ) {
   const { tx, prefix, english } = fixture

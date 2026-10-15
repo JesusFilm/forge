@@ -17,9 +17,9 @@ const SQL_TABLE_ALIAS_PATTERN = /^[a-z_][a-z0-9_]*$/
 
 /**
  * Raw-SQL twin of `notRestrictedFromWatchWhere()` for a `"video"` row bound to
- * `alias`. Raw queries cannot reuse the Prisma helper, so this keeps the one
- * column/platform pair in one place instead of a hand-copied literal per
- * query. `alias` is interpolated as an identifier, so it is checked against a
+ * `alias`. Raw queries cannot reuse the Prisma helper; new raw queries should
+ * call this instead of hand-copying the literal (older queries still inline
+ * it). `alias` is interpolated as an identifier, so it is checked against a
  * plain lowercase alias shape and never comes from input.
  */
 export function notRestrictedFromWatchSql(alias: string): Prisma.Sql {
