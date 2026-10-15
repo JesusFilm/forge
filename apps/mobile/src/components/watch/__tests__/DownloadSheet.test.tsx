@@ -174,7 +174,6 @@ import {
 
 import SeriesDownloadRoute from "../../../../app/series/download"
 import {
-  DOWNLOAD_TERMS_GLASS_TINT,
   DownloadSheetContent,
   TermsAcceptanceRow,
   TermsModal,
@@ -1586,8 +1585,9 @@ describe("the terms window panel", () => {
       ancestors(pressableByLabel(renderer, "Accept terms of use")),
     ).toContain(glass[0])
     expect(hasText(renderer, TERMS_OF_USE_PARAGRAPHS[0]!)).toBe(true)
+    // Untinted text measured 13:1 over the playing video (2026-10-15).
+    expect(glass[0]!.props.tintColor).toBeUndefined()
     expect(glass[0]!.props).toMatchObject({
-      tintColor: DOWNLOAD_TERMS_GLASS_TINT,
       colorScheme: "dark",
       glassEffectStyle: { style: "regular" },
     })

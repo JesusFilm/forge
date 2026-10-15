@@ -39,10 +39,6 @@ import { GlassSurface } from "../ui/GlassSurface"
 
 type SheetT = UiT<"DownloadSheet">
 
-/** The terms panel's glass tint (feat-699 R16). A placeholder until the
- *  contrast check over a bright frame on the simulator sets it (KTD10). */
-export const DOWNLOAD_TERMS_GLASS_TINT = "rgba(0, 0, 0, 0.5)"
-
 function formatDuration(seconds: number | null): string {
   if (seconds == null || seconds <= 0) return "0:00"
   const mins = Math.floor(seconds / 60)
@@ -88,7 +84,6 @@ export function TermsModal({
             },
           ]}
           fallback={{ kind: "fill", style: styles.termsFill }}
-          tintColor={DOWNLOAD_TERMS_GLASS_TINT}
         >
           <Text style={[styles.termsTitle, typography.titleLarge]}>
             {t("termsTitle")}

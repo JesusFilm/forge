@@ -31,10 +31,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import {
-  QUIZ_WINDOW_GLASS_TINT,
-  QuizButtonRenderer,
-} from "../QuizButtonRenderer"
+import { QuizButtonRenderer } from "../QuizButtonRenderer"
 
 const SECTION = {
   __typename: "QuizButtonBlock",
@@ -137,7 +134,7 @@ describe("the quiz window on Liquid Glass (U11)", () => {
     expect(windows).toHaveLength(1)
     const window = windows[0]!
     expect(styleOf(window).flex).toBe(1)
-    expect(window.props.tintColor).toBe(QUIZ_WINDOW_GLASS_TINT)
+    expect(window.props.tintColor).toBeUndefined()
     expect(window.props.colorScheme).toBe("dark")
     // A fill on the glass covers the material.
     expect(styleOf(window).backgroundColor).toBeUndefined()

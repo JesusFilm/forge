@@ -22,10 +22,6 @@ import { layout, feedback } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 
-/** The dark tint on the quiz window's glass (U11). A placeholder until the
- *  contrast is measured over a bright frame (R23). */
-export const QUIZ_WINDOW_GLASS_TINT = "rgba(0, 0, 0, 0.5)"
-
 // ── URL Validation ──────────────────────────────────────────────────────────
 
 function isAllowedQuizUrl(url: string): boolean {
@@ -75,11 +71,7 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
       onRequestClose={onClose}
     >
       <StatusBar barStyle="light-content" />
-      <GlassSurface
-        style={styles.modalWindow}
-        fallback={WINDOW_FALLBACK}
-        tintColor={QUIZ_WINDOW_GLASS_TINT}
-      >
+      <GlassSurface style={styles.modalWindow} fallback={WINDOW_FALLBACK}>
         <Pressable
           style={[
             styles.closeButton,
