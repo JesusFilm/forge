@@ -384,34 +384,93 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
 })
 
 describe("WatchBody — baked-in question numbering", () => {
-  it("strips a leading ordinal but leaves other numbers untouched", () => {
-    const sq = makeStudyQuestions([
-      "1. Hasn't modern science disproved God?",
-      "2) Why does God allow suffering?",
-      "Is 2 Peter 3:9 true? 1. maybe",
-      "100. Not an ordinal",
-      "3.Missing space stays",
-      "4. ",
-    ])
+  function renderItems(values: string[]): string[] {
     act(() => {
       root.render(
         <WatchBody
           block={makeBlock({})}
-          studyQuestions={sq}
+          studyQuestions={makeStudyQuestions(values)}
           onDownloadClick={vi.fn()}
         />,
       )
     })
-    const items = container.querySelectorAll(
-      '[data-testid="watch-study-questions-item"]',
-    )
-    expect(Array.from(items).map((el) => el.textContent)).toEqual([
+    return Array.from(
+      container.querySelectorAll('[data-testid="watch-study-questions-item"]'),
+    ).map((el) => el.textContent ?? "")
+  }
+
+  it("strips ordinals when the list is visibly numbered 1, 2, 3...", () => {
+    expect(
+      renderItems([
+        "1. Hasn't modern science disproved God?",
+        "2) Why does God allow suffering?",
+        "  3.  Padded ordinal?  ",
+        "Unnumbered half of a split item?",
+        "4. ",
+        "5. Ten-plus lists keep going?",
+      ]),
+    ).toEqual([
       "Hasn't modern science disproved God?",
       "Why does God allow suffering?",
+      "Padded ordinal?",
+      "Unnumbered half of a split item?",
+      "Ten-plus lists keep going?",
+    ])
+  })
+
+  it("strips two-digit ordinals in a long numbered list", () => {
+    const values = Array.from({ length: 12 }, (_, i) => `${i + 1}. Q${i + 1}?`)
+    expect(renderItems(values)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `Q${i + 1}?`),
+    )
+  })
+
+  it("keeps a lone leading number that is real content", () => {
+    expect(
+      renderItems(["2. Mose 3:14 – Was bedeutet dieser Vers?", "Warum Leid?"]),
+    ).toEqual(["2. Mose 3:14 – Was bedeutet dieser Vers?", "Warum Leid?"])
+  })
+
+  it("keeps real-content ordinals that are not a 1, 2, 3... run", () => {
+    expect(
+      renderItems(["2. Weltkrieg: war es Gottes Wille?", "3. Mose 19:18?"]),
+    ).toEqual(["2. Weltkrieg: war es Gottes Wille?", "3. Mose 19:18?"])
+  })
+
+  it("keeps a single numbered question (ambiguous with real content)", () => {
+    expect(renderItems(["1. Mose 1:1 – wer schuf alles?"])).toEqual([
+      "1. Mose 1:1 – wer schuf alles?",
+    ])
+  })
+
+  it("leaves other numbers untouched even in a numbered list", () => {
+    expect(
+      renderItems([
+        "1. Is 2 Peter 3:9 true? 1. maybe",
+        "2. 100. Not an ordinal",
+        "100. Not an ordinal either",
+        "3.Missing space stays",
+      ]),
+    ).toEqual([
       "Is 2 Peter 3:9 true? 1. maybe",
       "100. Not an ordinal",
+      "100. Not an ordinal either",
       "3.Missing space stays",
     ])
+  })
+
+  it("falls back to the placeholder row when every question is an empty ordinal", () => {
+    expect(renderItems(["1. ", "2) "])).toEqual([])
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-placeholder"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-ask-yours"]',
+      ),
+    ).not.toBeNull()
   })
 })
 
