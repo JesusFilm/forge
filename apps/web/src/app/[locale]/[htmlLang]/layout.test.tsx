@@ -143,6 +143,14 @@ describe("Watch script font preloads (FGE-181 / W-084)", () => {
     },
   )
 
+  it("keeps the ISO 639-3 urd alias on Naskh, matching the stylesheet's :lang(ur)", () => {
+    // `Intl.Locale("urd").language` canonicalizes to "ur"; CSS `:lang(ur)` does
+    // not match "urd", so a Nastaliq preload there would never be rendered.
+    expect(watchScriptFontPreload("urd")).toBe(
+      "/watch/fonts/noto-sans-arabic.woff2",
+    )
+  })
+
   it("does not preload Nastaliq for Urdu written in Latin script", () => {
     expect(watchScriptFontPreload("ur-Latn")).toBeNull()
   })

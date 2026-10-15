@@ -20,9 +20,13 @@ const URDU_FONT_PRELOAD = `${WATCH_BASE_PATH}/fonts/noto-nastaliq-urdu.woff2`
 export function watchScriptFontPreload(htmlLang: string): string | null {
   try {
     const locale = new Intl.Locale(htmlLang)
-    // Same match as the stylesheet's `:lang(ur)`: the language subtag, any
-    // region or variant. A script override (`ur-Latn`) is not Nastaliq text.
-    if (locale.language === "ur" && locale.maximize().script === "Arab") {
+    // Mirror the stylesheet's `:lang(ur)` on the RAW primary subtag: Intl
+    // canonicalizes the ISO 639-3 alias `urd` (htmlLang of the urdu-hoda and
+    // urdu-indian variants) to `ur`, which CSS does not, so using
+    // `locale.language` would preload a Nastaliq face those documents never
+    // render. `ur-Latn` is excluded as Latin text; no declared htmlLang yields it.
+    const primary = htmlLang.split("-")[0]?.toLowerCase()
+    if (primary === "ur" && locale.maximize().script === "Arab") {
       return URDU_FONT_PRELOAD
     }
     const script = locale.maximize().script

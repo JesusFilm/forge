@@ -1139,6 +1139,12 @@ describe("Urdu Nastaliq face (FGE-181 / W-084, QA N32)", () => {
     // the file on pages other than Urdu documents.
     const mentions = css.split(family).length - 1
     expect(mentions).toBe(2)
+    // The block's selector must be exactly `:root:lang(ur)` (no list sharing it).
+    const at = css.indexOf(":root:lang(ur) {")
+    const header = css
+      .slice(css.lastIndexOf("}", at) + 1, at)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+    expect(header.trim()).toBe("")
     expect(urduRoot).toContain("--watch-font-ur:")
     expect(urduRoot).toContain(family)
   })
