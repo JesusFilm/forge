@@ -245,6 +245,7 @@ function makeTestPlayer(
     ...overrides,
   } as TestMockPlayer
 }
+import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import type { WatchHeroPlayerBlock } from "@/lib/content"
 import {
@@ -2653,6 +2654,66 @@ describe("HeroPlayer — custom chrome render", () => {
       container.querySelector('[data-testid="hero-player-unmute-pill"]'),
     ).toBeNull()
   })
+})
+
+describe("HeroPlayer — injected subtitle track language", () => {
+  function makeVideoPlayer(): HTMLVideoElement {
+    const video = document.createElement("video")
+    Object.defineProperty(video, "textTracks", {
+      configurable: true,
+      value: Object.assign([], {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    })
+    Object.assign(video, {
+      play: vi.fn(() => Promise.resolve()),
+      pause: vi.fn(),
+    })
+    return video
+  }
+
+  beforeEach(() => {
+    // jsdom has no TextTrack support; stub the track getter the effect reads.
+    Object.defineProperty(HTMLTrackElement.prototype, "track", {
+      configurable: true,
+      get() {
+        return { mode: "disabled" }
+      },
+    })
+  })
+
+  afterEach(() => {
+    // Unmount while the stub is still installed (effect cleanup reads it).
+    act(() => {
+      root.unmount()
+    })
+    root = createRoot(container)
+    Reflect.deleteProperty(HTMLTrackElement.prototype, "track")
+  })
+
+  it.each([
+    { code: "ES", expectedSrclang: "es" },
+    { code: "pt", expectedSrclang: "pt" },
+    { code: null, expectedSrclang: null },
+  ])(
+    "sets srclang=$expectedSrclang for subtitle language $code and keeps the sentinel label",
+    async ({ code, expectedSrclang }) => {
+      const video = makeVideoPlayer()
+      mockPlayerRef.current = video as unknown as typeof mockPlayerRef.current
+
+      await revealChrome(makeBlock(), {
+        subtitleVttSrc: "https://cdn.example/subtitles/x.vtt",
+        subtitleLanguageCode: code,
+        hasSubtitleOptions: true,
+      })
+
+      const track = video.querySelector("track[data-subtitle-track]")
+      expect(track).not.toBeNull()
+      expect(track?.getAttribute("srclang")).toBe(expectedSrclang)
+      expect(track?.getAttribute("label")).toBe(FORGE_SUBTITLE_TRACK_LABEL)
+    },
+  )
 })
 
 describe("HeroPlayer — chrome button interactions", () => {

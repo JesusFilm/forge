@@ -1474,3 +1474,134 @@ describe("HeroPlayerControls — visibility callback", () => {
     }
   })
 })
+
+describe("HeroPlayerControls — keyboard shortcuts", () => {
+  function press(
+    target: Element,
+    key: string,
+    init: KeyboardEventInit = {},
+  ): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    })
+    act(() => {
+      target.dispatchEvent(event)
+    })
+    return event
+  }
+
+  it("toggles play with Space and K", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true }),
+    )
+    const spaceEvent = press(wrapperEl, " ")
+    press(wrapperEl, "k")
+    expect(player.play).toHaveBeenCalledTimes(2)
+    expect(spaceEvent.defaultPrevented).toBe(true)
+  })
+
+  it("pauses when playing", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: false }),
+    )
+    press(wrapperEl, "K")
+    expect(player.pause).toHaveBeenCalledTimes(1)
+  })
+
+  it("seeks 10s back and forward with J and L, clamped to the media range", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ currentTime: 30, duration: 100 }),
+    )
+    press(wrapperEl, "l")
+    expect(player.currentTime).toBe(40)
+    press(wrapperEl, "j")
+    press(wrapperEl, "j")
+    expect(player.currentTime).toBe(20)
+    player.currentTime = 4
+    press(wrapperEl, "j")
+    expect(player.currentTime).toBe(0)
+    player.currentTime = 95
+    press(wrapperEl, "l")
+    expect(player.currentTime).toBe(100)
+  })
+
+  it("toggles mute with M", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    press(wrapperEl, "m")
+    expect(player.muted).toBe(true)
+  })
+
+  it("toggles fullscreen with F", () => {
+    const { wrapperEl } = renderControlsFixture()
+    const request = vi.fn(() => Promise.resolve())
+    Object.defineProperty(wrapperEl, "requestFullscreen", {
+      configurable: true,
+      value: request,
+    })
+    press(wrapperEl, "f")
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it("also works from the portaled chrome anchor", () => {
+    const { overlayAnchor, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    press(overlayAnchor, "m")
+    expect(player.muted).toBe(true)
+  })
+
+  it("ignores events from text inputs and dialogs", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    const input = document.createElement("input")
+    const dialog = document.createElement("div")
+    dialog.setAttribute("role", "dialog")
+    const dialogButton = document.createElement("button")
+    dialog.appendChild(dialogButton)
+    wrapperEl.append(input, dialog)
+    const inputEvent = press(input, "m")
+    press(dialogButton, "m")
+    expect(player.muted).toBe(false)
+    expect(inputEvent.defaultPrevented).toBe(false)
+  })
+
+  it("ignores modifier chords", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    press(wrapperEl, "m", { metaKey: true })
+    press(wrapperEl, "m", { ctrlKey: true })
+    press(wrapperEl, "m", { altKey: true })
+    expect(player.muted).toBe(false)
+  })
+
+  it("leaves Space on a focused button to its native click", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true }),
+    )
+    const button = document.createElement("button")
+    wrapperEl.appendChild(button)
+    const event = press(button, " ")
+    expect(player.play).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("ignores keys outside the shortcut set", () => {
+    const { wrapperEl, player } = renderControlsFixture()
+    const event = press(wrapperEl, "x")
+    expect(player.play).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("does not listen on window", () => {
+    const { player } = renderControlsFixture(makePlayer({ muted: false }))
+    press(document.body, "m")
+    expect(player.muted).toBe(false)
+  })
+})

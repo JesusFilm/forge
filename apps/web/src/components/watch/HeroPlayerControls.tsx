@@ -79,6 +79,9 @@ function getWebKitFullscreenVideo(
     : null
 }
 
+const PLAYER_SHORTCUT_KEYS = new Set([" ", "k", "j", "l", "m", "f"])
+const PLAYER_SHORTCUT_SEEK_SECONDS = 10
+
 export function HeroPlayerControls({
   mediaId,
   player,
@@ -778,6 +781,80 @@ export function HeroPlayerControls({
       videoEl?.webkitEnterFullscreen?.()
     }
   }, [playerRef, wrapperRef])
+
+  // Player-surface keyboard shortcuts (YouTube-style): Space/K play-pause,
+  // J/L seek -/+10s, M mute, F fullscreen. Bound to the player wrapper and
+  // the portaled chrome anchor only (never window) so they fire only while
+  // focus is inside the player. Text entry, dialogs, sliders (which own
+  // their arrow keys) and modifier chords are left alone; Space/Enter on a
+  // focused button/link keeps its native activation.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
+      if (!PLAYER_SHORTCUT_KEYS.has(key)) return
+      const target = event.target
+      if (target instanceof Element) {
+        if (
+          target.closest(
+            'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="dialog"], [role="alertdialog"], [role="textbox"], [role="combobox"], [role="menu"], [role="listbox"]',
+          )
+        ) {
+          return
+        }
+        if (
+          key === " " &&
+          target.closest('button, a[href], summary, [role="button"]')
+        ) {
+          return
+        }
+      }
+      const p = playerRef.current
+      if (!p) return
+      switch (key) {
+        case " ":
+        case "k":
+          togglePlay()
+          break
+        case "j":
+        case "l": {
+          const delta =
+            key === "j"
+              ? -PLAYER_SHORTCUT_SEEK_SECONDS
+              : PLAYER_SHORTCUT_SEEK_SECONDS
+          const dur = Number.isFinite(p.duration) ? p.duration : 0
+          const next = p.currentTime + delta
+          p.currentTime =
+            dur > 0 ? Math.min(dur, Math.max(0, next)) : Math.max(0, next)
+          break
+        }
+        case "m":
+          toggleMute()
+          break
+        case "f":
+          toggleFullscreen()
+          break
+      }
+      event.preventDefault()
+    }
+    const targets = [wrapperRef.current, overlayAnchor].filter(
+      (t): t is HTMLDivElement => t != null,
+    )
+    for (const target of targets) target.addEventListener("keydown", onKeyDown)
+    return () => {
+      for (const target of targets) {
+        target.removeEventListener("keydown", onKeyDown)
+      }
+    }
+  }, [
+    overlayAnchor,
+    playerRef,
+    toggleFullscreen,
+    toggleMute,
+    togglePlay,
+    wrapperRef,
+  ])
 
   // Compute the 0..1 scrub fraction for a clientX within the timeline rect.
   // Clamped at the edges so dragging past the bar's bounds still produces a
