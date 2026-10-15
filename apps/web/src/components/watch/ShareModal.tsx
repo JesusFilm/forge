@@ -289,7 +289,9 @@ export function ShareModal({
                 href={fbHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${t("shareOnFacebook")} (opens in a new tab)`}
+                aria-label={t("opensInNewTab", {
+                  label: t("shareOnFacebook"),
+                })}
                 data-testid="watch-share-modal-facebook"
                 onClick={() => onShareAction?.("facebook_intent")}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-[#1877F2] text-white transition hover:bg-[#0c63d4] focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
@@ -300,7 +302,7 @@ export function ShareModal({
                 href={xHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label={`${t("shareOnX")} (opens in a new tab)`}
+                aria-label={t("opensInNewTab", { label: t("shareOnX") })}
                 data-testid="watch-share-modal-x"
                 onClick={() => onShareAction?.("x_intent")}
                 className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-full bg-black text-white transition hover:bg-stone-800 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"

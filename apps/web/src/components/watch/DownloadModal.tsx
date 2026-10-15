@@ -93,9 +93,13 @@ export function DownloadModal({
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
   const fileSizeLabel = t("fileSizeLabel")
-  const termsAgreementLabel = `${t("termsAgreementPrefix")}${t(
-    "termsOfUse",
-  )}${t("termsAgreementSuffix")}`
+  // One full sentence per locale, so translators can put the verb and the
+  // linked phrase where their grammar needs them (verb-final languages lost
+  // the verb when this was a prefix + link + suffix concatenation). The
+  // checkbox's accessible name is the same sentence with the tag stripped.
+  const termsAgreementLabel = t.markup("termsAgreement", {
+    link: (chunks) => chunks,
+  })
   // Localized label for a quality tier. `bucketDownloads` carries an English
   // `label` for back-compat, but the rendered text is resolved here so it
   // translates.
@@ -601,20 +605,22 @@ export function DownloadModal({
                   className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100"
                 />
               </span>
-              <span>
-                {t("termsAgreementPrefix")}
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault()
-                    setTermsOpen(true)
-                  }}
-                  data-testid="watch-download-modal-tos-trigger"
-                  className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
-                >
-                  {t("termsOfUse")}
-                </button>
-                {t("termsAgreementSuffix")}
+              <span data-testid="watch-download-modal-tos-label">
+                {t.rich("termsAgreement", {
+                  link: (chunks) => (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.preventDefault()
+                        setTermsOpen(true)
+                      }}
+                      data-testid="watch-download-modal-tos-trigger"
+                      className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
+                    >
+                      {chunks}
+                    </button>
+                  ),
+                })}
               </span>
             </label>
 

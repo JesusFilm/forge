@@ -19,9 +19,13 @@
  * `document` (not the local container) for elements inside the modal.
  */
 
+import { setRequestLocale } from "next-intl/server"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+import hiMessages from "../../../../messages/hi.json"
+import urMessages from "../../../../messages/ur.json"
 
 import {
   DownloadModal,
@@ -30,6 +34,11 @@ import {
 } from "@/components/watch/DownloadModal"
 import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+
+// vitest.setup.ts mocks next-intl's hooks; the real translator formats the
+// hi/ur catalogs, which the shared setup does not load.
+const { createTranslator } =
+  await vi.importActual<typeof import("next-intl")>("next-intl")
 
 // next/image renders an <img> in tests; the modal otherwise tries to load the
 // real image-optimization endpoint, which JSDOM can't serve. Preserve its
@@ -556,6 +565,65 @@ describe("DownloadModal — Terms of Use agreement", () => {
     expect(checkbox.checked).toBe(false)
     expect(confirm.disabled).toBe(true)
   })
+
+  it("renders the consent as one translated sentence with the Terms link inside it", () => {
+    setRequestLocale("ru")
+    try {
+      act(() => {
+        root.render(
+          <TestDownloadModal
+            open
+            downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+            onClose={vi.fn()}
+          />,
+        )
+      })
+
+      const label = $('[data-testid="watch-download-modal-tos-label"]')
+      const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
+      const checkbox = $(
+        '[data-testid="watch-download-modal-tos"]',
+      ) as HTMLInputElement
+      expect(label?.textContent).toBe("Я принимаю Условия использования")
+      expect(trigger?.textContent).toBe("Условия использования")
+      expect(label?.contains(trigger)).toBe(true)
+      expect(checkbox.getAttribute("aria-label")).toBe(
+        "Я принимаю Условия использования",
+      )
+    } finally {
+      setRequestLocale("en")
+    }
+  })
+
+  // QA N65: the consent sentence used to be a translated prefix + link +
+  // suffix, so verb-final languages lost the verb ("मैं उपयोग की शर्तों" =
+  // "I … Terms of Use"). Pin the full rendered sentences, verb included.
+  it.each([
+    {
+      locale: "hi",
+      messages: hiMessages,
+      sentence: "मैं उपयोग की शर्तों से सहमत हूँ",
+      verb: "सहमत हूँ",
+    },
+    {
+      locale: "ur",
+      messages: urMessages,
+      sentence: "میں استعمال کی شرائط سے متفق ہوں",
+      verb: "متفق ہوں",
+    },
+  ])(
+    "keeps the agreeing verb in the $locale consent sentence",
+    ({ locale, messages, sentence, verb }) => {
+      const t = createTranslator({
+        locale,
+        messages,
+        namespace: "DownloadModal",
+      })
+      const plain = t.markup("termsAgreement", { link: (chunks) => chunks })
+      expect(plain).toBe(sentence)
+      expect(plain.endsWith(verb)).toBe(true)
+    },
+  )
 
   it("opens Terms without accepting; Cancel keeps the outer modal disabled", () => {
     const onClose = vi.fn()
