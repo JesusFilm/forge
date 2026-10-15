@@ -94,3 +94,16 @@ reconnect recovery remain unverified; this ticket owns source-level containment.
   standalone transform proxy; this is not a served Next bundle or Web Vitals.
 - Current production cold offline/reconnect behavior and preview browser timing
   remain unverified. This completes source containment only, not QA-593/M36.
+
+## Repair — 2026-10-15 (translated status)
+
+- A private browser check showed the component-download status as the raw key
+  `SearchOverlay.connectionHint`. The nested content provider replaces the
+  layout provider, and its namespace list had no `SearchOverlay`.
+- `WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES` now includes `SearchOverlay`. No
+  catalog or translation changed. The regression uses the real provider, the
+  real route projection, and the real component-download rejection. It failed
+  in Urdu and English before the fix.
+- The nested projection grows by 1,638 bytes (English) and 2,432 bytes (Urdu).
+  The gzip growth is 510 and 633 bytes.
+- Browser proof on the fixed head is still open.
