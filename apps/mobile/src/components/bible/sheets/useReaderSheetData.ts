@@ -1,8 +1,8 @@
 // What the three reader sheet routes read (feat-553 U10): the reader's theme
 // and the bundled catalog.
 import { useCallback, useEffect, useState } from "react"
-import { useColorScheme } from "react-native"
 
+import { usePhoneColorScheme } from "../../../hooks/usePhoneColorScheme"
 import type { BundledResult } from "../../../lib/bible/data/bundled"
 import type { Catalog } from "../../../lib/bible/data/catalog"
 import {
@@ -13,20 +13,34 @@ import {
 import {
   readerTokens,
   resolveReaderTheme,
+  type ReaderTheme,
   type ReaderTokens,
 } from "../../../lib/bible/theme/palettes"
+import { sheetBackground } from "../../../lib/sheetOptions"
 
 /** KTD12: the sheets follow the reader's theme, not the app's. */
 export function useReaderSheetTheme(store: ReaderSettingsStore): {
   settings: ReaderSettingsSnapshot
   tokens: ReaderTokens
+  /** The fill of the sheet's screen and body (feat-705 KTD7, R15). */
+  background: string
 } {
   const settings = useReaderSettings(store)
-  const systemScheme = useColorScheme()
-  return {
-    settings,
-    tokens: readerTokens(resolveReaderTheme(settings.mode, systemScheme)),
-  }
+  const systemScheme = usePhoneColorScheme()
+  const theme = resolveReaderTheme(settings.mode, systemScheme)
+  const tokens = readerTokens(theme)
+  return { settings, tokens, background: readerSheetBackground(theme, tokens) }
+}
+
+/**
+ * Only Dark clears the fill for the system glass sheet: the dark app style
+ * would put dark glass behind a Light page, and True Dark stays pure black.
+ * Dark and True Dark share `scheme`, so the theme name decides.
+ */
+function readerSheetBackground(theme: ReaderTheme, tokens: ReaderTokens) {
+  return theme === "dark"
+    ? sheetBackground(tokens.background)
+    : tokens.background
 }
 
 export type SheetCatalogState =

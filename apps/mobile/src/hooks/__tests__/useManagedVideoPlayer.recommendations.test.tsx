@@ -70,7 +70,12 @@ jest.mock("expo-network", () => ({
 }))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
-jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
+// Glass off: each shared glass surface keeps today's look in this suite.
+jest.mock("expo-glass-effect", () => ({
+  GlassView: () => null,
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     back: jest.fn(),

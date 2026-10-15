@@ -165,8 +165,8 @@ const ALLOWED = [
     "src/components/watch/PlayerControls.tsx",
     "physical-side",
     [
-      "paddingLeft: Math.max(insets.left, 12)",
-      "paddingRight: Math.max(insets.right, 12)",
+      "paddingLeft: Math.max(insets.left, PLAYER_BAR_PADDING_H)",
+      "paddingRight: Math.max(insets.right, PLAYER_BAR_PADDING_H)",
     ],
     "The fullscreen bar is left to right, so each inset stays on its physical side (R12, KTD7)",
   ),
@@ -193,6 +193,15 @@ const ALLOWED = [
     "horizontal-read",
     ["locationX"],
     "The seek flash shows on the tapped side in the left-to-right player root (R12)",
+  ),
+  ...entries(
+    "src/components/watch/SeekFlashPill.tsx",
+    "physical-side",
+    [
+      "left: edgeInset(fullscreen, insets.left)",
+      "right: edgeInset(fullscreen, insets.right)",
+    ],
+    "The seek flash clears the notch on its own physical side in the left-to-right player root (R12)",
   ),
   ...entries(
     "src/lib/bible/movement/gesture.ts",

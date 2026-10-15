@@ -32,12 +32,15 @@ jest.mock("@expo/vector-icons/MaterialIcons", () => ({
   __esModule: true,
   default: () => null,
 }))
-// The blur backplate is a native view; render its children so the controls it
-// wraps stay findable.
-jest.mock("expo-blur", () => {
-  const { View } = require("react-native")
-  return { BlurView: View }
-})
+// The glass and the blur backplate are native views. Host stand-ins render
+// their children, so the controls stay findable and each plate is countable.
+jest.mock("expo-blur", () => ({ BlurView: "BlurView" }))
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
+// Each case pins the glass branch. The `mock` prefix lets jest hoist the name.
+const mockGate = { glass: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
 // PlayerControls subscribes to the player's playingChange; return the seed.
 jest.mock("expo", () => ({
   useEvent: (_player: unknown, _name: string, initial: unknown) => initial,
@@ -53,14 +56,26 @@ jest.mock("react-native-safe-area-context", () => ({
 }))
 
 import { act } from "react"
-import { I18nManager, Platform } from "react-native"
+import {
+  Animated,
+  I18nManager,
+  Platform,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import {
   PlayerControls,
+  RouteButtons,
   type PlayerControlsCastUi,
   fullscreenCaptionOffset,
 } from "../PlayerControls"
 import type { PlaybackTarget } from "../../../lib/playbackTarget"
+import {
+  createControlsVisibleStore,
+  type ControlsVisibleReader,
+} from "../../../lib/controlsVisibility"
 import {
   TestRenderer,
   press,
@@ -124,6 +139,8 @@ async function render(
     onInteract?: () => void
     onRecover?: () => void
     isOnline?: boolean
+    fade?: Animated.Value
+    visibleStore?: ControlsVisibleReader
   } = {},
   player: ReturnType<typeof makePlayer> = makePlayer(),
 ): Promise<TestInstance> {
@@ -146,9 +163,12 @@ async function render(
 const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
 function setPlatform(os: "ios" | "android") {
   Object.defineProperty(Platform, "OS", { value: os, configurable: true })
+  // Liquid Glass exists only on iOS (KTD1).
+  if (os === "android") mockGate.glass = false
 }
 afterEach(() => {
   Object.defineProperty(Platform, "OS", platformOsDescriptor)
+  mockGate.glass = true
 })
 
 // A Pressable and its host view both carry the label, so a present control
@@ -357,10 +377,14 @@ describe("Cast button (U4)", () => {
 // So Android renders the SDK's own button as the real control, while iOS keeps
 // the app-drawn glyph because it presents the dialog from the context directly.
 describe("cast control differs by platform", () => {
-  // The SDK button is the only host node carrying tintColor.
+  // The SDK button is the only host node carrying tintColor, apart from a
+  // tinted glass plate.
   function nativeButtonCount(renderer: TestInstance): number {
     return renderer.root.findAll(
-      (node) => typeof node.type === "string" && node.props.tintColor != null,
+      (node) =>
+        typeof node.type === "string" &&
+        node.type !== "GlassView" &&
+        node.props.tintColor != null,
     ).length
   }
 
@@ -686,6 +710,236 @@ describe("fullscreenCaptionOffset", () => {
     expect(fullscreenCaptionOffset(21)).toBeLessThan(
       throughSeekBar + ROW_ABOVE_SEEK_BAR,
     )
+  })
+})
+
+/**
+ * feat-705 U4 (R6): the eight frosted plates show Liquid Glass on iOS 26. No
+ * glass may sit inside a fading layer, so the host pushes its fade down to the
+ * parts (KTD6), and the published `visible` value dissolves the glass (KTD5).
+ * Jest cannot draw the material, so these cases pin the branch and its props.
+ */
+describe("Liquid Glass plates (feat-705 U4)", () => {
+  type SearchableNode = RenderedNode & {
+    findAll(predicate: (node: RenderedNode) => boolean): RenderedNode[]
+  }
+  type GlassEffectStyle = {
+    style: string
+    animate: boolean
+    animationDuration: number
+  }
+
+  const isGlass = (n: RenderedNode) => n.type === "GlassView"
+  const isBlur = (n: RenderedNode) => n.type === "BlurView"
+
+  function joinedText(n: RenderedNode): string | null {
+    const c = n.props.children
+    return Array.isArray(c) && c.every((p) => typeof p === "string")
+      ? c.join("")
+      : null
+  }
+
+  // What each of R6's eight controls draws on its plate. The icon mocks
+  // render nothing, so a glyph is found by its icon name.
+  function plateContents(
+    fullscreen: boolean,
+  ): [string, (n: RenderedNode) => boolean][] {
+    return [
+      ["Cast", (n) => n.props.name === "cast"],
+      [
+        "AirPlay",
+        (n) =>
+          typeof n.type === "string" &&
+          n.props.accessibilityLabel === "AirPlay",
+      ],
+      ["settings", (n) => n.props.name === "settings"],
+      ["play/pause", (n) => n.props.name === "play"],
+      ["back 10 s", (n) => n.props.name === "play-back"],
+      ["forward 10 s", (n) => n.props.name === "play-forward"],
+      [
+        "time label",
+        (n) => typeof n.type === "string" && joinedText(n) === "0:00 / 2:00",
+      ],
+      [
+        "fullscreen",
+        (n) => n.props.name === (fullscreen ? "contract" : "expand"),
+      ],
+    ]
+  }
+
+  function ancestors(node: RenderedNode): RenderedNode[] {
+    const chain: RenderedNode[] = []
+    for (let at = node.parent ?? null; at != null; at = at.parent ?? null) {
+      chain.push(at)
+    }
+    return chain
+  }
+
+  function first(
+    renderer: TestInstance,
+    match: (n: RenderedNode) => boolean,
+  ): RenderedNode {
+    const [node] = renderer.root.findAll(match)
+    if (node == null) throw new Error("no matching node")
+    return node
+  }
+
+  function opacityOf(n: RenderedNode): unknown {
+    if (typeof n.type !== "string") return undefined
+    return StyleSheet.flatten(n.props.style as StyleProp<ViewStyle>)?.opacity
+  }
+
+  function glassStyles(renderer: TestInstance): GlassEffectStyle[] {
+    return renderer.root
+      .findAll(isGlass)
+      .map((n) => n.props.glassEffectStyle as GlassEffectStyle)
+  }
+
+  // Every route button is present: Cast (a device is reachable), AirPlay
+  // (iOS) and the settings gear.
+  function allPlates(extra: Parameters<typeof render>[1] = {}) {
+    return { castUi: makeCastUi(), onOpenSettings: () => {}, ...extra }
+  }
+
+  it.each([
+    ["inline", false],
+    ["fullscreen", true],
+  ])(
+    "draws each of the eight controls in a glass plate of its own (%s)",
+    async (_name, fullscreen) => {
+      const renderer = await render(fullscreen as boolean, allPlates())
+      const plates = renderer.root.findAll(isGlass) as SearchableNode[]
+      const contents = plateContents(fullscreen as boolean)
+
+      expect(plates).toHaveLength(8)
+      for (const [name, match] of contents) {
+        const holders = plates.filter((p) => p.findAll(match).length > 0)
+        expect([name, holders.length]).toEqual([name, 1])
+      }
+      for (const plate of plates) {
+        const held = contents.filter(([, match]) => plate.findAll(match).length)
+        expect(held).toHaveLength(1)
+      }
+      expect(renderer.root.findAll(isBlur)).toHaveLength(0)
+      await unmount(renderer)
+    },
+  )
+
+  it("dissolves every plate when the published value turns false, and brings it back on true", async () => {
+    const store = createControlsVisibleStore(true)
+    const renderer = await render(false, allPlates({ visibleStore: store }))
+    expect(glassStyles(renderer)).toHaveLength(8)
+    for (const style of glassStyles(renderer)) {
+      expect(style.style).toBe("regular")
+    }
+
+    // KTD5: out over 0.15 s with the glyph fade, back in over 0.1 s.
+    await act(async () => {
+      store.set(false)
+    })
+    expect(glassStyles(renderer)).toHaveLength(8)
+    for (const style of glassStyles(renderer)) {
+      expect(style).toMatchObject({ style: "none", animationDuration: 0.15 })
+    }
+
+    await act(async () => {
+      store.set(true)
+    })
+    for (const style of glassStyles(renderer)) {
+      expect(style).toMatchObject({ style: "regular", animationDuration: 0.1 })
+    }
+    await unmount(renderer)
+  })
+
+  it("fades each glyph and the seek bar with the host's value, never the glass", async () => {
+    const fade = new Animated.Value(0.4)
+    const renderer = await render(false, allPlates({ fade }))
+
+    for (const [name, match] of plateContents(false)) {
+      const chain = ancestors(first(renderer, match))
+      const glassAt = chain.findIndex(isGlass)
+      expect([name, glassAt > -1]).toEqual([name, true])
+      // The part inside the glass fades; the glass and its ancestors do not.
+      const inside = chain.slice(0, glassAt)
+      expect([name, inside.some((n) => opacityOf(n) === 0.4)]).toEqual([
+        name,
+        true,
+      ])
+      const outside = chain.slice(glassAt)
+      expect([name, outside.every((n) => opacityOf(n) == null)]).toEqual([
+        name,
+        true,
+      ])
+    }
+
+    const bar = first(
+      renderer,
+      (n) =>
+        typeof n.type === "string" &&
+        n.props.accessibilityRole === "adjustable",
+    )
+    expect(ancestors(bar).some((n) => opacityOf(n) === 0.4)).toBe(true)
+    await unmount(renderer)
+  })
+
+  it("keeps today's frosted blur on iOS before 26, with no fade of its own", async () => {
+    mockGate.glass = false
+    const renderer = await render(false, allPlates())
+
+    expect(renderer.root.findAll(isGlass)).toHaveLength(0)
+    const blurs = renderer.root.findAll(isBlur)
+    expect(blurs).toHaveLength(8)
+    for (const blur of blurs) {
+      expect(blur.props).toMatchObject({ intensity: 40, tint: "dark" })
+    }
+    // The host fades the whole layer on this path, so no part fades again.
+    expect(renderer.root.findAll((n) => opacityOf(n) != null)).toHaveLength(0)
+    await unmount(renderer)
+  })
+
+  it("keeps today's flat dim on Android", async () => {
+    setPlatform("android")
+    const renderer = await render(false, allPlates())
+
+    expect(renderer.root.findAll(isGlass)).toHaveLength(0)
+    expect(renderer.root.findAll(isBlur)).toHaveLength(0)
+    // SURFACE_COLOR #292524 at 60%: Cast, settings, the transport row, the
+    // time pill and fullscreen. Android has no AirPlay.
+    const dims = renderer.root.findAll(
+      (n) =>
+        typeof n.type === "string" &&
+        StyleSheet.flatten(n.props.style as StyleProp<ViewStyle>)
+          ?.backgroundColor === "rgba(41, 37, 36, 0.6)",
+    )
+    expect(dims).toHaveLength(7)
+    await unmount(renderer)
+  })
+
+  it.each([
+    ["Cast", "player-cast"],
+    ["Video settings", "player-settings"],
+    ["Back 10 seconds", "player-skip-back"],
+    ["Forward 10 seconds", "player-skip-forward"],
+    ["Fullscreen", "player-fullscreen-enter"],
+    ["Play", "player-play"],
+  ])("keeps the %s tap name on glass", async (label, actionName) => {
+    const renderer = await render(false, allPlates())
+    expect(pressableByLabel(renderer, label).props["dd-action-name"]).toBe(
+      actionName,
+    )
+    await unmount(renderer)
+  })
+
+  // The veil's route row passes no published value, so its glass shows.
+  it("shows the route buttons' glass when no visible value is given", async () => {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(<RouteButtons castUi={makeCastUi()} />)
+    })
+    const styles = glassStyles(renderer)
+    expect(styles).toHaveLength(2)
+    for (const style of styles) expect(style.style).toBe("regular")
+    await unmount(renderer)
   })
 })
 

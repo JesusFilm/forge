@@ -26,7 +26,7 @@ export default function ReaderTranslationRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { tokens } = useReaderSheetTheme(services.settingsStore)
+  const { tokens, background } = useReaderSheetTheme(services.settingsStore)
   const { state, retry } = useSheetCatalog(services.loadCatalog)
   const { audioLanguageIso3 } = useWatchPreferences()
   const [phoneLanguage] = useState(() => services.readPhoneLanguage())
@@ -82,6 +82,7 @@ export default function ReaderTranslationRoute() {
     body = (
       <TranslationPicker
         tokens={tokens}
+        background={background}
         catalog={state.catalog}
         activeId={request.translationId}
         viewerLanguages={viewerLanguages}
@@ -97,6 +98,7 @@ export default function ReaderTranslationRoute() {
     body = (
       <ReaderSheetMessage
         tokens={tokens}
+        background={background}
         sheetTitle={t("title")}
         title={reader("catalogTitle")}
         body={reader("catalogBody")}
@@ -109,13 +111,13 @@ export default function ReaderTranslationRoute() {
       />
     )
   } else {
-    body = <View style={{ flex: 1, backgroundColor: tokens.background }} />
+    body = <View style={{ flex: 1, backgroundColor: background }} />
   }
 
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: tokens.background } }}
+        options={{ contentStyle: { backgroundColor: background } }}
       />
       {body}
     </>

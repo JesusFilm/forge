@@ -17,13 +17,22 @@ jest.mock("react/jsx-runtime", () => {
   )
 })
 const mockIconRenders: string[] = []
+const mockIconProps: { name: string; size: number; color: string }[] = []
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
-  default: ({ name }: { name: string }) => {
-    mockIconRenders.push(name)
+  default: (props: { name: string; size: number; color: string }) => {
+    mockIconRenders.push(props.name)
+    mockIconProps.push(props)
     return null
   },
 }))
+// jest-expo reports Liquid Glass as available, so each case pins the branch.
+const mockGate = { glass: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+// A host stand-in that renders its children, so the glyph inside is visible.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 const mockRouter = {
   back: jest.fn(),
   canGoBack: jest.fn(() => true),
@@ -39,9 +48,10 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => mockInsets,
 }))
 
-import { act } from "react"
+import { act, type ReactElement } from "react"
 import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
 
+import { ACCENT, TEXT_PRIMARY } from "../../../lib/color"
 import { ScreenTopBar, type ScreenTopBarProps } from "../ScreenTopBar"
 import {
   TestRenderer,
@@ -89,7 +99,9 @@ beforeEach(() => {
   mockRouter.canGoBack.mockReset()
   mockRouter.canGoBack.mockReturnValue(true)
   mockIconRenders.length = 0
+  mockIconProps.length = 0
   mockInsets.top = 59
+  mockGate.glass = true
 })
 
 describe("ScreenTopBar", () => {
@@ -277,5 +289,153 @@ describe("ScreenTopBar", () => {
     await unmount(flat)
 
     expect(notchedTop - flatTop).toBe(59)
+  })
+})
+
+/** The back control's composite Pressable, which owns the render callback. */
+function backPressable(renderer: TestInstance): RenderedNode {
+  const [node] = renderer.root.findAll(
+    (candidate) =>
+      typeof candidate.type !== "string" &&
+      candidate.props["dd-action-name"] === "screen-top-bar-back" &&
+      typeof candidate.props.children === "function",
+  )
+  expect(node).toBeDefined()
+  return node!
+}
+
+/** Renders the back control's content as it looks while a finger is down. */
+async function renderPressedContent(renderer: TestInstance) {
+  const content = backPressable(renderer).props.children as (state: {
+    pressed: boolean
+    hovered: boolean
+  }) => ReactElement
+  let pressed!: TestInstance
+  await act(async () => {
+    pressed = TestRenderer.create(content({ pressed: true, hovered: false }))
+  })
+  return pressed
+}
+
+function backTarget(renderer: TestInstance): RenderedNode {
+  const [target] = hostNodes(
+    renderer,
+    (node) => node.props["dd-action-name"] === "screen-top-bar-back",
+  )
+  expect(target).toBeDefined()
+  return target!
+}
+
+// FloatingBackButton's glass circle, the reference look (R9).
+const FLOATING_BACK_SIZE = 40
+
+describe("ScreenTopBar back control on Liquid Glass (R9)", () => {
+  it("draws the floating back button's glass inside the 44pt target", async () => {
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    const target = backTarget(renderer)
+    const glass = hostNodes(renderer, (node) => node.type === "GlassView")
+    expect(glass).toHaveLength(1)
+    // The glass sits inside the target that carries the tap name.
+    let ancestor = glass[0]!.parent
+    while (ancestor != null && ancestor !== target) ancestor = ancestor.parent
+    expect(ancestor).toBe(target)
+
+    const circle = styleOf(glass[0]!)
+    expect(circle.width).toBe(FLOATING_BACK_SIZE)
+    expect(circle.height).toBe(FLOATING_BACK_SIZE)
+    expect(circle.borderRadius).toBe(FLOATING_BACK_SIZE / 2)
+    // A fill on the glass covers it.
+    expect(circle.backgroundColor).toBeUndefined()
+    expect(glass[0]!.props.colorScheme).toBe("dark")
+    expect(glass[0]!.props.isInteractive).toBeUndefined()
+
+    expect(mockIconProps).toContainEqual({
+      name: "chevron-back",
+      size: 24,
+      color: ACCENT,
+    })
+    const style = styleOf(target)
+    expect(style.width).toBe(44)
+    expect(style.height).toBe(44)
+    await unmount(renderer)
+  })
+
+  it("puts the glass circle's edge on the content edge, as the floating back button does", async () => {
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    const pull = Number(styleOf(backTarget(renderer)).marginLeft ?? 0)
+    expect(pull + (44 - FLOATING_BACK_SIZE) / 2).toBe(0)
+    await unmount(renderer)
+  })
+
+  it("keeps a gap between the glass circle and the title", async () => {
+    // The 40pt circle fills its 44pt target; without a margin the title
+    // sat 2pt from the glass on the simulator.
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    const gap =
+      (44 - FLOATING_BACK_SIZE) / 2 +
+      Number(styleOf(backTarget(renderer)).marginRight ?? 0)
+    expect(gap).toBeGreaterThanOrEqual(8)
+    await unmount(renderer)
+  })
+
+  it("scales the glass on a press and never dims the target", async () => {
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    // An opacity below 1 on any ancestor stops the glass drawing.
+    expect(typeof backPressable(renderer).props.style).not.toBe("function")
+    expect(styleOf(backTarget(renderer)).opacity).toBeUndefined()
+    const pressed = await renderPressedContent(renderer)
+    const [glass] = hostNodes(pressed, (node) => node.type === "GlassView")
+    expect(styleOf(glass!).transform).toEqual([{ scale: 0.92 }])
+    expect(
+      hostNodes(pressed, (node) => styleOf(node).opacity != null),
+    ).toHaveLength(0)
+    await unmount(pressed)
+    await unmount(renderer)
+  })
+})
+
+describe("ScreenTopBar back control without Liquid Glass (R1)", () => {
+  beforeEach(() => {
+    mockGate.glass = false
+  })
+
+  it("keeps today's bare chevron, with no glass and no fill", async () => {
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    expect(
+      hostNodes(renderer, (node) => node.type === "GlassView"),
+    ).toHaveLength(0)
+    expect(
+      hostNodes(renderer, (node) => styleOf(node).backgroundColor != null)
+        .length,
+    ).toBe(1) // The bar's own ground, nothing inside the target.
+    expect(mockIconProps).toContainEqual({
+      name: "chevron-back",
+      size: 28,
+      color: TEXT_PRIMARY,
+    })
+    const style = styleOf(backTarget(renderer))
+    expect(style.width).toBe(44)
+    expect(style.height).toBe(44)
+    // Today's pull lines the bare glyph up with the content edge.
+    expect(style.marginLeft).toBe(-10)
+    await unmount(renderer)
+  })
+
+  it("keeps today's press dim on the glyph", async () => {
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    const pressed = await renderPressedContent(renderer)
+    const dimmed = hostNodes(pressed, (node) => styleOf(node).opacity === 0.85)
+    expect(dimmed).toHaveLength(1)
+    expect(
+      hostNodes(pressed, (node) => styleOf(node).transform != null),
+    ).toHaveLength(0)
+    await unmount(pressed)
+    await unmount(renderer)
   })
 })

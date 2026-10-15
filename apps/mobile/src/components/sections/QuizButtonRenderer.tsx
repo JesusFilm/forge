@@ -20,6 +20,7 @@ import { QUIZ_GRADIENT } from "../../lib/color"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { layout, feedback } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 
 // ── URL Validation ──────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
       onRequestClose={onClose}
     >
       <StatusBar barStyle="light-content" />
-      <View style={styles.modalOverlay}>
+      <GlassSurface style={styles.modalWindow} fallback={WINDOW_FALLBACK}>
         <Pressable
           style={[
             styles.closeButton,
@@ -82,7 +83,9 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
           accessibilityLabel={tCommon("closeAriaLabel")}
           {...{ "dd-action-name": "section-quiz-close" }}
         >
-          <Text style={styles.closeIcon}>{"\u2715"}</Text>
+          <GlassSurface style={styles.closeCircle} fallback={CLOSE_FALLBACK}>
+            <Text style={styles.closeIcon}>{"\u2715"}</Text>
+          </GlassSurface>
         </Pressable>
 
         {state === "loading" && (
@@ -108,7 +111,7 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
           onLoadEnd={handleLoadEnd}
           onError={handleError}
         />
-      </View>
+      </GlassSurface>
     </Modal>
   )
 }
@@ -234,8 +237,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   // Modal styles
-  modalOverlay: {
+  modalWindow: {
     flex: 1,
+  },
+  windowFill: {
     backgroundColor: "rgba(0, 0, 0, 0.9)",
   },
   closeButton: {
@@ -244,10 +249,16 @@ const styles = StyleSheet.create({
     zIndex: 10,
     width: 48,
     height: 48,
+  },
+  closeCircle: {
+    width: 48,
+    height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(255, 255, 255, 0.15)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  closeFill: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
   },
   closeIcon: {
     color: "#ffffff",
@@ -267,3 +278,10 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
 })
+
+// The window and close button where Liquid Glass is unavailable (R1).
+const WINDOW_FALLBACK: GlassFallback = {
+  kind: "fill",
+  style: styles.windowFill,
+}
+const CLOSE_FALLBACK: GlassFallback = { kind: "fill", style: styles.closeFill }

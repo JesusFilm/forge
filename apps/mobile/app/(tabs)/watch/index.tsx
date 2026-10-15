@@ -9,28 +9,30 @@ import {
   View,
 } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import type { SearchBarCommands } from "react-native-screens"
 
-import { useIsFocused, useRouter } from "expo-router"
+import { Stack, useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { currentAdminForms } from "../../src/i18n/adminLanguage"
-import { useLocaleEpoch, useT } from "../../src/i18n/useT"
-import { getApolloClient } from "../../src/lib/apolloClient"
-import { datadogLog, reportDatadogAction } from "../../src/lib/datadog"
+import { currentAdminForms } from "../../../src/i18n/adminLanguage"
+import { useLocaleEpoch, useT } from "../../../src/i18n/useT"
+import { getApolloClient } from "../../../src/lib/apolloClient"
+import { datadogLog, reportDatadogAction } from "../../../src/lib/datadog"
+import { canUseLiquidGlass } from "../../../src/lib/liquidGlass"
 import {
   WATCH_SEARCH_LOG_MESSAGE,
   buildWatchSearchLogAttributes,
   generateSearchRequestId,
   resolveWatchSearchOutcome,
-} from "../../src/lib/watchSearchLog"
+} from "../../../src/lib/watchSearchLog"
 import {
   WATCH_SEARCH_RESULT_CLICKED_ACTION,
   buildWatchSearchResultClickContext,
-} from "../../src/lib/watchSearchRum"
+} from "../../../src/lib/watchSearchRum"
 import {
   recordResultClicked,
   recordResultsViewed,
-} from "../../src/lib/watchSearchEvents"
+} from "../../../src/lib/watchSearchEvents"
 import {
   ENGLISH_SEARCH_LANGUAGE,
   MAX_QUERY_LENGTH,
@@ -41,40 +43,41 @@ import {
   searchLanguageFor,
   type SearchErrorKind,
   type SearchLanguage,
-} from "../../src/lib/watchSearch"
+} from "../../../src/lib/watchSearch"
 import {
   GET_VIDEO_BY_SLUG,
   WATCH_SEARCH,
   type SearchResult,
-} from "../../src/lib/queries"
-import { encodeWatchSeed } from "../../src/lib/watchSeed"
+} from "../../../src/lib/queries"
+import { encodeWatchSeed } from "../../../src/lib/watchSeed"
 import {
   DISCOVERY_ROUTE_PARAM,
   markPlaybackDiscovery,
-} from "../../src/lib/recommendations/playbackDiscovery"
-import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
-import { SearchResultCard } from "../../src/components/search/SearchResultCard"
-import { useSearchPreviewCycle } from "../../src/components/search/useSearchPreviewCycle"
+} from "../../../src/lib/recommendations/playbackDiscovery"
+import { isSeriesSearchResult } from "../../../src/lib/isSeriesRecord"
+import { SearchResultCard } from "../../../src/components/search/SearchResultCard"
+import { useSearchPreviewCycle } from "../../../src/components/search/useSearchPreviewCycle"
 import {
   REVEAL_FALLBACK_MS,
   entranceDelayMs,
-} from "../../src/components/search/searchEntrance"
-import { SearchResultSkeleton } from "../../src/components/search/SearchResultSkeleton"
-import { BrowseTopics } from "../../src/components/search/BrowseTopics"
-import { useTabBarClearance } from "../../src/lib/tabBar"
-import { useExperienceSelection } from "../../src/contexts/ExperienceSelectionProvider"
+} from "../../../src/components/search/searchEntrance"
+import { SearchResultSkeleton } from "../../../src/components/search/SearchResultSkeleton"
+import { BrowseTopics } from "../../../src/components/search/BrowseTopics"
+import { useTabBarClearance } from "../../../src/lib/tabBar"
+import { useExperienceSelection } from "../../../src/contexts/ExperienceSelectionProvider"
 import {
   ACCENT,
   BG_COLOR,
   SURFACE_COLOR,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
-} from "../../src/lib/color"
+} from "../../../src/lib/color"
 
 const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
+const CLEAR_ACTION_NAME = "discover-search-clear"
 
 export default function DiscoverScreen() {
   const t = useT("Discover")
@@ -82,6 +85,10 @@ export default function DiscoverScreen() {
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
   const { selectExperience } = useExperienceSelection()
+  // KTD9: on Liquid Glass the field is the native one in the stack header.
+  // It is uncontrolled; the ref writes a topic into it and dismisses it.
+  const nativeSearch = canUseLiquidGlass()
+  const searchBarRef = useRef<SearchBarCommands>(null)
 
   // Warm the detail query on touch-down so navigation reads a warm cache.
   // Deduped by slug and capped in flight so a fast scroll-and-press can't
@@ -155,6 +162,8 @@ export default function DiscoverScreen() {
       } catch {
         // Navigation below must run regardless.
       }
+      // Dismiss the native field first, so Back does not raise the keyboard.
+      searchBarRef.current?.blur()
       if (result.type === "EXPERIENCE") {
         selectExperience(result.slug)
         router.push(`/experience/${encodeURIComponent(result.slug)}`)
@@ -548,6 +557,8 @@ export default function DiscoverScreen() {
   // same stale-guarded search() — no debounce wait, no second fetch path.
   function handleSelectTopic(term: string) {
     if (timerRef.current) clearTimeout(timerRef.current)
+    // A programmatic set sends no change event, so this searches once.
+    searchBarRef.current?.setText(term)
     setQuery(term)
     void search(term)
   }
@@ -559,6 +570,27 @@ export default function DiscoverScreen() {
     setQuery("")
     void search("")
   }
+
+  // The native Cancel has no tap name, so it reports here. handleClear must
+  // not, or the in-page clear button would send its action twice.
+  function handleNativeCancel() {
+    reportDatadogAction(CLEAR_ACTION_NAME)
+    handleClear()
+  }
+
+  // Stack.SearchBar re-registers the header whenever a prop changes identity,
+  // so its handlers stay stable and reach the latest closures through a ref.
+  const nativeHandlersRef = useRef({ handleChangeText, handleNativeCancel })
+  nativeHandlersRef.current = { handleChangeText, handleNativeCancel }
+  const onNativeChangeText = useCallback(
+    (event: { nativeEvent: { text: string } }) =>
+      nativeHandlersRef.current.handleChangeText(event.nativeEvent.text),
+    [],
+  )
+  const onNativeCancel = useCallback(
+    () => nativeHandlersRef.current.handleNativeCancel(),
+    [],
+  )
 
   const loadMore = useCallback(async () => {
     // A search in flight (or already superseded) owns a different generation
@@ -732,36 +764,51 @@ export default function DiscoverScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.inputContainer}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            value={query}
-            onChangeText={handleChangeText}
-            placeholder={t("searchPlaceholder")}
-            placeholderTextColor={TEXT_SECONDARY}
-            // The screen no longer has a "Search" heading; keep the field
-            // named for VoiceOver once typed text replaces the placeholder.
-            accessibilityLabel={t("searchFieldAriaLabel")}
-            returnKeyType="search"
-            autoCapitalize="none"
-            autoCorrect={false}
-            selectionColor={ACCENT}
-          />
-          {query.length > 0 && (
-            <Pressable
-              style={styles.clearButton}
-              onPress={handleClear}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t("clearSearchAriaLabel")}
-              {...{ "dd-action-name": "discover-search-clear" }}
-            >
-              <Ionicons name="close-circle" size={20} color={TEXT_SECONDARY} />
-            </Pressable>
-          )}
+      {nativeSearch ? (
+        <Stack.SearchBar
+          ref={searchBarRef}
+          placement="automatic"
+          placeholder={t("searchPlaceholder")}
+          autoCapitalize="none"
+          onChangeText={onNativeChangeText}
+          onCancelButtonPress={onNativeCancel}
+        />
+      ) : (
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              value={query}
+              onChangeText={handleChangeText}
+              placeholder={t("searchPlaceholder")}
+              placeholderTextColor={TEXT_SECONDARY}
+              // The screen no longer has a "Search" heading; keep the field
+              // named for VoiceOver once typed text replaces the placeholder.
+              accessibilityLabel={t("searchFieldAriaLabel")}
+              returnKeyType="search"
+              autoCapitalize="none"
+              autoCorrect={false}
+              selectionColor={ACCENT}
+            />
+            {query.length > 0 && (
+              <Pressable
+                style={styles.clearButton}
+                onPress={handleClear}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t("clearSearchAriaLabel")}
+                {...{ "dd-action-name": CLEAR_ACTION_NAME }}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={TEXT_SECONDARY}
+                />
+              </Pressable>
+            )}
+          </View>
         </View>
-      </View>
+      )}
 
       <View style={styles.contentArea}>
         {browseMounted && (

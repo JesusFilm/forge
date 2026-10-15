@@ -91,6 +91,8 @@ const COPY_MODULES = {
   "src/lib/feedbackCopy.ts": "Feedback: the one failure message",
   "src/lib/lapseReminders/copy.ts":
     "LapseReminder: the reminder body and the Android channel name",
+  "src/lib/library/deleteActionSheet.ts":
+    "Library: the iOS 26 delete confirmation sheet",
   "src/lib/libraryDownloads.ts": "Library: the downloads list text",
   "src/lib/playbackTarget.ts": "Cast: the Cast button and indicator labels",
   "src/lib/push/copy.ts":
