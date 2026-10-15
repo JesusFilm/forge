@@ -3,7 +3,7 @@ id: "feat-645"
 title: "Resolve Watch entry language from saved preference and browser locale"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "cancelled"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
@@ -15,6 +15,16 @@ tags:
 ---
 
 ## Problem
+
+**Cancelled 2026-10-15:** The owner reversed this behavior. Watch language is
+part of the public URL contract and must not be selected from a cookie or the
+browser's `Accept-Language` header. `feat-708` removes the shipped entry-route
+negotiation while preserving URL-only localized routes. This feature had also
+failed to reconcile PR #1057 and feat-315, which already recorded the URL-only
+contract after a stale cookie hijacked an explicit English URL. See
+`docs/solutions/architecture-patterns/watch-language-routing-is-url-only.md`
+for the full decision timeline and why FGE-176 was mistakenly treated as an
+implementation bug rather than a conflicting product request.
 
 Linear FGE-176: the public Watch entry and bare utility routes always use
 English even when a visitor has a saved Watch language or sends a supported
