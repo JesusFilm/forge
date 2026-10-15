@@ -64,7 +64,7 @@ describe("languageBadgeCodeFor", () => {
     expect(languageBadgeCodeFor({ slug: "arabic-algerian-spoken" })).toBe(
       "AR-ARQ",
     )
-    expect(languageBadgeCodeFor({ slug: "kurmanji-standard" })).toMatch(/^KMR-/)
+    expect(languageBadgeCodeFor({ slug: "kurmanji-standard" })).toBe("KMR-KS")
     expect(languageBadgeCodeFor({ slug: "malagasy-antankarana" })).toBe(
       "MG-XMV",
     )
@@ -90,7 +90,7 @@ describe("languageBadgeCodeFor", () => {
     ).toBe("KMR")
     expect(
       languageBadgeCodeFor({ slug: "kurmanji-standard", bcp47: "ko-kmr" }),
-    ).toMatch(/^KMR-/)
+    ).toBe("KMR-KS")
     expect(languageCodeFor({ slug: "french-african", bcp47: "fra" })).toBe(
       "FRA",
     )

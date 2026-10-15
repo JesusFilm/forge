@@ -140,10 +140,26 @@ export function correctedBcp47(
     : bcp47
 }
 
+/** Admin carries ISO 639-3 `fra`; BCP 47 canonicalizes it to `fr`. */
+const FRENCH_AFRICAN_HTML_LANG_OVERRIDE: Readonly<Record<string, string>> =
+  Object.freeze({ "french-african": "fr" })
+
+/**
+ * Slugs whose declared tag is corrected above but whose admin CONTENT locale
+ * must stay on admin's own key. Admin's broad copy layer matches
+ * `VideoLocale.locale`, which Core sync fills from the raw `bcp47`, so sending
+ * the corrected `kmr` / `fr` would pull fallback titles and study questions
+ * from other languages' rows (other Kurdish dialects, standard French)
+ * instead of falling back to English as before.
+ */
+const ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS: ReadonlySet<string> = new Set([
+  ...Object.keys(LANGUAGE_TAG_CORRECTIONS),
+  ...Object.keys(FRENCH_AFRICAN_HTML_LANG_OVERRIDE),
+])
+
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
   ...LANGUAGE_TAG_CORRECTIONS,
-  // Admin carries ISO 639-3 `fra`; BCP 47 canonicalizes it to `fr`.
-  "french-african": "fr",
+  ...FRENCH_AFRICAN_HTML_LANG_OVERRIDE,
   // Admin currently exposes generic `eng` for this regional public audio
   // slug. Keep the distinct British homepage on its actual regional identity
   // so HTML language and sitemap hreflang signals agree.
@@ -293,6 +309,21 @@ export function slugToBcp47Tag(slug: string): string | null {
   // [htmlLang] segment and locale-family verification.
   if (BCP47_TAG_PATTERN.test(slug)) return normalizeBcp47Tag(slug)
   return null
+}
+
+/**
+ * The `locale` admin's content queries key on for a URL language segment.
+ * Same as `slugToBcp47Tag`, except slugs in
+ * `ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS` keep admin's raw tag (see there).
+ */
+export function slugToAdminContentLocale(slug: string): string | null {
+  if (
+    ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS.has(slug) &&
+    Object.hasOwn(LANGUAGE_BCP47_MAP, slug)
+  ) {
+    return normalizeBcp47Tag(LANGUAGE_BCP47_MAP[slug])
+  }
+  return slugToBcp47Tag(slug)
 }
 
 /**

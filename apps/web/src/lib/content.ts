@@ -26,7 +26,7 @@ import {
 import {
   hasPublicWatchLanguageSlugShape,
   isPublicWatchLanguageSlug,
-  slugToBcp47Tag,
+  slugToAdminContentLocale,
 } from "@/lib/locale"
 import { selectOwnLanguageName } from "@/lib/language-native-name"
 import {
@@ -1795,7 +1795,7 @@ type WatchContentIdentity = {
 async function contentIdentityForWatchLanguage(
   languageSlugOrLocale: string,
 ): Promise<WatchContentIdentity> {
-  const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
+  const mappedLocale = slugToAdminContentLocale(languageSlugOrLocale)
   const locale = mappedLocale ?? languageSlugOrLocale
 
   if (isPublicWatchLanguageSlug(languageSlugOrLocale)) {

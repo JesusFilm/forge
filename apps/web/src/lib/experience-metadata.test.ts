@@ -509,6 +509,42 @@ describe("buildWatchVideoMetadataModel", () => {
     bibleCitations: [],
   }
 
+  it("declares Kurmanji Standard dub and captions from the corrected tag, not admin's ko-kmr", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    // Admin's real row: kurmanji-standard carries the invalid `ko-kmr` tag.
+    const kurmanji = {
+      slug: "kurmanji-standard",
+      bcp47: "ko-kmr",
+      name: "Kurmanji Standard",
+      nativeName: null,
+    }
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "life-of-jesus",
+      pathLocale: "kurmanji-standard",
+      selectedVariant: {
+        ...selectedVariant,
+        language: { ...selectedVariant.language, ...kurmanji },
+      },
+      video: {
+        ...video,
+        subtitles: [
+          {
+            documentId: "subtitle-kmr",
+            language: kurmanji,
+            vttSrc: "https://cdn.example/life.kmr.vtt",
+            primary: true,
+            aiGenerated: false,
+          },
+        ],
+      },
+    })
+
+    expect(model.inLanguage).toBe("kmr")
+    expect(model.captions.map((caption) => caption.inLanguage)).toEqual(["kmr"])
+  })
+
   it("uses a trimmed resolved video title for structured data", async () => {
     const { buildWatchVideoMetadataModel } =
       await import("./experience-metadata")
