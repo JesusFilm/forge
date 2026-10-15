@@ -8,8 +8,10 @@ import { useTypography } from "../../hooks/useTypography"
 import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
-import { BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
+import { ACCENT, BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { HORIZONTAL_PADDING, button, feedback } from "../../styles/shared"
+import { GlassSurface, type GlassFallback } from "./GlassSurface"
 import { HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
 
 export type ScreenTopBarAction = {
@@ -35,6 +37,12 @@ export type ScreenTopBarProps = {
 const TARGET_SIZE = 44
 // Pulls each 44pt target out so its glyph lines up with the content edge.
 const EDGE_PULL = 10
+// FloatingBackButton's glass circle (R9). Its edge, not the glyph, sits on
+// the content edge.
+const BACK_GLASS_SIZE = 40
+const BACK_GLASS_PULL = (TARGET_SIZE - BACK_GLASS_SIZE) / 2
+// Today's bar draws the bare glyph, so the fallback adds no fill.
+const BARE_GLYPH: GlassFallback = { kind: "fill", style: null }
 
 type LeaveRouter = Pick<
   ReturnType<typeof useRouter>,
@@ -59,6 +67,7 @@ export function ScreenTopBar({
   const typography = useTypography()
   const t = useT("Common")
   const uiDirection = useTextDirection().ui
+  const glass = canUseLiquidGlass()
 
   const handleBack = () => leaveToMyWatch(router)
   // Overlaid, only the controls take touches, so a drag beside them scrolls.
@@ -85,17 +94,24 @@ export function ScreenTopBar({
             accessibilityRole="button"
             accessibilityLabel={t("goBackAriaLabel")}
             {...{ "dd-action-name": "screen-top-bar-back" }}
-            style={({ pressed }) => [
+            style={[
               button.iconButton44,
-              styles.leading,
-              pressed && feedback.pressed,
+              glass ? styles.leadingGlass : styles.leading,
             ]}
           >
-            <Ionicons
-              name={directionalIcon("chevron-back")}
-              size={28}
-              color={TEXT_PRIMARY}
-            />
+            {({ pressed }) => (
+              <GlassSurface
+                style={styles.backGlass}
+                fallback={BARE_GLYPH}
+                pressed={pressed}
+              >
+                <Ionicons
+                  name={directionalIcon("chevron-back")}
+                  size={glass ? 24 : 28}
+                  color={glass ? ACCENT : TEXT_PRIMARY}
+                />
+              </GlassSurface>
+            )}
           </Pressable>
         )}
         {title != null ? (
@@ -168,6 +184,16 @@ const styles = StyleSheet.create({
   },
   leading: {
     marginLeft: -EDGE_PULL,
+  },
+  leadingGlass: {
+    marginLeft: -BACK_GLASS_PULL,
+  },
+  backGlass: {
+    width: BACK_GLASS_SIZE,
+    height: BACK_GLASS_SIZE,
+    borderRadius: BACK_GLASS_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
   },
   trailing: {
     marginRight: -EDGE_PULL,

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type ReactNode,
 } from "react"
 import {
   BackHandler,
@@ -35,6 +36,7 @@ import {
   type VerseBoxes,
 } from "../../lib/bible/fit/verseBox"
 import { isNoNetworkFailure } from "../../lib/bible/language/defaultTranslation"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import {
   readerTouchZones,
   type ScrollEdges,
@@ -113,6 +115,7 @@ import {
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { ArrowPair } from "./ArrowPair"
 import { ReaderFooter } from "./ReaderFooter"
+import { ReaderGlassSurface } from "./ReaderGlassButton"
 import { ReaderGestures } from "./ReaderGestures"
 import { ReaderLoading } from "./ReaderLoading"
 import { ReaderMessage, type ReaderMessageAction } from "./ReaderMessage"
@@ -651,19 +654,15 @@ export function BibleReader(props: BibleReaderProps) {
           pointerEvents="none"
           style={[styles.notice, { bottom: aboveFooter + movementBand + 8 }]}
         >
-          <Text
-            testID="bible-reader-notice"
-            style={[
-              styles.noticeText,
-              {
-                color: tokens.text,
-                backgroundColor: tokens.buttonSurface,
-              },
-            ]}
-            maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
-          >
-            {movement.notice.text}
-          </Text>
+          <NoticeSurface tokens={tokens}>
+            <Text
+              testID="bible-reader-notice"
+              style={[styles.noticeText, { color: tokens.text }]}
+              maxFontSizeMultiplier={READER_CHROME_MAX_FONT_SCALE}
+            >
+              {movement.notice.text}
+            </Text>
+          </NoticeSurface>
         </View>
       )}
       {/* R19: the bar takes the footer's place at the footer's height. */}
@@ -954,6 +953,31 @@ function ReaderNotice({
   }
 }
 
+// R1: before iOS 26 the reader's surface would add a blur, so the notice
+// keeps today's flat pill there.
+function NoticeSurface({
+  tokens,
+  children,
+}: {
+  tokens: ReaderTokens
+  children: ReactNode
+}) {
+  if (canUseLiquidGlass()) {
+    return (
+      <ReaderGlassSurface tokens={tokens} style={styles.noticePill}>
+        {children}
+      </ReaderGlassSurface>
+    )
+  }
+  return (
+    <View
+      style={[styles.noticePill, { backgroundColor: tokens.buttonSurface }]}
+    >
+      {children}
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -970,11 +994,13 @@ const styles = StyleSheet.create({
     right: 24,
     alignItems: "center",
   },
-  noticeText: {
+  noticePill: {
     overflow: "hidden",
     borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 8,
+  },
+  noticeText: {
     fontSize: 15,
     lineHeight: 20,
     fontFamily: "System",

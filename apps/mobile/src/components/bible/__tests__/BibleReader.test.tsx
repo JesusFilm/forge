@@ -24,12 +24,25 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
-jest.mock("expo-glass-effect", () => ({
-  GlassView: () => null,
-  isLiquidGlassAvailable: () => true,
-  isGlassEffectAPIAvailable: () => true,
-}))
+// GlassView draws nothing unless a case turns its children on, so the other
+// glass buttons' content stays out of every count.
+jest.mock("expo-glass-effect", () => {
+  const state = { drawsChildren: false }
+  return {
+    GlassView: ({ children }: { children?: unknown }) =>
+      state.drawsChildren ? children : null,
+    isLiquidGlassAvailable: () => true,
+    isGlassEffectAPIAvailable: () => true,
+    __state: state,
+  }
+})
 jest.mock("../../ui/PlatformBlur", () => ({ PlatformBlur: () => null }))
+// The launch's glass answer (KTD1). The reader's own buttons read
+// expo-glass-effect directly, so only the notice gate reads this.
+const mockLiquidGlass = { available: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockLiquidGlass.available,
+}))
 const mockStatusBars: string[] = []
 jest.mock("expo-status-bar", () => ({
   StatusBar: ({ style }: { style: string }) => {
@@ -64,10 +77,12 @@ import { StrictMode, act } from "react"
 import {
   AccessibilityInfo,
   Dimensions,
+  Platform,
   StyleSheet,
   type StyleProp,
   type TextStyle,
 } from "react-native"
+import { GlassView } from "expo-glass-effect"
 
 import t4tJohn4 from "../../../lib/bible/text/__tests__/fixtures/eng_t4t-jhn-4.json"
 import arabicJohn3 from "../../../lib/bible/text/__tests__/fixtures/arb_vdv-jhn-3.json"
@@ -125,10 +140,17 @@ import {
   READER_LOADING_DELAY_MS,
   type BibleReaderProps,
 } from "../BibleReader"
+import { ReaderGlassSurface } from "../ReaderGlassButton"
 import { ReaderTopBar } from "../ReaderTopBar"
 import { VERSE_SLIDE_HOLD_MS } from "../VerseSlider"
 import { getT } from "../../../i18n/useT"
 import { BIBLE_NOTICES } from "../../../lib/bible/sheets/copy"
+
+const mockGlass = (
+  jest.requireMock("expo-glass-effect") as unknown as {
+    __state: { drawsChildren: boolean }
+  }
+).__state
 
 const readerT = getT("BibleReader")
 const commonT = getT("Common")
@@ -1257,4 +1279,108 @@ describe("BibleReader — theme read from the rendered tree", () => {
       expect(mockStatusBars).toContain(readerTokens(phone).statusBarStyle)
     },
   )
+})
+
+describe("BibleReader — the notice pill (R13)", () => {
+  const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
+
+  beforeEach(() => {
+    mockGlass.drawsChildren = true
+  })
+  afterEach(() => {
+    mockGlass.drawsChildren = false
+    mockLiquidGlass.available = true
+    Object.defineProperty(Platform, "OS", platformOsDescriptor)
+  })
+
+  function ancestor(
+    node: RenderedNode,
+    matches: (candidate: RenderedNode) => boolean,
+  ): RenderedNode | null {
+    let current = node.parent ?? null
+    while (current != null && !matches(current))
+      current = current.parent ?? null
+    return current
+  }
+
+  /** A move back from Genesis 1:1 has nowhere to go, so the reader says so. */
+  async function showNotice(mode: "light" | "dark" | "trueDark") {
+    const { services } = makeServices()
+    services.settingsStore.update({ mode, showArrows: true })
+    await openAt(services, { book: "GEN", chapter: 1, verse: 1 })
+    const renderer = await render(services)
+    await settleFit(renderer, () => 200)
+    await pressControl(
+      renderer,
+      (label) => label === readerT("previousVerseAriaLabel"),
+    )
+    const [notice] = byTestId(renderer, "bible-reader-notice")
+    expect(notice).toBeDefined()
+    expect(textOf(notice!)).toBe(readerT("noVerseBefore"))
+    return notice!
+  }
+
+  it.each(["light", "dark", "trueDark"] as const)(
+    "%s: the notice draws on the reader's own glass, in the reader's theme",
+    async (mode) => {
+      const tokens = readerTokens(mode)
+      const notice = await showNotice(mode)
+
+      const surface = ancestor(
+        notice,
+        (node) => node.type === ReaderGlassSurface,
+      )
+      expect(surface?.props.tokens).toEqual(tokens)
+      const glass = ancestor(notice, (node) => node.type === GlassView)
+      expect(glass).not.toBeNull()
+      expect(glass!.props.colorScheme).toBe(tokens.scheme)
+      expect(glass!.props.isInteractive).toBeUndefined()
+      const pill = flat(glass!)
+      expect(pill.borderRadius).toBe(16)
+      // A fill on the glass covers it.
+      expect(pill.backgroundColor).toBeUndefined()
+      expect(flat(notice).backgroundColor).toBeUndefined()
+      expect(flat(notice).color).toBe(tokens.text)
+    },
+  )
+
+  it("keeps today's flat pill, with no blur, on iOS before 26 (R1)", async () => {
+    mockLiquidGlass.available = false
+    const tokens = readerTokens("dark")
+    const notice = await showNotice("dark")
+
+    expect(ancestor(notice, (node) => node.type === ReaderGlassSurface)).toBe(
+      null,
+    )
+    const pill = ancestor(
+      notice,
+      (node) =>
+        typeof node.type === "string" &&
+        flat(node).backgroundColor === tokens.buttonSurface,
+    )
+    expect(pill).not.toBeNull()
+    expect(flat(pill!).borderRadius).toBe(16)
+    expect(flat(notice).color).toBe(tokens.text)
+  })
+
+  it("keeps today's flat pill in the reader's surface color on Android", async () => {
+    mockLiquidGlass.available = false
+    Object.defineProperty(Platform, "OS", {
+      value: "android",
+      configurable: true,
+    })
+    const tokens = readerTokens("dark")
+    const notice = await showNotice("dark")
+
+    expect(ancestor(notice, (node) => node.type === GlassView)).toBeNull()
+    const pill = ancestor(
+      notice,
+      (node) =>
+        typeof node.type === "string" &&
+        flat(node).backgroundColor === tokens.buttonSurface,
+    )
+    expect(pill).not.toBeNull()
+    expect(flat(pill!).borderRadius).toBe(16)
+    expect(flat(notice).color).toBe(tokens.text)
+  })
 })
