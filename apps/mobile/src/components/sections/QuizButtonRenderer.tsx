@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
 })
 
-// Today's window and close button, where Liquid Glass is unavailable (R1).
+// The window and close button where Liquid Glass is unavailable (R1).
 const WINDOW_FALLBACK: GlassFallback = {
   kind: "fill",
   style: styles.windowFill,

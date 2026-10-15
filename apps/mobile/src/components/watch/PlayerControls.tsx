@@ -84,7 +84,7 @@ type PlayerControlsProps = {
   isOnline?: boolean
   /** Glass path only: the chrome's fade, which the host no longer applies to
    *  this layer, because glass draws nothing inside a fading layer (KTD6). */
-  fade?: Animated.Value | null
+  fade?: Animated.Value
   /** The controls table's published `visible` value, which dissolves the
    *  glass (KTD5). Without it the glass stays shown. */
   visibleStore?: ControlsVisibleReader
@@ -125,7 +125,7 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs.toString().padStart(2, "0")}`
 }
 
-// Today's frosted plate where Liquid Glass is unavailable. Lighter than the
+// The frosted plate where Liquid Glass is unavailable. Lighter than the
 // hero blurs so a 44pt control does not read as a solid block.
 const PLATE_FALLBACK: GlassFallback = {
   kind: "blur",
@@ -139,9 +139,7 @@ const ALWAYS_VISIBLE: ControlsVisibleReader = {
   subscribe: () => () => {},
 }
 
-type PlateFade = Animated.Value | null | undefined
-
-/** One chrome control's backplate: glass on iOS 26, else today's blur. */
+/** One chrome control's backplate: glass on iOS 26, else a blur. */
 function Plate({
   style,
   fade,
@@ -149,7 +147,7 @@ function Plate({
   children,
 }: {
   style: StyleProp<ViewStyle>
-  fade: PlateFade
+  fade: Animated.Value | undefined
   visible: boolean
   children: ReactNode
 }) {
@@ -157,7 +155,7 @@ function Plate({
     <GlassSurface
       style={style}
       fallback={PLATE_FALLBACK}
-      fade={fade ?? undefined}
+      fade={fade}
       visible={visible}
     >
       {children}
@@ -170,7 +168,7 @@ function FadedPart({
   fade,
   children,
 }: {
-  fade: PlateFade
+  fade: Animated.Value | undefined
   children: ReactNode
 }) {
   if (fade == null) return <>{children}</>
@@ -187,7 +185,7 @@ export function RouteButtons({
   externalPlaybackActive = false,
   castUi = null,
   onOpenSettings,
-  fade = null,
+  fade,
   glassVisible = true,
 }: {
   onInteract?: () => void
@@ -197,7 +195,7 @@ export function RouteButtons({
    *  it, so the veil route row and other surfaces render no gear. */
   onOpenSettings?: () => void
   /** The chrome's fade and glass value. The veil row passes neither. */
-  fade?: PlateFade
+  fade?: Animated.Value
   glassVisible?: boolean
 }) {
   const t = useT("Player")
@@ -296,7 +294,7 @@ export function PlayerControls({
   onOpenSettings,
   onRecover,
   isOnline = true,
-  fade = null,
+  fade,
   visibleStore = ALWAYS_VISIBLE,
 }: PlayerControlsProps) {
   const glassVisible = useControlsGlassVisible(visibleStore)
@@ -548,10 +546,9 @@ export function PlayerControls({
         onSeek={handleSeek}
         onScrubChange={handleScrubChange}
         flush={!fullscreen}
-        // iOS-only: there the pop recognizer competes for this touch, so the bar
-        // yields the strip inline (fullscreen cannot pop, so it keeps full
-        // width). Android's back is an OS gesture popped in JS — nothing to
-        // yield to, so giving up the strip there would cost seek area for free.
+        // iOS only: the pop recognizer competes for this touch, so the inline
+        // bar yields the edge strip; fullscreen cannot pop. Android's back is
+        // an OS gesture handled in JS, so yielding there only costs seek area.
         edgeGuardWidth={
           Platform.OS === "ios" && !fullscreen ? BACK_SWIPE_EDGE_WIDTH : 0
         }

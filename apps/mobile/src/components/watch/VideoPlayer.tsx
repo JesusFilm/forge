@@ -935,8 +935,8 @@ export function VideoPlayer({
             onOpenSettings={() => setSettingsOpen(true)}
             onRecover={handleRecover}
             isOnline={isOnline}
-            fade={glass ? controls.opacityAnim : null}
-            visibleStore={controls.visibleStore}
+            fade={glass ? controls.opacityAnim : undefined}
+            visibleStore={glass ? controls.visibleStore : undefined}
           />
         </Animated.View>
       )}

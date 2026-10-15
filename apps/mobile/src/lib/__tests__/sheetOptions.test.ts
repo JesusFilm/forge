@@ -25,8 +25,8 @@ import { BACK_SWIPE_RESPONSE_DISTANCE } from "../backSwipe"
 import { BG_COLOR } from "../color"
 import {
   formSheetBaseOptions,
+  formSheetOptions,
   sheetBackground,
-  sheetContentStyle,
 } from "../sheetOptions"
 
 type Options = Record<string, unknown>
@@ -53,7 +53,10 @@ describe("the form sheet helper", () => {
       sheetInitialDetentIndex: 0,
       sheetGrabberVisible: true,
     })
-    expect(sheetContentStyle()).toEqual({ backgroundColor: "transparent" })
+    expect(formSheetOptions()).toEqual({
+      ...options,
+      contentStyle: { backgroundColor: "transparent" },
+    })
   })
 
   it("keeps today's 16 pt corner and solid fill without Liquid Glass", () => {
@@ -65,7 +68,10 @@ describe("the form sheet helper", () => {
       sheetGrabberVisible: true,
       sheetCornerRadius: 16,
     })
-    expect(sheetContentStyle()).toEqual({ backgroundColor: BG_COLOR })
+    expect(formSheetOptions()).toEqual({
+      ...formSheetBaseOptions(),
+      contentStyle: { backgroundColor: BG_COLOR },
+    })
   })
 
   it("turns a caller's solid fill transparent only on iOS 26", () => {

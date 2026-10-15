@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import {
   Animated,
   StyleSheet,
+  View,
   type ColorValue,
   type StyleProp,
   type ViewStyle,
@@ -11,17 +12,12 @@ import { GlassView } from "expo-glass-effect"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { feedback } from "../../styles/shared"
-import { PlatformBlur } from "./PlatformBlur"
+import { PlatformBlur, type PlatformBlurProps } from "./PlatformBlur"
 
-/** The element's look today, drawn wherever Liquid Glass is unavailable. */
+/** The element's look without Liquid Glass. */
 export type GlassFallback =
   /** `PlatformBlur` with these props: a blur on iOS, `androidDim` on Android. */
-  | {
-      kind: "blur"
-      intensity?: number
-      tint?: "dark" | "light" | "default"
-      androidDim?: string
-    }
+  | ({ kind: "blur" } & Omit<PlatformBlurProps, "style" | "children">)
   /** A plain view with this extra style, such as a fill and a shadow. */
   | { kind: "fill"; style: StyleProp<ViewStyle> }
 
@@ -39,7 +35,7 @@ export type GlassSurfaceProps = {
   /** On glass it fades one view around the children. In the fallback it fades
    *  the whole surface, so do not also fade an ancestor there. */
   fade?: Animated.WithAnimatedValue<number>
-  /** A Pressable's pressed state: a scale on glass, today's dim elsewhere. */
+  /** A Pressable's pressed state: a scale on glass, a dim elsewhere. */
   pressed?: boolean
   children?: ReactNode
 }
@@ -102,10 +98,11 @@ function FallbackSurface({
   const pressedStyle = pressed ? feedback.pressed : null
 
   if (fallback.kind === "fill") {
+    const Fill = fade == null ? View : Animated.View
     return (
-      <Animated.View style={[style, fallback.style, fadeStyle, pressedStyle]}>
+      <Fill style={[style, fallback.style, fadeStyle, pressedStyle]}>
         {children}
-      </Animated.View>
+      </Fill>
     )
   }
 

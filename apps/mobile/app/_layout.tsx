@@ -16,8 +16,7 @@ let ACCENT: string
 let BG_COLOR: string
 let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
 let READER_SHEET_SCREEN_OPTIONS: typeof import("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
-let formSheetBaseOptions: typeof import("../src/lib/sheetOptions").formSheetBaseOptions
-let sheetContentStyle: typeof import("../src/lib/sheetOptions").sheetContentStyle
+let formSheetOptions: typeof import("../src/lib/sheetOptions").formSheetOptions
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -88,9 +87,7 @@ try {
     require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
   READER_SHEET_SCREEN_OPTIONS =
     require("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
-  const sheetOptions = require("../src/lib/sheetOptions")
-  formSheetBaseOptions = sheetOptions.formSheetBaseOptions
-  sheetContentStyle = sheetOptions.sheetContentStyle
+  formSheetOptions = require("../src/lib/sheetOptions").formSheetOptions
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -318,9 +315,8 @@ function HeaderBackButton() {
 // detent cannot resize between them or hide the message field behind the keys.
 function feedbackSheetOptions() {
   return {
-    ...formSheetBaseOptions(),
+    ...formSheetOptions(),
     sheetAllowedDetents: [1],
-    contentStyle: sheetContentStyle(),
   }
 }
 

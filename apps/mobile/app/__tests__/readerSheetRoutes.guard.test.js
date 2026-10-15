@@ -12,7 +12,7 @@ const { READER_SHEET_PATHNAMES } = require("../../src/lib/bible/sheets/routes")
 const {
   READER_SHEET_SCREEN_OPTIONS,
 } = require("../../src/lib/bible/sheets/screenOptions")
-const { formSheetBaseOptions } = require("../../src/lib/sheetOptions")
+const { formSheetOptions } = require("../../src/lib/sheetOptions")
 const { LIST_SHEET_DETENTS } = require("../../src/styles/shared")
 
 // Guard (feat-553 U10, KTD9): the reader's sheets are ROOT routes. The mini
@@ -101,10 +101,10 @@ describe("the reader's root sheet routes", () => {
   // the transparent fill on iOS 26; sheetOptions.test.ts proves both paths.
   it("presents the feedback sheet as one full-height form sheet", () => {
     const body = optionsBuilderBody(ROOT_LAYOUT, "feedbackSheetOptions")
-    expect(body).toMatch(/\.\.\.formSheetBaseOptions\(\)/)
+    expect(body).toMatch(/\.\.\.formSheetOptions\(\)/)
     expect(body).toMatch(/sheetAllowedDetents: \[1\]/)
-    expect(body).toMatch(/contentStyle: sheetContentStyle\(\)/)
-    expect(formSheetBaseOptions().presentation).toBe("formSheet")
+    expect(formSheetOptions().presentation).toBe("formSheet")
+    expect(formSheetOptions()).toHaveProperty("contentStyle")
   })
 
   it("flags another root sheet declared as a card (positive control)", () => {
@@ -126,9 +126,8 @@ describe("the reader's root sheet routes", () => {
     ).toEqual(["feedback"])
     const body = optionsBuilderBody(fixture, "feedbackSheetOptions")
     expect(body).toMatch(/presentation: "card"/)
-    expect(body).not.toMatch(/\.\.\.formSheetBaseOptions\(\)/)
+    expect(body).not.toMatch(/\.\.\.formSheetOptions\(\)/)
     expect(body).not.toMatch(/sheetAllowedDetents: \[1\]/)
-    expect(body).not.toMatch(/contentStyle: sheetContentStyle\(\)/)
   })
 
   it.each(ROOT_SHEETS)("has a route file for %s", (name) => {

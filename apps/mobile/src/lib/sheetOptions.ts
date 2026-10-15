@@ -1,8 +1,8 @@
 import { BG_COLOR } from "./color"
 import { canUseLiquidGlass } from "./liquidGlass"
 
-/** Today's corner, kept wherever Liquid Glass is unavailable. */
-export const SHEET_CORNER_RADIUS = 16
+/** The sheet corner wherever Liquid Glass is unavailable. */
+const SHEET_CORNER_RADIUS = 16
 
 /**
  * The options every native form sheet shares (feat-699 KTD7). On iOS 26 the
@@ -28,7 +28,11 @@ export function sheetBackground(solid: string = BG_COLOR): string {
   return canUseLiquidGlass() ? "transparent" : solid
 }
 
-/** A sheet screen's `contentStyle`. A page keeps its own solid fill. */
-export function sheetContentStyle(): { backgroundColor: string } {
-  return { backgroundColor: sheetBackground() }
+/** An app form sheet: the shared options and the app's fill. The reader
+ *  sheets set their own fill, so they take the base options only. */
+export function formSheetOptions() {
+  return {
+    ...formSheetBaseOptions(),
+    contentStyle: { backgroundColor: sheetBackground() },
+  }
 }

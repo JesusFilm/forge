@@ -954,7 +954,7 @@ function ReaderNotice({
 }
 
 // R1: before iOS 26 the reader's surface would add a blur, so the notice
-// keeps today's flat pill there.
+// keeps its flat pill there.
 function NoticeSurface({
   tokens,
   children,

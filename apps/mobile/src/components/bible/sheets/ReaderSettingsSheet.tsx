@@ -73,7 +73,7 @@ export type ReaderSettingsSheetProps = {
   currentCredit: { name: string; credit: string } | null
   onChange: (patch: Partial<ReaderSettings>) => void
   onClose: () => void
-  /** The sheet's fill, `tokens.background` by default (`readerSheetBackground`). */
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
   background?: string
 }
 

@@ -42,7 +42,7 @@ const EDGE_PULL = 10
 const BACK_GLASS_SIZE = 40
 const BACK_GLASS_PULL = (TARGET_SIZE - BACK_GLASS_SIZE) / 2
 const BACK_GLASS_TITLE_GAP = 8
-// Today's bar draws the bare glyph, so the fallback adds no fill.
+// Without Liquid Glass the bar draws the bare glyph, so it adds no fill.
 const BARE_GLYPH: GlassFallback = { kind: "fill", style: null }
 
 type LeaveRouter = Pick<
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   leading: {
     marginLeft: -EDGE_PULL,
   },
-  // The circle fills its target, so it keeps today's gap before the title.
+  // The circle fills its target, so it keeps the glyph's gap to the title.
   leadingGlass: {
     marginLeft: -BACK_GLASS_PULL,
     marginRight: BACK_GLASS_TITLE_GAP,

@@ -2,7 +2,6 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 
 import { ReaderSettingsSheet } from "../src/components/bible/sheets/ReaderSettingsSheet"
 import {
-  readerSheetBackground,
   useReaderSheetTheme,
   useSheetCatalog,
 } from "../src/components/bible/sheets/useReaderSheetData"
@@ -17,10 +16,9 @@ export default function ReaderSettingsRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { settings, tokens, theme } = useReaderSheetTheme(
+  const { settings, tokens, background } = useReaderSheetTheme(
     services.settingsStore,
   )
-  const background = readerSheetBackground(theme)
   const { state } = useSheetCatalog(services.loadCatalog)
   const layout = useIsTabletLayout() ? "tablet" : "phone"
 

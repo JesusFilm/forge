@@ -46,6 +46,7 @@ export function createControlsVisibleStore(
   return {
     get: () => visible,
     set: (next) => {
+      if (next === visible) return
       visible = next
       listeners.forEach((listener) => listener())
     },

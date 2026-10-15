@@ -77,6 +77,7 @@ const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
+const CLEAR_ACTION_NAME = "discover-search-clear"
 
 export default function DiscoverScreen() {
   const t = useT("Discover")
@@ -571,9 +572,9 @@ export default function DiscoverScreen() {
   }
 
   // The native Cancel has no tap name, so it reports here. handleClear must
-  // not, or today's clear button would send its action twice.
+  // not, or the in-page clear button would send its action twice.
   function handleNativeCancel() {
-    reportDatadogAction("discover-search-clear")
+    reportDatadogAction(CLEAR_ACTION_NAME)
     handleClear()
   }
 
@@ -796,7 +797,7 @@ export default function DiscoverScreen() {
                 hitSlop={8}
                 accessibilityRole="button"
                 accessibilityLabel={t("clearSearchAriaLabel")}
-                {...{ "dd-action-name": "discover-search-clear" }}
+                {...{ "dd-action-name": CLEAR_ACTION_NAME }}
               >
                 <Ionicons
                   name="close-circle"

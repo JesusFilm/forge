@@ -43,7 +43,7 @@ export type TranslationPickerProps = {
    *  card has no button. */
   onPressDownload?: (translation: CatalogTranslation) => void
   onClose: () => void
-  /** The sheet's fill, `tokens.background` by default (`readerSheetBackground`). */
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
   background?: string
 }
 

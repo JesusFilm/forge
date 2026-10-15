@@ -49,7 +49,7 @@ export type PassagePickerProps = {
   /** Called once, in BSB numbering (R38). */
   onPick: (bsbRef: VerseRef) => void
   onClose: () => void
-  /** The sheet's fill, `tokens.background` by default (`readerSheetBackground`). */
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
   background?: string
 }
 

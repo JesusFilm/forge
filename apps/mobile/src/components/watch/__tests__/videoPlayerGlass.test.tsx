@@ -237,7 +237,9 @@ describe("the controls layer (feat-699 U4, KTD6)", () => {
     const renderer = await render()
 
     expect(opacityOf(controlsLayer(renderer))).toBe(0.5)
-    expect(controlsProps(renderer).fade ?? null).toBeNull()
+    expect(controlsProps(renderer).fade).toBeUndefined()
+    // No glass to dissolve, so the controls do not re-render on hide start.
+    expect(controlsProps(renderer).visibleStore).toBeUndefined()
   })
 
   // KTD5: the value changes at hide start; only its readers may re-render.

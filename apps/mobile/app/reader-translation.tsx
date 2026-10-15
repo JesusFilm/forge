@@ -5,7 +5,6 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router"
 import { ReaderSheetMessage } from "../src/components/bible/sheets/ReaderSheetMessage"
 import { TranslationPicker } from "../src/components/bible/sheets/TranslationPicker"
 import {
-  readerSheetBackground,
   useReaderSheetTheme,
   useSheetCatalog,
 } from "../src/components/bible/sheets/useReaderSheetData"
@@ -27,8 +26,7 @@ export default function ReaderTranslationRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { tokens, theme } = useReaderSheetTheme(services.settingsStore)
-  const background = readerSheetBackground(theme)
+  const { tokens, background } = useReaderSheetTheme(services.settingsStore)
   const { state, retry } = useSheetCatalog(services.loadCatalog)
   const { audioLanguageIso3 } = useWatchPreferences()
   const [phoneLanguage] = useState(() => services.readPhoneLanguage())

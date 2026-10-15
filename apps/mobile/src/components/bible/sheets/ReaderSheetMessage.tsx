@@ -14,7 +14,7 @@ export type ReaderSheetMessageProps = {
   /** `actionName` is the Datadog tap name; it never changes with the label. */
   action: { label: string; actionName: string; onPress: () => void }
   onClose: () => void
-  /** The sheet's fill, `tokens.background` by default (`readerSheetBackground`). */
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
   background?: string
 }
 

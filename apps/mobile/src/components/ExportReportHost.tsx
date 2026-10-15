@@ -264,5 +264,5 @@ const styles = StyleSheet.create({
   },
 })
 
-// Today's solid card, wherever Liquid Glass is unavailable.
+// The solid card wherever Liquid Glass is unavailable.
 const SOLID_CARD: GlassFallback = { kind: "fill", style: styles.cardFill }

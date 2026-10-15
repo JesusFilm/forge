@@ -22,23 +22,25 @@ import { sheetBackground } from "../../../lib/sheetOptions"
 export function useReaderSheetTheme(store: ReaderSettingsStore): {
   settings: ReaderSettingsSnapshot
   tokens: ReaderTokens
-  /** feat-699 KTD7: Dark and True Dark share `scheme`, so the name decides. */
-  theme: ReaderTheme
+  /** The fill of the sheet's screen and body (feat-699 KTD7, R15). */
+  background: string
 } {
   const settings = useReaderSettings(store)
   const systemScheme = usePhoneColorScheme()
   const theme = resolveReaderTheme(settings.mode, systemScheme)
-  return { settings, tokens: readerTokens(theme), theme }
+  const tokens = readerTokens(theme)
+  return { settings, tokens, background: readerSheetBackground(theme, tokens) }
 }
 
 /**
- * The fill of a reader sheet's screen and body (feat-699 KTD7, R15). Only
- * Dark clears it for the system glass sheet: the dark app style would put dark
- * glass behind a Light page, and True Dark stays pure black.
+ * Only Dark clears the fill for the system glass sheet: the dark app style
+ * would put dark glass behind a Light page, and True Dark stays pure black.
+ * Dark and True Dark share `scheme`, so the theme name decides.
  */
-export function readerSheetBackground(theme: ReaderTheme): string {
-  const solid = readerTokens(theme).background
-  return theme === "dark" ? sheetBackground(solid) : solid
+function readerSheetBackground(theme: ReaderTheme, tokens: ReaderTokens) {
+  return theme === "dark"
+    ? sheetBackground(tokens.background)
+    : tokens.background
 }
 
 export type SheetCatalogState =

@@ -389,5 +389,5 @@ const styles = StyleSheet.create({
   },
 })
 
-// Today's solid panel, where Liquid Glass is unavailable (R1).
+// The solid panel where Liquid Glass is unavailable (R1).
 const PANEL_FALLBACK: GlassFallback = { kind: "fill", style: styles.panelFill }

@@ -67,6 +67,18 @@ describe("createControlsVisibleStore", () => {
     expect(heard).toHaveReturnedWith(false)
   })
 
+  // A control press writes "visible" again on every tap.
+  it("does not tell subscribers about a set to the same value", () => {
+    const store = createControlsVisibleStore(true)
+    const heard = jest.fn()
+    store.subscribe(heard)
+
+    store.set(true)
+
+    expect(heard).not.toHaveBeenCalled()
+    expect(store.get()).toBe(true)
+  })
+
   it("stops telling a listener once it unsubscribes", () => {
     const store = createControlsVisibleStore(false)
     const heard = jest.fn()

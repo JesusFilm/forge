@@ -2,10 +2,7 @@ import { Stack } from "expo-router"
 
 import { BACK_SWIPE_RESPONSE_DISTANCE } from "../../src/lib/backSwipe"
 import { BG_COLOR } from "../../src/lib/color"
-import {
-  formSheetBaseOptions,
-  sheetContentStyle,
-} from "../../src/lib/sheetOptions"
+import { formSheetOptions } from "../../src/lib/sheetOptions"
 import { WatchSessionProvider } from "../../src/contexts/WatchSessionProvider"
 import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 
@@ -14,10 +11,7 @@ import { LIST_SHEET_DETENTS } from "../../src/styles/shared"
 // fractional detents (not "fitToContents") dodge react-native-screens v4 Android bugs.
 const DOWNLOAD_SHEET_DETENTS = [0.65, 1] as const
 
-const SHEET_BASE_OPTIONS = {
-  ...formSheetBaseOptions(),
-  contentStyle: sheetContentStyle(),
-}
+const SHEET_BASE_OPTIONS = formSheetOptions()
 
 // Long language/subtitle lists opt OUT of scroll-expands-to-edge: otherwise the
 // first scroll at the small detent snaps the sheet to full, making it useless.

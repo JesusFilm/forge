@@ -2,7 +2,7 @@ import type { ReactNode } from "react"
 import { Platform, View, type StyleProp, type ViewStyle } from "react-native"
 import { BlurView } from "expo-blur"
 
-type PlatformBlurProps = {
+export type PlatformBlurProps = {
   style?: StyleProp<ViewStyle>
   /** iOS blur strength. Ignored on Android, which takes the flat dim instead. */
   intensity?: number
