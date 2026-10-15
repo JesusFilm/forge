@@ -4820,19 +4820,28 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ).toBe("Результаты на русском")
   })
 
-  it.each(["ar", "en"])(
-    "keeps copy glued to the inline language chip without a gap (%s)",
-    async (locale) => {
+  // jsdom has no layout, so these pin the wiring (which logical margin
+  // utilities the chip wrapper carries); the rendered flush spacing itself was
+  // checked in a real browser. Each locale pins a different attachment shape:
+  // ar start only, zh-Hans both sides (the only fixture reaching the
+  // attached-end branch), en neither.
+  it.each([
+    ["ar", { start: true, end: false }],
+    ["zh-Hans", { start: true, end: true }],
+    ["en", { start: false, end: false }],
+  ] as const)(
+    "drops chip margin only on the sides glued to copy (%s)",
+    async (locale, glued) => {
       const language =
-        locale === "ar"
-          ? {
-              englishName: "Arabic",
-              nativeName: "العربية",
-              bcp47: "ar",
-              publicSlug: "arabic",
+        locale === "en"
+          ? englishSearchLanguage
+          : {
+              englishName: locale === "ar" ? "Arabic" : "Chinese",
+              nativeName: locale === "ar" ? "العربية" : "中文",
+              bcp47: locale === "ar" ? "ar" : "zh-Hans",
+              publicSlug: locale === "ar" ? "arabic" : "chinese",
               regionNames: ["Asia"],
             }
-          : englishSearchLanguage
       mockedGetSearchLanguageOptions.mockResolvedValue({
         ok: true,
         options: [language],
@@ -4847,30 +4856,20 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         document
           .querySelector('[data-testid="searching-in-language-label"]')
           ?.closest(".pointer-events-auto.inline-flex") as HTMLElement | null
-      const contextCopy = () =>
-        document.querySelector('[data-testid="search-language-context"]')
-
-      // Idle template: ar "البحث ب{language}" glues the clitic on the
-      // inline-start side only; en "Search in {language}" keeps a gap.
-      expect(chipWrapper()).not.toBeNull()
-      expect(contextCopy()).not.toBeNull()
-      if (locale === "ar") {
-        expect(chipWrapper()?.className).not.toContain("ms-1")
-        expect(chipWrapper()?.className).toContain("me-1")
-      } else {
-        expect(chipWrapper()?.className).toContain("ms-1")
-        expect(chipWrapper()?.className).toContain("me-1")
+      const expectMargins = () => {
+        const className = chipWrapper()?.className ?? ""
+        expect(className.split(" ").includes("ms-1")).toBe(!glued.start)
+        expect(className.split(" ").includes("me-1")).toBe(!glued.end)
       }
 
-      // Query-intent template: ar `ابحث عن «{suggestion}» ب{language}`.
+      // Idle template (searchInLanguage).
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+
+      // Query-intent template (searchSuggestionWithLanguage).
       act(() => setInputValue(input, "jesus"))
       expect(chipWrapper()).not.toBeNull()
-      if (locale === "ar") {
-        expect(chipWrapper()?.className).not.toContain("ms-1")
-        expect(chipWrapper()?.className).toContain("me-1")
-      } else {
-        expect(chipWrapper()?.className).toContain("ms-1")
-      }
+      expectMargins()
     },
   )
 

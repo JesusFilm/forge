@@ -107,6 +107,31 @@ describe("splitSearchLanguageTemplate", () => {
     })
   })
 
+  it("keeps scanning past text that holds only bidi controls", () => {
+    // RLM-only text between two placeholders is not a boundary: the second
+    // placeholder is still glued to the first.
+    expect(languageSegment("{suggestion}\u200f{language}")).toEqual({
+      start: true,
+      end: false,
+    })
+    // Bidi-only text at the template edge leaves nothing to be glued to.
+    expect(languageSegment("\u200f{language}", LANGUAGE)).toEqual({
+      start: false,
+      end: false,
+    })
+    // Bidi-only text, then a real space: still a word boundary.
+    expect(languageSegment("a \u200f\u200f{language}", LANGUAGE)).toEqual({
+      start: false,
+      end: false,
+    })
+  })
+
+  it("returns the whole template as text when no tokens are given", () => {
+    expect(splitSearchLanguageTemplate("ب{language}", [])).toEqual([
+      { kind: "text", text: "ب{language}" },
+    ])
+  })
+
   it("treats a placeholder directly next to another placeholder as attached", () => {
     expect(languageSegment("{suggestion}{language}")).toEqual({
       start: true,
@@ -151,7 +176,7 @@ describe("splitSearchLanguageTemplate", () => {
 
 /**
  * Pinned against the real shipped catalogs: these are the production inputs
- * the helper exists for (N59). A template reword that moves a boundary should
+ * the helper exists for (QA finding N59). A template reword that moves a boundary should
  * be a deliberate, reviewed change, not a silent layout regression.
  */
 describe("shipped search templates", () => {
@@ -178,32 +203,31 @@ describe("shipped search templates", () => {
     }
   })
 
-  it("ja keeps the postposition glued to the chip", () => {
-    expect(languageSegment(template(jaMessages, "searchInLanguage"))).toEqual({
-      start: false,
-      end: true,
-    })
-    expect(
-      languageSegment(template(jaMessages, "searchSuggestionWithLanguage")),
-    ).toEqual({ start: false, end: true })
-  })
-
-  it("mt keeps the hyphenated article glued to the chip", () => {
-    expect(languageSegment(template(mtMessages, "searchInLanguage"))).toEqual({
-      start: true,
-      end: false,
-    })
-  })
-
-  it("en keeps normal word gaps on both sides", () => {
+  it("ja keeps the postposition glued to the chip in every template", () => {
     for (const key of keys) {
-      const { start } = languageSegment(template(enMessages, key))
-      expect(start).toBe(false)
+      expect(languageSegment(template(jaMessages, key))).toEqual({
+        start: false,
+        end: true,
+      })
     }
-    expect(languageSegment(template(enMessages, "searchInLanguage"))).toEqual({
-      start: false,
-      end: false,
-    })
+  })
+
+  it("mt keeps the hyphenated article glued to the chip in every template", () => {
+    for (const key of keys) {
+      expect(languageSegment(template(mtMessages, key))).toEqual({
+        start: true,
+        end: false,
+      })
+    }
+  })
+
+  it("en keeps normal word gaps on both sides in every template", () => {
+    for (const key of keys) {
+      expect(languageSegment(template(enMessages, key))).toEqual({
+        start: false,
+        end: false,
+      })
+    }
   })
 
   it.each([

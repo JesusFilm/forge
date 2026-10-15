@@ -59,6 +59,7 @@ export function splitSearchLanguageTemplate(
   template: string,
   tokens: readonly string[],
 ): SearchLanguageTemplateSegment[] {
+  if (tokens.length === 0) return [{ kind: "text", text: template }]
   const placeholders = new Set(tokens)
   const pattern = new RegExp(`(${tokens.map(escapeRegExp).join("|")})`, "u")
   const parts = template.split(pattern).filter((part) => part !== "")
