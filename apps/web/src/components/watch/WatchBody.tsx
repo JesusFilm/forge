@@ -4,6 +4,14 @@ import { DownloadButton } from "@/components/watch/DownloadButton"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
+// Some editorial content (e.g. Darkroom Faith) bakes "1. " / "2) " into the
+// question text. The list renders its own markers, so drop a leading ordinal.
+const LEADING_ORDINAL = /^\s*\d{1,2}[.)]\s+/
+
+export function stripQuestionNumbering(text: string): string {
+  return text.replace(LEADING_ORDINAL, "").trim()
+}
+
 export function WatchBody({
   block,
   downloadButtonLabel,
@@ -28,7 +36,9 @@ export function WatchBody({
   const hasDownloads = (variant.downloads ?? []).length > 0
   const prompts = (studyQuestions?.studyQuestions ?? [])
     .map((q) => q.value)
-    .filter((v): v is string => v != null && v.length > 0)
+    .filter((v): v is string => v != null)
+    .map(stripQuestionNumbering)
+    .filter((v) => v.length > 0)
 
   // The right column (Related Questions + Ask Yours CTA) always renders.
   // When there are no editorial prompts, WatchStudyQuestions falls back to

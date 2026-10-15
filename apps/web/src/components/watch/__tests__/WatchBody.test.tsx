@@ -383,6 +383,37 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
   })
 })
 
+describe("WatchBody — baked-in question numbering", () => {
+  it("strips a leading ordinal but leaves other numbers untouched", () => {
+    const sq = makeStudyQuestions([
+      "1. Hasn't modern science disproved God?",
+      "2) Why does God allow suffering?",
+      "Is 2 Peter 3:9 true? 1. maybe",
+      "100. Not an ordinal",
+      "3.Missing space stays",
+    ])
+    act(() => {
+      root.render(
+        <WatchBody
+          block={makeBlock({})}
+          studyQuestions={sq}
+          onDownloadClick={vi.fn()}
+        />,
+      )
+    })
+    const items = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item"]',
+    )
+    expect(Array.from(items).map((el) => el.textContent)).toEqual([
+      "Hasn't modern science disproved God?",
+      "Why does God allow suffering?",
+      "Is 2 Peter 3:9 true? 1. maybe",
+      "100. Not an ordinal",
+      "3.Missing space stays",
+    ])
+  })
+})
+
 describe("WatchBody — Download button visibility", () => {
   it("hides Download button when variant.downloads is empty (two-column preserved)", () => {
     const block = makeBlock({ downloadCount: 0 })
