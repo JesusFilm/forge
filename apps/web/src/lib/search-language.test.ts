@@ -235,6 +235,15 @@ describe("buildSearchLanguageOptions", () => {
           slug: "mongolian-halh",
         },
         {
+          // Wrong-script own-tag entry is skipped; the right-script `native`
+          // label after it is still used (untagged).
+          id: "tg2",
+          coreId: "6",
+          name: { en: "Tajik, Cyrillic", tg: "تاجيكي", native: "тоҷикӣ" },
+          bcp47: "tg",
+          slug: "tajik-cyrillic",
+        },
+        {
           id: "so",
           coreId: "4",
           name: { en: "Somali", so: "Soomaali" },
@@ -253,6 +262,10 @@ describe("buildSearchLanguageOptions", () => {
     const byName = new Map(options.map((o) => [o.englishName, o]))
     expect(byName.get("Tajik")?.nativeName).toBeNull()
     expect(byName.get("Mongolian, Halh")?.nativeName).toBeNull()
+    expect(byName.get("Tajik, Cyrillic")).toMatchObject({
+      nativeName: "тоҷикӣ",
+    })
+    expect(byName.get("Tajik, Cyrillic")).not.toHaveProperty("nativeNameLang")
     expect(byName.get("Somali")?.nativeName).toBe("Soomaali")
     expect(byName.get("Arabic")?.nativeName).toBe("العربية")
   })

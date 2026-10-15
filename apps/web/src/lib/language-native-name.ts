@@ -72,16 +72,32 @@ const COMPOSITE_SCRIPTS: Record<string, readonly string[]> = {
   Hanb: ["Han", "Bopomofo"],
   Jpan: ["Han", "Hiragana", "Katakana"],
   Kore: ["Hangul", "Han"],
+  Hrkt: ["Hiragana", "Katakana"],
+  Jamo: ["Hangul"],
+  Latf: ["Latin"],
+  Latg: ["Latin"],
+  Cyrs: ["Cyrillic"],
+  Geok: ["Georgian"],
+  Aran: ["Arabic"],
 }
 
+// Compiled once per script: this runs per language row on the server, and an
+// unknown script (null) is cached too so it is not retried.
+const scriptPatternCache = new Map<string, RegExp[] | null>()
+
 function scriptPatterns(isoScript: string): RegExp[] | null {
+  const cached = scriptPatternCache.get(isoScript)
+  if (cached !== undefined) return cached
+  let patterns: RegExp[] | null
   try {
-    return (COMPOSITE_SCRIPTS[isoScript] ?? [isoScript]).map(
+    patterns = (COMPOSITE_SCRIPTS[isoScript] ?? [isoScript]).map(
       (script) => new RegExp(`\\p{Script=${script}}`, "u"),
     )
   } catch {
-    return null
+    patterns = null
   }
+  scriptPatternCache.set(isoScript, patterns)
+  return patterns
 }
 
 /**
@@ -102,6 +118,8 @@ export function nativeNameMatchesLanguageScript(
   bcp47: string | null | undefined,
 ): boolean {
   if (!bcp47?.trim()) return true
+  // `und` maximizes to a concrete locale (en-Latn): no script evidence at all.
+  if (primarySubtag(normalizedTag(bcp47)).toLowerCase() === "und") return true
   const expected = likelyScript(normalizedTag(bcp47))
   if (!expected) return true
   const patterns = scriptPatterns(expected)

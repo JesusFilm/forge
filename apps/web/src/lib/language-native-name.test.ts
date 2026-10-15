@@ -142,6 +142,15 @@ describe("nativeNameMatchesLanguageScript (N23)", () => {
     ["Simplified Chinese", "中文", "zh", true],
     ["Japanese kana and kanji", "日本語ひらがな", "ja", true],
     ["Korean", "한국어", "ko", true],
+    ["Latin text for a Hrkt row", "Nihongo", "ja-Hrkt", false],
+    ["Kana for a Hrkt row", "にほんご", "ja-Hrkt", true],
+    // Negatives only the composite-script table can reject: Hans/Hant/Jpan/
+    // Kore are not Unicode scripts, so without it the guard fails open.
+    ["Latin text for zh", "Chinese", "zh", false],
+    ["Latin text for zh-Hant", "Chinese", "zh-Hant", false],
+    ["Cyrillic text for ja", "Японский", "ja", false],
+    ["Latin text for ko", "Korean", "ko", false],
+    ["Latin plus Arabic, no Cyrillic, for tg", "Tajik تاجيكي", "tg", false],
     ["Thai", "ภาษาไทย", "th", true],
     ["Latin Khmer label", "Khmer, Standard", "km", false],
   ])("%s", (_label, text, bcp47, expected) => {
@@ -155,6 +164,8 @@ describe("nativeNameMatchesLanguageScript (N23)", () => {
   it("fails open when there is no script evidence", () => {
     expect(nativeNameMatchesLanguageScript("تاجيكي", null)).toBe(true)
     expect(nativeNameMatchesLanguageScript("تاجيكي", "  ")).toBe(true)
+    // `und` would otherwise maximize to en-Latn.
+    expect(nativeNameMatchesLanguageScript("تاجيكي", "und")).toBe(true)
     // Unparseable tag: no likely script.
     expect(nativeNameMatchesLanguageScript("تاجيكي", "hus-MX-SLP")).toBe(true)
     // No letters at all.
