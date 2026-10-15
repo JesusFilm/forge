@@ -16,6 +16,31 @@ describe("getWatchPageMetadata", () => {
     vi.resetModules()
   })
 
+  it("caps a long derived description on template-backed pages", async () => {
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "video-template",
+        template: { documentId: "exp-template-1", slug: "single-video" },
+        routeVideo: {
+          documentId: "video-1",
+          slug: "jesus",
+          title: "Jesus",
+          snippet: "The story of Jesus",
+          description: "A long synopsis of the film. ".repeat(60),
+          noIndex: false,
+          relatedItems: [],
+        },
+      },
+      error: null,
+    })
+    const { getWatchPageMetadata } = await import("./experience-metadata")
+    const metadata = await getWatchPageMetadata("en", { slug: "jesus" })
+    expect(metadata.description?.length).toBeLessThanOrEqual(160)
+    expect(metadata.description?.endsWith("\u2026")).toBe(true)
+    expect(metadata.openGraph?.description).toBe(metadata.description)
+    expect(metadata.twitter?.description).toBe(metadata.description)
+  })
+
   it("uses route video metadata for template-backed watch pages", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: {
@@ -713,5 +738,90 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(model.structuredDataDescription).toBe("Watch the life of Jesus.")
     expect(model.videoTitle).toBe("life-of-jesus")
     expect(model.title).toBe("life-of-jesus | Jesus Film Project")
+  })
+
+  const longSynopsis =
+    `${"The story of Jesus unfolds across Galilee and Judea. ".repeat(28)}`.trim()
+
+  it("caps derived meta/og/twitter descriptions but keeps JSON-LD full", async () => {
+    const { buildWatchVideoMetadataModel, generateWatchVideoMetadata } =
+      await import("./experience-metadata")
+    const options = {
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: { ...video, description: longSynopsis },
+    }
+
+    const model = buildWatchVideoMetadataModel(options)
+    expect(longSynopsis.length).toBeGreaterThan(1000)
+    expect(model.structuredDataDescription).toBe(longSynopsis)
+    expect(model.description.length).toBeLessThanOrEqual(160)
+    expect(model.description.endsWith("\u2026")).toBe(true)
+    // Word boundary: the text before the ellipsis is a prefix ending on a word.
+    const body = model.description.slice(0, -1)
+    expect(longSynopsis.startsWith(body)).toBe(true)
+    expect(longSynopsis[body.length]).toMatch(/[\s.]/)
+
+    const metadata = generateWatchVideoMetadata("en", options)
+    expect(metadata.description).toBe(model.description)
+    expect(metadata.openGraph?.description).toBe(model.description)
+    expect(metadata.twitter?.description).toBe(model.description)
+  })
+
+  it("leaves short descriptions and authored searchDescription untouched", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const base = {
+      routeSlug: "life-of-jesus",
+      pathLocale: "english",
+      selectedVariant,
+    }
+
+    expect(buildWatchVideoMetadataModel({ ...base, video }).description).toBe(
+      "Watch the life of Jesus.",
+    )
+    expect(
+      buildWatchVideoMetadataModel({
+        ...base,
+        video: { ...video, searchDescription: longSynopsis },
+      }).description,
+    ).toBe(longSynopsis)
+  })
+
+  it("truncates series descriptions", async () => {
+    const { generateSeriesMetadata } = await import("./experience-metadata")
+    const metadata = generateSeriesMetadata("en", {
+      pathLocale: "english",
+      series: {
+        slug: "gospel-series",
+        title: "Gospel",
+        description: longSynopsis,
+        snippet: null,
+        images: [],
+      },
+    } as unknown as Parameters<typeof generateSeriesMetadata>[1])
+    expect(metadata.description?.length).toBeLessThanOrEqual(160)
+    expect(metadata.openGraph?.description).toBe(metadata.description)
+  })
+})
+
+describe("truncateMetaDescription", () => {
+  it("does not split a word and handles unbroken text", async () => {
+    const { truncateMetaDescription } = await import("./experience-metadata")
+    expect(truncateMetaDescription("short text")).toBe("short text")
+    const unbroken = truncateMetaDescription("a".repeat(400))
+    expect(unbroken).toHaveLength(160)
+    expect(unbroken.endsWith("\u2026")).toBe(true)
+    // The cut lands inside an emoji surrogate pair: no lone surrogate remains.
+    const emoji = truncateMetaDescription(
+      "a".repeat(158) + "\u{1F600}".repeat(5),
+    )
+    expect(emoji).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/)
+    // Decomposed accent: the base letter never loses its combining mark.
+    const accent = truncateMetaDescription(
+      "a".repeat(158) + "e\u0301".repeat(10),
+    )
+    expect(accent.replace("\u2026", "")).not.toMatch(/e$/)
   })
 })

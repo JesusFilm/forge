@@ -22,6 +22,45 @@ import { stripHtmlSuffix } from "@/lib/url-shape"
 const TITLE_SUFFIX = "| Jesus Film Project"
 const TITLE_SUFFIX_TEXT = "Jesus Film Project"
 
+/** Google shows roughly 155-160 characters of a meta description. */
+export const META_DESCRIPTION_MAX_LENGTH = 160
+
+/**
+ * Cap a derived (non-authored) description for meta / og / twitter tags at a
+ * word boundary, appending an ellipsis. Short text is returned unchanged.
+ * Authored `searchDescription` / CMS descriptions are NOT passed through this
+ * (editors own their length); JSON-LD keeps the full text.
+ */
+export function truncateMetaDescription(
+  value: string,
+  maxLength = META_DESCRIPTION_MAX_LENGTH,
+): string {
+  const text = value.replace(/\s+/g, " ").trim()
+  if (text.length <= maxLength) return text
+  // Cut on a grapheme boundary so emoji, ZWJ sequences and combining marks
+  // are never split.
+  let slice = ""
+  for (const { segment } of new Intl.Segmenter(undefined, {
+    granularity: "grapheme",
+  }).segment(text)) {
+    if (slice.length + segment.length > maxLength - 1) break
+    slice += segment
+  }
+  const lastSpace = slice.lastIndexOf(" ")
+  // Cut at a word boundary unless that would throw away most of the budget.
+  const cut = lastSpace >= maxLength * 0.6 ? slice.slice(0, lastSpace) : slice
+  return `${cut.replace(/[\s.,;:!?\u2013\u2014-]+$/u, "")}\u2026`
+}
+
+function derivedMetaDescription(
+  authored: string | null | undefined,
+  ...fallbacks: Array<string | null | undefined>
+): string {
+  const trimmedAuthored = trimmedValue(authored)
+  if (trimmedAuthored) return trimmedAuthored
+  return truncateMetaDescription(fallbacks.find((v) => v?.trim()) ?? "")
+}
+
 /**
  * Build the canonical absolute URL for a watch page in the `.html` shape,
  * keyed off the (slug, pathLocale) the route resolved. Routes through the
@@ -209,11 +248,11 @@ export function buildWatchVideoMetadataModel(
   const structuredDataTitle = options.video.title?.trim() || null
   const title =
     trimmedValue(options.video.searchTitle) ?? `${videoTitle} ${TITLE_SUFFIX}`
-  const description =
-    trimmedValue(options.video.searchDescription) ??
-    options.video.description ??
-    options.video.snippet ??
-    ""
+  const description = derivedMetaDescription(
+    options.video.searchDescription,
+    options.video.description,
+    options.video.snippet,
+  )
   const structuredDataDescription =
     options.video.description?.trim() ||
     options.video.snippet?.trim() ||
@@ -327,11 +366,11 @@ function toMetadata(
     // Google prefers 120–160 chars in the meta description; snippets are
     // routinely below that floor (one-line taglines). Keep snippet as the
     // fallback so videos with no body description still get something.
-    const description =
-      trimmedValue(resolvedPage.routeVideo.searchDescription) ??
-      resolvedPage.routeVideo.description ??
-      resolvedPage.routeVideo.snippet ??
-      ""
+    const description = derivedMetaDescription(
+      resolvedPage.routeVideo.searchDescription,
+      resolvedPage.routeVideo.description,
+      resolvedPage.routeVideo.snippet,
+    )
     const baseTitle = resolvedPage.routeVideo.title || options?.slug || "Watch"
     const title =
       trimmedValue(resolvedPage.routeVideo.searchTitle) ??
@@ -487,7 +526,9 @@ export function generateSeriesMetadata(
   const title =
     (series.title && `${series.title} ${TITLE_SUFFIX}`) ||
     `Watch ${TITLE_SUFFIX}`
-  const description = series.description ?? series.snippet ?? ""
+  const description = truncateMetaDescription(
+    series.description?.trim() || series.snippet || "",
+  )
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
   const ogImage = posterUrl
     ? {
