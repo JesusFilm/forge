@@ -2,6 +2,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { InventoryFilterShell } from "./InventoryFilterShell"
@@ -99,6 +100,22 @@ describe("InventoryFilterShell", () => {
     expect(isHidden("short")).toBe(true)
     expect(isHidden("long")).toBe(false)
     expect(readout()).toBe("1 of 2 shown")
+  })
+
+  it("server-renders the unfiltered shell whatever the URL says (static-cache safe)", () => {
+    // The route is `force-static`: its HTML is built once and shared by every
+    // visitor, so the server pass must never depend on the query. The query is
+    // applied only after hydration, from the client snapshot.
+    window.history.replaceState(null, "", "/?length=under5")
+    const html = renderToString(
+      <InventoryFilterShell>
+        <Item id="a" />
+      </InventoryFilterShell>,
+    )
+
+    expect(html).toContain('aria-pressed="false"')
+    expect(html).not.toContain('aria-pressed="true"')
+    expect(html).not.toContain("language-inventory-filters-clear")
   })
 
   it("writes filter changes to the query, keeping other params and the hash", () => {
