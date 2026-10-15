@@ -491,8 +491,10 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     )
   })
 
-  it("passes the page Share modal callback to HeroPlayer", () => {
+  it("passes page modal actions and pending-language cancellation to HeroPlayer", () => {
     const openShare = vi.fn()
+    const openLanguage = vi.fn()
+    const cancelPendingLanguage = vi.fn()
 
     act(() => {
       root.render(
@@ -501,8 +503,9 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
           modalCallbacks={{
             closeModal: vi.fn(),
             openDownload: vi.fn(),
-            openLanguage: vi.fn(),
+            openLanguage,
             openShare,
+            cancelPendingLanguage,
           }}
         />,
       )
@@ -514,6 +517,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(share).not.toBeNull()
     share.click()
     expect(openShare).toHaveBeenCalledTimes(1)
+    expect(heroPlayerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onLanguageClick: openLanguage,
+        onCancelLanguageOpen: cancelPendingLanguage,
+      }),
+      undefined,
+    )
   })
 
   it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {

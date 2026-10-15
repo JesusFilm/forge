@@ -2076,6 +2076,140 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     },
   )
 
+  it("cancels only the current page owner's pending language intent when Search opens", async () => {
+    const staleCancel = vi.fn()
+    const currentCancel = vi.fn()
+    const staleOwner = Symbol("old language owner")
+    const currentOwner = Symbol("current language owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: staleCancel,
+        ownerToken: staleOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: currentCancel,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: staleOwner,
+      })
+    })
+    expect(currentCancel).not.toHaveBeenCalled()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(currentCancel).toHaveBeenCalledTimes(1)
+    expect(staleCancel).not.toHaveBeenCalled()
+  })
+
+  it("cancels an invisible subtitle-picker owner without taking over the global globe", async () => {
+    const cancelPendingOpen = vi.fn()
+    const oldOwner = Symbol("stale subtitle owner")
+    const currentOwner = Symbol("subtitle owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Single-audio video with subtitles</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        cancelPendingOpen,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: oldOwner,
+      })
+    })
+    expect(cancelPendingOpen).not.toHaveBeenCalled()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(cancelPendingOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["matching cleanup", "navigation", "visible replacement"])(
+    "drops invisible cancellation on %s",
+    async (change) => {
+      const cancelPendingOpen = vi.fn()
+      const owner = Symbol("subtitle owner")
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>Video</main>
+          </FloatingSearchProvider>,
+        )
+      })
+      act(() => {
+        dispatchLanguageSwitcher({
+          visible: false,
+          onClick: null,
+          cancelPendingOpen,
+          ownerToken: owner,
+        })
+      })
+      act(() => {
+        if (change === "matching cleanup") {
+          dispatchLanguageSwitcher({
+            visible: false,
+            onClick: null,
+            ownerToken: owner,
+          })
+        } else if (change === "visible replacement") {
+          dispatchLanguageSwitcher({
+            visible: true,
+            onClick: vi.fn(),
+            ownerToken: Symbol("replacement"),
+          })
+        } else {
+          navigationMocks.pathname = "/another-video.html/english.html"
+          root.render(
+            <FloatingSearchProvider>
+              <main>Next video</main>
+            </FloatingSearchProvider>,
+          )
+        }
+      })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="floating-search-desktop-button"]',
+          )!
+          .click()
+      })
+      expect(cancelPendingOpen).not.toHaveBeenCalled()
+    },
+  )
+
   it("uses the registered language name that matches its page-specific badge", () => {
     const onLanguageClick = vi.fn()
     navigationMocks.pathname = "/jesus.html/russian.html"

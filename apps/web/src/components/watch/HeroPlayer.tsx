@@ -339,6 +339,7 @@ export function HeroPlayer({
   onPlayerActivated,
   onPlayerViewabilityChange,
   onLanguageClick,
+  onCancelLanguageOpen,
   onShareClick,
   languageSlug,
   playableLanguageCount,
@@ -356,6 +357,7 @@ export function HeroPlayer({
   onPlayerActivated?: (initiation: "manual" | "automatic") => void
   onPlayerViewabilityChange?: (visible: boolean) => void
   onLanguageClick?: () => void
+  onCancelLanguageOpen?: () => void
   onShareClick?: () => void
   languageSlug?: string | null
   playableLanguageCount?: number
@@ -1609,6 +1611,7 @@ export function HeroPlayer({
           detail: {
             visible: showTopLanguageSwitch,
             onClick: showTopLanguageSwitch ? (onLanguageClick ?? null) : null,
+            cancelPendingOpen: onCancelLanguageOpen,
             languageCode: showTopLanguageSwitch ? languageCode : null,
             languageName:
               showTopLanguageSwitch && languageCode ? languageName : null,
@@ -1622,6 +1625,7 @@ export function HeroPlayer({
     languageCode,
     languageName,
     onLanguageClick,
+    onCancelLanguageOpen,
     showTopLanguageSwitch,
   ])
 

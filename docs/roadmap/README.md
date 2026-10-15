@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 14, 2026)
+## Status (October 15, 2026)
 
-- **Total tickets:** 832
-- **Complete:** 619
-- **Cancelled:** 39
-- **In progress:** 67
-- **Not started:** 50
+- **Total tickets:** 835
+- **Complete:** 621
+- **Cancelled:** 40
+- **In progress:** 66
+- **Not started:** 51
 - **Blocked:** 57
-- **Overdue and open:** 157
+- **Overdue and open:** 159
 
 ## Feature Index
 
@@ -684,6 +684,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-678](platform/feat-678-watch-search-production-budget-verification.md)           | Validate Watch search production budget and alerts                                 | vlad       | P1       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
 | [feat-696](platform/feat-696-watch-percent-escape-case.md)                             | Normalize percent-escape case from the public Watch reverse proxy                  | vlad       | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
+| [feat-704](platform/feat-704-watch-language-chunk-containment.md)                      | Contain video language picker component load failures                              | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
@@ -726,8 +727,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)               | Scope Watch media resource hints to media routes                                   | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-275](platform/feat-275-watch-experience-media-card-white-outline.md)             | Web Video Thumbnail White Interaction Frame                                        | vlad       | P2       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-279](platform/feat-279-watch-global-beta-tester-cta-flag.md)                     | Watch global beta tester CTA feature flag                                          | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | cancelled   |
-| [feat-667](platform/feat-667-retire-watch-beta-signup.md)                              | Retire Watch beta program signup                                                   | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
-| [feat-668](platform/feat-668-retire-mobile-tv-beta-signup.md)                          | Retire mobile and TV beta program signup                                           | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | not-started |
 | [feat-286](platform/feat-286-watch-home-standalone-media-containment.md)               | Contain standalone Watch home media blocks                                         | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-287](platform/feat-287-watch-media-collection-supporting-title-spacing.md)       | Watch media collection supporting title spacing                                    | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-288](platform/feat-288-watch-promotional-text-heading-alignment.md)              | Watch promotional text heading alignment                                           | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
@@ -770,6 +769,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-690](platform/feat-690-watch-image-optimizer-tenant-scoping.md)                  | Scope the Watch image optimizer to our own CDN tenants                             | vlad       | P2       | 2026-10-06 | 3    | 2026-10-08 | not-started |
 | [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | 2026-10-06 | 2    | 2026-10-07 | not-started |
 | [feat-648](platform/feat-648-watch-variant-language-badges.md)                         | Distinguish Watch player language variants in chrome                               | codex      | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-667](platform/feat-667-retire-watch-beta-signup.md)                              | Retire Watch beta program signup                                                   | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-668](platform/feat-668-retire-mobile-tv-beta-signup.md)                          | Retire mobile and TV beta program signup                                           | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | not-started |
 | [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-676](platform/feat-676-watch-native-language-markup.md)                          | Declare verified native language names in Watch language pickers                   | vlad       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
