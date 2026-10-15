@@ -1,0 +1,11 @@
+# Full-library-v1 pilot
+
+Implement a local operator CLI beside the preserved feat-590 generator. Freeze a complete admitted corpus, source IDs, tokenizer identity and measured Astra context. Reject truncation and missing chunks. Plan with exact rendered JSON-envelope token and byte measurements, reserving schema/system overhead and output context.
+
+If one full-library request fits, discover and rank directly in shared context. Otherwise repeat complete pilot-source transcripts in each exhaustive target batch; retain every AI-discovered connection with verbatim transcript or explicit metadata evidence. Perform one global ranking across all discoveries. Never cap targets before Astra reads them. A first pass can overlook a connection; final ranking only has carried evidence, not latent memory or complete target transcripts. Record this information loss explicitly.
+
+Use existing guarded subscription transport and fresh account/allowance reads. Persist immutable request/reservation/result/usage files per call and resume only known completed checkpoints. Pending or unknown consumption requires investigation and prevents redispatch. Keep original runs and public controls untouched. Validate IDs, self/family exclusions, duplicate targets, directional evidence and rank. Final files remain private for review; no import/public activation is implied.
+
+Verify offline failures and checkpoint/resume behavior with focused tests and typecheck. Coordinator admits corpus/source IDs and runs the three-source pilot using the saved exact command. Report measured input, cached, output and reasoning tokens (unknown when omitted), model/version/context and evidence coverage before any full-run estimate.
+
+Reading concurrency is configurable as 1 or 2 (pilot: 2). Each frozen batch owns one physical reservation and receipt. Assemble discoveries in batch order, independent of completion order. On any failed/unknown read or invalid response, stop new dispatch, await all in-flight receipts, persist a paused-reading marker and do not rank. Preflight saved failures/pending consumption before parallel replay. Ranking always waits for all successful read checkpoints and remains one call. Preserve the existing nine-batch plan; concurrency changes execution only.

@@ -356,6 +356,11 @@ function processEvent(raw: string, state: CodexEvents): void {
     }
     if (state.usage.cachedInputTokens === undefined)
       delete state.usage.cachedInputTokens
+    const reasoningTokens = token(
+      item.usage?.reasoning_output_tokens ?? item.usage?.reasoning_tokens,
+    )
+    if (reasoningTokens !== undefined)
+      state.usage.reasoningTokens = reasoningTokens
     state.phase = "completed"
     if ([...state.reasoning.values()].some((phase) => phase !== "completed"))
       state.failed ??= "provider_invalid_output"
