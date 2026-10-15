@@ -1603,8 +1603,9 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
     const { wrapperEl, player } = renderControlsFixture(
       makePlayer({ muted: false, currentTime: 50, duration: 100 }),
     )
-    press(wrapperEl, "m", { repeat: true })
+    const held = press(wrapperEl, "m", { repeat: true })
     expect(player.muted).toBe(false)
+    expect(held.defaultPrevented).toBe(true)
     press(wrapperEl, "l", { repeat: true })
     expect(player.currentTime).toBe(60)
   })

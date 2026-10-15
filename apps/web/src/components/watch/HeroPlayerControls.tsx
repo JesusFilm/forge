@@ -796,8 +796,6 @@ export function HeroPlayerControls({
       if (event.ctrlKey || event.metaKey || event.altKey) return
       const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
       if (!PLAYER_SHORTCUT_KEYS.has(key)) return
-      // Held keys must not flap toggles (fullscreen/mute/play); seek repeats.
-      if (event.repeat && key !== "j" && key !== "l") return
       const target = event.target
       if (target instanceof Element) {
         if (
@@ -818,6 +816,12 @@ export function HeroPlayerControls({
       }
       const p = playerRef.current
       if (!p) return
+      // Held keys must not flap toggles (fullscreen/mute/play); seek repeats.
+      // Still swallow the key so a held Space does not scroll the page.
+      if (event.repeat && key !== "j" && key !== "l") {
+        event.preventDefault()
+        return
+      }
       switch (key) {
         case " ":
         case "k":
