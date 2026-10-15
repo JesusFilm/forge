@@ -3317,7 +3317,7 @@
         "es": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "3705561af02efe61730d0ad34a3830b2b0ca993e89bf1b9744bfbc9545937099",
+          "catalogDigest": "b6d20fc4c9d0da8d1dfffcbaf7bd6b74aa50eba2e97d070cc2e49173f0e4b004",
           "generatedOn": "2026-08-27",
           "scopedRevisions": [
             {

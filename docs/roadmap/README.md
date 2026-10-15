@@ -4,10 +4,10 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 14, 2026)
+## Status (October 15, 2026)
 
-- **Total tickets:** 832
-- **Complete:** 619
+- **Total tickets:** 833
+- **Complete:** 620
 - **Cancelled:** 39
 - **In progress:** 67
 - **Not started:** 50
@@ -684,6 +684,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-678](platform/feat-678-watch-search-production-budget-verification.md)           | Validate Watch search production budget and alerts                                 | vlad       | P1       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
 | [feat-696](platform/feat-696-watch-percent-escape-case.md)                             | Normalize percent-escape case from the public Watch reverse proxy                  | vlad       | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
+| [feat-705](platform/feat-705-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |

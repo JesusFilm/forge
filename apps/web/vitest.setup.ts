@@ -1,6 +1,7 @@
 import { vi } from "vitest"
 import arMessages from "./messages/ar.json"
 import enMessages from "./messages/en.json"
+import esMessages from "./messages/es.json"
 import ruMessages from "./messages/ru.json"
 import zhHansMessages from "./messages/zh-Hans.json"
 
@@ -19,6 +20,7 @@ process.env.WEB_ADMIN_API_KEYS ??= "test-admin-bearer-key"
 const catalogs: Record<string, Record<string, Record<string, string>>> = {
   ar: arMessages,
   en: enMessages,
+  es: esMessages,
   ru: ruMessages,
   "zh-Hans": zhHansMessages,
 }
