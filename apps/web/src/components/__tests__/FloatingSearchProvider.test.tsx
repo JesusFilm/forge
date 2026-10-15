@@ -4820,6 +4820,60 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     ).toBe("Результаты на русском")
   })
 
+  it.each(["ar", "en"])(
+    "keeps copy glued to the inline language chip without a gap (%s)",
+    async (locale) => {
+      const language =
+        locale === "ar"
+          ? {
+              englishName: "Arabic",
+              nativeName: "العربية",
+              bcp47: "ar",
+              publicSlug: "arabic",
+              regionNames: ["Asia"],
+            }
+          : englishSearchLanguage
+      mockedGetSearchLanguageOptions.mockResolvedValue({
+        ok: true,
+        options: [language],
+        countrySuggestion: null,
+        recommendedLanguage: language,
+        countryCode: null,
+        countryName: null,
+      })
+      const input = await openSearchOverlay(locale)
+
+      const chipWrapper = () =>
+        document
+          .querySelector('[data-testid="searching-in-language-label"]')
+          ?.closest(".pointer-events-auto.inline-flex") as HTMLElement | null
+      const contextCopy = () =>
+        document.querySelector('[data-testid="search-language-context"]')
+
+      // Idle template: ar "البحث ب{language}" glues the clitic on the
+      // inline-start side only; en "Search in {language}" keeps a gap.
+      expect(chipWrapper()).not.toBeNull()
+      expect(contextCopy()).not.toBeNull()
+      if (locale === "ar") {
+        expect(chipWrapper()?.className).not.toContain("ms-1")
+        expect(chipWrapper()?.className).toContain("me-1")
+      } else {
+        expect(chipWrapper()?.className).toContain("ms-1")
+        expect(chipWrapper()?.className).toContain("me-1")
+      }
+
+      // Query-intent template: ar `ابحث عن «{suggestion}» ب{language}`.
+      act(() => setInputValue(input, "jesus"))
+      expect(chipWrapper()).not.toBeNull()
+      if (locale === "ar") {
+        expect(chipWrapper()?.className).not.toContain("ms-1")
+        expect(chipWrapper()?.className).toContain("me-1")
+      } else {
+        expect(chipWrapper()?.className).toContain("ms-1")
+      }
+    },
+  )
+
   it("does not mount the full search overlay on initial render without query intent", () => {
     act(() => {
       root.render(
