@@ -12,9 +12,16 @@
  * `startLevel: -1` switches hls.js to its bandwidth-test start: it downloads
  * one segment of the LOWEST rung, measures real throughput, discards that
  * segment unbuffered, and then starts on the best rung the measurement
- * supports. Slow connections start low; fast connections still start on the
- * rung their bandwidth supports, so first-frame quality is unchanged. The
- * cost is one small extra download before the first real segment.
+ * supports. Slow connections start low. Fast connections start on the
+ * highest rung their bandwidth and the player size allow, which can be ABOVE
+ * the old fixed 720p start. The cost is one extra lowest-rung playlist and
+ * segment fetch before the first real segment, paid on every new source.
+ *
+ * Verified by hand 2026-10-14 against hls.js 1.6.16
+ * (`stream-controller.ts` `startLoad` + `_loadBitrateTestFrag`) and
+ * @mux/playback-core 0.34.1, which spreads the caller's `_hlsConfig` LAST
+ * into `new Hls(...)`, so these keys win over Mux's defaults. Re-check both
+ * after bumping either package.
  *
  * Why a measurement and not `navigator.connection`: the Network Information
  * API exists only in Chromium, and Chrome's own network throttling does not
