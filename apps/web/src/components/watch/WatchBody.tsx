@@ -10,6 +10,8 @@ import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 // Exodus in German), so only strip when the list is visibly hand-numbered: the
 // ordinals found, in order, run exactly 1, 2, 3... with at least two of them.
 // Anything else is left untouched (fail safe: a stray marker beats lost text).
+// Known residual: a list whose only leading numbers are "1. Mose" then "2. Mose"
+// reads as numbered; accepted as vanishingly unlikely next to the real case.
 const LEADING_ORDINAL = /^\s*(\d{1,2})[.)]\s+/
 
 export function stripBakedQuestionNumbering(values: string[]): string[] {
