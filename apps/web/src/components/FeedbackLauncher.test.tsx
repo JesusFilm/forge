@@ -379,6 +379,38 @@ describe("FeedbackLauncher", () => {
     expect(footer.className).toBe("mt-6")
   })
 
+  it("anchors to the inline-start corner so RTL locales mirror it", () => {
+    // N36a: `left-[...]` pinned the launcher bottom-left in RTL. Logical
+    // `start-*` follows `dir`; `env(safe-area-inset-*)` has no logical form,
+    // so the RTL twin swaps the notch inset to the right edge by hand.
+    const button = launcher()
+    expect(button?.className).toContain(
+      "start-[calc(1rem+env(safe-area-inset-left,0px))]",
+    )
+    expect(button?.className).toContain(
+      "rtl:start-[calc(1rem+env(safe-area-inset-right,0px))]",
+    )
+    expect(button?.className).not.toMatch(/(^|\s)left-/)
+  })
+
+  it("anchors the load notice to the same inline-start corner", () => {
+    act(() => {
+      root.render(
+        <FeedbackLoadNotice error={null} retry={vi.fn()} onCancel={vi.fn()} />,
+      )
+    })
+    const notice = document.querySelector(
+      '[data-testid="feedback-modal-loading"]',
+    )
+    expect(notice?.className).toContain(
+      "start-[calc(1rem+env(safe-area-inset-left,0px))]",
+    )
+    expect(notice?.className).toContain(
+      "rtl:start-[calc(1rem+env(safe-area-inset-right,0px))]",
+    )
+    expect(notice?.className).not.toMatch(/(^|\s)left-/)
+  })
+
   it("renders large icon categories with contextual copy", async () => {
     await openFeedback()
 
