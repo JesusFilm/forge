@@ -87,6 +87,21 @@ describe("Watch root layout <html lang>/<dir> (FGE-170 / W-082)", () => {
     })
   })
 
+  it("preserves generated BCP-47 values in the internal htmlLang segment", async () => {
+    await expect(htmlAttributes("en", "awa")).resolves.toEqual({
+      lang: "awa",
+      dir: "ltr",
+    })
+    await expect(htmlAttributes("en", "ble-x-Naga")).resolves.toEqual({
+      lang: "ble-x-naga",
+      dir: "ltr",
+    })
+    await expect(htmlAttributes("mey-Latn", "mey-Latn")).resolves.toEqual({
+      lang: "mey-Latn",
+      dir: "ltr",
+    })
+  })
+
   // The layout's own guard drops htmlLang whenever it does not belong to the
   // rendered UI locale's family. That guard is separate from the resolver's,
   // and it must survive the resolver change.
