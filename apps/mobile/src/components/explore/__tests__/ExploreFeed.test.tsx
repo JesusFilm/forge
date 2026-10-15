@@ -183,6 +183,7 @@ import {
 import {
   AccessibilityInfo,
   AppState,
+  Dimensions,
   type AccessibilityActionEvent,
 } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
@@ -196,6 +197,7 @@ import type {
   UseExploreClipQueueInput,
 } from "../../../hooks/useExploreClipQueue"
 import {
+  LOOP_SEEK_SETTLE_MS,
   EXPLORE_QUALITY_TIER,
   SEEK_LOADING_GRACE_MS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
@@ -215,6 +217,10 @@ import {
   serializeDemotion,
 } from "../../../lib/explore/demotionStore"
 import { BLUR_RELEASE_GRACE_MS } from "../../../lib/explore/feedState"
+import {
+  EXPLORE_FAST_HOLD_MS,
+  EXPLORE_FAST_RATE,
+} from "../../../lib/explore/fastHold"
 import {
   EXPLORE_VISIT_TIMEOUT_MS,
   createExploreTelemetry,
@@ -1267,6 +1273,203 @@ describe("the end of a clip", () => {
     expect(A.currentTime).toBe(START)
     expect(A.playing).toBe(true)
     expect(logged("explore.swipe")).toEqual([])
+  })
+})
+
+// ── The 2x hold (owner, 2026-10-14) ─────────────────────────────────
+
+type FastSide = "start" | "end"
+
+function fastSide(side: FastSide): Node {
+  const [found] = (renderer!.root as Node).findAll(
+    (node) =>
+      node.props.testID === `explore-clip-fast-${side}` &&
+      typeof node.props.onPress === "function",
+  )
+  expect(found).toBeDefined()
+  return found
+}
+
+/** The strip's HOST view: Pressability gives it the responder props. */
+function fastSideHost(side: FastSide): Node {
+  const [found] = hosts(
+    (node) =>
+      node.props.testID === `explore-clip-fast-${side}` &&
+      typeof node.props.onResponderGrant === "function",
+  )
+  expect(found).toBeDefined()
+  return found
+}
+
+type ResponderHandler = (event: unknown) => void
+
+function responderEvent() {
+  return {
+    nativeEvent: {
+      locationX: 10,
+      locationY: 10,
+      pageX: 20,
+      pageY: 400,
+      timestamp: Date.now(),
+      touches: [],
+      changedTouches: [],
+    },
+    currentTarget: { measure: () => {} },
+    persist: () => {},
+  }
+}
+
+/** A finger down on a side, through React Native's own press timers. */
+async function touchSide(side: FastSide = "start") {
+  const grant = fastSideHost(side).props.onResponderGrant as ResponderHandler
+  await act(async () => {
+    grant(responderEvent())
+  })
+}
+
+async function liftSide(side: FastSide = "start") {
+  const release = fastSideHost(side).props
+    .onResponderRelease as ResponderHandler
+  await act(async () => {
+    release(responderEvent())
+  })
+}
+
+async function pressSide(
+  name: "onLongPress" | "onPressOut" | "onPress",
+  side: FastSide = "start",
+) {
+  await act(async () => {
+    ;(fastSide(side).props[name] as () => void)()
+  })
+}
+
+describe("the 2x hold (owner, 2026-10-14)", () => {
+  it("plays at 2x with the cue while either side is held, and at 1x after the lift", async () => {
+    await startWithStandby()
+    for (const side of ["start", "end"] as const) {
+      await pressSide("onLongPress", side)
+      expect(A.playbackRate).toBe(EXPLORE_FAST_RATE)
+      expect(overlay().props.fast).toBe(true)
+
+      await pressSide("onPressOut", side)
+      expect(A.playbackRate).toBe(1)
+      expect(overlay().props.fast).toBe(false)
+    }
+    expect(A.playing).toBe(true)
+    expect(B.playbackRate).toBe(1)
+  })
+
+  it("pauses on a short tap on a side, as on the rest of the clip", async () => {
+    await startWithStandby()
+    await pressSide("onPress", "end")
+    expect(A.playing).toBe(false)
+    expect(overlay().props.paused).toBe(true)
+  })
+
+  it("starts 2x at the hold length, and a shorter press on a side pauses", async () => {
+    await startWithStandby()
+
+    await touchSide()
+    await advance(EXPLORE_FAST_HOLD_MS - 1)
+    expect(A.playbackRate).toBe(1)
+    await liftSide()
+    expect(A.playing).toBe(false)
+
+    await tap()
+    await touchSide("end")
+    await advance(EXPLORE_FAST_HOLD_MS)
+    expect(A.playbackRate).toBe(EXPLORE_FAST_RATE)
+    expect(overlay().props.fast).toBe(true)
+    await liftSide("end")
+    expect(A.playbackRate).toBe(1)
+    expect(A.playing).toBe(true)
+  })
+
+  // Code review (2026-10-15): a long press on a paused clip did nothing.
+  it("resumes a paused clip on a long press of a side, as a tap does", async () => {
+    await startWithStandby()
+    await tap()
+    expect(A.playing).toBe(false)
+    expect(fastSide("start").props.onLongPress).toBeUndefined()
+
+    await touchSide()
+    await advance(EXPLORE_FAST_HOLD_MS * 4)
+    await liftSide()
+    expect(A.playing).toBe(true)
+    expect(A.playbackRate).toBe(1)
+    expect(overlay().props.fast).toBe(false)
+  })
+
+  it("keeps a hold armed while it runs, so its lift on a clip paused meanwhile is no tap", async () => {
+    await startWithStandby()
+    await touchSide()
+    await advance(EXPLORE_FAST_HOLD_MS)
+    await tap()
+    expect(A.playing).toBe(false)
+
+    await liftSide()
+    expect(A.playing).toBe(false)
+    expect(overlay().props.fast).toBe(false)
+  })
+
+  // Code review (2026-10-15): the strips cover half the clip, so a lost prop is
+  // an unlabeled screen-reader target or a broken hold.
+  it("keeps the strips out of the screen reader and holds the finger anywhere on screen", async () => {
+    await startWithStandby()
+    const { width, height } = Dimensions.get("window")
+    for (const side of ["start", "end"] as const) {
+      expect(fastSide(side).props).toMatchObject({
+        accessible: false,
+        focusable: false,
+        importantForAccessibility: "no",
+        delayLongPress: EXPLORE_FAST_HOLD_MS,
+        pressRetentionOffset: {
+          top: height,
+          bottom: height,
+          left: width,
+          right: width,
+        },
+      })
+    }
+  })
+
+  it("loops at the clip end while a side is held, and moves on at the next end after the lift", async () => {
+    await startWithStandby()
+    await pressSide("onLongPress")
+
+    await tick(A, END + 0.1)
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-1" })
+    expect(A.currentTime).toBe(START)
+    expect(logged("explore.swipe")).toEqual([])
+
+    await pressSide("onPressOut")
+    await advance(LOOP_SEEK_SETTLE_MS)
+    await tick(A, END + 0.1)
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-2" })
+    expect(B.playbackRate).toBe(1)
+  })
+
+  it("ends the hold when a move takes the page from under it", async () => {
+    await startWithStandby()
+    await pressSide("onLongPress")
+
+    await swipeNext()
+    expect(overlay().props.clip).toMatchObject({ videoId: "video-2" })
+    expect(overlay().props.fast).toBe(false)
+    expect(B.playing).toBe(true)
+    expect(B.playbackRate).toBe(1)
+  })
+
+  it("ends the hold on a blur, so a return plays at 1x", async () => {
+    const feed = await startWithStandby()
+    await pressSide("onLongPress")
+    await feed.setFocused(false)
+    await feed.setFocused(true)
+
+    expect(A.playing).toBe(true)
+    expect(A.playbackRate).toBe(1)
+    expect(overlay().props.fast).toBe(false)
   })
 })
 

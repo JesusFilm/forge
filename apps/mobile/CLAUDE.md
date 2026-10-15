@@ -476,7 +476,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
 - **`replaceAsync` settles when the source is SET, not LOADED** (on Android it is aliased to `replace`), so anything written in its `.then()` runs while the player still holds the OUTGOING item. A `currentTime` write there is silently discarded; a `play()` is the mild form. Resume and seek on `sourceLoad`, and scope the listener to the source that requested it — the app shares ONE player, so another surface's load will otherwise take your seek. Codified in `src/hooks/useAutostartPlayback.ts` and `src/lib/recoverPlayback.ts`; the tvOS route to the same premise is `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`. The shared jest double reproduces the real settle-before-load order, so this is testable.
-- **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. `useManagedVideoPlayer` sets it at creation, which covers every surface that can change speed (the heroes are muted and never change rate). Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertion in `useManagedVideoPlayer.test.tsx` can only pass if the app sets it.
+- **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. Two creation sites set it, and together they cover every surface that can change speed. `useManagedVideoPlayer` sets it for the managed players. `useFeedPlayers` sets it in `configure()` for the two Explore feed players, which are created outside `useManagedVideoPlayer` and play at 2x during a side hold. The heroes are muted and never change rate. Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertions in `useManagedVideoPlayer.test.tsx` and `useFeedPlayers.test.tsx` can only pass if the app sets it.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
   - **Superseded 2026-10-12 by feat-695 U3:** in a right-to-left layout, react-native-screens moves the strip to the right edge, and `mayStartScrub` declines the right strip there. Touch x stays physical, so the guard measures from the window's right edge.
@@ -1239,6 +1239,12 @@ and `useExploreTakeover` hooks.
   carries `explore_swipe_trigger` (`viewer` or `clipEnd`). Filter on `viewer`
   to count only the viewer's swipes.
 
+- **A tap on the description text works as "more" and "less" (owner,
+  2026-10-15).** `ClipDescription.tsx` wraps the text in a `Pressable`, not a
+  `Text` `onPress`, which draws a grey highlight box on iOS. The cut text
+  takes the tap only when it overflows. The `Pressable` is `accessible={false}`,
+  so screen readers keep "more" and "less" as the controls. A drag that moves
+  the pager, or scrolls the open text, cancels the tap.
 - **A child that scrolls on the pager's axis must hold the pager (owner,
   2026-10-01).** On Fabric iOS, a pager that takes the JS responder stops every
   nested scroll view from starting a drag. `RCTScrollViewComponentView`'s
@@ -1271,6 +1277,17 @@ and `useExploreTakeover` hooks.
     `console.log` of the move trigger in `ExploreFeed`'s `handleMove` tells a
     leaked swipe from a clip-end move. Fast Refresh keeps the old pager
     engine in its ref, so a pager change needs a cold relaunch to show.
+- **A hold on either side of a clip plays it at 2x (owner, 2026-10-14).**
+  `ClipFastSides` in `ExploreFeed.tsx` puts two strips over the tap surface,
+  each `EXPLORE_FAST_SIDE_SHARE` (25%) of the width. A hold of
+  `EXPLORE_FAST_HOLD_MS` (250 ms) starts 2x, a lift or a pager drag ends it,
+  and a shorter press pauses. On a paused clip the strips have no long press,
+  so a press of any length resumes it. The middle keeps the old surface, because a
+  long-press-as-tap there would pause the clip when the pager takes the
+  finger. The hold takes the pager's `feedMove` hold, so a clip end loops.
+  `useFeedPlayers` writes `playbackRate` only while the player plays, just
+  before `play()`, and on `playingChange(true)`: on iOS a rate write starts a
+  paused player.
 - **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
   See the Common Pitfalls entry on frames that miss their parent's bounds.
   `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
@@ -1658,7 +1675,7 @@ design record is
   it moves the fingerprint runtime version on Android and iOS. An
   `eas update` published before that build reaches no installed app.
 - **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
-  tripwire.** It pins `expo` 57.0.28, `expo-notifications` 57.0.22,
+  tripwire.** It pins `expo` 57.0.29, `expo-notifications` 57.0.23,
   `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
   Expo's `isFCMIntent` gate, which is why removing the key makes the listener
   ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
@@ -1676,7 +1693,9 @@ design record is
     `local-maven-repo/`, because the build links that prebuilt library.
   - The device pass ran on `expo` 57.0.27 and `expo-updates` 57.0.25. On
     2026-10-13 the pins moved to 57.0.28 and 57.0.26 by that check: only each
-    package's own `version` and `versionName` lines differed.
+    package's own `version` and `versionName` lines differed. On 2026-10-15
+    `expo` moved to 57.0.29 and `expo-notifications` to 57.0.23 by the same
+    check. The prebuilt library's `.pom` and its Kotlin sources did not change.
 - **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
   Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
   player keeps the process alive, and `am kill` then does nothing. Check that

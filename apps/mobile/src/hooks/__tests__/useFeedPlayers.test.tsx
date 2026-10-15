@@ -20,6 +20,7 @@ import {
   type FeedState,
   type PlayerId,
 } from "../../lib/explore/feedState"
+import { EXPLORE_FAST_RATE } from "../../lib/explore/fastHold"
 import type { ReadyClip } from "../../lib/explore/types"
 import { applyQualityConstraint } from "../../lib/streamQuality"
 import type { ExpoVideoMock, FakePlayer } from "../../test-utils/expoVideoMock"
@@ -125,6 +126,7 @@ type ProbeProps = Pick<
   | "onSourceLoaded"
   | "onRebuffer"
   | "onClipFailed"
+  | "fast"
 > & {
   muted?: boolean
   yieldsToRoot?: boolean
@@ -1054,5 +1056,107 @@ describe("useFeedPlayers — the move at a clip's end", () => {
     expect(A.playing).toBe(true)
     await tick(A, { currentTime: END + 0.3 })
     expect(onClipEnd).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("useFeedPlayers — the 2x hold", () => {
+  const restoreRate: Array<() => void> = []
+  afterEach(() => {
+    for (const restore of restoreRate.splice(0)) restore()
+  })
+
+  /**
+   * expo-video on iOS (`VideoPlayer.swift`): a non-zero rate write also sets
+   * the AVPlayer rate, so it starts a paused player. The shared double stores
+   * the value only. Every write is recorded.
+   */
+  function rateStartsPausedPlayer(player: FakePlayer) {
+    let rate = player.playbackRate
+    const writes: { rate: number; wasPlaying: boolean }[] = []
+    Object.defineProperty(player, "playbackRate", {
+      configurable: true,
+      enumerable: true,
+      get: () => rate,
+      set: (value: number) => {
+        writes.push({ rate: value, wasPlaying: player.playing })
+        rate = value
+        if (value > 0 && !player.playing) {
+          player.playing = true
+          player.__emit("playingChange", { isPlaying: true })
+        }
+      },
+    })
+    restoreRate.push(() => {
+      Object.defineProperty(player, "playbackRate", {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: 1,
+      })
+    })
+    return writes
+  }
+
+  it("plays the active clip at 2x while a side is held, and at 1x after the lift", async () => {
+    const h = await startedHarness()
+
+    await h.rerender({ fast: true })
+    expect(A.playbackRate).toBe(EXPLORE_FAST_RATE)
+
+    await h.rerender({ fast: false })
+    expect(A.playbackRate).toBe(1)
+    expect(A.playing).toBe(true)
+  })
+
+  it("keeps the standby at 1x while a side is held", async () => {
+    const h = await startedHarness()
+    await preloadSecondClip(h)
+
+    await h.rerender({ fast: true })
+    expect(A.playbackRate).toBe(EXPLORE_FAST_RATE)
+    expect(B.playbackRate).toBe(1)
+    expect(B.playing).toBe(false)
+  })
+
+  it("writes no rate to a paused player when the hold ends in a pause (iOS)", async () => {
+    const writes = rateStartsPausedPlayer(A)
+    const h = await startedHarness()
+    await h.rerender({ fast: true })
+    await h.send({ type: "tap" })
+    expect(A.playing).toBe(false)
+    const atPause = writes.length
+
+    await h.rerender({ fast: false })
+    expect(writes.slice(atPause)).toEqual([])
+    expect(A.playing).toBe(false)
+  })
+
+  it("keeps a paused clip's 2x until it plays again, then sets 1x before play()", async () => {
+    const h = await startedHarness()
+    await h.rerender({ fast: true })
+    await h.send({ type: "tap" })
+    await h.rerender({ fast: false })
+    // No write while paused, so the native rate is still the hold's.
+    expect(A.playbackRate).toBe(EXPLORE_FAST_RATE)
+    const ratesAtPlay: number[] = []
+    A.play.mockImplementation(() => {
+      ratesAtPlay.push(A.playbackRate)
+      A.playing = true
+      A.__emit("playingChange", { isPlaying: true })
+    })
+
+    await h.send({ type: "tap" })
+    expect(A.playing).toBe(true)
+    expect(ratesAtPlay).toEqual([1])
+  })
+
+  it("gives a player that starts by itself its wanted rate", async () => {
+    await startedHarness()
+    // iOS resumes a player after an interruption at the rate it last had.
+    A.playbackRate = EXPLORE_FAST_RATE
+    await act(async () => {
+      A.__emit("playingChange", { isPlaying: true })
+    })
+    expect(A.playbackRate).toBe(1)
   })
 })

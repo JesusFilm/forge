@@ -157,6 +157,7 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
     player: player as unknown as VideoPlayer,
     muted: false,
     paused: false,
+    fast: false,
     onToggleMute: jest.fn(),
     onSeek: jest.fn(),
     onKeepWatching: jest.fn(),
@@ -362,6 +363,20 @@ describe("ClipOverlay — clip information", () => {
     expect(glyph).toBeDefined()
     expect(glyph.props.pointerEvents).toBe("none")
     expect(glyph.props.importantForAccessibility).toBe("no-hide-descendants")
+  })
+
+  it("shows the 2x cue under the safe area only while fast, hidden from screen readers", () => {
+    expect(byTestId(render(), "clip-fast-cue")).toHaveLength(0)
+    const renderer = render(props({ fast: true }))
+    const [cue] = byTestId(renderer, "clip-fast-cue")
+    expect(cue).toBeDefined()
+    expect(cue.props.pointerEvents).toBe("none")
+    expect(cue.props.importantForAccessibility).toBe("no-hide-descendants")
+    expect(flatStyle(cue.props.style)).toMatchObject({
+      top: mockInsets.top + 12,
+      direction: "ltr",
+    })
+    expect(textsIn(jsonById(renderer, "clip-fast-cue"))).toEqual(["2×"])
   })
 })
 
