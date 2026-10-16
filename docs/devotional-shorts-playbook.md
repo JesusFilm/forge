@@ -377,6 +377,15 @@ source with its year (Easton 1897, Smith 1863, Abbott-Smith 1922, Ryle 1858)
 and what AI did (drafted, voiced, assembled; on-screen questions written with
 AI help and chosen by the team).
 
+Every caption file also carries one `PINNED COMMENT` line (owner,
+2026-10-14). Publishing posts it under the short and pins it. Its only job is
+to make people write something: a personal, open question about the viewer's
+own life, or a call to comment ("Write one word: …", "Tell us…"). Never a quiz
+whose answer the short already gives. Bad: "Why did the ten lepers shout from
+far away?" (the history short explains exactly that). Good: "The ten waited
+for a priest's word before they could go home. Whose permission are you
+waiting for before you come to God?" RU files get it in Russian.
+
 ## 8. QA before delivering
 
 - `cut-devotional-shorts.ts` prints length, loudness and black frames per
