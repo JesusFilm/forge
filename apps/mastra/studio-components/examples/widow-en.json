@@ -1,0 +1,214 @@
+{
+ "projectId": "widow-devotional-vertical-en-components-20261016",
+ "title": "The Persistent Widow (vertical, components)",
+ "lang": "en",
+ "source": {
+  "videoId": "cmp78patk0e1wqm01tck73d3z",
+  "dubId": "7fd46e84-0d69-4e65-9121-68b0a67f56aa",
+  "editionId": "cmp720yxf07g5o001qhcw66ok",
+  "language": "english",
+  "subtitle": null,
+  "preview": {
+   "assetId": "265a6bd9-3d7a-4a7a-a938-e6e580a2737d",
+   "versionId": "cmv9ybgojcjwaqa0sevrq40kq",
+   "digest": "884427464a76fd8b7a5ddbf2381a5d2aa14f8a0193c6ade2df37ed3c7f302dc5"
+  },
+  "export": {
+   "assetId": "265a6bd9-3d7a-4a7a-a938-e6e580a2737d",
+   "versionId": "cmv9ybgojcjwaqa0sevrq40kq",
+   "digest": "884427464a76fd8b7a5ddbf2381a5d2aa14f8a0193c6ade2df37ed3c7f302dc5"
+  }
+ },
+ "opening": [
+  {
+   "text": "Some prayers we quietly stop praying, because nothing changes.",
+   "hero": "stop praying",
+   "accents": "nothing changes",
+   "shotSec": 409.0
+  },
+  {
+   "text": "Jesus tells of a judge who could be bought.",
+   "hero": "could be bought",
+   "accents": "a judge",
+   "shotSec": 389.0
+  },
+  {
+   "text": "And a widow with nothing to pay, who keeps coming back.",
+   "hero": "keeps coming back",
+   "accents": "nothing to pay",
+   "shotSec": 377.0
+  },
+  {
+   "text": "In this devotional, we look at who this judge really was.",
+   "hero": "really was",
+   "accents": "this judge",
+   "shotSec": 367.0
+  }
+ ],
+ "film": {
+  "startSec": 358.7,
+  "endSec": 425.8,
+  "speed": 1.05,
+  "cues": "apps/mastra/src/services/devotional/video-sources/lumo-luke-18-widow.en",
+  "heading": "Luke 18:1-8"
+ },
+ "backdrops": [
+  358.5,
+  407.1,
+  366.0,
+  410.45,
+  358.5,
+  420.75,
+  358.5,
+  358.5
+ ],
+ "reflection": [
+  {
+   "text": "Jesus wants his disciples to keep praying, and for his example he picks a judge who says himself that he fears neither God nor people."
+  },
+  {
+   "text": "Why him, of all people?"
+  },
+  {
+   "text": "To Jesus' first hearers, this judge was a familiar kind of man.",
+   "credit": "HISTORICAL CONTEXT\nAlfred Edersheim (1883)"
+  },
+  {
+   "text": "One person sitting alone was not how a Jewish court worked, unless both sides had chosen him themselves."
+  },
+  {
+   "text": "And this man does not speak or act like someone bound by the Law of Moses."
+  },
+  {
+   "text": "He was more likely an official appointed by Herod or by Rome."
+  },
+  {
+   "text": "People joked about paid judges, with a play on words that turned them into judges of robbery."
+  },
+  {
+   "text": "Village judges, they said, would change a verdict for a dish of meat."
+  },
+  {
+   "text": "Justice went to whoever could pay."
+  },
+  {
+   "text": "The widow had nothing to pay with."
+  },
+  {
+   "text": "All she had was her voice, and she used it until hearing her again cost the judge more than ruling for her."
+  },
+  {
+   "text": "Now we can see why Jesus chose him.",
+   "credit": "COMMENTARY\nJ. C. Ryle (1816–1900)"
+  },
+  {
+   "text": "Not to say that God is like him, but to show how far apart they are."
+  },
+  {
+   "text": "If even this judge gives in to someone he does not care about, how much more will God answer his own children."
+  },
+  {
+   "text": "He is the righteous Judge, and he is a loving Father."
+  },
+  {
+   "text": "Look at how Jesus describes God's people in verse seven.",
+   "callout": {
+    "text": "Will not God bring about justice for His elect who cry out to Him day and night? Will He delay in helping them?",
+    "highlight": "day and night"
+   }
+  },
+  {
+   "text": "Not by how strong they are, or by how many answers they have had.",
+   "callout": {
+    "text": "Will not God bring about justice for His elect who cry out to Him day and night? Will He delay in helping them?",
+    "highlight": "day and night"
+   }
+  },
+  {
+   "text": "They are the ones who cry out to him day and night.",
+   "callout": {
+    "text": "Will not God bring about justice for His elect who cry out to Him day and night? Will He delay in helping them?",
+    "highlight": "day and night"
+   }
+  },
+  {
+   "text": "In other words, they are still asking.",
+   "callout": {
+    "text": "Will not God bring about justice for His elect who cry out to Him day and night? Will He delay in helping them?",
+    "highlight": "day and night"
+   }
+  },
+  {
+   "text": "Starting to pray is easy; a fright or a stirred heart can start almost anyone.",
+   "callout": {
+    "text": "Will not God bring about justice for His elect who cry out to Him day and night? Will He delay in helping them?",
+    "highlight": "day and night"
+   }
+  },
+  {
+   "text": "Going on when the answer is slow takes faith, because a quiet thought creeps in: it is no use.",
+   "callout": {
+    "text": "Will not God bring about justice for His elect who cry out to Him day and night? Will He delay in helping them?",
+    "highlight": "day and night"
+   }
+  },
+  {
+   "text": "That is why the story ends the way it does.",
+   "callout": {
+    "text": "I tell you, He will promptly carry out justice on their behalf. Nevertheless, when the Son of Man comes, will He find faith on earth?",
+    "highlight": "promptly"
+   }
+  },
+  {
+   "text": "Jesus has just promised that God will act.",
+   "callout": {
+    "text": "I tell you, He will promptly carry out justice on their behalf. Nevertheless, when the Son of Man comes, will He find faith on earth?",
+    "highlight": "promptly"
+   }
+  },
+  {
+   "text": "Then he asks one more question: when the Son of Man comes, will he find faith on the earth?",
+   "callout": {
+    "text": "I tell you, He will promptly carry out justice on their behalf. Nevertheless, when the Son of Man comes, will He find faith on earth?",
+    "highlight": "promptly"
+   }
+  },
+  {
+   "text": "Whether God will answer is already settled.",
+   "callout": {
+    "text": "I tell you, He will promptly carry out justice on their behalf. Nevertheless, when the Son of Man comes, will He find faith on earth?",
+    "highlight": "promptly"
+   }
+  },
+  {
+   "text": "What is left open is whether we will still be asking when he comes.",
+   "callout": {
+    "text": "I tell you, He will promptly carry out justice on their behalf. Nevertheless, when the Son of Man comes, will He find faith on earth?",
+    "highlight": "promptly"
+   }
+  },
+  {
+   "text": "The widow kept coming to a corrupt judge, with nothing in her hands."
+  },
+  {
+   "text": "We come to a Father who cannot be bought and does not need to be."
+  },
+  {
+   "text": "The judge gave in to be rid of her."
+  },
+  {
+   "text": "God answers because he loves his children."
+  },
+  {
+   "text": "And the One who told this story is the One who will come, hoping to find us still asking."
+  }
+ ],
+ "takeaway": "With that judge, the verdict was in doubt. With God, the only question is whether we stay persistent in prayer.",
+ "verse": {
+  "text": "“Be joyful in hope, patient in affliction, persistent in prayer.”",
+  "ref": "ROMANS 12:12 · BSB"
+ },
+ "question": "What is the one request you have quietly stopped bringing to God because the answer seemed slow?",
+ "prayer": "Bring that request back to God today and tell him honestly how long the wait has felt. Ask him for the faith to go on asking.",
+ "music": null
+}

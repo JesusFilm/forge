@@ -35,7 +35,13 @@ def extract():
 
 
 def make(src, axes, chars, out):
-    f = TTFont(os.path.join(SRC, src))
+    # An existing subset is kept: a rebuild with another fontTools gives
+    # different bytes, and the uploaded components' digests would no longer
+    # match their sources. Delete a file to rebuild it on purpose.
+    if os.path.exists(os.path.join(OUT, out)):
+        print(out, "kept")
+        return
+    f = TTFont(src if os.path.isabs(src) else os.path.join(SRC, src))
     f = instancer.instantiateVariableFont(f, axes)
     opts = subset.Options()
     opts.flavor = "woff2"
@@ -58,3 +64,7 @@ if __name__ == "__main__":
     make("literata_var.ttf", {"wght": 400, "opsz": 36}, CYR + ASCII + TYPO, "literata400-cyrillic.woff2")
     make("literata_italic_var.ttf", {"wght": 400, "opsz": 36}, ASCII + TYPO, "literata400i-latin.woff2")
     make("literata_italic_var.ttf", {"wght": 400, "opsz": 36}, CYR + ASCII + TYPO, "literata400i-cyrillic.woff2")
+    # Russian step labels (ИСТОРИЯ / РАЗМЫШЛЕНИЕ / МОЛИТВА) for step-line;
+    # the Latin caps are inter-600-caps.woff2.
+    INTER_CYR = os.path.join(HERE, "..", "..", "..", "packages", "shorts-compositions", "fonts", "inter-cyrillic.woff2")
+    make(INTER_CYR, {"wght": 600}, CYR[:33] + " ", "inter600caps-cyrillic.woff2")

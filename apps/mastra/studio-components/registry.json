@@ -420,13 +420,13 @@
       }
     },
     {
-      "versionId": "reveal-serif-en-v1",
-      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016).",
+      "versionId": "reveal-serif-en-v2",
+      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016). Registered as -v2: the -v1 names were first registered (component-test-reveal-serif-20261016) with an earlier upload without the even-spread fallback, and Studio refuses to bind one name to other code.",
       "language": "english",
       "built": "dist/reveal-serif-en.tsx",
       "source": "src/reveal-serif.tsx",
       "registration": {
-        "versionId": "reveal-serif-en-v1",
+        "versionId": "reveal-serif-en-v2",
         "code": {
           "assetId": "7a564a24-bd97-4b1a-ba86-e9b0378d151c",
           "versionId": "cmvasf3jzi90hqa0ssowx31xj",
@@ -500,13 +500,13 @@
       }
     },
     {
-      "versionId": "reveal-serif-ru-v1",
-      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016).",
+      "versionId": "reveal-serif-ru-v2",
+      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016). Registered as -v2: the -v1 names were first registered (component-test-reveal-serif-20261016) with an earlier upload without the even-spread fallback, and Studio refuses to bind one name to other code.",
       "language": "russian",
       "built": "dist/reveal-serif-ru.tsx",
       "source": "src/reveal-serif.tsx",
       "registration": {
-        "versionId": "reveal-serif-ru-v1",
+        "versionId": "reveal-serif-ru-v2",
         "code": {
           "assetId": "2b441a0e-c8de-4538-9e49-cd89067f5d3a",
           "versionId": "cmvasf43ci90rqa0sd3gph30n",
@@ -877,6 +877,343 @@
             "type": "number",
             "min": 0,
             "max": 90
+          }
+        }
+      }
+    },
+    {
+      "versionId": "step-line-v1",
+      "purpose": "The 9:16 clip-first stepper (Stepper.tsx StepperLine): labels stacked with a thin rail; the rail draws down onto `step` (0-based), which lights gold, swells a little and comes into focus; passed steps stay gold, steps ahead dim and blurred. steps = comma list (EN \"WATCH,REFLECT,PRAY\", RU \"ИСТОРИЯ,РАЗМЫШЛЕНИЕ,МОЛИТВА\"; Inter 600 caps Latin + Cyrillic embedded). moveStartSec 0.25, moveSec 2.1, centerY 960, item ~2.8 s.",
+      "language": "any",
+      "built": "dist/step-line.tsx",
+      "source": "src/step-line.tsx",
+      "registration": {
+        "versionId": "step-line-v1",
+        "code": {
+          "assetId": "26d95c18-c9f8-422b-b552-e921fc871321",
+          "versionId": "cmvatpdadij8hqa0sycudnmvv",
+          "digest": "c1d5f5365eb049710cd0cf09e115dfcbc015d97b8933d93184deaac8783b8c05"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "steps": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "step": {
+            "type": "number",
+            "min": 0,
+            "max": 5
+          },
+          "moveStartSec": {
+            "type": "number",
+            "min": 0,
+            "max": 10
+          },
+          "moveSec": {
+            "type": "number",
+            "min": 0.1,
+            "max": 6
+          },
+          "centerY": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "fadeInSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "verse-callout-en-v1",
+      "purpose": "The verse the reflection is talking about (VerseCalloutOverlay.tsx): light Literata italic in curly quotes; `highlight` (one phrase of the text, at most 24 characters, or \"\") turns white with a gold rule drawn under it at litAtSec, then breathes. Shrinks from maxFontSize to fit maxHeight. 9:16: top 300, width 860, maxHeight 420, maxFontSize 56; put the reflection sentence at top 1140 while it is up.",
+      "language": "en",
+      "built": "dist/verse-callout-en.tsx",
+      "source": "src/verse-callout.tsx",
+      "registration": {
+        "versionId": "verse-callout-en-v1",
+        "code": {
+          "assetId": "f6699396-70c9-4ee8-bd8d-c9df7c69c23d",
+          "versionId": "cmvatpdxtij9mqa0sjeydjbza",
+          "digest": "553876ba858b3edbbf979ccde7a274d9edbc2015867916321fd72861c774e88d"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "maxHeight": {
+            "type": "number",
+            "min": 60,
+            "max": 1200
+          },
+          "maxFontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "litAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 60
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "verse-callout-ru-v1",
+      "purpose": "Russian build of verse-callout (Cyrillic italic subset, «guillemets»). Same controls.",
+      "language": "ru",
+      "built": "dist/verse-callout-ru.tsx",
+      "source": "src/verse-callout.tsx",
+      "registration": {
+        "versionId": "verse-callout-ru-v1",
+        "code": {
+          "assetId": "c5a23c93-2960-4c90-a629-8735c4bc529c",
+          "versionId": "cmvatpefoij9qqa0sdhtdszpc",
+          "digest": "609e1d649e396bcadf5fcec46511e572c558813f76541a4c0e75fe0ea075eaa8"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "maxHeight": {
+            "type": "number",
+            "min": 60,
+            "max": 1200
+          },
+          "maxFontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "litAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 60
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "scripture-scroll-en-v1",
+      "purpose": "The film's narration as numbered Scripture (ScrollingScripture.tsx vertical, Figma 411-2366): heading (\"Luke 18:1-8\") over a hairline, verses drifting up through a five-line window, the spoken word gold, a dark pool behind. lines = one cue per line `verse|t1,t2,...|text`, each t a word start in seconds from the item start (the cue file's .words.json minus the window start, divided by the film speed). still=true holds the passage and only lights words. dim 0.32 dims the film under it. Put it on the film item, same start and length.",
+      "language": "en",
+      "built": "dist/scripture-scroll-en.tsx",
+      "source": "src/scripture-scroll.tsx",
+      "registration": {
+        "versionId": "scripture-scroll-en-v1",
+        "code": {
+          "assetId": "789091c9-7956-408a-a9db-6f2826785c0a",
+          "versionId": "cmvatpew7ija7qa0suekbdfxb",
+          "digest": "be7c2a1c02d27c0d14158a62f11ad41951534256ecf7cb7345ab40d91353f16a"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "heading": {
+            "type": "text",
+            "maxLength": 80
+          },
+          "lines": {
+            "type": "text",
+            "maxLength": 8000
+          },
+          "still": {
+            "type": "boolean"
+          },
+          "centerY": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "dim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "scripture-scroll-ru-v1",
+      "purpose": "Russian build of scripture-scroll (Cyrillic subset). Same controls; heading \"От Луки 18:1-8\".",
+      "language": "ru",
+      "built": "dist/scripture-scroll-ru.tsx",
+      "source": "src/scripture-scroll.tsx",
+      "registration": {
+        "versionId": "scripture-scroll-ru-v1",
+        "code": {
+          "assetId": "a1717f1e-e50d-43ac-bad0-f176b4f777a1",
+          "versionId": "cmvatpfdvijb5qa0sy5tezz6e",
+          "digest": "28748686548f1da6612644a2f407faf03d75eebdbb3408423078129b25c36815"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "heading": {
+            "type": "text",
+            "maxLength": 80
+          },
+          "lines": {
+            "type": "text",
+            "maxLength": 8000
+          },
+          "still": {
+            "type": "boolean"
+          },
+          "centerY": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "dim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
           }
         }
       }

@@ -12,9 +12,11 @@ changed and re-uploaded from any machine.
   Start here.
 - `src/`: sources; fonts are placeholders (`__LIT400__`, `"__FONT__"`, …).
 - `fonts/`: subset WOFF2 files (Literata, Inter, PT Serif; SIL Open Font
-  License). `subset-fonts.py` makes the `literata400-*` ones from the
-  variable fonts in `packages/shorts-compositions/src/devotional/teaser-fonts-data.ts`
-  (`pip install fonttools brotli`).
+  License). `subset-fonts.py` makes the `literata400*` and
+  `inter600caps-cyrillic` ones from the fonts in
+  `packages/shorts-compositions` (`pip install fonttools brotli`). It keeps
+  files that exist: another fontTools gives other bytes, and the uploaded
+  components' digests would stop matching their sources.
 - `uploaded/`: exact uploaded bytes for components whose source is not kept
   here (`Caption-orange`, `paper-strips-v1`, `dbp-mark-v1`, the Russian
   `kinetic-ru-v1` and `cta-calm-ru-v1`). Not reformatted, not linted.
@@ -28,7 +30,14 @@ node apps/mastra/studio-components/build.mjs
 ```
 
 The recipe for a whole vertical devotional with these components:
-`docs/studio-devotional-recipe.md`.
+`docs/studio-devotional-recipe.md`. `make-devotional-project.py` turns an
+approved script into the project's create document and apply operations
+(input format in its header; `examples/widow-en.json` is the Persistent
+Widow):
+
+```bash
+python3 -I apps/mastra/studio-components/make-devotional-project.py apps/mastra/studio-components/examples/widow-en.json /tmp/widow-studio
+```
 
 ## Studio rules for component code
 
@@ -36,13 +45,17 @@ The recipe for a whole vertical devotional with these components:
   (AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring,
   Sequence, Easing). No files, no Img/Video, no delayRender.
 - At most 32768 bytes, fonts included. Latin and Cyrillic builds of one source
-  are separate components for that reason (`reveal-serif-en-v1` /
-  `reveal-serif-ru-v1`).
+  are separate components for that reason (`reveal-serif-en-v2` /
+  `reveal-serif-ru-v2`).
 - Every item must set every declared control (colours cannot be `""`).
 - Register each code asset under ONE versionId per project (a second
   versionId for the same asset made renders fail, 2026-10-08).
 - A change is a new upload under a new name (`-v2`); never repoint an
-  existing name at different bytes. Update `registry.json` in the same commit.
+  existing name at different bytes. Studio enforces it: a name is bound to
+  the first code it was registered with, in any project, and a registration
+  of the same name with other code is refused with only "Studio command
+  rejected" (2026-10-16, `reveal-serif-*-v1`). Update `registry.json` in the
+  same commit.
 
 ## Adding or changing a component
 

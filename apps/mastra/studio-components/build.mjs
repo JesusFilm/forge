@@ -40,6 +40,7 @@ const PLACEHOLDERS = {
   __HERO__: () => font("literata-500-caps.woff2"),
   __ACCENT__: () => font("literata-400-italic.woff2"),
   __PLAIN__: () => font("inter-600-caps-plain.woff2"),
+  __INTER600CAPSCYR__: () => font("inter600caps-cyrillic.woff2"),
   __LOCKUP__: lockup,
 }
 
@@ -55,6 +56,7 @@ const COMPONENTS = {
   "close-question":
     "80fc723a7c4256006c9c901e29eb9744eeaef3a3c2031b6e699bb568b3c2b747",
   "brand-mark": null,
+  "step-line": null,
 }
 
 mkdirSync(path.join(here, "dist"), { recursive: true })
@@ -90,6 +92,26 @@ const VARIANTS = {
     font: "literata400-cyrillic.woff2",
     uploaded: "83db64eda0373e0fbf92e84006743bbfb928fe5cf2ab64b8593f8c9e696dd249",
   },
+  "verse-callout-en": {
+    src: "verse-callout",
+    font: "literata400i-latin.woff2",
+    uploaded: null,
+  },
+  "verse-callout-ru": {
+    src: "verse-callout",
+    font: "literata400i-cyrillic.woff2",
+    uploaded: null,
+  },
+  "scripture-scroll-en": {
+    src: "scripture-scroll",
+    font: "literata400-latin.woff2",
+    uploaded: null,
+  },
+  "scripture-scroll-ru": {
+    src: "scripture-scroll",
+    font: "literata400-cyrillic.woff2",
+    uploaded: null,
+  },
 }
 for (const [name, v] of Object.entries(VARIANTS)) {
   const code = readFileSync(path.join(here, "src", `${v.src}.tsx`), "utf8")
@@ -100,7 +122,7 @@ for (const [name, v] of Object.entries(VARIANTS)) {
   writeFileSync(path.join(here, "dist", `${name}.tsx`), code)
   if (bytes > 32768) failed = true
   console.log(
-    `${name}: ${bytes} bytes${bytes > 32768 ? " (OVER the 32768 limit)" : ""}, ${digest === v.uploaded ? "matches the uploaded version" : "DIFFERS from the uploaded version"}`,
+    `${name}: ${bytes} bytes${bytes > 32768 ? " (OVER the 32768 limit)" : ""}, ${v.uploaded == null ? "built (no uploaded digest on record)" : digest === v.uploaded ? "matches the uploaded version" : "DIFFERS from the uploaded version"}`,
   )
 }
 if (failed) process.exit(1)
