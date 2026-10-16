@@ -1,4 +1,11 @@
 import { z } from "zod"
+import {
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
 
 import type {
   AiTrafficEvidence,
@@ -55,6 +62,7 @@ const crawl = z.object({
   fetcherCacheState: z.string().nullable(),
   fetcherCachedAt: z.string().nullable(),
   complete: z.boolean(),
+  renderingMode: z.enum(["direct_http", "rendered"]).nullish(),
 })
 const proposals = z.object({
   proposals: z.array(
@@ -152,57 +160,44 @@ export function adaptWatchSeoReadModel(
   const { sections, identity } = model
   const page = sections.pageMetadata.data
 
-  const daily = new Map<string, { total: number; count: number }>()
-  for (const query of sections.search.data?.queries ?? []) {
-    const date = query.observedAt.slice(0, 10)
-    const current = daily.get(date) ?? { total: 0, count: 0 }
-    current.total += query.position
-    current.count += 1
-    daily.set(date, current)
+  // Selection decisions cover thresholded queries and overlapping rolling
+  // windows. Observation dates and the retention window are not daily data.
+  const rankings: WatchSeoMarketingData["rankings"] = {
+    ...provenance(sections.search, null),
+    state: "unavailable",
+    window: null,
+    note: "Daily ranking history and page totals are unavailable. Admin retains thresholded selection snapshots from rolling GSC windows; overlapping windows cannot be summed or averaged into history.",
   }
-  const queries = sections.search.data?.queries ?? []
-  const clicks = queries.reduce((sum, query) => sum + query.clicks, 0)
-  const impressions = queries.reduce((sum, query) => sum + query.impressions, 0)
-  const rankingData = sections.search.data
-    ? {
-        averagePosition:
-          queries.length > 0
-            ? queries.reduce((sum, query) => sum + query.position, 0) /
-              queries.length
-            : null,
-        clicks,
-        impressions,
-        ctrPercent: impressions > 0 ? (clicks / impressions) * 100 : null,
-        comparisonWindow: null,
-        points: [...daily.entries()]
-          .sort(([a], [b]) => a.localeCompare(b))
-          .map(([date, value]) => ({
-            date,
-            position: value.count > 0 ? value.total / value.count : null,
-          })),
-      }
-    : null
 
   const crawlerData = sections.crawl.data
     ? {
-        renderingMode: "direct_http" as const,
+        renderingMode: sections.crawl.data.renderingMode ?? null,
         textExcerpt: null,
         botVisits: null,
         lastVisitAt: null,
         cacheStatus: sections.crawl.data.fetcherCacheState,
         indexingStatus: "Not verified",
         notes: [
-          "A stored HTTP fetch does not prove search indexing or a search-bot visit.",
+          "A stored fetch does not prove its rendering mode, search indexing or a search-bot visit.",
           ...sections.crawl.caveats,
         ],
       }
     : null
 
+  const contentSlug = tryAsContentSlug(identity.videoSlug)
+  const languageSlug = tryAsLocaleSlug(identity.languageSlug)
   const previewData = page
     ? {
-        canonicalUrl: identity.canonicalUrl,
-        title: page.searchTitle ?? page.title,
-        description: page.searchDescription ?? page.description,
+        canonicalUrl:
+          contentSlug && languageSlug
+            ? `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(contentSlug, languageSlug)}`
+            : null,
+        // Mirror buildWatchVideoMetadataModel / video-template metadata.
+        // Snippet and image-resolution inputs are absent from this read model.
+        title:
+          page.searchTitle?.trim() ||
+          `${page.title || identity.videoSlug || "Watch"} | Jesus Film Project`,
+        description: page.searchDescription?.trim() || page.description,
         imageUrl: null,
         imageAlt: null,
       }
@@ -228,15 +223,14 @@ export function adaptWatchSeoReadModel(
           proposalId: proposal.id,
           version: proposal.version,
           payloadDigest: proposal.payloadDigest,
-          title: proposal.intent,
-          evidence: proposal.verificationPlan,
-          expectedImpact: proposal.expectedOutcome,
-          confidence: proposal.risk,
-          actionSummary:
-            proposal.changes
-              .map((change) => change.field)
-              .filter(Boolean)
-              .join(", ") || proposal.intent,
+          // Any free-text field, including a change field name, may contain
+          // query evidence. Keep detailed prose on Admin for every state.
+          title: "SEO improvement proposal",
+          evidence:
+            "Review detailed evidence in Admin within its retention window.",
+          expectedImpact: "Requires editorial review in Admin.",
+          confidence: "Review required",
+          actionSummary: "Review the proposed changes in Admin.",
           applyOutcome: "Creates an editorial draft or ticket for review.",
           declineOutcome: "Records this proposal as declined.",
           decisionState:
@@ -270,7 +264,7 @@ export function adaptWatchSeoReadModel(
       // contextual canonical URL. Do not present a slug as if it were a URL.
       contextualUrl: null,
     },
-    rankings: provenance(sections.search, rankingData),
+    rankings,
     reach: provenance(sections.ga4PageAndCta, unavailableReach),
     viewing: provenance<ViewingEvidence>(sections.watchDepth, null),
     ctaOutcomes: provenance<{ items: CtaEvidence[] }>(
@@ -298,8 +292,17 @@ export function adaptWatchSeoReadModel(
         : null,
     ),
     crawler: provenance(sections.crawl, crawlerData),
-    previews: provenance(sections.pageMetadata, previewData),
-    opportunities: provenance(sections.proposals, opportunityData),
+    previews: {
+      ...provenance(sections.pageMetadata, previewData),
+      ...(previewData && sections.pageMetadata.state === "available"
+        ? { state: "partial" as const }
+        : {}),
+      note: "Text follows Watch social metadata rules for the available fields. Description is unavailable when snippet fallback is needed. Image resolution inputs are unavailable; no image or fallback is inferred.",
+    },
+    opportunities: {
+      ...provenance(sections.proposals, opportunityData),
+      note: "Query-free summaries only. Detailed proposal evidence stays in Admin.",
+    },
     alerts,
   }
 }

@@ -246,8 +246,8 @@ export function SeoMarketingPanel({
           <div id={`${prefix}-search`} className="scroll-mt-24">
             <SeoFamily
               name="rankings"
-              title="Search ranking history"
-              description="Where this page appeared in search results over time. These are page-level averages; detailed search queries stay in Admin."
+              title="Search rankings"
+              description="Daily history requires dated page-level measurements. Retained selection snapshots alone do not establish ranking history or page totals."
               family={data.rankings}
             >
               {(rankings) => <RankingHistory data={rankings} />}
@@ -419,10 +419,10 @@ export function SeoMarketingPanel({
                       <dt className="font-semibold">Rendering observation</dt>
                       <dd className="mt-1 text-stone-300">
                         {crawler.renderingMode === "direct_http"
-                          ? "Direct HTTP (without browser JavaScript)"
+                          ? "Stored direct HTTP observation"
                           : crawler.renderingMode === "rendered"
                             ? "Browser-rendered observation"
-                            : "Unavailable"}
+                            : "Unknown — rendering mode was not recorded"}
                       </dd>
                     </div>
                     <div>

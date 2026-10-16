@@ -119,6 +119,7 @@ export function WatchSeoAdminBoundary({
   if (!authorized) return null
 
   const selectTab = () => {
+    if (selected) return
     setEnvelope(null)
     setPanelState({ status: "loading" })
     setSelected(true)

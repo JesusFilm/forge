@@ -50,9 +50,10 @@ export function PreviewWidgets({ data }: { data: PreviewEvidence }) {
         ))}
       </div>
       <p className="mt-4 text-xs leading-relaxed text-stone-300">
-        Based on current canonical page metadata. Each app may crop images,
-        shorten text, or keep an older cached preview. This does not show what
-        an AI assistant has indexed or said.
+        Based on available canonical metadata fields; unavailable fields are
+        labelled above. Each app may crop images, shorten text, or keep an older
+        cached preview. This does not show what an AI assistant has indexed or
+        said.
       </p>
     </div>
   )

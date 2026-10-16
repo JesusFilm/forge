@@ -3,8 +3,8 @@ import { NextResponse } from "next/server"
 import { env } from "@/env"
 import { verifyAuthSession } from "@/lib/auth-session"
 import { fetchWatchSeoAdmin } from "@/lib/watch-seo-admin-client"
+import { watchSeoAdminOrigin } from "@/lib/watch-seo-admin-origin"
 import { adaptWatchSeoReadModel } from "@/lib/watch-seo-read-model-adapter"
-import { parseWatchSeoMarketingData } from "@/lib/watch-seo-response"
 
 export const dynamic = "force-dynamic"
 
@@ -48,14 +48,20 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const upstreamBody = await response.json().catch(() => null)
-  const body =
-    parseWatchSeoMarketingData(upstreamBody) ??
-    adaptWatchSeoReadModel(upstreamBody)
+  // Accept only the retained Admin contract. A presentation DTO would bypass
+  // query-free opportunity projection and source-semantic checks.
+  const body = adaptWatchSeoReadModel(upstreamBody)
   if (!body) {
     return new Response(null, { status: 502, headers: PRIVATE_HEADERS })
   }
 
-  const adminOrigin = new URL(env.ADMIN_GRAPHQL_URL).origin
+  const adminOrigin = watchSeoAdminOrigin(
+    env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
+    process.env.NODE_ENV === "production",
+  )
+  if (!adminOrigin) {
+    return new Response(null, { status: 502, headers: PRIVATE_HEADERS })
+  }
   return NextResponse.json(
     {
       data: body,

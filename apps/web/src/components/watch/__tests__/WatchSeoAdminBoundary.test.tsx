@@ -93,4 +93,51 @@ describe("WatchSeoAdminBoundary", () => {
       ).toBe("error"),
     )
   })
+
+  it("keeps ready evidence and makes no extra requests when the selected tab is activated again", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ canViewWatchSeo: true }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { schemaVersion: "watch-seo-marketing-v1" },
+          adminOrigin: "https://admin.example.org",
+          adminConfirmationUrl:
+            "https://admin.example.org/dashboard/seo/proposals/confirm",
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    await act(async () => {
+      root.render(
+        <WatchSeoAdminBoundary
+          videoSlug="jesus"
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+      publishWatchAccountSessionSignal({ status: "authenticated" })
+    })
+    const tab = await vi.waitFor(() => {
+      const button = container.querySelector<HTMLButtonElement>('[role="tab"]')
+      expect(button).not.toBeNull()
+      return button!
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(
+      container.querySelector('[data-testid="deferred-seo-panel"]'),
+    ).toBeNull()
+    await act(async () => tab.click())
+    await vi.waitFor(() => expect(container.textContent).toContain("ready"))
+    await act(async () => {
+      tab.click()
+      // Native button keyboard activation arrives as a click with detail 0.
+      tab.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 0 }))
+    })
+    expect(tab.getAttribute("aria-selected")).toBe("true")
+    expect(
+      container.querySelector('[data-testid="deferred-seo-panel"]')
+        ?.textContent,
+    ).toBe("ready")
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })

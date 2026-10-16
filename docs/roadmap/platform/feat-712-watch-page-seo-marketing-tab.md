@@ -142,3 +142,39 @@ people without Admin authority.
 - Run focused Web/Admin/Manager tests, typechecks, lint, formatting, schema and
   generated-client sync where touched. Wrap every heavy command with
   `/home/lado/.local/bin/agent-io-guard --`.
+
+## Scoped review corrections — 2026-10-16
+
+Findings 1, 2, 3, 5, 7, and 8 from `watch-seo-read-ui-review-v1` are addressed
+in a separate implementation worktree. This is a scoped correction pass; the
+feature remains in progress for the coordinating task's integrated closeout.
+
+- `apps/web/src/lib/watch-seo-read-model-adapter.ts` emits controlled,
+  query-free opportunity summaries for every proposal state. The private Web
+  route accepts only the retained Admin contract, preventing presentation DTOs
+  from bypassing that projection. Admin's read model retains current detail but
+  suppresses query-bearing proposal prose and diffs at the strict 29-day
+  boundary using both the version and source-run creation times.
+- Confirmation navigation uses the validated public
+  `NEXT_PUBLIC_ADMIN_GRAPHQL_URL` origin independently of private Railway
+  transport. Production requires HTTPS; invalid/private navigation fails closed.
+- Thresholded, overlapping GSC selection windows produce explicit unavailable
+  daily history and page totals. They are never summed, averaged, or assigned
+  to observation dates as daily measurements.
+- Repeated tab selection preserves ready evidence and makes no extra request.
+  Preview text/canonicals match the real Watch metadata helpers for known
+  fields; missing snippet/image resolution inputs remain unavailable. Crawler
+  rendering mode is preserved only when explicitly stored, otherwise unknown.
+- Validation: 89 focused Web tests and 44 Admin read-model tests passed;
+  focused changed-file typechecks, ESLint, and formatting passed using existing
+  installed tooling without dependency installation. All heavy checks used the
+  disk guard. Normal commit hooks also run before this correction is committed.
+- Load-boundary evidence: zero SEO requests before sign-in, one capability
+  request before selection, and one evidence request after selection, unchanged
+  after repeated activation. The public page, route composition, warmup paths,
+  and dynamic import are unchanged; the initial boundary changes by one early
+  return inside its selection handler. Production browser timing/CLS was not
+  rerun for this correction pass.
+
+Admin decision-flow files, generated GraphQL contracts, deployment settings,
+and provider integrations are unchanged.

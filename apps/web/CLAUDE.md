@@ -122,6 +122,20 @@ zero or prototype fixtures. Opportunity controls may link to Admin's separate
 origin for confirmation, but no Watch-origin route may perform a privileged
 proposal decision or publish content.
 
+Confirmation navigation uses the origin of `NEXT_PUBLIC_ADMIN_GRAPHQL_URL`,
+the existing browser-facing Admin endpoint, independently of private Railway
+`ADMIN_GRAPHQL_URL` transport. It requires a public HTTPS origin in production;
+HTTP is allowed only outside production. Invalid navigation configuration fails
+the private evidence response closed.
+
+Watch opportunities use controlled query-free summaries; free-form proposal
+details stay on Admin. The retained read model suppresses proposal prose and
+diffs at the strict 29-day boundary even before compaction runs. GSC selection
+decisions are thresholded rolling-window snapshots, not daily ranking history
+or additive page totals. Preview text mirrors Watch metadata rules, but missing
+snippet/image inputs remain unavailable. Crawler rendering mode is unknown
+unless explicitly recorded in the stored observation.
+
 ## Common Pitfalls
 
 - Don't import server-only code in client components.

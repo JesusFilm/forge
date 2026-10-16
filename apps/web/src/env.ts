@@ -338,7 +338,10 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
-    // Public Admin GraphQL endpoint used by client-side Watch search reads.
+    // Public Admin GraphQL endpoint used by client-side Watch search reads
+    // and the Watch SEO confirmation origin. This must be the actual public
+    // Admin host, independent of ADMIN_GRAPHQL_URL's private transport.
+    // Watch SEO navigation requires HTTPS in production.
     // Admin's `watchSearch` query is public; production Admin must allow the
     // Web origin in `CORS_ALLOWED_ORIGINS` before browser-direct calls work.
     NEXT_PUBLIC_ADMIN_GRAPHQL_URL: z

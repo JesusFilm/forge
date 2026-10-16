@@ -129,6 +129,7 @@ export type WatchSeoSearch = {
 export type WatchSeoCrawlObservation = {
   kind: "page_state_fetch"
   provider: "firecrawl" | "direct_page"
+  renderingMode: "direct_http" | "rendered" | null
   httpStatus: number | null
   contentType: string | null
   title: string | null

@@ -45,6 +45,39 @@ afterEach(() => {
 })
 
 describe("Watch SEO presentation", () => {
+  it.each([null, "direct_http", "rendered"] as const)(
+    "describes crawler rendering mode without inferring no-JS execution (%s)",
+    (renderingMode) => {
+      const data = sampleData()
+      data.crawler.data!.renderingMode = renderingMode
+      const ui = renderPanel(data).querySelector('[data-seo-family="crawler"]')!
+      expect(ui.textContent).not.toContain("without browser JavaScript")
+      expect(ui.textContent).toContain(
+        renderingMode === "direct_http"
+          ? "Stored direct HTTP observation"
+          : renderingMode === "rendered"
+            ? "Browser-rendered observation"
+            : "Unknown — rendering mode was not recorded",
+      )
+    },
+  )
+
+  it("shows unavailable ranking history without a chart or invented page totals", () => {
+    const data = sampleData()
+    data.rankings = {
+      ...data.rankings,
+      state: "unavailable",
+      data: null,
+      window: null,
+      note: "Only thresholded selection snapshots from rolling windows are retained.",
+    }
+    const ui = renderPanel(data).querySelector('[data-seo-family="rankings"]')!
+    expect(ui.textContent).toContain("Unavailable")
+    expect(ui.textContent).toContain("selection snapshots")
+    expect(ui.querySelector("svg")).toBeNull()
+    expect(ui.querySelector("[data-metric]")).toBeNull()
+  })
+
   it("masks the complete panel and exposes its parent-owned tab relationship", () => {
     const panel = renderPanel().querySelector('[role="tabpanel"]')!
     expect(panel.getAttribute("data-dd-privacy")).toBe("mask")
@@ -182,7 +215,7 @@ describe("Watch SEO presentation", () => {
     expect(ui.querySelector('[role="alert"]')?.textContent).toContain(
       "Some evidence is missing",
     )
-    expect(ui.textContent).toContain("Direct HTTP")
+    expect(ui.textContent).toContain("Stored direct HTTP observation")
     expect(ui.textContent).toContain("does not prove search indexing")
     expect(ui.textContent).toContain("Sample stored observation")
     expect(ui.querySelectorAll("[data-preview-kind]")).toHaveLength(2)

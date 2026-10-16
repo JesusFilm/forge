@@ -604,6 +604,7 @@ export class WatchSeoReadModelService {
         contentType: unknown
         cacheState: unknown
         cachedAt: unknown
+        renderingMode: unknown
       }>
     >(Prisma.sql`
       SELECT
@@ -615,7 +616,8 @@ export class WatchSeoReadModelService {
         "payload" ->> 'statusCode' AS "statusCode",
         "payload" ->> 'contentType' AS "contentType",
         "payload" ->> 'cacheState' AS "cacheState",
-        "payload" ->> 'cachedAt' AS "cachedAt"
+        "payload" ->> 'cachedAt' AS "cachedAt",
+        "payload" ->> 'renderingMode' AS "renderingMode"
       FROM "seo_evidence_observation"
       WHERE "provider" IN (
           'firecrawl'::"SeoEvidenceProvider",
@@ -654,6 +656,11 @@ export class WatchSeoReadModelService {
         data: {
           kind: "page_state_fetch",
           provider,
+          renderingMode:
+            row.renderingMode === "direct_http" ||
+            row.renderingMode === "rendered"
+              ? row.renderingMode
+              : null,
           httpStatus:
             Number.isInteger(status) && status >= 100 && status <= 599
               ? status
@@ -791,6 +798,7 @@ export class WatchSeoReadModelService {
           orderBy: { version: "desc" },
           take: 1,
           include: {
+            run: { select: { createdAt: true } },
             decision: true,
             materialization: true,
             ticketOutbox: { select: { id: true } },
@@ -811,6 +819,14 @@ export class WatchSeoReadModelService {
     for (const row of rows) {
       const version = row.versions[0]
       if (!version) continue
+      // Detail reads must enforce retention even before background compaction.
+      // Keep immutable proposal identity and outcomes, but never carry old
+      // query-bearing prose/diffs through this read surface. The ledger and
+      // Admin decision flow remain unchanged.
+      const cutoff = now.getTime() - WATCH_SEO_DETAIL_WINDOW_MS
+      const detailAvailable =
+        version.createdAt.getTime() > cutoff &&
+        version.run.createdAt.getTime() > cutoff
       proposals.push({
         id: row.id,
         version: version.version,
@@ -818,16 +834,28 @@ export class WatchSeoReadModelService {
         status: row.status,
         decisionState: decisionState(row.status, row.expiresAt, now),
         lane: row.lane,
-        intent: version.intent.slice(0, MAX_TEXT),
-        expectedOutcome: version.expectedOutcome.slice(0, MAX_TEXT),
-        risk: version.risk.slice(0, MAX_TEXT),
-        verificationPlan: version.verificationPlan.slice(0, MAX_TEXT),
-        rollbackPlan: version.rollbackPlan.slice(0, MAX_TEXT),
-        affectedFields: version.affectedFields.slice(0, 20),
-        changes: editorialChanges(version.editorialDiff),
-        caveats: version.caveats
-          .slice(0, MAX_CAVEATS)
-          .map((c) => c.slice(0, 500)),
+        intent: detailAvailable
+          ? version.intent.slice(0, MAX_TEXT)
+          : "Proposal detail expired",
+        expectedOutcome: detailAvailable
+          ? version.expectedOutcome.slice(0, MAX_TEXT)
+          : "Unavailable",
+        risk: detailAvailable ? version.risk.slice(0, MAX_TEXT) : "Unavailable",
+        verificationPlan: detailAvailable
+          ? version.verificationPlan.slice(0, MAX_TEXT)
+          : "Unavailable",
+        rollbackPlan: detailAvailable
+          ? version.rollbackPlan.slice(0, MAX_TEXT)
+          : "Unavailable",
+        affectedFields: detailAvailable
+          ? version.affectedFields.slice(0, 20)
+          : [],
+        changes: detailAvailable ? editorialChanges(version.editorialDiff) : [],
+        caveats: detailAvailable
+          ? version.caveats.slice(0, MAX_CAVEATS).map((c) => c.slice(0, 500))
+          : [
+              "Detailed proposal evidence is outside its 29-day retention window.",
+            ],
         expiresAt: row.expiresAt.toISOString(),
         createdAt: row.createdAt.toISOString(),
         decision: version.decision

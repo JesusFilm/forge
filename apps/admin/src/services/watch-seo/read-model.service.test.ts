@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { WatchSeoPageRef } from "./read-model.service"
 
 // Only `Prisma.sql` is used at runtime; the tagged-template stand-in keeps the
 // same `strings`/`values` shape so SQL-shape assertions match production, and
@@ -119,17 +120,22 @@ function makeDb(overrides: Overrides = {}) {
   const db = {
     video: { findFirst: vi.fn(async () => videoRow) },
     seoRun: {
-      findFirst: vi.fn(async (args: { select: Record<string, boolean> }) =>
-        args.select.id
-          ? (overrides.agedRun ?? null)
-          : (overrides.coverageRun ?? null),
+      findFirst: vi.fn(
+        async (args: { select: Record<string, boolean>; where?: unknown }) =>
+          args.select.id
+            ? (overrides.agedRun ?? null)
+            : (overrides.coverageRun ?? null),
       ),
     },
     seoProposal: {
-      findMany: vi.fn(async (_args?: unknown) => overrides.proposals ?? []),
+      findMany: vi.fn<(args: unknown) => Promise<unknown[]>>(
+        async () => overrides.proposals ?? [],
+      ),
     },
     watchRouteAlert: {
-      findMany: vi.fn(async (_args?: unknown) => overrides.alerts ?? []),
+      findMany: vi.fn<(args: unknown) => Promise<unknown[]>>(
+        async () => overrides.alerts ?? [],
+      ),
     },
     watchRouteAlertPropertyProgress: {
       findFirst: vi.fn(async () => overrides.progress ?? null),
@@ -474,12 +480,29 @@ describe("WatchSeoReadModelService", () => {
       expect(crawl.data).toMatchObject({
         kind: "page_state_fetch",
         provider: "firecrawl",
+        renderingMode: null,
         httpStatus: 200,
         fetcherCacheState: "hit",
         complete: true,
       })
       expect(crawl.caveats.join(" ")).toContain("not a bot visit log")
     })
+
+    it.each(["direct_http", "rendered", "unknown", undefined])(
+      "preserves explicit rendering mode only, independently of provider (%s)",
+      async (renderingMode) => {
+        for (const provider of ["firecrawl", "direct_page"]) {
+          const { model } = await read({
+            crawlRows: [crawlRow({ provider, renderingMode })],
+          })
+          expect(model.sections.crawl.data?.renderingMode).toBe(
+            renderingMode === "direct_http" || renderingMode === "rendered"
+              ? renderingMode
+              : null,
+          )
+        }
+      },
+    )
 
     it("never selects the stored markdown body and scopes by the exact canonical URL", async () => {
       const { model, queryRaw } = await read({ crawlRows: [crawlRow()] })
@@ -777,6 +800,8 @@ describe("WatchSeoReadModelService", () => {
         versions: [
           {
             version: 3,
+            createdAt: new Date(NOW.getTime() - 2 * DAY),
+            run: { createdAt: new Date(NOW.getTime() - 2 * DAY) },
             payloadDigest: "a".repeat(64),
             intent: "Improve the search title",
             expectedOutcome: "CTR up",
@@ -836,6 +861,50 @@ describe("WatchSeoReadModelService", () => {
       expect(
         model.sections.proposals.data!.proposals.map((p) => p.decisionState),
       ).toEqual(["expired", "stale", "decided", "materialized"])
+    })
+
+    it.each([0, -1, 1])(
+      "enforces the strict 29-day query-detail boundary on proposal reads (%s ms)",
+      async (offset) => {
+        const row = proposalRow({ expiresAt: new Date(NOW.getTime() - 1) })
+        const version = row.versions[0]!
+        const query = "private retained query text"
+        Object.assign(version, {
+          createdAt: new Date(WINDOW_START.getTime() + offset),
+          run: { createdAt: new Date(WINDOW_START.getTime() + offset) },
+          intent: query,
+          expectedOutcome: query,
+          risk: query,
+          verificationPlan: query,
+          rollbackPlan: query,
+          affectedFields: [query],
+          caveats: [query],
+          editorialDiff: { [query]: { before: query, after: query } },
+        })
+        const { model } = await read({ proposals: [row] })
+        const proposal = model.sections.proposals.data!.proposals[0]!
+        expect(proposal).toMatchObject({
+          id: "prop-1",
+          version: 3,
+          payloadDigest: "a".repeat(64),
+          decisionState: "expired",
+        })
+        if (offset > 0) expect(proposal.intent).toBe(query)
+        else {
+          expect(JSON.stringify(proposal)).not.toContain(query)
+          expect(proposal.changes).toEqual([])
+        }
+        expect(version.intent).toBe(query)
+      },
+    )
+
+    it("does not renew old query detail when a recent proposal version references an old run", async () => {
+      const row = proposalRow()
+      row.versions[0]!.run.createdAt = WINDOW_START
+      const { model } = await read({ proposals: [row] })
+      expect(model.sections.proposals.data!.proposals[0]!.intent).toBe(
+        "Proposal detail expired",
+      )
     })
 
     it("keeps decision, materialization and experiment summaries to safe scalars", async () => {
