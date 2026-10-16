@@ -20,7 +20,6 @@ vi.mock("@/config/env", () => ({
 
 const { WatchSeoReadModelService, WatchSeoPageNotFoundError } =
   await import("./read-model.service")
-type WatchSeoPageRef = import("./read-model.service").WatchSeoPageRef
 const {
   WATCH_SEO_DETAIL_WINDOW_MS,
   WATCH_SEO_SECTION_KEYS,
