@@ -54,7 +54,10 @@ vi.mock("@/lib/admin-client", () => ({
   default: { query: queryMock },
 }))
 
-import { getExperiencePreview } from "@/lib/experience-preview"
+import {
+  getExperiencePreview,
+  getExperiencePreviewLayout,
+} from "@/lib/experience-preview"
 
 beforeEach(() => {
   queryMock.mockReset()
@@ -536,5 +539,64 @@ describe("getExperiencePreview", () => {
     await expect(getExperiencePreview("secret-capability")).rejects.toThrow(
       "Experience preview query failed",
     )
+  })
+})
+
+describe("getExperiencePreviewLayout", () => {
+  const layoutLag = {
+    message:
+      'Cannot query field "homepageLayout" on type "ExperiencePreview". Did you mean "isHomepage"?',
+    extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+  }
+
+  it("reads the homepage layout with an uncached server query", async () => {
+    queryMock.mockResolvedValue({
+      data: { experiencePreview: { homepageLayout: true } },
+    })
+
+    await expect(getExperiencePreviewLayout("capability-token")).resolves.toBe(
+      true,
+    )
+    expect(queryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { token: "capability-token" },
+        fetchPolicy: "no-cache",
+        context: { fetchOptions: { cache: "no-store" } },
+      }),
+    )
+    const source = (
+      queryMock.mock.calls[0]![0] as { query: { source: string } }
+    ).query.source
+    expect(source).toContain("query ExperiencePreviewLayout")
+    expect(source).toContain("homepageLayout")
+  })
+
+  it("is false for an invalid capability", async () => {
+    queryMock.mockResolvedValue({ data: { experiencePreview: null } })
+
+    await expect(getExperiencePreviewLayout("retired")).resolves.toBe(false)
+  })
+
+  it("degrades to false when Admin predates the field", async () => {
+    queryMock.mockResolvedValueOnce({ data: null, errors: [layoutLag] })
+    await expect(getExperiencePreviewLayout("token")).resolves.toBe(false)
+
+    queryMock.mockRejectedValueOnce({ errors: [layoutLag] })
+    await expect(getExperiencePreviewLayout("token")).resolves.toBe(false)
+  })
+
+  it("keeps other failures fatal and redacts the capability", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: null,
+      errors: [layoutLag, { message: "boom" }],
+    })
+    await expect(getExperiencePreviewLayout("secret-token")).rejects.toThrow(
+      "Experience preview query failed",
+    )
+
+    queryMock.mockRejectedValueOnce(new Error("secret-token exploded"))
+    const failure = getExperiencePreviewLayout("secret-token")
+    await expect(failure).rejects.toThrow("Experience preview query failed")
+    await expect(failure).rejects.not.toThrow("secret-token")
   })
 })

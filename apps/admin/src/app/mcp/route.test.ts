@@ -260,9 +260,11 @@ describe("Admin MCP route", () => {
         $queryRaw: vi.fn(),
         experience: {
           create: (...args: unknown[]) => experienceCreate(...args),
+          findFirst: (...args: unknown[]) => experienceFindFirst(...args),
         },
         contentRevision: {
           findFirst: (...args: unknown[]) => contentRevisionFindFirst(...args),
+          findMany: vi.fn().mockResolvedValue([]),
           create: (...args: unknown[]) => contentRevisionCreate(...args),
           update: vi.fn(),
         },
@@ -270,6 +272,7 @@ describe("Admin MCP route", () => {
         experienceLocale: {
           findUniqueOrThrow: (...args: unknown[]) =>
             experienceLocaleFindUniqueOrThrow(...args),
+          findMany: (...args: unknown[]) => experienceLocaleFindMany(...args),
           update: vi.fn(),
         },
       }),
@@ -455,6 +458,7 @@ describe("Admin MCP route", () => {
       type: "object",
       properties: {
         experienceId: { type: "string", minLength: 1 },
+        sourceVersion: { type: "string", enum: ["EFFECTIVE", "CANONICAL"] },
       },
       required: ["experienceId"],
       additionalProperties: false,
@@ -803,6 +807,13 @@ describe("Admin MCP route", () => {
         },
       ],
     })
+    contentRevisionCreate.mockImplementationOnce(
+      async ({ data }: { data: Record<string, unknown> }) => ({
+        id: "draft-copy",
+        revisedAt: new Date("2026-08-21T12:00:00.000Z"),
+        ...data,
+      }),
+    )
 
     const res = await POST(
       post({
@@ -827,18 +838,44 @@ describe("Admin MCP route", () => {
         structuredContent: {
           ok: true,
           sourceExperienceId: "exp-source",
+          sourceVersion: "EFFECTIVE",
           experience: { id: "exp-copy", ownerId: "user_1" },
           locales: [
             {
               id: "loc-copy",
               slug: "hope-copy",
+              isHomepage: false,
               status: "DRAFT",
               publishedAt: null,
+              copiedFrom: "CANONICAL",
+              draft: {
+                revision: expect.stringMatching(/^draft-copy\./),
+                previewUrl: expect.stringContaining(
+                  "/watch/preview/experience/",
+                ),
+              },
             },
           ],
         },
       },
     })
+    // The live homepage source yields an unassigned copy with the layout.
+    expect(experienceCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          locales: {
+            create: [
+              expect.objectContaining({
+                isHomepage: false,
+                homepageLayout: true,
+                status: "DRAFT",
+                publishedAt: null,
+              }),
+            ],
+          },
+        }),
+      }),
+    )
     expect(vi.mocked(emitRevalidateWebhook)).not.toHaveBeenCalled()
     expect(vi.mocked(refreshWatchRouteManifest)).not.toHaveBeenCalled()
   })
