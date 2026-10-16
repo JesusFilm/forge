@@ -1886,6 +1886,72 @@
         "assets": [],
         "controls": {}
       }
+    },
+    {
+      "versionId": "source-mark-v1",
+      "purpose": "The 9:16 source credit above a reflection sentence (owner's pick, Figma 'Attribution · vertical 9:16' variant A, 2026-10-16): emblem (kind history = open book that turns a page, language = scroll that rolls up, commentary = J. C. Ryle portrait), tracked label, source in Literata, short gold rule, as a top-to-bottom cascade. Needs font packs literata400 + inter600caps. 9:16: top 520 with the sentence (reveal-serif) at top 1040; holds for three sentences. Render-tested in t-source-mark-20261016.",
+      "language": "any",
+      "built": "dist/source-mark.tsx",
+      "source": "src/source-mark.tsx",
+      "registration": {
+        "versionId": "source-mark-v1",
+        "code": {
+          "assetId": "bac3efb5-e939-4971-9185-518ffa2c2e0c",
+          "versionId": "cmvb9jtmjlrn8qa0sxfcacl4t",
+          "digest": "2b2c752b0c426c6384177cfeebd19511139a0a5cc2e50b7c6468c95a3ee16d13"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "kind": {
+            "type": "enum",
+            "values": [
+              "history",
+              "language",
+              "commentary"
+            ]
+          },
+          "label": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "source": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "emblemSize": {
+            "type": "number",
+            "min": 30,
+            "max": 200
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
     }
   ]
 }

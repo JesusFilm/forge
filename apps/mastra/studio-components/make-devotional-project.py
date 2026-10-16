@@ -99,7 +99,7 @@ def main():
     lang = spec["lang"]
     L = LOCALE[lang]
     reg = {c["versionId"]: c["registration"] for c in json.load(open(os.path.join(HERE, "registry.json")))["components"]}
-    used = PACKS[lang] + ["backdrop-blur-v3", "takeaway-v1", "closing-verse-v1", "pray-block-v1",
+    used = PACKS[lang] + ["source-mark-v1", "backdrop-blur-v3", "takeaway-v1", "closing-verse-v1", "pray-block-v1",
             L["caption"], "dbp-mark-v1", "film-look-v1", "step-line-v1",
             f"scripture-scroll-{lang}-v1", f"reveal-serif-{lang}-v2", f"verse-callout-{lang}-v1"]
     missing = [u for u in used if u not in reg]
@@ -190,6 +190,10 @@ def main():
     s = steps("step-reflect", t, 1)
     t += s
     callout_open = None
+    # The source credit (source-mark-v1, owner's Figma variant A, 2026-10-16)
+    # sits above the sentence and holds for three sentences, as the 16:9
+    # drawer does; a verse callout ends it early (both use the upper half).
+    mark = None  # [item id, start frame, sentences left]
     for i, sent in enumerate(spec["reflection"]):
         dur = f(spoken_sec(sent["text"], L["wps"]))
         c = sent.get("callout")
@@ -197,7 +201,28 @@ def main():
             callout_open = [t, c]
         if not c:
             callout_open = None
-        reveal(f"refl-{i + 1:02d}", t, dur, sent["text"], top=1140 if c else 960, highlight=sent.get("highlight", ""))
+        if c:
+            mark = None
+        elif sent.get("credit"):
+            label, _, source = sent["credit"].partition("\n")
+            low = label.lower()
+            kind = ("commentary" if ("comment" in low or "коммент" in low)
+                    else "language" if ("language" in low or "язык" in low) else "history")
+            mark = [f"source-mark-{i + 1:02d}", t, 3]
+            comp(mark[0], "brand", t, dur, "source-mark-v1",
+                 {"kind": kind, "label": label.strip(), "source": source.strip(), "top": 520,
+                  "emblemSize": 76, "fadeOutSec": 0.4})
+        elif mark:
+            mark[2] -= 1
+            if mark[2] <= 0:
+                mark = None
+        if mark:
+            # Stretch the credit over this sentence too.
+            for x in items:
+                if x["id"] == mark[0]:
+                    x["durationInFrames"] = t + dur - mark[1]
+        reveal(f"refl-{i + 1:02d}", t, dur, sent["text"], top=1140 if c else 1040 if mark else 960,
+               highlight=sent.get("highlight", ""))
         say(f"refl-{i + 1:02d}", sent["text"], "main")
         if c:
             # One callout item spans the run of sentences that carry it.
@@ -207,8 +232,6 @@ def main():
             comp(id, "brand", start, t + dur - start, f"verse-callout-{lang}-v1",
                  {"text": c["text"], "highlight": c.get("highlight", ""), "top": 430, "width": 860,
                   "maxHeight": 420, "maxFontSize": 56, "litAtSec": 1.2, "fadeOutSec": 0.5})
-        elif sent.get("credit"):
-            text(f"credit-{i + 1:02d}", "brand", t, min(dur, f(5)), sent["credit"], -560)
         t += dur
     # The closing cards (owner, 2026-10-16): the takeaway in large gold over a
     # light blur, the verse in italic over a deepening blur, then PRAY, then

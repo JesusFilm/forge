@@ -41,6 +41,7 @@ const PLACEHOLDERS = {
   __ACCENT__: () => font("literata-400-italic.woff2"),
   __PLAIN__: () => font("inter-600-caps-plain.woff2"),
   __INTER600CAPSCYR__: () => font("inter600caps-cyrillic.woff2"),
+  __RYLE__: () => readFileSync(path.join(here, "images", "ryle-160.jpg")).toString("base64"),
   __LOCKUP__: lockup,
 }
 
@@ -61,6 +62,7 @@ const COMPONENTS = {
   "closing-verse": null,
   "takeaway": null,
   "pray-block": null,
+  "source-mark": null,
 }
 
 mkdirSync(path.join(here, "dist"), { recursive: true })
