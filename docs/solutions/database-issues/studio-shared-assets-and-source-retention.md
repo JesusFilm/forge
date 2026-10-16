@@ -173,3 +173,9 @@ the existing 256 MiB aggregate budget. Shared segment filenames use URL identity
 so repeated clips do not multiply temporary disk usage. The cache is local to one
 preparation; per-read limits, cancellation, origin checks, per-clip decode checks,
 and immutable source/materialization proofs remain mandatory.
+
+Worker input has a separate 128 MiB budget. It reuses retained reads by complete
+asset/version/digest identity and packaged files by verified content digest.
+Generated playlists retain each clip's source-time mapping and refer to the shared
+segment files. Repeating one immutable segment must consume one retained read and
+one packaged media file, while every clip still validates its signed codec proof.

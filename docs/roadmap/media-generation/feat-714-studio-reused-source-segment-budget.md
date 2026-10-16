@@ -22,6 +22,8 @@ download identical bytes.
 
 - `apps/manager/src/services/studio-broker.ts`
 - `apps/manager/src/services/studio-broker-download.test.ts`
+- `apps/manager/src/services/studio-render-input.ts`
+- `apps/manager/src/services/studio-render-input.test.ts`
 - `docs/plans/2026-10-17-studio-source-duration.md`
 
 ## Grep These
@@ -33,7 +35,9 @@ download identical bytes.
 Cache canonical downloads for one preparation. Count unique downloaded bytes
 against the existing aggregate limit. Reuse exact cached bytes for subsequent
 clips while preserving per-read limits, cancellation, origin checks, and all codec
-verification/materialization. Do not retain cache across preparations.
+verification/materialization. Do not retain cache across preparations. Reuse retained reads by exact immutable
+asset reference and packaged files by verified digest so repeated export segments
+do not exhaust the downstream 128 MiB worker-input limit.
 
 ## Constraints
 
@@ -46,5 +50,6 @@ proof bypass, external service, or paid render is needed for this correction.
 
 Small-budget tests prove repeated segment reuse, distinct-byte exhaustion,
 per-read limits on cached bytes, cancellation, origin checks and per-preparation
-isolation. Recompute live source preflight with unique transfer accounting and
+isolation. Packaging regression must prove 17 repeated source clips produce one
+retained export segment read/file and valid playlist references. Recompute live source preflight with unique transfer accounting and
 verify all corrected source ranges. Run broker tests, typecheck, lint and format.

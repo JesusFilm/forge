@@ -31,3 +31,8 @@ aggregate download limit after the tail repair. Reuse canonical downloaded bytes
 within one preparation, bounded by the existing 256 MiB total. Keep per-read
 bounds, cancellation, origin validation and per-clip codec proofs. Test with a
 small byte budget; verify the corrected project's unique transfer size before release.
+
+The same reuse must continue in `studio-render-input.ts`, whose separate 128 MiB
+limit otherwise counts repeated export reads/files. Cache reads by complete
+immutable asset reference; package verified identical bytes once and point all
+playlists/media at that file. Preserve proof/eligibility checks and per-read limits.
