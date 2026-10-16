@@ -494,9 +494,10 @@ untouched; this surface is REST-owned.
 - `WATCH_SEO_API_KEYS` is optional at boot and joins the
   `assertBearerCsvsDisjoint` invariant. Deploy order: Admin (with the CSV
   set) first, then Web's key.
-- **Rate limits** use `rateLimitAuthRoute` before auth: 120/min capability and
-  60/min read per client IP. Web's adapter is one server-to-server caller, so
-  the bucket bounds the whole feature, not a person.
+- **Rate limits** use a 600/min shared-IP abuse ceiling before auth, then
+  120/min capability and 60/min read quotas keyed by a SHA-256 digest of the
+  verified Web subject. A single user cannot consume every Admin's normal
+  feature quota; the live Admin role is still read on every admitted request.
 - **Read model** reads only retained data and never calls a provider: page
   metadata (`VideoLocale`), the Watch SEO manifest snapshot (jsonb path
   lookup), retained GSC selection decisions in completed `SeoRun` reports

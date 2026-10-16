@@ -1,4 +1,4 @@
-import { rateLimitAuthRoute } from "@/auth/rate-limit"
+import { incrementFixedWindow, rateLimitAuthRoute } from "@/auth/rate-limit"
 import type { WatchSeoDenialReason } from "@/services/watch-seo/authorization"
 
 const NO_STORE_HEADERS = {
@@ -7,10 +7,10 @@ const NO_STORE_HEADERS = {
   "X-Content-Type-Options": "nosniff",
 } as const
 
-// Web's adapter is a single server-to-server caller, so this per-IP bucket
-// bounds the whole Admin population of the feature. Both limits sit far above
-// human use (one capability probe per page view, one read per tab open) and
-// exist to cap junk traffic before it reaches the auth chain.
+// The Web adapter is a single server-to-server caller, so this shared-IP limit
+// is only a broad pre-auth abuse ceiling. Normal feature quotas are keyed by a
+// digest of the verified user subject below.
+export const WATCH_SEO_IP_RATE = { limit: 600, windowMs: 60_000 }
 export const WATCH_SEO_CAPABILITY_RATE = { limit: 120, windowMs: 60_000 }
 export const WATCH_SEO_READ_RATE = { limit: 60, windowMs: 60_000 }
 
@@ -26,8 +26,9 @@ export function rateLimited(): Response {
 }
 
 /**
- * Rate limiting fires BEFORE authentication so an unauthenticated flood cannot
- * reach the auth chain (and through it, Auth's introspection endpoint).
+ * This broad ceiling fires before authentication so an unauthenticated flood
+ * cannot reach the auth chain without bound. It is deliberately distinct from
+ * the verified-subject feature quota.
  */
 export async function admitWatchSeoRequest(
   request: Request,
@@ -40,6 +41,26 @@ export async function admitWatchSeoRequest(
     limit: rate.limit,
     windowMs: rate.windowMs,
   })
+  return result.allowed
+}
+
+export async function admitWatchSeoSubject(
+  subject: string,
+  route: string,
+  rate: { limit: number; windowMs: number },
+): Promise<boolean> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(subject),
+  )
+  const subjectKey = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("")
+  const result = await incrementFixedWindow(
+    `${route}:subject:${subjectKey}`,
+    rate.limit,
+    rate.windowMs,
+  )
   return result.allowed
 }
 

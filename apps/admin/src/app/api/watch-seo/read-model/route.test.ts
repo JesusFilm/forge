@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const rateLimitMock = vi.fn()
+const subjectLimitMock = vi.fn()
 const authorizeMock = vi.fn()
 const readMock = vi.fn()
 
@@ -11,7 +12,10 @@ class NotFound extends Error {
   }
 }
 
-vi.mock("@/auth/rate-limit", () => ({ rateLimitAuthRoute: rateLimitMock }))
+vi.mock("@/auth/rate-limit", () => ({
+  rateLimitAuthRoute: rateLimitMock,
+  incrementFixedWindow: subjectLimitMock,
+}))
 vi.mock("@/db/client", () => ({ prisma: { __prisma: true } }))
 vi.mock("@/services/watch-seo/authorization", () => ({
   authorizeWatchSeoRequest: authorizeMock,
@@ -29,9 +33,11 @@ const get = (query: string) =>
 describe("GET /api/watch-seo/read-model", () => {
   beforeEach(() => {
     rateLimitMock.mockReset()
+    subjectLimitMock.mockReset()
     authorizeMock.mockReset()
     readMock.mockReset()
     rateLimitMock.mockResolvedValue({ allowed: true, source: "local" })
+    subjectLimitMock.mockResolvedValue({ allowed: true, source: "local" })
     authorizeMock.mockResolvedValue({ ok: true, adminUserId: "user-1" })
     readMock.mockResolvedValue({ version: "watch-seo-read-model/v1" })
     vi.spyOn(console, "warn").mockImplementation(() => undefined)

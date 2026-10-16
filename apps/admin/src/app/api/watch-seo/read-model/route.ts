@@ -8,10 +8,12 @@ import {
 } from "@/services/watch-seo/read-model.service"
 import {
   admitWatchSeoRequest,
+  admitWatchSeoSubject,
   logWatchSeoDenial,
   noStoreJson,
   rateLimited,
   WATCH_SEO_READ_RATE,
+  WATCH_SEO_IP_RATE,
 } from "../route-utils"
 
 const ROUTE = "watch-seo-read-model"
@@ -30,15 +32,20 @@ const Query = z
   .strict()
 
 // GET /api/watch-seo/read-model?slug=&language=[&parent=]
-// Order is load-bearing: rate limit → dual authorization → input validation →
-// read. Validation errors are only reachable by an authorized Admin, so an
-// outsider can learn nothing about the contract or the catalog.
+// Order is load-bearing: broad IP ceiling → service key and user-token checks →
+// verified-subject quota → live Admin lookup → input validation → read.
 export async function GET(request: Request): Promise<Response> {
-  if (!(await admitWatchSeoRequest(request, ROUTE, WATCH_SEO_READ_RATE))) {
+  if (
+    !(await admitWatchSeoRequest(request, `${ROUTE}:ip`, WATCH_SEO_IP_RATE))
+  ) {
     return rateLimited()
   }
-  const authorization = await authorizeWatchSeoRequest(request, prisma)
+  const authorization = await authorizeWatchSeoRequest(request, prisma, {
+    admitSubject: (subject) =>
+      admitWatchSeoSubject(subject, ROUTE, WATCH_SEO_READ_RATE),
+  })
   if (!authorization.ok) {
+    if (authorization.reason === "subject_rate_limited") return rateLimited()
     logWatchSeoDenial(ROUTE, authorization.reason)
     return noStoreJson({ error: "forbidden" }, 403)
   }

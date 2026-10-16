@@ -293,7 +293,7 @@ describe("Watch SEO presentation", () => {
       ),
     )
     const tab = container.querySelector<HTMLButtonElement>('[role="tab"]')!
-    expect(tab.getAttribute("aria-controls")).toBe("seo-panel")
+    expect(tab.hasAttribute("aria-controls")).toBe(false)
     expect(tab.getAttribute("aria-selected")).toBe("false")
     expect(onSelect).not.toHaveBeenCalled()
     act(() => tab.click())

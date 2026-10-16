@@ -6,7 +6,9 @@
  * Watch never writes. It links here; this action re-checks the Admin session
  * and the live database role, takes the actor only from that session, and
  * hands the bound proposal id/version/digest/action to the shared decision
- * core. The nonce, its audit key, and its expiry are minted server-side.
+ * core. Its audit nonce, key, and expiry are minted server-side; immutable
+ * proposal-version uniqueness and the Serializable transaction prevent a
+ * second decision.
  * Form fields named actorId, nonce, or expiresAt are never read.
  */
 import { redirect } from "next/navigation"

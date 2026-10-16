@@ -48,4 +48,20 @@ describe("GET /watch/api/watch-seo/capability", () => {
       { method: "GET" },
     )
   })
+
+  it("preserves 429 and Retry-After so the client can retry", async () => {
+    vi.mocked(verifyAuthSession).mockResolvedValue({
+      authenticated: true,
+      userId: "admin-subject",
+      accessToken: "user-token",
+    })
+    vi.mocked(fetchWatchSeoAdmin).mockResolvedValue(
+      new Response(null, { status: 429, headers: { "retry-after": "17" } }),
+    )
+    const response = await GET(
+      new Request("https://watch.example/watch/api/watch-seo/capability"),
+    )
+    expect(response.status).toBe(429)
+    expect(response.headers.get("retry-after")).toBe("17")
+  })
 })

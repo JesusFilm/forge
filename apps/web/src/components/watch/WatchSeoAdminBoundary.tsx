@@ -18,6 +18,42 @@ const SeoMarketingPanel = dynamic(
   { ssr: false },
 )
 
+const CAPABILITY_CACHE_KEY = "watch-seo-capability-v1"
+const CAPABILITY_CACHE_TTL_MS = 30_000
+
+function readCapabilityCache(): boolean | null {
+  try {
+    const raw = sessionStorage.getItem(CAPABILITY_CACHE_KEY)
+    if (!raw) return null
+    const entry = JSON.parse(raw) as { allowed?: unknown; expiresAt?: unknown }
+    if (
+      typeof entry.allowed !== "boolean" ||
+      typeof entry.expiresAt !== "number" ||
+      entry.expiresAt <= Date.now()
+    ) {
+      sessionStorage.removeItem(CAPABILITY_CACHE_KEY)
+      return null
+    }
+    return entry.allowed
+  } catch {
+    return null
+  }
+}
+
+function writeCapabilityCache(allowed: boolean): void {
+  try {
+    sessionStorage.setItem(
+      CAPABILITY_CACHE_KEY,
+      JSON.stringify({
+        allowed,
+        expiresAt: Date.now() + CAPABILITY_CACHE_TTL_MS,
+      }),
+    )
+  } catch {
+    // Storage can be unavailable; authorization remains correct without it.
+  }
+}
+
 type EvidenceEnvelope = {
   data: WatchSeoMarketingData
   adminOrigin: string
@@ -49,26 +85,66 @@ export function WatchSeoAdminBoundary({
   useEffect(() => {
     let controller: AbortController | null = null
     let settled = false
-    const unsubscribe = subscribeToWatchAccountSession((signal) => {
-      if (settled || signal.status !== "authenticated") return
-      settled = true
+    let retryTimer: ReturnType<typeof setTimeout> | undefined
+
+    const probeCapability = async (): Promise<void> => {
+      controller?.abort()
       controller = new AbortController()
-      void fetch("/watch/api/watch-seo/capability", {
-        credentials: "same-origin",
-        headers: { accept: "application/json" },
-        signal: controller.signal,
-      })
-        .then(async (response) => {
-          if (!response.ok) return false
-          const body = (await response.json()) as { canViewWatchSeo?: unknown }
-          return body.canViewWatchSeo === true
+      try {
+        const response = await fetch("/watch/api/watch-seo/capability", {
+          credentials: "same-origin",
+          headers: { accept: "application/json" },
+          signal: controller.signal,
         })
-        .then(setAuthorized)
-        .catch(() => setAuthorized(false))
+        if (response.status === 429) {
+          setAuthorized(false)
+          const retryAfter = Number(response.headers.get("retry-after"))
+          const delaySeconds = Number.isFinite(retryAfter)
+            ? Math.max(1, retryAfter)
+            : 60
+          retryTimer = setTimeout(
+            () => void probeCapability(),
+            delaySeconds * 1000,
+          )
+          return
+        }
+        const body = response.ok
+          ? ((await response.json()) as { canViewWatchSeo?: unknown })
+          : null
+        const allowed = body?.canViewWatchSeo === true
+        writeCapabilityCache(allowed)
+        setAuthorized(allowed)
+      } catch (error: unknown) {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        setAuthorized(false)
+      }
+    }
+
+    const unsubscribe = subscribeToWatchAccountSession((signal) => {
+      if (signal.status !== "authenticated") {
+        settled = false
+        setAuthorized(false)
+        if (retryTimer) clearTimeout(retryTimer)
+        try {
+          sessionStorage.removeItem(CAPABILITY_CACHE_KEY)
+        } catch {
+          // Ignore unavailable storage.
+        }
+        return
+      }
+      if (settled) return
+      settled = true
+      const cached = readCapabilityCache()
+      if (cached !== null) {
+        setAuthorized(cached)
+        return
+      }
+      void probeCapability()
     })
     return () => {
       unsubscribe()
       controller?.abort()
+      if (retryTimer) clearTimeout(retryTimer)
     }
   }, [contextualParentSlug, languageSlug, locale, videoSlug])
 

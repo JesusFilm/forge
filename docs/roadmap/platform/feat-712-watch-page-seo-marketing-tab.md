@@ -3,13 +3,14 @@ id: "feat-712"
 title: "Add an admin-only SEO marketing tab to Watch video pages"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-16"
 duration: 8
 depends_on:
   - "feat-344"
   - "feat-355"
-blocks: []
+blocks:
+  - "feat-713"
 tags:
   - "platform"
   - "watch"
@@ -88,8 +89,11 @@ people without Admin authority.
    missing measurements into zero or a fabricated number.
 7. Make opportunity outcomes explicit. Apply/Decline on Watch opens an
    Admin-origin confirmation bound to the proposal version and digest. The
-   Admin action rechecks the live role and uses a single-use server nonce before
-   the shared decision core creates a draft or ticket. Show what each action
+   Admin action rechecks the live role and binds the decision to the immutable
+   proposal version and digest. Its nonce provides audit uniqueness; the unique
+   proposal-version decision under a Serializable transaction is the effective
+   replay/idempotency guard. The shared decision core creates a draft or ticket.
+   Show what each action
    changes and its observed or expected click outcome.
 
 ## Constraints
@@ -102,8 +106,10 @@ people without Admin authority.
 - Do not widen `WEB_ADMIN_API_KEYS` or treat the consumer bearer as Admin
   authority.
 - Use a separate optional Watch SEO service-key list, include it in the
-  cross-list disjointness boot check, and deploy Admin before Web. The feature
-  fails closed when it is unset.
+  cross-list disjointness boot check, and deploy Admin before Web. Existing
+  Admins whose User.id differs from their Auth subject must sign in after the
+  Admin deploy to create the subject binding before Web is deployed. The
+  feature fails closed when it is unset.
 - Watch-origin pages never perform privileged writes. They may open an
   Admin-origin confirmation; only Admin's current session and database role may
   authorize the decision.
@@ -126,6 +132,14 @@ people without Admin authority.
 
 ## Verification
 
+- The Web evidence route retains `locale` as part of its UI request contract
+  even though Admin resolves content by public language slug. Change it only
+  with the route, boundary, and parity tests together.
+- Before changing the Firecrawl exact-canonical-URL JSON predicate or adding an
+  expression index, run `EXPLAIN (ANALYZE, BUFFERS)` against a production-shaped
+  database and smoke-test URL normalization. No local database was available
+  during this implementation to establish either change safely.
+
 - Authorization tests cover anonymous, Web user, Viewer, Editor, active Admin,
   revoked Admin, forged identity, upstream failure, and direct API access.
 - Contract tests cover available, partial, unavailable, expired, stale, and
@@ -143,11 +157,10 @@ people without Admin authority.
   generated-client sync where touched. Wrap every heavy command with
   `/home/lado/.local/bin/agent-io-guard --`.
 
-## Scoped review corrections — 2026-10-16
+## Implementation closeout — 2026-10-16
 
-Findings 1, 2, 3, 5, 7, and 8 from `watch-seo-read-ui-review-v1` are addressed
-in a separate implementation worktree. This is a scoped correction pass; the
-feature remains in progress for the coordinating task's integrated closeout.
+The Admin authority, retained read model, private Web adapters, embedded Watch
+workspace, and Admin-origin decision flow are integrated on this branch.
 
 - `apps/web/src/lib/watch-seo-read-model-adapter.ts` emits controlled,
   query-free opportunity summaries for every proposal state. The private Web
@@ -165,16 +178,24 @@ feature remains in progress for the coordinating task's integrated closeout.
   Preview text/canonicals match the real Watch metadata helpers for known
   fields; missing snippet/image resolution inputs remain unavailable. Crawler
   rendering mode is preserved only when explicitly stored, otherwise unknown.
-- Validation: 89 focused Web tests and 44 Admin read-model tests passed;
-  focused changed-file typechecks, ESLint, and formatting passed using existing
-  installed tooling without dependency installation. All heavy checks used the
-  disk guard. Normal commit hooks also run before this correction is committed.
+- Validation: the integrated suites passed 246 Admin tests and 95 Web tests.
+  The final admission correction passed 110 focused Admin tests and 39 focused
+  Web tests. Full Admin and Web typechecks, changed-file ESLint, formatting,
+  frontmatter validation, and documentation-claim validation passed using
+  existing installed tooling. All heavy checks used the disk guard.
 - Load-boundary evidence: zero SEO requests before sign-in, one capability
   request before selection, and one evidence request after selection, unchanged
-  after repeated activation. The public page, route composition, warmup paths,
-  and dynamic import are unchanged; the initial boundary changes by one early
-  return inside its selection handler. Production browser timing/CLS was not
-  rerun for this correction pass.
+  after repeated activation. Capability results are cached for 30 seconds per
+  browser session, while Admin applies broad per-IP admission plus a verified-
+  subject quota. The public page, route composition, warmup paths, and dynamic
+  import remain unchanged.
 
-Admin decision-flow files, generated GraphQL contracts, deployment settings,
-and provider integrations are unchanged.
+Production-shaped PostgreSQL query plans, URL-normalization smoke tests, and
+before/after browser timing remain deployment gates tracked by `feat-713`.
+No provider integration or generated GraphQL contract was widened.
+
+The local production build could not complete in this managed environment:
+Turbopack cannot bind its internal worker port, and the Webpack fallback reaches
+compilation but fails on the pre-existing `node:crypto` import in
+`recommendation-consent.ts`. Full Web typechecking remains green; `feat-713`
+retains the production-build and browser-performance gate.

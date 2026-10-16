@@ -6,8 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("next/dynamic", () => ({
   default: () =>
-    function Panel({ state }: { state: { status: string } }) {
-      return <div data-testid="deferred-seo-panel">{state.status}</div>
+    function Panel({
+      id,
+      labelledBy,
+      state,
+    }: {
+      id: string
+      labelledBy: string
+      state: { status: string }
+    }) {
+      return (
+        <div
+          id={id}
+          role="tabpanel"
+          aria-labelledby={labelledBy}
+          data-testid="deferred-seo-panel"
+        >
+          {state.status}
+        </div>
+      )
     },
 }))
 
@@ -23,6 +40,7 @@ describe("WatchSeoAdminBoundary", () => {
 
   beforeEach(() => {
     resetWatchAccountSessionSignalForTests()
+    sessionStorage.clear()
     container = document.createElement("div")
     document.body.append(container)
     root = createRoot(container)
@@ -79,8 +97,13 @@ describe("WatchSeoAdminBoundary", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0]?.[0]).toBe("/watch/api/watch-seo/capability")
     expect(container.querySelector("[role=tabpanel]")).toBeNull()
+    expect(tab.hasAttribute("aria-controls")).toBe(false)
 
     await act(async () => tab.click())
+
+    expect(tab.getAttribute("aria-controls")).toBe(
+      container.querySelector('[role="tabpanel"]')?.id,
+    )
 
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
@@ -139,5 +162,39 @@ describe("WatchSeoAdminBoundary", () => {
         ?.textContent,
     ).toBe("ready")
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("reuses a short-lived denied capability across Watch navigation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(Response.json({ canViewWatchSeo: false }))
+    vi.stubGlobal("fetch", fetchMock)
+    await act(async () => {
+      root.render(
+        <WatchSeoAdminBoundary
+          videoSlug="jesus"
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+      publishWatchAccountSessionSignal({ status: "authenticated" })
+    })
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    await act(async () => root.unmount())
+    resetWatchAccountSessionSignalForTests()
+    root = createRoot(container)
+    await act(async () => {
+      root.render(
+        <WatchSeoAdminBoundary
+          videoSlug="jesus-2"
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+      publishWatchAccountSessionSignal({ status: "authenticated" })
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('[role="tab"]')).toBeNull()
   })
 })

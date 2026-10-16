@@ -210,6 +210,19 @@ describe("authorizeWatchSeoRequest", () => {
     expect(db.user.findUnique).not.toHaveBeenCalled()
   })
 
+  it("applies the verified-subject quota before reading the Admin user", async () => {
+    const db = dbWith({ id: "user-1", role: "ADMIN" })
+    const admitSubject = vi.fn(async () => false)
+    await expect(
+      authorizeWatchSeoRequest(request(goodHeaders), db, {
+        verifyUserToken: verifyOk,
+        admitSubject,
+      }),
+    ).resolves.toEqual({ ok: false, reason: "subject_rate_limited" })
+    expect(admitSubject).toHaveBeenCalledWith("user-1")
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+  })
+
   it.each(["EDITOR", "VIEWER", "WEB_USER", "SYSTEM", "admin", ""])(
     "denies role %j",
     async (role) => {

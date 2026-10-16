@@ -22,6 +22,18 @@ export async function GET(request: Request): Promise<NextResponse> {
   const response = await fetchWatchSeoAdmin("capability", session.accessToken, {
     method: "GET",
   })
+  if (response?.status === 429) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      {
+        status: 429,
+        headers: {
+          ...PRIVATE_HEADERS,
+          "retry-after": response.headers.get("retry-after") ?? "60",
+        },
+      },
+    )
+  }
   if (!response?.ok) {
     return NextResponse.json(
       { canViewWatchSeo: false },

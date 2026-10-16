@@ -1,7 +1,7 @@
 ---
 title: "feat: Add an admin-only SEO marketing tab to Watch video pages"
 type: "feat"
-status: "active"
+status: "complete"
 date: "2026-10-16"
 artifact_contract: "ce-unified-plan/v1"
 product_contract_source: "ce-plan-bootstrap"
@@ -53,7 +53,9 @@ unchanged until an authorized Admin deliberately opens the tab.
 - R10. Warnings and opportunities state evidence, expected impact, confidence,
   and the exact action. Apply and Decline open an Admin-origin confirmation
   bound to immutable proposal version/digest. The confirmed decision is
-  attributed to a live Admin and protected by a single-use server nonce; Apply
+  attributed to a live Admin and records an Admin-generated audit nonce; the
+  immutable proposal-version decision under a Serializable transaction is the
+  effective replay/idempotency guard. Apply
   may create a draft or ticket but never directly publish or deploy.
 - R11. Detailed query evidence obeys the existing 29-day compaction policy and
   never exposes provider payloads, credentials, headers, cookies, signed URLs,
@@ -125,7 +127,8 @@ static Watch page
 
 opportunity action
   -> Admin-origin confirmation
-  -> live Admin role + immutable version/digest + single-use nonce
+  -> live Admin role + immutable version/digest + Serializable decision
+     transaction (Admin-origin nonce is audit uniqueness only)
   -> shared canonical proposal decision core
   -> draft/ticket materialization (never publish/deploy)
 ```
@@ -181,7 +184,9 @@ proposal stale?   refresh and explain; do not retry a decision blindly
 - KTD4. Keep the one-click opportunity affordances on Watch, but complete the
   decision on Admin's separate origin. Extract the transaction core of
   `decideProposal`; Manager retains its signed assertion check, while Admin
-  supplies the live session actor and a single-use server nonce. (session-
+  supplies the live session actor and a fresh Admin-origin audit nonce. The
+  unique proposal-version decision and Serializable transaction enforce
+  replay/idempotency. (session-
   settled: user-approved — chosen over a privileged Watch-origin POST because
   WordPress shares that origin and can defeat a Watch-local CSRF token.) The
   decision is final; an editorial draft can later be discarded, while a ticket
@@ -204,8 +209,8 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   a narrow Admin REST contract. Require a Web client (never TV), exact issuer,
   active token, production environment claim, subject-to-user identity (or a
   callback-recorded binding), and a live `role === ADMIN` read. Never resolve by
-  request email or Manager membership. Return only capability state; keep only
-  a negative result in the tab's in-memory state.
+  request email or Manager membership. Return only capability state; cache the
+  result briefly in browser-session storage to avoid repeated navigation probes.
 - Requirements: R1-R3, R11; KTD1.
 - Test scenarios:
   - Active Admin session returns `canViewWatchSeo=true` without exposing role

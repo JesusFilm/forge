@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const rateLimitMock = vi.fn()
+const subjectLimitMock = vi.fn()
 const authorizeMock = vi.fn()
 
 vi.mock("@/auth/rate-limit", () => ({
   rateLimitAuthRoute: rateLimitMock,
+  incrementFixedWindow: subjectLimitMock,
 }))
 vi.mock("@/db/client", () => ({ prisma: { __prisma: true } }))
 vi.mock("@/services/watch-seo/authorization", () => ({
@@ -19,8 +21,10 @@ const request = (headers: HeadersInit = {}) =>
 describe("GET /api/watch-seo/capability", () => {
   beforeEach(() => {
     rateLimitMock.mockReset()
+    subjectLimitMock.mockReset()
     authorizeMock.mockReset()
     rateLimitMock.mockResolvedValue({ allowed: true, source: "local" })
+    subjectLimitMock.mockResolvedValue({ allowed: true, source: "local" })
     vi.spyOn(console, "warn").mockImplementation(() => undefined)
   })
 
@@ -81,7 +85,19 @@ describe("GET /api/watch-seo/capability", () => {
     expect(response.headers.get("retry-after")).toBe("60")
     expect(authorizeMock).not.toHaveBeenCalled()
     expect(rateLimitMock).toHaveBeenCalledWith(
-      expect.objectContaining({ route: "watch-seo-capability" }),
+      expect.objectContaining({ route: "watch-seo-capability:ip" }),
     )
+  })
+
+  it("returns 429 when the verified subject exhausts its quota", async () => {
+    authorizeMock.mockImplementation(async (_request, _db, deps) => {
+      const admitted = await deps.admitSubject("subject-1")
+      return admitted
+        ? { ok: true, adminUserId: "user-1" }
+        : { ok: false, reason: "subject_rate_limited" }
+    })
+    subjectLimitMock.mockResolvedValue({ allowed: false, source: "redis" })
+    const response = await GET(request())
+    expect(response.status).toBe(429)
   })
 })

@@ -47,7 +47,7 @@ Three tempting shortcuts each cross a different boundary:
 
 An earlier isolated mockup also hid the most important product constraint: the
 workspace must mount at the semantic-recommendations seam of the existing Watch
-page and must not delay player startup or change the anonymous page shape.
+page while keeping its code and requests out of the anonymous startup path.
 (session history) Earlier Manager and SEO-run work supplied the ledger and
 evidence foundations, but did not itself create this private Watch surface.
 
@@ -56,20 +56,20 @@ evidence foundations, but did not itself create this private Watch surface.
 ### Keep the static tree anonymous, then discover capability after hydration
 
 Render no Admin label, placeholder, or serialized evidence in public HTML. A
-small client boundary waits for the existing authenticated-session signal and
-then asks a same-origin dynamic endpoint for the single boolean capability. The
-current implementation starts that fetch only after an authenticated signal
-and renders nothing until authorization succeeds
-(`apps/web/src/components/watch/WatchSeoAdminBoundary.tsx:49` and
-`apps/web/src/components/watch/WatchSeoAdminBoundary.tsx:119`). The SEO
-panel is a client-only dynamic import and is not mounted until the operator
-selects the tab (`WatchSeoAdminBoundary.tsx:13-19,75-117,134-155`).
+small client boundary waits for the existing authenticated-session signal,
+checks a 30-second session cache, and asks a same-origin dynamic endpoint for
+the single boolean capability on a cache miss. It renders nothing until
+authorization succeeds. The SEO panel is a client-only dynamic import and is
+not mounted until the operator selects the tab
+(`apps/web/src/components/watch/WatchSeoAdminBoundary.tsx:13-19`,
+`apps/web/src/components/watch/WatchSeoAdminBoundary.tsx:21-55`, and
+`apps/web/src/components/watch/WatchSeoAdminBoundary.tsx:123-193`).
 
 Mount the boundary at a stable seam in the actual Watch composition. Forge
 places it after the semantic recommendations block rather than creating a
 parallel app shell (`apps/web/src/components/watch/WatchSectionRenderer.tsx:201-208`).
-The surrounding route remains explicitly force-static
-(`apps/web/src/app/[locale]/[htmlLang]/page.tsx:29-31`).
+The surrounding video route remains explicitly force-static
+(`apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx:110-112`).
 
 ### Authorize capability and evidence independently
 
@@ -103,16 +103,19 @@ The workspace reads only durable Admin records. It does not call GSC, GA4, or a
 crawler during page viewing. Each section preserves source, retrieval time,
 coverage state, and caveats. Missing or expired evidence is `unavailable`,
 `not_connected`, or `compacted`, never zero and never a fabricated daily point
-(`apps/admin/src/services/watch-seo/read-model.service.ts:1-15`). A rolling GSC
-selection record can support a current ranking summary, but it is not a daily
-rank-history series.
+(`apps/admin/src/services/watch-seo/read-model.service.ts:1-15`). Admin retains
+rolling GSC selection snapshots, but the Watch projection currently exposes
+rankings as unavailable and does not derive daily history from those snapshots
+(`apps/web/src/lib/watch-seo-read-model-adapter.ts:163-170`).
 
 The Web projection must be stricter than the retained Admin model. In
 particular, Watch should receive query-free opportunity summaries rather than
 raw search phrases. Retention is enforced at read time as well as by background
-cleanup: proposal identity and outcomes may remain while old prose, diffs, and
-query-bearing details become explicit expired placeholders
-(`read-model.service.ts:818-877`).
+cleanup. After 29 days, read-time projection masks old proposal prose, omits
+diffs, and compacts query-bearing search detail while retaining proposal
+identity and outcomes (`read-model.service.ts:483-500,818-877`). The ledger's
+separate background redaction of terminal proposal versions uses a seven-year
+boundary (`search-trace-retention.service.ts:350-366`).
 
 Bound database work, not only the returned array. The read model uses indexed
 keys, time windows and SQL limits, filters JSON inside PostgreSQL, and gives raw
@@ -133,21 +136,22 @@ a meaningful decline reason, ignores browser-supplied actor/nonce/expiry, and
 calls the shared ledger decision service
 (`apps/admin/src/app/dashboard/seo/proposals/confirm/actions.ts:3` and
 `apps/admin/src/app/dashboard/seo/proposals/confirm/actions.ts:52`).
-Inside the serializable transaction, the service re-reads the live Admin role,
-mints and hashes a short-lived nonce, checks the exact version and digest, and
-then uses the same canonical decision core as Manager
+The service mints and hashes a short-lived nonce before opening the serializable
+transaction. Inside that transaction it re-reads the live Admin role, checks
+the exact version and digest, and then uses the same canonical decision core as Manager
 (`apps/admin/src/services/seo-experiment.service.ts:1834` and
-`apps/admin/src/services/seo-experiment.service.ts:1997`). That
-core may create a draft or ticket, but it never publishes canonical content or
-deploys (`seo-experiment.service.ts:1997-2002`).
+`apps/admin/src/services/seo-experiment.service.ts:1997`). Apply may create a
+draft or engineering ticket; Decline records a rejection. Neither action
+publishes canonical content or deploys (`seo-experiment.service.ts:1997-2002`).
 
 ## Why This Matters
 
 Static rendering, UI visibility, data access, and mutation authority are four
 separate concerns. Collapsing them into one `isAdmin` check either leaks private
 state into a shared cache or lets a stale browser decision stand in for live
-authorization. Splitting them preserves anonymous Watch performance while
-making every sensitive read and write independently revocable and auditable.
+authorization. Splitting them means anonymous clients make no capability or
+evidence request, and the panel import waits for explicit selection, while
+every sensitive read and write remains independently revocable and auditable.
 
 The evidence rules protect decision quality as well as privacy. A chart that
 manufactures daily history from rolling snapshots, or a card that displays a
@@ -187,9 +191,10 @@ Watch opportunity
   -> navigate to public Admin confirmation URL
   -> fresh Admin session and live role check
   -> confirm immutable proposal version + digest + action
-  -> server-minted nonce
+  -> server-minted nonce and serializable transaction
   -> shared serializable ledger decision core
-  -> draft or ticket only; no publication or deployment
+  -> Apply: draft or ticket; Decline: rejection
+  -> no publication or deployment
 ```
 
 ## Related

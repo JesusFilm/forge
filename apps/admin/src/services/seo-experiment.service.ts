@@ -1835,8 +1835,9 @@ export class SeoExperimentService {
    * Admin-origin confirmation of a proposal decision (feat-712). The caller
    * is the Admin dashboard server action, which has already required an Admin
    * session; this method still re-reads the actor's live `ADMIN` role inside
-   * the decision transaction. The nonce, its audit key/audience, and its
-   * expiry are minted here, never accepted from a browser. The decision then
+   * the decision transaction. The nonce is minted here as audit uniqueness,
+   * never accepted from a browser. Immutable proposal-version uniqueness and
+   * the Serializable transaction enforce replay/idempotency. The decision then
    * runs through the same canonical core as the Manager signed path.
    */
   async decideProposalAsAdmin(

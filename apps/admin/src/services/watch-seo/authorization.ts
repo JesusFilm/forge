@@ -23,6 +23,7 @@ export type WatchSeoDenialReason =
   | "subject_binding_conflict"
   | "role_not_admin"
   | "lookup_failed"
+  | "subject_rate_limited"
   | WatchSeoUserTokenFailure
 
 export type WatchSeoAuthorization =
@@ -46,7 +47,10 @@ type UserLookup = Pick<PrismaClient, "user" | "adminAuthSubjectBinding">
 export async function authorizeWatchSeoRequest(
   request: Request,
   db: UserLookup,
-  deps: { verifyUserToken?: typeof verifyWatchSeoUserToken } = {},
+  deps: {
+    verifyUserToken?: typeof verifyWatchSeoUserToken
+    admitSubject?: (subject: string) => Promise<boolean>
+  } = {},
 ): Promise<WatchSeoAuthorization> {
   if (!isWatchSeoServiceKeyConfigured()) {
     return { ok: false, reason: "config_absent" }
@@ -59,6 +63,9 @@ export async function authorizeWatchSeoRequest(
     request.headers.get(WATCH_SEO_USER_TOKEN_HEADER),
   )
   if (!token.ok) return { ok: false, reason: token.reason }
+  if (deps.admitSubject && !(await deps.admitSubject(token.subject))) {
+    return { ok: false, reason: "subject_rate_limited" }
+  }
 
   let resolved: Awaited<ReturnType<typeof resolveAdminUserForSubject>>
   try {

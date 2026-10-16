@@ -23,7 +23,7 @@ export function WatchSeoTab({
       type="button"
       id={id}
       role="tab"
-      aria-controls={panelId}
+      aria-controls={selected ? panelId : undefined}
       aria-selected={selected}
       tabIndex={tabIndex}
       onClick={onSelect}
