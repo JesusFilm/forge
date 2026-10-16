@@ -29,6 +29,8 @@ import {
   StartupIntroProvider,
   useStartupIntroActive,
 } from "../src/contexts/StartupIntroProvider"
+import { useRecommendationPlayback } from "../src/lib/recommendations/useRecommendationPlayback"
+import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
 
 /** Background color from Crimson Gallery design system */
 const BG_COLOR = "#161311"
@@ -108,6 +110,24 @@ function VideoPlayerOverlay() {
     sessionVideo?.documentId === state.currentIdentity.videoId
       ? (sessionVariant?.documentId ?? state.currentIdentity.videoDubId)
       : (state.currentIdentity?.videoDubId ?? null)
+  const generationRef = useRef({ key: "", generation: 0 })
+  const sourceKey = state.isVisible
+    ? `${state.currentUrl ?? ""}:${liveDubId ?? ""}`
+    : ""
+  if (sourceKey !== generationRef.current.key)
+    generationRef.current = {
+      key: sourceKey,
+      generation: generationRef.current.generation + 1,
+    }
+  const sourceGeneration = generationRef.current.generation
+  const onPlaybackState = useRecommendationPlayback({
+    visible: state.isVisible,
+    mediaId: state.currentIdentity?.videoId ?? null,
+    sourceGeneration,
+    attribution: state.recommendationAttribution,
+    source: state.playbackEntry?.source,
+    automatic: state.playbackEntry?.automatic,
+  })
 
   // Anonymous watch-event capture (feat-322). The callbacks read a SNAPSHOT
   // captured while playback is active and NEVER cleared on dismiss:
@@ -173,6 +193,7 @@ function VideoPlayerOverlay() {
 
   const handlePlayNext = useCallback(
     (slug: string) => {
+      rememberPlaybackEntry(slug, { source: "direct", automatic: true })
       markUpNextChain()
       dismissVideo()
       router.replace(`/watch/${encodeURIComponent(slug)}?autoplay=1`)
@@ -193,6 +214,8 @@ function VideoPlayerOverlay() {
   ) {
     return (
       <NativeSwiftPlayer
+        sourceGeneration={sourceGeneration}
+        onPlaybackState={onPlaybackState}
         streamingUrl={state.currentUrl}
         playerVariant={
           nativePlayerVariant === "native-b" ? "native-b" : "native-a"
@@ -218,6 +241,8 @@ function VideoPlayerOverlay() {
   ) {
     return (
       <NativeAndroidPlayer
+        sourceGeneration={sourceGeneration}
+        onPlaybackState={onPlaybackState}
         streamingUrl={state.currentUrl}
         videoId={state.currentIdentity?.videoId}
         title={state.currentTitle ?? undefined}
@@ -235,6 +260,8 @@ function VideoPlayerOverlay() {
 
   return (
     <VideoPlayer
+      sourceGeneration={sourceGeneration}
+      onPlaybackState={onPlaybackState}
       streamingUrl={state.currentUrl}
       title={state.currentTitle ?? undefined}
       subtitle={state.currentSubtitle ?? undefined}
