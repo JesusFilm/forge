@@ -25,11 +25,32 @@ const goodHeaders = {
   [WATCH_SEO_USER_TOKEN_HEADER]: "Bearer user-token",
 }
 
-function dbWith(user: { id: string; role: string } | null) {
+type LegacyUser = {
+  id: string
+  role: string
+  authSubjectBinding?: { subject: string } | null
+}
+
+/**
+ * `user` is the legacy row whose id IS the subject; `bound` is the user the
+ * subject binding points at (null = no binding row for this subject).
+ */
+function dbWith(
+  user: LegacyUser | null,
+  bound: { id: string; role: string } | null = null,
+) {
   return {
-    user: { findUnique: vi.fn(async () => user) },
+    user: {
+      findUnique: vi.fn(async () =>
+        user ? { authSubjectBinding: null, ...user } : null,
+      ),
+    },
+    adminAuthSubjectBinding: {
+      findUnique: vi.fn(async () => (bound ? { user: bound } : null)),
+    },
   } as unknown as Parameters<typeof authorizeWatchSeoRequest>[1] & {
     user: { findUnique: ReturnType<typeof vi.fn> }
+    adminAuthSubjectBinding: { findUnique: ReturnType<typeof vi.fn> }
   }
 }
 
@@ -42,19 +63,82 @@ describe("authorizeWatchSeoRequest", () => {
     verifyOk.mockClear()
   })
 
-  it("grants an active Admin with both credentials", async () => {
+  it("grants an active legacy Admin whose id is the subject (no binding yet)", async () => {
     const db = dbWith({ id: "user-1", role: "ADMIN" })
     await expect(
       authorizeWatchSeoRequest(request(goodHeaders), db, {
         verifyUserToken: verifyOk,
       }),
     ).resolves.toEqual({ ok: true, adminUserId: "user-1" })
-    // Subject-only mapping: the lookup key is the token `sub`, nothing else.
+    // Subject-only mapping: both lookup keys are the token `sub`, nothing else.
+    expect(db.adminAuthSubjectBinding.findUnique).toHaveBeenCalledWith({
+      where: { subject: "user-1" },
+      select: { user: { select: { id: true, role: true } } },
+    })
     expect(db.user.findUnique).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      select: { id: true, role: true },
+      select: {
+        id: true,
+        role: true,
+        authSubjectBinding: { select: { subject: true } },
+      },
     })
     expect(verifyOk).toHaveBeenCalledWith("Bearer user-token")
+  })
+
+  it("grants through the callback-recorded binding when User.id differs from the subject", async () => {
+    // Email-matched Admin user (id "cuid-admin") signed in as Auth subject
+    // "user-1"; there is no user whose id is "user-1".
+    const db = dbWith(null, { id: "cuid-admin", role: "ADMIN" })
+    await expect(
+      authorizeWatchSeoRequest(request(goodHeaders), db, {
+        verifyUserToken: verifyOk,
+      }),
+    ).resolves.toEqual({ ok: true, adminUserId: "cuid-admin" })
+    // The binding is authoritative: no id fallback is consulted.
+    expect(db.user.findUnique).not.toHaveBeenCalled()
+  })
+
+  it("re-reads the bound user's live role, so a downgrade denies", async () => {
+    const db = dbWith(null, { id: "cuid-admin", role: "EDITOR" })
+    await expect(
+      authorizeWatchSeoRequest(request(goodHeaders), db, {
+        verifyUserToken: verifyOk,
+      }),
+    ).resolves.toEqual({ ok: false, reason: "role_not_admin" })
+  })
+
+  it("denies a subject whose id-matched user is already bound to another subject", async () => {
+    // A forged/foreign subject equal to a bound user's id cannot reach that
+    // user: once bound, only the bound subject resolves to it.
+    const db = dbWith({
+      id: "user-1",
+      role: "ADMIN",
+      authSubjectBinding: { subject: "auth-other" },
+    })
+    await expect(
+      authorizeWatchSeoRequest(request(goodHeaders), db, {
+        verifyUserToken: verifyOk,
+      }),
+    ).resolves.toEqual({ ok: false, reason: "subject_binding_conflict" })
+  })
+
+  it("never resolves a subject by email", async () => {
+    const verifyEmailish = vi.fn(async () => ({
+      ok: true as const,
+      subject: "admin@example.com",
+    }))
+    const db = dbWith(null)
+    await expect(
+      authorizeWatchSeoRequest(request(goodHeaders), db, {
+        verifyUserToken: verifyEmailish,
+      }),
+    ).resolves.toEqual({ ok: false, reason: "user_not_found" })
+    for (const call of db.user.findUnique.mock.calls as unknown as Array<
+      [{ where: Record<string, unknown> }]
+    >) {
+      expect(call[0].where).not.toHaveProperty("email")
+    }
   })
 
   it("fails closed when the service-key list is not configured", async () => {
@@ -159,9 +243,10 @@ describe("authorizeWatchSeoRequest", () => {
       .fn()
       .mockResolvedValueOnce({ id: "user-1", role: "ADMIN" })
       .mockResolvedValueOnce({ id: "user-1", role: "EDITOR" })
-    const db = { user: { findUnique } } as unknown as Parameters<
-      typeof authorizeWatchSeoRequest
-    >[1]
+    const db = {
+      user: { findUnique },
+      adminAuthSubjectBinding: { findUnique: vi.fn(async () => null) },
+    } as unknown as Parameters<typeof authorizeWatchSeoRequest>[1]
     const deps = { verifyUserToken: verifyOk }
     await expect(
       authorizeWatchSeoRequest(request(goodHeaders), db, deps),
@@ -174,7 +259,8 @@ describe("authorizeWatchSeoRequest", () => {
 
   it("fails closed when the role lookup throws", async () => {
     const db = {
-      user: {
+      user: { findUnique: vi.fn(async () => null) },
+      adminAuthSubjectBinding: {
         findUnique: vi.fn(async () => Promise.reject(new Error("db down"))),
       },
     } as unknown as Parameters<typeof authorizeWatchSeoRequest>[1]

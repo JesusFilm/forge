@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client"
 
+import { resolveAdminUserForSubject } from "@/auth/admin-subject-binding"
 import {
   isValidWatchSeoServiceKey,
   isWatchSeoServiceKeyConfigured,
@@ -19,6 +20,7 @@ export type WatchSeoDenialReason =
   | "config_absent"
   | "service_key_invalid"
   | "user_not_found"
+  | "subject_binding_conflict"
   | "role_not_admin"
   | "lookup_failed"
   | WatchSeoUserTokenFailure
@@ -27,13 +29,15 @@ export type WatchSeoAuthorization =
   | { ok: true; adminUserId: string }
   | { ok: false; reason: WatchSeoDenialReason }
 
-type UserLookup = Pick<PrismaClient, "user">
+type UserLookup = Pick<PrismaClient, "user" | "adminAuthSubjectBinding">
 
 /**
  * Dual authorization for the Watch SEO surface:
  *   1. a dedicated service key (this is Web's adapter calling), THEN
  *   2. a strictly verified Web user token (this is a signed-in person), THEN
- *   3. a live Admin database read: User.id === token `sub` and role === ADMIN.
+ *   3. a live Admin database read: the user the token `sub` is bound to by the
+ *      verified Admin OAuth callback (or, for an unbound legacy user, the user
+ *      whose id IS the subject), and that user's current role === ADMIN.
  *
  * The service key is checked first and short-circuits so an unauthenticated
  * caller can never make Admin spend an Auth introspection round trip. Identity
@@ -56,16 +60,15 @@ export async function authorizeWatchSeoRequest(
   )
   if (!token.ok) return { ok: false, reason: token.reason }
 
-  let user: { id: string; role: string } | null
+  let resolved: Awaited<ReturnType<typeof resolveAdminUserForSubject>>
   try {
-    user = await db.user.findUnique({
-      where: { id: token.subject },
-      select: { id: true, role: true },
-    })
+    resolved = await resolveAdminUserForSubject(db, token.subject)
   } catch {
     return { ok: false, reason: "lookup_failed" }
   }
-  if (!user) return { ok: false, reason: "user_not_found" }
-  if (user.role !== "ADMIN") return { ok: false, reason: "role_not_admin" }
-  return { ok: true, adminUserId: user.id }
+  if (!resolved.ok) return { ok: false, reason: resolved.reason }
+  if (resolved.user.role !== "ADMIN") {
+    return { ok: false, reason: "role_not_admin" }
+  }
+  return { ok: true, adminUserId: resolved.user.id }
 }

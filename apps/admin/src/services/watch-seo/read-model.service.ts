@@ -6,7 +6,10 @@
 // reports, stored crawler observations, the Watch SEO manifest snapshot, and
 // the Watch route-alert ledger. It never calls a provider. Every query is
 // bounded by an indexed key, a 29-day window, or a LIMIT; JSON is filtered
-// inside Postgres so no report body is ever scanned in the Node process.
+// inside Postgres so no report body is ever scanned in the Node process. The
+// raw JSON reads also run under a transaction-local `statement_timeout`, so a
+// section that exceeds its budget is cancelled in Postgres rather than only
+// abandoned by the JS race in `guarded`.
 //
 // A measurement that has no durable per-page source is returned as an explicit
 // `not_connected`/`unavailable` section. It is never zero, never fabricated.
@@ -43,6 +46,14 @@ import {
 } from "./contract"
 
 const SECTION_BUDGET_MS = 4_000
+// The DB-side bound for each raw read. Pool wait + statement must finish
+// inside the JS section budget, and Prisma's transaction timeout stays
+// strictly above the statement timeout so Postgres' 57014 cancel wins the
+// race (a P2028 alone would not stop the running statement).
+const RAW_READ_STATEMENT_TIMEOUT_MS = 2_500
+const RAW_READ_TRANSACTION_TIMEOUT_MS = 3_000
+const RAW_READ_MAX_WAIT_MS = 800
+const RAW_READ_STATEMENT_TIMEOUT_SQL = `SET LOCAL statement_timeout = '${RAW_READ_STATEMENT_TIMEOUT_MS}ms'`
 const MAX_SEARCH_RUNS = 8
 const MAX_SEARCH_QUERIES = 50
 const MAX_PROPOSALS = 10
@@ -60,7 +71,7 @@ type ReadModelDb = Pick<
   | "seoProposal"
   | "watchRouteAlert"
   | "watchRouteAlertPropertyProgress"
-  | "$queryRaw"
+  | "$transaction"
 >
 
 export type WatchSeoPageRef = {
@@ -169,6 +180,25 @@ export class WatchSeoReadModelService {
 
   private now(): Date {
     return this.options.now ? this.options.now() : new Date()
+  }
+
+  /**
+   * Runs one raw read inside a short transaction whose first statement sets a
+   * transaction-local statement timeout, so Postgres itself cancels a read
+   * that outlives its budget. `SET LOCAL` dies with the transaction and never
+   * leaks onto the pooled connection.
+   */
+  private boundedRaw<T>(query: Prisma.Sql): Promise<T> {
+    return this.db.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(RAW_READ_STATEMENT_TIMEOUT_SQL)
+        return tx.$queryRaw<T>(query)
+      },
+      {
+        maxWait: RAW_READ_MAX_WAIT_MS,
+        timeout: RAW_READ_TRANSACTION_TIMEOUT_MS,
+      },
+    )
   }
 
   async read(ref: WatchSeoPageRef): Promise<WatchSeoReadModel> {
@@ -324,7 +354,7 @@ export class WatchSeoReadModelService {
     ref: WatchSeoPageRef,
     now: Date,
   ): Promise<WatchSeoSection<WatchSeoHreflang>> {
-    const rows = await this.db.$queryRaw<
+    const rows = await this.boundedRaw<
       Array<{
         version: string
         generatedAt: Date
@@ -401,6 +431,9 @@ export class WatchSeoReadModelService {
 
   // -------------------------------------------------------------------------
   // Search: retained GSC selection decisions, filtered inside Postgres.
+  // Native enum literals (not `status::text`) keep the predicate sargable on
+  // `seo_run_status_completed_at_idx (status, completed_at)`, so the window
+  // bound and ORDER BY ... LIMIT read only in-window terminal runs.
   // -------------------------------------------------------------------------
 
   private async search(
@@ -408,7 +441,7 @@ export class WatchSeoReadModelService {
     now: Date,
     windowStart: Date,
   ): Promise<WatchSeoSection<WatchSeoSearch>> {
-    const runs = await this.db.$queryRaw<
+    const runs = await this.boundedRaw<
       Array<{
         completedAt: Date
         status: string
@@ -430,7 +463,10 @@ export class WatchSeoReadModelService {
           '[]'::jsonb
         ) AS "decisions"
       FROM "seo_run" r
-      WHERE r."status"::text IN ('completed', 'partial')
+      WHERE r."status" IN (
+          'completed'::"SeoRunStatus",
+          'partial'::"SeoRunStatus"
+        )
         AND r."completed_at" > ${windowStart}
         AND r."report" ->> 'schemaVersion' = '1'
         AND r."report" ->> 'detailState' = 'available'
@@ -557,7 +593,7 @@ export class WatchSeoReadModelService {
     now: Date,
     windowStart: Date,
   ): Promise<WatchSeoSection<WatchSeoCrawlObservation>> {
-    const rows = await this.db.$queryRaw<
+    const rows = await this.boundedRaw<
       Array<{
         provider: string
         retrievedAt: Date
@@ -581,7 +617,10 @@ export class WatchSeoReadModelService {
         "payload" ->> 'cacheState' AS "cacheState",
         "payload" ->> 'cachedAt' AS "cachedAt"
       FROM "seo_evidence_observation"
-      WHERE "provider"::text IN ('firecrawl', 'direct_page')
+      WHERE "provider" IN (
+          'firecrawl'::"SeoEvidenceProvider",
+          'direct_page'::"SeoEvidenceProvider"
+        )
         AND "retrieved_at" > ${windowStart}
         AND "expires_at" > ${now}
         AND "scope" ->> 'canonicalUrl' = ${identity.canonicalUrl}

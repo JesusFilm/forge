@@ -534,9 +534,25 @@ model User {
   managerMembership     ManagerMembership?
   partnerApiKeysCreated PartnerApiKey[]    @relation("PartnerApiKeyCreatedBy")
   partnerApiKeysRevoked PartnerApiKey[]    @relation("PartnerApiKeyRevokedBy")
+  authSubjectBinding    AdminAuthSubjectBinding?
 
   @@unique([email])
   @@map("user")
+}
+
+/// Authoritative Auth subject -> Admin user binding (feat-712). Written only
+/// by the verified Admin OAuth callback; both sides are unique, and a sign-in
+/// that would move either side is rejected rather than rebound. Request-time
+/// surfaces that hold only an introspected subject resolve the user here and
+/// still re-read the live `User.role`.
+model AdminAuthSubjectBinding {
+  subject        String   @id
+  userId         String   @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now()) @map("created_at")
+  lastVerifiedAt DateTime @default(now()) @map("last_verified_at")
+
+  @@map("admin_auth_subject_binding")
 }
 
 model ManagerMembership {
@@ -1616,6 +1632,7 @@ model SeoRun {
   proposalVersions         SeoProposalVersion[]
 
   @@index([status, startedAt])
+  @@index([status, completedAt])
   @@index([mode, startedAt])
   @@index([status, executionClaimExpiresAt])
   @@map("seo_run")

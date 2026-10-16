@@ -474,10 +474,15 @@ untouched; this surface is REST-owned.
   dedicated `WATCH_SEO_API_KEYS` service key in `Authorization: Bearer` (proves
   the caller is Web's adapter, checked first so an unauthenticated caller never
   spends an Auth introspection), THEN the delegated Web user's access token in
-  `X-Watch-User-Authorization: Bearer`, THEN a live Admin read:
-  `User.id === token sub` and `role === ADMIN`, re-read on every request.
-  Identity is subject-only: no email fallback, no Manager membership, no cached
-  role, no binding table.
+  `X-Watch-User-Authorization: Bearer`, THEN a live Admin read: the user the
+  token `sub` is bound to in `admin_auth_subject_binding`, and that user's
+  `role === ADMIN`, re-read on every request. The verified Admin OAuth callback
+  records the binding (`src/auth/admin-subject-binding.ts`) before it writes
+  the user row. Both columns are unique, so a sign-in that would move a subject
+  to another user, or give a bound user a second subject, is refused; to
+  resolve a real identity move, delete the stale binding row. An unbound legacy
+  user whose `User.id` IS the subject still resolves until that user is bound.
+  No email fallback, no Manager membership, no cached role.
 - **Token rules** (`src/auth/watch-seo-user-token.ts`, deliberately not
   `resolveWebUserPrincipalFromToken`): active introspection, exact issuer,
   unexpired, non-empty `sub`, a `jfp_web_*` client id only (TV and every other
@@ -504,8 +509,14 @@ untouched; this surface is REST-owned.
   watch depth, AI referrals, bot visits, and cache history have no durable
   per-page source and are explicit `not_connected` sections, never numeric
   zero. Retained decisions are a thresholded subset, so absence from the
-  query list is unknown, not zero. The SQL JSON-path filters are covered by
-  SQL-shape tests only; run one real-database smoke before enabling.
+  query list is unknown, not zero. The raw JSON reads each run in a short
+  transaction under `SET LOCAL statement_timeout = '2500ms'`, so Postgres
+  cancels a slow read; the JS section race alone does not. Terminal-run
+  lookups use native enum literals so `seo_run_status_completed_at_idx`
+  applies. The SQL JSON-path filters and the index choice are covered by
+  SQL-shape tests only; before enabling, run one real-database smoke plus an
+  `EXPLAIN (ANALYZE, BUFFERS)` of the search query and confirm an index scan on
+  `seo_run_status_completed_at_idx`.
 
 ### Video database backup and clone
 

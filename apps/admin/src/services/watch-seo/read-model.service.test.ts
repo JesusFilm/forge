@@ -19,6 +19,7 @@ vi.mock("@/config/env", () => ({
 
 const { WatchSeoReadModelService, WatchSeoPageNotFoundError } =
   await import("./read-model.service")
+type WatchSeoPageRef = import("./read-model.service").WatchSeoPageRef
 const {
   WATCH_SEO_DETAIL_WINDOW_MS,
   WATCH_SEO_SECTION_KEYS,
@@ -124,34 +125,65 @@ function makeDb(overrides: Overrides = {}) {
           : (overrides.coverageRun ?? null),
       ),
     },
-    seoProposal: { findMany: vi.fn(async () => overrides.proposals ?? []) },
-    watchRouteAlert: { findMany: vi.fn(async () => overrides.alerts ?? []) },
+    seoProposal: {
+      findMany: vi.fn(async (_args?: unknown) => overrides.proposals ?? []),
+    },
+    watchRouteAlert: {
+      findMany: vi.fn(async (_args?: unknown) => overrides.alerts ?? []),
+    },
     watchRouteAlertPropertyProgress: {
       findFirst: vi.fn(async () => overrides.progress ?? null),
     },
-    $queryRaw: queryRaw,
   }
+  // Each transaction records its own ordered statements so a test can prove
+  // the timeout was set inside the SAME transaction as the read it bounds.
+  const txLog: Array<Array<{ kind: "exec" | "query"; text: string }>> = []
+  const executeRawUnsafe = vi.fn(async (_sql: string) => 0)
+  const transaction = vi.fn(
+    async (
+      fn: (tx: unknown) => Promise<unknown>,
+      _options?: { maxWait?: number; timeout?: number },
+    ) => {
+      const log: Array<{ kind: "exec" | "query"; text: string }> = []
+      txLog.push(log)
+      return fn({
+        $executeRawUnsafe: async (text: string) => {
+          log.push({ kind: "exec", text })
+          return executeRawUnsafe(text)
+        },
+        $queryRaw: async (sql: Prisma.Sql) => {
+          log.push({ kind: "query", text: sqlText(sql) })
+          return queryRaw(sql)
+        },
+      })
+    },
+  )
+  Object.assign(db, { $transaction: transaction })
   return {
     db: db as unknown as ConstructorParameters<
       typeof WatchSeoReadModelService
     >[0],
     raw: db,
     queryRaw,
+    executeRawUnsafe,
+    transaction,
+    txLog,
   }
 }
 
-const ref = {
+const ref: WatchSeoPageRef = {
   videoSlug: "jesus",
   languageSlug: "english",
   contextualParentSlug: null,
 }
 
 async function read(overrides: Overrides = {}, pageRef = ref) {
-  const { db, raw, queryRaw } = makeDb(overrides)
+  const { db, raw, queryRaw, executeRawUnsafe, transaction, txLog } =
+    makeDb(overrides)
   const model = await new WatchSeoReadModelService(db, {
     now: () => NOW,
   }).read(pageRef)
-  return { model, raw, queryRaw }
+  return { model, raw, queryRaw, executeRawUnsafe, transaction, txLog }
 }
 
 describe("WatchSeoReadModelService", () => {
@@ -286,6 +318,36 @@ describe("WatchSeoReadModelService", () => {
       const bound = sql.values.find((value) => value instanceof Date) as Date
       expect(bound.toISOString()).toBe(WINDOW_START.toISOString())
       expect(sqlText(sql)).toContain('"completed_at" >')
+    })
+
+    it("uses native enum literals and the completed_at order the composite index serves", async () => {
+      const { queryRaw } = await read({ searchRuns: [] })
+      const text = sqlText(
+        queryRaw.mock.calls
+          .map((call) => call[0] as Prisma.Sql)
+          .find((candidate) => sqlText(candidate).includes('FROM "seo_run"'))!,
+      ).replace(/\s+/g, " ")
+      // A `status::text` predicate cannot use (status, completed_at).
+      expect(text).not.toMatch(/"status"::text IN/)
+      expect(text).toContain(
+        `r."status" IN ( 'completed'::"SeoRunStatus", 'partial'::"SeoRunStatus" )`,
+      )
+      expect(text).toContain(`ORDER BY r."completed_at" DESC LIMIT`)
+    })
+
+    it("ships a migration index on exactly the predicate/order columns", async () => {
+      const { readFileSync } = await import("node:fs")
+      const { fileURLToPath } = await import("node:url")
+      const root = fileURLToPath(new URL("../../../", import.meta.url))
+      const migration = readFileSync(
+        `${root}prisma/migrations/0155_watch_seo_subject_binding_and_run_completion_index/migration.sql`,
+        "utf8",
+      )
+      expect(migration).toContain(
+        'CREATE INDEX "seo_run_status_completed_at_idx" ON "seo_run"("status", "completed_at");',
+      )
+      const schema = readFileSync(`${root}prisma/schema.prisma`, "utf8")
+      expect(schema).toContain("@@index([status, completedAt])")
     })
 
     it("treats a run completed exactly 29 days ago as expired but keeps 29 days minus 1ms", async () => {
@@ -429,6 +491,21 @@ describe("WatchSeoReadModelService", () => {
       expect(sqlText(sql)).not.toMatch(/markdown/i)
       expect(sqlText(sql)).toContain("LIMIT")
       expect(sql.values).toContain(model.identity.canonicalUrl)
+    })
+
+    it("filters provider by native enum literals so (provider, retrieved_at) applies", async () => {
+      const { queryRaw } = await read({ crawlRows: [] })
+      const text = sqlText(
+        queryRaw.mock.calls
+          .map((call) => call[0] as Prisma.Sql)
+          .find((candidate) =>
+            sqlText(candidate).includes("seo_evidence_observation"),
+          )!,
+      ).replace(/\s+/g, " ")
+      expect(text).not.toMatch(/"provider"::text IN/)
+      expect(text).toContain(
+        `"provider" IN ( 'firecrawl'::"SeoEvidenceProvider", 'direct_page'::"SeoEvidenceProvider" )`,
+      )
     })
 
     it("is partial when the fetch was truncated, stale when old, unavailable when absent", async () => {
@@ -608,7 +685,7 @@ describe("WatchSeoReadModelService", () => {
       })
       const call = raw.seoRun.findFirst.mock.calls.find(
         ([args]) => !args.select.id,
-      )![0] as { where: { completedAt: { gt: Date } } }
+      )![0] as unknown as { where: { completedAt: { gt: Date } } }
       expect(call.where.completedAt.gt.toISOString()).toBe(
         WINDOW_START.toISOString(),
       )
@@ -874,6 +951,53 @@ describe("WatchSeoReadModelService", () => {
         .join("\n")
       expect(logged).toContain("event=section_failed section=search")
       expect(logged).not.toContain("secret")
+    })
+  })
+
+  describe("database-side bounds", () => {
+    it("runs every raw read in its own transaction after SET LOCAL statement_timeout", async () => {
+      const { txLog, transaction, queryRaw } = await read()
+      // hreflang, search, and crawl: one transaction each, nothing raw outside.
+      expect(txLog).toHaveLength(3)
+      expect(queryRaw).toHaveBeenCalledTimes(3)
+      for (const log of txLog) {
+        expect(log.map((entry) => entry.kind)).toEqual(["exec", "query"])
+        expect(log[0]!.text).toBe("SET LOCAL statement_timeout = '2500ms'")
+      }
+      expect(txLog.map((log) => log[1]!.text)).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining("watch_seo_manifest_snapshot"),
+          expect.stringContaining('FROM "seo_run"'),
+          expect.stringContaining("seo_evidence_observation"),
+        ]),
+      )
+      for (const call of transaction.mock.calls) {
+        const options = call[1]!
+        // Statement timeout < transaction timeout, and pool wait + statement
+        // fits inside the 4s JS section budget.
+        expect(options.timeout).toBeGreaterThan(2_500)
+        expect(options.maxWait! + options.timeout!).toBeLessThan(4_000)
+      }
+    })
+
+    it("maps a Postgres statement-timeout cancel to an unavailable section only", async () => {
+      const { model } = await read({
+        raw: (sql) => {
+          if (sqlText(sql).includes('FROM "seo_run"')) {
+            throw Object.assign(
+              new Error("canceling statement due to statement timeout"),
+              { name: "PrismaClientKnownRequestError", code: "P2010" },
+            )
+          }
+          return []
+        },
+      })
+      expect(model.sections.search).toMatchObject({
+        state: "unavailable",
+        reason: "read_failed",
+      })
+      expect(model.sections.pageMetadata.state).toBe("available")
+      expect(model.sections.crawl.reason).toBe("no_recent_observation")
     })
   })
 
