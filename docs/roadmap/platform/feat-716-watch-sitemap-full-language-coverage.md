@@ -1,5 +1,5 @@
 ---
-id: "feat-533"
+id: "feat-716"
 title: "Watch sitemap covers every playable language, not just ISO-639-1 ones"
 owner: "vlad"
 priority: "P0"
@@ -10,7 +10,7 @@ duration: 1
 depends_on:
   - "feat-184"
 blocks:
-  - "feat-538"
+  - "feat-717"
 tags:
   - "platform"
   - "web"
@@ -19,6 +19,15 @@ tags:
   - "sitemap"
   - "i18n"
 ---
+
+> **ID history.** This ticket was opened as `feat-533` and renumbered to
+> `feat-716` on 2026-10-16: `main` had meanwhile allocated a different
+> `feat-533` (`content-discovery/feat-533-consistent-short-watch-recommendation-feedback.md`),
+> and the roadmap ID check on PR #2385 failed on the combined tree. Older text,
+> including the source comment in
+> `apps/admin/src/services/watch-seo-manifest.service.ts`, that says
+> `feat-533` and mentions `languageSlugs`, Cebuano or the sitemap means this
+> ticket. Its follow-up `feat-538` is now `feat-717`.
 
 ## Problem
 
@@ -130,7 +139,7 @@ chunk index) and **~20 bytes of manifest JSON**. Chunk count barely moves
 (228 -> 232) because shards are byte-bound by the alternate blocks and the extra
 URLs carry none, so the sitemap index shape is stable.
 
-Residual (tracked as `feat-538`): `getWatchSitemapChunks` materializes every entry and
+Residual (tracked as `feat-717`, formerly `feat-538`): `getWatchSitemapChunks` materializes every entry and
 `getWatchSeoManifest` buffers the whole manifest with `response.json()` and no
 byte cap. Both were already unbounded before this change; this change raises the
 multiplier. If the post-deploy `canonicalVideoUrls` lands above ~5M, bound them
@@ -174,5 +183,30 @@ Limits: no deployed multi-replica run and no production corpus. During a mixed
 Admin fleet a web process can flip between the two bodies, one full 200 per
 flip, until the older replicas retire. A later schema change that forgets the
 representation bump reintroduces the stall; the guard test is the only
-mechanical defense. FGE-183 stays In Review; `complete` here means the local
-implementation only.
+mechanical defense. FGE-183 stays In Progress (earlier wording here said In
+Review; that was stale); `complete` here means the local implementation only.
+
+## Repair 2026-10-16: roadmap ID renumber (PR #2385 CI)
+
+The `roadmap-id-collisions-advisory` job failed on head `44152a6` (merge
+projection `ade8190`, `ROADMAP_ID_BASE` = main `fc9f4af`): this ticket and its
+follow-up shared `feat-533` and `feat-538` with tickets `main` had since
+allocated in other lanes. Inherited IDs are not exempt from collisions between
+the offered PR and current `main`. Fix: this ticket `feat-533` -> `feat-716`, the
+follow-up `feat-538` -> `feat-717` (allocated above `main`'s highest `feat-712`
+and the pending `feat-713`..`feat-715`; no concurrent allocation of `716` or
+`717` found), with the `feat-184` `blocks`, `feat-716` `blocks`/`feat-717`
+`depends_on`, and every doc reference moved to the new IDs. `main`'s own
+`feat-533`/`feat-538` tickets are untouched. The source comment in
+`apps/admin/src/services/watch-seo-manifest.service.ts` still says `feat-533`;
+source is deliberately unchanged, and the ID history note above is its alias.
+
+Validation (2026-10-16, outside the repo): `main`'s own unchanged
+`check-new-roadmap-ids.mjs` and `resolve-pr-baseline.mjs`, run on a synthetic
+two-parent merge (first parent `main`) of the offered head. Before, it emits
+exactly the two CI errors (`feat-533`, `feat-538`); after, "No new roadmap ticket
+ID collisions", and the 192 inherited duplicate-ID groups on `main` are unchanged.
+The generated `docs/roadmap/README.md` is not regenerated: it is dated
+2026-09-21 and never listed these tickets, so a refresh would churn unrelated
+counts. Limit: local projection only; the real CI run on the published head is
+the final check, and FGE-183 acceptance is unchanged.

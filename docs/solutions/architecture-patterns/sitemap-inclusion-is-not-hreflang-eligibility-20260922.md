@@ -17,8 +17,8 @@ tags:
   - deploy-order
   - code-review
 related:
-  - docs/roadmap/platform/feat-533-watch-sitemap-full-language-coverage.md
-  - docs/roadmap/platform/feat-538-watch-sitemap-materialization-and-manifest-byte-cap.md
+  - docs/roadmap/platform/feat-716-watch-sitemap-full-language-coverage.md
+  - docs/roadmap/platform/feat-717-watch-sitemap-materialization-and-manifest-byte-cap.md
   - docs/solutions/performance-issues/watch-hreflang-sitemap-manifest-20260612.md
   - docs/solutions/architecture-patterns/widening-a-closed-selection-block-into-an-authored-list-20260827.md
 ---

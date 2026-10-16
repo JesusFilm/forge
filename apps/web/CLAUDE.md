@@ -178,7 +178,7 @@ a controlled 503 when no valid snapshot is available; Watch page metadata does
 not depend on this manifest and continues to render without page-head hreflang.
 
 Sitemap inclusion and hreflang eligibility are separate concerns
-(feat-533 / FGE-183). `src/lib/watch-sitemap.ts` emits one `<loc>` per playable
+(feat-716 / FGE-183, formerly feat-533). `src/lib/watch-sitemap.ts` emits one `<loc>` per playable
 `(contentSlug, languageSlug)` pair from the route group's `languageSlugs`, and
 attaches the `<xhtml:link>` cluster only to the URLs that are members of it. A
 long-tail language with no Google-valid hreflang ships as a bare

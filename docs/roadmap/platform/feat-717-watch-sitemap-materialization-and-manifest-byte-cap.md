@@ -1,5 +1,5 @@
 ---
-id: "feat-538"
+id: "feat-717"
 title: "Bound Watch sitemap materialization and the SEO manifest read"
 owner: "vlad"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-09-29"
 duration: 3
 depends_on:
-  - "feat-533"
+  - "feat-716"
 blocks: []
 tags:
   - "platform"
@@ -18,9 +18,16 @@ tags:
   - "infrastructure"
 ---
 
+> **ID history.** This ticket was opened as `feat-538` and renumbered to
+> `feat-717` on 2026-10-16: `main` had meanwhile allocated a different
+> `feat-538` (`media-generation/feat-538-studio-fonts-text-readability.md`), and
+> the roadmap ID check on PR #2385 failed on the combined tree. Older text that
+> says `feat-538` and mentions the sitemap, `canonicalVideoUrls` or the manifest
+> byte cap means this ticket. Its predecessor `feat-533` is now `feat-716`.
+
 ## Problem
 
-Two unbounded reads sit on the Watch sitemap path. Both predate feat-533; that
+Two unbounded reads sit on the Watch sitemap path. Both predate feat-716; that
 change raises their multiplier by decoupling sitemap inclusion from hreflang
 eligibility, so the URL corpus grows from the ~140 ISO-639-1 languages to every
 playable language.
@@ -52,7 +59,7 @@ groups, or moving generation off the request path entirely.
 
 | shape                                       | locs      | chunks | web heap | manifest JSON | build |
 | ------------------------------------------- | --------- | ------ | -------- | ------------- | ----- |
-| 3,000 content x 140 hreflang (pre-feat-533) | 420,002   | 228    | 160 MB   | 30.2 MB       | 0.7 s |
+| 3,000 content x 140 hreflang (pre-feat-716) | 420,002   | 228    | 160 MB   | 30.2 MB       | 0.7 s |
 | 3,000 content x 500 playable                | 1,500,002 | 232    | 245 MB   | 51.8 MB       | 1.8 s |
 | 1,000 content x 2,000 playable              | 2,000,002 | 82     | 50 MB    | 48.3 MB       | 2.2 s |
 
@@ -69,7 +76,7 @@ constants that define the shape, per
 
 ## Gate — do not start before reading this number
 
-feat-533 added `canonicalVideoUrls` to the `watch_seo_manifest.generated` log
+feat-716 added `canonicalVideoUrls` to the `watch_seo_manifest.generated` log
 line that admin emits on every snapshot generation. Read it from the first
 post-deploy Core sync:
 
@@ -93,7 +100,7 @@ against production rather than against the synthetic table above.
 2. `apps/web/src/lib/watch-seo-manifest.ts` — `fetchWatchSeoManifest`.
 3. `apps/web/src/lib/watch-sitemap-limits.ts` — the per-shard ceilings.
 4. `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md`
-5. `docs/roadmap/platform/feat-533-watch-sitemap-full-language-coverage.md`
+5. `docs/roadmap/platform/feat-716-watch-sitemap-full-language-coverage.md`
 
 ## Grep These
 
@@ -143,7 +150,7 @@ a thin materializing wrapper or migrate those assertions deliberately.
 
 ## Constraints
 
-- Do not narrow sitemap coverage to reclaim memory. feat-533 / FGE-183 exists
+- Do not narrow sitemap coverage to reclaim memory. feat-716 / FGE-183 exists
   because the long tail had no discovery path; reintroducing a language cap
   reopens that bug.
 - Do not change the per-shard ceilings (`DEFAULT_MAX_SITEMAP_BYTES`,
