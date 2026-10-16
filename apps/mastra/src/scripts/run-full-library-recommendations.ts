@@ -47,6 +47,7 @@ export const FullLibraryConfigSchema = z
     codexExecutable: absolute.optional(),
     minimumRemainingPercent: z.union([z.literal(0), z.literal(25)]).default(25),
     readingConcurrency: z.union([z.literal(1), z.literal(2)]).default(1),
+    timeoutMs: z.number().int().min(1).max(900_000).default(900_000),
   })
   .strict()
 export type FullLibraryConfig = z.output<typeof FullLibraryConfigSchema>
@@ -185,6 +186,7 @@ export async function fullLibraryCli(args: string[]): Promise<void> {
     readOperatorIdentity: account.readOperatorIdentity,
     minimumRemainingPercent: config.minimumRemainingPercent,
     concurrency: config.readingConcurrency,
+    timeoutMs: config.timeoutMs,
   })
   const result = await runFullLibrary({
     corpus,

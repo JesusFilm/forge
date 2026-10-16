@@ -220,7 +220,7 @@ describe("full-library durable execution", () => {
       "pending_consumption_unknown",
     )
   })
-  it("validates transcript evidence against the cited side, metadata values and family", () => {
+  it("validates exact evidence and true duplicate identities while allowing distinct siblings", () => {
     const data = corpus()
     const source = data.entries[0],
       target = data.entries[1]
@@ -245,9 +245,27 @@ describe("full-library durable execution", () => {
     ).toThrow("evidence_not_verbatim")
     target.video.parentVideoIds = ["family"]
     source.video.parentVideoIds = ["family"]
-    expect(() => validateConnections([valid], [source], [target])).toThrow(
+    expect(() => validateConnections([valid], [source], [target])).not.toThrow()
+    const duplicate = structuredClone(target)
+    duplicate.video.coreId = source.video.coreId
+    expect(() => validateConnections([valid], [source], [duplicate])).toThrow(
       "connection_excluded",
     )
+    expect(() =>
+      validateConnections(
+        [
+          {
+            ...valid,
+            targetEvidence: {
+              basis: "metadata",
+              fields: [{ field: "title", value: "Invented title" }],
+            },
+          },
+        ],
+        [source],
+        [target],
+      ),
+    ).toThrow("metadata_evidence_invalid")
   })
   it("partitions all targets and rejects incomplete/truncated content", async () => {
     const data = corpus()
@@ -417,8 +435,13 @@ async function parallelInput() {
     executionManifest: {},
   }
 }
-const delay = (ms: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, ms))
+function gate() {
+  let release!: () => void
+  const reached = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  return { reached, release }
+}
 describe("bounded full-library reading concurrency", () => {
   it.each([1, 2] as const)(
     "settles reads within concurrency %s and ranks in frozen batch order",
@@ -429,6 +452,8 @@ describe("bounded full-library reading concurrency", () => {
         rankingCalls = 0
       const seen: string[] = [],
         settled: string[] = []
+      const firstTwoStarted = gate(),
+        laterDiscoverySettled = gate()
       const model: ReservationAwareStructuredModel = {
         async generateReserved(request, reserve) {
           const reservation = await reserve()
@@ -459,10 +484,16 @@ describe("bounded full-library reading concurrency", () => {
             seen.push(targetId)
             active++
             maximum = Math.max(maximum, active)
-            // Reverse completion order for the first two calls at concurrency2.
-            await delay(targetId === "source-a" ? 50 : 10)
+            if (readingConcurrency === 2) {
+              if (seen.length === 2) firstTwoStarted.release()
+              await firstTwoStarted.reached
+              // Both batches return evidence, so completion-order flattening
+              // would incorrectly put target-c before target-b in ranking.
+              if (targetId === "target-b") await laterDiscoverySettled.reached
+            }
             active--
             settled.push(targetId)
+            if (targetId === "target-c") laterDiscoverySettled.release()
             output = {
               reviewedSourceIds: ["source-a"],
               reviewedTargetIds: [targetId],
@@ -482,26 +513,37 @@ describe("bounded full-library reading concurrency", () => {
           }
         },
       }
-      await runFullLibrary({ ...input, readingConcurrency, model })
+      const result = await runFullLibrary({
+        ...input,
+        readingConcurrency,
+        model,
+      })
+      const expected = input.plan.batches.flatMap((batch) => batch.targetIds)
       expect(maximum).toBe(readingConcurrency)
-      expect(seen).toEqual(
-        input.plan.batches.flatMap((batch) => batch.targetIds),
-      )
+      expect([...seen].sort()).toEqual([...expected].sort())
       expect(new Set(seen).size).toBe(5)
-      expect(settled).toHaveLength(5)
-      if (readingConcurrency === 2) expect(settled[0]).toBe("target-b")
+      expect([...settled].sort()).toEqual([...expected].sort())
+      if (readingConcurrency === 2)
+        expect(settled.indexOf("target-c")).toBeLessThan(
+          settled.indexOf("target-b"),
+        )
       expect(rankingCalls).toBe(1)
+      expect(result.sources[0].recommendations).toMatchObject([
+        { targetVideoId: "target-e", rank: 1 },
+      ])
       expect(await readdir(join(input.runDirectory, "calls"))).toHaveLength(6)
     },
   )
-  it.each([false, true, "invalid-coverage"] as const)(
+  it.each([false, true, "invalid-connection"] as const)(
     "stops new reads and waits for in-flight receipts after failure (%s)",
     async (failureCase) => {
       const unknown = failureCase === true
-      const invalidCoverage = failureCase === "invalid-coverage"
+      const invalidConnection = failureCase === "invalid-connection"
       const input = await parallelInput()
       const dispatched: string[] = [],
         settled: string[] = []
+      const bothStarted = gate(),
+        releaseSibling = gate()
       let rankingCalls = 0
       const model: ReservationAwareStructuredModel = {
         async generateReserved(request, reserve) {
@@ -515,9 +557,11 @@ describe("bounded full-library reading concurrency", () => {
           }
           const targetId = prompt.targets[0].video.id as string
           dispatched.push(targetId)
-          await delay(targetId === "source-a" ? 5 : 40)
+          if (dispatched.length === 2) bothStarted.release()
+          await bothStarted.reached
+          if (targetId !== "source-a") await releaseSibling.reached
           settled.push(targetId)
-          if (targetId === "source-a" && !invalidCoverage)
+          if (targetId === "source-a" && !invalidConnection)
             throw new CodexSubscriptionAstraError("provider_unavailable", {
               consumptionUnknown: unknown,
               usage: unknown ? undefined : { inputTokens: 12, outputTokens: 3 },
@@ -528,12 +572,9 @@ describe("bounded full-library reading concurrency", () => {
             response: {
               output: request.schema.parse({
                 reviewedSourceIds: ["source-a"],
-                reviewedTargetIds: [
-                  targetId === "source-a" ? "not-in-batch" : targetId,
-                ],
+                reviewedTargetIds: [targetId],
                 allWorthwhileConnectionsReturned: true,
-                connections:
-                  targetId === "source-a" ? [] : [connection(targetId)],
+                connections: [connection(targetId)],
                 notes: "Settled after sibling failure.",
               }),
               usage: { inputTokens: 100, outputTokens: 20 },
@@ -542,18 +583,57 @@ describe("bounded full-library reading concurrency", () => {
         },
       }
       const run = { ...input, readingConcurrency: 2 as const, model }
-      await expect(runFullLibrary(run)).rejects.toThrow(
-        invalidCoverage
-          ? "target_read_coverage_invalid"
-          : "provider_unavailable",
+      let finished = false
+      const outcome = runFullLibrary(run).then(
+        () => {
+          finished = true
+          return { error: undefined }
+        },
+        (error: unknown) => {
+          finished = true
+          return { error }
+        },
       )
-      expect(dispatched).toEqual(["source-a", "target-b"])
-      expect(settled).toEqual(["source-a", "target-b"])
+      const failureCode = invalidConnection
+        ? "connection_excluded"
+        : "provider_unavailable"
+      try {
+        // The sibling remains physically in flight while the first terminal
+        // receipt is persisted. A failed receipt is written after pausing;
+        // Invalid self-recommendations pass the ID schema but must fail
+        // semantic validation after their successful physical receipt.
+        await expect
+          .poll(
+            async () => {
+              try {
+                return JSON.parse(
+                  await readFile(
+                    join(input.runDirectory, "calls/read-0000/receipt.json"),
+                    "utf8",
+                  ),
+                )
+              } catch {
+                return null
+              }
+            },
+            { timeout: 5_000, interval: 10 },
+          )
+          .toMatchObject({ status: invalidConnection ? "succeeded" : "failed" })
+        expect([...dispatched].sort()).toEqual(["source-a", "target-b"])
+        expect(settled).toEqual(["source-a"])
+        expect(finished).toBe(false)
+        expect(rankingCalls).toBe(0)
+      } finally {
+        releaseSibling.release()
+        await outcome
+      }
+      expect((await outcome).error).toMatchObject({ code: failureCode })
+      expect([...dispatched].sort()).toEqual(["source-a", "target-b"])
+      expect([...settled].sort()).toEqual(["source-a", "target-b"])
       expect(rankingCalls).toBe(0)
-      expect(await readdir(join(input.runDirectory, "calls"))).toEqual([
-        "read-0000",
-        "read-0001",
-      ])
+      expect((await readdir(join(input.runDirectory, "calls"))).sort()).toEqual(
+        ["read-0000", "read-0001"],
+      )
       const failed = JSON.parse(
         await readFile(
           join(input.runDirectory, "calls/read-0000/receipt.json"),
@@ -567,20 +647,36 @@ describe("bounded full-library reading concurrency", () => {
         ),
       )
       expect(failed).toMatchObject({
-        status: invalidCoverage ? "succeeded" : "failed",
+        status: invalidConnection ? "succeeded" : "failed",
         consumptionUnknown: unknown,
+        reserved: true,
+        usage: unknown
+          ? null
+          : invalidConnection
+            ? { inputTokens: 100, outputTokens: 20 }
+            : { inputTokens: 12, outputTokens: 3 },
       })
       expect(completed).toMatchObject({
         status: "succeeded",
         usage: { inputTokens: 100, outputTokens: 20 },
+        consumptionUnknown: false,
       })
+      expect(
+        JSON.parse(
+          await readFile(
+            join(input.runDirectory, "reading-failure.json"),
+            "utf8",
+          ),
+        ),
+      ).toMatchObject({ code: failureCode, inFlightSettled: true })
       await expect(
         readFile(join(input.runDirectory, "producer.lock")),
       ).rejects.toMatchObject({ code: "ENOENT" })
       await expect(runFullLibrary(run)).rejects.toThrow(
-        invalidCoverage ? "reading_run_paused" : "call_not_resumable",
+        invalidConnection ? "reading_run_paused" : "call_not_resumable",
       )
       expect(dispatched).toHaveLength(2)
     },
+    10_000,
   )
 })

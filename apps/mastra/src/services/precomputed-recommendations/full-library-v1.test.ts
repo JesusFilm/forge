@@ -3,6 +3,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import type { ModelUsage } from "./astra-provider"
 import {
@@ -271,7 +272,10 @@ async function jsonFile(path: string) {
 
 describe("full-library-v1 independent acceptance", () => {
   it("reads every target and complete source in exhaustive batches and carries late evidence into global ranking", async () => {
-    const input = await setup()
+    const corpus = corpusFixture()
+    corpus.entries[0]!.video.parentVideoIds = ["shared-collection"]
+    corpus.entries.at(-1)!.video.parentVideoIds = ["shared-collection"]
+    const input = await setup({ corpus })
     expect(input.plan.mode).toBe("staged")
     expect(input.plan.batches.length).toBeGreaterThan(1)
     const fake = fakeModel()
@@ -370,6 +374,78 @@ describe("full-library-v1 independent acceptance", () => {
     )
   })
 
+  it("constrains reading IDs to every supplied ID and budgets the exact dynamic schema sent to the adapter", async () => {
+    const count: TokenCounter = async (text) => {
+      const value = JSON.parse(text)
+      if (value.untrustedCatalogData) {
+        const prompt = JSON.parse(value.untrustedCatalogData)
+        return prompt.targets ? prompt.targets.length * 20_000 : 100
+      }
+      return Buffer.byteLength(text)
+    }
+    const input = await setup({
+      count,
+      budget: {
+        ...context,
+        contextWindowTokens: 70_000,
+        effectiveContextTokens: 70_000,
+        autoCompactLimitTokens: 70_000,
+      },
+    })
+    expect(input.plan.mode).toBe("staged")
+    const fake = fakeModel(),
+      seen: string[] = []
+    const model: ReservationAwareStructuredModel = {
+      async generateReserved(request, reserve) {
+        const prompt = JSON.parse(request.prompt) as Partial<Reading>
+        if (prompt.targets) {
+          const output = discovery(request.prompt)
+          expect(request.schema.safeParse(output).success).toBe(true)
+          const wrongSource = structuredClone(output)
+          wrongSource.reviewedSourceIds[0] = "foreign-source"
+          expect(request.schema.safeParse(wrongSource).success).toBe(false)
+          const wrongTarget = structuredClone(output)
+          wrongTarget.reviewedTargetIds[0] = "foreign-target"
+          expect(request.schema.safeParse(wrongTarget).success).toBe(false)
+          const missingTarget = structuredClone(output)
+          missingTarget.reviewedTargetIds.pop()
+          expect(request.schema.safeParse(missingTarget).success).toBe(false)
+          const candidate = connection(prompt.sources![0]!, prompt.targets[0]!)
+          for (const foreign of [
+            { ...candidate, sourceVideoId: "foreign-source" },
+            { ...candidate, targetVideoId: "foreign-target" },
+          ])
+            expect(
+              request.schema.safeParse({ ...output, connections: [foreign] })
+                .success,
+            ).toBe(false)
+          const batch = input.plan.batches.find(
+            (batch) => batch.targetIds[0] === prompt.targets![0]!.video.id,
+          )!
+          const schemaBytes = Buffer.byteLength(
+            JSON.stringify(
+              z.toJSONSchema(request.schema, { target: "draft-07" }),
+            ),
+          )
+          expect(batch.measurement.schemaBytes).toBe(schemaBytes)
+          expect(batch.measurement.schemaTokens).toBe(schemaBytes)
+          expect(
+            batch.measurement.inputTokens +
+              schemaBytes +
+              input.plan.context.overheadReserveTokens +
+              input.plan.context.outputReserveTokens,
+          ).toBeLessThanOrEqual(70_000)
+          seen.push(...prompt.targets.map((target) => target.video.id))
+        }
+        return fake.model.generateReserved(request, reserve)
+      },
+    }
+    await runFullLibrary({ ...input, model })
+    expect(seen.sort()).toEqual(
+      input.corpus.entries.map((entry) => entry.video.id).sort(),
+    )
+  })
+
   it("rejects truncated metadata and missing final transcript chunks instead of treating them as metadata-only", () => {
     for (const field of [
       "descriptionTruncated",
@@ -386,7 +462,7 @@ describe("full-library-v1 independent acceptance", () => {
     expect(validateCorpus(corpusFixture()).entries[2]!.chunks).toEqual([])
   })
 
-  it("rejects fabricated, foreign and absent-field evidence, self/duplicate/family links, but preserves direction", () => {
+  it("rejects fabricated, foreign and absent-field evidence, self and true duplicates, but preserves direction", () => {
     const corpus = corpusFixture()
     const source = corpus.entries[0]!,
       target = corpus.entries.at(-1)!
@@ -420,14 +496,23 @@ describe("full-library-v1 independent acceptance", () => {
     const duplicate = structuredClone(target)
     duplicate.video.coreId = source.video.coreId
     expect(excludedTarget(source, duplicate)).toBe(true)
-    const siblingSource = structuredClone(source),
-      siblingTarget = structuredClone(target)
-    siblingSource.video.parentVideoIds = ["parent"]
-    siblingTarget.video.parentVideoIds = ["parent"]
-    expect(excludedTarget(siblingSource, siblingTarget)).toBe(true)
-    const child = structuredClone(target)
-    child.video.parentVideoIds = [source.video.id]
-    expect(excludedTarget(source, child)).toBe(true)
+    expect(() =>
+      validateConnections(
+        [connection(source, duplicate)],
+        [source],
+        [duplicate],
+      ),
+    ).toThrow("connection_excluded")
+    const duplicateSlug = structuredClone(target)
+    duplicateSlug.video.slug = source.video.slug
+    expect(excludedTarget(source, duplicateSlug)).toBe(true)
+    expect(() =>
+      validateConnections(
+        [connection(source, duplicateSlug)],
+        [source],
+        [duplicateSlug],
+      ),
+    ).toThrow("connection_excluded")
     // Two independently evidenced directed edges are allowed, never auto-created.
     expect(() =>
       validateConnections(
@@ -436,6 +521,47 @@ describe("full-library-v1 independent acceptance", () => {
         [source, target],
       ),
     ).not.toThrow()
+  })
+
+  it("keeps distinct siblings, chapters and parent films eligible when they add viewing value", () => {
+    for (const relationship of [
+      "siblings",
+      "source-parent",
+      "target-parent",
+      "chapter",
+      "empty-identities",
+    ] as const) {
+      const corpus = corpusFixture(),
+        source = corpus.entries[0]!,
+        target = corpus.entries.at(-1)!
+      if (relationship === "siblings" || relationship === "chapter") {
+        source.video.parentVideoIds = ["shared-parent-film"]
+        target.video.parentVideoIds = ["shared-parent-film"]
+      }
+      if (relationship === "source-parent") {
+        source.video.childVideoIds = [target.video.id]
+        target.video.parentVideoIds = [source.video.id]
+      }
+      if (relationship === "target-parent") {
+        source.video.parentVideoIds = [target.video.id]
+        target.video.childVideoIds = [source.video.id]
+      }
+      if (relationship === "empty-identities") {
+        source.video.coreId = target.video.coreId = ""
+        source.video.slug = target.video.slug = ""
+      }
+      expect(excludedTarget(source, target), relationship).toBe(false)
+      expect(
+        () =>
+          validateConnections([connection(source, target)], [source], [target]),
+        relationship,
+      ).not.toThrow()
+      expect(
+        () =>
+          validateConnections([connection(target, source)], [target], [source]),
+        relationship,
+      ).not.toThrow()
+    }
   })
 
   it("fails before model dispatch when complete content exceeds either token or UTF-8 byte capacity", async () => {
@@ -543,11 +669,12 @@ describe("full-library-v1 independent acceptance", () => {
     expect(reply).toHaveBeenCalledTimes(1)
   })
 
-  it("requires exact target-read acknowledgement instead of accepting an omitted late target", async () => {
+  it("requires exact target-read acknowledgement instead of accepting duplicates that hide an omitted target", async () => {
     const input = await setup()
     const fake = fakeModel((prompt) => {
       const output = discovery(prompt)
-      output.reviewedTargetIds.pop()
+      output.reviewedTargetIds[output.reviewedTargetIds.length - 1] =
+        output.reviewedTargetIds[0]!
       return output
     })
     await expect(

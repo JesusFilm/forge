@@ -234,6 +234,7 @@ describe("full-library CLI independent acceptance", () => {
         readOperatorIdentity: mocked.readOperatorIdentity,
         minimumRemainingPercent: 25,
         concurrency: readingConcurrency,
+        timeoutMs: 900_000,
       })
       const manifest = JSON.parse(
         await readFile(join(config.runDirectory, "manifest.json"), "utf8"),
