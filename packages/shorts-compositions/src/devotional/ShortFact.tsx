@@ -1345,8 +1345,8 @@ function ringPath(w: number, h: number, seed = 0): string {
 }
 
 function standalone(v: string) {
-  let out = v.trim().replace(/[’”]+$/, "")
-  if (/^[“‘]/.test(out)) out = out.slice(1)
+  let out = v.trim().replace(/[’”»]+$/, "")
+  if (/^[“‘«]/.test(out)) out = out.slice(1)
   return out
 }
 
@@ -1368,7 +1368,16 @@ function LanguageLayout({
 }) {
   const text = standalone(verse)
   const at = highlight
-    ? text.toLowerCase().search(new RegExp(`\\b${highlight.toLowerCase()}\\b`))
+    ? // Letter boundaries, not \b: \b is ASCII-only, so a Russian word
+      // was never found and its ring and gold never came (Martha RU).
+      text
+        .toLowerCase()
+        .search(
+          new RegExp(
+            `(?<!\\p{L})${highlight.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\p{L})`,
+            "u",
+          ),
+        )
     : -1
   const word = at >= 0 ? text.slice(at, at + highlight.length) : ""
   // The ring draws as the voice says the word (its first spoken mention).
@@ -1447,7 +1456,11 @@ function LanguageLayout({
       <FullDevotionalLabel
         f={f}
         t={t}
-        text="A Moment from the Full Devotional:"
+        text={
+          isRussian(words)
+            ? "Фрагмент из полного видео:"
+            : "A Moment from the Full Devotional:"
+        }
       />
       <div
         ref={boxRef}
@@ -1497,7 +1510,7 @@ function LanguageLayout({
             textShadow: `0 ${f(2)}px ${f(16)}px rgba(0,0,0,0.55)`,
           }}
         >
-          <span style={rest}>{"“"}</span>
+          <span style={rest}>{isRussian(words) ? "«" : "“"}</span>
           {at >= 0 ? (
             <>
               <span style={rest}>{text.slice(0, at)}</span>
@@ -1521,7 +1534,7 @@ function LanguageLayout({
           ) : (
             <span style={rest}>{text}</span>
           )}
-          <span style={rest}>{"”"}</span>
+          <span style={rest}>{isRussian(words) ? "»" : "”"}</span>
         </p>
         {box && draw > 0 ? (
           <svg
