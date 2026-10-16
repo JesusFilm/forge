@@ -1963,6 +1963,8 @@ export type RenderOptions = {
   introTeaser?: boolean
   /** Teaser: how the closing call to action looks (default `kinetic`). */
   introCtaStyle?: "kinetic" | "calm"
+  /** `montage`: punch zoom on the film at each shot cut (`--intro-punch`). */
+  introPunch?: boolean
   /** Montage teaser with the long form's own opening voice (owner,
    *  2026-10-02): `hookLine` stays the long form's text (a cache hit, no new
    *  narration), its last spoken line ("Let's watch.") is cut from the audio,
@@ -3121,6 +3123,9 @@ async function renderInStage(
       : {}),
     ...(options.introTeaser && options.intro === "montage"
       ? { introCta: true }
+      : {}),
+    ...(options.intro === "montage" && options.introPunch
+      ? { introPunch: true }
       : {}),
     ...(options.introTeaser && options.introCtaStyle
       ? { introCtaStyle: options.introCtaStyle }

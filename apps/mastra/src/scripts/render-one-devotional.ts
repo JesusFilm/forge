@@ -221,6 +221,9 @@ async function main() {
       // `--cta-text=...`: keep the long form's opening voice and show this
       // call to action silently in place of its last line.
       ...(arg("cta-text") ? { introCtaText: arg("cta-text")! } : {}),
+      // `--intro-punch`: a short sharp zoom on the film at every shot cut of
+      // the montage opening; the captions stay still (owner, 2026-10-16).
+      ...(process.argv.includes("--intro-punch") ? { introPunch: true } : {}),
       // Social opening: `--quote-a/--quote-b` (+ `--quote-a-strong`, etc.).
       ...(arg("quote-a") && arg("quote-b")
         ? {

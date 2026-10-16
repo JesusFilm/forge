@@ -122,6 +122,9 @@ export const devotionalCardSchema = z.object({
   passageRef: z.string().optional(),
   /** `montage` teaser: the last spoken line is a call to action. */
   introCta: z.boolean().optional(),
+  /** `montage`: a short sharp zoom on the film at every shot cut; the
+   *  captions stay still (owner, 2026-10-16). */
+  introPunch: z.boolean().optional(),
   /** Teaser with the long form's own voice: the call to action shown, silent,
    *  in place of the last spoken line ("Let's watch."), which still times it. */
   introCtaText: z.string().optional(),

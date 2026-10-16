@@ -2132,6 +2132,42 @@ function montagePush(
   t: number,
   starts: ReadonlyArray<number>,
   leadSec: number,
+  punch = false,
+): number {
+  return (
+    montageDrift(t, starts, leadSec) *
+    (punch ? montagePunch(t, starts, leadSec) : 1)
+  )
+}
+
+/** `montage` with `introPunch`: on every cut (and on the cut into the scene
+ *  at `leadSec`) the film lands with a short sharp zoom, alternating a
+ *  zoom-out landing (1.12 to 1 in 0.28 s) and a punch in (to 1.07 in 0.12 s,
+ *  back over 0.35 s). Only the film scales; the captions are separate layers
+ *  and stay still (owner, 2026-10-16: the text must not jump with the video).
+ */
+export function montagePunch(
+  t: number,
+  starts: ReadonlyArray<number>,
+  leadSec: number,
+): number {
+  const cuts = [...starts.slice(1, -1), leadSec].filter((c) => c > 0)
+  let z = 1
+  cuts.forEach((c, i) => {
+    const d = t - c
+    if (d < 0) return
+    if (i % 2 === 0) {
+      if (d < 0.28) z *= 1 + 0.12 * (1 - d / 0.28) ** 2
+    } else if (d < 0.12) z *= 1 + 0.07 * (d / 0.12)
+    else if (d < 0.47) z *= 1 + 0.07 * (1 - (d - 0.12) / 0.35) ** 2
+  })
+  return z
+}
+
+function montageDrift(
+  t: number,
+  starts: ReadonlyArray<number>,
+  leadSec: number,
 ): number {
   if (starts.length < 2 || t >= leadSec) return 1
   // The last line is the scene itself; the shots are the lines before it.
@@ -2594,6 +2630,10 @@ function ClipIntro({
                   maxWidth={frameWidth * (920 / 1080) - px((28 * 390) / 360)}
                   rightInset={frameWidth * (160 / 1080)}
                   sizes={{ hero: 1.3, accent: 1.4, plain: 1.6 }}
+                  // Each word lands orange and cools to white, as in the film
+                  // short's opener (owner, 2026-10-16: the vertical intro had
+                  // lost it and read all white).
+                  flash={STRIP_ORANGE}
                 />
               </AbsoluteFill>
             )
@@ -6519,6 +6559,7 @@ function Background({
             card.mutedLeadSec ?? 0,
           ),
           card.mutedLeadSec ?? 0,
+          card.introPunch === true,
         )
       : 1
 

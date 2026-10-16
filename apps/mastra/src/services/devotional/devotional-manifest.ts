@@ -63,6 +63,9 @@ export type DevotionalManifest = {
   }[]
   /** `montage` teaser: the last line is a call to action. */
   introCta?: boolean
+  /** `montage`: a short sharp zoom on the FILM at every shot cut (text
+   *  stays still), owner 2026-10-16 (Paralytic intro). */
+  introPunch?: boolean
   /** Teaser CTA look: `calm` sets the last line as one quiet centred line
    *  instead of another kinetic stack. */
   introCtaStyle?: "kinetic" | "calm"
@@ -173,6 +176,9 @@ export type BuildManifestInput = {
   }[]
   /** `montage` teaser: the last line is a call to action. */
   introCta?: boolean
+  /** `montage`: a short sharp zoom on the FILM at every shot cut (text
+   *  stays still), owner 2026-10-16 (Paralytic intro). */
+  introPunch?: boolean
   /** Teaser CTA look: `calm` sets the last line as one quiet centred line
    *  instead of another kinetic stack. */
   introCtaStyle?: "kinetic" | "calm"
@@ -368,6 +374,9 @@ function buildClipFirstManifest(
               : {}),
             ...(input.intro === "montage" && input.introCta
               ? { introCta: true }
+              : {}),
+            ...(input.intro === "montage" && input.introPunch
+              ? { introPunch: true }
               : {}),
             ...(input.intro === "montage" &&
             input.introCta &&
