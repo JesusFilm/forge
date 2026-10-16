@@ -1,3 +1,8 @@
+import {
+  StudioHlsError,
+  studioHlsRendition,
+  studioHlsSegments,
+} from "@forge/studio-contracts/hls"
 import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { adminGraphql } from "@forge/admin-graphql"
 import { print } from "@apollo/client/utilities"
@@ -74,7 +79,6 @@ const resolvedSchema = z.array(
     eligibility: z.unknown(),
   }),
 )
-type Segment = { url: string; duration: number; startMs: number; endMs: number }
 
 async function readBounded(response: Response, max: number) {
   if (!response.ok || !response.body)
@@ -99,6 +103,36 @@ async function readBounded(response: Response, max: number) {
   }
   return Buffer.concat(chunks)
 }
+/** One preparation owns this bounded cache. Callers stage segments sequentially;
+ * repeated clips reuse the same bytes without spending the transfer budget again. */
+export function createStudioSourceDownload(
+  signal?: AbortSignal,
+  budget = LIMIT,
+) {
+  const cache = new Map<string, Buffer>()
+  let transferred = 0
+  return async (raw: string, max = LIMIT) => {
+    signal?.throwIfAborted()
+    const url = canonicalMediaUrl(raw)
+    const prior = cache.get(url.href)
+    if (prior) {
+      if (prior.length > max)
+        throw new StudioBrokerError("Preview transfer exceeds its byte budget")
+      return prior
+    }
+    const bytes = await readBounded(
+      await fetch(url, {
+        redirect: "error",
+        signal: boundedSignal(20000, signal),
+      }),
+      Math.min(max, budget - transferred),
+    )
+    transferred += bytes.length
+    cache.set(url.href, bytes)
+    return bytes
+  }
+}
+
 export function createStudioAssetBroker(
   call: StudioBrokerClient,
   signal?: AbortSignal,
@@ -164,70 +198,26 @@ export function createStudioAssetBroker(
     },
   }
 }
-function rendition(
-  master: string,
-  base: string,
-  target: number,
-  exact: boolean,
-) {
-  const lines = master.trim().split(/\r?\n/),
-    choices: { url: string; height: number }[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const resolution = lines[i]!.match(
-      /^#EXT-X-STREAM-INF:.*RESOLUTION=(\d+)x(\d+)/,
-    )
-    if (resolution && lines[i + 1] && !lines[i + 1]!.startsWith("#"))
-      choices.push({
-        url: new URL(lines[i + 1]!, base).href,
-        height: Number(resolution[2]),
-      })
+function brokerHls<T>(parse: () => T): T {
+  try {
+    return parse()
+  } catch (error) {
+    if (error instanceof StudioHlsError)
+      throw new StudioBrokerError(error.message)
+    throw error
   }
-  const selected = exact
-    ? choices.find((c) => c.height === target)
-    : (choices
-        .filter((c) => c.height <= target)
-        .sort((a, b) => b.height - a.height)[0] ??
-      choices.sort((a, b) => a.height - b.height)[0])
-  if (!selected)
-    throw new StudioBrokerError("The admitted source rendition is unavailable")
-  return selected
 }
+const rendition = (...args: Parameters<typeof studioHlsRendition>) =>
+  brokerHls(() => studioHlsRendition(...args))
 function playlistSegments(
   text: string,
   base: string,
   startMs: number,
   endMs: number,
 ) {
-  if (
-    /#EXT-X-(KEY|MAP|BYTERANGE|DISCONTINUITY|MEDIA)(?::|\r?$)/m.test(text) ||
-    !text.includes("#EXT-X-ENDLIST")
+  const all = brokerHls(() => studioHlsSegments(text, base)).filter(
+    (segment) => segment.endMs > startMs && segment.startMs < endMs,
   )
-    throw new StudioBrokerError(
-      "Unsupported HLS structure; select another catalog source",
-    )
-  const lines = text.trim().split(/\r?\n/)
-  let elapsed = 0
-  const all: Segment[] = []
-  for (let i = 0; i < lines.length; i++) {
-    if (!lines[i]!.startsWith("#EXTINF:")) continue
-    const duration = Number(lines[i]!.slice(8).split(",")[0])
-    if (
-      !Number.isFinite(duration) ||
-      duration <= 0 ||
-      duration > 30 ||
-      !lines[i + 1] ||
-      lines[i + 1]!.startsWith("#")
-    )
-      throw new StudioBrokerError("Invalid HLS segment")
-    const segment = {
-      url: new URL(lines[i + 1]!, base).href,
-      duration,
-      startMs: elapsed,
-      endMs: elapsed + duration * 1000,
-    }
-    elapsed = segment.endMs
-    if (segment.endMs > startMs && segment.startMs < endMs) all.push(segment)
-  }
   if (
     !all.length ||
     all.length > 128 ||
@@ -375,19 +365,7 @@ export async function prepareStudioRenderSources(
         await call("preview-sources", { projectId, document }),
       ),
       assets = createStudioAssetBroker(call, signal)
-    let transferred = 0
-    async function download(raw: string, max = LIMIT) {
-      const url = canonicalMediaUrl(raw)
-      const bytes = await readBounded(
-        await fetch(url, {
-          redirect: "error",
-          signal: boundedSignal(20000, signal),
-        }),
-        Math.min(max, LIMIT - transferred),
-      )
-      transferred += bytes.length
-      return bytes
-    }
+    const download = createStudioSourceDownload(signal)
     const mediaStarts = studioMediaStartTimes(document)
     for (const resolvedEntry of resolved) {
       const entry = {
@@ -443,7 +421,9 @@ export async function prepareStudioRenderSources(
           entry.endMs,
         )
         const prefix = `${id.replace(/[^a-zA-Z0-9_-]/g, "_")}-${purpose}`,
-          names = segments.map((_, i) => `${prefix}-${i}.ts`),
+          // Shared URL identities keep staged files within the same unique-byte
+          // budget as downloads, even when many clips reuse a segment.
+          names = segments.map((segment) => `${hash(segment.url)}.ts`),
           refs: StudioAssetReference[] = []
         for (let i = 0; i < segments.length; i++) {
           const bytes = await download(segments[i]!.url)
