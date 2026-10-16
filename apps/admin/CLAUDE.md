@@ -455,6 +455,58 @@ script, it refuses production-like `DATABASE_URL` hosts (`*.railway.app`,
 `*.jesusfilm.org`, and unparseable URLs) so operators do not accidentally mutate
 production snapshots from a workstation.
 
+### Watch SEO admin-only REST surface (feat-712)
+
+Admin owns two private, no-store REST endpoints behind the admin-only
+`SEO & Marketing` tab on Watch video pages. The GraphQL schema,
+`packages/admin-graphql`, `WEB_ADMIN_API_KEYS`, and the consumer bearer are
+untouched; this surface is REST-owned.
+
+- `GET /api/watch-seo/capability` answers only `{ "canViewWatchSeo": boolean }`.
+  Every denial is a byte-identical `403 {"canViewWatchSeo":false}`; the closed
+  reason enum is logged as `[watch-seo] event=denied route=… reason=…` and
+  never put on the wire.
+- `GET /api/watch-seo/read-model?slug=&language=[&parent=]` returns the typed
+  `watch-seo-read-model/v1` DTO (`src/services/watch-seo/contract.ts`).
+  Order is rate limit → dual authorization → input validation → read, so an
+  outsider cannot learn the contract or the catalog.
+- **Dual authorization** (`src/services/watch-seo/authorization.ts`): a
+  dedicated `WATCH_SEO_API_KEYS` service key in `Authorization: Bearer` (proves
+  the caller is Web's adapter, checked first so an unauthenticated caller never
+  spends an Auth introspection), THEN the delegated Web user's access token in
+  `X-Watch-User-Authorization: Bearer`, THEN a live Admin read:
+  `User.id === token sub` and `role === ADMIN`, re-read on every request.
+  Identity is subject-only: no email fallback, no Manager membership, no cached
+  role, no binding table.
+- **Token rules** (`src/auth/watch-seo-user-token.ts`, deliberately not
+  `resolveWebUserPrincipalFromToken`): active introspection, exact issuer,
+  unexpired, non-empty `sub`, a `jfp_web_*` client id only (TV and every other
+  client is refused, even if listed in `AUTH_WEB_USER_CLIENT_IDS`), and the
+  environment claim must equal `AUTH_WEB_USER_TOKEN_ENVIRONMENT`. In
+  production an unset `AUTH_WEB_USER_TOKEN_ENVIRONMENT` fails the surface
+  closed. Absent introspection credentials or `WATCH_SEO_API_KEYS` also fail
+  closed.
+- `WATCH_SEO_API_KEYS` is optional at boot and joins the
+  `assertBearerCsvsDisjoint` invariant. Deploy order: Admin (with the CSV
+  set) first, then Web's key.
+- **Rate limits** use `rateLimitAuthRoute` before auth: 120/min capability and
+  60/min read per client IP. Web's adapter is one server-to-server caller, so
+  the bucket bounds the whole feature, not a person.
+- **Read model** reads only retained data and never calls a provider: page
+  metadata (`VideoLocale`), the Watch SEO manifest snapshot (jsonb path
+  lookup), retained GSC selection decisions in completed `SeoRun` reports
+  (filtered by `VideoLocale.id` inside Postgres, last 8 runs, 29-day strict
+  window), stored Firecrawl/direct-page observations scoped to the canonical
+  URL (markdown never selected), the Watch route-alert ledger, and
+  proposals/versions/decisions/materializations/experiments/evaluations.
+  Each section carries `state` (`available | partial | stale | compacted |
+  unavailable | not_connected`), source, window, and caveats. GA4 page/CTA,
+  watch depth, AI referrals, bot visits, and cache history have no durable
+  per-page source and are explicit `not_connected` sections, never numeric
+  zero. Retained decisions are a thresholded subset, so absence from the
+  query list is unknown, not zero. The SQL JSON-path filters are covered by
+  SQL-shape tests only; run one real-database smoke before enabling.
+
 ### Video database backup and clone
 
 Production backup is automated only. Do not add or use an operator
