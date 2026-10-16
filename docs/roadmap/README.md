@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 15, 2026)
 
-- **Total tickets:** 839
-- **Complete:** 622
+- **Total tickets:** 840
+- **Complete:** 623
 - **Cancelled:** 41
 - **In progress:** 68
 - **Not started:** 51
@@ -686,6 +686,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-678](platform/feat-678-watch-search-production-budget-verification.md)           | Validate Watch search production budget and alerts                                 | vlad       | P1       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
 | [feat-696](platform/feat-696-watch-percent-escape-case.md)                             | Normalize percent-escape case from the public Watch reverse proxy                  | vlad       | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
+| [feat-704](platform/feat-704-watch-language-chunk-containment.md)                      | Contain video language picker component load failures                              | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-703](platform/feat-703-ci-tested-target-baseline.md)                             | Compare PR CI checks against the tested target baseline                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-707](platform/feat-707-watch-feedback-mobile-overflow.md)                        | Keep Watch feedback within the mobile dialog width                                 | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
