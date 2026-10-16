@@ -59,8 +59,19 @@ own narration, in our series look, without anything from my laptop.
    `widow-vertical-components-20261016` (revision 8) failed with "Render
    execution failed" and no detail. Short tests of the same components
    render fine. If you can see the worker log for attempt
-   `cmvau9lihimv8qa0shuddt27x`, that would tell us the cause. We are also
-   narrowing it down from our side.
+   `cmvau9lihimv8qa0shuddt27x`, that would tell us the cause.
+
+   What we tested on our side (2026-10-16):
+   - Every piece renders on its own: the components without video
+     (`widow-bisect-c-20261016`), each film item alone, including the full
+     64 s scene at 1.05 with sound (`film-test-20261016`), and short mixes
+     of rates and sound.
+   - What fails is length. The opening plus the film, as video items only,
+     is 84 s in 6 items (`widow-bisect-a-20261016` revision 3). The full
+     project is 5 min.
+   - The 64 s film alone took about 20 minutes to render. So our guess is a
+     render time limit on the worker. Can you confirm it and tell us the
+     limit, or raise it for 3 to 5 minute projects?
 
 Thanks!
 Lyuba
