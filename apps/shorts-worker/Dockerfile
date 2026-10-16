@@ -11,7 +11,7 @@
 # 2026-06-11 via the Docker Hub API. Node >= 22.18 is REQUIRED (default
 # type stripping loads the source-shipped @forge/shorts-compositions and
 # @forge/devotional-workspace TS at runtime — see the runtime stage notes).
-ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+ARG NODE_IMAGE=node:22-bookworm-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
 
 # ---------------------------------------------------------------------------
 # runtime-base — Chromium/Remotion runtime libraries + ffmpeg + fonts.
