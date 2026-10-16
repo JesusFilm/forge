@@ -28,6 +28,7 @@ studio-components/examples/widow-en.json):
   film        {startSec, endSec, speed, cues, heading}  cues = cue-file base
               (…/lumo-luke-18-widow.en), heading = "Luke 18:1-8"
   backdrops   [filmSec, …]  slow shots behind the reflection, in order
+  backdropRate  optional, default 1.0 (see the note in the code)
   sourceEndSec  optional: where the film segment ends (default film.endSec);
               no shot is placed past it
   reflection  [{text, highlight?, credit?, callout?: {text, highlight}}]
@@ -258,11 +259,15 @@ def main():
     # A shot never runs past the end of the film segment (sourceEndSec,
     # default the scene's end): it starts earlier instead.
     seg_end = spec.get("sourceEndSec", film["endSec"])
+    # Normal speed by default: a slowed clip longer than a few seconds fails
+    # the Studio render (19 s at 0.7 did, 4 s passed; 2026-10-16), and slowed
+    # 24 fps film judders in the editor's player. backdropRate opts back in.
+    bg_rate = spec.get("backdropRate", 1.0)
     for k in range(n):
         start = refl_start + k * each
         dur = min(each, t - start)
-        at = min(shots[k % len(shots)], seg_end - dur / FPS * 0.7 - 0.1)
-        video(f"backdrop-{k + 1}", start, dur, at, 0.7)
+        at = min(shots[k % len(shots)], seg_end - dur / FPS * bg_rate - 0.1)
+        video(f"backdrop-{k + 1}", start, dur, at, bg_rate)
     comp("look-reflection", "look", refl_start, closing_start - refl_start, "film-look-v1",
          {"dim": 0.45, "grade": False, "grain": 0, "warmth": 0, "vignette": False, "fadeInSec": 0.3, "fadeOutSec": 0.3})
     # Font packs: faces the closing components name, over the whole video.

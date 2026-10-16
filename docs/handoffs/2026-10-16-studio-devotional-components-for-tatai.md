@@ -61,17 +61,21 @@ own narration, in our series look, without anything from my laptop.
    render fine. If you can see the worker log for attempt
    `cmvau9lihimv8qa0shuddt27x`, that would tell us the cause.
 
-   What we tested on our side (2026-10-16):
-   - Every piece renders on its own: the components without video
-     (`widow-bisect-c-20261016`), each film item alone, including the full
-     64 s scene at 1.05 with sound (`film-test-20261016`), and short mixes
-     of rates and sound.
-   - What fails is length. The opening plus the film, as video items only,
-     is 84 s in 6 items (`widow-bisect-a-20261016` revision 3). The full
-     project is 5 min.
-   - The 64 s film alone took about 20 minutes to render. So our guess is a
-     render time limit on the worker. Can you confirm it and tell us the
-     limit, or raise it for 3 to 5 minute projects?
+   What we found on our side (2026-10-16), narrowing it down with short
+   test projects:
+   - **Our bug, fixed:** a component with a zero-length fade
+     (`interpolate(t, [end - 0, end], ...)`) throws, and the whole render
+     fails. `backdrop-blur-v3` guards it (`t-blur3-20261016` passes).
+   - **A slowed video item longer than a few seconds fails.** One item of
+     19 s at `playbackRate` 0.7 fails on its own (`t-long-slow-20261016`).
+     4 s at 0.7 (`rate-test-20261016`) and 2.8 s at 0.5 pass. We moved the
+     backgrounds to normal speed. Is this a known limit of the worker?
+   - **Still unexplained:** the opening plus the film, as video items only
+     (`widow-bisect-a-20261016` revision 3): 4 shots at 1.0, one 2.8 s
+     shot at 0.5 and the 64 s scene at 1.05 with sound. It fails, though
+     each item renders alone and short mixes pass.
+   - Every render takes long: the 64 s scene alone took about 20 minutes.
+     If there is a render time limit, what is it?
 
 Thanks!
 Lyuba
