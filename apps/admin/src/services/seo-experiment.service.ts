@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto"
+import { createHash, randomBytes, randomUUID } from "node:crypto"
 import { isIP } from "node:net"
 import {
   Prisma,
@@ -14,7 +14,10 @@ import { z } from "zod"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import { hasPermission } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
-import type { VerifiedSeoApprovalAssertion } from "@/auth/seo-approval-assertion"
+import type {
+  SeoApprovalAction,
+  VerifiedSeoApprovalAssertion,
+} from "@/auth/seo-approval-assertion"
 import {
   consumeSeoWorkloadAssertion,
   SeoAssertionReplayError,
@@ -364,6 +367,95 @@ type ProposalEvidenceRow = {
 
 function assertManagerSeoAccess(user: Principal | null) {
   if (!hasPermission(user, "read:manager-seo")) throw new ForbiddenError()
+}
+
+/**
+ * The authority under which one proposal decision is recorded. The Manager
+ * path supplies a verified signed assertion; the Admin-interactive path
+ * supplies a server-minted nonce plus the live session actor. Both are
+ * persisted identically as a single-use `seoApprovalNonce` audit row.
+ */
+type SeoDecisionAuthorization = SeoNonceAuthorization & {
+  action: "approve" | "reject"
+}
+
+/** Fields persisted as one single-use `seoApprovalNonce` audit row. */
+type SeoNonceAuthorization = {
+  keyId: string
+  environment: string
+  audience: string
+  actorId: string
+  action: SeoApprovalAction
+  proposalId: string
+  version: number
+  payloadDigest: string
+  nonceHash: string
+  expiresAt: Date
+}
+
+export const ADMIN_INTERACTIVE_SEO_DECISION_KEY_ID = "admin-interactive-v1"
+export const ADMIN_INTERACTIVE_SEO_DECISION_AUDIENCE =
+  "forge-admin-seo-admin-interactive"
+const ADMIN_INTERACTIVE_SEO_DECISION_LIFETIME_MS = 120_000
+export const ADMIN_SEO_DECLINE_REASON_MIN_LENGTH = 3
+
+const AdminSeoDecisionInputSchema = z
+  .object({
+    actorId: BoundedId,
+    proposalId: BoundedId,
+    version: z.number().int().positive(),
+    payloadDigest: Digest,
+    expectedAction: z.enum(["approve", "reject"]),
+    overlapAcknowledged: z.boolean(),
+    reason: z.string().max(2_000).nullable().optional(),
+  })
+  .strict()
+
+export type AdminSeoDecisionInput = z.input<typeof AdminSeoDecisionInputSchema>
+
+export type AdminSeoProposalConfirmation = {
+  proposalId: string
+  version: number
+  payloadDigest: string
+  currentVersion: number
+  proposalStatus: string
+  lane: string
+  targetType: string
+  canonicalUrl: string
+  locale: string
+  expiresAt: string
+  createdAt: string
+  intent: string
+  expectedOutcome: string
+  risk: string
+  verificationPlan: string
+  rollbackPlan: string
+  affectedFields: string[]
+  caveats: string[]
+  applyCreates: "editorial_draft" | "engineering_ticket"
+  overlapCount: number
+  decision: {
+    action: SeoDecisionAction
+    decidedAt: string
+    overlapAcknowledged: boolean
+  } | null
+  materialization: { status: string; editorPath: string | null } | null
+}
+
+function generateAdminDecisionNonce(): string {
+  return randomBytes(32).toString("base64url")
+}
+
+/** Live role re-read: a stale session cookie never outlives a downgrade. */
+async function assertLiveAdmin(
+  db: Pick<PrismaClient, "user"> | SeoTransaction,
+  actorId: string,
+) {
+  const user = await db.user.findUnique({
+    where: { id: actorId },
+    select: { role: true },
+  })
+  if (user?.role !== "ADMIN") throw new ForbiddenError()
 }
 
 function enumMode(
@@ -1729,252 +1821,439 @@ export class SeoExperimentService {
     if (assertion.action !== expectedAction)
       throw new SeoLedgerConflictError("assertion_mismatch")
     return this.prisma.$transaction(
+      (tx) =>
+        this.decideProposalInTransaction(tx, {
+          authorization: { ...assertion, action: expectedAction },
+          overlapAcknowledged,
+          reason,
+        }),
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+
+  /**
+   * Admin-origin confirmation of a proposal decision (feat-712). The caller
+   * is the Admin dashboard server action, which has already required an Admin
+   * session; this method still re-reads the actor's live `ADMIN` role inside
+   * the decision transaction. The nonce, its audit key/audience, and its
+   * expiry are minted here, never accepted from a browser. The decision then
+   * runs through the same canonical core as the Manager signed path.
+   */
+  async decideProposalAsAdmin(
+    input: AdminSeoDecisionInput,
+    deps: { generateNonce?: () => string } = {},
+  ): Promise<ManagerSeoDecisionRecord> {
+    const parsed = AdminSeoDecisionInputSchema.safeParse(input)
+    if (!parsed.success) throw new SeoLedgerConflictError("invalid_decision")
+    const {
+      actorId,
+      proposalId,
+      version,
+      payloadDigest,
+      expectedAction,
+      overlapAcknowledged,
+    } = parsed.data
+    const reason = parsed.data.reason?.trim() ?? ""
+    if (
+      expectedAction === "reject" &&
+      reason.length < ADMIN_SEO_DECLINE_REASON_MIN_LENGTH
+    ) {
+      throw new SeoLedgerConflictError("reason_required")
+    }
+    const nonce = (deps.generateNonce ?? generateAdminDecisionNonce)()
+    const authorization: SeoDecisionAuthorization = {
+      keyId: ADMIN_INTERACTIVE_SEO_DECISION_KEY_ID,
+      environment: env.SEO_ASSERTION_ENVIRONMENT,
+      audience: ADMIN_INTERACTIVE_SEO_DECISION_AUDIENCE,
+      actorId,
+      action: expectedAction,
+      proposalId,
+      version,
+      payloadDigest,
+      nonceHash: createHash("sha256").update(nonce).digest("hex"),
+      expiresAt: new Date(
+        Date.now() + ADMIN_INTERACTIVE_SEO_DECISION_LIFETIME_MS,
+      ),
+    }
+    return this.prisma.$transaction(
       async (tx) => {
-        const version = await tx.seoProposalVersion.findUnique({
-          where: {
-            proposalId_version: {
-              proposalId: assertion.proposalId,
-              version: assertion.version,
-            },
-          },
-          include: {
-            proposal: true,
-            decision: true,
-            materialization: true,
-            ticketOutbox: true,
-          },
+        await assertLiveAdmin(tx, actorId)
+        return this.decideProposalInTransaction(tx, {
+          authorization,
+          overlapAcknowledged,
+          reason: expectedAction === "reject" ? reason : null,
         })
-        if (!version || version.payloadDigest !== assertion.payloadDigest) {
-          throw new SeoLedgerConflictError("assertion_mismatch")
-        }
-        await this.consumeApprovalNonce(tx, assertion, version.id)
-        if (version.decision) return this.decisionRecord(version)
-        if (
-          version.proposal.currentVersion !== version.version ||
-          version.proposal.status !== "PROPOSED"
-        ) {
-          return this.statusDecision(
-            version,
-            "ALREADY_DECIDED",
-            "Proposal already changed.",
-          )
-        }
-        if (version.proposal.expiresAt <= new Date()) {
-          await tx.seoProposal.update({
-            where: { id: version.proposalId },
-            data: { status: "EXPIRED" },
-          })
-          return this.statusDecision(
-            version,
-            "EXPIRED",
-            "Proposal expired and must be regenerated.",
-          )
-        }
-        const [overlappingProposals, activeOverlappingExperiments] =
-          await Promise.all([
-            tx.seoProposal.findMany({
-              where: {
-                id: { not: version.proposalId },
-                semanticConflictKey: version.proposal.semanticConflictKey,
-                status: { in: ["PROPOSED", "APPROVED", "MATERIALIZED"] },
-              },
-              select: { id: true },
-            }),
-            tx.seoExperiment.findMany({
-              where: {
-                proposalVersionId: { not: version.id },
-                status: { in: ["AWAITING_ACTIVATION", "MEASURING"] },
-                proposalVersion: {
-                  proposal: {
-                    semanticConflictKey: version.proposal.semanticConflictKey,
-                  },
-                },
-              },
-              select: {
-                id: true,
-                confounders: true,
-                proposalVersion: { select: { proposalId: true } },
-              },
-            }),
-          ])
-        const overlapIdentities = new Set(
-          overlappingProposals.map((proposal) => `proposal:${proposal.id}`),
-        )
-        for (const experiment of activeOverlappingExperiments) {
-          overlapIdentities.add(
-            experiment.proposalVersion.proposalId === version.proposalId
-              ? `experiment:${experiment.id}`
-              : `proposal:${experiment.proposalVersion.proposalId}`,
-          )
-        }
-        const overlapCount = overlapIdentities.size
-        if (
-          expectedAction === "approve" &&
-          overlapCount > 0 &&
-          !overlapAcknowledged
-        ) {
-          return this.statusDecision(
-            version,
-            "CONFLICT",
-            "Overlapping work requires acknowledgement.",
-          )
-        }
-        if (expectedAction === "reject") {
-          const decision = await tx.seoDecision.create({
-            data: {
-              proposalVersionId: version.id,
-              action: "REJECT",
-              actorId: assertion.actorId,
-              reason: reason?.trim().slice(0, 2_000) || null,
-            },
-          })
-          await tx.seoProposal.update({
-            where: { id: version.proposalId },
-            data: { status: "REJECTED" },
-          })
-          return {
-            status: "REJECTED",
-            proposalId: version.proposalId,
-            version: version.version,
-            decisionId: decision.id,
-            draftRevisionId: null,
-            editorPath: null,
-            ticketOutboxId: null,
-            message: "Proposal rejected.",
-          }
-        }
-        if (version.proposal.targetType === "Engineering") {
-          const decision = await tx.seoDecision.create({
-            data: {
-              proposalVersionId: version.id,
-              action: "APPROVE",
-              actorId: assertion.actorId,
-              overlapAcknowledged,
-              overlapCount,
-              confounders: inputJson(
-                overlapCount > 0 ? ["overlapping_change"] : [],
-              ),
-            },
-          })
-          const outbox = await tx.seoTicketOutbox.create({
-            data: {
-              proposalVersionId: version.id,
-              payloadDigest: version.payloadDigest,
-              payload: inputJson(version.engineeringBrief ?? version.payload),
-              marker: `forge-seo:${version.proposalId}:v${version.version}:${version.payloadDigest.slice(0, 12)}`,
-              nextAttemptAt: new Date(),
-            },
-          })
-          await tx.seoProposalMaterialization.create({
-            data: { proposalVersionId: version.id, status: "TICKET_PENDING" },
-          })
-          const expectedActivationHash = engineeringExpectedActivationHash(
-            version.engineeringBrief,
-          )
-          if (expectedActivationHash) {
-            await tx.seoExperiment.create({
-              data: {
-                proposalVersionId: version.id,
-                preChangeSnapshot: inputJson(version.preChangeSnapshot),
-                treatmentSnapshot: inputJson(version.treatmentSnapshot),
-                preChangeHash: seoContentHash(version.preChangeSnapshot),
-                treatmentHash: seoContentHash(version.treatmentSnapshot),
-                expectedActivationHash,
-                confounders: inputJson([]),
-              },
-            })
-          }
-          await tx.seoProposal.update({
-            where: { id: version.proposalId },
-            data: { status: "MATERIALIZED" },
-          })
-          return {
-            status: "APPROVED",
-            proposalId: version.proposalId,
-            version: version.version,
-            decisionId: decision.id,
-            draftRevisionId: null,
-            editorPath: null,
-            ticketOutboxId: outbox.id,
-            message:
-              "Engineering brief approved and queued for ticket delivery.",
-          }
-        }
-        try {
-          const materialized = await this.targets.materializeEditorialDraft({
-            tx,
-            version,
-            actorId: assertion.actorId,
-          })
-          const decision = await tx.seoDecision.create({
-            data: {
-              proposalVersionId: version.id,
-              action: "APPROVE",
-              actorId: assertion.actorId,
-              overlapAcknowledged,
-              overlapCount,
-              confounders: inputJson(
-                overlapCount > 0 ? ["overlapping_change"] : [],
-              ),
-            },
-          })
-          await tx.seoProposalMaterialization.create({
-            data: {
-              proposalVersionId: version.id,
-              status: "DRAFT_CREATED",
-              contentRevisionId: materialized.revisionId,
-              editorPath: materialized.editorPath,
-            },
-          })
-          await tx.seoExperiment.create({
-            data: {
-              proposalVersionId: version.id,
-              preChangeSnapshot: materialized.preChangeSnapshot,
-              treatmentSnapshot: materialized.treatmentSnapshot,
-              preChangeHash: materialized.preChangeHash,
-              treatmentHash: materialized.treatmentHash,
-              expectedActivationHash: materialized.expectedActivationHash,
-              confounders: inputJson([]),
-            },
-          })
-          await tx.seoProposal.update({
-            where: { id: version.proposalId },
-            data: { status: "MATERIALIZED" },
-          })
-          return {
-            status: "APPROVED",
-            proposalId: version.proposalId,
-            version: version.version,
-            decisionId: decision.id,
-            draftRevisionId: materialized.revisionId,
-            editorPath: materialized.editorPath,
-            ticketOutboxId: null,
-            message: "Editorial draft created. Canonical content is unchanged.",
-          }
-        } catch (error) {
-          if (error instanceof SeoTargetStaleError) {
-            await tx.seoProposal.update({
-              where: { id: version.proposalId },
-              data: { status: "STALE" },
-            })
-            return this.statusDecision(
-              version,
-              "STALE",
-              "The canonical target changed; regenerate the proposal.",
-            )
-          }
-          if (error instanceof SeoTargetConflictError) {
-            return this.statusDecision(
-              version,
-              "CONFLICT",
-              "An existing human or AI draft must be resolved first.",
-            )
-          }
-          throw error
-        }
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     )
+  }
+
+  /**
+   * Read-only, bounded view of one immutable proposal version for the Admin
+   * confirmation page. Raw payloads and snapshots are deliberately omitted.
+   */
+  async readProposalForAdminConfirmation({
+    actorId,
+    proposalId,
+    version,
+  }: {
+    actorId: string
+    proposalId: string
+    version: number
+  }): Promise<AdminSeoProposalConfirmation | null> {
+    await assertLiveAdmin(this.prisma, actorId)
+    const row = await this.prisma.seoProposalVersion.findUnique({
+      where: { proposalId_version: { proposalId, version } },
+      select: {
+        id: true,
+        proposalId: true,
+        version: true,
+        payloadDigest: true,
+        intent: true,
+        expectedOutcome: true,
+        risk: true,
+        verificationPlan: true,
+        rollbackPlan: true,
+        affectedFields: true,
+        caveats: true,
+        createdAt: true,
+        decision: {
+          select: { action: true, decidedAt: true, overlapAcknowledged: true },
+        },
+        materialization: { select: { status: true, editorPath: true } },
+        proposal: {
+          select: {
+            lane: true,
+            targetType: true,
+            canonicalUrl: true,
+            locale: true,
+            currentVersion: true,
+            status: true,
+            expiresAt: true,
+            semanticConflictKey: true,
+          },
+        },
+      },
+    })
+    if (!row) return null
+    const [overlappingProposals, overlappingExperiments] = await Promise.all([
+      this.prisma.seoProposal.count({
+        where: {
+          id: { not: row.proposalId },
+          semanticConflictKey: row.proposal.semanticConflictKey,
+          status: { in: ["PROPOSED", "APPROVED", "MATERIALIZED"] },
+        },
+      }),
+      this.prisma.seoExperiment.count({
+        where: {
+          proposalVersionId: { not: row.id },
+          status: { in: ["AWAITING_ACTIVATION", "MEASURING"] },
+          proposalVersion: {
+            proposal: { semanticConflictKey: row.proposal.semanticConflictKey },
+          },
+        },
+      }),
+    ])
+    return {
+      proposalId: row.proposalId,
+      version: row.version,
+      payloadDigest: row.payloadDigest,
+      currentVersion: row.proposal.currentVersion,
+      proposalStatus: row.proposal.status,
+      lane: row.proposal.lane,
+      targetType: row.proposal.targetType,
+      canonicalUrl: row.proposal.canonicalUrl,
+      locale: row.proposal.locale,
+      expiresAt: row.proposal.expiresAt.toISOString(),
+      createdAt: row.createdAt.toISOString(),
+      intent: row.intent,
+      expectedOutcome: row.expectedOutcome,
+      risk: row.risk,
+      verificationPlan: row.verificationPlan,
+      rollbackPlan: row.rollbackPlan,
+      affectedFields: row.affectedFields,
+      caveats: row.caveats,
+      applyCreates:
+        row.proposal.targetType === "Engineering"
+          ? "engineering_ticket"
+          : "editorial_draft",
+      overlapCount: overlappingProposals + overlappingExperiments,
+      decision: row.decision
+        ? {
+            action: row.decision.action,
+            decidedAt: row.decision.decidedAt.toISOString(),
+            overlapAcknowledged: row.decision.overlapAcknowledged,
+          }
+        : null,
+      materialization: row.materialization
+        ? {
+            status: row.materialization.status,
+            editorPath: row.materialization.editorPath,
+          }
+        : null,
+    }
+  }
+
+  /**
+   * The canonical decision transaction shared by the Manager signed path and
+   * the Admin-interactive path: version/digest binding, single-use nonce,
+   * already-decided/expired/overlap/stale handling, and draft or ticket
+   * materialization. It never publishes canonical content or deploys.
+   */
+  private async decideProposalInTransaction(
+    tx: SeoTransaction,
+    {
+      authorization,
+      overlapAcknowledged,
+      reason,
+    }: {
+      authorization: SeoDecisionAuthorization
+      overlapAcknowledged: boolean
+      reason?: string | null
+    },
+  ): Promise<ManagerSeoDecisionRecord> {
+    const expectedAction = authorization.action
+    const version = await tx.seoProposalVersion.findUnique({
+      where: {
+        proposalId_version: {
+          proposalId: authorization.proposalId,
+          version: authorization.version,
+        },
+      },
+      include: {
+        proposal: true,
+        decision: true,
+        materialization: true,
+        ticketOutbox: true,
+      },
+    })
+    if (!version || version.payloadDigest !== authorization.payloadDigest) {
+      throw new SeoLedgerConflictError("assertion_mismatch")
+    }
+    await this.consumeApprovalNonce(tx, authorization, version.id)
+    if (version.decision) return this.decisionRecord(version)
+    if (
+      version.proposal.currentVersion !== version.version ||
+      version.proposal.status !== "PROPOSED"
+    ) {
+      return this.statusDecision(
+        version,
+        "ALREADY_DECIDED",
+        "Proposal already changed.",
+      )
+    }
+    if (version.proposal.expiresAt <= new Date()) {
+      await tx.seoProposal.update({
+        where: { id: version.proposalId },
+        data: { status: "EXPIRED" },
+      })
+      return this.statusDecision(
+        version,
+        "EXPIRED",
+        "Proposal expired and must be regenerated.",
+      )
+    }
+    const [overlappingProposals, activeOverlappingExperiments] =
+      await Promise.all([
+        tx.seoProposal.findMany({
+          where: {
+            id: { not: version.proposalId },
+            semanticConflictKey: version.proposal.semanticConflictKey,
+            status: { in: ["PROPOSED", "APPROVED", "MATERIALIZED"] },
+          },
+          select: { id: true },
+        }),
+        tx.seoExperiment.findMany({
+          where: {
+            proposalVersionId: { not: version.id },
+            status: { in: ["AWAITING_ACTIVATION", "MEASURING"] },
+            proposalVersion: {
+              proposal: {
+                semanticConflictKey: version.proposal.semanticConflictKey,
+              },
+            },
+          },
+          select: {
+            id: true,
+            confounders: true,
+            proposalVersion: { select: { proposalId: true } },
+          },
+        }),
+      ])
+    const overlapIdentities = new Set(
+      overlappingProposals.map((proposal) => `proposal:${proposal.id}`),
+    )
+    for (const experiment of activeOverlappingExperiments) {
+      overlapIdentities.add(
+        experiment.proposalVersion.proposalId === version.proposalId
+          ? `experiment:${experiment.id}`
+          : `proposal:${experiment.proposalVersion.proposalId}`,
+      )
+    }
+    const overlapCount = overlapIdentities.size
+    if (
+      expectedAction === "approve" &&
+      overlapCount > 0 &&
+      !overlapAcknowledged
+    ) {
+      return this.statusDecision(
+        version,
+        "CONFLICT",
+        "Overlapping work requires acknowledgement.",
+      )
+    }
+    if (expectedAction === "reject") {
+      const decision = await tx.seoDecision.create({
+        data: {
+          proposalVersionId: version.id,
+          action: "REJECT",
+          actorId: authorization.actorId,
+          reason: reason?.trim().slice(0, 2_000) || null,
+        },
+      })
+      await tx.seoProposal.update({
+        where: { id: version.proposalId },
+        data: { status: "REJECTED" },
+      })
+      return {
+        status: "REJECTED",
+        proposalId: version.proposalId,
+        version: version.version,
+        decisionId: decision.id,
+        draftRevisionId: null,
+        editorPath: null,
+        ticketOutboxId: null,
+        message: "Proposal rejected.",
+      }
+    }
+    if (version.proposal.targetType === "Engineering") {
+      const decision = await tx.seoDecision.create({
+        data: {
+          proposalVersionId: version.id,
+          action: "APPROVE",
+          actorId: authorization.actorId,
+          overlapAcknowledged,
+          overlapCount,
+          confounders: inputJson(
+            overlapCount > 0 ? ["overlapping_change"] : [],
+          ),
+        },
+      })
+      const outbox = await tx.seoTicketOutbox.create({
+        data: {
+          proposalVersionId: version.id,
+          payloadDigest: version.payloadDigest,
+          payload: inputJson(version.engineeringBrief ?? version.payload),
+          marker: `forge-seo:${version.proposalId}:v${version.version}:${version.payloadDigest.slice(0, 12)}`,
+          nextAttemptAt: new Date(),
+        },
+      })
+      await tx.seoProposalMaterialization.create({
+        data: { proposalVersionId: version.id, status: "TICKET_PENDING" },
+      })
+      const expectedActivationHash = engineeringExpectedActivationHash(
+        version.engineeringBrief,
+      )
+      if (expectedActivationHash) {
+        await tx.seoExperiment.create({
+          data: {
+            proposalVersionId: version.id,
+            preChangeSnapshot: inputJson(version.preChangeSnapshot),
+            treatmentSnapshot: inputJson(version.treatmentSnapshot),
+            preChangeHash: seoContentHash(version.preChangeSnapshot),
+            treatmentHash: seoContentHash(version.treatmentSnapshot),
+            expectedActivationHash,
+            confounders: inputJson([]),
+          },
+        })
+      }
+      await tx.seoProposal.update({
+        where: { id: version.proposalId },
+        data: { status: "MATERIALIZED" },
+      })
+      return {
+        status: "APPROVED",
+        proposalId: version.proposalId,
+        version: version.version,
+        decisionId: decision.id,
+        draftRevisionId: null,
+        editorPath: null,
+        ticketOutboxId: outbox.id,
+        message: "Engineering brief approved and queued for ticket delivery.",
+      }
+    }
+    try {
+      const materialized = await this.targets.materializeEditorialDraft({
+        tx,
+        version,
+        actorId: authorization.actorId,
+      })
+      const decision = await tx.seoDecision.create({
+        data: {
+          proposalVersionId: version.id,
+          action: "APPROVE",
+          actorId: authorization.actorId,
+          overlapAcknowledged,
+          overlapCount,
+          confounders: inputJson(
+            overlapCount > 0 ? ["overlapping_change"] : [],
+          ),
+        },
+      })
+      await tx.seoProposalMaterialization.create({
+        data: {
+          proposalVersionId: version.id,
+          status: "DRAFT_CREATED",
+          contentRevisionId: materialized.revisionId,
+          editorPath: materialized.editorPath,
+        },
+      })
+      await tx.seoExperiment.create({
+        data: {
+          proposalVersionId: version.id,
+          preChangeSnapshot: materialized.preChangeSnapshot,
+          treatmentSnapshot: materialized.treatmentSnapshot,
+          preChangeHash: materialized.preChangeHash,
+          treatmentHash: materialized.treatmentHash,
+          expectedActivationHash: materialized.expectedActivationHash,
+          confounders: inputJson([]),
+        },
+      })
+      await tx.seoProposal.update({
+        where: { id: version.proposalId },
+        data: { status: "MATERIALIZED" },
+      })
+      return {
+        status: "APPROVED",
+        proposalId: version.proposalId,
+        version: version.version,
+        decisionId: decision.id,
+        draftRevisionId: materialized.revisionId,
+        editorPath: materialized.editorPath,
+        ticketOutboxId: null,
+        message: "Editorial draft created. Canonical content is unchanged.",
+      }
+    } catch (error) {
+      if (error instanceof SeoTargetStaleError) {
+        await tx.seoProposal.update({
+          where: { id: version.proposalId },
+          data: { status: "STALE" },
+        })
+        return this.statusDecision(
+          version,
+          "STALE",
+          "The canonical target changed; regenerate the proposal.",
+        )
+      }
+      if (error instanceof SeoTargetConflictError) {
+        return this.statusDecision(
+          version,
+          "CONFLICT",
+          "An existing human or AI draft must be resolved first.",
+        )
+      }
+      throw error
+    }
   }
 
   async reviewLesson({
@@ -3092,7 +3371,7 @@ export class SeoExperimentService {
 
   private async consumeApprovalNonce(
     tx: SeoTransaction,
-    assertion: VerifiedSeoApprovalAssertion,
+    assertion: SeoNonceAuthorization,
     proposalVersionId: string,
   ) {
     try {

@@ -499,8 +499,8 @@ untouched; this surface is REST-owned.
   window), stored Firecrawl/direct-page observations scoped to the canonical
   URL (markdown never selected), the Watch route-alert ledger, and
   proposals/versions/decisions/materializations/experiments/evaluations.
-  Each section carries `state` (`available | partial | stale | compacted |
-  unavailable | not_connected`), source, window, and caveats. GA4 page/CTA,
+  Each section carries a source, a window, caveats, and a `state`:
+  `available | partial | stale | compacted | unavailable | not_connected`. GA4 page/CTA,
   watch depth, AI referrals, bot visits, and cache history have no durable
   per-page source and are explicit `not_connected` sections, never numeric
   zero. Retained decisions are a thresholded subset, so absence from the
