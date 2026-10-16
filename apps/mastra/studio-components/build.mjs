@@ -77,4 +77,30 @@ for (const [name, uploaded] of Object.entries(COMPONENTS)) {
     `${name}: ${bytes} bytes${bytes > 32768 ? " (OVER the 32768 limit)" : ""}, ${status}`,
   )
 }
+/** One source, one build per script: Latin and Cyrillic subsets do not fit
+ *  in one component under the size limit. `__FONT__` is the subset. */
+const VARIANTS = {
+  "reveal-serif-en": {
+    src: "reveal-serif",
+    font: "literata400-latin.woff2",
+    uploaded: "8d1e837444e6bc3c2158bc984a6a8e73c3b43fe2b58c5416f02eabaf280c5de2",
+  },
+  "reveal-serif-ru": {
+    src: "reveal-serif",
+    font: "literata400-cyrillic.woff2",
+    uploaded: "83db64eda0373e0fbf92e84006743bbfb928fe5cf2ab64b8593f8c9e696dd249",
+  },
+}
+for (const [name, v] of Object.entries(VARIANTS)) {
+  const code = readFileSync(path.join(here, "src", `${v.src}.tsx`), "utf8")
+    .split(`"__FONT__"`)
+    .join(JSON.stringify(font(v.font)))
+  const bytes = Buffer.byteLength(code)
+  const digest = createHash("sha256").update(code).digest("hex")
+  writeFileSync(path.join(here, "dist", `${name}.tsx`), code)
+  if (bytes > 32768) failed = true
+  console.log(
+    `${name}: ${bytes} bytes${bytes > 32768 ? " (OVER the 32768 limit)" : ""}, ${digest === v.uploaded ? "matches the uploaded version" : "DIFFERS from the uploaded version"}`,
+  )
+}
 if (failed) process.exit(1)

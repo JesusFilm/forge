@@ -1,0 +1,885 @@
+{
+  "note": "Studio Manager (Shorts) components for Daily Bible Pause devotionals. Built files: dist/ (rebuilt by build.mjs, git-ignored) or uploaded/ (exact uploaded bytes kept where the source no longer rebuilds them). Paste 'registration' as-is into a project's document.components[] (or a register-component operation). Register each code asset under ONE versionId per project (a second versionId for the same asset broke renders, 2026-10-08). Every item must set every control.",
+  "components": [
+    {
+      "versionId": "film-look-v1",
+      "purpose": "Dims (optionally grades) the picture under text. Own visual track above the clips.",
+      "language": "any",
+      "built": "dist/film-look.tsx",
+      "source": "src/film-look.tsx",
+      "registration": {
+        "versionId": "film-look-v1",
+        "code": {
+          "assetId": "cf5f75d9-9264-474b-8307-daaf4e949b95",
+          "versionId": "cmuqti59g5todno0saa2v6d1n",
+          "digest": "7e945146e329dae08872656357933eb44a40dbd76eb1e6fe149dfe08bbf64f70"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "dim": {
+            "type": "number",
+            "min": 0,
+            "max": 0.7
+          },
+          "grade": {
+            "type": "boolean"
+          },
+          "grain": {
+            "type": "number",
+            "min": 0,
+            "max": 0.3
+          },
+          "warmth": {
+            "type": "number",
+            "min": 0,
+            "max": 0.4
+          },
+          "vignette": {
+            "type": "boolean"
+          },
+          "fadeInSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "dbp-mark-v1",
+      "purpose": "Daily Bible Pause book mark and name at the top (top 230).",
+      "language": "any",
+      "built": "uploaded/dbp-mark-v1.tsx",
+      "source": null,
+      "registration": {
+        "versionId": "dbp-mark-v1",
+        "code": {
+          "assetId": "e1665210-b1d5-4165-9fd8-44bcc6a759a1",
+          "versionId": "cmuzosppa86blkh0sk8vozu4i",
+          "digest": "37e2abe4fdbfa42e4617a8aa16f5b92b95d9e870cedf7a946bd5dbab17ec2cec"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1600
+          },
+          "opacity": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "fadeInSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "Caption-orange",
+      "purpose": "Word-by-word kinetic caption: hero phrase big serif caps, accents italic, rest Inter caps. wordTimes = each word's start (s) from the item start, comma separated, one per word of text. Latin only.",
+      "language": "english",
+      "built": "uploaded/caption-orange.tsx",
+      "source": null,
+      "registration": {
+        "versionId": "Caption-orange",
+        "code": {
+          "assetId": "6196cff0-11cb-4909-83eb-8eec609152d5",
+          "versionId": "cmuzrdbiu8yl3kh0sw6s877tx",
+          "digest": "4986c0096dfef5a3c516ccd9d28603d4a774397e9167a32ffb074e61bc32df84"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "hero": {
+            "type": "text",
+            "maxLength": 100
+          },
+          "side": {
+            "type": "enum",
+            "values": [
+              "left",
+              "right"
+            ]
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "scrim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "accents": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "wordTimes": {
+            "type": "text",
+            "maxLength": 400
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "flashColor": {
+            "type": "color"
+          },
+          "accentColor": {
+            "type": "color"
+          },
+          "wordStepSec": {
+            "type": "number",
+            "min": 0.05,
+            "max": 1.5
+          },
+          "bottomPercent": {
+            "type": "number",
+            "min": 0,
+            "max": 80
+          },
+          "startDelaySec": {
+            "type": "number",
+            "min": 0,
+            "max": 5
+          },
+          "keepPunctuation": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "versionId": "paper-strips-v1",
+      "purpose": "Typed text on torn paper strips; '|' starts a new strip. Latin only.",
+      "language": "english",
+      "built": "uploaded/paper-strips-v1.tsx",
+      "source": null,
+      "registration": {
+        "versionId": "paper-strips-v1",
+        "code": {
+          "assetId": "abb331a0-d001-4ed0-8697-572cfce47e0d",
+          "versionId": "cmuzosp3n86bfkh0s00skcjfz",
+          "digest": "7aedbbe170f1fa6f643eb3f0cbef4868deb6eb020bba43dca497b2603789f952"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1600
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 300
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "charsPerSec": {
+            "type": "number",
+            "min": 4,
+            "max": 80
+          },
+          "startDelaySec": {
+            "type": "number",
+            "min": 0,
+            "max": 10
+          }
+        }
+      }
+    },
+    {
+      "versionId": "kinetic-ru-v1",
+      "purpose": "Russian Caption-orange (Cyrillic subsets, Russian function words).",
+      "language": "russian",
+      "built": "uploaded/kinetic-ru-v1.tsx",
+      "source": null,
+      "registration": {
+        "versionId": "kinetic-ru-v1",
+        "code": {
+          "assetId": "9aa1e7cd-b617-4e0f-8d79-a3c027587747",
+          "versionId": "cmv0woyr20d84or0s7285cd34",
+          "digest": "1950d513c1eef46d2d462e333e64f5ee4650d5a62fe2eeb1ad4ba9d3fa71393d"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "hero": {
+            "type": "text",
+            "maxLength": 100
+          },
+          "side": {
+            "type": "enum",
+            "values": [
+              "left",
+              "right"
+            ]
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "scrim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "accents": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "wordTimes": {
+            "type": "text",
+            "maxLength": 400
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "flashColor": {
+            "type": "color"
+          },
+          "accentColor": {
+            "type": "color"
+          },
+          "wordStepSec": {
+            "type": "number",
+            "min": 0.05,
+            "max": 1.5
+          },
+          "bottomPercent": {
+            "type": "number",
+            "min": 0,
+            "max": 80
+          },
+          "startDelaySec": {
+            "type": "number",
+            "min": 0,
+            "max": 5
+          },
+          "keepPunctuation": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "versionId": "cta-calm-ru-v1",
+      "purpose": "Calm serif line under a thin gold hairline (Cyrillic + Latin).",
+      "language": "russian",
+      "built": "uploaded/cta-calm-ru-v1.tsx",
+      "source": null,
+      "registration": {
+        "versionId": "cta-calm-ru-v1",
+        "code": {
+          "assetId": "74c6e831-16fd-4ad4-b9c4-8d7ddcf691e5",
+          "versionId": "cmv0wozat0d88or0s6j3s4zss",
+          "digest": "fb142121506c6d8cdea8600157d0106bf809895f8c4e9246deafd446f74d90f4"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "scrim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "bottomPercent": {
+            "type": "number",
+            "min": 0,
+            "max": 80
+          }
+        }
+      }
+    },
+    {
+      "versionId": "reveal-serif-en-v1",
+      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016).",
+      "language": "english",
+      "built": "dist/reveal-serif-en.tsx",
+      "source": "src/reveal-serif.tsx",
+      "registration": {
+        "versionId": "reveal-serif-en-v1",
+        "code": {
+          "assetId": "7a564a24-bd97-4b1a-ba86-e9b0378d151c",
+          "versionId": "cmvasf3jzi90hqa0ssowx31xj",
+          "digest": "8d1e837444e6bc3c2158bc984a6a8e73c3b43fe2b58c5416f02eabaf280c5de2"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "wordTimes": {
+            "type": "text",
+            "maxLength": 1200
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "fontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "color": {
+            "type": "color"
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      },
+      "example": {
+        "text": "He is the righteous Judge, and he is a loving Father.",
+        "wordTimes": "0.3,0.5,0.7,0.9,1.3,1.8,2.0,2.2,2.4,2.8,3.2",
+        "highlight": "loving Father",
+        "fontSize": 64,
+        "top": 960,
+        "width": 760,
+        "color": "#f4efe8",
+        "fadeOutSec": 0.4
+      }
+    },
+    {
+      "versionId": "reveal-serif-ru-v1",
+      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016).",
+      "language": "russian",
+      "built": "dist/reveal-serif-ru.tsx",
+      "source": "src/reveal-serif.tsx",
+      "registration": {
+        "versionId": "reveal-serif-ru-v1",
+        "code": {
+          "assetId": "2b441a0e-c8de-4538-9e49-cd89067f5d3a",
+          "versionId": "cmvasf43ci90rqa0sd3gph30n",
+          "digest": "83db64eda0373e0fbf92e84006743bbfb928fe5cf2ab64b8593f8c9e696dd249"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "wordTimes": {
+            "type": "text",
+            "maxLength": 1200
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "fontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "color": {
+            "type": "color"
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      },
+      "example": {
+        "text": "He is the righteous Judge, and he is a loving Father.",
+        "wordTimes": "0.3,0.5,0.7,0.9,1.3,1.8,2.0,2.2,2.4,2.8,3.2",
+        "highlight": "loving Father",
+        "fontSize": 64,
+        "top": 960,
+        "width": 760,
+        "color": "#f4efe8",
+        "fadeOutSec": 0.4
+      }
+    },
+    {
+      "versionId": "kinetic-question-v2",
+      "purpose": "Earlier word-by-word caption (no flash colour); prefer Caption-orange.",
+      "language": "english",
+      "built": "dist/kinetic-question.tsx",
+      "source": "src/kinetic-question.tsx",
+      "registration": {
+        "versionId": "kinetic-question-v2",
+        "code": {
+          "assetId": "848e457b-fb30-4d71-9244-893692ab1265",
+          "versionId": "cmuvmh0o5cjxapb0sobaqavh6",
+          "digest": "df1db97cb78be400caa98853d674ff717de8d2f635d17ede989ede8a533b6375"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "hero": {
+            "type": "text",
+            "maxLength": 100
+          },
+          "side": {
+            "type": "enum",
+            "values": [
+              "left",
+              "right"
+            ]
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "scrim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "accents": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "wordTimes": {
+            "type": "text",
+            "maxLength": 400
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "accentColor": {
+            "type": "color"
+          },
+          "wordStepSec": {
+            "type": "number",
+            "min": 0.05,
+            "max": 1.5
+          },
+          "bottomPercent": {
+            "type": "number",
+            "min": 0,
+            "max": 80
+          },
+          "startDelaySec": {
+            "type": "number",
+            "min": 0,
+            "max": 5
+          },
+          "keepPunctuation": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "versionId": "history-credit-v1",
+      "purpose": "Book icon, title ('Historical Context') and 'SOURCE: …' top left. Latin only.",
+      "language": "english",
+      "built": "dist/history-credit.tsx",
+      "source": "src/history-credit.tsx",
+      "registration": {
+        "versionId": "history-credit-v1",
+        "code": {
+          "assetId": "f9c7cb2b-ff07-45dc-9318-bea66dea04c1",
+          "versionId": "cmuvmeg6qcj9wpb0souhce6hu",
+          "digest": "e66c407c2ed1353d6647891c992ab1988869cb35998be7324c4e30f1069e7527"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "title": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "source": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "serif-line-v1",
+      "purpose": "One PT Serif italic line (e.g. 'From Full Devotional'). Latin only.",
+      "language": "english",
+      "built": "dist/serif-line.tsx",
+      "source": "src/serif-line.tsx",
+      "registration": {
+        "versionId": "serif-line-v1",
+        "code": {
+          "assetId": "1ebf3ea4-987e-4fd8-8cff-aee6080cfb15",
+          "versionId": "cmuvmegr3cja0pb0st5j30oef",
+          "digest": "0ecb8c1a5f85d48c21c7e1c5c115ba2891bce13a28d3eb93cfa974e172901a44"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1600
+          },
+          "left": {
+            "type": "number",
+            "min": 0,
+            "max": 900
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "align": {
+            "type": "enum",
+            "values": [
+              "left",
+              "center"
+            ]
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "inDelaySec": {
+            "type": "number",
+            "min": 0,
+            "max": 10
+          }
+        }
+      }
+    },
+    {
+      "versionId": "close-question-v1",
+      "purpose": "Silent closing line over a dim. Renders small; native Inter 600 66 text reads better.",
+      "language": "english",
+      "built": "dist/close-question.tsx",
+      "source": "src/close-question.tsx",
+      "registration": {
+        "versionId": "close-question-v1",
+        "code": {
+          "assetId": "09254565-4f18-4258-89eb-875a4f6e83fe",
+          "versionId": "cmuvmehb1cja4pb0s6fxfxe5o",
+          "digest": "80fc723a7c4256006c9c901e29eb9744eeaef3a3c2031b6e699bb568b3c2b747"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "dim": {
+            "type": "number",
+            "min": 0,
+            "max": 0.8
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1600
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    {
+      "versionId": "brand-mark-v1",
+      "purpose": "Jesus Film Project logo animation of the vertical teaser (the lockup is read from DevotionalVideo.tsx).",
+      "language": "any",
+      "built": "dist/brand-mark.tsx",
+      "source": "src/brand-mark.tsx",
+      "registration": {
+        "versionId": "brand-mark-v1",
+        "code": {
+          "assetId": "c7215d4d-d4fb-4351-936b-1784faf174e2",
+          "versionId": "cmuqti5td5toino0si741uyh0",
+          "digest": "d7a15d38c9b991df93967c10cae21bb445e2bd9d10402ecdf5af04aa359da6de"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "spanSec": {
+            "type": "number",
+            "min": 0.5,
+            "max": 8
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "topPercent": {
+            "type": "number",
+            "min": 0,
+            "max": 90
+          }
+        }
+      }
+    }
+  ]
+}
