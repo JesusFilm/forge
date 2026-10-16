@@ -34,6 +34,7 @@ studio-components/examples/widow-en.json):
               one sentence each; a callout stays up over consecutive
               sentences that carry the same callout text
   takeaway, question, prayer   strings
+  takeawayHighlight  optional phrase of the takeaway set in italic
   verse       {text, ref}  ref as shown, "ROMANS 12:12 · BSB"
   music       asset reference {assetId, versionId, digest} or null
   voices      optional {main, depth}: speech templates from the approved
@@ -72,6 +73,16 @@ LOCALE = {
 }
 
 
+PACKS = {
+    "en": ["font-sourceserif300i-latin-v1", "font-literata400-latin-v1", "font-literata400i-latin-v1",
+           "font-literata500-latin-v1", "font-literata500i-latin-v1", "font-inter600caps-latin-v1"],
+    "ru": ["font-literata400-latin-v1", "font-literata400-cyrillic-v1", "font-literata400i-latin-v1",
+           "font-literata400i-cyrillic-v1", "font-literata500-latin-v1", "font-literata500-cyrillic-v1",
+           "font-literata500i-latin-v1", "font-literata500i-cyrillic-v1", "font-inter600caps-latin-v1",
+           "font-inter600caps-cyrillic-v1"],
+}
+
+
 def f(sec):
     return max(1, round(sec * FPS))
 
@@ -87,7 +98,8 @@ def main():
     lang = spec["lang"]
     L = LOCALE[lang]
     reg = {c["versionId"]: c["registration"] for c in json.load(open(os.path.join(HERE, "registry.json")))["components"]}
-    used = [L["caption"], "dbp-mark-v1", "film-look-v1", "step-line-v1",
+    used = PACKS[lang] + ["backdrop-blur-v1", "takeaway-v1", "closing-verse-v1", "pray-block-v1",
+            L["caption"], "dbp-mark-v1", "film-look-v1", "step-line-v1",
             f"scripture-scroll-{lang}-v1", f"reveal-serif-{lang}-v2", f"verse-callout-{lang}-v1"]
     missing = [u for u in used if u not in reg]
     if missing:
@@ -190,34 +202,50 @@ def main():
             id = f"callout-{start}"
             items[:] = [x for x in items if x["id"] != id]
             comp(id, "brand", start, t + dur - start, f"verse-callout-{lang}-v1",
-                 {"text": c["text"], "highlight": c.get("highlight", ""), "top": 300, "width": 860,
+                 {"text": c["text"], "highlight": c.get("highlight", ""), "top": 430, "width": 860,
                   "maxHeight": 420, "maxFontSize": 56, "litAtSec": 1.2, "fadeOutSec": 0.5})
         elif sent.get("credit"):
             text(f"credit-{i + 1:02d}", "brand", t, min(dur, f(5)), sent["credit"], -560)
         t += dur
+    # The closing cards (owner, 2026-10-16): the takeaway in large gold over a
+    # light blur, the verse in italic over a deepening blur, then PRAY, then
+    # the question and the prayer together, left-aligned, over a heavy blur.
+    def blur(id, start, dur, a, b, ramp, scrim, grain):
+        comp(id, "look", start, dur, "backdrop-blur-v1",
+             {"fromPx": a, "toPx": b, "rampSec": ramp, "scrim": scrim, "grain": grain,
+              "fadeInSec": 0.3, "fadeOutSec": 0})
+
+    closing_start = t
     dur = f(spoken_sec(spec["takeaway"], L["wps"], 1.0))
-    reveal("takeaway", t, dur, spec["takeaway"], size=64)
+    blur("blur-takeaway", t, dur, 8, 8, 0.1, 0.42, 0)
+    comp("takeaway", "cards", t, dur, "takeaway-v1",
+         {"text": spec["takeaway"], "highlight": spec.get("takeawayHighlight", ""), "centerY": 900,
+          "width": 820, "fontSize": 84, "color": "#e6a35c", "revealSec": max(1.0, dur / FPS * 0.6), "fadeOutSec": 0.4})
     say("takeaway", spec["takeaway"], "main")
     t += dur
     v = spec["verse"]
     dur = f(spoken_sec(v["text"], L["wps"], 1.2))
-    reveal("closing-verse", t, dur, v["text"], top=900)
-    text("closing-verse-ref", "brand", t, dur, v["ref"], 300)
+    blur("blur-verse", t, dur, 8, 25, 1.6, 0.46, 0.5)
+    comp("closing-verse", "cards", t, dur, "closing-verse-v1",
+         {"text": v["text"].strip("“”«»\""), "citation": v["ref"], "centerY": 900, "width": 820,
+          "fontSize": 62, "revealSec": max(1.0, dur / FPS * 0.65), "fadeOutSec": 0.4})
     say("closing-verse", v["text"], "main")
     t += dur
 
     s = steps("step-pray", t, 2)
+    blur("blur-pray-step", t, s, 25, 44, s / FPS, 0.46, 0.5)
     t += s
-    dur = f(spoken_sec(spec["question"], L["wps"], 1.5))
-    text("ask-label", "brand", t, dur, L["ask"], -260, size=32)
-    reveal("question", t, dur, spec["question"])
-    say("question", spec["question"], "depth")
-    t += dur
-    dur = f(spoken_sec(spec["prayer"], L["wps"], 2.0))
-    text("pray-label", "brand", t, dur, L["talk"], -260, size=32)
-    reveal("prayer", t, dur, spec["prayer"])
-    say("prayer", spec["prayer"], "depth")
-    t += dur
+    q_dur = f(spoken_sec(spec["question"], L["wps"], 1.5))
+    p_dur = f(spoken_sec(spec["prayer"], L["wps"], 2.0))
+    blur("blur-pray", t, q_dur + p_dur, 44, 72, 2.2, 0.36, 0.5)
+    comp("pray-block", "cards", t, q_dur + p_dur, "pray-block-v1",
+         {"askLabel": L["ask"], "question": spec["question"], "prayLabel": L["talk"], "prayer": spec["prayer"],
+          "questionAtSec": 0, "prayerAtSec": round(q_dur / FPS, 2), "left": 130, "top": 560, "width": 760,
+          "fontSize": 56, "fadeOutSec": 0.8})
+    # One item, one voice: question then prayer. After narration, set
+    # prayerAtSec to where the prayer starts in the audio.
+    say("pray-block", spec["question"] + " " + spec["prayer"], "depth")
+    t += q_dur + p_dur
     end_mark = f(4)
     comp("dbp-mark-end", "brand", t, end_mark, "dbp-mark-v1", {"top": 230, "opacity": 0.85, "fadeInSec": 0.6, "fadeOutSec": 0.6})
     t += end_mark
@@ -235,8 +263,11 @@ def main():
         dur = min(each, t - start)
         at = min(shots[k % len(shots)], seg_end - dur / FPS * 0.7 - 0.1)
         video(f"backdrop-{k + 1}", start, dur, at, 0.7)
-    comp("look-reflection", "look", refl_start, span, "film-look-v1",
+    comp("look-reflection", "look", refl_start, closing_start - refl_start, "film-look-v1",
          {"dim": 0.45, "grade": False, "grain": 0, "warmth": 0, "vignette": False, "fadeInSec": 0.3, "fadeOutSec": 0.3})
+    # Font packs: faces the closing components name, over the whole video.
+    for pack in PACKS[lang]:
+        comp(pack, "fonts", 0, t, pack, {})
     if spec.get("music"):
         items.append({"id": "music", "trackId": "music", "startFrame": 0, "durationInFrames": t, "kind": "audio",
                       "asset": spec["music"], "sourceStartMs": 0, "volume": 0.18})
@@ -253,7 +284,7 @@ def main():
     # Studio names languages in full ("english"), as shorts.capture does.
     doc = {"version": 1, "title": spec["title"], "language": spec["source"]["language"], "runtimeVersion": reg["step-line-v1"]["runtimeVersion"],
            "width": W, "height": H, "fps": FPS, "durationInFrames": t,
-           "tracks": [{"id": i, "kind": k} for i, k in [("clips", "visual"), ("look", "visual"), ("captions", "caption"),
+           "tracks": [{"id": i, "kind": k} for i, k in [("fonts", "visual"), ("clips", "visual"), ("look", "visual"), ("captions", "caption"),
                                                          ("cards", "caption"), ("brand", "caption"), ("music", "audio")]],
            "components": [reg[u] for u in used], "items": [], "packRevisionIds": []}
     json.dump(doc, open(os.path.join(out, "create.json"), "w"), ensure_ascii=False, indent=1)

@@ -952,7 +952,7 @@
     },
     {
       "versionId": "verse-callout-en-v1",
-      "purpose": "The verse the reflection is talking about (VerseCalloutOverlay.tsx): light Literata italic in curly quotes; `highlight` (one phrase of the text, at most 24 characters, or \"\") turns white with a gold rule drawn under it at litAtSec, then breathes. Shrinks from maxFontSize to fit maxHeight. 9:16: top 300, width 860, maxHeight 420, maxFontSize 56; put the reflection sentence at top 1140 while it is up.",
+      "purpose": "The verse the reflection is talking about (VerseCalloutOverlay.tsx): light Literata italic in curly quotes; `highlight` (one phrase of the text, at most 24 characters, or \"\") turns white with a gold rule drawn under it at litAtSec, then breathes. Shrinks from maxFontSize to fit maxHeight. 9:16: top 430 (owner moved it down from 300, 2026-10-16), width 860, maxHeight 420, maxFontSize 56; put the reflection sentence at top 1140 while it is up.",
       "language": "en",
       "built": "dist/verse-callout-en.tsx",
       "source": "src/verse-callout.tsx",
@@ -1216,6 +1216,675 @@
             "max": 3
           }
         }
+      }
+    },
+    {
+      "versionId": "backdrop-blur-v1",
+      "purpose": "Blurs and darkens the picture under it, easing fromPx -> toPx over rampSec, with a scrim and fine grain (the closing cards). Put it on the look track over the slow film. Owner levels 9:16: verse 8->25 px over 1.6 s, scrim 0.46; PRAY step 25->44 over the step; question+prayer 44->72 over 2.2 s, scrim 0.36; grain 0.5.",
+      "language": "any",
+      "built": "dist/backdrop-blur.tsx",
+      "source": "src/backdrop-blur.tsx",
+      "registration": {
+        "versionId": "backdrop-blur-v1",
+        "code": {
+          "assetId": "87c4f1bf-8a65-4faf-8e34-0c654ea58471",
+          "versionId": "cmvaxtrfbj999qa0sighdc9yp",
+          "digest": "9c2d5b8661570b4dc9c3647141f74ab7da2207088888ed5358d7db3672500ac9"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "fromPx": {
+            "type": "number",
+            "min": 0,
+            "max": 120
+          },
+          "toPx": {
+            "type": "number",
+            "min": 0,
+            "max": 120
+          },
+          "rampSec": {
+            "type": "number",
+            "min": 0,
+            "max": 10
+          },
+          "scrim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "grain": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "fadeInSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "closing-verse-v1",
+      "purpose": "The closing verse: gold opening quote mark, the verse in light italic (EN Source Serif 4 300, RU Literata italic) revealed letter by letter over revealSec, citation (\"ROMANS 12:12 · BSB\") in gold tracked caps after it. Language-neutral. Needs the font packs on a fonts track. 9:16: centerY 900, width 820, fontSize 62.",
+      "language": "any",
+      "built": "dist/closing-verse.tsx",
+      "source": "src/closing-verse.tsx",
+      "registration": {
+        "versionId": "closing-verse-v1",
+        "code": {
+          "assetId": "43937f5a-be09-4d94-87fe-e82dc3fe389a",
+          "versionId": "cmvaxtrzvj99dqa0smotkxnv5",
+          "digest": "6fb96d511e2f1776c992d83e59203595230b5e74a84993c231bf34f79fb51a6a"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "citation": {
+            "type": "text",
+            "maxLength": 80
+          },
+          "centerY": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "fontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "revealSec": {
+            "type": "number",
+            "min": 0.5,
+            "max": 30
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "takeaway-v1",
+      "purpose": "The takeaway: large Literata 500 in gold (#e6a35c) revealed letter by letter, the highlight phrase italic. Needs font packs literata500 + literata500i. 9:16: centerY 900, width 820, fontSize 84, over backdrop-blur ~8 px.",
+      "language": "any",
+      "built": "dist/takeaway.tsx",
+      "source": "src/takeaway.tsx",
+      "registration": {
+        "versionId": "takeaway-v1",
+        "code": {
+          "assetId": "b254beed-ad14-47b9-beaa-d0304687bd13",
+          "versionId": "cmvaxtshkj99hqa0snt84qr71",
+          "digest": "772d8c8e8354d99372ed19eaf79ab2d00a6122dcfde2ffc8e2a74f55e3ca2753"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 400
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 200
+          },
+          "centerY": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "fontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 160
+          },
+          "color": {
+            "type": "color"
+          },
+          "revealSec": {
+            "type": "number",
+            "min": 0.5,
+            "max": 30
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "pray-block-v1",
+      "purpose": "Question and prayer on one left-aligned screen: gold label, question in Literata, short gold rule, second label, prayer in Literata italic. The prayer appears at prayerAtSec; both stay. Needs font packs literata400, literata400i, inter600caps. 9:16: left 130, top 520, width 760, fontSize 56.",
+      "language": "any",
+      "built": "dist/pray-block.tsx",
+      "source": "src/pray-block.tsx",
+      "registration": {
+        "versionId": "pray-block-v1",
+        "code": {
+          "assetId": "ed0d8a1e-dabd-4d7e-9f21-e135e7b2dbe3",
+          "versionId": "cmvaxtt0dj99lqa0saotbbw09",
+          "digest": "6aa7055503659bf55431505b01e742c559e5e0445dd3141c386cc6f0b8143bc8"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "askLabel": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "question": {
+            "type": "text",
+            "maxLength": 400
+          },
+          "prayLabel": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "prayer": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "questionAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 60
+          },
+          "prayerAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 120
+          },
+          "left": {
+            "type": "number",
+            "min": 0,
+            "max": 1080
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "fontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "font-sourceserif300i-latin-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (sourceserif300i-latin) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "en",
+      "built": "dist/font-sourceserif300i-latin.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-sourceserif300i-latin-v1",
+        "code": {
+          "assetId": "ecddbbb0-0861-4c6f-a1b9-9abfb6e2a2ee",
+          "versionId": "cmvaxttkbj99pqa0sai04t5j2",
+          "digest": "8b045bd4a2a22c8caa832c978a7ebb4ca87ef1e678af67c57bd94b1279016ae8"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata400-latin-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata400-latin) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "en",
+      "built": "dist/font-literata400-latin.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata400-latin-v1",
+        "code": {
+          "assetId": "1cdda704-4146-4f12-a9cc-da68540a788a",
+          "versionId": "cmvaxtu5uj99tqa0sxmucule5",
+          "digest": "cda0c0067169c7e5b93719445e5e2d58174338a436f6dc0219e4737c6bbcdfb3"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata400-cyrillic-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata400-cyrillic) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "ru",
+      "built": "dist/font-literata400-cyrillic.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata400-cyrillic-v1",
+        "code": {
+          "assetId": "e8766967-03b8-44da-91f8-bcbba27b53ae",
+          "versionId": "cmvaxtuq1j99xqa0s3i3g63og",
+          "digest": "e51b0bd3bc697eba0058b7dcd107c0755d78761eb7ddffb2f51d02af735495be"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata400i-latin-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata400i-latin) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "en",
+      "built": "dist/font-literata400i-latin.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata400i-latin-v1",
+        "code": {
+          "assetId": "b10ae50f-1066-4801-a38b-4e63a8d6c85a",
+          "versionId": "cmvaxtv7mj9a1qa0s35lthsk4",
+          "digest": "9277c5e292fb9c3a39218b871148d6208146f88c608497941575bbd7dc032553"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata400i-cyrillic-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata400i-cyrillic) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "ru",
+      "built": "dist/font-literata400i-cyrillic.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata400i-cyrillic-v1",
+        "code": {
+          "assetId": "9a919914-15f6-4f4e-94e6-32a99f70032c",
+          "versionId": "cmvaxtvmrj9a5qa0sv3ngqctr",
+          "digest": "0bd83595ffc4e410492189000a124215d72f3c4dd4359573cc102ec8646466be"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata500-latin-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata500-latin) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "en",
+      "built": "dist/font-literata500-latin.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata500-latin-v1",
+        "code": {
+          "assetId": "a8e920be-e7e5-4383-8bad-055d9c62c6b1",
+          "versionId": "cmvaxtw45j9a9qa0s41umplhj",
+          "digest": "dac3a3851abaf78fd12567bcbd5f6a59938ce95378cfbad23cc7f01dad4d4e09"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata500-cyrillic-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata500-cyrillic) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "ru",
+      "built": "dist/font-literata500-cyrillic.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata500-cyrillic-v1",
+        "code": {
+          "assetId": "c0914aec-f761-4769-9a51-306b9b0bc2cd",
+          "versionId": "cmvaxtwnqj9adqa0sbgr0pwon",
+          "digest": "0adc5af0fcadba08c56d58f5b842af7209486aaf02d159d2743f623e829b1a34"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata500i-latin-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata500i-latin) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "en",
+      "built": "dist/font-literata500i-latin.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata500i-latin-v1",
+        "code": {
+          "assetId": "dc67c4fe-4bcc-49b0-99d1-c42e8f34816c",
+          "versionId": "cmvaxtxcjj9ahqa0s6lp4x1ts",
+          "digest": "1a5c20a1fa878e1da2f62f3abfda79f327eefa92ace2ba454b0eea0484dc48ae"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-literata500i-cyrillic-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (literata500i-cyrillic) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "ru",
+      "built": "dist/font-literata500i-cyrillic.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-literata500i-cyrillic-v1",
+        "code": {
+          "assetId": "72259d21-4a05-40d8-ae90-db2b598a4fea",
+          "versionId": "cmvaxtxyvj9alqa0s3jt24fuv",
+          "digest": "504b46a85b01324509ea65f71c4e956248ff8c25f19bab491c13daaedc0aaa48"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-inter600caps-latin-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (inter600caps-latin) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "en",
+      "built": "dist/font-inter600caps-latin.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-inter600caps-latin-v1",
+        "code": {
+          "assetId": "d7fde835-55d1-41ce-bc40-7d6fdc498faf",
+          "versionId": "cmvaxtysdj9arqa0s0ms8dzcz",
+          "digest": "43bac799bb048f98f629220555845e718fb7b00037db3f7bc7647c5e0185dbfa"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
+      }
+    },
+    {
+      "versionId": "font-inter600caps-cyrillic-v1",
+      "purpose": "Font pack, draws nothing: registers one embedded face (inter600caps-cyrillic) for the text components. Put it on a 'fonts' track over the whole video (from frame 0 to the end).",
+      "language": "ru",
+      "built": "dist/font-inter600caps-cyrillic.tsx",
+      "source": "src/font-pack.tsx",
+      "registration": {
+        "versionId": "font-inter600caps-cyrillic-v1",
+        "code": {
+          "assetId": "67c355e2-0ef1-4d3b-b2b5-4491a19655b8",
+          "versionId": "cmvaxtzbdj9b8qa0si2sswuao",
+          "digest": "900f3609f89948c7e3345ec8720a2a071dd812c22cc8a8e5db17e11d1d8814b9"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {}
       }
     }
   ]

@@ -57,6 +57,10 @@ const COMPONENTS = {
     "80fc723a7c4256006c9c901e29eb9744eeaef3a3c2031b6e699bb568b3c2b747",
   "brand-mark": null,
   "step-line": null,
+  "backdrop-blur": null,
+  "closing-verse": null,
+  "takeaway": null,
+  "pray-block": null,
 }
 
 mkdirSync(path.join(here, "dist"), { recursive: true })
@@ -124,5 +128,36 @@ for (const [name, v] of Object.entries(VARIANTS)) {
   console.log(
     `${name}: ${bytes} bytes${bytes > 32768 ? " (OVER the 32768 limit)" : ""}, ${v.uploaded == null ? "built (no uploaded digest on record)" : digest === v.uploaded ? "matches the uploaded version" : "DIFFERS from the uploaded version"}`,
   )
+}
+/** Font packs: one embedded face per component (src/font-pack.tsx). Latin
+ *  packs cover Latin and punctuation; Cyrillic packs only Cyrillic, so a
+ *  Russian video loads both and each glyph comes from one file. */
+const LATIN = "U+0000-00FF,U+2000-206F"
+const CYRILLIC = "U+0400-04FF"
+const PACKS = {
+  "font-sourceserif300i-latin": ["sourceserif300i-latin.woff2", "DBP Source Serif", "300", "italic", LATIN],
+  "font-literata400-latin": ["literata400-latin.woff2", "DBP Literata", "400", "normal", LATIN],
+  "font-literata400-cyrillic": ["literata400-cyrillic.woff2", "DBP Literata", "400", "normal", CYRILLIC],
+  "font-literata400i-latin": ["literata400i-latin.woff2", "DBP Literata", "400", "italic", LATIN],
+  "font-literata400i-cyrillic": ["literata400i-cyrillic.woff2", "DBP Literata", "400", "italic", CYRILLIC],
+  "font-literata500-latin": ["literata500-latin.woff2", "DBP Literata", "500", "normal", LATIN],
+  "font-literata500-cyrillic": ["literata500-cyrillic.woff2", "DBP Literata", "500", "normal", CYRILLIC],
+  "font-literata500i-latin": ["literata500i-latin.woff2", "DBP Literata", "500", "italic", LATIN],
+  "font-literata500i-cyrillic": ["literata500i-cyrillic.woff2", "DBP Literata", "500", "italic", CYRILLIC],
+  "font-inter600caps-latin": ["inter-600-caps.woff2", "DBP Inter Caps", "600", "normal", LATIN],
+  "font-inter600caps-cyrillic": ["inter600caps-cyrillic.woff2", "DBP Inter Caps", "600", "normal", CYRILLIC],
+}
+const packSrc = readFileSync(path.join(here, "src", "font-pack.tsx"), "utf8")
+for (const [name, [file, family, weight, style, range]] of Object.entries(PACKS)) {
+  const code = packSrc
+    .replace(`"__FONT__"`, JSON.stringify(font(file)))
+    .replace(`"__FAMILY__"`, JSON.stringify(family))
+    .replace(`"__WEIGHT__"`, JSON.stringify(weight))
+    .replace(`"__STYLE__"`, JSON.stringify(style))
+    .replace(`"__RANGE__"`, JSON.stringify(range))
+  const bytes = Buffer.byteLength(code)
+  writeFileSync(path.join(here, "dist", `${name}.tsx`), code)
+  if (bytes > 32768) failed = true
+  console.log(`${name}: ${bytes} bytes${bytes > 32768 ? " (OVER the 32768 limit)" : ""}`)
 }
 if (failed) process.exit(1)

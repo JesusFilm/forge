@@ -66,5 +66,18 @@ if __name__ == "__main__":
     make("literata_italic_var.ttf", {"wght": 400, "opsz": 36}, CYR + ASCII + TYPO, "literata400i-cyrillic.woff2")
     # Russian step labels (ИСТОРИЯ / РАЗМЫШЛЕНИЕ / МОЛИТВА) for step-line;
     # the Latin caps are inter-600-caps.woff2.
+    # The closing cards (2026-10-16): the verse in Source Serif 4 italic 300
+    # (Latin; Russian sets it in Literata italic), the takeaway in Literata
+    # 500 with its italic highlight. Each file becomes one font-pack component.
+    SS = os.path.join(SRC, "sourceserif_italic_var.woff2")
+    if not os.path.exists(SS):
+        data = open(os.path.join(HERE, "..", "..", "..", "packages", "shorts-compositions", "src", "fonts-sourceserif-data.ts")).read()
+        m = re.search(r'SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64\s*=\s*\n?\s*"([A-Za-z0-9+/=]+)"', data)
+        open(SS, "wb").write(base64.b64decode(m.group(1)))
+    make(SS, {"wght": 300}, ASCII + TYPO, "sourceserif300i-latin.woff2")
+    make("literata_var.ttf", {"wght": 500, "opsz": 36}, ASCII + TYPO, "literata500-latin.woff2")
+    make("literata_var.ttf", {"wght": 500, "opsz": 36}, CYR + ASCII + TYPO, "literata500-cyrillic.woff2")
+    make("literata_italic_var.ttf", {"wght": 500, "opsz": 36}, ASCII + TYPO, "literata500i-latin.woff2")
+    make("literata_italic_var.ttf", {"wght": 500, "opsz": 36}, CYR + ASCII + TYPO, "literata500i-cyrillic.woff2")
     INTER_CYR = os.path.join(HERE, "..", "..", "..", "packages", "shorts-compositions", "fonts", "inter-cyrillic.woff2")
     make(INTER_CYR, {"wght": 600}, CYR[:33] + " ", "inter600caps-cyrillic.woff2")
