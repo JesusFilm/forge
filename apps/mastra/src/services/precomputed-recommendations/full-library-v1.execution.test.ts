@@ -534,11 +534,13 @@ describe("bounded full-library reading concurrency", () => {
       expect(await readdir(join(input.runDirectory, "calls"))).toHaveLength(6)
     },
   )
-  it.each([false, true, "invalid-connection"] as const)(
+  it.each([false, true, "invalid-connection", "incomplete-discovery"] as const)(
     "stops new reads and waits for in-flight receipts after failure (%s)",
     async (failureCase) => {
       const unknown = failureCase === true
       const invalidConnection = failureCase === "invalid-connection"
+      const incomplete = failureCase === "incomplete-discovery"
+      const semanticFailure = invalidConnection || incomplete
       const input = await parallelInput()
       const dispatched: string[] = [],
         settled: string[] = []
@@ -561,7 +563,7 @@ describe("bounded full-library reading concurrency", () => {
           await bothStarted.reached
           if (targetId !== "source-a") await releaseSibling.reached
           settled.push(targetId)
-          if (targetId === "source-a" && !invalidConnection)
+          if (targetId === "source-a" && !semanticFailure)
             throw new CodexSubscriptionAstraError("provider_unavailable", {
               consumptionUnknown: unknown,
               usage: unknown ? undefined : { inputTokens: 12, outputTokens: 3 },
@@ -573,8 +575,13 @@ describe("bounded full-library reading concurrency", () => {
               output: request.schema.parse({
                 reviewedSourceIds: ["source-a"],
                 reviewedTargetIds: [targetId],
-                allWorthwhileConnectionsReturned: true,
-                connections: [connection(targetId)],
+                allWorthwhileConnectionsReturned: !(
+                  incomplete && targetId === "source-a"
+                ),
+                connections:
+                  incomplete && targetId === "source-a"
+                    ? []
+                    : [connection(targetId)],
                 notes: "Settled after sibling failure.",
               }),
               usage: { inputTokens: 100, outputTokens: 20 },
@@ -594,14 +601,16 @@ describe("bounded full-library reading concurrency", () => {
           return { error }
         },
       )
-      const failureCode = invalidConnection
-        ? "connection_excluded"
-        : "provider_unavailable"
+      const failureCode = incomplete
+        ? "discovery_incomplete"
+        : invalidConnection
+          ? "connection_excluded"
+          : "provider_unavailable"
       try {
         // The sibling remains physically in flight while the first terminal
         // receipt is persisted. A failed receipt is written after pausing;
-        // Invalid self-recommendations pass the ID schema but must fail
-        // semantic validation after their successful physical receipt.
+        // Self-recommendations and an explicit incomplete discovery pass the
+        // schema but fail semantics after their successful physical receipt.
         await expect
           .poll(
             async () => {
@@ -618,7 +627,7 @@ describe("bounded full-library reading concurrency", () => {
             },
             { timeout: 5_000, interval: 10 },
           )
-          .toMatchObject({ status: invalidConnection ? "succeeded" : "failed" })
+          .toMatchObject({ status: semanticFailure ? "succeeded" : "failed" })
         expect([...dispatched].sort()).toEqual(["source-a", "target-b"])
         expect(settled).toEqual(["source-a"])
         expect(finished).toBe(false)
@@ -647,12 +656,12 @@ describe("bounded full-library reading concurrency", () => {
         ),
       )
       expect(failed).toMatchObject({
-        status: invalidConnection ? "succeeded" : "failed",
+        status: semanticFailure ? "succeeded" : "failed",
         consumptionUnknown: unknown,
         reserved: true,
         usage: unknown
           ? null
-          : invalidConnection
+          : semanticFailure
             ? { inputTokens: 100, outputTokens: 20 }
             : { inputTokens: 12, outputTokens: 3 },
       })
@@ -661,6 +670,22 @@ describe("bounded full-library reading concurrency", () => {
         usage: { inputTokens: 100, outputTokens: 20 },
         consumptionUnknown: false,
       })
+      if (incomplete) {
+        expect(
+          JSON.parse(
+            await readFile(
+              join(input.runDirectory, "calls/read-0000/result.json"),
+              "utf8",
+            ),
+          ),
+        ).toMatchObject({ allWorthwhileConnectionsReturned: false })
+        await expect(
+          readFile(join(input.runDirectory, "coverage-0000.json")),
+        ).rejects.toMatchObject({ code: "ENOENT" })
+        await expect(
+          readFile(join(input.runDirectory, "recommendations.json")),
+        ).rejects.toMatchObject({ code: "ENOENT" })
+      }
       expect(
         JSON.parse(
           await readFile(
@@ -673,7 +698,7 @@ describe("bounded full-library reading concurrency", () => {
         readFile(join(input.runDirectory, "producer.lock")),
       ).rejects.toMatchObject({ code: "ENOENT" })
       await expect(runFullLibrary(run)).rejects.toThrow(
-        invalidConnection ? "reading_run_paused" : "call_not_resumable",
+        semanticFailure ? "reading_run_paused" : "call_not_resumable",
       )
       expect(dispatched).toHaveLength(2)
     },
