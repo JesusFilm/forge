@@ -1219,17 +1219,17 @@
       }
     },
     {
-      "versionId": "backdrop-blur-v1",
-      "purpose": "Blurs and darkens the picture under it, easing fromPx -> toPx over rampSec, with a scrim and fine grain (the closing cards). Put it on the look track over the slow film. Owner levels 9:16: verse 8->25 px over 1.6 s, scrim 0.46; PRAY step 25->44 over the step; question+prayer 44->72 over 2.2 s, scrim 0.36; grain 0.5.",
+      "versionId": "backdrop-blur-v3",
+      "purpose": "Blurs and darkens the picture under it, easing fromPx -> toPx over rampSec, with a scrim and fine grain (the closing cards). Put it on the look track over the slow film. Owner levels 9:16: verse 8->25 px over 1.6 s, scrim 0.46; PRAY step 25->44 over the step; question+prayer 44->72 over 2.2 s, scrim 0.36; grain 0.5. v3 (2026-10-16): grain is a CSS dot pattern, and a zero fadeOutSec is guarded. v1/v2 failed every render that set fadeOutSec 0 (interpolate needs a strictly increasing range); do not use them.",
       "language": "any",
       "built": "dist/backdrop-blur.tsx",
       "source": "src/backdrop-blur.tsx",
       "registration": {
-        "versionId": "backdrop-blur-v1",
+        "versionId": "backdrop-blur-v3",
         "code": {
-          "assetId": "87c4f1bf-8a65-4faf-8e34-0c654ea58471",
-          "versionId": "cmvaxtrfbj999qa0sighdc9yp",
-          "digest": "9c2d5b8661570b4dc9c3647141f74ab7da2207088888ed5358d7db3672500ac9"
+          "assetId": "53cdf27c-1345-4b29-86b9-971481bffdc6",
+          "versionId": "cmvb2tszfka2nqa0sqagey45e",
+          "digest": "a67d6b0f8d0b65b3490d1dacb0303d506bb53bd7c711cc5ce33174d3f40c769c"
         },
         "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
         "dependencies": [

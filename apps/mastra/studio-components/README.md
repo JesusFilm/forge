@@ -48,6 +48,11 @@ python3 -I apps/mastra/studio-components/make-devotional-project.py apps/mastra/
   are separate components for that reason (`reveal-serif-en-v2` /
   `reveal-serif-ru-v2`).
 - Every item must set every declared control (colours cannot be `""`).
+- Never let a fade be zero long: `interpolate(t, [end - fadeOutSec, end], ...)`
+  with fadeOutSec 0 throws (the range must strictly increase), and Studio
+  reports only "Render execution failed". Guard with `Math.max(0.01, ...)`;
+  for components uploaded before this rule, set the fade above 0
+  (backdrop-blur v1/v2 failed this way, 2026-10-16).
 - Register each code asset under ONE versionId per project (a second
   versionId for the same asset made renders fail, 2026-10-08).
 - A change is a new upload under a new name (`-v2`); never repoint an

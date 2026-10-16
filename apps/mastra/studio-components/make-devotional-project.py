@@ -98,7 +98,7 @@ def main():
     lang = spec["lang"]
     L = LOCALE[lang]
     reg = {c["versionId"]: c["registration"] for c in json.load(open(os.path.join(HERE, "registry.json")))["components"]}
-    used = PACKS[lang] + ["backdrop-blur-v1", "takeaway-v1", "closing-verse-v1", "pray-block-v1",
+    used = PACKS[lang] + ["backdrop-blur-v3", "takeaway-v1", "closing-verse-v1", "pray-block-v1",
             L["caption"], "dbp-mark-v1", "film-look-v1", "step-line-v1",
             f"scripture-scroll-{lang}-v1", f"reveal-serif-{lang}-v2", f"verse-callout-{lang}-v1"]
     missing = [u for u in used if u not in reg]
@@ -211,9 +211,9 @@ def main():
     # light blur, the verse in italic over a deepening blur, then PRAY, then
     # the question and the prayer together, left-aligned, over a heavy blur.
     def blur(id, start, dur, a, b, ramp, scrim, grain):
-        comp(id, "look", start, dur, "backdrop-blur-v1",
+        comp(id, "look", start, dur, "backdrop-blur-v3",
              {"fromPx": a, "toPx": b, "rampSec": ramp, "scrim": scrim, "grain": grain,
-              "fadeInSec": 0.3, "fadeOutSec": 0})
+              "fadeInSec": 0.3, "fadeOutSec": 0.05})
 
     closing_start = t
     dur = f(spoken_sec(spec["takeaway"], L["wps"], 1.0))

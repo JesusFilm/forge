@@ -57,7 +57,7 @@ const COMPONENTS = {
     "80fc723a7c4256006c9c901e29eb9744eeaef3a3c2031b6e699bb568b3c2b747",
   "brand-mark": null,
   "step-line": null,
-  "backdrop-blur": null,
+  "backdrop-blur": null, // uploaded as backdrop-blur-v2 (v1 had an SVG grain filter that failed in Studio)
   "closing-verse": null,
   "takeaway": null,
   "pray-block": null,

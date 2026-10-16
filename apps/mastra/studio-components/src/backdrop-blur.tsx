@@ -28,7 +28,7 @@ export default function BackdropBlur(props: Props) {
   })
   const fade =
     interpolate(t, [0, Math.max(0.01, props.fadeInSec)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) *
-    interpolate(t, [end - props.fadeOutSec, end], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    interpolate(t, [end - Math.max(0.01, props.fadeOutSec), end], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
   return (
     <div style={{ position: "absolute", inset: 0, opacity: fade, pointerEvents: "none" }}>
       <div
@@ -41,13 +41,21 @@ export default function BackdropBlur(props: Props) {
         }}
       />
       {props.grain > 0 ? (
-        <svg width="100%" height="100%" style={{ position: "absolute", inset: 0, opacity: props.grain, mixBlendMode: "overlay" }}>
-          <filter id="dbp-grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed={frame % 30} stitchTiles="stitch" />
-            <feColorMatrix type="saturate" values="0" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#dbp-grain)" />
-        </svg>
+        // Grain without SVG (a feTurbulence filter made the Studio render
+        // fail, 2026-10-16): two fine offset dot patterns, overlay-blended,
+        // shifted a step every frame so the dither does not sit still.
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: props.grain * 0.5,
+            mixBlendMode: "overlay",
+            backgroundImage:
+              "radial-gradient(rgba(255,255,255,0.5) 0.6px, transparent 1px), radial-gradient(rgba(0,0,0,0.6) 0.6px, transparent 1px)",
+            backgroundSize: "3px 3px, 4px 4px",
+            backgroundPosition: `${frame % 3}px ${(frame * 2) % 3}px, ${(frame * 3) % 4}px ${frame % 4}px`,
+          }}
+        />
       ) : null}
     </div>
   )
