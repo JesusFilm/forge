@@ -99,6 +99,29 @@ only the port; production still requires the exact canonical origin. Follow
 path, status, timing, and request ID evidence, and delete raw Playwright traces
 before a PR.
 
+## Watch SEO admin workspace
+
+`WatchSeoAdminBoundary` mounts immediately after the required semantic
+recommendation slot, but renders nothing until the existing `AccountControl`
+session request reports a signed-in viewer and Admin's dedicated capability
+endpoint confirms a live `ADMIN` role. Keep the page route static: neither
+cookies nor private evidence may enter RSC, ISR HTML, or shared caches.
+
+The browser calls only Web's private `/watch/api/watch-seo/*` adapters. Web
+holds `WATCH_SEO_API_KEYS` server-side and forwards the encrypted Watch access
+token separately; this key must never fall back to `WEB_ADMIN_API_KEYS` or be
+exposed as `NEXT_PUBLIC_*`. Capability and evidence are rechecked per request,
+use `private, no-store`, and fail closed when the encrypted session token is
+absent. The workspace chunk and evidence load only after an authorized Admin
+selects the tab. Keep `data-dd-privacy="mask"` on the whole panel.
+
+The Web adapter validates and projects Admin's versioned retained-data model
+into the presentation DTO. Missing GA4, watch-depth, AI-referral, bot, or cache
+sources stay explicit `not_connected`/`unavailable` values; never substitute
+zero or prototype fixtures. Opportunity controls may link to Admin's separate
+origin for confirmation, but no Watch-origin route may perform a privileged
+proposal decision or publish content.
+
 ## Common Pitfalls
 
 - Don't import server-only code in client components.

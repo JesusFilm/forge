@@ -254,6 +254,10 @@ export const env = createEnv({
     // local development falls back to WEB_ADMIN_API_KEYS until the dedicated
     // secret is provisioned in the target environment.
     WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Dedicated service credential for the private Watch SEO read boundary.
+    // It intentionally has no fallback to WEB_ADMIN_API_KEYS: without a
+    // separately provisioned key the admin-only feature stays disabled.
+    WATCH_SEO_API_KEYS: z.string().min(1).optional(),
     // Optional native-feedback integration. These remain server-only and
     // optional so environments can deploy before Linear is provisioned.
     WEB_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
@@ -424,6 +428,7 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
+    WATCH_SEO_API_KEYS: process.env.WATCH_SEO_API_KEYS,
     WEB_FEEDBACK_LINEAR_API_KEY: process.env.WEB_FEEDBACK_LINEAR_API_KEY,
     WEB_FEEDBACK_LINEAR_TEAM_ID: process.env.WEB_FEEDBACK_LINEAR_TEAM_ID,
     WEB_FEEDBACK_LINEAR_PROJECT_ID: process.env.WEB_FEEDBACK_LINEAR_PROJECT_ID,
