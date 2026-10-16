@@ -5,7 +5,7 @@ owner: "vlad"
 priority: "P0"
 status: "complete"
 start_date: "2026-09-22"
-completed_date: "2026-09-22"
+completed_date: "2026-10-16"
 duration: 1
 depends_on:
   - "feat-184"
@@ -137,3 +137,42 @@ multiplier. If the post-deploy `canonicalVideoUrls` lands above ~5M, bound them
 (lazy per-chunk materialization; a byte cap on the manifest read per
 `docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md`)
 before the corpus grows further.
+
+## Repair 2026-10-16: rolling-deploy validator (PR #2385 review R1)
+
+Independent review of the PR found that the Admin route's `ETag` was the
+snapshot `version` alone. An older Admin build re-parses a newer persisted
+snapshot with its own schema and strips `languageSlugs`, so old and new Admin
+served different bodies under one validator. New web that cached the old body
+was then answered 304 by the upgraded Admin on every expired 60 s TTL and kept
+the alternates-only sitemap, missing every newly covered long-tail URL, until
+the process restarted or a webhook cleared that one process.
+
+Fix: `watchSeoManifestEtag()` returns `"<version>.<representation>"` with
+`WATCH_SEO_MANIFEST_REPRESENTATION = "r2"` in
+`apps/admin/src/services/watch-seo-manifest.service.ts`. A web process holding
+the bare-version validator no longer matches, gets one full 200, and then
+revalidates with 304 against the new validator. The suffix is a constant: no
+request hashes or re-serializes the manifest. Optional `languageSlugs`, the
+absent-field fallback, and both static compatibility directions are unchanged.
+No web code changed.
+
+Evidence (local, 2026-10-16): the Admin route test pins that a legacy bare
+validator gets a 200 with the widened body (it returned 304 before); a guard
+test fails when the wire schema's field set changes without a representation
+bump; a web client test pins that a changed validator replaces both manifest
+and validator over several TTLs without `clearWatchSeoManifestCache`. An
+outside-repo harness over the exact base/head source (mocked DB rows, real
+`Request`/`Response`, fake clock) failed before the fix (old Admin 200, new
+Admin 304 x3, no `languageSlugs`, no Cebuano loc) and passes after (200 then
+304, `languageSlugs` retained, canonical bare Cebuano loc exactly once). Its
+four-way old/new Admin x old/new Web matrix passes over both a widened and a
+legacy snapshot, and only new Admin + new Web over a widened snapshot emits the
+Cebuano loc.
+
+Limits: no deployed multi-replica run and no production corpus. During a mixed
+Admin fleet a web process can flip between the two bodies, one full 200 per
+flip, until the older replicas retire. A later schema change that forgets the
+representation bump reintroduces the stall; the guard test is the only
+mechanical defense. FGE-183 stays In Review; `complete` here means the local
+implementation only.

@@ -439,6 +439,18 @@ Snapshot fields the web branch can rely on:
   unsupported language tags skipped during generation.
 - `version` and `generatedAt` — stable cache/revalidation metadata.
 
+The route's `ETag` is `"<version>.<representation>"`
+(`watchSeoManifestEtag`), not the bare version. `getLatest()` re-parses the
+persisted snapshot with the running build's schema, so an older Admin build
+strips fields it does not know and serves a different body for the SAME
+version; a version-only validator let a web process that cached the stripped
+body get 304 forever after Admin upgraded (PR #2385 R1). Whenever the schema
+gains, drops, or retypes a field, bump `WATCH_SEO_MANIFEST_REPRESENTATION` in
+`watch-seo-manifest.service.ts`; the guard test in
+`watch-seo-manifest.service.test.ts` pins the field set, so it fails on an
+added or dropped field until you do (a retype is not caught). The suffix is a
+constant, so no request hashes or re-serializes the payload.
+
 Refresh triggers:
 
 - Core sync phases `languages`, `videos`, and `video-dubs`.

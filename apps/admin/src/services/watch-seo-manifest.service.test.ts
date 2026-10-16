@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  WATCH_SEO_MANIFEST_REPRESENTATION,
   WatchSeoManifestCoverageError,
+  WatchSeoManifestSchema,
   WatchSeoManifestService,
   normalizeGoogleHreflang,
   summarizeWatchSeoManifest,
@@ -30,6 +32,42 @@ describe("normalizeGoogleHreflang", () => {
     expect(normalizeGoogleHreflang("es-419")).toBeNull()
     expect(normalizeGoogleHreflang("eng")).toBeNull()
     expect(normalizeGoogleHreflang(null)).toBeNull()
+  })
+})
+
+describe("WATCH_SEO_MANIFEST_REPRESENTATION", () => {
+  it("is bumped together with the wire schema's field set", () => {
+    // The HTTP validator is the snapshot version plus this representation id.
+    // An older Admin build strips fields it does not know when it re-parses a
+    // newer snapshot, so two builds can emit different bodies for ONE version.
+    // Without a representation bump a web process that cached the older body is
+    // answered 304 forever (R1, PR #2385). If this fails you changed the wire
+    // schema: update the expected field set AND bump the representation id.
+    const keys = (schema: { shape: Record<string, unknown> }) =>
+      Object.keys(schema.shape).sort()
+    const { shape } = WatchSeoManifestSchema
+    const videoGroup = shape.videoRouteGroups.element
+    const episodeGroup = shape.episodeRouteGroups.element
+
+    expect({
+      representation: WATCH_SEO_MANIFEST_REPRESENTATION,
+      manifest: keys(WatchSeoManifestSchema),
+      videoRouteGroup: keys(videoGroup),
+      episodeRouteGroup: keys(episodeGroup),
+      alternate: keys(videoGroup.shape.alternates.element),
+    }).toEqual({
+      representation: "r2",
+      manifest: [
+        "episodeRouteGroups",
+        "generatedAt",
+        "skippedHreflangValues",
+        "version",
+        "videoRouteGroups",
+      ],
+      videoRouteGroup: ["alternates", "contentSlug", "languageSlugs"],
+      episodeRouteGroup: ["alternates", "childSlug", "parentSlug"],
+      alternate: ["hreflang", "languageSlug"],
+    })
   })
 })
 
