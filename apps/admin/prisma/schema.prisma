@@ -3216,6 +3216,10 @@ model ExperienceLocale {
   slug                       String
   /// True when this locale is the homepage for its locale.
   isHomepage                 Boolean                      @default(false) @map("is_homepage")
+  /// Renders with the Watch home layout and admits homepage-only blocks
+  /// without assigning the live homepage (that is `isHomepage`). Set on
+  /// duplicates of a homepage so the copy previews and edits as a homepage.
+  homepageLayout             Boolean                      @default(false) @map("homepage_layout")
   /// Optional URL path prefix; combines with `slug` to form the canonical path.
   pathSegment                String?                      @map("path_segment")
   title                      String?
