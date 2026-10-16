@@ -47,7 +47,9 @@ python3 -I apps/mastra/studio-components/make-devotional-project.py apps/mastra/
 - At most 32768 bytes, fonts included. Latin and Cyrillic builds of one source
   are separate components for that reason (`reveal-serif-en-v2` /
   `reveal-serif-ru-v2`).
-- Every item must set every declared control (colours cannot be `""`).
+- Every item must set every declared control (colours cannot be `""`),
+  and so must every `set-properties` operation: a partial set (only `top`)
+  is refused as "Invalid Studio command input".
 - Never let a fade be zero long: `interpolate(t, [end - fadeOutSec, end], ...)`
   with fadeOutSec 0 throws (the range must strictly increase), and Studio
   reports only "Render execution failed". Guard with `Math.max(0.01, ...)`;
