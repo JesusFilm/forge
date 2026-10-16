@@ -32,17 +32,10 @@ own narration, in our series look, without anything from my laptop.
 ## What we need from you
 
 1. **Voice presets in Studio.** Only "Bella" is available now. Please
-   register our series voices as approved voice presets. All are ElevenLabs
-   voices:
-
-   | Voice             | ElevenLabs ID          | Language |
-   | ----------------- | ---------------------- | -------- |
-   | female-d          | `98ujrzs7rxAMEsaC4EpW` | English  |
-   | male-e            | `xLeLcqgjUx3wQJFSESKj` | English  |
-   | Tatyana Voloshina | `nkvv6waLzFah2jTNUZGT` | Russian  |
-   | Ivo               | `hD8aK7CmEPgH3mbFO08e` | Russian  |
-
-   An agent cannot do this.
+   register our two English series voices as approved voice presets
+   (ElevenLabs): female-d `98ujrzs7rxAMEsaC4EpW` and male-e
+   `xLeLcqgjUx3wQJFSESKj`. The Russian voices can wait. An agent cannot do
+   this.
 
 2. **Getting the files to the team.** The files sit in PR #2207 (large,
    devotional pipeline). If you prefer, we can open a small PR with only
