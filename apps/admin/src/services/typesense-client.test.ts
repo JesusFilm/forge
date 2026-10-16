@@ -335,6 +335,35 @@ describe("TypesenseClient", () => {
     ).rejects.toMatchObject({ status: 400 })
   })
 
+  it("disables unused highlighting unless a search explicitly opts in", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+      jsonResponse({
+        results: [
+          { found: 0, hits: [] },
+          { found: 0, hits: [] },
+        ],
+      }),
+    )
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await client.multiSearch([
+      { collection: "watch", q: "İsa" },
+      { collection: "watch", q: "İsa", highlight_fields: "title_tr" },
+    ])
+
+    const request = fetchMock.mock.calls[0]?.[1]
+    expect(JSON.parse(String(request?.body))).toEqual({
+      searches: [
+        { collection: "watch", q: "İsa", highlight_fields: "none" },
+        { collection: "watch", q: "İsa", highlight_fields: "title_tr" },
+      ],
+    })
+  })
+
   it("preserves grouped search hits and optional lexical match metadata", async () => {
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({
