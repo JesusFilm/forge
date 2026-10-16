@@ -142,3 +142,26 @@ query bounds and pronunciation-role checks; all were fixed. Independent Spec
 review identified explicit experiment settings and completed-overrun retention;
 both were fixed with acceptance tests. No outstanding review findings remain after
 re-review. The implementation and final evidence are local commits only.
+
+## HLS duration versus catalog length (feat-713)
+
+Catalog duration can exceed actual media even by a fraction of one frame. The
+widow vertical project admitted an endpoint of 426180 ms against catalog 426197 ms,
+but complete Mux preview/export playlists ended at 426166.67 ms. Staging rejected
+that unavailable tail before a renderer container started.
+
+Descriptor capture now measures both complete HLS renditions using the same
+portable rendition/segment parser as Manager. It floors the minimum of catalog,
+preview and export duration and pins that bound in the new immutable snapshot;
+source resolution already enforces it on subsequent edits. The catalog digest
+continues to identify the original catalog metadata, so eligibility rechecks do
+not spuriously invalidate measured snapshots. Downloads remain bounded and
+redirect-free; the Mux subdomain allowlist matches the broker's canonical origins.
+Live, encrypted, discontinuous, gap and otherwise unsupported playlists fail
+admission. Original-byte capture keeps its existing MP4 path.
+
+Historical descriptors retain their original immutable bounds. Repair a draft by
+capturing a new measured descriptor and applying replacement handles and corrected
+trim endpoints through `StudioAuthoringService.apply` with the observed revision
+and a stable idempotency key. Preserve terminal failed attempts and old revisions;
+do not update Core duration globally or weaken broker coverage tolerances.

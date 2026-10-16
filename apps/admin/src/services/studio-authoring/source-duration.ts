@@ -12,7 +12,7 @@ export async function descriptorDurationMs(
 ) {
   if (!catalog.exportHeight) throw new StudioCommandError("INVALID")
   const read = async (url: string) =>
-    new TextDecoder().decode(await download(url, 131072))
+    new TextDecoder().decode(await download(url, 1048576))
   const master = await read(catalog.hlsUrl)
   const preview = studioHlsRendition(master, catalog.hlsUrl, 270, false)
   const exported = studioHlsRendition(

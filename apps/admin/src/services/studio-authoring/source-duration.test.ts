@@ -71,3 +71,15 @@ describe("descriptor media duration", () => {
     ).rejects.toThrow()
   })
 })
+
+it.each([
+  playlist(1).replace("#EXT-X-ENDLIST", "# comment containing #EXT-X-ENDLIST"),
+  playlist(1).replace("#EXTINF:1,", "#EXT-X-GAP\n#EXTINF:1,"),
+])("rejects incomplete or unavailable media", async (text) => {
+  await expect(
+    descriptorDurationMs(
+      { hlsUrl: base, exportHeight: 1080, durationMs: 426197 },
+      download(text),
+    ),
+  ).rejects.toThrow()
+})

@@ -1,4 +1,5 @@
 import {
+  StudioHlsError,
   studioHlsRendition,
   studioHlsSegments,
 } from "@forge/studio-contracts/hls"
@@ -167,14 +168,24 @@ export function createStudioAssetBroker(
     },
   }
 }
-const rendition = studioHlsRendition
+function brokerHls<T>(parse: () => T): T {
+  try {
+    return parse()
+  } catch (error) {
+    if (error instanceof StudioHlsError)
+      throw new StudioBrokerError(error.message)
+    throw error
+  }
+}
+const rendition = (...args: Parameters<typeof studioHlsRendition>) =>
+  brokerHls(() => studioHlsRendition(...args))
 function playlistSegments(
   text: string,
   base: string,
   startMs: number,
   endMs: number,
 ) {
-  const all = studioHlsSegments(text, base).filter(
+  const all = brokerHls(() => studioHlsSegments(text, base)).filter(
     (segment) => segment.endMs > startMs && segment.startMs < endMs,
   )
   if (

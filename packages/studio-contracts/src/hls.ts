@@ -36,8 +36,10 @@ export function studioHlsRendition(
 }
 export function studioHlsSegments(text: string, base: string) {
   if (
-    /#EXT-X-(KEY|MAP|BYTERANGE|DISCONTINUITY|MEDIA)(?::|\r?$)/m.test(text) ||
-    !text.includes("#EXT-X-ENDLIST")
+    /#EXT-X-(KEY|MAP|BYTERANGE|DISCONTINUITY|MEDIA|GAP)(?::|\r?$)/m.test(
+      text,
+    ) ||
+    !/^#EXT-X-ENDLIST[ \t]*\r?$/m.test(text)
   )
     throw new StudioHlsError(
       "Unsupported HLS structure; select another catalog source",
