@@ -19,8 +19,11 @@ the protocol-4 `precomputed:subscription:run-manual` command on the initiating
 operator's computer, using that person's signed-in Codex subscription and exact
 `gpt-6-astra`. It writes to the configured target Admin; there is no supported
 whole-generation local-to-production import. Each start or resume is explicit,
-with fresh identity, allowance and capacity checks and more than 25% allowance
-remaining. There is no paid model API fallback or automatic resume.
+with fresh identity, allowance and capacity checks. The default allowance reserve
+is 25%; the account owner's explicit authorization permits the local
+`minimumRemainingPercent: 0` option described in the catalog build procedure.
+Exhausted or unavailable allowance still stops new work. There is no paid model
+API fallback or automatic resume.
 Read the resulting Admin build report at
 `/dashboard/recommendations/precomputed?generation=<id>`: inspect source
 coverage, failures and empty results, known token counts, unknown consumption,

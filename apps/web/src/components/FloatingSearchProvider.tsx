@@ -376,6 +376,16 @@ export function FloatingSearchProvider({
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
+  const pageLanguageCancellationRef = useRef<{
+    ownerToken: symbol | null
+    pathname: string
+    cancel: () => void
+  } | null>(null)
+  useLayoutEffect(() => {
+    if (pageLanguageCancellationRef.current?.pathname !== pathname) {
+      pageLanguageCancellationRef.current = null
+    }
+  }, [pathname])
   const invalidateGlobalLanguageIntent = useCallback(() => {
     globalLanguageIntentRef.current += 1
     globalLanguagePendingRouteRef.current = null
@@ -397,6 +407,7 @@ export function FloatingSearchProvider({
         closingTimerRef.current = null
       }
       if (next) {
+        pageLanguageCancellationRef.current?.cancel()
         pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
@@ -577,6 +588,21 @@ export function FloatingSearchProvider({
       if (typeof detail?.visible !== "boolean") return
       const ownerToken = detail.ownerToken ?? null
       const visible = detail.visible && typeof detail.onClick === "function"
+
+      // A subtitle-only or fullscreen picker can own pending work without
+      // replacing the header globe. Cleanup still belongs to its mount token.
+      if (typeof detail.cancelPendingOpen === "function") {
+        pageLanguageCancellationRef.current = {
+          ownerToken,
+          pathname,
+          cancel: detail.cancelPendingOpen,
+        }
+      } else if (
+        visible ||
+        pageLanguageCancellationRef.current?.ownerToken === ownerToken
+      ) {
+        pageLanguageCancellationRef.current = null
+      }
 
       setHeaderLanguageSwitcher((current) => {
         if (!visible) {

@@ -61,6 +61,25 @@ function parse(value: unknown) {
 }
 
 describe("manual subscription catalog command", () => {
+  it("accepts only the explicit zero-reserve option or the existing default", () => {
+    expect(parse(config()).minimumRemainingPercent).toBeUndefined()
+    expect(
+      parse({ ...config(), minimumRemainingPercent: 0 })
+        .minimumRemainingPercent,
+    ).toBe(0)
+    expect(
+      parse({ ...config(), minimumRemainingPercent: 25 })
+        .minimumRemainingPercent,
+    ).toBe(25)
+  })
+  it.each([-1, 1, 24, 26, 100, NaN, Infinity, null, "0"])(
+    "rejects unsupported reserve %s",
+    (value) => {
+      expect(() =>
+        parse({ ...config(), minimumRemainingPercent: value }),
+      ).toThrow()
+    },
+  )
   it("allows a pinned frozen catalog only on explicit resume", () => {
     const frozenCatalog = { path: "/tmp/catalog.json", sha256: digest }
     expect(parse({ ...config(), frozenCatalog }).frozenCatalog).toEqual(

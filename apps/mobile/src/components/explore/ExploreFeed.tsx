@@ -21,6 +21,7 @@ import {
   Pressable,
   StyleSheet,
   View,
+  useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native"
@@ -37,6 +38,7 @@ import {
   type ExplorePagerRole,
   type ExplorePagerSlot,
   type ExplorePagerUnderlay,
+  useExplorePagerHold,
 } from "./ExplorePager"
 import { ClipFailed, ExploreStates } from "./ExploreStates"
 import { FeedVideoView } from "./FeedVideoView"
@@ -64,6 +66,10 @@ import {
 } from "../../lib/explore/clipRecord"
 import { getDemotionStore } from "../../lib/explore/demotionStore"
 import { readDeviceTier } from "../../lib/explore/deviceTier"
+import {
+  EXPLORE_FAST_HOLD_MS,
+  EXPLORE_FAST_SIDE_SHARE,
+} from "../../lib/explore/fastHold"
 import {
   BLUR_RELEASE_GRACE_MS,
   INITIAL_FEED_STATE,
@@ -208,6 +214,8 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
   const { exploreMuted, setExploreMuted } = useWatchPreferences()
   const [state, dispatch] = useReducer(feedReducer, INITIAL_FEED_STATE)
   const [gestureActive, setGestureActive] = useState(false)
+  // A finger holds a side of the current clip (owner, 2026-10-14).
+  const [fastHeld, setFastHeld] = useState(false)
   const launchMode = useLaunchPlayerMode()
   const { yieldsToRoot } = useExploreTakeover({
     focused,
@@ -270,6 +278,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     dispatch,
     muted: exploreMuted,
     yieldsToRoot,
+    fast: fastHeld,
     onLoop: (token) => evidence.current?.onLoop(token),
     // The owner (2026-09-30), changing R8: an ended clip moves the feed on
     // with the swipe's own settle. It loops when the pager cannot move.
@@ -405,6 +414,11 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
     const { state: last, activePlayer: player } = live.current
     dispatch({ type: "blur", positionSeconds: clipPosition(last, player) })
   }, [focused, launchMode, telemetry])
+
+  // A blur can leave the clip mounted under a finger that never lifts here.
+  useEffect(() => {
+    if (!focused) setFastHeld(false)
+  }, [focused])
 
   // As on Home's hero: any state but "active" pauses. The Android share
   // chooser sends "background", so the clip stays paused under it.
@@ -565,6 +579,9 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       </View>
     ))
 
+  // Only a clip that plays can play at 2x; the strips and the cue share this.
+  const fastPlayable = state.phase === "playing" && !yieldsToRoot
+
   const current = currentClip(state)
   const currentLayers =
     current == null ? null : (
@@ -584,6 +601,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           player={activePlayer}
           muted={exploreMuted}
           paused={state.phase === "paused" && state.overlay == null}
+          fast={fastHeld && fastPlayable}
           onToggleMute={handleToggleMute}
           onSeek={seekActive}
           onKeepWatching={handleKeepWatching}
@@ -602,6 +620,8 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
       clip={clipFor(state, slot.role)}
       covered={!pageShowsStandby(state, slot.role)}
       onTap={handleTap}
+      onFastHold={setFastHeld}
+      fastHoldable={fastPlayable || fastHeld}
       region={videoRegion}
       posterShapes={posterShapes}
     >
@@ -644,6 +664,10 @@ type ClipPageProps = {
   /** False while a loaded standby shows this page's first frame (AE8). */
   covered: boolean
   onTap: () => void
+  /** A hold on a side of the clip starts (true) or ends (false). */
+  onFastHold: (held: boolean) => void
+  /** A long press on a side starts a hold; otherwise it works as a tap. */
+  fastHoldable: boolean
   /** Where a landscape clip's video, and so its poster, sits. */
   region: ExploreVideoRegion | null
   posterShapes: PosterShapes
@@ -661,6 +685,8 @@ function ClipPage({
   clip,
   covered,
   onTap,
+  onFastHold,
+  fastHoldable,
   region,
   posterShapes,
   children,
@@ -709,9 +735,73 @@ function ClipPage({
         accessibilityHint={t("clipSurfaceAriaHint")}
         {...accessibility}
       />
+      <ClipFastSides
+        onTap={onTap}
+        onFastHold={onFastHold}
+        holdable={fastHoldable}
+      />
       {children}
     </>
   )
+}
+
+const FAST_SIDES = ["start", "end"] as const
+
+/**
+ * The two sides of the current clip, over the tap surface and under the
+ * overlay. A hold plays the clip at 2x until the finger lifts; a tap pauses,
+ * as anywhere on the clip. The pager can take the finger, which ends the hold.
+ */
+function ClipFastSides({
+  onTap,
+  onFastHold,
+  holdable,
+}: {
+  onTap: () => void
+  onFastHold: (held: boolean) => void
+  /** False on a paused clip: with no long press, a press of any length is a tap. */
+  holdable: boolean
+}) {
+  const pagerHold = useExplorePagerHold()
+  const { width, height } = useWindowDimensions()
+  const release = useRef<(() => void) | null>(null)
+
+  const start = () => {
+    if (release.current != null) return
+    // A clip end loops under the finger instead of moving the page away.
+    release.current = pagerHold?.("feedMove") ?? (() => {})
+    onFastHold(true)
+  }
+  const end = () => {
+    const releaseHold = release.current
+    if (releaseHold == null) return
+    release.current = null
+    releaseHold()
+    onFastHold(false)
+  }
+  const endRef = useRef(end)
+  endRef.current = end
+  useEffect(() => () => endRef.current(), [])
+
+  // Only a lift or the pager ends the hold, not a finger that drifts sideways.
+  const retention = { top: height, bottom: height, left: width, right: width }
+  return FAST_SIDES.map((side) => (
+    <Pressable
+      key={side}
+      testID={`explore-clip-fast-${side}`}
+      style={[styles.fastSide, side === "start" ? { start: 0 } : { end: 0 }]}
+      onPress={onTap}
+      delayLongPress={EXPLORE_FAST_HOLD_MS}
+      // Kept while a hold runs, so a lift after the clip pauses is no tap.
+      onLongPress={holdable ? start : undefined}
+      onPressOut={end}
+      pressRetentionOffset={retention}
+      // The surface under it carries the clip's label and actions.
+      accessible={false}
+      focusable={false}
+      importantForAccessibility="no"
+    />
+  ))
 }
 
 /**
@@ -926,6 +1016,12 @@ function rememberPosterShape(
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: BLACK },
   cover: { ...StyleSheet.absoluteFill, backgroundColor: BLACK },
+  fastSide: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: `${EXPLORE_FAST_SIDE_SHARE * 100}%`,
+  },
   posterRegion: { justifyContent: "center" },
   // A band clip's 16:9 box: full width, centred, and never taller than the region.
   posterFrame: {

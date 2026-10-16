@@ -3968,7 +3968,9 @@ describe("ExperienceEditor", () => {
     })
 
     expect(html).toContain("Duplicate")
-    expect(html).toContain("Duplicate this experience as a draft")
+    expect(html).toContain(
+      "into a new unpublished draft. It never becomes the live homepage.",
+    )
   })
 
   it("disables Duplicate for unsaved changes with an accessible explanation", () => {
@@ -4113,6 +4115,36 @@ describe("ExperienceEditor", () => {
       expect(findButtonByExactText(view.container, "Duplicate").disabled).toBe(
         false,
       )
+    } finally {
+      view.cleanup()
+    }
+  })
+
+  it("shows the publish action error without clearing the draft", async () => {
+    const publishAction = vi.fn(async () => ({
+      ok: false,
+      error:
+        "A page with the homepage layout cannot be published until it is assigned as the homepage.",
+    }))
+    const view = renderEditorDom([], {
+      hasDraft: true,
+      previewUrl: "https://watch.jesusfilm.org/watch/preview/experience/token",
+      publishAction,
+    })
+
+    try {
+      await act(async () => {
+        findButtonByExactText(view.container, "Publish").click()
+      })
+
+      expect(publishAction).toHaveBeenCalledWith("locale-1")
+      expect(view.container.textContent).toContain(
+        "A page with the homepage layout cannot be published until it is assigned as the homepage.",
+      )
+      expect(view.container.textContent).not.toContain("Locale published.")
+      expect(
+        findButtonByExactText(view.container, "Discard draft"),
+      ).toBeTruthy()
     } finally {
       view.cleanup()
     }

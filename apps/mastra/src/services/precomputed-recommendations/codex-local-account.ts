@@ -13,7 +13,6 @@ import type {
 
 const MAX_RESPONSE_BYTES = 1_048_576
 const DEFAULT_TIMEOUT_MS = 30_000
-const MIN_REMAINING_PERCENT = 25
 const WEEK_MINUTES = 10_080
 const FIVE_HOURS_MINUTES = 300
 
@@ -281,6 +280,7 @@ function decode(
   limitsValue: unknown,
   afterValue: unknown,
   limitsAfterValue: unknown,
+  minimumRemainingPercent: 0 | 25,
 ): CodexAccountAttestation {
   const before = account(beforeValue)
   const after = account(afterValue)
@@ -354,9 +354,9 @@ function decode(
     modelId: PRECOMPUTED_MODEL_ID,
     plan: before.plan,
     admission:
-      weeklyRemainingPercent > MIN_REMAINING_PERCENT &&
+      weeklyRemainingPercent > minimumRemainingPercent &&
       (fiveHourSnapshot.kind === "not_applicable" ||
-        fiveHourSnapshot.remainingPercent > MIN_REMAINING_PERCENT)
+        fiveHourSnapshot.remainingPercent > minimumRemainingPercent)
         ? "admitted"
         : "insufficient",
   }
@@ -365,11 +365,15 @@ function decode(
 export function createLocalCodexAccountReader(options: {
   codexExecutable: string
   timeoutMs?: number
+  minimumRemainingPercent?: 0 | 25
 }): {
   readAttestation: () => Promise<CodexAccountAttestation>
   readOperatorIdentity: () => Promise<CodexOperatorIdentitySnapshot>
   readAllowance: () => Promise<CodexAllowanceSnapshot>
 } {
+  const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
+  if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
+    throw new CodexLocalAccountError("operator_only")
   if (
     process.platform === "win32" ||
     !isAbsolute(options.codexExecutable) ||
@@ -389,6 +393,7 @@ export function createLocalCodexAccountReader(options: {
       result.rateLimits,
       result.after,
       result.rateLimitsAfter,
+      minimumRemainingPercent,
     )
   }
   // Each callback performs a fresh backend read, including the model adapter's

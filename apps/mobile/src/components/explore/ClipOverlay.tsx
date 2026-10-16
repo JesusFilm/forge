@@ -28,6 +28,7 @@ import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import type { CaptionBox } from "../../lib/captionBox"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { EXPLORE_FAST_RATE } from "../../lib/explore/fastHold"
 import { readSeconds } from "../../lib/explore/playerRead"
 import { bandAspect, clipFraming } from "../../lib/explore/framing"
 import { usePlayingSize } from "../../hooks/usePlayingSize"
@@ -46,6 +47,8 @@ export type ClipOverlayProps = {
   muted: boolean
   /** Shows the play glyph (R10). The tap target itself is the feed's. */
   paused: boolean
+  /** Shows the 2x cue: the viewer holds a side of the playing clip. */
+  fast: boolean
   onToggleMute: () => void
   /** A scrub to an asset time. The feed players seek, so the load is no rebuffer. */
   onSeek: (seconds: number) => void
@@ -76,6 +79,8 @@ const RAIL_LABEL_WIDTH = 76
 const CAPTION_GAP = 8
 /** A portrait clip's captions sit this much higher over it (owner, 2026-09-28). */
 const PORTRAIT_CAPTION_LIFT = 15
+/** The 2x cue's space under the safe area. */
+const FAST_CUE_GAP = 12
 
 /**
  * R13: a subtitle-only clip always shows its captions. A dubbed clip shows
@@ -95,6 +100,7 @@ export function ClipOverlay({
   player,
   muted,
   paused,
+  fast,
   onToggleMute,
   onSeek,
   onKeepWatching,
@@ -281,6 +287,23 @@ export function ClipOverlay({
         >
           <View style={styles.glyph}>
             <Ionicons name="play" size={40} color={TEXT_ON_OVERLAY} />
+          </View>
+        </View>
+      )}
+
+      {fast && (
+        <View
+          testID="clip-fast-cue"
+          style={[styles.fastCue, { top: safeTop + FAST_CUE_GAP }]}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <View style={styles.fastPill}>
+            <Text style={[styles.fastLabel, typography.bodySmall]}>
+              {`${EXPLORE_FAST_RATE}×`}
+            </Text>
+            <Ionicons name="play-forward" size={16} color={TEXT_ON_OVERLAY} />
           </View>
         </View>
       )}
@@ -544,6 +567,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: hexToRgba(BLACK, 0.45),
+  },
+  // A playback cue: the glyph points forward in every layout (feat-695 R12).
+  fastCue: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    direction: "ltr",
+  },
+  fastPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: hexToRgba(BLACK, 0.45),
+  },
+  fastLabel: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontWeight: "700",
   },
   bottom: {
     position: "absolute",

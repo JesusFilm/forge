@@ -16,9 +16,10 @@ export {
 } from "../i18n/generated-ui-locales"
 
 /**
- * Query-param sentinel that signals "this URL's locale has already been
- * resolved server-side; do not re-apply the cookie-driven language
- * redirect for this request." Used as the contract between three sites:
+ * Query-param sentinel that marks a server-resolved language fallback so the
+ * client can remove the one-shot marker and analytics can classify the entry.
+ * It is not a cookie-routing bypass; Watch routing is URL-only. Used as the
+ * contract between three sites:
  *
  *   1. `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` — sets it
  *      on the server redirect when the requested audio slug has no matching
@@ -29,7 +30,7 @@ export {
  *      — strips the param via `history.replaceState` after hydration
  *      so the user-visible URL stays clean.
  *
- * Renaming the param requires editing all four sites in lockstep;
+ * Renaming the param requires editing all three sites in lockstep;
  * exporting one constant makes the contract explicit and grep-able.
  */
 export const LOCALE_RESOLVED_PARAM = "_lr"
@@ -168,6 +169,26 @@ export function normalizeBcp47Tag(tag: string): string {
       }
       if (/^[a-z]{2}$/i.test(part)) return part.toUpperCase()
       return part.toLowerCase()
+    })
+    .join("-")
+}
+
+function canonicalizeKnownBcp47Tag(tag: string): string {
+  let extensionStarted = false
+  return tag
+    .split("-")
+    .map((part, index) => {
+      const lower = part.toLowerCase()
+      if (index === 0 || extensionStarted) return lower
+      if (part.length === 1) {
+        extensionStarted = true
+        return lower
+      }
+      if (/^[a-z]{4}$/i.test(part)) {
+        return part[0]?.toUpperCase() + part.slice(1).toLowerCase()
+      }
+      if (/^[a-z]{2}$/i.test(part)) return part.toUpperCase()
+      return lower
     })
     .join("-")
 }
@@ -484,4 +505,29 @@ export function resolveWatchLocaleIdentity(
   // shape-only match on an unknown slug all fall back to `locale`.
   const htmlLang = tag && isDeclarableHtmlLangTag(tag) ? tag : locale
   return { locale, htmlLang }
+}
+
+/**
+ * Resolve the internal [htmlLang] route segment as a known language tag.
+ * Public language slugs take precedence in `resolveWatchLocaleIdentity`, but
+ * an internal tag can also equal a public slug with a different mapping (for
+ * example `awa` is Awadhi's tag and the public slug for Awa (China)). Private-
+ * use tags such as `ble-x-Naga` also need to be accepted from the generated
+ * map even when they are not covered by the permissive tag-shape expression.
+ */
+export function resolveWatchHtmlLangIdentity(
+  htmlLangSegment: string | null | undefined,
+): WatchLocaleIdentity {
+  if (!htmlLangSegment) return resolveWatchLocaleIdentity(htmlLangSegment)
+
+  const tag = normalizeBcp47Tag(htmlLangSegment)
+  if (isDeclarableHtmlLangTag(tag)) {
+    const canonicalTag = canonicalizeKnownBcp47Tag(tag)
+    return {
+      locale: resolveUiLocale(canonicalTag) ?? DEFAULT_LOCALE,
+      htmlLang: canonicalTag,
+    }
+  }
+
+  return resolveWatchLocaleIdentity(htmlLangSegment)
 }

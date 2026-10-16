@@ -192,7 +192,8 @@ export function ReaderTopBar({
           actionName="bible-reader-settings"
           onPress={onPressSettings}
         >
-          <Ionicons name="settings-outline" size={22} color={tokens.icon} />
+          {/* The pills' text color, not the accent (owner, 2026-10-15). */}
+          <Ionicons name="settings-outline" size={22} color={tokens.text} />
         </ReaderGlassButton>
       </View>
       {tipOpen && note !== null && leading && (

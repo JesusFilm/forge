@@ -19,6 +19,7 @@ import {
   type PlayerId,
   type PlayerSlot,
 } from "../lib/explore/feedState"
+import { EXPLORE_FAST_RATE } from "../lib/explore/fastHold"
 import { readOr, safely } from "../lib/explore/playerRead"
 import type { ExploreClipFailure } from "../lib/explore/telemetry"
 import type { ClipWindow, FeedClip } from "../lib/explore/types"
@@ -55,7 +56,7 @@ export const START_RESEEK_GRACE_MS = 1_000
 const ACTIVE_MIN_FORWARD_BUFFER_SECONDS = 2
 
 /** Ticks this soon after a loop seek can still show the old position. */
-const LOOP_SEEK_SETTLE_MS = 500
+export const LOOP_SEEK_SETTLE_MS = 500
 
 /** A loading edge this soon after a seek is the seek's own, not a rebuffer. */
 export const SEEK_LOADING_GRACE_MS = 1_000
@@ -83,6 +84,8 @@ export type FeedPlayersInput = {
   muted: boolean
   /** `clipYieldsToRoot(...)`: while true, no clip plays or has sound. */
   yieldsToRoot: boolean
+  /** The viewer holds a side of the clip, so the playing active clip runs at 2x. */
+  fast?: boolean
   /** A loop restarts the clip. The evidence recorder rebases on it (KTD9). */
   onLoop?: (token: number) => void
   /**
@@ -152,6 +155,8 @@ type Track = {
   /** Any seek on this player: the start, a re-seek, a loop, or a scrub. */
   seekAtMs: number
   playRequested: boolean
+  /** The rate the player should play at. Written only while it plays (`syncRate`). */
+  rate: number
   interval: number
   forwardBufferSeconds: number | null
 }
@@ -173,6 +178,7 @@ function newTrack(): Track {
     heldAtEnd: false,
     seekAtMs: Number.NEGATIVE_INFINITY,
     playRequested: false,
+    rate: 1,
     interval: 0,
     forwardBufferSeconds: null,
   }
@@ -259,11 +265,30 @@ function createFeedPlayerEngine() {
     track.playRequested = false
   }
 
+  function writeRate(id: PlayerId) {
+    const player = players?.[id]
+    if (player == null) return
+    const { rate } = tracks[id]
+    safely(() => {
+      if (player.playbackRate !== rate) player.playbackRate = rate
+    })
+  }
+
+  /** On iOS a rate write starts a paused player, so only a playing one takes it. */
+  function syncRate(id: PlayerId) {
+    const player = players?.[id]
+    if (player == null || !readOr(() => player.playing, false)) return
+    writeRate(id)
+  }
+
   function play(id: PlayerId) {
     const player = players?.[id]
     if (player == null) return
     tracks[id].playRequested = true
-    if (!readOr(() => player.playing, true)) safely(() => player.play())
+    if (readOr(() => player.playing, true)) return
+    // iOS plays at the last rate written, so the wanted rate goes first.
+    writeRate(id)
+    safely(() => player.play())
   }
 
   function seek(id: PlayerId, seconds: number) {
@@ -491,7 +516,11 @@ function createFeedPlayerEngine() {
     }
     for (const id of PLAYER_IDS) {
       const { plays, sounds } = decide(id, state, input)
-      if (plays) play(id)
+      tracks[id].rate = plays && input.fast === true ? EXPLORE_FAST_RATE : 1
+      if (plays) {
+        play(id)
+        syncRate(id)
+      }
       if (sounds) setMuted(id, false)
     }
   }
@@ -568,6 +597,8 @@ function createFeedPlayerEngine() {
 
   function onPlayingChange(id: PlayerId, payload?: PlayingChangeEventPayload) {
     if (payload?.isPlaying !== true || players == null) return
+    // A player that starts by itself, as after an interruption, keeps its old rate.
+    writeRate(id)
     const track = tracks[id]
     if (track.token == null || !track.ready) return
     const player = players[id]

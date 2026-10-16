@@ -4163,14 +4163,51 @@ describe("HeroPlayer — language switch button", () => {
     listener.cleanup()
   })
 
+  it("publishes pending subtitle-picker cancellation with only one audio language", async () => {
+    const onLanguageClick = vi.fn()
+    const onCancelLanguageOpen = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
+            onLanguageClick={onLanguageClick}
+            onCancelLanguageOpen={onCancelLanguageOpen}
+            playableLanguageCount={1}
+            hasSubtitleOptions
+          />,
+        )
+      })
+      const latest = listener.updates.at(-1)
+      expect(latest?.visible).toBe(false)
+      expect(latest?.onClick).toBeNull()
+      expect(latest?.cancelPendingOpen).toBe(onCancelLanguageOpen)
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="hero-player-subtitle-language-count"]',
+          )!
+          .click()
+      })
+      expect(onLanguageClick).toHaveBeenCalledTimes(1)
+      listener.updates.at(-1)?.cancelPendingOpen?.()
+      expect(onCancelLanguageOpen).toHaveBeenCalledTimes(1)
+    } finally {
+      listener.cleanup()
+    }
+  })
+
   it("publishes a header language switcher when playableLanguageCount >= 2 with onLanguageClick", () => {
     const onLanguageClick = vi.fn()
+    const onCancelLanguageOpen = vi.fn()
     const listener = listenForLanguageSwitcher()
     act(() => {
       root.render(
         <HeroPlayer
           block={makeBlock()}
           onLanguageClick={onLanguageClick}
+          onCancelLanguageOpen={onCancelLanguageOpen}
           playableLanguageCount={2}
         />,
       )
@@ -4178,6 +4215,7 @@ describe("HeroPlayer — language switch button", () => {
     const latest = listener.updates.at(-1)
     expect(latest?.visible).toBe(true)
     expect(latest?.onClick).toBe(onLanguageClick)
+    expect(latest?.cancelPendingOpen).toBe(onCancelLanguageOpen)
     expect(latest?.languageCode).toBe("EN")
     latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)

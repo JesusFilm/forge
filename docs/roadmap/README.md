@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 14, 2026)
+## Status (October 16, 2026)
 
-- **Total tickets:** 832
-- **Complete:** 619
-- **Cancelled:** 39
+- **Total tickets:** 843
+- **Complete:** 627
+- **Cancelled:** 41
 - **In progress:** 67
-- **Not started:** 50
+- **Not started:** 51
 - **Blocked:** 57
-- **Overdue and open:** 157
+- **Overdue and open:** 160
 
 ## Feature Index
 
@@ -186,6 +186,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | in-progress |
 | [feat-683](content-discovery/feat-683-watch-home-touch-prefetch-gate.md)                                       | Gate Watch home hero CTA and category rail prefetch on touch                                    | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-694](content-discovery/feat-694-develop-recommendation-origin.md)                                        | Allow develop Watch recommendation requests                                                     | nisal      | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
+| [feat-710](content-discovery/feat-710-full-library-video-recommendations.md)                                   | Full-library directional video recommendations                                                  | nisal      | P1       | 2026-10-16 | 3    | 2026-10-18 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -221,6 +222,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
 | [feat-612](content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
+| [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 
 ### Media Generation
@@ -675,7 +677,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | in-progress |
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
-| [feat-645](platform/feat-645-watch-language-preference-redirect.md)                    | Resolve Watch entry language from saved preference and browser locale              | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-645](platform/feat-645-watch-language-preference-redirect.md)                    | Resolve Watch entry language from saved preference and browser locale              | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | cancelled   |
 | [feat-649](platform/feat-649-watch-unicode-content-routes.md)                          | Watch routes for Unicode content slugs                                             | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-652](platform/feat-652-watch-route-loading-streaming.md)                         | Watch route loading and section streaming boundaries                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-657](platform/feat-657-watch-search-hard-request-deadline.md)                    | Enforce Watch search hard request deadline                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
@@ -684,6 +686,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-678](platform/feat-678-watch-search-production-budget-verification.md)           | Validate Watch search production budget and alerts                                 | vlad       | P1       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
 | [feat-696](platform/feat-696-watch-percent-escape-case.md)                             | Normalize percent-escape case from the public Watch reverse proxy                  | vlad       | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
+| [feat-703](platform/feat-703-ci-tested-target-baseline.md)                             | Compare PR CI checks against the tested target baseline                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-704](platform/feat-704-watch-language-chunk-containment.md)                      | Contain video language picker component load failures                              | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-707](platform/feat-707-watch-feedback-mobile-overflow.md)                        | Keep Watch feedback within the mobile dialog width                                 | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
@@ -726,8 +733,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-251](platform/feat-251-watch-route-scoped-media-resource-hints.md)               | Scope Watch media resource hints to media routes                                   | unassigned | P2       | 2026-07-20 | 1    | 2026-07-20 | not-started |
 | [feat-275](platform/feat-275-watch-experience-media-card-white-outline.md)             | Web Video Thumbnail White Interaction Frame                                        | vlad       | P2       | 2026-07-20 | 1    | 2026-07-20 | complete    |
 | [feat-279](platform/feat-279-watch-global-beta-tester-cta-flag.md)                     | Watch global beta tester CTA feature flag                                          | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | cancelled   |
-| [feat-667](platform/feat-667-retire-watch-beta-signup.md)                              | Retire Watch beta program signup                                                   | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
-| [feat-668](platform/feat-668-retire-mobile-tv-beta-signup.md)                          | Retire mobile and TV beta program signup                                           | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | not-started |
 | [feat-286](platform/feat-286-watch-home-standalone-media-containment.md)               | Contain standalone Watch home media blocks                                         | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-287](platform/feat-287-watch-media-collection-supporting-title-spacing.md)       | Watch media collection supporting title spacing                                    | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
 | [feat-288](platform/feat-288-watch-promotional-text-heading-alignment.md)              | Watch promotional text heading alignment                                           | unassigned | P2       | 2026-07-21 | 1    | 2026-07-21 | complete    |
@@ -770,6 +775,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-690](platform/feat-690-watch-image-optimizer-tenant-scoping.md)                  | Scope the Watch image optimizer to our own CDN tenants                             | vlad       | P2       | 2026-10-06 | 3    | 2026-10-08 | not-started |
 | [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | 2026-10-06 | 2    | 2026-10-07 | not-started |
 | [feat-648](platform/feat-648-watch-variant-language-badges.md)                         | Distinguish Watch player language variants in chrome                               | codex      | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-667](platform/feat-667-retire-watch-beta-signup.md)                              | Retire Watch beta program signup                                                   | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-668](platform/feat-668-retire-mobile-tv-beta-signup.md)                          | Retire mobile and TV beta program signup                                           | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | not-started |
 | [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-676](platform/feat-676-watch-native-language-markup.md)                          | Declare verified native language names in Watch language pickers                   | vlad       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
@@ -856,6 +863,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-699](topic-experiences/feat-699-watch-uncached-upstream-errors.md)                    | Keep transient Watch lookup failures out of shared Data Cache                    | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-700](topic-experiences/feat-700-watch-transient-html-cache-errors.md)                 | Prevent transient Watch render failures from becoming cached HTML                | vlad          | P1       | 2026-10-14 | 3    | 2026-10-16 | not-started |
 | [feat-702](topic-experiences/feat-702-watch-collection-unavailable-card-presentation.md)    | Disclose unavailable audio on Watch collection cards                             | vlad          | P1       | 2026-10-14 | 1    | 2026-10-14 | complete    |
+| [feat-711](topic-experiences/feat-711-independent-page-duplication.md)                      | Independent unpublished page duplication with working draft preview              | vlad          | P1       | 2026-10-15 | 2    | 2026-10-16 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad          | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit       | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim          | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |

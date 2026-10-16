@@ -80,3 +80,45 @@ Current main `f08fc89428` and all 129 open PR file lists were audited on
   slugs measured nine-child cached p95 0.001837 ms and cold index 16.20 ms.
   Indexable collection metadata already builds that index; noIndex may newly
   pay one cold build. These are bounded server-cost figures, not page timings.
+
+## PR #2746 conflict repair — 16 October 2026
+
+- Source head: `dad94b9c12982dbdc45ba9158988aebcdab2ceaa`.
+- Fetched main: `d6a5a3ba21e74106253b3a0ea3829d6e77efa137`.
+- Merge base: `f08fc89428cbf2611c900882fa04d79eead41b75`.
+- Bounded scope: merge main without rewriting the source branch; resolve the
+  adjacent feat-702/feat-711 roadmap index conflict by retaining both records
+  and regenerating the index. No application code conflict or behavior change
+  is required. Preserve main's URL-only Watch language policy and the approved
+  exact-known-missing child-card contract.
+- Local verification: existing routing/card/manifest and collection-client
+  regressions, URL-only proxy regressions, Web types, touched lint/format and
+  generated/roadmap drift checks. Independent review, reconciled-head browser
+  and page-load performance evidence, and CI remain coordinator-owned gates.
+  Historical browser acceptance and original-report evidence do not prove the
+  reconciled head. Original individual reporter remains unknown.
+
+### Owned local verification
+
+- `behavior_changed: false` for this repair. The eight original PR code/test
+  files are byte-for-byte preserved; main's URL-only proxy, locale and layout
+  files are unchanged from fetched main. Only the generated index and this
+  dated repair record require authored conflict-resolution changes.
+- Existing route, card, grid, collection-client, exposure, recovery, manifest,
+  proxy and message-parity tests were inspected and used unchanged. No new red
+  test is appropriate for an index-only conflict. The actual failure observed
+  was Git's adjacent roadmap-row conflict; merged-tree characterization passed
+  544 tests, followed by 1,004 tests in 13 files on repository-pinned Node 24.
+  The second run corrected the initial shell's Node 26 runtime and included
+  message parity; no broad suite was repeated after those checks passed.
+- Web typecheck passes on Node 24. Its first attempt exposed missing links for
+  Admin's existing type-only `zod`/URL-policy imports after the filtered install;
+  reusing those exact already-installed dependencies fixed the local setup
+  without source or lockfile edits. Touched ESLint and UI-locale drift pass.
+- Hidden-roadmap-lane checks and ten roadmap/baseline script tests pass. The
+  loader's existing incomplete-frontmatter skips remain outside this repair.
+- Browser, screenshots, actual Next prefetch, hydration, page timings and
+  reconciled-head CI are not established here. This merge adds no application
+  change, but source equality and mocked tests are not page-load proof. The
+  coordinator owns fresh review, desktop/mobile recovery and available-control
+  acceptance, network/resource timing, and CI before any readiness claim.
