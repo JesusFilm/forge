@@ -103,6 +103,36 @@ async function readBounded(response: Response, max: number) {
   }
   return Buffer.concat(chunks)
 }
+/** One preparation owns this bounded cache. Callers stage segments sequentially;
+ * repeated clips reuse the same bytes without spending the transfer budget again. */
+export function createStudioSourceDownload(
+  signal?: AbortSignal,
+  budget = LIMIT,
+) {
+  const cache = new Map<string, Buffer>()
+  let transferred = 0
+  return async (raw: string, max = LIMIT) => {
+    signal?.throwIfAborted()
+    const url = canonicalMediaUrl(raw)
+    const prior = cache.get(url.href)
+    if (prior) {
+      if (prior.length > max)
+        throw new StudioBrokerError("Preview transfer exceeds its byte budget")
+      return prior
+    }
+    const bytes = await readBounded(
+      await fetch(url, {
+        redirect: "error",
+        signal: boundedSignal(20000, signal),
+      }),
+      Math.min(max, budget - transferred),
+    )
+    transferred += bytes.length
+    cache.set(url.href, bytes)
+    return bytes
+  }
+}
+
 export function createStudioAssetBroker(
   call: StudioBrokerClient,
   signal?: AbortSignal,
@@ -335,19 +365,7 @@ export async function prepareStudioRenderSources(
         await call("preview-sources", { projectId, document }),
       ),
       assets = createStudioAssetBroker(call, signal)
-    let transferred = 0
-    async function download(raw: string, max = LIMIT) {
-      const url = canonicalMediaUrl(raw)
-      const bytes = await readBounded(
-        await fetch(url, {
-          redirect: "error",
-          signal: boundedSignal(20000, signal),
-        }),
-        Math.min(max, LIMIT - transferred),
-      )
-      transferred += bytes.length
-      return bytes
-    }
+    const download = createStudioSourceDownload(signal)
     const mediaStarts = studioMediaStartTimes(document)
     for (const resolvedEntry of resolved) {
       const entry = {
@@ -403,7 +421,9 @@ export async function prepareStudioRenderSources(
           entry.endMs,
         )
         const prefix = `${id.replace(/[^a-zA-Z0-9_-]/g, "_")}-${purpose}`,
-          names = segments.map((_, i) => `${prefix}-${i}.ts`),
+          // Shared URL identities keep staged files within the same unique-byte
+          // budget as downloads, even when many clips reuse a segment.
+          names = segments.map((segment) => `${hash(segment.url)}.ts`),
           refs: StudioAssetReference[] = []
         for (let i = 0; i < segments.length; i++) {
           const bytes = await download(segments[i]!.url)

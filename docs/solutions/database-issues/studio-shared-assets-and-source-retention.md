@@ -165,3 +165,11 @@ capturing a new measured descriptor and applying replacement handles and correct
 trim endpoints through `StudioAuthoringService.apply` with the observed revision
 and a stable idempotency key. Preserve terminal failed attempts and old revisions;
 do not update Core duration globally or weaken broker coverage tolerances.
+
+The same project's repeated backgrounds exposed a second source-preparation limit
+(feat-714): 158 segment uses would transfer 273.10 MiB, but only 30 unique segments
+(51.43 MiB) are needed. A preparation now caches exact canonical downloads within
+the existing 256 MiB aggregate budget. Shared segment filenames use URL identity,
+so repeated clips do not multiply temporary disk usage. The cache is local to one
+preparation; per-read limits, cancellation, origin checks, per-clip decode checks,
+and immutable source/materialization proofs remain mandatory.

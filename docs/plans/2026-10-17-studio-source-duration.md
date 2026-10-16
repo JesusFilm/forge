@@ -22,3 +22,12 @@ repair the failed project's current draft without rewriting revision 19 or its a
 Known boundary: historical immutable descriptors retain their original catalog
 bounds. Repair uses new measured handles; old revisions remain historical evidence.
 No network requests are added inside authoring transactions or frontend loading.
+
+## Follow-up discovered during verification: feat-714
+
+Live segment sizes show 273.10 MiB across 158 segment uses for the 17 clips,
+although only 30 unique segment URLs are needed. The same render would hit the
+aggregate download limit after the tail repair. Reuse canonical downloaded bytes
+within one preparation, bounded by the existing 256 MiB total. Keep per-read
+bounds, cancellation, origin validation and per-clip codec proofs. Test with a
+small byte budget; verify the corrected project's unique transfer size before release.

@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-10-17"
 duration: 1
 depends_on: []
-blocks: []
+blocks: ["feat-714"]
 tags: [studio, sources, rendering]
 ---
 
