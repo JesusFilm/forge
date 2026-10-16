@@ -209,6 +209,16 @@ value is where the subject sits across the source (0..1). Not a Mux film, no
 OpenRouter key or a failed plan: the intro stays centred and says so. Full spec:
 `docs/handoffs/2026-10-02-vertical-intro-design.md`. About 20 s.
 
+Look rules added 2026-10-16 (owner, Paralytic): render with `--intro-punch`
+(a short sharp zoom on the FILM at every cut; the captions stay still), the
+kinetic words land orange (#ff7f53) and cool to white, and warm light-leak
+flashes go over the cuts in post: a small one at the very start, then one per
+line cut, each different (colour, direction, length, one double flicker), the
+shape alternating between the right-hand rectangle and the full frame. Script:
+`python3 -I apps/mastra/scripts/intro-light-leaks.py <in> <out> <cut,cut,...>`
+(find the line cuts with ffmpeg `scdet`; skip cuts inside one film shot).
+Reference she liked: youtube.com/shorts/OPrWpX9dA-M.
+
 ### 6.2 film-verse
 
 Content: the quoted passage found by verse ADDRESS (every caption line tagged
