@@ -1,5 +1,5 @@
 {
-  "note": "Per-cue word start times (s), whisper.cpp small -dtw small per speech burst on the isolated dialogue (dialoguenhance centre channel), first word on the burst start, 2026-10-16, aligned to the cue words with difflib. Cue 5 «С Иисусом» moved by hand from 203.3 to 206.85 (its burst start; whisper missed «С» and the interpolation landed in the music).",
+  "note": "Per-cue word start times (s), whisper.cpp small -dtw small per speech burst on the isolated dialogue (dialoguenhance centre channel), first word on the burst start, 2026-10-16, aligned to the cue words with difflib. Cue 5 «С Иисусом» moved by hand from 203.3 to 206.85 (its burst start; whisper missed «С» and the interpolation landed in the music). Cue 9 «Тогда» moved to 232.1 (it is said alone in the burst before «они поднялись»); cue 17 drops «им», which the dub does not say (both found by the render gate, 2026-10-16).",
   "cues": [
     [191.95, 192.48, 192.83, 193.18],
     [193.95, 194.22, 194.66, 195.17, 195.24, 195.75],
@@ -12,7 +12,7 @@
       218.45
     ],
     [223.25, 223.28, 223.6, 223.93, 224.1, 224.23, 224.62, 224.95],
-    [233.45, 233.66, 233.84, 234.38, 234.5],
+    [232.1, 233.66, 233.84, 234.38, 234.5],
     [237.6, 237.61, 238.54, 239.5, 239.89, 240.78, 240.9],
     [241.4, 241.45, 241.92, 242.4, 242.95, 243.37],
     [266.95, 267.89, 268.92, 270.16, 270.57, 271.9, 271.94, 272.29],
@@ -20,7 +20,7 @@
     [279.45, 279.79, 279.85, 280.29, 280.67, 281.18, 281.37],
     [283.05, 283.21, 283.33, 283.97, 284.36, 284.55],
     [286.65, 286.8, 287.03, 287.39, 287.63, 287.87, 288.2, 288.61],
-    [293.05, 293.42, 293.55, 293.81, 294.1, 294.96, 295.05, 295.98],
+    [293.05, 293.42, 293.55, 293.81, 294.1, 294.96, 295.05],
     [296.9, 297.05, 297.08, 297.29, 297.43, 297.75, 297.85],
     [302.0, 302.2, 302.92, 303.61, 304.52, 304.93, 305.33],
     [305.89, 306.54, 307.54, 307.87, 307.99],
