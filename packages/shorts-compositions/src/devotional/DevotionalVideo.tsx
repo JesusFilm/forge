@@ -1766,6 +1766,7 @@ function ShortQuestionCards({
     sub?: string,
     subSize?: number,
     subStrips = false,
+    blur = false,
   ) => {
     if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
     const fade =
@@ -1814,21 +1815,61 @@ function ShortQuestionCards({
               >
                 {/* No break after an in-word hyphen: «КОГДА-/НИБУДЬ»
                     split across lines (Bartimaeus RU, 2026-10-16). */}
-                {[...text.replace(/(\S)-(?=\S)/g, "$1-\u2060")].map((ch, i) => (
-                  <span
-                    key={i}
-                    style={{
-                      opacity: interpolate(
+                {blur
+                  ? // Gathers out of a blur, a word at a time (owner,
+                    // 2026-10-16: sooner, and not letter by letter). Each
+                    // word is an inline block so blur and scale never
+                    // reflow the line.
+                    text.split(/(\s+)/).map((part, i) => {
+                      if (/^\s+$/.test(part)) return part
+                      const at = (i / 2) * 0.07
+                      const k = interpolate(
                         t - fromSec,
-                        [i / TYPE_CHARS_PER_SEC, i / TYPE_CHARS_PER_SEC + 0.06],
+                        [at, at + 0.5],
                         [0, 1],
-                        { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                        {
+                          extrapolateLeft: "clamp",
+                          extrapolateRight: "clamp",
+                          easing: Easing.bezier(0.16, 1, 0.3, 1),
+                        },
+                      )
+                      return (
+                        <span
+                          key={i}
+                          style={{
+                            display: "inline-block",
+                            opacity: k,
+                            filter: `blur(${(f(18) * (1 - k)).toFixed(2)}px)`,
+                            transform: `scale(${1.08 - 0.08 * k})`,
+                          }}
+                        >
+                          {part.replace(/(\S)-(?=\S)/g, "$1-\u2060")}
+                        </span>
+                      )
+                    })
+                  : [...text.replace(/(\S)-(?=\S)/g, "$1-\u2060")].map(
+                      (ch, i) => (
+                        <span
+                          key={i}
+                          style={{
+                            opacity: interpolate(
+                              t - fromSec,
+                              [
+                                i / TYPE_CHARS_PER_SEC,
+                                i / TYPE_CHARS_PER_SEC + 0.06,
+                              ],
+                              [0, 1],
+                              {
+                                extrapolateLeft: "clamp",
+                                extrapolateRight: "clamp",
+                              },
+                            ),
+                          }}
+                        >
+                          {ch}
+                        </span>
                       ),
-                    }}
-                  >
-                    {ch}
-                  </span>
-                ))}
+                    )}
               </p>
             ) : (
               <StampLine text={text} t={t - fromSec} f={f} sharp={false} />
@@ -1887,6 +1928,10 @@ function ShortQuestionCards({
           "open",
           // The question hits; the closing turn eases in.
           true,
+          undefined,
+          undefined,
+          false,
+          cards.open.blur ?? false,
         )
       ) : null}
       {cards.close

@@ -523,6 +523,9 @@ async function main() {
             ...(process.argv.includes("--film-open-strips")
               ? { openStrips: true }
               : {}),
+            ...(process.argv.includes("--film-open-blur")
+              ? { openBlur: true }
+              : {}),
             ...(arg("film-open-mark")
               ? { openMark: arg("film-open-mark")! }
               : {}),

@@ -455,6 +455,8 @@ export const devotionalInputPropsSchema = z.object({
           strips: z.boolean().optional(),
           /** A hand-drawn orange mark under the strips ("?"). */
           mark: z.string().optional(),
+          /** Gathers out of a blur, word by word, instead of typing. */
+          blur: z.boolean().optional(),
         })
         .optional(),
       close: z

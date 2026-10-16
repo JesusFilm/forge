@@ -130,6 +130,9 @@ export type ShortPlan = {
     openStrips?: boolean
     /** A hand-drawn mark beside the strips ("?"). */
     openMark?: string
+    /** The opening question gathers out of a blur, word by word, and
+     *  arrives sooner, instead of typing (owner, Martha RU 2026-10-16). */
+    openBlur?: boolean
     /** The close card's small line, in Figma units (default 32). */
     closeSubSize?: number
     /** The small line on paper strips ("|" between strips). */
@@ -166,6 +169,9 @@ export type CutdownOverrides = {
     openStrips?: boolean
     /** A hand-drawn mark beside the strips ("?"). */
     openMark?: string
+    /** The opening question gathers out of a blur, word by word, and
+     *  arrives sooner, instead of typing (owner, Martha RU 2026-10-16). */
+    openBlur?: boolean
     /** The close card's small line, in Figma units (default 32). */
     closeSubSize?: number
     /** The small line on paper strips ("|" between strips). */
@@ -1130,6 +1136,8 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
           openStrips?: boolean
           /** A hand-drawn mark beside the strips ("?"). */
           openMark?: string
+          /** The opening question gathers out of a blur (owner, 2026-10-16). */
+          openBlur?: boolean
           /** The close card's small line, in Figma units (default 32). */
           closeSubSize?: number
           /** The small line on paper strips ("|" between strips). */
@@ -1159,12 +1167,15 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
             open: {
               text: filmCard.__cards.open,
               ...(filmCard.__cards.openStrips ? { strips: true } : {}),
+              ...(filmCard.__cards.openBlur ? { blur: true } : {}),
               ...(filmCard.__cards.openMark
                 ? { mark: filmCard.__cards.openMark }
                 : {}),
               // After the composition's 0.6s fade from black: a stamp that
               // lands during the fade reads grey and soft.
-              fromSec: 0.62,
+              // A blur reveal is soft by nature, so it may start inside the
+              // fade (owner, 2026-10-16: show the question sooner).
+              fromSec: filmCard.__cards.openBlur ? 0.25 : 0.62,
               toSec:
                 filmCard.__cards.openOverlapSec != null
                   ? first + filmCard.__cards.openOverlapSec
