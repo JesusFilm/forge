@@ -1,0 +1,8 @@
+{
+  "repository": "JesusFilm/forge",
+  "workspace": "ios/JesusFilmWatch.xcworkspace",
+  "scheme": "JesusFilmWatch",
+  "app_name": "JesusFilmWatch",
+  "runner_label": "hybrid-ios",
+  "runner_arch": "ARM64"
+}

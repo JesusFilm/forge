@@ -116,6 +116,16 @@ restart to take effect.
 
 ## Test builds & distribution
 
+### Cloud development and VM builds
+
+Use `CLOUD-VM.md` for the TV-only Cloud → GitHub Actions → macOS VM workflow.
+Run `./apps/tv/dev doctor` from the repository root to inspect routing, then
+`./apps/tv/dev test tvos --builder cloud` on a clean pushed branch when runner
+access and workflow bootstrap are available. This runs Jest plus a native tvOS
+simulator build; it does not claim native UI testing. Never merge a PR without
+the user's explicit instruction. Existing cloud tasks are isolated; use the
+current checkout rather than creating another worktree unless requested.
+
 Profile is temporarily hidden on both Apple TV and Android TV by
 `src/lib/auth/profileFlagState.ts` (feat-596), including development builds and
 builds with the old `EXPO_PUBLIC_TV_PROFILE_ENABLED` flag. The sign-in code is

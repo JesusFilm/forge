@@ -36,6 +36,7 @@ apps/mobile/ios
 apps/mobile/android
 apps/tv/ios
 apps/tv/android
+apps/tv/.build-results
 
 # Impeccable design-hook caches — gitignored machine state
 .impeccable
