@@ -177,6 +177,7 @@ import {
 import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
+import { subtitleEvalRecoveryWorkflow } from "./workflows/subtitle-eval-recovery"
 import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
 import { handlePrecomputedSourceRouteRequest } from "./workflows/precomputed-source-generation"
 import { handlePrecomputedCatalogRouteRequest } from "./workflows/precomputed-catalog-generation"
@@ -348,6 +349,7 @@ export const mastra = new Mastra({
     seoDailyAuditWorkflow,
     seoExperimentEvaluationWorkflow,
     seoTicketDispatchWorkflow,
+    subtitleEvalRecoveryWorkflow,
     watchRouteAlertsWorkflow,
     // Ported draft-authoring workflows (consolidation U4). Registered by their
     // workflow id so the U5 route can drive them via

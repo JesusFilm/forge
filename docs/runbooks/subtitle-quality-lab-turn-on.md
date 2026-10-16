@@ -134,34 +134,53 @@ authorizing any spend.
 
 ## Step 6 — Recovery scheduling
 
-Process-death recovery is not self-scheduled. Without an external caller, a run
-stranded by a crash stays `RUNNING` and its reserved spend is never released.
+Process-death recovery is not self-scheduled. Without a caller, a run stranded
+by a restart stays `RUNNING` and its reserved spend is never released.
 
-Use Railway cron, matching the existing precedent in
-`apps/admin/docs/core-sync-recurring-job.md`:
+The sweep is a scheduled Mastra workflow —
+`apps/mastra/src/mastra/workflows/subtitle-eval-recovery.ts`, running
+`*/5 * * * *` in UTC alongside the existing `watch-route-alerts` schedule. No
+extra service is needed.
 
-```bash
-curl -X POST "$MANAGER_URL/api/scheduled/subtitle-eval-recovery" \
-  -H "Authorization: Bearer $MANAGER_API_KEY"
+**Why Mastra and not Manager, or a dedicated service.** A Lab run executes
+inside _Manager's_ process on the Workflow SDK's local World, so a Manager
+restart is what strands it. A scheduler inside Manager would be gone at the
+moment it is needed. Mastra is unaffected by a Manager restart, already runs
+scheduled workflows in production, and needs no new infrastructure. A dedicated
+cron service would also work but requires the same Manager bearer, so it buys
+isolation rather than removing a dependency.
+
+Configure two variables on `@forge/mastra`:
+
 ```
+MANAGER_SUBTITLE_EVAL_RECOVERY_URL=https://<manager>/api/scheduled/subtitle-eval-recovery
+MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY=<Manager's MANAGER_API_KEY>
+```
+
+Both are optional. Unconfigured, the workflow returns `skipped` /
+`config_missing` rather than failing every five minutes — the correct state
+until the Lab is switched on.
 
 Each invocation lists runs stale by at least five minutes, reads at most four
 pages of 25, claims a 120-second run-recovery lease, refuses cells holding a
 live lease, requeues an expired retryable cell while attempts remain,
 terminalizes exhausted work, and writes the terminal report once every cell is
-terminal. Concurrent schedulers are safe: lease generation and token hashes
-fence recovery, and `SKIPPED_OR_RACED` is the expected outcome when another
-worker owns the lease.
+terminal. Concurrent sweeps are safe: lease generation and token hashes fence
+recovery.
 
-Configure the schedule only after the bearer is provisioned. Alert on runs that
-stay `QUEUED` or `RUNNING` beyond the scheduler cadence plus the maximum cell
-timeout. **Do not treat HTTP 200 as proof of recovery** — inspect the returned
-per-run outcomes and the Admin terminal report.
+**Do not treat HTTP 200 as proof of recovery.** The endpoint answers 200 with
+per-run outcomes, and a run it could not recover appears in that list rather
+than in the status code. The workflow reads the body and reports
+`total` / `raced` / `unknown`.
 
-Mastra's own `schedule: { cron }` workflow option was considered and rejected
-for this job: it shares a failure domain with the executions being recovered
-(a Mastra crash is the most likely way a cell strands), and it would introduce
-a Mastra to Manager credential direction that does not currently exist.
+One limit worth knowing: Manager catches _every_ exception into
+`SKIPPED_OR_RACED`, so a benign lease race and an unreachable Admin are
+indistinguishable from outside. The raced count is surfaced, not judged.
+Narrowing that status at the source is a Manager change and would make this
+sweep considerably more informative.
+
+Alert on runs that stay `QUEUED` or `RUNNING` beyond the schedule interval plus
+the maximum cell timeout.
 
 ## Step 7 — Corpus import and certification
 
