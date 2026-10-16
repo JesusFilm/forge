@@ -153,6 +153,20 @@ Then read it yourself before Lyuba does:
   source or a Greek/Hebrew word aloud; the takeaway is a conclusion; no worn
   moves (the code checks most; read for the rest). No em or en dashes.
 - If the notes show a check failed and was rewritten, read that part twice.
+- The writer does NOT enforce the rules Lyuba set in the Lepers and Widow
+  sessions. Fix these by hand in `devo.json` and the sheet before she reads
+  it (Paralytic v1 went out without them, 2026-10-16):
+  - the opening's nerve line hooks as hard as the reflection's best line;
+  - one line of thought, no paragraphs that retell the scene;
+  - ONE commentary point (`message.classicPoints`), unfolded over two or
+    more paragraphs, not a line from each point;
+  - `pauses` on weighty sentences (‖ in the sheet), `direction` tags on
+    paragraphs, `voiceDirections`;
+  - a verse card (`callout`, highlight ≤24 chars) wherever the reflection
+    points at a verse;
+  - the question is personal and not yes/no.
+    The Widow cache (`ch1006-seq0/devo.json`) is the worked example of every
+    field.
 
 ## 7. Make the Russian script
 
