@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 15, 2026)
 
-- **Total tickets:** 840
-- **Complete:** 623
+- **Total tickets:** 841
+- **Complete:** 625
 - **Cancelled:** 41
-- **In progress:** 68
+- **In progress:** 67
 - **Not started:** 51
 - **Blocked:** 57
 - **Overdue and open:** 160
@@ -223,7 +223,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
-| [feat-709](content-discovery/feat-709-full-library-video-recommendations.md)                                   | Full-library directional video recommendations                                                  | nisal      | P1       | 2026-10-16 | 3    | 2026-10-18 | in-progress |
+| [feat-710](content-discovery/feat-710-full-library-video-recommendations.md)                                   | Full-library directional video recommendations                                                  | nisal      | P1       | 2026-10-16 | 3    | 2026-10-18 | complete    |
 
 ### Media Generation
 
@@ -690,6 +690,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-703](platform/feat-703-ci-tested-target-baseline.md)                             | Compare PR CI checks against the tested target baseline                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-707](platform/feat-707-watch-feedback-mobile-overflow.md)                        | Keep Watch feedback within the mobile dialog width                                 | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
