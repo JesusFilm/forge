@@ -46,6 +46,8 @@ people without Admin authority.
 - `SyntheticBlock`
 - `force-static`
 - `verifyAuthSession`
+- `resolveAdminUser`
+- `resolveManagerUser`
 - `createUserAdminClient`
 - `CONSUMER_BEARER_PERMISSIONS`
 - `read:manager-seo`
@@ -53,6 +55,9 @@ people without Admin authority.
 - `managerSeoRun`
 - `approveManagerSeoProposal`
 - `rejectManagerSeoProposal`
+- `decideProposal`
+- `AccountControl`
+- `DatadogRum`
 - `SeoEvidenceObservation`
 - `watchVideoStructuredDataJson`
 - `WATCH_ANALYTICS_CONTRACT_VERSION`
@@ -60,8 +65,11 @@ people without Admin authority.
 ## What To Build
 
 1. Add an authoritative, server-verified `canViewWatchSeo` capability for a
-   currently active Admin. Identity alone, Watch OAuth scopes, and the Web
-   consumer bearer never imply this capability.
+   currently active Admin. A dedicated Admin REST endpoint verifies a separate
+   Watch SEO service key, strictly checks the user-delegated Web token, maps its
+   subject to an Admin-owned user identity, and reads the live `ADMIN` role.
+   Identity alone, Watch OAuth scopes, Manager membership, and the Web consumer
+   bearer never imply this capability.
 2. Add a bounded, versioned per-Watch-page SEO read model backed by Admin's
    stored ledger and observations. It must label source, reporting window,
    freshness, and `available`, `partial`, `unavailable`, or `unknown` state.
@@ -78,10 +86,11 @@ people without Admin authority.
    CTA clicks, AI-assistant referrals, social/chat previews, content analysis,
    crawler visits/cache observations, warnings, and opportunities. Never turn
    missing measurements into zero or a fabricated number.
-7. Make opportunity outcomes explicit. Apply uses the existing versioned,
-   replay-protected approval/materialization path and never directly publishes;
-   Decline records the canonical human decision. Show what each action changes
-   and its observed or expected click outcome.
+7. Make opportunity outcomes explicit. Apply/Decline on Watch opens an
+   Admin-origin confirmation bound to the proposal version and digest. The
+   Admin action rechecks the live role and uses a single-use server nonce before
+   the shared decision core creates a draft or ticket. Show what each action
+   changes and its observed or expected click outcome.
 
 ## Constraints
 
@@ -92,6 +101,15 @@ people without Admin authority.
   `cookies()` or fetch private evidence from its server render.
 - Do not widen `WEB_ADMIN_API_KEYS` or treat the consumer bearer as Admin
   authority.
+- Use a separate optional Watch SEO service-key list, include it in the
+  cross-list disjointness boot check, and deploy Admin before Web. The feature
+  fails closed when it is unset.
+- Watch-origin pages never perform privileged writes. They may open an
+  Admin-origin confirmation; only Admin's current session and database role may
+  authorize the decision.
+- Do not add a Watch SEO permission to the generic `WEB_USER` role and do not
+  change the Admin GraphQL schema or shared GraphQL client for this REST-owned
+  contract.
 - Do not call GSC, GA4, Firecrawl, Datadog, or another provider on page render.
   Display only stored observations or an explicit unavailable state.
 - Keep query-level audit detail within its 29-day retention boundary. Never
@@ -99,6 +117,9 @@ people without Admin authority.
   model reasoning.
 - Keep standalone search canonical identity distinct from contextual route and
   playback identity.
+- Mask the panel from Datadog RUM collection with the existing privacy
+  attribute. Query-level detail remains on Admin rather than the WordPress-
+  shared Watch origin.
 - Cross-app reuse happens through contracts, not source imports.
 - Preserve configured GA and Datadog integrations per
   `docs/analytics-and-recommendation-policy.md`.

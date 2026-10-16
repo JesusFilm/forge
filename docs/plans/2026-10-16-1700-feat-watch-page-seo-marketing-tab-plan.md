@@ -29,7 +29,8 @@ unchanged until an authorized Admin deliberately opens the tab.
   evidence.
 - R3. Static Watch rendering and shared caching remain public and
   identity-independent; capability and evidence resolve through private,
-  no-store endpoints after hydration.
+  no-store endpoints after hydration. The Watch panel is masked from Datadog
+  RUM capture and never hosts a privileged write.
 - R4. The panel uses the actual Watch content rail, Montserrat typography,
   stone palette, brand-red actions, responsive breakpoints, and accessible tab
   semantics. It does not recreate the page shell or invent public navigation.
@@ -50,9 +51,10 @@ unchanged until an authorized Admin deliberately opens the tab.
 - R9. Social and chat previews are deterministic presentations of the current
   canonical URL, title, description, and image, with source provenance.
 - R10. Warnings and opportunities state evidence, expected impact, confidence,
-  and the exact action. Apply and Decline use canonical immutable proposal
-  decisions; Apply may create a draft or ticket but never directly publish or
-  deploy.
+  and the exact action. Apply and Decline open an Admin-origin confirmation
+  bound to immutable proposal version/digest. The confirmed decision is
+  attributed to a live Admin and protected by a single-use server nonce; Apply
+  may create a draft or ticket but never directly publish or deploy.
 - R11. Detailed query evidence obeys the existing 29-day compaction policy and
   never exposes provider payloads, credentials, headers, cookies, signed URLs,
   or model chain-of-thought.
@@ -72,13 +74,16 @@ unchanged until an authorized Admin deliberately opens the tab.
 - The first complete release may show explicit unavailable cards for metric
   families not yet persisted per page. That is complete behavior, not mocked
   data, and follow-up ingestion can populate the same versioned contract.
+- Watch shares an origin with WordPress, so a same-origin script can read a
+  Watch CSRF value. Privileged decisions therefore remain on Admin's separate
+  origin; moving them inline requires a separate owner-approved security trade.
 
 ## Scope Boundaries
 
 ### In scope
 
 - Strict Admin capability exchange and per-request enforcement.
-- A bounded per-page read model and proposal decision bridge.
+- A bounded per-page read model and Admin-origin proposal decision bridge.
 - Deferred Watch UI matching the existing video-page design.
 - Ranking, reach, watch depth, CTA, AI referral, preview, content, crawler,
   warning, and opportunity states using real stored evidence.
@@ -94,6 +99,7 @@ unchanged until an authorized Admin deliberately opens the tab.
 ### Out of scope
 
 - Direct publish, deploy, Railway action, or unrestricted content mutation.
+- Privileged Apply/Decline POSTs from the Watch origin.
 - Live GSC/GA4/Firecrawl/Datadog calls during a Watch request.
 - Replacing the existing Manager SEO workspace or run audit pages.
 - Changing public Watch navigation or rendering the tab to non-Admins.
@@ -110,7 +116,7 @@ static Watch page
   -> existing Watch body
   -> tiny client capability gate
        -> Web private session endpoint
-            -> Admin authoritative capability exchange
+            -> Admin authoritative capability REST exchange
        -> authorized selection
             -> deferred SEO workspace chunk
             -> Web private SEO endpoint
@@ -118,8 +124,9 @@ static Watch page
                  -> stored SEO/analytics observations
 
 opportunity action
-  -> Web private mutation endpoint
-  -> Admin signed immutable proposal decision
+  -> Admin-origin confirmation
+  -> live Admin role + immutable version/digest + single-use nonce
+  -> shared canonical proposal decision core
   -> draft/ticket materialization (never publish/deploy)
 ```
 
@@ -129,7 +136,7 @@ opportunity action
 browser        Web API             Admin authority          ledger
   | session?      |                       |                    |
   |-------------->| verify identity       |                    |
-  |                | capability exchange -------------------->|
+  |                | service key + user token ---------------->|
   |                |<------ ADMIN/deny ----|                    |
   |<-- null/tab ---|                       |                    |
   | open tab       |                       |                    |
@@ -153,14 +160,15 @@ unknown is a measured absence/coverage state; it never silently becomes zero.
 not ADMIN?        render nothing
 ADMIN, unopened?  render only the tab affordance; load no workspace/data
 ADMIN, opened?    load bounded evidence
-proposal current? allow signed Apply/Decline
+proposal current? open Admin confirmation for Apply/Decline
 proposal stale?   refresh and explain; do not retry a decision blindly
 ```
 
 ## Key Technical Decisions
 
-- KTD1. Keep identity out of the static route and authorize through a private
-  post-hydration capability exchange. (session-settled: user-approved — chosen
+- KTD1. Keep identity out of the static route and authorize through a dedicated
+  post-hydration Admin REST capability exchange with a separate service key,
+  strict Web token, and live role read. (session-settled: user-approved — chosen
   over making Watch dynamic because the public page must keep its existing
   design and load behavior.) Governs R1-R4 and R12.
 - KTD2. Load the workspace chunk and evidence only after an authorized Admin
@@ -170,9 +178,14 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   making provider calls or inventing prototype metrics. (session-settled:
   user-directed — chosen over mocked production data because the user asked to
   pull analytics and other real sources.) Governs R5-R9 and R11.
-- KTD4. Route one-click actions through the existing signed proposal ledger.
-  (session-settled: user-approved — chosen over direct content mutation because
-  Apply must be safe, attributable, and reversible.) Governs R10-R11.
+- KTD4. Keep the one-click opportunity affordances on Watch, but complete the
+  decision on Admin's separate origin. Extract the transaction core of
+  `decideProposal`; Manager retains its signed assertion check, while Admin
+  supplies the live session actor and a single-use server nonce. (session-
+  settled: user-approved — chosen over a privileged Watch-origin POST because
+  WordPress shares that origin and can defeat a Watch-local CSRF token.) The
+  decision is final; an editorial draft can later be discarded, while a ticket
+  outbox entry cannot be retracted. Governs R10-R11.
 - KTD5. The panel extends the actual Watch body instead of recreating the hero,
   header, or page shell. (session-settled: user-directed — chosen after the
   standalone mockup was rejected as not using the Jesus Film Watch design.)
@@ -186,16 +199,25 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   widening consumer/Web-user permissions.
 - Files: Admin auth/API contract, Web private session/capability adapter, and
   their focused tests.
-- Approach: exchange the verified Watch user access token through a narrow
-  server-to-server contract that maps Auth subject to current Admin membership;
-  return only capability state and recheck it on every privileged endpoint.
+- Approach: after the existing account session probe reports signed in,
+  exchange a separate Watch SEO service key plus the user's access token through
+  a narrow Admin REST contract. Require a Web client (never TV), exact issuer,
+  active token, production environment claim, subject-to-user identity (or a
+  callback-recorded binding), and a live `role === ADMIN` read. Never resolve by
+  request email or Manager membership. Return only capability state; keep only
+  a negative result in the tab's in-memory state.
 - Requirements: R1-R3, R11; KTD1.
 - Test scenarios:
   - Active Admin session returns `canViewWatchSeo=true` without exposing role
     internals or credentials.
   - Anonymous, Web user, Viewer, Editor, revoked Admin, forged token, timeout,
     and malformed response all fail closed.
-  - The consumer bearer alone cannot mint the capability.
+  - A session without an access token, TV token, other-environment token,
+    production token with no environment binding, inactive token, email-only
+    match, subject/binding conflict, service-key-only request, and token-only
+    request all fail closed.
+  - The consumer bearer alone cannot mint the capability, and a stale Admin
+    session cookie cannot override a downgraded database role.
 - Execution note: add or strengthen failing boundary tests before production
   implementation.
 
@@ -206,8 +228,11 @@ proposal stale?   refresh and explain; do not retry a decision blindly
 - Files: Admin services/API or GraphQL contract, schemas/presenters, generated
   contracts if used, and focused tests.
 - Approach: compose existing ledger, run, observation, and current page
-  metadata into a versioned DTO with per-family coverage. Reuse the current
-  signed approval/rejection service for actions.
+  metadata into a versioned DTO with per-family coverage. Use a bounded lookup
+  for evidence JSON or add an indexed projection; never scan unbounded reports.
+  Extract `decideProposal`'s transaction core so the existing Manager assertion
+  path and the new Admin-hosted path share version/digest, conflict,
+  idempotency, materialization, and no-publish behavior.
 - Requirements: R5-R11; KTD3-KTD4.
 - Test scenarios:
   - A page with complete stored observations returns bounded ranking, reach,
@@ -215,12 +240,13 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   - Missing provider rows return `unknown` or `unavailable`, never numeric zero.
   - Partial/stale/expired evidence remains typed and retains safe aggregate
     fields only.
-  - Valid Apply/Decline records one canonical decision; stale version/digest,
-    replay, unauthorized actor, and unsupported direct-publish intent fail.
+  - Valid Admin confirmation records one canonical decision; stale
+    version/digest, nonce replay, unauthorized actor, and unsupported direct-
+    publish intent fail.
 - Execution note: characterize current ledger joins and proposal decision
   behavior before extending them.
 
-### U3 — Private Web API adapter
+### U3 — Private Web read adapter
 
 - Goal: expose U2 only to an Admin browser without leaking private evidence into
   static HTML, RSC, shared caches, or client credentials.
@@ -234,8 +260,7 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   - Direct anonymous/revoked/forged access returns a denial with no upstream
     evidence body.
   - Invalid content identity and Admin timeout return bounded typed failures.
-  - Mutation input cannot request publish/deploy or omit immutable proposal
-    identity.
+  - No Watch route accepts proposal-decision writes.
 
 ### U4 — Watch integration and deferred workspace
 
@@ -243,7 +268,8 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   or initial-load cost.
 - Files: Watch body/section integration, capability hook/provider, deferred
   workspace boundary, styles, and focused component/route tests.
-- Approach: mount a null-rendering boundary after the existing Watch body;
+- Approach: mount a null-rendering boundary after the required recommendation
+  slot that immediately follows the existing Watch body;
   display one accessible tab affordance only after U1 confirms Admin; import the
   workspace and request U3 only on selection. Reset on video/dub/context change.
 - Requirements: R1-R4, R12; KTD1-KTD2, KTD5.
@@ -276,8 +302,9 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   - Watch depth and CTA outcomes show denominators/windows and distinguish zero
     from unavailable.
   - Social/chat previews use current canonical metadata and remain responsive.
-  - Opportunity cards explain impact; Apply/Decline expose pending, success,
-    stale, rejected, and retryable-error states accessibly.
+  - Opportunity cards explain impact; Apply/Decline open the Admin confirmation
+    with immutable identity and expose stale, expired, already-decided,
+    conflict, replay, rejected, and retryable-error states accessibly.
   - Long localized copy and narrow mobile width do not overflow.
 
 ### U6 — Integrated verification and documentation
@@ -304,8 +331,9 @@ proposal stale?   refresh and explain; do not retry a decision blindly
 
 - Web gains private capability/evidence routes but its public route remains
   statically cached.
-- Admin gains one narrow authority/read-model surface; consumer bearer and
-  existing public GraphQL permissions remain unchanged.
+- Admin gains one narrow REST authority/read-model surface and an Admin-hosted
+  decision confirmation; consumer bearer, generic Web-user permissions, and
+  the GraphQL schema remain unchanged.
 - Manager remains the portfolio/audit workspace and source of signed decision
   patterns; it is not replaced.
 - Mastra remains provider-ingestion owner. A missing durable per-page source is
@@ -323,7 +351,8 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   missing data to zero.
 - Bundle/layout regression: dynamic import after authorized selection and
   measure both initial load and mount-window CLS.
-- Unsafe “one click”: signed immutable decisions may create drafts/tickets only;
+- Unsafe “one click”: Watch performs no privileged write. Admin-hosted,
+  version/digest-bound, single-use decisions may create drafts/tickets only;
   stale/replayed actions fail closed.
 
 ## Verification Contract
@@ -332,8 +361,8 @@ proposal stale?   refresh and explain; do not retry a decision blindly
    recorded before behavior changes where practical.
 2. Run affected Web, Admin, and Manager typechecks, lint, and tests one heavy
    command at a time through `/home/lado/.local/bin/agent-io-guard --`.
-3. If Admin GraphQL changes, regenerate `apps/admin/schema.graphql` and
-   `packages/admin-graphql` together, then verify no generated drift.
+3. Verify the REST design leaves `apps/admin/schema.graphql` and
+   `packages/admin-graphql` unchanged.
 4. Run a production build and T3 collaborative-browser smoke at desktop and
    mobile widths with controlled Admin and non-Admin fixtures.
 5. Record initial-load request/byte/timing evidence and deferred mount CLS; a
@@ -353,7 +382,8 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   unauthorized state.
 - All displayed values are real stored observations or visibly typed as
   unavailable/partial/unknown; no prototype data ships.
-- Apply/Decline use canonical signed decisions and never publish or deploy.
+- Apply/Decline hand off to canonical Admin-hosted, version/digest-bound,
+  single-use decisions and never publish or deploy.
 - Focused and package-level checks pass, generated contracts are synchronized,
   browser and load evidence are recorded, and cross-provider review is clear.
 - `feat-712` is marked complete and durable learnings are captured under
