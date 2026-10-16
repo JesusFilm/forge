@@ -179,3 +179,14 @@ asset/version/digest identity and packaged files by verified content digest.
 Generated playlists retain each clip's source-time mapping and refer to the shared
 segment files. Repeating one immutable segment must consume one retained read and
 one packaged media file, while every clip still validates its signed codec proof.
+
+### Repeated retention can exhaust preparation time
+
+Reusing downloaded segments does not eliminate repeated upload work. An
+idempotent Admin registration may still require a grant and complete byte PUT
+on every broker call. A 17-clip production preparation reached 214 successful
+upload grants before its 90-second deadline. Scope completed-registration reuse
+to one broker instance and key it by the full validated registration payload,
+including source provenance and dependencies. Never merge different source
+identities by byte digest alone, cache a failed upload, or return cached authority
+after cancellation. Keep codec checks and range-specific proofs intact.

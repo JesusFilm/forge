@@ -65,6 +65,24 @@ it("materializes through the current Admin schema and reads its canonical respon
   await expect(materialize(snapshot, ref, ref)).resolves.toEqual(canonical)
 })
 
+it("cancels materialization with its preparation", async () => {
+  const controller = new AbortController()
+  const fetcher = vi.fn(async (_url, init) => {
+    expect(init.signal.aborted).toBe(false)
+    controller.abort()
+    expect(init.signal.aborted).toBe(true)
+    return Response.json({ data: { materializeShortsSource: snapshot } })
+  })
+  vi.stubGlobal("fetch", fetcher)
+  await expect(
+    materialize(snapshot, ref, ref, controller.signal),
+  ).rejects.toThrow()
+  await expect(
+    materialize(snapshot, ref, ref, controller.signal),
+  ).rejects.toThrow()
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
 it.each(["missing-rendition", "gap", "too-many-segments", "unavailable-tail"])(
   "preserves broker HLS errors and staging bounds: %s",
   async (failure) => {

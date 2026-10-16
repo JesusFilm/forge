@@ -16,8 +16,9 @@ repair the failed project's current draft without rewriting revision 19 or its a
 5. Re-read the production draft, capture a verified descriptor, replace matching
    source references, and trim the film endpoint/duration by one frame if required.
    Apply normal revision command as a service with an idempotency key. Validate all
-   source ranges and preserve failed-attempt evidence. Do not dispatch paid render
-   work solely to validate this repair.
+   source ranges and preserve failed-attempt evidence. After both services deploy,
+   verify one full render through the existing worker pool; no narration or other
+   provider generation is needed.
 
 Known boundary: historical immutable descriptors retain their original catalog
 bounds. Repair uses new measured handles; old revisions remain historical evidence.
@@ -36,3 +37,26 @@ The same reuse must continue in `studio-render-input.ts`, whose separate 128 MiB
 limit otherwise counts repeated export reads/files. Cache reads by complete
 immutable asset reference; package verified identical bytes once and point all
 playlists/media at that file. Preserve proof/eligibility checks and per-read limits.
+
+## Released correction
+
+PR #2766 merged as `90442e9f07f15efe5c662d6c9077cb04227c8b63`; both Admin
+and Manager production deployments are healthy. The normal source/authoring
+services accepted the revision-20 repair as revision 21 with all 17 sources in
+bounds, preserving the 8856-frame timeline and immutable history. See feat-713
+and feat-714 for deployment IDs, source snapshot, repair receipt key and validation.
+
+## Follow-up: preparation deadline (feat-715)
+
+The full revision-21 check failed at 91 seconds before preparation committed.
+A bounded diagnostic using the deployed broker reproduced abort at 90008 ms,
+after 214 successful asset-upload grant calls; the 215th call was cancelled.
+Repeated segments still requested grants and PUT their bytes despite idempotent
+Admin registration. Cache only successfully validated references by the complete
+validated registration payload for one broker instance, including digest, length,
+filename, MIME type, role, dependencies and provenance. Check cancellation before
+cache hits and never cache failures. Keep per-clip probe/decode/signature work and
+the existing 90-second deadline unchanged. Propagate that deadline to source
+materialization as well. Re-test registration isolation, distinct provenance,
+dependencies, failed PUTs and cancellation, then release through PR/main and rerun
+the full revision.

@@ -137,6 +137,9 @@ export function createStudioAssetBroker(
   call: StudioBrokerClient,
   signal?: AbortSignal,
 ) {
+  // This broker belongs to one preparation. A completed immutable registration
+  // can be reused without issuing another upload grant or transferring its bytes.
+  const registered = new Map<string, StudioAssetReference>()
   return {
     async read(ref: StudioAssetReference, max = LIMIT) {
       const grant = z
@@ -166,6 +169,7 @@ export function createStudioAssetBroker(
         string | number | number[] | StudioAssetReference
       > = {},
     ) {
+      signal?.throwIfAborted()
       const input = studioAssetUploadSchema.parse({
         metadata: {
           idempotencyKey: `broker-${hash(bytes)}-${hash(JSON.stringify({ filename, type, role, dependencies, recorded })).slice(0, 24)}`,
@@ -178,6 +182,9 @@ export function createStudioAssetBroker(
         digest: hash(bytes),
         byteSize: bytes.length,
       })
+      const identity = hash(canonical(input))
+      const prior = registered.get(identity)
+      if (prior) return prior
       const grant = z
         .object({ path: z.string() })
         .parse(await call("asset-upload", input))
@@ -194,7 +201,12 @@ export function createStudioAssetBroker(
       )
       if (!response.ok)
         throw new StudioBrokerError("Could not retain preview media")
-      return studioAssetVersionSchema.parse(await response.json()).reference
+      const reference = studioAssetVersionSchema.parse(
+        await response.json(),
+      ).reference
+      signal?.throwIfAborted()
+      registered.set(identity, reference)
+      return reference
     },
   }
 }
@@ -246,7 +258,9 @@ export async function materialize(
   snapshot: ShortSourceSnapshot,
   preview: StudioAssetReference,
   exportRef: StudioAssetReference,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted()
   if (!env.ADMIN_MANAGER_API_KEY)
     throw new StudioBrokerError(
       "Trusted source materialization is not configured",
@@ -273,12 +287,13 @@ export async function materialize(
       },
     }),
     redirect: "error",
-    signal: AbortSignal.timeout(30000),
+    signal: boundedSignal(30000, signal),
   })
   const payload = (await response.json()) as {
     data?: { materializeShortsSource: unknown }
     errors?: unknown
   }
+  signal?.throwIfAborted()
   if (!response.ok || payload.errors)
     throw new StudioBrokerError("Source materialization was rejected")
   return studioSourceSnapshotSchema.parse(payload.data?.materializeShortsSource)
@@ -543,7 +558,12 @@ export async function prepareStudioRenderSources(
         )
       }
 
-      const verified = await materialize(snapshot, manifests[0]!, manifests[1]!)
+      const verified = await materialize(
+        snapshot,
+        manifests[0]!,
+        manifests[1]!,
+        signal,
+      )
       document = {
         ...document,
         items: document.items.map((i) =>
