@@ -156,6 +156,26 @@ const STORIES: Record<
     ],
     out: "Widow",
   },
+  "lumo-luke-5-paralytic": {
+    // No setting: the leper and "he withdrew to lonely places and prayed"
+    // (5:12-16) come just before in the same segment, but the card starts on
+    // 5:17, so the viewer never sees them (the Lepers rule, owner 2026-10-12).
+    terms: [
+      "Palsy",
+      "Roof",
+      "House",
+      "Bed",
+      "Couch",
+      "Capernaum",
+      "Pharisees",
+      "Scribes",
+      "Blasphemy",
+      "Forgiveness of sin",
+      "Son of man",
+      "THE RETURN TO CAPERNAUM - CONCERNING THE FORGIVENESS OF SINS - THE HEALING OF THE PARALYSED",
+    ],
+    out: "Paralytic",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the

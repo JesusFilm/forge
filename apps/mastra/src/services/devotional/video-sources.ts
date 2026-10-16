@@ -229,6 +229,36 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-18-widow.ru.vtt" },
     },
   },
+  {
+    // The paralytic lowered through the roof sits in the middle of the
+    // Luke 5 segment: 5:17 ("One day Jesus was teaching") starts at 192.24
+    // after "withdrew to lonely places and prayed" ends at 189.5, and "We have
+    // seen remarkable things today" ends at 362.3; Levi (5:27) only starts at
+    // ~373. The scene keeps long wordless stretches (the roof, the lowering,
+    // the man rising), so the card runs close to three minutes (whisper word
+    // times, 2026-10-16).
+    key: "lumo-luke-5-paralytic",
+    index: 1007,
+    mediaComponentId: "6_GOLuke2605",
+    title: "The Paralytic Lowered Through the Roof",
+    film: "lumo",
+    passage: { reference: "Luke 5:17-26", osisRef: "Luke.5.17-Luke.5.26" },
+    window: { startSec: 191.6, lengthSec: 171.7 },
+    // The Russian dub ends «молился» at 189.0, starts «Однажды» at ~191.9
+    // and ends «видели мы сегодня» at 362.0.
+    windowByLang: { ru: { startSec: 190.6, lengthSec: 172.4 } },
+    // ~171.7s ×1.05 → ~164s on screen, plus a breath.
+    maxVideoCardSec: 166,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-5-paralytic.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-5-paralytic.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))
