@@ -106,6 +106,7 @@ async function main() {
       ...(arg("stills") ? { stills: Number(arg("stills")) } : {}),
       ...(arg("stills-frames") ? { stillsFrames: arg("stills-frames") } : {}),
       ...(arg("frame-range") ? { frameRange: arg("frame-range") } : {}),
+      ...(arg("outro-hold") ? { outroHoldSec: Number(arg("outro-hold")) } : {}),
       // Quarter-size review render (270p), written as `…-draft.mp4`.
       ...(process.argv.includes("--draft") ? { draft: true } : {}),
       ...(arg("grain-size") ? { grainSizePx: Number(arg("grain-size")) } : {}),

@@ -2005,6 +2005,8 @@ export type RenderOptions = {
    *  stepper's travelling light, a verse unfolding under the voice — are all
    *  motion. A twelfth of the encode answers the same question. */
   frameRange?: string
+  /** Seconds the last card holds after the prayer; default 8. */
+  outroHoldSec?: number
   /** DRAFT: render at a quarter size (270p) for review. Written next to the
    *  full render as `-draft.mp4`, so it never replaces a finished video. */
   draft?: boolean
@@ -3278,7 +3280,12 @@ async function renderInStage(
   // The 8s outro hold exists so a devotional's last card can breathe under the
   // music. A teaser ends ON its call to action and loops — holding it eight
   // seconds turns a 16s cut into a 26s one.
-  manifest.outroHoldSec = options.introTeaser ? 0.7 : OUTRO_HOLD_SEC
+  // `--outro-hold=<s>` lengthens the quiet end after the prayer (owner,
+  // 2026-10-16: +15 s to think). Only the manifest hold changes; the
+  // backdrop plan above keeps the default, so earlier frames stay identical
+  // and a `--frame-range` tail can be spliced onto a finished render.
+  manifest.outroHoldSec =
+    options.outroHoldSec ?? (options.introTeaser ? 0.7 : OUTRO_HOLD_SEC)
   // If the usable film is SHORTER than the background timeline, slow the ONE
   // continuous clip so it stretches across every card instead of running out
   // (a freeze). Never faster than 1×.

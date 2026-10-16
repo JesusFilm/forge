@@ -163,7 +163,10 @@ Then read it yourself before Lyuba does:
   - `pauses` on weighty sentences (‖ in the sheet), `direction` tags on
     paragraphs, `voiceDirections`;
   - a verse card (`callout`, highlight ≤24 chars) wherever the reflection
-    points at a verse;
+    points at a verse, and the card shows its address (`callout.reference`)
+    on screen (owner, 2026-10-16; the overlay must draw it);
+  - no soft or quiet direction tag on the first reflection paragraph: it
+    opens the reflection and must sound plain and calm, not whispered;
   - the question is personal and not yes/no.
     The Widow cache (`ch1006-seq0/devo.json`) is the worked example of every
     field.
