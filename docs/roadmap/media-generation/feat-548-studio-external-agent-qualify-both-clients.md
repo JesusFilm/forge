@@ -101,3 +101,36 @@ installed-provider tests passed against a new isolated database, and Auth
 Prisma generation, typecheck, lint and touched-file formatting passed. Existing
 client/operator gates keep this ticket blocked; the seeded client is not proof
 of an actual ChatGPT connection.
+
+## Production release progress — 2026-09-30
+
+The later owner request authorized normal PR-to-main production release. The
+September 23 no-merge statement and September 30 tunnel-only authorization above
+remain historical evidence; they do not describe the later release state.
+[PR #2405](https://github.com/JesusFilm/forge/pull/2405) merged at 11:14:15 UTC,
+followed by successful hosted image publication from main. Verified acquisition
+and inactive VM selection completed. The sealed-image synthetic fixture passed
+independent decoding and resource/retirement checks, and explicit supervisor
+activation succeeded. Post-activation VM health confirmed an enabled, idle,
+active supervisor on the exact new image digests, without restart or pending
+release/drain markers. Manager and Auth run `8890beaf1`; Admin runs descendant
+`99554c8b` with all four Shorts migrations complete. Health, codecs, signing,
+signed queue reads and the public skill ZIP passed post-start verification.
+See [production release evidence](../../validation/studio-external-agent/production-release-2026-09-30.md)
+for immutable artifacts, backup and migration validation.
+
+The ticket remains blocked on actual ChatGPT OAuth/conversation and human
+exact-render correction/approval, rather than production deployment. Actual Codex
+creation/render/inspection/revision evidence remains valid with its recorded
+synthetic-bearer/provider and modality limits; this release does not erase or
+upgrade that evidence. ChatGPT replaces Claude in immediate acceptance at the
+owner's request; designer-led Claude qualification is deferred separately.
+
+The separate consented public client in
+[PR #2524](https://github.com/JesusFilm/forge/pull/2524) is deployed and verified,
+with no user grants. Native ChatGPT skill upload succeeded and the editor lists
+all nine packaged files. The production MCP form is prepared, but automatic
+approval review requires explicit user approval before Create can proceed.
+Personal login/consent, current Operator checks, actual skill invocation and
+client/human-review qualification remain open. The existing Manager callback and
+anonymous native-loopback DCR policy are unchanged.
