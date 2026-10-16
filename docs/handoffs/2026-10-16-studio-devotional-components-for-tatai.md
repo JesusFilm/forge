@@ -70,10 +70,10 @@ own narration, in our series look, without anything from my laptop.
      19 s at `playbackRate` 0.7 fails on its own (`t-long-slow-20261016`).
      4 s at 0.7 (`rate-test-20261016`) and 2.8 s at 0.5 pass. We moved the
      backgrounds to normal speed. Is this a known limit of the worker?
-   - **Still unexplained:** the opening plus the film, as video items only
-     (`widow-bisect-a-20261016` revision 3): 4 shots at 1.0, one 2.8 s
-     shot at 0.5 and the 64 s scene at 1.05 with sound. It fails, though
-     each item renders alone and short mixes pass.
+   - **Two adjacent items of the same film, both off normal speed, fail
+     together:** a 2.8 s shot at 0.5 followed by the 64 s scene at 1.05
+     (`t-hold-film-20261016`), though each renders alone and 1.0 + 0.5
+     passes (`mixed-rate-test-20261016`). We set the shot to 1.0.
    - Every render takes long: the 64 s scene alone took about 20 minutes.
      If there is a render time limit, what is it?
 

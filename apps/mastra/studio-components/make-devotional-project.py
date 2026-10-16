@@ -159,7 +159,9 @@ def main():
         t += dur
     # The stepper over the last opening shot, held.
     s = steps("step-watch", t, 0)
-    video("open-shot-hold", t, s, spec["opening"][-1]["shotSec"] + 3, 0.5)
+    # Normal speed: a slowed shot right before the 1.05 film made the whole
+    # Studio render fail (each rendered alone; t-hold-film-20261016).
+    video("open-shot-hold", t, s, spec["opening"][-1]["shotSec"] + 3, 1.0)
     comp("look-open", "look", 0, t + s, "film-look-v1",
          {"dim": 0.25, "grade": False, "grain": 0, "warmth": 0, "vignette": False, "fadeInSec": 0.3, "fadeOutSec": 0.3})
     comp("dbp-mark-open", "brand", 0, t, "dbp-mark-v1", {"top": 230, "opacity": 0.85, "fadeInSec": 0.6, "fadeOutSec": 0.6})
