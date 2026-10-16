@@ -47,11 +47,6 @@ export function WatchSeoAdminBoundary({
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    setAuthorized(false)
-    setSelected(false)
-    setEnvelope(null)
-    setPanelState({ status: "loading" })
-
     let controller: AbortController | null = null
     let settled = false
     const unsubscribe = subscribeToWatchAccountSession((signal) => {
@@ -80,7 +75,6 @@ export function WatchSeoAdminBoundary({
   useEffect(() => {
     if (!authorized || !selected) return
     const controller = new AbortController()
-    setPanelState({ status: "loading" })
     const params = new URLSearchParams({ videoSlug, locale, languageSlug })
     if (contextualParentSlug) {
       params.set("contextualParentSlug", contextualParentSlug)
@@ -124,6 +118,18 @@ export function WatchSeoAdminBoundary({
 
   if (!authorized) return null
 
+  const selectTab = () => {
+    setEnvelope(null)
+    setPanelState({ status: "loading" })
+    setSelected(true)
+  }
+
+  const retry = () => {
+    setEnvelope(null)
+    setPanelState({ status: "loading" })
+    setAttempt((value) => value + 1)
+  }
+
   return (
     <section data-testid="watch-seo-admin-boundary" className="min-w-0">
       <div role="tablist" aria-label="Admin page tools">
@@ -131,7 +137,7 @@ export function WatchSeoAdminBoundary({
           id={tabId}
           panelId={panelId}
           selected={selected}
-          onSelect={() => setSelected(true)}
+          onSelect={selectTab}
         />
       </div>
       {selected ? (
@@ -142,7 +148,7 @@ export function WatchSeoAdminBoundary({
             state={panelState}
             adminOrigin={envelope?.adminOrigin ?? ""}
             adminConfirmationUrl={envelope?.adminConfirmationUrl ?? ""}
-            onRetry={() => setAttempt((value) => value + 1)}
+            onRetry={retry}
           />
         </div>
       ) : null}

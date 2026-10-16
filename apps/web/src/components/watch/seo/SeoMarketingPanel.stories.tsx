@@ -145,7 +145,8 @@ export function createSampleWatchSeoData(): WatchSeoMarketingData {
   }
 }
 
-export default { title: "Watch/SEO & Marketing", component: SeoMarketingPanel }
+const story = { title: "Watch/SEO & Marketing", component: SeoMarketingPanel }
+export default story
 
 /** Isolated presentation story. All evidence below is sample data. */
 export function SampleEvidence() {

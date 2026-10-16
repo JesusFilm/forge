@@ -201,7 +201,10 @@ export function WatchSectionRenderer({
                     {isWatchBlock(block) &&
                     block.kind === "SemanticRecommendations" &&
                     seoContext ? (
-                      <WatchSeoAdminBoundary {...seoContext} />
+                      <WatchSeoAdminBoundary
+                        key={`${seoContext.videoSlug}:${seoContext.languageSlug}:${seoContext.locale}:${seoContext.contextualParentSlug ?? ""}`}
+                        {...seoContext}
+                      />
                     ) : null}
                   </>
                 </Suspense>
