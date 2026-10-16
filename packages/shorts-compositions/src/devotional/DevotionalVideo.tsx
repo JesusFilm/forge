@@ -31,7 +31,7 @@ import { CalmCallToAction, KineticCaption } from "./KineticCaption"
 /** Teaser CTA: how far the music bed rises over the call to action. */
 const CTA_MUSIC_SWELL = 2
 import { ScrollingScripture } from "./ScrollingScripture"
-import { StampLine } from "./StampLine"
+import { STAMP_LINE_WIDTH, StampLine } from "./StampLine"
 import { StepProgressLine } from "./StepProgressLine"
 import { StepperStack } from "./Stepper"
 import type { DevotionalCard, DevotionalInputProps } from "./schema"
@@ -1792,7 +1792,7 @@ function ShortQuestionCards({
             ...(sub && subStrips ? { paddingBottom: f(420) } : {}),
           }}
         >
-          <div style={{ width: f(640) }}>
+          <div style={{ width: f(STAMP_LINE_WIDTH) }}>
             {!text ? null : sharp ? (
               // Typed in, letter by letter, quickly (owner, 2026-10-05), and
               // a size down from the stamp so it sits with the verses. The
@@ -1812,7 +1812,9 @@ function ShortQuestionCards({
                   textShadow: `0 ${f(2)}px ${f(16)}px rgba(0,0,0,0.55)`,
                 }}
               >
-                {[...text].map((ch, i) => (
+                {/* No break after an in-word hyphen: «КОГДА-/НИБУДЬ»
+                    split across lines (Bartimaeus RU, 2026-10-16). */}
+                {[...text.replace(/(\S)-(?=\S)/g, "$1-\u2060")].map((ch, i) => (
                   <span
                     key={i}
                     style={{

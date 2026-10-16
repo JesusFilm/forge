@@ -387,7 +387,9 @@ function GoldBar({
         position: "absolute",
         top: f(top),
         left: 0,
-        right: 0,
+        // Centred in the column clear of the action rail (x 920 of 1080):
+        // a centred Russian kicker crossed it (Bartimaeus RU, 2026-10-16).
+        right: f(RAIL_GUTTER),
         display: "flex",
         justifyContent: "center",
         opacity: p * out,
@@ -399,7 +401,7 @@ function GoldBar({
           color: INK,
           fontFamily: SANS,
           fontWeight: 800,
-          fontSize: f(size),
+          fontSize: f(fitCaps(text, size, 760)),
           lineHeight: 1.05,
           letterSpacing: f(1),
           textTransform: "uppercase",
@@ -412,6 +414,22 @@ function GoldBar({
       </div>
     </div>
   )
+}
+
+/** Room kept on the right for the platform's action rail (x 920 of 1080). */
+const RAIL_GUTTER = 160
+
+/** Font size (design px) that keeps an uppercase heavy-sans line within
+ *  `maxWidth`: about 0.95em per letter (Cyrillic caps run wide), plus the
+ *  letter spacing. Never larger than `size`. */
+export function fitCaps(
+  text: string,
+  size: number,
+  maxWidth: number,
+  spacing = 0,
+): number {
+  const n = Math.max(1, [...text].length)
+  return Math.min(size, Math.floor((maxWidth - n * spacing) / (n * 0.95)))
 }
 
 /** The last word as a rubber stamp in the middle of the frame (owner,
@@ -444,6 +462,7 @@ export function Stamp({
       style={{
         alignItems: "center",
         justifyContent: "center",
+        paddingRight: f(RAIL_GUTTER),
         pointerEvents: "none",
       }}
     >
@@ -483,7 +502,7 @@ export function Stamp({
           color,
           fontFamily: SANS,
           fontWeight: 900,
-          fontSize: f(104),
+          fontSize: f(fitCaps(text, 104, 720, 6)),
           letterSpacing: f(6),
           lineHeight: 1,
           textTransform: "uppercase",

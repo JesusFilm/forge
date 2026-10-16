@@ -4,6 +4,24 @@ import { SHORT_FONT_FAMILIES } from "../fonts"
 
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
 
+/** Widest a stamped line may run (Figma px of the 900 frame): centred, it
+ *  ends at x 900 of 1080, clear of the action rail at 920. */
+export const STAMP_LINE_WIDTH = 600
+
+/**
+ * The line's font size: 76, or smaller when its longest word would not fit
+ * on one line (uppercase Inter 600 runs about 0.72em a letter, Cyrillic
+ * included). «ОСТАНОВИЛСЯ.» at 76 crossed the rail (Bartimaeus RU,
+ * 2026-10-16).
+ */
+export function stampLineSize(text: string, size = 76, spacing = 3.2): number {
+  const n = Math.max(1, ...text.split(/\s+/).map((w) => [...w].length))
+  return Math.min(
+    size,
+    Math.floor((STAMP_LINE_WIDTH - n * spacing) / (n * 0.72)),
+  )
+}
+
 /**
  * A short line "stamped" in: large caps, out of a blur and a slight
  * horizontal spread, settling over 0.8s. The shorts' one treatment for a
@@ -45,7 +63,7 @@ export function StampLine({
           margin: 0,
           fontFamily: SANS,
           fontWeight: 600,
-          fontSize: f(76),
+          fontSize: f(stampLineSize(text)),
           lineHeight: 1.2,
           textAlign: "center",
           textTransform: "uppercase",
@@ -73,7 +91,7 @@ export function StampLine({
         margin: 0,
         fontFamily: SANS,
         fontWeight: 600,
-        fontSize: f(76),
+        fontSize: f(stampLineSize(text)),
         lineHeight: 1.2,
         textAlign: "center",
         textTransform: "uppercase",
