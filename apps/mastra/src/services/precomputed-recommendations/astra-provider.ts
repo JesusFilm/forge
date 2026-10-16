@@ -36,6 +36,9 @@ export type ModelUsage = {
   inputTokens?: number
   outputTokens?: number
   cachedInputTokens?: number
+  /** Absent means the transport did not report this, never zero by inference. */
+  reasoningTokens?: number
+  modelVersion?: string
   /** Actual provider-reported charge; absent when the provider omits it. */
   costUsd?: number
 }

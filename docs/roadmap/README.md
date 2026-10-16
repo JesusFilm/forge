@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 15, 2026)
 
-- **Total tickets:** 839
-- **Complete:** 623
+- **Total tickets:** 841
+- **Complete:** 625
 - **Cancelled:** 41
 - **In progress:** 67
 - **Not started:** 51
@@ -223,6 +223,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-710](content-discovery/feat-710-full-library-video-recommendations.md)                                   | Full-library directional video recommendations                                                  | nisal      | P1       | 2026-10-16 | 3    | 2026-10-18 | complete    |
 
 ### Media Generation
 
