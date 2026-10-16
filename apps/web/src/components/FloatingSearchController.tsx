@@ -84,6 +84,8 @@ type ActiveSearchSignature = {
 export type PendingSearchSubmitIntent = {
   id: number
   query: string
+  languageSlug?: string | null
+  languageSlugIsExplicit?: boolean
 }
 
 export type FloatingSearchControllerProps = {
@@ -434,6 +436,24 @@ export function FloatingSearchController({
               () => languageOptionsRef.current,
             )
         if (requestIdRef.current !== thisRequest) return
+        if (options?.languageSlugIsExplicit && options.languageSlug) {
+          const explicitLanguage = findSearchLanguageOptionByPublicSlug(
+            isPublicWatchLanguageSlug(options.languageSlug)
+              ? options.languageSlug
+              : publicSlugForLocale(options.languageSlug),
+            currentLanguageOptions,
+          )
+          if (explicitLanguage) {
+            searchLanguageSelectionUserSetRef.current = true
+            selectedLanguageEnglishNamesRef.current = [
+              explicitLanguage.englishName,
+            ]
+            selectedSearchLanguageOptionRef.current = explicitLanguage
+            setSelectedLanguageEnglishNames([explicitLanguage.englishName])
+            setSelectedSearchLanguageOption(explicitLanguage)
+            setSelectedLanguageRegionByName({})
+          }
+        }
         const activeLanguageEnglishNames =
           options?.languageEnglishNames ??
           selectedLanguageEnglishNamesRef.current
@@ -739,7 +759,16 @@ export function FloatingSearchController({
     }
     consumedSubmitIntentIdRef.current = pendingSubmitIntent.id
     if (pendingSubmitIntent.query.trim().length === 0) return
-    void search(pendingSubmitIntent.query, { preserveDraft: true })
+    void search(pendingSubmitIntent.query, {
+      preserveDraft: true,
+      ...(pendingSubmitIntent.languageSlug
+        ? {
+            languageSlug: pendingSubmitIntent.languageSlug,
+            languageSlugIsExplicit:
+              pendingSubmitIntent.languageSlugIsExplicit ?? true,
+          }
+        : {}),
+    })
   }, [open, pendingSubmitIntent, search])
 
   const resetTokenRef = useRef(resetToken)
