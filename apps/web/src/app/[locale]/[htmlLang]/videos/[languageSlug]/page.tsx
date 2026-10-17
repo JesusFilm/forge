@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl"
 import { getTranslations, setRequestLocale } from "next-intl/server"
 
 import { LanguageInventoryPage } from "@/components/watch-language-inventory/LanguageInventoryPage"
+import { inventoryLanguageNameForTemplate } from "@/lib/inventory-language-name"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
 import {
@@ -47,9 +48,15 @@ export async function generateMetadata({
   const t = await getTranslations({ locale, namespace: "LanguageInventory" })
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
-  const title = t("metadataTitle", { language: languageDisplayName })
+  const languageFor = (key: "metadataTitle" | "metadataDescription") =>
+    inventoryLanguageNameForTemplate({
+      name: languageDisplayName,
+      uiLocale: locale,
+      template: t.raw(key),
+    })
+  const title = t("metadataTitle", { language: languageFor("metadataTitle") })
   const description = t("metadataDescription", {
-    language: languageDisplayName,
+    language: languageFor("metadataDescription"),
   })
   const canonical = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/${languageSlug}.html/videos`
 
