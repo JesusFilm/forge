@@ -134,9 +134,10 @@ describe("WatchAudienceBlock", () => {
     expect(container.innerHTML).toBe("")
   })
 
-  it("the home band renders the same authored frame", () => {
+  it("the home band uses the authored role labels with its own static navigation", () => {
     const config = clone()
-    config.roles[0].questions[0].prompt = "Shared on home and video?"
+    config.roles[0].label = "Authored explore"
+    config.roles[0].actions[0].title = "Shared on home and video?"
     act(() =>
       root.render(
         createElement(WatchHomeRoleBand, {
@@ -148,13 +149,17 @@ describe("WatchAudienceBlock", () => {
     expect(
       container.querySelector('[data-testid="watch-home-role-band"]'),
     ).not.toBeNull()
-    expect(container.textContent).toContain("Shared on home and video?")
+    // Authored roles label the tabs; the home pills are the prototype's
+    // static role navigation, separate from the video questionnaire.
+    expect(container.textContent).toContain("Authored explore")
+    expect(container.textContent).not.toContain("Shared on home and video?")
+    expect(container.textContent).toContain("Watch the story of Jesus")
   })
 
   it("applies authored weights and order, and resets answers when the configuration changes", () => {
     const first = clone()
     render({ audience: authored(first, "en:k:1"), languageSlug: "english" })
-    chooseOptions()
+    chooseOptions(3, 2)
     const before = resultId()
     expect(before).toBeTruthy()
 
@@ -173,14 +178,12 @@ describe("WatchAudienceBlock", () => {
     // Remounted: the earlier answers are gone, not replayed on the new ids.
     expect(container.textContent).toContain("Question 1 of 3")
     expect(resultId()).toBeUndefined()
-    expect(
-      container.querySelectorAll('[data-option-id][aria-pressed="true"]'),
-    ).toHaveLength(0)
+    expect(container.querySelector('ol[aria-label="Your answers"]')).toBeNull()
 
-    chooseOptions()
+    chooseOptions(3, 2)
     const expected = rankWatchAudienceActions(
       explore,
-      explore.questions.map((question) => question.options[0].id),
+      explore.questions.map((question) => question.options[2].id),
     ).find(({ action }) => action.target.kind !== "current-video")!.action.id
     expect(resultId()).toBe(expected)
     expect(resultId()).not.toBe(before)

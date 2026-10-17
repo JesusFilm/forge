@@ -618,6 +618,11 @@ export const env = createEnv({
     // This endpoint accepts caller-supplied consumer user ids, so it must stay
     // narrower than the general web SSR consumer bearer.
     WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Server-only LaunchDarkly key for Admin's release gates. Unset or
+    // unavailable falls back to each flag's FORGE_* default, then to false.
+    LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    // Fallback for `forge.watch.audience` when LaunchDarkly has no answer.
+    FORGE_WATCH_AUDIENCE_DEFAULT: z.string().optional(),
     // Admin-owned YouVersion integration for Watch Bible passages. Web
     // reads cached passage data through GraphQL and never receives this key.
     YOUVERSION_APP_KEY: z.string().min(1).optional(),
@@ -1212,6 +1217,10 @@ export const env = createEnv({
     FLEET_ADMIN_API_KEYS: emptyToUndefined(process.env.FLEET_ADMIN_API_KEYS),
     WATCH_PROGRESS_ADMIN_API_KEYS: emptyToUndefined(
       process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
+    ),
+    LAUNCHDARKLY_SDK_KEY: emptyToUndefined(process.env.LAUNCHDARKLY_SDK_KEY),
+    FORGE_WATCH_AUDIENCE_DEFAULT: emptyToUndefined(
+      process.env.FORGE_WATCH_AUDIENCE_DEFAULT,
     ),
     YOUVERSION_APP_KEY: emptyToUndefined(process.env.YOUVERSION_APP_KEY),
     YOUVERSION_PASSAGE_CACHE_TTL_SECONDS: emptyToUndefined(

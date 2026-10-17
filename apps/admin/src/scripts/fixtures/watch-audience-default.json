@@ -7,7 +7,7 @@
       "chip": "I’m exploring",
       "eyebrow": "Find your next step",
       "heading": "Three quick questions.",
-      "lead": "No right answers. We’ll point you to one thing worth watching next.",
+      "lead": "No right answers. We’ll point you to the one thing worth doing next.",
       "finish": "Here’s where we’d start.",
       "actions": [
         {
@@ -44,14 +44,6 @@
           "target": {
             "kind": "current-video",
             "target": "bible-quotes"
-          }
-        },
-        {
-          "id": "explore-language",
-          "title": "Find a film in your language",
-          "body": "Browse every language the films are available in.",
-          "target": {
-            "kind": "languages"
           }
         }
       ],
@@ -132,8 +124,32 @@
         },
         {
           "id": "how",
-          "prompt": "How do you like to explore?",
+          "prompt": "How do you like to work things out?",
           "options": [
+            {
+              "id": "alone",
+              "label": "On my own, quietly",
+              "hint": "Read, think, no one watching",
+              "reason": "you prefer to work it out alone",
+              "scores": [
+                {
+                  "actionId": "explore-bible-passage",
+                  "weight": 3
+                }
+              ]
+            },
+            {
+              "id": "talk",
+              "label": "Talking it through",
+              "hint": "With a real person",
+              "reason": "you’d rather talk it through",
+              "scores": [
+                {
+                  "actionId": "explore-short-films",
+                  "weight": 3
+                }
+              ]
+            },
             {
               "id": "watch",
               "label": "Show me the story",
@@ -147,30 +163,6 @@
                 {
                   "actionId": "explore-next-episode",
                   "weight": 1
-                }
-              ]
-            },
-            {
-              "id": "read",
-              "label": "Let me read what it says",
-              "hint": "The words, at my own pace",
-              "reason": "you’d rather read it for yourself",
-              "scores": [
-                {
-                  "actionId": "explore-bible-passage",
-                  "weight": 3
-                }
-              ]
-            },
-            {
-              "id": "language",
-              "label": "In my own language",
-              "hint": "It means more in the language I know best",
-              "reason": "you want it in your own language",
-              "scores": [
-                {
-                  "actionId": "explore-language",
-                  "weight": 4
                 }
               ]
             }
@@ -326,8 +318,8 @@
               ]
             },
             {
-              "id": "together",
-              "label": "To walk with others",
+              "id": "community",
+              "label": "People to walk with",
               "hint": "I don’t want to do this alone",
               "reason": "you don’t want to do this alone",
               "scores": [
@@ -460,14 +452,6 @@
           }
         },
         {
-          "id": "share-language",
-          "title": "Find a film in their language",
-          "body": "Browse every language the films are available in.",
-          "target": {
-            "kind": "languages"
-          }
-        },
-        {
           "id": "share-amazing-question",
           "title": "Learn the Amazing Question",
           "body": "A guide to opening a faith conversation.",
@@ -533,13 +517,13 @@
               ]
             },
             {
-              "id": "language",
-              "label": "Someone who speaks another language",
-              "reason": "they speak another language",
+              "id": "online",
+              "label": "People who follow me online",
+              "reason": "you want to reach people online",
               "scores": [
                 {
-                  "actionId": "share-language",
-                  "weight": 4
+                  "actionId": "share-send-film",
+                  "weight": 3
                 }
               ]
             }
@@ -663,8 +647,8 @@
       "chip": "I’m a ministry partner",
       "eyebrow": "Find your next step",
       "heading": "Three quick questions.",
-      "lead": "Tell us about the setting and we’ll point you to the right materials.",
-      "finish": "Where to start.",
+      "lead": "Tell us about the setting and we’ll pull the right materials.",
+      "finish": "What to download first.",
       "actions": [
         {
           "id": "partner-download",
@@ -717,7 +701,7 @@
           "prompt": "What are you planning?",
           "options": [
             {
-              "id": "event",
+              "id": "service",
               "label": "A service or event",
               "reason": "you’re planning an event",
               "scores": [
@@ -818,7 +802,7 @@
           "prompt": "Will you have reliable internet where you show it?",
           "options": [
             {
-              "id": "online",
+              "id": "yes",
               "label": "Yes, we’ll stream",
               "reason": "you’ll stream it",
               "scores": [
@@ -829,7 +813,7 @@
               ]
             },
             {
-              "id": "offline",
+              "id": "no",
               "label": "No, we need it offline",
               "reason": "you need it offline",
               "scores": [

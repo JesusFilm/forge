@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
+  audienceFlagMock,
   getExperiencePreviewMock,
   getExperiencePreviewLayoutMock,
   loadClientMessagesMock,
@@ -11,6 +12,7 @@ const {
   setRequestLocaleMock,
   watchHomeExperiencePageMock,
 } = vi.hoisted(() => ({
+  audienceFlagMock: vi.fn(),
   getExperiencePreviewMock: vi.fn(),
   getExperiencePreviewLayoutMock: vi.fn(),
   loadClientMessagesMock: vi.fn(),
@@ -40,6 +42,9 @@ vi.mock("next-intl/server", () => ({
 }))
 vi.mock("next-intl", () => ({
   NextIntlClientProvider: ({ children }: { children: ReactNode }) => children,
+}))
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: audienceFlagMock,
 }))
 vi.mock("@/lib/experience-preview", () => ({
   getExperiencePreview: getExperiencePreviewMock,
@@ -95,6 +100,7 @@ const draft = {
 }
 
 beforeEach(() => {
+  audienceFlagMock.mockReset().mockResolvedValue(true)
   getExperiencePreviewMock.mockReset()
   getExperiencePreviewLayoutMock.mockReset().mockResolvedValue(false)
   loadClientMessagesMock.mockReset()
@@ -478,6 +484,51 @@ describe("draft audience questionnaire preview", () => {
         expect(content.props.blocks).toEqual([...draft.blocks, audienceBlock()])
       },
     )
+
+    it.each([
+      ["off", () => audienceFlagMock.mockResolvedValue(false)],
+      [
+        "unreadable",
+        () => audienceFlagMock.mockRejectedValue(new Error("flag down")),
+      ],
+    ])(
+      "keeps the default-template questionnaire dark when the release flag is %s",
+      async (_state, setFlag) => {
+        setFlag()
+        stage(true, true)
+        const page = await ExperiencePreviewPage({
+          params: Promise.resolve({ token: "template-capability" }),
+        })
+        const [banner, content] = page.props.children.props.children
+        expect(content.props.audience).toBeUndefined()
+        expect(content.props.audienceEnabled).toBeUndefined()
+        // The staged block and unrelated preview content are preserved.
+        expect(content.props.blocks).toEqual([...draft.blocks, audienceBlock()])
+        expect(banner.props.locale).toBe(draft.locale)
+      },
+    )
+
+    it("does not read the release flag when nothing audience-shaped is staged", async () => {
+      getExperiencePreviewMock.mockResolvedValue({
+        ...draft,
+        isHomepage: homepage,
+        isTemplate: true,
+        isDefaultTemplate: true,
+      })
+      resolveWatchHomePreviewMock.mockResolvedValue({
+        data: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        error: null,
+      })
+      await ExperiencePreviewPage({
+        params: Promise.resolve({ token: "plain-capability" }),
+      })
+      expect(audienceFlagMock).not.toHaveBeenCalled()
+    })
 
     it("still previews the questionnaire for the default template", async () => {
       stage(true, true)

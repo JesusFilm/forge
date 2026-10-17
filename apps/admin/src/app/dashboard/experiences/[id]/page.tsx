@@ -28,6 +28,7 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import { findDefaultWatchTemplateId } from "@/services/watch-default-template"
 import { ForbiddenError } from "@/services/errors"
 import {
@@ -308,6 +309,7 @@ export default async function ExperienceEditorPage({
     selectedLocaleLanguageId,
     activeLocaleDrafts,
     defaultTemplateId,
+    watchAudienceAuthoringEnabled,
   ] = await Promise.all([
     loadMediaLibrary({
       assetIds: mediaAssetIdsFromExperienceBlocks(
@@ -324,6 +326,7 @@ export default async function ExperienceEditorPage({
       select: { entityId: true, revisedAt: true },
     }),
     experience.isTemplate ? findDefaultWatchTemplateId(prisma) : null,
+    isWatchAudienceEnabled(),
   ])
   const activeDraftByLocaleId = new Map(
     activeLocaleDrafts.map((draft) => [draft.entityId, draft]),
@@ -952,6 +955,7 @@ export default async function ExperienceEditorPage({
         homepageLayout: editableLocale.homepageLayout,
         isTemplate: experience.isTemplate,
         isDefaultTemplate: experience.id === defaultTemplateId,
+        watchAudienceAuthoringEnabled,
         blocksJson: JSON.stringify(editableLocale.blocks ?? [], null, 2),
       }}
       localeEntries={experience.locales.map((locale) => ({

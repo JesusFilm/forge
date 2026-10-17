@@ -1,7 +1,13 @@
 import { randomBytes } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { WatchAudienceConfigurationSchema } from "@forge/experience-schema"
-import { afterAll, describe, expect, it } from "vitest"
+import { afterAll, describe, expect, it, vi } from "vitest"
+
+// Proves the released import path; the service write gate's off branch is
+// pinned in experience.service.test.ts.
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: async () => true,
+}))
 import type { Principal } from "@/auth/principal"
 import { prisma } from "@/db/client"
 import { ExperienceService } from "@/services/experience.service"

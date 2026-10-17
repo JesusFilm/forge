@@ -29,6 +29,11 @@ vi.mock("@/services/watch-learning-progress.service", async () => {
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
 
+const audienceEnabled = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: audienceEnabled,
+}))
+
 import { builder } from "@/graphql/builder"
 import "@/graphql/types/watch-learning-progress"
 import {
@@ -128,6 +133,7 @@ function run(
 }
 
 beforeEach(() => {
+  audienceEnabled.mockReset().mockResolvedValue(true)
   service.listWatchLearningProgress.mockReset().mockResolvedValue([PROGRESS])
   service.saveWatchLearningProgress
     .mockReset()
@@ -249,6 +255,53 @@ describe("own-data access", () => {
       expect(service.resetWatchLearningProgress).not.toHaveBeenCalled()
     },
   )
+})
+
+describe("release gate", () => {
+  it.each([
+    ["off", () => audienceEnabled.mockResolvedValue(false)],
+    // The helper fails closed; a rejected read must still never reach data.
+    ["unreadable", () => audienceEnabled.mockRejectedValue(new Error("down"))],
+  ])(
+    "refuses reads and saves while forge.watch.audience is %s",
+    async (_state, setFlag) => {
+      setFlag()
+      const [list, save] = await Promise.all([
+        run(LIST, USER_A),
+        run(SAVE, USER_A, { input: SAVE_INPUT }),
+      ])
+      for (const result of [list, save]) {
+        expect(result.errors?.length).toBeGreaterThan(0)
+        expect(result.data).toBeNull()
+      }
+      expect(service.listWatchLearningProgress).not.toHaveBeenCalled()
+      expect(service.saveWatchLearningProgress).not.toHaveBeenCalled()
+    },
+  )
+
+  it("reports a disabled gate as FORBIDDEN with a distinct reason", async () => {
+    audienceEnabled.mockResolvedValue(false)
+    const result = await run(LIST, USER_A)
+    expect(result.errors?.[0]?.extensions).toMatchObject({
+      code: "FORBIDDEN",
+      reason: "watch_audience_disabled",
+    })
+  })
+
+  it("never gates resetting data the viewer already saved", async () => {
+    audienceEnabled.mockResolvedValue(false)
+    const result = await run(RESET, USER_A)
+    expect(result.errors).toBeUndefined()
+    expect(service.resetWatchLearningProgress).toHaveBeenCalledTimes(1)
+    expect(audienceEnabled).not.toHaveBeenCalled()
+  })
+
+  it("still authenticates before the gate", async () => {
+    audienceEnabled.mockResolvedValue(false)
+    const result = await run(LIST, null)
+    expect(result.errors?.[0]?.extensions?.code).not.toBe("FORBIDDEN")
+    expect(audienceEnabled).not.toHaveBeenCalled()
+  })
 })
 
 describe("result and error mapping", () => {
