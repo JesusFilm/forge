@@ -37,8 +37,8 @@ export const STUDIO_RENDER_PROFILE_V1 = Object.freeze({
   outputBytes: 134217728,
 } as const)
 
-/** Current execution only. Legacy descriptors remain readable for settlements. */
-export const STUDIO_RENDER_PROFILE = Object.freeze({
+/** Retained v2 descriptor, unchanged for history and terminal settlements. */
+export const STUDIO_RENDER_PROFILE_V2 = Object.freeze({
   ...STUDIO_RENDER_PROFILE_V1,
   id: "studio-render-2/1200s-180prep-2cpu-2g-128p-96child-128m",
   jobMs: 1200000,
@@ -47,11 +47,24 @@ export const STUDIO_RENDER_PROFILE = Object.freeze({
   preparationMs: 180000,
 } as const)
 
+/** Current full-project execution. Earlier descriptors remain immutable history. */
+export const STUDIO_RENDER_PROFILE = Object.freeze({
+  ...STUDIO_RENDER_PROFILE_V2,
+  id: "studio-render-3/3600s-180prep-2cpu-2g-128p-96child-128m",
+  jobMs: 3600000,
+  requestMs: 3620000,
+  leaseMs: 3900000,
+} as const)
+
 export const studioRenderExecutionProfileSchema = z
   .record(z.string(), z.union([z.string(), z.number()]))
   .refine(
     (value) =>
-      [STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE].some(
+      [
+        STUDIO_RENDER_PROFILE_V1,
+        STUDIO_RENDER_PROFILE_V2,
+        STUDIO_RENDER_PROFILE,
+      ].some(
         (profile) =>
           Object.keys(value).length === Object.keys(profile).length &&
           Object.entries(profile).every(
