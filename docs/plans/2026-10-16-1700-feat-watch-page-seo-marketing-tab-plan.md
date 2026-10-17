@@ -6,7 +6,7 @@ date: "2026-10-16"
 artifact_contract: "ce-unified-plan/v1"
 product_contract_source: "ce-plan-bootstrap"
 execution: "code"
-roadmap: "docs/roadmap/platform/feat-718-watch-page-seo-marketing-tab.md"
+roadmap: "docs/roadmap/platform/feat-720-watch-page-seo-marketing-tab.md"
 ---
 
 # feat: Add an admin-only SEO marketing tab to Watch video pages
@@ -391,7 +391,7 @@ proposal stale?   refresh and explain; do not retry a decision blindly
   single-use decisions and never publish or deploy.
 - Focused and package-level checks pass, generated contracts are synchronized,
   browser and load evidence are recorded, and cross-provider review is clear.
-- `feat-718` is marked complete and durable learnings are captured under
+- `feat-720` is marked complete and durable learnings are captured under
   `docs/solutions/`.
 
 ## Sources and Research

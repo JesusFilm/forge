@@ -251,6 +251,20 @@ export class StudioMuxJobs {
       return tx.shortMuxJob.update({ where: { id }, data: { state: "FAILED" } })
     })
   }
+  async assetFailed(user: Principal | null, id: string, assetId: string) {
+    worker(user)
+    z.string().min(1).max(255).parse(assetId)
+    return this.db.$transaction(async (tx) => {
+      const { job } = await lockMux(tx, id)
+      if (
+        job.assetId !== assetId ||
+        !["PROCESSING", "FAILED"].includes(job.state)
+      )
+        throw new StudioCommandError("CONFLICT")
+      if (job.state === "FAILED") return job
+      return tx.shortMuxJob.update({ where: { id }, data: { state: "FAILED" } })
+    })
+  }
   async uploadEligible(user: Principal | null, id: string) {
     worker(user)
     return this.db.$transaction(async (tx) => {
