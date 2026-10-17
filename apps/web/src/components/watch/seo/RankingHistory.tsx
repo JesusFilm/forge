@@ -52,31 +52,52 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
   }
   if (segment.length) segments.push(segment)
   const activePoint = active == null ? null : points[active]
+  const roundedPosition =
+    data.averagePosition == null ? null : Math.round(data.averagePosition)
   return (
     <div>
-      <dl className="grid grid-cols-2 gap-5 lg:grid-cols-4">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
+        <div>
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="text-5xl font-semibold tracking-[-0.05em] text-white tabular-nums sm:text-7xl">
+              {roundedPosition == null ? "—" : `#${roundedPosition}`}
+            </span>
+            <span className="max-w-xs text-sm leading-relaxed text-stone-300">
+              {roundedPosition == null
+                ? "Current position unavailable"
+                : roundedPosition <= 10
+                  ? "Average Google position — on page one"
+                  : "Average Google position"}
+            </span>
+          </div>
+          <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-400">
+            Smaller numbers are better. The line moving upward means this page
+            is becoming easier to find.
+          </p>
+        </div>
+        <dl className="grid grid-cols-3 gap-4 border-t border-white/10 pt-5 lg:grid-cols-1 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+          <Metric label="Search clicks" value={data.clicks} />
+          <Metric label="Search appearances" value={data.impressions} />
+          <Metric
+            label="Click-through rate"
+            value={data.ctrPercent}
+            suffix="%"
+          />
+        </dl>
+      </div>
+      <dl className="sr-only">
         <Metric label="Average search position" value={data.averagePosition} />
-        <Metric label="Search clicks" value={data.clicks} />
-        <Metric label="Search appearances" value={data.impressions} />
-        <Metric label="Click-through rate" value={data.ctrPercent} suffix="%" />
       </dl>
-      <p className="mt-5 text-sm font-medium text-stone-100">
-        Higher is better on this graph. Position 1 is best in search results.
-      </p>
-      <p className="mt-1 text-sm text-stone-300">
-        Click-through rate is the share of search appearances that led to a
-        click.
-      </p>
       {points.some((point) => validPosition(point.position)) ? (
         <div
-          className="relative mt-4"
+          className="relative mt-8 overflow-hidden rounded-xl border border-white/8 bg-[#101318] px-3 pt-5 sm:px-5"
           onKeyDown={(event) => {
             if (event.key === "Escape") setActive(null)
           }}
         >
           <svg
             viewBox="0 0 640 270"
-            className="block h-auto w-full overflow-visible text-stone-300"
+            className="block h-auto w-full overflow-visible text-stone-400"
             role="img"
             aria-labelledby={`${id}-title ${id}-desc`}
           >
@@ -124,8 +145,8 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   points={run
                     .map((point) => `${x(point.date)},${y(point.position)}`)
                     .join(" ")}
-                  stroke="var(--color-brand-red, #ef3340)"
-                  strokeWidth="3"
+                  stroke="#6e91ff"
+                  strokeWidth="4"
                   fill="none"
                 />
               ))}
@@ -136,8 +157,8 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   cx={x(point.date)}
                   cy={y(point.position)}
                   r="5"
-                  fill="var(--color-brand-red, #ef3340)"
-                  stroke="currentColor"
+                  fill="#6e91ff"
+                  stroke="#101318"
                   strokeWidth="2"
                   tabIndex={0}
                   className="cursor-help focus-visible:stroke-white focus-visible:stroke-[4] focus-visible:outline-none"
@@ -205,7 +226,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
       <p className="mt-2 flex items-center gap-2 text-xs text-stone-300">
         <span
           aria-hidden="true"
-          className="inline-block h-0.5 w-6 shrink-0 bg-brand-red"
+          className="inline-block h-0.5 w-6 shrink-0 bg-[#6e91ff]"
         />
         Average search position. Gaps mean no observation; they do not mean
         zero.

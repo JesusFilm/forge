@@ -68,10 +68,10 @@ export function EvidenceProvenance({
   family: EvidenceFamily<unknown>
 }) {
   return (
-    <div className="mt-4 space-y-1 border-t border-stone-600/50 pt-3 text-xs leading-relaxed text-stone-300">
+    <div className="mt-6 flex flex-wrap gap-x-5 gap-y-1 border-t border-white/8 pt-3 text-[11px] leading-relaxed text-stone-400">
       <p>Source: {family.source || "Unavailable"}</p>
       <p>{displayWindow(family.window)}</p>
-      <p>Last observed: {displayDate(family.observedAt)}</p>
+      <p>Observed {displayDate(family.observedAt)}</p>
       {family.note ? <p>{family.note}</p> : null}
     </div>
   )
@@ -81,10 +81,10 @@ export function AvailabilityBadge({ state }: { state: SeoAvailability }) {
   return (
     <span
       className={cn(
-        "inline-flex max-w-full rounded-full border px-2.5 py-1 text-xs leading-snug font-medium",
+        "inline-flex max-w-full items-center rounded-full border px-2.5 py-1 text-[11px] leading-snug font-semibold tracking-wide uppercase",
         state === "available"
-          ? "border-stone-500 text-stone-200"
-          : "border-amber-300/40 text-amber-100",
+          ? "border-emerald-400/25 bg-emerald-400/8 text-emerald-200"
+          : "border-amber-300/25 bg-amber-300/8 text-amber-100",
       )}
     >
       {availabilityLabels[state]}
@@ -115,20 +115,20 @@ export function SeoFamily<T>({
       data-seo-family={name}
       data-availability={family.state}
       className={cn(
-        "min-w-0 rounded-2xl border border-stone-600/60 bg-stone-900/50 p-4 [overflow-wrap:anywhere] sm:p-6",
+        "min-w-0 rounded-2xl border border-white/10 bg-[#171715] p-5 [overflow-wrap:anywhere] sm:p-7",
         className,
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h3
           id={id}
-          className="text-lg leading-snug font-semibold text-stone-100 sm:text-xl"
+          className="text-xl leading-snug font-semibold tracking-tight text-white sm:text-2xl"
         >
           {title}
         </h3>
         <AvailabilityBadge state={family.state} />
       </div>
-      <p className="mt-2 text-sm leading-relaxed text-stone-300">
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-400">
         {description}
       </p>
       <div className="mt-5">
@@ -160,10 +160,7 @@ export function Metric({
   suffix?: string
 }) {
   return (
-    <div
-      data-metric={label}
-      className="min-w-0 border-l-2 border-stone-500/70 pl-3"
-    >
+    <div data-metric={label} className="min-w-0">
       <dt className="text-sm leading-snug text-stone-300">{label}</dt>
       <dd
         className={cn(
@@ -179,8 +176,8 @@ export function Metric({
 
 export function CtaOutcome({ cta }: { cta: CtaEvidence }) {
   return (
-    <div className="min-w-0 space-y-1 text-sm leading-relaxed">
-      <h4 className="font-semibold text-stone-100">{cta.label}</h4>
+    <div className="min-w-0 space-y-2 text-sm leading-relaxed">
+      <h4 className="font-semibold text-white">{cta.label}</h4>
       <p className="text-stone-100">
         <span className="font-semibold tabular-nums">
           {displayNumber(cta.clicks)}

@@ -82,7 +82,7 @@ export function OpportunityList({
       </p>
     )
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {items.map((opportunity) => {
         const current =
           actionsAvailable && opportunity.decisionState === "current"
@@ -106,70 +106,76 @@ export function OpportunityList({
           <article
             key={`${opportunity.proposalId}-${opportunity.version}`}
             data-proposal-id={opportunity.proposalId}
-            className="min-w-0 border-l-2 border-brand-red pl-4 sm:pl-6"
+            className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[#111110]"
           >
-            <h4 className="text-lg font-semibold text-stone-100">
-              {opportunity.title}
-            </h4>
-            <p className="mt-2 text-sm leading-relaxed text-stone-200">
-              {opportunity.evidence}
-            </p>
-            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
               <div>
-                <dt className="font-semibold text-stone-100">
-                  Expected impact
-                </dt>
-                <dd className="mt-1 text-stone-300">
-                  {opportunity.expectedImpact}
-                </dd>
-              </div>
-              <div>
-                <dt className="font-semibold text-stone-100">Confidence</dt>
-                <dd className="mt-1 text-stone-300">
-                  {opportunity.confidence}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="font-semibold text-stone-100">
-                  Proposed action
-                </dt>
-                <dd className="mt-1 text-stone-300">
-                  {opportunity.actionSummary}
-                </dd>
-              </div>
-            </dl>
-            <div className="mt-4 space-y-4 rounded-lg bg-stone-800/60 p-4">
-              {opportunity.ctaEvidence.length ? (
-                opportunity.ctaEvidence.map((family, index) => {
-                  const cta = displayableData(family)
-                  return (
-                    <div key={index} className="space-y-3 text-stone-200">
-                      <AvailabilityBadge state={family.state} />
-                      {cta ? (
-                        <CtaOutcome cta={cta} />
-                      ) : (
-                        <p className="text-sm">
-                          CTA click and outcome evidence: Unavailable.
-                        </p>
-                      )}
-                      <EvidenceProvenance family={family} />
-                    </div>
-                  )
-                })
-              ) : (
-                <p className="text-sm text-stone-300">
-                  CTA click and outcome evidence: Unavailable. No measured
-                  outcome is implied by this recommendation.
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-brand-red/15 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-red-200 uppercase">
+                    Recommended test
+                  </span>
+                  <span className="text-xs text-stone-400">
+                    {opportunity.confidence} confidence
+                  </span>
+                </div>
+                <h4 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                  {opportunity.title}
+                </h4>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-300">
+                  {opportunity.evidence}
                 </p>
-              )}
+                <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-xs font-semibold tracking-wide text-stone-400 uppercase">
+                      Why it matters
+                    </dt>
+                    <dd className="mt-1.5 leading-relaxed text-stone-200">
+                      {opportunity.expectedImpact}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold tracking-wide text-stone-400 uppercase">
+                      What will happen
+                    </dt>
+                    <dd className="mt-1.5 leading-relaxed text-stone-200">
+                      {opportunity.actionSummary}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              <div className="space-y-4 border-t border-white/8 pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+                {opportunity.ctaEvidence.length ? (
+                  opportunity.ctaEvidence.map((family, index) => {
+                    const cta = displayableData(family)
+                    return (
+                      <div key={index} className="space-y-3 text-stone-200">
+                        <AvailabilityBadge state={family.state} />
+                        {cta ? (
+                          <CtaOutcome cta={cta} />
+                        ) : (
+                          <p className="text-sm">
+                            CTA click and outcome evidence: Unavailable.
+                          </p>
+                        )}
+                        <EvidenceProvenance family={family} />
+                      </div>
+                    )
+                  })
+                ) : (
+                  <p className="text-sm text-stone-300">
+                    CTA click and outcome evidence: Unavailable. No measured
+                    outcome is implied by this recommendation.
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 border-t border-white/10 bg-white/[0.025] p-5 sm:grid-cols-2 sm:p-6">
               <div className="min-w-0">
                 {apply ? (
                   <a
                     className={cn(
                       seoActionClass,
-                      "w-full bg-brand-red text-xl font-bold text-white hover:bg-red-700 sm:text-xl",
+                      "w-full bg-brand-red font-semibold text-white hover:bg-red-700",
                     )}
                     href={apply}
                     target="_blank"
@@ -184,7 +190,10 @@ export function OpportunityList({
                   <button
                     type="button"
                     disabled
-                    className={cn(seoActionClass, "w-full disabled:opacity-50")}
+                    className={cn(
+                      seoActionClass,
+                      "w-full border-white/15 bg-white/8 text-stone-400 disabled:cursor-not-allowed",
+                    )}
                   >
                     Apply
                   </button>
@@ -213,7 +222,10 @@ export function OpportunityList({
                   <button
                     type="button"
                     disabled
-                    className={cn(seoActionClass, "w-full disabled:opacity-50")}
+                    className={cn(
+                      seoActionClass,
+                      "w-full border-white/20 bg-transparent text-white disabled:cursor-not-allowed disabled:opacity-45",
+                    )}
                   >
                     Decline
                   </button>
@@ -222,24 +234,24 @@ export function OpportunityList({
                   {opportunity.declineOutcome}
                 </p>
               </div>
-            </div>
-            <p className="mt-3 text-xs leading-relaxed text-stone-300">
-              Both actions open Admin confirmation in a new tab. Applying may
-              create a draft or ticket; it never publishes or deploys directly.
-              Declining records a decision after confirmation.
-            </p>
-            {!current || !apply || !decline ? (
-              <p
-                role="status"
-                className="mt-3 text-sm font-medium text-amber-100"
-              >
-                {!actionsAvailable
-                  ? "Refresh out-of-date opportunity evidence before making a decision."
-                  : opportunity.decisionState !== "current"
-                    ? decisionMessages[opportunity.decisionState]
-                    : "Admin confirmation is unavailable. Check the Admin handoff configuration."}
+              <p className="text-xs leading-relaxed text-stone-400 sm:col-span-2">
+                Both actions open Admin confirmation in a new tab. Applying may
+                create a draft or ticket; it never publishes or deploys
+                directly. Declining records a decision after confirmation.
               </p>
-            ) : null}
+              {!current || !apply || !decline ? (
+                <p
+                  role="status"
+                  className="text-sm font-medium text-amber-100 sm:col-span-2"
+                >
+                  {!actionsAvailable
+                    ? "Refresh out-of-date opportunity evidence before making a decision."
+                    : opportunity.decisionState !== "current"
+                      ? decisionMessages[opportunity.decisionState]
+                      : "Admin confirmation is unavailable. Check the Admin handoff configuration."}
+                </p>
+              ) : null}
+            </div>
           </article>
         )
       })}

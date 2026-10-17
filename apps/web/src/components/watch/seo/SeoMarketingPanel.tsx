@@ -1,6 +1,7 @@
 "use client"
 
 import { useId } from "react"
+import { AlertTriangle, Eye, RefreshCw, ShieldCheck } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -21,7 +22,7 @@ import type { SeoMarketingPanelProps, ViewingEvidence } from "./types"
 function VideoPerformance({ data }: { data: ViewingEvidence }) {
   return (
     <div>
-      <dl className="grid grid-cols-2 gap-5">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-5 border-b border-white/8 pb-6">
         <Metric label="Video starts" value={data.starts} />
         <Metric label="Completions" value={data.completions} />
         <Metric
@@ -35,15 +36,20 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
           suffix="%"
         />
       </dl>
-      <h4 className="mt-6 text-base font-semibold text-stone-100">
-        How deep people watched
-      </h4>
-      <p className="mt-1 text-sm leading-relaxed text-stone-300">
+      <div className="mt-6 sm:flex sm:items-center sm:justify-between sm:gap-4">
+        <h4 className="text-base font-semibold text-white">
+          How deep people watched
+        </h4>
+        <span className="mt-1 block text-xs text-stone-400 sm:mt-0">
+          of all video starts
+        </span>
+      </div>
+      <p className="mt-1 max-w-xl text-sm leading-relaxed text-stone-400">
         Each milestone shows how many video starts reached that point. A start
         is not necessarily a unique person.
       </p>
       {data.retention.length ? (
-        <ul className="mt-4 space-y-4">
+        <ul className="mt-5 space-y-5">
           {data.retention.map((milestone, index) => {
             const measured =
               milestone.percentOfStarts != null &&
@@ -51,42 +57,43 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
               milestone.percentOfStarts >= 0 &&
               milestone.percentOfStarts <= 100
             return (
-              <li key={index} className="space-y-2 text-sm">
-                <div className="flex flex-wrap justify-between gap-2">
-                  <span>
-                    {displayNumber(milestone.percentWatched)}% of the video
-                  </span>
-                  <span className="text-stone-300 tabular-nums">
-                    {milestone.viewers != null && data.starts != null
-                      ? `${displayNumber(milestone.viewers)} of ${displayNumber(data.starts)} starts`
-                      : "Viewers: Unavailable"}
-                  </span>
-                </div>
-                {measured ? (
+              <li
+                key={index}
+                className="grid grid-cols-[3.25rem_1fr] items-center gap-x-3 gap-y-1 text-sm sm:grid-cols-[3.5rem_1fr_auto]"
+              >
+                <span className="font-semibold text-white tabular-nums">
+                  {displayNumber(milestone.percentWatched)}%
+                  <span className="sr-only"> of the video</span>
+                </span>
+                <div className="col-start-2 row-start-1">
                   <div
                     role="meter"
                     aria-label={`Starts reaching ${milestone.percentWatched}% of the video`}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-valuenow={milestone.percentOfStarts!}
-                    aria-valuetext={`${displayNumber(milestone.percentOfStarts)}% of starts`}
-                    className="h-2 overflow-hidden rounded-full bg-stone-700"
+                    aria-valuenow={
+                      measured ? milestone.percentOfStarts! : undefined
+                    }
+                    aria-valuetext={
+                      measured
+                        ? `${displayNumber(milestone.percentOfStarts)}% of starts`
+                        : "Unavailable"
+                    }
+                    className="h-2.5 overflow-hidden rounded-full bg-white/8"
                   >
-                    <div
-                      className="h-full rounded-full bg-brand-red"
-                      style={{ width: `${milestone.percentOfStarts}%` }}
-                    />
+                    {measured ? (
+                      <div
+                        className="h-full rounded-full bg-[#6e91ff]"
+                        style={{ width: `${milestone.percentOfStarts}%` }}
+                      />
+                    ) : null}
                   </div>
-                ) : (
-                  <p className="text-xs text-stone-300">
-                    Retention: Unavailable
-                  </p>
-                )}
-                {measured ? (
-                  <p className="text-xs text-stone-300">
-                    {displayNumber(milestone.percentOfStarts)}% of starts
-                  </p>
-                ) : null}
+                </div>
+                <span className="col-start-2 text-xs text-stone-400 sm:col-start-3 sm:row-start-1 sm:text-right">
+                  {milestone.viewers != null && data.starts != null
+                    ? `${displayNumber(milestone.viewers)} of ${displayNumber(data.starts)} starts · ${displayNumber(milestone.percentOfStarts)}%`
+                    : "Unavailable"}
+                </span>
               </li>
             )
           })}
@@ -120,22 +127,48 @@ export function SeoMarketingPanel({
       aria-busy={state.status === "loading"}
       data-dd-privacy="mask"
       className={cn(
-        "w-full min-w-0 border-t border-stone-600/60 py-8 font-sans text-stone-100 [overflow-wrap:anywhere]",
+        "w-full min-w-0 border-t border-white/10 py-8 font-sans text-stone-100 [overflow-wrap:anywhere] sm:py-10",
         seoFocusClass,
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h2 className="text-xl font-semibold sm:text-3xl">
+      <div className="flex flex-wrap items-end justify-between gap-5 border-b border-white/10 pb-7">
+        <div
+          id={`${prefix}-overview`}
+          className="min-w-0 max-w-3xl scroll-mt-24"
+        >
+          <div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-red-200/80 uppercase">
+            <ShieldCheck className="size-4" aria-hidden="true" />
+            Admin view · private
+          </div>
+          <h2 className="text-3xl leading-none font-semibold tracking-[-0.035em] text-white sm:text-5xl">
             SEO &amp; Marketing
           </h2>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-300">
-            See how people find and watch this video, then review what could
-            help. Private evidence for administrators.
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-stone-300">
+            How people discover, watch, and act on this film — plus the next
+            changes worth testing.
           </p>
+          {data ? (
+            <p className="mt-3 truncate text-xs text-stone-400">
+              <span className="font-semibold text-stone-200">
+                {data.page.title}
+              </span>
+              {" · "}
+              {data.page.language}
+              {" · "}
+              {data.page.canonicalUrl}
+            </p>
+          ) : null}
         </div>
         {data && onRetry ? (
-          <button type="button" className={seoActionClass} onClick={onRetry}>
+          <button
+            type="button"
+            className={cn(
+              seoActionClass,
+              "gap-2 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white",
+            )}
+            onClick={onRetry}
+          >
+            <RefreshCw className="size-4" aria-hidden="true" />
             Refresh evidence
           </button>
         ) : null}
@@ -174,33 +207,10 @@ export function SeoMarketingPanel({
           ) : null}
         </div>
       ) : (
-        <div className="mt-6 space-y-6">
-          <div
-            id={`${prefix}-overview`}
-            className="min-w-0 space-y-2 border-l-2 border-stone-500 pl-4 text-sm leading-relaxed"
-          >
-            <p className="font-semibold">
-              {data.page.title}{" "}
-              <span className="font-normal text-stone-300">
-                ({data.page.language})
-              </span>
-            </p>
-            <p className="text-stone-300">
-              Search canonical:{" "}
-              <span className="break-all text-stone-100">
-                {data.page.canonicalUrl}
-              </span>
-            </p>
-            {data.page.contextualUrl ? (
-              <p className="text-stone-300">
-                Viewing context:{" "}
-                <span className="break-all">{data.page.contextualUrl}</span>
-              </p>
-            ) : null}
-          </div>
+        <div className="mt-4 space-y-8">
           <nav
             aria-label="SEO evidence sections"
-            className="flex flex-wrap gap-x-5 gap-y-2 border-b border-stone-600/60 pb-4 text-sm"
+            className="sticky top-[76px] z-10 flex gap-1 overflow-x-auto border-b border-white/10 bg-stone-900/95 py-2 text-sm backdrop-blur-md"
           >
             {[
               ["overview", "Overview"],
@@ -214,7 +224,7 @@ export function SeoMarketingPanel({
                 key={anchor}
                 href={`#${prefix}-${anchor}`}
                 className={cn(
-                  "py-2 underline decoration-stone-500 underline-offset-4 hover:text-red-200",
+                  "shrink-0 rounded-full px-3 py-2 text-stone-300 transition-colors hover:bg-white/8 hover:text-white",
                   seoFocusClass,
                 )}
               >
@@ -222,14 +232,25 @@ export function SeoMarketingPanel({
               </a>
             ))}
           </nav>
+          <div id={`${prefix}-search`} className="scroll-mt-24">
+            <SeoFamily
+              name="rankings"
+              title="Search visibility"
+              description="Where this page appeared in Google Search over the last 28 days, and how often searchers chose it."
+              family={data.rankings}
+              className="border-white/15 bg-[#15191f]"
+            >
+              {(rankings) => <RankingHistory data={rankings} />}
+            </SeoFamily>
+          </div>
           {data.alerts.length ? (
-            <div className="space-y-3">
+            <div className="grid gap-3 lg:grid-cols-2">
               {data.alerts.map((alert) => (
                 <div
                   key={alert.id}
                   role={alert.severity === "info" ? "status" : "alert"}
                   className={cn(
-                    "rounded-xl border p-4 text-sm leading-relaxed",
+                    "flex gap-3 rounded-xl border p-4 text-sm leading-relaxed",
                     alert.severity === "error"
                       ? "border-red-300/50 bg-red-950/30 text-red-100"
                       : alert.severity === "warning"
@@ -237,22 +258,25 @@ export function SeoMarketingPanel({
                         : "border-stone-500 text-stone-200",
                   )}
                 >
-                  <p className="font-semibold">{alert.title}</p>
-                  <p className="mt-1">{alert.detail}</p>
+                  {alert.severity === "info" ? (
+                    <Eye
+                      className="mt-0.5 size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <AlertTriangle
+                      className="mt-0.5 size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                  )}
+                  <div>
+                    <p className="font-semibold">{alert.title}</p>
+                    <p className="mt-1 opacity-80">{alert.detail}</p>
+                  </div>
                 </div>
               ))}
             </div>
           ) : null}
-          <div id={`${prefix}-search`} className="scroll-mt-24">
-            <SeoFamily
-              name="rankings"
-              title="Search rankings"
-              description="Daily history requires dated page-level measurements. Retained selection snapshots alone do not establish ranking history or page totals."
-              family={data.rankings}
-            >
-              {(rankings) => <RankingHistory data={rankings} />}
-            </SeoFamily>
-          </div>
           <div
             id={`${prefix}-audience`}
             className="grid scroll-mt-24 gap-6 lg:grid-cols-2"
@@ -260,18 +284,14 @@ export function SeoMarketingPanel({
             <SeoFamily
               name="reach"
               title="Search reach"
-              description="How often people saw or visited this page. Search, video search and on-page visits remain separate measurements."
+              description="Visits to this page and discovery through video search. Google Search totals are summarized above."
               family={data.reach}
+              className="bg-[#171a18]"
             >
               {(reach) => (
                 <dl className="grid grid-cols-2 gap-5">
                   <Metric label="Page views" value={reach.pageViews} />
                   <Metric label="Visitors" value={reach.visitors} />
-                  <Metric label="Search clicks" value={reach.searchClicks} />
-                  <Metric
-                    label="Search appearances"
-                    value={reach.searchImpressions}
-                  />
                   <Metric
                     label="Video-search clicks"
                     value={reach.videoSearchClicks}
@@ -288,6 +308,7 @@ export function SeoMarketingPanel({
               title="Video performance"
               description="Starts, completions and watch depth from the supplied video observations."
               family={data.viewing}
+              className="lg:col-span-2"
             >
               {(viewing) => <VideoPerformance data={viewing} />}
             </SeoFamily>
@@ -296,6 +317,7 @@ export function SeoMarketingPanel({
               title="Calls to action"
               description="A click shows intent. A completed action needs its own measurement and attribution."
               family={data.ctaOutcomes}
+              className="lg:col-span-2"
             >
               {(outcomes) =>
                 outcomes.items.length ? (
@@ -318,6 +340,7 @@ export function SeoMarketingPanel({
               title="AI-assistant traffic"
               description="Recorded visits attributed to an AI assistant. Referral traffic does not prove a citation or mention in an answer."
               family={data.aiTraffic}
+              className="bg-[#18171b] lg:col-start-2 lg:row-start-1"
             >
               {(traffic) => (
                 <div>
