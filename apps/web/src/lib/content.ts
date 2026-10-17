@@ -1,4 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
+import type { SearchLanguageOption } from "@/lib/search-language"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import {
@@ -16,6 +17,7 @@ import {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   legacyWatchExperienceFragment,
   preCopyWatchExperienceFragment,
   watchExperienceFragment,
@@ -26,7 +28,7 @@ import {
 import {
   hasPublicWatchLanguageSlugShape,
   isPublicWatchLanguageSlug,
-  slugToBcp47Tag,
+  slugToAdminContentLocale,
 } from "@/lib/locale"
 import { selectOwnLanguageName } from "@/lib/language-native-name"
 import {
@@ -999,9 +1001,16 @@ type AdminVideoRouteSnapshotParentRelation = {
     | null
 }
 
+type AdminRequestedLanguageRaw = {
+  slug?: string | null
+  name?: unknown
+  bcp47?: string | null
+} | null
+
 type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
@@ -1795,7 +1804,7 @@ type WatchContentIdentity = {
 async function contentIdentityForWatchLanguage(
   languageSlugOrLocale: string,
 ): Promise<WatchContentIdentity> {
-  const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
+  const mappedLocale = slugToAdminContentLocale(languageSlugOrLocale)
   const locale = mappedLocale ?? languageSlugOrLocale
 
   if (isPublicWatchLanguageSlug(languageSlugOrLocale)) {
@@ -2110,6 +2119,42 @@ async function queryWatchLanguagePickerVariantsBySlug(
   return result.data?.videoBySlug ?? null
 }
 
+// TEMPORARY (FGE-284): deploy-window shim for the additive
+// `WatchRouteSnapshot.requestedLanguage` field. Remove once admin with that
+// field is live in every environment plus one release: delete this cooldown,
+// `isRequestedLanguageSchemaLag`, the retry branches in
+// `queryWatchVideoRouteSnapshotBySlug`, and
+// `getLegacyWatchVideoRouteSnapshotBySlugOperation` (fragments/watch-video.ts,
+// its barrel export, the `visit` import and tests). Grep: `TEMPORARY (FGE-284)`.
+//
+// Retry only the exact additive-field validation failure during independent
+// deploys. A brief process-local cooldown avoids repeated failed probes; all
+// other GraphQL/server failures preserve their existing error behavior.
+let requestedLanguageSnapshotRetryAfter = 0
+function noteRequestedLanguageSchemaLag(videoSlug: string) {
+  requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+  logWatchServerEvent("watch_route_snapshot.requested_language_schema_lag", {
+    videoSlug,
+  })
+}
+function isRequestedLanguageSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[]
+}): boolean {
+  const errors = graphqlErrorsFromResult(result)
+  return (
+    errors.length > 0 &&
+    errors.every(
+      (entry) =>
+        isValidationShaped(entry) &&
+        typeof entry.message === "string" &&
+        /^Cannot query field "requestedLanguage" on type "WatchRouteSnapshot"\./.test(
+          entry.message,
+        ),
+    )
+  )
+}
+
 async function queryWatchVideoRouteSnapshotBySlug(
   videoSlug: string,
   variables: {
@@ -2118,18 +2163,39 @@ async function queryWatchVideoRouteSnapshotBySlug(
     subtitleLanguageSlug?: string | null
   },
 ): Promise<AdminVideoRouteSnapshotRaw | null> {
-  const result = await client.query({
-    query: getWatchVideoRouteSnapshotBySlugOperation,
-    variables: {
-      locale: variables.locale,
-      languageSlug: variables.languageSlug,
-      ...(variables.subtitleLanguageSlug
-        ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
-        : {}),
-      videoSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+  const queryVariables = {
+    locale: variables.locale,
+    languageSlug: variables.languageSlug,
+    ...(variables.subtitleLanguageSlug
+      ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
+      : {}),
+    videoSlug,
+  }
+  const query = (legacy: boolean) =>
+    client.query({
+      query: legacy
+        ? getLegacyWatchVideoRouteSnapshotBySlugOperation
+        : getWatchVideoRouteSnapshotBySlugOperation,
+      variables: queryVariables,
+      fetchPolicy: "no-cache",
+    })
+  const useLegacy = Date.now() < requestedLanguageSnapshotRetryAfter
+  let result
+  try {
+    result = await query(useLegacy)
+  } catch (error) {
+    if (
+      useLegacy ||
+      !isRequestedLanguageSchemaLag({ error: error as ErrorLike })
+    )
+      throw error
+    noteRequestedLanguageSchemaLag(videoSlug)
+    result = await query(true)
+  }
+  if (!useLegacy && isRequestedLanguageSchemaLag(result)) {
+    noteRequestedLanguageSchemaLag(videoSlug)
+    result = await query(true)
+  }
 
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
@@ -2220,6 +2286,7 @@ export const resolveWatchLanguagePickerVariants = cache(
 )
 
 export type WatchUnavailableRecoveryTarget = {
+  requestedLanguage: SearchLanguageOption | null
   contentTitle: string | null
   imageUrl: string | null
 }
@@ -2243,9 +2310,23 @@ export const resolveWatchUnavailableRecoveryTarget = cache(
     const video = normalizeAdminVideo(localizedCopy)
     if (!video) return null
 
+    const requestedLanguageName = pickLocalizedName(
+      snapshot.requestedLanguage?.name,
+    )?.trim()
     return {
       contentTitle: video.title,
       imageUrl: resolvePosterUrl(video.images[0]),
+      requestedLanguage:
+        snapshot.requestedLanguage?.slug === requestedLanguageSlug &&
+        requestedLanguageName
+          ? {
+              publicSlug: requestedLanguageSlug,
+              englishName: requestedLanguageName,
+              nativeName: null,
+              bcp47: snapshot.requestedLanguage.bcp47 ?? null,
+              regionNames: [],
+            }
+          : null,
     }
   },
 )
@@ -2330,6 +2411,7 @@ function mergeParentRelationsShellAndCopy(
 
 function mergeWatchVideoShellWithCopy(
   shell: AdminVideoRaw & {
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     variants?: AdminVideoVariantRaw[] | null

@@ -5,7 +5,7 @@ owner: "unassigned"
 priority: "P1"
 status: "planned"
 depends_on:
-  - "feat-727"
+  - "feat-729"
 blocks: []
 tags:
   - "platform"

@@ -287,10 +287,16 @@ export function watchVideoStructuredDataJson(
     return null
   }
 
+  // Core can return several subtitle rows for one language; emit one track
+  // per language (first valid row wins).
+  const seenCaptionLanguages = new Set<string>()
   const captions = model.captions.flatMap((caption) => {
     const captionUrl = stablePublicMediaUrl(caption.contentUrl, ".vtt")
     const captionLanguage = validBcp47(caption.inLanguage)
     if (!captionUrl || !captionLanguage) return []
+    const languageKey = captionLanguage.toLowerCase()
+    if (seenCaptionLanguages.has(languageKey)) return []
+    seenCaptionLanguages.add(languageKey)
     return [
       {
         "@type": "MediaObject",

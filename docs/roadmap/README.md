@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 17, 2026)
 
-- **Total tickets:** 859
-- **Complete:** 639
+- **Total tickets:** 861
+- **Complete:** 641
 - **Cancelled:** 41
 - **In progress:** 69
 - **Not started:** 53
@@ -226,6 +226,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-673](content-discovery/feat-673-watch-unavailable-language-identity.md)                                  | Preserve selected catalog language on unavailable Watch pages                                   | vlad       | P2       | 2026-10-10 | 1    | 2026-10-10 | complete    |
 
 ### Media Generation
 
@@ -706,7 +707,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-719](platform/feat-719-support-research-disabled-migration-readiness.md)         | Keep disabled support research independent of database migration                   | nisal      | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
-| [feat-727](platform/feat-727-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
+| [feat-729](platform/feat-729-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
+| [feat-727](platform/feat-727-watch-consent-share-copy-validation.md)                   | Validate Watch download consent and share copy on current main                     | vlad       | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |

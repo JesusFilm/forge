@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import {
   WatchSeoManifestCoverageError,
@@ -11,6 +12,11 @@ function mockPrisma() {
     $queryRaw: vi.fn(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
+}
+
+function renderedSql(call: unknown[]): Prisma.Sql {
+  const [strings, ...values] = call
+  return Prisma.sql(strings as TemplateStringsArray, ...values)
 }
 
 function sqlText(call: unknown[]): string {
@@ -146,6 +152,47 @@ describe("WatchSeoManifestService.generate", () => {
     expect(allSql).toContain("hls IS NOT NULL")
     expect(allSql).toContain("parent_video_audio")
     expect(allSql).toContain("child_lang.bcp47")
+  })
+
+  it("excludes watch-restricted videos on every video the routes depend on", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    await new WatchSeoManifestService(prisma).generate()
+
+    const [contentSql, episodeSql] = prisma.$queryRaw.mock.calls.map(
+      (call: unknown[]) => renderedSql(call).sql,
+    )
+    for (const alias of ["v", "parent", "child"]) {
+      expect(contentSql).toContain(
+        `NOT ('watch' = ANY(${alias}.restrict_view_platforms))`,
+      )
+    }
+    for (const alias of ["parent", "child"]) {
+      expect(episodeSql).toContain(
+        `NOT ('watch' = ANY(${alias}.restrict_view_platforms))`,
+      )
+    }
+  })
+
+  it("inherits child languages only for parents Watch renders as a series", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+
+    await new WatchSeoManifestService(prisma).generate()
+
+    const content = renderedSql(prisma.$queryRaw.mock.calls[0])
+    const parentAudio = content.sql.slice(
+      content.sql.indexOf("parent_video_audio AS"),
+    )
+    expect(parentAudio).toMatch(
+      /parent\.label IS NULL\s+OR parent\.label::text = ANY\(\?::text\[\]\)/,
+    )
+    // A feature film with chapters plays only its own Dubs (N58).
+    expect(content.values).toContainEqual(["collection", "series"])
+    expect(content.values).not.toContainEqual(
+      expect.arrayContaining(["featureFilm"]),
+    )
   })
 
   it("rejects malformed query rows instead of emitting a partial manifest", async () => {

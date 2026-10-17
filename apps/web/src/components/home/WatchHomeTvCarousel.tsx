@@ -125,8 +125,9 @@ export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
 /**
  * Deliberately a sibling of `HERO_HLS_CONFIG` in `watch/HeroPlayer.tsx`
  * rather than a shared import: the two surfaces have different dwell
- * profiles and should be able to move independently. The values match today
- * because the reasoning does.
+ * profiles and should be able to move independently. The buffer values match
+ * because the reasoning does. The hero also measures bandwidth before picking
+ * its first rendition (`lib/hls-start-level.ts`); this intro does not yet.
  *
  * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
  * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,

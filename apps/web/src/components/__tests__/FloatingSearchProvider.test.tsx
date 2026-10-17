@@ -2261,7 +2261,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language: English (EN)",
+      "Select language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -2309,8 +2309,148 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )?.textContent,
     ).toBe("PT-MZ")
     expect(languageButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: Portuguese Mozambique (PT-MZ)",
+      "Select language: Portuguese Mozambique (PT-MZ)",
     )
+  })
+
+  it("announces the global language trigger as a dialog opener with its open state", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    expect(languageButton.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("true")
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      )
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("keeps the audio-language name and omits aria-expanded for the page-specific switcher", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        languageCode: "PT",
+      })
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(languageButton?.getAttribute("aria-label")).toContain(
+      "Change audio language",
+    )
+    expect(languageButton?.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton?.hasAttribute("aria-expanded")).toBe(false)
+  })
+
+  it("preselects the route language, not the chrome default, in the global picker", async () => {
+    navigationMocks.pathname = "/aari.html/languages"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document
+        .querySelector('[data-testid="global-language-picker-modal"]')
+        ?.getAttribute("data-current-language-slug"),
+    ).toBe("aari")
+  })
+
+  it("names the logo for what activating it does: Home link, or close-search button while search is open", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("aria-label")).toBe("JesusFilm home")
+    expect(logo?.hasAttribute("role")).toBe(false)
+    await openSearchOverlay()
+    const openLogo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    )
+    // Same element across the toggle, so keyboard focus survives the close.
+    expect(openLogo).toBe(logo)
+    expect(openLogo?.getAttribute("role")).toBe("button")
+    expect(openLogo?.getAttribute("aria-label")).toBe("Close search")
+  })
+
+  it("closes search when Space is pressed on the logo while search is open", async () => {
+    vi.useFakeTimers()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await openSearchOverlay()
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLAnchorElement
+    const space = new KeyboardEvent("keydown", {
+      key: " ",
+      bubbles: true,
+      cancelable: true,
+    })
+    await act(async () => {
+      logo.dispatchEvent(space)
+    })
+    expect(space.defaultPrevented).toBe(true)
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]')
+        ?.className,
+    ).toContain("animate-overlay-fade-out")
+    await act(async () => {
+      vi.runAllTimers()
+    })
+    expect(logo.getAttribute("aria-label")).toBe("JesusFilm home")
+    expect(logo.hasAttribute("role")).toBe(false)
   })
 
   it("recovers the global trigger after a module-load failure and retries", async () => {

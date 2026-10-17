@@ -1085,6 +1085,7 @@ describe("resolveWatchUnavailableRecoveryTarget", () => {
     expect(target).toEqual({
       contentTitle: "耶稣受难日直播",
       imageUrl: "https://imagedelivery.net/account/cinematic-high.jpg",
+      requestedLanguage: null,
     })
   })
 
@@ -1692,6 +1693,36 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
     ])
   })
+
+  it.each([
+    // Admin's raw keys. The declared html lang is corrected (`kmr`, `fr`),
+    // but admin's broad copy layer matches VideoLocale.locale, so the content
+    // query must keep admin's own key or fallback copy leaks in from other
+    // Kurdish dialects / standard French.
+    ["kurmanji-standard", "ko-kmr"],
+    ["french-african", "fra"],
+  ])(
+    "queries admin content for %s with admin's own locale key %s",
+    async (languageSlug, adminLocale) => {
+      queryMock
+        .mockResolvedValueOnce({
+          data: { videoBySlug: makeAdminVideo() },
+        })
+        .mockResolvedValueOnce({
+          data: { videoDub: makeAdminDub() },
+        })
+
+      const { resolveWatchVideoBySlug } = await import("./content")
+
+      await resolveWatchVideoBySlug("jesus", languageSlug)
+
+      expect(queryMock.mock.calls[0]?.[0].variables).toEqual({
+        locale: adminLocale,
+        languageSlug,
+        videoSlug: "jesus",
+      })
+    },
+  )
 
   it("uses broad English content when the exact English-slug title is blank", async () => {
     queryMock
