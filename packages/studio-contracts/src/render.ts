@@ -76,6 +76,39 @@ export const studioRenderExecutionProfileSchema = z
 
 export const STUDIO_RENDER_INPUT_BYTES = 128 * 1024 * 1024
 export const STUDIO_RENDER_WIRE_BYTES = 180 * 1024 * 1024
+/** Each upload stays below the edge request limit, including base64 expansion. */
+export const STUDIO_RENDER_OUTPUT_PART_BYTES = 16 * 1024 * 1024
+export const STUDIO_RENDER_OUTPUT_MAX_PARTS = 8
+export const studioRenderOutputPartSchema = z
+  .object({
+    index: z
+      .number()
+      .int()
+      .min(0)
+      .max(STUDIO_RENDER_OUTPUT_MAX_PARTS - 1),
+    count: z.number().int().min(1).max(STUDIO_RENDER_OUTPUT_MAX_PARTS),
+    byteSize: z.number().int().positive().max(STUDIO_RENDER_OUTPUT_PART_BYTES),
+    totalBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(STUDIO_RENDER_PROFILE.outputBytes),
+    outputDigest: studioDigestSchema,
+    retentionDeadlineMs: z.number().int().positive().safe(),
+  })
+  .strict()
+  .refine(
+    (part) =>
+      part.count ===
+        Math.ceil(part.totalBytes / STUDIO_RENDER_OUTPUT_PART_BYTES) &&
+      part.index < part.count &&
+      part.byteSize ===
+        Math.min(
+          STUDIO_RENDER_OUTPUT_PART_BYTES,
+          part.totalBytes - part.index * STUDIO_RENDER_OUTPUT_PART_BYTES,
+        ),
+    "Invalid bounded output part",
+  )
 export const studioRenderAdmissionSchema = z
   .object({
     version: z.literal(1),

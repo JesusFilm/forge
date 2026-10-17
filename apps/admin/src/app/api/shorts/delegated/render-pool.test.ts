@@ -49,3 +49,25 @@ it("routes render RPCs through the isolated pool while other delegated work keep
   expect((await invoke({ action: "other" })).status).toBe(200)
   expect(fixtures.delegated.mock.calls[0]?.[0]).toBe(fixtures.main)
 })
+
+it("forwards request cancellation to bounded worker retention", async () => {
+  const controller = new AbortController()
+  const request = new Request("https://fixture.invalid/api/shorts/delegated", {
+    method: "POST",
+    signal: controller.signal,
+    body: JSON.stringify({
+      action: "render-worker",
+      command: "retain-output",
+      input: {},
+    }),
+  })
+  expect((await POST(request)).status).toBe(200)
+  expect(fixtures.execute).toHaveBeenCalledWith(
+    fixtures.render,
+    expect.anything(),
+    expect.objectContaining({ command: "retain-output" }),
+    request.signal,
+  )
+  controller.abort()
+  expect(request.signal.aborted).toBe(true)
+})

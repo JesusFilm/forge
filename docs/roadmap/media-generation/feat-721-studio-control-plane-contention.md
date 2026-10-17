@@ -3,7 +3,7 @@ id: "feat-721"
 title: "Protect Studio ownership reads from shared control-plane contention"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 2
 depends_on: []
@@ -50,3 +50,17 @@ Exercise the actual ownership path under competing pool load and prove timely
 revocation, timeout cleanup, unchanged cumulative deadlines and immutable receipt
 history. Roll out through normal PR/main; qualify a full project with independent
 codec verification and retained output. No direct production source publishing.
+
+## Full-project acceptance
+
+Ownership reads remain responsive throughout the full render; no control-plane
+revocation interrupts execution.
+Fresh revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` is canonically SUCCEEDED
+and non-stale after independent decode and retained-byte verification. Cloudflare
+rejects its large final upload; authorized recovery uses normal asset/completion
+services within the original issued lease, preserving every deadline and prior
+receipt. Mux upload and physical retirement complete. Automatic transport is
+tracked in feat-726; CPU/memory capacity qualification in feat-725.
+
+Exact release/digest/timing and recovery evidence:
+`docs/solutions/performance-issues/studio-full-render-source-preparation.md`.

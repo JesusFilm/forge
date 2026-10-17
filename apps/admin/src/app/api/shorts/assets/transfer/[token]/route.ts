@@ -33,6 +33,7 @@ export async function PUT(
     const asset = await new StudioTransferService(prisma).upload(
       (await params).token,
       request.body,
+      request.signal,
     )
     return Response.json(asset, { headers: { "cache-control": "no-store" } })
   } catch (error) {

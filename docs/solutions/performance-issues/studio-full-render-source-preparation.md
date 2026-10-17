@@ -110,8 +110,8 @@ keeps JPEG buffering independent of timeline length. The measured approximately
 needed for the complete project plus input/verification at that observed rate.
 V3 therefore versions the cumulative deadline to 3600s, request to 3620s and lease
 to 3900s, with exact v1/v2 history retained. All physical resource caps and the
-180s preparation window stay unchanged. This remains a capacity inference until
-the complete project is independently decoded and retained.
+180s preparation window stay unchanged. At that stage it was a capacity inference;
+the final full-project acceptance evidence below establishes decode and retention.
 
 Backpressure must reach the screenshot producer: the pinned SDK invokes
 `onFrameBuffer` without awaiting its promise. Awaiting writes only inside that
@@ -127,8 +127,8 @@ requests retain their existing pools. A live capacity read before rollout showed
 checks and fail-closed ownership monitoring remain unchanged; positive ownership
 is not cached. A regression holds all ten main-pool connections while the real
 assigned/context/claim ownership sequence completes on the isolated pool, then
-cancels canonically and confirms prompt ownership refusal. Production verification of
-these final corrections is pending.
+cancels canonically and confirms prompt ownership refusal. Full production
+verification is recorded in the final acceptance evidence below.
 
 ## V3 release evidence
 
@@ -201,7 +201,8 @@ Fresh revision-21 attempt `cmvbxfc1u0001ruk1njy8i0v7` leases at
 04:58:56.811Z, commits preparation at 04:59:50.823Z (54.012s), delivers input
 in 75.328s, and starts native rendering at 05:00:15.627Z. Live flags confirm
 2558kbps target, 2843kbps maximum, 5686kb VBV, veryfast and the 256MiB tile
-allowance. Final full-project codec proof and retained output remain pending.
+allowance. This diagnostic attempt was later normally cancelled; full acceptance
+comes from the subsequent remux-reuse release below.
 
 ## Duplicate remux allocation
 
@@ -221,5 +222,98 @@ the trusted switcher confirmed physical retirement and left the worker drained
 and inactive. Preserve its CANCELLED result; do not relabel it as an OOM failure
 or a successful full render. Feat-724 removes the second allocation with a narrow
 paired worker-only resolver for generated remux paths, retaining native audio
-analysis, cancellation and default SDK behavior for other consumers. Full
-acceptance requires the next immutable worker release and a fresh complete run.
+analysis, cancellation and default SDK behavior for other consumers. The next
+immutable worker release and its fresh full run are recorded below.
+
+## Remux reuse release and capacity measurement
+
+PR #2774 merged as `b7c499756327e2187a7b901899076ecced392b7c` after
+all 96 PR CI jobs and CodeQL passed. Worker verification passed 92 tests with
+10 existing qualification skips; the other patched-SDK consumer passed 166 tests
+and its build. Post-merge CI and CodeQL also passed. Hosted release
+[39007485178](https://github.com/JesusFilm/forge/actions/runs/39007485178)
+built and published that exact main commit. Candidate SHA256:
+`43f7b3ecc7558cfaf32d34898a3633ba6a3779403057149a0ec60e3dcf9d6445`.
+The verified host bundle remains
+`613f069ffcbb8e775ff3d9d06ca175167653872c32a671c3e31a6b001d51c2d3`;
+the render image is
+`ghcr.io/jesusfilm/forge-studio-render@sha256:feed5d38909d4c56e0c457c587d2f56b45a09d5a20f2957d42ec34b0957857c6`.
+Trusted acquisition, inactive selection and activation completed before fresh
+revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` was requested. Preparation
+committed in 53.710s and input delivery took 73.382s. Live inspection found all
+17 remux sources / 247,200,184 bytes and zero downloaded MP4 copies.
+
+The VM exposes four vCPUs and approximately 8GiB RAM. Docker and the aggregate
+job cgroup both enforce two CPUs and 2GiB for this profile. A live sample during
+rendering used about 1.4 CPU cores; CPU throttling was negligible. A separate
+10s VM sample measured 38.56% busy across four cores, 0% steal and 0.05% I/O wait.
+The renderer uses concurrency one and one codec thread to contain memory.
+Raising the CPU quota alone would not remove this measured serial bottleneck.
+Any throughput qualification should measure parallelism and its additional
+memory together, rather than infer speedup from a larger VM CPU count.
+
+## Full output, edge failure and canonical recovery
+
+Fresh revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` uses PR #2774's
+immutable main release `39007485178`. Preparation commits in 53.710s and full
+input delivery takes 73.382s. Native rendering runs from 05:54:36.637Z to
+06:46:28.070Z; independent verification completes at 06:47:55.668Z. Both
+containers exit zero without OOM. All 8856 frames decode as 1080x1920/30fps
+H264, with 48kHz stereo AAC (295200ms video / 295253.333ms audio).
+
+The output is 106,963,325 bytes, SHA256
+`969113a698186620f1ee889c91facbf6acf82ae7f5d3e579b6679e8d5707711b`.
+Cloudflare rejects the subsequent large base64 retention request. Authorized
+operator recovery registers the exact verified bytes, proof and manifest through
+normal Admin services while the original issued lease is still valid; normal
+`StudioRenderJobs.finish` returns `admitted: true`. No deadlines or historical
+receipts are changed. An independent retained-byte read confirms the digest;
+canonical status is SUCCEEDED/non-stale, revision 21/DRAFT/unpublished. Exact
+committed receipt reconciliation lets the existing worker upload to Mux and
+retire completely. Automatic bounded retention is tracked separately in feat-726.
+
+All live source-copy checks find zero duplicate MP4 downloads. Maximum sampled
+aggregate memory is 2,077,835,264 bytes; the outer cgroup records 15 limit hits
+without an OOM kill. Feat-725 tracks measured parallelism and memory headroom.
+
+Representative decoded frames at 15, 90, 180, 270 and 294 seconds show the
+expected film imagery and overlays. This confirms the full rendering/data fixes;
+operator recovery is not automatic transport acceptance. Feat-726 sends bounded
+parts across both application edges and assembles inside canonical storage,
+preserving the full output rather than reducing image quality to fit one request.
+The non-mutating unauthenticated size probe receives HTTP 413 from Cloudflare
+for a declared/sent 142,625,960-byte request in 5.66 seconds.
+
+### Automatic retention after full-size decode
+
+A full decode is not retention acceptance. The 106,963,325-byte output expanded
+into a 142,625,960-byte JSON request, and an unauthenticated size-only probe
+confirmed Cloudflare HTTP 413 before Manager. A binary request of the complete
+output to Admin would cross the same edge limit. Keep the quality and output
+budget; bound both public hops with eight or fewer 16MiB private archive parts.
+The finalizer derives the issued snapshot and validates every immutable part's
+producer, lease, input, order, size and complete digest before internal storage
+assembly and normal render/proof/manifest registration. Retained parts receive
+the same exact-lease operational edges as final outputs.
+
+A captured full-output harness exercises the real VM settlement/client, Manager
+HTTP handler/gateway and normal asset broker against a bounded storage fixture.
+All seven parts transfer with a largest Manager request of 22,369,818 bytes and
+largest Admin PUT of 16,777,216 bytes; final metadata is 1,624 bytes and the
+complete SHA-256 is unchanged. This local fixture does not qualify production
+storage assembly; database tests and an actual production transport check are
+separate acceptance evidence.
+
+Partial Admin results must become failed settlements while preserving their
+already registered references. A successful settlement requires its complete
+manifest. Cancellation must reach body consumption, storage write/readback and
+asset registration, with capacity held until underlying work ends. Canonical
+receipt recovery can recover an exact committed result before checking the
+expired local transport window, but cannot finish a new execution or renew a
+render/retention deadline.
+
+Part grants and final storage assembly also use the identical absolute transfer
+deadline persisted with the VM's boot-bound monotonic window. The grant expiry
+is capped by that deadline, and all part metadata must agree on it. Upload and
+assembly combine that expiry with request cancellation; a proxy disconnect
+cannot leave a fresh five-minute storage allowance or renew later parts.
