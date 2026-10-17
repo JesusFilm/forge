@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
+import type { WatchShareFilm } from "@/lib/watch-share-kit"
 import dynamic from "next/dynamic"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -49,6 +50,8 @@ export function WatchSectionRenderer({
   audienceEnabled = false,
   surfaceManifests,
   blocks,
+  shareFilm,
+  onRequestShareLanguages,
   downloadButtonLabel,
   downloadError,
   downloadHref,
@@ -71,6 +74,8 @@ export function WatchSectionRenderer({
 }: {
   audienceEnabled?: boolean
   blocks: MergedWatchBlock[]
+  shareFilm?: WatchShareFilm
+  onRequestShareLanguages?: () => void
   surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadError?: string | null
@@ -203,6 +208,8 @@ export function WatchSectionRenderer({
                 <WatchNextSteps
                   languageSlug={languageSlug}
                   locale={locale}
+                  shareFilm={shareFilm}
+                  onRequestShareLanguages={onRequestShareLanguages}
                   currentVideoActions={{
                     ...(modalCallbacks?.openShare
                       ? { share: modalCallbacks.openShare }
