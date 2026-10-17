@@ -129,3 +129,45 @@ is not cached. A regression holds all ten main-pool connections while the real
 assigned/context/claim ownership sequence completes on the isolated pool, then
 cancels canonically and confirms prompt ownership refusal. Production verification of
 these final corrections is pending.
+
+## V3 release evidence
+
+PR #2771 merged as `60a1eba4364c65ec0fc2153cc0ca58e703e77097`.
+Installed-SDK producer/backpressure tests, worker tests/build, contracts and
+Manager checks, Admin typechecks and PostgreSQL regressions passed. The PR CI
+and CodeQL passed. Main CI initially failed in the Google-font resolver and an
+unrelated recommendation integration assertion; both passed on normal retry.
+Main CodeQL also passed.
+
+Hosted release
+[38998417347](https://github.com/JesusFilm/forge/actions/runs/38998417347)
+built and published that exact main commit. Candidate SHA256:
+`338125ed2907a4a078d4d1bf49b0f8d5860d02962e7edf3077ba6dcebd33b4e6`.
+Host bundle SHA256:
+`613f069ffcbb8e775ff3d9d06ca175167653872c32a671c3e31a6b001d51c2d3`.
+The trusted host tools were updated from those exact reviewed main bytes with a
+root-private backup; acquisition and inactive selection both completed.
+
+Production Admin deployment `c6f24933-3028-4431-9315-0bae375d34ee` is healthy.
+Read-only checks confirmed v3, completed migration 0156, the two-connection
+render-control pool with its 5000ms acquisition bound, revision 21/DRAFT/
+unpublished and the unchanged historical hashes listed above.
+
+Railway left Manager's original main deployment skipped after the failed CI
+attempt, despite the subsequent successful retry. PR #2772 added the missing
+Manager release runbook and merged normally as
+`203715cfcde7abf97e017edd17a7148d017ebaca`. Its fresh normal Manager deployment
+is `7a23af83-b6b7-42e8-ad80-ac465e556aef` and became healthy with v3. The
+matching VM candidate was activated and a fresh revision-21 attempt
+`cmvbw60hs0001ru937n8zmbhf` delivered complete input in 76.342 seconds.
+Ownership checks remained responsive and native streaming produced no
+accumulated JPEG frames. At 04:31:19Z the host nevertheless recorded a 2GiB
+cgroup OOM killing Chromium. The failed receipt and retired assignment remain
+intact, and the worker was drained again.
+
+Before failure, 746 of 8856 encoded frames consumed 25.4MB of the 128MiB
+allowance. The default medium/CRF18 encoder also consumed about 405MiB anonymous
+RSS. Streaming does not bound codec allocations or total output bytes; feat-723
+adds duration-based rate control and measures encoder/browser memory before
+repeating full-project acceptance. Do not infer complete rendering from a
+published host candidate or a partial encoded stream.

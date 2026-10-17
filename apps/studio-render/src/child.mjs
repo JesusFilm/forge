@@ -1,4 +1,5 @@
 class StudioCompositionError extends Error {}
+const OUTPUT_MAX_BYTES = 134217728
 import { createReadStream } from "node:fs"
 import { execFileSync } from "node:child_process"
 import { readFile as read, stat } from "node:fs/promises"
@@ -110,13 +111,40 @@ try {
     logLevel: "error",
   }
   const composition = await selectComposition({ ...options, id: "Studio" })
+  // Budget the complete video before encoding. Default CRF18 can exceed the
+  // fixed output cap even when streaming keeps individual frames bounded.
+  // Reserve 16MiB for mux overhead/variation and two seconds of VBV capacity.
+  const durationSeconds = composition.durationInFrames / composition.fps
+  const audioBitsPerSecond = 320000
+  const maximumVideoKbps = Math.floor(
+    Math.min(
+      25000000,
+      ((OUTPUT_MAX_BYTES - 16 * 1024 * 1024) * 8 -
+        audioBitsPerSecond * durationSeconds) /
+        (durationSeconds + 2),
+    ) / 1000,
+  )
+  const targetVideoKbps = Math.floor(maximumVideoKbps * 0.9)
+  if (
+    !Number.isFinite(durationSeconds) ||
+    durationSeconds <= 0 ||
+    !Number.isSafeInteger(targetVideoKbps) ||
+    targetVideoKbps < 1
+  )
+    throw new StudioCompositionError("Duration cannot fit the output budget")
   await renderMedia({
     ...options,
     composition,
     codec: "h264",
     audioCodec: "aac",
     enforceAudioTrack: true,
-    audioSampleRate: 48000,
+    sampleRate: 48000,
+    audioBitrate: "320k",
+    videoBitrate: `${targetVideoKbps}k`,
+    encodingMaxRate: `${maximumVideoKbps}k`,
+    encodingBufferSize: `${maximumVideoKbps * 2}k`,
+    // Reduce encoder CPU and lookahead memory inside the existing hard caps.
+    x264Preset: "veryfast",
     concurrency: 1,
     // Pin all encoder/decoder/filter pools inside the fixed aggregate PID cap.
     // This exact override completed the retained 231-second validation fixture.
@@ -137,7 +165,7 @@ try {
     offthreadVideoThreads: 1,
   })
   const size = (await stat("/tmp/output.mp4")).size
-  if (size < 1 || size > 134217728)
+  if (size < 1 || size > OUTPUT_MAX_BYTES)
     throw new StudioCompositionError("Output size rejected")
   await pipeline(createReadStream("/tmp/output.mp4"), process.stdout)
 } finally {
