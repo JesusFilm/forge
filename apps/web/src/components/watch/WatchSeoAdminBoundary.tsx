@@ -20,6 +20,28 @@ const SeoMarketingPanel = dynamic(
 
 const CAPABILITY_CACHE_KEY = "watch-seo-capability-v1"
 const CAPABILITY_CACHE_TTL_MS = 30_000
+const PREVIEW_QUERY_PARAM = "seoAdminPreview"
+const PREVIEW_SESSION_KEY = "watch-seo-admin-preview-v1"
+
+function readDevelopmentPreview(): boolean {
+  if (process.env.NODE_ENV === "production") return false
+  const value = new URLSearchParams(window.location.search).get(
+    PREVIEW_QUERY_PARAM,
+  )
+  try {
+    if (value === "1") {
+      sessionStorage.setItem(PREVIEW_SESSION_KEY, "1")
+      return true
+    }
+    if (value === "0") {
+      sessionStorage.removeItem(PREVIEW_SESSION_KEY)
+      return false
+    }
+    return sessionStorage.getItem(PREVIEW_SESSION_KEY) === "1"
+  } catch {
+    return value === "1"
+  }
+}
 
 function readCapabilityCache(): boolean | null {
   try {
@@ -75,6 +97,7 @@ export function WatchSeoAdminBoundary({
   const tabId = `watch-seo-tab-${generatedId}`
   const panelId = `watch-seo-panel-${generatedId}`
   const [authorized, setAuthorized] = useState(false)
+  const [developmentPreview, setDevelopmentPreview] = useState(false)
   const [selected, setSelected] = useState(false)
   const [panelState, setPanelState] = useState<SeoPanelState>({
     status: "loading",
@@ -83,6 +106,16 @@ export function WatchSeoAdminBoundary({
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
+    if (!readDevelopmentPreview()) return
+    setDevelopmentPreview(true)
+    setAuthorized(true)
+  }, [])
+
+  useEffect(() => {
+    if (developmentPreview) {
+      setAuthorized(true)
+      return
+    }
     let controller: AbortController | null = null
     let settled = false
     let retryTimer: ReturnType<typeof setTimeout> | undefined
@@ -146,10 +179,38 @@ export function WatchSeoAdminBoundary({
       controller?.abort()
       if (retryTimer) clearTimeout(retryTimer)
     }
-  }, [contextualParentSlug, languageSlug, locale, videoSlug])
+  }, [
+    contextualParentSlug,
+    developmentPreview,
+    languageSlug,
+    locale,
+    videoSlug,
+  ])
 
   useEffect(() => {
     if (!authorized || !selected) return
+    if (developmentPreview) {
+      let active = true
+      void import("@/components/watch/seo/sample-data").then(
+        ({ createDevelopmentPreviewWatchSeoData }) => {
+          if (!active) return
+          const data = createDevelopmentPreviewWatchSeoData({
+            videoSlug,
+            languageSlug,
+          })
+          setEnvelope({
+            data,
+            adminOrigin: "http://localhost:3003",
+            adminConfirmationUrl:
+              "http://localhost:3003/dashboard/seo/proposals/confirm",
+          })
+          setPanelState({ status: "ready", data })
+        },
+      )
+      return () => {
+        active = false
+      }
+    }
     const controller = new AbortController()
     const params = new URLSearchParams({ videoSlug, locale, languageSlug })
     if (contextualParentSlug) {
@@ -186,6 +247,7 @@ export function WatchSeoAdminBoundary({
     attempt,
     authorized,
     contextualParentSlug,
+    developmentPreview,
     languageSlug,
     locale,
     selected,

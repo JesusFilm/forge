@@ -122,6 +122,13 @@ zero or prototype fixtures. Opportunity controls may link to Admin's separate
 origin for confirmation, but no Watch-origin route may perform a privileged
 proposal decision or publish content.
 
+For local UI review without an account, append `?seoAdminPreview=1` to a Watch
+video URL. This development-only flag reveals the tab and loads explicitly
+labelled sample evidence without calling the private SEO adapters. It persists
+for the browser tab through `sessionStorage`; use `?seoAdminPreview=0` to clear
+it. Production builds ignore both values and retain the normal Admin capability
+check.
+
 Confirmation navigation uses the origin of `NEXT_PUBLIC_ADMIN_GRAPHQL_URL`,
 the existing browser-facing Admin endpoint, independently of private Railway
 `ADMIN_GRAPHQL_URL` transport. It requires a public HTTPS origin in production;

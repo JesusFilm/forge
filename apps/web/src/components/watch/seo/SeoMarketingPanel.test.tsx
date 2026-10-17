@@ -4,12 +4,12 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { SeoMarketingPanel } from "./SeoMarketingPanel"
-import { WatchSeoTab } from "./WatchSeoTab"
-import type { AiTrafficEvidence } from "./types"
 import {
   createSampleWatchSeoData as sampleData,
-  evidence,
-} from "./SeoMarketingPanel.stories"
+  sampleEvidence as evidence,
+} from "./sample-data"
+import { WatchSeoTab } from "./WatchSeoTab"
+import type { AiTrafficEvidence } from "./types"
 ;(
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true

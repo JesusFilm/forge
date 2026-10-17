@@ -41,6 +41,7 @@ describe("WatchSeoAdminBoundary", () => {
   beforeEach(() => {
     resetWatchAccountSessionSignalForTests()
     sessionStorage.clear()
+    window.history.replaceState({}, "", "/watch/jesus.html")
     container = document.createElement("div")
     document.body.append(container)
     root = createRoot(container)
@@ -69,6 +70,36 @@ describe("WatchSeoAdminBoundary", () => {
 
     expect(container.innerHTML).toBe("")
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("shows sample evidence from a development-only URL preview flag without sign-in", async () => {
+    window.history.replaceState({}, "", "/watch/jesus.html?seoAdminPreview=1")
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    await act(async () => {
+      root.render(
+        <WatchSeoAdminBoundary
+          videoSlug="jesus"
+          locale="en"
+          languageSlug="english"
+        />,
+      )
+    })
+
+    const tab = await vi.waitFor(() => {
+      const element = container.querySelector<HTMLButtonElement>('[role="tab"]')
+      expect(element).not.toBeNull()
+      return element!
+    })
+    await import("@/components/watch/seo/sample-data")
+    await act(async () => {
+      tab.click()
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(container.textContent).toContain("ready"))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(sessionStorage.getItem("watch-seo-admin-preview-v1")).toBe("1")
   })
 
   it("checks capability after sign-in and defers evidence until tab selection", async () => {
