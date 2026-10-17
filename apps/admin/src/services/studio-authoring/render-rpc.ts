@@ -33,6 +33,7 @@ export const studioRenderRpcSchema = z
       "mux-created",
       "mux-upload-created",
       "mux-upload-failed",
+      "mux-asset-failed",
       "mux-upload-eligible",
       "mux-ambiguous",
       "mux-ready",
@@ -108,6 +109,13 @@ export async function executeStudioRender(
         .strict()
         .parse(request.input)
       return muxJobs.uploadFailed(worker, input.id, input.uploadId)
+    }
+    case "mux-asset-failed": {
+      const input = z
+        .object({ id: studioIdSchema, assetId: studioIdSchema })
+        .strict()
+        .parse(request.input)
+      return muxJobs.assetFailed(worker, input.id, input.assetId)
     }
     case "mux-upload-eligible":
       return muxJobs.uploadEligible(worker, studioIdSchema.parse(request.input))

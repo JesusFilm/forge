@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 16, 2026)
 
-- **Total tickets:** 843
-- **Complete:** 626
+- **Total tickets:** 844
+- **Complete:** 627
 - **Cancelled:** 41
 - **In progress:** 68
 - **Not started:** 51
@@ -70,7 +70,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | complete    |
 | [feat-559](content-discovery/feat-559-recommendation-crawler-traffic-isolation.md)                             | Isolate crawler and speculative recommendation traffic before persistence                       | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
-| [feat-712](content-discovery/feat-712-recommendation-reconciliation-shared-memory.md)                          | Bound recommendation reconciliation shared memory                                               | nisal      | P0       | 2026-10-16 | 1    | 2026-10-16 | in-progress |
+| [feat-717](content-discovery/feat-717-recommendation-reconciliation-shared-memory.md)                          | Bound recommendation reconciliation shared memory                                               | nisal      | P0       | 2026-10-16 | 1    | 2026-10-16 | in-progress |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | cancelled   |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | cancelled   |
@@ -319,6 +319,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-629](media-generation/feat-629-studio-failed-render-diagnosis.md)                     | Diagnose Lyuba's failed Studio export                                 | tataihono | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-630](media-generation/feat-630-shorts-project-deletion.md)                            | Owner project deletion in Shorts Studio and MCP                       | tataihono | P1       | 2026-10-09 | 1    | 2026-10-09 | complete    |
 | [feat-692](media-generation/feat-692-studio-autosave-and-session-warning.md)                | Studio autosave and expired-session edit protection                   | tataihono | P1       | 2026-10-12 | 2    | 2026-10-13 | complete    |
+| [feat-718](media-generation/feat-718-studio-mux-terminal-asset-failure.md)                  | Stop Studio Mux reconciliation after terminal asset failure           | nisal     | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |

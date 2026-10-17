@@ -649,6 +649,28 @@ class PublicationFixtureError extends Error {}
       ).toBe("UNPUBLISHED")
       expect(await authorizeStudioPublicPlayback(db, f.release.id)).toBeNull()
     })
+    it("retires a terminally errored Mux asset without another dispatch", async () => {
+      const jobs = new StudioMuxJobs(db)
+      await fixture(async ({ attemptId, assetId }) => {
+        const intent = await jobs.enqueue(worker, attemptId)
+        const claim = await jobs.claim(worker, intent.id)
+        const uploadId = `upload-${randomUUID()}`
+        await jobs.uploadCreated(worker, intent.id, claim.dispatchId!, uploadId)
+        await jobs.created(worker, intent.id, claim.dispatchId!, assetId)
+        expect((await jobs.assetFailed(worker, intent.id, assetId)).state).toBe(
+          "FAILED",
+        )
+        expect((await jobs.assetFailed(worker, intent.id, assetId)).state).toBe(
+          "FAILED",
+        )
+        await expect(
+          jobs.assetFailed(worker, intent.id, "replacement-asset"),
+        ).rejects.toMatchObject({ code: "CONFLICT" })
+        expect(
+          (await jobs.pending(worker)).some((row) => row.id === attemptId),
+        ).toBe(false)
+      })
+    })
     it("publishes the exact Short release, revokes permanently and retains the original receipt", async () => {
       const f = await fixture(),
         publication = new StudioCatalogPublicationService(db)
