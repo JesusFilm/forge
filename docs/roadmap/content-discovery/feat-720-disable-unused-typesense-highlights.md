@@ -1,5 +1,5 @@
 ---
-id: "feat-715"
+id: "feat-720"
 title: "Disable unused Typesense search highlights"
 owner: "vlad"
 priority: "P1"

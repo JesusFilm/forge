@@ -1,3 +1,4 @@
+import { executionProfile } from "./execution-profile.mjs"
 import { VmInvariantError } from "./errors.mjs"
 import { spawn } from "node:child_process"
 
@@ -32,7 +33,7 @@ export async function runHostCommand(
     args.some((arg) => typeof arg !== "string") ||
     !Number.isSafeInteger(timeoutMs) ||
     timeoutMs < 1 ||
-    timeoutMs > 920000 ||
+    timeoutMs > executionProfile.requestMs ||
     !Number.isSafeInteger(outputBytes) ||
     outputBytes < 1 ||
     outputBytes > 134217728 ||

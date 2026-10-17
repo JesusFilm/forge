@@ -112,7 +112,9 @@ suite("generated catalog schema and service", () => {
         Buffer.from(
           url.endsWith(".vtt")
             ? "WEBVTT\n\n00:01.000 --> 00:05.000\nSource words\n"
-            : "source byte fixture",
+            : url.endsWith("/source.m3u8")
+              ? "#EXTM3U\n#EXT-X-STREAM-INF:RESOLUTION=480x270\npreview.m3u8\n#EXT-X-STREAM-INF:RESOLUTION=1920x1080\nexport.m3u8"
+              : "#EXTM3U\n#EXTINF:10,\nsource.ts\n#EXT-X-ENDLIST",
         ),
       "LOCAL",
     )

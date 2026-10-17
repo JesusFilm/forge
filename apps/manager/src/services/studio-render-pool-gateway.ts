@@ -7,7 +7,10 @@ import {
   studioDocumentSchema,
   studioIdSchema,
 } from "@forge/studio-contracts"
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import {
+  STUDIO_RENDER_PROFILE,
+  studioRenderExecutionProfileSchema,
+} from "@forge/studio-contracts/render"
 import {
   StudioRenderPoolAuth,
   studioAssignedLeaseSchema,
@@ -20,17 +23,7 @@ export const studioRenderSnapshotSchema = z.object({
   revision: z.number().int().positive(),
   inputHash: studioDigestSchema,
   document: studioDocumentSchema,
-  executionProfile: z
-    .record(z.string(), z.union([z.string(), z.number()]))
-    .refine(
-      (value) =>
-        Object.keys(value).length ===
-          Object.keys(STUDIO_RENDER_PROFILE).length &&
-        Object.entries(STUDIO_RENDER_PROFILE).every(
-          ([key, expected]) => value[key] === expected,
-        ),
-      "Unsupported immutable render profile",
-    ),
+  executionProfile: studioRenderExecutionProfileSchema,
 })
 export type StudioRenderSnapshot = z.infer<typeof studioRenderSnapshotSchema>
 type Assignment = z.infer<typeof studioAssignedLeaseSchema>
@@ -93,6 +86,8 @@ export class StudioRenderPoolGateway {
       throw new StudioRenderPoolBindingError(
         "Render lease is no longer current",
       )
+    if (snapshot.executionProfile.id !== STUDIO_RENDER_PROFILE.id)
+      throw new StudioRenderPoolBindingError("Legacy render execution refused")
     const prepared = await this.port.prepare(
       snapshot,
       signal,
@@ -138,6 +133,10 @@ export class StudioRenderPoolGateway {
           : "Render execution failed",
     }
     if (request.status === "SUCCEEDED") {
+      if (snapshot.executionProfile.id !== STUDIO_RENDER_PROFILE.id)
+        throw new StudioRenderPoolBindingError(
+          "Legacy render execution refused",
+        )
       const output = Buffer.from(request.output, "base64")
       if (
         output.length > STUDIO_RENDER_PROFILE.outputBytes ||
