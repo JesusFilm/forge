@@ -99,6 +99,50 @@ only the port; production still requires the exact canonical origin. Follow
 path, status, timing, and request ID evidence, and delete raw Playwright traces
 before a PR.
 
+## Watch SEO admin workspace
+
+`WatchSeoAdminBoundary` mounts immediately after the required semantic
+recommendation slot, but renders nothing until the existing `AccountControl`
+session request reports a signed-in viewer and Admin's dedicated capability
+endpoint confirms a live `ADMIN` role. Keep the page route static: neither
+cookies nor private evidence may enter RSC, ISR HTML, or shared caches.
+
+The browser calls only Web's private `/watch/api/watch-seo/*` adapters. Web
+holds `WATCH_SEO_API_KEYS` server-side and forwards the encrypted Watch access
+token separately; this key must never fall back to `WEB_ADMIN_API_KEYS` or be
+exposed as `NEXT_PUBLIC_*`. Capability and evidence are rechecked per request,
+use `private, no-store`, and fail closed when the encrypted session token is
+absent. The workspace chunk and evidence load only after an authorized Admin
+selects the tab. Keep `data-dd-privacy="mask"` on the whole panel.
+
+The Web adapter validates and projects Admin's versioned retained-data model
+into the presentation DTO. Missing GA4, watch-depth, AI-referral, bot, or cache
+sources stay explicit `not_connected`/`unavailable` values; never substitute
+zero or prototype fixtures. Opportunity controls may link to Admin's separate
+origin for confirmation, but no Watch-origin route may perform a privileged
+proposal decision or publish content.
+
+For local UI review without an account, append `?seoAdminPreview=1` to a Watch
+video URL. This development-only flag reveals the tab and loads explicitly
+labelled sample evidence without calling the private SEO adapters. It persists
+for the browser tab through `sessionStorage`; use `?seoAdminPreview=0` to clear
+it. Production builds ignore both values and retain the normal Admin capability
+check.
+
+Confirmation navigation uses the origin of `NEXT_PUBLIC_ADMIN_GRAPHQL_URL`,
+the existing browser-facing Admin endpoint, independently of private Railway
+`ADMIN_GRAPHQL_URL` transport. It requires a public HTTPS origin in production;
+HTTP is allowed only outside production. Invalid navigation configuration fails
+the private evidence response closed.
+
+Watch opportunities use controlled query-free summaries; free-form proposal
+details stay on Admin. The retained read model suppresses proposal prose and
+diffs at the strict 29-day boundary even before compaction runs. GSC selection
+decisions are thresholded rolling-window snapshots, not daily ranking history
+or additive page totals. Preview text mirrors Watch metadata rules, but missing
+snippet/image inputs remain unavailable. Crawler rendering mode is unknown
+unless explicitly recorded in the stored observation.
+
 ## Common Pitfalls
 
 - Don't import server-only code in client components.

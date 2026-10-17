@@ -10,6 +10,7 @@ depends_on:
   - "feat-344"
 blocks:
   - "feat-356"
+  - "feat-729"
 tags:
   - "platform"
   - "mastra"
