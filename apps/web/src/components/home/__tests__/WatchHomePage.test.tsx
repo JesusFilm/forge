@@ -2188,6 +2188,7 @@ describe("WatchHomePage", () => {
       false,
     )
     expect(sectionCta?.classList.contains("shrink-0")).toBe(true)
+    expect(sectionCta?.classList.contains("min-h-11")).toBe(true)
     expect(container.textContent).toContain("Built for global missions")
     expect(container.textContent).not.toContain("Sign Up For Our Newsletter")
     expect(
@@ -2838,8 +2839,11 @@ describe("WatchHomePage", () => {
     const actionRow = container.querySelector(
       '[data-testid="watch-home-tv-actions"]',
     )
+    expect(actionRow?.classList.contains("flex-wrap")).toBe(true)
+    expect(actionRow?.classList.contains("sm:flex-nowrap")).toBe(true)
     expect(actionRow?.contains(mobileTimeline!)).toBe(true)
     expect(actionRow?.contains(desktopTimeline!)).toBe(false)
+    expect(mobileTimeline?.classList.contains("gap-2")).toBe(true)
     const desktopCircles = Array.from(
       desktopTimeline!.querySelectorAll(
         '[data-testid="watch-home-video-circle"]',
@@ -2874,6 +2878,18 @@ describe("WatchHomePage", () => {
       "https://cdn.example/queued-one-thumb.jpg",
       "https://cdn.example/queued-two-thumb.jpg",
     ])
+    mobileCircles.forEach((circle) => {
+      const button = circle.querySelector("button")
+      expect(button?.className).toContain("h-11")
+      expect(button?.className).toContain("w-11")
+    })
+    const mobileProgressRing = mobileCircles[0]?.querySelector(
+      '[data-testid="watch-home-current-progress"]',
+    )
+    expect(mobileProgressRing?.getAttribute("width")).toBe("54")
+    expect(mobileProgressRing?.querySelector("circle")?.getAttribute("r")).toBe(
+      "24",
+    )
     for (const timeline of timelines) {
       const circles = Array.from(
         timeline.querySelectorAll('[data-testid="watch-home-video-circle"]'),
@@ -2916,7 +2932,7 @@ describe("WatchHomePage", () => {
     ).toBe("48px")
     expect(
       mobileTimeline!.querySelector('[role="img"]')?.getAttribute("data-sizes"),
-    ).toBe("36px")
+    ).toBe("44px")
     expect(
       container
         .querySelector('[data-testid="watch-home-tv-overlay"]')

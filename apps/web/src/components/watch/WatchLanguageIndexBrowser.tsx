@@ -161,7 +161,7 @@ function LanguageLink({ language }: { language: WatchLanguageIndexLanguage }) {
               {language.englishLabel}
             </bdi>
           </span>
-          <span className="mt-1 block truncate text-base sm:text-sm leading-tight font-normal text-stone-500">
+          <span className="mt-1 block truncate text-base sm:text-sm leading-tight font-normal text-[#88817b]">
             <bdi
               lang={nativeLanguage ?? "und"}
               dir={
