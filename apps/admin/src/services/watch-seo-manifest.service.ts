@@ -10,6 +10,12 @@ const LanguageAlternateSchema = z.object({
 const VideoRouteGroupSchema = z.object({
   contentSlug: z.string().min(1),
   alternates: z.array(LanguageAlternateSchema),
+  // Every playable audio-language slug for this content, not just the ones with
+  // a Google-valid hreflang. `alternates` stays the hreflang cluster; this list
+  // is what the sitemap emits a `<loc>` for. Optional at the schema boundary so
+  // a snapshot persisted by an older admin build still parses on read — the
+  // generator always emits it.
+  languageSlugs: z.array(z.string().min(1)).optional(),
 })
 
 const EpisodeRouteGroupSchema = z.object({
@@ -40,10 +46,32 @@ export const WatchSeoManifestSchema = z.object({
 })
 
 export type WatchSeoManifest = z.infer<typeof WatchSeoManifestSchema>
+
+/**
+ * Identifies the field set of the schema above as an HTTP validator component.
+ * `WatchSeoManifestStore.getLatest()` re-parses the persisted snapshot with the
+ * running build's schema, so an older build strips fields it does not know and
+ * serves a different body for the SAME snapshot version. A validator built from
+ * the version alone is then shared across both bodies and a web process that
+ * cached the older one is answered 304 forever. Bump this whenever the schema
+ * gains, drops, or retypes a field. The guard test beside the service tests
+ * pins the field SET, so it fails on an added or dropped field until you bump;
+ * it cannot see a retype, which stays your call. `r1` is the bare-version
+ * validator emitted before `languageSlugs` existed (feat-533), which is why it
+ * has no suffix.
+ */
+export const WATCH_SEO_MANIFEST_REPRESENTATION = "r2"
+
+/** Strong HTTP validator for one snapshot version in this build's representation. */
+export function watchSeoManifestEtag(version: string): string {
+  return `"${version}.${WATCH_SEO_MANIFEST_REPRESENTATION}"`
+}
+
 export type WatchSeoManifestCounts = {
   videoRouteGroups: number
   episodeRouteGroups: number
   alternateLinks: number
+  canonicalVideoUrls: number
   skippedHreflangValues: number
 }
 
@@ -301,6 +329,12 @@ function toAlternates(
   )
 }
 
+function toLanguageSlugs(rows: Array<{ languageSlug: string }>): string[] {
+  return [...new Set(rows.map((row) => row.languageSlug))].sort((a, b) =>
+    a.localeCompare(b),
+  )
+}
+
 function toVideoRouteGroups(
   rows: ContentLanguageRow[],
   skippedHreflangValues: Record<string, number>,
@@ -312,13 +346,18 @@ function toVideoRouteGroups(
     byContent.set(row.contentSlug, contentRows)
   }
 
-  return [...byContent.entries()]
-    .map(([contentSlug, contentRows]) => ({
-      contentSlug,
-      alternates: toAlternates(contentRows, skippedHreflangValues),
-    }))
-    .filter((group) => group.alternates.length > 0)
-    .sort((a, b) => a.contentSlug.localeCompare(b.contentSlug))
+  return (
+    [...byContent.entries()]
+      .map(([contentSlug, contentRows]) => ({
+        contentSlug,
+        alternates: toAlternates(contentRows, skippedHreflangValues),
+        languageSlugs: toLanguageSlugs(contentRows),
+      }))
+      // Sitemap inclusion follows playability, not hreflang eligibility: a group
+      // survives when it has any playable language, even with no valid hreflang.
+      .filter((group) => group.languageSlugs.length > 0)
+      .sort((a, b) => a.contentSlug.localeCompare(b.contentSlug))
+  )
 }
 
 function toEpisodeRouteGroups(
@@ -368,6 +407,10 @@ export function summarizeWatchSeoManifest(
         (sum, group) => sum + group.alternates.length,
         0,
       ),
+    canonicalVideoUrls: manifest.videoRouteGroups.reduce(
+      (sum, group) => sum + (group.languageSlugs ?? group.alternates).length,
+      0,
+    ),
     skippedHreflangValues: Object.values(manifest.skippedHreflangValues).reduce(
       (sum, count) => sum + count,
       0,

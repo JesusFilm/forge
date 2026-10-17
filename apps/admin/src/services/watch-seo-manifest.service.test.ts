@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  WATCH_SEO_MANIFEST_REPRESENTATION,
   WatchSeoManifestCoverageError,
+  WatchSeoManifestSchema,
   WatchSeoManifestService,
   normalizeGoogleHreflang,
   summarizeWatchSeoManifest,
@@ -30,6 +32,70 @@ describe("normalizeGoogleHreflang", () => {
     expect(normalizeGoogleHreflang("es-419")).toBeNull()
     expect(normalizeGoogleHreflang("eng")).toBeNull()
     expect(normalizeGoogleHreflang(null)).toBeNull()
+  })
+})
+
+describe("WATCH_SEO_MANIFEST_REPRESENTATION", () => {
+  it("is bumped together with the wire schema's field set", () => {
+    // The HTTP validator is the snapshot version plus this representation id.
+    // An older Admin build strips fields it does not know when it re-parses a
+    // newer snapshot, so two builds can emit different bodies for ONE version.
+    // Without a representation bump a web process that cached the older body is
+    // answered 304 forever (R1, PR #2385). If this fails you changed the wire
+    // schema: update the expected field set AND bump the representation id.
+    const keys = (schema: { shape: Record<string, unknown> }) =>
+      Object.keys(schema.shape).sort()
+    const { shape } = WatchSeoManifestSchema
+    const videoGroup = shape.videoRouteGroups.element
+    const episodeGroup = shape.episodeRouteGroups.element
+
+    expect({
+      representation: WATCH_SEO_MANIFEST_REPRESENTATION,
+      manifest: keys(WatchSeoManifestSchema),
+      videoRouteGroup: keys(videoGroup),
+      episodeRouteGroup: keys(episodeGroup),
+      alternate: keys(videoGroup.shape.alternates.element),
+    }).toEqual({
+      representation: "r2",
+      manifest: [
+        "episodeRouteGroups",
+        "generatedAt",
+        "skippedHreflangValues",
+        "version",
+        "videoRouteGroups",
+      ],
+      videoRouteGroup: ["alternates", "contentSlug", "languageSlugs"],
+      episodeRouteGroup: ["alternates", "childSlug", "parentSlug"],
+      alternate: ["hreflang", "languageSlug"],
+    })
+  })
+})
+
+describe("summarizeWatchSeoManifest", () => {
+  it("counts canonical URLs from alternates when a stored snapshot predates languageSlugs", () => {
+    // `WatchSeoManifestStore.getLatest()` can hand back a snapshot written by
+    // the build before `languageSlugs` existed, and
+    // `watch-seo-manifest-refresh.service.ts` summarizes exactly that value.
+    // Without the fallback this reads `undefined.length`.
+    const legacySnapshot = {
+      videoRouteGroups: [
+        {
+          contentSlug: "jesus",
+          alternates: [
+            { hreflang: "en", languageSlug: "english" },
+            { hreflang: "es", languageSlug: "spanish-castilian" },
+          ],
+        },
+      ],
+      episodeRouteGroups: [],
+      skippedHreflangValues: {},
+    }
+
+    expect(summarizeWatchSeoManifest(legacySnapshot)).toMatchObject({
+      videoRouteGroups: 1,
+      alternateLinks: 2,
+      canonicalVideoUrls: 2,
+    })
   })
 })
 
@@ -100,6 +166,15 @@ describe("WatchSeoManifestService.generate", () => {
             { hreflang: "en", languageSlug: "english" },
             { hreflang: "es", languageSlug: "spanish-castilian" },
           ],
+          // Every playable language keeps a canonical URL, including the ones
+          // the hreflang cluster drops as unsupported (`bad-script`) or
+          // duplicate (`spanish-latin-american`).
+          languageSlugs: [
+            "bad-script",
+            "english",
+            "spanish-castilian",
+            "spanish-latin-american",
+          ],
         },
         {
           contentSlug: "pentecost",
@@ -107,6 +182,7 @@ describe("WatchSeoManifestService.generate", () => {
             { hreflang: "en", languageSlug: "english" },
             { hreflang: "pt-BR", languageSlug: "portuguese-brazil" },
           ],
+          languageSlugs: ["english", "portuguese-brazil"],
         },
       ],
       episodeRouteGroups: [
@@ -128,6 +204,7 @@ describe("WatchSeoManifestService.generate", () => {
       videoRouteGroups: 2,
       episodeRouteGroups: 1,
       alternateLinks: 6,
+      canonicalVideoUrls: 6,
       skippedHreflangValues: 2,
     })
   })
@@ -146,6 +223,74 @@ describe("WatchSeoManifestService.generate", () => {
     expect(allSql).toContain("hls IS NOT NULL")
     expect(allSql).toContain("parent_video_audio")
     expect(allSql).toContain("child_lang.bcp47")
+  })
+
+  it("keeps every playable audio language in languageSlugs even without a Google hreflang", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        { contentSlug: "jesus", languageSlug: "english", bcp47: "en" },
+        { contentSlug: "jesus", languageSlug: "cebuano", bcp47: "ceb" },
+        { contentSlug: "jesus", languageSlug: "ilocano", bcp47: null },
+        { contentSlug: "jesus", languageSlug: "hiligaynon", bcp47: "hil" },
+      ])
+      .mockResolvedValueOnce([])
+
+    const service = new WatchSeoManifestService(prisma)
+    const manifest = await service.generate()
+
+    expect(manifest.videoRouteGroups[0]?.languageSlugs).toEqual([
+      "cebuano",
+      "english",
+      "hiligaynon",
+      "ilocano",
+    ])
+    expect(manifest.videoRouteGroups[0]?.alternates).toEqual([
+      { hreflang: "en", languageSlug: "english" },
+    ])
+  })
+
+  it("keeps a content group whose languages all lack a Google hreflang", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        { contentSlug: "jesus", languageSlug: "cebuano", bcp47: "ceb" },
+      ])
+      .mockResolvedValueOnce([])
+
+    const service = new WatchSeoManifestService(prisma)
+    const manifest = await service.generate()
+
+    expect(manifest.videoRouteGroups).toEqual([
+      {
+        contentSlug: "jesus",
+        alternates: [],
+        languageSlugs: ["cebuano"],
+      },
+    ])
+    expect(manifest.skippedHreflangValues).toEqual({ ceb: 1 })
+  })
+
+  it("de-dupes repeated language slugs across the content and parent unions", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        { contentSlug: "jesus", languageSlug: "cebuano", bcp47: "ceb" },
+        { contentSlug: "jesus", languageSlug: "cebuano", bcp47: "ceb" },
+        { contentSlug: "jesus", languageSlug: "english", bcp47: "en" },
+      ])
+      .mockResolvedValueOnce([])
+
+    const service = new WatchSeoManifestService(prisma)
+    const manifest = await service.generate()
+
+    expect(manifest.videoRouteGroups[0]?.languageSlugs).toEqual([
+      "cebuano",
+      "english",
+    ])
+    expect(summarizeWatchSeoManifest(manifest)).toMatchObject({
+      canonicalVideoUrls: 2,
+    })
   })
 
   it("rejects malformed query rows instead of emitting a partial manifest", async () => {

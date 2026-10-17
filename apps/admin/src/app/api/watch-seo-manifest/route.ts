@@ -1,6 +1,7 @@
 import { isValidConsumerBearer } from "@/auth/consumer-bearer"
 import { prisma } from "@/db/client"
 import { WatchSeoManifestStore } from "@/services/watch-seo-manifest-store"
+import { watchSeoManifestEtag } from "@/services/watch-seo-manifest.service"
 
 const CACHE_CONTROL = "private, max-age=0, must-revalidate"
 
@@ -36,7 +37,7 @@ export async function GET(request: Request): Promise<Response> {
       )
     }
 
-    const etag = `"${snapshot.version}"`
+    const etag = watchSeoManifestEtag(snapshot.version)
     const headers = {
       "Cache-Control": CACHE_CONTROL,
       ETag: etag,
