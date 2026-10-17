@@ -161,3 +161,5 @@ The retained performance investigation clears frozen `0199bef` against both the 
 ## Final validation harness correction (2026-10-17)
 
 The course unit test waits for the lazy story DOM instead of sleeping 20ms. All existing story, account, resume, unsaved-state and focus assertions remain intact; product mount budgets are unchanged. The cold import exceeded the old arbitrary sleep under the parallel suite while the identical isolated test passed. The corrected 62 course/client cases and all 518 stage-5 Web cases pass. The external validation runner also uses the package's standard unit-test secrets, rather than injecting the live local preview secret into revalidation tests. No product authentication or runtime code changed.
+
+CI follow-up (2026-10-17): Auth configuration tests mock the new `isWatchLearningErasureRequired` export with its default-off value. The missing export caused all 36 configuration tests to fail during module initialization; the failure was reproduced locally before fixing the mock. The complete Auth suite passes after the correction.
