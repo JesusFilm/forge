@@ -204,3 +204,53 @@ it("allows input work past 90 seconds and expires within the fixed outer prepara
     vi.useRealTimers()
   }
 })
+
+it("authenticates and bounds part requests before dispatching them", async () => {
+  const auth = new StudioRenderPoolAuth(config)
+  const token = auth.issue(
+    {
+      poolId: config.poolId,
+      workerId: config.workerId,
+      dispatchId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      attemptId: "attempt",
+      leaseId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      expiresAt: Date.now() + 60000,
+    },
+    "a".repeat(64),
+  )
+  const retainPart = vi.fn(async () => ({
+    part: { assetId: "asset", versionId: "version", digest: "a".repeat(64) },
+  }))
+  const handler = createStudioPoolHandler(auth, {
+    claim: vi.fn(),
+    mux: vi.fn(),
+    input: vi.fn(),
+    owns: vi.fn(),
+    retain: vi.fn(),
+    retainPart,
+    finish: vi.fn(),
+    receipt: vi.fn(),
+  })
+  const send = (bearer: string, contentLength?: string) =>
+    handler(
+      new Request("https://fixture.invalid/retain-part", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${bearer}`,
+          ...(contentLength ? { "content-length": contentLength } : {}),
+        },
+        body: JSON.stringify({ index: 0 }),
+      }),
+      "retain-part",
+    )
+  expect((await send("generic")).status).toBe(401)
+  expect(retainPart).not.toHaveBeenCalled()
+  expect((await send(token, "30000000")).status).toBe(413)
+  expect(retainPart).not.toHaveBeenCalled()
+  expect((await send(token)).status).toBe(200)
+  expect(retainPart).toHaveBeenCalledWith(
+    token,
+    { index: 0 },
+    expect.any(AbortSignal),
+  )
+})

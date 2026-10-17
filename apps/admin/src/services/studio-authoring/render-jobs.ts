@@ -262,7 +262,11 @@ export class StudioRenderJobs {
   ) {
     requireWorker(user)
     const attemptId = studioIdSchema.parse(rawId)
-    if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 3600000)
+    if (
+      !Number.isInteger(leaseMs) ||
+      leaseMs < 1000 ||
+      leaseMs > STUDIO_RENDER_PROFILE.leaseMs
+    )
       throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
       // All assigned claims take dispatch, then worker, then project/job locks.

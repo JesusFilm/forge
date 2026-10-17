@@ -1,5 +1,7 @@
+import { Buffer } from "node:buffer"
 import { executionProfile } from "./execution-profile.mjs"
 import { VmInvariantError, VmUnconfirmedError } from "./errors.mjs"
+const { URL, AbortSignal, AbortController } = globalThis
 const capabilityPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/
 const operationMs = Object.freeze({
   mux: 45000,
@@ -9,6 +11,7 @@ const operationMs = Object.freeze({
   // caller cancellation and the native execution deadline still apply earlier.
   owns: 10000,
   retain: 45000,
+  "retain-part": 45000,
   finish: 15000,
 })
 const id = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,127}$/
@@ -138,6 +141,7 @@ export class VmJobApi {
         "input",
         "owns",
         "retain",
+        "retain-part",
         "finish",
         "receipt",
         "mux",
@@ -160,7 +164,7 @@ export class VmJobApi {
     ])
     let reader
     try {
-      const response = await fetch(new URL(action, this.endpoint), {
+      const response = await globalThis.fetch(new URL(action, this.endpoint), {
         method: "POST",
         redirect: "error",
         signal,

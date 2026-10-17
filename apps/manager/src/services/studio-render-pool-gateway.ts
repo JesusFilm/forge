@@ -6,10 +6,15 @@ import {
   studioDigestSchema,
   studioDocumentSchema,
   studioIdSchema,
+  studioAssetReferenceSchema,
+  type StudioAssetReference,
 } from "@forge/studio-contracts"
 import {
   STUDIO_RENDER_PROFILE,
   studioRenderExecutionProfileSchema,
+  studioRenderOutputPartSchema,
+  STUDIO_RENDER_OUTPUT_PART_BYTES,
+  STUDIO_RENDER_OUTPUT_MAX_PARTS,
 } from "@forge/studio-contracts/render"
 import {
   StudioRenderPoolAuth,
@@ -44,6 +49,19 @@ type GatewayPort = {
     snapshot: StudioRenderSnapshot,
     assignment: Assignment,
     output: Buffer,
+    proof: unknown,
+    signal: AbortSignal,
+  ): Promise<z.infer<typeof studioAttemptResultSchema>>
+  retainPart?(
+    snapshot: StudioRenderSnapshot,
+    assignment: Assignment,
+    part: z.infer<typeof studioRenderOutputPartSchema>,
+    output: Buffer,
+    signal: AbortSignal,
+  ): Promise<StudioAssetReference>
+  retainParts?(
+    assignment: Assignment,
+    parts: StudioAssetReference[],
     proof: unknown,
     signal: AbortSignal,
   ): Promise<z.infer<typeof studioAttemptResultSchema>>
@@ -105,11 +123,50 @@ export class StudioRenderPoolGateway {
       prepared,
     }
   }
+  async retainPart(token: string | null, raw: unknown, signal: AbortSignal) {
+    const capability = this.auth.lease(token)
+    const snapshot = await this.bound(capability, signal)
+    if (
+      snapshot.executionProfile.id !== STUDIO_RENDER_PROFILE.id ||
+      !this.port.retainPart
+    )
+      throw new StudioRenderPoolBindingError("Part retention unavailable")
+    const { output: encoded, ...metadata } = z
+      .object({
+        ...studioRenderOutputPartSchema.shape,
+        output: z
+          .string()
+          .min(4)
+          .max(Math.ceil(STUDIO_RENDER_OUTPUT_PART_BYTES / 3) * 4),
+      })
+      .strict()
+      .parse(raw)
+    const part = studioRenderOutputPartSchema.parse(metadata)
+    const remaining = part.retentionDeadlineMs - Date.now()
+    if (remaining <= 0 || remaining > STUDIO_RENDER_PROFILE.retentionTransferMs)
+      throw new StudioRenderPoolBindingError("Output part deadline refused")
+    const output = Buffer.from(encoded, "base64")
+    if (
+      output.length !== part.byteSize ||
+      output.toString("base64") !== encoded
+    )
+      throw new StudioRenderPoolBindingError("Output part encoding refused")
+    signal.throwIfAborted()
+    return {
+      part: await this.port.retainPart(
+        snapshot,
+        capability.assignment,
+        part,
+        output,
+        signal,
+      ),
+    }
+  }
   async retain(token: string | null, raw: unknown, signal: AbortSignal) {
     const capability = this.auth.lease(token)
     const snapshot = await this.bound(capability, signal)
     const request = z
-      .discriminatedUnion("status", [
+      .union([
         z
           .object({
             status: z.literal("SUCCEEDED"),
@@ -117,6 +174,16 @@ export class StudioRenderPoolGateway {
               .string()
               .min(4)
               .max(Math.ceil(STUDIO_RENDER_PROFILE.outputBytes / 3) * 4),
+            proof: z.unknown(),
+          })
+          .strict(),
+        z
+          .object({
+            status: z.literal("SUCCEEDED"),
+            parts: z
+              .array(studioAssetReferenceSchema)
+              .min(1)
+              .max(STUDIO_RENDER_OUTPUT_MAX_PARTS),
             proof: z.unknown(),
           })
           .strict(),
@@ -137,20 +204,40 @@ export class StudioRenderPoolGateway {
         throw new StudioRenderPoolBindingError(
           "Legacy render execution refused",
         )
-      const output = Buffer.from(request.output, "base64")
-      if (
-        output.length > STUDIO_RENDER_PROFILE.outputBytes ||
-        output.toString("base64") !== request.output
-      )
-        throw new StudioRenderPoolBindingError("Render output encoding refused")
       try {
-        result = await this.port.retain(
-          snapshot,
-          capability.assignment,
-          output,
-          request.proof,
-          signal,
-        )
+        if ("parts" in request) {
+          if (
+            !this.port.retainParts ||
+            new Set(request.parts.map((part) => part.versionId)).size !==
+              request.parts.length
+          )
+            throw new StudioRenderPoolBindingError("Output parts refused")
+          result = await this.port.retainParts(
+            capability.assignment,
+            request.parts,
+            request.proof,
+            signal,
+          )
+          // Admin preserves partial registrations as a normal RPC result. Only
+          // a complete manifest can be sealed as a successful execution.
+          if (!result.manifest) status = "FAILED"
+        } else {
+          const output = Buffer.from(request.output, "base64")
+          if (
+            output.length > STUDIO_RENDER_PROFILE.outputBytes ||
+            output.toString("base64") !== request.output
+          )
+            throw new StudioRenderPoolBindingError(
+              "Render output encoding refused",
+            )
+          result = await this.port.retain(
+            snapshot,
+            capability.assignment,
+            output,
+            request.proof,
+            signal,
+          )
+        }
       } catch (error) {
         // Registered assets already have a canonical exact-lease edge. An
         // exhausted transfer signal must not discard their terminal envelope.
@@ -179,7 +266,12 @@ export class StudioRenderPoolGateway {
       signal,
     )
     const receipt = await this.receipt(token, raw, signal)
-    if (!receipt?.admitted || sealed.record.status !== "SUCCEEDED")
+    if (
+      !receipt ||
+      !("admitted" in receipt) ||
+      !receipt.admitted ||
+      sealed.record.status !== "SUCCEEDED"
+    )
       return { state: "skipped" }
     if (capability.assignment.expiresAt <= Date.now())
       throw new StudioRenderPoolBindingError("Mux upload lease expired")
@@ -218,6 +310,61 @@ export class StudioRenderPoolGateway {
     return this.port.call("finish", sealed.record, signal)
   }
   async receipt(token: string | null, raw: unknown, signal: AbortSignal) {
+    if (
+      raw &&
+      typeof raw === "object" &&
+      !Array.isArray(raw) &&
+      Object.keys(raw).length === 0
+    ) {
+      const capability = this.auth.lease(token)
+      await this.bound(capability, signal)
+      const context = z
+        .object({
+          executions: z.array(
+            z.object({
+              attemptId: studioIdSchema,
+              leaseId: z.uuid(),
+              status: z.enum(["SUCCEEDED", "FAILED", "CANCELLED"]),
+              result: studioAttemptResultSchema,
+              requestHash: studioDigestSchema,
+              admitted: z.boolean(),
+            }),
+          ),
+        })
+        .parse(
+          await this.port.call(
+            "context",
+            capability.assignment.attemptId,
+            signal,
+          ),
+        )
+      const execution = context.executions.find(
+        (value) => value.leaseId === capability.assignment.leaseId,
+      )
+      if (!execution) return null
+      const record = {
+        attemptId: execution.attemptId,
+        leaseId: execution.leaseId,
+        status: execution.status,
+        result: execution.result,
+      }
+      if (
+        record.attemptId !== capability.assignment.attemptId ||
+        studioHash(record) !== execution.requestHash
+      )
+        throw new StudioRenderPoolBindingError(
+          "Canonical execution binding changed",
+        )
+      signal.throwIfAborted()
+      return {
+        settlement: this.auth.sealSettlement(
+          capability.assignment,
+          capability.inputHash,
+          record,
+        ),
+        receipt: { admitted: execution.admitted },
+      }
+    }
     const { capability, sealed } = await this.validatedSettlement(
       token,
       raw,

@@ -3,6 +3,7 @@ import { expect, it, vi } from "vitest"
 import {
   STUDIO_RENDER_PROFILE,
   STUDIO_RENDER_PROFILE_V1,
+  STUDIO_RENDER_PROFILE_V2,
 } from "@forge/studio-contracts/render"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
 import { StudioRenderPoolAuth } from "./studio-render-pool-auth"
@@ -18,7 +19,8 @@ const config = {
 function fixture(
   executionProfile:
     | typeof STUDIO_RENDER_PROFILE
-    | typeof STUDIO_RENDER_PROFILE_V1 = STUDIO_RENDER_PROFILE,
+    | typeof STUDIO_RENDER_PROFILE_V1
+    | typeof STUDIO_RENDER_PROFILE_V2 = STUDIO_RENDER_PROFILE,
 ) {
   const auth = new StudioRenderPoolAuth(config)
   const assignment = {
@@ -247,7 +249,11 @@ it("rejects terminalized or edited assignments even when the older job-only owne
   ).rejects.toThrow("lease")
   expect(f.prepare).not.toHaveBeenCalled()
 })
-it.each([STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE])(
+it.each([
+  STUDIO_RENDER_PROFILE_V1,
+  STUDIO_RENDER_PROFILE_V2,
+  STUDIO_RENDER_PROFILE,
+])(
   "reads the exact accepted receipt after a recording window for $id, without another canonical mutation",
   async (profile) => {
     const f = fixture(profile)
@@ -348,28 +354,35 @@ it.each([true, false])(
   },
 )
 
-it("refuses legacy input and successful retention but preserves terminal recording", async () => {
-  const f = fixture(STUDIO_RENDER_PROFILE_V1)
-  const signal = new AbortController().signal
-  await expect(f.gateway.input(f.token, signal)).rejects.toThrow("Legacy")
-  await expect(
-    f.gateway.retain(
+it.each([STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE_V2])(
+  "refuses legacy input and successful retention but preserves terminal recording: $id",
+  async (legacyProfile) => {
+    const f = fixture(legacyProfile)
+    const signal = new AbortController().signal
+    await expect(f.gateway.input(f.token, signal)).rejects.toThrow("Legacy")
+    await expect(
+      f.gateway.retain(
+        f.token,
+        { status: "SUCCEEDED", output: "YQ==", proof: {} },
+        signal,
+      ),
+    ).rejects.toThrow("Legacy")
+    expect(f.prepare).not.toHaveBeenCalled()
+    expect(f.retain).not.toHaveBeenCalled()
+    const envelope = await f.gateway.retain(
       f.token,
-      { status: "SUCCEEDED", output: "YQ==", proof: {} },
+      { status: "FAILED" },
       signal,
-    ),
-  ).rejects.toThrow("Legacy")
-  expect(f.prepare).not.toHaveBeenCalled()
-  expect(f.retain).not.toHaveBeenCalled()
-  const envelope = await f.gateway.retain(f.token, { status: "FAILED" }, signal)
-  f.call.mockImplementation(async (command) => {
-    if (command === "assigned")
-      return { ...f.assignment, expiresAt: new Date(f.assignment.expiresAt) }
-    if (command === "context") return { snapshot: f.snapshot }
-    if (command === "finish") return { admitted: false }
-    throw new Error("Unexpected operation")
-  })
-  await expect(f.gateway.finish(f.token, envelope, signal)).resolves.toEqual({
-    admitted: false,
-  })
-})
+    )
+    f.call.mockImplementation(async (command) => {
+      if (command === "assigned")
+        return { ...f.assignment, expiresAt: new Date(f.assignment.expiresAt) }
+      if (command === "context") return { snapshot: f.snapshot }
+      if (command === "finish") return { admitted: false }
+      throw new Error("Unexpected operation")
+    })
+    await expect(f.gateway.finish(f.token, envelope, signal)).resolves.toEqual({
+      admitted: false,
+    })
+  },
+)
