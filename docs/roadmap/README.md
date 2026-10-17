@@ -226,6 +226,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | —     | 2    | —   | complete    |
 | [feat-663](content-discovery/feat-663-preserve-watch-html-lang-tags.md)                                        | Preserve Watch BCP-47 tags in the HTML language route segment                                   | urim       | P2       | —     | 1    | —   | in-progress |
 | [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | —     | 1    | —   | complete    |
+| [feat-673](content-discovery/feat-673-watch-unavailable-language-identity.md)                                  | Preserve selected catalog language on unavailable Watch pages                                   | vlad       | P2       | —     | 1    | —   | complete    |
 
 ### Media Generation
 
