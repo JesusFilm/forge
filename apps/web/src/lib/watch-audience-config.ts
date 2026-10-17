@@ -968,3 +968,35 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
     },
   ],
 }
+
+/**
+ * What a Watch surface knows about the published configuration, resolved by
+ * `lib/watch-audience-content.ts`. `absent` means no authored configuration
+ * exists for the requested locale (or Admin predates the block): the code
+ * definitions above stand in until one is published. `rejected` and
+ * `unavailable` mean an authored configuration exists but cannot be shown;
+ * the frame is omitted and never replaced by the baked-in questions.
+ */
+export type WatchAudienceResolution =
+  | { kind: "authored"; config: WatchAudienceConfig; identity: string }
+  | { kind: "rejected" }
+  | { kind: "unavailable" }
+  | { kind: "absent" }
+
+export type WatchAudienceFrame = {
+  config: WatchAudienceConfig
+  /** Changes whenever the configuration does, so the frame remounts and answers reset. */
+  identity: string
+}
+
+export function watchAudienceFrame(
+  resolution: WatchAudienceResolution | undefined,
+): WatchAudienceFrame | null {
+  if (resolution?.kind === "authored") {
+    return { config: resolution.config, identity: resolution.identity }
+  }
+  if (resolution === undefined || resolution.kind === "absent") {
+    return { config: WATCH_AUDIENCE_CODE_CONFIG, identity: "code" }
+  }
+  return null
+}

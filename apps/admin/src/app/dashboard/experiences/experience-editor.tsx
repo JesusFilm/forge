@@ -151,6 +151,8 @@ import {
 } from "./experience-editor/block-helpers"
 import { CanvasBlockList } from "./experience-editor/canvas-block-list"
 import { ContainerWorkspace } from "./experience-editor/container-workspace"
+import { WatchAudienceEditor } from "./experience-editor/watch-audience-editor"
+import { watchAudienceInsertBlocker } from "./experience-editor/watch-audience-availability"
 import { WatchHomeCategoryRailEditor } from "./experience-editor/watch-home-category-rail-editor"
 import {
   railBlockPatch,
@@ -424,6 +426,14 @@ const BLOCK_LIBRARY: BlockTemplateDefinition[] = [
     icon: MonitorPlay,
   },
   {
+    key: "watchAudience",
+    label: "Watch Audience",
+    description:
+      "Four audience roles with three questions and ranked next steps.",
+    category: "Experience",
+    icon: ListOrdered,
+  },
+  {
     key: "languageGlobe",
     label: "Language Globe",
     description:
@@ -601,6 +611,7 @@ type SectionContentTemplateKey =
       | "routeVideo"
       | "routeVideoCarousel"
       | "dynamicMediaCollection"
+      | "watchAudience"
       | "watchHomeCategoryRail"
       | "homepageRecommendations"
     >
@@ -1607,6 +1618,8 @@ export function ExperienceEditor({
     /** Homepage rendering context without live assignment; absent = false. */
     homepageLayout?: boolean
     isTemplate: boolean
+    /** Server-selected Watch template identity; absent fails closed. */
+    isDefaultTemplate?: boolean
     blocksJson: string
   }
   saveAction: (formData: FormData) => Promise<EditorActionResult>
@@ -1713,6 +1726,7 @@ export function ExperienceEditor({
   // edits like a homepage without being the live homepage (isHomepage).
   const homepageContext = isHomepage || homepageLayout
   const isTemplate = initialValues.isTemplate
+  const isDefaultTemplate = initialValues.isDefaultTemplate === true
   const [mediaLibrary, setMediaLibrary] = useState(initialMediaLibrary)
   const [mediaLibraryLoaded, setMediaLibraryLoaded] = useState(
     loadMediaLibraryAction == null,
@@ -2159,6 +2173,13 @@ export function ExperienceEditor({
       )
     }
 
+    if (block.key === "watchAudience")
+      return (
+        watchAudienceInsertBlocker({
+          isDefaultTemplate,
+          blocks: parsedBlocks,
+        }) === null
+      )
     if (block.key === "watchHomeHero") return homepageContext
     if (block.key === "watchHomeCategoryRail") {
       return homepageContext && !parsedBlocks.some(isWatchHomeCategoryRailBlock)
@@ -3426,6 +3447,16 @@ export function ExperienceEditor({
       }
       nextBlocks.push(nextBlock)
       insertionIndex = nextBlocks.length - 1
+    } else if (template === "watchAudience") {
+      const blocker = watchAudienceInsertBlocker({
+        isDefaultTemplate,
+        blocks: nextBlocks,
+      })
+      if (blocker) {
+        pushToast(blocker, "error")
+        return
+      }
+      nextBlocks.splice(index, 0, nextBlock)
     } else if (template === "watchHomeCategoryRail") {
       if (!homepageContext || nextBlocks.some(isWatchHomeCategoryRailBlock)) {
         pushToast("The Watch homepage can contain one category rail.", "error")
@@ -9164,6 +9195,16 @@ export function ExperienceEditor({
               ))}
             </div>
           </div>
+        ) : type === "watchAudience" ? (
+          <WatchAudienceEditor
+            configuration={blockRecord?.configuration}
+            onChange={(configuration) =>
+              updateBlockAt(index, (currentBlock) => ({
+                ...currentBlock,
+                configuration,
+              }))
+            }
+          />
         ) : type === "watchHomeCategoryRail" ? (
           <WatchHomeCategoryRailEditor
             tiles={readRailTiles(blockRecord)}

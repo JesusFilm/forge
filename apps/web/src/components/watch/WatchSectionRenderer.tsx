@@ -26,6 +26,7 @@ import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-na
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { DEFAULT_LOCALE } from "@/lib/locale"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
 //
@@ -36,9 +37,9 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 // "cover" the hero during scroll. Demoting the carousel into the body zone
 // keeps it directly below the hero in normal flow, with the rest of the body
 // content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
-const WatchNextSteps = dynamic(() =>
-  import("@/components/watch/WatchNextSteps").then(
-    (module) => module.WatchNextSteps,
+const WatchAudienceBlock = dynamic(() =>
+  import("@/components/watch/WatchAudienceBlock").then(
+    (module) => module.WatchAudienceBlock,
   ),
 )
 
@@ -48,6 +49,7 @@ import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 
 export function WatchSectionRenderer({
   audienceEnabled = false,
+  audience,
   surfaceManifests,
   blocks,
   shareFilm,
@@ -73,6 +75,8 @@ export function WatchSectionRenderer({
   onChapterNavigateIntent,
 }: {
   audienceEnabled?: boolean
+  /** Published audience configuration; absent keeps the code definitions. */
+  audience?: WatchAudienceResolution
   blocks: MergedWatchBlock[]
   shareFilm?: WatchShareFilm
   onRequestShareLanguages?: () => void
@@ -205,7 +209,8 @@ export function WatchSectionRenderer({
                 </Suspense>
               ))}
               {audienceEnabled ? (
-                <WatchNextSteps
+                <WatchAudienceBlock
+                  audience={audience}
                   languageSlug={languageSlug}
                   locale={locale}
                   shareFilm={shareFilm}
