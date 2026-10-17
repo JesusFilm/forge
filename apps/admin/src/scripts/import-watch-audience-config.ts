@@ -9,6 +9,10 @@
  * control. The script refuses any DATABASE_URL that is not a local connection,
  * so it cannot reach production content.
  *
+ * `--apply` goes through the service's Watch Audience write gate, so it is
+ * refused while `forge.watch.audience` is off (set
+ * FORGE_WATCH_AUDIENCE_DEFAULT=true locally). Dry-run is unaffected.
+ *
  * Idempotent: the same configuration yields `unchanged` and writes nothing;
  * a changed one replaces the template's single `watchAudience` block in place.
  *

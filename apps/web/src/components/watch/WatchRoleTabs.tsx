@@ -1,117 +1,149 @@
 "use client"
 
-import { Compass, Send, Sprout, Users } from "lucide-react"
-import { useId, useRef, type KeyboardEvent, type ReactNode } from "react"
+// The four large role tabs shared by the Watch home and the video page's
+// "What's next" zone. Markup and classes are copied from the prototype
+// (prototype-parity manifest); only the role list (published config), the
+// tab/panel ids and roving arrow/Home/End keys are wired on top.
 
+import { Compass, Send, Sprout, Users, type LucideIcon } from "lucide-react"
+import { useRef, type KeyboardEvent } from "react"
+
+import {
+  setWatchRole,
+  useWatchRole,
+  type WatchRole,
+} from "@/components/watch/watch-role"
 import {
   WATCH_AUDIENCE_CODE_CONFIG,
   type WatchAudienceConfig,
 } from "@/lib/watch-audience-config"
 import { cn } from "@/lib/utils"
-import { setWatchRole, useWatchRole, type WatchRole } from "./watch-role"
 
-export const WATCH_ROLE_ICON = {
+export const WATCH_ROLE_ICON: Record<WatchRole, LucideIcon> = {
   explore: Compass,
   grow: Sprout,
   share: Send,
   partner: Users,
 }
 
-export type WatchRoleTabsProps = {
-  config?: WatchAudienceConfig
-  label?: string
-  className?: string
-  children?: ReactNode
+/** Tab and panel ids for one frame; `idBase` comes from the host's `useId()`. */
+export function watchRoleTabId(idBase: string, role: WatchRole) {
+  return `${idBase}-tab-${role}`
 }
 
-/** One tab list and its labelled panel; each frame owns a unique id namespace. */
+export function watchRolePanelId(idBase: string) {
+  return `${idBase}-panel`
+}
+
+/** The ARIA wiring the host puts on its own `role="tabpanel"` element. */
+export function watchRolePanelProps(idBase: string, role: WatchRole) {
+  return {
+    id: watchRolePanelId(idBase),
+    role: "tabpanel",
+    "aria-labelledby": watchRoleTabId(idBase, role),
+    tabIndex: 0,
+  } as const
+}
+
 export function WatchRoleTabs({
-  config = WATCH_AUDIENCE_CODE_CONFIG,
-  label = "Who is this for",
   className,
-  children,
-}: WatchRoleTabsProps) {
+  label = "Who is this for",
+  onSelect,
+  idBase,
+  config = WATCH_AUDIENCE_CODE_CONFIG,
+}: {
+  className?: string
+  label?: string
+  /** Fires after the role is set; lets a host open/close its panel. */
+  onSelect?: (role: WatchRole, wasSelected: boolean) => void
+  /** Shared with the host's tabpanel via `watchRolePanelProps`. */
+  idBase: string
+  config?: WatchAudienceConfig
+}) {
   const { role } = useWatchRole()
-  const id = useId()
-  const panelId = `${id}-panel`
   const buttons = useRef(new Map<WatchRole, HTMLButtonElement>())
+  const roles = config.roles
 
   function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {
     let next: number
     switch (event.key) {
       case "ArrowRight":
-        next = (index + 1) % config.roles.length
+        next = (index + 1) % roles.length
         break
       case "ArrowLeft":
-        next = (index - 1 + config.roles.length) % config.roles.length
+        next = (index - 1 + roles.length) % roles.length
         break
       case "Home":
         next = 0
         break
       case "End":
-        next = config.roles.length - 1
+        next = roles.length - 1
         break
       default:
         return
     }
     event.preventDefault()
-    const nextRole = config.roles[next].id
+    const nextRole = roles[next].id
     setWatchRole(nextRole)
+    onSelect?.(nextRole, nextRole === role)
     buttons.current.get(nextRole)?.focus()
   }
 
   return (
-    <div className={className}>
-      <div
-        role="tablist"
-        aria-label={label}
-        data-testid="watch-role-tabs"
-        className="grid w-full grid-cols-2 md:grid-cols-4"
-      >
-        {config.roles.map((tab, index) => {
-          const selected = tab.id === role
-          const Icon = WATCH_ROLE_ICON[tab.id]
-          return (
-            <button
-              key={tab.id}
-              ref={(node) => {
-                if (node) buttons.current.set(tab.id, node)
-                else buttons.current.delete(tab.id)
-              }}
-              id={`${id}-tab-${tab.id}`}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              aria-controls={panelId}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => setWatchRole(tab.id)}
-              onKeyDown={(event) => navigate(event, index)}
+    <div
+      role="tablist"
+      aria-label={label}
+      data-testid="watch-role-tabs"
+      className={cn("grid w-full grid-cols-2 md:grid-cols-4", className)}
+    >
+      {roles.map((tab, index) => {
+        const selected = tab.id === role
+        const TabIcon = WATCH_ROLE_ICON[tab.id]
+        return (
+          <button
+            key={tab.id}
+            ref={(node) => {
+              if (node) buttons.current.set(tab.id, node)
+              else buttons.current.delete(tab.id)
+            }}
+            id={watchRoleTabId(idBase, tab.id)}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            aria-controls={watchRolePanelId(idBase)}
+            tabIndex={selected ? 0 : -1}
+            onKeyDown={(event) => navigate(event, index)}
+            onClick={() => {
+              setWatchRole(tab.id)
+              onSelect?.(tab.id, selected)
+            }}
+            className={cn(
+              // Vertical separators only: every tab, including the last, draws one
+              // hairline on its RIGHT (same colour as the Related Questions rows).
+              // Plus a top hairline across the strip and a left edge on the first tab of
+              // each row, so the strip is closed on both sides. No bottom border.
+              "group relative flex min-h-[56px] cursor-pointer items-center justify-center gap-2.5 border-t border-r border-stone-500/20 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 md:min-h-[64px] md:gap-4 md:px-4 lg:gap-5 [&:nth-child(2n+1)]:border-l md:[&:nth-child(2n+1)]:border-l-0 md:[&:nth-child(4n+1)]:border-l",
+              selected
+                ? // Selected: solid white with a small white tail pointing into the content below.
+                  "z-10 border-t-white border-l-white bg-white text-stone-900 after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[9px] after:border-transparent after:border-t-white after:content-['']"
+                : "bg-transparent text-white/60 hover:bg-white/[0.04] hover:text-white/90",
+            )}
+          >
+            <TabIcon
+              aria-hidden
               className={cn(
-                "relative flex min-h-14 cursor-pointer items-center justify-center gap-2.5 border border-white/15 px-3 py-3 text-left text-sm font-semibold transition-colors focus-visible:z-20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400 md:min-h-16 md:gap-4 md:text-base",
-                selected
-                  ? "z-10 border-white bg-white text-stone-900 after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-8 after:border-transparent after:border-t-white after:content-['']"
-                  : "text-white/70 hover:bg-white/5 hover:text-white",
+                "size-5 shrink-0 transition-colors",
+                selected ? "text-brand-red" : "text-current",
               )}
-            >
-              <Icon
-                aria-hidden="true"
-                className={cn("size-5 shrink-0", selected && "text-blue-600")}
-              />
-              <span>{tab.label}</span>
-            </button>
-          )
-        })}
-      </div>
-      <div
-        id={panelId}
-        role="tabpanel"
-        aria-labelledby={`${id}-tab-${role}`}
-        tabIndex={0}
-        data-testid="watch-next-steps-panel"
-        className="min-h-[600px] min-w-0 pt-8 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-400 sm:min-h-[420px] md:pt-10"
-      >
-        {children}
-      </div>
+            />
+            <span className="min-w-0">
+              <span className="block text-[14px] leading-tight font-semibold sm:text-[15px] md:text-base">
+                {tab.label}
+              </span>
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }

@@ -351,7 +351,6 @@ describe("audience flag rollback", () => {
   const requests = {
     GET: () => GET(getRequest()),
     POST: () => POST(mutation("POST", SAVE_BODY)),
-    DELETE: () => DELETE(mutation("DELETE", RESET_BODY)),
   }
 
   it.each([
@@ -361,7 +360,7 @@ describe("audience flag rollback", () => {
       () => mocks.audienceEnabled.mockRejectedValue(new Error("flag down")),
     ],
   ])(
-    "is a private no-store 404 for every method while the flag is %s, before the session or Admin",
+    "is a private no-store 404 for reads and saves while the flag is %s, before the session or Admin",
     async (_label, setFlag) => {
       setFlag()
       for (const [method, send] of Object.entries(requests)) {
@@ -375,9 +374,84 @@ describe("audience flag rollback", () => {
       expect(mocks.verifyAuthSession).not.toHaveBeenCalled()
       expect(mocks.fetchLearningProgress).not.toHaveBeenCalled()
       expect(mocks.saveLearningProgress).not.toHaveBeenCalled()
-      expect(mocks.resetLearningProgress).not.toHaveBeenCalled()
     },
   )
+
+  // Cleanup of already-saved data survives a rollback; every security check
+  // that guards a reset still runs.
+  describe.each([
+    ["off", () => mocks.audienceEnabled.mockResolvedValue(false)],
+    [
+      "unreadable",
+      () => mocks.audienceEnabled.mockRejectedValue(new Error("flag down")),
+    ],
+  ])("DELETE while the flag is %s", (_label, setFlag) => {
+    beforeEach(() => {
+      setFlag()
+    })
+
+    it("still resets one lesson for the verified account", async () => {
+      const response = await DELETE(mutation("DELETE", RESET_BODY))
+      expect(response.status).toBe(200)
+      expect(response.headers.get("cache-control")).toBe("private, no-store")
+      expect(mocks.resetLearningProgress).toHaveBeenCalledWith(
+        "token-a",
+        RESET_BODY,
+      )
+    })
+
+    it.each([
+      [
+        "cross-origin",
+        () =>
+          DELETE(
+            mutation("DELETE", RESET_BODY, { origin: "https://evil.example" }),
+          ),
+        403,
+      ],
+      [
+        "bound to another account",
+        () =>
+          DELETE(
+            mutation("DELETE", RESET_BODY, {
+              origin: ORIGIN,
+              "sec-fetch-site": "same-origin",
+              "x-watch-learning-subject": "auth-user-b",
+            }),
+          ),
+        409,
+      ],
+      [
+        "missing its expected revision",
+        () =>
+          DELETE(
+            mutation("DELETE", {
+              courseId: RESET_BODY.courseId,
+              contentVersion: RESET_BODY.contentVersion,
+              lessonId: RESET_BODY.lessonId,
+            }),
+          ),
+        400,
+      ],
+      [
+        "naming a user in the body",
+        () =>
+          DELETE(mutation("DELETE", { ...RESET_BODY, userId: "auth-user-b" })),
+        400,
+      ],
+    ])("still refuses a reset %s", async (_why, send, status) => {
+      const response = await send()
+      expect(response.status).toBe(status)
+      expect(mocks.resetLearningProgress).not.toHaveBeenCalled()
+    })
+
+    it("still requires a signed-in account", async () => {
+      mocks.verifyAuthSession.mockResolvedValue({ authenticated: false })
+      const response = await DELETE(mutation("DELETE", RESET_BODY))
+      expect(response.status).toBe(401)
+      expect(mocks.resetLearningProgress).not.toHaveBeenCalled()
+    })
+  })
 
   it("refuses a malformed or cross-site request as 404 too, so the flag is checked first", async () => {
     mocks.audienceEnabled.mockResolvedValue(false)
@@ -390,7 +464,7 @@ describe("audience flag rollback", () => {
     expect(mocks.verifyAuthSession).not.toHaveBeenCalled()
   })
 
-  it("an already-open page cannot save or reset after rollback, and never shows Saved", async () => {
+  it("an already-open page cannot save after rollback and never shows Saved, but can still reset saved progress", async () => {
     vi.stubGlobal("window", { location: { origin: ORIGIN } })
     vi.stubGlobal(
       "fetch",
@@ -415,13 +489,21 @@ describe("audience flag rollback", () => {
       await vi.waitFor(() =>
         expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("error"),
       )
-      client.reset("lesson-2")
       expect(mocks.saveLearningProgress).not.toHaveBeenCalled()
-      expect(mocks.resetLearningProgress).not.toHaveBeenCalled()
       expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
         status: "error",
         completedStepIds: ["back-how", "back-give"],
       })
+      // The failed save waits for the viewer's choice; after choosing the
+      // saved state, an explicit reset still reaches Admin (cleanup).
+      client.useSaved("lesson-1")
+      client.reset("lesson-1")
+      await vi.waitFor(() =>
+        expect(mocks.resetLearningProgress).toHaveBeenCalledWith(
+          "token-a",
+          expect.objectContaining({ lessonId: "lesson-1" }),
+        ),
+      )
     } finally {
       vi.unstubAllGlobals()
     }

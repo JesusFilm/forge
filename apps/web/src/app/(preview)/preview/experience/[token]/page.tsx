@@ -18,6 +18,7 @@ import {
   getExperiencePreview,
   getExperiencePreviewLayout,
 } from "@/lib/experience-preview"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import {
   DEFAULT_LOCALE,
   publicWatchAudioLanguageSlugForLocale,
@@ -51,6 +52,15 @@ export const metadata: Metadata = {
 
 type ExperiencePreviewPageProps = {
   params: Promise<{ token: string }>
+}
+
+/** Default-off: an unreadable flag is off, so the questionnaire stays dark. */
+async function isAudiencePreviewEnabled(): Promise<boolean> {
+  try {
+    return await isWatchAudienceEnabled()
+  } catch {
+    return false
+  }
 }
 
 function boundedUiLocale(locale: string): UiLocale {
@@ -149,9 +159,16 @@ export default async function ExperiencePreviewPage({
   // Public reads project only the default template's published block, so any
   // other Experience (or an Admin that sends no template identity) previews
   // without it. Fail closed: only an explicit `true` shows the questionnaire.
-  const audienceBlocks =
+  // A preview link is a shareable capability, so it also honors the
+  // `forge.watch.audience` release gate: with the flag off the staged block
+  // stays in `blocks` (never stripped) but renders nothing, exactly as public.
+  const stagedAudienceBlocks =
     preview.isDefaultTemplate === true
       ? blocks.filter((block) => block.__typename === "WatchAudienceBlock")
+      : []
+  const audienceBlocks =
+    stagedAudienceBlocks.length > 0 && (await isAudiencePreviewEnabled())
+      ? stagedAudienceBlocks
       : []
   const audienceBlock = audienceBlocks[0]
   const audience: WatchAudienceResolution | undefined = audienceBlock

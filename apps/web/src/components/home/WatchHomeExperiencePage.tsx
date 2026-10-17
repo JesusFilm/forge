@@ -374,15 +374,14 @@ export function WatchHomeExperiencePage({
             </Suspense>
           ) : null}
           <WatchHomeBodyZone>
-            {heroAboveBodyZone ? (
-              <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
-            ) : null}
             {audienceEnabled ? (
               <WatchHomeRoleBand
                 audience={audience}
                 languageSlug={languageSlug}
-                locale={locale}
               />
+            ) : null}
+            {heroAboveBodyZone ? (
+              <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
             ) : null}
             {bodyZoneBlocks.map((block, index) => {
               // Keep the original index so a block without a `sectionKey`

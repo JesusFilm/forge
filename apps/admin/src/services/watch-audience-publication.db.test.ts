@@ -19,6 +19,12 @@ vi.mock("next/server", () => ({ after: vi.fn() }))
 vi.mock("@/workflows/experienceEmbedding", () => ({
   runExperienceEmbedding: vi.fn(),
 }))
+// This suite proves the released contract; the release gate's off branch is
+// pinned by the resolver unit suite.
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: async () => true,
+}))
+
 vi.mock("workflow/api", () => ({ start: vi.fn() }))
 const { graphql } = createRequire(import.meta.url)(
   "graphql",

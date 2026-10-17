@@ -239,7 +239,6 @@ describe("WatchHomeExperiencePage", () => {
       expect.objectContaining({
         audience,
         languageSlug: "spanish",
-        locale: "es",
       }),
     )
   })
