@@ -181,6 +181,19 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
         run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
+      - name: Create isolated Watch audience database
+        env:
+          PGPASSWORD: postgres
+        run: psql --host localhost --username postgres --dbname postgres --command 'CREATE DATABASE forge_watch_audience_test;'
+      - name: Apply migrations to isolated Watch audience database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise film finder SQL against isolated PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+          WATCH_FILM_FINDER_DB_TEST: "1"
+        run: pnpm --filter @forge/admin test -- src/services/watch-film-finder.service.db.test.ts --no-file-parallelism
       - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
