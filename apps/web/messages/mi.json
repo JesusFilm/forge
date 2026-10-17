@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Whakamahia te reo rapu taunoa a te paetukutuku",
     "removeLanguage": "Tangohia {language}",
     "browseMode": "Aratau tirotiro rapu",
-    "searchingInLanguage": "Ngā hua mā te reo {language}"
+    "searchingInLanguage": "Ngā hua mā te reo {language}",
+    "slowSearch": "He roa ake tēnei i te tikanga…"
   },
   "HeroPlayer": {
     "playWithSound": "Mātakitaki ināianei",
@@ -766,5 +767,8 @@
     "loadError": "Kāore i taea te uta i tō kōwhiringa. Ka taea tonu e koe te kōwhiri i raro iho nei.",
     "grantError": "Kāore i taea te whakakā te whakawhaiaro. E wātea tonu ana ngā mea matua anake.",
     "saveError": "Kāore i taea te tiaki tō kōwhiringa. Tēnā, whakamātauria anō."
+  },
+  "WatchNoScript": {
+    "message": "Whakakāngia te JavaScript i tō pūtirotiro kia taea ai te pūrei ataata me te whakamahi i te rapu."
   }
 }

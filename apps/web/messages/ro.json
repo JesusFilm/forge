@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Folosește limba implicită de căutare a site-ului",
     "removeLanguage": "Elimină {language}",
     "browseMode": "Mod de răsfoire a căutării",
-    "searchingInLanguage": "Rezultate în {language}"
+    "searchingInLanguage": "Rezultate în {language}",
+    "slowSearch": "Durează mai mult decât de obicei…"
   },
   "HeroPlayer": {
     "playWithSound": "Urmărește acum",
@@ -766,5 +767,8 @@
     "loadError": "Opțiunea ta nu a putut fi încărcată. Poți totuși alege mai jos.",
     "grantError": "Personalizarea nu a putut fi activată. Opțiunea doar esențiale rămâne disponibilă.",
     "saveError": "Opțiunea ta nu a putut fi salvată. Încearcă din nou."
+  },
+  "WatchNoScript": {
+    "message": "Activează JavaScript în browser pentru a reda videoclipuri și a folosi căutarea."
   }
 }

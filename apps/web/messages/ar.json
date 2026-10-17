@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "استخدم لغة البحث الافتراضية للموقع",
     "removeLanguage": "إزالة {language}",
     "browseMode": "وضع التصفح في البحث",
-    "searchingInLanguage": "النتائج ب{language}"
+    "searchingInLanguage": "النتائج ب{language}",
+    "slowSearch": "يستغرق هذا وقتًا أطول من المعتاد…"
   },
   "HeroPlayer": {
     "playWithSound": "شاهد الآن",
@@ -766,5 +767,8 @@
     "loadError": "تعذّر تحميل اختيارك. لا يزال بإمكانك الاختيار أدناه.",
     "grantError": "تعذّر تفعيل التخصيص. يظل خيار الأساسية فقط متاحًا.",
     "saveError": "تعذّر حفظ اختيارك. يُرجى المحاولة مرة أخرى."
+  },
+  "WatchNoScript": {
+    "message": "فعّل JavaScript في متصفحك لتشغيل الفيديوهات واستخدام البحث."
   }
 }

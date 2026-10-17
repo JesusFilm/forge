@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جستجوی وب‌سایت",
     "removeLanguage": "حذف {language}",
     "browseMode": "حالت مرور جستجو",
-    "searchingInLanguage": "نتایج به زبان {language}"
+    "searchingInLanguage": "نتایج به زبان {language}",
+    "slowSearch": "این کار بیشتر از معمول طول می‌کشد…"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
@@ -766,5 +767,8 @@
     "loadError": "انتخاب شما بارگیری نشد. همچنان می‌توانید از پایین انتخاب کنید.",
     "grantError": "شخصی‌سازی فعال نشد. گزینه فقط ضروری همچنان در دسترس است.",
     "saveError": "انتخاب شما ذخیره نشد. لطفاً دوباره تلاش کنید."
+  },
+  "WatchNoScript": {
+    "message": "برای پخش ویدیوها و استفاده از جستجو، JavaScript را در مرورگر خود فعال کنید."
   }
 }

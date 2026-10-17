@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтның килешү эзләү телен куллану",
     "removeLanguage": "{language} бетерү",
     "browseMode": "Эзләп карау режимы",
-    "searchingInLanguage": "{language} телендәге нәтиҗәләр"
+    "searchingInLanguage": "{language} телендәге нәтиҗәләр",
+    "slowSearch": "Бу гадәттәгедән озаграк дәвам итә…"
   },
   "HeroPlayer": {
     "playWithSound": "Хәзер карау",
@@ -766,5 +767,8 @@
     "loadError": "Сезнең сайлауны йөкләп булмады. Шулай да астарак сайлый аласыз.",
     "grantError": "Шәхсиләштерүне кабызып булмады. Мөһим вариант кына кулланыла ала.",
     "saveError": "Сезнең сайлауны саклап булмады. Зинһар, яңадан тырышып карагыз."
+  },
+  "WatchNoScript": {
+    "message": "Видеоларны карау һәм эзләү өчен браузерыгызда JavaScript'ны кабызыгыз."
   }
 }

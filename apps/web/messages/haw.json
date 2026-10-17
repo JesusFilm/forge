@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "E hoʻohana i ka ʻōlelo huli paʻamau o ka pūnaewele",
     "removeLanguage": "Wehe {language}",
     "browseMode": "ʻAno nānā huli",
-    "searchingInLanguage": "Nā hopena ma {language}"
+    "searchingInLanguage": "Nā hopena ma {language}",
+    "slowSearch": "Ke lōʻihi aʻe nei kēia ma mua o ka maʻamau…"
   },
   "HeroPlayer": {
     "playWithSound": "Nānā i kēia manawa",
@@ -766,5 +767,8 @@
     "loadError": "ʻAʻole hiki ke hoʻouka ʻia kāu koho. Hiki nō iā ʻoe ke koho ma lalo.",
     "grantError": "ʻAʻole hiki ke hoʻā i ka hoʻopilikino. Loaʻa nō ka koho mea pono wale nō.",
     "saveError": "ʻAʻole hiki ke mālama ʻia kāu koho. E hoʻāʻo hou."
+  },
+  "WatchNoScript": {
+    "message": "E hoʻā i ka JavaScript ma kāu polokalamu pūnaewele no ka hoʻokani ʻana i nā wikiō a me ka huli ʻana."
   }
 }

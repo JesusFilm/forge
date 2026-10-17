@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usar el idioma de búsqueda predeterminado del sitio",
     "removeLanguage": "Quitar {language}",
     "browseMode": "Modo de exploración de búsqueda",
-    "searchingInLanguage": "Taq xiltaj pa {language}"
+    "searchingInLanguage": "Taq xiltaj pa {language}",
+    "slowSearch": "Esto está tardando más de lo normal…"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
@@ -766,5 +767,8 @@
     "loadError": "Man xitikïr ta xqasik'ij ri acha'oj. K'a yatikïr na natcha' pan ichin.",
     "grantError": "Man xitikïr ta xtzij ri personalization. Xa xe ri k'atzinel e k'o.",
     "saveError": "Man xitikïr ta xyak ri acha'oj. Tatojtob'ej chik."
+  },
+  "WatchNoScript": {
+    "message": "Active JavaScript en su navegador para reproducir videos y usar la búsqueda."
   }
 }

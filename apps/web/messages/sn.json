@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Shandisa mutauro wekutanga wekutsvaga wewebsite",
     "removeLanguage": "Bvisa {language}",
     "browseMode": "Nzira yekutsvaga browsing",
-    "searchingInLanguage": "Mhedzisiro iri mumutauro uyu: {language}"
+    "searchingInLanguage": "Mhedzisiro iri mumutauro uyu: {language}",
+    "slowSearch": "Izvi zviri kutora nguva yakareba kupfuura zvakajairwa…"
   },
   "HeroPlayer": {
     "playWithSound": "Tarisa zvino",
@@ -766,5 +767,8 @@
     "loadError": "Sarudzo yako haina kukwanisa kurodhwa. Uchiri kukwanisa kusarudza pazasi.",
     "grantError": "Kugadzirirwa iwe hakuna kukwanisa kuvhurwa. Zvinokosha chete ndizvo zvicharamba zviripo.",
     "saveError": "Sarudzo yako haina kukwanisa kuchengetedzwa. Ndapota edzazve."
+  },
+  "WatchNoScript": {
+    "message": "Batidza JavaScript mubrowser yako kuti utambe mavhidhiyo uye ushandise kutsvaga."
   }
 }

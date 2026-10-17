@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gamita an default nga yinaknan han search han website",
     "removeLanguage": "Kuhaa an {language}",
     "browseMode": "Mode han pag-usisa ha search",
-    "searchingInLanguage": "Mga resulta ha {language}"
+    "searchingInLanguage": "Mga resulta ha {language}",
+    "slowSearch": "Mas maiha ini kaysa han naandan…"
   },
   "HeroPlayer": {
     "playWithSound": "Tara, tan-awa yana",
@@ -766,5 +767,8 @@
     "loadError": "Diri na-load an imo kapilian. Makakapili ka la gihapon ha ubos.",
     "grantError": "Diri ma-enable an personalization. An kinahanglanon la an padayon nga magagamit.",
     "saveError": "Diri natipig an imo kapilian. Alayon pagsari utro."
+  },
+  "WatchNoScript": {
+    "message": "Palihog i-on an JavaScript ha imo browser basi makapag-play hin mga video ngan makapag-search."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Yusim website default search tokples",
     "removeLanguage": "Rausim {language}",
     "browseMode": "Tahua bona raraia mode",
-    "searchingInLanguage": "Gaudia idia hedinarai be {language} dekenai"
+    "searchingInLanguage": "Gaudia idia hedinarai be {language} dekenai",
+    "slowSearch": "Dispela i kisim taim moa long olsem oltaim…"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",
@@ -766,5 +767,8 @@
     "loadError": "Oi emu pilakwana na diba lasi itaia. A lalo be oi emu pilakwana ihaoho diba noho.",
     "grantError": "Personalization bainevara diba lasi. Bada taudia sibona be noho helaoreana.",
     "saveError": "Oi emu pilakwana hamuria diba lasi. Mani ba tovo lou."
+  },
+  "WatchNoScript": {
+    "message": "Plis onim JavaScript long browser bilong yu bilong plei ol video na yusim painim."
   }
 }

@@ -17,6 +17,7 @@ import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
+import { WatchNoScriptNotice } from "@/components/watch/WatchNoScriptNotice"
 import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   loadClientMessages,
@@ -72,6 +73,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
+        <WatchNoScriptNotice />
         <NextIntlClientProvider locale={locale} messages={messages}>
           <DatadogRum />
           <GoogleAnalytics />

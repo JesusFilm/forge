@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Выкарыстоўваць мову пошуку сайта па змаўчанні",
     "removeLanguage": "Выдаліць {language}",
     "browseMode": "Рэжым агляду пошуку",
-    "searchingInLanguage": "Мова вынікаў: {language}"
+    "searchingInLanguage": "Мова вынікаў: {language}",
+    "slowSearch": "Гэта займае больш часу, чым звычайна…"
   },
   "HeroPlayer": {
     "playWithSound": "Глядзець зараз",
@@ -766,5 +767,8 @@
     "loadError": "Не ўдалося загрузіць ваш выбар. Вы ўсё яшчэ можаце выбраць ніжэй.",
     "grantError": "Не ўдалося ўключыць персаналізацыю. Застаюцца даступнымі толькі абавязковыя cookie.",
     "saveError": "Не ўдалося захаваць ваш выбар. Паспрабуйце яшчэ раз."
+  },
+  "WatchNoScript": {
+    "message": "Уключыце JavaScript у браўзеры, каб прайграваць відэа і карыстацца пошукам."
   }
 }

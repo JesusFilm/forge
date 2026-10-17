@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Izmantot vietnes noklusējuma meklēšanas valodu",
     "removeLanguage": "Noņemt {language}",
     "browseMode": "Meklēšanas pārlūkošanas režīms",
-    "searchingInLanguage": "Rezultātu valoda: {language}"
+    "searchingInLanguage": "Rezultātu valoda: {language}",
+    "slowSearch": "Tas aizņem ilgāku laiku nekā parasti…"
   },
   "HeroPlayer": {
     "playWithSound": "Skatīties tagad",
@@ -766,5 +767,8 @@
     "loadError": "Jūsu izvēli nevarēja ielādēt. Jūs joprojām varat izvēlēties zemāk.",
     "grantError": "Personalizāciju nevarēja ieslēgt. Joprojām ir pieejama tikai nepieciešamo sīkdatņu opcija.",
     "saveError": "Jūsu izvēli nevarēja saglabāt. Lūdzu, mēģiniet vēlreiz."
+  },
+  "WatchNoScript": {
+    "message": "Lūdzu, ieslēdziet JavaScript savā pārlūkprogrammā, lai atskaņotu video un izmantotu meklēšanu."
   }
 }

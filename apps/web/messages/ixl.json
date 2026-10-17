@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language tatz'ib'ej",
     "removeLanguage": "{language} tich'up'",
     "browseMode": "Rub'eyal search browse",
-    "searchingInLanguage": "Results {language} chi"
+    "searchingInLanguage": "Results {language} chi",
+    "slowSearch": "Nim ti q'ii nu'l u search wakami…"
   },
   "HeroPlayer": {
     "playWithSound": "K'utun wakami",
@@ -766,5 +767,8 @@
     "loadError": "Ma ulon taq q'os acha'onel. Pero otnaj chi acha'o b'elow.",
     "grantError": "Ma uchaj personalización. Asan ye k'atzil katil ayon.",
     "saveError": "Ma uchaj yakon acha'onel. B'anon tok junel."
+  },
+  "WatchNoScript": {
+    "message": "Tikab'ej JavaScript tu u browser tetz ta'n tu tzijol u video ex u search."
   }
 }

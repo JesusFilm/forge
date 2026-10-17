@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Utilitza l’idioma de cerca per defecte del lloc web",
     "removeLanguage": "Elimina {language}",
     "browseMode": "Mode de navegació de cerca",
-    "searchingInLanguage": "Resultats en {language}"
+    "searchingInLanguage": "Resultats en {language}",
+    "slowSearch": "Està trigant més del que és habitual…"
   },
   "HeroPlayer": {
     "playWithSound": "Mira ara",
@@ -766,5 +767,8 @@
     "loadError": "No s'han pogut carregar les vostres opcions. Encara podeu triar a continuació.",
     "grantError": "No s'ha pogut activar la personalització. Només les opcions essencials continuen disponibles.",
     "saveError": "No s'han pogut desar les vostres opcions. Torneu-ho a provar."
+  },
+  "WatchNoScript": {
+    "message": "Activa JavaScript al navegador per reproduir vídeos i fer servir la cerca."
   }
 }

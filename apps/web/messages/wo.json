@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu websaay bi ci kër seet bi",
     "removeLanguage": "Far {language}",
     "browseMode": "Doxal seet bi",
-    "searchingInLanguage": "Résultats yi ci {language}"
+    "searchingInLanguage": "Résultats yi ci {language}",
+    "slowSearch": "Dafa yàgg lu ëpp ni mu daan yàgge…"
   },
   "HeroPlayer": {
     "playWithSound": "Seet léegi",
@@ -766,5 +767,8 @@
     "loadError": "Manul a yebbi sa tànn. Waaye mën ngaa tànn fii suuf.",
     "grantError": "Manul a taal méngaleel bi. Yu am solo rekk la fi des.",
     "saveError": "Manul a denc sa tànn. Jéemaatal."
+  },
+  "WatchNoScript": {
+    "message": "Ubbil JavaScript ci sa browser ngir doxal video yi te seet."
   }
 }

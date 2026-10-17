@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Fa'aoga le gagana su'esu'e fa'aletonu a le 'upega tafa'ilagi",
     "removeLanguage": "Ave'ese {language}",
     "browseMode": "Faiga su'esu'e",
-    "searchingInLanguage": "I'uga i le {language}"
+    "searchingInLanguage": "I'uga i le {language}",
+    "slowSearch": "Ua umi atu le taimi nai lo le masani…"
   },
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
@@ -766,5 +767,8 @@
     "loadError": "Le mafai ona utaina lau filifiliga. E mafai pea ona e filifili i lalo.",
     "grantError": "Le mafai ona ki le faapatinoina mo oe. E avanoa pea na o mea tāua.",
     "saveError": "Le mafai ona sefe lau filifiliga. Faamolemole toe taumafai."
+  },
+  "WatchNoScript": {
+    "message": "Fa'aola le JavaScript i lau browser e matamata ai i vitiō ma fa'aaoga le su'esu'ega."
   }
 }

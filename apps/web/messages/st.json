@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sebelisa puo ea patlo ea kamehla ea sebaka sa marang-rang",
     "removeLanguage": "Tlosa {language}",
     "browseMode": "Mokhoa oa ho sheba patlo",
-    "searchingInLanguage": "Liphetho ka {language}"
+    "searchingInLanguage": "Liphetho ka {language}",
+    "slowSearch": "Sena se nka nako e telele ho feta kamehla…"
   },
   "HeroPlayer": {
     "playWithSound": "Shebella hona joale",
@@ -766,5 +767,8 @@
     "loadError": "Khetho ea hao ha ea khona ho laeloa. U ntse u ka khetha ka tlase.",
     "grantError": "Ho etsetsoa motho ka mong ha hoa khona ho buleloa. Tsa bohlokoa feela li ntse li fumaneha.",
     "saveError": "Khetho ea hao ha ea khona ho bolokoa. Ka kopo leka hape."
+  },
+  "WatchNoScript": {
+    "message": "Bulela JavaScript sebatling sa hao e le hore u bapale livideo le ho sebelisa patlo."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ওয়েবসাইটের ডিফল্ট সার্চ ভাষা ব্যবহার করুন",
     "removeLanguage": "{language} সরান",
     "browseMode": "সার্চ ব্রাউজ মোড",
-    "searchingInLanguage": "ফলাফল শুধু {language} ভাষায়"
+    "searchingInLanguage": "ফলাফল শুধু {language} ভাষায়",
+    "slowSearch": "স্বাভাবিকের চেয়ে বেশি সময় লাগছে…"
   },
   "HeroPlayer": {
     "playWithSound": "এখন দেখুন",
@@ -766,5 +767,8 @@
     "loadError": "আপনার পছন্দ লোড করা যায়নি। তবুও আপনি নিচে পছন্দ করতে পারেন।",
     "grantError": "ব্যক্তিগতকরণ চালু করা যায়নি। শুধু প্রয়োজনীয় বিকল্পটি এখনও উপলভ্য আছে।",
     "saveError": "আপনার পছন্দ সংরক্ষণ করা যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।"
+  },
+  "WatchNoScript": {
+    "message": "ভিডিও চালাতে এবং সার্চ ব্যবহার করতে আপনার ব্রাউজারে JavaScript চালু করুন।"
   }
 }

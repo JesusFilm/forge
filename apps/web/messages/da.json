@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Brug websitets standardsøgesprog",
     "removeLanguage": "Fjern {language}",
     "browseMode": "Søg browse-tilstand",
-    "searchingInLanguage": "Resultater på {language}"
+    "searchingInLanguage": "Resultater på {language}",
+    "slowSearch": "Det tager længere tid end normalt…"
   },
   "HeroPlayer": {
     "playWithSound": "Se nu",
@@ -766,5 +767,8 @@
     "loadError": "Dine valg kunne ikke indlæses. Du kan stadig vælge nedenfor.",
     "grantError": "Personalisering kunne ikke aktiveres. Kun nødvendige er stadig tilgængelige.",
     "saveError": "Dine valg kunne ikke gemmes. Prøv igen."
+  },
+  "WatchNoScript": {
+    "message": "Slå JavaScript til i din browser for at afspille videoer og bruge søgning."
   }
 }

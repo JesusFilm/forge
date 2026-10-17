@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gunakan bahasa carian lalai laman web",
     "removeLanguage": "Buang {language}",
     "browseMode": "Mod semakan carian",
-    "searchingInLanguage": "حاصل چارين دالم {language}"
+    "searchingInLanguage": "حاصل چارين دالم {language}",
+    "slowSearch": "Ini mengambil masa lebih lama daripada biasa…"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
@@ -766,5 +767,8 @@
     "loadError": "ڤيليهن اندا تيدق دافت دمواتکن. اندا ماسيه بوليه ممبوات ڤيليهن دباوه.",
     "grantError": "ڤرئيسوناليسي تيدق دافت دأکتيفکن. ڤيليهن يڠ ڤنتيڠ سهاج ماسيه ترسديا.",
     "saveError": "ڤيليهن اندا تيدق دافت دسيمڤن. سيلا چوبا لاݢي."
+  },
+  "WatchNoScript": {
+    "message": "Sila hidupkan JavaScript dalam pelayar anda untuk memainkan video dan menggunakan carian."
   }
 }

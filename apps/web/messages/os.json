@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтйы æрмæст æвзаг æрхæсс",
     "removeLanguage": "{language} æфтæ",
     "browseMode": "Æрхæссын режим",
-    "searchingInLanguage": "Æмæстæгтæ {language} æвзагыл"
+    "searchingInLanguage": "Æмæстæгтæ {language} æвзагыл",
+    "slowSearch": "Ацы хатт æндæр хæттытæй фылдæр рæстæг ахсы…"
   },
   "HeroPlayer": {
     "playWithSound": "Æрмæст уæд æххæст",
@@ -766,5 +767,8 @@
     "loadError": "Дæ æвзæрст нæ фæрæстæй æвдисын уыд. Уæддæр дæ бон у бындæр æвзарын.",
     "grantError": "Сæрмагондгæнæн бакæнын нæ фæрæстæй уыд. Фæкат сæйрагтæ баззад.",
     "saveError": "Дæ æвзæрст æвæрын нæ фæрæстæй уыд. Дæ хорзæхæй та фæлвар."
+  },
+  "WatchNoScript": {
+    "message": "Дæ браузеры JavaScript ссудз, цæмæй видео рахизай æмæ агурæн спайда кæнай."
   }
 }

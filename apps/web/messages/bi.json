@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Yusum defolt search lanwis blong website",
     "removeLanguage": "Removem {language}",
     "browseMode": "Browse mode blong search",
-    "searchingInLanguage": "Ol result long {language}"
+    "searchingInLanguage": "Ol result long {language}",
+    "slowSearch": "Hemia i tekem longfala taem moa…"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk naoia",
@@ -766,5 +767,8 @@
     "loadError": "No save lodem joes blong yu. Be yu save jusum yet long daonbilo.",
     "grantError": "No save mekem personalization i wok. Opsen blong ol impoten nomo i stap yet.",
     "saveError": "No save sevem joes blong yu. Plis traem bakegen."
+  },
+  "WatchNoScript": {
+    "message": "Plis tanem on JavaScript long browser blong yu blong pleim ol video mo yusum search."
   }
 }

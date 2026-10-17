@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "A webhely alapértelmezett keresési nyelvének használata",
     "removeLanguage": "{language} eltávolítása",
     "browseMode": "Keresési böngésző mód",
-    "searchingInLanguage": "Találatok {language} nyelven"
+    "searchingInLanguage": "Találatok {language} nyelven",
+    "slowSearch": "Ez a szokásosnál tovább tart…"
   },
   "HeroPlayer": {
     "playWithSound": "Nézd meg most",
@@ -766,5 +767,8 @@
     "loadError": "Nem sikerült betölteni a beállításodat. Alább továbbra is választhatsz.",
     "grantError": "Nem sikerült bekapcsolni a személyre szabást. Továbbra is csak az alapvető beállítások érhetők el.",
     "saveError": "Nem sikerült menteni a beállításodat. Kérjük, próbáld újra."
+  },
+  "WatchNoScript": {
+    "message": "Kapcsold be a JavaScriptet a böngésződben a videók lejátszásához és a kereséshez."
   }
 }

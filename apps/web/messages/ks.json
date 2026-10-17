@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ویب سائٹ کی ڈیفالٹ تلاش زبان استعمال کرو",
     "removeLanguage": "{language} ہٹاؤ",
     "browseMode": "تلاش براؤز موڈ",
-    "searchingInLanguage": "نتیجہٕ {language} منز چھِ"
+    "searchingInLanguage": "نتیجہٕ {language} منز چھِ",
+    "slowSearch": "یہِ چھُ عام کھوتہٕ زیادٕ وَقت ہیوان…"
   },
   "HeroPlayer": {
     "playWithSound": "ہنٛز دیکھیو",
@@ -766,5 +767,8 @@
     "loadError": "تُہنٛد ژور لوڈ نہٕ گٔژھ۔ توتہٕ تہِ تُہۍ ہیکِو بٔلنۍ ژور کٔرِتھ۔",
     "grantError": "ذاتی بَنٲوَٹ فعال نہٕ گٔژھ۔ صرف ضروری اختیار تَوَن دستیاب چھُ.",
     "saveError": "تُہنٛد ژور محفوظ نہٕ گٔژھ۔ مہربٲنی کرِتھ دوبارٕ کوشش کٔرِو۔"
+  },
+  "WatchNoScript": {
+    "message": "ویڈیو چلاونہٕ تہٕ تلاش استعمال کرنہٕ خٲطرٕ پنٛنِس براؤزرس منٛز JavaScript آن کرِو۔"
   }
 }

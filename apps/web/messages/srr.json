@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu website bi mu jëfandikoo ci seet bi",
     "removeLanguage": "Dañal {language}",
     "browseMode": "Modo bu seet",
-    "searchingInLanguage": "Njureef yi ci {language}"
+    "searchingInLanguage": "Njureef yi ci {language}",
+    "slowSearch": "Lii dafa yàgg lu ëpp ni mu baaxoo…"
   },
   "HeroPlayer": {
     "playWithSound": "Wone léegi",
@@ -766,5 +767,8 @@
     "loadError": "Mënunu jël sa tànn. Waaye man nga tànn ci suuf.",
     "grantError": "Mënunu tàmbali wone li méngook yaw. Yu am solo rekk la fi des.",
     "saveError": "Mënunu denc sa tànn. Jéemaatal."
+  },
+  "WatchNoScript": {
+    "message": "Taal JavaScript ci sa navigateur ngir xool video yi te jëfandikoo seet bi."
   }
 }

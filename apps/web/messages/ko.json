@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "웹사이트 기본 검색 언어 사용",
     "removeLanguage": "{language} 제거",
     "browseMode": "검색 둘러보기 모드",
-    "searchingInLanguage": "{language} 검색 결과"
+    "searchingInLanguage": "{language} 검색 결과",
+    "slowSearch": "평소보다 오래 걸리고 있습니다…"
   },
   "HeroPlayer": {
     "playWithSound": "지금 보기",
@@ -766,5 +767,8 @@
     "loadError": "선택 내용을 불러올 수 없습니다. 아래에서 계속 선택할 수 있습니다.",
     "grantError": "개인화를 사용할 수 없습니다. 필수만 허용은 계속 이용할 수 있습니다.",
     "saveError": "선택 내용을 저장할 수 없습니다. 다시 시도해 주세요."
+  },
+  "WatchNoScript": {
+    "message": "동영상을 재생하고 검색을 사용하려면 브라우저에서 JavaScript를 켜세요."
   }
 }

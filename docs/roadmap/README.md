@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 19, 2026)
 
-- **Total tickets:** 859
-- **Complete:** 639
+- **Total tickets:** 862
+- **Complete:** 640
 - **Cancelled:** 41
 - **In progress:** 70
-- **Not started:** 52
+- **Not started:** 54
 - **Blocked:** 57
 - **Overdue and open:** 0
 
@@ -804,6 +804,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | —     | 2    | —   | not-started |
 | [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | —     | 10   | —   | complete    |
 | [feat-698](platform/feat-698-watch-chapter-progress-indicator.md)                      | Watch chapter thumbnail progress indicator                                         | vlad       | P2       | —     | 1    | —   | complete    |
+| [feat-734](platform/feat-734-watch-noscript-delayed-search-notices.md)                 | Watch JavaScript-disabled and delayed-search notices                               | vlad       | P1       | —     | 1    | —   | complete    |
+| [feat-735](platform/feat-735-watch-nojs-streamed-footer-reachability.md)               | Investigate Watch no-JavaScript streamed footer reachability                       | vlad       | P2       | —     | 2    | —   | not-started |
+| [feat-736](platform/feat-736-watch-qa-cross-build-cache-identity.md)                   | Investigate Watch QA cross-build cached HTML identity                              | vlad       | P2       | —     | 2    | —   | not-started |
 
 ### Topic Experiences
 

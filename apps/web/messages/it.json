@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usa la lingua di ricerca predefinita del sito",
     "removeLanguage": "Rimuovi {language}",
     "browseMode": "Modalità di ricerca e navigazione",
-    "searchingInLanguage": "Risultati in {language}"
+    "searchingInLanguage": "Risultati in {language}",
+    "slowSearch": "Ci sta mettendo più del solito…"
   },
   "HeroPlayer": {
     "playWithSound": "Guarda ora",
@@ -766,5 +767,8 @@
     "loadError": "Impossibile caricare la tua scelta. Puoi comunque scegliere qui sotto.",
     "grantError": "Impossibile attivare la personalizzazione. Resta disponibile solo l’opzione essenziale.",
     "saveError": "Impossibile salvare la tua scelta. Riprova."
+  },
+  "WatchNoScript": {
+    "message": "Attiva JavaScript nel browser per riprodurre i video e usare la ricerca."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ویب سائٹ کی ڈیفالٹ تلاش زبان استعمال کریں",
     "removeLanguage": "{language} ہٹائیں",
     "browseMode": "براؤز موڈ",
-    "searchingInLanguage": "نتائج کی زبان: {language}"
+    "searchingInLanguage": "نتائج کی زبان: {language}",
+    "slowSearch": "اس میں معمول سے زیادہ وقت لگ رہا ہے…"
   },
   "HeroPlayer": {
     "playWithSound": "ابھی دیکھیں",
@@ -766,5 +767,8 @@
     "loadError": "آپ کا انتخاب لوڈ نہ ہو سکا۔ پھر بھی آپ نیچے انتخاب کر سکتے ہیں۔",
     "grantError": "ذاتی نوعیت کو فعال نہ کیا جا سکا۔ صرف ضروری والا اختیار اب بھی دستیاب ہے۔",
     "saveError": "آپ کا انتخاب محفوظ نہ ہو سکا۔ براہِ کرم دوبارہ کوشش کریں۔"
+  },
+  "WatchNoScript": {
+    "message": "ویڈیوز چلانے اور تلاش استعمال کرنے کے لیے اپنے براؤزر میں JavaScript آن کریں۔"
   }
 }

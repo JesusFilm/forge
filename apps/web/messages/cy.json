@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Defnyddio iaith chwilio ddiofyn y wefan",
     "removeLanguage": "Tynnu {language}",
     "browseMode": "Modd pori chwilio",
-    "searchingInLanguage": "Canlyniadau yn {language}"
+    "searchingInLanguage": "Canlyniadau yn {language}",
+    "slowSearch": "Mae hyn yn cymryd mwy o amser nag arfer…"
   },
   "HeroPlayer": {
     "playWithSound": "Gwylio nawr",
@@ -766,5 +767,8 @@
     "loadError": "Methwyd llwytho eich dewis. Gallwch ddewis isod o hyd.",
     "grantError": "Nid oedd modd galluogi personoli. Mae’r opsiwn hanfodol yn unig ar gael o hyd.",
     "saveError": "Methwyd cadw eich dewis. Rhowch gynnig arall arni."
+  },
+  "WatchNoScript": {
+    "message": "Trowch JavaScript ymlaen yn eich porwr i chwarae fideos a defnyddio’r chwilio."
   }
 }

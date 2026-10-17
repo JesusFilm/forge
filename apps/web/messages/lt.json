@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Naudoti svetainės numatytąją paieškos kalbą",
     "removeLanguage": "Pašalinti {language}",
     "browseMode": "Naršymo paieškos režimas",
-    "searchingInLanguage": "Rodomi rezultatai šia kalba: {language}"
+    "searchingInLanguage": "Rodomi rezultatai šia kalba: {language}",
+    "slowSearch": "Tai užtrunka ilgiau nei įprastai…"
   },
   "HeroPlayer": {
     "playWithSound": "Žiūrėti dabar",
@@ -766,5 +767,8 @@
     "loadError": "Nepavyko įkelti jūsų pasirinkimo. Vis tiek galite pasirinkti toliau.",
     "grantError": "Nepavyko įjungti suasmeninimo. Galima naudoti tik būtinus nustatymus.",
     "saveError": "Nepavyko išsaugoti jūsų pasirinkimo. Bandykite dar kartą."
+  },
+  "WatchNoScript": {
+    "message": "Įjunkite JavaScript naršyklėje, kad galėtumėte groti vaizdo įrašus ir naudotis paieška."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "वेबसाइटची मूळ शोध भाषा वापरा",
     "removeLanguage": "{language} काढा",
     "browseMode": "शोध ब्राउझ मोड",
-    "searchingInLanguage": "{language} मधील निकाल"
+    "searchingInLanguage": "{language} मधील निकाल",
+    "slowSearch": "याला नेहमीपेक्षा जास्त वेळ लागत आहे…"
   },
   "HeroPlayer": {
     "playWithSound": "आता पहा",
@@ -766,5 +767,8 @@
     "loadError": "तुमचा पर्याय लोड करता आला नाही. तरीही तुम्ही खाली निवड करू शकता.",
     "grantError": "वैयक्तिकरण सक्षम करता आले नाही. फक्त आवश्यक पर्याय उपलब्ध राहील.",
     "saveError": "तुमचा पर्याय जतन करता आला नाही. कृपया पुन्हा प्रयत्न करा."
+  },
+  "WatchNoScript": {
+    "message": "व्हिडिओ प्ले करण्यासाठी आणि शोध वापरण्यासाठी कृपया तुमच्या ब्राउझरमध्ये JavaScript सुरू करा."
   }
 }

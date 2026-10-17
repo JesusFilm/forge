@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Brûk de standert syktaal fan de webside",
     "removeLanguage": "{language} fuortsmite",
     "browseMode": "Syk-blêdzjemodus",
-    "searchingInLanguage": "Resultaten yn {language}"
+    "searchingInLanguage": "Resultaten yn {language}",
+    "slowSearch": "Dit duorret langer as oars…"
   },
   "HeroPlayer": {
     "playWithSound": "Sjoch no",
@@ -766,5 +767,8 @@
     "loadError": "Dyn kar koe net laden wurde. Do kinst hjirûnder noch altyd in kar meitsje.",
     "grantError": "Personalisaasje koe net ynskeakele wurde. Allinnich essinsjeel bliuwt beskikber.",
     "saveError": "Dyn kar koe net bewarre wurde. Probearje it opnij."
+  },
+  "WatchNoScript": {
+    "message": "Set JavaScript oan yn jo browser om fideo's ôf te spyljen en sykjen te brûken."
   }
 }

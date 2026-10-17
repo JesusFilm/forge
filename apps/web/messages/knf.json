@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language kɛ",
     "removeLanguage": "{language} bɔ",
     "browseMode": "Search browse mode i",
-    "searchingInLanguage": "Result kɛŋ {language} te"
+    "searchingInLanguage": "Result kɛŋ {language} te",
+    "slowSearch": "Search a ka kɛ tempu bɔɔ ŋaŋ…"
   },
   "HeroPlayer": {
     "playWithSound": "Wa yɔrɔ watch",
@@ -766,5 +767,8 @@
     "loadError": "A manaa ka loodi i pilixis. I nataa ka suŋo yi ganna le.",
     "grantError": "A manaa ka da personalization. Fanang yi to ligi domaa na to tɛ.",
     "saveError": "A manaa ka sigi i pilixis. I yandi ka fuŋta fan."
+  },
+  "WatchNoScript": {
+    "message": "JavaScript on kɛ browser i bɛ, fa video play kɛ a search kɛ."
   }
 }

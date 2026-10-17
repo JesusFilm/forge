@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya liboso ya site",
     "removeLanguage": "Longola {language}",
     "browseMode": "Mode ya kotala na boluki",
-    "searchingInLanguage": "Ba résultat na {language}"
+    "searchingInLanguage": "Ba résultat na {language}",
+    "slowSearch": "Ezali kozwa ntango mingi koleka momesano…"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
@@ -766,5 +767,8 @@
     "loadError": "Diponi na nge malembe ko kuloadama. Nge lenda kaka kusola na nsi awa.",
     "grantError": "Personalisation malembe ko kupesama nzila. Ya mfunu kaka kele kaka ya kusadila.",
     "saveError": "Diponi na nge malembe ko kubumbama. Meka diaka."
+  },
+  "WatchNoScript": {
+    "message": "Svp fungolá JavaScript na navigateur na yo mpo na kolobina bavideo mpe kosalela boluki."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Web sitesinin varsayılan arama dilini kullan",
     "removeLanguage": "{language} dilini kaldır",
     "browseMode": "Arama gezinti modu",
-    "searchingInLanguage": "Sonuçlar {language} dilinde"
+    "searchingInLanguage": "Sonuçlar {language} dilinde",
+    "slowSearch": "Bu işlem normalden uzun sürüyor…"
   },
   "HeroPlayer": {
     "playWithSound": "Şimdi izle",
@@ -766,5 +767,8 @@
     "loadError": "Tercihiniz yüklenemedi. Yine de aşağıdan seçim yapabilirsiniz.",
     "grantError": "Kişiselleştirme etkinleştirilemedi. Yalnızca zorunlu seçenek kullanılabilir olmaya devam ediyor.",
     "saveError": "Tercihiniz kaydedilemedi. Lütfen tekrar deneyin."
+  },
+  "WatchNoScript": {
+    "message": "Videoları oynatmak ve arama yapmak için tarayıcınızda JavaScript'i etkinleştirin."
   }
 }

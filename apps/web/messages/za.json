@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Aeu website default search language",
     "removeLanguage": "Luk {language}",
     "browseMode": "Mode browse search",
-    "searchingInLanguage": "Gij results ndaw {language}"
+    "searchingInLanguage": "Gij results ndaw {language}",
+    "slowSearch": "Baez neix aeu seizgan nanz gvaq baez wnq…"
   },
   "HeroPlayer": {
     "playWithSound": "Doengh gwn",
@@ -766,5 +767,8 @@
     "loadError": "Roxgoek mwnz loih mbouj ndaej. Mwnz lij ndaej youq gizneix swngh.",
     "grantError": "Mbouj ndaej kaiqyungq cinjdingh. Cij yongq gietdingh cawx lij ndaej.",
     "saveError": "Roxgoek mwnz dangx cim mbouj ndaej. Cingq dajlaeng daengz mbouj."
+  },
+  "WatchNoScript": {
+    "message": "Gungj liux hai JavaScript youq browser, cij ndaej yawj video caeuq raeuz."
   }
 }

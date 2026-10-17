@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Standard-Sichsprooch vun der Websäit benotzen",
     "removeLanguage": "{language} ewechhuelen",
     "browseMode": "Sich-Duerchkuckmodus",
-    "searchingInLanguage": "Resultater op {language}"
+    "searchingInLanguage": "Resultater op {language}",
+    "slowSearch": "Dat dauert méi laang wéi soss…"
   },
   "HeroPlayer": {
     "playWithSound": "Elo kucken",
@@ -766,5 +767,8 @@
     "loadError": "Är Astellung konnt net geluede ginn. Dir kënnt awer hei ënnendrënner nach wielen.",
     "grantError": "Personaliséierung konnt net aktivéiert ginn. Nëmmen dat Néidegst bleift verfügbar.",
     "saveError": "Är Astellung konnt net gespäichert ginn. Probéiert w.e.g. nach eng Kéier."
+  },
+  "WatchNoScript": {
+    "message": "Aktivéiert w.e.g. JavaScript an Ärem Browser, fir Videoen ofzespillen an d’Sich ze benotzen."
   }
 }

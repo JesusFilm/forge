@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website ki default search bhasha use kariye",
     "removeLanguage": "{language} hataiye",
     "browseMode": "Search browse karne ka tareeka",
-    "searchingInLanguage": "Results sirf {language} me"
+    "searchingInLanguage": "Results sirf {language} me",
+    "slowSearch": "Iske me normal se jaada time lag raha hai…"
   },
   "HeroPlayer": {
     "playWithSound": "Abhi dekhiye",
@@ -766,5 +767,8 @@
     "loadError": "राउर चुनाव लोड ना हो सकल। तबो रउआ नीचे चुन सकत बानी।",
     "grantError": "निजीकरण चालू ना हो सकल। खाली जरूरी विकल्प अबहियों उपलब्ध बा।",
     "saveError": "राउर चुनाव सेव ना हो सकल। फेर से कोशिश करीं।"
+  },
+  "WatchNoScript": {
+    "message": "Video chalaae aur search use kare ke liye aapke browser me JavaScript on kariye."
   }
 }

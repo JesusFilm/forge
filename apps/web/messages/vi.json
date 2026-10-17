@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Dùng ngôn ngữ tìm kiếm mặc định của trang web",
     "removeLanguage": "Xóa {language}",
     "browseMode": "Chế độ duyệt tìm kiếm",
-    "searchingInLanguage": "Kết quả bằng {language}"
+    "searchingInLanguage": "Kết quả bằng {language}",
+    "slowSearch": "Việc này mất nhiều thời gian hơn bình thường…"
   },
   "HeroPlayer": {
     "playWithSound": "Xem ngay",
@@ -766,5 +767,8 @@
     "loadError": "Không thể tải lựa chọn của bạn. Bạn vẫn có thể chọn ở bên dưới.",
     "grantError": "Không thể bật cá nhân hóa. Tùy chọn chỉ dùng cookie thiết yếu vẫn khả dụng.",
     "saveError": "Không thể lưu lựa chọn của bạn. Vui lòng thử lại."
+  },
+  "WatchNoScript": {
+    "message": "Hãy bật JavaScript trong trình duyệt để phát video và sử dụng tính năng tìm kiếm."
   }
 }

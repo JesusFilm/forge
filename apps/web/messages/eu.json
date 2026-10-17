@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Erabili webgunearen bilaketa-hizkuntza lehenetsia",
     "removeLanguage": "Kendu {language}",
     "browseMode": "Bilaketa-arakatze modua",
-    "searchingInLanguage": "Emaitzak {language} hizkuntzan"
+    "searchingInLanguage": "Emaitzak {language} hizkuntzan",
+    "slowSearch": "Ohi baino gehiago irauten ari da…"
   },
   "HeroPlayer": {
     "playWithSound": "Ikusi orain",
@@ -766,5 +767,8 @@
     "loadError": "Ezin izan da zure aukera kargatu. Hala ere, behean aukeratu dezakezu.",
     "grantError": "Ezin izan da pertsonalizazioa gaitu. Ezinbestekoak soilik erabil daitezke.",
     "saveError": "Ezin izan da zure aukera gorde. Saiatu berriro, mesedez."
+  },
+  "WatchNoScript": {
+    "message": "Aktibatu JavaScript zure nabigatzailean bideoak erreproduzitzeko eta bilaketa erabiltzeko."
   }
 }

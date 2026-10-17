@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Kasuta veebisaidi vaikimisi otsingukeelt",
     "removeLanguage": "Eemalda {language}",
     "browseMode": "Sirvimisrežiim",
-    "searchingInLanguage": "Tulemused keeles {language}"
+    "searchingInLanguage": "Tulemused keeles {language}",
+    "slowSearch": "See võtab tavapärasest kauem aega…"
   },
   "HeroPlayer": {
     "playWithSound": "Vaata nüüd",
@@ -766,5 +767,8 @@
     "loadError": "Teie valikut ei saanud laadida. Saate siiski allpool valida.",
     "grantError": "Isikupärastamist ei saanud sisse lülitada. Saadaval on endiselt ainult vajalikud küpsised.",
     "saveError": "Teie valikut ei saanud salvestada. Palun proovige uuesti."
+  },
+  "WatchNoScript": {
+    "message": "Lülita brauseris JavaScript sisse, et videoid esitada ja otsingut kasutada."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sebedisha lulaka lwa kusaka lwa website",
     "removeLanguage": "Katula {language}",
     "browseMode": "Lulengo lwa kusebula kusaka",
-    "searchingInLanguage": "Mayele a mu {language}"
+    "searchingInLanguage": "Mayele a mu {language}",
+    "slowSearch": "Bidi bienza ne tshikondo tshile kupita bu mudibi…"
   },
   "HeroPlayer": {
     "playWithSound": "Talala sikila",
@@ -766,5 +767,8 @@
     "loadError": "Nsoolo yebe kayi muvuluibue to. Udi ucidi mwa kusungula panshi apa.",
     "grantError": "Kupanga bua muntu yeka yeka kakuenaku kujingulula to. Bya mushinga nkaayi bidi bicidi bipeteka.",
     "saveError": "Nsoolo yebe kayi mulamibue to. Swaku, tente kabidi."
+  },
+  "WatchNoScript": {
+    "message": "Yidila, tuta JavaScript mu browser webe bua kutangila mavideo ne kusaka."
   }
 }

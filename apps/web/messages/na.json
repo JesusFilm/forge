@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language e ka",
     "removeLanguage": "{language} e kar",
     "browseMode": "Search browse mode eo",
-    "searchingInLanguage": "Result re: {language}"
+    "searchingInLanguage": "Result re: {language}",
+    "slowSearch": "E aeta iya ion…"
   },
   "HeroPlayer": {
     "playWithSound": "Kare e bitaei",
@@ -766,5 +767,8 @@
     "loadError": "Am ibukin e aki kona n load. Ngkoe e kona n tuan ter ibukin aika imwin.",
     "grantError": "Personalization e aki kona n tena. Essential only e tuan mena.",
     "saveError": "Am ibukin e aki kona n tino. Maiti, manga kaito."
+  },
+  "WatchNoScript": {
+    "message": "Bitaei JavaScript ia browser eo me ko ika bitaei videos me ika search."
   }
 }

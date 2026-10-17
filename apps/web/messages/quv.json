@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Titz'et ri default ch'ab'äl re sitio re'",
     "removeLanguage": "Tijach {language}",
     "browseMode": "Ruwäch k'utunem yanïk",
-    "searchingInLanguage": "Taq resultados pa {language}"
+    "searchingInLanguage": "Taq resultados pa {language}",
+    "slowSearch": "Re' más najt nuk'ulun chuwäch ri jantape'…"
   },
   "HeroPlayer": {
     "playWithSound": "Titz'et wakami",
@@ -766,5 +767,8 @@
     "loadError": "Man xutikïr ta xsamajib'ëx ri acha'oj. K'a yatikïr nicha'oj qa panïm.",
     "grantError": "Man xutikïr ta xtzij ri personalization. Xa xe ri k'atzinel e k'o wi.",
     "saveError": "Man xutikïr ta xyak ri acha'oj. Tatojtob'ej chik."
+  },
+  "WatchNoScript": {
+    "message": "Tatzija' ri JavaScript pa ri anavegador richin ye'atz'ët ri taq video chuqa' natikanöj."
   }
 }

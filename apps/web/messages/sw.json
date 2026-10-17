@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Tumia lugha chaguomsingi ya utafutaji ya tovuti",
     "removeLanguage": "Ondoa {language}",
     "browseMode": "Hali ya kuvinjari ya utafutaji",
-    "searchingInLanguage": "Matokeo katika {language}"
+    "searchingInLanguage": "Matokeo katika {language}",
+    "slowSearch": "Hii inachukua muda mrefu kuliko kawaida…"
   },
   "HeroPlayer": {
     "playWithSound": "Tazama sasa",
@@ -766,5 +767,8 @@
     "loadError": "Chaguo lako halikuweza kupakiwa. Bado unaweza kuchagua hapa chini.",
     "grantError": "Ubinafsishaji haukuweza kuwashwa. Chaguo la muhimu pekee bado linapatikana.",
     "saveError": "Chaguo lako halikuweza kuhifadhiwa. Tafadhali jaribu tena."
+  },
+  "WatchNoScript": {
+    "message": "Washa JavaScript kwenye kivinjari chako ili kucheza video na kutumia utafutaji."
   }
 }

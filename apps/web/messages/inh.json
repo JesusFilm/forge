@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтца стандартный search мотт хьада",
     "removeLanguage": "{language} д1аяккха",
     "browseMode": "Къахьа browse режим",
-    "searchingInLanguage": "{language} т1а нәтижаташ"
+    "searchingInLanguage": "{language} т1а нәтижаташ",
+    "slowSearch": "Из хьалхагIча хана хьаьнал дукхагIа ха йоаллаш я…"
   },
   "HeroPlayer": {
     "playWithSound": "Хьалха йахьа",
@@ -766,5 +767,8 @@
     "loadError": "Хьай тӀехьа хьажар чулоацар даьннадац. Таханахьа хьалха хьажа йиш я.",
     "grantError": "Шиннара хьакхоллам хьаллаттабе даьннадац. ЛоархӀаме цхьанна шортта йолац.",
     "saveError": "Хьай тӀехьа хьажар дӀаязде даьннадац. Дехар, юха гӀорта."
+  },
+  "WatchNoScript": {
+    "message": "Видеош д1ахьехкийта а къахьа леладе а, хьай браузере JavaScript латае."
   }
 }

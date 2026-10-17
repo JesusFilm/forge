@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Uża l-lingwa tat-tfittxija default tas-sit",
     "removeLanguage": "Neħħi {language}",
     "browseMode": "Modalità ta' browsing tat-tfittxija",
-    "searchingInLanguage": "Riżultati bil-{language}"
+    "searchingInLanguage": "Riżultati bil-{language}",
+    "slowSearch": "Qed jieħu aktar żmien mis-soltu…"
   },
   "HeroPlayer": {
     "playWithSound": "Ara issa",
@@ -766,5 +767,8 @@
     "loadError": "Ma stajniex intellgħu l-għażla tiegħek. Xorta tista’ tagħżel hawn taħt.",
     "grantError": "Ma setgħetx tiġi attivata l-personalizzazzjoni. L-għażla essenzjali biss tibqa’ disponibbli.",
     "saveError": "Ma stajniex nissejvjaw l-għażla tiegħek. Jekk jogħġbok erġa’ pprova."
+  },
+  "WatchNoScript": {
+    "message": "Ixgħel il-JavaScript fil-browser tiegħek biex tilgħab il-vidjows u tuża t-tfittxija."
   }
 }

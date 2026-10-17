@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Ùżëjë domëslnegò jãzëka szëkbë stronë",
     "removeLanguage": "Ùsóni {language}",
     "browseMode": "Mòd òglądaniô szëkbë",
-    "searchingInLanguage": "Rezùltatë pò {language}"
+    "searchingInLanguage": "Rezùltatë pò {language}",
+    "slowSearch": "To trwô dłëżi jak zwëczajno…"
   },
   "HeroPlayer": {
     "playWithSound": "Òglądôj terôz",
@@ -766,5 +767,8 @@
     "loadError": "Nie dało sã wczëtac twòjégò wëbiérkù. Niżéj jesz mòżesz wëbrac.",
     "grantError": "Nie dało sã włączëc personalizacjë. Blós niezbãdné òstôwają przistãpné.",
     "saveError": "Nie dało sã zapisac twòjégò wëbiérkù. Spróbùjë jesz rôz."
+  },
+  "WatchNoScript": {
+    "message": "Włączë JavaScript w przezérnikù, żebë òdgriwac wideo ë brëkòwac szëkbë."
   }
 }

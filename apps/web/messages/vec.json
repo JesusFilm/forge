@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usa la lengua de ricerca predefinida del sito",
     "removeLanguage": "Rimuovi {language}",
     "browseMode": "Modo de navigassion",
-    "searchingInLanguage": "Risultadi in lengua {language}"
+    "searchingInLanguage": "Risultadi in lengua {language}",
+    "slowSearch": "Ghe vołe pì tenpo del solito…"
   },
   "HeroPlayer": {
     "playWithSound": "Varda adesso",
@@ -766,5 +767,8 @@
     "loadError": "No xe stà posìbiłe cargar la to scelta. Te pol ancora scejer qua soto.",
     "grantError": "No xe stà posìbiłe ativar la personalizasion. Resta disponibile solo i cookie esensiali.",
     "saveError": "No xe stà posìbiłe salvar la to scelta. Par piaser, prova da novo."
+  },
+  "WatchNoScript": {
+    "message": "Ativa JavaScript inte'l to navigador par vardar i video e doparar ła serca."
   }
 }

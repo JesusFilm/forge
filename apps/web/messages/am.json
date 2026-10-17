@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "የድረ-ገጹን ነባሪ የፍለጋ ቋንቋ ተጠቀም",
     "removeLanguage": "{language} አስወግድ",
     "browseMode": "የፍለጋ ማሰስ ሁኔታ",
-    "searchingInLanguage": "ውጤቶች በ{language} ተወስነዋል"
+    "searchingInLanguage": "ውጤቶች በ{language} ተወስነዋል",
+    "slowSearch": "ይህ ከወትሮው በላይ ጊዜ እየወሰደ ነው…"
   },
   "HeroPlayer": {
     "playWithSound": "አሁን ይመልከቱ",
@@ -766,5 +767,8 @@
     "loadError": "ምርጫዎ መጫን አልተቻለም። ከታች አሁንም መምረጥ ይችላሉ።",
     "grantError": "ግላዊ ማበጀትን ማስነሳት አልተቻለም። አስፈላጊዎቹ ብቻ አሁንም ይገኛሉ።",
     "saveError": "ምርጫዎ ማስቀመጥ አልተቻለም። እባክዎ እንደገና ይሞክሩ።"
+  },
+  "WatchNoScript": {
+    "message": "ቪዲዮዎችን ለማጫወት እና ፍለጋን ለመጠቀም በአሳሽዎ ውስጥ JavaScriptን ያብሩ።"
   }
 }

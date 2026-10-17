@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language yɛ",
     "removeLanguage": "{language} bɔ",
     "browseMode": "Search browse mode a",
-    "searchingInLanguage": "Result mɛ {language} kɛ"
+    "searchingInLanguage": "Result mɛ {language} kɛ",
+    "slowSearch": "Search mɛ tɛm bɔ kɛ…"
   },
   "HeroPlayer": {
     "playWithSound": "Nɛa watch kɛ",
@@ -766,5 +767,8 @@
     "loadError": "I fañii ma seŋ n loodi. A n paari n caa yaa nàa kɔɔ.",
     "grantError": "Ma seŋ n yiti tɛmɛraŋ ndaani. Yaa n pɔɔri bare n paari.",
     "saveError": "I fañii ma seŋ n tegi. Bɛri n naŋ kɔɔ."
+  },
+  "WatchNoScript": {
+    "message": "Browser a dɔ JavaScript tɔrɔ, video plɛ kɛ search kɛ."
   }
 }

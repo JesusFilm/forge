@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sebenzisa ulimi lokusesha oluzenzakalelayo lwewebhusayithi",
     "removeLanguage": "Susa {language}",
     "browseMode": "Imodi yokuphequlula yokusesha",
-    "searchingInLanguage": "Imiphumela yalolu limi: {language}"
+    "searchingInLanguage": "Imiphumela yalolu limi: {language}",
+    "slowSearch": "Lokhu kuthatha isikhathi eside kunokujwayelekile…"
   },
   "HeroPlayer": {
     "playWithSound": "Buka manje",
@@ -766,5 +767,8 @@
     "loadError": "Ukukhetha kwakho akukwazanga ukulayishwa. Usengakhetha ngezansi.",
     "grantError": "Ukwenza kube ngezomuntu akukwazanga ukuvulwa. Okubalulekile kuphela kusatholakala.",
     "saveError": "Ukukhetha kwakho akukwazanga ukulondolozwa. Sicela uzame futhi."
+  },
+  "WatchNoScript": {
+    "message": "Vula i-JavaScript kusiphequluli sakho ukuze udlale amavidiyo futhi usebenzise ukusesha."
   }
 }

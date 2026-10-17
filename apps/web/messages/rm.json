@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Utilisar la lingua da tschertga predefinida dal website",
     "removeLanguage": "Allontanar {language}",
     "browseMode": "Modus da navigaziun da tschertga",
-    "searchingInLanguage": "Resultats en {language}"
+    "searchingInLanguage": "Resultats en {language}",
+    "slowSearch": "Quai dura pli ditg che usità…"
   },
   "HeroPlayer": {
     "playWithSound": "Guardar ussa",
@@ -766,5 +767,8 @@
     "loadError": "Tia tschercha n'ha betg pudì vegnir chargiada. Ti pos tuttina tscherner sutvart.",
     "grantError": "La persunalisaziun n'ha betg pudì vegnir activada. Mo l'opziun essenziala resta disponibla.",
     "saveError": "Tia tschercha n'ha betg pudì vegnir memorisada. Emprova anc ina giada."
+  },
+  "WatchNoScript": {
+    "message": "Activai JavaScript en Voss navigatur per reproducir videos e duvrar la tschertga."
   }
 }

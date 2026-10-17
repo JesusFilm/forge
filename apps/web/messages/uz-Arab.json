@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جست‌وجوی وب‌سایت",
     "removeLanguage": "حذف {language}",
     "browseMode": "حالت مرور جست‌وجو",
-    "searchingInLanguage": "نتیجه‌لر {language} تیلی‌ده"
+    "searchingInLanguage": "نتیجه‌لر {language} تیلی‌ده",
+    "slowSearch": "این بیشتر از حد معمول طول می‌کشد…"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
@@ -766,5 +767,8 @@
     "loadError": "تانلووینگیزنی یوکلهب بولمادی. پاست‌ده یانه تنگلشینگیز ممکن.",
     "grantError": "شخصی‌لەشتىریشنی یاقیب بولمادی. فقط اساسی‌لر موجود بولیب قالادی.",
     "saveError": "تانلووینگیز ساقلنمادی. لطفاً یانه اورینیب کورینگ."
+  },
+  "WatchNoScript": {
+    "message": "برای پخش ویدیوها و استفاده از جست‌وجو، JavaScript را در مرورگر خود فعال کنید."
   }
 }

@@ -138,7 +138,13 @@ export function FloatingSearchController({
   const [error, setError] = useState<string | null>(null)
   const [errorKind, setErrorKind] = useState<WatchSearchErrorKind | null>(null)
   const [searched, setSearched] = useState(false)
-  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null)
+  const [
+    { query: submittedQuery, requestId: submittedRequestId },
+    setSubmittedSearch,
+  ] = useState<{ query: string | null; requestId: number }>({
+    query: null,
+    requestId: 0,
+  })
   const [resultSource, setResultSource] =
     useState<SearchActionResultSource | null>(null)
   const [languageOptions, setLanguageOptions] = useState<
@@ -383,7 +389,7 @@ export function FloatingSearchController({
       setLoadingMore(false)
 
       if (!trimmed) {
-        setSubmittedQuery(null)
+        setSubmittedSearch({ query: null, requestId: thisRequest })
         if (displayResultsRef.current.length > 0) {
           setExiting(true)
           await new Promise<void>((resolve) => setTimeout(resolve, 200))
@@ -406,7 +412,7 @@ export function FloatingSearchController({
       }
 
       const cappedQuery = normalizeWatchSearchQuery(trimmed)
-      setSubmittedQuery(cappedQuery)
+      setSubmittedSearch({ query: cappedQuery, requestId: thisRequest })
 
       if (displayResultsRef.current.length > 0) {
         setExiting(true)
@@ -755,6 +761,7 @@ export function FloatingSearchController({
       closing,
       query,
       submittedQuery,
+      submittedRequestId,
       results,
       displayResults,
       displayResultPages,
@@ -798,6 +805,7 @@ export function FloatingSearchController({
       closing,
       query,
       submittedQuery,
+      submittedRequestId,
       results,
       displayResults,
       displayResultPages,

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Koristi zadani jezik pretraživanja web-mjesta",
     "removeLanguage": "Ukloni {language}",
     "browseMode": "Način pregledavanja pretraživanja",
-    "searchingInLanguage": "Jezik rezultata: {language}"
+    "searchingInLanguage": "Jezik rezultata: {language}",
+    "slowSearch": "Ovo traje dulje nego obično…"
   },
   "HeroPlayer": {
     "playWithSound": "Gledaj sada",
@@ -766,5 +767,8 @@
     "loadError": "Vaš odabir nije bilo moguće učitati. I dalje možete odabrati u nastavku.",
     "grantError": "Personalizaciju nije bilo moguće omogućiti. Opcija samo nužnih i dalje je dostupna.",
     "saveError": "Vaš odabir nije bilo moguće spremiti. Pokušajte ponovno."
+  },
+  "WatchNoScript": {
+    "message": "Uključite JavaScript u pregledniku za reprodukciju videozapisa i korištenje pretraživanja."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "サイトの既定の検索言語を使用",
     "removeLanguage": "{language}を削除",
     "browseMode": "検索閲覧モード",
-    "searchingInLanguage": "{language}の検索結果"
+    "searchingInLanguage": "{language}の検索結果",
+    "slowSearch": "通常より時間がかかっています…"
   },
   "HeroPlayer": {
     "playWithSound": "今すぐ見る",
@@ -766,5 +767,8 @@
     "loadError": "選択内容を読み込めませんでした。下で引き続き選択できます。",
     "grantError": "パーソナライズを有効にできませんでした。必須のみは引き続き利用できます。",
     "saveError": "選択内容を保存できませんでした。もう一度お試しください。"
+  },
+  "WatchNoScript": {
+    "message": "動画の再生や検索を利用するには、ブラウザでJavaScriptを有効にしてください。"
   }
 }

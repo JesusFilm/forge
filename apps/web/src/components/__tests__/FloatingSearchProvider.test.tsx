@@ -6345,3 +6345,193 @@ describe("FloatingSearchProvider — search pagination", () => {
     )
   })
 })
+
+describe("FloatingSearchProvider — slow search notice", () => {
+  function slowNotice(): Element | null {
+    return document.querySelector('[data-testid="search-overlay-slow-notice"]')
+  }
+
+  it("tells the visitor a pending search is slow and clears it when results land", async () => {
+    const pendingSearch = deferred<MockSearchResponse>()
+    mockedRunSearch.mockReturnValueOnce(pendingSearch.promise)
+    const input = await openSearchOverlay()
+    vi.useFakeTimers()
+
+    await submitSearch(input, "jesus")
+    act(() => {
+      vi.advanceTimersByTime(3_999)
+    })
+    expect(slowNotice()).toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(1)
+    })
+    expect(slowNotice()).not.toBeNull()
+    expect(slowNotice()?.textContent).toBe(
+      englishMessages.SearchOverlay.slowSearch,
+    )
+
+    await act(async () => {
+      pendingSearch.resolve(searchResult("watch-search"))
+      await pendingSearch.promise
+      await Promise.resolve()
+    })
+    expect(slowNotice()).toBeNull()
+  })
+
+  it("restarts for a superseding query and ignores the stale completion", async () => {
+    const first = deferred<MockSearchResponse>()
+    const second = deferred<MockSearchResponse>()
+    mockedRunSearch
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise)
+    const input = await openSearchOverlay()
+    vi.useFakeTimers()
+
+    await submitSearch(input, "jesus")
+    act(() => vi.advanceTimersByTime(4_000))
+    expect(slowNotice()).not.toBeNull()
+
+    await submitSearch(input, "easter")
+    expect(slowNotice()).toBeNull()
+    act(() => vi.advanceTimersByTime(3_999))
+    expect(slowNotice()).toBeNull()
+    act(() => vi.advanceTimersByTime(1))
+    expect(slowNotice()).not.toBeNull()
+
+    await act(async () => {
+      first.resolve(searchResult("watch-search"))
+      await first.promise
+    })
+    expect(slowNotice()).not.toBeNull()
+    expect(mockedRunSearch).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      second.resolve(searchResult("watch-search"))
+      await second.promise
+    })
+    expect(slowNotice()).toBeNull()
+  })
+
+  it.each([
+    { elapsed: 3_000, replacement: "slow" },
+    { elapsed: 4_000, replacement: "slow" },
+    { elapsed: 3_000, replacement: "fast" },
+    { elapsed: 4_000, replacement: "fast" },
+  ])(
+    "restarts the same-text $replacement language replacement after $elapsed ms",
+    async ({ elapsed, replacement }) => {
+      mockEnglishAndSpanishSearchLanguages()
+      const first = deferred<MockSearchResponse>()
+      const second = deferred<MockSearchResponse>()
+      mockedRunSearch
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(second.promise)
+      const input = await openSearchOverlay()
+      vi.useFakeTimers()
+      await submitSearch(input, "jesus")
+      act(() => vi.advanceTimersByTime(elapsed))
+      expect(slowNotice() !== null).toBe(elapsed >= 4_000)
+
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="language-combobox-trigger"]',
+          )
+          ?.click()
+        await Promise.resolve()
+      })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="language-combobox-option"][data-language-slug="spanish-castilian"]',
+          )
+          ?.click()
+        await Promise.resolve()
+      })
+      await submitSearch(input, "jesus")
+      expect(mockedRunSearch).toHaveBeenCalledTimes(2)
+      expect(mockedRunSearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          query: "jesus",
+          languageContext: expect.objectContaining({
+            targetLanguageSlug: "spanish-castilian",
+          }),
+        }),
+      )
+      expect(slowNotice()).toBeNull()
+
+      if (replacement === "fast") {
+        act(() => vi.advanceTimersByTime(500))
+        await act(async () => {
+          second.resolve(searchResult("watch-search"))
+          await second.promise
+        })
+        expect(slowNotice()).toBeNull()
+        await act(async () => {
+          first.resolve(searchResult("watch-search"))
+          await first.promise
+        })
+        act(() => vi.advanceTimersByTime(5_000))
+        expect(slowNotice()).toBeNull()
+      } else {
+        act(() => vi.advanceTimersByTime(3_999))
+        expect(slowNotice()).toBeNull()
+        act(() => vi.advanceTimersByTime(1))
+        expect(slowNotice()).not.toBeNull()
+        await act(async () => {
+          first.resolve(searchResult("watch-search"))
+          await first.promise
+        })
+        expect(slowNotice()).not.toBeNull()
+        await act(async () => {
+          second.resolve(searchResult("watch-search"))
+          await second.promise
+        })
+        expect(slowNotice()).toBeNull()
+      }
+      expect(mockedRunSearch).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it("clears a slow notice when the visitor clears the submitted search", async () => {
+    const pendingSearch = deferred<MockSearchResponse>()
+    mockedRunSearch.mockReturnValueOnce(pendingSearch.promise)
+    const input = await openSearchOverlay()
+    vi.useFakeTimers()
+    await submitSearch(input, "jesus")
+    act(() => vi.advanceTimersByTime(4_000))
+    expect(slowNotice()).not.toBeNull()
+    const clearButton = document.querySelector<HTMLButtonElement>(
+      `button[aria-label="${englishMessages.FloatingSearch.clearSearch}"]`,
+    )
+    expect(clearButton).not.toBeNull()
+    await act(async () => clearButton?.click())
+    expect(slowNotice()).toBeNull()
+    await act(async () => {
+      pendingSearch.resolve(searchResult("watch-search"))
+      await pendingSearch.promise
+    })
+    expect(slowNotice()).toBeNull()
+  })
+
+  it("clears the notice when the slow search fails", async () => {
+    const pendingSearch = deferred<MockSearchResponse>()
+    mockedRunSearch.mockReturnValueOnce(pendingSearch.promise)
+    const input = await openSearchOverlay()
+    vi.useFakeTimers()
+
+    await submitSearch(input, "jesus")
+    act(() => {
+      vi.advanceTimersByTime(4_000)
+    })
+    expect(slowNotice()).not.toBeNull()
+
+    await act(async () => {
+      pendingSearch.reject(new Error("timeout"))
+      await pendingSearch.promise.catch(() => {})
+      await Promise.resolve()
+    })
+    expect(slowNotice()).toBeNull()
+  })
+})

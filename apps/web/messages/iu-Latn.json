@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Nittartakkap defaultimik ujarnerani oqaatsit atukkit",
     "removeLanguage": "{language} piiguk",
     "browseMode": "Ujaasiffimmi alakkarterineq",
-    "searchingInLanguage": "Pissarsiat {language}-miittut"
+    "searchingInLanguage": "Pissarsiat {language}-miittut",
+    "slowSearch": "Nalinginnaasumit sivisunerusumik ingerlavoq…"
   },
   "HeroPlayer": {
     "playWithSound": "Maanna takuuk",
@@ -766,5 +767,8 @@
     "loadError": "Niruarutait load-junngittuq. Ataani suli niruarunnaqtutit.",
     "grantError": "Personalization ikumatitaunngittuq. Pingahutauyut kisiani suli atuqtaaqtut.",
     "saveError": "Niruarutait save-junngittuq. Uqautigilugu kingulliqpaamik misigiaruk."
+  },
+  "WatchNoScript": {
+    "message": "Videot isiginnaarniarlugit ujaasinerlu atorniarlugu browserinni JavaScript ikiuk."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ويب سائيٽ جي ڊفالٽ ڳولا ٻولي استعمال ڪريو",
     "removeLanguage": "{language} هٽايو",
     "browseMode": "براؤز سرچ موڊ",
-    "searchingInLanguage": "{language} में नतीजा"
+    "searchingInLanguage": "{language} में नतीजा",
+    "slowSearch": "هن ۾ معمول کان وڌيڪ وقت لڳي رهيو آهي…"
   },
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",
@@ -766,5 +767,8 @@
     "loadError": "तोहार विकल्प लोड न थी सघ्यो। तोहां हिकाणे नीचे चुनी सघो था।",
     "grantError": "वैयक्तिकरण चालू न थी सघ्यो। सिर्फ ज़रूरी विकल्प उपलब्ध आहे।",
     "saveError": "तोहार विकल्प सहेज्यो न थी सघ्यो। मेहरबानी करी फेर कोशिश करो।"
+  },
+  "WatchNoScript": {
+    "message": "وڊيوز هلائڻ ۽ ڳولا استعمال ڪرڻ لاءِ پنهنجي برائوزر ۾ JavaScript آن ڪريو."
   }
 }

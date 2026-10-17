@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ਵੈੱਬਸਾਈਟ ਦੀ ਮੂਲ ਖੋਜ ਭਾਸ਼ਾ ਵਰਤੋ",
     "removeLanguage": "{language} ਹਟਾਓ",
     "browseMode": "ਖੋਜ ਬ੍ਰਾਊਜ਼ ਮੋਡ",
-    "searchingInLanguage": "ਨਤੀਜੇ ਸਿਰਫ਼ {language} ਵਿੱਚ"
+    "searchingInLanguage": "ਨਤੀਜੇ ਸਿਰਫ਼ {language} ਵਿੱਚ",
+    "slowSearch": "ਇਸ ਵਿੱਚ ਆਮ ਨਾਲੋਂ ਵੱਧ ਸਮਾਂ ਲੱਗ ਰਿਹਾ ਹੈ…"
   },
   "HeroPlayer": {
     "playWithSound": "ਹੁਣ ਦੇਖੋ",
@@ -766,5 +767,8 @@
     "loadError": "ਤੁਹਾਡੀ ਚੋਣ ਲੋਡ ਨਹੀਂ ਹੋ ਸਕੀ। ਤੁਸੀਂ ਫਿਰ ਵੀ ਹੇਠਾਂ ਚੋਣ ਕਰ ਸਕਦੇ ਹੋ।",
     "grantError": "ਨਿੱਜੀਕਰਨ ਚਾਲੂ ਨਹੀਂ ਕੀਤਾ ਜਾ ਸਕਿਆ। ਸਿਰਫ਼ ਜ਼ਰੂਰੀ ਵਿਕਲਪ ਉਪਲਬਧ ਹੈ।",
     "saveError": "ਤੁਹਾਡੀ ਚੋਣ ਸੰਭਾਲੀ ਨਹੀਂ ਜਾ ਸਕੀ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+  },
+  "WatchNoScript": {
+    "message": "ਵੀਡੀਓ ਚਲਾਉਣ ਅਤੇ ਖੋਜ ਵਰਤਣ ਲਈ ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ JavaScript ਚਾਲੂ ਕਰੋ।"
   }
 }

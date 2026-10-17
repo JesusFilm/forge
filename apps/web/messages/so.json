@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Isticmaal luqadda raadinta ee caadiga ah ee website-ka",
     "removeLanguage": "Ka saar {language}",
     "browseMode": "Habka dhex-dhaqaaqa raadinta",
-    "searchingInLanguage": "Natiijooyinka ku jira {language}"
+    "searchingInLanguage": "Natiijooyinka ku jira {language}",
+    "slowSearch": "Tani waxay qaadanaysaa waqti ka badan sidii caadiga ahayd…"
   },
   "HeroPlayer": {
     "playWithSound": "Hadda daawo",
@@ -766,5 +767,8 @@
     "loadError": "Lama soo dejin karin doorashadaada. Weli hoos ayaad ka dooran kartaa.",
     "grantError": "Shakhsiyeynta lama hawlgelin karin. Kaliya kuwa lama huraanka ah ayaa sii ahaanaya kuwo la heli karo.",
     "saveError": "Lama kaydin karin doorashadaada. Fadlan mar kale isku day."
+  },
+  "WatchNoScript": {
+    "message": "Daar JavaScript biraawsarkaaga si aad u daawato muuqaallada oo aad u isticmaasho raadinta."
   }
 }

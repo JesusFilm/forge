@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ويب سائيٽ جي ڊفالٽ ڳولا ٻولي استعمال ڪريو",
     "removeLanguage": "{language} هٽايو",
     "browseMode": "ڳولا براؤز موڊ",
-    "searchingInLanguage": "{language} ۾ نتيجا"
+    "searchingInLanguage": "{language} ۾ نتيجا",
+    "slowSearch": "هن ۾ معمول کان وڌيڪ وقت لڳي رهيو آهي…"
   },
   "HeroPlayer": {
     "playWithSound": "هاڻي ڏسو",
@@ -766,5 +767,8 @@
     "loadError": "توهان جي چونڊ لوڊ نه ٿي سگهي. توهان اڃا هيٺ چونڊ ڪري سگهو ٿا.",
     "grantError": "ذاتي بڻائڻ فعال نه ٿي سگهيو. صرف ضروري اختيار موجود رهندو.",
     "saveError": "توهان جي چونڊ محفوظ نه ٿي سگهي. مهرباني ڪري ٻيهر ڪوشش ڪريو."
+  },
+  "WatchNoScript": {
+    "message": "وڊيوز هلائڻ ۽ ڳولا استعمال ڪرڻ لاءِ پنهنجي برائوزر ۾ JavaScript آن ڪريو."
   }
 }

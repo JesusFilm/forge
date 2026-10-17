@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Standaardzoektaal van de website gebruiken",
     "removeLanguage": "{language} verwijderen",
     "browseMode": "Zoek- en bladermodus",
-    "searchingInLanguage": "Resultaten in de taal: {language}"
+    "searchingInLanguage": "Resultaten in de taal: {language}",
+    "slowSearch": "Dit duurt langer dan normaal…"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kijken",
@@ -766,5 +767,8 @@
     "loadError": "Uw keuze kon niet worden geladen. U kunt hieronder nog steeds een keuze maken.",
     "grantError": "Personalisatie kon niet worden ingeschakeld. Alleen essentieel blijft beschikbaar.",
     "saveError": "Uw keuze kon niet worden opgeslagen. Probeer het opnieuw."
+  },
+  "WatchNoScript": {
+    "message": "Zet JavaScript aan in je browser om video's af te spelen en te zoeken."
   }
 }

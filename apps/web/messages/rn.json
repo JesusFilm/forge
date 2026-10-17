@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Koresha ururimi rusanzwe rw’urubuga rwo kurondera",
     "removeLanguage": "Kuraho {language}",
     "browseMode": "Uburyo bwo gushakisha",
-    "searchingInLanguage": "Ibisubizo vyo mu {language}"
+    "searchingInLanguage": "Ibisubizo vyo mu {language}",
+    "slowSearch": "Ibi biratwara umwanya muremure kuruta uko bisanzwe…"
   },
   "HeroPlayer": {
     "playWithSound": "Raba ubu",
@@ -766,5 +767,8 @@
     "loadError": "Ihitamwo ryawe ntiryashoboye kwinjizwa. Uracashobora guhitamwo munsi.",
     "grantError": "Ntivyashobotse gukoresha uguhindura kukujana. Ivy'ingenzi gusa biracaboneka.",
     "saveError": "Ihitamwo ryawe ntiryashoboye kubikwa. Gerageza kandi."
+  },
+  "WatchNoScript": {
+    "message": "Fungura JavaScript muri mushakisha yawe kugira ngo urabe amavidewo kandi ukoreshe ukurondera."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Brúka standard leitismál á heimasíðuni",
     "removeLanguage": "Tak {language} burtur",
     "browseMode": "Leita-blaðingarháttur",
-    "searchingInLanguage": "Úrslit á {language}"
+    "searchingInLanguage": "Úrslit á {language}",
+    "slowSearch": "Hetta tekur longri tíð enn vanligt…"
   },
   "HeroPlayer": {
     "playWithSound": "Hygg nú",
@@ -766,5 +767,8 @@
     "loadError": "Títt val kundi ikki lesast inn. Tú kanst kortini velja niðanfyri.",
     "grantError": "Persónstýring kundi ikki kveikjast. Bara neyðugar eru framvegis tøkar.",
     "saveError": "Títt val kundi ikki goymast. Royn aftur."
+  },
+  "WatchNoScript": {
+    "message": "Tendra JavaScript í kaganum fyri at spæla videobrot og brúka leitingina."
   }
 }

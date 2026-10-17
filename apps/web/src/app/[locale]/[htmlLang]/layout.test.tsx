@@ -1,10 +1,12 @@
 import {
   Children,
+  Suspense,
   isValidElement,
   type ReactElement,
   type ReactNode,
 } from "react"
 import { describe, expect, it, vi } from "vitest"
+import { NextIntlClientProvider } from "next-intl"
 
 vi.mock("@/lib/watch-font", () => ({
   montserrat: { variable: "font-montserrat" },
@@ -16,6 +18,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
+import { WatchNoScriptNotice } from "@/components/watch/WatchNoScriptNotice"
 
 function findElement(
   node: ReactNode,
@@ -122,6 +125,45 @@ describe("Watch root layout", () => {
 
     expect(findElement(layout, GoogleAnalytics)).not.toBeNull()
     expect(findElement(layout, DatadogRum)).not.toBeNull()
+  })
+
+  it("tells visitors without JavaScript that the player and search need it", async () => {
+    const layout = await RootLayout({
+      children: <main>Watch page</main>,
+      params: Promise.resolve({ locale: "en", htmlLang: "english" }),
+    })
+
+    const body = findElement(layout, "body")
+    expect(body).not.toBeNull()
+    expect(findElement(body, WatchNoScriptNotice)).not.toBeNull()
+  })
+
+  it("places the explanation first in the body, outside streamed page content", async () => {
+    const layout = await RootLayout({
+      children: (
+        <Suspense fallback={<main>Loading Watch page</main>}>
+          <main>
+            <footer>
+              <a href="https://www.jesusfilm.org/terms/">Terms</a>
+            </footer>
+          </main>
+        </Suspense>
+      ),
+      params: Promise.resolve({ locale: "en", htmlLang: "english" }),
+    })
+    const body = findElement(layout, "body")
+    const bodyChildren = Children.toArray(
+      (body as ReactElement<{ children: ReactNode }>).props.children,
+    )
+    const firstChild = bodyChildren[0]
+    expect(isValidElement(firstChild) ? firstChild.type : null).toBe(
+      WatchNoScriptNotice,
+    )
+    const provider = findElement(bodyChildren[1], NextIntlClientProvider)
+    expect(provider).not.toBeNull()
+    expect(findElement(provider, Suspense)).not.toBeNull()
+    expect(findElement(provider, "footer")).not.toBeNull()
+    expect(findElement(provider, WatchNoScriptNotice)).toBeNull()
   })
 
   it("preserves recommendation and search providers without beta signup", async () => {

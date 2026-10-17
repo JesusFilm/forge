@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya ndenge nyonso ya site",
     "removeLanguage": "Longola {language}",
     "browseMode": "Mode ya kotala boluki",
-    "searchingInLanguage": "Aye so awara na yanga: {language}"
+    "searchingInLanguage": "Aye so awara na yanga: {language}",
+    "slowSearch": "Ezali kozwa ntango mingi koleka momesano…"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
@@ -766,5 +767,8 @@
     "loadError": "A lingbi ape ti laa mbeti ti mo. Walâ mo lingbi ti hinga na bêbe so na nze.",
     "grantError": "A lingbi ape ti mû nzönî na kusala na lege ti mo. Mbeni ti mfingo kaka ayeke duti ape.",
     "saveError": "A lingbi ape ti bika mbeti ti mo. Biani, zia âla na ndâ ti kusala ndo ake."
+  },
+  "WatchNoScript": {
+    "message": "Fungola JavaScript na navigateur na yo mpo na kobɛta ba video mpe kosalela boluki."
   }
 }

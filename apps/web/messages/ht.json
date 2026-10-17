@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sèvi ak lang rechèch default sit la",
     "removeLanguage": "Retire {language}",
     "browseMode": "Mòd browse rechèch",
-    "searchingInLanguage": "Rezilta an {language}"
+    "searchingInLanguage": "Rezilta an {language}",
+    "slowSearch": "Sa a ap pran plis tan pase nòmal…"
   },
   "HeroPlayer": {
     "playWithSound": "Gade kounye a",
@@ -766,5 +767,8 @@
     "loadError": "Nou pa t kapab chaje chwa ou a. Ou ka toujou chwazi anba a.",
     "grantError": "Nou pa t kapab aktive pèsonalizasyon an. Esansyèl sèlman rete disponib.",
     "saveError": "Nou pa t kapab anrejistre chwa ou a. Tanpri eseye ankò."
+  },
+  "WatchNoScript": {
+    "message": "Aktive JavaScript nan navigatè w pou w ka jwe videyo epi itilize rechèch la."
   }
 }

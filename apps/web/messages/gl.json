@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usar o idioma de busca predeterminado do sitio web",
     "removeLanguage": "Eliminar {language}",
     "browseMode": "Modo de exploración da busca",
-    "searchingInLanguage": "Resultados en {language}"
+    "searchingInLanguage": "Resultados en {language}",
+    "slowSearch": "Isto está a tardar máis do habitual…"
   },
   "HeroPlayer": {
     "playWithSound": "Ver agora",
@@ -766,5 +767,8 @@
     "loadError": "Non foi posible cargar a túa elección. Aínda así, podes escoller abaixo.",
     "grantError": "Non foi posible activar a personalización. Segue dispoñible a opción de só esenciais.",
     "saveError": "Non foi posible gardar a túa elección. Téntao de novo."
+  },
+  "WatchNoScript": {
+    "message": "Activa JavaScript no teu navegador para reproducir vídeos e usar a busca."
   }
 }

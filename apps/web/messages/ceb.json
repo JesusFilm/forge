@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gamita ang default nga pinulongan sa pagpangita sa website",
     "removeLanguage": "Kuhaa ang {language}",
     "browseMode": "Mode sa pag-browse sa pagpangita",
-    "searchingInLanguage": "Mga resulta sa {language}"
+    "searchingInLanguage": "Mga resulta sa {language}",
+    "slowSearch": "Mas dugay kini kaysa sa naandan…"
   },
   "HeroPlayer": {
     "playWithSound": "Tan-awa karon",
@@ -766,5 +767,8 @@
     "loadError": "Dili ma-load ang imong kapilian. Makapili gihapon ka sa ubos.",
     "grantError": "Dili ma-enable ang personalisasyon. Ang hinungdanon lang nagpabiling magamit.",
     "saveError": "Dili ma-save ang imong kapilian. Palihog sulayi pag-usab."
+  },
+  "WatchNoScript": {
+    "message": "I-on ang JavaScript sa imong browser aron makapatukar og mga video ug magamit ang pagpangita."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language kɛ",
     "removeLanguage": "{language} bɔ",
     "browseMode": "Search kɔ browse mode",
-    "searchingInLanguage": "{language} ka results"
+    "searchingInLanguage": "{language} ka results",
+    "slowSearch": "Dafa yàgg lu ëpp ni mu daan yàgge…"
   },
   "HeroPlayer": {
     "playWithSound": "Kɔnɔŋa",
@@ -766,5 +767,8 @@
     "loadError": "Maneesul a yeb sa tànn. Waaye mën nga tànn fii ci suuf.",
     "grantError": "Maneesul a def personalization. Yu am solo rekk lañuy des.",
     "saveError": "Maneesul a denc sa tànn. Jéemaatal."
+  },
+  "WatchNoScript": {
+    "message": "Ubbil JavaScript ci sa browser ngir doxal video yi te seet."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gunakan bahasa carian lalai laman web",
     "removeLanguage": "Buang {language}",
     "browseMode": "Mod pelayaran carian",
-    "searchingInLanguage": "Hasil dalam {language}"
+    "searchingInLanguage": "Hasil dalam {language}",
+    "slowSearch": "Ini mengambil masa lebih lama daripada biasa…"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
@@ -766,5 +767,8 @@
     "loadError": "Pilihan anda tidak dapat dimuatkan. Anda masih boleh membuat pilihan di bawah.",
     "grantError": "Pemperibadian tidak dapat diaktifkan. Pilihan penting sahaja masih tersedia.",
     "saveError": "Pilihan anda tidak dapat disimpan. Sila cuba lagi."
+  },
+  "WatchNoScript": {
+    "message": "Hidupkan JavaScript dalam pelayar anda untuk memainkan video dan menggunakan carian."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ใช้ภาษาค้นหาเริ่มต้นของเว็บไซต์",
     "removeLanguage": "นำ {language} ออก",
     "browseMode": "โหมดเลือกดูสำหรับค้นหา",
-    "searchingInLanguage": "ผลลัพธ์ในภาษา {language}"
+    "searchingInLanguage": "ผลลัพธ์ในภาษา {language}",
+    "slowSearch": "ใช้เวลานานกว่าปกติ…"
   },
   "HeroPlayer": {
     "playWithSound": "ดูตอนนี้",
@@ -766,5 +767,8 @@
     "loadError": "ไม่สามารถโหลดตัวเลือกของคุณได้ แต่คุณยังเลือกด้านล่างได้",
     "grantError": "ไม่สามารถเปิดใช้การปรับให้เหมาะกับคุณได้ ยังใช้ได้เฉพาะคุกกี้ที่จำเป็น",
     "saveError": "ไม่สามารถบันทึกตัวเลือกของคุณได้ โปรดลองอีกครั้ง"
+  },
+  "WatchNoScript": {
+    "message": "โปรดเปิด JavaScript ในเบราว์เซอร์ของคุณเพื่อเล่นวิดีโอและใช้การค้นหา"
   }
 }

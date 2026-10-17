@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Websaýtyň deslapky gözleg dilini ulanyň",
     "removeLanguage": "{language} aýyr",
     "browseMode": "Gözden geçiriş tertibi",
-    "searchingInLanguage": "Netijeler {language} dilinde"
+    "searchingInLanguage": "Netijeler {language} dilinde",
+    "slowSearch": "Bu adatdakysyndan uzaga çekýär…"
   },
   "HeroPlayer": {
     "playWithSound": "Häzir seret",
@@ -766,5 +767,8 @@
     "loadError": "Saýlawyňyz ýükläp bolmady. Şeýle-de bolsa, aşakda saýlap bilersiňiz.",
     "grantError": "Şahsylaşdyrmany işjeňleşdirip bolmady. Diňe zerur görnüşi elýeterli bolmagynda galýar.",
     "saveError": "Saýlawyňyzy ýatda saklap bolmady. Täzeden synanyşyň."
+  },
+  "WatchNoScript": {
+    "message": "Wideolary görmek we gözlegi ulanmak üçin brauzeriňizde JavaScript-i açyň."
   }
 }

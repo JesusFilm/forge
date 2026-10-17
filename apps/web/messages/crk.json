@@ -232,7 +232,8 @@
     "queryLanguageDetected": "{language} detected",
     "searchInLanguage": "Search in {language}",
     "searchingInLanguage": "Searching in {language}",
-    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language"
+    "tryDifferentKeywordsOrLanguage": "Try different keywords or choose another search language",
+    "slowSearch": "This is taking longer than usual…"
   },
   "HeroPlayer": {
     "playWithSound": "Watch now",
@@ -766,5 +767,8 @@
     "start": "Download all",
     "downloadAgain": "Download again",
     "retryFailed": "Retry failed"
+  },
+  "WatchNoScript": {
+    "message": "Turn on JavaScript in your browser to play videos and use search."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Uza língua padrãu di buska di site",
     "removeLanguage": "Tira {language}",
     "browseMode": "Modu di navega buska",
-    "searchingInLanguage": "Resultadus na {language}"
+    "searchingInLanguage": "Resultadus na {language}",
+    "slowSearch": "Sta leba mas tempu di ki kustumadu…"
   },
   "HeroPlayer": {
     "playWithSound": "Odja agora",
@@ -766,5 +767,8 @@
     "loadError": "Mënuñu a yebbi sa njagui. Waaye man nga a tann ci suuf.",
     "grantError": "Mënuñu a dogal personalisasion. Yi mu soxla rekk la fi des.",
     "saveError": "Mënuñu a denc sa njagui. Jéemaatal."
+  },
+  "WatchNoScript": {
+    "message": "Liga JavaScript na bu navegador pa toka vídeus i uza buska."
   }
 }

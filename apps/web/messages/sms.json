@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Käytä sivuston ominaista hakukiel",
     "removeLanguage": "Poista {language}",
     "browseMode": "Selaus-tila",
-    "searchingInLanguage": "Tulõõk kielessä {language}"
+    "searchingInLanguage": "Tulõõk kielessä {language}",
+    "slowSearch": "Tät kestt tavallista kauemmin…"
   },
   "HeroPlayer": {
     "playWithSound": "Kattso nyt",
@@ -766,5 +767,8 @@
     "loadError": "Tuʹst váljjum ij puʹhtti luõdded. Vuäit še vaalid vuâlla.",
     "grantError": "Persoonlažšem ij puʹhtti aktiviirâd. Tuʹmm vuâđđ lij še âânnmõššest.",
     "saveError": "Tuʹst váljjum ij puʹhtti vuäǯǯad. Vueiʹtǩǩed ođđest."
+  },
+  "WatchNoScript": {
+    "message": "Ota JavaScript käyttöön selaimessa, jotta voit toistaa videoita ja käyttää hakua."
   }
 }

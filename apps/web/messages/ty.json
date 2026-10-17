@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Faaohipa i te reo imi taunoa o te tahua itenati",
     "removeLanguage": "A peepe {language}",
     "browseMode": "Te huru hi'opo'a imi",
-    "searchingInLanguage": "Te mau mea i itehia na roto i te reo {language}"
+    "searchingInLanguage": "Te mau mea i itehia na roto i te reo {language}",
+    "slowSearch": "Te maoro roa atu nei i te mea matauhia…"
   },
   "HeroPlayer": {
     "playWithSound": "Mata'ita'i i teie nei",
@@ -766,5 +767,8 @@
     "loadError": "‘Aita i taea te fa‘auta i tā ‘oe mā‘itira‘a. E nehenehe noa â rā ‘oe e mā‘iti i raro nei.",
     "grantError": "‘Aita i taea te fa‘ahohe i te fa‘atanora‘a taata hō‘e. Te vai noa ra te mā‘itira‘a faufa‘a roa ana‘e.",
     "saveError": "‘Aita i taea te tāpura i tā ‘oe mā‘itira‘a. A tāmata fa‘ahou."
+  },
+  "WatchNoScript": {
+    "message": "A faaohipa i te JavaScript i roto i to outou browser no te hi'o i te mau video e no te imi."
   }
 }

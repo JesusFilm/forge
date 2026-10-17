@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Websaịtị ƒe default search gbegblẽ la ti",
     "removeLanguage": "Tso {language} ŋu",
     "browseMode": "Nusiwo me didi ƒe nɔnɔme",
-    "searchingInLanguage": "Se ƒe emetsonuwo le {language} me"
+    "searchingInLanguage": "Se ƒe emetsonuwo le {language} me",
+    "slowSearch": "Ele ɣeyiɣi didi wum xɔm wu ale si wòwɔna ɖaa…"
   },
   "HeroPlayer": {
     "playWithSound": "Kpɔ fifi laa",
@@ -766,5 +767,8 @@
     "loadError": "Míate ŋu tsɔ wò tiaɖoɖo la ava o. Ke hã àte ŋu atia le ete.",
     "grantError": "Míate ŋu wɔnɔ personalization dzi o. Essential only gale nɔ anyi.",
     "saveError": "Míate ŋu dzi wò tiaɖoɖo la ɖo o. Taflatse te kpɔ ake."
+  },
+  "WatchNoScript": {
+    "message": "Tsɔ JavaScript de dɔ me le wò browser me be nàte ŋu akpɔ videowo eye nàwɔ search ŋu dɔ."
   }
 }

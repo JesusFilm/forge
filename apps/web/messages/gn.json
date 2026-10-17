@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Eipuru jeheka ñe'ẽ website por defecto",
     "removeLanguage": "Embogue {language}",
     "browseMode": "Jeheka reikundaha hag̃ua",
-    "searchingInLanguage": "Resultados {language}-pe"
+    "searchingInLanguage": "Resultados {language}-pe",
+    "slowSearch": "Ko jeheka ohasave aravo ojehuháicha jepi…"
   },
   "HeroPlayer": {
     "playWithSound": "Epytáke ko'ág̃a",
@@ -766,5 +767,8 @@
     "loadError": "Nde jeporavo ndaikatúi oñemyenyhẽ. Ikatu gueteri eiporavo iguýpe.",
     "grantError": "Ndaikatúi oñemyendy ñemomba'ete ndéve g̃uarã. Tekotevẽva añoite opyta disponible.",
     "saveError": "Nde jeporavo ndaikatúi oñeñongatu. Eha'ãjey."
+  },
+  "WatchNoScript": {
+    "message": "Emyendy JavaScript ne navegador-pe ikatu hag̃uáicha reñembopu videos ha reheka."
   }
 }

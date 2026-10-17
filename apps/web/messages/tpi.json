@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Yusim default search tokples bilong website",
     "removeLanguage": "Rausim {language}",
     "browseMode": "Rot bilong painim na browseim",
-    "searchingInLanguage": "Ol result long {language}"
+    "searchingInLanguage": "Ol result long {language}",
+    "slowSearch": "Dispela i kisim longpela taim winim olgeta taim…"
   },
   "HeroPlayer": {
     "playWithSound": "Lukluk nau",
@@ -766,5 +767,8 @@
     "loadError": "No inap opim mak bilong yu. Tasol yu inap yet long makim aninit.",
     "grantError": "No inap kirapim dispela pasin bilong mekim i stret long yu. Opsen bilong ol em i mas stap tasol i stap yet.",
     "saveError": "No inap seivim mak bilong yu. Plis traim gen."
+  },
+  "WatchNoScript": {
+    "message": "Plis onim JavaScript long browser bilong yu bilong pleim ol vidio na painim samting."
   }
 }

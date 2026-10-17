@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gamita so default search language sa website",
     "removeLanguage": "Tanggalon {language}",
     "browseMode": "Mode sa search browse",
-    "searchingInLanguage": "Mga result sa {language}"
+    "searchingInLanguage": "Mga result sa {language}",
+    "slowSearch": "Malugay i ka-search kagina…"
   },
   "HeroPlayer": {
     "playWithSound": "Panonood na",
@@ -766,5 +767,8 @@
     "loadError": "Di naikarga so pinili mo. Makapili ka piyan sa baba.",
     "grantError": "Di napagana so personalisasyon. Magagamit piyan so importante lang.",
     "saveError": "Di naisimpan so pinili mo. Pakisubuk tano."
+  },
+  "WatchNoScript": {
+    "message": "Paandara so JavaScript sa browser mo para mapaandar so mga video ago magamit so search."
   }
 }

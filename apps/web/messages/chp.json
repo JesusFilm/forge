@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ᐊᑐᕐᓗᒍ ᐅᒃᑯᐃᓯᕐᕕᐅᑉ ᓂᐱᐊ ᓇᓂᓂᖅ",
     "removeLanguage": "ᑎᑎᖅᑲᖅ {language}",
     "browseMode": "ᓇᓂᓂᖅ ᐸᐃᕆᓂᖅ",
-    "searchingInLanguage": "{language} yatıé kʼé tʼáh náhɂą́"
+    "searchingInLanguage": "{language} yatıé kʼé tʼáh náhɂą́",
+    "slowSearch": "ᓇᓂᓐᓂᖅ ᐊᑯᓂᐅᓂᖅᓴᐅᔪᖅ…"
   },
   "HeroPlayer": {
     "playWithSound": "ᑕᑯᖃᑦᑕᕆ",
@@ -766,5 +767,8 @@
     "loadError": "Ne kʼegháltsʼį́ dághełtsʼenı́le sį́ gha. Kʼola ekwí gha kʼegháltsʼį́ nídhį.",
     "grantError": "Ajáné segha egháltsʼį́ dághełtsʼenı́le. Tʼá hotʼį́ni tsʼįlı̨ kʼeézhı kʼola hotʼį́.",
     "saveError": "Ne kʼegháltsʼį́ dághełtsʼenı́le esį́ gha. Tʼá segha nághałtı."
+  },
+  "WatchNoScript": {
+    "message": "JavaScript ᐃᑲᐅᑎᒍᒃ ᐃᓕᓐᓂ ᐊᓯᔾᔨᕐᓂᖅ ᑕᑯᓐᓇᕐᓂᐊᕐᓗᒋᑦ ᐊᒻᒪ ᓇᓂᓐᓂᖅ ᐊᑐᕐᓗᒍ."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Seqdec tutlayt n usmel amezwaru n web",
     "removeLanguage": "Kkes {language}",
     "browseMode": "Askar n anadi brows",
-    "searchingInLanguage": "Iriken deg {language}"
+    "searchingInLanguage": "Iriken deg {language}",
+    "slowSearch": "Aya yettaṭṭaf ugar n wakud n wayen yellan d tannumi…"
   },
   "HeroPlayer": {
     "playWithSound": "Wali tura",
@@ -766,5 +767,8 @@
     "loadError": "Ur nezmir ara ad d-nawi tafrant-ik. Mazal tzemreḍ ad tferneḍ ddaw-a.",
     "grantError": "Ur yezmir ara ad yermed usagen udmawan. Izwaren kan qqimen llan.",
     "saveError": "Ur nezmir ara ad nsekles tafrant-ik. Ma ulac aɣilif, ɛreḍ tikelt-nniḍen."
+  },
+  "WatchNoScript": {
+    "message": "Rmed JavaScript deg yiminig-nnek akken ad tesleḍ i tvidyutin yerna ad tnadiḍ."
   }
 }

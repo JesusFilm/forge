@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "使用網站預設搜尋語言",
     "removeLanguage": "移除 {language}",
     "browseMode": "搜尋瀏覽模式",
-    "searchingInLanguage": "干焦顯示 {language} 的結果"
+    "searchingInLanguage": "干焦顯示 {language} 的結果",
+    "slowSearch": "這比平常較久…"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",
@@ -766,5 +767,8 @@
     "loadError": "你的選擇無法度載入。你猶原會當佇下跤做選擇。",
     "grantError": "無法度啟用個人化。猶原會當使用干焦必要的設定。",
     "saveError": "你的選擇無法度儲存。請閣試一遍。"
+  },
+  "WatchNoScript": {
+    "message": "請佇你的瀏覽器開啟 JavaScript，才會當播放影片佮使用搜尋。"
   }
 }
