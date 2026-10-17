@@ -9,3 +9,20 @@ export function catalogPolicyFor(provisionalLocaleCount) {
     ? PROVISIONAL_CATALOG_POLICY
     : COMPLETED_CATALOG_POLICY
 }
+
+// These exact messages are valid Spanish as well as English. Keep the allowance
+// tied to the locale, key, and both values so it cannot admit copied sentences.
+const SPANISH_SHARED_MESSAGES = {
+  "VideoLabels.video": "Video",
+  "LanguageInventory.videoCount":
+    "{count, plural, one {# video} other {# videos}}",
+}
+
+export function isLocaleSharedMessage(locale, key, source, value) {
+  return (
+    locale === "es" &&
+    Object.hasOwn(SPANISH_SHARED_MESSAGES, key) &&
+    SPANISH_SHARED_MESSAGES[key] === source &&
+    value === source
+  )
+}

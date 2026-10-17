@@ -1029,6 +1029,125 @@ describe("translate UI catalogs", () => {
     ).toEqual(catalog)
   })
 
+  it("accepts Spanish shared video words in a translation response without allowing copied English", async () => {
+    const messages = {
+      "VideoLabels.video": "Video",
+      "LanguageInventory.videoCount":
+        "{count, plural, one {# video} other {# videos}}",
+      "common.greeting": "Hello",
+    }
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        chatCompletion(
+          Object.entries({ ...messages, "common.greeting": "Hola" }).map(
+            ([key, value]) => ({ key, value }),
+          ),
+        ),
+      )
+    const options = {
+      apiKey: "test-api-key",
+      locale: "es",
+      messages,
+      references: {},
+      model: MODEL,
+      maxAttempts: 1,
+      minimumChangeRatio: 1,
+      fetchImpl,
+    }
+    await expect(requestTranslations(options)).resolves.toMatchObject({
+      translations: { ...messages, "common.greeting": "Hola" },
+    })
+    fetchImpl.mockResolvedValue(
+      chatCompletion(
+        Object.entries(messages).map(([key, value]) => ({ key, value })),
+      ),
+    )
+    await expect(requestTranslations(options)).rejects.toThrow(
+      "Translation changed only",
+    )
+  })
+
+  it("resumes and promotes valid Spanish shared words without retranslating them", async () => {
+    const source = {
+      VideoLabels: { video: "Video" },
+      LanguageInventory: {
+        videoCount: "{count, plural, one {# video} other {# videos}}",
+      },
+    }
+    const fixture = createFixture({
+      source,
+      currentCatalog: source,
+      progressCatalog: source,
+    })
+    const fetchImpl = vi.fn()
+    vi.stubGlobal("fetch", fetchImpl)
+    const environment = { OPENAI_API_KEY: "test-api-key" }
+    await main({ args: fixture.args, environment })
+    const progress = JSON.parse(readFileSync(fixture.progressPath, "utf-8"))
+    progress.catalogDigests.es = "stale-digest"
+    writeJson(fixture.progressPath, progress)
+    await main({ args: [...fixture.args, "--promote"], environment })
+    expect(fetchImpl).not.toHaveBeenCalled()
+    const manifest = JSON.parse(readFileSync(fixture.manifestPath, "utf-8"))
+    expect(manifest.provisionalLocales).toEqual([])
+    expect(
+      manifest.metadata.translation.localeProvenance.es.catalogDigest,
+    ).toBe(contentDigest(flattenCatalog(source)))
+  })
+
+  it("accepts only the exact Spanish shared video messages", () => {
+    const messages = {
+      "VideoLabels.video": "Video",
+      "LanguageInventory.videoCount":
+        "{count, plural, one {# video} other {# videos}}",
+    }
+    expect(() =>
+      validateCatalogIntegrity(messages, messages, 0, undefined, "es"),
+    ).not.toThrow()
+    expect(() =>
+      validateCatalogIntegrity(messages, messages, 0, undefined, "fr"),
+    ).toThrow("Catalog retains 2 exact English messages; maximum is 0")
+    expect(() =>
+      validateCatalogIntegrity(
+        { "common.video": "Video" },
+        { "common.video": "Video" },
+        0,
+        undefined,
+        "es",
+      ),
+    ).toThrow("Catalog retains 1 exact English messages; maximum is 0")
+    expect(() =>
+      validateCatalogIntegrity(
+        { "VideoLabels.video": "Watch video" },
+        { "VideoLabels.video": "Watch video" },
+        0,
+        undefined,
+        "es",
+      ),
+    ).toThrow("Catalog retains 1 exact English messages; maximum is 0")
+    expect(() =>
+      validateCatalogIntegrity(
+        { ...messages, "common.greeting": "Hello" },
+        { ...messages, "common.greeting": "Hello" },
+        0,
+        undefined,
+        "es",
+      ),
+    ).toThrow("Catalog retains 1 exact English messages; maximum is 0")
+    expect(() =>
+      validateCatalogIntegrity(
+        { "VideoLabels.video": "Video" },
+        { "VideoLabels.video": "video\u200b" },
+        0,
+        undefined,
+        "es",
+      ),
+    ).toThrow(
+      "Catalog retains 1 case/format-only English messages; maximum is 0",
+    )
+  })
+
   it("rejects non-neutral English copies after case and format normalization", () => {
     expect(() =>
       validateCatalogIntegrity(

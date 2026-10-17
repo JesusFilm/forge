@@ -6169,7 +6169,7 @@
         "es": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "e91f8d782a13d0f04887c85f740f699948dfdc3165f3a32f1422e549ac6bdd55",
+          "catalogDigest": "9b3c79fc62a16eb4f1f9e829117db94fb4b823a21da7eec084b1e5743fe94ff0",
           "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {

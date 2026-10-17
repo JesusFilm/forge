@@ -1,3 +1,5 @@
+import { isLocaleSharedMessage } from "./ui-catalog-policy.mjs"
+
 const FALLBACK_LANGUAGE_NAMES = {
   bjt: "Balanta-Ganja",
   bsc: "Bassari (Oniyan)",
@@ -519,7 +521,9 @@ function validateTranslation(
   }
 
   const changedMessages = Object.entries(sourceMessages).filter(
-    ([key, source]) => !isSourceEquivalent(source, translated.get(key)),
+    ([key, source]) =>
+      !isSourceEquivalent(source, translated.get(key)) ||
+      isLocaleSharedMessage(locale, key, source, translated.get(key)),
   ).length
   if (
     minimumChangeRatio > 0 &&

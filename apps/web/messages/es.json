@@ -237,7 +237,7 @@
     "loadingVideo": "Cargando video"
   },
   "VideoLabels": {
-    "video": "Vídeo",
+    "video": "Video",
     "segment": "Segmento",
     "episode": "Episodio",
     "featureFilm": "Largometraje",
@@ -274,7 +274,7 @@
     "heroDescription": "Explora películas de Jesús, historias bíblicas, series de discipulado y videos de alcance disponibles en {language}. Los videos completamente doblados aparecen primero, con las opciones solo con subtítulos debajo.",
     "languageCollection": "Colección de idiomas",
     "itemCount": "{count, plural, one {# elemento} other {# elementos}}",
-    "videoCount": "{count, plural, one {# vídeo} other {# vídeos}}",
+    "videoCount": "{count, plural, one {# video} other {# videos}}",
     "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} en {groupCount, plural, one {# grupo} other {# grupos}}",
     "sectionNavLabel": "Secciones del inventario de idiomas",
     "sectionMetricLabel": "{label}: {count}",

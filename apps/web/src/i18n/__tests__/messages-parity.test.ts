@@ -8,6 +8,7 @@ import {
   hasUiLocale,
 } from "@/i18n/generated-ui-locales"
 import { isSourceEquivalent } from "../../../scripts/openai-catalog-translator.mjs"
+import { isLocaleSharedMessage } from "../../../scripts/ui-catalog-policy.mjs"
 
 vi.unmock("next-intl")
 
@@ -178,17 +179,25 @@ describe("Watch catalog copy corrections", () => {
     expect(leftovers).toEqual([])
   })
 
-  it("spells Spanish 'video' without the Spain-only accent where English copy allows it", () => {
-    // The two remaining accented messages would be byte-identical to English
-    // without the accent ("Video", "# video/# videos"), which the
-    // translated-copy gate below rejects. Aligning them needs a policy
-    // decision on a per-locale neutral exemption, so they are pinned here.
+  it("uses Latin American Spanish video consistently, including ICU counts", () => {
     expect(
       Object.entries(flattenCatalog("es"))
         .filter(([, value]) => /vídeo/i.test(value))
-        .map(([path]) => path)
-        .sort(),
-    ).toEqual(["LanguageInventory.videoCount", "VideoLabels.video"])
+        .map(([path]) => path),
+    ).toEqual([])
+    const t = createTranslator({
+      locale: "es",
+      messages: loadCatalog("es") as AbstractIntlMessages,
+    }) as unknown as (
+      key: string,
+      values?: Record<string, string | number>,
+    ) => string
+    expect(t("VideoLabels.video")).toBe("Video")
+    expect(t("LanguageInventory.videoCount", { count: 1 })).toBe("1 video")
+    expect(t("LanguageInventory.videoCount", { count: 2 })).toBe("2 videos")
+    expect(
+      t("LanguagePickerModal.seeAllVideosInLanguage", { language: "español" }),
+    ).toBe("Ver todos los videos en español")
   })
 })
 
@@ -389,7 +398,9 @@ describe("non-English catalogs — translated-copy gate", () => {
       .flatMap((locale) => {
         const catalog = flattenCatalog(locale)
         const exactCopies = translatablePaths.filter(
-          (path) => catalog[path] === source[path],
+          (path) =>
+            catalog[path] === source[path] &&
+            !isLocaleSharedMessage(locale, path, source[path], catalog[path]),
         )
         const normalizedCopies = translatablePaths.filter(
           (path) =>
