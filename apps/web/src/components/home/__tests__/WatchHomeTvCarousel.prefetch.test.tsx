@@ -12,7 +12,15 @@
 import { act, type ReactNode } from "react"
 import { createRoot } from "react-dom/client"
 import { NextIntlClientProvider } from "next-intl"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 import enMessages from "../../../../messages/en.json"
 
@@ -55,12 +63,25 @@ vi.mock("@forge/video-player/mux-video", async () => {
   }
 })
 
+// The carousel reaches the player through `next/dynamic`. Under vitest the real
+// one is the legacy loader, which swallows the ref and hands the callback ref
+// `{ retry }` instead of the <video>; production's app-router alias forwards
+// it. Use the shared stand-in so the ref is a real element, as
+// `WatchHomePage.test.tsx` does.
+vi.mock("next/dynamic", async () => import("@/__mocks__/next-dynamic-sync"))
+
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 
 import { HOVER_CAPABLE_POINTER_QUERY } from "../useTouchGatedPrefetch"
 import { WatchHomeTvCarousel } from "../WatchHomeTvCarousel"
 
 const WATCH_NOW = "a[href*='autoplay=1']"
+
+// The stub keeps `React.lazy`'s shape; warming the mocked module, as
+// `WatchHomePage.test.tsx` does, makes the first attach deterministic.
+beforeAll(async () => {
+  await import("@forge/video-player/mux-video")
+})
 
 let container: HTMLDivElement
 let root: ReturnType<typeof createRoot>
@@ -71,8 +92,8 @@ beforeEach(() => {
   root = createRoot(container)
 })
 
-afterEach(() => {
-  act(() => root.unmount())
+afterEach(async () => {
+  await act(async () => root.unmount())
   container.remove()
   vi.unstubAllGlobals()
 })
@@ -127,14 +148,21 @@ function makeSlide(): WatchHomeHeroSlide {
   } as WatchHomeHeroSlide
 }
 
-function renderCarousel() {
-  act(() => {
+async function renderCarousel() {
+  await act(async () => {
     root.render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <WatchHomeTvCarousel slides={[makeSlide()]} />
       </NextIntlClientProvider>,
     )
   })
+  // The player attaches in a later commit than the first render, and the hero
+  // scroll-pause hook reads its element then. Settle that inside `act` so a
+  // still-pending player cannot let the assertions below pass without it.
+  expect(
+    container.querySelector("video"),
+    "the deferred player should have attached",
+  ).not.toBeNull()
   return container.querySelector<HTMLAnchorElement>(WATCH_NOW)
 }
 
@@ -143,9 +171,9 @@ function watchNowPrefetch() {
 }
 
 describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
-  it("ships the hero action with prefetch off on a touch device", () => {
+  it("ships the hero action with prefetch off on a touch device", async () => {
     stubPointer("touch")
-    const watchNow = renderCarousel()
+    const watchNow = await renderCarousel()
 
     expect(watchNow, "Watch Now should render").not.toBeNull()
     // Still a working client-routed link: the click itself is unaffected.
@@ -155,16 +183,16 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
     expect(watchNowPrefetch()).toBe("false")
   })
 
-  it("keeps the eager desktop posture on a hover-capable device", () => {
+  it("keeps the eager desktop posture on a hover-capable device", async () => {
     stubPointer("mouse")
-    renderCarousel()
+    await renderCarousel()
 
     expect(watchNowPrefetch()).toBe("undefined")
   })
 
-  it("arms on focus, so keyboard and tap users still get a warm page", () => {
+  it("arms on focus, so keyboard and tap users still get a warm page", async () => {
     stubPointer("touch")
-    const watchNow = renderCarousel()
+    const watchNow = await renderCarousel()
 
     act(() => {
       watchNow?.focus()
@@ -174,9 +202,9 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
     expect(watchNowPrefetch()).toBe("undefined")
   })
 
-  it("does not arm on touch movement, which is scrolling rather than intent", () => {
+  it("does not arm on touch movement, which is scrolling rather than intent", async () => {
     stubPointer("touch")
-    const watchNow = renderCarousel()
+    const watchNow = await renderCarousel()
 
     act(() => {
       watchNow?.dispatchEvent(pointerEvent("pointermove", "touch"))
@@ -185,9 +213,9 @@ describe("WatchHomeTvCarousel Watch Now prefetch posture", () => {
     expect(watchNowPrefetch()).toBe("false")
   })
 
-  it("arms on deliberate mouse movement, for a hybrid device", () => {
+  it("arms on deliberate mouse movement, for a hybrid device", async () => {
     stubPointer("touch")
-    const watchNow = renderCarousel()
+    const watchNow = await renderCarousel()
 
     act(() => {
       watchNow?.dispatchEvent(pointerEvent("pointermove", "mouse"))
