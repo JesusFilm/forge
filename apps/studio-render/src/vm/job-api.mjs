@@ -1,9 +1,10 @@
+import { executionProfile } from "./execution-profile.mjs"
 import { VmInvariantError, VmUnconfirmedError } from "./errors.mjs"
 const capabilityPattern = /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/
 const operationMs = Object.freeze({
   mux: 45000,
   receipt: 5000,
-  input: 90000,
+  input: executionProfile.preparationMs,
   // This read crosses the public gateway. Leave room for response latency;
   // caller cancellation and the native execution deadline still apply earlier.
   owns: 10000,

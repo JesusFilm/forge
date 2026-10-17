@@ -1,3 +1,4 @@
+import { executionProfile } from "./execution-profile.mjs"
 import {
   VmInvariantError,
   VmUnconfirmedError,
@@ -245,7 +246,10 @@ export async function runVmSupervisor() {
             now() +
             Math.max(
               1,
-              Math.min(900000, claim.assignment.expiresAt - Date.now() - 60000),
+              Math.min(
+                executionProfile.jobMs,
+                claim.assignment.expiresAt - Date.now() - 60000,
+              ),
             ),
           renderImage: config.renderImage,
           verifyImage: config.verifyImage,
