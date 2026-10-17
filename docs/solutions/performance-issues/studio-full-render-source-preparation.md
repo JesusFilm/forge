@@ -317,3 +317,36 @@ deadline persisted with the VM's boot-bound monotonic window. The grant expiry
 is capped by that deadline, and all part metadata must agree on it. Upload and
 assembly combine that expiry with request cancellation; a proxy disconnect
 cannot leave a fresh five-minute storage allowance or renew later parts.
+
+### Production bounded-transfer acceptance
+
+PR #2775 merges the bounded protocol as
+`96aea48b791230f299c455a08b17276fdd35de5c`; PR #2776 documents the normal
+Manager deployment recovery as `848ce82f8d675431c83d66aef3651953d4183b8d`.
+Admin deployment `2bfa4d8d-daaa-48e9-b5f0-d5bc854df474` applies migration 0157;
+Manager deployment `8e446c0c-e5a6-4729-a0eb-afcb729f24eb` becomes healthy after
+main CI and CodeQL pass. The worker uses CI main release `39013807151`, bundle
+`8029fc729abd3a8d5926b8251dd049410d8e2307220c5c5b75bacb0735c53dff`.
+
+The exact captured full video passes the actual production path in 26.299s:
+seven parts, one shared 45s transfer deadline, normal broker registration,
+metadata-only finalization and internal Admin storage assembly. An independent
+read of all 106,963,325 retained bytes confirms SHA256
+`969113a698186620f1ee889c91facbf6acf82ae7f5d3e579b6679e8d5707711b`.
+The supplemental qualification manifest is `cmvc4e04o089epj0sipvvficu`.
+
+Use a read-only preflight to confirm the exact existing assignment before a
+qualification claim, since an unknown dispatch may allocate pending work.
+Compare the complete persisted canonical execution row before/after, not only
+its manifest identity. This qualification preserves the original admitted
+execution, canonical manifest `cmvc1iwvd000brufhqkkz65hd`, revision 19/20 hashes
+and original failed attempt. It is post-completion transport acceptance, not a
+new render, finish call, original-window renewal or original-journal repair.
+Normal supervisor settlement also has full-size local harness coverage.
+
+After independent retained-byte verification, the approved worker is activated
+through the trusted selector. Its drain is cleared, supervisor is active with
+zero restarts, and repeated production polling returns HTTP 200. The full
+render/data repair and the separate bounded production transfer both pass;
+feat-726 is complete. CPU and memory limits are unchanged, with measured
+parallelism/memory benchmarking remaining in feat-725.

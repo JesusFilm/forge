@@ -7,9 +7,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (October 17, 2026)
 
 - **Total tickets:** 857
-- **Complete:** 638
+- **Complete:** 639
 - **Cancelled:** 41
-- **In progress:** 69
+- **In progress:** 68
 - **Not started:** 52
 - **Blocked:** 57
 - **Overdue and open:** 0
@@ -329,7 +329,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-722](media-generation/feat-722-studio-bounded-frame-streaming.md)                     | Keep full Studio execution within fixed worker resources              | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-723](media-generation/feat-723-studio-output-encoding-budget.md)                      | Fit complete Studio encoding within fixed output and execution limits | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-724](media-generation/feat-724-studio-remux-file-reuse.md)                            | Reuse admitted Studio remux files without duplicate tmpfs downloads   | tataihono | P1       | —     | 1    | —   | complete    |
-| [feat-726](media-generation/feat-726-studio-bounded-output-retention.md)                    | Retain full Studio outputs through bounded edge-safe transfers        | tataihono | P1       | —     | 1    | —   | in-progress |
+| [feat-726](media-generation/feat-726-studio-bounded-output-retention.md)                    | Retain full Studio outputs through bounded edge-safe transfers        | tataihono | P1       | —     | 1    | —   | complete    |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | —     | 31   | —   | not-started |
 | [feat-065](media-generation/feat-065-full-content-translation.md)                           | Full Content Translation                                              | vlad      | P2       | —     | 61   | —   | blocked     |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | —     | 1    | —   | complete    |
