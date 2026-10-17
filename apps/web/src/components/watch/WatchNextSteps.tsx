@@ -1,6 +1,7 @@
 "use client"
 
 import dynamic from "next/dynamic"
+import { useState } from "react"
 import Link from "next/link"
 import type { WatchShareFilm } from "@/lib/watch-share-kit"
 
@@ -33,6 +34,10 @@ const WatchShareIdeas = dynamic(() =>
   import("./WatchShareIdeas").then((module) => module.WatchShareIdeas),
 )
 
+const WatchPartnerPanel = dynamic(() =>
+  import("./WatchPartnerPanel").then((module) => module.WatchPartnerPanel),
+)
+
 export type WatchNextStepsProps = {
   shareFilm?: WatchShareFilm | null
   onRequestShareLanguages?: () => void
@@ -54,6 +59,12 @@ export function WatchNextSteps({
   currentVideoActions = {},
 }: WatchNextStepsProps) {
   const { role } = useWatchRole()
+  const [partnerReturn] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("partnerPanel") ===
+        "account",
+  )
   const definition = getWatchAudienceRole(config, role)
   const language = languageSlug ? tryAsLocaleSlug(languageSlug) : null
   const actions: WatchJourneyAction[] = (definition?.actions ?? []).flatMap(
@@ -141,9 +152,17 @@ export function WatchNextSteps({
                       ) : null
                     }
                   />
+                ) : role === "partner" &&
+                  !partnerReturn &&
+                  language &&
+                  locale ? (
+                  <WatchPartnerPanel languageSlug={language} locale={locale} />
                 ) : null
               }
             />
+          ) : null}
+          {role === "partner" && partnerReturn && language && locale ? (
+            <WatchPartnerPanel languageSlug={language} locale={locale} />
           ) : null}
         </WatchRoleTabs>
       </div>
