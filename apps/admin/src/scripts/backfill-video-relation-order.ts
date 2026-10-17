@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { requestWatchCatalogPublication } from "@/services/watch-catalog-publication"
 
 import { createHash, randomUUID } from "node:crypto"
 import { mkdir, writeFile } from "node:fs/promises"
@@ -1179,6 +1180,10 @@ export async function runRelationOrderBackfillCli({
         : undefined,
     })
 
+    if (activeArgs.execute && summary.errors === 0 && summary.selected > 0) {
+      await assertLockActive()
+      await requestWatchCatalogPublication(prisma)
+    }
     logger({
       event: "video-relation-order.backfill.complete",
       ...summary,

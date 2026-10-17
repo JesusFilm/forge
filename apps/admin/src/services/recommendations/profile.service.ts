@@ -21,6 +21,7 @@ import {
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { redactShadowRunsForProfileGeneration } from "./shadow-evaluation/service"
 import { eraseProfileProjectionInfluence } from "./profiles/privacy"
+import { suppressCowatchForProfiles } from "./cowatch/privacy"
 
 export const RECOMMENDATION_PROFILE_DAYS = 180
 export const RECOMMENDATION_PROFILE_AUDIT_DAYS = 365
@@ -649,6 +650,7 @@ export class RecommendationProfileService {
         return false
       }
       await eraseProfileProjectionInfluence(tx, input)
+      await suppressCowatchForProfiles(tx, [profile.id])
       await tx.recommendationProfileSessionLink.deleteMany({
         where: { profileId: profile.id },
       })
@@ -765,6 +767,7 @@ export class RecommendationProfileService {
       | "recommendationProfileProjectionPointer"
       | "recommendationProfileProjectionRun"
       | "recommendationViewingModeEvidence"
+      | "$executeRaw"
     >,
     profile: ActiveProfile,
     reason: "reset" | "withdraw" | "delete" | "expire",
@@ -798,6 +801,7 @@ export class RecommendationProfileService {
       profileId: profile.id,
       privacyGeneration: profile.privacyGeneration,
     })
+    await suppressCowatchForProfiles(tx, [profile.id])
     await tx.recommendationProfileSessionLink.deleteMany({
       where: { profileId: profile.id },
     })

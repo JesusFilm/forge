@@ -7,13 +7,25 @@ import { withTimeout } from "./withTimeout"
  */
 export type DeepLinkEntry = "cold" | "warm"
 
-/** How the app was addressed. A reminder tap is an arrival the app made for
- *  itself, so the dashboards can separate it from a share-link open. */
-export type DeepLinkOrigin = "url" | "reminder"
+/** How the app was addressed. A reminder or announcement tap is an arrival the
+ *  app made for itself, so the dashboards can separate each from a share-link
+ *  open, and only a campaign arrival can be attributed to a campaign. */
+export type DeepLinkOrigin = "url" | "reminder" | "campaign"
 
-export type DeepLinkArrival = { entry: DeepLinkEntry; origin: DeepLinkOrigin }
+export type DeepLinkArrival = {
+  entry: DeepLinkEntry
+  origin: DeepLinkOrigin
+  /** The opaque campaign identifier, present ONLY on a campaign arrival, so a
+   *  reader cannot mistake an absent nonce for an empty one (KTD8). */
+  campaign?: string
+}
 
-type ArrivalRecord = DeepLinkArrival & { at: number }
+type ArrivalRecord = {
+  entry: DeepLinkEntry
+  origin: DeepLinkOrigin
+  campaign: string | null
+  at: number
+}
 
 const externalArrivals = new Map<string, ArrivalRecord>()
 
@@ -83,13 +95,14 @@ export function registerDeepLinkSlug(
   entry: DeepLinkEntry,
   origin: DeepLinkOrigin,
   now: number = Date.now(),
+  campaign: string | null = null,
 ): void {
   if (!slug) return
   // Never downgrade cold to warm: an iOS universal link can arrive through both
   // getInitialURL and the url event on the same cold launch.
   const existing = externalArrivals.get(slug)
   if (existing?.entry === "cold" && entry === "warm") return
-  externalArrivals.set(slug, { entry, origin, at: now })
+  externalArrivals.set(slug, { entry, origin, campaign, at: now })
 }
 
 /**
@@ -106,7 +119,12 @@ export function consumeDeepLinkArrival(
   if (arrival == null) return null
   externalArrivals.delete(slug)
   if (now - arrival.at > ARRIVAL_TTL_MS) return null
-  return { entry: arrival.entry, origin: arrival.origin }
+  const consumed: DeepLinkArrival = {
+    entry: arrival.entry,
+    origin: arrival.origin,
+  }
+  if (arrival.campaign == null) return consumed
+  return { ...consumed, campaign: arrival.campaign }
 }
 
 /**

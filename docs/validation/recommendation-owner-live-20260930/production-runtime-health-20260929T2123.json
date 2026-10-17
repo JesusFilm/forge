@@ -1,0 +1,154 @@
+{
+  "measured_at": "2026-09-29T21:23:13.396240+00:00",
+  "environment": "production",
+  "inventory": [
+    {
+      "service": "@forge/admin",
+      "service_id": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "active": [
+        {
+          "id": "7ba69493-506f-4e43-84fe-75b7d64324a3",
+          "status": "BUILDING",
+          "createdAt": "2026-09-29T21:22:35.963Z",
+          "commit": "162f7f48de8864c28e1a66a1b42ba46c9912717e",
+          "image_digest": null,
+          "config_file": null,
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        },
+        {
+          "id": "c38724d4-394b-4c1a-ab1b-1f130cc7aba8",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T21:05:41.150Z",
+          "commit": "85656b946c7519cb39d501d44ce6d1d998ec7d9b",
+          "image_digest": "sha256:7f23028c0ee4681576b7bcc67520743c827a4e0a1e373b13d15e91e68e6e44f2",
+          "config_file": "/apps/admin/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "7ba69493-506f-4e43-84fe-75b7d64324a3",
+        "status": "BUILDING",
+        "createdAt": "2026-09-29T21:22:35.963Z",
+        "commit": "162f7f48de8864c28e1a66a1b42ba46c9912717e"
+      }
+    },
+    {
+      "service": "@forge/admin/worker",
+      "service_id": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "active": [
+        {
+          "id": "97f80808-e772-478f-85f9-caa493bc09e6",
+          "status": "INITIALIZING",
+          "createdAt": "2026-09-29T21:22:34.988Z",
+          "commit": "162f7f48de8864c28e1a66a1b42ba46c9912717e",
+          "image_digest": null,
+          "config_file": null,
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        },
+        {
+          "id": "1974efc5-568e-45b1-a92d-a25ef758818c",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T21:05:40.058Z",
+          "commit": "85656b946c7519cb39d501d44ce6d1d998ec7d9b",
+          "image_digest": "sha256:e6a1ba9db41cc7694145da34293bf8671104c2725df087b0b68a878f51257984",
+          "config_file": "/apps/admin/railway.worker.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "97f80808-e772-478f-85f9-caa493bc09e6",
+        "status": "INITIALIZING",
+        "createdAt": "2026-09-29T21:22:34.988Z",
+        "commit": "162f7f48de8864c28e1a66a1b42ba46c9912717e"
+      }
+    },
+    {
+      "service": "@forge/web",
+      "service_id": "23b82451-0da1-4edc-bcde-096a9fd2a687",
+      "active": [
+        {
+          "id": "4b5b2e79-13b4-4330-bb8e-cf672b041d1b",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T06:49:45.603Z",
+          "commit": "0a70712399bf99e10d88477b98cc34c8ababcc6b",
+          "image_digest": "sha256:ad04b25c9aa8c859a8aeaf655b4bedb7cd95d06e0f7ea3e4f3a92a939b77d0fa",
+          "config_file": "/apps/web/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/watch"
+          }
+        }
+      ],
+      "latest": {
+        "id": "4b5b2e79-13b4-4330-bb8e-cf672b041d1b",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T06:49:45.603Z",
+        "commit": "0a70712399bf99e10d88477b98cc34c8ababcc6b"
+      }
+    }
+  ],
+  "processes": {
+    "web": {
+      "RAILWAY_GIT_COMMIT_SHA": "85656b946c7519cb39d501d44ce6d1d998ec7d9b",
+      "RAILWAY_DEPLOYMENT_ID": "c38724d4-394b-4c1a-ab1b-1f130cc7aba8",
+      "RAILWAY_REPLICA_ID": "b530aaf2-ac4f-4e9e-95f5-130a0fa99d5a",
+      "WORKFLOW_RUNNER_ENABLED": "false",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": "compact",
+      "health_status": 200
+    },
+    "worker": {
+      "RAILWAY_GIT_COMMIT_SHA": "85656b946c7519cb39d501d44ce6d1d998ec7d9b",
+      "RAILWAY_DEPLOYMENT_ID": "1974efc5-568e-45b1-a92d-a25ef758818c",
+      "RAILWAY_REPLICA_ID": "3e201a84-17cf-46ac-acd4-cca487ab5f4b",
+      "WORKFLOW_RUNNER_ENABLED": "true",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": "compact",
+      "health_status": 200
+    },
+    "watch": {
+      "RAILWAY_GIT_COMMIT_SHA": "0a70712399bf99e10d88477b98cc34c8ababcc6b",
+      "RAILWAY_DEPLOYMENT_ID": "4b5b2e79-13b4-4330-bb8e-cf672b041d1b",
+      "RAILWAY_REPLICA_ID": "d7f27faf-f786-4b7e-890b-29fdbd635c59",
+      "WORKFLOW_RUNNER_ENABLED": null,
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": null,
+      "health_status": 200
+    }
+  },
+  "filesystem": "Not queried: storage monitoring remains independently owned."
+}

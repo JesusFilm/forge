@@ -1,3 +1,5 @@
+import { StudioInspectionService } from "./inspection"
+import { StudioRenderPreparation } from "./render-preparation"
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
 import type { PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -15,11 +17,15 @@ import { studioHash } from "./state"
 import { studioCatalogReadinessProofSchema } from "@forge/studio-contracts/publication-state"
 import { StudioRenderJobs } from "./render-jobs"
 import { executeStudioRpc } from "./interactive"
+import { StudioRenderRetention } from "./render-retention"
 
 export const studioRenderRpcSchema = z
   .object({
     action: z.literal("render-worker"),
     command: z.enum([
+      "inspection-save",
+      "preparation",
+      "prepare",
       "publication-candidate",
       "mux-pending",
       "mux-enqueue",
@@ -28,6 +34,7 @@ export const studioRenderRpcSchema = z
       "mux-created",
       "mux-upload-created",
       "mux-upload-failed",
+      "mux-asset-failed",
       "mux-upload-eligible",
       "mux-ambiguous",
       "mux-ready",
@@ -39,6 +46,7 @@ export const studioRenderRpcSchema = z
       "assigned",
       "claim-assigned",
       "finish",
+      "retain-output",
       "owns",
       "asset",
       "asset-read",
@@ -57,6 +65,7 @@ export async function executeStudioRender(
   db: PrismaClient,
   caller: StudioCaller,
   raw: unknown,
+  signal?: AbortSignal,
 ) {
   if (
     caller.authority !== "delegated" ||
@@ -70,6 +79,12 @@ export async function executeStudioRender(
     jobs = new StudioRenderJobs(db)
   const muxJobs = new StudioMuxJobs(db)
   switch (request.command) {
+    case "inspection-save":
+      return new StudioInspectionService(db).save(worker, request.input)
+    case "preparation":
+      return new StudioRenderPreparation(db).read(worker, request.input)
+    case "prepare":
+      return new StudioRenderPreparation(db).save(worker, request.input)
     case "publication-candidate":
       return new StudioPublicationReadinessResolver(db).candidate(
         worker,
@@ -97,6 +112,13 @@ export async function executeStudioRender(
         .strict()
         .parse(request.input)
       return muxJobs.uploadFailed(worker, input.id, input.uploadId)
+    }
+    case "mux-asset-failed": {
+      const input = z
+        .object({ id: studioIdSchema, assetId: studioIdSchema })
+        .strict()
+        .parse(request.input)
+      return muxJobs.assetFailed(worker, input.id, input.assetId)
     }
     case "mux-upload-eligible":
       return muxJobs.uploadEligible(worker, studioIdSchema.parse(request.input))
@@ -211,6 +233,8 @@ export async function executeStudioRender(
     }
     case "finish":
       return jobs.finish(worker, request.input)
+    case "retain-output":
+      return new StudioRenderRetention(db).retain(worker, request.input, signal)
     case "owns": {
       const input = z
         .object({ attemptId: studioIdSchema, leaseId: z.uuid() })

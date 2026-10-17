@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-09-16"
 duration: 3
 depends_on: []
-blocks: []
+blocks:
+  - "feat-524"
 tags:
   - "mobile"
   - "platform"

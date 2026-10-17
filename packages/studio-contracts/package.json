@@ -5,8 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./transitions": "./src/transitions.ts",
     "./assets": "./src/assets.ts",
     "./content-packs": "./src/content-packs.ts",
+    "./hls": "./src/hls.ts",
     "./sources": "./src/sources.ts",
     "./experiments": "./src/experiments.ts",
     "./catalog": "./src/catalog.ts",
@@ -18,7 +20,8 @@
     "./publication": "./src/publication.ts",
     "./render": "./src/render.ts",
     "./publication-state": "./src/publication-state.ts",
-    "./calendar": "./src/calendar.ts"
+    "./calendar": "./src/calendar.ts",
+    "./inspection": "./src/inspection.ts"
   },
   "scripts": {
     "test": "vitest run",

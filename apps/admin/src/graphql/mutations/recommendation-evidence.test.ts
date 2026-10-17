@@ -1,10 +1,15 @@
+import { createHash } from "node:crypto"
+
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const recordMock = vi.fn()
 const selectMock = vi.fn()
 const claimMock = vi.fn()
+const issueContextMock = vi.fn()
 const playbackMock = vi.fn()
 const contentActionMock = vi.fn()
+// Hoisted: the push mock factory is invoked before this file's consts run.
+const { attributionMock } = vi.hoisted(() => ({ attributionMock: vi.fn() }))
 
 vi.mock("@/services/recommendations/evidence.service", () => ({
   createRecommendationEvidenceService: vi.fn(() => ({ record: recordMock })),
@@ -13,7 +18,12 @@ vi.mock("@/services/recommendations/episode.service", () => ({
   createRecommendationEpisodeService: vi.fn(() => ({
     select: selectMock,
     claim: claimMock,
+    issueContext: issueContextMock,
   })),
+}))
+vi.mock("@/services/push/attribution.service", () => ({
+  attributePushOpenAfterIssuance: attributionMock,
+  attributeEpisodeAfterPushOpen: vi.fn(),
 }))
 vi.mock("@/services/recommendations/playback.service", () => ({
   createRecommendationPlaybackService: vi.fn(() => ({
@@ -25,7 +35,20 @@ vi.mock("@/services/recommendations/content-action.service", () => ({
     record: contentActionMock,
   })),
 }))
-vi.mock("@/db/client", () => ({ prisma: {} }))
+// The real viewer resolver runs against this client, so a fleet caller's
+// handle yields the digests the attribution hook is expected to receive.
+vi.mock("@/db/client", () => ({
+  prisma: {
+    recommendationViewer: {
+      findUnique: async () => ({
+        tokenDigest: "a".repeat(64),
+        profileDigest: "b".repeat(64),
+        consentReceiptDigest: "c".repeat(64),
+        expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+      }),
+    },
+  },
+}))
 
 import { schema } from "@/graphql/schema"
 import {
@@ -53,6 +76,15 @@ beforeEach(() => {
     claimNonce: "fresh-claim",
     canonicalHref: "/watch/target.html",
     targetMediaId: "target",
+  })
+  issueContextMock.mockResolvedValue({
+    episodeId: "episode-1",
+    claimNonce: "fresh-claim",
+    contextVersion: "playback-context-v1",
+  })
+  attributionMock.mockResolvedValue({
+    outcome: "attributed",
+    campaignId: "campaign-1",
   })
   claimMock.mockResolvedValue({
     episodeId: "episode-1",
@@ -306,6 +338,120 @@ describe("semantic recommendation evidence resolvers", () => {
       ),
     ).rejects.toMatchObject({
       extensions: { code: "CONFLICT" },
+    })
+  })
+})
+
+describe("issuing a Watch playback context", () => {
+  const VIEWER_TOKEN = "v".repeat(43)
+  const SESSION_TOKEN = "s".repeat(43)
+  const VIEWER_DIGEST = "a".repeat(64)
+  const SESSION_DIGEST = createHash("sha256")
+    .update(SESSION_TOKEN)
+    .digest("hex")
+
+  function webArgs() {
+    return {
+      sessionDigest: "a".repeat(64),
+      mediaId: "target-video",
+      discoverySource: "acquisition",
+      provenance: { entry: "canonical" },
+    }
+  }
+
+  function fleetArgs() {
+    return {
+      viewerToken: VIEWER_TOKEN,
+      sessionToken: SESSION_TOKEN,
+      mediaId: "target-video",
+      discoverySource: "acquisition",
+      provenance: { entry: "notification" },
+    }
+  }
+
+  const fleetCaller = {
+    id: null,
+    role: "CONSUMER_BEARER",
+    fleet: true,
+    rateLimitBucketKey: "test-fleet-key",
+  }
+
+  it("answers the receipt fields alone, never the episode id", async () => {
+    await expect(
+      mutation("issueWatchPlaybackContext")(
+        null,
+        webArgs() as never,
+        { user: caller },
+        {} as never,
+      ),
+    ).resolves.toEqual({
+      claimNonce: "fresh-claim",
+      contextVersion: "playback-context-v1",
+    })
+  })
+
+  it("never looks for an open for a web caller", async () => {
+    await mutation("issueWatchPlaybackContext")(
+      null,
+      webArgs() as never,
+      { user: caller },
+      {} as never,
+    )
+    expect(issueContextMock).toHaveBeenCalledTimes(1)
+    expect(attributionMock).not.toHaveBeenCalled()
+  })
+
+  it("attributes the app's own context to the open that led to it", async () => {
+    await mutation("issueWatchPlaybackContext")(
+      null,
+      fleetArgs() as never,
+      { user: fleetCaller },
+      {} as never,
+    )
+    expect(attributionMock).toHaveBeenCalledTimes(1)
+    expect(attributionMock.mock.calls[0][1]).toEqual({
+      episodeId: "episode-1",
+      mediaId: "target-video",
+      viewerDigest: VIEWER_DIGEST,
+      sessionDigest: SESSION_DIGEST,
+    })
+  })
+
+  it("issues the context before it looks for an open", async () => {
+    const order: string[] = []
+    issueContextMock.mockImplementation(async () => {
+      order.push("issue")
+      return {
+        episodeId: "episode-1",
+        claimNonce: "fresh-claim",
+        contextVersion: "playback-context-v1",
+      }
+    })
+    attributionMock.mockImplementation(async () => {
+      order.push("attribute")
+      return { outcome: "attributed", campaignId: "campaign-1" }
+    })
+    await mutation("issueWatchPlaybackContext")(
+      null,
+      fleetArgs() as never,
+      { user: fleetCaller },
+      {} as never,
+    )
+    expect(order).toEqual(["issue", "attribute"])
+  })
+
+  it("keeps the receipt when attribution fails", async () => {
+    attributionMock.mockRejectedValue(new Error("attribution exploded"))
+    await expect(
+      mutation("issueWatchPlaybackContext")(
+        null,
+        fleetArgs() as never,
+        { user: fleetCaller },
+        {} as never,
+      ),
+    ).resolves.toEqual({
+      claimNonce: "fresh-claim",
+      contextVersion: "playback-context-v1",
     })
   })
 })

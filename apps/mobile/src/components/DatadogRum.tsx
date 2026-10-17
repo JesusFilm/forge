@@ -79,8 +79,9 @@ export function MobileDatadogProvider({ children }: { children: ReactNode }) {
       logsConfiguration: {},
       rumConfiguration: {
         applicationId: config.applicationId,
-        // Auto tap-actions are named from accessibilityLabel; U9 adds
-        // dd-action-name overrides so no typed/PII text leaks (KTD10).
+        // Auto tap-actions take their name from accessibilityLabel, which can
+        // hold typed, personal or translated text; such a control carries a
+        // stable dd-action-name, so one tap is one series in every language.
         trackInteractions: true,
         trackResources: true, // auto-instruments fetch/XHR into per-request RUM
         // Cancelled requests still surface as native -999 "cancelled" RUM errors

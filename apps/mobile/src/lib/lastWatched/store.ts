@@ -11,6 +11,15 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
+import {
+  currentAdminForms,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
+import {
+  getMiniPlayerStore,
+  screenAdminForms,
+  type MiniPlayerSession,
+} from "../miniPlayer/store"
 import { withTimeout } from "../withTimeout"
 import {
   LAST_WATCHED_STORAGE_KEY,
@@ -28,6 +37,19 @@ export type LastWatchedStoreDeps = {
   setItem: (key: string, value: string) => Promise<void>
   removeItem: (key: string) => Promise<void>
   now: () => Date
+  /** The catalog tag of the slug's title, stamped on a titled write (KTD16). */
+  titleLocale?: (videoSlug: string) => string
+}
+
+/** U7 (KTD16): the language of a playing video's title. Its screen captured
+ *  forms at mount, and a live change does not move them, so the session's
+ *  forms name the title's language; the current ones do when none were noted. */
+export function screenTitleLocale(
+  videoSlug: string,
+  session: Pick<MiniPlayerSession, "videoSlug" | "adminForms"> | null,
+  current: AdminLanguageForms,
+): string {
+  return screenAdminForms(session, videoSlug, current).catalogTag
 }
 
 export type LastWatchedStore = ReturnType<typeof createLastWatchedStore>
@@ -125,9 +147,13 @@ export function createLastWatchedStore(deps: LastWatchedStoreDeps) {
     },
 
     write(videoSlug: string, videoTitle: string | null): void {
+      const title = sanitizeLastWatchedTitle(videoTitle)
+      const titleLocale =
+        title == null ? undefined : deps.titleLocale?.(videoSlug)
       const next: LastWatchedRecord = {
         videoSlug,
-        videoTitle: sanitizeLastWatchedTitle(videoTitle),
+        videoTitle: title,
+        ...(titleLocale === undefined ? {} : { titleLocale }),
         recordedAt: deps.now().getTime(),
       }
       const blob = serializeLastWatched(next)
@@ -184,6 +210,12 @@ export function getLastWatchedStore(): LastWatchedStore {
       setItem: (key, value) => AsyncStorage.setItem(key, value),
       removeItem: (key) => AsyncStorage.removeItem(key),
       now: () => new Date(),
+      titleLocale: (videoSlug) =>
+        screenTitleLocale(
+          videoSlug,
+          getMiniPlayerStore().getSnapshot().session,
+          currentAdminForms(),
+        ),
     })
   }
   return store

@@ -1,0 +1,96 @@
+{
+  "projectId": "example-short",
+  "expectedRevision": 1,
+  "idempotencyKey": "example-compose-1",
+  "operations": [
+    {
+      "kind": "insert-item",
+      "item": {
+        "id": "footage-1",
+        "kind": "video",
+        "trackId": "visual-1",
+        "startFrame": 0,
+        "durationInFrames": 450,
+        "source": {
+          "videoId": "example-video",
+          "dubId": "example-dub",
+          "editionId": "example-edition",
+          "language": "english",
+          "subtitle": {
+            "trackId": "example-subtitle",
+            "editionId": "example-edition",
+            "language": "english",
+            "asset": {
+              "assetId": "example-subtitle",
+              "versionId": "example-subtitle-v1",
+              "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }
+          },
+          "preview": {
+            "assetId": "example-preview",
+            "versionId": "example-preview-v1",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "export": {
+            "assetId": "example-export",
+            "versionId": "example-export-v1",
+            "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "startMs": 0,
+          "endMs": 15000
+        },
+        "volume": 1
+      }
+    },
+    {
+      "kind": "insert-item",
+      "item": {
+        "id": "hook-1",
+        "kind": "text",
+        "trackId": "caption-1",
+        "startFrame": 0,
+        "durationInFrames": 120,
+        "text": "A small act can change a day.",
+        "properties": {
+          "fontFamily": "Inter",
+          "fontWeight": 700,
+          "fontSize": 72,
+          "color": "#ffffff",
+          "align": "center",
+          "shadow": true,
+          "scrimOpacity": 0.55,
+          "scrimPadding": 24,
+          "entrance": "fade",
+          "entranceFrames": 6,
+          "exit": "fade",
+          "exitFrames": 6
+        },
+        "transform": {
+          "x": 0,
+          "y": -480,
+          "scaleX": 1,
+          "scaleY": 1,
+          "rotation": 0,
+          "opacity": 1
+        }
+      }
+    },
+    {
+      "kind": "insert-item",
+      "item": {
+        "id": "music-1",
+        "kind": "audio",
+        "trackId": "audio-1",
+        "startFrame": 0,
+        "durationInFrames": 450,
+        "asset": {
+          "assetId": "example-music",
+          "versionId": "example-music-v1",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "sourceStartMs": 0,
+        "volume": 0.12
+      }
+    }
+  ]
+}

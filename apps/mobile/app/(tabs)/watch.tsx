@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useIsFocused, useRouter } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { currentAdminForms } from "../../src/i18n/adminLanguage"
+import { useLocaleEpoch, useT } from "../../src/i18n/useT"
 import { getApolloClient } from "../../src/lib/apolloClient"
 import { datadogLog, reportDatadogAction } from "../../src/lib/datadog"
 import {
@@ -30,10 +32,15 @@ import {
   recordResultsViewed,
 } from "../../src/lib/watchSearchEvents"
 import {
+  ENGLISH_SEARCH_LANGUAGE,
   MAX_QUERY_LENGTH,
   buildWatchSearchInput,
   mapWatchSearchResponse,
-  parseSearchError,
+  searchErrorKind,
+  searchErrorMessage,
+  searchLanguageFor,
+  type SearchErrorKind,
+  type SearchLanguage,
 } from "../../src/lib/watchSearch"
 import {
   GET_VIDEO_BY_SLUG,
@@ -70,6 +77,7 @@ const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
 
 export default function DiscoverScreen() {
+  const t = useT("Discover")
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
@@ -98,7 +106,7 @@ export default function DiscoverScreen() {
     getApolloClient()
       .query({
         query: GET_VIDEO_BY_SLUG,
-        variables: { slug, locale: "en" },
+        variables: { slug },
         fetchPolicy: "cache-first",
       })
       .catch(() => {
@@ -126,11 +134,13 @@ export default function DiscoverScreen() {
         const clickKey = `${requestId}:${result.id}:${position}`
         if (!reportedClicksRef.current.has(clickKey)) {
           reportedClicksRef.current.add(clickKey)
+          const searchLanguageSlug = submittedLanguageRef.current.display
           reportDatadogAction(
             WATCH_SEARCH_RESULT_CLICKED_ACTION,
             buildWatchSearchResultClickContext(result, {
               position,
               searchRequestId: requestId,
+              searchLanguageSlug,
             }),
           )
           void recordResultClicked({
@@ -139,6 +149,7 @@ export default function DiscoverScreen() {
             resultType: result.type,
             position,
             visibleResultIds: resultsRef.current.map((r) => r.id),
+            searchLanguageSlug,
           })
         }
       } catch {
@@ -182,7 +193,8 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(false)
   const [showSkeleton, setShowSkeleton] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // The kind, not the text, so an error on screen follows a language change.
+  const [error, setError] = useState<SearchErrorKind | null>(null)
   // Which request failed, so the footer Retry re-runs the search instead of
   // paging a query the visible results don't belong to.
   const [errorSource, setErrorSource] = useState<"search" | "page">("search")
@@ -204,6 +216,9 @@ export default function DiscoverScreen() {
   // the live one — borrowing the live id let a page started after a newer
   // search began pass the staleness guard and append to the wrong results.
   const submittedRequestIdRef = useRef(0)
+  // KTD16: the languages the visible results were asked in, pinned with their
+  // generation, so a page never mixes two languages.
+  const submittedLanguageRef = useRef<SearchLanguage>(ENGLISH_SEARCH_LANGUAGE)
   // Synchronous re-entrancy latch: `loadingMore` state is a render-time snapshot,
   // so two presses in one frame both read false and double-append.
   const loadingMoreRef = useRef(false)
@@ -325,7 +340,11 @@ export default function DiscoverScreen() {
     for (const id of newIds) {
       recorded.add(id)
     }
-    void recordResultsViewed({ requestId, visibleResultIds: newIds })
+    void recordResultsViewed({
+      requestId,
+      visibleResultIds: newIds,
+      searchLanguageSlug: submittedLanguageRef.current.display,
+    })
   }, [])
 
   const search = useCallback(
@@ -335,6 +354,8 @@ export default function DiscoverScreen() {
       // otherwise a stale result lands over the browse grid after clearing, and
       // its guarded finally never resets loading.
       const thisRequest = ++requestIdRef.current
+      // Read before any await: this generation asks in these languages.
+      const language = searchLanguageFor(currentAdminForms(), trimmed)
       // Bumping the generation orphans any in-flight load-more: its guarded
       // finally can no longer fire, so release both flags here or "Load more"
       // stays stuck on "Loading..." for the rest of the session.
@@ -400,6 +421,7 @@ export default function DiscoverScreen() {
               clientRequestId: searchRequestId,
               limit: PAGE_SIZE,
               offset: 0,
+              language,
             }),
           },
           fetchPolicy: "no-cache",
@@ -420,6 +442,7 @@ export default function DiscoverScreen() {
         searchRequestIdRef.current = adoptedRequestId
         submittedTermRef.current = trimmed
         submittedRequestIdRef.current = thisRequest
+        submittedLanguageRef.current = language
         batchStartRef.current = 0
         setResults([...page.results])
         setHasMore(page.hasMore)
@@ -435,6 +458,7 @@ export default function DiscoverScreen() {
             query: trimmed,
             offset: 0,
             clientLatencyMs: Date.now() - startedAt,
+            searchLanguageSlug: language.display,
             latencyMs: page.latencyMs,
             degraded: page.degraded,
             responseSearchMode: page.searchMode,
@@ -465,7 +489,7 @@ export default function DiscoverScreen() {
         fadeAnim.setValue(1)
         scaleAnim.setValue(1)
         setErrorSource("search")
-        setError(parseSearchError(e))
+        setError(searchErrorKind(e))
         // warn, not error — two constraints: benign rate-limits share this
         // path (R34), and error-level logs copy every attribute incl.
         // watch_search.query into RUM errors, outside the R43 Logs posture.
@@ -478,6 +502,7 @@ export default function DiscoverScreen() {
             query: trimmed,
             offset: 0,
             clientLatencyMs: Date.now() - startedAt,
+            searchLanguageSlug: language.display,
           }),
         )
       } finally {
@@ -497,6 +522,21 @@ export default function DiscoverScreen() {
       reportViewed,
     ],
   )
+
+  // KTD16: a new UI language runs the visible query again. The new search
+  // takes a new generation, so a page still in flight is dropped.
+  const epoch = useLocaleEpoch()
+  const searchedEpochRef = useRef(epoch)
+  const rerunRef = useRef<() => void>(() => {})
+  rerunRef.current = () => {
+    const visible = query.trim()
+    if (searched && visible) void search(visible)
+  }
+  useEffect(() => {
+    if (searchedEpochRef.current === epoch) return
+    searchedEpochRef.current = epoch
+    rerunRef.current()
+  }, [epoch])
 
   function handleChangeText(text: string) {
     setQuery(text)
@@ -534,6 +574,7 @@ export default function DiscoverScreen() {
     // Pagination shares the initiating search's correlation id (request_type
     // distinguishes the page from the initial fetch).
     const term = submittedTermRef.current
+    const language = submittedLanguageRef.current
     const searchRequestId = searchRequestIdRef.current
     const startedAt = Date.now()
 
@@ -546,6 +587,7 @@ export default function DiscoverScreen() {
             clientRequestId: searchRequestId,
             limit: PAGE_SIZE,
             offset: nextOffset,
+            language,
           }),
         },
         fetchPolicy: "no-cache",
@@ -593,6 +635,7 @@ export default function DiscoverScreen() {
           // render's const.
           offset: nextOffset,
           clientLatencyMs: Date.now() - startedAt,
+          searchLanguageSlug: language.display,
           latencyMs: page.latencyMs,
           degraded: page.degraded,
           responseSearchMode: page.searchMode,
@@ -602,7 +645,7 @@ export default function DiscoverScreen() {
     } catch (e: unknown) {
       if (requestIdRef.current !== thisRequest) return
       setErrorSource("page")
-      setError(parseSearchError(e))
+      setError(searchErrorKind(e))
       // warn, not error: R34 benign rate-limits + the R43 level constraint
       // (see the search catch); no impressions on failure (F2).
       datadogLog.warn(
@@ -615,6 +658,7 @@ export default function DiscoverScreen() {
           query: term,
           offset: nextOffset,
           clientLatencyMs: Date.now() - startedAt,
+          searchLanguageSlug: language.display,
         }),
       )
     } finally {
@@ -694,11 +738,11 @@ export default function DiscoverScreen() {
             style={styles.input}
             value={query}
             onChangeText={handleChangeText}
-            placeholder="Search for videos about any topic..."
+            placeholder={t("searchPlaceholder")}
             placeholderTextColor={TEXT_SECONDARY}
             // The screen no longer has a "Search" heading; keep the field
             // named for VoiceOver once typed text replaces the placeholder.
-            accessibilityLabel="Search"
+            accessibilityLabel={t("searchFieldAriaLabel")}
             returnKeyType="search"
             autoCapitalize="none"
             autoCorrect={false}
@@ -710,7 +754,8 @@ export default function DiscoverScreen() {
               onPress={handleClear}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
+              accessibilityLabel={t("clearSearchAriaLabel")}
+              {...{ "dd-action-name": "discover-search-clear" }}
             >
               <Ionicons name="close-circle" size={20} color={TEXT_SECONDARY} />
             </Pressable>
@@ -735,19 +780,21 @@ export default function DiscoverScreen() {
         {!loading && searched && results.length === 0 && !error && (
           <View style={styles.emptyState}>
             <Text style={styles.noResultsTitle}>
-              No results for &apos;{query.trim()}&apos;
+              {t("noResultsTitle", { query: query.trim() })}
             </Text>
-            <Text style={styles.noResultsBody}>
-              Try different keywords or browse experiences
-            </Text>
+            <Text style={styles.noResultsBody}>{t("noResultsBody")}</Text>
           </View>
         )}
 
         {error && results.length === 0 && (
           <View style={styles.emptyState}>
-            <Text style={styles.errorText}>{error}</Text>
-            <Text style={styles.retryLink} onPress={() => search(query)}>
-              Retry
+            <Text style={styles.errorText}>{searchErrorMessage(error, t)}</Text>
+            <Text
+              style={styles.retryLink}
+              onPress={() => search(query)}
+              {...{ "dd-action-name": "discover-search-retry" }}
+            >
+              {t("retry")}
             </Text>
           </View>
         )}
@@ -765,6 +812,8 @@ export default function DiscoverScreen() {
               data={results}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
+              // Recycled cells take the new language on a catalog change.
+              extraData={epoch}
               numColumns={2}
               keyboardDismissMode="on-drag"
               onViewableItemsChanged={handleViewableItemsChanged}
@@ -779,7 +828,9 @@ export default function DiscoverScreen() {
                 <>
                   {error && (
                     <View style={styles.inlineError}>
-                      <Text style={styles.errorText}>{error}</Text>
+                      <Text style={styles.errorText}>
+                        {searchErrorMessage(error, t)}
+                      </Text>
                       {/* A failed search leaves the PREVIOUS query's results up,
                           so retrying must re-run the search — paging here would
                           append a different query onto them. */}
@@ -790,8 +841,9 @@ export default function DiscoverScreen() {
                             ? loadMore
                             : () => search(query)
                         }
+                        {...{ "dd-action-name": "discover-search-retry" }}
                       >
-                        Retry
+                        {t("retry")}
                       </Text>
                     </View>
                   )}
@@ -801,8 +853,9 @@ export default function DiscoverScreen() {
                         style={styles.loadMoreButton}
                         onPress={loadMore}
                         suppressHighlighting={loadingMore}
+                        {...{ "dd-action-name": "discover-load-more" }}
                       >
-                        {loadingMore ? "Loading..." : "Load more"}
+                        {loadingMore ? t("loadingMore") : t("loadMore")}
                       </Text>
                     </View>
                   )}

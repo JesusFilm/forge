@@ -14,7 +14,7 @@ import { ForbiddenError, NotFoundError } from "../errors"
 import { studioActor, studioHash, lockProject, assertEditable } from "./state"
 import { StudioCommandError } from "./errors"
 import { StudioAssetService, resolveAssetVersion } from "./assets"
-import { assertStudioRenderSources } from "./sources"
+import { assertStudioCompletedRenderSources } from "./render-preparation"
 import { resolveStudioPackSources } from "./packs"
 
 /** Registers completed render evidence only. It neither calls Mux nor publishes. */
@@ -139,7 +139,11 @@ export class StudioCatalogService {
           where: { slug: document.language, deletedAt: null },
         })
         if (!language) throw new NotFoundError("Exact author language")
-        const sources = await assertStudioRenderSources(tx, document)
+        const sources = await assertStudioCompletedRenderSources(
+          tx,
+          document,
+          input.renderAttemptId,
+        )
         const packs = await resolveStudioPackSources(
           tx,
           document.packRevisionIds,

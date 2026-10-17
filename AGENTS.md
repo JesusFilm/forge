@@ -34,10 +34,12 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Keep roadmap files in `docs/roadmap/` with YAML frontmatter.
 - Keep dependencies bidirectional: if a feature `depends_on` another feature, add the reverse entry to `blocks`.
 - Keep feature bodies agent-optimized: exact file paths, grep patterns, types, constraints, and verification.
+- For recommendation scope, read `docs/reports/2026-10-02-recommendation-roadmap-closeout.md` before reviving historical requirements. `cancelled` retires scope with a reason; it does not establish implementation or authorize removing working behavior.
 
 ## Boundaries
 
 - Recommendations and product analytics require no consent prerequisite. Preserve the configured Watch GA and Datadog integrations; follow `docs/analytics-and-recommendation-policy.md` when planning or changing either area.
+- For recommendation health, empty/partial rows or sparse co-watch coverage, apply the October 2 owner decision in `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`: coverage limitations are accepted outcomes and do not block proceeding; classify server failures separately.
 - One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.

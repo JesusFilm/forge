@@ -22,6 +22,11 @@ dead sweep, and it has a named owner and cadence for that reason.
 
 ## Provisioning
 
+Configuration recovery record: [2026-09-29 Mastra variable restoration and
+restaging audit](evidence/mastra-variable-recovery-2026-09-29.md). The three
+triage credentials were restored to the previous committed baseline and their
+proposal returned to pending review; this is not a rollout approval.
+
 Do all of this before the flag is ever set to `true`.
 
 ### 1. Datadog credentials

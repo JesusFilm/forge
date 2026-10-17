@@ -1,20 +1,28 @@
 import { WorkflowRunStatus } from "@prisma/client"
-import { start } from "workflow/api"
 import { prisma } from "@/db/client"
 import {
-  attachWorkflowRuntimeRunId,
-  createWorkflowRunLog,
-  markWorkflowRunFailed,
-  markWorkflowRunRuntimeStarted,
-  markWorkflowRunStarted,
-} from "@/services/workflow-run-log.service"
-import { runRecommendationShadowEvaluation } from "@/workflows/recommendationShadowEvaluation"
+  finishRecommendationShadowDispatch,
+  markRecommendationShadowEvaluationRuntimeStarted,
+  type RecommendationShadowEvaluationJobInput,
+} from "./dispatch"
+export {
+  dispatchRecommendationShadowEvaluation,
+  markRecommendationShadowEvaluationRuntimeStarted,
+  RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY,
+  type RecommendationShadowEvaluationJobInput,
+} from "./dispatch"
 import {
   HYBRID_CANDIDATE_GENERATOR_SET_VERSION,
   SEMANTIC_CANDIDATE_GENERATOR_VERSION,
   type CandidateNomination,
 } from "../candidate"
 import { createDatabaseProfileSourceNominationGenerator } from "../candidates/profile-candidate.service"
+import { COWATCH_MMR_TRIAL_MANIFEST_ID } from "../promotion/manifest"
+import { createCowatchTrialShadowGenerator } from "./cowatch-trial-generator"
+import {
+  COWATCH_SHADOW_GENERATOR_KEY,
+  createDatabaseCowatchShadowGenerator,
+} from "../cowatch/candidate.service"
 import {
   claimNextShadowRun,
   completeShadowEvaluation,
@@ -26,66 +34,13 @@ import {
   type ShadowGenerator,
 } from "./service"
 
-export const RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY =
-  "recommendation-shadow-evaluation"
 export const SEMANTIC_AA_SHADOW_GENERATOR_KEY = "semantic-aa-v1"
 export const HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY =
   HYBRID_CANDIDATE_GENERATOR_SET_VERSION
 
-export type RecommendationShadowEvaluationJobInput = Readonly<{
-  evaluationId: string
-  expectedGeneration: number
-  generatorKey: string
-  minimumRuns: number
-  ledgerRunId?: string
-}>
-
-export async function dispatchRecommendationShadowEvaluation(
-  input: Omit<RecommendationShadowEvaluationJobInput, "ledgerRunId">,
-  options: Readonly<{ actorId?: string }> = {},
-): Promise<{ queued: true; ledgerRunId: string; runId: string }> {
-  const ledger = await createWorkflowRunLog({
-    workflowKey: RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY,
-    workflowName: "Recommendation Shadow Candidate Evaluation",
-    trigger: options.actorId ? "manual" : "system",
-    actorId: options.actorId,
-    subjectType: "recommendation-shadow-evaluation",
-    subjectId: input.evaluationId,
-    summary: "Recommendation shadow evaluation queued.",
-    details: {
-      evaluationId: input.evaluationId,
-      expectedGeneration: input.expectedGeneration,
-      generatorKey: input.generatorKey,
-      minimumRuns: input.minimumRuns,
-    },
-  })
-  let runtime: Awaited<ReturnType<typeof start>>
-  try {
-    runtime = await start(runRecommendationShadowEvaluation, [
-      { ...input, ledgerRunId: ledger.id },
-    ])
-  } catch (error) {
-    await markWorkflowRunFailed(ledger.id, error).catch(() => {})
-    throw error
-  }
-  await attachWorkflowRuntimeRunId(ledger.id, runtime.runId).catch(() => {
-    console.warn(
-      "Recommendation shadow evaluation started before its runtime identity could be recorded; workflow self-reconciliation will retry.",
-    )
-  })
-  return { queued: true, ledgerRunId: ledger.id, runId: runtime.runId }
-}
-
-export async function markRecommendationShadowEvaluationRuntimeStarted(
-  ledgerRunId: string | undefined,
-  runtimeRunId: string,
-): Promise<void> {
-  if (!ledgerRunId) return
-  await markWorkflowRunRuntimeStarted(ledgerRunId, runtimeRunId)
-}
-
 export async function runRecommendationShadowEvaluationJob(
   input: RecommendationShadowEvaluationJobInput,
+  runtimeRunId?: string,
 ): Promise<{
   status: "decided" | "fenced"
   decision?: string
@@ -93,12 +48,40 @@ export async function runRecommendationShadowEvaluationJob(
   processedRuns: number
   failedRuns: number
 }> {
-  if (input.ledgerRunId) await markWorkflowRunStarted(input.ledgerRunId)
+  if (
+    input.ledgerRunId &&
+    (!runtimeRunId ||
+      !(await markRecommendationShadowEvaluationRuntimeStarted(
+        input,
+        runtimeRunId,
+      )))
+  ) {
+    return {
+      status: "fenced",
+      reason: "dispatch_runtime_conflict",
+      processedRuns: 0,
+      failedRuns: 0,
+    }
+  }
   let processedRuns = 0
   let failedRuns = 0
   try {
+    if (
+      input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY &&
+      (!input.ledgerRunId ||
+        !/^[a-f0-9]{64}$/.test(input.cowatchGenerationId ?? ""))
+    ) {
+      return finishFenced(
+        input,
+        runtimeRunId,
+        "cowatch_dispatch_generation_unpinned",
+        processedRuns,
+        failedRuns,
+      )
+    }
     const sampled = await (
-      input.generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY
+      input.generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY ||
+        input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY
         ? sampleProfileShadowEvaluationContexts
         : sampleShadowEvaluationContexts
     )(prisma, {
@@ -106,10 +89,19 @@ export async function runRecommendationShadowEvaluationJob(
       expectedGeneration: input.expectedGeneration,
     })
     if (sampled.status === "fenced") {
-      return finishFenced(input, sampled.reason, processedRuns, failedRuns)
+      return finishFenced(
+        input,
+        runtimeRunId,
+        sampled.reason,
+        processedRuns,
+        failedRuns,
+      )
     }
 
-    const generator = resolveShadowGenerator(input.generatorKey)
+    const generator = resolveShadowGenerator(
+      input.generatorKey,
+      input.cowatchGenerationId,
+    )
     while (true) {
       const claim = await claimNextShadowRun(prisma, {
         evaluationId: input.evaluationId,
@@ -153,27 +145,24 @@ export async function runRecommendationShadowEvaluationJob(
       minimumRuns: input.minimumRuns,
     })
     if (completed.status === "fenced") {
-      return finishFenced(input, completed.reason, processedRuns, failedRuns)
+      return finishFenced(
+        input,
+        runtimeRunId,
+        completed.reason,
+        processedRuns,
+        failedRuns,
+      )
     }
-    if (input.ledgerRunId) {
-      await prisma.workflowRun.update({
-        where: { id: input.ledgerRunId },
-        data: {
-          status: WorkflowRunStatus.SUCCEEDED,
-          summary: `Recommendation shadow evaluation decided ${completed.decision}.`,
-          finishedAt: new Date(),
-          details: {
-            evaluationId: input.evaluationId,
-            expectedGeneration: input.expectedGeneration,
-            generatorKey: input.generatorKey,
-            processedRuns,
-            failedRuns,
-            decision: completed.decision,
-            decisionId: completed.decisionId,
-          },
-        },
-      })
-    }
+    await finishRecommendationShadowDispatch(input, runtimeRunId, {
+      status: WorkflowRunStatus.SUCCEEDED,
+      summary: `Recommendation shadow evaluation decided ${completed.decision}.`,
+      details: {
+        processedRuns,
+        failedRuns,
+        decision: completed.decision,
+        decisionId: completed.decisionId,
+      },
+    })
     return {
       status: "decided",
       decision: completed.decision,
@@ -181,48 +170,52 @@ export async function runRecommendationShadowEvaluationJob(
       failedRuns,
     }
   } catch (error) {
-    if (input.ledgerRunId) {
-      await markWorkflowRunFailed(input.ledgerRunId, error).catch(() => {})
-    }
+    await finishRecommendationShadowDispatch(input, runtimeRunId, {
+      status: WorkflowRunStatus.FAILED,
+      summary:
+        "Recommendation shadow evaluation failed; this dispatch cannot be restarted.",
+      error: "shadow_evaluation_failed",
+    }).catch(() => {})
     throw error
   }
 }
 
 async function finishFenced(
   input: RecommendationShadowEvaluationJobInput,
+  runtimeRunId: string | undefined,
   reason: string,
   processedRuns: number,
   failedRuns: number,
 ) {
-  if (input.ledgerRunId) {
-    await prisma.workflowRun.update({
-      where: { id: input.ledgerRunId },
-      data: {
-        status: WorkflowRunStatus.SKIPPED,
-        summary: `Recommendation shadow evaluation fenced: ${reason}.`,
-        finishedAt: new Date(),
-        details: {
-          evaluationId: input.evaluationId,
-          expectedGeneration: input.expectedGeneration,
-          generatorKey: input.generatorKey,
-          processedRuns,
-          failedRuns,
-          reason,
-        },
-      },
-    })
-  }
-  return {
-    status: "fenced" as const,
-    reason,
-    processedRuns,
-    failedRuns,
-  }
+  await finishRecommendationShadowDispatch(input, runtimeRunId, {
+    status: WorkflowRunStatus.SKIPPED,
+    summary: `Recommendation shadow evaluation fenced: ${reason}.`,
+    details: { processedRuns, failedRuns, reason },
+  })
+  return { status: "fenced" as const, reason, processedRuns, failedRuns }
 }
 
-export function resolveShadowGenerator(generatorKey: string): ShadowGenerator {
+export function resolveShadowGenerator(
+  generatorKey: string,
+  cowatchGenerationId?: string,
+): ShadowGenerator {
   if (generatorKey === SEMANTIC_AA_SHADOW_GENERATOR_KEY) {
     return semanticAaShadowGenerator
+  }
+  if (generatorKey === COWATCH_SHADOW_GENERATOR_KEY) {
+    if (!cowatchGenerationId || !/^[a-f0-9]{64}$/.test(cowatchGenerationId)) {
+      throw new RangeError("Co-watch shadow graph generation is unpinned")
+    }
+    const legacy = createDatabaseCowatchShadowGenerator(
+      prisma,
+      () => new Date(),
+      cowatchGenerationId,
+    )
+    const trial = createCowatchTrialShadowGenerator(prisma, cowatchGenerationId)
+    return (context) =>
+      context.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
+        ? trial(context)
+        : legacy(context)
   }
   if (generatorKey === HYBRID_PERSONALIZED_SHADOW_GENERATOR_KEY) {
     return createHybridPersonalizedShadowGenerator(

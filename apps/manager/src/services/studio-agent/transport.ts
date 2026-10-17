@@ -85,8 +85,9 @@ export async function studioServiceCall(
   target: "admin" | "mastra" | "calendar" | "calendar-admin",
   caller: StudioCaller,
   payload: unknown,
+  signal?: AbortSignal,
 ) {
-  const response = await studioServiceRequest(target, caller, payload)
+  const response = await studioServiceRequest(target, caller, payload, signal)
   const data = JSON.parse(await readStudioBytes(response, 2097152)) as {
     result: unknown
   }

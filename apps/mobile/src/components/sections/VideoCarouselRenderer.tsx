@@ -12,6 +12,7 @@ import { useRouter } from "expo-router"
 import { SURFACE_COLOR, TEXT_ON_OVERLAY } from "../../lib/color"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   carousel,
   card,
@@ -54,6 +55,9 @@ const CARD_ASPECT_RATIO = 9 / 16
 export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Sections")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
   const { getVideoThumbnail } = useExperienceContext()
 
@@ -79,7 +83,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
       item.imageUrl ?? resolvedThumb,
       blockStreamingUrl(item),
     )
-    const title = item.titleOverride ?? "Untitled"
+    const title = item.titleOverride ?? tCommon("untitled")
     const carouselSectionKey = s.sectionKey as string | undefined
 
     const handlePress = () => {
@@ -93,7 +97,8 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     return (
       <PressableCard
         onPress={handlePress}
-        accessibilityLabel={`Play ${title}`}
+        accessibilityLabel={tCommon("playTitleAriaLabel", { title })}
+        {...{ "dd-action-name": "section-video-carousel-card" }}
         style={[card.surface, { width: cardWidth, height: cardHeight }]}
         background={
           thumbnailUrl != null ? (
@@ -148,6 +153,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
       <FlatList
         data={items}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(_item, index) => `vc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -155,7 +161,7 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${items.length} video items`}
+        accessibilityLabel={t("videoItemsAriaLabel", { count: items.length })}
       />
     </View>
   )

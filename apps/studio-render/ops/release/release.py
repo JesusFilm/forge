@@ -12,7 +12,9 @@ class ReleaseRefused(Exception):
 ARCHIVE_SHA256 = 'e414c137c7d6ed089c75d0887165f9a5fc1feb38bb6883f31d27fef0c00a03e4'
 FFMPEG_SHA256 = 'bf626ef18ccc5b1c8d26e2e046a90b998d1554d2bde0dcac0d497ad1886e9aa6'
 FFPROBE_SHA256 = 'c7a58858f84f56ce52fee2d09d1c8a56fbd4226e15be15c8c8fe88da395d3a1c'
-PROFILE = 'studio-render-1/900s-2cpu-2g-128p-96child-128m'
+PROFILE = 'studio-render-3/3600s-180prep-2cpu-2g-128p-96child-128m'
+# Retained v1/v2 candidates remain selectable for an explicit rollback.
+SUPPORTED_PROFILES = {PROFILE, 'studio-render-2/1200s-180prep-2cpu-2g-128p-96child-128m', 'studio-render-1/900s-2cpu-2g-128p-96child-128m'}
 
 
 def exact_keys(value, keys):
@@ -57,7 +59,7 @@ def verify_candidate(raw, approved_sha256, target):
         raise ReleaseRefused('Candidate contract refused')
     if not isinstance(target, str) or not re.fullmatch("[a-z][a-z0-9-]{2,63}", target) or value["target"] != target:
         raise ReleaseRefused("Candidate target differs from operator selection")
-    if type(value['version']) is not int or value['version'] != 1 or value['repository'] != 'JesusFilm/forge' or value['platform'] != 'linux/amd64' or value['profile'] != PROFILE:
+    if type(value['version']) is not int or value['version'] != 1 or value['repository'] != 'JesusFilm/forge' or value['platform'] != 'linux/amd64' or not isinstance(value['profile'], str) or value['profile'] not in SUPPORTED_PROFILES:
         raise ReleaseRefused('Release repository, platform or profile refused')
     exact_keys(value['source'], ['commit', 'ref'])
     if not matches(value['source']['commit'], '[a-f0-9]{40}') or value['source']['ref'] != 'refs/heads/main':

@@ -1,3 +1,4 @@
+import type { UiT } from "../i18n/useT"
 import {
   ACCENT_ON_DARK,
   STATUS_DONE_COLOR,
@@ -63,6 +64,8 @@ export type DownloadGlyphInfo = {
   interactive: boolean
 }
 
+export type DownloadButtonT = UiT<"DownloadButton">
+
 /** Whole percent, or null below 1% — a "0%" label reads as a stalled transfer. */
 function percentOf(value: number | null | undefined): number | null {
   const fraction = clampFraction(value)
@@ -98,7 +101,8 @@ function settled(
 export function downloadGlyphInfo(
   state: OfflineDownloadState | null | undefined,
   progress: number | null | undefined,
-  exporting?: ExportSessionEntry | null,
+  exporting: ExportSessionEntry | null | undefined,
+  t: DownloadButtonT,
 ): DownloadGlyphInfo {
   // R16: an export outranks every offline state, a finished copy included.
   // It now mirrors the offline affordance exactly — same arrow, same red ring,
@@ -113,8 +117,8 @@ export function downloadGlyphInfo(
         color: EXPORT_IN_PROGRESS_COLOR,
         a11yLabel:
           pct != null
-            ? `Saving to Files, paused at ${pct}%. Tap to resume or stop`
-            : "Saving to Files, paused. Tap to resume or stop",
+            ? t("exportPausedAtAriaLabel", { percent: pct })
+            : t("exportPausedAriaLabel"),
         ringIcon: "play",
         ringProgress: clampFraction(exporting.progress),
         interactive: true,
@@ -126,8 +130,8 @@ export function downloadGlyphInfo(
       color: EXPORT_IN_PROGRESS_COLOR,
       a11yLabel:
         pct != null
-          ? `Saving to Files, ${pct}%. Tap to pause`
-          : "Saving to Files. Tap to pause",
+          ? t("exportingAtAriaLabel", { percent: pct })
+          : t("exportingAriaLabel"),
       ringIcon: "pause",
       ringProgress: clampFraction(exporting.progress),
       interactive: true,
@@ -141,12 +145,12 @@ export function downloadGlyphInfo(
       color: ACCENT_ON_DARK,
       a11yLabel:
         state === "queued"
-          ? "Download queued. Tap to remove"
+          ? t("queuedAriaLabel")
           : state === "paused"
-            ? "Download paused. Tap to resume or remove"
+            ? t("pausedAriaLabel")
             : pct != null
-              ? `Downloading, ${pct}%. Tap to pause`
-              : "Downloading. Tap to pause",
+              ? t("downloadingAtAriaLabel", { percent: pct })
+              : t("downloadingAriaLabel"),
       ringIcon:
         state === "paused"
           ? "play"
@@ -162,15 +166,15 @@ export function downloadGlyphInfo(
       return settled(
         "checkmark-circle-outline",
         DOWNLOAD_DONE_COLOR,
-        "Downloaded",
+        t("downloadedAriaLabel"),
       )
     case "failed":
       return settled(
         "alert-circle-outline",
         DOWNLOAD_FAILED_COLOR,
-        "Download failed, retry",
+        t("failedAriaLabel"),
       )
     default:
-      return settled("download-outline", TEXT_SECONDARY, "Download")
+      return settled("download-outline", TEXT_SECONDARY, t("downloadAriaLabel"))
   }
 }

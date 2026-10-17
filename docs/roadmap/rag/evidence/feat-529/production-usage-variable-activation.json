@@ -1,0 +1,35 @@
+{
+  "target": {
+    "project": "forge",
+    "environment": "production",
+    "service": "@forge/rag",
+    "p": "98952497-a4d9-4714-8fe8-0cdbff3147c9",
+    "e": "5f41e037-90e4-4674-a3ea-66bbd05fb3b4",
+    "s": "b67a5f47-8f78-4643-90c3-1ec251640e6d"
+  },
+  "startedAt": "2026-09-29T03:27:54.154887Z",
+  "mutationAttempted": true,
+  "beforePresent": {
+    "RAG_USAGE_WRITER_DATABASE_URL": false,
+    "RAG_USAGE_REPORT_DATABASE_URL": false
+  },
+  "sourceNames": {
+    "RAG_USAGE_WRITER_DATABASE_URL": "FORGE_RAG_USAGE_WRITER_DATABASE_URL",
+    "RAG_USAGE_REPORT_DATABASE_URL": "FORGE_RAG_USAGE_REPORT_DATABASE_URL"
+  },
+  "replace": false,
+  "skipDeploys": false,
+  "mutationAcknowledgedAt": "2026-09-29T03:28:01.498201Z",
+  "changedVariableNames": [
+    "RAG_USAGE_REPORT_DATABASE_URL",
+    "RAG_USAGE_WRITER_DATABASE_URL"
+  ],
+  "afterMatchesVault": {
+    "RAG_USAGE_WRITER_DATABASE_URL": true,
+    "RAG_USAGE_REPORT_DATABASE_URL": true
+  },
+  "unrelatedVariablesUnchanged": true,
+  "unrelatedStagedPatchUnchanged": true,
+  "status": "variables_applied_and_verified",
+  "checkedAt": "2026-09-29T03:28:03.305076Z"
+}

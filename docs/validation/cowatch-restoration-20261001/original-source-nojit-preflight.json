@@ -1,0 +1,50 @@
+{
+  "declaredAt": "2026-09-30T19:59:36.444Z",
+  "scope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "provenance": "Original deployed source SQL and graph builder; transaction-local JIT disabled for comparison",
+  "sqlSha256": "003c2e953d5462d3cf64d72fac8505f581af8d6de5db95537299df344abb2641",
+  "statementTimeoutMs": 5000,
+  "jit": false,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "publicationPerformed": false,
+  "automaticRetryPermitted": false,
+  "transportExitCode": 0,
+  "records": [
+    {
+      "status": "ready",
+      "readOnly": true,
+      "sourceMs": 4860.086278999999,
+      "totalMs": 5043.612711,
+      "generation": "33ebd8ecfd9059478eab7d4ae739b5a6ef23f0e163611595d66a85e68fd612d0",
+      "rawSourceCount": 40605,
+      "sourceCount": 6841,
+      "attemptedPairCount": 46663,
+      "contributionCount": 39961,
+      "edgeCount": 9123,
+      "supportedEdgeCount": 844,
+      "publicationRowCount": 55926,
+      "graphRowJsonBytes": {
+        "sources": {
+          "total": 5596862,
+          "maximum": 863
+        },
+        "contributions": {
+          "total": 20929103,
+          "maximum": 541
+        },
+        "edges": {
+          "total": 4453321,
+          "maximum": 507
+        }
+      },
+      "runtimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf"
+    }
+  ],
+  "rawTransportOutputRetained": false
+}

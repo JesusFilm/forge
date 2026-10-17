@@ -4,6 +4,7 @@ const STATUS_STYLES: Record<FeatureStatus, string> = {
   "not-started": "bg-stone-500/20 text-stone-400 border-stone-500/30",
   "in-progress": "bg-blue-500/20 text-blue-400 border-blue-500/30",
   complete: "bg-green-500/20 text-green-400 border-green-500/30",
+  cancelled: "bg-slate-500/20 text-slate-400 border-slate-500/30",
   blocked: "bg-red-500/20 text-red-400 border-red-500/30",
 }
 
@@ -11,6 +12,7 @@ const STATUS_LABELS: Record<FeatureStatus, string> = {
   "not-started": "Not Started",
   "in-progress": "In Progress",
   complete: "Complete",
+  cancelled: "Cancelled",
   blocked: "Blocked",
 }
 

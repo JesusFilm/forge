@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
+import type { ComponentProps } from "react"
 import { Animated, Pressable, StyleSheet, Text } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -14,6 +15,13 @@ type SnackbarProps = {
   duration?: number
   /** Lift clear of the floating iOS tab bar. Only the tab routes have one. */
   clearsTabBar?: boolean
+  /** The leading glyph. The default reads as success, which not every message
+   *  is. */
+  iconName?: ComponentProps<typeof Ionicons>["name"]
+  iconColor?: string
+  /** Replaces the computed lift entirely. A host mounted at the ROOT sits
+   *  outside the tab controller, so `useTabBarClearance` is wrong there. */
+  bottomOffset?: number
 }
 
 export function Snackbar({
@@ -22,6 +30,9 @@ export function Snackbar({
   onDismiss,
   duration = 3000,
   clearsTabBar = false,
+  iconName = "checkmark-circle",
+  iconColor = "#4ade80",
+  bottomOffset,
 }: SnackbarProps) {
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
@@ -82,18 +93,24 @@ export function Snackbar({
 
   if (!mounted) return null
 
+  // One named value, named as `ExportReportHost` names the same quantity, so
+  // the applied lift stays on one line: the caller's own offset wins, else the
+  // tab-bar clearance, else the safe area.
+  const clearance =
+    bottomOffset ?? (liftsOverBar ? tabBarClearance : insets.bottom) + 16
+
   return (
     <Animated.View
       style={[
         styles.container,
         {
-          bottom: (liftsOverBar ? tabBarClearance : insets.bottom) + 16,
+          bottom: clearance,
           transform: [{ translateY }],
           opacity,
         },
       ]}
     >
-      <Ionicons name="checkmark-circle" size={22} color="#4ade80" />
+      <Ionicons name={iconName} size={22} color={iconColor} />
       <Text style={[styles.message, typography.body]}>{message}</Text>
       <Pressable onPress={dismiss} hitSlop={8}>
         <Ionicons name="close" size={18} color={TEXT_SECONDARY} />

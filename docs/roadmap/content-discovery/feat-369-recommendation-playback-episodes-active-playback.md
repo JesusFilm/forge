@@ -10,20 +10,10 @@ duration: 6
 depends_on:
   - "feat-368"
 blocks:
-  - "feat-505"
   - "feat-370"
-  - "feat-371"
-  - "feat-372"
-  - "feat-375"
   - "feat-376"
   - "feat-378"
-  - "feat-380"
-  - "feat-381"
   - "feat-387"
-  - "feat-390"
-  - "feat-391"
-  - "feat-392"
-  - "feat-448"
   - "feat-464"
 tags:
   - "admin"

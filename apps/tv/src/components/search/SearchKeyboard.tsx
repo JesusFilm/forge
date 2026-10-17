@@ -14,8 +14,7 @@ import {
 } from "./keyGrid"
 
 type Props = {
-  value: string
-  onChange: (next: string) => void
+  onChange: (next: (current: string) => string) => void
   onSubmit: () => void
   /** Fires when ANY key gains focus — the screen uses it to know D-pad focus
    *  left the results region (Back should pop, not re-park on the mic). */
@@ -31,14 +30,13 @@ type Props = {
  * than the old strip. Cells dispatch in the showing case; writes go via onChange.
  */
 export function SearchKeyboard({
-  value,
   onChange,
   onSubmit,
   onKeyFocus,
   claimInitialFocus = true,
 }: Props) {
   // Lowercase default; persistent caps-lock-style toggle. Only future presses
-  // are affected — already-typed characters in `value` stay as they were.
+  // are affected — already-typed characters stay as they were.
   const [isShifted, setIsShifted] = useState(false)
 
   const letterRows = useMemo(() => buildLetterRows(isShifted), [isShifted])
@@ -56,8 +54,7 @@ export function SearchKeyboard({
       onSubmit()
       return
     }
-    const next = applyKey(value, action)
-    if (next != null) onChange(next)
+    onChange((current) => applyKey(current, action) ?? current)
   }
 
   // trapFocusLeft stops leftmost-column presses escaping offscreen. Right is NOT

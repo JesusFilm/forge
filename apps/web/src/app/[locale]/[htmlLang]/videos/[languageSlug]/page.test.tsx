@@ -196,7 +196,7 @@ describe("/{language}.html/videos route", () => {
     })
   })
 
-  it("declares language-specific SEO metadata", async () => {
+  it("declares Spanish SEO metadata through the requested catalog", async () => {
     const pageMetadata = await generateMetadata({
       params: Promise.resolve({
         locale: "es",
@@ -206,10 +206,10 @@ describe("/{language}.html/videos route", () => {
     })
 
     expect(pageMetadata.title).toBe(
-      "Free Christian videos in Espanol latinoamericano | Jesus Film Project",
+      "Videos cristianos gratuitos en Espanol latinoamericano | Jesus Film Project",
     )
     expect(pageMetadata.description).toContain(
-      "with dubbed audio or subtitles in Espanol latinoamericano",
+      "con audio doblado o subtítulos en Espanol latinoamericano",
     )
     expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/spanish-latin-american.html/videos",

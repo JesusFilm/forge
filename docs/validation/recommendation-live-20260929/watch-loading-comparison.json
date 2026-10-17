@@ -1,0 +1,245 @@
+{
+  "measuredAt": "2026-09-29T07:10:14.846735+00:00",
+  "beforeFile": "watch-loading-before.json",
+  "afterFile": "watch-loading-after.json",
+  "method": "Two sequential samples per route; same named genuine headless Chromium session and version, observed inner viewport1280x577; browser restarted after idle before after-release work; no CPU/network throttling; cache state mixed, external network uncontrolled.",
+  "limits": [
+    "The earlier collector prose says1280x800; its actual recorded inner viewport1280x577 is authoritative and matches every before/after sample.",
+    "Two navigations per route cannot establish statistical regression or improvement.",
+    "The before/after comparison includes all intervening Watch changes since revisione2582c77b; it cannot attribute effects solely to PR2470.",
+    "Machine-excluded browser requests do not prove a live human study or experiment efficacy."
+  ],
+  "routes": [
+    {
+      "route": "/watch",
+      "beforeStatus": [200, 200],
+      "afterStatus": [200, 200],
+      "headingsPreserved": true,
+      "measuredViewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "metrics": {
+        "ttfbMs": {
+          "before": [843.1999999880791, 284.7999999523163],
+          "after": [609.6999999880791, 694.8000000119209],
+          "beforeMedian": 563.9999999701977,
+          "afterMedian": 652.25,
+          "delta": 88.25000002980232,
+          "percentChange": 15.647163126678286
+        },
+        "dclMs": {
+          "before": [1686.399999976158, 498.60000002384186],
+          "after": [1140.300000011921, 1014.100000023842],
+          "beforeMedian": 1092.5,
+          "afterMedian": 1077.2000000178814,
+          "delta": -15.299999982118607,
+          "percentChange": -1.4004576642671518
+        },
+        "loadMs": {
+          "before": [1861.5, 499.800000011921],
+          "after": [1944.600000023842, 1015.1999999880792],
+          "beforeMedian": 1180.6500000059605,
+          "afterMedian": 1479.9000000059607,
+          "delta": 299.2500000000002,
+          "percentChange": 25.34620759738191
+        },
+        "fcpMs": {
+          "before": [1304, 852],
+          "after": [972, 1044],
+          "beforeMedian": 1078.0,
+          "afterMedian": 1008.0,
+          "delta": -70.0,
+          "percentChange": -6.493506493506496
+        },
+        "lcpMs": {
+          "before": [1576, 1328],
+          "after": [3204, 2384],
+          "beforeMedian": 1452.0,
+          "afterMedian": 2794.0,
+          "delta": 1342.0,
+          "percentChange": 92.42424242424244
+        },
+        "firstPartyScriptEncodedBytes": {
+          "before": [839395, 839395],
+          "after": [839413, 839413],
+          "beforeMedian": 839395.0,
+          "afterMedian": 839413.0,
+          "delta": 18.0,
+          "percentChange": 0.0021444016226057627
+        },
+        "firstPartyScriptCount": {
+          "before": [28, 28],
+          "after": [28, 28],
+          "beforeMedian": 28.0,
+          "afterMedian": 28.0,
+          "delta": 0.0,
+          "percentChange": 0.0
+        },
+        "resourceCount": {
+          "before": [77, 90],
+          "after": [72, 81],
+          "beforeMedian": 83.5,
+          "afterMedian": 76.5,
+          "delta": -7.0,
+          "percentChange": -8.383233532934131
+        }
+      }
+    },
+    {
+      "route": "/watch/jesus.html",
+      "beforeStatus": [200, 200],
+      "afterStatus": [200, 200],
+      "headingsPreserved": true,
+      "measuredViewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "metrics": {
+        "ttfbMs": {
+          "before": [261.19999998807907, 240.39999997615817],
+          "after": [1278.600000023842, 636.5],
+          "beforeMedian": 250.7999999821186,
+          "afterMedian": 957.550000011921,
+          "delta": 706.7500000298024,
+          "percentChange": 281.79824564600955
+        },
+        "dclMs": {
+          "before": [651.1999999880791, 496.89999997615814],
+          "after": [1396.199999988079, 896.0999999642372],
+          "beforeMedian": 574.0499999821186,
+          "afterMedian": 1146.1499999761581,
+          "delta": 572.0999999940395,
+          "percentChange": 99.66030833757691
+        },
+        "loadMs": {
+          "before": [652, 497.39999997615814],
+          "after": [2137.100000023842, 896.5],
+          "beforeMedian": 574.6999999880791,
+          "afterMedian": 1516.800000011921,
+          "delta": 942.1000000238419,
+          "percentChange": 163.92900644569056
+        },
+        "fcpMs": {
+          "before": [396, 448],
+          "after": [1672, 840],
+          "beforeMedian": 422.0,
+          "afterMedian": 1256.0,
+          "delta": 834.0,
+          "percentChange": 197.63033175355451
+        },
+        "lcpMs": {
+          "before": [396, 448],
+          "after": [1672, 840],
+          "beforeMedian": 422.0,
+          "afterMedian": 1256.0,
+          "delta": 834.0,
+          "percentChange": 197.63033175355451
+        },
+        "firstPartyScriptEncodedBytes": {
+          "before": [916042, 916042],
+          "after": [916129, 916129],
+          "beforeMedian": 916042.0,
+          "afterMedian": 916129.0,
+          "delta": 87.0,
+          "percentChange": 0.009497381124456972
+        },
+        "firstPartyScriptCount": {
+          "before": [35, 35],
+          "after": [35, 35],
+          "beforeMedian": 35.0,
+          "afterMedian": 35.0,
+          "delta": 0.0,
+          "percentChange": 0.0
+        },
+        "resourceCount": {
+          "before": [71, 72],
+          "after": [71, 71],
+          "beforeMedian": 71.5,
+          "afterMedian": 71.0,
+          "delta": -0.5,
+          "percentChange": -0.6993006993006978
+        }
+      }
+    },
+    {
+      "route": "/watch/nua-fresh-perspective.html",
+      "beforeStatus": [200, 200],
+      "afterStatus": [200, 200],
+      "headingsPreserved": true,
+      "measuredViewport": {
+        "height": 577,
+        "width": 1280
+      },
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "metrics": {
+        "ttfbMs": {
+          "before": [1166.2999999523165, 233.5],
+          "after": [737.1999999880791, 755.8000000119209],
+          "beforeMedian": 699.8999999761583,
+          "afterMedian": 746.5,
+          "delta": 46.600000023841744,
+          "percentChange": 6.658094017063743
+        },
+        "dclMs": {
+          "before": [1331.399999976158, 393.10000002384186],
+          "after": [910.2000000476836, 1037.5],
+          "beforeMedian": 862.2499999999999,
+          "afterMedian": 973.8500000238419,
+          "delta": 111.60000002384197,
+          "percentChange": 12.942881997546184
+        },
+        "loadMs": {
+          "before": [1827.600000023842, 393.5],
+          "after": [1204, 1039],
+          "beforeMedian": 1110.550000011921,
+          "afterMedian": 1121.5,
+          "delta": 10.949999988079071,
+          "percentChange": 0.9859979278701081
+        },
+        "fcpMs": {
+          "before": [1304, 368],
+          "after": [876, 928],
+          "beforeMedian": 836.0,
+          "afterMedian": 902.0,
+          "delta": 66.0,
+          "percentChange": 7.8947368421052655
+        },
+        "lcpMs": {
+          "before": [1968, 368],
+          "after": [1324, 928],
+          "beforeMedian": 1168.0,
+          "afterMedian": 1126.0,
+          "delta": -42.0,
+          "percentChange": -3.595890410958902
+        },
+        "firstPartyScriptEncodedBytes": {
+          "before": [916042, 916042],
+          "after": [916129, 916129],
+          "beforeMedian": 916042.0,
+          "afterMedian": 916129.0,
+          "delta": 87.0,
+          "percentChange": 0.009497381124456972
+        },
+        "firstPartyScriptCount": {
+          "before": [35, 35],
+          "after": [35, 35],
+          "beforeMedian": 35.0,
+          "afterMedian": 35.0,
+          "delta": 0.0,
+          "percentChange": 0.0
+        },
+        "resourceCount": {
+          "before": [78, 78],
+          "after": [68, 76],
+          "beforeMedian": 78.0,
+          "afterMedian": 72.0,
+          "delta": -6.0,
+          "percentChange": -7.692307692307687
+        }
+      }
+    }
+  ]
+}

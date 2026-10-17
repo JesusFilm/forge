@@ -13,6 +13,7 @@ import { createPortal } from "react-dom"
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
+import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import {
   readWatchVolumePreference,
@@ -79,6 +80,7 @@ function getWebKitFullscreenVideo(
 }
 
 export function HeroPlayerControls({
+  mediaId,
   player,
   playerRef,
   wrapperRef,
@@ -87,6 +89,7 @@ export function HeroPlayerControls({
   playbackLoading = false,
   onLanguageClick,
   languageCode,
+  languageName,
   subtitleLanguageCode,
   subtitleEnabled = subtitleLanguageCode != null,
   showLanguageButton,
@@ -94,6 +97,7 @@ export function HeroPlayerControls({
   onVisibilityChange,
   onWatchNextInteraction,
 }: {
+  mediaId?: string
   player: MuxPlayerRef | null
   playerRef: React.RefObject<MuxPlayerRef | null>
   wrapperRef: React.RefObject<HTMLDivElement | null>
@@ -112,6 +116,8 @@ export function HeroPlayerControls({
   onLanguageClick?: () => void
   /** Active audio language code displayed beside the in-chrome voice icon. */
   languageCode?: string | null
+  /** Full selected language name used to distinguish variants to screen readers. */
+  languageName?: string | null
   /** Active subtitle language code; null when subtitles are disabled. */
   subtitleLanguageCode?: string | null
   /** Whether a subtitle track is active, including tracks without a display code. */
@@ -193,7 +199,7 @@ export function HeroPlayerControls({
   const playLabel = playing ? t("pause") : t("play")
   const muteLabel = muted || volume === 0 ? t("unmute") : t("mute")
   const audioLanguageLabel = languageCode
-    ? `${t("changeAudioLanguage")}: ${languageCode}`
+    ? `${t("changeAudioLanguage")}: ${languageName && languageName !== languageCode ? `${languageName} (${languageCode})` : languageCode}`
     : t("changeAudioLanguage")
   const fullscreenLabel = isFullscreen
     ? t("exitFullscreen")
@@ -622,9 +628,15 @@ export function HeroPlayerControls({
         console.warn("[HeroPlayer] play() rejected", err)
       })
     } else {
+      if (mediaId)
+        dispatchPlaybackNavigationIntent({
+          mediaId,
+          action: "pause_intent",
+          cause: "user",
+        })
       p.pause()
     }
-  }, [playerRef])
+  }, [mediaId, playerRef])
 
   const toggleMute = useCallback(() => {
     const p = playerRef.current
@@ -1309,7 +1321,7 @@ export function HeroPlayerControls({
             {languageCode ? (
               <span
                 data-testid="hero-chrome-language-code"
-                className="text-xs font-bold tracking-[0.1em] sm:text-[10px] md:tracking-[0.14em]"
+                className="max-w-28 truncate text-xs font-bold tracking-[0.1em] sm:text-[10px] md:tracking-[0.14em]"
               >
                 {languageCode}
               </span>

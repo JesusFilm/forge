@@ -11,7 +11,7 @@ export const studioCaptureSourceSchema = z
     dubId: studioIdSchema,
     editionId: studioIdSchema,
     language: studioIdSchema,
-    trackId: studioIdSchema,
+    trackId: studioIdSchema.nullable(),
     downloadId: studioIdSchema,
     startMs: z.number().int().nonnegative(),
     endMs: z.number().int().positive(),
@@ -27,7 +27,7 @@ export const studioSourceSnapshotSchema = z
     downloadId: studioIdSchema,
     hlsUrl: z.string().url(),
     downloadUrl: z.string().url(),
-    subtitleUrl: z.string().url(),
+    subtitleUrl: z.string().url().nullable(),
     catalogDigest: studioDigestSchema,
     restrictions: z.array(z.string()),
     materialization: z.enum([
@@ -47,10 +47,27 @@ export const studioSourceSnapshotSchema = z
       )
       .max(128),
     exportHeight: z.number().int().positive().nullable(),
-    subtitlePrimary: z.boolean(),
-    subtitleAiGenerated: z.boolean(),
+    subtitlePrimary: z.boolean().nullable(),
+    subtitleAiGenerated: z.boolean().nullable(),
   })
   .strict()
+  .superRefine((snapshot, ctx) => {
+    const absent = snapshot.source.subtitle === null
+    if (
+      absent
+        ? snapshot.subtitleUrl !== null ||
+          snapshot.subtitlePrimary !== null ||
+          snapshot.subtitleAiGenerated !== null
+        : snapshot.subtitleUrl === null ||
+          snapshot.subtitlePrimary === null ||
+          snapshot.subtitleAiGenerated === null
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Subtitle identity and metadata must agree",
+      })
+    }
+  })
 export type ShortSourceSnapshot = z.infer<typeof studioSourceSnapshotSchema>
 export const studioSourceManifestSchema = z
   .object({

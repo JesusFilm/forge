@@ -10,8 +10,6 @@ depends_on:
   - "feat-384"
 blocks:
   - "feat-447"
-  - "feat-394"
-  - "feat-395"
 tags:
   - "admin"
   - "recommendations"

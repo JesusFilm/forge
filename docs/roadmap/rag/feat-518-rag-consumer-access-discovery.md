@@ -73,7 +73,9 @@ production/Railway access, deployment, merge or corpus/data changes. If evidence
 requires unavailable access or an unapproved decision, record the dependency
 without claiming confirmation. No implementation starts before this gate closes.
 Preserve seven-day migration, actual ops HTTP dogfood, portal-after-dogfood,
-Jaco/RAGBot-only reporting and visibility-and-conversation usage policy.
+visibility-and-conversation usage policy. The earlier Jaco/RAGBot-only human
+reporting policy is superseded by the 2026-09-29 feat-528 direction: all admitted
+portal users can view all consumer reports using their existing sessions.
 
 ## Verification
 

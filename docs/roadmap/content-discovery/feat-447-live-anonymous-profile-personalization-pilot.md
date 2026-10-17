@@ -3,7 +3,7 @@ id: "feat-447"
 title: "Live anonymous-profile hybrid personalization rollout"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: ""
 duration: 8
 depends_on:
@@ -11,8 +11,9 @@ depends_on:
   - "feat-385"
   - "feat-386"
   - "feat-459"
+  - "feat-545"
 blocks:
-  - "feat-396"
+  - "feat-064"
 tags:
   - "admin"
   - "web"
@@ -22,6 +23,65 @@ tags:
   - "experiments"
   - "personalization"
 ---
+
+## October 2 rollout closeout
+
+**Status: complete for live anonymous-profile personalization.** The dated
+[September 21 release canaries](../../operations/watch-closeout-release-2026-09-21.md)
+showed qualified playback learning, later six-card hybrid delivery, withdrawal,
+reset and completed erasure without a fabricated experiment assignment. The
+[September 22 authenticated Admin trace](../../operations/watch-contextual-distance-release-2026-09-22.md#authenticated-continuation-and-homepage-decision)
+reconciled the selected item, qualified outcome, published generation, later
+hybrid request and privacy-safe execution evidence. Feat-459 and
+feat-545 are now complete; their dated in-progress references below are
+historical. Feat-545's accepted telemetry limitations remain recorded there
+and in feat-566, rather than being represented as recovered data.
+
+Production's bounded September 30–October 1
+[health audit](../../reports/2026-10-01-recommendation-health/report.md#profile-learning-and-recommendation-influence)
+recorded 1,509 hybrid requests across 262 anonymous profiles; 1,335 contained
+an actual profile-contributed card. This proves use in that window, not causal
+benefit or every current viewer's configuration. The exact-audio and Chinese
+identity repair in [PR #2527](https://github.com/JesusFilm/forge/pull/2527)
+subsequently deployed as `58cf00928`; the
+[October 2 coverage disposition](../../reports/2026-10-02-recommendation-coverage-acceptance.md)
+records six visible cards and ordinary playback after that deploy, with no
+configuration change during its audit. No fresh production flag read or new
+production write is claimed here.
+
+The September 24 request for a **natural** last-known-good fallback receipt is
+retired under the October 2 owner direction. On October 2, the current runtime
+source passed the opt-in
+[real-dependency fallback test](../../../apps/admin/src/services/recommendations/delivery-retriever.db.test.ts)
+with isolated PostgreSQL 18 and Redis, a current private Prisma client, and
+the fixture-only schema repair from [PR #2544](https://github.com/JesusFilm/forge/pull/2544)
+applied for the run.
+The normal control issued six cards in 158 ms. A locally forced
+candidate-platform exception then issued six unique playable semantic cards in
+78 ms and persisted an `ISSUED` / `FALLBACK` request with the semantic manifest,
+no experiment assignment, `candidate_platform_unavailable` in the candidate
+run and `evidenceComplete=false`. One targeted test passed; 15 unrelated cases
+were skipped by the name filter. The test changes no production state and
+proves that this source handles and records that failure path. The fixture
+repair must merge before this check is reproducible on main. The September 24
+read-only production inventory still observed zero natural matching fallbacks;
+this closeout claims no natural production failure or matching Admin trace.
+
+Current Web source automatically grants an undecided first visit without a
+banner, retains disable/reset/delete controls and fails ambiguous withdrawal
+closed. Five focused October 2 Web suites passed 55 tests across the shell,
+profile API, session and For-you route. Earlier production privacy canaries
+remain the end-to-end evidence; these current tests are seam evidence. Cold
+start and optional-profile degradation retain semantic contextual delivery.
+Exact audio, eligible playback, deduplication, privacy-generation fencing and
+the 1.5-second bound remain requirements. Valid empty/partial rows caused
+by insufficient supply and supported no-edge fallback are accepted coverage
+outcomes; a recorded server error or timeout remains a reliability issue even
+if HTTP 200 or fallback follows.
+Personalization usefulness has not been established by a controlled study.
+
+The dated status instructions below preserve their original evidence windows;
+this section is the current disposition.
 
 ## Problem
 
@@ -191,3 +251,75 @@ The [September 22 follow-up](../../operations/watch-budget-followup-2026-09-22.m
 ## September 22 internal continuation
 
 The internal continuation finds no operational last-known-good fallback in the fresh request population. Its established lifecycle/Admin proofs retain credit, but the independent fallback and feat-459 dependency remain open. No production fallback was manufactured. See the [internal verification](../../operations/watch-budget-followup-2026-09-22.md#internal-continuation-workload-volume-and-reconciled-outcomes).
+
+## September 24 operational gate transfer
+
+Feat-464 and feat-459 now close the verified recovery/integrity scope. Their
+remaining monitoring and telemetry acceptance requirements are preserved in
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md), now an
+explicit dependency. This metadata change does not activate runtime features.
+
+## September 24 last-known-good fallback audit
+
+A bounded production **read-only** transaction at 2026-09-23 23:25:58 UTC
+inspected 57,972 retained `recommendation_request` rows created since September
+18 (latest row 23:25:57 UTC). It found **zero** requests with
+`last_known_good_semantic_fallback`, `candidate_platform_unavailable`,
+`semantic_parity_mismatch`, or `hybrid_candidate_platform_unavailable` as the
+request fallback reason. Joining request-owned `recommendation_candidate_run`
+and `recommendation_personalization_decision` records found **zero** matching
+platform-failure reasons there as well. The transaction used `BEGIN READ ONLY`
+and a 10-second statement timeout; it read aggregate counts and timestamps, not
+viewer/session identities or vectors. Recent `seed_embedding_unavailable`,
+`no_candidates`, and `profile_lineage_ineligible` outcomes are different
+failure modes and do not establish the operational last-known-good gate.
+
+The [September 21 real-dependency drill](../../operations/watch-startup-readiness-2026-09-21.md#module-reuse-release-and-independent-local-boundary-checks)
+remains the strongest isolated control: a normal six-card service request
+passed; a locally forced candidate-platform exception then returned six unique
+last-known-good semantic cards and persisted an issued fallback request with no
+assignment, `candidate_platform_unavailable`, and incomplete stage evidence.
+The service's [fallback path](../../../apps/admin/src/services/recommendations/delivery.service.ts)
+and its [persistence regression](../../../apps/admin/src/services/recommendations/delivery.service.persistence.test.ts)
+still distinguish this from ordinary semantic contextual delivery and from
+optional-profile degradation. The local control proves the service recovers and
+records the failure when that stage fails. It does **not** prove a natural
+production failure or its matching authorized Admin trace. The service and
+candidate mapping changed in September 23 PRs #2388 and #2392 after that drill;
+the original drill therefore is not an exact-current-revision integration run.
+
+At 2026-09-23 23:38:49 UTC, an [opt-in current-source database
+test](../../../apps/admin/src/services/recommendations/delivery-retriever.db.test.ts)
+passed against isolated pgvector PostgreSQL and Redis using the production
+dependency factory. The tested fallback runtime came from `d01ca28a`; the
+delivery service, dependency factory and candidate mapping are unchanged through
+the then-current `fc400e560` main revision. A normal control served six cards
+in 134 ms and persisted passed candidate-eligibility and ranker parity with complete
+evidence. Overriding only the local candidate-platform orchestrator to throw
+returned six unique playable semantic cards in 70 ms. PostgreSQL recorded an
+`ISSUED`/`FALLBACK` request, six items,
+`last_known_good_semantic_fallback`, the semantic candidate-platform manifest,
+no experiment assignment, and a candidate run with
+`candidate_platform_unavailable` and `evidenceComplete=false`. The focused test
+passed (one run, nine unrelated cases skipped). The local services were removed
+afterward. This proves the current-source recovery and durable evidence under a
+controlled failure; it is still not a natural production fallback or an
+authorized Admin trace of such an event. The deterministic fixture does not
+replace the separately credited restored-vector performance proof.
+
+Keep `status: "in-progress"` and the feat-545 dependency. For closure under the
+current verification requirement, wait for a genuine retained operational
+fallback, then reconcile its request, candidate-run evidence, item count,
+effective manifest and authorized Admin trace without creating a fault in
+production. A bounded alternative for owner review is to replace the
+natural-event requirement with the current-source real-dependency control just
+recorded, after confirming that the release still uses that same fallback
+runtime. The exact assertions are a normal six-card control followed by six
+unique playable semantic fallback cards, a persisted issued fallback, effective
+semantic manifest, no assignment, `candidate_platform_unavailable` and
+incomplete stage evidence. Retain the negative production inventory alongside
+the result and state explicitly that no production failure was observed. This
+would change the acceptance criterion, so it requires the owner's explicit
+decision before closing; the feat-545 dependency must still be resolved
+separately. Do not treat an ordinary semantic or optional-profile fallback as
+that event.

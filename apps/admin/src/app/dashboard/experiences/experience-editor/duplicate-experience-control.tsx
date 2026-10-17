@@ -92,7 +92,7 @@ export function DuplicateExperienceControl({
                 ? "Opening duplicated experience"
                 : externalPending
                   ? "Wait for the pending editor action to finish"
-                  : "Duplicate this experience as a draft"
+                  : "Copy every language's latest saved version (including saved, unpublished changes) into a new unpublished draft. It never becomes the live homepage."
         }
       >
         <Copy className="h-4 w-4" strokeWidth={1.5} />

@@ -12,7 +12,11 @@ import {
 } from "@/services/experience-ai/experience-ai-normalize"
 import { buildExemplarOutline } from "@/services/experience-ai/experience-ai-exemplar-outline"
 import { launchMastraExperienceVariant } from "@/services/experience-ai/mastra-experience-variant-client"
-import { serializeLocale } from "@/services/experience-locale-mcp.service"
+import {
+  previewUrlFor,
+  serializeLocale,
+} from "@/services/experience-locale-mcp.service"
+import { ExperienceDuplicationSourceVersion } from "@/services/experience.schemas"
 import { launchMastraExperienceDraft } from "@/services/mastra-experience-draft-client"
 import { resolveTimeoutMs } from "@/services/mastra-http-transport"
 import {
@@ -48,7 +52,11 @@ const GenerateExperienceToolInput = z
   .strict()
 
 const DuplicateExperienceToolInput = z
-  .object({ experienceId: z.string().min(1) })
+  .object({
+    experienceId: z.string().min(1),
+    sourceVersion:
+      ExperienceDuplicationSourceVersion.optional().default("EFFECTIVE"),
+  })
   .strict()
 
 /**
@@ -214,21 +222,33 @@ export class ExperienceMcpService {
   }) {
     const input = DuplicateExperienceToolInput.parse(raw)
     const duplicated = await new ExperienceService(this.prisma).duplicate({
-      input: { id: input.experienceId },
+      input: { id: input.experienceId, sourceVersion: input.sourceVersion },
       user,
     })
-    const firstLocale = duplicated.locales[0]
+    const firstLocale = duplicated.duplication.locales[0]?.locale
     if (!firstLocale) throw new ExperienceDuplicationError()
 
     return {
       ok: true as const,
       sourceExperienceId: input.experienceId,
+      sourceVersion: duplicated.duplication.sourceVersion,
       experience: {
         id: duplicated.id,
         isTemplate: duplicated.isTemplate,
         ownerId: duplicated.ownerId,
       },
-      locales: duplicated.locales.map(serializeLocale),
+      locales: duplicated.duplication.locales.map((copy) => ({
+        ...serializeLocale(copy.locale),
+        copiedFrom: copy.source.copiedFrom,
+        sourceLocaleId: copy.source.localeId,
+        sourceDraftRevision: copy.source.draftRevision,
+        draft: {
+          revision: copy.draftRevision,
+          previewUrl: copy.previewToken
+            ? previewUrlFor(copy.previewToken)
+            : null,
+        },
+      })),
       editorUrl: editorUrlFor(duplicated.id, firstLocale.locale),
     }
   }

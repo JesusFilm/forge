@@ -3,11 +3,10 @@ id: "feat-279"
 title: "Watch global beta tester CTA feature flag"
 owner: "unassigned"
 priority: "P2"
-status: "in-progress"
+status: "cancelled"
 start_date: "2026-07-21"
 duration: 1
-depends_on:
-  - "feat-252"
+depends_on: []
 blocks: []
 tags:
   - "platform"
@@ -15,6 +14,10 @@ tags:
   - "watch-page"
   - "launchdarkly"
 ---
+
+## Retirement — 2026-10-08
+
+The owner confirmed the beta testing program has ended and authorized removing all Watch signup entry points. The flag rollout is cancelled; feat-667 removes its implementation. Historical requirements below are retained for context.
 
 ## Problem
 

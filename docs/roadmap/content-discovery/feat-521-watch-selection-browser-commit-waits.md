@@ -74,10 +74,11 @@ individual request. Keep HTTP validation rejections separate from timeouts.
 
 No increased deadlines, mutation retries, hidden errors or unproven UI changes.
 Preserve preview timing, identity, authorization, attribution and rate limits.
-Keep the authored English homepage recommendations block removed and
-`forge.watch.homepageRecommendations` default off. No Mobile/TV UI, account
-linking or curation republishing. Use an owned isolated worktree and browser;
-deploy any justified code fix only through normal PR/main automation.
+Preserve the current owner-authorized homepage recommendation pilot gating and
+published block state; do not remove, republish or widen targeting as part of
+this investigation. No Mobile/TV UI, account linking or curation republishing.
+Use an owned isolated worktree and browser; deploy any justified code fix only
+through normal PR/main automation.
 
 ## September 21 native-wait investigation
 
@@ -126,3 +127,21 @@ The feature override is not a demonstrated correction for the selection
 failure. Keep this ticket open for a matched affected request and ordinary-field
 attribution; do not change application deadlines or verification defaults.
 See the [release record](../../operations/watch-closeout-release-2026-09-21.md).
+
+## September 24 bounded continuation
+
+The current selection path still has no browser-stage observation separating
+response headers, parsed/validated body and fail-open navigation. RUM resource
+timing cannot expose a native `WaitForCommitCompletion` overlap or prove server
+commit. An owned headed-browser startup timed out before navigation, so no new
+selection was sent and no acknowledgment or trace was captured. The corrected
+September 21 controls retain credit; they did not reproduce the affected wait.
+
+The next required artifact is a fresh affected headed request with the actual
+launch arguments and viewport, renderer/compositor trace, header/body/callback
+times and exact nonce/href/media acknowledgment validation. If a natural field
+failure remains uncorrelatable, a single privacy-safe selection RUM action with
+bounded phase times and result category could distinguish browser stages, but
+would not prove server commit or native cause. The
+[September 24 browser record](../../operations/watch-browser-investigations-2026-09-24.md)
+defines that narrow proposal. No deadline, retry or UI change is justified.

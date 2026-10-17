@@ -17,8 +17,13 @@ export type WatchHomeVideoSlide = {
   kind: "video"
   id: string
   title: string
+  /** The language of `title` (KTD10). */
+  titleLang?: string | null
   description: string | null
   label: string
+  /** Admin's raw label kind, for routing; `label` is catalog text (KTD15).
+   *  Absent reads as unlabeled. */
+  rawLabel?: string | null
   slug: string | null
   parentSlug: string | null
   posterUrl: string | null
@@ -197,12 +202,22 @@ export function muxPosterUrl(playbackId: string, width = 1280): string {
   return `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
 }
 
-export function formatWatchHomeDatePrefix(now: Date): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "America/New_York",
-  }).format(now)
+const DATE_PREFIX_FORMAT: Intl.DateTimeFormatOptions = {
+  month: "short",
+  day: "numeric",
+  timeZone: "America/New_York",
+}
+
+/** The displayed date, in the UI language (U10). `en-US` is the fallback for a
+ *  tag the runtime lacks, so it never takes the phone's default locale. */
+export function formatWatchHomeDatePrefix(now: Date, uiTag: string): string {
+  try {
+    return new Intl.DateTimeFormat([uiTag, "en-US"], DATE_PREFIX_FORMAT).format(
+      now,
+    )
+  } catch {
+    return new Intl.DateTimeFormat("en-US", DATE_PREFIX_FORMAT).format(now)
+  }
 }
 
 function timeRangeMatches(start: number, end: number, hour: number): boolean {
@@ -264,10 +279,14 @@ export function overlayForInsert(
 export function muxSlideDisplayCopy(
   slide: WatchHomeMuxSlide,
   now: Date,
+  uiTag: string,
 ): WatchHomeMuxOverlayCopy {
   const copy = overlayForInsert(slide.insert, now)
   if (!slide.prefixTitleWithDate) return copy
-  return { ...copy, title: `${formatWatchHomeDatePrefix(now)}: ${copy.title}` }
+  return {
+    ...copy,
+    title: `${formatWatchHomeDatePrefix(now, uiTag)}: ${copy.title}`,
+  }
 }
 
 /**
@@ -293,7 +312,12 @@ function selectMuxPlaybackId(
 
 function muxInsertToSlide(
   insert: WatchHomeMuxInsertConfig,
-  options: { now: Date; sessionSeed: string; prefixTitleWithDate?: boolean },
+  options: {
+    now: Date
+    sessionSeed: string
+    uiTag: string
+    prefixTitleWithDate?: boolean
+  },
 ): WatchHomeMuxSlide | null {
   const { playbackId, playbackIndex } = selectMuxPlaybackId(
     insert,
@@ -303,7 +327,7 @@ function muxInsertToSlide(
 
   const overlay = overlayForInsert(insert, options.now)
   const title = options.prefixTitleWithDate
-    ? `${formatWatchHomeDatePrefix(options.now)}: ${overlay.title}`
+    ? `${formatWatchHomeDatePrefix(options.now, options.uiTag)}: ${overlay.title}`
     : overlay.title
   const posterUrl = insert.posterOverride ?? muxPosterUrl(playbackId)
 
@@ -338,6 +362,7 @@ export function mergeWatchHomeMuxInserts(
   inserts: readonly WatchHomeMuxInsertConfig[],
   now = new Date(),
   sessionSeed = WATCH_HOME_DEFAULT_SESSION_SEED,
+  uiTag: string,
 ): WatchHomeSlide[] {
   const enabled = inserts.filter((insert) => insert.enabled)
   if (enabled.length === 0) return [...videos]
@@ -360,6 +385,7 @@ export function mergeWatchHomeMuxInserts(
     const slide = muxInsertToSlide(insert, {
       now,
       sessionSeed,
+      uiTag,
       prefixTitleWithDate: insert.id === firstStartId,
     })
     if (slide) {
@@ -374,7 +400,7 @@ export function mergeWatchHomeMuxInserts(
     for (const insert of afterCount) {
       if (inserted.has(insert.id)) continue
       if (index + 1 < insert.trigger.count) continue
-      const slide = muxInsertToSlide(insert, { now, sessionSeed })
+      const slide = muxInsertToSlide(insert, { now, sessionSeed, uiTag })
       if (slide) {
         slides.push(slide)
         inserted.add(insert.id)
@@ -394,6 +420,8 @@ export type WatchHomeHeroQueueInput = {
   startPoolIndex?: number
   now?: Date
   sessionSeed?: string
+  /** The UI catalog tag for the displayed date prefix. */
+  uiTag: string
 }
 
 /**
@@ -409,6 +437,7 @@ export function buildWatchHomeHeroQueue({
   startPoolIndex = 0,
   now = new Date(),
   sessionSeed = WATCH_HOME_DEFAULT_SESSION_SEED,
+  uiTag,
 }: WatchHomeHeroQueueInput): {
   slides: WatchHomeSlide[]
   videos: WatchHomeVideoSlide[]
@@ -447,7 +476,13 @@ export function buildWatchHomeHeroQueue({
   }
 
   return {
-    slides: mergeWatchHomeMuxInserts(result.videos, inserts, now, sessionSeed),
+    slides: mergeWatchHomeMuxInserts(
+      result.videos,
+      inserts,
+      now,
+      sessionSeed,
+      uiTag,
+    ),
     videos: result.videos,
     wrapped,
   }

@@ -6,6 +6,10 @@ import type {
 import { Trash2, Copy } from "lucide-react"
 import type { EditorSession, EditorSnapshot } from "./editor-session"
 import { itemLabel } from "./timeline"
+import { itemGroup, groupTrackKind } from "./timeline-layout"
+import { NumberField } from "./number-field"
+import { TransitionControls } from "./transition-controls"
+import { TextControls } from "./text-controls"
 export const defaultTransform: NonNullable<StudioTimelineItem["transform"]> = {
   x: 0,
   y: 0,
@@ -13,42 +17,6 @@ export const defaultTransform: NonNullable<StudioTimelineItem["transform"]> = {
   scaleY: 1,
   rotation: 0,
   opacity: 1,
-}
-function NumberField({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step = 1,
-}: {
-  label: string
-  value: number
-  onChange: (n: number) => void
-  min?: number
-  max?: number
-  step?: number
-}) {
-  return (
-    <label>
-      {label}
-      <input
-        key={value}
-        type="number"
-        defaultValue={value}
-        min={min}
-        max={max}
-        step={step}
-        onBlur={(e) => {
-          const n = Number(e.target.value)
-          if (Number.isFinite(n) && n !== value) onChange(n)
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur()
-        }}
-      />
-    </label>
-  )
 }
 export function Inspector({
   session,
@@ -127,7 +95,7 @@ export function Inspector({
               session.seek(i.startFrame)
             }}
           >
-            <strong>{itemLabel(i).slice(0, 100)}</strong>
+            <strong>{itemLabel(i, doc).slice(0, 100)}</strong>
             <span>
               {(i.startFrame / doc.fps).toFixed(1)}s ·{" "}
               {(i.durationInFrames / doc.fps).toFixed(1)}s
@@ -221,6 +189,16 @@ export function Inspector({
                 }
               />
             </label>
+            <TextControls
+              item={item}
+              onChange={(properties) =>
+                patch((i) =>
+                  i.kind === "text"
+                    ? { ...i, properties: { ...i.properties, ...properties } }
+                    : i,
+                )
+              }
+            />
             <label>
               Alignment
               <select
@@ -248,6 +226,100 @@ export function Inspector({
               </select>
             </label>
           </>
+        )}
+        {item.kind === "video" && (
+          <NumberField
+            label="Clip speed"
+            value={item.playbackRate ?? 1}
+            min={0.25}
+            max={4}
+            step={0.05}
+            onChange={(playbackRate) =>
+              change((d) => {
+                if (playbackRate < 0.25 || playbackRate > 4) return d
+                const durationInFrames = Math.max(
+                  1,
+                  Math.round(
+                    ((item.source.endMs - item.source.startMs) * d.fps) /
+                      (1000 * playbackRate),
+                  ),
+                )
+                return {
+                  ...d,
+                  durationInFrames: Math.max(
+                    d.durationInFrames,
+                    item.startFrame + durationInFrames,
+                  ),
+                  items: d.items.map((i) =>
+                    i.id === item.id
+                      ? { ...item, playbackRate, durationInFrames }
+                      : i,
+                  ),
+                }
+              })
+            }
+          />
+        )}
+        {component && (
+          <>
+            <label>
+              Component name
+              <input
+                aria-label="Component name"
+                maxLength={200}
+                key={component.versionId + (component.name ?? "")}
+                defaultValue={component.name ?? component.versionId}
+                onBlur={(e) => {
+                  const name = e.target.value.trim()
+                  if (name)
+                    change((d) => ({
+                      ...d,
+                      components: d.components.map((c) =>
+                        c.versionId === component.versionId
+                          ? { ...c, name }
+                          : c,
+                      ),
+                    }))
+                }}
+              />
+            </label>
+            <label>
+              Timeline section
+              <select
+                aria-label="Timeline section"
+                value={itemGroup(item, doc) === "Text" ? "text" : "video"}
+                onChange={(e) => {
+                  const category = e.target.value as "text" | "video"
+                  change((d) => ({
+                    ...d,
+                    components: d.components.map((c) =>
+                      c.versionId === component.versionId
+                        ? { ...c, category }
+                        : c,
+                    ),
+                  }))
+                }}
+              >
+                <option value="text">Text</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+          </>
+        )}
+        {item.kind === "video" && (
+          <TransitionControls
+            item={item}
+            document={doc}
+            onChange={(transition) =>
+              patch((i) => {
+                if (i.kind !== "video") return i
+                const next = { ...i }
+                if (transition) next.transition = transition
+                else delete next.transition
+                return next
+              })
+            }
+          />
         )}
         {component &&
           item.kind === "component" &&
@@ -333,11 +405,22 @@ export function Inspector({
             value={item.trackId}
             onChange={(e) => patch((i) => ({ ...i, trackId: e.target.value }))}
           >
-            {doc.tracks.map((t, i) => (
-              <option key={t.id} value={t.id}>
-                {t.kind} {i + 1}
-              </option>
-            ))}
+            {doc.tracks
+              .filter(
+                (t) =>
+                  t.id === item.trackId ||
+                  t.kind === groupTrackKind[itemGroup(item, doc)] ||
+                  doc.items.some(
+                    (other) =>
+                      other.trackId === t.id &&
+                      itemGroup(other, doc) === itemGroup(item, doc),
+                  ),
+              )
+              .map((t, i) => (
+                <option key={t.id} value={t.id}>
+                  {itemGroup(item, doc)} {i + 1}
+                </option>
+              ))}
           </select>
         </label>
         <NumberField
@@ -359,7 +442,10 @@ export function Inspector({
                     source: {
                       ...i.source,
                       endMs:
-                        i.source.startMs + Math.round((n * 1000) / doc.fps),
+                        i.source.startMs +
+                        Math.round(
+                          (n * 1000 * (i.playbackRate ?? 1)) / doc.fps,
+                        ),
                     },
                   }
                 : { ...i, durationInFrames: n },
@@ -382,7 +468,11 @@ export function Inspector({
                           ...i.source,
                           startMs: Math.round(n * 1000),
                           endMs: Math.round(
-                            n * 1000 + (i.durationInFrames * 1000) / doc.fps,
+                            n * 1000 +
+                              (i.durationInFrames *
+                                1000 *
+                                (i.playbackRate ?? 1)) /
+                                doc.fps,
                           ),
                         },
                       }
@@ -401,7 +491,8 @@ export function Inspector({
                     ? {
                         ...i,
                         durationInFrames: Math.round(
-                          ((n * 1000 - i.source.startMs) * doc.fps) / 1000,
+                          ((n * 1000 - i.source.startMs) * doc.fps) /
+                            (1000 * (i.playbackRate ?? 1)),
                         ),
                         source: { ...i.source, endMs: Math.round(n * 1000) },
                       }
@@ -442,6 +533,38 @@ export function Inspector({
                 }
               />
             )}
+          </>
+        )}
+        {item.kind === "video" && (
+          <>
+            <h3>Source focus</h3>
+            <p className="nle-muted">
+              Choose which part of the source fills the frame.
+            </p>
+            {(["x", "y"] as const).map((axis) => (
+              <NumberField
+                key={axis}
+                label={`Focus ${axis === "x" ? "horizontal" : "vertical"} (%)`}
+                value={(item.focus?.[axis] ?? 0.5) * 100}
+                min={0}
+                max={100}
+                step={1}
+                onChange={(value) =>
+                  patch((i) =>
+                    i.kind === "video"
+                      ? {
+                          ...i,
+                          focus: {
+                            x: i.focus?.x ?? 0.5,
+                            y: i.focus?.y ?? 0.5,
+                            [axis]: value / 100,
+                          },
+                        }
+                      : i,
+                  )
+                }
+              />
+            ))}
           </>
         )}
         <h3>Transform</h3>

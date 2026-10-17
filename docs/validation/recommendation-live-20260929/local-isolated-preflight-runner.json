@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "productionExecuted": false,
+  "storageClearance": false,
+  "scriptSha256": "63142215fa4d649e6c60f513dfaaba3e66bf9cdffd45307d9320810fa4cd5788",
+  "sourceWindow": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-22T00:00:00.000Z",
+    "windowEnd": "2026-09-29T00:00:00.000Z",
+    "evaluationAsOf": "2026-09-29T06:15:00.000Z"
+  },
+  "notes": [
+    "No retries and no --execute path. Each container runs the existing CLI at most once.",
+    "Production deployment identity and fresh DB lock/capacity admission are caller responsibilities; this local proof grants neither.",
+    "Default networking is Docker bridge for separately authorized public proxy access. Host networking is accepted only for the exact authorized local fixture.",
+    "Credentials travel only through attached stdin into process memory/environment; Docker Config.Env and argv contain no DATABASE_URL. The inherited host environment is not passed wholesale to Docker.",
+    "Host watchdog is a separate process/session; it kills the exact unique container even if the main runner is SIGKILLed. Docker control-plane unavailability may delay cleanup and is reported, not treated as success.",
+    "Source bind mount is read-only in the container; caller must keep the selected checkout/dependencies immutable on the host.",
+    "Container cgroup limits constrain local computation only. They do not constrain shared database server memory, I/O, WAL, or competing clients."
+  ],
+  "localAdmission": {
+    "daemon": "local-unix-socket",
+    "dockerRootDir": "/home/nisal/.local/share/docker",
+    "cgroupDriver": "systemd",
+    "cgroupVersion": "2",
+    "hostAvailableMemoryBytes": 25513603072,
+    "hostDockerDiskAvailableBytes": 32077029376,
+    "hostTmpAvailableBytes": 14480850944,
+    "cpuCount": 8,
+    "loadAverage": [0.3125, 0.46484375, 0.82861328125],
+    "imageId": "sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2",
+    "imageRepoDigests": [
+      "node@sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2"
+    ]
+  },
+  "source": {
+    "path": "/home/nisal/.codex/worktrees/recommendation-live-integration-20260929/forge",
+    "gitHead": "4490d6ddc0526b59a9823d52d48df040f1e6b6d1",
+    "cliSha256": "82dd0882cca64aa26b607a7d17839a2627557f548a129a81128b69970b206783",
+    "pnpmLockSha256": "f8c4e716396d79ede4ff40573acedd3fad67f8c4bef6da55f9c901f89fa871e4"
+  },
+  "preflight": {
+    "container": "forge-cowatch-readonly-0be9fef21cd240bea7bd050b5900ab5b",
+    "kind": "read-only-preflight",
+    "wallLimitSeconds": 45,
+    "network": "host",
+    "execute": false,
+    "inspectionBeforeStart": {
+      "containerId": "d48e37e74ffa012d064fc05775a1f2511362916349defa4c6f48efab867514a3",
+      "name": "/forge-cowatch-readonly-0be9fef21cd240bea7bd050b5900ab5b",
+      "limits": {
+        "NanoCpus": 1000000000,
+        "Memory": 1073741824,
+        "MemorySwap": 1073741824,
+        "PidsLimit": 128,
+        "ReadonlyRootfs": true,
+        "CapDrop": ["ALL"],
+        "SecurityOpt": ["no-new-privileges:true"],
+        "CgroupParent": "",
+        "CgroupnsMode": "private",
+        "NetworkMode": "host",
+        "Tmpfs": {
+          "/tmp": "rw,nosuid,nodev,noexec,size=67108864,mode=1777"
+        },
+        "ShmSize": 16777216
+      },
+      "sourceMountReadOnly": true,
+      "databaseUrlAbsentFromDockerConfig": true,
+      "user": "1000:1000",
+      "state": {
+        "Status": "created",
+        "Running": false,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      }
+    },
+    "discardedStderrBytes": 0,
+    "discardedStdoutLines": 0,
+    "runtimeResourceVerification": {
+      "memory.max": "1073741824",
+      "memory.swap.max": "0",
+      "cpu.max": "100000 100000",
+      "pids.max": "128",
+      "heapSizeLimitBytes": 587202560,
+      "uid": 1000,
+      "nodeVersion": "v24.20.0",
+      "verified": true
+    },
+    "aggregateCliResult": {
+      "generation": "742a6e2b66ad9f3c5af526c4cdfb6f31119e1f0e5dca04b51343a25bed87601a",
+      "rawSourceCount": 0,
+      "rawSourceCountIsLowerBound": false,
+      "sourceCount": 0,
+      "attemptedPairCount": 0,
+      "contributionCount": 0,
+      "edgeCount": 0,
+      "publicationRowCount": 1,
+      "sourceWindow": {
+        "version": "episode-event-window-v1",
+        "windowStart": "2026-09-22T00:00:00.000Z",
+        "windowEnd": "2026-09-29T00:00:00.000Z",
+        "evaluationAsOf": "2026-09-29T06:15:00.000Z"
+      },
+      "publishedAt": null,
+      "terminalDecision": "no_promotion",
+      "decisionReason": "complete_bounded_population_preflight",
+      "status": "ready"
+    },
+    "inspectionAfterExit": {
+      "containerId": "d48e37e74ffa012d064fc05775a1f2511362916349defa4c6f48efab867514a3",
+      "name": "/forge-cowatch-readonly-0be9fef21cd240bea7bd050b5900ab5b",
+      "limits": {
+        "NanoCpus": 1000000000,
+        "Memory": 1073741824,
+        "MemorySwap": 1073741824,
+        "PidsLimit": 128,
+        "ReadonlyRootfs": true,
+        "CapDrop": ["ALL"],
+        "SecurityOpt": ["no-new-privileges:true"],
+        "CgroupParent": "",
+        "CgroupnsMode": "private",
+        "NetworkMode": "host",
+        "Tmpfs": {
+          "/tmp": "rw,nosuid,nodev,noexec,size=67108864,mode=1777"
+        },
+        "ShmSize": 16777216
+      },
+      "sourceMountReadOnly": true,
+      "databaseUrlAbsentFromDockerConfig": true,
+      "user": "1000:1000",
+      "state": {
+        "Status": "exited",
+        "Running": false,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "StartedAt": "2026-09-29T06:36:27.131014792Z",
+        "FinishedAt": "2026-09-29T06:36:28.772419491Z"
+      }
+    },
+    "watchdogFired": false,
+    "status": "aggregate_received",
+    "cleanup": {
+      "container": "forge-cowatch-readonly-0be9fef21cd240bea7bd050b5900ab5b",
+      "removed": true
+    },
+    "elapsedSeconds": 1.961,
+    "cancelled": false
+  },
+  "externalKillFixture": {
+    "container": "forge-cowatch-readonly-8b1329bdce794d23b14d6dcea692274e",
+    "kind": "deadline-fixture",
+    "wallLimitSeconds": 45,
+    "network": "none",
+    "execute": false,
+    "inspectionBeforeStart": {
+      "containerId": "d4395bab5daa0cf9511df21825c16eeb5ee4de08be56e7c0d3ae4ce84c73014d",
+      "name": "/forge-cowatch-readonly-8b1329bdce794d23b14d6dcea692274e",
+      "limits": {
+        "NanoCpus": 1000000000,
+        "Memory": 1073741824,
+        "MemorySwap": 1073741824,
+        "PidsLimit": 128,
+        "ReadonlyRootfs": true,
+        "CapDrop": ["ALL"],
+        "SecurityOpt": ["no-new-privileges:true"],
+        "CgroupParent": "",
+        "CgroupnsMode": "private",
+        "NetworkMode": "none",
+        "Tmpfs": {
+          "/tmp": "rw,nosuid,nodev,noexec,size=67108864,mode=1777"
+        },
+        "ShmSize": 16777216
+      },
+      "sourceMountReadOnly": true,
+      "databaseUrlAbsentFromDockerConfig": true,
+      "user": "1000:1000",
+      "state": {
+        "Status": "created",
+        "Running": false,
+        "OOMKilled": false,
+        "ExitCode": 0,
+        "StartedAt": "0001-01-01T00:00:00Z",
+        "FinishedAt": "0001-01-01T00:00:00Z"
+      }
+    },
+    "deadlineExceeded": true,
+    "discardedStderrBytes": 0,
+    "discardedStdoutLines": 0,
+    "runtimeResourceVerification": {
+      "memory.max": "1073741824",
+      "memory.swap.max": "0",
+      "cpu.max": "100000 100000",
+      "pids.max": "128",
+      "heapSizeLimitBytes": 587202560,
+      "uid": 1000,
+      "nodeVersion": "v24.20.0",
+      "verified": true
+    },
+    "aggregateCliResult": null,
+    "watchdog": {
+      "watchdogFired": true,
+      "killRequestedAtDeadline": true,
+      "killSucceeded": true,
+      "inspectionAfterKill": {
+        "containerId": "d4395bab5daa0cf9511df21825c16eeb5ee4de08be56e7c0d3ae4ce84c73014d",
+        "name": "/forge-cowatch-readonly-8b1329bdce794d23b14d6dcea692274e",
+        "limits": {
+          "NanoCpus": 1000000000,
+          "Memory": 1073741824,
+          "MemorySwap": 1073741824,
+          "PidsLimit": 128,
+          "ReadonlyRootfs": true,
+          "CapDrop": ["ALL"],
+          "SecurityOpt": ["no-new-privileges:true"],
+          "CgroupParent": "",
+          "CgroupnsMode": "private",
+          "NetworkMode": "none",
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=67108864,mode=1777"
+          },
+          "ShmSize": 16777216
+        },
+        "sourceMountReadOnly": true,
+        "databaseUrlAbsentFromDockerConfig": true,
+        "user": "1000:1000",
+        "state": {
+          "Status": "exited",
+          "Running": false,
+          "OOMKilled": false,
+          "ExitCode": 137,
+          "StartedAt": "2026-09-29T06:36:29.082559822Z",
+          "FinishedAt": "2026-09-29T06:37:13.937031869Z"
+        }
+      },
+      "cleanup": {
+        "container": "forge-cowatch-readonly-8b1329bdce794d23b14d6dcea692274e",
+        "removed": true
+      }
+    },
+    "status": "deadline_killed",
+    "cleanup": {
+      "container": "forge-cowatch-readonly-8b1329bdce794d23b14d6dcea692274e",
+      "removed": true
+    },
+    "elapsedSeconds": 45.205,
+    "cancelled": false
+  }
+}

@@ -105,6 +105,69 @@ export class StudioAuthoringService {
       return result
     })
   }
+  async delete(user: Principal | null, raw: unknown) {
+    const actor = studioActor(user)
+    if (actor.kind !== "human")
+      throw new ForbiddenError("Project owner required")
+    const input = studioCommandBaseSchema.parse(raw)
+    return this.db.$transaction(async (tx) => {
+      // Include tombstones only here so an exact delete retry can return its receipt.
+      const project = await lockProject(tx, input.projectId, true)
+      if (project.ownerId !== actor.id)
+        throw new ForbiddenError("Project owner required")
+      const hash = studioHash({ command: "delete", actor, input })
+      const retry = await receipt(tx, project.id, input.idempotencyKey, hash)
+      if (retry) return retry
+      if (project.deletedAt) throw new NotFoundError("Short", project.id)
+      if (project.currentRevision !== input.expectedRevision)
+        throw new StudioCommandError("CONFLICT")
+      if (project.lifecycle === "PUBLISHED")
+        throw new StudioCommandError("UNPUBLISH_REQUIRED")
+      if (
+        await tx.shortAttempt.findFirst({
+          where: {
+            projectId: project.id,
+            OR: [
+              { status: { in: ["QUEUED", "RUNNING"] } },
+              { muxJob: { state: { notIn: ["READY", "FAILED"] } } },
+              {
+                productionRun: {
+                  calls: { some: { state: { in: ["RUNNING", "AMBIGUOUS"] } } },
+                },
+              },
+            ],
+          },
+          select: { id: true },
+        })
+      )
+        throw new StudioCommandError("PROJECT_BUSY")
+      if (
+        await tx.shortPlanSlot.findFirst({
+          where: { projectId: project.id },
+          select: { id: true },
+        })
+      )
+        throw new StudioCommandError("PROJECT_SCHEDULED")
+      await tx.short.update({
+        where: { id: project.id },
+        data: { deletedAt: new Date() },
+      })
+      const result = {
+        projectId: project.id,
+        revision: project.currentRevision,
+        outcome: "ACCEPTED" as const,
+      }
+      await saveReceipt(
+        tx,
+        project.id,
+        input.idempotencyKey,
+        hash,
+        actor,
+        result,
+      )
+      return result
+    })
+  }
   async apply(user: Principal | null, raw: unknown) {
     const actor = studioActor(user)
     const input = studioApplySchema.parse(raw)
@@ -157,7 +220,11 @@ export class StudioAuthoringService {
       return result
     })
   }
-  async request(user: Principal | null, raw: unknown) {
+  async request(
+    user: Principal | null,
+    raw: unknown,
+    options?: { deferSourceMaterialization: true },
+  ) {
     const actor = studioActor(user)
     const input = studioRequestSchema.parse(raw)
     return this.db.$transaction(async (tx) => {
@@ -176,10 +243,11 @@ export class StudioAuthoringService {
         },
       })
       if (input.kind === "RENDER")
-        await assertStudioRenderSources(
-          tx,
-          studioDocumentSchema.parse(revision.document),
-        )
+        await (
+          options?.deferSourceMaterialization
+            ? resolveStudioDocumentSources
+            : assertStudioRenderSources
+        )(tx, studioDocumentSchema.parse(revision.document))
       if (input.kind === "NARRATION") {
         const dependencyHash = scriptHash(
           studioDocumentSchema.parse(revision.document),
@@ -226,12 +294,23 @@ export class StudioAuthoringService {
   async complete(user: Principal | null, raw: unknown) {
     return this.db.$transaction((tx) => completeStudioAttempt(tx, user, raw))
   }
+  private async assertVisible(user: Principal | null, rawId: string) {
+    studioActor(user)
+    const id = studioIdSchema.parse(rawId)
+    if (
+      !(await this.db.short.findFirst({
+        where: { id, deletedAt: null },
+        select: { id: true },
+      }))
+    )
+      throw new NotFoundError("Short", id)
+  }
   async readAttempt(
     user: Principal | null,
     projectId: string,
     attemptId: string,
   ) {
-    studioActor(user)
+    await this.assertVisible(user, projectId)
     const row = await this.db.shortAttempt.findFirst({
       where: {
         id: studioIdSchema.parse(attemptId),
@@ -378,19 +457,31 @@ export class StudioAuthoringService {
     })
   }
   async list(user: Principal | null, raw: unknown = {}) {
-    studioActor(user)
+    const actor = studioActor(user)
     const input = studioListSchema.parse(raw)
     const rows = await this.db.short.findMany({
-      where: input.cursor ? { id: { gt: input.cursor } } : undefined,
+      where: {
+        deletedAt: null,
+        ...(input.cursor ? { id: { gt: input.cursor } } : {}),
+      },
       orderBy: { id: "asc" },
       take: input.limit,
-      select: { id: true, currentRevision: true, lifecycle: true },
+      select: {
+        id: true,
+        currentRevision: true,
+        lifecycle: true,
+        ownerId: true,
+      },
     })
     return rows.map((row) =>
       studioProjectSummarySchema.parse({
         projectId: row.id,
         revision: row.currentRevision,
         lifecycle: row.lifecycle,
+        canDelete:
+          actor.kind === "human" &&
+          actor.id === row.ownerId &&
+          row.lifecycle !== "PUBLISHED",
       }),
     )
   }
@@ -422,8 +513,7 @@ export class StudioAuthoringService {
     })
   }
   async history(user: Principal | null, projectId: string, raw: unknown = {}) {
-    studioActor(user)
-    studioIdSchema.parse(projectId)
+    await this.assertVisible(user, projectId)
     const input = studioHistorySchema.parse(raw)
     const rows = await this.db.shortRevision.findMany({
       where: {
@@ -442,8 +532,7 @@ export class StudioAuthoringService {
     )
   }
   async attempts(user: Principal | null, projectId: string, raw: unknown = {}) {
-    studioActor(user)
-    studioIdSchema.parse(projectId)
+    await this.assertVisible(user, projectId)
     const input = studioListSchema.parse(raw)
     const rows = await this.db.shortAttempt.findMany({
       where: { projectId, id: input.cursor ? { gt: input.cursor } : undefined },
@@ -457,8 +546,7 @@ export class StudioAuthoringService {
     projectId: string,
     raw: unknown = {},
   ) {
-    studioActor(user)
-    studioIdSchema.parse(projectId)
+    await this.assertVisible(user, projectId)
     const input = studioListSchema.parse(raw)
     const rows = await this.db.shortApproval.findMany({
       where: { projectId, id: input.cursor ? { gt: input.cursor } : undefined },
@@ -472,8 +560,7 @@ export class StudioAuthoringService {
     projectId: string,
     number: number,
   ) {
-    studioActor(user)
-    studioIdSchema.parse(projectId)
+    await this.assertVisible(user, projectId)
     const row = await this.db.shortRevision.findUnique({
       where: { projectId_number: { projectId, number } },
     })
@@ -488,7 +575,7 @@ export class StudioAuthoringService {
     studioActor(user)
     const id = studioIdSchema.parse(rawId)
     const project = await this.db.short.findUnique({ where: { id } })
-    if (!project) throw new NotFoundError("Short", id)
+    if (!project || project.deletedAt) throw new NotFoundError("Short", id)
     const revision = await this.db.shortRevision.findUniqueOrThrow({
       where: {
         projectId_number: { projectId: id, number: project.currentRevision },

@@ -15,6 +15,8 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { appDirection } from "../../i18n/layoutRtl"
+import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { datadogLog, reportDatadogAction } from "../../lib/datadog"
@@ -36,6 +38,7 @@ import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppres
 import type { CastPlayback } from "../../hooks/useCastPlayback"
 import type { CastMedia } from "../../lib/cast/castMediaResolver"
 import { isExternalRouteActive } from "../../lib/externalRoute"
+import type { FeedbackVideoContext } from "../../lib/feedbackQueries"
 import {
   castButtonLabel,
   castIndicatorLabel,
@@ -44,6 +47,8 @@ import {
   type CastRecovery,
   type PlaybackTarget,
 } from "../../lib/playbackTarget"
+import { FeedbackModal } from "../feedback/FeedbackModal"
+import type { FeedbackSheetContext } from "../feedback/feedbackFlow"
 import {
   PlayerControls,
   RouteButtons,
@@ -97,11 +102,21 @@ type VideoPlayerProps = {
   /** The player already holds this request's content (R4's expand). Only the
    *  host can know it — the adoption is its `sourceForRequest` decision. */
   adopted?: boolean
+  /** The host's latch that this video already played. Read at mount only: the
+   *  chrome remounts when the reader cover returns (feat-553 KTD10), and a
+   *  paused video must then show its controls, not the autostart veil. */
+  started?: boolean
   /** Cast wiring, owned by the surface that published the playback request and
    *  forwarded by the host. Null once that surface is gone: its unmount already
    *  ended the session (KTD7), so the floating window is local playback only. */
   cast?: VideoPlayerCast | null
+  /** KD8: the video a player-door report names — title, slug and dub. Null when
+   *  the surface described no session (the series trailer dock). The position
+   *  is not here: it is read at the tap (KTD5). */
+  feedbackContext?: PlayerFeedbackVideo | null
 }
+
+export type PlayerFeedbackVideo = Omit<FeedbackVideoContext, "positionSeconds">
 
 export type VideoPlayerCast = {
   /** U3 cast session. */
@@ -136,8 +151,13 @@ export function VideoPlayer({
   resumeAtSeconds = null,
   autostart = false,
   adopted = false,
+  started = false,
   cast = null,
+  feedbackContext = null,
 }: VideoPlayerProps) {
+  const t = useT("Player")
+  const tCast = useT("Cast")
+  const tCommon = useT("Common")
   const castPlayback = cast?.playback ?? null
   const onCastPress = cast?.onCastPress ?? null
   const resolveCastMediaAt = cast?.resolveMediaAt ?? null
@@ -147,7 +167,7 @@ export function VideoPlayer({
   // source emits no sourceLoad, so a paused one would arm the autostart veil
   // with nothing left to clear it (the live read alone covers only a playing one).
   const [hasStarted, setHasStarted] = useState(() => {
-    if (adopted) return true
+    if (adopted || started) return true
     try {
       return player.playing
     } catch {
@@ -265,8 +285,8 @@ export function VideoPlayer({
   const controls = useControlsVisibility(player)
 
   // Settings sheet (U4): component state, never a route — a routed form sheet
-  // cannot present over the fullscreen player (KTD5). The floating window
-  // hides beneath it like every other in-app sheet (R11).
+  // cannot present over the fullscreen player (KTD5). On Android the floating
+  // window hides beneath it (R11); on iOS the Modal draws over the window.
   const [settingsOpen, setSettingsOpen] = useState(false)
   useNonRouteSheetSuppression(settingsOpen, "playerSettings")
 
@@ -597,10 +617,53 @@ export function VideoPlayer({
       ? {
           available: castPlayback.devicesAvailable,
           connected: castRemoteActive,
-          label: castButtonLabel(castPhase, castPlayback.deviceName),
+          label: castButtonLabel(castPhase, castPlayback.deviceName, tCast),
           onPress: onCastPress,
         }
       : null
+
+  // Feedback door (U6, KTD5): the settings row reports at the tap and then
+  // runs its own close; the modal mounts from that close, never beside the
+  // sheet. What the report names is frozen here, at the tap.
+  const [openFeedback, setOpenFeedback] = useState<FeedbackSheetContext | null>(
+    null,
+  )
+  const pendingFeedbackRef = useRef<FeedbackSheetContext | null>(null)
+
+  const handleReportProblem = useCallback(() => {
+    let positionSeconds: number | null = null
+    if (castTarget != null) {
+      // The receiver's playhead, null until it reports. Not the target's
+      // currentTime: that falls back to the frozen local position, which
+      // names the frame the viewer LEFT when casting began.
+      positionSeconds = castPlayback?.position ?? null
+    } else {
+      try {
+        const time = player.currentTime
+        positionSeconds = Number.isFinite(time) ? time : null
+      } catch {
+        positionSeconds = null // Native player already released
+      }
+    }
+    pendingFeedbackRef.current = {
+      kind: "BROKEN",
+      video:
+        feedbackContext == null
+          ? null
+          : { ...feedbackContext, positionSeconds },
+    }
+  }, [castTarget, castPlayback, feedbackContext, player])
+
+  // A second React commit, never the one that unmounts the settings sheet:
+  // two RN Modals swapping in one commit is the order the door avoids (see
+  // CLAUDE.md, "Two RN Modals from one player").
+  useEffect(() => {
+    if (settingsOpen || pendingFeedbackRef.current == null) return
+    setOpenFeedback(pendingFeedbackRef.current)
+    pendingFeedbackRef.current = null
+  }, [settingsOpen])
+
+  const handleFeedbackClose = useCallback(() => setOpenFeedback(null), [])
 
   useEffect(() => {
     return () => {
@@ -704,7 +767,7 @@ export function VideoPlayer({
   return (
     // absoluteFill, not a sized box: the host's frame owns the geometry (KTD17)
     // and paints the letterbox black behind the video view this chrome covers.
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={styles.root} pointerEvents="box-none">
       {/* R7: the phone shows the poster while the TV plays — the paused
           local frame would read as a broken player. Ended reuses the layer so
           the replay state never sits on a black last frame. */}
@@ -717,7 +780,7 @@ export function VideoPlayer({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             recyclingKey="watch-poster"
-            accessibilityLabel="Video thumbnail"
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         </Animated.View>
       )}
@@ -739,7 +802,8 @@ export function VideoPlayer({
         onPressIn={handleTapPressIn}
         onPress={handleTapPress}
         accessibilityRole="button"
-        accessibilityLabel="Toggle player controls"
+        accessibilityLabel={t("toggleControlsAriaLabel")}
+        {...{ "dd-action-name": "player-toggle-controls" }}
       />
 
       {seekFlash != null && (
@@ -757,18 +821,25 @@ export function VideoPlayer({
             size={22}
             color={TEXT_ON_OVERLAY}
           />
-          <Text style={styles.seekFlashText}>{Math.abs(seekFlash.delta)}s</Text>
+          <Text style={styles.seekFlashText}>
+            {t("seekSeconds", { seconds: Math.abs(seekFlash.delta) })}
+          </Text>
         </View>
       )}
 
       {/* R14: the route buttons stay reachable while the veil suppresses the
           chrome — a viewer may cast before local playback ever starts. */}
       {awaitingAutostart && (
-        <View style={styles.veilRouteRow} pointerEvents="box-none">
-          <RouteButtons
-            externalPlaybackActive={airPlayActive}
-            castUi={castUi}
-          />
+        <View
+          style={[StyleSheet.absoluteFill, { direction: appDirection() }]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.veilRouteRow} pointerEvents="box-none">
+            <RouteButtons
+              externalPlaybackActive={airPlayActive}
+              castUi={castUi}
+            />
+          </View>
         </View>
       )}
 
@@ -780,8 +851,12 @@ export function VideoPlayer({
           <Ionicons name="tv-outline" size={28} color={TEXT_ON_OVERLAY} />
           <Text style={styles.externalRouteText}>
             {castRemoteActive
-              ? castIndicatorLabel(castPhase, castPlayback?.deviceName ?? null)
-              : "Playing on AirPlay"}
+              ? castIndicatorLabel(
+                  castPhase,
+                  castPlayback?.deviceName ?? null,
+                  tCast,
+                )
+              : tCast("playingOnAirPlay")}
           </Text>
         </View>
       )}
@@ -844,18 +919,42 @@ export function VideoPlayer({
         </Animated.View>
       )}
 
-      {settingsOpen && (
-        <PlayerSettingsSheet
-          onClose={() => setSettingsOpen(false)}
-          castActive={castRemoteActive}
-          streamingUrl={streamingUrl}
-        />
-      )}
+      {/* The sheets are not playback controls, so they mirror with the app
+          (feat-695 R11). A Modal takes its layout direction from this parent. */}
+      <View
+        style={[styles.sheetHost, { direction: appDirection() }]}
+        pointerEvents="box-none"
+      >
+        {settingsOpen && (
+          <PlayerSettingsSheet
+            onClose={() => setSettingsOpen(false)}
+            onReportProblem={handleReportProblem}
+            castActive={castRemoteActive}
+            streamingUrl={streamingUrl}
+          />
+        )}
+
+        {/* Mounted only once the settings sheet is gone (the effect above);
+            Back inside it is the form's own step change, never a way back here. */}
+        {openFeedback != null && (
+          <FeedbackModal context={openFeedback} onClose={handleFeedbackClose} />
+        )}
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  // Playback does not mirror (feat-695 R12): the seek flash shows on the side
+  // that the viewer tapped, which is a physical x.
+  root: {
+    ...StyleSheet.absoluteFill,
+    direction: "ltr",
+  },
+  // No size: a Modal draws over the whole screen in its own window.
+  sheetHost: {
+    position: "absolute",
+  },
   chromeScrim: {
     position: "absolute",
     left: 0,

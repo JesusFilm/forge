@@ -116,11 +116,21 @@ export async function runRecommendationRetentionJob(
         where: { id: input.ledgerRunId },
         data: {
           status: WorkflowRunStatus.SUCCEEDED,
-          summary: `Purged ${result.rootsDeleted} recommendation request root(s).`,
+          summary:
+            result.status === "skipped"
+              ? "Recommendation retention purge skipped because its lock was held."
+              : result.status === "yielded"
+                ? `Recommendation retention yielded after purging ${result.rootsDeleted} request root(s); backlog is unmeasured and continuation is required.`
+                : `Purged ${result.rootsDeleted} recommendation request root(s).`,
           finishedAt: new Date(),
           details: {
             rootsDeleted: result.rootsDeleted,
             overdueAfterRun: result.overdueAfterRun,
+            batchLimitReached: result.batchLimitReached,
+            continuationRequired: result.continuationRequired ?? false,
+            profileVectorSweepSkipped:
+              result.profileVectorSweepSkipped ?? false,
+            purgeStatus: result.status,
           },
         },
       })

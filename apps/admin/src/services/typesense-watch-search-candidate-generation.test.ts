@@ -38,6 +38,26 @@ describe("TypesenseWatchSearchCandidateGenerationService", () => {
     vi.restoreAllMocks()
   })
 
+  it("protects an active automatic catalog from both retirement entry points", async () => {
+    await ready()
+    db.prisma.watchCatalogPublication.findFirst.mockResolvedValue({
+      id: "core",
+    })
+    await expect(service.beginRetirement("candidate-1")).rejects.toBeInstanceOf(
+      CandidateGenerationLeaseError,
+    )
+    db.generations.get("candidate-1")!.state = "INVALIDATED"
+    await expect(
+      service.transitionGeneration({
+        generationId: "candidate-1",
+        expectedState: "INVALIDATED",
+        expectedVersion: 1,
+        nextState: "RETIRING",
+      }),
+    ).rejects.toBeInstanceOf(CandidateGenerationLeaseError)
+    expect(db.generations.get("candidate-1")?.state).toBe("INVALIDATED")
+  })
+
   it("creates the BUILDING owner before validation and publishes only a complete READY tuple", async () => {
     const building = await service.createBuildingGeneration(generationInput())
     expect(building).toMatchObject({ state: "BUILDING", version: 0 })

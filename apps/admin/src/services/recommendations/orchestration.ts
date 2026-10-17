@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import type { MmrSlateResult } from "./composition/mmr"
 import { dedupeByVideoIdentity } from "@/services/video-dedup"
 import {
   CANDIDATE_CONTEXT_VERSION,
@@ -33,6 +34,7 @@ import {
   composeMinimalSlate,
   composeRecommendationSlate,
   type RecommendationSlateComposition,
+  type RecommendationRecentSuppressionReason,
   type RecommendationSlateCompositionResult,
 } from "./slate"
 import { unionAndCanonicalizeCandidates } from "./union"
@@ -110,6 +112,84 @@ type CandidateAdapterRejection = Readonly<{
   generator: string
   reasonCode: string
 }>
+
+/** Apply an already-authorized composition while retaining the measured source/rank trace. */
+export function applyMmrComposition(
+  platform: CandidatePlatformResult,
+  result: MmrSlateResult,
+): CandidatePlatformResult {
+  const ordered = new Map(
+    platform.ordered.map((candidate) => [candidate.candidateKey, candidate]),
+  )
+  const evidence = platform.evidence.filter(
+    (entry) =>
+      entry.stage !== "composed" &&
+      !(entry.stage === "rejected" && ordered.has(entry.candidateKey)),
+  )
+  for (const entry of [...result.evidence].sort(
+    (left, right) =>
+      (left.composedPosition ?? Infinity) -
+      (right.composedPosition ?? Infinity),
+  )) {
+    const candidate = ordered.get(entry.candidateKey)
+    if (!candidate) continue
+    evidence.push({
+      ...emptyStageEvidence(
+        entry.composedPosition == null ? "rejected" : "composed",
+        0,
+        entry.candidateKey,
+        entry.targetMediaId,
+      ),
+      finalPosition: entry.composedPosition,
+      deterministicScore: candidate.deterministicScore,
+      reasonCodes: entry.reasonCodes,
+      sourceEvidence: candidate.sources,
+    })
+  }
+  const counts = Object.fromEntries(
+    CANDIDATE_PLATFORM_STAGES.map((stage) => [stage, 0]),
+  ) as Record<CandidatePlatformStage, number>
+  const numbered = evidence.map((entry) => ({
+    ...entry,
+    ordinal: counts[entry.stage]++,
+  }))
+  return {
+    ...platform,
+    versions: { ...platform.versions, composer: result.policyVersion },
+    counts,
+    evidence: numbered,
+    composed: result.composed,
+    composition: {
+      composed: result.composed,
+      suppressions: result.evidence.flatMap((entry) => {
+        const candidate = ordered.get(entry.candidateKey)
+        const reasonCodes = entry.reasonCodes.filter(
+          (
+            reason,
+          ): reason is
+            | RecommendationRecentSuppressionReason
+            | "current_video" =>
+            reason === "current_video" ||
+            reason === "recently_tried" ||
+            reason === "recent_playback_start" ||
+            reason === "recent_selection" ||
+            reason === "repeatedly_served",
+        )
+        return candidate &&
+          entry.composedPosition == null &&
+          reasonCodes.length > 0
+          ? [{ candidate, reasonCodes }]
+          : []
+      }),
+    },
+    parity: {
+      ...platform.parity,
+      platformDigest: digestIds(
+        result.composed.map((candidate) => candidate.targetMediaId),
+      ),
+    },
+  }
+}
 
 type CandidatePipelineResult = Readonly<{
   evidence: CandidateStageEvidence[]

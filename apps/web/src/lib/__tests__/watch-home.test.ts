@@ -205,6 +205,36 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(Object.keys(model.carousel)).toEqual(["pools"])
   })
 
+  it("tags a Kurmanji Standard subtitle track with the corrected tag, not admin's ko-kmr", async () => {
+    const { buildWatchHomeModelFromVideos } = await import("../watch-home")
+
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          preferredVariant: makeVariant({
+            videoEdition: {
+              subtitles: [
+                {
+                  vttSrc: "https://cdn.example/jesus.kmr.vtt",
+                  primary: true,
+                  // Admin's real row: kurmanji-standard carries `ko-kmr`.
+                  language: { slug: "kurmanji-standard", bcp47: "ko-kmr" },
+                },
+              ],
+            },
+          }),
+        }),
+      ] as never,
+    })
+
+    expect(model.heroSlides[0]?.subtitleVttSrc).toBe(
+      "https://cdn.example/jesus.kmr.vtt",
+    )
+    expect(model.heroSlides[0]?.subtitleLanguageBcp47).toBe("kmr")
+  })
+
   it("renders limited child cards with standalone discovery routes", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 

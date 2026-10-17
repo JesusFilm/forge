@@ -1,0 +1,28 @@
+{
+  "recordedAt": "2026-09-28T21:17:55.093387+00:00",
+  "phase": "before-exposure-release",
+  "rawIdentifiersRetained": false,
+  "sessions": [
+    {
+      "mode": "headless_crawler_admission",
+      "cumulativeLoggedPostStatuses": {
+        "403": 48
+      },
+      "attemptedFactsByStatusPolicyKind": {
+        "403:watch-exposure-v1:rendered": 476
+      }
+    },
+    {
+      "mode": "headed_ordinary_browser_admission",
+      "cumulativeLoggedPostStatuses": {
+        "200": 30,
+        "429": 16
+      },
+      "attemptedFactsByStatusPolicyKind": {
+        "200:watch-exposure-v1:rendered": 214,
+        "429:watch-exposure-v1:rendered": 358
+      }
+    }
+  ],
+  "interpretation": "Browser network status and attempted payload counts, not accepted/durable fact counts. The headless session matches deployed crawler admission. Headed rapid navigation can reach the existing rate limit; paced postrelease acceptance is separate. No headers or identities overridden; no faults injected."
+}

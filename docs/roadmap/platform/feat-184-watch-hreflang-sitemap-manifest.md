@@ -10,7 +10,7 @@ duration: 2
 depends_on: []
 blocks:
   - "feat-302"
-  - "feat-716"
+  - "feat-733"
 tags:
   - "platform"
   - "web"

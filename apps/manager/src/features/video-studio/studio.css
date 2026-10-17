@@ -89,6 +89,14 @@
   color: inherit;
   background: var(--ds-panel);
 }
+.nle-project-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.nle-project-card > button {
+  margin-top: 12px;
+}
 .nle-project-poster {
   height: 140px;
   background: var(--ds-hover);
@@ -304,7 +312,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 0;
+  container-type: size;
 }
 .nle-canvas {
   position: relative;
@@ -337,37 +346,24 @@
   gap: 10px;
 }
 .nle-canvas-overlay {
-  pointer-events: none;
-  overflow: hidden;
-}
-.nle-canvas-item {
   pointer-events: auto;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  border-radius: 0 !important;
+  overflow: hidden;
   touch-action: none;
+  cursor: move;
 }
-.nle-canvas-item[aria-pressed="true"] {
-  border: 2px solid var(--ds-panel) !important;
-}
-.nle-canvas-item span {
+.nle-canvas-selection {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  max-width: 85%;
+  pointer-events: none;
+  outline: 2px solid var(--ds-panel);
+}
+.nle-canvas-selection span {
+  position: absolute;
+  bottom: 100%;
+  max-width: 100%;
   font-size: 11px;
   background: var(--ds-panel);
   color: var(--ds-ink);
   padding: 3px 5px;
-  opacity: 0;
-}
-.nle-canvas-item:hover span,
-.nle-canvas-item[aria-pressed="true"] span {
-  opacity: 1;
 }
 .nle-transport {
   display: flex;
@@ -800,4 +796,63 @@
   max-width: 100%;
   width: 100%;
   margin: 10px 0;
+}
+
+/* The designer's media groups retain separate lanes for overlapping items. */
+.nle-timeline {
+  height: 300px;
+}
+.nle-track-labels .nle-group-label {
+  align-items: flex-start;
+  padding-top: 15px;
+  border-top: 2px solid var(--ds-line-strong);
+}
+.nle-group-label button {
+  padding: 0;
+  min-height: 18px;
+  margin-left: auto;
+}
+.nle-group-start {
+  border-top: 2px solid var(--ds-line-strong);
+}
+.nle-clip-audio {
+  background: color-mix(in srgb, var(--ds-success) 20%, var(--ds-panel));
+}
+.nle-clip-text {
+  background: color-mix(in srgb, var(--warn) 20%, var(--ds-panel));
+}
+.nle-ruler {
+  touch-action: none;
+}
+.nle-playhead {
+  width: 16px;
+  margin-left: -8px;
+  background: transparent;
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.nle-playhead::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: var(--ds-ink);
+  pointer-events: none;
+}
+.nle-playhead span {
+  left: 3px;
+}
+.nle-playhead:focus-visible {
+  outline: none;
+}
+.nle-playhead:focus-visible span {
+  outline: 2px solid var(--ds-ink);
+  outline-offset: 2px;
+}
+.nle-timeline-toolbar output {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }

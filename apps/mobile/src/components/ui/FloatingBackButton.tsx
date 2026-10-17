@@ -4,18 +4,21 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
+import { directionalIcon, type DirectionalIconName } from "../../i18n/layoutRtl"
+import { useT } from "../../i18n/useT"
 import { ACCENT, SURFACE_COLOR, hexToRgba } from "../../lib/color"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 
 type FloatingBackButtonProps = {
   /** Extra offset below the safe-area top. Default 4. */
   topOffset?: number
-  /** Inset from the left edge. Default HORIZONTAL_PADDING. */
+  /** Inset from the start edge (the right in a right-to-left layout). Default
+   *  HORIZONTAL_PADDING. */
   sideOffset?: number
   /** The glyph. A surface whose back press MINIMIZES a player into the
    *  floating window shows "chevron-down"; plain navigation keeps the back
-   *  chevron. */
-  icon?: "chevron-back" | "chevron-down"
+   *  chevron, which a caller passes through `directionalIcon`. */
+  icon?: DirectionalIconName | "chevron-down"
 }
 
 // Back button floating over full-bleed content; mirrors HomeHeader's glass button.
@@ -24,10 +27,11 @@ type FloatingBackButtonProps = {
 export function FloatingBackButton({
   topOffset = 4,
   sideOffset = HORIZONTAL_PADDING,
-  icon = "chevron-back",
+  icon = directionalIcon("chevron-back"),
 }: FloatingBackButtonProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const t = useT("Common")
 
   const handleBack = () => {
     // A cold deep link / cold launch lands here with an empty history stack,
@@ -48,7 +52,8 @@ export function FloatingBackButton({
       <Pressable
         onPress={handleBack}
         accessibilityRole="button"
-        accessibilityLabel="Go back"
+        accessibilityLabel={t("goBackAriaLabel")}
+        {...{ "dd-action-name": "floating-back" }}
         hitSlop={12}
         style={({ pressed }) => pressed && styles.pressed}
       >

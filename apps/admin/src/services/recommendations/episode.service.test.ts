@@ -37,18 +37,20 @@ describe("RecommendationEpisodeService", () => {
         newClaimNonce: () => "source-neutral-claim-nonce",
       })
 
-      await expect(
-        service.issueContext({
-          caller,
-          sessionDigest: "a".repeat(64),
-          mediaId: "target-video",
-          discoverySource,
-          provenance: { campaign: "bounded-campaign" },
-        }),
-      ).resolves.toEqual({
+      const receipt = await service.issueContext({
+        caller,
+        sessionDigest: "a".repeat(64),
+        mediaId: "target-video",
+        discoverySource,
+        provenance: { campaign: "bounded-campaign" },
+      })
+      // U5 reads the episode id from this receipt to attribute a push open.
+      expect(receipt).toEqual({
+        episodeId: "context-episode-1",
         claimNonce: "source-neutral-claim-nonce",
         contextVersion: "playback-context-v1",
       })
+      expect(receipt.episodeId).toBe(created[0].id)
       expect(created[0]).toMatchObject({
         id: "context-episode-1",
         requestId: null,
@@ -354,6 +356,9 @@ describe("RecommendationEpisodeService", () => {
     const tx = {
       $executeRaw: vi.fn(async () => 1),
       $queryRaw: vi.fn(async () => [{ id: "current" }]),
+      recommendationPrecomputedBaselineVisitRequest: {
+        findUnique: vi.fn(async () => null),
+      },
       recommendationSelection: {
         findUnique: vi.fn(async () => null),
         create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -486,6 +491,9 @@ describe("RecommendationEpisodeService", () => {
       const tx = {
         $executeRaw: vi.fn(async () => 1),
         $queryRaw: vi.fn(async () => [{ id: "current" }]),
+        recommendationPrecomputedBaselineVisitRequest: {
+          findUnique: vi.fn(async () => null),
+        },
         recommendationSelection: {
           findUnique: vi.fn(async () => null),
           create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
@@ -783,6 +791,9 @@ describe("RecommendationEpisodeService", () => {
       const tx = {
         $executeRaw: vi.fn(async () => 1),
         $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+        recommendationPrecomputedBaselineVisitRequest: {
+          findUnique: vi.fn(async () => null),
+        },
         recommendationSelection: {
           findUnique: vi.fn(async () => ({
             id: "selection-1",

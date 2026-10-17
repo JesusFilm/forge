@@ -10,6 +10,10 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+vi.mock("@/lib/watch-surface-manifest.server", () => ({
+  signWatchSurfaceManifest: () => null,
+  signWatchHomeHeroManifestCatalog: () => null,
+}))
 
 const {
   resolveWatchRouteBySlugMock,
@@ -1073,6 +1077,37 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         ],
       },
     })
+  })
+
+  it("declares Kurmanji Standard series JSON-LD from the corrected tag, not admin's ko-kmr", async () => {
+    const result = makeSeriesResult("storyclubs")
+    // Admin's real row: kurmanji-standard carries the invalid `ko-kmr` tag.
+    result.video.childDubLanguages = [
+      { slug: "kurmanji-standard", bcp47: "ko-kmr", name: "Kurmanji Standard" },
+    ]
+    mockRouteSeries(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-07-23T00:00:00.000Z",
+      contentSlugs: ["ep-1"],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["kurmanji-standard"],
+      audioLanguageIndexesByContent: { "ep-1": [0] },
+    })
+
+    const html = await renderServerHtml(
+      ["storyclubs.html", "kurmanji-standard.html"],
+      "kurmanji-standard",
+    )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const payload = JSON.parse(
+      document.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? "{}",
+    )
+
+    // `kmr` canonicalizes to `ku`; the raw `ko-kmr` would be dropped entirely.
+    expect(payload.inLanguage).toBe("ku")
   })
 
   it("returns not found when the requested series language is unavailable", async () => {
@@ -2965,6 +3000,31 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
 })
 
 describe("Catch-all routing — 3-seg episode branch", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])(
+    "decodes a percent-encoded episode slug for resolution: %s",
+    async (slug) => {
+      resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+      await renderLanguageLessEpisode(
+        "conversation-starters.html",
+        `${encodeURIComponent(slug)}.html`,
+      )
+
+      expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+        "conversation-starters",
+        slug,
+        "english",
+      )
+      expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+      expect(notFoundMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("renders a language-less two-segment episode as contextual English", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
 

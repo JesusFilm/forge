@@ -758,6 +758,14 @@ describe("RecommendationConsentShell", () => {
     await flush()
     act(() => button("Cookie settings").click())
     act(() => channel.onmessage?.())
+    // The activation barrier can cancel queued refreshes before dispatch. This
+    // fixture specifically exercises an already-dispatched stale status.
+    await flush()
+    expect(
+      fetchMock.mock.calls.map(
+        ([, init]) => JSON.parse(String(init?.body)).action,
+      ),
+    ).toEqual(["status", "status"])
     const personalization = container.querySelector<HTMLInputElement>(
       'input[name="recommendation-personalization"]',
     )!
@@ -928,4 +936,36 @@ describe("RecommendationConsentShell", () => {
       profileChanged,
     )
   })
+})
+
+it("starts automatic profile bootstrap only after real prerender activation", async () => {
+  Object.defineProperty(document, "prerendering", {
+    configurable: true,
+    writable: true,
+    value: true,
+  })
+  const fetchMock = vi.fn(
+    async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      return response(body.action === "grant" ? activeProfile : undecided)
+    },
+  )
+  vi.stubGlobal("fetch", fetchMock)
+  try {
+    renderShell()
+    await flush()
+    expect(fetchMock).not.toHaveBeenCalled()
+    Object.defineProperty(document, "prerendering", { value: false })
+    act(() => {
+      document.dispatchEvent(new Event("prerenderingchange"))
+      document.dispatchEvent(new Event("prerenderingchange"))
+    })
+    for (let index = 0; index < 6; index += 1) await flush()
+    const actions = fetchMock.mock.calls.map(
+      ([, init]) => JSON.parse(String(init?.body)).action,
+    )
+    expect(actions).toEqual(["status", "grant"])
+  } finally {
+    delete (document as Document & { prerendering?: boolean }).prerendering
+  }
 })

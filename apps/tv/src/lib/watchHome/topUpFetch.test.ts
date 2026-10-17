@@ -1,4 +1,16 @@
-import { chunk, fetchTopUpVideos } from "./topUpFetch"
+import { chunk, fetchTopUpVideos, homeFetchPolicy } from "./topUpFetch"
+
+describe("Home fetch policy", () => {
+  it("avoids a second normalized Android cache alongside the persisted snapshot", () => {
+    expect(homeFetchPolicy("android", "initial")).toBe("no-cache")
+    expect(homeFetchPolicy("android", "refresh")).toBe("no-cache")
+  })
+
+  it("preserves Apple TV cache-first entry and network-only retry", () => {
+    expect(homeFetchPolicy("ios", "initial")).toBe("cache-first")
+    expect(homeFetchPolicy("ios", "refresh")).toBe("network-only")
+  })
+})
 
 describe("chunk", () => {
   it("splits into <=size chunks", () => {

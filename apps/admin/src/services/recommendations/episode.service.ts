@@ -1,3 +1,4 @@
+import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 import {
@@ -41,6 +42,8 @@ import {
   type RecommendationFinalizationWake,
 } from "./finalization/job"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
+import { matchesPrivateVisitBrowser } from "./precomputed/visit-selection"
+import { checkPrecomputedBaselineClickBrowser } from "./precomputed/incumbent-baseline"
 import type {
   DeliveryCapabilityBinding,
   EpisodeCapabilityBinding,
@@ -119,9 +122,11 @@ export class RecommendationEpisodeService {
     const activeUntil = new Date(now.getTime() + EPISODE_ACTIVE_MS)
     const hardUntil = new Date(now.getTime() + EPISODE_HARD_MS)
 
+    // U5 attributes a push open to this episode, so the caller needs its id.
+    const episodeId = newId()
     await this.deps.prisma.recommendationPlaybackEpisode.create({
       data: {
-        id: newId(),
+        id: episodeId,
         requestId: null,
         itemId: null,
         selectionId: null,
@@ -140,10 +145,16 @@ export class RecommendationEpisodeService {
       },
     })
 
-    return { claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
+    return { episodeId, claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
   }
 
-  async select(input: {
+  select(input: Parameters<RecommendationEpisodeService["selectObserved"]>[0]) {
+    return observeRecommendationRuntime("selection", () =>
+      this.selectObserved(input),
+    )
+  }
+
+  private async selectObserved(input: {
     caller: Principal | null
     contractVersion: string
     capability: string
@@ -154,6 +165,7 @@ export class RecommendationEpisodeService {
     occurredAt: string
     tabDigest?: string | null
     claimNonce: string
+    browserDigest?: string | null
   }) {
     assertWebRecommendationCaller(input.caller)
     if (input.contractVersion !== RECOMMENDATION_CONTRACTS.evidence) {
@@ -185,12 +197,23 @@ export class RecommendationEpisodeService {
     if (input.tabDigest != null && !/^[a-f0-9]{64}$/.test(input.tabDigest)) {
       throw new RecommendationInputError("Recommendation tab digest is invalid")
     }
-    const now = this.deps.now?.() ?? new Date()
+    let now = this.deps.now?.() ?? new Date()
     const item = await this.deps.prisma.recommendationServedItem.findUnique({
       where: { id: input.itemId },
-      include: {
+      select: {
+        id: true,
+        requestId: true,
+        targetMediaId: true,
+        canonicalHref: true,
+        capabilityJti: true,
         request: {
-          include: {
+          select: {
+            state: true,
+            expiresAt: true,
+            sessionDigest: true,
+            surfaceVersion: true,
+            manifestId: true,
+            privatePrecomputedVisitId: true,
             experimentAssignment: {
               include: { experiment: true, profile: true },
             },
@@ -301,6 +324,28 @@ export class RecommendationEpisodeService {
           "Recommendation selection binding is invalid",
         )
       }
+      if (item.request.privatePrecomputedVisitId) {
+        const privateReceiptAt = await matchesPrivateVisitBrowser(tx, {
+          requestId: item.requestId,
+          expectedVisitId: item.request.privatePrecomputedVisitId,
+          browserDigest: input.browserDigest,
+          clock: this.deps.now ?? (() => new Date()),
+        })
+        if (!privateReceiptAt)
+          throw new RecommendationBindingError(
+            "Recommendation private browser binding is invalid",
+          )
+        now = privateReceiptAt
+      }
+      const baselineBrowser = await checkPrecomputedBaselineClickBrowser(tx, {
+        requestId: item.requestId,
+        browserDigest: input.browserDigest,
+        now,
+      })
+      if (baselineBrowser === "invalid")
+        throw new RecommendationBindingError(
+          "Recommendation baseline browser binding is invalid",
+        )
       await lockRecommendationItemEvidence(tx, item.id)
       const impression = await tx.recommendationImpression.findUnique({
         where: { itemId: item.id },
@@ -524,7 +569,11 @@ export class RecommendationEpisodeService {
         where: { claimNonceDigest },
         include: {
           request: {
-            include: {
+            select: {
+              id: true,
+              state: true,
+              expiresAt: true,
+              sessionDigest: true,
               experimentAssignment: { include: { profile: true } },
             },
           },

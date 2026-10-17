@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useSegments } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../i18n/useT"
 import { useTypography } from "../hooks/useTypography"
 import {
   isTabGroupRoute,
@@ -49,9 +50,6 @@ export { EXPORT_REPORT_AUTO_DISMISS_MS } from "../lib/exportReport"
 export type { ExportReportSignal } from "../lib/exportReport"
 
 const MAX_BUFFERED_SIGNALS = 20
-
-const DISMISS_LABEL = "Dismiss export report"
-const REPORT_LABEL = "Export report"
 
 type ExportReportListener = (signal: ExportReportSignal) => void
 
@@ -117,6 +115,7 @@ export function ExportReportHost() {
     ? TAB_BAR_SCREEN_EXTENT_IOS + TAB_BAR_CLEARANCE_GAP
     : 0
   const typography = useTypography()
+  const t = useT("ExportReport")
   const [reports, setReports] = useState<readonly ExportReportRecord[]>([])
 
   useEffect(() => {
@@ -182,11 +181,11 @@ export function ExportReportHost() {
       ]}
     >
       {reports.map((record) => {
-        const view = viewFor(record)
+        const view = viewFor(record, t)
         return (
           <View
             key={record.runId}
-            accessibilityLabel={REPORT_LABEL}
+            accessibilityLabel={t("reportAriaLabel")}
             style={styles.card}
           >
             <Ionicons name={view.icon} size={20} color={view.iconColor} />
@@ -211,8 +210,9 @@ export function ExportReportHost() {
             <Pressable
               onPress={() => dismiss(record.runId)}
               accessibilityRole="button"
-              accessibilityLabel={DISMISS_LABEL}
+              accessibilityLabel={t("dismissAriaLabel")}
               hitSlop={8}
+              {...{ "dd-action-name": "export-report-dismiss" }}
             >
               <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
             </Pressable>

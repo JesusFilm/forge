@@ -1,0 +1,223 @@
+{
+  "measured_at": "2026-09-27T23:25:12.149509+00:00",
+  "service": "@forge/admin/pg",
+  "environment": "production",
+  "transport": "Railway SSH / read-only psql",
+  "probes": {
+    "rollout_migrations": {
+      "rows": [
+        {
+          "started_at": "2026-09-27T23:07:05.351602+00:00",
+          "finished_at": "2026-09-27T23:07:05.401061+00:00",
+          "migration_name": "0100_recommendation_candidate_compact_trace",
+          "rolled_back_at": null
+        },
+        {
+          "started_at": "2026-09-27T23:07:05.408764+00:00",
+          "finished_at": "2026-09-27T23:07:07.138006+00:00",
+          "migration_name": "0101_recommendation_candidate_compact_trace_validate",
+          "rolled_back_at": null
+        },
+        {
+          "started_at": "2026-09-27T23:07:07.144208+00:00",
+          "finished_at": "2026-09-27T23:07:07.311994+00:00",
+          "migration_name": "0102_recommendation_candidate_stage_duplicate_index_drop",
+          "rolled_back_at": null
+        }
+      ]
+    },
+    "rollout_constraints_and_indexes": {
+      "rows": [
+        {
+          "unique_index_valid": true,
+          "duplicate_index_absent": true,
+          "compact_check_validated": true
+        }
+      ]
+    },
+    "recent_trace_stage_parity": {
+      "rows": [
+        {
+          "stage": "canonicalized",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 1651,
+          "expected_observations": 1651,
+          "observed_observations": 1651
+        },
+        {
+          "stage": "composed",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 394,
+          "expected_observations": 394,
+          "observed_observations": 394
+        },
+        {
+          "stage": "deduplicated",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 1492,
+          "expected_observations": 1492,
+          "observed_observations": 1492
+        },
+        {
+          "stage": "nominated",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 1651,
+          "expected_observations": 1651,
+          "observed_observations": 1651
+        },
+        {
+          "stage": "ordered",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 1489,
+          "expected_observations": 1489,
+          "observed_observations": 1489
+        },
+        {
+          "stage": "rejected",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 124,
+          "expected_observations": 124,
+          "observed_observations": 124
+        },
+        {
+          "stage": "scored",
+          "sampled_runs": 100,
+          "format_version": -1,
+          "incomplete_runs": 8,
+          "mismatched_runs": 0,
+          "legacy_observations": 1489,
+          "expected_observations": 1489,
+          "observed_observations": 1489
+        },
+        {
+          "stage": "canonicalized",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 29,
+          "observed_observations": 29
+        },
+        {
+          "stage": "composed",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 11,
+          "observed_observations": 11
+        },
+        {
+          "stage": "deduplicated",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 26,
+          "observed_observations": 26
+        },
+        {
+          "stage": "nominated",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 29,
+          "observed_observations": 29
+        },
+        {
+          "stage": "ordered",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 26,
+          "observed_observations": 26
+        },
+        {
+          "stage": "rejected",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 16,
+          "observed_observations": 16
+        },
+        {
+          "stage": "scored",
+          "sampled_runs": 3,
+          "format_version": 1,
+          "incomplete_runs": 0,
+          "mismatched_runs": 0,
+          "legacy_observations": 0,
+          "expected_observations": 26,
+          "observed_observations": 26
+        }
+      ]
+    },
+    "legacy_write_horizon": {
+      "rows": [
+        {
+          "last_legacy_write": "2026-09-27T23:24:43.215+00:00",
+          "last_legacy_run_expiry": "2026-10-26T23:24:43.126+00:00"
+        }
+      ]
+    },
+    "active_transaction_summary": {
+      "rows": [
+        {
+          "lock_waiters": 0,
+          "oldest_transaction_age": "-00:00:00.026663",
+          "transactions_older_than_30s": 0
+        }
+      ]
+    },
+    "compact_activation_horizon": {
+      "rows": [
+        {
+          "legacy_runs_since_activation": 77,
+          "compact_runs_since_activation": 3,
+          "first_compact_since_activation": "2026-09-27T23:24:53.328+00:00",
+          "compact_evidence_incomplete_since_activation": 0
+        }
+      ]
+    },
+    "compact_payload_size_sample": {
+      "rows": [
+        {
+          "sample_window_end": "2026-09-27T23:25:01.179+00:00",
+          "sample_window_start": "2026-09-27T23:24:53.328+00:00",
+          "sampled_compact_runs": 3,
+          "mean_stage_observations": 54.33,
+          "max_stored_payload_bytes": 14672,
+          "min_stored_payload_bytes": 1160,
+          "mean_stored_payload_bytes": 6200.67
+        }
+      ]
+    }
+  }
+}

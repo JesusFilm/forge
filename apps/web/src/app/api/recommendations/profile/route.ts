@@ -1,3 +1,4 @@
+import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
 import { z } from "zod"
 import {
   RECOMMENDATION_PROFILE_BODY_BYTES,
@@ -25,6 +26,11 @@ import {
   readRecommendationProfileCookie,
 } from "@/lib/recommendation-session"
 import { WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
+import { clearRecommendationExperimentBrowser } from "@/lib/recommendation-experiment-browser"
+import {
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+  RECOMMENDATION_TESTER_COOKIE_PATH,
+} from "@/lib/recommendation-tester-token"
 import {
   RECOMMENDATION_CONSENT_CONTRACT,
   attachRecommendationConsent,
@@ -111,6 +117,13 @@ export async function POST(request: Request) {
           ? "privacy-control"
           : "profile-mutation",
     )
+
+    if (
+      !["withdraw", "delete"].includes(parsed.data.action) &&
+      !isEligibleHumanRequest(request)
+    ) {
+      throw new RecommendationRouteError(403, "machine_profile_rejected")
+    }
 
     const session = ensureRecommendationSession(request)
     const current = readRecommendationProfileCookie(request)
@@ -231,6 +244,16 @@ export async function POST(request: Request) {
       currentConsent.kind === "invalid"
     ) {
       clearRecommendationConsent(response)
+    }
+    if (parsed.data.action === "delete" || parsed.data.action === "reset") {
+      clearRecommendationExperimentBrowser(response)
+      response.cookies.set(RECOMMENDATION_EXPERIMENT_TESTER_COOKIE, "", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: RECOMMENDATION_TESTER_COOKIE_PATH,
+        maxAge: 0,
+      })
     }
     return response
   } catch (error) {

@@ -64,7 +64,7 @@ canonical and reciprocal `hreflang` coverage grows (FGE-17).
   count changes.
 - Preserve sitemap XML as the only Watch `hreflang` source of truth.
 - Keep complete alternate sets on every canonical entry that carries any
-  `<xhtml:link>` at all. **Superseded in part 2026-09-22 (feat-716 / FGE-183, formerly feat-533):**
+  `<xhtml:link>` at all. **Superseded in part 2026-09-22 (feat-733 / FGE-183, formerly feat-716 and feat-533):**
   a canonical entry for a language with no Google-valid hreflang now ships with
   no alternates at all, because attaching the cluster's set to a URL outside it
   breaks reciprocity and makes Google discard the cluster. Self-inclusion and

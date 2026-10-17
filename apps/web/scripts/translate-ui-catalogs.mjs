@@ -86,12 +86,101 @@ function readJson(path) {
   return JSON.parse(readFileSync(path, "utf-8"))
 }
 
-const translationPolicy = readJson(
-  join(scriptDir, "ui-translation-policy.json"),
+const DEFAULT_TRANSLATION_POLICY_PATH = join(
+  scriptDir,
+  "ui-translation-policy.json",
 )
-const INTENTIONALLY_LOCALE_NEUTRAL = new Set(
-  translationPolicy.intentionallyLocaleNeutral,
-)
+
+function isStringArray(value) {
+  return (
+    Array.isArray(value) && value.every((entry) => typeof entry === "string")
+  )
+}
+
+function isPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0
+}
+
+// pendingTranslationPaths is read by the caller's own catalog tests, not here:
+// this script translates pending paths like any other English copy.
+function loadTranslationPolicy(path = DEFAULT_TRANSLATION_POLICY_PATH) {
+  const policy = readJson(path)
+  const invalid = (detail) =>
+    new TranslationCliError("INVALID_TRANSLATION_POLICY", `${path}: ${detail}`)
+  if (!isPlainObject(policy)) throw invalid("must be a JSON object")
+  for (const field of ["humanReviewedLocales", "intentionallyLocaleNeutral"]) {
+    if (policy[field] !== undefined && !isStringArray(policy[field])) {
+      throw invalid(`${field} must be an array of strings`)
+    }
+  }
+  return {
+    humanReviewedLocales: policy.humanReviewedLocales ?? [],
+    intentionallyLocaleNeutral: new Set(policy.intentionallyLocaleNeutral),
+  }
+}
+
+const CONTEXT_OVERRIDE_FIELDS = new Set(["role", "visibility", "composition"])
+
+// Shape: { product, namespaces: { <namespace>: sentence }, keys?: { <key>: {
+// role?, visibility?, composition? } } }. See CatalogContexts in
+// openai-catalog-translator.d.mts.
+function loadCatalogContexts(path) {
+  const contexts = readJson(path)
+  const invalid = (detail) =>
+    new TranslationCliError("INVALID_CATALOG_CONTEXTS", `${path}: ${detail}`)
+  if (!isPlainObject(contexts)) throw invalid("must be a JSON object")
+  if (!isNonEmptyString(contexts.product)) {
+    throw invalid("product must be a non-empty string")
+  }
+  if (
+    !isPlainObject(contexts.namespaces) ||
+    !Object.values(contexts.namespaces).every(isNonEmptyString)
+  ) {
+    throw invalid("namespaces must map each namespace to a non-empty sentence")
+  }
+  const keys = contexts.keys ?? {}
+  if (
+    !isPlainObject(keys) ||
+    !Object.values(keys).every(
+      (override) =>
+        isPlainObject(override) &&
+        Object.entries(override).every(
+          ([field, value]) =>
+            CONTEXT_OVERRIDE_FIELDS.has(field) && isNonEmptyString(value),
+        ),
+    )
+  ) {
+    throw invalid(
+      "keys must map each message key to role, visibility, or composition strings",
+    )
+  }
+  return { product: contexts.product, namespaces: contexts.namespaces, keys }
+}
+
+function validateCatalogContextCoverage(contexts, sourceFlat) {
+  const missingNamespaces = sortedUnique(
+    Object.keys(sourceFlat).map((key) => key.split(".", 1)[0]),
+  ).filter((namespace) => !Object.hasOwn(contexts.namespaces, namespace))
+  if (missingNamespaces.length > 0) {
+    throw new TranslationCliError(
+      "MISSING_NAMESPACE_CONTEXT",
+      `--contexts has no sentence for namespaces: ${missingNamespaces.join(",")}`,
+    )
+  }
+  const unknownKeys = Object.keys(contexts.keys).filter(
+    (key) => !Object.hasOwn(sourceFlat, key),
+  )
+  if (unknownKeys.length > 0) {
+    throw new TranslationCliError(
+      "UNKNOWN_CONTEXT_KEY",
+      `--contexts overrides unknown message keys: ${unknownKeys.join(",")}`,
+    )
+  }
+}
 
 function renderJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`
@@ -101,14 +190,15 @@ function contentDigest(value) {
   return createHash("sha256").update(renderJson(value)).digest("hex")
 }
 
-function sourceDigestForFlatCatalog(sourceFlat) {
+function sourceDigestForFlatCatalog(
+  sourceFlat,
+  policy = loadTranslationPolicy(),
+) {
   return contentDigest({
     sourceFlat,
     translationPolicy: {
-      humanReviewedLocales: sortedUnique(
-        translationPolicy.humanReviewedLocales ?? [],
-      ),
-      intentionallyLocaleNeutral: [...INTENTIONALLY_LOCALE_NEUTRAL].sort(),
+      humanReviewedLocales: sortedUnique(policy.humanReviewedLocales),
+      intentionallyLocaleNeutral: [...policy.intentionallyLocaleNeutral].sort(),
     },
   })
 }
@@ -194,7 +284,9 @@ function validateCatalogIntegrity(
   sourceMessages,
   catalogMessages,
   maximumSourceCopiedMessages,
+  policy = loadTranslationPolicy(),
 ) {
+  const { intentionallyLocaleNeutral } = policy
   validateCatalogKeys(sourceMessages, catalogMessages)
   for (const [key, source] of Object.entries(sourceMessages)) {
     const error = messageContractError(key, source, catalogMessages[key])
@@ -205,7 +297,7 @@ function validateCatalogIntegrity(
 
   const sourceCopiedMessages = Object.entries(sourceMessages).filter(
     ([key, source]) =>
-      !INTENTIONALLY_LOCALE_NEUTRAL.has(key) && catalogMessages[key] === source,
+      !intentionallyLocaleNeutral.has(key) && catalogMessages[key] === source,
   ).length
   if (sourceCopiedMessages > maximumSourceCopiedMessages) {
     throw new CatalogValidationError(
@@ -216,7 +308,7 @@ function validateCatalogIntegrity(
 
   const normalizedSourceCopiedMessages = Object.entries(sourceMessages).filter(
     ([key, source]) =>
-      !INTENTIONALLY_LOCALE_NEUTRAL.has(key) &&
+      !intentionallyLocaleNeutral.has(key) &&
       catalogMessages[key] !== source &&
       isSourceEquivalent(source, catalogMessages[key]),
   ).length
@@ -275,12 +367,11 @@ function updateManifestAfterTranslation({
   catalogDigests,
   scopeMessagePaths = [],
   generatedOn = new Date().toISOString().slice(0, 10),
+  policy = loadTranslationPolicy(),
 }) {
   const completed = new Set(completedLocales)
   const generated = new Set(generatedLocales)
-  const humanReviewedLocales = new Set(
-    translationPolicy.humanReviewedLocales ?? [],
-  )
+  const humanReviewedLocales = new Set(policy.humanReviewedLocales)
   const inventoryLocales = inventory.languages.map((language) => language.tag)
   const remainingProvisional = manifest.provisionalLocales.filter(
     (locale) => !completed.has(locale),
@@ -411,6 +502,7 @@ function validateCompletedProvisionalCatalogs({
   messagesDir,
   sourceFlat,
   maximumSourceCopiedMessages,
+  policy,
 }) {
   const completed = new Set(completedLocales)
   for (const locale of manifest.provisionalLocales) {
@@ -435,6 +527,7 @@ function validateCompletedProvisionalCatalogs({
       sourceFlat,
       flatCatalog,
       maximumSourceCopiedMessages,
+      policy,
     )
   }
 }
@@ -444,6 +537,7 @@ function validatedCatalogDigests({
   messagesDir,
   sourceFlat,
   maximumSourceCopiedMessages,
+  policy,
 }) {
   return Object.fromEntries(
     locales.map((locale) => {
@@ -459,6 +553,7 @@ function validatedCatalogDigests({
         sourceFlat,
         flatCatalog,
         maximumSourceCopiedMessages,
+        policy,
       )
       return [locale, contentDigest(flatCatalog)]
     }),
@@ -474,6 +569,12 @@ async function main({ args = process.argv, environment = process.env } = {}) {
   const concurrency = integerArg("--concurrency", DEFAULT_CONCURRENCY, args)
   const maxAttempts = integerArg("--max-attempts", DEFAULT_MAX_ATTEMPTS, args)
   const shouldPromote = args.includes("--promote")
+  const stopOnQuota = args.includes("--stop-on-quota")
+  const policy = loadTranslationPolicy(
+    argValue("--policy", DEFAULT_TRANSLATION_POLICY_PATH, args),
+  )
+  const contextsPath = argValue("--contexts", "", args)
+  const contexts = contextsPath ? loadCatalogContexts(contextsPath) : undefined
   const configuredBaseUrl = environment.OPENAI_BASE_URL?.trim()
   const baseUrl = (configuredBaseUrl || DEFAULT_OPENAI_BASE_URL).replace(
     /\/+$/,
@@ -512,8 +613,9 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       `Unknown message keys: ${unknownScopedKeys.join(",")}`,
     )
   }
+  if (contexts) validateCatalogContextCoverage(contexts, sourceFlat)
   const translatableSourceMessageCount = Object.keys(sourceFlat).filter(
-    (key) => !INTENTIONALLY_LOCALE_NEUTRAL.has(key),
+    (key) => !policy.intentionallyLocaleNeutral.has(key),
   ).length
   const maximumSourceCopiedMessages = Math.floor(
     translatableSourceMessageCount * MAXIMUM_SOURCE_COPY_RATIO,
@@ -534,7 +636,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
   const selectedLocales = sortedUnique(
     locales.filter((locale) => locale && locale !== SOURCE_LOCALE),
   )
-  const sourceDigest = sourceDigestForFlatCatalog(sourceFlat)
+  const sourceDigest = sourceDigestForFlatCatalog(sourceFlat, policy)
   const progress = loadProgress(progressPath, model, sourceDigest)
   const completed = new Set(progress.completedLocales)
   const generated = new Set(
@@ -550,6 +652,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       Object.fromEntries(
         Object.entries(sourceFlat).filter(([key]) => !scopedKeys.has(key)),
       ),
+      policy,
     )
     const unsafeScopedPromotionLocales = selectedLocales.filter((locale) => {
       if (!machineTranslatedLocales.has(locale)) return false
@@ -632,6 +735,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
               sourceFlat,
               flatCatalog,
               maximumSourceCopiedMessages,
+              policy,
             )
             console.log(
               JSON.stringify({
@@ -661,7 +765,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
         const missingKeys = new Set(missing)
         const keysToTranslate = Object.keys(sourceFlat).filter(
           (key) =>
-            !INTENTIONALLY_LOCALE_NEUTRAL.has(key) &&
+            !policy.intentionallyLocaleNeutral.has(key) &&
             (scopedKeys.size > 0
               ? scopedKeys.has(key)
               : missingKeys.has(key) ||
@@ -702,6 +806,8 @@ async function main({ args = process.argv, environment = process.env } = {}) {
             model,
             maxAttempts,
             minimumChangeRatio,
+            contexts,
+            stopOnQuota,
           })
           for (const [key, value] of Object.entries(result.translations)) {
             flatCatalog[key] = value
@@ -713,6 +819,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
           sourceFlat,
           flatCatalog,
           maximumSourceCopiedMessages,
+          policy,
         )
         if (missing.length > 0 || keysToTranslate.length > 0) {
           writeJsonAtomic(path, unflattenCatalog(flatCatalog))
@@ -766,6 +873,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       messagesDir,
       sourceFlat,
       maximumSourceCopiedMessages,
+      policy,
     })
     const machineTranslatedLocales = sortedUnique([
       ...(manifest.machineTranslatedLocales ?? []),
@@ -776,6 +884,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       messagesDir,
       sourceFlat,
       maximumSourceCopiedMessages,
+      policy,
     })
     const nextManifest = updateManifestAfterTranslation({
       manifest,
@@ -788,6 +897,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
       scopeMessagePaths: [...scopedKeys].sort((left, right) =>
         left.localeCompare(right),
       ),
+      policy,
     })
     const staleProvenanceLocales = nextManifest.machineTranslatedLocales.filter(
       (locale) =>

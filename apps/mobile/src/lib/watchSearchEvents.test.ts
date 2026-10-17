@@ -22,11 +22,13 @@ const clickInput = {
   resultType: "video",
   position: 3,
   visibleResultIds: ["video-123", "video-456"],
+  searchLanguageSlug: "english",
 }
 
 const viewedInput = {
   requestId: VALID_REQUEST_ID,
   visibleResultIds: ["video-123", "exp-1"],
+  searchLanguageSlug: "english",
 }
 
 beforeEach(() => {
@@ -46,6 +48,22 @@ describe("buildResultClickedVariables", () => {
       routeLanguageSlug: null,
       searchLanguageSlug: "english",
     })
+  })
+
+  // U7: the event joins its search only when it names the same slug.
+  it("carries the search's own display slug", () => {
+    expect(
+      buildResultClickedVariables({
+        ...clickInput,
+        searchLanguageSlug: "russian",
+      })?.searchLanguageSlug,
+    ).toBe("russian")
+    expect(
+      buildResultsViewedVariables({
+        ...viewedInput,
+        searchLanguageSlug: "russian",
+      })?.searchLanguageSlug,
+    ).toBe("russian")
   })
 
   it("never carries an occurredAt key — admin stamps its own clock", () => {

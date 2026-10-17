@@ -1,5 +1,6 @@
 import { createHash, sign, type KeyObject } from "node:crypto"
 import { z } from "zod"
+import { studioRenderHttp } from "./studio-render-http"
 import {
   STUDIO_RENDER_PROFILE,
   STUDIO_RENDER_WIRE_BYTES,
@@ -85,9 +86,7 @@ export async function executeStudioRenderRequest(
     STUDIO_RENDER_PROFILE.requestMs + STUDIO_RENDER_PROFILE.retentionMs
   if (remaining() < required)
     throw new StudioRenderTransportError("Insufficient execution lease")
-  const healthResponse = await fetch(new URL("/health", origin), {
-    redirect: "error",
-    cache: "no-store",
+  const healthResponse = await studioRenderHttp(new URL("/health", origin), {
     signal: AbortSignal.any([signal, AbortSignal.timeout(5000)]),
   })
   if (!healthResponse.ok) {
@@ -116,11 +115,8 @@ export async function executeStudioRenderRequest(
   const body = Buffer.from(JSON.stringify(admission))
   if (body.length > STUDIO_RENDER_WIRE_BYTES)
     throw new StudioRenderTransportError("Execution input limit exceeded")
-  const response = await fetch(new URL("/render", origin), {
-    method: "POST",
+  const response = await studioRenderHttp(new URL("/render", origin), {
     body,
-    redirect: "error",
-    cache: "no-store",
     signal,
     headers: {
       "content-type": "application/json",

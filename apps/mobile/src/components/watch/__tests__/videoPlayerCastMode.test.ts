@@ -158,9 +158,9 @@ describe("cast remote mode (U4)", () => {
 
   it("names the route in the indicator, per route (R7/R16)", () => {
     const gate = at("{externalRouteActive && (")
-    const indicator = SOURCE.slice(gate, at("Playing on AirPlay", gate))
+    const indicator = SOURCE.slice(gate, at('tCast("playingOnAirPlay")', gate))
     expect(indicator).toContain("castRemoteActive")
-    expect(indicator).toContain("castIndicatorLabel(castPhase")
+    expect(indicator).toMatch(/castIndicatorLabel\(\s*castPhase/)
   })
 
   it("shows the distinct connecting state (R16)", () => {

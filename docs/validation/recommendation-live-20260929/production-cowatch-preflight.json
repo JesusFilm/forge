@@ -1,0 +1,139 @@
+{
+  "credentialValuesRetained": false,
+  "productionInvocationStarted": true,
+  "status": "receipt_received",
+  "clientTls": "required",
+  "transportExitCode": 1,
+  "receipt": {
+    "localAdmission": {
+      "cgroupDriver": "systemd",
+      "cgroupVersion": "2",
+      "cpuCount": 8,
+      "daemon": "local-unix-socket",
+      "dockerRootDir": "/home/nisal/.local/share/docker",
+      "hostAvailableMemoryBytes": 25572737024,
+      "hostDockerDiskAvailableBytes": 31908241408,
+      "hostTmpAvailableBytes": 14479667200,
+      "imageId": "sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2",
+      "imageRepoDigests": [
+        "node@sha256:be23f54a88d34e8824c741b19b91064094f92c1c97b194144bfc8b50d67258e2"
+      ],
+      "loadAverage": [0.4306640625, 0.36962890625, 0.5166015625]
+    },
+    "notes": [
+      "No retries and no --execute path. Each container runs the existing CLI at most once.",
+      "Production deployment identity and fresh DB lock/capacity admission are caller responsibilities; this local proof grants neither.",
+      "Default networking is Docker bridge for separately authorized public proxy access. Host networking is accepted only for the exact authorized local fixture.",
+      "Credentials travel only through attached stdin into process memory/environment; Docker Config.Env and argv contain no DATABASE_URL. The inherited host environment is not passed wholesale to Docker.",
+      "Host watchdog is a separate process/session; it kills the exact unique container even if the main runner is SIGKILLed. Docker control-plane unavailability may delay cleanup and is reported, not treated as success.",
+      "Source bind mount is read-only in the container; caller must keep the selected checkout/dependencies immutable on the host.",
+      "Container cgroup limits constrain local computation only. They do not constrain shared database server memory, I/O, WAL, or competing clients."
+    ],
+    "preflight": {
+      "aggregateCliResult": null,
+      "cancelled": false,
+      "cleanup": {
+        "container": "forge-cowatch-readonly-e1b4e10c88784022b8ea300e7ef94e3d",
+        "removed": true
+      },
+      "container": "forge-cowatch-readonly-e1b4e10c88784022b8ea300e7ef94e3d",
+      "discardedStderrBytes": 729,
+      "discardedStdoutLines": 1,
+      "elapsedSeconds": 2.29,
+      "execute": false,
+      "inspectionAfterExit": {
+        "containerId": "d7066bdadc9e4ac35a742124e40deb5368653e2f411f9b7f98547eacddb3b4a0",
+        "databaseUrlAbsentFromDockerConfig": true,
+        "limits": {
+          "CapDrop": ["ALL"],
+          "CgroupParent": "",
+          "CgroupnsMode": "private",
+          "Memory": 1073741824,
+          "MemorySwap": 1073741824,
+          "NanoCpus": 1000000000,
+          "NetworkMode": "bridge",
+          "PidsLimit": 128,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": ["no-new-privileges:true"],
+          "ShmSize": 16777216,
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=67108864,mode=1777"
+          }
+        },
+        "name": "/forge-cowatch-readonly-e1b4e10c88784022b8ea300e7ef94e3d",
+        "sourceMountReadOnly": true,
+        "state": {
+          "ExitCode": 1,
+          "FinishedAt": "2026-09-29T07:01:56.17355329Z",
+          "OOMKilled": false,
+          "Running": false,
+          "StartedAt": "2026-09-29T07:01:54.235828389Z",
+          "Status": "exited"
+        },
+        "user": "1000:1000"
+      },
+      "inspectionBeforeStart": {
+        "containerId": "d7066bdadc9e4ac35a742124e40deb5368653e2f411f9b7f98547eacddb3b4a0",
+        "databaseUrlAbsentFromDockerConfig": true,
+        "limits": {
+          "CapDrop": ["ALL"],
+          "CgroupParent": "",
+          "CgroupnsMode": "private",
+          "Memory": 1073741824,
+          "MemorySwap": 1073741824,
+          "NanoCpus": 1000000000,
+          "NetworkMode": "bridge",
+          "PidsLimit": 128,
+          "ReadonlyRootfs": true,
+          "SecurityOpt": ["no-new-privileges:true"],
+          "ShmSize": 16777216,
+          "Tmpfs": {
+            "/tmp": "rw,nosuid,nodev,noexec,size=67108864,mode=1777"
+          }
+        },
+        "name": "/forge-cowatch-readonly-e1b4e10c88784022b8ea300e7ef94e3d",
+        "sourceMountReadOnly": true,
+        "state": {
+          "ExitCode": 0,
+          "FinishedAt": "0001-01-01T00:00:00Z",
+          "OOMKilled": false,
+          "Running": false,
+          "StartedAt": "0001-01-01T00:00:00Z",
+          "Status": "created"
+        },
+        "user": "1000:1000"
+      },
+      "kind": "read-only-preflight",
+      "network": "bridge",
+      "runtimeResourceVerification": {
+        "cpu.max": "100000 100000",
+        "heapSizeLimitBytes": 587202560,
+        "memory.max": "1073741824",
+        "memory.swap.max": "0",
+        "nodeVersion": "v24.20.0",
+        "pids.max": "128",
+        "uid": 1000,
+        "verified": true
+      },
+      "status": "terminal_refusal",
+      "wallLimitSeconds": 45,
+      "watchdogFired": false
+    },
+    "productionExecuted": true,
+    "schemaVersion": 1,
+    "scriptSha256": "63142215fa4d649e6c60f513dfaaba3e66bf9cdffd45307d9320810fa4cd5788",
+    "source": {
+      "cliSha256": "82dd0882cca64aa26b607a7d17839a2627557f548a129a81128b69970b206783",
+      "gitHead": "0a70712399bf99e10d88477b98cc34c8ababcc6b",
+      "path": "/home/nisal/.codex/worktrees/recommendation-live-integration-20260929/forge",
+      "pnpmLockSha256": "f8c4e716396d79ede4ff40573acedd3fad67f8c4bef6da55f9c901f89fa871e4"
+    },
+    "sourceWindow": {
+      "evaluationAsOf": "2026-09-29T06:15:00.000Z",
+      "version": "episode-event-window-v1",
+      "windowEnd": "2026-09-29T00:00:00.000Z",
+      "windowStart": "2026-09-22T00:00:00.000Z"
+    },
+    "storageClearance": false
+  }
+}

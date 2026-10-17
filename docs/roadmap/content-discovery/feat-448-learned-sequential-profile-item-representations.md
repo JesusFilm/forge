@@ -3,18 +3,11 @@ id: "feat-448"
 title: "Learned sequential profile and item representations"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 12
-depends_on:
-  - "feat-369"
-  - "feat-376"
-  - "feat-378"
-  - "feat-383"
-  - "feat-387"
-  - "feat-394"
-blocks:
-  - "feat-396"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "recommendations"
@@ -25,7 +18,18 @@ tags:
   - "pgvector"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+Learned sequential encoders, training infrastructure and profile/item ANN retrieval are retired. Deterministic semantic medoids and directional co-watch remain the selected implementation. This is a product cancellation, not a successful model evaluation or a claim that training data passed readiness checks; the already-cancelled feat-092 remains historical.
+
+Audit anchors: `apps/admin/src/services/recommendations/profiles/projection.ts`, `apps/admin/src/services/recommendations/candidates/profile-candidate.service.ts`, `apps/admin/src/services/recommendations/cowatch/candidate.service.ts`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Semantic medoids provide an inspectable multi-interest profile baseline, but they cannot learn sequence, context, or behavioral relationships in one shared viewer–item space. Forge needs a governed successor to the cancelled `feat-092` that learns reusable profile and item representations without replacing evidence truth, personalization controls, semantic fallback, or the independently observable candidate generators.
 

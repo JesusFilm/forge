@@ -75,6 +75,7 @@ const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
   "write:manager-enrichment-trigger": true,
   "write:manager-jobs": true,
   "write:manager-subtitle-eval": true,
+  "write:push-campaigns": true,
   "delete:media-assets": true,
   "publish:experiences": true,
   "archive:experiences": true,
@@ -627,6 +628,7 @@ describe("permission matrix completeness", () => {
       "delete:watch-progress:own",
       "write:manager-enrichment-trigger",
       "write:manager-jobs",
+      "write:push-campaigns",
       "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
@@ -640,6 +642,19 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:push-campaigns is granted from the viewer tier up (R28)", () => {
+    expect(hasPermission(VIEWER, "write:push-campaigns")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:push-campaigns")).toBe(true)
+    expect(hasPermission(ADMIN, "write:push-campaigns")).toBe(true)
+  })
+
+  it("write:push-campaigns reaches no anonymous or service caller", () => {
+    expect(hasPermission(PUBLIC_USER, "write:push-campaigns")).toBe(false)
+    expect(hasPermission(null, "write:push-campaigns")).toBe(false)
+    expect(hasPermission(SYSTEM, "write:push-campaigns")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:push-campaigns")).toBe(false)
   })
 
   it("write:manager-enrichment-trigger is ADMIN-only at the editorial-tier ladder", () => {

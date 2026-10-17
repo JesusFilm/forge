@@ -6,6 +6,7 @@ import type { SearchResult } from "../../lib/queries"
 import { SURFACE_COLOR } from "../../lib/color"
 import { card as cardStyle } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { buildMetaLabel } from "../../lib/watchHome/model"
 import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -45,16 +46,22 @@ export const SearchResultCard = memo(function SearchResultCard({
 }: SearchResultCardProps) {
   const validatedImageUrl = resolveImageUrl(result.imageUrl)
   const typography = useTypography()
+  // Its own subscription: a recycled cell keeps its props across a catalog
+  // change, and must still take the new language (KTD2).
+  const t = useT("Home")
   // Two rules here. Empty `label`: a search chip shows a duration or an
   // episode count and nothing else. childCount only counts for a real series
   // — a feature film owns its chapter clips (JESUS has 61, and would
   // otherwise read "61 episodes" instead of its runtime).
   const metaLabel =
-    buildMetaLabel({
-      label: "",
-      durationSeconds: result.durationSeconds,
-      childCount: isSeriesSearchResult(result) ? (result.childCount ?? 0) : 0,
-    }) || null
+    buildMetaLabel(
+      {
+        label: "",
+        durationSeconds: result.durationSeconds,
+        childCount: isSeriesSearchResult(result) ? (result.childCount ?? 0) : 0,
+      },
+      t,
+    ) || null
   const opacity = useRef(new Animated.Value(0)).current
   const scale = useRef(new Animated.Value(0.92)).current
   // Pinned at mount: appending a later page shifts this card's position, and a

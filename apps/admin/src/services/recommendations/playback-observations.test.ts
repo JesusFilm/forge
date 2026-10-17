@@ -47,6 +47,8 @@ const summary = (
     seekCount: 0,
     navigationCount: 0,
     qoeCount: 0,
+    deviceClass: "unknown",
+    networkClass: "unknown",
     ...overrides,
   })
 const started = () => [
@@ -255,6 +257,47 @@ describe("versioned playback observations", () => {
       ).qoe,
     ).toEqual(result.qoe)
   })
+  it("keeps explicit navigation intent, QoE severity, and unknown device evidence separate", () => {
+    const facts = [
+      attempt(),
+      fact(2, "playback_start", 1000, { positionSeconds: 0 }),
+      fact(3, "playback_navigation", 1200, { action: "pause", cause: "user" }),
+      fact(4, "playback_navigation", 1400, {
+        action: "manual_skip",
+        cause: "user",
+      }),
+      fact(5, "playback_qoe", 1600, {
+        action: "media_error",
+        severity: "fatal",
+      }),
+      fact(6, "playback_error", 1600, { code: "media_error" }),
+      summary(1600, {
+        navigationCount: 2,
+        qoeCount: 1,
+        errorObserved: true,
+        deviceClass: "unknown",
+        networkClass: "3g",
+      }),
+    ]
+    const result = projectPlaybackObservations(facts)
+    expect(result.navigation).toMatchObject({
+      coverage: "observed",
+      userPauses: 1,
+      manualSkips: 1,
+      unknownPauses: 0,
+    })
+    expect(result.qoe).toMatchObject({
+      coverage: "observed",
+      fatalErrors: 1,
+      deviceClass: "unknown",
+      networkClass: "3g",
+    })
+    expect(
+      projectPlaybackObservations(
+        facts.filter((entry) => entry.kind !== "playback_qoe"),
+      ).navigation.inputDigest,
+    ).toBe(result.navigation.inputDigest)
+  })
   it("validates bounded observations and preserves the exact baseline event schema", () => {
     const base = {
       eventId: "observation",
@@ -286,6 +329,38 @@ describe("versioned playback observations", () => {
         ...base,
         kind: "playback_observation",
         payload: { ...(summary().payload as object), navigationCount: 65536 },
+      }).success,
+    ).toBe(false)
+    expect(
+      RecommendationPlaybackEventSchema.safeParse({
+        ...base,
+        kind: "playback_observation",
+        payload: {
+          ...(summary().payload as object),
+          deviceClass: undefined,
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      RecommendationPlaybackEventSchema.safeParse({
+        ...base,
+        kind: "playback_navigation",
+        payload: {
+          action: "manual_skip",
+          cause: "unknown",
+          positionSeconds: 1,
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      RecommendationPlaybackEventSchema.safeParse({
+        ...base,
+        kind: "playback_qoe",
+        payload: {
+          action: "media_error",
+          cause: "unknown",
+          positionSeconds: 1,
+        },
       }).success,
     ).toBe(false)
   })

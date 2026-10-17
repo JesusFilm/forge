@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from "react"
 import { getApolloClient } from "../lib/apolloClient"
 import { datadogLog } from "../lib/datadog"
 import { GET_VIDEO_BY_SLUG } from "../lib/queries"
-import { HOME_LOCALE } from "../lib/watchHome/config"
 import { selectHeroStreamUrl } from "../lib/watchHome/heroStream"
 import {
   checkHeroStreamCooldown,
@@ -70,7 +69,7 @@ export function useHeroStream(slug: string | null): HeroStreamState {
     getApolloClient()
       .query({
         query: GET_VIDEO_BY_SLUG,
-        variables: { slug, locale: HOME_LOCALE },
+        variables: { slug },
         fetchPolicy: "cache-first",
       })
       .then((result) => {
@@ -126,7 +125,7 @@ export function prefetchHeroStream(slug: string | null | undefined): void {
     getApolloClient()
       .query({
         query: GET_VIDEO_BY_SLUG,
-        variables: { slug, locale: HOME_LOCALE },
+        variables: { slug },
         fetchPolicy: "cache-first",
       })
       .then(() => {

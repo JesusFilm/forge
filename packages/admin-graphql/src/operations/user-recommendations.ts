@@ -3,10 +3,10 @@ import { adminGraphql } from "../index"
 export const adminUserRecommendationsQuery = `
   query UserRecommendations($locale: String!, $audioLanguageSlug: String!, $count: Int,
     $viewerToken: String, $sessionToken: String, $sessionDigest: String,
-    $consentReceiptDigest: String, $profileTokenDigest: String) {
+    $consentReceiptDigest: String, $profileTokenDigest: String, $trafficCategory: String, $eligibleHuman: Boolean) {
     userRecommendations(locale: $locale, audioLanguageSlug: $audioLanguageSlug, count: $count,
       viewerToken: $viewerToken, sessionToken: $sessionToken, sessionDigest: $sessionDigest,
-      consentReceiptDigest: $consentReceiptDigest, profileTokenDigest: $profileTokenDigest) {
+      consentReceiptDigest: $consentReceiptDigest, profileTokenDigest: $profileTokenDigest, trafficCategory: $trafficCategory, eligibleHuman: $eligibleHuman) {
       contractVersion surfaceVersion requestId result reason expiresAt requestedCount profileCount curatedCount cohort poolVersion
       items { id position targetMediaId canonicalHref capability videoSlug videoTitle imageUrl description durationSeconds generator poolVersion poolKey }
     }

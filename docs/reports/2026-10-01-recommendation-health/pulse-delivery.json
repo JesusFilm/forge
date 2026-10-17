@@ -1,0 +1,443 @@
+[
+  [
+    {
+      "period": "latest_24h",
+      "surface_version": "watch-below-player-v1",
+      "requests": "5958",
+      "with_cards": "5028",
+      "six_cards": "4633",
+      "empty_cards": "930",
+      "served": "4438",
+      "fallback": "590",
+      "unavailable": "1",
+      "empty": "929",
+      "duplicate_video_slates": "0",
+      "seed_repeat_cards": "0",
+      "incomplete_candidate_evidence": "721",
+      "p50_ms": 138,
+      "p95_ms": 340,
+      "p99_ms": 516.3000000000029
+    },
+    {
+      "period": "latest_24h",
+      "surface_version": "watch-for-you-v1",
+      "requests": "21",
+      "with_cards": "21",
+      "six_cards": "21",
+      "empty_cards": "0",
+      "served": "21",
+      "fallback": "0",
+      "unavailable": "0",
+      "empty": "0",
+      "duplicate_video_slates": "0",
+      "seed_repeat_cards": "0",
+      "incomplete_candidate_evidence": "0",
+      "p50_ms": 255,
+      "p95_ms": 521,
+      "p99_ms": 585.8000000000001
+    },
+    {
+      "period": "previous_24h",
+      "surface_version": "watch-below-player-v1",
+      "requests": "7215",
+      "with_cards": "5945",
+      "six_cards": "5383",
+      "empty_cards": "1270",
+      "served": "5428",
+      "fallback": "517",
+      "unavailable": "0",
+      "empty": "1270",
+      "duplicate_video_slates": "0",
+      "seed_repeat_cards": "0",
+      "incomplete_candidate_evidence": "610",
+      "p50_ms": 142,
+      "p95_ms": 373,
+      "p99_ms": 521.7199999999993
+    },
+    {
+      "period": "previous_24h",
+      "surface_version": "watch-for-you-v1",
+      "requests": "40",
+      "with_cards": "40",
+      "six_cards": "40",
+      "empty_cards": "0",
+      "served": "40",
+      "fallback": "0",
+      "unavailable": "0",
+      "empty": "0",
+      "duplicate_video_slates": "0",
+      "seed_repeat_cards": "0",
+      "incomplete_candidate_evidence": "0",
+      "p50_ms": 228.5,
+      "p95_ms": 462.29999999999984,
+      "p99_ms": 506.61
+    }
+  ],
+  [
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "2869"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "hybrid_personalized",
+      "reason_code": null,
+      "requests": "1450"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "784"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "fallback",
+      "fallback_reason": "seed_embedding_unavailable",
+      "execution_mode": "curated_fallback",
+      "reason_code": "seed_embedding_unavailable",
+      "requests": "519"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "empty",
+      "fallback_reason": "seed_embedding_unavailable",
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "116"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "semantic_contextual",
+      "reason_code": null,
+      "requests": "105"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "fallback",
+      "fallback_reason": "composition_required_input_unavailable",
+      "execution_mode": "hybrid_personalized",
+      "reason_code": "cowatch_mmr_incumbent_fallback",
+      "requests": "53"
+    },
+    {
+      "surface_version": "watch-for-you-v1",
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": null,
+      "reason_code": null,
+      "requests": "21"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_contextual",
+      "reason_code": null,
+      "requests": "15"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "served",
+      "fallback_reason": null,
+      "execution_mode": "viewing_mode_personalized",
+      "reason_code": "viewing_mode_preference",
+      "requests": "14"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "semantic_candidates_unavailable",
+      "requests": "11"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "fallback",
+      "fallback_reason": "profile_lineage_ineligible",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "profile_lineage_ineligible",
+      "requests": "10"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "fallback",
+      "fallback_reason": "cowatch_supported_edges_sparse",
+      "execution_mode": "hybrid_personalized",
+      "reason_code": "cowatch_mmr_incumbent_fallback",
+      "requests": "6"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "fallback",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "curated_fallback",
+      "reason_code": "no_candidates",
+      "requests": "2"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "empty",
+      "fallback_reason": "seed_embedding_unavailable",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "semantic_candidates_unavailable",
+      "requests": "2"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "empty",
+      "fallback_reason": "no_candidates",
+      "execution_mode": "semantic_fallback",
+      "reason_code": "profile_lineage_ineligible",
+      "requests": "1"
+    },
+    {
+      "surface_version": "watch-below-player-v1",
+      "result": "unavailable",
+      "fallback_reason": "retrieval_timeout",
+      "execution_mode": "semantic_contextual",
+      "reason_code": "profile_cold_start",
+      "requests": "1"
+    }
+  ],
+  [
+    {
+      "locale": "en",
+      "requests": "3005",
+      "with_cards": "2759",
+      "without_cards": "246",
+      "missing_seed_embedding": "306",
+      "p95_ms": 352.7999999999997
+    },
+    {
+      "locale": "es",
+      "requests": "1168",
+      "with_cards": "1168",
+      "without_cards": "0",
+      "missing_seed_embedding": "99",
+      "p95_ms": 312.9499999999996
+    },
+    {
+      "locale": "fr",
+      "requests": "333",
+      "with_cards": "333",
+      "without_cards": "0",
+      "missing_seed_embedding": "15",
+      "p95_ms": 280
+    },
+    {
+      "locale": "id",
+      "requests": "149",
+      "with_cards": "149",
+      "without_cards": "0",
+      "missing_seed_embedding": "35",
+      "p95_ms": 298.99999999999994
+    },
+    {
+      "locale": "ar",
+      "requests": "140",
+      "with_cards": "140",
+      "without_cards": "0",
+      "missing_seed_embedding": "9",
+      "p95_ms": 296.04999999999995
+    },
+    {
+      "locale": "hi",
+      "requests": "76",
+      "with_cards": "76",
+      "without_cards": "0",
+      "missing_seed_embedding": "9",
+      "p95_ms": 357.5
+    },
+    {
+      "locale": "te",
+      "requests": "74",
+      "with_cards": "0",
+      "without_cards": "74",
+      "missing_seed_embedding": "0",
+      "p95_ms": 158.04999999999987
+    },
+    {
+      "locale": "ru",
+      "requests": "66",
+      "with_cards": "66",
+      "without_cards": "0",
+      "missing_seed_embedding": "2",
+      "p95_ms": 376.5
+    },
+    {
+      "locale": "pt",
+      "requests": "62",
+      "with_cards": "61",
+      "without_cards": "1",
+      "missing_seed_embedding": "14",
+      "p95_ms": 411.8999999999999
+    },
+    {
+      "locale": "vi",
+      "requests": "47",
+      "with_cards": "47",
+      "without_cards": "0",
+      "missing_seed_embedding": "9",
+      "p95_ms": 320.09999999999957
+    },
+    {
+      "locale": "de",
+      "requests": "38",
+      "with_cards": "38",
+      "without_cards": "0",
+      "missing_seed_embedding": "6",
+      "p95_ms": 431.9999999999998
+    },
+    {
+      "locale": "zh",
+      "requests": "35",
+      "with_cards": "0",
+      "without_cards": "35",
+      "missing_seed_embedding": "4",
+      "p95_ms": 425.5999999999999
+    },
+    {
+      "locale": "ckb",
+      "requests": "34",
+      "with_cards": "0",
+      "without_cards": "34",
+      "missing_seed_embedding": "0",
+      "p95_ms": 160.75
+    },
+    {
+      "locale": "ur",
+      "requests": "33",
+      "with_cards": "33",
+      "without_cards": "0",
+      "missing_seed_embedding": "2",
+      "p95_ms": 379.5999999999999
+    },
+    {
+      "locale": "tr",
+      "requests": "33",
+      "with_cards": "33",
+      "without_cards": "0",
+      "missing_seed_embedding": "2",
+      "p95_ms": 274.99999999999983
+    }
+  ],
+  [
+    {
+      "owner_release_generation": null,
+      "execution_mode": "hybrid_personalized",
+      "effective_manifest_id": "hybrid-profile-viewing-mode-v1",
+      "generator_version": "semantic-profile-hybrid-generators-v1",
+      "composer_version": "recent-video-refill-composer-v1",
+      "fallback_reason": "composition_required_input_unavailable",
+      "requests": "53"
+    },
+    {
+      "owner_release_generation": null,
+      "execution_mode": "hybrid_personalized",
+      "effective_manifest_id": "hybrid-profile-viewing-mode-v1",
+      "generator_version": "semantic-profile-hybrid-generators-v1",
+      "composer_version": "recent-video-refill-composer-v1",
+      "fallback_reason": "cowatch_supported_edges_sparse",
+      "requests": "6"
+    }
+  ],
+  [
+    {
+      "candidate_generator": "semantic",
+      "cards": "21645"
+    },
+    {
+      "candidate_generator": "multi-interest-profile",
+      "cards": "4175"
+    },
+    {
+      "candidate_generator": "curated",
+      "cards": "3228"
+    }
+  ],
+  [
+    {
+      "generator": "semantic",
+      "contributed_cards": "23758"
+    },
+    {
+      "generator": "multi-interest-profile",
+      "contributed_cards": "4151"
+    },
+    {
+      "generator": "curated",
+      "contributed_cards": "3126"
+    }
+  ],
+  [
+    {
+      "enabled": true,
+      "version": 4,
+      "updated_at": "2026-09-01T00:55:46.235Z"
+    }
+  ],
+  [
+    {
+      "evaluated_at": "2026-09-30T11:05:23.814Z",
+      "window_start": "2026-09-23T05:00:00.000Z",
+      "window_end": "2026-09-30T05:00:00.000Z",
+      "state": "data_unhealthy",
+      "delivery_outcome": "fail",
+      "attribution_outcome": "unhealthy",
+      "maturity_outcome": "pass",
+      "operational_outcome": "pass",
+      "guardrail_outcome": "pass",
+      "rates": {
+        "ctr": 0.0312142403051494,
+        "delivery": 0.8090630919422993,
+        "fallback": 0.04938073728690077,
+        "qualifiedOutcome": 1
+      },
+      "reason_codes": [
+        "delivery_reliability_floor_missed",
+        "selection_without_eligible_impression",
+        "outcome_maturity_met",
+        "delivery_deadline_met",
+        "no_declared_purpose_mission_offset",
+        "qualified_outcome_guardrail_met"
+      ]
+    },
+    {
+      "evaluated_at": "2026-09-29T11:10:43.063Z",
+      "window_start": "2026-09-22T05:00:00.000Z",
+      "window_end": "2026-09-29T05:00:00.000Z",
+      "state": "data_unhealthy",
+      "delivery_outcome": "fail",
+      "attribution_outcome": "unhealthy",
+      "maturity_outcome": "pass",
+      "operational_outcome": "pass",
+      "guardrail_outcome": "pass",
+      "rates": {
+        "ctr": 0.03254503260028732,
+        "delivery": 0.8157055843342631,
+        "fallback": 0.0457391700347242,
+        "qualifiedOutcome": 1
+      },
+      "reason_codes": [
+        "delivery_reliability_floor_missed",
+        "selection_without_eligible_impression",
+        "outcome_maturity_met",
+        "delivery_deadline_met",
+        "no_declared_purpose_mission_offset",
+        "qualified_outcome_guardrail_met"
+      ]
+    }
+  ]
+]

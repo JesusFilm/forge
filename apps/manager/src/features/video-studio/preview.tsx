@@ -21,7 +21,8 @@ type Prepared = {
   signature: string
 }
 type Props = {
-  session: Pick<EditorSession, "edit" | "seek">
+  session: Pick<EditorSession, "edit" | "seek" | "reportPlaybackFrame"> &
+    Partial<Pick<EditorSession, "requireSignIn">>
   state: EditorSnapshot
   projectId: string
   playing: boolean
@@ -46,6 +47,11 @@ function LivePlayer({
   onError,
 }: Props & { prepared: Prepared; onError: (message: string) => void }) {
   const player = useRef<PlayerRef>(null)
+  const lastSeekRequest = useRef<EditorSnapshot["seekRequest"] | null>(null)
+  const latestPlayhead = useRef(state.playhead)
+  useEffect(() => {
+    latestPlayhead.current = state.playhead
+  }, [state.playhead])
   const input = useMemo(
     () => ({ ...prepared.input, document: state.document }),
     [prepared.input, state.document],
@@ -57,7 +63,7 @@ function LivePlayer({
   useEffect(() => {
     const current = player.current
     if (!current) return
-    const frame = () => session.seek(current.getCurrentFrame())
+    const frame = () => session.reportPlaybackFrame(current.getCurrentFrame())
     const pause = () => onPlaying(false)
     current.addEventListener("frameupdate", frame)
     current.addEventListener("pause", pause)
@@ -70,9 +76,16 @@ function LivePlayer({
   }, [session, onPlaying])
   useEffect(() => {
     const current = player.current
-    if (current && current.getCurrentFrame() !== state.playhead)
-      current.seekTo(state.playhead)
-  }, [state.playhead])
+    if (!current) return
+    // Initial/source-replacement mount resumes the displayed position. Later
+    // player ticks are observations, never commands to seek the player back.
+    const target =
+      lastSeekRequest.current === null
+        ? latestPlayhead.current
+        : state.seekRequest.frame
+    lastSeekRequest.current = state.seekRequest
+    if (current.getCurrentFrame() !== target) current.seekTo(target)
+  }, [state.seekRequest])
   useEffect(() => {
     if (playing) player.current?.play()
     else player.current?.pause()
@@ -96,6 +109,7 @@ function LivePlayer({
 }
 export default function Preview(props: Props) {
   const { state, projectId, onPlaying } = props
+  const requireSignIn = props.session.requireSignIn
   const [prepared, setPrepared] = useState<Prepared | null>(null)
   const [error, setError] = useState("")
   const [attempt, setAttempt] = useState(0)
@@ -148,6 +162,8 @@ export default function Preview(props: Props) {
         const value = (await response.json()) as BrowserPreview & {
           error?: string
         }
+        if (response.status === 401 && !controller.signal.aborted)
+          requireSignIn?.()
         if (!response.ok)
           throw new StudioPreviewError(value.error ?? "Preview unavailable")
         return value
@@ -183,7 +199,7 @@ export default function Preview(props: Props) {
       controller.abort()
       ownedUrls.forEach((url) => URL.revokeObjectURL(url))
     }
-  }, [projectId, signature, attempt, fail])
+  }, [projectId, signature, attempt, fail, requireSignIn])
   const ready = prepared?.signature === signature && !error
   return (
     <div className="nle-preview" data-preview-ready={Boolean(ready)}>

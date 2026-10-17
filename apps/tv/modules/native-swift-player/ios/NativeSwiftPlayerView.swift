@@ -152,6 +152,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   let onError = EventDispatcher()
   let onAudioChange = EventDispatcher()
   let onSubtitleChange = EventDispatcher()
+  let onFeedbackOpen = EventDispatcher()
+  let onFeedbackClose = EventDispatcher()
+  let onFeedbackRetry = EventDispatcher()
 
   private let player = AVPlayer()
   private let playerController = NativePlayerViewController()
@@ -190,6 +193,19 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   private var programmaticDismissal = false
   private var userDismissalHandled = false
   private var customScrubWasPlaying = false
+  private weak var feedbackController: NativeFeedbackQrController?
+
+  var feedbackAvailable = false {
+    didSet {
+      updateTransportItems()
+      customChromeView.setFeedbackAvailable(feedbackAvailable)
+    }
+  }
+  var feedbackVisible = false
+  var feedbackRows: [String] = []
+  var feedbackReference: String?
+  var feedbackLoading = false
+  var feedbackError = false
 
   private var usesCustomChrome: Bool { playerVariant == "native-b" }
 
@@ -254,6 +270,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   var upNextTitle: String?
 
   func commitProps() {
+    syncFeedbackPanel()
     guard sourceUrl != loadedSourceUrl else { return }
     replaceSource(preservingPosition: loadedSourceUrl != nil)
   }
@@ -513,6 +530,7 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     customChromeView.onExplore = { [weak self] in self?.presentExplore() }
     customChromeView.onAudio = { [weak self] in self?.presentLanguages() }
     customChromeView.onSubtitles = { [weak self] in self?.presentSubtitles() }
+    customChromeView.onFeedback = { [weak self] in self?.openFeedback() }
     customChromeView.onScrubBegan = { [weak self] _ in
       guard let self else { return }
       self.customScrubWasPlaying = self.player.rate > 0
@@ -1033,7 +1051,53 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
     items.append(UIAction(title: "Subtitles", image: UIImage(systemName: "captions.bubble")) { [weak self] _ in
       self?.presentSubtitles()
     })
+    if feedbackAvailable {
+      items.append(UIAction(title: "Feedback", image: UIImage(systemName: "text.bubble")) { [weak self] _ in
+        self?.openFeedback()
+      })
+    }
     playerController.transportBarCustomMenuItems = items
+  }
+
+  private func openFeedback() {
+    guard feedbackAvailable, !feedbackVisible else { return }
+    player.pause()
+    refreshCustomChromePlaybackState()
+    feedbackVisible = true
+    onFeedbackOpen()
+    DispatchQueue.main.async { [weak self] in self?.syncFeedbackPanel() }
+  }
+
+  private func syncFeedbackPanel() {
+    if !feedbackVisible {
+      feedbackController?.dismiss(animated: true)
+      return
+    }
+    if feedbackController == nil {
+      let controller = NativeFeedbackQrController()
+      controller.modalPresentationStyle = .fullScreen
+      controller.onClose = { [weak self] in
+        self?.feedbackVisible = false
+        self?.feedbackController = nil
+        self?.onFeedbackClose()
+        self?.customChromeView.revealControls(preferredFocus: true)
+        if self?.usesCustomChrome == true {
+          self?.customChromeView.focusPrimaryTransport()
+        } else {
+          self?.playerController.setNeedsFocusUpdate()
+          self?.playerController.updateFocusIfNeeded()
+        }
+      }
+      controller.onRetry = { [weak self] in self?.onFeedbackRetry() }
+      feedbackController = controller
+      playerController.present(controller, animated: true)
+    }
+    feedbackController?.update(
+      rows: feedbackRows,
+      code: feedbackReference,
+      loading: feedbackLoading,
+      error: feedbackError
+    )
   }
 
   private func presentLanguages() {

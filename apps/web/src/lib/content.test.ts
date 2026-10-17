@@ -1,13 +1,48 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { print } from "graphql"
 
-const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
+const {
+  queryMock,
+  routeManifestMock,
+  unstableCacheCalls,
+  unstableCacheResults,
+  cacheUnstableSuccesses,
+} = vi.hoisted(() => ({
   queryMock: vi.fn(),
+  // Live watch-route manifest as seen by content.ts. Defaults to "not
+  // available" so every existing test runs against the compiled corpus
+  // alone; tests that exercise runtime-admitted languages install a
+  // manifest explicitly.
+  routeManifestMock: vi.fn(async (): Promise<unknown> => null),
   unstableCacheCalls: [] as {
     keyParts: unknown[]
     options: { revalidate?: unknown; tags?: unknown }
   }[],
+  unstableCacheResults: new Map<string, unknown>(),
+  cacheUnstableSuccesses: { value: false },
 }))
+
+vi.mock("@/lib/watch-route-manifest", async () => {
+  const actual = await vi.importActual<
+    typeof import("@/lib/watch-route-manifest")
+  >("@/lib/watch-route-manifest")
+
+  return {
+    ...actual,
+    getWatchRouteManifest: routeManifestMock,
+  }
+})
+
+function makeRouteManifest(audioLanguageSlugs: string[]) {
+  return {
+    version: "test",
+    generatedAt: "2026-09-14T00:00:00.000Z",
+    contentSlugs: ["jesus"],
+    oneSegmentSlugs: [],
+    episodePairsByParent: {},
+    audioLanguageSlugs,
+  }
+}
 
 vi.mock("next/cache", () => ({
   unstable_cache: <T extends (...args: unknown[]) => unknown>(
@@ -16,7 +51,14 @@ vi.mock("next/cache", () => ({
     options?: { revalidate?: unknown; tags?: unknown },
   ) => {
     unstableCacheCalls.push({ keyParts, options: options ?? {} })
-    return fn
+    return (async (...args: unknown[]) => {
+      if (!cacheUnstableSuccesses.value) return fn(...args)
+      const key = JSON.stringify([keyParts, args])
+      if (unstableCacheResults.has(key)) return unstableCacheResults.get(key)
+      const result = await fn(...args)
+      unstableCacheResults.set(key, result)
+      return result
+    }) as T
   },
 }))
 
@@ -133,6 +175,8 @@ describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
     unstableCacheCalls.length = 0
+    unstableCacheResults.clear()
+    cacheUnstableSuccesses.value = false
     vi.resetModules()
   })
 
@@ -212,6 +256,108 @@ describe("resolveWatchPage", () => {
         slug: "home",
       },
     })
+  })
+
+  it("retries a transient homepage failure instead of caching its error", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockRejectedValueOnce(new Error("Admin temporarily unavailable"))
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
+          },
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const failed = await resolveWatchPage("en")
+    const recovered = await resolveWatchPage("en")
+
+    expect(failed).toMatchObject({
+      data: null,
+      error: { message: "Admin temporarily unavailable" },
+    })
+    expect(recovered).toMatchObject({
+      error: null,
+      data: { kind: "experience", experience: { slug: "home" } },
+    })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+
+    await resolveWatchPage("en")
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries a transient curated Experience failure instead of caching its error", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock
+      .mockRejectedValueOnce(new Error("Admin temporarily unavailable"))
+      .mockResolvedValueOnce({
+        data: {
+          experienceBySlug: {
+            __typename: "ExperienceLocale",
+            id: "exp-christmas-1",
+            slug: "christmas",
+            title: "Christmas",
+          },
+        },
+      })
+
+    const { resolveWatchExperiencePage } = await import("./content")
+    const failed = await resolveWatchExperiencePage("en", "christmas")
+    const recovered = await resolveWatchExperiencePage("en", "christmas")
+
+    expect(failed).toMatchObject({
+      data: null,
+      error: { message: "Admin temporarily unavailable" },
+    })
+    expect(recovered).toMatchObject({
+      error: null,
+      data: { kind: "experience", experience: { slug: "christmas" } },
+    })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+
+    await resolveWatchExperiencePage("en", "christmas")
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps an intentional missing homepage result cacheable", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockResolvedValue({
+      data: {
+        watchSetting: {
+          homepageExperience: null,
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+    const { resolveWatchPage, isWatchPageMissingError } =
+      await import("./content")
+    const first = await resolveWatchPage("en")
+    const second = await resolveWatchPage("en")
+    expect(first.data).toBeNull()
+    expect(isWatchPageMissingError(first.error)).toBe(true)
+    expect(second).toEqual(first)
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps an intentional missing curated Experience result cacheable", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockResolvedValue({ data: { experienceBySlug: null } })
+    const { resolveWatchExperiencePage, isWatchPageMissingError } =
+      await import("./content")
+    const first = await resolveWatchExperiencePage("en", "missing-curated")
+    const second = await resolveWatchExperiencePage("en", "missing-curated")
+    expect(first.data).toBeNull()
+    expect(isWatchPageMissingError(first.error)).toBe(true)
+    expect(second).toEqual(first)
+    expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
   const copyLagErrors = ["eyebrow", "title", "description", "ctaLabel"].map(
@@ -939,6 +1085,7 @@ describe("resolveWatchUnavailableRecoveryTarget", () => {
     expect(target).toEqual({
       contentTitle: "耶稣受难日直播",
       imageUrl: "https://imagedelivery.net/account/cinematic-high.jpg",
+      requestedLanguage: null,
     })
   })
 
@@ -1160,6 +1307,101 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.subtitles).toEqual([
       expect.objectContaining({ documentId: "sub-russian-edition-wide" }),
     ])
+  })
+
+  it("selects each language's own-name entry by its bcp47, not the first non-en key (FGE-50)", async () => {
+    const frenchVariant = {
+      ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+      documentId: "variant-french",
+      slug: "french",
+      language: {
+        coreId: "496",
+        bcp47: "fr",
+        slug: "french",
+        // Shuffled: the first non-en key is a German translation.
+        name: { de: "Französisch", en: "French", fr: "Français" },
+      },
+    }
+    const subtitle = (
+      slug: string,
+      bcp47: string,
+      name: Record<string, string>,
+    ) => ({
+      documentId: `sub-${slug}`,
+      vttSrc: `https://cdn.example/${slug}.vtt`,
+      srtSrc: null,
+      primary: false,
+      aiGenerated: false,
+      video: null,
+      language: { coreId: slug, bcp47, slug, name },
+    })
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchVideoRouteSnapshotBySlug: makeAdminVideo({
+            slug: "perfect-3",
+            variants: [frenchVariant],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({
+            ...frenchVariant,
+            videoEdition: {
+              subtitles: [
+                subtitle("russian", "ru", {
+                  de: "Russisch",
+                  en: "Russian",
+                  ru: "Русский",
+                }),
+                // `ku` is Latin-script Kurmanji; this row is ku-Arab, so the
+                // entry is not its own name.
+                subtitle("kurdish-arab", "ku-Arab", {
+                  en: "Kurdish",
+                  ku: "kurdî",
+                }),
+                subtitle("arabic", "ar", { en: "Arabic", ar: "العربية" }),
+                // No `en` entry: the label is the slug's English form, never the
+                // first translation (Spanish "Alemán").
+                subtitle("german", "de", { es: "Alemán", fr: "Allemand" }),
+              ],
+            },
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("perfect-3", "french")
+
+    expect(result?.selectedVariant.language).toMatchObject({
+      name: "French",
+      nameLang: "en",
+      nativeName: "Français",
+      nativeNameLang: "fr",
+    })
+    const byslug = Object.fromEntries(
+      (result?.video.subtitles ?? []).map((track) => [
+        track.language.slug,
+        track.language,
+      ]),
+    )
+    expect(byslug["russian"]).toMatchObject({
+      nativeName: "Русский",
+      nativeNameLang: "ru",
+    })
+    expect(byslug["arabic"]).toMatchObject({
+      nativeName: "العربية",
+      nativeNameLang: "ar",
+    })
+    expect(byslug["kurdish-arab"]).toMatchObject({ nativeName: null })
+    expect(byslug["kurdish-arab"]).not.toHaveProperty("nativeNameLang")
+    expect(byslug["german"]).toMatchObject({ name: "German" })
+    expect(byslug["german"]).not.toHaveProperty("nameLang")
+    expect(byslug["german"]).toMatchObject({ nativeName: null })
+    // Names are English: map `en` (de/ru translations never win).
+    expect(byslug["russian"]).toMatchObject({ name: "Russian", nameLang: "en" })
   })
 
   it("does not re-fetch when the primary fetch already returns a locale row", async () => {
@@ -1451,6 +1693,36 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { documentId: "sq-ru-broad", value: "Broad question?", order: 1 },
     ])
   })
+
+  it.each([
+    // Admin's raw keys. The declared html lang is corrected (`kmr`, `fr`),
+    // but admin's broad copy layer matches VideoLocale.locale, so the content
+    // query must keep admin's own key or fallback copy leaks in from other
+    // Kurdish dialects / standard French.
+    ["kurmanji-standard", "ko-kmr"],
+    ["french-african", "fra"],
+  ])(
+    "queries admin content for %s with admin's own locale key %s",
+    async (languageSlug, adminLocale) => {
+      queryMock
+        .mockResolvedValueOnce({
+          data: { videoBySlug: makeAdminVideo() },
+        })
+        .mockResolvedValueOnce({
+          data: { videoDub: makeAdminDub() },
+        })
+
+      const { resolveWatchVideoBySlug } = await import("./content")
+
+      await resolveWatchVideoBySlug("jesus", languageSlug)
+
+      expect(queryMock.mock.calls[0]?.[0].variables).toEqual({
+        locale: adminLocale,
+        languageSlug,
+        videoSlug: "jesus",
+      })
+    },
+  )
 
   it("uses broad English content when the exact English-slug title is blank", async () => {
     queryMock
@@ -1919,5 +2191,180 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
       { locale: "en", languageSlug: null, videoSlug: "jesus" },
       { id: "variant-1" },
     ])
+  })
+})
+
+// Admin selects `preferredVariant` from `languageSlug` alone; `null` makes
+// it fall back to the primary-language (English) dub, after which the page
+// redirects to `/english.html`. These pin that a real audio-language slug
+// reaches admin as `languageSlug` even when web's compiled corpus does not
+// know it yet (the 2026-09-11 incident: 11 languages admin published after
+// the last `generate:language-bcp47-map` played English) and even when the
+// slug equals its own BCP-47 tag (`luo`, `yao`, ... — the old
+// `mapped !== raw` heuristic dropped those too).
+describe("resolveWatchVideoBySlug — runtime audio-language identity", () => {
+  afterEach(() => {
+    queryMock.mockReset()
+    routeManifestMock.mockReset()
+    routeManifestMock.mockResolvedValue(null)
+    vi.resetModules()
+  })
+
+  function mockSnapshotAndDub(dubSlug: string) {
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          videoBySlug: makeAdminVideo({
+            locales: [],
+            variants: [
+              {
+                ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+                documentId: `variant-${dubSlug}`,
+                slug: dubSlug,
+                language: {
+                  coreId: `lang-${dubSlug}`,
+                  bcp47: null,
+                  slug: dubSlug,
+                  name: dubSlug,
+                },
+              },
+            ],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({ documentId: `variant-${dubSlug}` }),
+        },
+      })
+  }
+
+  function snapshotVariables() {
+    return queryMock.mock.calls[0][0].variables as {
+      locale: string
+      languageSlug: string | null
+      videoSlug: string
+    }
+  }
+
+  it("passes a kebab slug the compiled corpus does not know through as languageSlug without needing the manifest", async () => {
+    // SYNTHETIC (2026-09-16): the page's `classify()` in
+    // app/[locale]/[htmlLang]/[...rest]/page.tsx and the proxy only admit a
+    // corpus-miss slug the manifest lists, so production never reaches this
+    // function with a null manifest AND an unadmitted slug. The case pins
+    // the shape-rule fallback (rule 3 in the helper's docstring) on its own.
+    mockSnapshotAndDub("purepecha-western-highland-test")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "purepecha-western-highland-test")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "purepecha-western-highland-test",
+      languageSlug: "purepecha-western-highland-test",
+      videoSlug: "jesus",
+    })
+    // The manifest is consulted on a corpus miss (React `cache` is an
+    // identity here, so several resolver paths each ask once; production
+    // dedupes through the manifest module's in-flight + 60 s cache).
+    expect(routeManifestMock).toHaveBeenCalled()
+  })
+
+  it("passes a BCP-47-shaped slug through only when the live route manifest admits it", async () => {
+    routeManifestMock.mockResolvedValue(makeRouteManifest(["english", "twx"]))
+    mockSnapshotAndDub("twx")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "twx")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "twx",
+      languageSlug: "twx",
+      videoSlug: "jesus",
+    })
+  })
+
+  it("keeps the legacy null contract for an internal locale key the manifest does not admit", async () => {
+    routeManifestMock.mockResolvedValue(makeRouteManifest(["english"]))
+    mockSnapshotAndDub("english")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "fr")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "fr",
+      languageSlug: null,
+      videoSlug: "jesus",
+    })
+  })
+
+  it("does not consult the manifest for a slug the compiled corpus already knows", async () => {
+    mockSnapshotAndDub("russian")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "russian")
+
+    expect(routeManifestMock).not.toHaveBeenCalled()
+    expect(snapshotVariables().languageSlug).toBe("russian")
+  })
+
+  it("keeps a corpus slug whose BCP-47 tag equals the slug itself as languageSlug", async () => {
+    // `luo` → bcp47 `luo` in the generated map; the pre-fix heuristic
+    // (`mapped !== raw`) read that as "not a slug" and sent null.
+    mockSnapshotAndDub("luo")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "luo")
+
+    expect(snapshotVariables()).toEqual({
+      locale: "luo",
+      languageSlug: "luo",
+      videoSlug: "jesus",
+    })
+    expect(routeManifestMock).not.toHaveBeenCalled()
+  })
+
+  it("sends null for a segment that fails the public slug shape without consulting the manifest", async () => {
+    // Pins the shape guard as its own tier: an underscore fails
+    // `hasPublicWatchLanguageSlugShape`, so the helper must not spend a
+    // manifest round-trip on it even when the manifest would answer.
+    routeManifestMock.mockResolvedValue(
+      makeRouteManifest(["english", "foo_bar"]),
+    )
+    mockSnapshotAndDub("foo_bar")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "foo_bar")
+
+    expect(snapshotVariables().languageSlug).toBe(null)
+    expect(routeManifestMock).not.toHaveBeenCalled()
+  })
+
+  it("passes a non-tag kebab slug through when the manifest is available but does not admit it", async () => {
+    // Distinguishes "manifest missing" from "manifest present and rejecting":
+    // the shape rule must win on its own when `toba-test` cannot be read as
+    // a BCP-47 tag, so admin (which ignores unknown slugs) still sees it.
+    routeManifestMock.mockResolvedValue(makeRouteManifest(["english"]))
+    mockSnapshotAndDub("toba-test")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "toba-test")
+
+    expect(routeManifestMock).toHaveBeenCalled()
+    expect(snapshotVariables().languageSlug).toBe("toba-test")
+  })
+
+  it("survives a manifest fetch rejection by falling back to the shape rule", async () => {
+    // SYNTHETIC (2026-09-16): `classify()` in
+    // app/[locale]/[htmlLang]/[...rest]/page.tsx already awaited the manifest
+    // before content runs and 404s a slug it cannot admit, so a rejected
+    // fetch here only reaches this function when the manifest module has no
+    // cached copy to serve. Pins the `.catch(() => null)` branch on its own.
+    routeManifestMock.mockRejectedValue(new Error("manifest down"))
+    mockSnapshotAndDub("toba-test")
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+    await resolveWatchVideoBySlug("jesus", "toba-test")
+
+    expect(snapshotVariables().languageSlug).toBe("toba-test")
   })
 })

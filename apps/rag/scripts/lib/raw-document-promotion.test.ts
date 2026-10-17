@@ -157,8 +157,9 @@ describe("raw-document promotion", () => {
   it("requires distinct explicit database targets and both production guards", () => {
     const base = {
       RAG_LOCAL_DATABASE_URL: "postgresql://local:secret@localhost:5435/rag",
-      JFRAG_POSTGRESQL_DB_URL: "postgresql://prod:secret@prod.example:5432/rag",
-      JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+      FORGE_RAG_POSTGRESQL_DB_URL:
+        "postgresql://prod:secret@prod.example:5432/rag",
+      FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
     }
     expect(resolveRawDocumentPromotionEnvironment(base, false)).toMatchObject({
       sourceUrl: expect.stringContaining("localhost"),
@@ -169,7 +170,7 @@ describe("raw-document promotion", () => {
     )
     expect(() =>
       resolveRawDocumentPromotionEnvironment(
-        { ...base, JFRAG_EXPECTED_POSTGRES_HOST: "wrong.example" },
+        { ...base, FORGE_RAG_EXPECTED_POSTGRES_HOST: "wrong.example" },
         false,
       ),
     ).toThrow(/does not match/)
@@ -236,9 +237,9 @@ describe("raw-document promotion", () => {
   it("resolves the verification target without requiring a local database", () => {
     expect(
       resolveRawDocumentVerificationEnvironment({
-        JFRAG_POSTGRESQL_DB_URL:
+        FORGE_RAG_POSTGRESQL_DB_URL:
           "postgresql://prod:secret@prod.example:5432/rag",
-        JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+        FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
       }),
     ).toEqual({
       targetUrl: "postgresql://prod:secret@prod.example:5432/rag",

@@ -121,3 +121,33 @@ it("keeps unknown text properties and non-type validation strict", () => {
       ]),
     ).toThrow()
 })
+
+it("applies built-in styling and animation through the same agent command contract", () => {
+  const properties = {
+    fontFamily: "Montserrat",
+    fontWeight: 700,
+    shadow: true,
+    shadowBlur: 8,
+    strokeWidth: 2,
+    strokeColor: "#000000",
+    scrimOpacity: 0.6,
+    entrance: "slide",
+    entranceFrames: 9,
+    exit: "fade",
+    exitFrames: 12,
+  }
+  const changed = applyOperations(document, [
+    { kind: "set-properties", itemId: "text", properties },
+  ])
+  expect(changed.items[0]).toMatchObject({ properties })
+  expect(document.items[0]).toMatchObject({ properties: {} })
+  expect(() =>
+    applyOperations(document, [
+      {
+        kind: "set-properties",
+        itemId: "text",
+        properties: { scrimOpacity: 2 },
+      },
+    ]),
+  ).toThrow()
+})

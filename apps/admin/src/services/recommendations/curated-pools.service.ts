@@ -295,6 +295,8 @@ export class CuratedPoolsService {
     deadlineAt?: number
   }): Promise<{
     version: string | null
+    /** Approved starter context exists, independently of current eligibility. */
+    contextAvailable: boolean
     poolKeys: string[]
     items: CuratedRecommendationCandidate[]
   }> {
@@ -322,11 +324,22 @@ export class CuratedPoolsService {
       async (db) => {
         await db.$executeRaw`SELECT set_config('statement_timeout', ${String(timeout)}, true)`
         const snapshot = await readCuratedRuntimeSnapshot(db, input)
-        if (!snapshot) return { version: null, poolKeys: [], items: [] }
+        if (!snapshot)
+          return {
+            version: null,
+            contextAvailable: false,
+            poolKeys: [],
+            items: [],
+          }
         const { pools, memberships } = snapshot
         const starter = pools.find((pool) => pool.poolKey === "start")
         if (!starter)
-          return { version: snapshot.version, poolKeys: [], items: [] }
+          return {
+            version: snapshot.version,
+            contextAvailable: false,
+            poolKeys: [],
+            items: [],
+          }
         const interestIds = new Set(input.interestVideoIds ?? [])
         const interestMemberships = memberships.filter((membership) =>
           interestIds.has(membership.videoId),
@@ -420,6 +433,7 @@ export class CuratedPoolsService {
         }
         return {
           version: snapshot.version,
+          contextAvailable: true,
           poolKeys: [...new Set(items.map((item) => item.poolKey))],
           items,
         }

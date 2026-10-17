@@ -539,6 +539,14 @@ describe("isSheetViewRoute", () => {
     expect(isSheetViewRoute([a, b])).toBe(true)
   })
 
+  // feat-553 U10: a reader sheet stays inside the reader view that opened it.
+  it.each(["reader-passage", "reader-translation", "reader-settings"])(
+    "treats the root %s route as a sheet",
+    (name) => {
+      expect(isSheetViewRoute([name])).toBe(true)
+    },
+  )
+
   // The discriminating case: a dynamic slug resolves to the "[slug]" pattern, so
   // a video whose slug is literally "language" still starts its own view.
   it("does not treat watch/[slug] as a sheet", () => {
@@ -547,9 +555,11 @@ describe("isSheetViewRoute", () => {
 
   it.each([
     [["(tabs)"]],
-    [["(tabs)", "library"]],
+    [["(tabs)", "profile"]],
     [["series", "[slug]"]],
     [["experience", "[slug]"]],
+    [["reader"]],
+    [["(tabs)", "bible"]],
   ])("does not treat %s as a sheet", (segments) => {
     expect(isSheetViewRoute(segments as string[])).toBe(false)
   })

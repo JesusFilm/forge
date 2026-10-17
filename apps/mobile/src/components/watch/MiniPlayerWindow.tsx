@@ -27,6 +27,7 @@ import {
 import { Image } from "expo-image"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT, type UiT } from "../../i18n/useT"
 import { ACCENT, BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import {
   ACCESSIBILITY_MIN_TARGET,
@@ -55,19 +56,19 @@ const SNAP_DURATION_MS = 180
 /** R21's crossfade from the last frame to the thumbnail. */
 export const ENDED_FADE_DURATION_MS = 320
 
-export const MINI_PLAYER_DISMISS_LABEL = "Close the mini player"
-export const MINI_PLAYER_FAILURE_TEXT = "Playback failed"
-
 /**
  * R8: reach, describe and act. The controls overlay the video's top corners at
- * window scale, so every one of them is also an action here.
+ * window scale, so every one of them is also an action here. Only the labels
+ * translate; the names are identifiers.
  */
-export const MINI_PLAYER_ACCESSIBILITY_ACTIONS = [
-  { name: "activate", label: "Open the full screen player" },
-  { name: "playPause", label: "Play or pause" },
-  { name: "moveToCorner", label: "Move to the next corner" },
-  { name: "dismiss", label: MINI_PLAYER_DISMISS_LABEL },
-] as const
+function miniPlayerAccessibilityActions(t: UiT<"MiniPlayer">) {
+  return [
+    { name: "activate", label: t("openFullPlayerAriaAction") },
+    { name: "playPause", label: t("playPauseAriaAction") },
+    { name: "moveToCorner", label: t("moveCornerAriaAction") },
+    { name: "dismiss", label: t("dismissAriaLabel") },
+  ]
+}
 
 export type MiniPlayerWindowProps = {
   /** The window's layout box, which is the DEFAULT corner. Every other corner
@@ -122,6 +123,12 @@ export function MiniPlayerWindow({
 }: MiniPlayerWindowProps) {
   const failed = endedCause === "failure"
   const ended = endedCause != null
+  const t = useT("MiniPlayer")
+  const tPlayer = useT("Player")
+  const accessibilityActions = useMemo(
+    () => miniPlayerAccessibilityActions(t),
+    [t],
+  )
 
   // The responder is built once, so everything it reads lives in a ref.
   const frameRef = useRef(frame)
@@ -278,22 +285,26 @@ export function MiniPlayerWindow({
 
   const ratio = progressFraction(positionSeconds, durationSeconds)
   const resolvedPoster = resolveImageUrl(posterUrl)
-  const playPauseLabel = ended ? "Replay" : isPlaying ? "Pause" : "Play"
-  const stateText = failed
-    ? "playback failed"
+  const playPauseLabel = ended
+    ? tPlayer("replayAriaLabel")
+    : isPlaying
+      ? tPlayer("pauseAriaLabel")
+      : tPlayer("playAriaLabel")
+  const windowLabel = failed
+    ? t("windowFailedAriaLabel", { title })
     : ended
-      ? "playback finished"
+      ? t("windowFinishedAriaLabel", { title })
       : isPlaying
-        ? "playing"
-        : "paused"
+        ? t("windowPlayingAriaLabel", { title })
+        : t("windowPausedAriaLabel", { title })
 
   return (
     <View
       testID="mini-player-window"
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`Mini player, ${title}, ${stateText}`}
-      accessibilityActions={MINI_PLAYER_ACCESSIBILITY_ACTIONS}
+      accessibilityLabel={windowLabel}
+      accessibilityActions={accessibilityActions}
       onAccessibilityAction={handleAccessibilityAction}
       style={StyleSheet.absoluteFill}
       // Inert until the chrome is ready: the frame spans the DEPARTING player
@@ -331,9 +342,7 @@ export function MiniPlayerWindow({
 
           {failed && (
             <View style={styles.failureRow} pointerEvents="none">
-              <Text style={styles.failureLabel}>
-                {MINI_PLAYER_FAILURE_TEXT}
-              </Text>
+              <Text style={styles.failureLabel}>{t("playbackFailed")}</Text>
             </View>
           )}
 
@@ -342,6 +351,13 @@ export function MiniPlayerWindow({
               style={[styles.control, styles.controlLeft]}
               accessibilityRole="button"
               accessibilityLabel={playPauseLabel}
+              {...{
+                "dd-action-name": ended
+                  ? "mini-player-replay"
+                  : isPlaying
+                    ? "mini-player-pause"
+                    : "mini-player-play",
+              }}
               onPress={ended ? onReplay : onPlayPause}
               onPressIn={() => {
                 controlTouchRef.current = true
@@ -363,7 +379,8 @@ export function MiniPlayerWindow({
           <Pressable
             style={[styles.control, styles.controlRight]}
             accessibilityRole="button"
-            accessibilityLabel={MINI_PLAYER_DISMISS_LABEL}
+            accessibilityLabel={t("dismissAriaLabel")}
+            {...{ "dd-action-name": "mini-player-dismiss" }}
             onPress={onDismiss}
             onPressIn={() => {
               controlTouchRef.current = true

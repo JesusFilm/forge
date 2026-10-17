@@ -1,11 +1,19 @@
 "use client"
 
+import {
+  waitForRecommendationActivation,
+  isDeferredRecommendationResponse,
+} from "@/lib/recommendation-activation"
+
+import { useTranslations } from "next-intl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
+import { WatchRecommendationVerification } from "@/components/recommendations/WatchRecommendationVerification"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
+import type { ExposureVisibilityCapability } from "@/components/recommendations/useEligibleRecommendationImpression"
 import {
   randomRecommendationNonce,
   recommendationEventId,
@@ -20,6 +28,7 @@ import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   RECOMMENDATION_EVIDENCE_CONTRACT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
@@ -74,7 +83,12 @@ type SemanticRecommendationItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
+  candidateGenerator:
+    | "semantic"
+    | "multi-interest-profile"
+    | "directional-cowatch"
+    | "curated"
+    | "precomputed"
   contributors: Array<{
     generator: string
     generatorVersion: string
@@ -89,6 +103,7 @@ type SemanticEnvelope = {
   strategyVersion: string
   classifierVersion: string
   requestId: string | null
+  measurementTicket: string | null
   result: "served" | "fallback" | "empty" | "unavailable"
   reason: string | null
   expiresAt: string | null
@@ -108,6 +123,7 @@ type SemanticEnvelope = {
       | "semantic_contextual"
       | "hybrid_personalized"
       | "viewing_mode_personalized"
+      | "cowatch_mmr_personalized"
       | "semantic_fallback"
       | "curated_fallback"
       | null
@@ -189,7 +205,9 @@ function parseItem(value: unknown): SemanticRecommendationItem | null {
     !isCanonicalWatchRecommendationHref(item.canonicalHref) ||
     (item.candidateGenerator !== "semantic" &&
       item.candidateGenerator !== "multi-interest-profile" &&
-      item.candidateGenerator !== "curated") ||
+      item.candidateGenerator !== "directional-cowatch" &&
+      item.candidateGenerator !== "curated" &&
+      item.candidateGenerator !== "precomputed") ||
     !nonEmptyString(item.capability) ||
     !nonEmptyString(item.videoSlug, 191) ||
     !nonEmptyString(item.videoTitle, 512) ||
@@ -334,6 +352,9 @@ function parseEnvelope(value: unknown): SemanticEnvelope | null {
     strategyVersion: envelope.strategyVersion,
     classifierVersion: envelope.classifierVersion,
     requestId: envelope.requestId ?? null,
+    measurementTicket: nonEmptyString(envelope.measurementTicket, 850)
+      ? envelope.measurementTicket
+      : null,
     result,
     reason: envelope.reason ?? null,
     expiresAt: envelope.expiresAt ?? null,
@@ -365,6 +386,7 @@ function parsePersonalization(
       profile.executionMode !== "semantic_contextual" &&
       profile.executionMode !== "hybrid_personalized" &&
       profile.executionMode !== "viewing_mode_personalized" &&
+      profile.executionMode !== "cowatch_mmr_personalized" &&
       profile.executionMode !== "semantic_fallback" &&
       profile.executionMode !== "curated_fallback") ||
     !nonEmptyString(profile.effectiveManifestId, 191) ||
@@ -391,6 +413,7 @@ function parsePersonalization(
         profile.executionMode === "semantic_contextual") ||
       (profile.lane === "profile_challenger" &&
         (profile.executionMode === "hybrid_personalized" ||
+          profile.executionMode === "cowatch_mmr_personalized" ||
           profile.executionMode === "viewing_mode_personalized")) ||
       (profile.lane === "semantic_fallback" &&
         (profile.executionMode === "semantic_fallback" ||
@@ -474,6 +497,7 @@ export function WatchSemanticRecommendations({
   audioLanguageSlug: string
   navigate?: (href: string) => void
 }) {
+  const t = useTranslations("VideoRecommendations")
   const [profileRevision, setProfileRevision] = useState(0)
   const requestKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
   const [state, setState] = useState<RecommendationState>({
@@ -484,6 +508,15 @@ export function WatchSemanticRecommendations({
     requestKey,
     degraded: false,
   })
+  const [verification, setVerification] = useState<{
+    requestKey: string
+    siteKey: string
+    attempt: number
+  } | null>(null)
+  const verificationTokenHandler = useRef<((token: string) => void) | null>(
+    null,
+  )
+  const verificationFailureHandler = useRef<(() => void) | null>(null)
   const [busyState, setBusyState] = useState<{
     requestKey: string
     itemId: string | null
@@ -497,6 +530,7 @@ export function WatchSemanticRecommendations({
     rendered: new Set<string>(),
     impressed: new Set<string>(),
   })
+  const visitIdentity = useRef<{ key: string; id: string } | null>(null)
 
   useEffect(() => {
     mountedRef.current = true
@@ -513,19 +547,40 @@ export function WatchSemanticRecommendations({
       if (selectionAttemptRef.current || navigationStartedRef.current) return
       setProfileRevision((revision) => revision + 1)
     }
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        navigationStartedRef.current = false
+        selectionAttemptRef.current?.controller.abort()
+        selectionAttemptRef.current = null
+        setProfileRevision((revision) => revision + 1)
+      }
+    }
+    window.addEventListener("pageshow", restore)
     window.addEventListener("forge:recommendation-profile-changed", refresh)
-    return () =>
+    return () => {
+      window.removeEventListener("pageshow", restore)
       window.removeEventListener(
         "forge:recommendation-profile-changed",
         refresh,
       )
+    }
   }, [])
 
   useEffect(() => {
     let active = true
+    const visitKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}`
+    if (visitIdentity.current?.key !== visitKey) {
+      visitIdentity.current = { key: visitKey, id: crypto.randomUUID() }
+    }
+    const visitId = visitIdentity.current.id
+    const activationController = new AbortController()
+    let recoveredDeferredResponse = false
     let controller: AbortController | null = null
     let deliveryRetryTimer: number | null = null
     let deliveryDeadlineAt: number | null = null
+    let verificationTimeoutTimer: number | null = null
+    let pendingTurnstileToken: string | null = null
+    let challengeAttempts = 0
     selectionGenerationRef.current += 1
     selectionAttemptRef.current?.controller.abort()
     selectionAttemptRef.current = null
@@ -533,126 +588,211 @@ export function WatchSemanticRecommendations({
     evidenceLedger.current.requestId = null
     evidenceLedger.current.rendered.clear()
     evidenceLedger.current.impressed.clear()
+    setVerification(null)
+    verificationTokenHandler.current = null
+    verificationFailureHandler.current = null
     // StrictMode replays setup/cleanup before the microtask queue drains. The
     // first setup therefore cancels without issuing a state-creating POST.
-    queueMicrotask(() => {
-      if (!active) return
-      setState({ requestKey, status: "loading" })
-      const scheduleRetry = (attempt: number, delayMs: number) => {
-        if (
-          !active ||
-          attempt + 1 >= DELIVERY_MAX_ATTEMPTS ||
-          (deliveryDeadlineAt != null &&
-            Date.now() + delayMs >= deliveryDeadlineAt)
-        ) {
-          return false
-        }
-        deliveryRetryTimer = window.setTimeout(() => {
-          deliveryRetryTimer = null
-          load(attempt + 1)
-        }, delayMs)
-        return true
-      }
-      const load = (attempt: number) => {
+    void waitForRecommendationActivation(activationController.signal)
+      .then(() => {
         if (!active) return
-        if (
-          deliveryDeadlineAt != null &&
-          deliveryDeadlineAt - Date.now() <= 0
-        ) {
-          setState({ requestKey, status: "unavailable" })
-          return
+        setState({ requestKey, status: "loading" })
+        const scheduleRetry = (attempt: number, delayMs: number) => {
+          if (
+            !active ||
+            attempt + 1 >= DELIVERY_MAX_ATTEMPTS ||
+            (deliveryDeadlineAt != null &&
+              Date.now() + delayMs >= deliveryDeadlineAt)
+          ) {
+            return false
+          }
+          deliveryRetryTimer = window.setTimeout(() => {
+            deliveryRetryTimer = null
+            load(attempt + 1)
+          }, delayMs)
+          return true
         }
-        const attemptController = new AbortController()
-        controller = attemptController
-        void waitForRecommendationConsentBootstrap()
-          .then(() =>
-            withRecommendationConsentLock(async () => {
-              if (!active || attemptController.signal.aborted) {
-                throw new RecommendationRuntimeError("deadline")
-              }
-              deliveryDeadlineAt ??= Date.now() + DELIVERY_DEADLINE_MS
-              const attemptRemainingMs = deliveryDeadlineAt - Date.now()
-              if (attemptRemainingMs <= 0) {
-                throw new RecommendationRuntimeError("deadline")
-              }
-              return recommendationDeliveryJsonWithDeadline(
-                {
-                  method: "POST",
-                  cache: "no-store",
-                  credentials: "same-origin",
-                  headers: {
-                    "content-type": "application/json",
-                    "x-forge-recommendation-client":
-                      RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+        const load = (attempt: number) => {
+          if (!active) return
+          if (
+            deliveryDeadlineAt != null &&
+            deliveryDeadlineAt - Date.now() <= 0
+          ) {
+            setState({ requestKey, status: "unavailable" })
+            return
+          }
+          const attemptController = new AbortController()
+          controller = attemptController
+          void waitForRecommendationConsentBootstrap()
+            .then(() =>
+              withRecommendationConsentLock(async () => {
+                if (!active || attemptController.signal.aborted) {
+                  throw new RecommendationRuntimeError("deadline")
+                }
+                deliveryDeadlineAt ??= Date.now() + DELIVERY_DEADLINE_MS
+                const attemptRemainingMs = deliveryDeadlineAt - Date.now()
+                if (attemptRemainingMs <= 0) {
+                  throw new RecommendationRuntimeError("deadline")
+                }
+                const turnstileToken = pendingTurnstileToken
+                pendingTurnstileToken = null
+                return recommendationDeliveryJsonWithDeadline(
+                  {
+                    method: "POST",
+                    cache: "no-store",
+                    credentials: "same-origin",
+                    headers: {
+                      "content-type": "application/json",
+                      "x-forge-recommendation-client":
+                        RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+                      "x-forge-recommendation-delivery-contract":
+                        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
+                      "x-forge-recommendation-visit-id": visitId,
+                    },
+                    body: JSON.stringify({
+                      seedMediaId,
+                      ...(seedMediaSlug ? { seedMediaSlug } : {}),
+                      locale,
+                      audioLanguageSlug,
+                      ...(turnstileToken ? { turnstileToken } : {}),
+                    }),
+                    signal: attemptController.signal,
                   },
-                  body: JSON.stringify({
-                    seedMediaId,
-                    ...(seedMediaSlug ? { seedMediaSlug } : {}),
-                    locale,
-                    audioLanguageSlug,
-                  }),
-                  signal: attemptController.signal,
-                },
-                attemptRemainingMs,
-              )
-            }),
-          )
-          .then((value) => {
-            if (!active || !value || typeof value !== "object") return
-            const envelope = parseEnvelope(
-              (value as { delivery?: unknown }).delivery,
+                  attemptRemainingMs,
+                )
+              }),
             )
-            if (!envelope) {
-              setState({ requestKey, status: "unavailable" })
-              return
-            }
-            if (
-              (envelope.result === "served" ||
-                envelope.result === "fallback") &&
-              envelope.items.length > 0
-            ) {
-              setState({ requestKey, status: "ready", envelope })
-            } else if (envelope.result === "empty") {
-              setState({ requestKey, status: "empty" })
-            } else if (
-              envelope.result === "unavailable" &&
-              attempt + 1 < DELIVERY_MAX_ATTEMPTS &&
-              (envelope.reason === "cooldown" ||
-                envelope.reason === "in_flight" ||
-                envelope.reason === "delivery_unavailable" ||
-                envelope.reason === "delivery_timeout")
-            ) {
-              const retryMs =
-                envelope.reason === "cooldown" ||
-                envelope.reason === "in_flight"
-                  ? DELIVERY_COOLDOWN_MS
-                  : DELIVERY_RETRY_MS
-              if (!scheduleRetry(attempt, retryMs)) {
+            .then((value) => {
+              if (!active || !value || typeof value !== "object") return
+              if (isDeferredRecommendationResponse(value)) {
+                if (recoveredDeferredResponse) {
+                  setState({ requestKey, status: "unavailable" })
+                  return
+                }
+                recoveredDeferredResponse = true
+                load(attempt)
+                return
+              }
+              const envelope = parseEnvelope(
+                (value as { delivery?: unknown }).delivery,
+              )
+              const challenge = value as {
+                verificationRequired?: unknown
+                verificationSiteKey?: unknown
+              }
+              if (
+                challenge.verificationRequired === true &&
+                typeof challenge.verificationSiteKey === "string" &&
+                challenge.verificationSiteKey.length > 0 &&
+                challenge.verificationSiteKey.length <= 256 &&
+                challengeAttempts < 2
+              ) {
+                challengeAttempts += 1
+                deliveryDeadlineAt = null
+                verificationFailureHandler.current = () => {
+                  if (!active) return
+                  if (verificationTimeoutTimer != null) {
+                    window.clearTimeout(verificationTimeoutTimer)
+                    verificationTimeoutTimer = null
+                  }
+                  setVerification(null)
+                  verificationTokenHandler.current = null
+                  if (
+                    envelope?.items.length &&
+                    (envelope.result === "served" ||
+                      envelope.result === "fallback")
+                  ) {
+                    setState({ requestKey, status: "ready", envelope })
+                  } else {
+                    setState({ requestKey, status: "unavailable" })
+                  }
+                }
+                verificationTokenHandler.current = (token) => {
+                  if (!active || !token || token.length > 2_048) return
+                  if (verificationTimeoutTimer != null) {
+                    window.clearTimeout(verificationTimeoutTimer)
+                    verificationTimeoutTimer = null
+                  }
+                  pendingTurnstileToken = token
+                  verificationTokenHandler.current = null
+                  verificationFailureHandler.current = null
+                  setVerification(null)
+                  load(attempt)
+                }
+                setVerification({
+                  requestKey,
+                  siteKey: challenge.verificationSiteKey,
+                  attempt: challengeAttempts,
+                })
+                verificationTimeoutTimer = window.setTimeout(
+                  () => verificationFailureHandler.current?.(),
+                  30_000,
+                )
+                return
+              }
+              setVerification(null)
+              verificationTokenHandler.current = null
+              verificationFailureHandler.current = null
+              if (!envelope) {
+                setState({ requestKey, status: "unavailable" })
+                return
+              }
+              if (
+                (envelope.result === "served" ||
+                  envelope.result === "fallback") &&
+                envelope.items.length > 0
+              ) {
+                setState({ requestKey, status: "ready", envelope })
+              } else if (envelope.result === "empty") {
+                setState({ requestKey, status: "empty" })
+              } else if (
+                envelope.result === "unavailable" &&
+                attempt + 1 < DELIVERY_MAX_ATTEMPTS &&
+                (envelope.reason === "cooldown" ||
+                  envelope.reason === "in_flight" ||
+                  envelope.reason === "delivery_unavailable" ||
+                  envelope.reason === "delivery_timeout")
+              ) {
+                const retryMs =
+                  envelope.reason === "cooldown" ||
+                  envelope.reason === "in_flight"
+                    ? DELIVERY_COOLDOWN_MS
+                    : DELIVERY_RETRY_MS
+                if (!scheduleRetry(attempt, retryMs)) {
+                  setState({ requestKey, status: "unavailable" })
+                }
+              } else {
                 setState({ requestKey, status: "unavailable" })
               }
-            } else {
+            })
+            .catch((error) => {
+              if (!active) return
+              const transientFailure =
+                !(error instanceof RecommendationRuntimeError) ||
+                error.code === "delivery_unavailable"
+              if (
+                transientFailure &&
+                scheduleRetry(attempt, DELIVERY_RETRY_MS)
+              ) {
+                return
+              }
               setState({ requestKey, status: "unavailable" })
-            }
-          })
-          .catch((error) => {
-            if (!active) return
-            const transientFailure =
-              !(error instanceof RecommendationRuntimeError) ||
-              error.code === "delivery_unavailable"
-            if (transientFailure && scheduleRetry(attempt, DELIVERY_RETRY_MS)) {
-              return
-            }
-            setState({ requestKey, status: "unavailable" })
-          })
-      }
-      load(0)
-    })
+            })
+        }
+        load(0)
+      })
+      .catch(() => undefined)
     return () => {
       active = false
+      activationController.abort()
       if (deliveryRetryTimer != null) {
         window.clearTimeout(deliveryRetryTimer)
       }
       controller?.abort()
+      if (verificationTimeoutTimer != null)
+        window.clearTimeout(verificationTimeoutTimer)
+      verificationTokenHandler.current = null
+      verificationFailureHandler.current = null
     }
   }, [audioLanguageSlug, locale, requestKey, seedMediaId, seedMediaSlug])
 
@@ -677,6 +817,10 @@ export function WatchSemanticRecommendations({
   )
   const requestId =
     currentState.status === "ready" ? currentState.envelope.requestId : null
+  const measurementTicket =
+    currentState.status === "ready"
+      ? currentState.envelope.measurementTicket
+      : null
 
   const claimEvidence = useCallback(
     (kind: "render" | "impression", itemId: string) => {
@@ -695,7 +839,11 @@ export function WatchSemanticRecommendations({
   )
 
   const sendEvidence = useCallback(
-    async (item: SemanticRecommendationItem, kind: "render" | "impression") => {
+    async (
+      item: SemanticRecommendationItem,
+      kind: "render" | "impression",
+      visibilityCapability: ExposureVisibilityCapability = "unknown",
+    ) => {
       if (
         !requestId ||
         item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY
@@ -724,7 +872,10 @@ export function WatchSemanticRecommendations({
                 occurredAt: new Date().toISOString(),
                 payload:
                   kind === "impression"
-                    ? { visibilityPolicy: WATCH_RECOMMENDATION_SURFACE }
+                    ? {
+                        visibilityPolicy: WATCH_RECOMMENDATION_SURFACE,
+                        visibilityCapability,
+                      }
                     : { surfacePolicy: WATCH_RECOMMENDATION_SURFACE },
               },
             ],
@@ -797,10 +948,12 @@ export function WatchSemanticRecommendations({
   }, [claimEvidence, items, markInstrumentationDegraded, sendEvidence])
 
   const onEligible = useCallback(
-    (itemId: string) => {
+    (itemId: string, capability: ExposureVisibilityCapability) => {
       const item = itemById.get(itemId)
       if (item && claimEvidence("impression", item.id)) {
-        void sendEvidence(item, "impression").catch(markInstrumentationDegraded)
+        void sendEvidence(item, "impression", capability).catch(
+          markInstrumentationDegraded,
+        )
       }
     },
     [claimEvidence, itemById, markInstrumentationDegraded, sendEvidence],
@@ -829,15 +982,48 @@ export function WatchSemanticRecommendations({
       item: SemanticRecommendationItem,
       event: MouseEvent<HTMLAnchorElement>,
     ) => {
-      if (
-        event.button !== 0 ||
-        event.metaKey ||
-        event.ctrlKey ||
-        event.altKey ||
-        event.shiftKey
-      ) {
+      const selectionBody = (claimNonce: string) =>
+        JSON.stringify({
+          contractVersion: RECOMMENDATION_EVIDENCE_CONTRACT,
+          requestId,
+          itemId: item.id,
+          capability: item.capability,
+          eventId: eventId("selection", item.id),
+          occurredAt: new Date().toISOString(),
+          tabNonce: tabNonce(),
+          claimNonce,
+          ...(measurementTicket ? { measurementTicket } : {}),
+        })
+      const auxiliary =
+        (event.type === "auxclick" && event.button === 1) ||
+        (event.button === 0 &&
+          (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey))
+      if (auxiliary) {
+        // Let the browser open the trusted link immediately. The signed card
+        // capability remains in this request body, never in a URL or storage.
+        if (
+          requestId &&
+          item.capability !== CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY
+        ) {
+          const claimNonce = randomRecommendationNonce()
+          void recommendationJsonWithRetry(
+            SELECTION_ENDPOINT,
+            {
+              method: "POST",
+              cache: "no-store",
+              credentials: "same-origin",
+              keepalive: true,
+              headers: { "content-type": "application/json" },
+              body: selectionBody(claimNonce),
+            },
+            SELECTION_DEADLINE_MS,
+          ).catch(() => {
+            // Navigation is intentionally independent of telemetry.
+          })
+        }
         return
       }
+      if (event.button !== 0) return
       event.preventDefault()
       if (selectionAttemptRef.current || navigationStartedRef.current) return
       if (item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY) {
@@ -853,7 +1039,6 @@ export function WatchSemanticRecommendations({
         controller,
       }
       setBusyState({ requestKey, itemId: item.id })
-      const correlation = tabNonce()
       const claimNonce = randomRecommendationNonce()
       // Persist before the fail-open navigation. If the selection commits but
       // its response is lost, Watch can still claim the exact server binding.
@@ -871,16 +1056,7 @@ export function WatchSemanticRecommendations({
           keepalive: true,
           headers: { "content-type": "application/json" },
           signal: controller.signal,
-          body: JSON.stringify({
-            contractVersion: RECOMMENDATION_EVIDENCE_CONTRACT,
-            requestId,
-            itemId: item.id,
-            capability: item.capability,
-            eventId: eventId("selection", item.id),
-            occurredAt: new Date().toISOString(),
-            tabNonce: correlation,
-            claimNonce,
-          }),
+          body: selectionBody(claimNonce),
         },
         SELECTION_DEADLINE_MS,
         {
@@ -905,7 +1081,7 @@ export function WatchSemanticRecommendations({
           if (isCurrentAttempt()) navigateOnce(item.canonicalHref)
         })
     },
-    [navigateOnce, requestId, requestKey],
+    [measurementTicket, navigateOnce, requestId, requestKey],
   )
 
   const busyItemId =
@@ -913,10 +1089,13 @@ export function WatchSemanticRecommendations({
   const instrumentationDegraded =
     instrumentationState.requestKey === requestKey &&
     instrumentationState.degraded
-  const recommendationExplanation =
+  const recommendationExplanationKey =
     currentState.status === "ready"
-      ? viewerRecommendationExplanation(currentState.envelope)
+      ? viewerRecommendationExplanationKey(currentState.envelope)
       : null
+  const recommendationExplanation = recommendationExplanationKey
+    ? t(recommendationExplanationKey)
+    : null
 
   if (currentState.status === "loading") {
     return (
@@ -924,9 +1103,18 @@ export function WatchSemanticRecommendations({
         data-block-type="SemanticRecommendations"
         data-state="loading"
         aria-busy="true"
-        aria-label="Loading recommended videos"
+        aria-label={t("loadingLabel")}
         className="min-h-48 rounded-xl bg-stone-800/40 p-6"
-      />
+      >
+        {verification?.requestKey === requestKey ? (
+          <WatchRecommendationVerification
+            key={verification.attempt}
+            siteKey={verification.siteKey}
+            onToken={(token) => verificationTokenHandler.current?.(token)}
+            onFailure={() => verificationFailureHandler.current?.()}
+          />
+        ) : null}
+      </section>
     )
   }
   if (
@@ -938,17 +1126,19 @@ export function WatchSemanticRecommendations({
 
   let announcement = ""
   if (busyItemId) {
-    announcement = `Opening ${itemById.get(busyItemId)?.videoTitle ?? "video"}`
+    const busyTitle = itemById.get(busyItemId)?.videoTitle
+    announcement = busyTitle
+      ? t("openingTitle", { title: busyTitle })
+      : t("openingVideo")
   } else if (instrumentationDegraded) {
-    announcement =
-      "Recommendation activity could not be recorded. Links still work."
+    announcement = t("activityNotRecorded")
   } else if (currentState.envelope.result === "fallback") {
     announcement = currentState.envelope.items.every(
       (item) =>
         item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
     )
-      ? "Showing contextual recommendations."
-      : "Showing saved recommendations."
+      ? t("showingContextual")
+      : t("showingSaved")
   }
 
   return (
@@ -957,12 +1147,10 @@ export function WatchSemanticRecommendations({
       data-state={
         currentState.envelope.result === "fallback" ? "fallback" : "ready"
       }
-      aria-label="Recommended videos"
+      aria-label={t("heading")}
       className="min-h-48"
     >
-      <h2 className="mb-4 text-2xl font-semibold text-white">
-        Recommended videos
-      </h2>
+      <h2 className="mb-4 text-2xl font-semibold text-white">{t("heading")}</h2>
       <VideoRecommendations
         recommendations={currentState.envelope.items}
         locale={locale}
@@ -987,26 +1175,32 @@ export function WatchSemanticRecommendations({
   )
 }
 
-function viewerRecommendationExplanation(envelope: SemanticEnvelope) {
+type RecommendationExplanationKey =
+  | "explanationCurated"
+  | "explanationViewingMode"
+  | "explanationCowatch"
+  | "explanationHybrid"
+  | "explanationContextual"
+  | "explanationSemanticFallback"
+  | "explanationProfileDurable"
+  | "explanationProfileVisit"
+
+function viewerRecommendationExplanationKey(
+  envelope: SemanticEnvelope,
+): RecommendationExplanationKey | null {
   const mode = envelope.personalization?.executionMode
-  if (mode === "curated_fallback") return "Selected videos to explore."
-  if (mode === "viewing_mode_personalized")
-    return "Recommended from this video and how you watch."
-  if (mode === "hybrid_personalized") {
-    return "Recommended from this video and interests you chose to remember."
-  }
-  if (mode === "semantic_contextual") {
-    return "Recommended from what you're watching now."
-  }
-  if (mode === "semantic_fallback") {
-    return "Recommended from what you're watching now while personalization is unavailable."
-  }
+  if (mode === "curated_fallback") return "explanationCurated"
+  if (mode === "viewing_mode_personalized") return "explanationViewingMode"
+  if (mode === "cowatch_mmr_personalized") return "explanationCowatch"
+  if (mode === "hybrid_personalized") return "explanationHybrid"
+  if (mode === "semantic_contextual") return "explanationContextual"
+  if (mode === "semantic_fallback") return "explanationSemanticFallback"
   // Historic deliveries predate the additive execution-mode field. Preserve
   // their existing viewer explanation without reinterpreting lane semantics.
   if (envelope.personalization?.lane === "profile_challenger") {
     return envelope.personalization.profileState === "durable"
-      ? "Personalized from interests you chose to remember."
-      : "Personalized for this visit."
+      ? "explanationProfileDurable"
+      : "explanationProfileVisit"
   }
   return null
 }

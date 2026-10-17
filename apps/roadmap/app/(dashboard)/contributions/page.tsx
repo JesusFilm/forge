@@ -111,7 +111,7 @@ export default function ContributionsPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatCard
           label="Not Started"
           count={totals["not-started"]}
@@ -128,6 +128,11 @@ export default function ContributionsPage() {
           color="text-green-400"
         />
         <StatCard label="Blocked" count={totals.blocked} color="text-red-400" />
+        <StatCard
+          label="Cancelled"
+          count={totals.cancelled}
+          color="text-slate-400"
+        />
       </div>
 
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-400">
@@ -146,6 +151,10 @@ export default function ContributionsPage() {
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded-full bg-red-400" />{" "}
           Blocked
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2 w-2 rounded-full bg-slate-400" />{" "}
+          Cancelled
         </span>
         <span className="flex items-center gap-2 border-l border-stone-700 pl-3">
           <span className="border-l-2 border-l-red-500 pl-1">P0</span>

@@ -21,15 +21,15 @@ export function requireProductionDashboardTarget(
     throw new Error(
       "dashboard snapshot refused: --target production-read is required",
     )
-  const raw = env.JFRAG_POSTGRESQL_READONLY_DB_URL
-  const expected = env.JFRAG_EXPECTED_POSTGRES_HOST?.trim()
+  const raw = env.FORGE_RAG_POSTGRESQL_READONLY_DB_URL
+  const expected = env.FORGE_RAG_EXPECTED_POSTGRES_HOST?.trim()
   if (!raw || !expected)
     throw new Error(
       "dashboard snapshot refused: namespaced production-read environment is incomplete",
     )
   const validated = requireReadonlyDatabaseUrl(
     raw,
-    env.JFRAG_READONLY_ROLE_NAME,
+    env.FORGE_RAG_READONLY_ROLE_NAME,
   )
   const url = new URL(validated)
   if (

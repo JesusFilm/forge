@@ -1,0 +1,67 @@
+{
+  "migration": "0105_watch_surface_served_manifest",
+  "expectedSourceSha256": "7989bebff29a36d70a8c0412b69fa805f06cf1d5e1407a17b63d5bac60f348ac",
+  "sqlSha256": "e64ca2e316325b5091ece0b2391c7197bd5cdaee3b7865fa65b4c6ed088169b9",
+  "expectedRuntimeCommit": "811f1ec81f359d1cf66cdda5bad8f5445631c44c",
+  "environment": "production",
+  "transport": "Railway SSH / Admin HTTP runtime / pg Client",
+  "executed": true,
+  "constraintDefinitionReviewRequired": true,
+  "startedAt": "2026-09-28T22:41:29.637329+00:00",
+  "transportExitCode": 0,
+  "progress": ["database_connect", "read_only_catalog_query"],
+  "unparsedStdoutLinesWithheld": 0,
+  "status": "metadata_mismatch",
+  "runtimeCommit": "811f1ec81f359d1cf66cdda5bad8f5445631c44c",
+  "checks": {
+    "readOnly": true,
+    "tablePresent": true,
+    "oneCompletedMigration": true,
+    "sourceChecksumMatches": true,
+    "migrationHasAppliedStep": true,
+    "noUnfinishedMigrations": true,
+    "partialUniqueIndexValidAndReady": true,
+    "indexShapeMatches": false,
+    "checkConstraintPresentAndValidated": true,
+    "expectedRuntimeCommit": true
+  },
+  "receipt": {
+    "probe": "watch_migration_0105",
+    "indexRows": [
+      {
+        "indnatts": 3,
+        "predicate": "((kind)::text = 'served'::text)",
+        "definition": "CREATE UNIQUE INDEX watch_surface_exposure_served_item_key ON public.watch_surface_exposure USING btree (window_id, \"position\", item_path) WHERE ((kind)::text = 'served'::text)",
+        "indisready": true,
+        "indisvalid": true,
+        "indisunique": true,
+        "indnkeyatts": 3,
+        "key_columns": ["window_id", "\"position\"", "item_path"],
+        "access_method": "btree"
+      }
+    ],
+    "observedAt": "2026-09-28T22:41:32.371175+00:00",
+    "lockTimeout": "1s",
+    "tablePresent": true,
+    "migrationRows": [
+      {
+        "checksum": "7989bebff29a36d70a8c0412b69fa805f06cf1d5e1407a17b63d5bac60f348ac",
+        "started_at": "2026-09-28T22:27:57.980472+00:00",
+        "finished_at": "2026-09-28T22:27:58.09326+00:00",
+        "rolled_back_at": null,
+        "applied_steps_count": 1
+      }
+    ],
+    "constraintRows": [
+      {
+        "contype": "c",
+        "definition": "CHECK ((kind::text = ANY (ARRAY['rendered'::character varying, 'eligible'::character varying, 'selected'::character varying]::text[])) OR kind::text = 'served'::text AND policy_version::text = 'watch-exposure-v2'::text AND visibility_capability IS NULL)",
+        "convalidated": true
+      }
+    ],
+    "statementTimeout": "3s",
+    "transactionReadOnly": "on",
+    "unfinishedMigrationCount": 0
+  },
+  "endedAt": "2026-09-28T22:41:32.712688+00:00"
+}

@@ -16,6 +16,7 @@ import {
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { useQuery } from "@apollo/client/react"
+import * as Linking from "expo-linking"
 
 import { GET_VIDEO_BY_SLUG } from "../../src/lib/videoQueries"
 import { normalizeVideo } from "../../src/lib/normalizeVideo"
@@ -24,6 +25,9 @@ import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
 import { muxHlsUrlFromPlaybackId } from "../../src/lib/muxUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { getResumePosition } from "../../src/lib/watchEvents/continueWatching"
+import { topShelfAutoplayDecision } from "../../src/lib/topShelf/playback"
+import { watchPlaybackLinkIntent } from "../../src/lib/watchPlaybackLink"
+import { useStartupIntroActive } from "../../src/contexts/StartupIntroProvider"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useVideoPlayerContext } from "../../src/contexts/VideoPlayerContext"
 import { TVFocusGuideView } from "../../src/components/TVFocusGuideView"
@@ -38,6 +42,8 @@ import {
 } from "../../src/components/watch/actionRowScrollGlide"
 import { VideoBackdrop } from "../../src/components/watch/VideoBackdrop"
 import { ScreenStateView } from "../../src/components/ScreenStateView"
+import { BrandedLoading } from "../../src/components/BrandedLoading"
+import { useAndroidVideoDetails } from "../../src/hooks/useAndroidVideoDetails"
 import { AndroidLoadingDialog } from "../../src/components/AndroidLoadingDialog"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { DetailsActionRow } from "../../src/components/watch/DetailsActionRow"
@@ -89,32 +95,46 @@ export default function WatchVideoScreen() {
     slug,
     seed: seedParam,
     autoplay: autoplayParam,
+    topShelf: topShelfParam,
   } = useLocalSearchParams<{
     slug: string
     seed?: string
     autoplay?: string
+    topShelf?: string
   }>()
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
-  const { video, setVideo, activeVariant } = useWatchSession()
-  const { hydrated: preferencesReady } = useWatchPreferences()
+  const { video, setVideo, activeVariant, setActiveVariantIndex } =
+    useWatchSession()
+  const {
+    hydrated: preferencesReady,
+    audioLanguageSlug: preferredAudioLanguage,
+  } = useWatchPreferences()
+  const introActive = useStartupIntroActive()
   const {
     state: playerState,
     decoderClaimed,
     playVideo,
+    dismissVideo,
     consumeUpNextChain,
   } = useVideoPlayerContext()
 
-  const { data, error, loading, refetch } = useQuery(GET_VIDEO_BY_SLUG, {
+  const legacyDetails = useQuery(GET_VIDEO_BY_SLUG, {
     variables: { locale: "en", slug: decodedSlug },
-    skip: !decodedSlug,
+    skip: !decodedSlug || Platform.OS === "android",
     // cache-first (NOT cache-and-network): the payload is large for videos with
     // many dubs; cache-and-network would refetch + re-normalize every dub on
     // re-entry. returnPartialData paints whatever the cache already holds.
     fetchPolicy: "cache-first",
     returnPartialData: true,
   })
+  const androidDetails = useAndroidVideoDetails(
+    decodedSlug,
+    Platform.OS === "android",
+  )
+  const { data, error, loading, refetch } =
+    Platform.OS === "android" ? androidDetails : legacyDetails
 
   // Keyed on the inner videoBySlug object (NOT the outer `data` wrapper): a new
   // wrapper over an unchanged inner object — common on partial → full transitions
@@ -190,9 +210,55 @@ export default function WatchVideoScreen() {
     "pending" | "playing" | "off"
   >(autoplayParam === "1" ? "pending" : "off")
   const autoplayConsumedRef = useRef(false)
+  useEffect(() => {
+    if (topShelfParam === "1") {
+      autoplayConsumedRef.current = false
+      setAutoplayPhase(autoplayParam === "1" ? "pending" : "off")
+      dismissVideo()
+    }
+  }, [decodedSlug, topShelfParam, autoplayParam, dismissVideo])
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS !== "ios" || !Platform.isTV) return
+      const subscription = Linking.addEventListener("url", ({ url }) => {
+        const intent = watchPlaybackLinkIntent(url, decodedSlug)
+        if (intent == null) return
+        autoplayConsumedRef.current = false
+        setAutoplayPhase(intent === "play" ? "pending" : "off")
+        dismissVideo()
+      })
+      return () => subscription.remove()
+    }, [decodedSlug, dismissVideo]),
+  )
 
   useEffect(() => {
     if (autoplayPhase !== "pending" || autoplayConsumedRef.current) return
+    if (topShelfParam === "1" && (!preferencesReady || loading || introActive))
+      return
+    if (topShelfParam === "1" && video && video.slug !== decodedSlug) return
+    if (topShelfParam === "1" && video) {
+      const decision = topShelfAutoplayDecision({
+        requestedSlug: decodedSlug,
+        videoSlug: video.slug ?? null,
+        preferredLanguage: preferredAudioLanguage,
+        activeLanguage: activeVariant?.languageSlug ?? null,
+        playableLanguages: video.variants
+          .filter((variant) => validateStreamingUrl(variant.hls))
+          .map((variant) => variant.languageSlug),
+      })
+      if (decision !== "ready") {
+        if (decision === "unavailable") setAutoplayPhase("off")
+        else {
+          const targetIndex = video.variants.findIndex(
+            (variant) =>
+              variant.languageSlug === (preferredAudioLanguage ?? "english") &&
+              validateStreamingUrl(variant.hls),
+          )
+          if (targetIndex >= 0) setActiveVariantIndex(targetIndex, false)
+        }
+        return
+      }
+    }
     const hls = activeVariant?.hls
     const videoId = video?.documentId
     if (!hls || !videoId || !validateStreamingUrl(hls)) {
@@ -233,7 +299,20 @@ export default function WatchVideoScreen() {
     return () => {
       cancelled = true
     }
-  }, [autoplayPhase, activeVariant, video, playVideo, loading, error])
+  }, [
+    autoplayPhase,
+    activeVariant,
+    video,
+    playVideo,
+    loading,
+    error,
+    topShelfParam,
+    decodedSlug,
+    preferredAudioLanguage,
+    preferencesReady,
+    introActive,
+    setActiveVariantIndex,
+  ])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.
   // Unless the close IS an Up Next hop: the overlay host marks the chain
@@ -398,7 +477,11 @@ export default function WatchVideoScreen() {
   if (detailsDataState === "loading" && !playerState.isVisible) {
     return (
       <View style={styles.screen}>
-        <ScreenStateView kind="loading" message="Loading movie details…" />
+        {Platform.OS === "android" ? (
+          <BrandedLoading label="Loading movie details" />
+        ) : (
+          <ScreenStateView kind="loading" message="Loading movie details…" />
+        )}
         <AndroidLoadingDialog
           message="Loading movie details…"
           onBack={leaveLoading}
@@ -419,7 +502,7 @@ export default function WatchVideoScreen() {
     ) {
       return (
         <View style={styles.screen}>
-          <ScreenStateView kind="loading" message="Preparing playback…" />
+          <BrandedLoading label="Preparing playback" />
           <AndroidLoadingDialog
             message="Preparing playback…"
             onBack={leaveLoading}
@@ -504,6 +587,15 @@ export default function WatchVideoScreen() {
               }
               onOpenLanguage={() => setActivePanel("language")}
               onOpenSubtitles={() => setActivePanel("subtitle")}
+              onOpenFeedback={() =>
+                router.push({
+                  pathname: "/feedback",
+                  params: {
+                    screen: "details",
+                    filmTitle: displayTitle ?? "",
+                  },
+                })
+              }
               onRowFocus={GLIDE_ENABLED ? handleActionRowFocus : undefined}
               onRowBlur={GLIDE_ENABLED ? handleActionRowBlur : undefined}
             />

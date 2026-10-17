@@ -1,9 +1,12 @@
 /**
  * Mission content shared by the Home rail and /mission detail page.
- * Ported from apps/web's WatchHomePromo.tsx — mirror copy changes there.
+ * Ported from apps/web's WatchHomePromo.tsx. The text lives in the `Mission`
+ * catalog namespace (U10): mirror web's copy changes in messages/en.json.
  */
 import type { ComponentProps } from "react"
 import type Ionicons from "@expo/vector-icons/Ionicons"
+
+import type { UiMessageKey } from "../../i18n/useT"
 
 export const BETA_SIGNUP_URL = "https://mailchi.mp/jesusfilm/beta"
 
@@ -15,73 +18,42 @@ export const MISSION_WASH = {
   ember: "#ea580c",
 } as const
 
+export type MissionKey = UiMessageKey<"Mission">
+
 export type MissionPoint = {
   icon: ComponentProps<typeof Ionicons>["name"]
-  title: string
-  description: string
+  titleKey: MissionKey
+  descriptionKey: MissionKey
 }
 
 export type MissionHighlight = {
-  title: string
-  description: string
+  titleKey: MissionKey
+  descriptionKey: MissionKey
 }
-
-export const MISSION_EYEBROW = "Built for global missions"
-
-export const MISSION_HEADLINE =
-  "The message doesn't change. The way people watch does."
-
-export const MISSION_INTRO =
-  "We are rebuilding our video library and tools from the ground up, committing decades of translation work to the platforms where people already gather, watch, and share."
 
 export const MISSION_POINTS: readonly MissionPoint[] = [
   {
     icon: "globe-outline",
-    title: "The most translated film library in the world",
-    description:
-      "Decades of translation work, carried by trusted ministry partners, have built a library with thousands of language tracks so people can encounter the story of Jesus in the language that reaches them deepest.",
+    titleKey: "libraryPointTitle",
+    descriptionKey: "libraryPointDescription",
   },
   {
     icon: "film-outline",
-    title: "Carrying trusted voices into new formats",
-    description:
-      "We are rebuilding how gospel stories are told visually, pairing trusted translations with modern formats so the message can move freely across platforms, cultures, and screens.",
+    titleKey: "formatsPointTitle",
+    descriptionKey: "formatsPointDescription",
   },
   {
     icon: "people-outline",
-    title: "More than a library. A mission-driven team.",
-    description:
-      "Jesus Film Project is a global team of translators, media specialists, editors, and creators turning decades of ministry experience into tools for disciple-makers everywhere.",
+    titleKey: "teamPointTitle",
+    descriptionKey: "teamPointDescription",
   },
 ] as const
-
-export const HIGHLIGHTS_LABEL = "What we are building next"
 
 export const HIGHLIGHTS: readonly MissionHighlight[] = [
+  { titleKey: "nextStepsTitle", descriptionKey: "nextStepsDescription" },
+  { titleKey: "mediaLibraryTitle", descriptionKey: "mediaLibraryDescription" },
   {
-    title: "Next Steps Platform",
-    description:
-      "Connect viewers with tangible opportunities on their spiritual journey, helping them take a next step into community, Scripture, or mission.",
-  },
-  {
-    title: "Evangelistic Media Library",
-    description:
-      "An extensive Christian media library with thousands of videos, films, and resources available in multiple languages for ministry and evangelism worldwide.",
-  },
-  {
-    title: "Digital Tools for Ministries",
-    description:
-      "Video management, content distribution, audience engagement, and analytics designed to help ministries reach more people effectively.",
+    titleKey: "ministryToolsTitle",
+    descriptionKey: "ministryToolsDescription",
   },
 ] as const
-
-export const INVITE_EYEBROW = "You're invited"
-
-export const INVITE_HEADLINE_PREFIX = "Help build "
-export const INVITE_HEADLINE_ACCENT = "the next generation"
-export const INVITE_HEADLINE_SUFFIX = " of mission tools"
-
-export const INVITE_BODY =
-  "We're inviting practitioners, creators, and partners into early access. Test new tools first, give feedback, and help shape products designed for real mission work."
-
-export const BETA_CTA_LABEL = "Become a beta tester"

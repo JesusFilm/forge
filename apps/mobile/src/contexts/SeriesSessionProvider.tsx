@@ -75,7 +75,9 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
       reconcilerRef.current = markUserChoice(reconcilerRef.current)
       setSelectedLanguageSlugState(slug)
       // Carry-through: persist by unique slug so the tapped episode opens in it.
-      if (slug) setPreferredAudioLanguage(slug)
+      // Admin's ChildDubLanguage has no iso3, so a new language's code stays
+      // unknown until the watch screen fills it from the episode's dub.
+      if (slug) setPreferredAudioLanguage(slug, null)
     },
     [setPreferredAudioLanguage],
   )
@@ -89,7 +91,7 @@ export function SeriesSessionProvider({ children }: { children: ReactNode }) {
 
   // Default the language once per series, as soon as the language union is
   // available, unless the user already chose. Resolution order (resolveDefaultSlug):
-  // persisted preference → device locale → series primary → English → first.
+  // persisted preference → defaultAudioLanguage() → series primary → English → first.
   useEffect(() => {
     const options =
       series?.languages.map((l) => ({

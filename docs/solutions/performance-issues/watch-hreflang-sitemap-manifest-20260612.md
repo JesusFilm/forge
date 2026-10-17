@@ -66,7 +66,7 @@ language or language-region shape, such as `en` or `pt-BR`. Unsupported script
 or numeric-region tags, missing tags, and duplicate normalized hreflang values
 are skipped and counted instead of emitted.
 
-**Superseded in part, 2026-09-22 (feat-716 / FGE-183, formerly feat-533).** That hreflang filter
+**Superseded in part, 2026-09-22 (feat-733 / FGE-183, formerly feat-716 and feat-533).** That hreflang filter
 used to decide sitemap _inclusion_ too, because every `<loc>` was derived from
 the alternate list, so roughly 1,900 playable languages with no ISO-639-1 code
 had no sitemap URL at all. Video route groups now also carry `languageSlugs` —

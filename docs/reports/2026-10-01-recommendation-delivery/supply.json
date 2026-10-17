@@ -1,0 +1,4646 @@
+[
+  [
+    {
+      "locale": "en",
+      "audio_language_slug": "ipunu",
+      "has_current_pool": false,
+      "requests": "11",
+      "partial": "11",
+      "min_cards": 1,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbii",
+      "has_current_pool": false,
+      "requests": "11",
+      "partial": "10",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "fr",
+      "audio_language_slug": "french-african",
+      "has_current_pool": true,
+      "requests": "10",
+      "partial": "9",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "idioma-wanca",
+      "has_current_pool": false,
+      "requests": "9",
+      "partial": "9",
+      "min_cards": 3,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "english-african",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "8",
+      "min_cards": 1,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tzotzil-chamula",
+      "has_current_pool": false,
+      "requests": "39",
+      "partial": "7",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nupe",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "7",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "wa-vo",
+      "has_current_pool": false,
+      "requests": "6",
+      "partial": "6",
+      "min_cards": 1,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bariba",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "5",
+      "min_cards": 2,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "saura-2",
+      "has_current_pool": false,
+      "requests": "33",
+      "partial": "4",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "padoe",
+      "has_current_pool": false,
+      "requests": "15",
+      "partial": "4",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "arumanian",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "4",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ikpeshi",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "4",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "naxi",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "4",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kwanyama",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "4",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "uzbek-southern",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "4",
+      "min_cards": 1,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dari",
+      "has_current_pool": false,
+      "requests": "15",
+      "partial": "3",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "loloda",
+      "has_current_pool": false,
+      "requests": "13",
+      "partial": "3",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mende",
+      "has_current_pool": false,
+      "requests": "9",
+      "partial": "3",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "abure",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "3",
+      "min_cards": 3,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mandinka",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "3",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nahuatl-central-huasteca",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "3",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lamalera",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "3",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sengwer",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 2,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bali-madya",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "oromo-eastern",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "vasui",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ternate",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 3,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kalmyk-oirat",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 2,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tai-don",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "3",
+      "min_cards": 1,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "syriac",
+      "has_current_pool": false,
+      "requests": "13",
+      "partial": "2",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "cubeo",
+      "has_current_pool": false,
+      "requests": "9",
+      "partial": "2",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "havu",
+      "has_current_pool": false,
+      "requests": "9",
+      "partial": "2",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "uzbek-northern",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bassa",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "semelai",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "arabic-hijazi",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "balangao",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fulfulde-maasina",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kupsapiiny",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "thradhri-kohli",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "buriat-russia",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "2",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bedamuni",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "2",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "arabic-bedouin",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kuvi",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ese-ejja",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "maninka-konyanka",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "arabic-juba",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mangalorean-konkani",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "arabic-khuzestani",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 3,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ache",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ngas",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nigerian-pidgin-english",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kim",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "khoekhoegowab",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sengele",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tai-nua",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dongo",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kalenjin-kipsigis",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pijin",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 2,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "shanghainese",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mundari",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "2",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "guro",
+      "has_current_pool": false,
+      "requests": "10",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bali",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tachelhit",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "wolaytta",
+      "has_current_pool": false,
+      "requests": "6",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gilaki-rashti",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "traditional-japanese",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "marma",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "twi",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "luganda",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "burmese-common",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "oadki",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "toposa",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "krio",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gogo",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sranan-tongo",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "toma",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "crioulo-upper-guinea",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kekchi",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tzeltal-tenejapa",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dogon-toro-so",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "zarma",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "akha",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lika",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dusun",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tem",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bambara",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbeya",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lamba",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "rade",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tehl",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "olunyole",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sedoa",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "samia",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sanggau",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "abureni",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "a-hmao",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "akoose",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "alur",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "angika",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "assamese-muslim",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "assyrian",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "azha",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "baiso",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bangi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bekwel",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "betawi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bete-gagnoa",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bete-guiberoua",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "biafada",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "binandere",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bodo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bokyi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "brahui",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bukharian",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bwazza",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "cabecar",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "carib-eastern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "cerma",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chatgaya-chittagonian-hindu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chilcotin",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "zul",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "col",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "cook-islands-maori",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "cuicateco-tepeuxila",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "cuyonon",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dadeldhureli",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "didinga",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ditammari",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dogose",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "doondo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "doromu-koki",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dulangan-manobo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "eastern-garame",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "zapoteco-mitla",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "yerukula",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "edo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "enga",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "english-british",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "english-north-american-indigenous",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ese",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "yemsa",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fordata",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "yao",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "xiang",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fulfulde-western-niger",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gao",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbe-tofin",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbe-weme",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "wanga-luhya",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ghomala",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ghotuo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "vanuma",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gojri",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gokana",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gonja",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "vai",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "hadiyya",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "halbi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "hazaragi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "huba",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ibibio",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "igede",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ila",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "urim",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ile-ape",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "innu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "iyaa",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "javanese",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "jiamao",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "juray",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kachhi-gujerati",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kamuku",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "karakalpak",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "karbi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tulu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kechwa-san-martin",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kisan",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kohli-parkari",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "koho",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kroumen-plapo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kru",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kulango-bondoukou",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mwani",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nafaanra",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "naga-zeme",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nage",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nahuatl-northern-puebla",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tat-juhuri",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tal",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ndruna",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ndut",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "newari",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ngakarimojong",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ngindo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nias",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nuni-southern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nyanga",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nyole",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "okrika",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sakalava-besalampy",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "oro-wari-2",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "papel",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "suri-tirmaga-chai",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pasaale",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "suodi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pashto-southern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pattapu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sikkiligar",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "phom",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "siang",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "shughni",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "poke",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "powari",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "seselwa-creole",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "qanjobal",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "quechua-north-bolivian",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "rejang",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sena-malawi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sena",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "romani-caldarasi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "rumu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "runyankole",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "runyoro",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ruwila",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ticuna",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kwaraae",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kwatay",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lelemi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lepki",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tharu-kathariya",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "luchazi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lugbara",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lumasaba",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tharaka",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "luvale",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "madura",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "malay-bukit",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "temi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mam-northern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "marakwet",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "marba",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mayan",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "merwari",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "minianka",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "teke-central",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mru",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "muna",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "munukutuba",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mwan",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "1",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "english",
+      "has_current_pool": true,
+      "requests": "1885",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "es",
+      "audio_language_slug": "spanish-latin-american",
+      "has_current_pool": true,
+      "requests": "1112",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "fr",
+      "audio_language_slug": "french",
+      "has_current_pool": true,
+      "requests": "323",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "id",
+      "audio_language_slug": "indonesian-yesus",
+      "has_current_pool": true,
+      "requests": "119",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-modern-standard",
+      "has_current_pool": true,
+      "requests": "88",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "hi",
+      "audio_language_slug": "hindi",
+      "has_current_pool": true,
+      "requests": "76",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ru",
+      "audio_language_slug": "russian",
+      "has_current_pool": true,
+      "requests": "65",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "pt",
+      "audio_language_slug": "portuguese-brazil",
+      "has_current_pool": true,
+      "requests": "57",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "es",
+      "audio_language_slug": "spanish-castilian",
+      "has_current_pool": true,
+      "requests": "56",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "vi",
+      "audio_language_slug": "vietnamese",
+      "has_current_pool": true,
+      "requests": "44",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "de",
+      "audio_language_slug": "german-standard",
+      "has_current_pool": true,
+      "requests": "38",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "tr",
+      "audio_language_slug": "turkish",
+      "has_current_pool": true,
+      "requests": "33",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ur",
+      "audio_language_slug": "urdu",
+      "has_current_pool": true,
+      "requests": "33",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "id",
+      "audio_language_slug": "indonesian-isa",
+      "has_current_pool": true,
+      "requests": "30",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ja",
+      "audio_language_slug": "japanese",
+      "has_current_pool": true,
+      "requests": "29",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ko",
+      "audio_language_slug": "korean",
+      "has_current_pool": true,
+      "requests": "23",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "th",
+      "audio_language_slug": "thai",
+      "has_current_pool": true,
+      "requests": "18",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "fil",
+      "audio_language_slug": "tagalog",
+      "has_current_pool": true,
+      "requests": "16",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "hausa",
+      "has_current_pool": false,
+      "requests": "15",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "fa",
+      "audio_language_slug": "farsi-western",
+      "has_current_pool": true,
+      "requests": "15",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-egyptian-colloquial",
+      "has_current_pool": true,
+      "requests": "14",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "bn",
+      "audio_language_slug": "bengali-indian",
+      "has_current_pool": true,
+      "requests": "12",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bhojpuri-nepal",
+      "has_current_pool": false,
+      "requests": "9",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "mn",
+      "audio_language_slug": "mongolian-halh",
+      "has_current_pool": true,
+      "requests": "9",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-moroccan-spoken",
+      "has_current_pool": true,
+      "requests": "8",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bemba",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "karunsie",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "bn",
+      "audio_language_slug": "bangla-muslim",
+      "has_current_pool": true,
+      "requests": "8",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "burmese-standard",
+      "has_current_pool": false,
+      "requests": "8",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tembarissa",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "icheve",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "provencal",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "miao-eastern-qiandong",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "basang",
+      "has_current_pool": false,
+      "requests": "7",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "he",
+      "audio_language_slug": "hebrew",
+      "has_current_pool": true,
+      "requests": "6",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chhattisgarhi",
+      "has_current_pool": false,
+      "requests": "6",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-sudanese-spoken",
+      "has_current_pool": true,
+      "requests": "6",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sylheti",
+      "has_current_pool": false,
+      "requests": "6",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-modern-standard-egyptian",
+      "has_current_pool": true,
+      "requests": "5",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "flemish",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ngbugu",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "western-lipo",
+      "has_current_pool": false,
+      "requests": "5",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "igbo",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-taizzi-yemeni",
+      "has_current_pool": true,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fulfulde-caka-nigeria",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fur",
+      "has_current_pool": false,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-algerian-spoken",
+      "has_current_pool": true,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "kk",
+      "audio_language_slug": "kazakh",
+      "has_current_pool": true,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "pt",
+      "audio_language_slug": "portuguese-portugal",
+      "has_current_pool": true,
+      "requests": "4",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "purepecha-western-highland",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "rendille",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ko",
+      "audio_language_slug": "kurmanji-standard",
+      "has_current_pool": true,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bagri",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "afar",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "vi",
+      "audio_language_slug": "vietnamese-northern",
+      "has_current_pool": true,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "paranan",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-tunisian",
+      "has_current_pool": true,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-saidi-spoken",
+      "has_current_pool": true,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "susu",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "azerbaijani-north",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kabyle",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sardinian-logudorese",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "koli-wadiyara",
+      "has_current_pool": false,
+      "requests": "3",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pashto-eastern-afghan",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "awadhi",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-gulf",
+      "has_current_pool": true,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "alangan",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "odiya",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "th",
+      "audio_language_slug": "thai-northern",
+      "has_current_pool": true,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-palestinian",
+      "has_current_pool": true,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nta",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "romani-balkan",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sambalpuri",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fulfulde-pulaar",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nakanai",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kreol-mauricean",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fon-gbe",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nahuatl-western-huasteca",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "suba",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "moore",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "jula",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chinese-hokkien-amoy",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "jamaican-patwa",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pohnpeian",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mapudungun",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bhojpuri",
+      "has_current_pool": false,
+      "requests": "2",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fulfulde-adamawa",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "yaka-d-r-c",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "fulacunda",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ede-cabe",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "eastern-poqomchi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dhundari",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "zhuang-yongnan",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chingoni",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chatgaya-chittagonian-muslim",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "chaldean",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bobe",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "banda-linda",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "badaga",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bacama-bwatiye",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ko",
+      "audio_language_slug": "hamgyongdo",
+      "has_current_pool": true,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "anufo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ru",
+      "audio_language_slug": "central-asian-russian",
+      "has_current_pool": true,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "ar",
+      "audio_language_slug": "arabic-iraqi-baghdadi",
+      "has_current_pool": true,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "saraiki-megwhal",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "sabu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "romani-balkan-romania",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "quechua-south-bolivian",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pougouli",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "shekhawati",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "piapoco",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "phende",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "pashto-yusufzai",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "subanen-northern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "owa",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "omwunra-toqura",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "nosu-yinuo",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mundang",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "moba",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mam-central",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "maasai",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lusoga",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lingao",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "themne",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kurdish-afrini",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kurdi-hawrami",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tidung-southern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kurdi-behdini",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tsishingini",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "tu-huzhu",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "karina",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ukue",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ilchamus",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "huitoto-murui",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gurgula",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "grebo-northern",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "goan-konkani",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gikyode",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gen-gbe",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gagauz",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gaddi",
+      "has_current_pool": false,
+      "requests": "1",
+      "partial": "0",
+      "min_cards": 6,
+      "max_cards": 6
+    }
+  ],
+  [
+    {
+      "locale": "en",
+      "status": "published",
+      "rows": "1180",
+      "videos": "1180"
+    },
+    {
+      "locale": "fr",
+      "status": "published",
+      "rows": "1136",
+      "videos": "1136"
+    }
+  ],
+  [
+    {
+      "locale": "en",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": true,
+      "requests": "235",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "te",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "74",
+      "seed_contexts": "30"
+    },
+    {
+      "locale": "ckb",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "34",
+      "seed_contexts": "25"
+    },
+    {
+      "locale": "zh",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "31",
+      "seed_contexts": "24"
+    },
+    {
+      "locale": "ta",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "20",
+      "seed_contexts": "11"
+    },
+    {
+      "locale": "am",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "19",
+      "seed_contexts": "11"
+    },
+    {
+      "locale": "sw",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "17",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "kn",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "17",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "it",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "16",
+      "seed_contexts": "13"
+    },
+    {
+      "locale": "pa",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "14",
+      "seed_contexts": "8"
+    },
+    {
+      "locale": "af",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "14",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "ro",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "13",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "ne",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "12",
+      "seed_contexts": "7"
+    },
+    {
+      "locale": "en",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": true,
+      "requests": "11",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "lt",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "11",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "nl",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "11",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "no",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "11",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "ro",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "10",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "yue",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "10",
+      "seed_contexts": "6"
+    },
+    {
+      "locale": "si",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "10",
+      "seed_contexts": "7"
+    },
+    {
+      "locale": "is",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "wo",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "pl",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "7"
+    },
+    {
+      "locale": "ht",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "st",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "6"
+    },
+    {
+      "locale": "rw",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "ceb",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "8",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "ms",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "7",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "mg",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "7",
+      "seed_contexts": "7"
+    },
+    {
+      "locale": "uk",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "7",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "tyv",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "7",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "tpi",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "7",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "tg",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "7",
+      "seed_contexts": "7"
+    },
+    {
+      "locale": "as",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "zh-Hans",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "6"
+    },
+    {
+      "locale": "tsg",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "lo",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "ml",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "my",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "mr",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "6",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "dv",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "cs",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "el",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "fi",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "fi",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "inh",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "ky",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "5"
+    },
+    {
+      "locale": "ny",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "rn",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "sm",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "sq",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "ty",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "zh-Hant",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "5",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "yo",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "sv",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "hu",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "hr",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "zh",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "xh",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "uk",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "ilo",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "tk",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "4",
+      "seed_contexts": "4"
+    },
+    {
+      "locale": "yo",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "cak",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ve",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "cs",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "mey-Latn",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "km",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "mai",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "gu",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "tzm",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "ln",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "sk",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "sk",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "3",
+      "seed_contexts": "3"
+    },
+    {
+      "locale": "pa",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "mr",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "nd",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "nl",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "ny",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "be",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "hy",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "pl",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "hif",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "am",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "sw",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "tt",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "ug",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "lua",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "lt",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "2",
+      "seed_contexts": "2"
+    },
+    {
+      "locale": "hr",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ba",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ga",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ka",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "fo",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ta",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "et",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "da",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "pt",
+      "fallback_reason": "retrieval_timeout",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": true,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "to",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "pau",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ts",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "pap",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "kha",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "zu",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "bsc",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "krc",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "udm",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "mt",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ug",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "bo",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "nso",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "nr",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "bg",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "it",
+      "fallback_reason": "seed_embedding_unavailable",
+      "has_transcript": false,
+      "has_active_seed": false,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "no",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ixl",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "sl",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "sd",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "sn",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "mk",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "sr",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    },
+    {
+      "locale": "ss",
+      "fallback_reason": "no_candidates",
+      "has_transcript": true,
+      "has_active_seed": true,
+      "locale_has_published_content": false,
+      "requests": "1",
+      "seed_contexts": "1"
+    }
+  ]
+]

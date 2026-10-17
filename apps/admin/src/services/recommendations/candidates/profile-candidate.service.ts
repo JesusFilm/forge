@@ -8,6 +8,7 @@ import {
 } from "../candidate"
 import { buildSemanticCandidateMuxThumbnailUrl } from "../delivery-retriever"
 import { RecommendationInternalStateError } from "../errors"
+import { recommendationTranscriptLocale } from "../locale-identity"
 import {
   PROFILE_CLUSTERING_VERSION,
   PROFILE_PROJECTION_VERSION,
@@ -187,10 +188,12 @@ export function createDatabaseProfileSourceNominationGenerator(
           generation.cohort_quality AS "cohortQuality",
           interest.interest_ordinal AS ordinal,
           interest.kind,
-          interest.embedding::text AS "vectorText"
+          COALESCE(interest.embedding, vector_snapshot.embedding)::text AS "vectorText"
         FROM recommendation_profile_projection_generation generation
         JOIN recommendation_profile_interest interest
           ON interest.generation_id = generation.id
+        LEFT JOIN recommendation_profile_vector_snapshot vector_snapshot
+          ON vector_snapshot.digest = interest.vector_digest
         LEFT JOIN recommendation_profile profile
           ON profile.id = generation.profile_id
         WHERE generation.id = ${context.contextProjection.ref}
@@ -320,7 +323,7 @@ export async function getLiveProfileCandidates(
       selected.lineage_eligible AS "lineageEligible",
       interest.interest_ordinal AS ordinal,
       interest.kind::text AS kind,
-      interest.embedding::text AS "vectorText"
+      COALESCE(interest.embedding, vector_snapshot.embedding)::text AS "vectorText"
     FROM validated_generation selected
     JOIN recommendation_profile_projection_generation generation
       ON generation.id = selected.id
@@ -328,6 +331,8 @@ export async function getLiveProfileCandidates(
       ON interest.generation_id = generation.id
       AND interest.expires_at > ${input.now}
       AND selected.lineage_eligible = true
+    LEFT JOIN recommendation_profile_vector_snapshot vector_snapshot
+      ON vector_snapshot.digest = interest.vector_digest
     ORDER BY
       CASE interest.kind WHEN 'session' THEN 0 ELSE 1 END,
       interest.interest_ordinal
@@ -405,6 +410,7 @@ export async function queryProfileCandidates(
 ): Promise<ProfileCandidateRow[]> {
   const interests = input.projection.interests.slice(0, MAX_PROFILE_INTERESTS)
   if (interests.length === 0) return []
+  const transcriptLocale = recommendationTranscriptLocale(input.context.locale)
   const values = Prisma.join(
     interests.map(
       (interest) =>
@@ -446,8 +452,8 @@ export async function queryProfileCandidates(
         FROM video_transcript_chunk candidate
         JOIN video_transcript transcript ON transcript.id = candidate.transcript_id
         WHERE candidate.embedding IS NOT NULL
-          AND candidate.language = ${input.context.locale}
-          AND transcript.language = ${input.context.locale}
+          AND candidate.language = ${transcriptLocale}
+          AND transcript.language = ${transcriptLocale}
           ${activeTranscriptContentEmbeddingWhere({
             transcriptAlias: "transcript",
             chunkAlias: "candidate",

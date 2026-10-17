@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { ACCENT } from "../../lib/color"
 
 /**
@@ -8,23 +9,26 @@ import { ACCENT } from "../../lib/color"
  * instead of a misleading "nothing here" state.
  */
 export function SheetError({
-  message = "Couldn't load. Check your connection and try again.",
+  message,
   onRetry,
 }: {
   message?: string
   onRetry: () => void
 }) {
+  const t = useT("ListSheet")
+  const tCommon = useT("Common")
   return (
     <View style={styles.container}>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={styles.message}>{message ?? t("loadError")}</Text>
       <Pressable
         onPress={onRetry}
         style={styles.retryButton}
         accessibilityRole="button"
-        accessibilityLabel="Retry"
+        accessibilityLabel={tCommon("retry")}
         hitSlop={8}
+        {...{ "dd-action-name": "sheet-error-retry" }}
       >
-        <Text style={styles.retryText}>Retry</Text>
+        <Text style={styles.retryText}>{tCommon("retry")}</Text>
       </Pressable>
     </View>
   )

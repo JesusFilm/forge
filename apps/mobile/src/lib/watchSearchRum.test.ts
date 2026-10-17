@@ -1,4 +1,3 @@
-import { SEARCH_LANGUAGE_SLUG } from "./watchSearch"
 import {
   WATCH_SEARCH_RESULT_CLICKED_ACTION,
   buildWatchSearchResultClickContext,
@@ -54,7 +53,11 @@ describe("buildWatchSearchResultClickContext", () => {
         email: "person@example.com",
         query: "raw user query",
       }),
-      { position: 2, searchRequestId: "req-1234-5678" },
+      {
+        position: 2,
+        searchRequestId: "req-1234-5678",
+        searchLanguageSlug: "english",
+      },
     )
     expect(Object.keys(context).sort()).toEqual(EXPECTED_KEYS)
     expect(Object.keys(context)).toHaveLength(EXPECTED_KEYS.length)
@@ -63,7 +66,7 @@ describe("buildWatchSearchResultClickContext", () => {
   it("carries the EXPERIENCE result type as-is", () => {
     const context = buildWatchSearchResultClickContext(
       makeResult({ type: "EXPERIENCE" }),
-      { position: 1, searchRequestId: "req-1" },
+      { position: 1, searchRequestId: "req-1", searchLanguageSlug: "english" },
     )
     expect(context["watch_search.result_type"]).toBe("EXPERIENCE")
   })
@@ -71,7 +74,7 @@ describe("buildWatchSearchResultClickContext", () => {
   it("caps result_title at 160 chars with an ellipsis", () => {
     const context = buildWatchSearchResultClickContext(
       makeResult({ title: "x".repeat(500) }),
-      { position: 1, searchRequestId: "req-1" },
+      { position: 1, searchRequestId: "req-1", searchLanguageSlug: "english" },
     )
     const title = context["watch_search.result_title"] as string
     expect(title.length).toBeLessThanOrEqual(160)
@@ -81,22 +84,18 @@ describe("buildWatchSearchResultClickContext", () => {
   it("flattens newlines and tabs in result_title", () => {
     const context = buildWatchSearchResultClickContext(
       makeResult({ title: "line one\r\nline two\tend" }),
-      { position: 1, searchRequestId: "req-1" },
+      { position: 1, searchRequestId: "req-1", searchLanguageSlug: "english" },
     )
     expect(context["watch_search.result_title"]).toBe("line one  line two end")
   })
 
-  it("emits the request's search_language_slug", () => {
+  it("emits the search's own display slug when the UI is not English (U7)", () => {
     const context = buildWatchSearchResultClickContext(makeResult(), {
       position: 1,
       searchRequestId: "req-1",
+      searchLanguageSlug: "russian",
     })
-    // Must equal what buildWatchSearchInput actually sends, or every click
-    // becomes un-joinable with the request it came from (TV's "en" bug).
-    expect(context["watch_search.search_language_slug"]).toBe(
-      SEARCH_LANGUAGE_SLUG,
-    )
-    expect(context["watch_search.search_language_slug"]).toBe("english")
+    expect(context["watch_search.search_language_slug"]).toBe("russian")
   })
 
   it("omits route_language_slug, which the request never carries", () => {
@@ -106,6 +105,7 @@ describe("buildWatchSearchResultClickContext", () => {
       buildWatchSearchResultClickContext(makeResult(), {
         position: 1,
         searchRequestId: "req-1",
+        searchLanguageSlug: "english",
       }),
     ).not.toHaveProperty("watch_search.route_language_slug")
   })
@@ -115,6 +115,7 @@ describe("buildWatchSearchResultClickContext", () => {
       buildWatchSearchResultClickContext(makeResult(), {
         position,
         searchRequestId: "req-1",
+        searchLanguageSlug: "english",
       })["watch_search.result_position"]
     expect(at(0)).toBe(1)
     expect(at(-4)).toBe(1)
@@ -126,7 +127,7 @@ describe("buildWatchSearchResultClickContext", () => {
     const rawQuery = "super secret raw query text"
     const context = buildWatchSearchResultClickContext(
       makeResult({ query: rawQuery, snippet: rawQuery }),
-      { position: 1, searchRequestId: "req-1" },
+      { position: 1, searchRequestId: "req-1", searchLanguageSlug: "english" },
     )
     expect(JSON.stringify(context)).not.toContain(rawQuery)
     expect(context).not.toHaveProperty("watch_search.query")
