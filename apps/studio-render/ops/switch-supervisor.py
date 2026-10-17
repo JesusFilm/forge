@@ -55,7 +55,7 @@ state = Path('/var/lib/forge-studio')
 drain = state / 'drain'
 durable_write(drain, b'')
 unit = 'forge-studio-supervisor.service'
-end = time.monotonic() + 1200
+end = time.monotonic() + 1500
 while True:
     active = run(['/usr/bin/systemctl', 'show', unit, '--property=ActiveState', '--value']).stdout.strip()
     if active in ('inactive', 'failed', ''):

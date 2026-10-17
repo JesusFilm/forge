@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 16, 2026)
 
-- **Total tickets:** 848
+- **Total tickets:** 850
 - **Complete:** 630
 - **Cancelled:** 41
-- **In progress:** 68
+- **In progress:** 69
 - **Not started:** 52
-- **Blocked:** 57
+- **Blocked:** 58
 - **Overdue and open:** 160
 
 ## Feature Index
@@ -70,6 +70,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | complete    |
 | [feat-559](content-discovery/feat-559-recommendation-crawler-traffic-isolation.md)                             | Isolate crawler and speculative recommendation traffic before persistence                       | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
+| [feat-712](content-discovery/feat-712-recommendation-reconciliation-shared-memory.md)                          | Bound recommendation reconciliation shared memory                                               | nisal      | P0       | 2026-10-16 | 1    | 2026-10-16 | in-progress |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | cancelled   |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | cancelled   |
@@ -321,6 +322,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-713](media-generation/feat-713-studio-verified-source-duration.md)                    | Bound Studio descriptor sources by actual HLS duration                | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
 | [feat-714](media-generation/feat-714-studio-reused-source-segment-budget.md)                | Reuse source downloads within Studio render preparation               | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
 | [feat-715](media-generation/feat-715-studio-preparation-deadline.md)                        | Keep full Studio source preparation inside its execution deadline     | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | in-progress |
+| [feat-716](media-generation/feat-716-studio-full-render-profile.md)                         | Version the Studio full-render preparation and execution budget       | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | blocked     |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -405,7 +407,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-639](platform/feat-639-current-base-dependency-backports.md)                     | Refresh held dependency backports on October default                               | tataihono  | P0       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
-| [feat-717](platform/feat-717-validate-enable-watch-seo-workspace.md)                   | Validate and enable the Watch SEO workspace                                        | unassigned | P1       | —          | —    | —          | not-started |
+| [feat-719](platform/feat-719-validate-enable-watch-seo-workspace.md)                   | Validate and enable the Watch SEO workspace                                        | unassigned | P1       | —          | —    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                       | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)                  | Roadmap Operations and Owner Hygiene                                               | josh       | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
@@ -695,7 +697,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-707](platform/feat-707-watch-feedback-mobile-overflow.md)                        | Keep Watch feedback within the mobile dialog width                                 | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
-| [feat-716](platform/feat-716-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
+| [feat-718](platform/feat-718-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |

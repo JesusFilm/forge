@@ -1,11 +1,11 @@
 ---
-id: "feat-717"
+id: "feat-719"
 title: "Validate and enable the Watch SEO workspace"
 owner: "unassigned"
 priority: "P1"
 status: "planned"
 depends_on:
-  - "feat-716"
+  - "feat-718"
 blocks: []
 tags:
   - "platform"
