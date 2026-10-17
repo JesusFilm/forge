@@ -6,6 +6,7 @@ import { adminGraphql } from "@forge/admin-graphql"
 
 import type { CollectionDownloadEpisode } from "@/components/watch/collection-download-options"
 import client from "@/lib/admin-client"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import { tryAsContentSlug, tryAsLocaleSlug } from "@/lib/routes"
 
 const COLLECTION = adminGraphql(`
@@ -31,7 +32,20 @@ export type WatchPartnerDownloadCollection = {
   episodes: CollectionDownloadEpisode[]
 }
 
-/** Lazy metadata only. Download availability and capabilities keep their existing resolver. */
+/** Default-off: an unreadable flag is off, so the action stays dark. */
+async function isPartnerDownloadsEnabled(): Promise<boolean> {
+  try {
+    return await isWatchAudienceEnabled()
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Lazy metadata only. Download availability and capabilities keep their existing resolver.
+ * A Server Action is a public POST endpoint whether or not any UI mounts it, so
+ * the audience release gate is checked before any input or Admin work.
+ */
 export async function loadWatchPartnerDownloadCollection(input: {
   collectionSlug: string
   languageSlug: string
@@ -40,6 +54,9 @@ export async function loadWatchPartnerDownloadCollection(input: {
   | { ok: true; collection: WatchPartnerDownloadCollection }
   | { ok: false; reason: "invalid-input" | "unavailable" | "failed" }
 > {
+  if (!(await isPartnerDownloadsEnabled())) {
+    return { ok: false, reason: "unavailable" }
+  }
   const slug = tryAsContentSlug(input.collectionSlug)
   const languageSlug = tryAsLocaleSlug(input.languageSlug)
   if (

@@ -6,6 +6,7 @@
 // U5b/U6.
 
 import { builder } from "@/graphql/builder"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import type { WatchAudienceConfigurationProjection } from "@/services/watch-audience-projection"
 import type { WatchSettingShape } from "@/services/watch-setting.service"
 
@@ -45,8 +46,12 @@ WatchSettingRef.implement({
       args: { locale: t.arg.string() },
       description:
         "Shared audience configuration from the same published default template. Requested locale only (STRICT NULL); an omitted locale uses watchSetting's locale. Never reads homepage configuration or drafts.",
-      resolve: (root, args, ctx) =>
-        ctx.services.watchSetting.getWatchAudience(root, args.locale),
+      // Null (absent) while `forge.watch.audience` is off or unreadable; the
+      // published block stays in place for when the flag turns on.
+      resolve: async (root, args, ctx) =>
+        (await isWatchAudienceEnabled())
+          ? ctx.services.watchSetting.getWatchAudience(root, args.locale)
+          : null,
     }),
     documentId: t.exposeID("documentId", {
       nullable: true,

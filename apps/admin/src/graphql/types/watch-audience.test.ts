@@ -1,6 +1,16 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const audienceEnabled = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: audienceEnabled,
+}))
+
 import { schema } from "@/graphql/schema"
 import type { GraphQLObjectType } from "graphql"
+
+beforeEach(() => {
+  audienceEnabled.mockReset().mockResolvedValue(true)
+})
 
 describe("Watch audience public SDL and resolver", () => {
   it("distinguishes rejected from absent in the exact public contract", () => {
@@ -56,5 +66,20 @@ describe("Watch audience public SDL and resolver", () => {
     )
     expect(getWatchAudience).toHaveBeenCalledWith(root, "es")
     expect(resolved).toMatchObject({ rejected: true, configJson: null })
+  })
+  it("resolves absent without reading the template while forge.watch.audience is off", async () => {
+    audienceEnabled.mockResolvedValue(false)
+    const fields = (
+      schema.getType("WatchSetting") as GraphQLObjectType
+    ).getFields()
+    const getWatchAudience = vi.fn()
+    const resolved = await fields.watchAudience!.resolve!(
+      { locale: "fr", defaultTemplateExperience: { id: "published" } },
+      { locale: "fr" },
+      { services: { watchSetting: { getWatchAudience } } },
+      {} as never,
+    )
+    expect(resolved).toBeNull()
+    expect(getWatchAudience).not.toHaveBeenCalled()
   })
 })

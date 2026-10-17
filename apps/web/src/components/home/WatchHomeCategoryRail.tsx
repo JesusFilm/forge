@@ -47,6 +47,47 @@ import { languageInventoryPath, tryAsLocaleSlug } from "@/lib/routes"
 import { useTouchGatedPrefetch } from "@/components/home/useTouchGatedPrefetch"
 import { cn } from "@/lib/utils"
 import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
+import { useWatchRole, type WatchRole } from "@/components/watch/watch-role"
+import { useWatchAudiencePresence } from "@/components/watch/watch-audience-presence"
+
+// Role-aware tile ordering (prototype), applied only while the page shows
+// the audience frame. A stable sort: unlisted tiles keep their order after
+// the role's priorities.
+const ROLE_TILE_PRIORITY: Record<WatchRole, readonly string[]> = {
+  explore: ["jesus", "short-videos", "hope", "gospels", "good-news"],
+  grow: ["gospels", "hope", "family", "relationships", "women", "students"],
+  share: [
+    "short-videos",
+    "good-news",
+    "jesus",
+    "hope",
+    "family",
+    "relationships",
+  ],
+  partner: [
+    "training",
+    "good-news",
+    "jesus",
+    "short-videos",
+    "sports",
+    "family",
+  ],
+}
+
+function orderTilesForRole<T extends { key: string; titleKey: string | null }>(
+  cards: readonly T[],
+  role: WatchRole,
+): T[] {
+  const priority = ROLE_TILE_PRIORITY[role]
+  const rank = (c: T) => {
+    const i = priority.findIndex((id) => id === c.key || id === c.titleKey)
+    return i === -1 ? priority.length : i
+  }
+  return [...cards]
+    .map((c, i) => ({ c, i, r: rank(c) }))
+    .sort((a, b) => a.r - b.r || a.i - b.i)
+    .map(({ c }) => c)
+}
 import {
   resolveWatchHomeTiles,
   type WatchHomeRailTileInput,
@@ -205,6 +246,8 @@ export function WatchHomeCategoryRail({
   tiles,
 }: WatchHomeCategoryRailProps) {
   const t = useTranslations("WatchHomeCategories")
+  const { role } = useWatchRole()
+  const audiencePresence = useWatchAudiencePresence()
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const regionRef = useRef<HTMLDivElement | null>(null)
   // Set at the moment a scroll update would unmount the arrow that HAS focus,
@@ -290,7 +333,10 @@ export function WatchHomeCategoryRail({
 
   // Resolution (defaults, overrides, dropping unrenderable tiles) lives in
   // `resolveWatchHomeTiles` so the rules are testable without a renderer.
-  const cards = resolveWatchHomeTiles({ tiles, categoryIds, locale })
+  const resolvedCards = resolveWatchHomeTiles({ tiles, categoryIds, locale })
+  const cards = audiencePresence
+    ? orderTilesForRole(resolvedCards, role)
+    : resolvedCards
 
   if (cards.length === 0) return null
 

@@ -30,6 +30,7 @@ buildCommand = "unset TYPESENSE_API_KEY TYPESENSE_SEARCH_API_KEY TYPESENSE_OPERA
 watchPatterns = [
   "/apps/admin/**",
   "/packages/experience-schema/**",
+  "/packages/feature-flags/**",
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
