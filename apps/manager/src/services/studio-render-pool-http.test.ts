@@ -167,8 +167,10 @@ it("allows input work past 90 seconds and expires within the fixed outer prepara
     )
     const input = vi.fn(
       (_token: string | null, signal: AbortSignal) =>
-        new Promise((resolve) =>
-          signal.addEventListener("abort", () => resolve({}), { once: true }),
+        new Promise<never>((_resolve, reject) =>
+          signal.addEventListener("abort", () => reject(signal.reason), {
+            once: true,
+          }),
         ),
     )
     const handler = createStudioPoolHandler(auth, {
