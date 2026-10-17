@@ -6,6 +6,7 @@
 // U5b/U6.
 
 import { builder } from "@/graphql/builder"
+import type { WatchAudienceConfigurationProjection } from "@/services/watch-audience-projection"
 import type { WatchSettingShape } from "@/services/watch-setting.service"
 
 /**
@@ -17,11 +18,36 @@ import type { WatchSettingShape } from "@/services/watch-setting.service"
  * `t.relation`, so this objectRef shape is invisible by construction.
  */
 
+/** @classification public-shape — validated published projection, no draft reads. */
+const WatchAudienceConfigurationRef =
+  builder.objectRef<WatchAudienceConfigurationProjection>(
+    "WatchAudienceConfiguration",
+  )
+WatchAudienceConfigurationRef.implement({
+  description:
+    "Published default-template audience definition. Null configJson with rejected=true preserves authored presence; consumers must not substitute baked-in copy.",
+  fields: (t) => ({
+    configJson: t.exposeString("configJson", { nullable: true }),
+    sourceLocale: t.exposeString("sourceLocale", { nullable: false }),
+    sourceBlockId: t.exposeString("sourceBlockId", { nullable: false }),
+    rejected: t.exposeBoolean("rejected", { nullable: false }),
+  }),
+})
+
 const WatchSettingRef = builder.objectRef<WatchSettingShape>("WatchSetting")
 
 WatchSettingRef.implement({
   description: "Per-locale homepage configuration for PUBLIC consumer apps.",
   fields: (t) => ({
+    watchAudience: t.field({
+      type: WatchAudienceConfigurationRef,
+      nullable: true,
+      args: { locale: t.arg.string() },
+      description:
+        "Shared audience configuration from the same published default template. Requested locale only (STRICT NULL); an omitted locale uses watchSetting's locale. Never reads homepage configuration or drafts.",
+      resolve: (root, args, ctx) =>
+        ctx.services.watchSetting.getWatchAudience(root, args.locale),
+    }),
     documentId: t.exposeID("documentId", {
       nullable: true,
       description:

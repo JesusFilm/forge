@@ -1131,7 +1131,9 @@ export class ExperienceService {
         const canonical = await tx.experienceLocale.findUniqueOrThrow({
           where: { id: input.id },
           include: {
-            experience: { select: { ownerId: true, archivedAt: true } },
+            experience: {
+              select: { ownerId: true, archivedAt: true, isTemplate: true },
+            },
           },
         })
         if (!canPublishExperienceLocale(user, canonical))
@@ -1163,7 +1165,9 @@ export class ExperienceService {
         if (!draft) {
           throw new NotFoundError("Active ExperienceLocale draft", input.id)
         }
-        const draftData = effectiveDraftData(canonical, draft.snapshot)
+        const draftData = ExperienceLocaleDraftDataSchema.parse(
+          effectiveDraftData(canonical, draft.snapshot),
+        )
         // Publish checks the ASSIGNMENT, not the rendering context: a homepage
         // layout copy must be assigned as the homepage before it can go live,
         // even after its homepage-only blocks were removed.
@@ -1218,7 +1222,11 @@ export class ExperienceService {
         locale: previous.locale,
       })
     }
-    if (published.isHomepage || previous.isHomepage) {
+    if (
+      published.isHomepage ||
+      previous.isHomepage ||
+      previous.experience.isTemplate
+    ) {
       void emitRevalidateWebhook({
         model: "watch-setting",
         slug: null,

@@ -3,6 +3,10 @@ import { notFound } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
 import { setRequestLocale } from "next-intl/server"
 
+import { WatchAudienceBlock } from "@/components/watch/WatchAudienceBlock"
+import { projectWatchAudience } from "@/lib/watch-audience-content"
+import type { WatchAudienceResolution } from "@/lib/watch-audience-config"
+
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { hasUiLocale } from "@/i18n/locales"
@@ -84,9 +88,11 @@ function DraftPreviewBanner({
 function OrdinaryExperiencePreview({
   blocks,
   languageSlug,
+  audience,
 }: {
   blocks: readonly Section[]
   languageSlug: string
+  audience?: WatchAudienceResolution
 }) {
   return (
     <main className="min-h-screen bg-stone-900">
@@ -96,6 +102,15 @@ function OrdinaryExperiencePreview({
             ? block.id
             : `block-${index}`
 
+        if (block.__typename === "WatchAudienceBlock") {
+          return audience ? (
+            <WatchAudienceBlock
+              key={key}
+              audience={audience}
+              languageSlug={languageSlug}
+            />
+          ) : null
+        }
         return (
           <ExperienceSectionRenderer
             key={key}
@@ -129,6 +144,28 @@ export default async function ExperiencePreviewPage({
     (block): block is Section => block !== null,
   )
 
+  // A capability preview renders only its own staged block. It never reads
+  // the published default template or populates a public ISR cache.
+  // Public reads project only the default template's published block, so any
+  // other Experience (or an Admin that sends no template identity) previews
+  // without it. Fail closed: only an explicit `true` shows the questionnaire.
+  const audienceBlocks =
+    preview.isDefaultTemplate === true
+      ? blocks.filter((block) => block.__typename === "WatchAudienceBlock")
+      : []
+  const audienceBlock = audienceBlocks[0]
+  const audience: WatchAudienceResolution | undefined = audienceBlock
+    ? audienceBlocks.length === 1 &&
+      typeof audienceBlock.sectionKey === "string"
+      ? projectWatchAudience({
+          configJson: audienceBlock.configurationJson,
+          sourceLocale: preview.locale,
+          sourceBlockId: audienceBlock.sectionKey,
+          rejected: false,
+        })
+      : { kind: "rejected" }
+    : undefined
+
   setRequestLocale(locale)
   const messages = await loadClientMessages(
     locale,
@@ -136,7 +173,11 @@ export default async function ExperiencePreviewPage({
   )
 
   let content = (
-    <OrdinaryExperiencePreview blocks={blocks} languageSlug={languageSlug} />
+    <OrdinaryExperiencePreview
+      blocks={blocks}
+      languageSlug={languageSlug}
+      audience={audience}
+    />
   )
 
   if (rendersAsHomepage) {
@@ -153,6 +194,7 @@ export default async function ExperiencePreviewPage({
           locale={locale}
           languageSlug={languageSlug}
           dynamicCollectionCacheScope="preview"
+          {...(audience ? { audienceEnabled: true, audience } : {})}
         />
       )
     }

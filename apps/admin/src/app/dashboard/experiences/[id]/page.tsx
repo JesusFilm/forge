@@ -28,6 +28,7 @@ import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
+import { findDefaultWatchTemplateId } from "@/services/watch-default-template"
 import { ForbiddenError } from "@/services/errors"
 import {
   loadExperienceEditorCollectionChildPage,
@@ -302,23 +303,28 @@ export default async function ExperienceEditorPage({
     user: principal,
   })
   const editableLocale = draftState.effective
-  const [mediaLibrary, selectedLocaleLanguageId, activeLocaleDrafts] =
-    await Promise.all([
-      loadMediaLibrary({
-        assetIds: mediaAssetIdsFromExperienceBlocks(
-          Array.isArray(editableLocale.blocks) ? editableLocale.blocks : [],
-        ),
-      }),
-      languageIdForLocale(selectedLocale.locale),
-      prisma.contentRevision.findMany({
-        where: {
-          entityType: "ExperienceLocale",
-          entityId: { in: experience.locales.map((locale) => locale.id) },
-          status: "DRAFT",
-        },
-        select: { entityId: true, revisedAt: true },
-      }),
-    ])
+  const [
+    mediaLibrary,
+    selectedLocaleLanguageId,
+    activeLocaleDrafts,
+    defaultTemplateId,
+  ] = await Promise.all([
+    loadMediaLibrary({
+      assetIds: mediaAssetIdsFromExperienceBlocks(
+        Array.isArray(editableLocale.blocks) ? editableLocale.blocks : [],
+      ),
+    }),
+    languageIdForLocale(selectedLocale.locale),
+    prisma.contentRevision.findMany({
+      where: {
+        entityType: "ExperienceLocale",
+        entityId: { in: experience.locales.map((locale) => locale.id) },
+        status: "DRAFT",
+      },
+      select: { entityId: true, revisedAt: true },
+    }),
+    experience.isTemplate ? findDefaultWatchTemplateId(prisma) : null,
+  ])
   const activeDraftByLocaleId = new Map(
     activeLocaleDrafts.map((draft) => [draft.entityId, draft]),
   )
@@ -945,6 +951,7 @@ export default async function ExperienceEditorPage({
         isHomepage: editableLocale.isHomepage,
         homepageLayout: editableLocale.homepageLayout,
         isTemplate: experience.isTemplate,
+        isDefaultTemplate: experience.id === defaultTemplateId,
         blocksJson: JSON.stringify(editableLocale.blocks ?? [], null, 2),
       }}
       localeEntries={experience.locales.map((locale) => ({
