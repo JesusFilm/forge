@@ -74,6 +74,26 @@ function renderFrame(props: WatchNextStepsProps = {}) {
 }
 
 describe("shared role journey", () => {
+  it("offers the live finder only after Explore answers, and removes it on reset or role change", () => {
+    renderFrame({ languageSlug: "english", locale: "en" })
+    expect(
+      container.querySelector('[data-testid="watch-find-open"]'),
+    ).toBeNull()
+    chooseFirstThree()
+    expect(
+      container.querySelector('[data-testid="watch-find-open"]'),
+    ).not.toBeNull()
+    click("Start over")
+    expect(
+      container.querySelector('[data-testid="watch-find-open"]'),
+    ).toBeNull()
+    chooseFirstThree()
+    click("Grow in faith")
+    expect(
+      container.querySelector('[data-testid="watch-find-open"]'),
+    ).toBeNull()
+  })
+
   for (const surface of ["home", "video"] as const) {
     it.each(WATCH_AUDIENCE_CODE_CONFIG.roles)(
       `${surface}: completes three questions for $id with a real result and alternatives`,

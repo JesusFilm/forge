@@ -15,6 +15,7 @@ import {
   type WatchAudienceConfig,
   type WatchAudienceCurrentVideoTarget,
 } from "@/lib/watch-audience-config"
+import { WatchFindLauncher } from "./WatchFindLauncher"
 import { useWatchRole } from "./watch-role"
 import {
   WatchRoleJourney,
@@ -102,6 +103,16 @@ export function WatchNextSteps({
               key={role}
               definition={definition}
               actions={actions}
+              afterResult={
+                role === "explore" && language && locale ? (
+                  <div className="mt-6">
+                    <WatchFindLauncher
+                      languageSlug={language}
+                      locale={locale}
+                    />
+                  </div>
+                ) : null
+              }
             />
           ) : null}
         </WatchRoleTabs>
