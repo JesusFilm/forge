@@ -18,6 +18,7 @@ process.env.DISABLE_FROM_SURFACE = "1"
 const { selectComposition, renderMedia } = await import("/runtime/renderer.cjs")
 const input = JSON.parse(await read("/input/input.json", "utf8"))
 const served = new Map()
+const mediaUrls = {}
 let sourceIndex = 0
 for (const media of Object.values(input.media)) {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,159}$/.test(media.file))
@@ -80,6 +81,9 @@ for (const media of Object.values(input.media)) {
   )
   media.file = name
   served.set(name, output)
+  // Generated ASCII names refer only to this job's admitted remuxes. The paired
+  // SDK policy reuses these native files instead of copying them over HTTP.
+  mediaUrls[name] = `file://${output}`
 }
 const server = createServer((req, res) => {
   const name = (req.url ?? "").slice(1)
@@ -105,6 +109,7 @@ try {
       input,
       mode: "render",
       mediaBaseUrl: `http://127.0.0.1:${server.address().port}/`,
+      mediaUrls,
     },
     browserExecutable: "/runtime/chrome-launcher",
     timeoutInMilliseconds: 7000,

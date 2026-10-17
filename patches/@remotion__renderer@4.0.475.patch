@@ -1,3 +1,53 @@
+diff --git a/dist/assets/download-and-map-assets-to-file.js b/dist/assets/download-and-map-assets-to-file.js
+index d4201244128bee92b1ad3c5256adb7add72c688e..cbe35bac618ef79ccd22a00452c39e8f7774f456 100644
+--- a/dist/assets/download-and-map-assets-to-file.js
++++ b/dist/assets/download-and-map-assets-to-file.js
+@@ -123,8 +123,45 @@ function validateBufferEncoding(potentialEncoding, dataUrl) {
+         throw new TypeError(errMessage);
+     }
+ }
++// Forge contained renderer only. Capture trusted startup policy before composition code.
++const forgeStudioLocalSources = process.env.FORGE_STUDIO_CODEC_THREADS === '1' && process.env.FORGE_STUDIO_STREAM_FRAMES === '1';
++// Subscribe once per SDK cancellation signal, rather than retaining one callback per frame.
++const forgeStudioLocalAbortSignals = new WeakMap();
+ const downloadAsset = async ({ src, downloadMap, indent, logLevel, shouldAnalyzeAudioImmediately, binariesDirectory, cancelSignalForAudioAnalysis, audioStreamIndex, }) => {
+     var _a, _b, _c;
++    // Resolve admitted remuxes before stage-local download caches, without a second copy.
++    const localSourceMatch = forgeStudioLocalSources && /^file:\/\/\/tmp\/studio-source-(?:0|[1-9][0-9]*)\.mp4$/.exec(src);
++    // `$` can match before a final newline; require the entire original URL.
++    if (localSourceMatch && localSourceMatch[0] === src) {
++        downloadMap.cleanupController.signal.throwIfAborted();
++        let localAbortSignal = cancelSignalForAudioAnalysis && forgeStudioLocalAbortSignals.get(cancelSignalForAudioAnalysis);
++        if (cancelSignalForAudioAnalysis && !localAbortSignal) {
++            const controller = new AbortController();
++            localAbortSignal = controller.signal;
++            forgeStudioLocalAbortSignals.set(cancelSignalForAudioAnalysis, localAbortSignal);
++            cancelSignalForAudioAnalysis(() => controller.abort(new DOMException('Studio remux source read cancelled', 'AbortError')));
++        }
++        localAbortSignal?.throwIfAborted();
++        const localSourcePath = src.slice('file://'.length);
++        const localSourceStat = node_fs_1.default.lstatSync(localSourcePath);
++        if (!localSourceStat.isFile() || localSourceStat.isSymbolicLink() || localSourceStat.size <= 0) {
++            throw new TypeError('Studio remux source must be a nonempty regular file');
++        }
++        if (shouldAnalyzeAudioImmediately) {
++            await (0, get_audio_channels_1.getAudioChannelsAndDuration)({
++                binariesDirectory,
++                downloadMap,
++                src: localSourcePath,
++                indent,
++                logLevel,
++                cancelSignal: cancelSignalForAudioAnalysis,
++                audioStreamIndex,
++            });
++        }
++        downloadMap.cleanupController.signal.throwIfAborted();
++        localAbortSignal?.throwIfAborted();
++        return localSourcePath;
++    }
+     if ((0, compress_assets_1.isAssetCompressed)(src)) {
+         return src;
+     }
 diff --git a/dist/call-ffmpeg.js b/dist/call-ffmpeg.js
 index e488dab94036a037ed601da73c2d8029ae7a51b1..36d5c11d7b8fc679e883ced1e23284059462c392 100644
 --- a/dist/call-ffmpeg.js
@@ -42,7 +92,7 @@ index e488dab94036a037ed601da73c2d8029ae7a51b1..36d5c11d7b8fc679e883ced1e2328405
          env: (0, get_explicit_env_1.getExplicitEnv)(cwd),
          ...options,
 diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
-index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49ccb9fe28 100644
+index a06ba76ecb83a7d31663ce467dc0d1972776c430..d193b24e4d6c86bce27766e5c8b8adf11aff3e54 100644
 --- a/dist/esm/index.mjs
 +++ b/dist/esm/index.mjs
 @@ -4690,6 +4690,21 @@ var makeFileExecutableIfItIsNot = (path5) => {
@@ -85,7 +135,58 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
      cwd,
      env: getExplicitEnv(cwd),
      ...options2
-@@ -20371,7 +20386,9 @@ var renderFrameWithOptionToReject = async ({
+@@ -16287,6 +16302,10 @@ function validateBufferEncoding(potentialEncoding, dataUrl) {
+     throw new TypeError(errMessage);
+   }
+ }
++// Forge contained renderer only. Capture trusted startup policy before composition code.
++const forgeStudioLocalSources = process.env.FORGE_STUDIO_CODEC_THREADS === '1' && process.env.FORGE_STUDIO_STREAM_FRAMES === '1';
++// Subscribe once per SDK cancellation signal, rather than retaining one callback per frame.
++const forgeStudioLocalAbortSignals = new WeakMap();
+ var downloadAsset = async ({
+   src,
+   downloadMap,
+@@ -16297,6 +16316,39 @@ var downloadAsset = async ({
+   cancelSignalForAudioAnalysis,
+   audioStreamIndex
+ }) => {
++  // Resolve admitted remuxes before stage-local download caches, without a second copy.
++  const localSourceMatch = forgeStudioLocalSources && /^file:\/\/\/tmp\/studio-source-(?:0|[1-9][0-9]*)\.mp4$/.exec(src);
++  // `$` can match before a final newline; require the entire original URL.
++  if (localSourceMatch && localSourceMatch[0] === src) {
++    downloadMap.cleanupController.signal.throwIfAborted();
++    let localAbortSignal = cancelSignalForAudioAnalysis && forgeStudioLocalAbortSignals.get(cancelSignalForAudioAnalysis);
++    if (cancelSignalForAudioAnalysis && !localAbortSignal) {
++      const controller = new AbortController();
++      localAbortSignal = controller.signal;
++      forgeStudioLocalAbortSignals.set(cancelSignalForAudioAnalysis, localAbortSignal);
++      cancelSignalForAudioAnalysis(() => controller.abort(new DOMException('Studio remux source read cancelled', 'AbortError')));
++    }
++    localAbortSignal?.throwIfAborted();
++    const localSourcePath = src.slice('file://'.length);
++    const localSourceStat = fs12.lstatSync(localSourcePath);
++    if (!localSourceStat.isFile() || localSourceStat.isSymbolicLink() || localSourceStat.size <= 0) {
++      throw new TypeError('Studio remux source must be a nonempty regular file');
++    }
++    if (shouldAnalyzeAudioImmediately) {
++      await getAudioChannelsAndDuration({
++        binariesDirectory,
++        downloadMap,
++        src: localSourcePath,
++        indent,
++        logLevel,
++        cancelSignal: cancelSignalForAudioAnalysis,
++        audioStreamIndex,
++      });
++    }
++    downloadMap.cleanupController.signal.throwIfAborted();
++    localAbortSignal?.throwIfAborted();
++    return localSourcePath;
++  }
+   if (isAssetCompressed(src)) {
+     return src;
+   }
+@@ -20371,7 +20423,9 @@ var renderFrameWithOptionToReject = async ({
      if (!buffer2) {
        throw new Error("unexpected null buffer");
      }
@@ -96,7 +197,7 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
    }
    const onlyAvailableAssets = assets.filter(truthy);
    const previousAudioRenderAssets = onlyAvailableAssets.map((a) => a.audioAndVideoAssets).flat(2);
-@@ -21043,6 +21060,7 @@ var internalRenderFramesRaw = ({
+@@ -21043,6 +21097,7 @@ var internalRenderFramesRaw = ({
    const browserInstance = puppeteerInstance ?? makeBrowser();
    const resolvedConcurrency = resolveConcurrency(concurrency);
    const openedPages = [];
@@ -104,7 +205,7 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
    return new Promise((resolve2, reject) => {
      const cleanup = [];
      const onError = (err) => {
-@@ -21072,7 +21090,7 @@ var internalRenderFramesRaw = ({
+@@ -21072,7 +21127,7 @@ var internalRenderFramesRaw = ({
          browserInstance
        ]).then(([{ server: openedServer, cleanupServer }, pInstance]) => {
          const { serveUrl, offthreadPort, sourceMap, downloadMap } = openedServer;
@@ -113,7 +214,7 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
          const cycle = cycleBrowserTabs({
            puppeteerInstance: browserReplacer,
            concurrency: resolvedConcurrency,
-@@ -21145,7 +21163,8 @@ var internalRenderFramesRaw = ({
+@@ -21145,7 +21200,8 @@ var internalRenderFramesRaw = ({
            Log.error({ indent, logLevel }, "Unable to close browser tab", err);
          });
        } else {
@@ -123,7 +224,7 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
            return instance.close({ silent: true });
          }).catch((err) => {
            if (!err?.message.includes("Target closed")) {
-@@ -21874,6 +21893,8 @@ var prespawnFfmpeg = (options2) => {
+@@ -21874,6 +21930,8 @@ var prespawnFfmpeg = (options2) => {
  };
  
  // src/prestitcher-memory-usage.ts
@@ -132,7 +233,7 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
  var estimateMemoryUsageForPrestitcher = ({
    width,
    height
-@@ -21892,7 +21913,7 @@ var shouldUseParallelEncoding = ({
+@@ -21892,7 +21950,7 @@ var shouldUseParallelEncoding = ({
      height,
      width
    });
@@ -141,7 +242,7 @@ index a06ba76ecb83a7d31663ce467dc0d1972776c430..0f8db63c8b0f518d4887be51a464ed49
    return {
      hasEnoughMemory,
      freeMemory,
-@@ -23715,7 +23736,14 @@ var internalRenderMediaRaw = ({
+@@ -23715,7 +23773,14 @@ var internalRenderMediaRaw = ({
            if (exitStatus?.type === "quit-with-error") {
              throw new Error(`FFmpeg quit with code ${exitStatus.exitCode}${exitStatus.signal ? ` (signal ${exitStatus.signal})` : ""} while piping frame ${frame}. Stderr: ${exitStatus.stderr}`);
            }
