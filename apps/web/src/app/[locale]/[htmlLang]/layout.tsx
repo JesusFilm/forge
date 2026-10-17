@@ -12,6 +12,7 @@ import {
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
+import { watchScriptFontPreload } from "@/lib/watch-script-font"
 import { WATCH_APP_METADATA } from "@/lib/watch-app-metadata"
 import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
@@ -51,6 +52,7 @@ export default async function RootLayout({
   const htmlLang =
     htmlLangIdentity.locale === locale ? htmlLangIdentity.htmlLang : locale
   const textDirection = textDirectionForLocale(htmlLang)
+  const scriptFontPreload = watchScriptFontPreload(htmlLang)
   setRequestLocale(locale)
   const messages = await loadClientMessages(
     locale,
@@ -63,6 +65,15 @@ export default async function RootLayout({
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
       <head>
+        {scriptFontPreload ? (
+          <link
+            rel="preload"
+            href={scriptFontPreload}
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        ) : null}
         {/* Watch pages render MuxVideo as the hero. Establishing the
             TLS handshake to Mux's image + segment hosts in the document's
             first byte cuts the LCP element's discovery delay because the

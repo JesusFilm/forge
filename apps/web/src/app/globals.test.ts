@@ -1099,3 +1099,98 @@ describe("Watch Home progress ring motion", () => {
     )
   })
 })
+
+describe("Urdu Nastaliq face (FGE-181 / W-084, QA N32)", () => {
+  const family = '"Noto Nastaliq Urdu"'
+  const urduRoot = blockBody(css, ":root:lang(ur) {")
+  const fontFile = join(
+    __dirname,
+    "../../public/fonts/noto-nastaliq-urdu.woff2",
+  )
+
+  /** The declarations of the `@font-face` that names the Nastaliq family. */
+  function nastaliqFace(): string {
+    let from = 0
+    for (;;) {
+      const at = css.indexOf("@font-face", from)
+      if (at === -1) return ""
+      const body = blockBody(css.slice(at), "@font-face")
+      if (body.includes(family)) return body
+      from = at + 1
+    }
+  }
+
+  it("self-hosts a swap face under the Watch base path", () => {
+    const body = nastaliqFace()
+    expect(body).toContain('url("/watch/fonts/noto-nastaliq-urdu.woff2")')
+    expect(body).toContain('format("woff2")')
+    expect(body).toContain("font-display: swap")
+  })
+
+  it("covers Arabic-script code points only, so Latin stays on Montserrat", () => {
+    const range = nastaliqFace().match(/unicode-range:([^;]+);/)?.[1] ?? ""
+    expect(range).toContain("U+0600-06FF")
+    // No Basic Latin / Latin-1 / Latin Extended range.
+    expect(range).not.toMatch(/U\+0([01][0-9A-F]{2})\b/i)
+  })
+
+  it("is referenced from exactly two places: its face and the Urdu root", () => {
+    // A third mention (a utility, a theme token, another :lang rule) would put
+    // the file on pages other than Urdu documents.
+    const mentions = css.split(family).length - 1
+    expect(mentions).toBe(2)
+    // The block's selector must be exactly `:root:lang(ur)` (no list sharing it).
+    const at = css.indexOf(":root:lang(ur) {")
+    const header = css
+      .slice(css.lastIndexOf("}", at) + 1, at)
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+    expect(header.trim()).toBe("")
+    expect(urduRoot).toContain("--watch-font-ur:")
+    expect(urduRoot).toContain(family)
+  })
+
+  it("leads the Urdu stack with Nastaliq and keeps the normal stack behind it", () => {
+    expect(urduRoot.replace(/\s+/g, " ")).toContain(
+      `${family}, var(--font-montserrat, var(--font-native-sans))`,
+    )
+  })
+
+  it("applies the Urdu stack through the sans and serif theme tokens", () => {
+    for (const token of ["--font-sans", "--font-serif"]) {
+      const value =
+        css
+          .match(new RegExp(`${token}:\\s*var\\(([^;]+?)\\);`))?.[1]
+          ?.replace(/\s+/g, " ")
+          .trim() ?? ""
+      expect(value).toBe(
+        "--watch-font-ur, var(--font-montserrat, var(--font-native-sans))",
+      )
+    }
+  })
+
+  it("gives Urdu text blocks Nastaliq leading, outside every cascade layer", () => {
+    // Unlayered on purpose: the tight `leading-*` utilities live in
+    // `@layer utilities`, and only an unlayered rule outranks a layered one
+    // regardless of specificity. Moving this into `@layer base` would make it
+    // lose to every utility and leave Urdu lines colliding.
+    const prose = blockBody(css, ":root:lang(ur) :is(p, li, blockquote")
+    const headings = blockBody(css, ":root:lang(ur) :is(h1, h2")
+    expect(prose).toContain("line-height: 2")
+    expect(headings).toContain("line-height: 1.8")
+    let from = 0
+    for (;;) {
+      const at = css.indexOf("@layer", from)
+      if (at === -1) break
+      expect(blockBody(css.slice(at), "@layer")).not.toContain(
+        ":root:lang(ur) :is(",
+      )
+      from = at + 1
+    }
+  })
+
+  it("ships a small woff2, not the 250 KB source font", () => {
+    const bytes = readFileSync(fontFile)
+    expect(bytes.subarray(0, 4).toString("latin1")).toBe("wOF2")
+    expect(bytes.length).toBeLessThan(80 * 1024)
+  })
+})
