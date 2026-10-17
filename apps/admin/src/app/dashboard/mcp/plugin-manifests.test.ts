@@ -101,9 +101,9 @@ describe("jfp-admin plugin manifests", () => {
 
   // KTD19 — a client that caches a plugin by version sees a new skill only
   // after the version changes.
-  it("carries version 0.2.2 on both platforms", () => {
+  it("carries version 0.2.3 on both platforms", () => {
     for (const path of manifests) {
-      expect(readJson(path).version, path).toBe("0.2.2")
+      expect(readJson(path).version, path).toBe("0.2.3")
     }
   })
 
