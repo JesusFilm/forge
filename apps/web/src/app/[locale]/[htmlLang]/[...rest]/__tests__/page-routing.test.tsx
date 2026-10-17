@@ -2252,6 +2252,41 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
+  it("emits a complete localized VideoObject in initial HTML", async () => {
+    const localized = makeWatchVideoResult("featureFilm", {
+      slug: "spanish-castilian",
+      bcp47: "es",
+      name: "Spanish, Castilian",
+    })
+    mockRouteVideo(localized)
+
+    const html = await renderServerHtml(
+      ["storyclubs.html", "spanish-castilian.html"],
+      "spanish-castilian",
+    )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const videoObjects = Array.from(
+      document.querySelectorAll('script[type="application/ld+json"]'),
+    )
+      .map((script) => JSON.parse(script.textContent ?? "{}"))
+      .filter((record) => record["@type"] === "VideoObject")
+
+    expect(videoObjects).toHaveLength(1)
+    expect(videoObjects[0]).toMatchObject({
+      "@type": "VideoObject",
+      name: "StoryClubs",
+      url: "https://www.jesusfilm.org/watch/storyclubs.html/spanish-castilian.html",
+      description: "StoryClubs description",
+      contentUrl: "https://cdn.example/storyclubs.m3u8",
+      uploadDate: "2026-06-01T12:00:00.000Z",
+      duration: "PT30S",
+      inLanguage: "es",
+    })
+    expect(videoObjects[0].thumbnailUrl).toEqual([
+      "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
+    ])
+  })
+
   it("renders sparse playable video JSON-LD with structured-data fallbacks", async () => {
     const watchVideoResult = makeWatchVideoResult("featureFilm")
     watchVideoResult.video.description = null

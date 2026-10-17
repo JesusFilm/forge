@@ -321,8 +321,13 @@ export type StructuredDataContract = {
 
 export type VideoObjectIdentity = {
   name: string | null
+  description: string | null
   url: string | null
   contentUrl: string | null
+  thumbnailUrls: string[]
+  uploadDate: string | null
+  duration: string | null
+  embedUrl: string | null
 }
 
 export const WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS = [
@@ -795,9 +800,24 @@ function collectJsonLdVideoObjects(value: unknown): VideoObjectIdentity[] {
     ? [
         {
           name: typeof record.name === "string" ? record.name : null,
+          description:
+            typeof record.description === "string" ? record.description : null,
           url: typeof record.url === "string" ? record.url : null,
           contentUrl:
             typeof record.contentUrl === "string" ? record.contentUrl : null,
+          thumbnailUrls: Array.isArray(record.thumbnailUrl)
+            ? record.thumbnailUrl.filter(
+                (entry): entry is string => typeof entry === "string",
+              )
+            : typeof record.thumbnailUrl === "string"
+              ? [record.thumbnailUrl]
+              : [],
+          uploadDate:
+            typeof record.uploadDate === "string" ? record.uploadDate : null,
+          duration:
+            typeof record.duration === "string" ? record.duration : null,
+          embedUrl:
+            typeof record.embedUrl === "string" ? record.embedUrl : null,
         },
       ]
     : []
@@ -918,7 +938,91 @@ export function validateStructuredDataContract(
     }
   }
 
+  const expectedVideoObjects = contract.required.VideoObject
+  const videoObjects = structuredData?.videoObjects ?? []
+  const actualVideoObjectCount = typeCounts.get("VideoObject") ?? 0
+  if (
+    expectedVideoObjects === 1 &&
+    actualVideoObjectCount === 1 &&
+    videoObjects.length !== 1
+  ) {
+    violations.push(
+      `expected exactly 1 VideoObject identity, found ${videoObjects.length}`,
+    )
+  }
+  if (
+    expectedVideoObjects === 1 &&
+    actualVideoObjectCount === 1 &&
+    videoObjects.length === 1
+  ) {
+    const video = videoObjects[0]!
+    if (!video.name?.trim()) violations.push("VideoObject missing name")
+    if (!video.description?.trim()) {
+      violations.push("VideoObject missing description")
+    }
+    if (!video.url?.trim()) violations.push("VideoObject missing url")
+    if (!video.uploadDate || !isIsoDate(video.uploadDate)) {
+      violations.push("VideoObject missing or invalid uploadDate")
+    }
+    if (!video.duration || !isPositiveIsoDuration(video.duration)) {
+      violations.push("VideoObject missing or invalid duration")
+    }
+    if (
+      video.thumbnailUrls.length === 0 ||
+      !video.thumbnailUrls.every(isHttpsUrlWithoutCredentials)
+    ) {
+      violations.push("VideoObject missing valid HTTPS thumbnailUrl")
+    }
+    if (!isStableHlsContentUrl(video.contentUrl)) {
+      violations.push("VideoObject missing stable HTTPS contentUrl")
+    }
+  }
+
   return violations
+}
+
+function isHttpsUrlWithoutCredentials(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" && !url.username && !url.password
+  } catch {
+    return false
+  }
+}
+
+function isStableHlsContentUrl(value: string | null): boolean {
+  if (!value) return false
+  try {
+    const url = new URL(value)
+    return (
+      url.protocol === "https:" &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      url.pathname.toLowerCase().endsWith(".m3u8")
+    )
+  } catch {
+    return false
+  }
+}
+
+function isPositiveIsoDuration(value: string): boolean {
+  return (
+    /^P(?=\d|T)(?:\d+Y)?(?:\d+M)?(?:\d+D)?(?:T(?:(?:\d+)H)?(?:(?:\d+)M)?(?:(?:\d+(?:\.\d+)?)S)?)?$/u.test(
+      value,
+    ) &&
+    !value.endsWith("T") &&
+    /[1-9]/u.test(value)
+  )
+}
+
+function isIsoDate(value: string): boolean {
+  return (
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u.test(
+      value,
+    ) && Number.isFinite(Date.parse(value))
+  )
 }
 
 /**
