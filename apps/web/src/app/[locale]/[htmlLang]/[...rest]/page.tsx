@@ -56,6 +56,7 @@ import {
   isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
+  correctedBcp47,
   slugToBcp47Tag,
   type UiLocale,
 } from "@/lib/locale"
@@ -1240,7 +1241,7 @@ async function renderVideo(
       languageSlug: seriesLanguage?.slug ?? "",
       canonicalUrl,
       inLanguage:
-        seriesLanguage?.bcp47 ??
+        correctedBcp47(seriesLanguage?.slug, seriesLanguage?.bcp47) ??
         slugToBcp47Tag(seriesLanguage?.slug ?? rawLocale),
       routeManifest,
     })

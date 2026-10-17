@@ -7,6 +7,7 @@ import {
   type WatchVariant,
   type WatchVideoRecord,
 } from "@/lib/content"
+import { correctedBcp47 } from "@/lib/locale"
 import {
   WATCH_BASE_PATH,
   WATCH_PUBLIC_METADATA_ORIGIN,
@@ -257,7 +258,11 @@ export function buildWatchVideoMetadataModel(
     image,
     structuredDataThumbnailUrl: muxSocialImage?.url ?? posterUrl,
     noIndex: options.video.noIndex ?? false,
-    inLanguage: options.selectedVariant.language?.bcp47?.trim() || null,
+    inLanguage:
+      correctedBcp47(
+        options.selectedVariant.language?.slug,
+        options.selectedVariant.language?.bcp47,
+      )?.trim() || null,
     durationSeconds: options.selectedVariant.duration ?? null,
     contentUrl: options.selectedVariant.hls?.trim() || null,
     uploadDate: firstValidDate(
@@ -266,7 +271,9 @@ export function buildWatchVideoMetadataModel(
     ),
     captions: options.video.subtitles.map((subtitle) => ({
       contentUrl: subtitle.vttSrc.trim(),
-      inLanguage: subtitle.language.bcp47.trim(),
+      inLanguage: (
+        correctedBcp47(subtitle.language.slug, subtitle.language.bcp47) ?? ""
+      ).trim(),
     })),
   }
 }
