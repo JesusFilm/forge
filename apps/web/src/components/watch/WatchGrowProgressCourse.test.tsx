@@ -86,6 +86,16 @@ async function settle(ms = 0) {
     await new Promise((resolve) => setTimeout(resolve, ms))
   })
 }
+// The first lazy import can outlast a timer when other test files transform.
+// Await the rendered story; product mount budgets are verified separately.
+async function waitForStory() {
+  await vi.waitFor(async () => {
+    await settle()
+    expect(
+      container.querySelector('[data-testid="watch-grow-story"]'),
+    ).not.toBeNull()
+  })
+}
 function text() {
   return container.textContent ?? ""
 }
@@ -182,7 +192,7 @@ describe("anonymous visitor", () => {
       container.querySelector('[data-testid="watch-grow-story"]'),
     ).toBeNull()
     await click("Read as story")
-    await settle(20)
+    await waitForStory()
     const story = container.querySelector<HTMLElement>(
       '[data-testid="watch-grow-story"]',
     )!
@@ -227,7 +237,7 @@ describe("anonymous visitor", () => {
       "/watch?as=grow&growLesson=lesson-1&growCard=up-question-2&auth=failed&reason=access_denied",
     )
     mount(sessionStore({ status: "signed-out" }))
-    await settle(20)
+    await waitForStory()
     expect(
       container.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
         .dataset.cardId,
@@ -249,7 +259,7 @@ describe("signed-in visitor", () => {
     )
     mount(sessionStore({ status: "signed-in", user: { id: "user-a" } }))
     await answerRead()
-    await settle(20)
+    await waitForStory()
     expect(
       container.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
         .dataset.cardId,
@@ -398,7 +408,7 @@ describe("signed-in visitor", () => {
       }),
     ])
     await click("Read as story")
-    await settle(20)
+    await waitForStory()
     // Opening on the saved card changes nothing: still Saved.
     expect(text()).toContain("Saved to your account.")
     await click("Next")
@@ -494,7 +504,7 @@ describe("signed-in visitor", () => {
     ])
     expect(firstCheckbox().checked).toBe(true)
     await click("Read as story")
-    await settle(20)
+    await waitForStory()
     const story = () =>
       container.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
     expect(story().dataset.cardId).toBe("up-retell")
