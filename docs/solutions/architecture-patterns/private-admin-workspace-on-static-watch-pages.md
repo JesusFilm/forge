@@ -206,4 +206,3 @@ Watch opportunity
 - [Cache-safe origin-issued Watch exposure manifests](cache-safe-origin-issued-watch-exposure-manifests-20260929.md)
 - [An AI agent and a person need one versioned write path](agent-and-person-share-one-versioned-write-path.md)
 - [Canonical Admin origin for CSRF-sensitive promotion](../security-issues/admin-promotion-csrf-canonical-origin.md)
-

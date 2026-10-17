@@ -1,5 +1,5 @@
 ---
-id: "feat-712"
+id: "feat-716"
 title: "Add an admin-only SEO marketing tab to Watch video pages"
 owner: "codex"
 priority: "P1"
@@ -10,7 +10,7 @@ depends_on:
   - "feat-344"
   - "feat-355"
 blocks:
-  - "feat-713"
+  - "feat-717"
 tags:
   - "platform"
   - "watch"
@@ -191,11 +191,11 @@ workspace, and Admin-origin decision flow are integrated on this branch.
   import remain unchanged.
 
 Production-shaped PostgreSQL query plans, URL-normalization smoke tests, and
-before/after browser timing remain deployment gates tracked by `feat-713`.
+before/after browser timing remain deployment gates tracked by `feat-717`.
 No provider integration or generated GraphQL contract was widened.
 
 The local production build could not complete in this managed environment:
 Turbopack cannot bind its internal worker port, and the Webpack fallback reaches
 compilation but fails on the pre-existing `node:crypto` import in
-`recommendation-consent.ts`. Full Web typechecking remains green; `feat-713`
+`recommendation-consent.ts`. Full Web typechecking remains green; `feat-717`
 retains the production-build and browser-performance gate.

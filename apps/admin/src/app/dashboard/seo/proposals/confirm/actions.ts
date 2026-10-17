@@ -1,7 +1,7 @@
 "use server"
 
 /**
- * feat-712 — the Admin-origin half of a Watch "Apply/Decline" opportunity.
+ * feat-716 — the Admin-origin half of a Watch "Apply/Decline" opportunity.
  *
  * Watch never writes. It links here; this action re-checks the Admin session
  * and the live database role, takes the actor only from that session, and
@@ -12,6 +12,7 @@
  * Form fields named actorId, nonce, or expiresAt are never read.
  */
 import { redirect } from "next/navigation"
+import type { Route } from "next"
 import { Prisma } from "@prisma/client"
 import { requireLiveAdminSession } from "@/auth/live-admin-session"
 import { SeoAssertionReplayError } from "@/auth/seo-assertion-ledger"
@@ -62,7 +63,7 @@ export async function confirmSeoProposalDecision(
     payloadDigest: formData.get("payloadDigest"),
     decision: formData.get("decision"),
   })
-  if (!identity) redirect(`${CONFIRM_PATH}?result=INVALID`)
+  if (!identity) redirect(`${CONFIRM_PATH}?result=INVALID` as Route)
 
   const rawReason = formData.get("reason")
   const reason = typeof rawReason === "string" ? rawReason.trim() : ""

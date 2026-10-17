@@ -1,3 +1,5 @@
+import type { Route } from "next"
+
 /**
  * Identity of one Admin-origin SEO proposal confirmation. Every field binds
  * the decision: the proposal id, its immutable version and payload digest,
@@ -88,7 +90,7 @@ export function parseConfirmationResult(
 export function confirmationHref(
   identity: ConfirmationIdentity,
   result?: ConfirmationResult,
-): string {
+): Route {
   const query = new URLSearchParams({
     proposalId: identity.proposalId,
     version: String(identity.version),
@@ -96,5 +98,5 @@ export function confirmationHref(
     decision: identity.decision,
   })
   if (result) query.set("result", result)
-  return `${CONFIRM_PATH}?${query.toString()}`
+  return `${CONFIRM_PATH}?${query.toString()}` as Route
 }

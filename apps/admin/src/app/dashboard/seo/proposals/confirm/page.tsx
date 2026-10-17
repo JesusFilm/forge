@@ -1,4 +1,4 @@
-// feat-712 — Admin-origin confirmation for a Watch SEO opportunity.
+// feat-716 — Admin-origin confirmation for a Watch SEO opportunity.
 //
 // Watch opens this page with the proposal id, immutable version, payload
 // digest, and the chosen action. Nothing is decided on GET. The Admin reads
