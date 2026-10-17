@@ -327,6 +327,8 @@ it("packages repeated source clips with one retained segment read and one media 
   )
   const digest = createHash("sha256").update("EXPORT RESOLUTION").digest("hex")
   expect(reads.get(digest)).toBe(1)
+  expect(f.actions.filter((action) => action === "asset")).toHaveLength(2)
+  expect(f.actions.filter((action) => action === "source")).toHaveLength(1)
   expect(result.files.filter((file) => file.digest === digest)).toHaveLength(1)
   for (const item of document.items) {
     const playlist = result.files.find(
@@ -336,4 +338,52 @@ it("packages repeated source clips with one retained segment read and one media 
       result.files.find((file) => file.digest === digest)!.name,
     )
   }
+})
+
+it("rechecks metadata on every preparation and validates each repeated clip range", async () => {
+  const f = fixture()
+  const signal = new AbortController().signal
+  await prepareStudioRenderInput(
+    f.call,
+    "project",
+    f.document,
+    proofKey,
+    signal,
+  )
+  const before = f.actions.filter((action) => action === "asset").length
+  await prepareStudioRenderInput(
+    f.call,
+    "project",
+    f.document,
+    proofKey,
+    signal,
+  )
+  expect(f.actions.filter((action) => action === "asset")).toHaveLength(
+    2 * before,
+  )
+
+  const source = f.document.items[0]!
+  const document = {
+    ...f.document,
+    durationInFrames: 60,
+    items: [source, { ...source, id: "later", startFrame: 30 }],
+  }
+  // Snapshot coverage is broader than the signed manifest. Cached metadata must
+  // not turn a prior successful range check into authority for this later trim.
+  f.snapshot.coveredRanges = [{ startMs: 0, endMs: 3000 }]
+  const call: StudioBrokerClient = (action, input) =>
+    action === "preview-sources"
+      ? Promise.resolve([
+          {
+            snapshot: f.snapshot,
+            itemId: source.id,
+            startMs: 500,
+            endMs: 1500,
+          },
+          { snapshot: f.snapshot, itemId: "later", startMs: 2500, endMs: 3000 },
+        ])
+      : f.call(action, input)
+  await expect(
+    prepareStudioRenderInput(call, "project", document, proofKey, signal),
+  ).rejects.toThrow("Retained codec proof does not cover this source")
 })
