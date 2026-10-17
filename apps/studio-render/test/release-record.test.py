@@ -34,6 +34,18 @@ def candidate():
 
 
 class ApprovedReleaseRecord(unittest.TestCase):
+    def test_current_and_retained_rollback_profiles_are_closed(self):
+        for profile in (module.PROFILE, 'studio-render-1/900s-2cpu-2g-128p-96child-128m'):
+            value = candidate()
+            value['profile'] = profile
+            raw = json.dumps(value).encode()
+            self.assertEqual(module.verify_candidate(raw, hashlib.sha256(raw).hexdigest(), value['target'])['profile'], profile)
+        for invalid in ('studio-render-3/unreviewed', {}, [], None):
+            value['profile'] = invalid
+            raw = json.dumps(value).encode()
+            with self.assertRaises(module.ReleaseRefused):
+                module.verify_candidate(raw, hashlib.sha256(raw).hexdigest(), value['target'])
+
     def test_exact_candidate_is_bound_to_the_operator_selected_target(self):
         value = candidate()
         raw = json.dumps(value).encode()
