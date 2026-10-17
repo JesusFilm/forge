@@ -1,0 +1,15 @@
+{
+  "testsPassed": 6,
+  "tests": [
+    "exact16pins_prepare_without_dispatch",
+    "real_kernel_profile_expiry_changes_hash_not_counts_in_one_readonly_snapshot",
+    "runtime_mismatch_refused",
+    "changed_window_refused",
+    "expired_dispatch_refused",
+    "diagnostic_child_deadline_survives_controller_sigkill"
+  ],
+  "productionExecuted": false,
+  "realKernelWithFakeSourceAndDb": true,
+  "localFixture": "/tmp/forge-clock-diag-test-2ti2cpun",
+  "originalGuardian13CasesNotRerun": true
+}

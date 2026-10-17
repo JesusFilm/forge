@@ -8,6 +8,46 @@ import {
 const NOW = new Date("2026-08-26T02:00:00.000Z")
 
 describe("recommendation profile projection service", () => {
+  it("keeps a raw eligible source visible to the empty guard when its embedding is missing", async () => {
+    const publish = vi.fn().mockResolvedValue({
+      status: "published",
+      generationId: "generation-1",
+      generation: 1,
+      replay: false,
+    })
+    const service = createRecommendationProfileProjectionService({
+      loadEvidence: vi.fn().mockResolvedValue({
+        durable: [
+          {
+            sourceId: "outcome-without-vector",
+            sourceType: "outcome",
+            targetMediaId: "media-without-vector",
+            weight: 1,
+            occurredAt: NOW,
+            sourceExpiresAt: new Date("2026-09-20T00:00:00.000Z"),
+          },
+        ],
+        session: [],
+        explicitPreferences: [],
+        negativeEvidence: [],
+      }),
+      loadEmbeddings: vi.fn().mockResolvedValue(new Map()),
+      publish,
+    })
+    await service.project({
+      sessionDigest: "a".repeat(64),
+      profileId: "profile-1",
+      privacyGeneration: 1,
+      now: NOW,
+    })
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceEvidenceEmpty: false,
+        durableEvidence: [],
+      }),
+    )
+  })
+
   it("derives no-consent viewers from session selections only", async () => {
     const publish = vi.fn().mockResolvedValue({
       status: "published",
@@ -145,9 +185,7 @@ describe("recommendation profile projection service", () => {
     expect(sessionSql).toContain("impression.expires_at >")
     expect(sessionSql).toContain("profile.created_at, link.linked_at")
     expect(durableSql).toContain("outcome.qualified_view = true")
-    expect(durableSql).toContain(
-      "selection.attribution_eligible_at IS NOT NULL",
-    )
+    expect(durableSql).not.toContain("selection.attribution_eligible_at")
     expect(durableSql).not.toContain("outcome.learning_eligible = true")
     expect(durableSql).not.toContain("outcome.created_at >= profile.created_at")
     expect(priorDurableSql).toContain(
@@ -163,20 +201,20 @@ describe("recommendation profile projection service", () => {
       "JOIN recommendation_playback_episode episode ON episode.session_digest = link.session_digest",
     )
     expect(currentDurableSql).toContain('episode.media_id AS "targetMediaId"')
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "LEFT JOIN recommendation_request request",
     )
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "LEFT JOIN recommendation_selection selection",
     )
     expect(currentDurableSql).not.toContain(
       "JOIN recommendation_served_item item",
     )
     expect(currentDurableSql).toContain("profile.token_digest IS NOT NULL")
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "episode.request_id IS NULL OR ( request.expires_at >",
     )
-    expect(currentDurableSql).toContain(
+    expect(currentDurableSql).not.toContain(
       "episode.selection_id IS NULL OR ( selection.attribution_eligible_at IS NOT NULL",
     )
     expect(currentDurableSql).toContain(
@@ -328,7 +366,13 @@ describe("recommendation profile projection service", () => {
       generation: 9,
       replay: false,
     })
-    expect(executeRaw).toHaveBeenCalledTimes(4)
+    // The shared-vector writer takes an additional advisory lock. Count
+    // publication statements independently of the configured lock shape.
+    expect(
+      executeRaw.mock.calls.filter(
+        ([query]) => !query.strings.join(" ").includes("pg_advisory_xact_lock"),
+      ),
+    ).toHaveLength(3)
   })
 
   it("rejects a repair publisher when the expected pointer moved", async () => {
@@ -452,7 +496,11 @@ describe("recommendation profile projection service", () => {
         sessionEvidence: [],
       }),
     ).rejects.toMatchObject({ code: "profile_projection_input_fenced" })
-    expect(executeRaw).toHaveBeenCalledOnce()
+    expect(
+      executeRaw.mock.calls.filter(
+        ([query]) => !query.strings.join(" ").includes("pg_advisory_xact_lock"),
+      ),
+    ).toHaveLength(0)
   })
 
   it("keeps source expiry in the deterministic rebuild input", async () => {

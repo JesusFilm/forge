@@ -128,7 +128,6 @@ export async function dispatchRecommendationEpisodeFinalization(
     const episode = await prisma.recommendationPlaybackEpisode
       .findUnique({
         where: { id: input.episodeId },
-        include: { request: true },
       })
       .catch(() => null)
     if (

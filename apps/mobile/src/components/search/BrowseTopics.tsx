@@ -11,6 +11,7 @@ import { TEXT_SECONDARY } from "../../lib/color"
 import { useIsFocused } from "expo-router"
 
 import { useCategoryThumbnails } from "../../hooks/useCategoryThumbnails"
+import { useT } from "../../i18n/useT"
 import { useTabBarClearance } from "../../lib/tabBar"
 import { TopicCard } from "./TopicCard"
 
@@ -25,6 +26,7 @@ export interface BrowseTopicsProps {
 // grid of gradient cards. Tapping a card routes through onSelect (wired to the
 // screen's stale-guarded search).
 export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
+  const t = useT("BrowseTopics")
   // Every tab mounts at cold launch under the native tab bar (feat-500), so
   // the six thumbnail searches wait until the viewer actually opens Search.
   const thumbnails = useCategoryThumbnails(useIsFocused())
@@ -46,7 +48,7 @@ export function BrowseTopics({ onSelect }: BrowseTopicsProps) {
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.heading}>Browse Categories</Text>
+      <Text style={styles.heading}>{t("heading")}</Text>
       <View style={styles.grid}>
         {BROWSE_TOPICS.map((topic) => (
           <TopicCard

@@ -18,17 +18,20 @@
 
 import {
   getMiniPlayerStore,
-  sessionIdentityKey,
+  sameSessionContent,
   type MiniPlayerStore,
 } from "./store"
 import { canOriginateRoutePattern } from "./presentation"
 import { extractMuxPlaybackId } from "../muxThumbnail"
 import type { VideoPlayerCast } from "../../components/watch/VideoPlayer"
-import type { ProgressFeed } from "../../hooks/useManagedVideoPlayer"
+import type {
+  ProgressFeed,
+  ProgressHold,
+} from "../../hooks/useManagedVideoPlayer"
 
-/** Re-exported so the watch screen can type its cast progress ref without
- *  naming the adapter — the ownership guard reads that name as a player mount. */
-export type { ProgressFeed }
+/** Re-exported so the watch screen can type its cast progress ref and its hold
+ *  without naming the adapter — the ownership guard reads that name as a mount. */
+export type { ProgressFeed, ProgressHold }
 
 /** Window coordinates of the surface the video view is drawn into (KTD17). */
 export type PlaybackRect = {
@@ -36,6 +39,13 @@ export type PlaybackRect = {
   y: number
   width: number
   height: number
+}
+
+/** True when two rects have the same position and size. */
+export function sameRect(a: PlaybackRect, b: PlaybackRect): boolean {
+  return (
+    a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+  )
 }
 
 /**
@@ -70,6 +80,9 @@ export type PlaybackRequest = {
   progressVideoId: string | null
   progressVideoSlug: string | null
   progressLanguageSlug: string | null
+  /** KTD12. Absent and null both mean no hold. Compared by value, so a request
+   *  that drops it (an offer choice) republishes and ends it at once. */
+  progressHold?: ProgressHold | null
   onToggleFullscreen: (() => void) | null
   /** True while a cast session drives this surface (KTD4). The one cast fact
    *  the root adapter and session admission read; compared by value, so a
@@ -115,7 +128,17 @@ export type PlaybackRequestSnapshot = {
    *  same reason `loadFailed` is: the host is a `<Stack>` SIBLING, so a route's
    *  layer cannot reach the host's React state by context or by prop. */
   playing: boolean
+  /** feat-553 KTD10: a reader covers the current slot, which keeps its rect.
+   *  `admitted` floats the video; `refused` hides the frame. The store always
+   *  sets this and the next field; a hand-built snapshot may omit them. */
+  cover?: ReaderCover | null
+  /** feat-553 R10: the resting window frame, for a surface that must keep its
+   *  own content clear of it. The host publishes it; null when no window rests. */
+  windowFrame?: PlaybackRect | null
 }
+
+/** The admission answer a reader cover got for the current slot. */
+export type ReaderCover = "admitted" | "refused"
 
 export type PlaybackRequestStore = ReturnType<typeof createPlaybackRequestStore>
 
@@ -155,19 +178,6 @@ export function shouldOriginateSession(input: {
   if (!input.hasSource) return false
   if (input.session == null) return false
   return canOriginateRoutePattern(input.session.originPattern)
-}
-
-/**
- * Same video, whichever key each side happens to carry. A remounted screen can
- * name a video by slug before its record lands and by id afterwards, so an
- * id-only compare reads one video as two.
- */
-export function sameSessionContent(
-  a: Pick<PlaybackSessionDescriptor, "videoId" | "videoSlug">,
-  b: Pick<PlaybackSessionDescriptor, "videoId" | "videoSlug">,
-): boolean {
-  if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
-  return a.videoSlug === b.videoSlug
 }
 
 /**
@@ -261,12 +271,21 @@ export function samePlaybackRequest(
     a.progressVideoId === b.progressVideoId &&
     a.progressVideoSlug === b.progressVideoSlug &&
     a.progressLanguageSlug === b.progressLanguageSlug &&
+    sameProgressHold(a.progressHold ?? null, b.progressHold ?? null) &&
     a.onToggleFullscreen === b.onToggleFullscreen &&
     a.castActive === b.castActive &&
     sameCast(a.cast, b.cast) &&
     a.progressFeedRef === b.progressFeedRef &&
     sameSession(a.session, b.session)
   )
+}
+
+function sameProgressHold(
+  a: ProgressHold | null,
+  b: ProgressHold | null,
+): boolean {
+  if (a == null || b == null) return a === b
+  return a.id === b.id && a.durationMs === b.durationMs
 }
 
 function sameSession(
@@ -300,6 +319,14 @@ export function createPlaybackRequestStore(deps: {
   // The request of a video whose slot has gone but whose session still owns the
   // player. This is what makes the player outlive the route (R1, R4).
   let retained: PlaybackRequest | null = null
+  // One reader cover at a time. `ownsSession` separates a session the cover
+  // started from one that was live before it (an expanded screen).
+  let cover: {
+    slotId: number
+    admitted: boolean
+    ownsSession: boolean
+  } | null = null
+  let windowFrame: PlaybackRect | null = null
   let version = 0
   let cachedVersion = -1
   let cachedSnapshot: PlaybackRequestSnapshot = {
@@ -308,6 +335,8 @@ export function createPlaybackRequestStore(deps: {
     slotId: null,
     loadFailed: false,
     playing: false,
+    cover: null,
+    windowFrame: null,
   }
   let reconciling = false
   let depth = 0
@@ -356,6 +385,13 @@ export function createPlaybackRequestStore(deps: {
         slotId: id,
         loadFailed,
         playing,
+        cover:
+          cover?.slotId === id
+            ? cover.admitted
+              ? "admitted"
+              : "refused"
+            : null,
+        windowFrame,
       }
     }
     return {
@@ -364,7 +400,40 @@ export function createPlaybackRequestStore(deps: {
       slotId: null,
       loadFailed,
       playing,
+      cover: null,
+      windowFrame,
     }
+  }
+
+  /** The ONE admission-and-start step. A detach and a reader cover both use
+   *  it, so they can never disagree about which video earns a window. */
+  function originateSession(slot: Slot): boolean {
+    const descriptor = slot.request.session
+    if (
+      descriptor == null ||
+      !shouldOriginateSession({
+        hasPlaybackStarted: facts.hasPlaybackStarted(),
+        hasReachedEnd: facts.hasReachedEnd(),
+        hasSource: slot.request.streamingUrl != null,
+        castActive: slot.request.castActive,
+        session: descriptor,
+      })
+    )
+      return false
+    sessionStore.start({
+      videoId: descriptor.videoId,
+      videoSlug: descriptor.videoSlug,
+      languageSlug: descriptor.languageSlug,
+      title: descriptor.title,
+      posterUrl: descriptor.posterUrl,
+      originPattern: descriptor.originPattern,
+      positionSeconds: facts.readPosition(),
+      durationSeconds: facts.readDuration(),
+      // Admission just verified started-and-unfinished playback; a dead
+      // stream is the one ending admission cannot see, so it gates this.
+      playbackLive: !loadFailed,
+    })
+    return true
   }
 
   /**
@@ -376,10 +445,7 @@ export function createPlaybackRequestStore(deps: {
     if (reconciling) return
     const session = sessionStore.getSnapshot().session
     if (session == null || next == null) return
-    if (
-      next.session != null &&
-      sessionIdentityKey(next.session) === sessionIdentityKey(session)
-    )
+    if (next.session != null && sameSessionContent(next.session, session))
       return
     reconciling = true
     try {
@@ -473,40 +539,66 @@ export function createPlaybackRequestStore(deps: {
       if (slot == null) return
       const wasCurrent = currentSlotId() === id
       slots.delete(id)
+      if (cover?.slotId === id) cover = null
       if (wasCurrent) {
         // A stacked watch screen is waiting to take the player back. No window
         // is owed there — the screen beneath resumes, exactly as it does today.
         const successor = successorSlotId()
-        const descriptor = slot.request.session
-        if (
-          successor == null &&
-          descriptor != null &&
-          shouldOriginateSession({
-            hasPlaybackStarted: facts.hasPlaybackStarted(),
-            hasReachedEnd: facts.hasReachedEnd(),
-            hasSource: slot.request.streamingUrl != null,
-            castActive: slot.request.castActive,
-            session: descriptor,
-          })
-        ) {
-          sessionStore.start({
-            videoId: descriptor.videoId,
-            videoSlug: descriptor.videoSlug,
-            languageSlug: descriptor.languageSlug,
-            title: descriptor.title,
-            posterUrl: descriptor.posterUrl,
-            originPattern: descriptor.originPattern,
-            positionSeconds: facts.readPosition(),
-            durationSeconds: facts.readDuration(),
-            // Admission just verified started-and-unfinished playback; a dead
-            // stream is the one ending admission cannot see, so it gates this.
-            playbackLive: !loadFailed,
-          })
+        if (successor == null && originateSession(slot)) {
           retained = slot.request
         } else if (retained === slot.request) {
           retained = null
         }
       }
+      commit()
+    },
+
+    /** feat-553 KTD10: a reader sits over the current slot, which stays
+     *  attached. Admission decides once per cover whether the video floats.
+     *  Null when `id` is not the current slot. */
+    coverSlot(id: number): boolean | null {
+      if (currentSlotId() !== id) return null
+      if (cover?.slotId === id) return cover.admitted
+      const slot = slots.get(id) as Slot
+      const sessionBefore = sessionStore.getSnapshot().session
+      const admitted = originateSession(slot)
+      cover = {
+        slotId: id,
+        admitted,
+        ownsSession: admitted && sessionBefore == null,
+      }
+      commit()
+      return admitted
+    },
+
+    /** The reader left. A session the cover started ends with no report, so
+     *  the screen is back in its state before the cover (KTD10). */
+    uncoverSlot(id: number): void {
+      if (cover?.slotId !== id) return
+      const owned = cover.ownsSession
+      cover = null
+      const session = sessionStore.getSnapshot().session
+      const descriptor = slots.get(id)?.request.session ?? null
+      if (
+        owned &&
+        session != null &&
+        descriptor != null &&
+        sameSessionContent(descriptor, session)
+      )
+        sessionStore.clearWithoutReport()
+      commit()
+    },
+
+    /** The host's resting window frame, for the reader's verse box (R10). */
+    setWindowFrame(frame: PlaybackRect | null): void {
+      if (frame != null && windowFrame != null && sameRect(frame, windowFrame))
+        return
+      if (frame == null && windowFrame == null) return
+      // The box only: a caller's frame may carry more (its corner name).
+      windowFrame =
+        frame == null
+          ? null
+          : { x: frame.x, y: frame.y, width: frame.width, height: frame.height }
       commit()
     },
 
@@ -531,6 +623,8 @@ export function createPlaybackRequestStore(deps: {
     reset(): void {
       slots.clear()
       retained = null
+      cover = null
+      windowFrame = null
       facts = EMPTY_FACTS
       loadFailed = false
       playing = false

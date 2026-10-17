@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { PrismaClient } from "@prisma/client"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
-import { curatedFallbackNominations } from "./curated-fallback"
+import {
+  curatedFallbackNominations,
+  retrieveCuratedFallback,
+} from "./curated-fallback"
+import { CuratedPoolsService } from "./curated-pools.service"
+import * as deliveryRuntime from "./delivery-runtime"
 import type { CuratedRecommendationCandidate } from "./curated-pools.types"
 import { input, makeHarness, candidate } from "./delivery.service.test-helpers"
 
@@ -24,6 +30,54 @@ function curated(
     ...overrides,
   }
 }
+
+describe("curated fallback context diagnostics", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  it.each([
+    { version: null, contextAvailable: false, state: "missing_generation" },
+    {
+      version: "approved-v1",
+      contextAvailable: false,
+      state: "missing_context",
+    },
+    { version: "approved-v1", contextAvailable: true, state: "available" },
+  ])(
+    "reports $state when no eligible items survive",
+    async ({ version, contextAvailable, state }) => {
+      const prisma = new PrismaClient()
+      vi.spyOn(
+        CuratedPoolsService.prototype,
+        "getCandidates",
+      ).mockResolvedValue({
+        version,
+        contextAvailable,
+        poolKeys: [],
+        items: [],
+      })
+      vi.spyOn(
+        deliveryRuntime,
+        "runRecommendationRetrievalQuery",
+      ).mockResolvedValue([{ videoId: "seed-video" }])
+      const onDiagnostics = vi.fn()
+
+      await expect(
+        retrieveCuratedFallback(prisma, {
+          seedMediaId: "seed-video",
+          locale: "en",
+          audioLanguageSlug: "english",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+          onDiagnostics,
+        }),
+      ).resolves.toEqual([])
+      expect(onDiagnostics).toHaveBeenCalledExactlyOnceWith({
+        state,
+        nominatedCount: 0,
+      })
+    },
+  )
+})
 
 describe("approved empty-row fallback", () => {
   it("retains current/recent and canonical-alias rejections with honest provenance", () => {
@@ -119,24 +173,47 @@ describe("approved empty-row fallback", () => {
     expect(h.retrieveCuratedFallback).not.toHaveBeenCalled()
   })
 
-  it("passes the authoritative current-session recent history to fallback", async () => {
-    const h = makeHarness({ curatedFallback: true })
-    h.retrieve.mockResolvedValue([])
-    h.resolveRecentContext.mockResolvedValue({
-      videos: [
-        { targetMediaId: "watched", reasonCodes: ["recent_playback_start"] },
-      ],
-    })
-    await h.service.deliver(input("curated-recent"))
-    expect(h.retrieveCuratedFallback).toHaveBeenCalledWith(
-      expect.objectContaining({
-        seedMediaId: "curated-recent",
-        excludedMediaIds: ["watched"],
-        locale: "en",
-        audioLanguageSlug: "english",
-      }),
-    )
-  })
+  it.each([6, 5])(
+    "uses recent history in curated composition with %i fresh alternatives",
+    async (freshCount) => {
+      const h = makeHarness({ curatedFallback: true })
+      h.retrieve.mockResolvedValue([])
+      h.resolveRecentContext.mockResolvedValue({
+        videos: [{ targetMediaId: "watched", reasonCodes: ["recently_tried"] }],
+      })
+      const ids = [
+        "watched",
+        ...Array.from({ length: freshCount }, (_, index) => `fresh-${index}`),
+      ]
+      h.retrieveCuratedFallback.mockResolvedValue(
+        curatedFallbackNominations(
+          ids.map((videoId, index) =>
+            curated({
+              videoId,
+              videoCoreId: `core-${index}`,
+              videoTitle: `Title ${index}`,
+            }),
+          ),
+          [],
+          [],
+        ),
+      )
+      const response = await h.service.deliver(input("curated-recent"))
+      expect(response.items.map((item) => item.targetMediaId)).toEqual([
+        ...ids.slice(1),
+        ...(freshCount < 6 ? ["watched"] : []),
+      ])
+      expect(h.resolveRecentContext).toHaveBeenCalledOnce()
+      expect(h.retrieveCuratedFallback).toHaveBeenCalledWith(
+        expect.objectContaining({
+          seedMediaId: "curated-recent",
+          excludedMediaIds: [],
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+      )
+    },
+  )
 
   it("does not invent fallback without reliable recent-history context", async () => {
     const h = makeHarness({ curatedFallback: true })
@@ -145,7 +222,11 @@ describe("approved empty-row fallback", () => {
     const response = await h.service.deliver(
       input("curated-history-unavailable"),
     )
-    expect(response).toMatchObject({ result: "empty", items: [] })
+    expect(response).toMatchObject({
+      result: "unavailable",
+      reason: "recent_context_unavailable",
+      items: [],
+    })
     expect(h.retrieveCuratedFallback).not.toHaveBeenCalled()
   })
 

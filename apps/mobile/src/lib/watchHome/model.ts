@@ -5,7 +5,6 @@
  */
 
 import {
-  ENGLISH_LANGUAGE_SLUG,
   WATCH_HOME_COLLECTION_BLACKLIST,
   WATCH_HOME_HERO_SOURCE_IDS,
   WATCH_HOME_MUX_INSERTS,
@@ -14,8 +13,20 @@ import {
   type WatchHomeSectionConfig,
   type WatchHomeSourceConfig,
 } from "./config"
+import {
+  ENGLISH_ADMIN_FORMS,
+  type AdminLanguageForms,
+} from "../../i18n/adminLanguage"
+import { getT, type UiT } from "../../i18n/useT"
 import { pickCardImage } from "../cardImage"
 import { labelText } from "../videoLabel"
+import {
+  pickVideoText,
+  readCardDescription,
+  readImageAlt,
+  readTitle,
+  videoTextVariables,
+} from "../videoText"
 import {
   isEligibleWatchHomeVideoSlide,
   type WatchHomeCarouselPool,
@@ -36,6 +47,7 @@ export type WatchHomeImageInput = {
 }
 
 export type WatchHomeLocaleInput = {
+  languageSlug?: string | null
   title?: string | null
   description?: string | null
   snippet?: string | null
@@ -49,7 +61,10 @@ export type WatchHomeChildVideoInput = {
   label?: string | null
   durationSeconds?: number | null
   images?: readonly WatchHomeImageInput[] | null
+  /** The UI-language rows (KTD10). */
   locales?: readonly WatchHomeLocaleInput[] | null
+  /** The aliased English rows, the per-field fallback (R10). */
+  englishLocales?: readonly WatchHomeLocaleInput[] | null
 }
 
 export type WatchHomeChildRelationInput = {
@@ -87,7 +102,10 @@ export type WatchHomeCard = {
   coreId: string
   slug: string | null
   title: string
+  /** The language of `title` (KTD10, KTD13); null for a slug stand-in. */
+  titleLang?: string | null
   description: string | null
+  descriptionLang?: string | null
   label: string
   /** The label to CLASSIFY by: admin's raw enum for a video, the authored
    *  override for a curated item, null when genuinely unlabeled. `label` cannot
@@ -108,6 +126,9 @@ export type WatchHomeSection = {
   id: string
   eyebrow: string
   title: string
+  /** The homepage's language for an Experience shelf; absent for the app's
+   *  own shelves, whose titles are UI text (KTD13). */
+  titleLang?: string | null
   description: string | null
   layout: "rail" | "grid"
   orientation: "horizontal" | "vertical"
@@ -146,13 +167,16 @@ function formatDuration(seconds: number): string {
  * wins over the label. Search passes an empty `label` — it wants no label
  * fallback — so callers must treat "" as "no chip".
  */
-export function buildMetaLabel(args: {
-  label: string
-  durationSeconds: number | null
-  childCount: number
-}): string | null {
+export function buildMetaLabel(
+  args: {
+    label: string
+    durationSeconds: number | null
+    childCount: number
+  },
+  t: UiT<"Home">,
+): string | null {
   if (args.childCount > 0) {
-    return `${args.childCount} ${args.childCount === 1 ? "episode" : "episodes"}`
+    return t("episodeCount", { count: args.childCount })
   }
   if (args.durationSeconds != null) {
     const duration = formatDuration(args.durationSeconds)
@@ -161,35 +185,42 @@ export function buildMetaLabel(args: {
   return args.label
 }
 
+/** The catalog text a card reads, resolved once per model build. */
+type CardCopy = { videoLabel: UiT<"VideoLabel">; home: UiT<"Home"> }
+
 function normalizeCard(args: {
   sectionId: string
   sourceId: string
   video: WatchHomeVideoInput | WatchHomeChildVideoInput
-  languageSlug: string
+  forms: AdminLanguageForms
+  copy: CardCopy
   parent?: WatchHomeVideoInput | null
 }): WatchHomeCard | null {
   if (!args.video.documentId || !args.video.coreId) return null
-  const locale = args.video.locales?.[0] ?? null
+  // KTD10: each field in the UI language, else English (R10).
+  const localizedTitle = pickVideoText(args.video, args.forms, readTitle)
+  const description = pickVideoText(args.video, args.forms, readCardDescription)
+  const imageAlt = pickVideoText(args.video, args.forms, readImageAlt)
   // Lean bulk shape carries no dubs/variants (KTD-2); the playbackId slot
   // stays null until a later unit resolves streams lazily. The Mux-thumbnail
   // fallback in web's image chain is kept for when that lands.
   const playbackId: string | null = null
   const adminImageUrl = pickAdminImage(args.video.images ?? [])
   const imageUrl = adminImageUrl ?? muxThumbnail(playbackId)
-  const label = labelText(args.video.label)
+  const label = labelText(args.video.label, args.copy.videoLabel)
   const childCount =
     "children" in args.video && Array.isArray(args.video.children)
       ? args.video.children.length
       : 0
-  const title = locale?.title ?? args.video.slug ?? args.video.coreId
+  const title = localizedTitle?.text ?? args.video.slug ?? args.video.coreId
 
   const missingData: WatchHomeMissingData[] = []
-  if (!locale?.title) {
+  if (!localizedTitle) {
     missingData.push({
       sectionId: args.sectionId,
       sourceId: args.sourceId,
       field: "title",
-      detail: `Admin returned ${args.video.coreId} without a localized title for ${args.languageSlug}.`,
+      detail: `Admin returned ${args.video.coreId} without a localized title for ${videoTextVariables(args.forms).textSlug}.`,
       fallback: title,
       followUp:
         "Backfill or publish VideoLocale title data for the home language.",
@@ -214,16 +245,21 @@ function normalizeCard(args: {
     coreId: args.video.coreId,
     slug: args.video.slug ?? null,
     title,
-    description: locale?.snippet ?? locale?.description ?? null,
+    titleLang: localizedTitle?.lang ?? null,
+    description: description?.text ?? null,
+    descriptionLang: description?.lang ?? null,
     label,
     rawLabel: args.video.label ?? null,
-    metaLabel: buildMetaLabel({
-      label,
-      durationSeconds: args.video.durationSeconds ?? null,
-      childCount,
-    }),
+    metaLabel: buildMetaLabel(
+      {
+        label,
+        durationSeconds: args.video.durationSeconds ?? null,
+        childCount,
+      },
+      args.copy.home,
+    ),
     imageUrl,
-    imageAlt: locale?.imageAlt ?? title,
+    imageAlt: imageAlt?.text ?? title,
     playbackId,
     durationSeconds: args.video.durationSeconds ?? null,
     childCount,
@@ -237,7 +273,8 @@ function cardEntriesForSource(args: {
   sectionId: string
   source: WatchHomeSourceConfig
   videoByCoreId: Map<string, WatchHomeVideoInput>
-  languageSlug: string
+  forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
   const parent = args.videoByCoreId.get(args.source.id)
@@ -264,7 +301,8 @@ function cardEntriesForSource(args: {
               sourceId: args.source.id,
               video: rel.child,
               parent,
-              languageSlug: args.languageSlug,
+              forms: args.forms,
+              copy: args.copy,
             })
           : null,
       )
@@ -275,7 +313,8 @@ function cardEntriesForSource(args: {
     sectionId: args.sectionId,
     sourceId: args.source.id,
     video: parent,
-    languageSlug: args.languageSlug,
+    forms: args.forms,
+    copy: args.copy,
   })
   return card ? [card] : []
 }
@@ -283,7 +322,8 @@ function cardEntriesForSource(args: {
 function cardsForPrimaryCollection(args: {
   section: WatchHomeSectionConfig
   videoByCoreId: Map<string, WatchHomeVideoInput>
-  languageSlug: string
+  forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeCard[] {
   const collectionId = args.section.primaryCollectionId
@@ -311,7 +351,8 @@ function cardsForPrimaryCollection(args: {
             sourceId: collectionId,
             video: rel.child,
             parent,
-            languageSlug: args.languageSlug,
+            forms: args.forms,
+            copy: args.copy,
           })
         : null,
     )
@@ -320,7 +361,8 @@ function cardsForPrimaryCollection(args: {
 
 function buildSections(args: {
   videoByCoreId: Map<string, WatchHomeVideoInput>
-  languageSlug: string
+  forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeSection[] {
   return WATCH_HOME_SECTIONS.map((section) => {
@@ -331,14 +373,16 @@ function buildSections(args: {
               sectionId: section.id,
               source,
               videoByCoreId: args.videoByCoreId,
-              languageSlug: args.languageSlug,
+              forms: args.forms,
+              copy: args.copy,
               missingData: args.missingData,
             }),
           )
         : cardsForPrimaryCollection({
             section,
             videoByCoreId: args.videoByCoreId,
-            languageSlug: args.languageSlug,
+            forms: args.forms,
+            copy: args.copy,
             missingData: args.missingData,
           })
 
@@ -362,8 +406,11 @@ function cardToCarouselSlide(card: WatchHomeCard): WatchHomeVideoSlide | null {
     kind: "video",
     id: card.coreId,
     title: card.title,
+    titleLang: card.titleLang ?? null,
     description: card.description,
     label: card.label,
+    // Routing reads this, never `label`, which is catalog text (KTD15).
+    rawLabel: card.rawLabel,
     slug: card.slug,
     parentSlug: card.parentSlug,
     posterUrl: card.imageUrl,
@@ -383,7 +430,8 @@ function eligibleSlidesForSource(args: {
   sectionId: string
   sourceId: string
   videoByCoreId: Map<string, WatchHomeVideoInput>
-  languageSlug: string
+  forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeVideoSlide[] {
   if (WATCH_HOME_COLLECTION_BLACKLIST.has(args.sourceId)) return []
@@ -411,7 +459,8 @@ function eligibleSlidesForSource(args: {
     sectionId: args.sectionId,
     sourceId: args.sourceId,
     video: parent,
-    languageSlug: args.languageSlug,
+    forms: args.forms,
+    copy: args.copy,
   })
   const slide = card ? cardToCarouselSlide(card) : null
   return slide ? [slide] : []
@@ -419,7 +468,8 @@ function eligibleSlidesForSource(args: {
 
 function buildCarouselPools(args: {
   videoByCoreId: Map<string, WatchHomeVideoInput>
-  languageSlug: string
+  forms: AdminLanguageForms
+  copy: CardCopy
   missingData: WatchHomeMissingData[]
 }): WatchHomeCarouselPool[] {
   const pools = WATCH_HOME_PLAYLIST_SEQUENCE.map((group, index) => {
@@ -431,7 +481,8 @@ function buildCarouselPools(args: {
         sectionId: "home-carousel",
         sourceId,
         videoByCoreId: args.videoByCoreId,
-        languageSlug: args.languageSlug,
+        forms: args.forms,
+        copy: args.copy,
         missingData: args.missingData,
       }),
     )
@@ -447,13 +498,16 @@ function buildCarouselPools(args: {
   // its child short films are hls-filtered out. Collect parent short films only.
   const shortFilmById = new Map<string, WatchHomeVideoSlide>()
   for (const video of args.videoByCoreId.values()) {
+    // KTD15: classify on the raw kind (the card's `rawLabel`), never on text.
+    if (video.label !== "SHORT_FILM") continue
     const parentCard = normalizeCard({
       sectionId: "home-carousel-short-films",
       sourceId: video.coreId ?? video.documentId ?? "unknown",
       video,
-      languageSlug: args.languageSlug,
+      forms: args.forms,
+      copy: args.copy,
     })
-    if (!parentCard || parentCard.label !== "Short film") continue
+    if (!parentCard) continue
     const slide = cardToCarouselSlide(parentCard)
     if (slide) shortFilmById.set(slide.id, slide)
   }
@@ -511,11 +565,13 @@ export function buildVideoByCoreIdIndex(
   return index
 }
 
+/** The config model. `forms` picks the text rows (KTD10); the card labels come
+ *  from the catalog at build time, so a UI language change rebuilds it. */
 export function buildWatchHomeModelFromVideos(args: {
   videos: readonly WatchHomeVideoInput[]
-  languageSlug?: string | null
+  forms?: AdminLanguageForms
 }): WatchHomeModel {
-  const languageSlug = args.languageSlug ?? ENGLISH_LANGUAGE_SLUG
+  const forms = args.forms ?? ENGLISH_ADMIN_FORMS
   const missingData: WatchHomeMissingData[] = [
     {
       sectionId: "home-hero",
@@ -559,9 +615,10 @@ export function buildWatchHomeModelFromVideos(args: {
     }
   }
 
-  const sections = buildSections({ videoByCoreId, languageSlug, missingData })
+  const copy: CardCopy = { videoLabel: getT("VideoLabel"), home: getT("Home") }
+  const sections = buildSections({ videoByCoreId, forms, copy, missingData })
   const carousel: WatchHomeCarouselSequenceData = {
-    pools: buildCarouselPools({ videoByCoreId, languageSlug, missingData }),
+    pools: buildCarouselPools({ videoByCoreId, forms, copy, missingData }),
     muxInserts: WATCH_HOME_MUX_INSERTS,
   }
   const cardMissing = sections.flatMap((section) =>

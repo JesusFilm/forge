@@ -18,6 +18,10 @@ import { act, useImperativeHandle, type ComponentProps } from "react"
 import { createRoot, hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import {
+  PLAYBACK_NAVIGATION_INTENT_EVENT,
+  type PlaybackNavigationIntent,
+} from "@/lib/playback-navigation-intent"
 
 type MuxVideoCapturedProps = Record<string, unknown> & {
   ref?: React.Ref<unknown>
@@ -4159,14 +4163,51 @@ describe("HeroPlayer — language switch button", () => {
     listener.cleanup()
   })
 
+  it("publishes pending subtitle-picker cancellation with only one audio language", async () => {
+    const onLanguageClick = vi.fn()
+    const onCancelLanguageOpen = vi.fn()
+    const listener = listenForLanguageSwitcher()
+    try {
+      act(() => {
+        root.render(
+          <HeroPlayer
+            block={makeBlock({ subtitleLanguageCountLabel: "1 subtitle" })}
+            onLanguageClick={onLanguageClick}
+            onCancelLanguageOpen={onCancelLanguageOpen}
+            playableLanguageCount={1}
+            hasSubtitleOptions
+          />,
+        )
+      })
+      const latest = listener.updates.at(-1)
+      expect(latest?.visible).toBe(false)
+      expect(latest?.onClick).toBeNull()
+      expect(latest?.cancelPendingOpen).toBe(onCancelLanguageOpen)
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="hero-player-subtitle-language-count"]',
+          )!
+          .click()
+      })
+      expect(onLanguageClick).toHaveBeenCalledTimes(1)
+      listener.updates.at(-1)?.cancelPendingOpen?.()
+      expect(onCancelLanguageOpen).toHaveBeenCalledTimes(1)
+    } finally {
+      listener.cleanup()
+    }
+  })
+
   it("publishes a header language switcher when playableLanguageCount >= 2 with onLanguageClick", () => {
     const onLanguageClick = vi.fn()
+    const onCancelLanguageOpen = vi.fn()
     const listener = listenForLanguageSwitcher()
     act(() => {
       root.render(
         <HeroPlayer
           block={makeBlock()}
           onLanguageClick={onLanguageClick}
+          onCancelLanguageOpen={onCancelLanguageOpen}
           playableLanguageCount={2}
         />,
       )
@@ -4174,6 +4215,7 @@ describe("HeroPlayer — language switch button", () => {
     const latest = listener.updates.at(-1)
     expect(latest?.visible).toBe(true)
     expect(latest?.onClick).toBe(onLanguageClick)
+    expect(latest?.cancelPendingOpen).toBe(onCancelLanguageOpen)
     expect(latest?.languageCode).toBe("EN")
     latest?.onClick?.()
     expect(onLanguageClick).toHaveBeenCalledTimes(1)
@@ -4569,6 +4611,17 @@ describe("HeroPlayer — MuxVideo backend events", () => {
 })
 
 describe("HeroPlayer — Watch Next countdown", () => {
+  function captureNavigationIntents() {
+    const intents: PlaybackNavigationIntent[] = []
+    const capture = (event: Event) =>
+      intents.push((event as CustomEvent<PlaybackNavigationIntent>).detail)
+    window.addEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture)
+    return {
+      intents,
+      stop: () =>
+        window.removeEventListener(PLAYBACK_NAVIGATION_INTENT_EVENT, capture),
+    }
+  }
   const nextWatchItem = {
     parentSlug: "jesus",
     slug: "chapter-two",
@@ -4669,6 +4722,7 @@ describe("HeroPlayer — Watch Next countdown", () => {
   })
 
   it("auto-advances at the end after natural playback crosses the countdown threshold", async () => {
+    const captured = captureNavigationIntents()
     setSearchParams("autoplay=1")
     mockPlayerRef.current = makeTestPlayer({
       currentTime: 54,
@@ -4710,9 +4764,15 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/jesus.html/chapter-two.html?autoplay=1",
     )
+    captured.stop()
+    expect(captured.intents).not.toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
+    })
   })
 
   it("navigates when the armed Watch Next button is clicked", async () => {
+    const captured = captureNavigationIntents()
     setSearchParams("autoplay=1")
     mockPlayerRef.current = makeTestPlayer({
       currentTime: 54,
@@ -4749,6 +4809,11 @@ describe("HeroPlayer — Watch Next countdown", () => {
     expect(mockRouterPush).toHaveBeenCalledWith(
       "/jesus.html/chapter-two.html?autoplay=1",
     )
+    captured.stop()
+    expect(captured.intents).toContainEqual({
+      mediaId: "video-1",
+      action: "manual_skip",
+    })
   })
 
   it("cancels auto-advance when portaled chrome is used in the countdown window", async () => {

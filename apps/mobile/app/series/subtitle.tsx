@@ -1,6 +1,8 @@
 import { useCallback } from "react"
 import { useRouter } from "expo-router"
 
+import { useT } from "../../src/i18n/useT"
+
 import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
@@ -14,6 +16,7 @@ import { reconcileSeriesSubtitleSlug } from "../../src/lib/subtitleSelection"
 // app-wide, mirroring how the series language sheet sets audio.
 export default function SeriesSubtitleRoute() {
   const router = useRouter()
+  const t = useT("Series")
   const { series, selectedLanguageSlug } = useSeriesSession()
   const {
     subtitleLanguageSlug,
@@ -23,10 +26,14 @@ export default function SeriesSubtitleRoute() {
     setSubtitlesEnabled,
   } = useWatchPreferences()
 
+  // The series screen's captured forms (KTD16) name the tracks, so this sheet
+  // and the page's pill agree, and a live language change moves neither.
+  const screenForms = series?.adminForms
   const { subtitles, loading, error, retry } = useSeriesSubtitleUnion(
     series?.episodes ?? null,
     selectedLanguageSlug,
     true,
+    screenForms,
   )
 
   const handleSubtitleChange = useCallback(
@@ -42,10 +49,11 @@ export default function SeriesSubtitleRoute() {
         ? (subtitles?.find((s) => s.languageSlug === slug)?.languageName ??
           null)
         : null
-      setPreferredSubtitleName(name)
+      setPreferredSubtitleName(name, screenForms?.catalogTag)
     },
     [
       subtitles,
+      screenForms,
       setSubtitlesEnabled,
       setPreferredSubtitleLanguage,
       setPreferredSubtitleName,
@@ -54,12 +62,7 @@ export default function SeriesSubtitleRoute() {
 
   if (!series || !selectedLanguageSlug) return <SheetLoading />
   if (error)
-    return (
-      <SheetError
-        message="Couldn't load subtitles. Check your connection and try again."
-        onRetry={retry}
-      />
-    )
+    return <SheetError message={t("subtitlesLoadError")} onRetry={retry} />
   if (subtitles == null || loading) return <SheetLoading />
 
   // Highlight the track the series actually uses (the preference resolved against

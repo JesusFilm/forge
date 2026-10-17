@@ -23,7 +23,16 @@ import {
   watchVideoLocalizedCopyFragment,
   watchVideoShellFragment,
 } from "@/lib/fragments"
-import { slugToBcp47Tag } from "@/lib/locale"
+import {
+  hasPublicWatchLanguageSlugShape,
+  isPublicWatchLanguageSlug,
+  slugToBcp47Tag,
+} from "@/lib/locale"
+import { selectOwnLanguageName } from "@/lib/language-native-name"
+import {
+  getWatchRouteManifest,
+  isWatchAudioLanguageSlug,
+} from "@/lib/watch-route-manifest"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
@@ -244,7 +253,11 @@ export type WatchVariantLanguage = {
   iso3?: string | null
   slug: string | null
   name: string | null
+  /** `"en"` only when `name` is known English; absent means untagged. */
+  nameLang?: "en"
   nativeName: string | null
+  /** Verified declarable tag of `nativeName`; null/absent means untagged. */
+  nativeNameLang?: string | null
 }
 
 export type WatchVariantDownload = {
@@ -286,7 +299,11 @@ export type WatchLanguagePickerVariant = {
     bcp47?: string | null
     slug: string | null
     name: string | null
+    /** `"en"` only when `name` is known English; absent means untagged. */
+    nameLang?: "en"
     nativeName?: string | null
+    /** Verified declarable tag of `nativeName`; absent means untagged. */
+    nativeNameLang?: string | null
   } | null
   videoEdition?: null
 }
@@ -327,7 +344,11 @@ export type WatchSubtitle = {
   language: {
     slug: string
     name: string
+    /** `"en"` only when `name` is known English; absent means untagged. */
+    nameLang?: "en"
     nativeName: string | null
+    /** Verified declarable tag of `nativeName`; null/absent means untagged. */
+    nativeNameLang?: string | null
     bcp47: string
   }
   vttSrc: string
@@ -1063,15 +1084,34 @@ const LOCALIZED_NAME_FALLBACK_ORDER = [
   "zh-Hans-CN",
 ] as const
 
-function pickNativeName(value: unknown): string | null {
-  if (typeof value !== "object" || !value) return null
-  const map = value as Record<string, unknown>
-  const english = map.en
-  for (const [key, val] of Object.entries(map)) {
-    if (key === "en") continue
-    if (typeof val === "string" && val.length > 0 && val !== english) return val
+// The language's OWN name, selected by its own BCP 47 key (see
+// `selectOwnLanguageName`). Never "first non-en": core sync keys the name map by
+// translation language, so the first non-en entry can be a translation.
+function pickNativeName(
+  value: unknown,
+  bcp47: string | null | undefined,
+): { nativeName: string | null; nativeNameLang?: string } {
+  const own = selectOwnLanguageName(value, bcp47)
+  return {
+    nativeName: own?.text ?? null,
+    // Only when verified, so unproven rows keep their legacy shape.
+    ...(own?.lang ? { nativeNameLang: own.lang } : {}),
   }
-  return null
+}
+
+// Language rows only: declare English only for the map's `en` entry.
+// A public-slug fallback is useful display text but has no language provenance.
+function pickEnglishLanguage(
+  value: unknown,
+  slug: string | null | undefined,
+): { name: string | null; nameLang?: "en" } {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const english = (value as Record<string, unknown>).en
+    if (typeof english === "string" && english.trim().length > 0) {
+      return { name: english.trim(), nameLang: "en" }
+    }
+  }
+  return { name: humanizeContentSlug(slug) }
 }
 
 function pickLocalizedName(value: unknown): string | null {
@@ -1186,8 +1226,8 @@ function normalizeVariant(
           bcp47: v.language.bcp47 ?? null,
           iso3: v.language.iso3 ?? null,
           slug: v.language.slug ?? null,
-          name: pickLocalizedName(v.language.name),
-          nativeName: pickNativeName(v.language.name),
+          ...pickEnglishLanguage(v.language.name, v.language.slug),
+          ...pickNativeName(v.language.name, v.language.bcp47),
         }
       : null,
     downloads: (v.downloads ?? [])
@@ -1220,8 +1260,14 @@ function normalizeVariant(
                   bcp47: subtitle.language.bcp47 ?? null,
                   iso3: subtitle.language.iso3 ?? null,
                   slug: subtitle.language.slug ?? null,
-                  name: pickLocalizedName(subtitle.language.name),
-                  nativeName: pickNativeName(subtitle.language.name),
+                  ...pickEnglishLanguage(
+                    subtitle.language.name,
+                    subtitle.language.slug,
+                  ),
+                  ...pickNativeName(
+                    subtitle.language.name,
+                    subtitle.language.bcp47,
+                  ),
                 }
               : null,
           })),
@@ -1264,7 +1310,11 @@ function normalizeSubtitlesFromVariants(
         language: {
           slug: s.language!.slug!,
           name: s.language!.name ?? s.language!.slug!,
+          ...(s.language!.nameLang ? { nameLang: s.language!.nameLang } : {}),
           nativeName: s.language!.nativeName,
+          ...(s.language!.nativeNameLang
+            ? { nativeNameLang: s.language!.nativeNameLang }
+            : {}),
           bcp47: s.language!.bcp47 ?? s.language!.slug!,
         },
         vttSrc: s.vttSrc!,
@@ -1550,25 +1600,18 @@ const fetchResolvedWatchPage = unstable_cache(
     locale: string,
     slugOrNull: string | null,
   ): Promise<WatchPageResult> => {
-    try {
-      const resolved =
-        slugOrNull === null
-          ? await resolveHomepage(locale)
-          : await resolveSlugPage(locale, slugOrNull)
+    const resolved =
+      slugOrNull === null
+        ? await resolveHomepage(locale)
+        : await resolveSlugPage(locale, slugOrNull)
 
-      if (!resolved) {
-        return { data: null, error: missingExperienceError() }
-      }
+    if (!resolved) {
+      return { data: null, error: missingExperienceError() }
+    }
 
-      return {
-        data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
-        error: null,
-      }
-    } catch (error) {
-      return {
-        data: null,
-        error: error instanceof Error ? error : new Error(String(error)),
-      }
+    return {
+      data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
+      error: null,
     }
   },
   ["watch-page", "v6-category-rail-copy"],
@@ -1586,33 +1629,33 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchPage(locale, slug ?? null)
-  },
-)
-
-const fetchResolvedWatchExperiencePage = unstable_cache(
-  async (locale: string, slug: string): Promise<WatchPageResult> => {
     try {
-      const experience = await getExperienceBySlug(locale, slug)
-      if (!experience) {
-        return { data: null, error: missingExperienceError() }
-      }
-
-      return {
-        data: JSON.parse(
-          JSON.stringify({
-            kind: "experience",
-            experience,
-            watchHomeCategoryRailCompatibility: "supported",
-          }),
-        ) as ResolvedWatchPage,
-        error: null,
-      }
+      return await fetchResolvedWatchPage(locale, slug ?? null)
     } catch (error) {
       return {
         data: null,
         error: error instanceof Error ? error : new Error(String(error)),
       }
+    }
+  },
+)
+
+const fetchResolvedWatchExperiencePage = unstable_cache(
+  async (locale: string, slug: string): Promise<WatchPageResult> => {
+    const experience = await getExperienceBySlug(locale, slug)
+    if (!experience) {
+      return { data: null, error: missingExperienceError() }
+    }
+
+    return {
+      data: JSON.parse(
+        JSON.stringify({
+          kind: "experience",
+          experience,
+          watchHomeCategoryRailCompatibility: "supported",
+        }),
+      ) as ResolvedWatchPage,
+      error: null,
     }
   },
   ["watch-experience-page", "v3-category-rail-copy"],
@@ -1626,7 +1669,14 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
  */
 export const resolveWatchExperiencePage = cache(
   async (locale: string, slug: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchExperiencePage(locale, slug)
+    try {
+      return await fetchResolvedWatchExperiencePage(locale, slug)
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error(String(error)),
+      }
+    }
   },
 )
 
@@ -1703,17 +1753,77 @@ type ResolveWatchVideoArgs = {
   languageSlug: string
 }
 
-function contentIdentityForWatchLanguage(languageSlugOrLocale: string): {
+type WatchContentIdentity = {
   locale: string
   languageSlug: string | null
-} {
+}
+
+/**
+ * Split the URL's audio-language segment into the two identities admin's
+ * watch queries take: `locale` (BCP-47, drives localized copy) and
+ * `languageSlug` (admin `Language.slug`, drives DUB SELECTION).
+ *
+ * `languageSlug` is the one that matters for playback: admin's
+ * `watchVideoRouteSnapshotBySlug` picks `preferredVariant` by slug and,
+ * when it receives `null`, falls back to the primary-language (English)
+ * dub — after which the page redirects to `/english.html`. So a real
+ * language slug must ALWAYS reach admin as `languageSlug`, even when the
+ * compiled corpus in `language-bcp47-map.ts` has not been regenerated since
+ * admin published it (Purepecha W.H., Toba, Twi and 8 others played English
+ * for that reason on 2026-09-11), and even when the slug happens to equal
+ * its own BCP-47 tag (`luo`, `yao`, `tiv`, ...).
+ *
+ * Decision, mirroring the route classifier in `src/proxy.ts` / the
+ * catch-all page:
+ *   1. compiled corpus knows the slug → pass it through (no manifest hit);
+ *   2. corpus miss → consult the live route manifest (lazy: only on a miss,
+ *      so content resolution never serializes behind the manifest request;
+ *      the proxy has normally just fetched it so this is the 60 s cache).
+ *      Manifest-admitted → pass it through;
+ *   3. otherwise pass it through only when it cannot be read as a BCP-47
+ *      tag. Internal locale keys (`en`, `fr`, `zh-Hans`) keep the legacy
+ *      `languageSlug: null` contract, while a slug that does not parse as
+ *      a tag (`toba-maskoy`, `purepecha-western-highland`) still reaches
+ *      admin when the manifest is unavailable — admin ignores a slug it
+ *      doesn't know exactly as it ignores `null`, so nothing is lost by
+ *      sending it. A tag-shaped fresh slug (`toba`, `twi`, `aja-gbe`) with
+ *      NO manifest does fall to `null`; the route classifier 404s that
+ *      case before content runs, and the manifest module serves its last
+ *      cached copy across fetch failures, so it needs a cold process AND
+ *      a failed first fetch.
+ */
+async function contentIdentityForWatchLanguage(
+  languageSlugOrLocale: string,
+): Promise<WatchContentIdentity> {
   const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
-  const hasExactSlug =
-    mappedLocale != null && mappedLocale !== languageSlugOrLocale
-  return {
-    locale: mappedLocale ?? languageSlugOrLocale,
-    languageSlug: hasExactSlug ? languageSlugOrLocale : null,
+  const locale = mappedLocale ?? languageSlugOrLocale
+
+  if (isPublicWatchLanguageSlug(languageSlugOrLocale)) {
+    return { locale, languageSlug: languageSlugOrLocale }
   }
+  if (!hasPublicWatchLanguageSlugShape(languageSlugOrLocale)) {
+    return { locale, languageSlug: null }
+  }
+
+  const manifest = await getWatchRouteManifest().catch(() => null)
+  const manifestAdmitted = isWatchAudioLanguageSlug(
+    languageSlugOrLocale,
+    manifest,
+  )
+  // At this point the corpus missed, so a non-null `mappedLocale` can only
+  // mean the raw value parsed as a BCP-47 tag.
+  const readsAsBcp47Tag = mappedLocale != null
+  const languageSlug =
+    manifestAdmitted || !readsAsBcp47Tag ? languageSlugOrLocale : null
+
+  logWatchServerEvent("watch_content.language_identity.corpus_miss", {
+    languageSlug: languageSlugOrLocale,
+    manifestAdmitted,
+    manifestAvailable: manifest != null,
+    passedThrough: languageSlug != null,
+  })
+
+  return { locale, languageSlug }
 }
 
 function hasItems<T>(items: readonly T[] | null | undefined): boolean {
@@ -2119,7 +2229,9 @@ export const resolveWatchUnavailableRecoveryTarget = cache(
     videoSlug: string,
     requestedLanguageSlug: string,
   ): Promise<WatchUnavailableRecoveryTarget | null> => {
-    const identity = contentIdentityForWatchLanguage(requestedLanguageSlug)
+    const identity = await contentIdentityForWatchLanguage(
+      requestedLanguageSlug,
+    )
     const snapshot = await fetchWatchVideoRouteSnapshot(videoSlug, identity)
     if (!snapshot) return null
 
@@ -2352,7 +2464,7 @@ async function tryResolveWatchVideo(
   videoSlug: string,
   languageSlug: string,
 ): Promise<ResolvedWatchVideo> {
-  const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
+  const contentIdentity = await contentIdentityForWatchLanguage(languageSlug)
   const record = await fetchWatchVideoRecord(
     collectionSlug,
     videoSlug,
@@ -2470,7 +2582,7 @@ const fetchWatchVideoBySlug = cache(
     languageSlug: string,
     subtitleLanguageSlug: string | null = null,
   ): Promise<WatchVideoRecord | null> => {
-    const contentIdentity = contentIdentityForWatchLanguage(languageSlug)
+    const contentIdentity = await contentIdentityForWatchLanguage(languageSlug)
     return fetchWatchVideoRecord(
       "",
       videoSlug,

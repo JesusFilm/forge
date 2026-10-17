@@ -9,6 +9,7 @@ import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { useT } from "../../src/i18n/useT"
 import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import type { WatchDownload } from "../../src/lib/normalizeVideo"
 import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
@@ -22,6 +23,7 @@ import { resolveActiveSubtitle } from "../../src/lib/subtitleSelection"
 
 export default function DownloadSheetRoute() {
   const router = useRouter()
+  const t = useT("Watch")
   const {
     video,
     activeVariant,
@@ -66,7 +68,7 @@ export default function DownloadSheetRoute() {
   if (activeVariantMedia == null && activeVariantMediaError)
     return (
       <SheetError
-        message="Couldn't load downloads. Check your connection and try again."
+        message={t("downloadsLoadError")}
         onRetry={ensureActiveVariantMedia}
       />
     )
@@ -140,6 +142,8 @@ export default function DownloadSheetRoute() {
     const result = await enqueue({
       videoSlug: video.slug,
       title: video.title ?? "",
+      // U7: no locale for an empty title, so the refresh still fills it.
+      titleLocale: video.title ? video.adminForms?.catalogTag : undefined,
       dubDocumentId: activeVariant.documentId,
       rendition,
       subtitleLanguageSlug: chosenSubtitle?.languageSlug ?? null,
@@ -155,17 +159,17 @@ export default function DownloadSheetRoute() {
     })
     if (!result.ok && result.reason === "insufficient-storage") {
       // Stay on the sheet so the user can pick a smaller quality.
-      setSnackbarMessage("Not enough storage to download this video.")
+      setSnackbarMessage(t("notEnoughStorage"))
       return
     }
     // `exists` means the pipeline did NOTHING — the same rendition AND the same
     // subtitle are already held, or a live record blocks a fresh start. Saying
     // "Download started" there is a lie the subtitle picker makes easy to hit.
     if (!result.ok && result.reason === "exists") {
-      setSnackbarMessage("This download is already saved at that quality.")
+      setSnackbarMessage(t("alreadySaved"))
       return
     }
-    setSnackbarMessage(isSwap ? "Updating download…" : "Download started")
+    setSnackbarMessage(isSwap ? t("updatingDownload") : t("downloadStarted"))
     router.back()
   }
 

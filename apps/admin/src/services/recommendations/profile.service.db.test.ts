@@ -1,28 +1,18 @@
-import { readdirSync, readFileSync } from "node:fs"
 import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { currentAdminMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationBindingError } from "./errors"
 import { RecommendationProfileService } from "./profile.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationRoot = new URL("../../../prisma/migrations/", import.meta.url)
-const recommendationMigrations = readdirSync(migrationRoot)
-  .filter((name) => {
-    const ordinal = Number(name.slice(0, 4))
-    return (
-      (ordinal >= 52 && ordinal <= 71 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity" ||
-      name === "0098_recommendation_viewing_mode"
-    )
-  })
-  .sort()
-  .map((name) =>
-    readFileSync(new URL(`${name}/migration.sql`, migrationRoot), "utf8"),
-  )
+// EvidenceService selects the current private-request provenance marker even
+// for public requests, so this native fixture needs the actual catalog and
+// precomputed migrations rather than a catalog-free legacy runtime slice.
+const recommendationMigrations = currentAdminMigrationSql
 
 const webCaller = {
   id: "forge-web",

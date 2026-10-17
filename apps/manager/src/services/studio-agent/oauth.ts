@@ -44,7 +44,7 @@ export async function authenticateStudioMcp(
     if (!scopes.includes(requiredScope))
       throw new StudioBoundaryError("insufficient_scope")
     const session = await validateAdminManagerSession({ subject: payload.sub })
-    if (!session)
+    if (!session || session.managerRole !== "OPERATOR")
       throw new StudioBoundaryError(
         "Current Studio operator membership required",
       )

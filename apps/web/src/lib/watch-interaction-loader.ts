@@ -100,7 +100,10 @@ function isGlobalLanguageOption(value: unknown): value is GlobalLanguageOption {
     (option.aliasOwnerSlug === null ||
       typeof option.aliasOwnerSlug === "string") &&
     typeof option.englishName === "string" &&
-    (option.nativeName === null || typeof option.nativeName === "string")
+    (option.nativeName === null || typeof option.nativeName === "string") &&
+    (option.nativeNameLang === undefined ||
+      typeof option.nativeNameLang === "string") &&
+    (option.bcp47 === undefined || typeof option.bcp47 === "string")
   )
 }
 

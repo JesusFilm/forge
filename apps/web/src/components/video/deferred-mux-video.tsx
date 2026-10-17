@@ -1,11 +1,8 @@
 "use client"
 
-import { Component, type ReactNode } from "react"
+import { Component, type ComponentProps, type ReactNode } from "react"
 import dynamic from "next/dynamic"
-import type {
-  MuxVideo as MuxVideoType,
-  MuxVideoProps,
-} from "@forge/video-player"
+import type { MuxVideo as MuxVideoType } from "@forge/video-player"
 
 /**
  * The deferral seam itself. `apps/web` should reach the player through the
@@ -31,7 +28,7 @@ import type {
  * responsible for reserving its own box, so the late mount cannot shift what is
  * below it.
  *
- * See FGE-138 / feat-535.
+ * See FGE-138 / feat-719.
  */
 const LazyMuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
   ssr: false,
@@ -51,12 +48,18 @@ const LazyMuxVideo = dynamic(() => import("@forge/video-player/mux-video"), {
  * Deliberately NOT a userland retry around `import()`: that is inert on
  * Turbopack, which is what builds this app.
  *
- * The fallback is `null`. Every call site reserves its own box and paints a
- * poster behind the player, so rendering nothing degrades to poster-only —
- * exactly what these surfaces already show before the first frame.
+ * The fallback is `null`, so the caller owns what the box shows instead. Not
+ * every caller paints a poster of its own: the home carousel does, and the
+ * inline `Video` / `CarouselVideo` sections do through `DeferredVideoPoster`,
+ * but `VideoHero` has never had one. A caller whose UI waits on media events
+ * (a loading spinner, controls) must pass `onLoadError`: with no element
+ * attached, no media event will ever arrive to end that wait.
+ *
+ * `onLoadError` fires from `componentDidCatch`, in the commit phase, so the
+ * caller can set its own state there; never from render.
  */
 class MuxVideoChunkBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; onLoadError?: () => void },
   { failed: boolean }
 > {
   state = { failed: false }
@@ -65,17 +68,27 @@ class MuxVideoChunkBoundary extends Component<
     return { failed: true }
   }
 
+  componentDidCatch() {
+    this.props.onLoadError?.()
+  }
+
   render() {
     return this.state.failed ? null : this.props.children
   }
 }
 
-function DeferredMuxVideo(props: MuxVideoProps) {
+export type DeferredMuxVideoProps = ComponentProps<typeof MuxVideoType> & {
+  /** The player chunk failed to load; no media element will ever attach. */
+  onLoadError?: () => void
+}
+
+export default function DeferredMuxVideo({
+  onLoadError,
+  ...props
+}: DeferredMuxVideoProps) {
   return (
-    <MuxVideoChunkBoundary>
+    <MuxVideoChunkBoundary onLoadError={onLoadError}>
       <LazyMuxVideo {...props} />
     </MuxVideoChunkBoundary>
   )
 }
-
-export default DeferredMuxVideo as typeof MuxVideoType

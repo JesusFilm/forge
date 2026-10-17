@@ -8,7 +8,11 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { CuratedPoolsService } from "./curated-pools.service"
+import type { CuratedDeliveryDiagnostics } from "./delivery-diagnostics"
 import { retrieveCuratedFallback } from "./curated-fallback"
+import { createRecommendationDeliveryService } from "./delivery.factory"
+import { createUserRecommendationDeliveryService } from "./user-delivery.service"
+import { CONTEXTUAL_RECOMMENDATION_CAPABILITY } from "./traffic"
 import { digestValue } from "./promotion/manifest"
 import { runRecommendationDeliveryTransaction } from "./delivery-runtime"
 import {
@@ -127,7 +131,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
 
     it("imports, activates, rejects bad generations, rechecks eligibility and rolls back exact order/provenance", async () => {
       const read = () => service.getCandidates({ ...context, limit: 6 })
-      expect(await read()).toEqual({ version: null, poolKeys: [], items: [] })
+      expect(await read()).toEqual({
+        version: null,
+        contextAvailable: false,
+        poolKeys: [],
+        items: [],
+      })
       const report = await service.importGeneration({
         source: source("fixture-v1"),
         contexts: [context],
@@ -170,6 +179,30 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         similarity: null,
         startSeconds: 0,
       })
+      // Publication drift can exhaust an approved context without removing
+      // its immutable starter pool. Keep that distinct from absent coverage.
+      await admin.query("UPDATE video_dub SET published=false")
+      const exhausted = await read()
+      expect(exhausted).toEqual({
+        version: "fixture-v1",
+        contextAvailable: true,
+        poolKeys: [],
+        items: [],
+      })
+      let diagnostics: CuratedDeliveryDiagnostics | undefined
+      expect(
+        await retrieveCuratedFallback(prisma, {
+          ...context,
+          seedMediaId: "video-1",
+          excludedMediaIds: [],
+          deadlineAt: Date.now() + 1500,
+          onDiagnostics: (value) => {
+            diagnostics = value
+          },
+        }),
+      ).toEqual([])
+      expect(diagnostics).toEqual({ state: "available", nominatedCount: 0 })
+      await admin.query("UPDATE video_dub SET published=true")
       const seededFallback = await retrieveCuratedFallback(prisma, {
         ...context,
         seedMediaId: "video-1",
@@ -220,9 +253,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         ).items,
       ).toEqual([])
       expect(
-        (await service.getCandidates({ ...context, locale: "fr", limit: 6 }))
-          .items,
-      ).toEqual([])
+        await service.getCandidates({ ...context, locale: "fr", limit: 6 }),
+      ).toEqual({
+        version: "fixture-v1",
+        contextAvailable: false,
+        poolKeys: [],
+        items: [],
+      })
 
       const invalid = source("invalid")
       invalid.candidates[0]!.alternateCoreVideoIds.push("missing-core-id")
@@ -306,6 +343,87 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           (await read()).items.some((item) => item.videoId === "video-1"),
         ).toBe(false)
         await admin.query(restore!)
+      }
+    }, 30_000)
+
+    it("returns real public inventory without any protected writes for profile-backed crawlers and speculation", async () => {
+      // Trap every recommendation table, including linkage, experiments and
+      // future evidence tables. Retrieval reads the real curated/catalog fixtures.
+      const protectedTables = await admin.query<{ tablename: string }>(
+        "SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'recommendation_%' ORDER BY tablename",
+      )
+      const existing = new Set(
+        (
+          await admin.query<{ tablename: string }>(
+            "SELECT tablename FROM pg_tables WHERE schemaname=$1",
+            [schema],
+          )
+        ).rows.map((row) => row.tablename),
+      )
+      await admin.query(
+        `CREATE FUNCTION "${schema}".reject_recommendation_write() RETURNS trigger LANGUAGE plpgsql AS 'BEGIN RAISE EXCEPTION ''excluded delivery attempted a write''; END'`,
+      )
+      for (const { tablename } of protectedTables.rows) {
+        if (!existing.has(tablename))
+          await admin.query(
+            `CREATE TABLE "${schema}"."${tablename}" (LIKE public."${tablename}" INCLUDING ALL)`,
+          )
+        await admin.query(
+          `CREATE TRIGGER exclude_delivery_writes BEFORE INSERT OR UPDATE OR DELETE ON "${schema}"."${tablename}" FOR EACH ROW EXECUTE FUNCTION "${schema}".reject_recommendation_write()`,
+        )
+      }
+      const counts = async () =>
+        Promise.all(
+          protectedTables.rows.map(
+            async ({ tablename }) =>
+              (
+                await admin.query(
+                  `SELECT count(*)::int AS count FROM "${schema}"."${tablename}"`,
+                )
+              ).rows[0].count,
+          ),
+        )
+      const before = await counts()
+      const seeded = createRecommendationDeliveryService(prisma)
+      const forYou = createUserRecommendationDeliveryService(prisma, true)
+      for (const trafficCategory of [
+        "declared_crawler",
+        "speculative_prefetch",
+        "speculative_prerender",
+        undefined,
+      ]) {
+        for (const delivery of [seeded, forYou]) {
+          statements.length = 0
+          const response = await delivery.deliver({
+            ...personalizedInput("video-1"),
+            ...context,
+            trafficCategory,
+            eligibleHuman: trafficCategory == null ? false : true,
+          })
+          expect(response.requestId).toBeNull()
+          expect(response.expiresAt).toBeNull()
+          if (trafficCategory?.startsWith("speculative")) {
+            expect(response.items).toEqual([])
+            expect(statements).toEqual([])
+          } else {
+            expect(response.items.length).toBeGreaterThan(0)
+            expect(
+              response.items.every(
+                (item) =>
+                  item.capability === CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+              ),
+            ).toBe(true)
+            expect(
+              statements.some((query) => query.includes("video_dub")),
+            ).toBe(true)
+          }
+          expect(
+            statements.filter((query) =>
+              /^(INSERT|UPDATE|DELETE|MERGE)\b/i.test(query.trim()),
+            ),
+          ).toEqual([])
+          expect(await counts()).toEqual(before)
+        }
       }
     }, 30_000)
   },

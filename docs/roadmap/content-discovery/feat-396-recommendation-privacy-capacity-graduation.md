@@ -3,15 +3,10 @@ id: "feat-396"
 title: "Recommendation privacy and capacity graduation"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 5
-depends_on:
-  - "feat-394"
-  - "feat-395"
-  - "feat-447"
-  - "feat-448"
-  - "feat-449"
+depends_on: []
 blocks: []
 tags:
   - "admin"
@@ -21,7 +16,18 @@ tags:
   - "operations"
 ---
 
-## Problem
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+The umbrella graduation exercise for the retired exploration, learned models and personalized-page programme is cancelled. It is not a waiver of privacy, retention or capacity obligations: current mandatory lifecycle controls stay with their owning implementation, and the actual loaded-retention/capacity gate remains in platform feat-554 plus measured efficiency work in feat-574. No warehouse/feature-store/vector-service migration or full historical drill set is claimed.
+
+Audit anchors: `apps/admin/src/services/recommendations/profiles/privacy.ts`, `apps/admin/src/services/recommendations/retention.service.ts`, `docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md`, `docs/roadmap/platform/feat-574-recommendation-storage-efficiency.md`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
 
 Forge should adopt specialized recommendation infrastructure only when lifecycle drills and measured bottlenecks show a concrete job for it.
 

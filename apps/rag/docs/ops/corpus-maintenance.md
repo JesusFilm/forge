@@ -18,10 +18,9 @@ corpus.
   containing more rows than its explicit limit. Production language sweeps are
   source-scoped because a per-source limit would not bound an `--all` run.
 - Omit `--apply` for a dry run. A write requires `--apply`; production writes
-  additionally require `--production`. Acquisition/indexing use exact
+  additionally require `--production`. All production writes use exact
   `FORGE_RAG_ALLOW_PROD_WRITE=1` and an independently configured exact
-  `FORGE_RAG_EXPECTED_POSTGRES_HOST` match. Language maintenance retains
-  `JFRAG_ALLOW_PROD_WRITE` / `JFRAG_EXPECTED_POSTGRES_HOST`.
+  `FORGE_RAG_EXPECTED_POSTGRES_HOST` match.
 - Inject production values from Doppler `forge-rag/prd`. Never paste or print a
   database URL, provider key, Firecrawl key, corpus text, or changelog content.
 - Keep concurrency at or below four. Prefer `--resume` for interrupted
@@ -51,7 +50,7 @@ first operation (see [environment and secrets](environment-and-secrets.md)):
 | `FORGE_RAG_POSTGRESQL_DB_URL`          | Forge writer URL for apply. Never substitute the legacy JFRAG writer.                                                                   |
 | `FORGE_RAG_EXPECTED_POSTGRES_HOST`     | Exact Forge database hostname, confirmed independently against the intended Railway receiver; not derived from the URL during each run. |
 | `FORGE_RAG_READONLY_ROLE_NAME`         | Optional reader login override; default `forge_rag_evaluator`.                                                                          |
-| `OPENROUTER_API_KEY`                   | Provider key; the environment-agnostic `JFRAG_OPENROUTER_API_KEY` remains an accepted fallback.                                         |
+| `OPENROUTER_API_KEY`                   | Environment-agnostic provider key.                                                                                                      |
 | `FORGE_RAG_EMBED_MODEL_ID`             | Optional canonical model; default `qwen/qwen3-embedding-8b`. Must match the serving corpus model.                                       |
 
 Gateway settings (`EMBED_BASE_URL`, `EMBED_API_KEY`, `EMBED_WIRE_MODEL_ID`,
@@ -67,14 +66,12 @@ Do not store `FORGE_RAG_ALLOW_PROD_WRITE=1` permanently; supply it only to the
 reviewed apply command as shown below. Previews use the reader even if a writer
 URL or opt-in is present. `--apply --dry-run` is refused.
 
-Run the exact scoped preview below as the acquisition/indexing preflight.
-`env:check production-read|production-write` still validates the older
-`JFRAG_*` contract used by other commands and is **not** the preflight for these
-two entrypoints. Language maintenance, evaluation, dashboard, promotion, and
-reader provisioning retain their documented variable names; this change does
-not retarget them. Provisioning instructions use JFRAG-named inputs internally:
-explicitly select Forge's owner URL and independently checked host, then store
-the resulting reader URL under the Forge reader name above.
+Run `env:check production-read` for the reader contract and the exact scoped
+preview below as the acquisition/indexing preflight. Write validation requires the
+writer contract and explicit write acknowledgement. Language maintenance, evaluation,
+dashboard, promotion, and reader administration use the same Forge namespace;
+[readonly-database.md](readonly-database.md) describes the separate role-provisioning
+acknowledgement. These setup instructions do not authorize a live corpus operation.
 
 Serialize acquisition/indexing apply sessions against a given Forge corpus,
 including sessions on other machines.
@@ -269,14 +266,14 @@ signal:
 ```sh
 doppler run --project forge-rag --config prd -- \
   env RAG_LOCAL_DATABASE_URL="$RAG_LOCAL_DATABASE_URL" \
-      JFRAG_ALLOW_PROD_WRITE=1 \
+      FORGE_RAG_ALLOW_PROD_WRITE=1 \
   pnpm --filter @forge/rag raws:promote --source <source-key> \
     --expected-rows <reviewed-count> \
     --expected-digest <reviewed-digest> \
     --apply
 ```
 
-The command requires `JFRAG_EXPECTED_POSTGRES_HOST` from the approved production
+The command requires `FORGE_RAG_EXPECTED_POSTGRES_HOST` from the approved production
 configuration, refuses identical source/target database identities, selects the
 newest row per canonical URL, copies in batches inside one locked target
 transaction, and rolls back unless source and target count/digest reconciliation

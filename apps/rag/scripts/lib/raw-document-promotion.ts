@@ -207,9 +207,9 @@ export function resolveRawDocumentPromotionEnvironment(
     throw invalidArgument(
       "local source and production target are the same database",
     )
-  if (apply && input.JFRAG_ALLOW_PROD_WRITE !== "1")
+  if (apply && input.FORGE_RAG_ALLOW_PROD_WRITE !== "1")
     throw invalidArgument(
-      "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
+      "production write refused: set FORGE_RAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
     )
   return { sourceUrl: source.href, targetUrl: target.href }
 }
@@ -222,17 +222,18 @@ export function resolveRawDocumentVerificationEnvironment(
 
 const resolveProductionTarget = (input: NodeJS.ProcessEnv): URL => {
   const target = postgresUrl(
-    "JFRAG_POSTGRESQL_DB_URL",
-    input.JFRAG_POSTGRESQL_DB_URL,
+    "FORGE_RAG_POSTGRESQL_DB_URL",
+    input.FORGE_RAG_POSTGRESQL_DB_URL,
   )
-  const expectedHost = input.JFRAG_EXPECTED_POSTGRES_HOST?.trim().toLowerCase()
+  const expectedHost =
+    input.FORGE_RAG_EXPECTED_POSTGRES_HOST?.trim().toLowerCase()
   if (!expectedHost)
     throw invalidArgument(
-      "JFRAG_EXPECTED_POSTGRES_HOST is required before connecting to production",
+      "FORGE_RAG_EXPECTED_POSTGRES_HOST is required before connecting to production",
     )
   if (target.hostname.toLowerCase() !== expectedHost)
     throw invalidArgument(
-      "JFRAG_EXPECTED_POSTGRES_HOST does not match the production database host",
+      "FORGE_RAG_EXPECTED_POSTGRES_HOST does not match the production database host",
     )
   return target
 }

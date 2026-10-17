@@ -9,6 +9,12 @@ const job = vi.hoisted(() => ({
 const proxyJob = vi.hoisted(() => ({
   runPlaybackProxyReadinessFromScheduler: vi.fn(),
 }))
+const signalJob = vi.hoisted(() => ({
+  runPlaybackSignalReadinessFromScheduler: vi.fn(),
+}))
+const snapshotJob = vi.hoisted(() => ({
+  runPlaybackObservationSnapshotFromScheduler: vi.fn(),
+}))
 const sleep = vi.hoisted(() => vi.fn())
 const getWorkflowMetadata = vi.hoisted(() =>
   vi.fn(() => ({ workflowRunId: "runtime-scheduler-1" })),
@@ -17,6 +23,14 @@ class RetryableError extends Error {}
 
 vi.mock("@/services/recommendations/control-readiness/job", () => job)
 vi.mock("@/services/recommendations/proxy-readiness.job", () => proxyJob)
+vi.mock(
+  "@/services/recommendations/playback-signal-readiness.job",
+  () => signalJob,
+)
+vi.mock(
+  "@/services/recommendations/playback-observation-snapshot.job",
+  () => snapshotJob,
+)
 vi.mock("workflow", () => ({ getWorkflowMetadata, RetryableError, sleep }))
 
 describe("recommendation control readiness workflow", () => {
@@ -31,6 +45,14 @@ describe("recommendation control readiness workflow", () => {
     proxyJob.runPlaybackProxyReadinessFromScheduler.mockResolvedValue({
       ok: true,
       ledgerRunId: "proxy-evaluation-ledger-1",
+    })
+    signalJob.runPlaybackSignalReadinessFromScheduler.mockResolvedValue({
+      ok: true,
+      ledgerRunId: "signal-evaluation-ledger-1",
+    })
+    snapshotJob.runPlaybackObservationSnapshotFromScheduler.mockResolvedValue({
+      ok: true,
+      ledgerRunId: "snapshot-ledger-1",
     })
     job.nextRecommendationControlReadinessRunAt.mockReturnValue(next)
     job.recordRecommendationControlReadinessSchedulerHeartbeat.mockResolvedValue(
@@ -60,6 +82,12 @@ describe("recommendation control readiness workflow", () => {
     ).toHaveBeenCalledOnce()
     expect(
       proxyJob.runPlaybackProxyReadinessFromScheduler,
+    ).toHaveBeenCalledOnce()
+    expect(
+      signalJob.runPlaybackSignalReadinessFromScheduler,
+    ).toHaveBeenCalledOnce()
+    expect(
+      snapshotJob.runPlaybackObservationSnapshotFromScheduler,
     ).toHaveBeenCalledOnce()
     expect(
       job.recordRecommendationControlReadinessSchedulerHeartbeat,

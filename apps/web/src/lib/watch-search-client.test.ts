@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { searchWatchDirect, watchSearchErrorKind } from "./watch-search-client"
+import {
+  parseWatchSearchSurfaceManifest,
+  searchWatchDirect,
+  watchSearchErrorKind,
+} from "./watch-search-client"
 
 vi.mock("@/env", () => ({
   env: {
@@ -11,6 +15,118 @@ vi.mock("@/env", () => ({
 describe("searchWatchDirect", () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+  })
+
+  it("retries only the missing additive field against an old Admin schema with the same search identity", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            errors: [
+              {
+                message:
+                  'Cannot query field "surfaceManifest" on type "WatchSearchResponse".',
+                extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            data: {
+              watchSearch: {
+                results: [],
+                hasMore: false,
+                requestId: "legacy-request",
+                query: "Jesus",
+              },
+            },
+          }),
+          { status: 200 },
+        ),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+    const result = await searchWatchDirect({
+      query: "Jesus",
+      languageContext: { clientRequestId: "same-request" },
+    })
+    expect(result).toMatchObject({
+      requestId: "legacy-request",
+      surfaceManifest: null,
+      results: [],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const first = JSON.parse(fetchMock.mock.calls[0][1].body)
+    const second = JSON.parse(fetchMock.mock.calls[1][1].body)
+    expect(first.variables).toEqual(second.variables)
+    expect(first.query).toContain("surfaceManifest")
+    expect(second.query).not.toContain("surfaceManifest")
+  })
+
+  it("never retries unrelated validation or service failures", async () => {
+    for (const [code, message] of [
+      [
+        "GRAPHQL_VALIDATION_FAILED",
+        'Cannot query field "otherField" on type "WatchSearchResponse".',
+      ],
+      ["INTERNAL_SERVER_ERROR", "surfaceManifest unavailable"],
+    ]) {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ errors: [{ message, extensions: { code } }] }),
+            { status: 200 },
+          ),
+        )
+      vi.stubGlobal("fetch", fetchMock)
+      await expect(searchWatchDirect({ query: "Jesus" })).rejects.toThrow()
+      expect(fetchMock).toHaveBeenCalledOnce()
+    }
+  })
+
+  it("strictly carries only matching result-page descriptors", () => {
+    const source = {
+      manifest: {
+        surface: "watch-search",
+        block: "results",
+        presentation: "result-list",
+        placement: "search-results",
+        policyVersion: "watch-exposure-v2",
+        sourceVersion: "a".repeat(64),
+        expiresAt: "2026-10-01T00:00:00.000Z",
+        items: [],
+      },
+      signature: "a".repeat(43),
+    }
+    expect(parseWatchSearchSurfaceManifest(source, [], "english")).toEqual(
+      source,
+    )
+    expect(
+      parseWatchSearchSurfaceManifest(
+        { ...source, extra: "untrusted" },
+        [],
+        "english",
+      ),
+    ).toBeNull()
+    expect(
+      parseWatchSearchSurfaceManifest(
+        {
+          ...source,
+          manifest: {
+            ...source.manifest,
+            items: [{ position: 0, itemPath: "/watch/other.html" }],
+          },
+        },
+        [],
+        "english",
+      ),
+    ).toBeNull()
+    expect(parseWatchSearchSurfaceManifest(undefined, [], "english")).toBeNull()
   })
 
   it("sends the typed Watch search operation directly to Admin", async () => {
@@ -47,6 +163,7 @@ describe("searchWatchDirect", () => {
     })
 
     expect(result.targetLanguageSlug).toBe("english")
+    expect(result.surfaceManifest).toBeNull()
 
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(fetchMock.mock.calls[0]?.[0]).toBe("https://admin.test/api/graphql")

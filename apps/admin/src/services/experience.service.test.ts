@@ -3,6 +3,8 @@ import { after } from "next/server"
 import type { Principal } from "@/auth/principal"
 import {
   ExperienceDynamicCollectionPlacementError,
+  ExperienceHomepageLayoutMutationError,
+  ExperienceHomepageLayoutPublishError,
   ExperienceService,
   ExperienceWatchHomeCategoryRailPlacementError,
   localeDraftRevision,
@@ -161,6 +163,45 @@ describe("ExperienceService", () => {
 
       expect(prisma.contentRevision.findFirst).not.toHaveBeenCalled()
       expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("loads canonical and draft blocks that still carry retired image URLs", async () => {
+      const staleItem = {
+        t: "mediaCollection",
+        variant: "collection",
+        itemsSource: "manual",
+        showItemNumbers: false,
+        items: [{ videoId: "video-1", imageUrl: "https://cdn/retired.jpg" }],
+      }
+      const draft = {
+        id: "stale-draft",
+        entityType: "ExperienceLocale",
+        entityId: locale.id,
+        status: "DRAFT",
+        previewToken: "token",
+        snapshot: { v: 1, data: { blocks: [staleItem] } },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+        ...locale,
+        blocks: [staleItem],
+      })
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(draft)
+
+      const state = await service.getLocaleDraftState({
+        id: locale.id,
+        user: EDITOR_ALICE,
+      })
+
+      // The editor state is schema-parsed, so defaults may appear; the
+      // retired key must not, and the rest of the item must survive.
+      expect(JSON.stringify(state.effective.blocks)).not.toContain("imageUrl")
+      expect(state.effective.blocks[0]).toMatchObject({
+        t: "mediaCollection",
+        items: [{ videoId: "video-1" }],
+      })
+      // Reads never write the cleaned shape back.
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(draft.snapshot.data.blocks).toEqual([staleItem])
     })
 
     it("atomically adopts an SEO-created draft without a preview token", async () => {
@@ -359,18 +400,162 @@ describe("ExperienceService", () => {
   // ---------------------------------------------------------------------------
 
   describe("duplicate", () => {
-    it("copies every locale into a caller-owned unpublished draft", async () => {
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-source",
-        isTemplate: true,
-        ownerId: "another-editor",
+    function sourceLocale(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "loc-en",
+        experienceId: "exp-source",
+        locale: "en",
+        slug: "hope",
+        isHomepage: false,
+        homepageLayout: false,
+        pathSegment: null,
+        title: "Hope",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [{ t: "text", heading: "Hope" }],
+        status: "DRAFT",
+        publishedAt: null,
+        ...overrides,
+      }
+    }
+
+    function source(
+      locales: Record<string, unknown>[],
+      overrides: Record<string, unknown> = {},
+    ) {
+      return {
+        isTemplate: false,
         archivedAt: null,
-        locales: [
-          {
-            id: "loc-en",
-            locale: "en",
-            slug: "hope",
-            isHomepage: true,
+        locales,
+        ...overrides,
+      }
+    }
+
+    function homepageBlocks() {
+      return [
+        { t: "watchHomeHero", sectionKey: "home-hero" },
+        watchHomeCategoryRailBlock(),
+        { t: "text", heading: "Ordinary block" },
+        dynamicCollectionBlock("feed"),
+      ]
+    }
+
+    // The copied Experience echoes its nested create, the way Prisma would,
+    // so the service can attach each staged draft to its copied locale row.
+    function echoCreatedExperience() {
+      prisma.experience.create.mockImplementationOnce(
+        async ({
+          data,
+        }: {
+          data: {
+            isTemplate: boolean
+            ownerId: string
+            locales: { create: Record<string, unknown>[] }
+          }
+        }) => ({
+          id: "exp-copy",
+          isTemplate: data.isTemplate,
+          ownerId: data.ownerId,
+          locales: data.locales.create.map((locale) => ({
+            id: `copy-${String(locale.locale)}`,
+            experienceId: "exp-copy",
+            ...locale,
+            createdAt: new Date("2026-10-15T00:00:00.000Z"),
+            updatedAt: new Date("2026-10-15T00:00:00.000Z"),
+          })),
+        }),
+      )
+    }
+
+    function stagedDrafts() {
+      return prisma.contentRevision.create.mock.calls.map(
+        ([arg]: [{ data: Record<string, unknown> }]) => arg.data,
+      )
+    }
+
+    it("copies every locale into caller-owned draft rows and stages one active draft each", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source(
+          [
+            sourceLocale({
+              isHomepage: false,
+              pathSegment: "topics",
+              metaDescription: "Hope meta",
+              ogTitle: "Hope OG",
+              ogDescription: "Hope OG description",
+              ogImageUrl: "https://example.com/hope.jpg",
+              status: "PUBLISHED",
+              publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+            }),
+            sourceLocale({
+              id: "loc-fr",
+              locale: "fr",
+              slug: "espoir",
+              title: "Espoir",
+              blocks: [],
+            }),
+          ],
+          { isTemplate: true },
+        ),
+      )
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([
+        { locale: "en", slug: "hope-copy" },
+      ])
+      echoCreatedExperience()
+
+      const result = await service.duplicate({
+        input: { id: "exp-source" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+        isolationLevel: "RepeatableRead",
+        maxWait: 2_000,
+        timeout: 10_000,
+      })
+      const created = prisma.experience.create.mock.calls[0][0]
+      expect(created.data.isTemplate).toBe(true)
+      expect(created.data.ownerId).toBe("alice")
+      expect(created.data.locales.create).toEqual([
+        {
+          locale: "en",
+          slug: "hope-copy-2",
+          isHomepage: false,
+          homepageLayout: false,
+          pathSegment: "topics",
+          title: "Hope",
+          metaDescription: "Hope meta",
+          ogTitle: "Hope OG",
+          ogDescription: "Hope OG description",
+          ogImageUrl: "https://example.com/hope.jpg",
+          blocks: [{ t: "text", heading: "Hope" }],
+          status: "DRAFT",
+          publishedAt: null,
+        },
+        expect.objectContaining({
+          locale: "fr",
+          slug: "espoir-copy",
+          isHomepage: false,
+          title: "Espoir",
+          status: "DRAFT",
+          publishedAt: null,
+        }),
+      ])
+
+      const drafts = stagedDrafts()
+      expect(drafts).toHaveLength(2)
+      // The staged snapshot is exactly the copied locale-owned content.
+      expect(drafts[0]).toEqual({
+        entityType: "ExperienceLocale",
+        entityId: "copy-en",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: "hope-copy-2",
+            isHomepage: false,
+            homepageLayout: false,
             pathSegment: "topics",
             title: "Hope",
             metaDescription: "Hope meta",
@@ -378,107 +563,241 @@ describe("ExperienceService", () => {
             ogDescription: "Hope OG description",
             ogImageUrl: "https://example.com/hope.jpg",
             blocks: [{ t: "text", heading: "Hope" }],
-            status: "PUBLISHED",
-            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
-          },
-          {
-            id: "loc-fr",
-            locale: "fr",
-            slug: "espoir",
-            isHomepage: false,
-            pathSegment: null,
-            title: "Espoir",
-            metaDescription: null,
-            ogTitle: null,
-            ogDescription: null,
-            ogImageUrl: null,
-            blocks: [],
-            status: "DRAFT",
-            publishedAt: null,
-          },
-        ],
-      })
-      prisma.experienceLocale.findMany.mockResolvedValueOnce([
-        { locale: "en", slug: "hope-copy" },
-      ])
-      prisma.experience.create.mockResolvedValueOnce({
-        id: "exp-copy",
-        isTemplate: false,
-        ownerId: "alice",
-        locales: [],
-      })
-
-      await service.duplicate({
-        input: { id: "exp-source" },
-        user: EDITOR_ALICE,
-      })
-
-      expect(prisma.experience.create).toHaveBeenCalledWith({
-        data: {
-          isTemplate: true,
-          ownerId: "alice",
-          locales: {
-            create: [
-              expect.objectContaining({
-                locale: "en",
-                slug: "hope-copy-2",
-                isHomepage: false,
-                pathSegment: "topics",
-                title: "Hope",
-                metaDescription: "Hope meta",
-                ogTitle: "Hope OG",
-                ogDescription: "Hope OG description",
-                ogImageUrl: "https://example.com/hope.jpg",
-                blocks: [{ t: "text", heading: "Hope" }],
-                status: "DRAFT",
-                publishedAt: null,
-              }),
-              expect.objectContaining({
-                locale: "fr",
-                slug: "espoir-copy",
-                isHomepage: false,
-                title: "Espoir",
-                status: "DRAFT",
-                publishedAt: null,
-              }),
-            ],
           },
         },
-        include: { locales: true },
+        status: "DRAFT",
+        previewToken: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+        revisedBy: "alice",
+        revisedByKind: "USER",
+        reason:
+          "Duplicated from Experience exp-source (effective source version)",
       })
-      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(drafts[1]).toMatchObject({ entityId: "copy-fr", status: "DRAFT" })
+      expect(drafts[0]!.previewToken).not.toBe(drafts[1]!.previewToken)
+
+      expect(result.duplication).toEqual({
+        sourceExperienceId: "exp-source",
+        sourceVersion: "EFFECTIVE",
+        locales: [
+          expect.objectContaining({
+            locale: expect.objectContaining({ id: "copy-en" }),
+            source: {
+              localeId: "loc-en",
+              copiedFrom: "CANONICAL",
+              draftRevision: null,
+            },
+            draftRevision: expect.stringMatching(/^rev-created\./),
+            previewToken: drafts[0]!.previewToken,
+          }),
+          expect.objectContaining({
+            locale: expect.objectContaining({ id: "copy-fr" }),
+          }),
+        ],
+      })
+
+      // The source is only read; nothing public or derived is triggered.
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+      expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(prisma.experience.update).not.toHaveBeenCalled()
       expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
       expect(after).not.toHaveBeenCalled()
+    })
+
+    it("duplicates the live homepage as an unassigned copy that keeps the homepage layout", async () => {
+      const blocks = homepageBlocks()
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([
+          sourceLocale({
+            slug: "watch-home",
+            isHomepage: true,
+            blocks,
+            status: "PUBLISHED",
+            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          }),
+        ]),
+      )
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      echoCreatedExperience()
+
+      await service.duplicate({ input: { id: "exp-source" }, user: ADMIN })
+
+      const [copy] = prisma.experience.create.mock.calls[0][0].data.locales
+        .create as Record<string, unknown>[]
+      expect(copy).toMatchObject({
+        slug: "watch-home-copy",
+        isHomepage: false,
+        homepageLayout: true,
+        status: "DRAFT",
+        publishedAt: null,
+      })
+      expect(copy!.blocks).toEqual(blocks)
+      const [draft] = stagedDrafts()
+      expect(draft!.snapshot).toMatchObject({
+        v: 1,
+        data: { isHomepage: false, homepageLayout: true, blocks },
+      })
+    })
+
+    it("keeps the homepage layout of a copy of a copy", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([
+          sourceLocale({
+            slug: "watch-home-copy",
+            homepageLayout: true,
+            blocks: homepageBlocks(),
+          }),
+        ]),
+      )
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      echoCreatedExperience()
+
+      await service.duplicate({ input: { id: "exp-source" }, user: ADMIN })
+
+      expect(
+        prisma.experience.create.mock.calls[0][0].data.locales.create[0],
+      ).toMatchObject({ isHomepage: false, homepageLayout: true })
+    })
+
+    it("rejects homepage-only blocks on a source with no homepage context before writing", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([
+          sourceLocale({
+            blocks: [watchHomeCategoryRailBlock()],
+          }),
+        ]),
+      )
+
+      await expect(
+        service.duplicate({ input: { id: "exp-source" }, user: ADMIN }),
+      ).rejects.toThrow("cannot be duplicated")
+      expect(prisma.experience.create).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("copies the active saved draft for EFFECTIVE and names the revision it read", async () => {
+      const activeDraft = {
+        id: "rev-source",
+        entityId: "loc-en",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: "saved-draft-hope",
+            isHomepage: true,
+            pathSegment: "topics",
+            title: "Saved draft hope",
+            metaDescription: "Saved draft meta",
+            ogTitle: "Saved draft OG",
+            ogDescription: "Saved draft OG description",
+            ogImageUrl: "https://example.com/saved-draft.jpg",
+            blocks: [{ t: "text", heading: "Saved draft" }],
+          },
+        },
+        revisedAt: new Date("2026-10-14T00:00:00.000Z"),
+        revisedBy: "bob",
+        reason: "Locale draft saved from admin editor",
+      }
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([
+          sourceLocale({
+            slug: "canonical-hope",
+            isHomepage: true,
+            title: "Canonical hope",
+            blocks: [],
+            status: "PUBLISHED",
+            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          }),
+        ]),
+      )
+      prisma.contentRevision.findMany.mockResolvedValueOnce([activeDraft])
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      echoCreatedExperience()
+
+      const result = await service.duplicate({
+        input: { id: "exp-source", sourceVersion: "EFFECTIVE" },
+        user: ADMIN,
+      })
+
+      expect(
+        prisma.experience.create.mock.calls[0][0].data.locales.create[0],
+      ).toMatchObject({
+        slug: "saved-draft-hope-copy",
+        title: "Saved draft hope",
+        metaDescription: "Saved draft meta",
+        ogTitle: "Saved draft OG",
+        ogDescription: "Saved draft OG description",
+        ogImageUrl: "https://example.com/saved-draft.jpg",
+        pathSegment: "topics",
+        blocks: [{ t: "text", heading: "Saved draft" }],
+        isHomepage: false,
+        homepageLayout: true,
+        status: "DRAFT",
+        publishedAt: null,
+      })
+      expect(result.duplication.locales[0]!.source).toEqual({
+        localeId: "loc-en",
+        copiedFrom: "ACTIVE_DRAFT",
+        draftRevision: localeDraftRevision(activeDraft),
+      })
+      // The source draft is read, never re-pointed or cloned as history.
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(stagedDrafts()).toHaveLength(1)
+      expect(stagedDrafts()[0]).toMatchObject({ entityId: "copy-en" })
+    })
+
+    it("copies only canonical rows for CANONICAL and never reads drafts", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([
+          sourceLocale({
+            slug: "live-hope",
+            title: "Live hope",
+            status: "PUBLISHED",
+            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          }),
+        ]),
+      )
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      echoCreatedExperience()
+
+      const result = await service.duplicate({
+        input: { id: "exp-source", sourceVersion: "CANONICAL" },
+        user: ADMIN,
+      })
+
+      expect(prisma.contentRevision.findMany).not.toHaveBeenCalled()
+      expect(
+        prisma.experience.create.mock.calls[0][0].data.locales.create[0],
+      ).toMatchObject({ slug: "live-hope-copy", title: "Live hope" })
+      expect(result.duplication.sourceVersion).toBe("CANONICAL")
+      expect(result.duplication.locales[0]!.source).toEqual({
+        localeId: "loc-en",
+        copiedFrom: "CANONICAL",
+        draftRevision: null,
+      })
+      expect(stagedDrafts()[0]!.reason).toBe(
+        "Duplicated from Experience exp-source (canonical source version)",
+      )
+    })
+
+    it("rejects an unknown source version before any read", async () => {
+      await expect(
+        service.duplicate({
+          input: { id: "exp-source", sourceVersion: "PUBLISHED" },
+          user: ADMIN,
+        }),
+      ).rejects.toThrow()
+      expect(prisma.experience.findFirst).not.toHaveBeenCalled()
     })
 
     it("validates blocks without adding schema defaults to the copy", async () => {
       const authoredBlocks = [
         { t: "bibleQuotesCarousel", heading: "Promises of hope" },
       ]
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-source",
-        isTemplate: false,
-        archivedAt: null,
-        locales: [
-          {
-            locale: "en",
-            slug: "hope",
-            isHomepage: false,
-            pathSegment: null,
-            title: "Hope",
-            metaDescription: null,
-            ogTitle: null,
-            ogDescription: null,
-            ogImageUrl: null,
-            blocks: authoredBlocks,
-          },
-        ],
-      })
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([sourceLocale({ blocks: authoredBlocks })]),
+      )
       prisma.experienceLocale.findMany.mockResolvedValueOnce([])
-      prisma.experience.create.mockResolvedValueOnce({
-        id: "exp-copy",
-        locales: [],
-      })
+      echoCreatedExperience()
 
       await service.duplicate({ input: { id: "exp-source" }, user: ADMIN })
 
@@ -487,126 +806,172 @@ describe("ExperienceService", () => {
       expect(createInput.data.locales.create[0].blocks[0]).not.toHaveProperty(
         "quotes",
       )
+      expect(
+        (stagedDrafts()[0]!.snapshot as { data: { blocks: unknown } }).data
+          .blocks,
+      ).toEqual(authoredBlocks)
     })
 
-    it("copies each locale's active saved draft without copying revision history", async () => {
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-source",
-        isTemplate: false,
-        archivedAt: null,
-        locales: [
+    describe("persisted blocks written before raw image URLs were retired", () => {
+      function staleBlocks() {
+        return [
+          { t: "text", heading: "Ordinary block" },
           {
-            id: "loc-en",
-            experienceId: "exp-source",
-            locale: "en",
-            slug: "canonical-hope",
-            isHomepage: true,
-            pathSegment: null,
-            title: "Canonical hope",
-            metaDescription: null,
-            ogTitle: null,
-            ogDescription: null,
-            ogImageUrl: null,
-            blocks: [],
-            status: "PUBLISHED",
-            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+            t: "mediaCollection",
+            variant: "collection",
+            itemsSource: "manual",
+            showItemNumbers: false,
+            items: [
+              {
+                videoId: "video-1",
+                imageUrl: "https://cdn.example.com/retired.jpg",
+                imageAssetId: "asset-1",
+              },
+              { videoId: "video-2", imageUrl: "/api/media-assets/a/preview" },
+            ],
           },
-        ],
+        ]
+      }
+
+      function cleanedBlocks() {
+        return [
+          { t: "text", heading: "Ordinary block" },
+          {
+            t: "mediaCollection",
+            variant: "collection",
+            itemsSource: "manual",
+            showItemNumbers: false,
+            items: [
+              { videoId: "video-1", imageAssetId: "asset-1" },
+              { videoId: "video-2" },
+            ],
+          },
+        ]
+      }
+
+      it("duplicates canonical blocks after dropping the retired keys, leaving the source untouched", async () => {
+        const stale = staleBlocks()
+        const sourceRow = sourceLocale({
+          status: "PUBLISHED",
+          publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          blocks: stale,
+        })
+        prisma.experience.findFirst.mockResolvedValueOnce(source([sourceRow]))
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        await service.duplicate({
+          input: { id: "exp-source", sourceVersion: "CANONICAL" },
+          user: ADMIN,
+        })
+
+        const createdBlocks =
+          prisma.experience.create.mock.calls[0][0].data.locales.create[0]
+            .blocks
+        expect(createdBlocks).toEqual(cleanedBlocks())
+        expect(JSON.stringify(createdBlocks)).not.toContain("imageUrl")
+        expect(
+          (stagedDrafts()[0]!.snapshot as { data: { blocks: unknown } }).data
+            .blocks,
+        ).toEqual(cleanedBlocks())
+        // The source row is read, never rewritten or mutated.
+        expect(sourceRow.blocks).toEqual(staleBlocks())
+        expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+        expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
+        expect(prisma.contentRevision.update).not.toHaveBeenCalled()
       })
-      prisma.contentRevision.findMany.mockResolvedValueOnce([
-        {
+
+      it("duplicates an active draft snapshot after dropping the retired keys", async () => {
+        const activeDraft = {
+          id: "rev-stale",
           entityId: "loc-en",
-          snapshot: {
-            v: 1,
-            data: {
-              slug: "saved-draft-hope",
-              isHomepage: true,
-              pathSegment: "topics",
-              title: "Saved draft hope",
-              metaDescription: "Saved draft meta",
-              ogTitle: "Saved draft OG",
-              ogDescription: "Saved draft OG description",
-              ogImageUrl: "https://example.com/saved-draft.jpg",
-              blocks: [{ t: "text", heading: "Saved draft" }],
-            },
-          },
-        },
-      ])
-      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
-      prisma.experience.create.mockResolvedValueOnce({
-        id: "exp-copy",
-        locales: [],
+          snapshot: { v: 1, data: { blocks: staleBlocks() } },
+          revisedAt: new Date("2026-10-14T00:00:00.000Z"),
+          revisedBy: "bob",
+          reason: null,
+        }
+        const draftBefore = structuredClone(activeDraft)
+        prisma.experience.findFirst.mockResolvedValueOnce(
+          source([sourceLocale({ blocks: [] })]),
+        )
+        prisma.contentRevision.findMany.mockResolvedValueOnce([activeDraft])
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        const result = await service.duplicate({
+          input: { id: "exp-source" },
+          user: ADMIN,
+        })
+
+        expect(
+          prisma.experience.create.mock.calls[0][0].data.locales.create[0]
+            .blocks,
+        ).toEqual(cleanedBlocks())
+        expect(
+          (stagedDrafts()[0]!.snapshot as { data: { blocks: unknown } }).data
+            .blocks,
+        ).toEqual(cleanedBlocks())
+        expect(result.duplication.locales[0]!.source.copiedFrom).toBe(
+          "ACTIVE_DRAFT",
+        )
+        expect(activeDraft).toEqual(draftBefore)
+        expect(prisma.contentRevision.update).not.toHaveBeenCalled()
       })
 
-      await service.duplicate({ input: { id: "exp-source" }, user: ADMIN })
-
-      expect(prisma.experience.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            locales: {
-              create: [
-                expect.objectContaining({
-                  slug: "saved-draft-hope-copy",
-                  title: "Saved draft hope",
-                  metaDescription: "Saved draft meta",
-                  ogTitle: "Saved draft OG",
-                  ogDescription: "Saved draft OG description",
-                  ogImageUrl: "https://example.com/saved-draft.jpg",
-                  pathSegment: "topics",
-                  blocks: [{ t: "text", heading: "Saved draft" }],
-                  isHomepage: false,
-                  status: "DRAFT",
-                  publishedAt: null,
-                }),
+      it("still rejects blocks that are invalid for any other reason", async () => {
+        prisma.experience.findFirst.mockResolvedValueOnce(
+          source([
+            sourceLocale({
+              blocks: [
+                {
+                  t: "mediaCollection",
+                  variant: "collection",
+                  itemsSource: "manual",
+                  showItemNumbers: false,
+                  items: [{ videoId: "video-1", surprise: "unknown" }],
+                },
               ],
-            },
-          }),
-        }),
-      )
-      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+            }),
+          ]),
+        )
+
+        await expect(
+          service.duplicate({ input: { id: "exp-source" }, user: ADMIN }),
+        ).rejects.toThrow("cannot be duplicated")
+        expect(prisma.experience.create).not.toHaveBeenCalled()
+      })
     })
 
     it("allows an ADMIN to duplicate an archived Experience", async () => {
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-archived",
-        isTemplate: false,
-        ownerId: "someone-else",
-        archivedAt: new Date("2026-08-01T00:00:00.000Z"),
-        locales: [
-          {
-            id: "loc-en",
-            locale: "en",
-            slug: "archived",
-            isHomepage: false,
-            pathSegment: null,
-            title: "Archived",
-            metaDescription: null,
-            ogTitle: null,
-            ogDescription: null,
-            ogImageUrl: null,
-            blocks: [],
-            status: "ARCHIVED",
-            publishedAt: null,
-          },
-        ],
-      })
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([sourceLocale({ slug: "archived", status: "ARCHIVED" })], {
+          archivedAt: new Date("2026-08-01T00:00:00.000Z"),
+        }),
+      )
       prisma.experienceLocale.findMany.mockResolvedValueOnce([])
-      prisma.experience.create.mockResolvedValueOnce({
-        id: "exp-copy",
-        locales: [{ id: "loc-copy" }],
-      })
+      echoCreatedExperience()
 
       await expect(
         service.duplicate({ input: { id: "exp-archived" }, user: ADMIN }),
       ).resolves.toMatchObject({ id: "exp-copy" })
     })
 
-    it("rejects callers without create permission before reading the source", async () => {
-      await expect(
-        service.duplicate({ input: { id: "exp-source" }, user: VIEWER }),
-      ).rejects.toThrow("Forbidden")
-      expect(prisma.experience.findFirst).not.toHaveBeenCalled()
-    })
+    it.each([
+      ["VIEWER", VIEWER],
+      ["SYSTEM", SYSTEM],
+      ["anonymous", PUBLIC_USER],
+      ["consumer bearer", CONSUMER_BEARER_USER],
+    ])(
+      "rejects %s callers without create permission before reading the source",
+      async (_label, user) => {
+        await expect(
+          service.duplicate({ input: { id: "exp-source" }, user }),
+        ).rejects.toThrow("Forbidden")
+        expect(prisma.$transaction).not.toHaveBeenCalled()
+        expect(prisma.experience.findFirst).not.toHaveBeenCalled()
+        expect(prisma.contentRevision.findMany).not.toHaveBeenCalled()
+      },
+    )
 
     it("reports a missing source Experience", async () => {
       prisma.experience.findFirst.mockResolvedValueOnce(null)
@@ -617,13 +982,7 @@ describe("ExperienceService", () => {
     })
 
     it("rejects a zero-locale source before probing slugs or creating", async () => {
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-empty",
-        isTemplate: false,
-        ownerId: "admin-1",
-        archivedAt: null,
-        locales: [],
-      })
+      prisma.experience.findFirst.mockResolvedValueOnce(source([]))
 
       await expect(
         service.duplicate({ input: { id: "exp-empty" }, user: ADMIN }),
@@ -633,20 +992,9 @@ describe("ExperienceService", () => {
     })
 
     it("rejects malformed saved blocks before probing slugs or creating", async () => {
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-invalid",
-        isTemplate: false,
-        ownerId: "admin-1",
-        archivedAt: null,
-        locales: [
-          {
-            id: "loc-invalid",
-            locale: "en",
-            slug: "invalid",
-            blocks: [{ t: "not-a-real-block" }],
-          },
-        ],
-      })
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([sourceLocale({ blocks: [{ t: "not-a-real-block" }] })]),
+      )
 
       await expect(
         service.duplicate({ input: { id: "exp-invalid" }, user: ADMIN }),
@@ -656,36 +1004,26 @@ describe("ExperienceService", () => {
     })
 
     it("maps a malformed active draft to the safe duplication error", async () => {
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-invalid-draft",
-        isTemplate: false,
-        archivedAt: null,
-        locales: [
-          {
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([
+          sourceLocale({
             id: "loc-invalid-draft",
-            experienceId: "exp-invalid-draft",
-            locale: "en",
-            slug: "canonical",
-            isHomepage: false,
-            pathSegment: null,
-            title: "Canonical",
-            metaDescription: null,
-            ogTitle: null,
-            ogDescription: null,
-            ogImageUrl: null,
-            blocks: [],
             status: "PUBLISHED",
             publishedAt: new Date("2026-08-20T12:00:00.000Z"),
-          },
-        ],
-      })
+          }),
+        ]),
+      )
       prisma.contentRevision.findMany.mockResolvedValueOnce([
         {
+          id: "rev-bad",
           entityId: "loc-invalid-draft",
           snapshot: {
             v: 1,
             data: { blocks: [{ t: "not-a-real-block" }] },
           },
+          revisedAt: new Date("2026-10-14T00:00:00.000Z"),
+          revisedBy: null,
+          reason: null,
         },
       ])
 
@@ -698,34 +1036,11 @@ describe("ExperienceService", () => {
 
     it("bounds a generated copy slug to 200 characters", async () => {
       const sourceSlug = "x".repeat(200)
-      prisma.experience.findFirst.mockResolvedValueOnce({
-        id: "exp-long-slug",
-        isTemplate: false,
-        ownerId: "admin-1",
-        archivedAt: null,
-        locales: [
-          {
-            id: "loc-en",
-            locale: "en",
-            slug: sourceSlug,
-            isHomepage: false,
-            pathSegment: null,
-            title: null,
-            metaDescription: null,
-            ogTitle: null,
-            ogDescription: null,
-            ogImageUrl: null,
-            blocks: [],
-            status: "DRAFT",
-            publishedAt: null,
-          },
-        ],
-      })
+      prisma.experience.findFirst.mockResolvedValueOnce(
+        source([sourceLocale({ slug: sourceSlug })]),
+      )
       prisma.experienceLocale.findMany.mockResolvedValueOnce([])
-      prisma.experience.create.mockResolvedValueOnce({
-        id: "exp-copy",
-        locales: [],
-      })
+      echoCreatedExperience()
 
       await service.duplicate({ input: { id: "exp-long-slug" }, user: ADMIN })
 
@@ -733,6 +1048,152 @@ describe("ExperienceService", () => {
       const copiedSlug = createInput.data.locales.create[0].slug
       expect(copiedSlug).toHaveLength(200)
       expect(copiedSlug).toMatch(/-copy$/)
+      expect(
+        (stagedDrafts()[0]!.snapshot as { data: { slug: string } }).data.slug,
+      ).toBe(copiedSlug)
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // homepage rendering context vs. homepage assignment
+  // ---------------------------------------------------------------------------
+
+  describe("homepage layout context", () => {
+    function layoutCopyRow(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "copy-en",
+        experienceId: "exp-copy",
+        locale: "en",
+        slug: "watch-home-copy",
+        isHomepage: false,
+        homepageLayout: true,
+        pathSegment: null,
+        status: "DRAFT",
+        title: "Home copy",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks: [watchHomeCategoryRailBlock(), dynamicCollectionBlock("feed")],
+        publishedAt: null,
+        createdAt: new Date("2026-10-15T00:00:00.000Z"),
+        updatedAt: new Date("2026-10-15T00:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null, isTemplate: false },
+        ...overrides,
+      }
+    }
+
+    it("lets a homepage-layout copy save drafts that keep homepage-only blocks", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        layoutCopyRow(),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      const effective = await service.updateLocale({
+        input: { id: "copy-en", title: "Edited home copy" },
+        user: EDITOR_ALICE,
+        expectedDraftRevision: null,
+      })
+
+      expect(effective).toMatchObject({
+        title: "Edited home copy",
+        isHomepage: false,
+        homepageLayout: true,
+      })
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          entityId: "copy-en",
+          snapshot: {
+            v: 1,
+            data: expect.objectContaining({
+              title: "Edited home copy",
+              isHomepage: false,
+              homepageLayout: true,
+            }),
+          },
+        }),
+      })
+    })
+
+    it("does not let a draft update clear the homepage layout context", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        layoutCopyRow(),
+      )
+
+      await expect(
+        service.updateLocale({
+          input: { id: "copy-en", homepageLayout: false },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceHomepageLayoutMutationError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("still rejects homepage-only blocks without any homepage context", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        layoutCopyRow({ homepageLayout: false }),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.updateLocale({
+          input: { id: "copy-en", title: "Edited" },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceDynamicCollectionPlacementError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    function layoutCopyDraft(blocks: unknown[]) {
+      const row = layoutCopyRow({ blocks })
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(row)
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "rev-copy",
+        entityType: "ExperienceLocale",
+        entityId: "copy-en",
+        status: "DRAFT",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: row.slug,
+            isHomepage: false,
+            homepageLayout: true,
+            pathSegment: null,
+            title: row.title,
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks,
+          },
+        },
+        revisedAt: new Date("2026-10-15T00:00:00.000Z"),
+      })
+    }
+
+    function expectNothingPublished() {
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
+    }
+
+    it("refuses to publish an unassigned homepage-layout copy with homepage-only blocks", async () => {
+      layoutCopyDraft([watchHomeCategoryRailBlock()])
+
+      await expect(
+        service.publishLocale({ input: { id: "copy-en" }, user: EDITOR_ALICE }),
+      ).rejects.toBeInstanceOf(ExperienceHomepageLayoutPublishError)
+      expectNothingPublished()
+    })
+
+    it("keeps an unassigned homepage-layout copy unpublished even with no homepage-only blocks", async () => {
+      // Blocks were removed, so the placement checks alone would pass.
+      layoutCopyDraft([])
+
+      await expect(
+        service.publishLocale({ input: { id: "copy-en" }, user: EDITOR_ALICE }),
+      ).rejects.toBeInstanceOf(ExperienceHomepageLayoutPublishError)
+      expectNothingPublished()
     })
   })
 
@@ -992,6 +1453,30 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+    })
+
+    it("rejects new raw image URL input even when the stored draft is stale", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            blocks: [
+              {
+                t: "mediaCollection",
+                variant: "collection",
+                itemsSource: "manual",
+                showItemNumbers: false,
+                items: [{ videoId: "video-1", imageUrl: "/new.jpg" }],
+              },
+            ],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toThrow()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
     })
 
     it("runs block validation inside the draft transaction before writing", async () => {

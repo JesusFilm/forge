@@ -303,3 +303,193 @@ describe("For you row", () => {
     )
   })
 })
+
+it("defers prerender, replaces reused speculative data, and attributes one fresh For You envelope", async () => {
+  Object.defineProperty(document, "prerendering", {
+    configurable: true,
+    writable: true,
+    value: true,
+  })
+  let attempts = 0
+  const navigate = vi.fn()
+  const fetchMock = vi.fn(async (input: string, init: RequestInit) => {
+    if (input.endsWith("/for-you")) {
+      attempts += 1
+      return new Response(
+        JSON.stringify(
+          attempts === 1
+            ? {
+                deliveryDisposition: "deferred",
+                delivery: {
+                  ...delivery().delivery,
+                  requestId: null,
+                  result: "unavailable",
+                  reason: "traffic_deferred",
+                  items: [],
+                },
+              }
+            : delivery(),
+        ),
+      )
+    }
+    if (input.endsWith("/select")) {
+      const body = JSON.parse(String(init.body))
+      return new Response(
+        JSON.stringify({
+          claimNonce: body.claimNonce,
+          canonicalHref: "/watch/video-0.html",
+          targetMediaId: "video-0",
+        }),
+      )
+    }
+    return new Response(JSON.stringify(acceptedEvidence(init)))
+  })
+  vi.stubGlobal("fetch", fetchMock)
+  try {
+    act(() =>
+      root.render(
+        <React.StrictMode>
+          <WatchForYouRecommendations
+            locale="en"
+            audioLanguageSlug="english"
+            navigate={navigate}
+          />
+        </React.StrictMode>,
+      ),
+    )
+    act(() =>
+      intersections.forEach((callback) =>
+        callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        ),
+      ),
+    )
+    await flush()
+    expect(fetchMock).not.toHaveBeenCalled()
+    Object.defineProperty(document, "prerendering", { value: false })
+    act(() => {
+      document.dispatchEvent(new Event("prerenderingchange"))
+      document.dispatchEvent(new Event("prerenderingchange"))
+    })
+    await flush()
+    await flush()
+    expect(attempts).toBe(2)
+    expect(container.querySelectorAll("a")).toHaveLength(6)
+    const bodies = () =>
+      fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init.body)))
+    expect(
+      bodies().filter((body) => body.events?.[0]?.kind === "render"),
+    ).toHaveLength(6)
+    expect(
+      bodies()
+        .filter((body) => body.events?.[0]?.kind === "render")
+        .every(
+          (body) =>
+            body.requestId === "request-1" &&
+            body.capability === "secret-capability",
+        ),
+    ).toBe(true)
+    const card = container.querySelector("a")!
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      value: "visible",
+    })
+    vi.useFakeTimers()
+    act(() =>
+      intersections[intersections.length - 1](
+        [
+          {
+            target: card,
+            isIntersecting: true,
+            intersectionRatio: 1,
+            boundingClientRect: card.getBoundingClientRect(),
+            intersectionRect: card.getBoundingClientRect(),
+            rootBounds: null,
+            time: performance.now(),
+          },
+        ],
+        {} as IntersectionObserver,
+      ),
+    )
+    await act(async () => vi.advanceTimersByTimeAsync(1000))
+    const impressions = bodies().filter(
+      (body) => body.events?.[0]?.kind === "impression",
+    )
+    expect(impressions).toEqual([
+      expect.objectContaining({
+        requestId: "request-1",
+        capability: "secret-capability",
+        itemId: "item-0",
+      }),
+    ])
+    vi.useRealTimers()
+    act(() =>
+      container.querySelector("a")!.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+        }),
+      ),
+    )
+    await flush()
+    await flush()
+    expect(navigate).toHaveBeenCalledTimes(1)
+    expect(
+      bodies().filter((body) => body.itemId === "item-0" && !body.events),
+    ).toEqual([
+      expect.objectContaining({
+        requestId: "request-1",
+        capability: "secret-capability",
+      }),
+    ])
+  } finally {
+    delete (document as Document & { prerendering?: boolean }).prerendering
+  }
+})
+
+it("shows crawler contextual cards with ordinary token-free navigation and no evidence", async () => {
+  const contextual = {
+    ...delivery(),
+    delivery: { ...delivery().delivery, requestId: null },
+  }
+  contextual.delivery.items.forEach((item) => {
+    item.capability = "contextual-fallback-unattributed-v1"
+  })
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify(contextual)))
+  await show(fetchMock)
+  expect(container.querySelectorAll("a")).toHaveLength(6)
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
+it("cancels deferred activation on unmount without delivery or profile-lock work", async () => {
+  Object.defineProperty(document, "prerendering", {
+    configurable: true,
+    writable: true,
+    value: true,
+  })
+  const fetchMock = vi.fn()
+  vi.stubGlobal("fetch", fetchMock)
+  try {
+    act(() =>
+      root.render(
+        <WatchForYouRecommendations locale="en" audioLanguageSlug="english" />,
+      ),
+    )
+    act(() =>
+      intersections[0](
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      ),
+    )
+    await flush()
+    act(() => root.render(null))
+    Object.defineProperty(document, "prerendering", { value: false })
+    act(() => document.dispatchEvent(new Event("prerenderingchange")))
+    await flush()
+    expect(fetchMock).not.toHaveBeenCalled()
+  } finally {
+    delete (document as Document & { prerendering?: boolean }).prerendering
+  }
+})

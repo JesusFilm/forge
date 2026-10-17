@@ -6,7 +6,7 @@ tables, including existing `halfvec(1536)` values, raw documents, and caches.
 Generated full-text values and secondary indexes are rebuilt by PostgreSQL.
 
 Never pass a connection string on the command line. Put the source and target
-URLs in `JFRAG_SOURCE_DATABASE_URL` and `DATABASE_URL` respectively. The tool
+URLs in `CORPUS_SOURCE_DATABASE_URL` and `DATABASE_URL` respectively. The tool
 prints only database names, redacted host hashes, counts, hashes, IDs, and
 retrieval scores; it rejects report output containing credentials or corpus
 text.
@@ -70,7 +70,13 @@ The source is always read-only. Before production migration work begins, local
 rollback is to discard and recreate only the Forge target database, reapply the
 Forge schema, and rerun this rehearsal. Never modify or delete the jfrag source.
 
-## Production copy
+## Historical production migration procedure
+
+The steps below record the original feat-430 migration and recovery design. They
+do not assert that the legacy source/service remains available or authorize a new
+copy, backup, or target recreation. Reconfirm resources and obtain a separate
+approved plan before any reuse. The generic `CORPUS_SOURCE_DATABASE_URL` names the
+explicit source; it does not infer a legacy target.
 
 Production execution is limited to Railway project `jesusfilm-rag`, environment
 `production`, service `Postgres` as the source and Railway project `forge`,

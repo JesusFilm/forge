@@ -490,6 +490,7 @@ function PlaybackStatePublisher({
 function SearchModeHarness() {
   const {
     displayResults,
+    displayResultPages,
     error,
     errorKind,
     loadMore,
@@ -502,6 +503,16 @@ function SearchModeHarness() {
   return (
     <div>
       <span data-testid="search-result-count">{displayResults.length}</span>
+      <span data-testid="search-result-pages">
+        {JSON.stringify(
+          displayResultPages.map((page) => ({
+            key: page.key,
+            startIndex: page.startIndex,
+            ids: page.results.map((result) => result.id),
+            sourceVersion: page.surfaceManifest?.manifest.sourceVersion ?? null,
+          })),
+        )}
+      </span>
       <span data-testid="search-error">
         {error == null ? "" : `${errorKind ?? "unknown"}:${error}`}
       </span>
@@ -695,6 +706,84 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
+  it("retains immutable per-page sources across append and clears them with result reset", async () => {
+    vi.useFakeTimers()
+    const source = (
+      slug: string,
+      version: string,
+    ): NonNullable<SearchResponse["surfaceManifest"]> => ({
+      manifest: {
+        surface: "watch-search",
+        block: "results",
+        presentation: "result-list",
+        placement: "search-results",
+        policyVersion: "watch-exposure-v2",
+        sourceVersion: version.repeat(64),
+        expiresAt: "2026-10-01T00:00:00.000Z",
+        items: [{ position: 0, itemPath: `/watch/${slug}.html` }],
+      },
+      signature: "a".repeat(43),
+    })
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("first")],
+          hasMore: true,
+          surfaceManifest: source("first", "a"),
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("second")],
+          hasMore: false,
+          surfaceManifest: source("second", "b"),
+        }),
+      )
+    act(() =>
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      ),
+    )
+    await flushSearchControllerMount()
+    const click = async (testId: string) => {
+      await act(async () => {
+        const button = document.querySelector(
+          `[data-testid="${testId}"]`,
+        ) as HTMLButtonElement
+        button.click()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await flushResolvedSearch()
+    }
+    const pages = () =>
+      JSON.parse(
+        document.querySelector('[data-testid="search-result-pages"]')
+          ?.textContent ?? "[]",
+      )
+    await click("search-mode-harness-button")
+    const first = pages()[0]
+    expect(first).toMatchObject({
+      ids: ["first"],
+      startIndex: 0,
+      sourceVersion: "a".repeat(64),
+    })
+    await click("search-mode-harness-load-more-button")
+    expect(pages()[0]).toEqual(first)
+    expect(pages()[1]).toMatchObject({
+      ids: ["second"],
+      startIndex: 1,
+      sourceVersion: "b".repeat(64),
+    })
+    await click("search-mode-harness-clear-button")
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+    expect(pages()).toEqual([])
+  })
+
   it("does not search an instant-shell draft when the controller mounts", async () => {
     act(() => {
       root.render(
@@ -778,6 +867,9 @@ describe("FloatingSearchProvider — search mode", () => {
           routeLanguageSlug: null,
         }),
       }),
+    )
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ uiLocale: "es" }),
     )
   })
 
@@ -1141,13 +1233,34 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(skeleton?.textContent).toBe("true")
 
     await act(async () => {
-      resolveFirstSearch(searchResult("watch-search"))
+      resolveFirstSearch(
+        searchResult("watch-search", {
+          results: [videoResult("stale-source")],
+          surfaceManifest: {
+            manifest: {
+              surface: "watch-search",
+              block: "results",
+              presentation: "result-list",
+              placement: "search-results",
+              policyVersion: "watch-exposure-v2",
+              sourceVersion: "c".repeat(64),
+              expiresAt: "2026-10-01T00:00:00.000Z",
+              items: [{ position: 0, itemPath: "/watch/stale-source.html" }],
+            },
+            signature: "a".repeat(43),
+          },
+        }),
+      )
       await firstSearch
       await Promise.resolve()
     })
 
     expect(loading?.textContent).toBe("true")
     expect(skeleton?.textContent).toBe("true")
+    expect(
+      document.querySelector('[data-testid="search-result-pages"]')
+        ?.textContent,
+    ).toBe("[]")
   })
 
   it("leaves the browser URL unchanged when the submitted search query changes", async () => {
@@ -1433,6 +1546,391 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
 
+  it("reveals hidden header chrome on keyboard focus and keeps the focused header accessible", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => dispatchChromeVisibility(false))
+
+    const header = document.querySelector(
+      '[data-testid="floating-header"]',
+    ) as HTMLElement
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLElement
+
+    expect(header.hasAttribute("inert")).toBe(false)
+    expect(header.getAttribute("aria-hidden")).toBeNull()
+
+    act(() => logo.focus())
+
+    expect(document.activeElement).toBe(logo)
+    expect(revealListener).toHaveBeenCalledOnce()
+    expect(header.hasAttribute("inert")).toBe(false)
+    expect(header.getAttribute("aria-hidden")).toBeNull()
+
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+  })
+
+  describe("keyboard focus inside the header", () => {
+    const HEADER_HIDDEN_CLASS = "-translate-y-[calc(100%+2rem)]"
+
+    function renderProvider() {
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>
+              <button type="button" data-testid="outside-control">
+                Outside
+              </button>
+            </main>
+          </FloatingSearchProvider>,
+        )
+      })
+    }
+
+    function headerElement() {
+      return document.querySelector(
+        '[data-testid="floating-header"]',
+      ) as HTMLElement
+    }
+
+    function expectHeaderRevealed(header: HTMLElement) {
+      expect(header.className).toContain("translate-y-0")
+      expect(header.className).toContain("opacity-100")
+      expect(header.className).not.toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).not.toContain("opacity-0")
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(header.getAttribute("aria-hidden")).toBeNull()
+    }
+
+    it("stays revealed through the player chrome fading again while focus remains in the header", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const searchButton = document.querySelector(
+        '[data-testid="floating-search-desktop-button"]',
+      )
+
+      act(() => dispatchChromeVisibility(false))
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+
+      act(() => logo.focus())
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+
+      // The player re-announces its chrome after the reveal request and then
+      // idles back out: dimmed first, then fully hidden.
+      act(() => dispatchChromeVisibility(true, 1))
+      act(() => dispatchChromeVisibility(true, 0.3))
+      expectHeaderRevealed(header)
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+      expect(searchButton?.className).toContain("opacity-100")
+    })
+
+    it("stays revealed while focus moves between header controls and the chrome fades", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const languageButton = document.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      ) as HTMLElement
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => languageButton.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(document.activeElement).toBe(languageButton)
+      expectHeaderRevealed(header)
+    })
+
+    it("lets the fade resume once focus leaves the header", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const outside = document.querySelector(
+        '[data-testid="outside-control"]',
+      ) as HTMLElement
+      const searchButton = document.querySelector(
+        '[data-testid="floating-search-desktop-button"]',
+      )
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+      expectHeaderRevealed(header)
+
+      act(() => outside.focus())
+
+      expect(document.activeElement).toBe(outside)
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).toContain("opacity-0")
+      expect(searchButton?.className).toContain("opacity-0")
+    })
+
+    it("keeps a focused header on screen when the page scrolls away from the hero, then lets it slide off after blur", async () => {
+      setScrollY(0)
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>
+              <section data-testid="hero-player-wrapper">Hero</section>
+              <button type="button" data-testid="outside-control">
+                Outside
+              </button>
+            </main>
+          </FloatingSearchProvider>,
+        )
+      })
+      const hero = document.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLElement
+      Object.defineProperty(hero, "offsetTop", { configurable: true, value: 0 })
+      Object.defineProperty(hero, "offsetHeight", {
+        configurable: true,
+        value: 600,
+      })
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const outside = document.querySelector(
+        '[data-testid="outside-control"]',
+      ) as HTMLElement
+      await dispatchScrollAndFlush()
+
+      act(() => logo.focus())
+      setScrollY(700)
+      await dispatchScrollAndFlush()
+
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+
+      act(() => outside.focus())
+
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+    })
+
+    it("does not pin the header open for pointer-driven focus", () => {
+      // jsdom reports every programmatic focus as :focus-visible, so stand in
+      // for a mouse click on a header control by reporting it as not
+      // focus-visible, as browsers do. The real-browser contract is covered by
+      // the headless Chromium run recorded on the PR.
+      const originalMatches = Element.prototype.matches
+      vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+        this: Element,
+        selector: string,
+      ) {
+        return selector === ":focus-visible"
+          ? false
+          : originalMatches.call(this, selector)
+      })
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      // Focus is not dropped (no inert), but the header is not forced open.
+      expect(document.activeElement).toBe(logo)
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).toContain("opacity-0")
+    })
+
+    describe("input modality changing while the same control stays focused", () => {
+      // jsdom reports every programmatic focus as :focus-visible, so stand in
+      // for a click-focused control by reporting it as not focus-visible, as
+      // browsers do at focus time. The keydown/pointerdown re-classification
+      // under test does not depend on this stand-in. The real-browser
+      // transition (Chromium flips :focus-visible on the next key press) is
+      // recorded separately on the PR.
+      function mockClickFocusedControl() {
+        const originalMatches = Element.prototype.matches
+        vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+          this: Element,
+          selector: string,
+        ) {
+          return selector === ":focus-visible"
+            ? false
+            : originalMatches.call(this, selector)
+        })
+      }
+
+      function pressKey(target: HTMLElement, key: string) {
+        act(() => {
+          target.dispatchEvent(
+            new KeyboardEvent("keydown", { key, bubbles: true }),
+          )
+        })
+      }
+
+      function focusLogoByClick() {
+        mockClickFocusedControl()
+        renderProvider()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        act(() => dispatchChromeVisibility(false))
+        act(() => logo.focus())
+        // Chrome still fades a click-focused header.
+        act(() => dispatchChromeVisibility(false, 0))
+        expect(headerElement().className).toContain(HEADER_HIDDEN_CLASS)
+        act(() => dispatchChromeVisibility(true, 1))
+        return logo
+      }
+
+      it.each(["ArrowRight", " ", "Enter"])(
+        "pins the header once %j is pressed on a control that was focused by a click",
+        (key) => {
+          const logo = focusLogoByClick()
+          const header = headerElement()
+
+          pressKey(logo, key)
+          act(() => dispatchChromeVisibility(false, 0))
+
+          expect(document.activeElement).toBe(logo)
+          expectHeaderRevealed(header)
+        },
+      )
+
+      it("does not treat a bare modifier key as keyboard use", () => {
+        const logo = focusLogoByClick()
+        const header = headerElement()
+
+        pressKey(logo, "Shift")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(document.activeElement).toBe(logo)
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+        expect(header.className).toContain("opacity-0")
+      })
+
+      it("lets the fade resume when a click lands on a keyboard-focused control, and re-pins on the next key", () => {
+        renderProvider()
+        const header = headerElement()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        act(() => dispatchChromeVisibility(false))
+        act(() => logo.focus())
+        act(() => dispatchChromeVisibility(false, 0))
+        expectHeaderRevealed(header)
+
+        act(() => {
+          logo.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+        })
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(document.activeElement).toBe(logo)
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expectHeaderRevealed(header)
+      })
+
+      it("lets the fade resume after blur once keyboard use had pinned a click-focused control", () => {
+        const logo = focusLogoByClick()
+        const header = headerElement()
+        const outside = document.querySelector(
+          '[data-testid="outside-control"]',
+        ) as HTMLElement
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+        expectHeaderRevealed(header)
+
+        act(() => outside.focus())
+
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+        expect(header.className).toContain("opacity-0")
+      })
+
+      it("leaves modal containment unchanged by modality key and pointer presses", async () => {
+        const revealListener = vi.fn()
+        await openSearchOverlay()
+        const header = headerElement()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        const pageWrapper = document.querySelector("[inert]") as HTMLElement
+        window.addEventListener(
+          WATCH_PLAYER_CHROME_REVEAL_EVENT,
+          revealListener,
+        )
+
+        act(() => logo.focus())
+        pressKey(logo, "ArrowRight")
+        act(() => {
+          logo.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+        })
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+        expect(header.className).toContain("pointer-events-none")
+        expect(header.className).toContain("translate-y-0 opacity-100")
+        expect(header.hasAttribute("inert")).toBe(false)
+        expect(document.querySelector("[inert]")).toBe(pageWrapper)
+        expect(revealListener).not.toHaveBeenCalled()
+        window.removeEventListener(
+          WATCH_PLAYER_CHROME_REVEAL_EVENT,
+          revealListener,
+        )
+      })
+    })
+
+    it("leaves modal containment unchanged when focus is in the header", async () => {
+      const revealListener = vi.fn()
+      await openSearchOverlay()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const pageWrapper = document.querySelector("[inert]") as HTMLElement
+
+      expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+      expect(header.className).toContain("pointer-events-none")
+      expect(pageWrapper.getAttribute("aria-hidden")).toBe("true")
+
+      window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+      expect(header.className).toContain("pointer-events-none")
+      expect(header.className).toContain("translate-y-0 opacity-100")
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(document.querySelector("[inert]")).toBe(pageWrapper)
+      expect(revealListener).not.toHaveBeenCalled()
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_REVEAL_EVENT,
+        revealListener,
+      )
+    })
+  })
+
   it("slides the header away after scrolling past the hero and restores it when scrolling up", async () => {
     setScrollY(0)
     act(() => {
@@ -1479,7 +1977,22 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 describe("FloatingSearchProvider — language switcher chrome", () => {
   it.each([
     ["root home", "/", "english", "EN"],
-    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES"],
+    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES-ES"],
+    ["Portuguese, Portugal", "/portuguese-portugal.html", "english", "PT-PT"],
+    [
+      "Portuguese, Mozambique",
+      "/portuguese-mozambique.html",
+      "english",
+      "PT-MZ",
+    ],
+    ["Korean, North", "/korean-north.html", "english", "KO-NOR"],
+    ["long badge on root home", "/", "huasteco-san-luis-potosi", "HUS-MX-SLP"],
+    [
+      "long badge on video",
+      "/jesus.html/huasteco-san-luis-potosi.html",
+      "english",
+      "HUS-MX-SLP",
+    ],
     ["legacy videos index", "/videos", "english", "EN"],
     ["authored experience", "/easter.html", "english", "EN"],
     ["languages index", "/languages", "english", "EN"],
@@ -1515,6 +2028,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
           '[data-testid="floating-header-language-code"]',
         )?.textContent,
       ).toBe(expectedCode)
+      expect(languageButtons[0]?.getAttribute("aria-label")).toContain(
+        expectedCode,
+      )
     },
   )
 
@@ -1560,6 +2076,172 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     },
   )
 
+  it("cancels only the current page owner's pending language intent when Search opens", async () => {
+    const staleCancel = vi.fn()
+    const currentCancel = vi.fn()
+    const staleOwner = Symbol("old language owner")
+    const currentOwner = Symbol("current language owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: staleCancel,
+        ownerToken: staleOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: currentCancel,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: staleOwner,
+      })
+    })
+    expect(currentCancel).not.toHaveBeenCalled()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(currentCancel).toHaveBeenCalledTimes(1)
+    expect(staleCancel).not.toHaveBeenCalled()
+  })
+
+  it("cancels an invisible subtitle-picker owner without taking over the global globe", async () => {
+    const cancelPendingOpen = vi.fn()
+    const oldOwner = Symbol("stale subtitle owner")
+    const currentOwner = Symbol("subtitle owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Single-audio video with subtitles</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        cancelPendingOpen,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: oldOwner,
+      })
+    })
+    expect(cancelPendingOpen).not.toHaveBeenCalled()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(cancelPendingOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["matching cleanup", "navigation", "visible replacement"])(
+    "drops invisible cancellation on %s",
+    async (change) => {
+      const cancelPendingOpen = vi.fn()
+      const owner = Symbol("subtitle owner")
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>Video</main>
+          </FloatingSearchProvider>,
+        )
+      })
+      act(() => {
+        dispatchLanguageSwitcher({
+          visible: false,
+          onClick: null,
+          cancelPendingOpen,
+          ownerToken: owner,
+        })
+      })
+      act(() => {
+        if (change === "matching cleanup") {
+          dispatchLanguageSwitcher({
+            visible: false,
+            onClick: null,
+            ownerToken: owner,
+          })
+        } else if (change === "visible replacement") {
+          dispatchLanguageSwitcher({
+            visible: true,
+            onClick: vi.fn(),
+            ownerToken: Symbol("replacement"),
+          })
+        } else {
+          navigationMocks.pathname = "/another-video.html/english.html"
+          root.render(
+            <FloatingSearchProvider>
+              <main>Next video</main>
+            </FloatingSearchProvider>,
+          )
+        }
+      })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="floating-search-desktop-button"]',
+          )!
+          .click()
+      })
+      expect(cancelPendingOpen).not.toHaveBeenCalled()
+    },
+  )
+
+  it("uses the registered language name that matches its page-specific badge", () => {
+    const onLanguageClick = vi.fn()
+    navigationMocks.pathname = "/jesus.html/russian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="russian">
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        languageCode: "PT-MZ",
+        languageName: "Portuguese, Mozambique",
+      })
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("PT-MZ")
+    expect(languageButton?.getAttribute("aria-label")).toBe(
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
+    )
+  })
+
   it("marks the global trigger busy during lazy loading and blocks duplicate activation", async () => {
     const moduleLoad = deferred<unknown>()
     const globalLanguageLoader = vi.fn(() => moduleLoad.promise)
@@ -1579,7 +2261,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language",
+      "Change audio language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -1606,6 +2288,29 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(
       document.querySelector('[data-testid="global-language-picker-modal"]'),
     ).not.toBeNull()
+  })
+
+  it("names the active language variant in the header control", () => {
+    navigationMocks.pathname = "/portuguese-mozambique.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("PT-MZ")
+    expect(languageButton?.getAttribute("aria-label")).toBe(
+      "Change audio language: Portuguese Mozambique (PT-MZ)",
+    )
   })
 
   it("recovers the global trigger after a module-load failure and retries", async () => {

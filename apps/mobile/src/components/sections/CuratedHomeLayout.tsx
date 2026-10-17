@@ -12,6 +12,7 @@ import { useNavigation } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { useT } from "../../i18n/useT"
 import type { AdminBlock } from "../../lib/queries"
 import { BG_COLOR, hexToRgba } from "../../lib/color"
 import { layout } from "../../styles/shared"
@@ -38,6 +39,7 @@ type Props = {
 
 export function CuratedHomeLayout({ hideHeader = false }: Props) {
   const { experience } = useExperienceContext()
+  const t = useT("Sections")
   const { width: screenWidth } = useWindowDimensions()
   const heroHeight = screenWidth * 1.2
 
@@ -208,8 +210,15 @@ export function CuratedHomeLayout({ hideHeader = false }: Props) {
                 height: muteButtonRect.h,
               }}
               onPress={handleMuteToggle}
-              accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+              accessibilityLabel={
+                muted ? t("unmuteVideoAriaLabel") : t("muteVideoAriaLabel")
+              }
               accessibilityRole="button"
+              {...{
+                "dd-action-name": muted
+                  ? "section-hero-unmute"
+                  : "section-hero-mute",
+              }}
             />
           )}
         </View>
@@ -234,6 +243,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+    // The mute target draws at the hero's measured x (feat-695 KTD7), so
+    // React Native must not swap its `left` in a right-to-left app.
+    direction: "ltr",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),

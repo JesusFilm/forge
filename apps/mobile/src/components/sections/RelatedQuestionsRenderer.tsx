@@ -13,6 +13,11 @@ import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useTypography } from "../../hooks/useTypography"
 import {
+  useTextDirection,
+  type TextDirectionProps,
+} from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
+import {
   ACCENT,
   BG_COLOR,
   TEXT_PRIMARY,
@@ -29,22 +34,32 @@ type QuestionItem = {
 
 export interface RelatedQuestionsRendererProps {
   section: AdminBlock
+  /** The language of the heading and of the questions (KTD13). Absent on the
+   *  Experience and SDUI paths, whose text language is not known. */
+  headingLang?: string | null
+  questionsLang?: string | null
 }
 
 const CHAT_WITH_PERSON_URL =
   "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
 const ASK_BIBLE_QUESTION_URL =
   "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
-const FALLBACK_BODY =
-  "Have a private discussion with someone who is ready to listen."
 
 function AnswerFallback() {
   const typography = useTypography()
+  const t = useT("StudyQuestions")
+  const direction = useTextDirection()
 
   return (
     <View style={styles.fallbackContainer}>
-      <Text style={[styles.fallbackBody, typography.bodySmall]}>
-        {FALLBACK_BODY}
+      <Text
+        style={[
+          styles.fallbackBody,
+          typography.bodySmall,
+          direction.uiParagraph,
+        ]}
+      >
+        {t("fallbackBody")}
       </Text>
       <View style={styles.fallbackButtonRow}>
         <Pressable
@@ -55,7 +70,8 @@ function AnswerFallback() {
           android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
           onPress={() => Linking.openURL(CHAT_WITH_PERSON_URL)}
           accessibilityRole="link"
-          accessibilityLabel="Chat with a person"
+          accessibilityLabel={t("chatAriaLabel")}
+          {...{ "dd-action-name": "study-questions-chat" }}
         >
           <Ionicons
             name="chatbubble-outline"
@@ -63,7 +79,7 @@ function AnswerFallback() {
             color={BG_COLOR}
             style={styles.fallbackButtonIcon}
           />
-          <Text style={styles.fallbackButtonText}>Chat</Text>
+          <Text style={styles.fallbackButtonText}>{t("chat")}</Text>
         </Pressable>
         <Pressable
           style={({ pressed }) => [
@@ -73,7 +89,8 @@ function AnswerFallback() {
           android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
           onPress={() => Linking.openURL(ASK_BIBLE_QUESTION_URL)}
           accessibilityRole="link"
-          accessibilityLabel="Ask a Bible question"
+          accessibilityLabel={t("askBibleQuestionAriaLabel")}
+          {...{ "dd-action-name": "study-questions-ask" }}
         >
           <Ionicons
             name="mail-outline"
@@ -81,7 +98,7 @@ function AnswerFallback() {
             color={BG_COLOR}
             style={styles.fallbackButtonIcon}
           />
-          <Text style={styles.fallbackButtonText}>Ask Bible Question</Text>
+          <Text style={styles.fallbackButtonText}>{t("askBibleQuestion")}</Text>
         </Pressable>
       </View>
     </View>
@@ -92,10 +109,14 @@ function QuestionRow({
   item,
   isExpanded,
   onToggle,
+  questionDirection,
+  answerDirection,
 }: {
   item: QuestionItem
   isExpanded: boolean
   onToggle: () => void
+  questionDirection: TextDirectionProps
+  answerDirection: TextDirectionProps
 }) {
   const typography = useTypography()
   const hasAnswer = item.answer != null && item.answer.trim() !== ""
@@ -107,9 +128,18 @@ function QuestionRow({
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityLabel={item.question}
+        accessibilityLanguage={questionDirection.accessibilityLanguage}
         accessibilityState={{ expanded: isExpanded }}
       >
-        <Text style={[styles.questionText, typography.body]} numberOfLines={3}>
+        <Text
+          style={[
+            styles.questionText,
+            typography.body,
+            questionDirection.style,
+          ]}
+          numberOfLines={3}
+          accessibilityLanguage={questionDirection.accessibilityLanguage}
+        >
           {item.question}
         </Text>
         <AnimatedChevron
@@ -120,7 +150,14 @@ function QuestionRow({
       </Pressable>
       {isExpanded &&
         (hasAnswer ? (
-          <Text style={[styles.answerText, typography.bodySmall]}>
+          <Text
+            style={[
+              styles.answerText,
+              typography.bodySmall,
+              answerDirection.style,
+            ]}
+            accessibilityLanguage={answerDirection.accessibilityLanguage}
+          >
             {item.answer}
           </Text>
         ) : (
@@ -132,8 +169,15 @@ function QuestionRow({
 
 export function RelatedQuestionsRenderer({
   section,
+  headingLang,
+  questionsLang,
 }: RelatedQuestionsRendererProps) {
   const typography = useTypography()
+  const t = useT("StudyQuestions")
+  const direction = useTextDirection()
+  const headingDirection = direction.text(headingLang)
+  const questionDirection = direction.text(questionsLang)
+  const answerDirection = direction.text(questionsLang, { kind: "paragraph" })
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const s = section as Record<string, unknown>
@@ -162,8 +206,10 @@ export function RelatedQuestionsRenderer({
               text.sectionHeading,
               styles.localHeading,
               typography.titleLarge,
+              headingDirection.style,
             ]}
             accessibilityRole="header"
+            accessibilityLanguage={headingDirection.accessibilityLanguage}
           >
             {heading}
           </Text>
@@ -173,7 +219,8 @@ export function RelatedQuestionsRenderer({
             onPress={handleCtaPress}
             style={[button.iconButton44, styles.localCtaButton]}
             accessibilityRole="link"
-            accessibilityLabel={ctaLabel ?? "Ask a question"}
+            accessibilityLabel={ctaLabel ?? t("askQuestionAriaLabel")}
+            {...{ "dd-action-name": "study-questions-cta" }}
           >
             <Ionicons
               name="chatbubble-ellipses-outline"
@@ -189,6 +236,8 @@ export function RelatedQuestionsRenderer({
           item={item}
           isExpanded={expandedIndex === index}
           onToggle={() => handleToggle(index)}
+          questionDirection={questionDirection}
+          answerDirection={answerDirection}
         />
       ))}
     </View>

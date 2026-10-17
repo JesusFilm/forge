@@ -3,18 +3,11 @@ id: "feat-375"
 title: "Semantic search downstream outcomes"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 5
-depends_on:
-  - "feat-368"
-  - "feat-369"
-  - "feat-372"
-  - "feat-373"
-  - "feat-374"
-blocks:
-  - "feat-379"
-  - "feat-389"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "web"
@@ -23,6 +16,17 @@ tags:
   - "recommendations"
   - "telemetry"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled the proposed search-to-recommendation outcome graph and Admin funnel.
+`apps/web/src/lib/watch-search-analytics.ts` and the configured GA/RUM paths
+retain Watch search request and result-click signals; their existence does not
+prove eligible exposure, an opaque search-to-playback join, reformulation
+attribution or causal recommendation value. The bounded recommendation product
+does not require this extra journey model or treat every search as durable taste.
+Preserve working search and playback; a reproduced search failure is actionable
+independently of this cancelled measurement expansion.
 
 ## Problem
 

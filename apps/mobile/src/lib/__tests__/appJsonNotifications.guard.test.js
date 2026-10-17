@@ -45,10 +45,24 @@ const EXPECTED_OPTIONS = {
 const MIN_MARK_WIDTH_FRACTION = 0.6
 
 // Both must stay UNSET — see the premises above for what each one would turn on.
+//
+// U7 does NOT change this. Registration reads the project id from
+// `extra.eas.projectId` at runtime, and the foreground banner for an
+// announcement is a decision the handler makes, not a background mode: the app
+// still processes no notification while it is not running.
 const FORBIDDEN_OPTION_KEYS = [
   "defaultChannel",
   "enableBackgroundRemoteNotifications",
 ]
+
+// U7: Android registers with FCM only through this committed Firebase config. A
+// placeholder builds and then fails registration silently on device, and an
+// Android prebuild throws "Cannot copy google-services.json" without the file.
+const ANDROID_GOOGLE_SERVICES_FILE = "./google-services.json"
+
+// R10: an Android build with the Firebase config must also carry the cold-tap
+// fix, or every tap after Android stops the process opens Home.
+const PUSH_TAP_RELAY_PLUGIN = "./plugins/withAndroidPushTapRelay"
 
 // Google Play restricts these to alarm and calendar apps. R6 tolerates the
 // module's own inexact-alarm fallback instead, so neither may ever appear.
@@ -107,6 +121,12 @@ function pluginOptions(config, name) {
 /** The index of every entry, in either bare-string or [name, options] form. */
 function pluginIndexes(config, name) {
   return pluginEntries(config, name).map(({ index }) => index)
+}
+
+/** True unless the Firebase config is set and the cold-tap relay is not. */
+function hasPushTapRelayWhenFirebaseIsSet(config) {
+  if (!config.expo.android?.googleServicesFile) return true
+  return pluginIndexes(config, PUSH_TAP_RELAY_PLUGIN).length > 0
 }
 
 /**
@@ -298,6 +318,40 @@ describe("the notifications plugin declares no more than local reminders need", 
         permission.replace("android.permission.", ""),
       )
     }
+  })
+
+  it("names the Android Firebase config the FCM registration needs (U7)", () => {
+    // Without this key an Android build registers no push token, and nothing in
+    // the app or the build log says why: the token read just answers nothing.
+    expect(readAppJson().expo.android?.googleServicesFile).toBe(
+      ANDROID_GOOGLE_SERVICES_FILE,
+    )
+  })
+
+  it("registers the cold-tap relay whenever the Firebase config is set (R10)", () => {
+    const config = readAppJson()
+
+    // The rule binds only with the Firebase config, so prove it is set here.
+    expect(config.expo.android?.googleServicesFile).toBe(
+      ANDROID_GOOGLE_SERVICES_FILE,
+    )
+    expect(hasPushTapRelayWhenFirebaseIsSet(config)).toBe(true)
+  })
+
+  it("rejects the Firebase config without the cold-tap relay (negative control)", () => {
+    const withoutRelay = {
+      expo: {
+        plugins: ["./plugins/withAndroidNavigationBar", "expo-splash-screen"],
+        android: { googleServicesFile: ANDROID_GOOGLE_SERVICES_FILE },
+      },
+    }
+
+    expect(hasPushTapRelayWhenFirebaseIsSet(withoutRelay)).toBe(false)
+  })
+
+  it("keeps the EAS project id the token read resolves (U7/KTD9)", () => {
+    // `getExpoPushTokenAsync` needs it, and the adapter reads it from here.
+    expect(typeof readAppJson().expo.extra?.eas?.projectId).toBe("string")
   })
 
   it("does NOT block the notification permission the module contributes", () => {

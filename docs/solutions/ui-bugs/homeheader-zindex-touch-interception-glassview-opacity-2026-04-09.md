@@ -1,6 +1,7 @@
 ---
 title: "HomeHeader buttons untappable due to z-index layering with FlashList; GlassView ignores opacity on iOS"
 date: "2026-04-09"
+last_updated: "2026-09-30"
 category: ui-bugs
 module: apps/mobile
 problem_type: ui_bug
@@ -150,6 +151,8 @@ const handleScroll = useCallback(
 5. **Document z-index layer ordering** near the style definitions. For the home screen: `heroLayer` (0), `heroInteractiveLayer` (2), `HomeHeader` (10).
 6. **FlashList intercepts touches across its entire rendered frame on iOS**, including padding/inset regions. Any fixed UI overlapping FlashList's frame must have a higher z-index.
 
+   > **Rule 6 is about touch. It does not set the screen-reader order.** On Android, an absolute bar at top 0 over a full-screen list that also starts at y 0 can come after the whole list, because Android sorts sibling views by position and the taller view sorts first. `HomeHeader` has this shape (`apps/mobile/src/components/ui/HomeHeader.tsx:115-119`). Nobody has checked the Home screen for this defect on a device (as of 2026-09-30). See [Android puts a floating overlay bar after a full-screen list in screen-reader order](android-talkback-order-overlay-bar-after-full-screen-list.md).
+
 ## Related Issues
 
 - [GlassView renders no material under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) -- same component, opposite direction. This doc is GlassView failing to HIDE; that one is GlassView failing to RENDER.
@@ -157,3 +160,4 @@ const handleScroll = useCallback(
 - [Hero mute button hybrid overlay touch target](../mobile/hero-mute-button-hybrid-overlay-touch-target.md) -- same root cause (FlashList touch interception), different fix (hybrid overlay with `measureLayout`)
 - [React Native ScrollView touch event z-index fix](../mobile/react-native-scrollview-touch-event-z-index-fix.md) -- foundational reference on ScrollView/FlashList gesture preemption
 - [Full-bleed video hero with scroll-over content](../mobile/full-bleed-video-hero-with-scroll-over-content.md) -- three-layer hero architecture this fix builds upon
+- [Android puts a floating overlay bar after a full-screen list in screen-reader order](android-talkback-order-overlay-bar-after-full-screen-list.md) -- same layout shape, screen-reader axis (see the note under Prevention rule 6)

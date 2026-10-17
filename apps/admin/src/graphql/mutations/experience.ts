@@ -5,13 +5,35 @@
 
 import { builder } from "@/graphql/builder"
 import type { ContextShape } from "@/graphql/builder"
+import type { ExperienceDuplicationSourceVersion } from "@/services/experience.schemas"
+
+const ExperienceDuplicationSourceVersionEnum = builder.enumType(
+  "ExperienceDuplicationSourceVersion",
+  {
+    description:
+      "Which saved version of each source locale a duplicate copies. Unsaved editor state is never copied.",
+    values: {
+      EFFECTIVE: {
+        value: "EFFECTIVE",
+        description:
+          "The locale's active saved draft when one exists, otherwise its canonical row.",
+      },
+      CANONICAL: {
+        value: "CANONICAL",
+        description:
+          "The stored canonical row only; for a published locale, the live published content.",
+      },
+    } as const,
+  },
+)
 
 export function duplicateExperienceFromContext(
   ctx: Pick<ContextShape, "services" | "user">,
   id: string,
+  sourceVersion: ExperienceDuplicationSourceVersion = "EFFECTIVE",
 ) {
   return ctx.services.experience.duplicate({
-    input: { id },
+    input: { id, sourceVersion },
     user: ctx.user,
   })
 }
@@ -47,12 +69,21 @@ builder.mutationFields((t) => ({
     nullable: false,
     authScopes: { hasPermission: "write:experiences" },
     description:
-      "Duplicate every locale of an Experience into a new unpublished draft owned by the caller.",
+      "Duplicate every locale of an Experience into a new unpublished draft owned by the caller. Each copied locale starts with an active draft and preview capability; the copy never becomes the live homepage, and a homepage copy keeps homepageLayout instead.",
     args: {
       id: t.arg.id({ required: true }),
+      sourceVersion: t.arg({
+        type: ExperienceDuplicationSourceVersionEnum,
+        required: false,
+        defaultValue: "EFFECTIVE",
+      }),
     },
     resolve: (_query, _root, args, ctx) =>
-      duplicateExperienceFromContext(ctx, String(args.id)),
+      duplicateExperienceFromContext(
+        ctx,
+        String(args.id),
+        args.sourceVersion ?? "EFFECTIVE",
+      ),
   }),
 
   updateExperienceLocale: t.prismaField({

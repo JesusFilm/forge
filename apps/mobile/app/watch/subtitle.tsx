@@ -5,9 +5,11 @@ import { SubtitleSheetContent } from "../../src/components/watch/SubtitleSheet"
 import { SheetLoading } from "../../src/components/watch/SheetLoading"
 import { SheetError } from "../../src/components/watch/SheetError"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
+import { useT } from "../../src/i18n/useT"
 
 export default function SubtitleSheetRoute() {
   const router = useRouter()
+  const t = useT("Watch")
   const {
     video,
     activeVariant,
@@ -47,7 +49,7 @@ export default function SubtitleSheetRoute() {
   if (activeVariantMedia == null && activeVariantMediaError)
     return (
       <SheetError
-        message="Couldn't load subtitles. Check your connection and try again."
+        message={t("subtitlesLoadError")}
         onRetry={ensureActiveVariantMedia}
       />
     )

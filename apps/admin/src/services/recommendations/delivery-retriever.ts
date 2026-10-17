@@ -4,6 +4,8 @@ import { VideoNotFoundError } from "@/services/scene-recommendations.service"
 import { activeTranscriptContentEmbeddingWhere } from "@/services/content-embedding-contract"
 import { dedupeByVideoIdentity } from "@/services/video-dedup"
 import type { SemanticCandidatePoolItem } from "./candidate"
+import type { SemanticRetrievalDiagnostics } from "./delivery-diagnostics"
+import { resolveRecommendationLocaleIdentity } from "./locale-identity"
 
 // Delivery has a hard 1.5-second retrieval budget. Sampling evenly across a
 // long transcript bounds the number of ANN probes without reverting to the
@@ -20,6 +22,12 @@ const DELIVERY_OVERFETCH_FACTOR = 6
 
 type DeliveryRecommendationRow = {
   seed_count: number | bigint
+  seed_has_transcript: boolean
+  presentation_available: boolean
+  exact_audio_available: boolean
+  nearest_count: number
+  eligible_video_count: number
+  returned_count: number
   video_id: string | null
   video_slug: string | null
   video_title: string | null
@@ -54,8 +62,11 @@ export async function getSemanticDeliveryCandidatePool(
     locale: string
     audioLanguageSlug: string
     limit: number
+    onDiagnostics?: (diagnostics: SemanticRetrievalDiagnostics) => void
   },
 ): Promise<SemanticCandidatePoolItem[]> {
+  const { transcriptLocale, presentationLocale } =
+    resolveRecommendationLocaleIdentity(input.locale, input.audioLanguageSlug)
   const overfetchLimit = Math.max(
     input.limit,
     input.limit * DELIVERY_OVERFETCH_FACTOR,
@@ -69,8 +80,8 @@ export async function getSemanticDeliveryCandidatePool(
       FROM video_transcript_chunk vtc
       JOIN video_transcript vt ON vt.id = vtc.transcript_id
       WHERE vt.video_id = ${input.seedMediaId}
-        AND vt.language = ${input.locale}
-        AND vtc.language = ${input.locale}
+        AND vt.language = ${transcriptLocale}
+        AND vtc.language = ${transcriptLocale}
         AND vtc.embedding IS NOT NULL
         ${activeTranscriptContentEmbeddingWhere({
           transcriptAlias: "vt",
@@ -100,6 +111,22 @@ export async function getSemanticDeliveryCandidatePool(
       UNION
       SELECT child_id FROM video_relation WHERE parent_id = ${input.seedMediaId}
     ),
+    playable_dubs AS MATERIALIZED (
+      SELECT
+        vd.id,
+        vd.video_edition_id,
+        vd.published,
+        vd.updated_at,
+        mv.playback_id,
+        COALESCE(
+          ROUND(vd.length_in_milliseconds / 1000.0)::int,
+          vd.duration
+        ) AS duration_seconds
+      FROM language lg
+      JOIN video_dub vd ON vd.language_id = lg.id AND vd.deleted_at IS NULL
+      JOIN mux_video mv ON mv.id = vd.mux_video_id AND mv.playback_id IS NOT NULL
+      WHERE lg.slug = ${input.audioLanguageSlug}
+    ),
     nearest_chunks AS MATERIALIZED (
       SELECT nearest.*
       FROM seed_chunks seed
@@ -122,11 +149,13 @@ export async function getSemanticDeliveryCandidatePool(
           ) AS similarity
         FROM video_transcript_chunk candidate
         WHERE candidate.embedding IS NOT NULL
-          AND candidate.language = ${input.locale}
+          AND candidate.language = ${transcriptLocale}
           -- Keep parent provenance as a scalar filter on the ordered ANN scan.
           -- Joining the parent here can instead plan a full scan/distance sort.
           -- The primary key permits at most one row; missing or incompatible
           -- provenance yields NULL and is rejected before the neighbor limit.
+          -- Exact audio belongs here too: nearer wrong-audio chunks must not
+          -- consume the neighbor allowance before the final eligibility joins.
           AND (
             SELECT true
             FROM video_transcript candidate_transcript
@@ -139,6 +168,11 @@ export async function getSemanticDeliveryCandidatePool(
                 SELECT 1
                 FROM excluded_video_ids excluded
                 WHERE excluded.id = candidate_transcript.video_id
+              )
+              -- Build the exact-audio set once, rather than joining every dub
+              -- again for each vector visited by the iterative ANN scan.
+              AND candidate_transcript.video_edition_id IN (
+                SELECT video_edition_id FROM playable_dubs
               )
           )
         ORDER BY
@@ -171,7 +205,7 @@ export async function getSemanticDeliveryCandidatePool(
       FROM nearest_chunks nearest
       JOIN video_transcript vt
         ON vt.id = nearest.transcript_id
-        AND vt.language = ${input.locale}
+        AND vt.language = ${transcriptLocale}
         ${activeTranscriptContentEmbeddingWhere({
           transcriptAlias: "vt",
         })}
@@ -183,7 +217,7 @@ export async function getSemanticDeliveryCandidatePool(
         SELECT vl_display.title
         FROM video_locale vl_display
         WHERE vl_display.video_id = v.id
-          AND vl_display.locale = ${input.locale}
+          AND vl_display.locale = ${presentationLocale}
           AND vl_display.status = 'published'
           AND vl_display.deleted_at IS NULL
         ORDER BY
@@ -197,21 +231,9 @@ export async function getSemanticDeliveryCandidatePool(
         LIMIT 1
       ) display_locale ON true
       JOIN LATERAL (
-        SELECT
-          mv.playback_id,
-          COALESCE(
-            ROUND(vd.length_in_milliseconds / 1000.0)::int,
-            vd.duration
-          ) AS duration_seconds
-        FROM video_dub vd
-        JOIN language lg
-          ON lg.id = vd.language_id
-          AND lg.slug = ${input.audioLanguageSlug}
-        JOIN mux_video mv
-          ON mv.id = vd.mux_video_id
-          AND mv.playback_id IS NOT NULL
+        SELECT vd.playback_id, vd.duration_seconds
+        FROM playable_dubs vd
         WHERE vd.video_edition_id = vt.video_edition_id
-          AND vd.deleted_at IS NULL
         ORDER BY vd.published DESC NULLS LAST, vd.updated_at DESC, vd.id ASC
         LIMIT 1
       ) dub_mux ON true
@@ -219,7 +241,7 @@ export async function getSemanticDeliveryCandidatePool(
         SELECT 1
         FROM video_locale vl_visible
         WHERE vl_visible.video_id = v.id
-          AND vl_visible.locale = ${input.locale}
+          AND vl_visible.locale = ${presentationLocale}
           AND vl_visible.status = 'published'
           AND vl_visible.deleted_at IS NULL
       )
@@ -242,6 +264,12 @@ export async function getSemanticDeliveryCandidatePool(
     )
     SELECT
       (SELECT count(*)::int FROM seed_candidates) AS seed_count,
+      EXISTS (SELECT 1 FROM video_transcript WHERE video_id = ${input.seedMediaId} AND language = ${transcriptLocale}) AS seed_has_transcript,
+      EXISTS (SELECT 1 FROM video_locale WHERE locale = ${presentationLocale} AND status = 'published' AND deleted_at IS NULL) AS presentation_available,
+      EXISTS (SELECT 1 FROM playable_dubs) AS exact_audio_available,
+      (SELECT count(*)::int FROM nearest_chunks) AS nearest_count,
+      (SELECT count(DISTINCT video_id)::int FROM eligible_chunks) AS eligible_video_count,
+      (SELECT count(*)::int FROM ordered_candidates) AS returned_count,
       video_id,
       video_slug,
       video_title,
@@ -289,13 +317,34 @@ export async function getSemanticDeliveryCandidatePool(
     UNION ALL
     SELECT
       (SELECT count(*)::int FROM seed_candidates) AS seed_count,
+      EXISTS (SELECT 1 FROM video_transcript WHERE video_id = ${input.seedMediaId} AND language = ${transcriptLocale}),
+      EXISTS (SELECT 1 FROM video_locale WHERE locale = ${presentationLocale} AND status = 'published' AND deleted_at IS NULL),
+      EXISTS (SELECT 1 FROM playable_dubs),
+      (SELECT count(*)::int FROM nearest_chunks),
+      (SELECT count(DISTINCT video_id)::int FROM eligible_chunks),
+      (SELECT count(*)::int FROM ordered_candidates),
       NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
       NULL, NULL, NULL, NULL, NULL
     WHERE NOT EXISTS (SELECT 1 FROM ordered_candidates)
     ORDER BY similarity DESC NULLS LAST, video_id, scene_index
   `
 
-  if (Number(rows[0]?.seed_count ?? 0) === 0) {
+  const summary = rows[0]
+  if (summary)
+    input.onDiagnostics?.({
+      seed:
+        Number(summary.seed_count) > 0
+          ? "available"
+          : summary.seed_has_transcript
+            ? "compatible_embedding_unavailable"
+            : "missing_transcript",
+      presentationAvailable: summary.presentation_available,
+      exactAudioAvailable: summary.exact_audio_available,
+      nearestChunks: Number(summary.nearest_count),
+      eligibleVideos: Number(summary.eligible_video_count),
+      returnedCandidates: Number(summary.returned_count),
+    })
+  if (Number(summary?.seed_count ?? 0) === 0) {
     throw new VideoNotFoundError(input.seedMediaId)
   }
 
@@ -345,7 +394,7 @@ export async function getSemanticDeliveryCandidatePool(
     playbackId: row.playback_id!,
     videoCoreId,
     embeddingText,
-    locale: input.locale,
+    locale: presentationLocale,
     audioLanguageSlug: input.audioLanguageSlug,
     watchPlayable: true,
     localePublished: true,

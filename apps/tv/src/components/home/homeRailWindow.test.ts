@@ -1,4 +1,21 @@
-import { isRailActive } from "./homeRailWindow"
+import { homeRailRenderCount, isRailActive } from "./homeRailWindow"
+
+describe("homeRailRenderCount", () => {
+  it("starts Android with two rails and keeps two rows ahead of focus", () => {
+    expect(homeRailRenderCount("android", 2, 0, 12)).toBe(2)
+    expect(homeRailRenderCount("android", 2, 3, 12)).toBe(5)
+  })
+
+  it("retains mounted rails when focus returns upward", () => {
+    expect(homeRailRenderCount("android", 8, 1, 12)).toBe(8)
+  })
+
+  it("caps a shrinking feed and preserves eager tvOS rails", () => {
+    expect(homeRailRenderCount("android", 8, 10, 3)).toBe(3)
+    expect(homeRailRenderCount("android", 2, 0, 0)).toBe(0)
+    expect(homeRailRenderCount("ios", 2, 0, 12)).toBe(12)
+  })
+})
 
 describe("isRailActive", () => {
   const BUFFER = 2

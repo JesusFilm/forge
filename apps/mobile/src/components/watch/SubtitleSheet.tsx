@@ -4,6 +4,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import {
   ACCENT,
   SURFACE_COLOR,
@@ -15,6 +16,7 @@ import type { WatchSubtitle } from "../../lib/normalizeVideo"
 const getSelectionId = (s: WatchSubtitle) => s.languageSlug
 const getKey = (s: WatchSubtitle) => s.documentId
 const getPrimaryLabel = (s: WatchSubtitle) => s.languageName
+const getPrimaryLang = (s: WatchSubtitle) => s.languageNameLang
 const getSearchValues = (s: WatchSubtitle) => [s.languageName]
 
 export type SubtitleSheetProps = {
@@ -40,6 +42,7 @@ export function SubtitleSheetContent({
   onClose,
 }: SubtitleSheetProps) {
   const typography = useTypography()
+  const t = useT("Watch")
   const [localToggle, setLocalToggle] = useState(subtitleEnabled)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -82,7 +85,7 @@ export function SubtitleSheetContent({
           color={TEXT_SECONDARY}
         />
         <Text style={[styles.emptyText, typography.body]}>
-          No subtitles available
+          {t("noSubtitlesAvailable")}
         </Text>
       </View>
     )
@@ -90,14 +93,16 @@ export function SubtitleSheetContent({
 
   const toggleRow = (
     <View style={styles.toggleRow}>
-      <Text style={[styles.toggleLabel, typography.titleSmall]}>Subtitles</Text>
+      <Text style={[styles.toggleLabel, typography.titleSmall]}>
+        {t("subtitles")}
+      </Text>
       <Switch
         value={localToggle}
         onValueChange={handleToggle}
         trackColor={{ false: SURFACE_COLOR, true: ACCENT }}
         thumbColor="#ffffff"
         accessibilityRole="switch"
-        accessibilityLabel="Enable subtitles"
+        accessibilityLabel={t("enableSubtitlesAriaLabel")}
       />
     </View>
   )
@@ -109,12 +114,14 @@ export function SubtitleSheetContent({
       getSelectionId={getSelectionId}
       getKey={getKey}
       getPrimaryLabel={getPrimaryLabel}
+      getPrimaryLang={getPrimaryLang}
       getSearchValues={getSearchValues}
       onSelect={handleSelect}
-      searchPlaceholder="Search subtitles..."
-      searchAccessibilityLabel="Search subtitles"
-      emptySearchMessage="No subtitles found"
+      searchPlaceholder={t("searchSubtitlesPlaceholder")}
+      searchAccessibilityLabel={t("searchSubtitlesAriaLabel")}
+      emptySearchMessage={t("noSubtitlesFound")}
       headerTop={toggleRow}
+      actionName="subtitle-sheet"
     />
   )
 }

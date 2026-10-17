@@ -42,15 +42,29 @@ export async function applyPromotionRollbackPolicy(
     experimentId: string | null
     experimentGeneration: number | null
     activeManifestId: string
+    ownerReleaseId?: string | null
     pointerGeneration: number
     now: Date
   },
 ) {
+  // The caller holds graph → release locks before its pointer CAS. The pointer's
+  // monotonic influence floor fences historical releases without scanning requests.
+  const ownerReleases = input.ownerReleaseId
+    ? await tx.recommendationOwnerRelease.updateMany({
+        where: { id: input.ownerReleaseId, revokedAt: null },
+        data: { revokedAt: input.now, revocationReason: "promotion_rollback" },
+      })
+    : { count: 0 }
   const fallbackExperiments = input.experimentId
     ? []
     : await tx.recommendationExperiment.findMany({
         where: {
-          challengerManifestId: input.activeManifestId,
+          surfaceVersion: "watch-below-player-v1",
+          startsAt: { lte: input.now },
+          OR: [
+            { challengerManifestId: input.activeManifestId },
+            { controlManifestId: input.activeManifestId },
+          ],
           state: RecommendationExperimentState.ACTIVE,
         },
         select: { id: true, generation: true },
@@ -92,14 +106,20 @@ export async function applyPromotionRollbackPolicy(
         id: input.experimentId,
         generation: input.experimentGeneration,
       },
-      data: { generation: { increment: 1 } },
+      data: {
+        generation: { increment: 1 },
+        state: RecommendationExperimentState.CLOSED,
+      },
     })
   } else if (fallbackExperiments.length > 0) {
     await Promise.all(
       fallbackExperiments.map((experiment) =>
         tx.recommendationExperiment.updateMany({
           where: { id: experiment.id, generation: experiment.generation },
-          data: { generation: { increment: 1 } },
+          data: {
+            generation: { increment: 1 },
+            state: RecommendationExperimentState.CLOSED,
+          },
         }),
       ),
     )
@@ -139,6 +159,7 @@ export async function applyPromotionRollbackPolicy(
     ON CONFLICT (request_id) DO NOTHING
   `)
   return {
+    ownerReleasesRevoked: ownerReleases.count,
     assignmentsFenced: assignments.count,
     evaluationRunsFenced: evaluationRuns.count,
     promotionRunsFenced: pendingPromotionRuns.count,

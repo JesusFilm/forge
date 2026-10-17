@@ -13,6 +13,7 @@
 import type { ExportReportSignal } from "../components/ExportReportHost"
 import { telemetryErrorMessage } from "./downloadErrors"
 import type { DownloadTelemetry } from "./downloadRequestBuilders"
+import type { ExportBlockReason } from "./exportReport"
 import {
   getExportSessionStore,
   type ExportOutcome,
@@ -23,7 +24,6 @@ import type { OfflineDownloadRecord } from "./offlineManifest"
 import {
   createRawExportDecider,
   exportFolderName,
-  type ExportBlock,
   type ExportFolder,
   type RawExportRendition,
   type RawExportRequest,
@@ -131,20 +131,6 @@ export type RawExportResult =
 
 export type RawExportAdapter = ReturnType<typeof createRawExportAdapter>
 
-/** Viewer-facing reason for a block. The raw error text never reaches here. */
-function blockDetail(block: ExportBlock): string {
-  switch (block.reason) {
-    case "insufficient-storage":
-      return "There is not enough free space on this device."
-    case "unreadable-free":
-      return "The app could not read the free space on this device."
-    case "wifi-only-on-cellular":
-      return "Wi-Fi only is on and this device is on mobile data."
-    case "invalid-url":
-      return "This video's download address could not be used."
-  }
-}
-
 /** Bound on the de-duplicating name search, so a full folder cannot spin. */
 const MAX_NAME_ATTEMPTS = 50
 
@@ -237,7 +223,8 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
 
     let reused = false
     let stagedPath = initialPath
-    let detail: string | null = null
+    // The report names the reason at render, in the UI language then.
+    let blockReason: ExportBlockReason | null = null
 
     const result = await store().run(
       {
@@ -295,7 +282,7 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
           if (reusable) {
             const admission = await decider.admit(request)
             if (admission.kind === "blocked") {
-              detail = blockDetail(admission.block)
+              blockReason = admission.block.reason
               return "blocked"
             }
             if (admission.kind === "failed") return "failed"
@@ -312,7 +299,7 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
           } else {
             const staged = await decider.stageExport(request)
             if (staged.outcome === "blocked") {
-              detail = blockDetail(staged.block)
+              blockReason = staged.block.reason
               return "blocked"
             }
             if (staged.outcome === "cancelled") return "cancelled"
@@ -371,7 +358,7 @@ export function createRawExportAdapter(deps: RawExportAdapterDeps) {
       runSize: input.runSize,
       title: input.title,
       folderName: exportFolderName(input.folder.uri),
-      detail,
+      blockReason,
     })
     return {
       kind: "settled",

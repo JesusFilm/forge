@@ -10,6 +10,7 @@ import {
   DenialScreen,
   type DeniedScreen,
 } from "@/components/chat/denial-screens"
+import { ComparisonBoundary } from "@/features/apologist/comparison-boundary"
 import { fallbackTitle } from "@/lib/conversations"
 import { useConversationUrl } from "@/lib/use-conversation-url"
 import { useConversations } from "@/lib/use-conversations"
@@ -49,6 +50,7 @@ import { Sidebar, SIDEBAR_ID } from "./sidebar"
  */
 export function AppShell({
   seekerEnabled = false,
+  comparisonEnabled = false,
   authConfigured = false,
   identity = null,
   signInError = false,
@@ -57,6 +59,7 @@ export function AppShell({
   deepLinkUnresolvable = false,
 }: {
   seekerEnabled?: boolean
+  comparisonEnabled?: boolean
   authConfigured?: boolean
   identity?: ChatIdentity | null
   signInError?: boolean
@@ -75,6 +78,10 @@ export function AppShell({
   // seekerEnabled=true alongside deniedScreen — the route never should.
   const denialShell = deniedScreen !== undefined
   const grantedShell = seekerEnabled && !denialShell
+  const forge = useConversations(
+    grantedShell,
+    denialShell ? undefined : initialConversationId,
+  )
   const {
     conversations,
     activeId,
@@ -95,12 +102,10 @@ export function AppShell({
     loadMoreHistory,
     retryReplay,
     renameConversation,
-  } = useConversations(
-    grantedShell,
-    // KTD5 guard: on a denial shell the id serves ONLY the returnTo links —
-    // it must never seed an adopted row or fire a stray replay fetch.
-    denialShell ? undefined : initialConversationId,
-  )
+  } = forge
+
+  const [comparisonId, setComparisonId] = useState<string | null>(null)
+  const [comparisonNotice, setComparisonNotice] = useState<string | null>(null)
 
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -136,6 +141,8 @@ export function AppShell({
   const onHistoryNavigation = useCallback(() => {
     setMobileOpen(false)
     dismissUnresolvable()
+    setComparisonNotice(null)
+    setComparisonId(null)
     historyNavFromRef.current = activeIdRef.current
   }, [dismissUnresolvable])
 
@@ -169,6 +176,8 @@ export function AppShell({
     (id: string) => {
       historyNavFromRef.current = null
       dismissUnresolvable()
+      setComparisonNotice(null)
+      setComparisonId(null)
       selectConversation(id)
     },
     [selectConversation, dismissUnresolvable],
@@ -179,9 +188,20 @@ export function AppShell({
   // From the drawer, focus is deferred (flag below) — <main> is still inert.
   const composerRef = useRef<HTMLTextAreaElement | null>(null)
   const pendingComposerFocusRef = useRef(false)
+  const exitComparison = useCallback((reason?: "denied") => {
+    setComparisonNotice(
+      reason === "denied"
+        ? "Your access to Apologist has changed. Comparison has closed."
+        : null,
+    )
+    setComparisonId(null)
+    pendingComposerFocusRef.current = true
+  }, [])
   const newConversationFocused = () => {
     historyNavFromRef.current = null
     dismissUnresolvable()
+    setComparisonNotice(null)
+    setComparisonId(null)
     newConversation()
     if (mobileOpen) pendingComposerFocusRef.current = true
     else composerRef.current?.focus()
@@ -194,7 +214,7 @@ export function AppShell({
     if (mobileOpen || !pendingComposerFocusRef.current) return
     pendingComposerFocusRef.current = false
     composerRef.current?.focus()
-  }, [mobileOpen])
+  }, [mobileOpen, comparisonId])
 
   // Drop the drawer's open state when the viewport grows past `md`, so the rail
   // returns to its in-flow desktop form (no stale dialog/inert semantics).
@@ -309,25 +329,54 @@ export function AppShell({
             // deniedScreen === undefined — keeps that structural (KTD6).
             onStartNew={grantedShell ? newConversationFocused : undefined}
           />
-        ) : (
-          <Chat
-            conversation={activeConversation}
-            draft={draft}
-            pending={pending}
-            streamingMessageId={streamingMessageId}
-            seekerEnabled={seekerEnabled}
-            replayState={
-              activeConversation.origin === "server"
-                ? (activeConversation.replay ?? null)
-                : null
-            }
-            composerTextareaRef={composerRef}
-            onDraftChange={setDraft}
-            onSend={send}
-            onStop={stopReply}
-            onRetryReplay={retryReplay}
-            onStartNew={newConversationFocused}
+        ) : comparisonId === activeId && comparisonEnabled && grantedShell ? (
+          <ComparisonBoundary
+            key={activeId}
+            forge={forge}
+            onExit={exitComparison}
+            composerRef={composerRef}
           />
+        ) : (
+          <>
+            {comparisonNotice && (
+              <p role="status" className="px-8 pt-4 text-sm text-vesper">
+                {comparisonNotice}
+              </p>
+            )}
+            {comparisonEnabled &&
+              grantedShell &&
+              activeConversation.origin !== "server" &&
+              !activeConversation.serverPersisted &&
+              activeConversation.messages.length === 0 &&
+              !pending && (
+                <div className="px-8 pt-4 text-right">
+                  <button
+                    className="rounded-full border border-linen/15 px-4 py-2 text-sm text-linen hover:bg-linen/[0.06]"
+                    onClick={() => setComparisonId(activeId)}
+                  >
+                    Compare with Apologist
+                  </button>
+                </div>
+              )}
+            <Chat
+              conversation={activeConversation}
+              draft={draft}
+              pending={pending}
+              streamingMessageId={streamingMessageId}
+              seekerEnabled={seekerEnabled}
+              replayState={
+                activeConversation.origin === "server"
+                  ? (activeConversation.replay ?? null)
+                  : null
+              }
+              composerTextareaRef={composerRef}
+              onDraftChange={setDraft}
+              onSend={send}
+              onStop={stopReply}
+              onRetryReplay={retryReplay}
+              onStartNew={newConversationFocused}
+            />
+          </>
         )}
       </main>
       {/* Always-mounted polite live region: popstate-driven conversation

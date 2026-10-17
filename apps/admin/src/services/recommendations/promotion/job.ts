@@ -31,6 +31,14 @@ export async function dispatchRecommendationPromotion(
 ) {
   const run =
     await createRecommendationPromotionService(prisma).createRun(input)
+  if (run.replayed)
+    return {
+      queued: false as const,
+      replayed: true,
+      runId: run.id,
+      generation: run.generation,
+      workflowRunId: run.workflowRunId,
+    }
   const ledger = await createWorkflowRunLog({
     workflowKey: RECOMMENDATION_PROMOTION_WORKFLOW_KEY,
     workflowName: "Recommendation Promotion",

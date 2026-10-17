@@ -73,3 +73,7 @@ docs/validation/studio-461/**/*.json
 docs/validation/studio-461/**/*.mjs
 # Frozen original independent review report, included in its existing hash manifest.
 docs/validation/studio-461/review/README.md
+
+# Bible data lock: one translation per line, written and checked by
+# apps/mobile/scripts/build-bible-data.mjs (feat-553).
+apps/mobile/src/lib/bible/data/sources.lock.json

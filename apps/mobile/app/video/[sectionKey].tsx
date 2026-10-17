@@ -28,6 +28,7 @@ import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPic
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
+import { useT } from "../../src/i18n/useT"
 import type { AdminBlock } from "../../src/lib/queries"
 import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
@@ -38,6 +39,7 @@ export default function VideoDetailScreen() {
   const { sectionKey } = useLocalSearchParams<{ sectionKey: string }>()
   const insets = useSafeAreaInsets()
   const typography = useTypography()
+  const t = useT("Sections")
 
   const decodedKey = parseSectionKey(sectionKey)
 
@@ -46,11 +48,11 @@ export default function VideoDetailScreen() {
   if (decodedKey == null || section == null) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top + 44 }]}>
-        <Text style={text.errorTitle}>Video not found</Text>
+        <Text style={text.errorTitle}>{t("videoNotFoundTitle")}</Text>
         <Text style={text.errorMessage}>
           {decodedKey == null
-            ? "Invalid video identifier."
-            : `No section found for "${decodedKey}".`}
+            ? t("invalidVideoId")
+            : t("sectionNotFound", { key: decodedKey })}
         </Text>
       </View>
     )
@@ -68,6 +70,8 @@ function VideoDetailContent({
   section: AdminBlock
   typography: ReturnType<typeof useTypography>
 }) {
+  const t = useT("Sections")
+  const tCommon = useT("Common")
   const s = section as Record<string, unknown>
   // Admin exposes no `streamingUrl` on a block — it resolves the playable dub
   // live into `videoDub`. Reading the bare field yielded undefined on every
@@ -81,30 +85,28 @@ function VideoDetailContent({
       : undefined
   const hasValidStream = validateStreamingUrl(streamingUrl)
 
-  const title = (s.title as string | null) ?? "Untitled"
+  const title = (s.title as string | null) ?? tCommon("untitled")
   const thumbnailUrl = resolveImageUrl(deriveMuxThumbnailUrl(streamingUrl))
 
   const navigation = useNavigation()
   useLayoutEffect(() => {
-    const displayTitle = title ?? "this video"
     navigation.setOptions({
       headerTitle: title ?? "",
       headerRight: () => (
         <Pressable
           onPress={() => {
-            Share.share({
-              message: `Check out "${displayTitle}" on JesusFilm!`,
-            })
+            Share.share({ message: t("shareVideoMessage", { title }) })
           }}
           accessibilityRole="button"
-          accessibilityLabel="Share"
+          accessibilityLabel={tCommon("shareAriaLabel")}
           style={[button.iconButton44, styles.shareExtra]}
+          {...{ "dd-action-name": "sdui-video-share" }}
         >
           <Ionicons name="share-outline" size={22} color={ACCENT} />
         </Pressable>
       ),
     })
-  }, [navigation, title])
+  }, [navigation, title, t, tCommon])
 
   const siblings = (s.siblingContent as AdminBlock[] | undefined) ?? []
   const currentKey = s.sectionKey as string | undefined
@@ -181,7 +183,7 @@ function VideoDetailContent({
                 contentFit="cover"
                 pointerEvents="none"
                 recyclingKey={`sdui-video-poster-${currentKey ?? title}`}
-                accessibilityLabel={title ?? "Video thumbnail"}
+                accessibilityLabel={title}
               />
             )}
             {awaitingAutostart && <PlayerLoadingVeil />}
@@ -191,7 +193,7 @@ function VideoDetailContent({
             source={thumbnailUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            accessibilityLabel={title ?? "Video thumbnail"}
+            accessibilityLabel={title}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallback]} />
@@ -212,11 +214,18 @@ function VideoDetailContent({
               onPress={() => setShowFullDescription((prev) => !prev)}
               accessibilityRole="button"
               accessibilityLabel={
-                showFullDescription ? "Show less" : "Read more"
+                showFullDescription ? tCommon("showLess") : tCommon("readMore")
               }
+              {...{
+                "dd-action-name": showFullDescription
+                  ? "sdui-video-less"
+                  : "sdui-video-more",
+              }}
             >
               <Text style={[text.accentLinkText, styles.readMoreExtra]}>
-                {showFullDescription ? "Show less" : "Read more"}
+                {showFullDescription
+                  ? tCommon("showLess")
+                  : tCommon("readMore")}
               </Text>
             </Pressable>
           )}

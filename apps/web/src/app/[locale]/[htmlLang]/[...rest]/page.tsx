@@ -1,3 +1,8 @@
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  watchVideoSurfaceSources,
+  watchSeriesEpisodesSource,
+} from "@/lib/watch-surface-manifest.sources"
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
@@ -369,8 +374,19 @@ type Shape =
   | { kind: "unknown" }
 
 function stripSafeSegment(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    // Catch-all params can contain UTF-8 percent escapes after Next parses the
+    // internal rewrite. Keep encoded separators/reserved characters encoded so
+    // the safe slug grammar still rejects them.
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function routeIntentFromRest(rest: string[]) {
@@ -674,6 +690,13 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment"
       ? null
       : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
+  // Started early so it overlaps the message load, but it is only awaited after
+  // that load. Without a handler attached now, a rejection while the load is
+  // pending (or after the load rejects and the page has already thrown) is an
+  // unhandled rejection. This marks the rejection observed without changing
+  // it: the original promise is still awaited below and still throws there, and
+  // a loadClientMessages failure still wins because it is awaited first.
+  translateAvailabilityCountsPromise?.catch(() => {})
   const messages = await loadClientMessages(shape.locale, namespaces)
 
   let content: ReactNode
@@ -774,6 +797,11 @@ async function renderOneSegment(shape: {
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
+          publicDocumentPathname={
+            localeSlug
+              ? `${WATCH_BASE_PATH}${localizedHomePath(localeSlug)}`
+              : undefined
+          }
           locale={locale}
           legacyCategoryRailCompatibility={
             pageResult.data?.kind === "experience" &&
@@ -945,6 +973,10 @@ async function renderEpisode(
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
+        surfaceManifests={watchVideoSurfaceSources(
+          clientMergedBlocks,
+          languageSlug,
+        ).map((source) => signWatchSurfaceManifest(source))}
         variant={clientVariant}
         video={clientVideo}
         languageSlug={languageSlug}
@@ -1117,6 +1149,10 @@ async function renderVideo(
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
+          surfaceManifests={watchVideoSurfaceSources(
+            clientMergedBlocks,
+            languageSlug,
+          ).map((source) => signWatchSurfaceManifest(source))}
           variant={clientVariant}
           video={clientVideo}
           languageSlug={languageSlug}
@@ -1213,6 +1249,11 @@ async function renderVideo(
         <WatchStructuredData json={structuredData} />
         <SeriesPageClient
           series={visibleSeries}
+          surfaceManifest={
+            signWatchSurfaceManifest(
+              watchSeriesEpisodesSource(visibleSeries, seriesLanguage.slug),
+            ) ?? undefined
+          }
           selectedVariant={
             series.selectedVariant?.language?.slug === seriesLanguage.slug
               ? series.selectedVariant

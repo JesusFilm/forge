@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "L-app tuża n-netwerk lokali tiegħek biex issib apparati li tista’ tibgħatilhom il-vidjows, ħalli tħaddimhom fuq it-TV tiegħek."
+  }
+}

@@ -7,6 +7,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react"
@@ -58,7 +60,7 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { languageCodeFor } from "@/lib/language-code"
+import { languageBadgeCodeFor } from "@/lib/language-code"
 import {
   deriveLanguageDisplay,
   isolateLanguageName,
@@ -116,6 +118,7 @@ type HeaderLanguageSwitcherState = {
   visible: boolean
   onClick: (() => void) | null
   languageCode: string | null
+  languageName: string | null
   ownerToken: symbol | null
   pathname: string | null
 }
@@ -135,6 +138,34 @@ type WatchRouteSurfaceRegistrationState = {
 }
 
 type ParsedWatchPath = ReturnType<typeof parseWatchPath>
+
+type HeaderFocusSource = "none" | "pointer" | "keyboard"
+
+// Keys that only change a modifier state; pressing one is not keyboard use of
+// the focused control.
+const MODIFIER_ONLY_KEYS = new Set([
+  "Alt",
+  "AltGraph",
+  "CapsLock",
+  "Control",
+  "Fn",
+  "Meta",
+  "NumLock",
+  "ScrollLock",
+  "Shift",
+])
+
+// `:focus-visible` is the browser's own keyboard-versus-pointer focus signal.
+// Where it cannot be evaluated, treat focus as keyboard focus: showing the
+// header is the safe direction for an accessibility affordance.
+function isKeyboardFocus(target: EventTarget): boolean {
+  if (!(target instanceof Element)) return true
+  try {
+    return target.matches(":focus-visible")
+  } catch {
+    return true
+  }
+}
 
 function fallbackWatchRouteSurface(
   parsed: ParsedWatchPath,
@@ -255,9 +286,17 @@ export function FloatingSearchProvider({
     parsedPath,
     currentLanguageSlug,
   )
-  const currentLanguageCode =
-    languageCodeFor({ slug: headerLanguageSlug }) ??
-    languageCodeFor({ slug: currentLanguageSlug })
+  const currentLanguageCodeSlug =
+    languageBadgeCodeFor({ slug: headerLanguageSlug }) != null
+      ? headerLanguageSlug
+      : currentLanguageSlug
+  const currentLanguageCode = languageBadgeCodeFor({
+    slug: currentLanguageCodeSlug,
+  })
+  const currentLanguageName = deriveLanguageDisplay(
+    currentLanguageCodeSlug,
+    null,
+  ).name
   // This is a client component, so it cannot await the route manifest the way
   // the inventory route's own admission does — the compiled corpus is the only
   // namespace it can see. The route itself no longer 404s outside that corpus,
@@ -313,6 +352,7 @@ export function FloatingSearchProvider({
       visible: false,
       onClick: null,
       languageCode: null,
+      languageName: null,
       ownerToken: null,
       pathname: null,
     })
@@ -323,6 +363,8 @@ export function FloatingSearchProvider({
   const [globalLanguageErrorRoute, setGlobalLanguageErrorRoute] =
     useState<RouteIdentity | null>(null)
   const [headerHovered, setHeaderHovered] = useState(false)
+  const [headerFocusSource, setHeaderFocusSource] =
+    useState<HeaderFocusSource>("none")
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -334,6 +376,16 @@ export function FloatingSearchProvider({
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
+  const pageLanguageCancellationRef = useRef<{
+    ownerToken: symbol | null
+    pathname: string
+    cancel: () => void
+  } | null>(null)
+  useLayoutEffect(() => {
+    if (pageLanguageCancellationRef.current?.pathname !== pathname) {
+      pageLanguageCancellationRef.current = null
+    }
+  }, [pathname])
   const invalidateGlobalLanguageIntent = useCallback(() => {
     globalLanguageIntentRef.current += 1
     globalLanguagePendingRouteRef.current = null
@@ -355,6 +407,7 @@ export function FloatingSearchProvider({
         closingTimerRef.current = null
       }
       if (next) {
+        pageLanguageCancellationRef.current?.cancel()
         pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
@@ -536,6 +589,21 @@ export function FloatingSearchProvider({
       const ownerToken = detail.ownerToken ?? null
       const visible = detail.visible && typeof detail.onClick === "function"
 
+      // A subtitle-only or fullscreen picker can own pending work without
+      // replacing the header globe. Cleanup still belongs to its mount token.
+      if (typeof detail.cancelPendingOpen === "function") {
+        pageLanguageCancellationRef.current = {
+          ownerToken,
+          pathname,
+          cancel: detail.cancelPendingOpen,
+        }
+      } else if (
+        visible ||
+        pageLanguageCancellationRef.current?.ownerToken === ownerToken
+      ) {
+        pageLanguageCancellationRef.current = null
+      }
+
       setHeaderLanguageSwitcher((current) => {
         if (!visible) {
           const cleanupMatches = ownerToken
@@ -546,6 +614,7 @@ export function FloatingSearchProvider({
                 visible: false,
                 onClick: null,
                 languageCode: null,
+                languageName: null,
                 ownerToken: null,
                 pathname: null,
               }
@@ -556,6 +625,7 @@ export function FloatingSearchProvider({
           visible: true,
           onClick: detail.onClick,
           languageCode: detail.languageCode ?? null,
+          languageName: detail.languageName ?? null,
           ownerToken,
           pathname,
         }
@@ -725,18 +795,46 @@ export function FloatingSearchProvider({
   const globalLanguageLoadFailed =
     !pageSpecificLanguageSwitcherActive &&
     globalLanguageErrorRoute === routeIdentity
+  const globalLanguageName = !headerLanguageCode
+    ? null
+    : pageSpecificLanguageSwitcherActive
+      ? (headerLanguageSwitcher.languageName ??
+        (headerLanguageSwitcher.languageCode == null ||
+        headerLanguageSwitcher.languageCode === currentLanguageCode
+          ? currentLanguageName
+          : headerLanguageCode))
+      : currentLanguageName
+  const globalLanguageDescription = headerLanguageCode
+    ? globalLanguageName && globalLanguageName !== headerLanguageCode
+      ? `${globalLanguageName} (${headerLanguageCode})`
+      : headerLanguageCode
+    : null
   const globalLanguageLabel = globalLanguageLoadFailed
-    ? `${t("changeAudioLanguage")}. ${searchT("connectionHint")}`
-    : t("changeAudioLanguage")
+    ? `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
+    : `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
   const effectiveHeaderHovered = headerHoverZoneActive && headerHovered
-  const headerChromeOpacity =
-    effectiveHeaderHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
+  // Keyboard focus inside the header keeps it revealed through every later
+  // player-chrome fade and scroll-away until focus leaves, so a focused control
+  // is never transparent or off-screen. Pointer-driven focus (a click) does not
+  // pin the header, it only keeps the header from going inert under that focus.
+  const headerKeyboardRevealed =
+    !modalChromeHidden && headerFocusSource === "keyboard"
+  const headerScrollRevealed = headerScrollVisible || headerKeyboardRevealed
+  const headerChromeOpacity = headerKeyboardRevealed
+    ? 1
+    : effectiveHeaderHovered && playerChromeOpacity <= 0
+      ? 1
+      : playerChromeOpacity
   const headerChromeUnavailable = !modalChromeHidden && headerChromeOpacity <= 0
   const headerChromeHidden =
-    headerChromeUnavailable || (!modalChromeHidden && !headerScrollVisible)
+    headerChromeUnavailable || (!modalChromeHidden && !headerScrollRevealed)
+  const headerChromeInert =
+    headerChromeHidden &&
+    headerFocusSource === "none" &&
+    (!headerHoverZoneActive || !headerScrollRevealed)
   const headerChromeDimmed =
     !modalChromeHidden && !headerChromeHidden && headerChromeOpacity < 1
   const searchChromeVisible = !headerChromeUnavailable
@@ -751,14 +849,14 @@ export function FloatingSearchProvider({
     ? "pointer-events-none translate-y-0 opacity-100"
     : headerChromeUnavailable
       ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
-      : !headerScrollVisible
+      : !headerScrollRevealed
         ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
         : headerChromeDimmed
           ? "pointer-events-auto translate-y-0 opacity-30"
           : "pointer-events-auto translate-y-0 opacity-100"
   const headerBackdropMotionClass = headerChromeUnavailable
     ? "-translate-y-[calc(100%+2rem)] opacity-0"
-    : !headerScrollVisible
+    : !headerScrollRevealed
       ? "-translate-y-[calc(100%+2rem)] opacity-100"
       : headerSurfaceSolid
         ? "translate-y-0 opacity-100 md:-translate-y-[72%]"
@@ -778,6 +876,53 @@ export function FloatingSearchProvider({
     headerPointerRevealAllowed,
     revealPlayerChromeFromHeader,
   ])
+
+  const handleHeaderFocus = useCallback(
+    (event: ReactFocusEvent<HTMLElement>) => {
+      setHeaderFocusSource(
+        isKeyboardFocus(event.target) ? "keyboard" : "pointer",
+      )
+      if (headerChromeHidden) {
+        setHeaderHovered(headerCanBrightenLocally)
+        revealPlayerChromeFromHeader()
+      }
+    },
+    [
+      headerCanBrightenLocally,
+      headerChromeHidden,
+      revealPlayerChromeFromHeader,
+    ],
+  )
+
+  // Focus can stay on one control while the input modality changes: a control
+  // focused by a click becomes keyboard-operated on its next key press (the
+  // browser flips `:focus-visible` without a new focus event), and a
+  // keyboard-focused control becomes pointer-operated on a press. Re-classify
+  // on those inputs so the header reveal follows how it is actually used.
+  const handleHeaderKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLElement>) => {
+      if (MODIFIER_ONLY_KEYS.has(event.key)) return
+      setHeaderFocusSource((current) =>
+        current === "pointer" ? "keyboard" : current,
+      )
+    },
+    [],
+  )
+
+  const handleHeaderPointerDown = useCallback(() => {
+    setHeaderFocusSource((current) =>
+      current === "keyboard" ? "pointer" : current,
+    )
+  }, [])
+
+  const handleHeaderBlur = useCallback(
+    (event: ReactFocusEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setHeaderFocusSource("none")
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!headerHoverZoneActive) {
@@ -853,12 +998,16 @@ export function FloatingSearchProvider({
         />
         <header
           data-testid="floating-header"
-          inert={headerChromeHidden || undefined}
-          aria-hidden={headerChromeHidden || undefined}
+          inert={headerChromeInert || undefined}
+          aria-hidden={headerChromeInert || undefined}
+          onFocusCapture={handleHeaderFocus}
+          onBlurCapture={handleHeaderBlur}
+          onKeyDownCapture={handleHeaderKeyDown}
+          onPointerDownCapture={handleHeaderPointerDown}
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-              : FLOATING_HEADER_LAYOUT_CLASS
+              : `${FLOATING_HEADER_LAYOUT_CLASS} max-[360px]:gap-2`
           } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
         >
           <Link
@@ -973,7 +1122,7 @@ export function FloatingSearchProvider({
                 {headerLanguageCode ? (
                   <span
                     data-testid="floating-header-language-code"
-                    className="text-xs font-bold tracking-[0.14em] sm:text-[10px]"
+                    className="max-w-28 truncate text-xs font-bold tracking-[0.14em] max-[360px]:max-w-12 max-[360px]:overflow-visible max-[360px]:break-words max-[360px]:text-clip max-[360px]:leading-3 max-[360px]:whitespace-normal sm:text-[10px]"
                   >
                     {headerLanguageCode}
                   </span>

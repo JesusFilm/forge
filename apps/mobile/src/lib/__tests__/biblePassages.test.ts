@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+// The hook's card services load the reading position store, which binds
+// AsyncStorage at import.
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+)
+
 import { InMemoryCache } from "@apollo/client"
 import { parse, print } from "graphql"
 import type { DocumentNode } from "graphql"
@@ -7,6 +15,7 @@ import {
   type RawBiblePassage,
   type RequiredPassageField,
 } from "../biblePassages"
+import { biblePassageVariables } from "../../hooks/useBibleVerses"
 import { GET_VIDEO_BIBLE_PASSAGES, GET_VIDEO_BY_SLUG } from "../queries"
 
 // Every value read off deployed admin for Genesis 1:26-27 on `the-beginning`
@@ -280,7 +289,7 @@ describe("projectBiblePassage", () => {
 // ── KTD2: the companion write must not collapse the player-gating read ──────
 
 const SLUG = "the-beginning"
-const VIDEO_VARIABLES = { locale: "en", slug: SLUG }
+const VIDEO_VARIABLES = { slug: SLUG }
 
 // A complete result for GET_VIDEO_BY_SLUG. Every list the fragment selects is
 // present so the cache read below is complete for the right reason.
@@ -298,7 +307,6 @@ const VIDEO_RESULT = {
       coreId: "529",
       bcp47: "en",
     },
-    locales: [],
     parents: [],
     variants: [],
     studyQuestions: [],
@@ -316,6 +324,8 @@ const VIDEO_RESULT = {
           __typename: "BibleBook",
           documentId: "book-genesis",
           name: [{ value: "Genesis", primary: true }],
+          osisId: "Gen",
+          paratextAbbreviation: "GEN",
         },
       },
     ],
@@ -366,6 +376,8 @@ function passageResultWithoutOuterId() {
   return { videoBySlug: withoutOuterId }
 }
 
+const PASSAGE_VARIABLES = biblePassageVariables(SLUG, "english")
+
 describe("GET_VIDEO_BIBLE_PASSAGES cache isolation (KTD2)", () => {
   it("leaves the player-gating read intact after the companion write", () => {
     const cache = new InMemoryCache()
@@ -377,7 +389,7 @@ describe("GET_VIDEO_BIBLE_PASSAGES cache isolation (KTD2)", () => {
     })
     cache.writeQuery({
       query: GET_VIDEO_BIBLE_PASSAGES,
-      variables: { slug: SLUG },
+      variables: PASSAGE_VARIABLES,
       data: PASSAGE_RESULT,
     })
 
@@ -403,7 +415,7 @@ describe("GET_VIDEO_BIBLE_PASSAGES cache isolation (KTD2)", () => {
     })
     cache.writeQuery({
       query: companionWithoutOuterId(),
-      variables: { slug: SLUG },
+      variables: PASSAGE_VARIABLES,
       data: passageResultWithoutOuterId(),
     })
 
@@ -413,5 +425,57 @@ describe("GET_VIDEO_BIBLE_PASSAGES cache isolation (KTD2)", () => {
     })
 
     expect(read?.videoBySlug?.slug).toBeUndefined()
+  })
+
+  // U7: a Russian read and an English read are separate cache fields, so a
+  // language change never shows the other language's passage from the cache.
+  it("keeps each language's passage apart", () => {
+    const cache = new InMemoryCache()
+    cache.writeQuery({
+      query: GET_VIDEO_BIBLE_PASSAGES,
+      variables: PASSAGE_VARIABLES,
+      data: PASSAGE_RESULT,
+    })
+    const citation = PASSAGE_RESULT.videoBySlug.bibleCitations[0]
+    const russianPassage = {
+      ...citation.passage,
+      content: "russian text",
+      versionId: 400,
+    }
+    cache.writeQuery({
+      query: GET_VIDEO_BIBLE_PASSAGES,
+      variables: biblePassageVariables(SLUG, "russian"),
+      data: {
+        videoBySlug: {
+          ...PASSAGE_RESULT.videoBySlug,
+          bibleCitations: [
+            {
+              ...citation,
+              passage: russianPassage,
+              englishPassage: citation.passage,
+            },
+          ],
+        },
+      },
+    })
+
+    const english = cache.readQuery({
+      query: GET_VIDEO_BIBLE_PASSAGES,
+      variables: PASSAGE_VARIABLES,
+    })
+    const russian = cache.readQuery({
+      query: GET_VIDEO_BIBLE_PASSAGES,
+      variables: biblePassageVariables(SLUG, "russian"),
+    })
+    expect(english?.videoBySlug?.bibleCitations?.[0]?.passage?.content).toBe(
+      COMPLETE.content,
+    )
+    const russianRow = russian?.videoBySlug?.bibleCitations?.[0]
+    expect(russianRow?.passage?.content).toBe("russian text")
+    expect(
+      russianRow && "englishPassage" in russianRow
+        ? russianRow.englishPassage?.content
+        : null,
+    ).toBe(COMPLETE.content)
   })
 })

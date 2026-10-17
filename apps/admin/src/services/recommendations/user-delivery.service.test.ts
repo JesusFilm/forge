@@ -70,6 +70,111 @@ describe("source-free recommendations", () => {
     expect(response.items[0]).not.toHaveProperty("videoCoreId")
   })
 
+  it("retrieves a fresh curated alternative even when six profile candidates include a short watch", async () => {
+    const h = harness(6)
+    h.history.mockResolvedValue([
+      {
+        mediaId: "video-0",
+        completed: false,
+        recentlyTried: true,
+        qualified: false,
+      },
+    ])
+    const response = await h.service.deliver(personalizedInput())
+    expect(response).toMatchObject({
+      result: "served",
+      profileCount: 5,
+      curatedCount: 1,
+    })
+    expect(response.items.map((item) => item.videoId)).toEqual([
+      "video-1",
+      "video-2",
+      "video-3",
+      "video-4",
+      "video-5",
+      "video-10",
+    ])
+    expect(h.curated).toHaveBeenCalledOnce()
+  })
+
+  it("uses short-only history for freshness, not thematic curated interests", async () => {
+    const h = harness(0)
+    h.history.mockResolvedValue([
+      {
+        mediaId: "video-10",
+        completed: false,
+        recentlyTried: true,
+        qualified: false,
+      },
+    ])
+    const response = await h.service.deliver(personalizedInput())
+    expect(response.items.map((item) => item.videoId)).not.toContain("video-10")
+    expect(h.curated).toHaveBeenCalledWith(
+      expect.objectContaining({ interestVideoIds: [] }),
+    )
+  })
+
+  it("applies localized same-title history to a different Core edition", async () => {
+    const h = harness(6)
+    h.history.mockResolvedValue([
+      {
+        mediaId: "watched-edition",
+        videoCoreId: "another-film",
+        videoTitle: video(0).videoTitle,
+        completed: false,
+        recentlyTried: true,
+        qualified: false,
+      },
+    ])
+    const response = await h.service.deliver(personalizedInput())
+    expect(h.history).toHaveBeenCalledWith(
+      expect.objectContaining({ locale: "en" }),
+    )
+    expect(response.items.map((item) => item.videoId)).toEqual([
+      "video-1",
+      "video-2",
+      "video-3",
+      "video-4",
+      "video-5",
+      "video-10",
+    ])
+  })
+
+  it("keeps recent profile reserves when optional fresh curated retrieval fails", async () => {
+    const h = harness(6)
+    h.history.mockResolvedValue([
+      {
+        mediaId: "video-0",
+        completed: false,
+        recentlyTried: true,
+        qualified: false,
+      },
+    ])
+    h.curated.mockRejectedValue(new Error("pool unavailable"))
+    const response = await h.service.deliver(personalizedInput())
+    expect(response).toMatchObject({ result: "served", profileCount: 6 })
+    expect(response.items.at(-1)?.videoId).toBe("video-0")
+  })
+
+  it("refills from recently tried canonical identities only after fresh supply", () => {
+    expect(
+      composeUserRecommendations(
+        [video(1), video(2)],
+        [video(3)],
+        [
+          {
+            mediaId: "alternate-edition",
+            videoCoreId: video(1).videoCoreId + "AD",
+            completed: false,
+            recentlyTried: true,
+            qualified: false,
+          },
+        ],
+        6,
+      ),
+    ).toEqual([video(2), video(3), video(1)])
+  })
+
   it("does not discard viewing-history exclusions when the history read stalls", async () => {
     vi.useFakeTimers()
     const h = harness(6)

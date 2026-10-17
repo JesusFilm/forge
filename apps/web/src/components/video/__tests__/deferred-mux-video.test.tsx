@@ -44,7 +44,7 @@ afterEach(async () => {
 describe("DeferredMuxVideo", () => {
   // Without the boundary this throw escapes to the route's `error.tsx` and
   // replaces the entire Watch page — copy, artwork and navigation included —
-  // over a video engine none of it needs. feat-535 / FGE-138.
+  // over a video engine none of it needs. feat-719 / FGE-138.
   it("contains a failed chunk load to its own box", async () => {
     // React logs the caught error; keep the suite output readable.
     vi.spyOn(console, "error").mockImplementation(() => {})

@@ -384,6 +384,12 @@ Use these, in this order:
    count crimson pixels against white pixels inside the mark's tile — instead
    of judging them by eye.
 
+   A one-frame fault lasts about 16.7 ms at 60 Hz, so 12 fps sees it only
+   about one time in five. For a one-frame fault, sample every frame
+   (`fps=60`) and read a brightness value for each frame (`signalstats`
+   YAVG). See the frame check in
+   [native-animated-stop-report-overwrites-immediate-setvalue.md](../ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md).
+
 2. **Burst lossless screenshots** for measurement questions. `recordVideo`
    emits H.264, and its compression is too lossy to measure fine detail such as
    the wobble of a gradient band. Use repeated
@@ -470,6 +476,9 @@ Run the instrument-adequacy check before you judge:
 - A handover between two renderers, such as a native splash to a React tree.
 - A fine visual measurement, such as a gradient, a band edge, or a sub-pixel
   offset.
+- A playback rate measured on an Android emulator. The emulator can play slower
+  than the rate that the player and the media session report. Run a control on
+  a known speed path in the same session first.
 
 The checks are most valuable in this repo when you work from a worktree, when
 you have just pulled or rebased, or when you have more than one checkout of
@@ -583,3 +592,7 @@ colour, `(28,25,23)`, which matches `backgroundColor` at
 - `docs/solutions/best-practices/nextjs-hmr-reload-breaks-stateful-browser-verification.md`
   — the non-mobile sibling: a verification instrument that invalidates the
   state it was meant to observe.
+- `docs/solutions/developer-experience/android-emulator-plays-video-slower-than-its-reported-rate.md`
+  — an instrument-adequacy case on Android: the emulator reports 2x but plays
+  at about 1.5x, and a control run on the watch page's speed setting proves the
+  limit.

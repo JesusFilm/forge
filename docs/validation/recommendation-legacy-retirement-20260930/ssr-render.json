@@ -1,0 +1,17 @@
+{
+  "kind": "synthetic_local_only",
+  "stages": 448,
+  "samples": 100,
+  "ordinaryHtmlEqual": true,
+  "htmlBytes": 346310,
+  "results": {
+    "baseline": {
+      "medianMs": 28.179290999999466,
+      "p95Ms": 102.73955699999988
+    },
+    "current": {
+      "medianMs": 27.77107999999953,
+      "p95Ms": 102.64291300000014
+    }
+  }
+}

@@ -1,4 +1,5 @@
 "use client"
+import { groupTrackKind, itemGroup } from "./timeline-layout"
 import { useEffect, useState } from "react"
 import {
   Plus,
@@ -54,6 +55,10 @@ export function Library({
     [start, setStart] = useState(0),
     [end, setEnd] = useState(10),
     [busy, setBusy] = useState(false),
+    [componentName, setComponentName] = useState("Title card"),
+    [componentCategory, setComponentCategory] = useState<"text" | "video">(
+      "text",
+    ),
     [source, setSource] = useState(template),
     [controls, setControls] = useState(
       '{"title":{"type":"text","maxLength":200},"color":{"type":"color"}}',
@@ -98,7 +103,7 @@ export function Library({
             ...d.tracks,
             {
               id: item.trackId,
-              kind: item.kind === "audio" ? "audio" : "visual",
+              kind: groupTrackKind[itemGroup(item, doc)],
             },
           ],
       durationInFrames: Math.max(
@@ -109,7 +114,7 @@ export function Library({
     }))
     session.select(item.id)
   }
-  const base = (kind: "visual" | "audio" = "visual") => ({
+  const base = (kind: "visual" | "audio" | "caption" = "visual") => ({
     id: crypto.randomUUID(),
     trackId: doc.tracks.find((t) => t.kind === kind)?.id ?? crypto.randomUUID(),
     startFrame: state.playhead,
@@ -124,7 +129,7 @@ export function Library({
         dubId: choice.dubId,
         editionId: choice.editionId,
         language: choice.language,
-        trackId: track,
+        trackId: track || null,
         downloadId: download,
         startMs: Math.round(start * 1000),
         endMs: Math.round(end * 1000),
@@ -191,6 +196,8 @@ export function Library({
       const asset: ShortAssetVersion = await res.json()
       const component = studioComponentSchema.parse({
         versionId: crypto.randomUUID(),
+        name: componentName.trim(),
+        category: componentCategory,
         code: asset.reference,
         runtimeVersion: STUDIO_RUNTIME_VERSION,
         dependencies: [
@@ -218,7 +225,9 @@ export function Library({
         ]),
       )
       const item: StudioTimelineItem = {
-        ...base(),
+        ...base(
+          groupTrackKind[componentCategory === "text" ? "Text" : "Video"],
+        ),
         kind: "component",
         componentVersionId: component.versionId,
         properties,
@@ -226,6 +235,17 @@ export function Library({
       session.edit((d) => ({
         ...d,
         components: [...d.components, component],
+        tracks: d.tracks.some((track) => track.id === item.trackId)
+          ? d.tracks
+          : [
+              ...d.tracks,
+              {
+                id: item.trackId,
+                kind: groupTrackKind[
+                  componentCategory === "text" ? "Text" : "Video"
+                ],
+              },
+            ],
         items: [...d.items, item],
         durationInFrames: Math.max(
           d.durationInFrames,
@@ -276,7 +296,7 @@ export function Library({
           disabled={!state.editable}
           onClick={() =>
             insert({
-              ...base(),
+              ...base("caption"),
               kind: "text",
               text: "Your text",
               properties: { fontSize: 72, color: "#ffffff", align: "center" },
@@ -305,7 +325,7 @@ export function Library({
                 className="nle-library-card"
                 onClick={() => {
                   setChoice(row)
-                  setTrack(row.tracks[0]!.id)
+                  setTrack(row.tracks[0]?.id ?? "")
                   setDownload(row.downloads[0]!.id)
                   setStart(0)
                   setEnd(Math.min(10, row.durationMs / 1000))
@@ -322,7 +342,7 @@ export function Library({
             ))}
             {!rows.length && (
               <p className="nle-muted">
-                No matching footage with an exact dub and timed subtitle track.
+                No matching playable footage in this language.
               </p>
             )}
           </>
@@ -418,6 +438,26 @@ export function Library({
               isolated preview.
             </p>
             <label>
+              Component name
+              <input
+                value={componentName}
+                maxLength={200}
+                onChange={(e) => setComponentName(e.target.value)}
+              />
+            </label>
+            <label>
+              Timeline section
+              <select
+                value={componentCategory}
+                onChange={(e) =>
+                  setComponentCategory(e.target.value as "text" | "video")
+                }
+              >
+                <option value="text">Text</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+            <label>
               Component TSX
               <textarea
                 className="nle-code"
@@ -434,7 +474,10 @@ export function Library({
                 onChange={(e) => setControls(e.target.value)}
               />
             </label>
-            <button disabled={busy || !state.editable} onClick={custom}>
+            <button
+              disabled={busy || !state.editable || !componentName.trim()}
+              onClick={custom}
+            >
               <Plus size={14} />
               Add component
             </button>
@@ -454,6 +497,7 @@ export function Library({
             <label>
               Subtitle track
               <select value={track} onChange={(e) => setTrack(e.target.value)}>
+                <option value="">No subtitles</option>
                 {choice.tracks.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.primary ? "Primary" : "Alternate"} ·{" "}

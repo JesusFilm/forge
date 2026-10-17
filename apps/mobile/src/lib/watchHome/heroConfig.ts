@@ -4,6 +4,14 @@
  * curation into admin. Body shelves live in the Experience, not here.
  */
 
+import { getT, type UiMessageKey } from "../../i18n/useT"
+
+// Insert copy is a getter: each read takes the catalog in use, so a slide
+// built or shown after a language change is in the new language (U10).
+function heroCopy(key: UiMessageKey<"HomeHero">): string {
+  return getT("HomeHero")(key)
+}
+
 export type WatchHomePlaylistGroup = readonly string[]
 
 export type WatchHomeMuxInsertConfig = {
@@ -76,11 +84,17 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
     enabled: true,
     playbackIds: ["34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y"],
     durationSeconds: 9,
-    label: "Faith & Scripture",
-    title: "Today's Video Picks",
+    get label() {
+      return heroCopy("welcomeLabel")
+    },
+    get title() {
+      return heroCopy("welcomeTitle")
+    },
+    // No screen draws a collection title, so it stays English web data.
     collectionTitle: "Daily Inspirations",
-    description:
-      "Faith-centered video content from our library to inspire, challenge, and spark reflection.",
+    get description() {
+      return heroCopy("welcomeDescription")
+    },
     action: null,
     logo: true,
     posterOverride: null,
@@ -90,33 +104,48 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
         priority: 10,
         conditions: [{ type: "time-range", range: { start: 5, end: 9 } }],
         overlay: {
-          label: "Morning Inspiration",
-          title: "Good Morning! Today's Bible Moments Await.",
+          get label() {
+            return heroCopy("morningLabel")
+          },
+          get title() {
+            return heroCopy("morningTitle")
+          },
           collectionTitle: "Morning Moments",
-          description:
-            "Begin your day with encouraging Bible moments designed to inspire and uplift your spirit.",
+          get description() {
+            return heroCopy("morningDescription")
+          },
         },
       },
       {
         priority: 10,
         conditions: [{ type: "time-range", range: { start: 12, end: 17 } }],
         overlay: {
-          label: "Afternoon Inspiration",
-          title: "Good Afternoon! Bible Moments for Your Day.",
+          get label() {
+            return heroCopy("afternoonLabel")
+          },
+          get title() {
+            return heroCopy("afternoonTitle")
+          },
           collectionTitle: "Afternoon Moments",
-          description:
-            "Encouraging Bible content perfect for your afternoon break or continued inspiration.",
+          get description() {
+            return heroCopy("afternoonDescription")
+          },
         },
       },
       {
         priority: 10,
         conditions: [{ type: "time-range", range: { start: 17, end: 21 } }],
         overlay: {
-          label: "Evening Inspiration",
-          title: "Good Evening! Wind Down with Bible Moments.",
+          get label() {
+            return heroCopy("eveningLabel")
+          },
+          get title() {
+            return heroCopy("eveningTitle")
+          },
           collectionTitle: "Evening Moments",
-          description:
-            "Peaceful Bible moments to help you reflect and find comfort as your day comes to a close.",
+          get description() {
+            return heroCopy("eveningDescription")
+          },
         },
       },
     ],
@@ -126,13 +155,20 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
     enabled: true,
     playbackIds: ["VN4b95KOO3JtLg3x019dH2mzMHPL4le65vRmXFONyzZ8"],
     durationSeconds: null,
-    label: "Join Us",
-    title: "Billions are searching",
+    get label() {
+      return heroCopy("joinUsLabel")
+    },
+    get title() {
+      return heroCopy("joinUsTitle")
+    },
     collectionTitle: "Highlights",
-    description:
-      "The harvest is here. Join us as we share the gospel with the world using digital media.",
+    get description() {
+      return heroCopy("joinUsDescription")
+    },
     action: {
-      label: "Join Us",
+      get label() {
+        return heroCopy("joinUsAction")
+      },
       url: "https://your.nextstep.is/joinus",
     },
     logo: false,
@@ -144,13 +180,20 @@ export const WATCH_HOME_MUX_INSERTS: readonly WatchHomeMuxInsertConfig[] = [
     enabled: true,
     playbackIds: ["W00xXnOS4kU8VVMgx4M6AdzZE63OnKk300HdEDeUYZqlQ"],
     durationSeconds: null,
-    label: "Let's go together",
-    title: "Telling the Story of Jesus, Together",
+    get label() {
+      return heroCopy("togetherLabel")
+    },
+    get title() {
+      return heroCopy("togetherTitle")
+    },
     collectionTitle: "Highlights",
-    description:
-      "So they can hear and see the love of Jesus in their own language right where they are.",
+    get description() {
+      return heroCopy("togetherDescription")
+    },
     action: {
-      label: "Share in Our Mission",
+      get label() {
+        return heroCopy("togetherAction")
+      },
       url: "https://www.jesusfilm.org/partners/",
     },
     logo: false,

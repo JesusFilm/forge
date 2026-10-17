@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
 import {
   Prisma,
+  type PrismaClient,
   RecommendationProfileProjectionRunState,
   RecommendationProfileProjectionScope,
 } from "@prisma/client"
@@ -134,9 +135,24 @@ async function prepareRecommendationProfileProjection(
             workflowRunId: true,
             generation: true,
             state: true,
+            lastTransitionReason: true,
+            expectedGenerationId: true,
+            expectedPointerGeneration: true,
           },
         })
-    if (recent) {
+    // A late eligibility decision can carry a source timestamp older than the
+    // completed empty run. It still needs a fresh projection, not coalescing.
+    // Likewise a claimed first run may finish empty after the feedback commits.
+    // Keep both fences active with the writer flag off: completed-empty runs
+    // survive rollback, and an in-flight worker may still finish under ON.
+    const emptyCompletionNeedsNewRun =
+      input.reconciliationCause === "evidence_advanced" &&
+      recent != null &&
+      (recent.lastTransitionReason === "first_empty_no_evidence" ||
+        (recent.state === RecommendationProfileProjectionRunState.CLAIMED &&
+          recent.expectedGenerationId == null &&
+          recent.expectedPointerGeneration === 0))
+    if (recent && !emptyCompletionNeedsNewRun) {
       const dispatchWasNeverRecorded =
         recent.state === RecommendationProfileProjectionRunState.PENDING &&
         recent.workflowRunId == null
@@ -344,6 +360,7 @@ export async function dispatchRecommendationProfileFeedback(input: {
 
 export async function runRecommendationProfileProjectionJob(
   input: RecommendationProfileProjectionJobInput,
+  client: PrismaClient = prisma,
 ): Promise<
   | Readonly<{
       status: "published"
@@ -352,9 +369,10 @@ export async function runRecommendationProfileProjectionJob(
       replay: boolean
     }>
   | Readonly<{ status: "fenced"; reason: string }>
+  | Readonly<{ status: "empty"; replay: boolean }>
 > {
   const now = new Date()
-  const run = await prisma.recommendationProfileProjectionRun.findUnique({
+  const run = await client.recommendationProfileProjectionRun.findUnique({
     where: { id: input.runId },
   })
   if (!run) return { status: "fenced", reason: "run_missing" }
@@ -375,11 +393,18 @@ export async function runRecommendationProfileProjectionJob(
       replay: true,
     }
   }
+  if (
+    run.state === RecommendationProfileProjectionRunState.COMPLETED &&
+    run.projectionId == null &&
+    run.lastTransitionReason === "first_empty_no_evidence"
+  ) {
+    return { status: "empty", replay: true }
+  }
   const claimId = randomUUID()
   const leaseExpiresAt = new Date(
     now.getTime() + RECOMMENDATION_PROFILE_PROJECTION_LEASE_MS,
   )
-  const claimed = await prisma.$queryRaw<
+  const claimed = await client.$queryRaw<
     Array<{ generation: number; attemptCount: number }>
   >(Prisma.sql`
     UPDATE recommendation_profile_projection_run
@@ -408,7 +433,7 @@ export async function runRecommendationProfileProjectionJob(
   `)
   const activeClaim = claimed[0]
   if (!activeClaim) {
-    await prisma.recommendationProfileProjectionRun.updateMany({
+    await client.recommendationProfileProjectionRun.updateMany({
       where: {
         id: run.id,
         generation: input.expectedGeneration,
@@ -434,7 +459,7 @@ export async function runRecommendationProfileProjectionJob(
     return { status: "fenced", reason: "claim_generation_changed" }
   }
   try {
-    const service = createDatabaseRecommendationProfileProjectionService(prisma)
+    const service = createDatabaseRecommendationProfileProjectionService(client)
     const receipt = await service.project({
       sessionDigest: run.sessionDigest,
       profileId: run.profileId,
@@ -454,7 +479,7 @@ export async function runRecommendationProfileProjectionJob(
       },
     })
     const completed =
-      await prisma.recommendationProfileProjectionRun.updateMany({
+      await client.recommendationProfileProjectionRun.updateMany({
         where: {
           id: run.id,
           generation: activeClaim.generation,
@@ -464,18 +489,23 @@ export async function runRecommendationProfileProjectionJob(
         },
         data: {
           state: RecommendationProfileProjectionRunState.COMPLETED,
-          projectionId: receipt.generationId,
+          projectionId:
+            receipt.status === "published" ? receipt.generationId : null,
           completedAt: now,
           heartbeatAt: now,
           leaseExpiresAt: null,
           claimId: null,
           failureReason: null,
-          lastTransitionReason: "projection_published",
+          lastTransitionReason:
+            receipt.status === "published"
+              ? "projection_published"
+              : "first_empty_no_evidence",
         },
       })
     if (completed.count !== 1) {
       return { status: "fenced", reason: "completion_generation_changed" }
     }
+    if (receipt.status === "empty") return { status: "empty", replay: false }
     return {
       status: "published",
       generationId: receipt.generationId,
@@ -489,7 +519,7 @@ export async function runRecommendationProfileProjectionJob(
         RECOMMENDATION_PROFILE_PROJECTION_MAX_ATTEMPTS &&
       !failureReason.endsWith("_fenced") &&
       failureReason !== "privacy_generation_revoked"
-    await prisma.recommendationProfileProjectionRun.updateMany({
+    await client.recommendationProfileProjectionRun.updateMany({
       where: {
         id: run.id,
         generation: activeClaim.generation,

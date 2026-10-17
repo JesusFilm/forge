@@ -1,3 +1,27 @@
+---
+title: "Mobile Datadog rich-posture data governance (R43)"
+date: "2026-07-14"
+last_updated: "2026-10-07"
+category: "best-practices"
+module: "apps/mobile"
+problem_type: "best_practice"
+component: "tooling"
+severity: "high"
+applies_when:
+  - "Changing what apps/mobile sends to Datadog Logs or RUM, such as raw search terms, titles, or a RUM user"
+  - "Answering a data-deletion request for mobile search terms"
+  - "Opening the mobile sign-in gate in production, which needs this assessment re-signed"
+  - "Adding user-authored text that can reach a GraphQL error message on the phone"
+tags:
+  - "datadog"
+  - "rum"
+  - "data-governance"
+  - "pii"
+  - "retention"
+  - "session-replay"
+  - "search"
+---
+
 # Mobile Datadog rich-posture data governance (R43)
 
 **Date:** 2026-07-14 · **Feature:** feat mobile Datadog observability (plan `docs/plans/2026-07-14-001-feat-mobile-datadog-observability-plan.md`, U11) · **Service:** `forge-mobile`
@@ -6,6 +30,29 @@ This is the R43 deliverable the plan's Definition of Done requires: a named
 retention/deletion window plus a written re-identification assessment of the
 free text the mobile app logs. **Production Datadog credential provisioning must
 not proceed until this is signed off.**
+
+## Re-assessment required (2026-10-07)
+
+The revisit trigger in "Accepted residual" below has fired: mobile has
+authenticated accounts. Mobile login merged in PR #1876 (2026-08-10). The
+sign-in gate (PR #2406, merged 2026-09-23) hides sign-in in a release build
+unless `EXPO_PUBLIC_SIGN_IN_ENABLED` is set, but signed-in sessions can already
+exist: a development build always shows sign-in, a preview build shows it
+when its environment sets the flag, and a build installed before the gate
+keeps a working sign-in (`apps/mobile/CLAUDE.md`, "The sign-in
+gate (feat-543)").
+
+The 2026-07-15 sign-off below assessed the anonymous posture only. Two facts
+changed since then, and the dated notes in the body give the detail:
+
+- A signed-in RUM session carries the opaque auth subject id as the RUM user.
+  Its search terms are therefore linked to an account id.
+- The feedback sheet adds user-authored text, and part of it can reach a RUM
+  error in an admin version-skew window.
+
+This refresh changes no decision. The raw-term posture and the retention
+values stay as signed until the owner re-assesses them. Re-assess before the
+sign-in gate opens in production.
 
 ## What the mobile app logs (rich posture, R2 / R42)
 
@@ -40,10 +87,24 @@ Everything else is standard RUM telemetry: a pseudonymous `viewer_id` (random
 per-install UUID — **not** an account or email; mobile is anonymous), session
 id, device model, OS version, and the IP Datadog derives coarse geo from.
 
+> **2026-10-07 correction:** `viewer_id` is the per-launch `x-viewer-id` header
+> that mobile sends to admin for its rate-limit buckets
+> (`apps/mobile/src/lib/viewer-id.ts`). It is kept in memory only, and it is
+> not a RUM attribute. Since mobile login merged (PR #1876), a signed-in RUM
+> session also carries the auth subject id as the RUM user (`setDatadogRumUser`
+> in `apps/mobile/src/contexts/AuthProvider.tsx`, `rumUserFromSession` in
+> `apps/mobile/src/lib/authSession.ts`). The app never sends the email or the
+> display name to RUM. A signed-out session carries no user.
+
 Session Replay is enabled with `textAndInputPrivacyLevel: MASK_ALL_INPUTS`, so
 the search field is **blanked in the visual replay** even though the term is
 logged as a Log/RUM attribute. The native video texture is not capturable by
 replay, so playback frames never leak.
+
+> **2026-10-07 update:** Session Replay masks inputs, not rendered text. The My
+> Watch header shows a signed-in name or email, so it wraps that area in
+> `SessionReplayView.MaskAll`
+> (`apps/mobile/src/components/profile/MyWatchHeader.tsx`).
 
 ## Retention / deletion window (committed policy)
 
@@ -69,12 +130,28 @@ Combined with IP-derived geo, device model, and a stable `viewer_id`, a single
 session is in principle linkable to an individual **if the term itself carries
 identifying content**.
 
+> **2026-10-07 update:** the in-app feedback sheet adds user-authored text: a
+> message, an optional name, and an optional email. The app does not log them.
+> They can reach Datadog through one error path. When admin's schema does not
+> know a value that the app sends, the GraphQL variable-coercion error repeats
+> the whole input. `reportGraphqlOperationError`
+> (`apps/mobile/src/lib/apolloClient.ts`) then sends the joined error messages
+> to a RUM error, which keeps the first 300 characters
+> (`apps/mobile/src/lib/datadog.ts`). For `SubmitFeedback`, that is about the
+> first 33 characters of the message. This happens only in a version-skew
+> window, when a build sends a new feedback value before admin deploys it. See
+> `docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md`
+> ("Answer one write from a real schema").
+
 **Why the residual risk is acceptable:**
 
 - **No identity linkage.** `viewer_id` is a random per-install UUID. Mobile is
   anonymous — no email, account, or user id is attached to any RUM session (the
   Search bearer is a shared fleet key, not a per-user credential). There is no
   join key from Datadog back to a person.
+  **2026-10-07:** no longer true for a signed-in session. Its RUM user is the
+  auth subject id, which is the account's id in `apps/auth`. A signed-out
+  session still carries no user.
 - **Replay is masked.** Inputs are masked in Session Replay, so the term is
   never reconstructable from the visual recording — only from the Log attribute.
 - **Coarse metadata.** IP yields city-level geo at best; device model is

@@ -1,4 +1,4 @@
-import { Prisma, WorkflowRunStatus } from "@prisma/client"
+import { Prisma, WorkflowRunStatus, type PrismaClient } from "@prisma/client"
 import { start } from "workflow/api"
 import { prisma, syncPrisma } from "@/db/client"
 import {
@@ -21,7 +21,7 @@ import {
   recordCoreSyncPhaseProgress,
   recordCoreSyncRunResult,
 } from "@/services/workflow-run-log.service"
-import { runCoreSync } from "@/workflows/coreSync"
+import { runCoreSyncQueued } from "@/workflows/coreSyncQueued"
 
 export type CoreSyncTrigger = "manual" | "scheduled" | "graphql"
 
@@ -181,7 +181,7 @@ export async function dispatchCoreSync(
     ledgerRunId: ledgerRun.id,
   }
   try {
-    const run = await start(runCoreSync, [runInput])
+    const run = await start(runCoreSyncQueued, [runInput])
     await attachWorkflowRuntimeRunId(ledgerRun.id, run.runId)
 
     return {
@@ -450,8 +450,9 @@ export async function startCoreSyncJob(
 export async function runCoreSyncPhaseJob(
   start: Exclude<CoreSyncJobStart, { skipped: true }>,
   phase: SyncPhase,
+  client: PrismaClient = syncPrisma,
 ): Promise<PhaseResult> {
-  return runSyncPhase(syncPrisma, start.run, phase, {
+  return runSyncPhase(client, start.run, phase, {
     onProgress: start.ledgerRunId
       ? (progress) => {
           console.log(

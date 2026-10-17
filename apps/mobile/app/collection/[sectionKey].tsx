@@ -33,6 +33,7 @@ import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../src/i18n/useT"
 import type { AdminBlock } from "../../src/lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -71,6 +72,7 @@ export default function CollectionPlayerScreen() {
     index?: string
   }>()
   const typography = useTypography()
+  const t = useT("Sections")
 
   const decodedKey = parseSectionKey(sectionKey)
 
@@ -79,11 +81,11 @@ export default function CollectionPlayerScreen() {
   if (decodedKey == null || section == null) {
     return (
       <View style={layout.centered}>
-        <Text style={text.errorTitle}>Collection not found</Text>
+        <Text style={text.errorTitle}>{t("collectionNotFoundTitle")}</Text>
         <Text style={text.errorMessage}>
           {decodedKey == null
-            ? "Invalid collection identifier."
-            : `No collection found for "${decodedKey}".`}
+            ? t("invalidCollectionId")
+            : t("collectionNotFound", { key: decodedKey })}
         </Text>
       </View>
     )
@@ -111,6 +113,9 @@ function CollectionPlayerContent({
   initialIndex: number
   typography: ReturnType<typeof useTypography>
 }) {
+  const t = useT("Sections")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const navigation = useNavigation()
   const { width: screenWidth } = useWindowDimensions()
   const playerHeight = Math.round(screenWidth * (9 / 16))
@@ -247,7 +252,7 @@ function CollectionPlayerContent({
       const title =
         (item.titleOverride != null && item.titleOverride !== ""
           ? item.titleOverride
-          : null) ?? "Untitled"
+          : null) ?? tCommon("untitled")
       const thumbnailUrl = resolveImageUrl(item.imageUrl)
 
       return (
@@ -266,7 +271,10 @@ function CollectionPlayerContent({
           onPress={isPlayable ? () => handleItemPress(idx) : undefined}
           disabled={!isPlayable}
           accessibilityRole="button"
-          accessibilityLabel={`${isActive ? "Now playing: " : ""}${title}`}
+          accessibilityLabel={
+            isActive ? t("nowPlayingAriaLabel", { title }) : title
+          }
+          {...{ "dd-action-name": "sdui-collection-item" }}
           accessibilityState={{ disabled: !isPlayable, selected: isActive }}
         >
           {/* Thumbnail */}
@@ -319,7 +327,7 @@ function CollectionPlayerContent({
         </Pressable>
       )
     },
-    [currentIndex, handleItemPress, typography],
+    [currentIndex, handleItemPress, typography, t, tCommon],
   )
 
   const hasSubtitle = vcSubtitle != null && vcSubtitle !== ""
@@ -333,7 +341,7 @@ function CollectionPlayerContent({
       <View style={layout.screenContainer}>
         <View style={[styles.playerContainer, { height: playerHeight }]}>
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Text style={styles.noVideoText}>No playable videos</Text>
+            <Text style={styles.noVideoText}>{t("noPlayableVideos")}</Text>
           </View>
         </View>
         {hasHeader && (
@@ -367,6 +375,7 @@ function CollectionPlayerContent({
         <FlatList
           data={items}
           renderItem={renderItem}
+          extraData={epoch}
           keyExtractor={(_item, idx) => `coll-${idx}`}
           contentContainerStyle={styles.listContent}
         />
@@ -403,7 +412,7 @@ function CollectionPlayerContent({
             contentFit="cover"
             pointerEvents="none"
             recyclingKey={`sdui-collection-poster-${currentIndex}`}
-            accessibilityLabel="Video thumbnail"
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         )}
         {awaitingAutostart && <PlayerLoadingVeil />}
@@ -444,6 +453,7 @@ function CollectionPlayerContent({
         ref={flatListRef}
         data={items}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(_item, idx) => `coll-${idx}`}
         getItemLayout={(_data, idx) => ({
           length: ROW_HEIGHT,

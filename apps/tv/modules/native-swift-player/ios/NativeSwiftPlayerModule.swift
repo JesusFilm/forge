@@ -26,7 +26,10 @@ public final class NativeSwiftPlayerModule: Module {
         "onPlaybackPosition",
         "onError",
         "onAudioChange",
-        "onSubtitleChange"
+        "onSubtitleChange",
+        "onFeedbackOpen",
+        "onFeedbackClose",
+        "onFeedbackRetry"
       )
 
       Prop("sourceUrl") { (view, value: String?) in
@@ -64,6 +67,24 @@ public final class NativeSwiftPlayerModule: Module {
       }
       Prop("questions") { (view, value: [String]) in
         view.questions = value
+      }
+      Prop("feedbackAvailable") { (view, value: Bool?) in
+        view.feedbackAvailable = value ?? false
+      }
+      Prop("feedbackVisible") { (view, value: Bool?) in
+        view.feedbackVisible = value ?? false
+      }
+      Prop("feedbackRows") { (view, value: [String]?) in
+        view.feedbackRows = value ?? []
+      }
+      Prop("feedbackReference") { (view, value: String?) in
+        view.feedbackReference = value
+      }
+      Prop("feedbackLoading") { (view, value: Bool?) in
+        view.feedbackLoading = value ?? false
+      }
+      Prop("feedbackError") { (view, value: Bool?) in
+        view.feedbackError = value ?? false
       }
       Prop("upNextSlug") { (view, value: String?) in
         view.upNextSlug = value

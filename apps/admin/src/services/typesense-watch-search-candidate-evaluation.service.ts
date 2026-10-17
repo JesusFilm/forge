@@ -1,6 +1,10 @@
+import {
+  resolvePublishedWatchCatalog,
+  WATCH_CATALOG_PUBLICATION_ID,
+} from "./watch-catalog-publication"
 import { createHash, randomUUID } from "node:crypto"
 
-import { env } from "@/config/env"
+import { env, resolveWatchCatalogPublicationEnabled } from "@/config/env"
 import { prisma } from "@/db/client"
 
 import { TypesenseClient } from "./typesense-client"
@@ -407,7 +411,14 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
       ) {
         throw new CandidateSearchEvaluationError("profile_unavailable")
       }
-      return profile
+      return source === "SERVING" && resolveWatchCatalogPublicationEnabled()
+        ? resolvePublishedWatchCatalog({
+            prisma,
+            base: profile,
+            generations,
+            rankingRevision: candidateWatchSearchRankingRevision(),
+          })
+        : profile
     },
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),
@@ -475,6 +486,18 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
       }),
     verifyCandidateProfile: async (profile) => {
       const pointer = await generations.getPointer(source)
+      if (source === "SERVING" && resolveWatchCatalogPublicationEnabled()) {
+        const publication = await prisma.watchCatalogPublication.findUnique({
+          where: { id: WATCH_CATALOG_PUBLICATION_ID },
+        })
+        if (
+          publication?.baseGenerationId === pointer.generationId &&
+          publication.rankingRevision ===
+            candidateWatchSearchRankingRevision() &&
+          publication.generationId === profile.generationId
+        )
+          return true
+      }
       return (
         profile.kind === "CANDIDATE" &&
         profile.generationId != null &&

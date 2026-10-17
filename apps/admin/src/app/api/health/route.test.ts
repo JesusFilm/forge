@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { settings, initialize, execute } = vi.hoisted(() => ({
+const { settings, initialize, execute, ping } = vi.hoisted(() => ({
   settings: { NODE_ENV: "production" },
   initialize: vi.fn(),
   execute: vi.fn(),
+  ping: vi.fn(),
 }))
 vi.mock("@/config/env", () => ({ env: settings }))
+vi.mock("@/infra/redis", () => ({ getRedisClient: () => ({ ping }) }))
 
 const PRELOAD_ENTRIES = Symbol.for("forge.next.preloadEntries")
 const runtime = globalThis as typeof globalThis & {
@@ -18,19 +20,51 @@ beforeEach(() => {
   vi.clearAllMocks()
   settings.NODE_ENV = "production"
   initialize.mockResolvedValue(undefined)
+  ping.mockResolvedValue("PONG")
   delete runtime[PRELOAD_ENTRIES]
-  vi.doMock("../graphql/route", async () => {
+  vi.doMock("@/app/api/graphql/route", async () => {
     await initialize()
     return { GET: execute, POST: execute, OPTIONS: execute }
   })
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   if (original) runtime[PRELOAD_ENTRIES] = original
   else delete runtime[PRELOAD_ENTRIES]
 })
 
 describe("Admin startup readiness", () => {
+  it("fails readiness during Redis failure and recovers on the next probe", async () => {
+    runtime[PRELOAD_ENTRIES] = Promise.resolve()
+    ping.mockRejectedValueOnce(new Error("offline"))
+    const { GET } = await import("./route")
+    expect((await GET()).status).toBe(503)
+    expect((await GET()).status).toBe(200)
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it("bounds a stalled PING, shares concurrent probes, and does not queue more wire work", async () => {
+    runtime[PRELOAD_ENTRIES] = Promise.resolve()
+    let finish!: (value: string) => void
+    ping.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        finish = resolve
+      }),
+    )
+    const { GET } = await import("./route")
+    const first = GET()
+    const concurrent = GET()
+    expect((await first).status).toBe(503)
+    expect((await concurrent).status).toBe(503)
+    expect((await GET()).status).toBe(503)
+    expect(ping).toHaveBeenCalledOnce()
+    finish("PONG")
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect((await GET()).status).toBe(200)
+    expect(ping).toHaveBeenCalledTimes(2)
+  })
+
   it("does not report healthy before background entry loading finishes", async () => {
     let finish!: () => void
     runtime[PRELOAD_ENTRIES] = new Promise<void>((resolve) => {

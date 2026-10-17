@@ -68,6 +68,8 @@
       "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
     ],
     "moduleNameMapper": {
+      "^react$": "<rootDir>/node_modules/react",
+      "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     }
   },

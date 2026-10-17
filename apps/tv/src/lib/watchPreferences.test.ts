@@ -14,6 +14,7 @@ import {
   mergeWatchPreferences,
   parseStoredPreferences,
   saveWatchPreferences,
+  serializeWatchPreferences,
 } from "./watchPreferences"
 
 // getStorage() warns once per reset when AsyncStorage isn't linked (always, under
@@ -37,7 +38,7 @@ describe("parseStoredPreferences", () => {
     expect(parseStoredPreferences('{"audioLanguageSlug":"ko-kmr"}')).toEqual({
       audioLanguageSlug: "ko-kmr",
       androidPlayerVariant: "native" as const,
-      nativePlayerVariant: "existing",
+      nativePlayerVariant: "native-a",
     })
   })
 
@@ -57,12 +58,12 @@ describe("parseStoredPreferences", () => {
     expect(parseStoredPreferences('{"audioLanguageSlug":""}')).toEqual({
       audioLanguageSlug: null,
       androidPlayerVariant: "native" as const,
-      nativePlayerVariant: "existing",
+      nativePlayerVariant: "native-a",
     })
     expect(parseStoredPreferences('{"audioLanguageSlug":7}')).toEqual({
       audioLanguageSlug: null,
       androidPlayerVariant: "native" as const,
-      nativePlayerVariant: "existing",
+      nativePlayerVariant: "native-a",
     })
   })
 
@@ -72,7 +73,7 @@ describe("parseStoredPreferences", () => {
     ).toEqual({
       audioLanguageSlug: "ru",
       androidPlayerVariant: "native" as const,
-      nativePlayerVariant: "existing",
+      nativePlayerVariant: "native-a",
     })
   })
 
@@ -82,12 +83,12 @@ describe("parseStoredPreferences", () => {
     expect(parseStoredPreferences('{"audioLanguageSlug":"ko"}')).toEqual({
       audioLanguageSlug: "ko",
       androidPlayerVariant: "native" as const,
-      nativePlayerVariant: "existing",
+      nativePlayerVariant: "native-a",
     })
     expect(parseStoredPreferences('{"audioLanguageSlug":"ko-kmr"}')).toEqual({
       audioLanguageSlug: "ko-kmr",
       androidPlayerVariant: "native" as const,
-      nativePlayerVariant: "existing",
+      nativePlayerVariant: "native-a",
     })
   })
 
@@ -118,6 +119,18 @@ describe("parseStoredPreferences", () => {
       androidPlayerVariant: "native" as const,
       nativePlayerVariant: "native-b",
     })
+  })
+
+  it("migrates the old stored default but retains an explicit new Existing choice", () => {
+    expect(
+      parseStoredPreferences('{"nativePlayerVariant":"existing"}')
+        .nativePlayerVariant,
+    ).toBe("native-a")
+    expect(
+      parseStoredPreferences(
+        '{"nativePlayerVariant":"existing","nativePlayerDefaultVersion":2}',
+      ).nativePlayerVariant,
+    ).toBe("existing")
   })
 })
 
@@ -321,13 +334,27 @@ describe("loadWatchPreferences / saveWatchPreferences", () => {
 })
 
 describe("combined platform player preferences", () => {
-  it("keeps Android native by default and the Apple experiment opt-in", () => {
+  it("keeps Android native and defaults Apple TV to Native A", () => {
     expect(parseStoredPreferences("{}").androidPlayerVariant).toBe("native")
-    expect(parseStoredPreferences("{}").nativePlayerVariant).toBe("existing")
+    expect(parseStoredPreferences("{}").nativePlayerVariant).toBe("native-a")
     expect(
       parseStoredPreferences('{"androidPlayerVariant":"unknown"}')
         .androidPlayerVariant,
     ).toBe("native")
+  })
+  it("marks new saves so selecting Existing remains deliberate", () => {
+    expect(
+      JSON.parse(
+        serializeWatchPreferences({
+          audioLanguageSlug: null,
+          androidPlayerVariant: "native",
+          nativePlayerVariant: "existing",
+        }),
+      ),
+    ).toMatchObject({
+      nativePlayerVariant: "existing",
+      nativePlayerDefaultVersion: 2,
+    })
   })
   it.each([
     ["existing", "existing"],

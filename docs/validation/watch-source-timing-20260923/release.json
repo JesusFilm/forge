@@ -1,0 +1,349 @@
+{
+  "scope": "Source-timing release verification; no historical timeout reproduced",
+  "revision": "5a30f5ddceeb4dc29d7ceb87718600a30af91401",
+  "admin": {
+    "at": "2026-09-23T02:52:33.584Z",
+    "revision": "5a30f5ddceeb4dc29d7ceb87718600a30af91401",
+    "deployment": "5dafa696-0b3c-4e87-a319-ef8bfa204330",
+    "runner": "false",
+    "health": 200
+  },
+  "worker": {
+    "at": "2026-09-23T03:01:29.639Z",
+    "revision": "5a30f5ddceeb4dc29d7ceb87718600a30af91401",
+    "deployment": "ddc50a6d-2cc0-4f1a-93fc-f838df6f731f",
+    "runner": "true",
+    "health": 200
+  },
+  "clockCalibration": {
+    "admin": {
+      "measuredAt": "2026-09-23T03:01:57.650Z",
+      "databaseMinusHostBoundsMs": [-2, 2],
+      "scope": "point-in-time bounds including 1 ms rounding; not continuous clock synchronization"
+    },
+    "worker": {
+      "measuredAt": "2026-09-23T03:02:00.381Z",
+      "databaseMinusHostBoundsMs": [-2, 2],
+      "scope": "point-in-time bounds including 1 ms rounding; not continuous clock synchronization"
+    }
+  },
+  "observerCoverage": {
+    "previousAttempt": "worker rollout interrupted approximately 22 seconds after start; no final summary, excluded from completed coverage",
+    "wait": {
+      "event": "recommendation.database_wait_summary",
+      "startedAt": "2026-09-23T03:01:57.581Z",
+      "endedAt": "2026-09-23T03:03:49.521Z",
+      "polls": 441,
+      "samples": 4,
+      "queryWallMs": 1527.8371289999834,
+      "maxQueryWallMs": 8.292579999993904,
+      "durationMs": 300000,
+      "intervalMs": 250,
+      "stopped": "aborted",
+      "errorCode": "ABORT_ERR"
+    },
+    "workload": {
+      "event": "watch.workload_summary",
+      "startedAt": "2026-09-23T03:01:57.419Z",
+      "endedAt": "2026-09-23T03:03:49.921Z",
+      "revision": "5a30f5ddceeb4dc29d7ceb87718600a30af91401",
+      "durationMs": 300000,
+      "intervalMs": 1000,
+      "polls": 112,
+      "groups": 162,
+      "bytes": 30855,
+      "queryWallMs": 407.65036600001383,
+      "maxQueryWallMs": 8.343930000002729,
+      "stopped": "aborted"
+    },
+    "stopReason": "Owned observers stopped explicitly during user task pause; neither reached intended five minutes",
+    "cleanup": "Read-only preflight at 03:03:52 UTC found no wait/workload observer connections",
+    "cleanupRecheck": {
+      "at": "2026-09-23T03:21:07.097Z",
+      "revision": "5a30f5ddceeb4dc29d7ceb87718600a30af91401",
+      "deployment": "ddc50a6d-2cc0-4f1a-93fc-f838df6f731f",
+      "sourcePresent": true,
+      "tsxPresent": true,
+      "watchConnections": [
+        {
+          "application_name": "watch-q7n-cleanup-preflight",
+          "connections": 1
+        }
+      ]
+    },
+    "localFixture": "codex-watch-q7n-pg; ownership label checked; container exited"
+  },
+  "fixedWindow": {
+    "from": "2026-09-23T03:01:00Z",
+    "to": "2026-09-23T03:04:00Z",
+    "returned": 108,
+    "unparsed": 0
+  },
+  "sourceFieldValidation": {
+    "completedRecords": 18,
+    "allStartedAt": true,
+    "allTimingStarts": true
+  },
+  "matchedRequest": {
+    "operation": "seeded",
+    "observationId": "b86e44aa-37c2-44e8-a574-ed2f075ff120",
+    "startedAt": "2026-09-23T03:02:07.115Z",
+    "phase": "complete",
+    "outcome": "served",
+    "timeoutFallback": false,
+    "elapsedMs": 189.8663350000279,
+    "databaseTransactions": [
+      {
+        "ordinal": 1,
+        "backendPid": 1462549
+      },
+      {
+        "ordinal": 2,
+        "backendPid": 1462549
+      },
+      {
+        "ordinal": 3,
+        "backendPid": 1462541
+      },
+      {
+        "ordinal": 4,
+        "backendPid": 1462541
+      }
+    ],
+    "timings": {
+      "candidate_evidence.insert": {
+        "calls": 1,
+        "inFlight": 0,
+        "firstStartedOffsetMs": 144.055,
+        "elapsedMs": 23.878906000056304,
+        "maxMs": 23.878906000056304,
+        "errors": 0,
+        "inputRows": 180,
+        "maxStartedOffsetMs": 144.055
+      },
+      "db.raw.$executeRaw": {
+        "calls": 1,
+        "inFlight": 0,
+        "firstStartedOffsetMs": 145.03,
+        "elapsedMs": 22.89104400004726,
+        "maxMs": 22.89104400004726,
+        "errors": 0,
+        "maxStartedOffsetMs": 145.03
+      }
+    }
+  },
+  "databaseSamples": [
+    {
+      "event": "recommendation.database_wait",
+      "sampledAt": "2026-09-23T03:02:07.275Z",
+      "backendPid": 1462541,
+      "observationId": "b86e44aa-37c2-44e8-a574-ed2f075ff120",
+      "transactionOrdinal": 4,
+      "state": "active",
+      "waitType": null,
+      "waitEvent": null,
+      "queryStartedAt": "2026-09-23T03:02:07.270Z",
+      "stateChangedAt": "2026-09-23T03:02:07.270Z",
+      "queryAgeMs": 4.466,
+      "blockerCount": 0,
+      "statementCategory": "candidate_evidence.insert"
+    },
+    {
+      "event": "recommendation.database_wait",
+      "sampledAt": "2026-09-23T03:03:09.500Z",
+      "backendPid": 1462547,
+      "observationId": "c23e4611-2e51-4013-ad53-8c2e01807b5b",
+      "transactionOrdinal": 3,
+      "state": "idle in transaction",
+      "waitType": "Client",
+      "waitEvent": "ClientRead",
+      "queryStartedAt": "2026-09-23T03:03:09.499Z",
+      "stateChangedAt": "2026-09-23T03:03:09.499Z",
+      "queryAgeMs": 0.646,
+      "blockerCount": 0,
+      "statementCategory": "other"
+    },
+    {
+      "event": "recommendation.database_wait",
+      "sampledAt": "2026-09-23T03:03:24.726Z",
+      "backendPid": 1462546,
+      "observationId": "87c9e9a5-a1a5-400f-8f88-702986fae81a",
+      "transactionOrdinal": 4,
+      "state": "idle in transaction",
+      "waitType": "Client",
+      "waitEvent": "ClientRead",
+      "queryStartedAt": "2026-09-23T03:03:24.722Z",
+      "stateChangedAt": "2026-09-23T03:03:24.722Z",
+      "queryAgeMs": 4.753,
+      "blockerCount": 0,
+      "statementCategory": "other"
+    },
+    {
+      "event": "recommendation.database_wait",
+      "sampledAt": "2026-09-23T03:03:41.994Z",
+      "backendPid": 1462548,
+      "observationId": "3ee3ae68-a519-48c4-9274-4b169a066fa8",
+      "transactionOrdinal": 5,
+      "state": "idle in transaction",
+      "waitType": "Client",
+      "waitEvent": "ClientRead",
+      "queryStartedAt": "2026-09-23T03:03:41.993Z",
+      "stateChangedAt": "2026-09-23T03:03:41.993Z",
+      "queryAgeMs": 1.788,
+      "blockerCount": 0,
+      "statementCategory": "other"
+    }
+  ],
+  "httpMetrics": {
+    "from": "2026-09-23T03:01:00Z",
+    "to": "2026-09-23T03:04:00Z",
+    "rows": [
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 18
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 17
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 57
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/evidence",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 26
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 95
+      },
+      {
+        "http.status_code": "200",
+        "resource_name": "post_/api/recommendations/select",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 1
+      },
+      {
+        "http.status_code": "400",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 1
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/playback",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 16
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 12
+      },
+      {
+        "http.status_code": "403",
+        "resource_name": "post_/api/recommendations/profile",
+        "version": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+        "requests": 47
+      }
+    ],
+    "query": "sum:trace.web.request.hits{service:forge-web,env:prod,resource_name:post_/api/recommendations*} by {resource_name,http.status_code,version}.as_count()"
+  },
+  "limitations": [
+    "One selection HTTP 200 is insufficient for reliability acceptance.",
+    "No observed timeout is not a recovery verdict.",
+    "One active PostgreSQL sample does not measure complete statement execution.",
+    "Admin observation elapsed time is not browser acknowledgement latency."
+  ],
+  "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+  "webPrimaryWindow": {
+    "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+    "from": "2026-09-23T03:01:00Z",
+    "to": "2026-09-23T03:04:00Z",
+    "returned": 225,
+    "unparsed": 0,
+    "counts": [
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 80
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 57
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 26
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=6 upstreamResult=served",
+        "count": 10
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+        "count": 9
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 8
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "count": 7
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_fetch_metadata itemCount=0 upstreamResult=not_observed",
+        "count": 7
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 7
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=403 result=rejected reason=invalid_origin itemCount=0 upstreamResult=not_observed",
+        "count": 5
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=2 upstreamResult=served",
+        "count": 2
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=4 upstreamResult=served",
+        "count": 2
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "count": 1
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "count": 1
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=5 upstreamResult=served",
+        "count": 1
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=fallback reason=no_candidates itemCount=6 upstreamResult=empty",
+        "count": 1
+      },
+      {
+        "message": "event=recommendation.delivery endpoint=seeded httpStatus=200 result=served reason=none itemCount=1 upstreamResult=served",
+        "count": 1
+      }
+    ],
+    "records": []
+  }
+}

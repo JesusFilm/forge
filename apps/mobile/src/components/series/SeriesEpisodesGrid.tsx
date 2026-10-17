@@ -1,7 +1,8 @@
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { FlatList, StyleSheet, type ListRenderItemInfo } from "react-native"
 import type { ReactElement } from "react"
 
+import { useLocaleEpoch } from "../../i18n/useT"
 import type { WatchEpisode } from "../../lib/normalizeVideo"
 import type { EpisodeBadgeState } from "../../lib/seriesDownloadAggregate"
 import { SeriesEpisodeCard } from "./SeriesEpisodeCard"
@@ -35,6 +36,12 @@ export function SeriesEpisodesGrid({
     [onSelect, badgeBySlug],
   )
   const keyExtractor = useCallback((item: WatchEpisode) => item.documentId, [])
+  // The epoch rides along so recycled cells take a new UI language (KTD5).
+  const epoch = useLocaleEpoch()
+  const extraData = useMemo(
+    () => ({ badgeBySlug, epoch }),
+    [badgeBySlug, epoch],
+  )
 
   return (
     <FlatList
@@ -44,7 +51,7 @@ export function SeriesEpisodesGrid({
       keyExtractor={keyExtractor}
       // A new badge-map identity forces rows to recompute so badges don't freeze
       // when a download completes, pauses, or is deleted (R8/AE6).
-      extraData={badgeBySlug}
+      extraData={extraData}
       ListHeaderComponent={header}
       columnWrapperStyle={styles.column}
       contentContainerStyle={styles.content}

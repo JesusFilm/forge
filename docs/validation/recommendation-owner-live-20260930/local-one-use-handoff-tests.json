@@ -1,0 +1,26 @@
+{
+  "testsPassed": 18,
+  "tests": [
+    "only_generation_changes",
+    "refuses_failed_preflight",
+    "refuses_changed_runtime",
+    "refuses_truncation",
+    "refuses_lower_bound",
+    "refuses_changed_window",
+    "refuses_count_overflow",
+    "refuses_boolean_count",
+    "refuses_width_overflow",
+    "refuses_stale_receipt",
+    "refuses_future_receipt",
+    "refuses_unknown_acknowledgement",
+    "prepare_no_subprocess",
+    "failed_read_no_publication",
+    "single_exact_publication",
+    "refusal_no_retry",
+    "unknown_no_retry",
+    "batch_replay_refused_before_read"
+  ],
+  "productionExecuted": false,
+  "scope": "parent wrapper fake-transport control flow; unchanged guardians retain their prior tests",
+  "helperSha256": "997aad3123efdd3e2114a2bd930ae528c22fbd038c1894d6889fbe71456ba956"
+}

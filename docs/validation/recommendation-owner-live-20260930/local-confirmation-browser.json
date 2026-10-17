@@ -1,0 +1,32 @@
+{
+  "syntheticLocalFixture": true,
+  "productionExecuted": false,
+  "initialPosts": 0,
+  "cancelledPosts": 0,
+  "confirmedPosts": 1,
+  "focusOnCancel": true,
+  "horizontalOverflow": false,
+  "timings": {
+    "before": {
+      "medianMs": 0.5246210000000247,
+      "p95Ms": 0.7623079999999618,
+      "htmlBytes": 1485,
+      "samples": 50
+    },
+    "after": {
+      "medianMs": 0.548413000000096,
+      "p95Ms": 0.7807099999999991,
+      "htmlBytes": 1499,
+      "samples": 50
+    }
+  },
+  "exactBody": {
+    "action": "set_kill_switch",
+    "expectedPointerGeneration": 1,
+    "enabled": true,
+    "reason": "manual_emergency_stop"
+  },
+  "desktopScreenshot": "confirmation-desktop.png",
+  "mobileScreenshot": "confirmation-mobile.png",
+  "scope": "Isolated local Admin component with real app CSS and system font fallback; not full-page production Web Vitals."
+}

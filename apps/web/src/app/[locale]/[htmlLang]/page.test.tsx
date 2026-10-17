@@ -130,6 +130,7 @@ describe("Watch root homepage", () => {
       locale: "en",
       languageSlug: "english",
       legacyCategoryRailCompatibility: false,
+      publicDocumentPathname: "/watch",
     })
   })
 
@@ -146,6 +147,7 @@ describe("Watch root homepage", () => {
       locale: "en",
       languageSlug: "english",
       legacyCategoryRailCompatibility: false,
+      publicDocumentPathname: "/watch",
     })
   })
 

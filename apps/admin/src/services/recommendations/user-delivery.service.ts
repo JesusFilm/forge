@@ -1,3 +1,9 @@
+import {
+  recommendationTraffic,
+  observeRecommendationTraffic,
+  CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+} from "./traffic"
+import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
@@ -23,6 +29,8 @@ import {
   getUserWatchHistory,
   type UserWatchHistory,
 } from "./user-history.service"
+import { env } from "@/config/env"
+import { servedSnapshotCreate } from "./served-item-payload"
 
 export const USER_RECOMMENDATION_SURFACE = "watch-for-you-v1" as const
 export const USER_RECOMMENDATION_CONTRACT = "user-recommendation-v1" as const
@@ -67,9 +75,16 @@ export type UserRecommendationDelivery = {
   items: UserRecommendationItem[]
 }
 
-/** Keeps the primary slate intact. Fallback is strictly an append operation;
- * it cannot displace eligible profile candidates, even with a better score.
- */
+function wasRecentlyTried(candidate: UserCandidate, history: UserWatchHistory) {
+  return history.some(
+    (item) =>
+      item.recentlyTried &&
+      (item.mediaId === candidate.videoId ||
+        videoIdentityDuplicateReason(candidate, item)),
+  )
+}
+
+/** Profile-first within each freshness tier; recently tried items are reserves. */
 export function composeUserRecommendations(
   primary: readonly UserCandidate[],
   fallback: readonly UserCandidate[],
@@ -84,8 +99,13 @@ export function composeUserRecommendations(
           videoIdentityDuplicateReason(candidate, item)),
     )
   const selected: UserCandidate[] = []
-  for (const pool of [primary, fallback]) {
-    // Stable ranking penalty within a source. Curated never jumps ahead of profile.
+  for (const pool of [
+    primary.filter((candidate) => !wasRecentlyTried(candidate, history)),
+    fallback.filter((candidate) => !wasRecentlyTried(candidate, history)),
+    primary.filter((candidate) => wasRecentlyTried(candidate, history)),
+    fallback.filter((candidate) => wasRecentlyTried(candidate, history)),
+  ]) {
+    // Preserve the existing seven-day partial-watch preference within a tier.
     const ranked = [...pool].sort(
       (a, b) =>
         Number(matchesHistory(a, false)) - Number(matchesHistory(b, false)),
@@ -163,6 +183,7 @@ type UserDependencies = DeliveryDependencies & {
   history(input: {
     sessionDigest: string
     profileTokenDigest: string | null
+    locale: string
     now: Date
     deadlineAt: number
   }): Promise<UserWatchHistory>
@@ -177,10 +198,24 @@ type UserDependencies = DeliveryDependencies & {
 
 export class UserRecommendationDeliveryService {
   constructor(private readonly deps: UserDependencies) {}
-  async deliver(
+  deliver(
+    input: Omit<DeliveryInput, "seedMediaId"> & { count?: number },
+  ): Promise<UserRecommendationDelivery> {
+    const traffic = recommendationTraffic(input)
+    observeRecommendationTraffic("for_you", traffic, "attempted")
+    return observeRecommendationRuntime("for_you", async () => {
+      const response = await this.deliverObserved(input)
+      if (response.requestId)
+        observeRecommendationTraffic("for_you", traffic, "committed")
+      return response
+    })
+  }
+
+  private async deliverObserved(
     input: Omit<DeliveryInput, "seedMediaId"> & { count?: number },
   ): Promise<UserRecommendationDelivery> {
     assertWebRecommendationCaller(input.caller)
+    const traffic = recommendationTraffic(input)
     const count = input.count ?? 6
     const startedAt = Date.now()
     let stage = "validation"
@@ -219,12 +254,65 @@ export class UserRecommendationDeliveryService {
       !Number.isInteger(count) ||
       count < 1 ||
       count > MAX_USER_RECOMMENDATIONS ||
-      !/^[a-f0-9]{64}$/.test(input.sessionDigest) ||
+      (traffic.disposition === "measured" &&
+        !/^[a-f0-9]{64}$/.test(input.sessionDigest)) ||
       !/^[a-z0-9-]{1,64}$/.test(input.audioLanguageSlug) ||
       !input.locale ||
       input.locale.length > 32
     )
       return unavailable("invalid_input")
+    if (traffic.disposition !== "measured") {
+      observeRecommendationTraffic("for_you", traffic, "persistence_avoided")
+      if (traffic.disposition === "deferred") {
+        observeRecommendationTraffic("for_you", traffic, "deferred")
+        return unavailable("traffic_deferred")
+      }
+      try {
+        const pool = await withinDeadline(
+          () =>
+            this.deps.curated({
+              locale: input.locale,
+              audioLanguageSlug: input.audioLanguageSlug,
+              interestVideoIds: [],
+              limit: MAX_USER_RECOMMENDATIONS,
+              deadlineAt: Date.now() + 1200,
+            }),
+          Date.now() + 1200,
+          Date.now,
+        )
+        const selected = composeUserRecommendations([], pool.items, [], count)
+        const response: UserRecommendationDelivery = {
+          contractVersion: USER_RECOMMENDATION_CONTRACT,
+          surfaceVersion: USER_RECOMMENDATION_SURFACE,
+          requestId: null,
+          result: selected.length ? "served" : "unavailable",
+          reason: "traffic_contextual",
+          expiresAt: null,
+          requestedCount: count,
+          profileCount: 0,
+          curatedCount: selected.length,
+          cohort: "cold_start",
+          poolVersion: pool.version,
+          items: selected.map((candidate, index) => ({
+            ...publicCandidate(candidate),
+            id: `contextual:${index + 1}`,
+            position: index,
+            targetMediaId: candidate.videoId,
+            canonicalHref: `/watch${buildCanonicalWatchVideoPath(candidate.videoSlug, input.audioLanguageSlug)}`,
+            capability: CONTEXTUAL_RECOMMENDATION_CAPABILITY,
+          })),
+        }
+        if (
+          Buffer.byteLength(JSON.stringify(response)) >
+          MAX_DELIVERY_RESPONSE_BYTES
+        )
+          return unavailable("response_too_large")
+        observeRecommendationTraffic("for_you", traffic, "contextual_fallback")
+        return observe(response)
+      } catch {
+        return unavailable("contextual_unavailable")
+      }
+    }
     if (!this.deps.enabled) return unavailable("environment_disabled")
     const start = Date.now(),
       deadline = start + 1500,
@@ -291,6 +379,7 @@ export class UserRecommendationDeliveryService {
               this.deps.history({
                 sessionDigest: input.sessionDigest,
                 profileTokenDigest,
+                locale: input.locale,
                 now,
                 deadlineAt: candidateDeadline,
               }),
@@ -333,7 +422,10 @@ export class UserRecommendationDeliveryService {
       )
       let selected = composeUserRecommendations(primary, [], history, count)
       let poolVersion: string | null = null
-      if (selected.length < count) {
+      if (
+        selected.length < count ||
+        selected.some((candidate) => wasRecentlyTried(candidate, history))
+      ) {
         stage = "curated_candidates"
         const fallback = await withinDeadline(
           () =>
@@ -342,7 +434,9 @@ export class UserRecommendationDeliveryService {
               audioLanguageSlug: input.audioLanguageSlug,
               interestVideoIds: [
                 ...new Set([
-                  ...history.map((item) => item.mediaId),
+                  ...history
+                    .filter((item) => item.qualified !== false)
+                    .map((item) => item.mediaId),
                   ...primary.map((item) => item.videoId),
                 ]),
               ].slice(0, 40),
@@ -351,7 +445,12 @@ export class UserRecommendationDeliveryService {
             }),
           candidateDeadline,
           Date.now,
-        )
+        ).catch((error: unknown) => {
+          // Freshness is a preference, not a reason to discard an otherwise
+          // complete profile slate when the optional reserve is unavailable.
+          if (selected.length < count) throw error
+          return { version: null, items: [] }
+        })
         poolVersion = fallback.version
         selected = composeUserRecommendations(
           primary,
@@ -445,8 +544,8 @@ export class UserRecommendationDeliveryService {
                   responseBytes,
                   issuedAt: now,
                   expiresAt,
-                  items: {
-                    create: prepared.map((item) => ({
+                  ...servedSnapshotCreate(
+                    prepared.map((item) => ({
                       id: item.id,
                       position: item.position,
                       targetMediaId: item.candidate.videoId,
@@ -474,7 +573,9 @@ export class UserRecommendationDeliveryService {
                       signingKid: token.activeKid,
                       expiresAt,
                     })),
-                  },
+                    this.deps.servedItemFormat ??
+                      env.RECOMMENDATION_SERVED_ITEM_FORMAT,
+                  ),
                 },
               })
               await tx.recommendationEvidenceAudit.create({

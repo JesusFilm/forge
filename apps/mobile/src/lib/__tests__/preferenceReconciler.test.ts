@@ -1,3 +1,36 @@
+// The phone's languages reach the resolver through the real locale store. `ru`
+// is a fixture catalog, so a phone change moves the epoch.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      ru: {},
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
+
+import {
+  getCatalogTag,
+  getLocaleEpoch,
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import {
   INITIAL_RECONCILER_STATE,
   markUserChoice,
@@ -5,6 +38,46 @@ import {
   resetReconciler,
   type ReconcileInput,
 } from "../preferenceReconciler"
+
+// KTD12, KTD16, AE11: the reconciler resolves once per video, so a language
+// change never moves the audio of the video that plays.
+describe("the phone-language default across a UI language change", () => {
+  const DUBS = [
+    { slug: "v-en", bcp47: "en", languageSlug: "english" },
+    { slug: "v-ru", bcp47: "ru", languageSlug: "russian" },
+  ]
+  const noPick = (identity: string): ReconcileInput => ({
+    ready: true,
+    identity,
+    options: DUBS,
+    primaryBcp47: "en",
+    preferredSlug: null,
+  })
+
+  afterEach(() => resetLocaleStoreForTests())
+
+  it("keeps a playing video's audio, and the next video takes the new default", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const playing = reconcileDefault(
+      INITIAL_RECONCILER_STATE,
+      noPick("video-1"),
+    )
+    expect(playing.apply).toEqual({ slug: "v-en" })
+
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    refreshLocale()
+    expect(getCatalogTag()).toBe("ru")
+    expect(getLocaleEpoch()).toBe(1)
+
+    // The provider's effect runs again for the same video: no new default.
+    const again = reconcileDefault(playing.nextState, noPick("video-1"))
+    expect(again.apply).toBeUndefined()
+
+    const next = reconcileDefault(again.nextState, noPick("video-2"))
+    expect(next.apply).toEqual({ slug: "v-ru" })
+  })
+})
 
 /**
  * Pure-function tests for the guard choreography the twin session providers share.

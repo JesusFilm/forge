@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest"
+import type { Prisma } from "@prisma/client"
+import { servedSnapshotValue } from "./served-item-payload"
 import {
   input,
   makeHarness,
@@ -65,9 +67,20 @@ describe("viewing mode delivery", () => {
       interestCount: 0,
     })
     const request = [...h.requests.values()][0] as {
-      items: { create: Array<{ candidateProvenance: unknown }> }
+      servedItemPayload?: Prisma.JsonValue | null
+      items: {
+        create: Array<{
+          id: string
+          presentation: Prisma.JsonValue
+          candidateProvenance: Prisma.JsonValue
+        }>
+      }
     }
-    expect(request.items.create[0]?.candidateProvenance).toMatchObject({
+    const item = request.items.create[0]!
+    expect(
+      servedSnapshotValue(request.servedItemPayload ?? null, item)
+        .candidateProvenance,
+    ).toMatchObject({
       viewingMode: { qualifiedVideos: 3, candidate: { viewers: 25 } },
     })
   })

@@ -31,9 +31,11 @@ import {
   runRecommendationProfileProjectionJob,
 } from "./job"
 import { runRecommendationProfileProjection } from "@/workflows/recommendationProfileProjection"
+import { env } from "@/config/env"
 
 beforeEach(() => {
   vi.clearAllMocks()
+  Object.assign(env, { RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "false" })
   projectionRun.create.mockResolvedValue({ id: "run-1", generation: 1 })
   projectionRun.findFirst.mockResolvedValue(null)
   projectionRun.findUnique.mockResolvedValue({
@@ -67,6 +69,113 @@ beforeEach(() => {
 })
 
 describe("recommendation profile projection workflow job", () => {
+  it("completes and replays a typed first-empty outcome without a projection", async () => {
+    project.mockResolvedValueOnce({ status: "empty", replay: false })
+    queryRaw.mockResolvedValueOnce([{ generation: 1, attemptCount: 1 }])
+    await expect(
+      runRecommendationProfileProjectionJob({
+        runId: "run-1",
+        expectedGeneration: 1,
+      }),
+    ).resolves.toEqual({ status: "empty", replay: false })
+    expect(projectionRun.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          state: "COMPLETED",
+          projectionId: null,
+          lastTransitionReason: "first_empty_no_evidence",
+        }),
+      }),
+    )
+
+    projectionRun.findUnique.mockResolvedValueOnce({
+      id: "run-1",
+      scope: "DURABLE",
+      sessionDigest: "a".repeat(64),
+      state: "COMPLETED",
+      projectionId: null,
+      lastTransitionReason: "first_empty_no_evidence",
+    })
+    await expect(
+      runRecommendationProfileProjectionJob({
+        runId: "run-1",
+        expectedGeneration: 1,
+      }),
+    ).resolves.toEqual({ status: "empty", replay: true })
+    expect(project).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not interpret an unrelated completed run without a projection as empty success", async () => {
+    projectionRun.findUnique.mockResolvedValueOnce({
+      id: "run-1",
+      scope: "DURABLE",
+      sessionDigest: "a".repeat(64),
+      state: "COMPLETED",
+      projectionId: null,
+      lastTransitionReason: "projection_published",
+      generation: 1,
+    })
+    queryRaw.mockResolvedValueOnce([])
+    await expect(
+      runRecommendationProfileProjectionJob({
+        runId: "run-1",
+        expectedGeneration: 1,
+      }),
+    ).resolves.toEqual({ status: "fenced", reason: "claim_generation_changed" })
+    expect(project).not.toHaveBeenCalled()
+  })
+
+  it.each(["true", "false"])(
+    "queues late feedback after empty completion with writer flag %s",
+    async (writerFlag) => {
+      Object.assign(env, {
+        RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: writerFlag,
+      })
+      projectionRun.findFirst.mockResolvedValueOnce({
+        id: "run-empty",
+        state: "COMPLETED",
+        generation: 1,
+        workflowRunId: "workflow-empty",
+        lastTransitionReason: "first_empty_no_evidence",
+      })
+      await expect(
+        dispatchRecommendationProfileFeedback({
+          sessionDigest: "a".repeat(64),
+          profileId: "profile-1",
+          privacyGeneration: 4,
+          evidenceWatermark: new Date(Date.now() - 60_000),
+        }),
+      ).resolves.toMatchObject({
+        durable: { runId: "run-1", coalesced: false },
+      })
+      expect(projectionRun.create).toHaveBeenCalledOnce()
+    },
+  )
+
+  it.each(["true", "false"])(
+    "queues feedback separately from a claimed first run with writer flag %s",
+    async (writerFlag) => {
+      Object.assign(env, {
+        RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: writerFlag,
+      })
+      projectionRun.findFirst.mockResolvedValueOnce({
+        id: "run-claimed",
+        state: "CLAIMED",
+        generation: 1,
+        workflowRunId: "workflow-claimed",
+        lastTransitionReason: "claim_acquired",
+        expectedGenerationId: null,
+        expectedPointerGeneration: 0,
+      })
+      await dispatchRecommendationProfileFeedback({
+        sessionDigest: "a".repeat(64),
+        profileId: "profile-1",
+        privacyGeneration: 4,
+        evidenceWatermark: new Date(Date.now() - 60_000),
+      })
+      expect(projectionRun.create).toHaveBeenCalledOnce()
+    },
+  )
   it("creates private business truth before dispatch", async () => {
     queryRaw.mockResolvedValueOnce([])
     await expect(

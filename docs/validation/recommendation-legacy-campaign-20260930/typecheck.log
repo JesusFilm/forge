@@ -1,0 +1,5 @@
+(node:3508889) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+> @forge/admin@0.0.1 typecheck /home/nisal/.codex/worktrees/legacy-reclamation-finish-20260930/forge/apps/admin
+> NODE_OPTIONS="$NODE_OPTIONS --max-old-space-size=8192" tsc --noEmit

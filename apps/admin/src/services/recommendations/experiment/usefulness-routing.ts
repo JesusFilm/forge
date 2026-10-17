@@ -15,6 +15,7 @@ export function assignProfileUsefulnessExperiment(
     sessionDigest: string
     profileTokenDigest: string
     eligibleForEnrollment: boolean
+    clientDeliveryContract?: string | null
     now: Date
     deadlineAt: number
   },
@@ -56,6 +57,7 @@ export function assignProfileUsefulnessExperiment(
         eligibleHuman: true,
         profileUsefulness: {
           eligibleForEnrollment: input.eligibleForEnrollment,
+          clientDeliveryContract: input.clientDeliveryContract,
         },
         now: input.now,
       })
@@ -81,6 +83,7 @@ export async function lockProfileUsefulnessAssignment(
     FROM recommendation_experiment_assignment assignment
     JOIN recommendation_profile profile ON profile.id = assignment.profile_id
     JOIN recommendation_experiment experiment ON experiment.id = assignment.experiment_id
+    LEFT JOIN recommendation_study study ON study.experiment_id = experiment.id
     JOIN recommendation_promotion_pointer pointer
       ON pointer.id = 'recommendation-promotion-pointer'
     JOIN recommendation_promotion_approval approval ON approval.id = pointer.active_approval_id
@@ -99,10 +102,11 @@ export async function lockProfileUsefulnessAssignment(
       AND experiment.assignment_policy_version = ${PROFILE_USEFULNESS_ASSIGNMENT_POLICY_VERSION}
       AND experiment.challenger_probability = 0.5
       AND pointer.stage = 'bounded' AND NOT pointer.kill_switch_enabled
-      AND pointer.exposure_ceiling_bps = 5000
+      AND pointer.exposure_ceiling_bps = COALESCE((study.protocol->>'admissionBps')::integer / 2, 5000)
+      AND (study.activated_at IS NOT NULL AND study.protocol_digest = assignment.configuration_digest)
       AND pointer.active_manifest_id = experiment.challenger_manifest_id
       AND approval.manifest_id = pointer.active_manifest_id
-      AND approval.expires_at > ${now} AND approval.max_exposure_bps >= 5000
+      AND approval.expires_at > ${now} AND approval.max_exposure_bps >= pointer.exposure_ceiling_bps
     FOR SHARE OF assignment, profile, experiment, pointer, approval
   `
   if (!rows.length)

@@ -9,7 +9,7 @@ import {
 import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
 import { retainStudioRenderOutput } from "./studio-render-retention"
 import { studioRenderClient } from "./studio-render-transport"
-import { prepareStudioRenderInput } from "./studio-render-input"
+import { prepareStudioDraftRenderInput } from "./studio-render-input"
 import { executeStudioRenderRequest } from "./studio-render-execution"
 import {
   runStudioRenderJob,
@@ -69,12 +69,17 @@ function renderPort(parent: AbortSignal): StudioRenderRunPort {
       const { snapshot } = contextSchema.parse(
         await client.call("context", attemptId),
       )
-      const prepared = await prepareStudioRenderInput(
+      const prepared = await prepareStudioDraftRenderInput(
         client.assets,
         snapshot.projectId,
         snapshot.document,
         env.STUDIO_PREVIEW_API_KEY ?? "",
         signal,
+        {
+          read: () => client.call("preparation", { attemptId, leaseId }),
+          save: (document) =>
+            client.call("prepare", { attemptId, leaseId, document }),
+        },
       )
       if (!env.STUDIO_RENDER_SERVICE_URL || !env.STUDIO_RENDER_PRIVATE_KEY)
         throw new StudioRenderRunError("Render service configuration required")

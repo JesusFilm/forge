@@ -1,3 +1,4 @@
+import { getT } from "../../i18n/useT"
 import {
   deriveEpisodeBadges,
   deriveSeriesDownloadState,
@@ -233,19 +234,22 @@ describe("deriveSeriesDownloadState", () => {
 
 describe("seriesDownloadLabel", () => {
   const lbl = (downloaded: number, total: number) =>
-    seriesDownloadLabel({
-      downloaded,
-      total,
-      inProgress: false,
-      pausedAggregate: false,
-      inFlightSlugs: [],
-      progress: 0,
-      exporting: false,
-      exportProgress: 0,
-      exportingSlugs: [],
+    seriesDownloadLabel(
+      {
+        downloaded,
+        total,
+        inProgress: false,
+        pausedAggregate: false,
+        inFlightSlugs: [],
+        progress: 0,
+        exporting: false,
+        exportProgress: 0,
+        exportingSlugs: [],
 
-      pausedExport: false,
-    })
+        pausedExport: false,
+      },
+      getT("DownloadButton"),
+    )
 
   it("reads 'Download all' when nothing is downloaded", () => {
     expect(lbl(0, 3)).toBe("Download all")

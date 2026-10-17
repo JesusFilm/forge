@@ -1,0 +1,27 @@
+{
+  "declaredAt": "2026-09-30T19:55:59.306Z",
+  "scope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "provenance": "Candidate source SQL with unchanged deployed graph builder; no unpublished publisher/service imported",
+  "statementTimeoutMs": 5000,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "publicationPerformed": false,
+  "automaticRetryPermitted": false,
+  "rawTransportOutputRetained": false,
+  "sqlSha256": "ea5b493c805dbabbb4125c1c4ea049c9c2c25f25fa1c44b7de0b0e40bc15d6c4",
+  "transportExitCode": 1,
+  "records": [
+    {
+      "status": "failed",
+      "sqlstate": "57014",
+      "reason": "read_failed",
+      "diagnosticsRedacted": true
+    }
+  ],
+  "receiptPreservation": "Restored verbatim values from the captured tool response after a helper output filename collision; no production query rerun."
+}

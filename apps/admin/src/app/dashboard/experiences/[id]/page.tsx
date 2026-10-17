@@ -576,6 +576,7 @@ export default async function ExperienceEditorPage({
           ogImageUrl: canonical.ogImageUrl ?? "",
           pathSegment: canonical.pathSegment ?? "",
           isHomepage: canonical.isHomepage,
+          homepageLayout: canonical.homepageLayout,
           blocksJson: JSON.stringify(canonical.blocks ?? [], null, 2),
         },
       }
@@ -942,6 +943,7 @@ export default async function ExperienceEditorPage({
         ogImageUrl: editableLocale.ogImageUrl ?? "",
         pathSegment: editableLocale.pathSegment ?? "",
         isHomepage: editableLocale.isHomepage,
+        homepageLayout: editableLocale.homepageLayout,
         isTemplate: experience.isTemplate,
         blocksJson: JSON.stringify(editableLocale.blocks ?? [], null, 2),
       }}

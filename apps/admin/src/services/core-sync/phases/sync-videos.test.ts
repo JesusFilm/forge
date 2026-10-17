@@ -91,7 +91,6 @@ describe("syncVideos", () => {
               ],
               locked: false,
               noIndex: false,
-              restrictViewPlatforms: ["watch", "arclight"],
               updatedAt: "2026-01-02T00:00:00.000Z",
             },
           ],
@@ -188,6 +187,7 @@ describe("syncVideos", () => {
         fn(tx),
       ),
       video: {
+        findMany: vi.fn().mockResolvedValue([]),
         updateMany: vi.fn().mockResolvedValue({ count: 0 }),
       },
     }
@@ -212,14 +212,18 @@ describe("syncVideos", () => {
           videoSource: "MUX",
           originId: "origin-1",
           primaryLanguageId: "language-es",
-          restrictViewPlatforms: ["watch", "arclight"],
         }),
         update: expect.objectContaining({
           primaryLanguageId: "language-es",
-          restrictViewPlatforms: ["watch", "arclight"],
         }),
       }),
     )
+    // Core gates restrictViewPlatforms behind publisher auth, so sync never
+    // reads it: create must fall back to the schema default and update must
+    // leave the admin-stored value alone.
+    const upsertArgs = tx.video.upsert.mock.calls[0][0]
+    expect(upsertArgs.create).not.toHaveProperty("restrictViewPlatforms")
+    expect(upsertArgs.update).not.toHaveProperty("restrictViewPlatforms")
     expect(tx.videoLocale.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -300,7 +304,6 @@ describe("syncVideos", () => {
               children: [],
               locked: false,
               noIndex: false,
-              restrictViewPlatforms: [],
               updatedAt: "2026-01-02T00:00:00.000Z",
             },
           ],

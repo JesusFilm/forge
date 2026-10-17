@@ -27,7 +27,7 @@ import {
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 // This section defers `@forge/video-player/mux-video` through `next/dynamic`
 // so hls.js and mux-embed stay out of the Watch routes' first-load script set
-// (feat-535 / FGE-138). Resolve it synchronously here so the cases below keep
+// (feat-719 / FGE-138). Resolve it synchronously here so the cases below keep
 // driving a real <video>. See the mock module for what that erases.
 vi.mock("next/dynamic", async () => import("@/__mocks__/next-dynamic-sync"))
 // `React.lazy` settles its payload across microtask turns, and the real

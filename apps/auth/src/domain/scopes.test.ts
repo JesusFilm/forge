@@ -105,6 +105,27 @@ describe("Auth scopes", () => {
     ])
   })
 
+  it("recognizes the push campaign scopes and describes them for consent screens", () => {
+    expect(isKnownScope("push:campaign:read")).toBe(true)
+    expect(isKnownScope("push:campaign:draft")).toBe(true)
+    expect(
+      describeScopes(["push:campaign:draft", "push:campaign:read"]),
+    ).toEqual([
+      {
+        key: "push:campaign:read",
+        label: "Read push campaigns",
+        description:
+          "Read push campaigns and their reports, languages, destinations, and audience counts.",
+      },
+      {
+        key: "push:campaign:draft",
+        label: "Draft push campaigns",
+        description:
+          "Create and edit push campaign drafts. Cannot test, schedule, or send.",
+      },
+    ])
+  })
+
   it("describes experience-level create and generate scopes for consent screens", () => {
     expect(
       describeScopes(["experience:generate", "experience:create"]),

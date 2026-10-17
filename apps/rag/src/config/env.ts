@@ -8,7 +8,6 @@ import {
   ENVIRONMENT_TARGETS,
   type EnvironmentTarget,
 } from "./environment-error.js"
-import { bearerTokenConfigSchema } from "../contracts/index.js"
 import {
   requireReadonlyDatabaseUrl,
   resolveDashboardDatabase,
@@ -92,14 +91,6 @@ const postgresUrl = z
     { message: "must be a Postgres URL" },
   )
 
-function validBearerTokenConfig(value: string): boolean {
-  try {
-    return bearerTokenConfigSchema.safeParse(JSON.parse(value)).success
-  } catch {
-    return false
-  }
-}
-
 const runtimeEnvSchema = z
   .object({
     DATABASE_URL: postgresUrl,
@@ -126,7 +117,6 @@ const runtimeEnvSchema = z
     LANGUAGE_SWEEP_OUT_DIR: emptyAsUnset(z.string().trim().min(1).optional()),
     FIRECRAWL_API_KEY: emptyAsUnset(z.string().trim().min(1).optional()),
     PORT: positiveInteger("PORT", 8080),
-    SERVE_BEARER_TOKENS: emptyAsUnset(z.string().trim().min(1).optional()),
   })
   .superRefine((value, context) => {
     if (value.EMBED_BASE_URL && !value.EMBED_API_KEY) {
@@ -137,32 +127,12 @@ const runtimeEnvSchema = z
           "required when EMBED_BASE_URL is set; OPENROUTER_API_KEY only covers the fallback provider",
       })
     }
-    if (
-      value.SERVE_BEARER_TOKENS &&
-      !validBearerTokenConfig(value.SERVE_BEARER_TOKENS)
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["SERVE_BEARER_TOKENS"],
-        message:
-          'must be a JSON object mapping each token to a non-empty source-key array; ["*"] grants all sources',
-      })
-    }
   })
 
 export type RuntimeEnv = z.infer<typeof runtimeEnvSchema>
 
-/** Only the environment-agnostic OpenRouter key may use a namespaced fallback. */
-export function applyNamespacedEnvFallbacks(env: EnvironmentInput): void {
-  if (!env.OPENROUTER_API_KEY?.trim() && env.JFRAG_OPENROUTER_API_KEY?.trim()) {
-    env.OPENROUTER_API_KEY = env.JFRAG_OPENROUTER_API_KEY
-  }
-}
-
 export function parseRuntimeEnv(input: EnvironmentInput): RuntimeEnv {
-  const candidate = { ...input }
-  applyNamespacedEnvFallbacks(candidate)
-  return runtimeEnvSchema.parse(candidate)
+  return runtimeEnvSchema.parse(input)
 }
 
 const smokeEnvSchema = z.object({
@@ -185,21 +155,25 @@ export function assertEnvironmentForTarget(
   if (target === "dashboard") return resolveDashboardDatabase(input)
   if (target === "production-read" || target === "eval") {
     return resolveProductionEnv(input, {
-      expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
+      expectHost: input.FORGE_RAG_EXPECTED_POSTGRES_HOST,
     })
   }
   if (target === "production-write") {
     return resolveProductionEnv(input, {
       write: true,
-      expectHost: input.JFRAG_EXPECTED_POSTGRES_HOST,
+      expectHost: input.FORGE_RAG_EXPECTED_POSTGRES_HOST,
     })
   }
 
   const env = parseRuntimeEnv(input)
-  if (target === "railway" && !env.SERVE_BEARER_TOKENS) {
+  if (
+    target === "railway" &&
+    (!input.RAG_CONSUMER_WRITER_DATABASE_URL ||
+      !input.RAG_CONSUMER_AUTH_DATABASE_URL)
+  ) {
     throw environmentConfigurationError(
-      "railway_bearer_tokens_required",
-      "SERVE_BEARER_TOKENS is required for the Railway service",
+      "consumer_access_configuration_incomplete",
+      "Railway serving requires both consumer access database URLs",
       target,
     )
   }
@@ -233,31 +207,31 @@ export function resolveProductionEnv(
   if (!options.write && !options.expectHost?.trim())
     throw environmentConfigurationError(
       "production_read_host_required",
-      "production read refused: JFRAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
+      "production read refused: FORGE_RAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
       "production-read",
     )
-  if (options.write && input.JFRAG_ALLOW_PROD_WRITE !== "1") {
+  if (options.write && input.FORGE_RAG_ALLOW_PROD_WRITE !== "1") {
     throw environmentConfigurationError(
       "production_write_opt_in_required",
-      "production write refused: set JFRAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
+      "production write refused: set FORGE_RAG_ALLOW_PROD_WRITE=1 as the second deliberate signal",
       "production-write",
     )
   }
   if (options.write && !options.expectHost?.trim()) {
     throw environmentConfigurationError(
       "production_write_host_required",
-      "production write refused: JFRAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
+      "production write refused: FORGE_RAG_EXPECTED_POSTGRES_HOST is required as the target-host guard",
       "production-write",
     )
   }
 
   const databaseVariable = options.write
-    ? "JFRAG_POSTGRESQL_DB_URL"
-    : "JFRAG_POSTGRESQL_READONLY_DB_URL"
+    ? "FORGE_RAG_POSTGRESQL_DB_URL"
+    : "FORGE_RAG_POSTGRESQL_READONLY_DB_URL"
   const databaseUrl = input[databaseVariable]?.trim()
-  const openrouterKey = input.JFRAG_OPENROUTER_API_KEY?.trim()
+  const openrouterKey = input.OPENROUTER_API_KEY?.trim()
   const embedModel =
-    input.JFRAG_OPENROUTER_EMBED_MODEL_ID?.trim() || DEFAULT_EMBED_MODEL_ID
+    input.FORGE_RAG_EMBED_MODEL_ID?.trim() || DEFAULT_EMBED_MODEL_ID
 
   if (!databaseUrl) {
     throw environmentConfigurationError(
@@ -270,12 +244,12 @@ export function resolveProductionEnv(
   if (!options.write)
     requireReadonlyDatabaseUrl(
       parsedDatabaseUrl,
-      input.JFRAG_READONLY_ROLE_NAME,
+      input.FORGE_RAG_READONLY_ROLE_NAME,
     )
   if (!openrouterKey) {
     throw environmentConfigurationError(
       "production_openrouter_key_required",
-      "JFRAG_OPENROUTER_API_KEY is required for production",
+      "OPENROUTER_API_KEY is required for production",
       options.write ? "production-write" : "production-read",
     )
   }

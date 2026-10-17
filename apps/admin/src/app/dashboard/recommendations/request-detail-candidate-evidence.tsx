@@ -204,7 +204,10 @@ export function RecommendationCandidateEvidence({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-[13px] text-[var(--color-text-secondary)]">
-                  Purpose {detail.candidateExecution.purpose} · evidence{" "}
+                  Purpose {detail.candidateExecution.purpose} · evidence
+                  {detail.candidateExecution.legacyDetailRetiredAt
+                    ? " at issuance "
+                    : " "}
                   {detail.candidateExecution.evidenceComplete
                     ? "complete"
                     : "incomplete"}
@@ -220,6 +223,15 @@ export function RecommendationCandidateEvidence({
                     {displayRecommendationToken(
                       detail.candidateExecution.fallbackReason,
                     )}
+                  </p>
+                ) : null}
+                {detail.candidateExecution.legacyDetailRetiredAt ? (
+                  <p className="mt-2 text-[12px] text-[var(--color-warning)]">
+                    Historical candidate stage detail retired on{" "}
+                    {formatRecommendationDateTime(
+                      detail.candidateExecution.legacyDetailRetiredAt,
+                    )}
+                    . Stage counts record the original issuance.
                   </p>
                 ) : null}
               </div>
@@ -482,8 +494,9 @@ export function FinalSlatePanel({
                   </ol>
                 ) : (
                   <p className="mt-3 text-[12px] text-[var(--color-text-muted)]">
-                    No additive candidate-stage evidence was recorded for this
-                    compatible legacy item.
+                    {detail.candidateExecution?.legacyDetailRetiredAt
+                      ? "Historical stage detail was retired. The issued item and original stage counts remain available."
+                      : "No additive candidate-stage evidence was recorded for this compatible legacy item."}
                   </p>
                 )}
               </details>

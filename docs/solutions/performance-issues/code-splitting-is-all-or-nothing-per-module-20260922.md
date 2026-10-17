@@ -29,7 +29,7 @@ applies_when:
 
 ## Context
 
-Linear FGE-138 / feat-535. hls.js + mux-embed rode along with
+Linear FGE-138 / feat-719. hls.js + mux-embed rode along with
 `@mux/mux-video-react` as one 646,759 B chunk that Turbopack placed in
 `firstLoadChunkPaths` for **both** Watch routes, served as a plain
 `<script src>` in the initial document — about a fifth of the page's JS on a
@@ -111,6 +111,16 @@ on it. Falsify in **both** directions: removing the guard must redden a
 closed-gate case, and pinning the gate shut must redden a re-arm case. One
 direction alone lets "never arm it" pass as a fix.
 
+The mirror image bites a timer that needs the element rather than one only the
+element can clear. The turn's 1.5 s poster-hold `play()` request is the
+play-before-`canplay` startup attempt native HLS depends on (iOS buffers only
+metadata until `play()`, so no `canplay` comes on its own). It was armed on slide selection, so when the element attached later
+than 1.5 s — a held-open `load`, or a slow engine chunk after `load` — it fired
+against no element and the turn never asked to play, leaving the re-armed
+ceiling to skip a slide that would have played. Arm it on attachment
+(`mediaAttached`), not on the gate: the gate opens before the chunk resolves.
+Added 2026-10-17 while integrating with main's native-HLS start path.
+
 ### 4. Deferring a media surface changes its failure mode — contain it
 
 A rejected `import()` throws during render. With no boundary it reaches the
@@ -120,10 +130,26 @@ bundler-runtime and `React.lazy` layers, so the error page's reset is inert
 until a full reload
 ([feat-328](../best-practices/per-message-boundary-limits-for-media-surfaces.md)).
 
-Wrap the lazy component in the owner module with an error boundary whose
-fallback is `null`; every call site already reserves its box and paints a
-poster, so nothing shifts and the degraded state is poster-only. Do **not** add
-a userland retry around `import()` — inert on Turbopack.
+Wrap the lazy component in the owner module with an error boundary. Do
+**not** add a userland retry around `import()` — inert on Turbopack.
+
+> Corrected 2026-10-17: this section first said every call site already paints
+> a poster, so a `null` fallback degrades to poster-only. That held for the
+> home carousel only. The inline `Video` and `CarouselVideo` sections had their
+> only large poster on the deferred `<video>` itself, so `ssr: false` left a
+> black box in server HTML and while the chunk loaded, and a failed chunk never
+> brought the art back; `Video` also kept its loading spinner forever, because
+> only media events end it and no element ever attached. `VideoHero` has never
+> had a poster.
+
+So the boundary is only half of containment. Each caller must also (a) paint
+its own server-rendered poster under the player (`DeferredVideoPoster`), and
+(b) if any of its UI waits on media events, take the boundary's `onLoadError`
+(fired from `componentDidCatch`, never from render) to a terminal state —
+here `DeferredVideoLoadFailed`, whose only action is a full reload, the one
+recovery a cached rejection allows. Test it with a REJECTED lazy payload, not a
+throwing render: the shared `next-dynamic-sync` stub's `rejectDeferredChunk()`
+and `holdDeferredChunk()` give each suite a fresh failed or pending payload.
 
 ### 5. Measure the mount window, on real data
 

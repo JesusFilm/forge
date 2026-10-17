@@ -124,6 +124,9 @@ CI's `admin-schema-drift` job catches step 1 if forgotten. The committed SDL is 
   `apps/mobile`, `apps/mobile-v2`, or `apps/manager`.
 - Do not hand-edit `.next/`, generated Prisma Client, or Pothos-generated types.
 - Do not introduce new direct `process.env` reads — extend `src/config/env.ts`.
+  The standalone migration deploy/recovery scripts are the exception: they may
+  read required database and retry settings without loading application auth
+  configuration. Validate those inputs and never print connection strings.
 
 ## Studio authoring foundation
 

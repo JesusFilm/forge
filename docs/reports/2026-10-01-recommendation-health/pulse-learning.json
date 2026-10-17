@@ -1,0 +1,104 @@
+[
+  [
+    {
+      "origin": "recommendation_linked",
+      "classified_episodes": "105",
+      "qualified_views": "34",
+      "finalized_qualified": "9",
+      "currently_profile_eligible": "9",
+      "retained_published_profile_contributions": "9"
+    },
+    {
+      "origin": "source_neutral_without_recommendation_request",
+      "classified_episodes": "5072",
+      "qualified_views": "1398",
+      "finalized_qualified": "1091",
+      "currently_profile_eligible": "978",
+      "retained_published_profile_contributions": "857"
+    }
+  ],
+  [
+    {
+      "generations": "3274",
+      "profiles": "2236",
+      "populated_generations": "1277",
+      "profiles_with_durable_interests": "366",
+      "contribution_count_p50": 0,
+      "contribution_count_max": 64
+    }
+  ],
+  [
+    {
+      "state": "completed",
+      "failure_reason": null,
+      "last_transition_reason": "projection_published",
+      "runs": "4719",
+      "oldest_created": "2026-09-29T18:42:00.843Z",
+      "latest_completed": "2026-09-30T18:41:43.973Z"
+    },
+    {
+      "state": "completed",
+      "failure_reason": null,
+      "last_transition_reason": "first_empty_no_evidence",
+      "runs": "3358",
+      "oldest_created": "2026-09-30T03:35:32.704Z",
+      "latest_completed": "2026-09-30T18:41:47.422Z"
+    },
+    {
+      "state": "fenced",
+      "failure_reason": "pointer_generation_fenced",
+      "last_transition_reason": "pointer_generation_fenced",
+      "runs": "57",
+      "oldest_created": "2026-09-29T18:53:54.342Z",
+      "latest_completed": "2026-09-30T18:21:06.387Z"
+    },
+    {
+      "state": "fenced",
+      "failure_reason": "eligibility_input_fenced",
+      "last_transition_reason": "eligibility_input_fenced",
+      "runs": "17",
+      "oldest_created": "2026-09-29T20:00:07.351Z",
+      "latest_completed": "2026-09-30T17:08:41.508Z"
+    }
+  ],
+  [
+    {
+      "surface_version": "watch-below-player-v1",
+      "execution_mode": "hybrid_personalized",
+      "requests": "1509",
+      "profiles": "262",
+      "missing_projection": "0",
+      "expired_projection_at_issuance": "0",
+      "future_projection_at_issuance": "0",
+      "zero_interest_requests": "0"
+    }
+  ],
+  [
+    {
+      "requests": "5979",
+      "experiment_assigned": "0"
+    }
+  ],
+  [
+    {
+      "kind": "committed_rejection",
+      "reason_code": "delivery_timestamp_invalid",
+      "audit_events": "89"
+    },
+    {
+      "kind": "replay",
+      "reason_code": "playback_transport_replay",
+      "audit_events": "28"
+    },
+    {
+      "kind": "replay",
+      "reason_code": "render_replay",
+      "audit_events": "19"
+    },
+    {
+      "kind": "replay",
+      "reason_code": "impression_replay",
+      "audit_events": "2"
+    }
+  ]
+]

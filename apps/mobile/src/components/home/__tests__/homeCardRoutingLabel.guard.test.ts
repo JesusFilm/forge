@@ -50,3 +50,113 @@ describe("HomeCard routes on the raw label, not display text", () => {
     expect(model).toContain("rawLabel:string|null")
   })
 })
+
+/** U6: the hero's "Watch Now" routed on `isSeriesLabel(label)`, and the slide's
+ *  label is catalog text, so a Spanish "Serie" opened /watch. It must route on
+ *  the slide's raw kind. `slideRouteArgs.test.ts` proves the value passes. */
+describe("HomeScreen's Watch Now routes on the raw label kind", () => {
+  function watchNowRoute(source: string): string {
+    const start = at(source, "const handleWatchNow")
+    return squish(source.slice(start, at(source, "router.navigate(", start)))
+  }
+
+  it("feeds rawLabel from slideRouteArgs into isSeriesLabel", () => {
+    const route = watchNowRoute(readSource("..", "HomeScreen.tsx"))
+    expect(route).toContain("isSeriesLabel(rawLabel)")
+    expect(route).not.toContain("isSeriesLabel(label)")
+  })
+
+  it("flags the old display-text compare (negative control)", () => {
+    const reverted = readSource("..", "HomeScreen.tsx").replace(
+      "isSeriesLabel(rawLabel)",
+      "isSeriesLabel(label)",
+    )
+    expect(watchNowRoute(reverted)).not.toContain("isSeriesLabel(rawLabel)")
+  })
+})
+
+/** KTD15: `card.label` is catalog text, so a Spanish catalog emptied the hero's
+ *  short-film pool while it compared `label` with "Short film". The behaviour
+ *  test in watchHomeModel.test.ts proves the pool; this pins the source shape. */
+describe("the short-film hero pool classifies on the raw label kind", () => {
+  const MODEL = ["..", "..", "..", "lib", "watchHome", "model.ts"]
+  const VIDEO_LABEL = ["..", "..", "..", "lib", "videoLabel.ts"]
+
+  /** The loop that fills the short-film pool, whitespace removed. */
+  function poolLoop(source: string): string {
+    const start = at(source, "const shortFilmById")
+    return squish(source.slice(start, at(source, "shortFilmById.set", start)))
+  }
+
+  // `video` is the input record, whose `label` is the raw kind (the card's
+  // `rawLabel`); any other `.label` compare in the loop reads catalog text.
+  function classifiesOnRawKind(source: string): boolean {
+    const loop = poolLoop(source)
+    const rest = loop.replace(/\bvideo\.label(!==|===)"SHORT_FILM"/, "")
+    return (
+      loop.includes("for(constvideoofargs.videoByCoreId.values())") &&
+      rest !== loop &&
+      !/\.label(!==|===)/.test(rest)
+    )
+  }
+
+  /** Block and line comments removed; a `//` after `:` (a URL) stays. */
+  function withoutComments(source: string): string {
+    return source
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|\s)\/\/.*$/gm, "$1")
+  }
+
+  /** English label text from the catalog, as quoted literals in the code. */
+  function englishLabelLiterals(source: string): string[] {
+    const catalog = JSON.parse(
+      readSource("..", "..", "..", "..", "messages", "en.json"),
+    ) as { VideoLabel: Record<string, string> }
+    const code = withoutComments(source)
+    return Object.values(catalog.VideoLabel).filter(
+      (text) => code.includes(`"${text}"`) || code.includes(`'${text}'`),
+    )
+  }
+
+  it("compares the record's raw label with the SHORT_FILM kind", () => {
+    expect(classifiesOnRawKind(readSource(...MODEL))).toBe(true)
+  })
+
+  it("flags the old display-text compare (negative control)", () => {
+    const reverted = readSource(...MODEL).replace(
+      /video\.label\s*!==\s*"SHORT_FILM"/,
+      'parentCard.label !== "Short film"',
+    )
+    expect(reverted).not.toBe(readSource(...MODEL))
+    expect(classifiesOnRawKind(reverted)).toBe(false)
+  })
+
+  it("flags a card-text compare beside the raw one (negative control)", () => {
+    const added = readSource(...MODEL).replace(
+      "if (!parentCard) continue",
+      'if (!parentCard || parentCard.label !== "Short film") continue',
+    )
+    expect(added).not.toBe(readSource(...MODEL))
+    expect(classifiesOnRawKind(added)).toBe(false)
+  })
+
+  it("holds no English label text in the model or the label module", () => {
+    expect(englishLabelLiterals(readSource(...MODEL))).toEqual([])
+    expect(englishLabelLiterals(readSource(...VIDEO_LABEL))).toEqual([])
+  })
+
+  it("finds English label text in a source that has it (positive control)", () => {
+    expect(englishLabelLiterals('if (x === "Short film") return')).toEqual([
+      "Short film",
+    ])
+    expect(
+      englishLabelLiterals("const u = 'https://x.test' === 'Video'"),
+    ).toEqual(["Video"])
+  })
+
+  it("ignores label text in a comment (negative control)", () => {
+    expect(
+      englishLabelLiterals('/** turns it into "Video" */\n// "Short film"\n'),
+    ).toEqual([])
+  })
+})

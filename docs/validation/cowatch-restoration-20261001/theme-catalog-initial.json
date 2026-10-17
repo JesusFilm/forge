@@ -1,0 +1,25 @@
+[
+  [
+    {
+      "observed_at": "2026-09-30T19:34:37.563Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "eligible_edges_observed": "613",
+      "edge_bound_exceeded": false,
+      "target_rows_observed": "129",
+      "target_bound_reached": true,
+      "sampled_targets": "128",
+      "playable_sampled_targets": "128",
+      "no_matching_active_chunks": "1",
+      "first_chunk_has_usable_theme": "86",
+      "first_missing_later_has_usable_theme": "3",
+      "no_usable_theme_complete_chunk_population": "38",
+      "no_usable_theme_with_truncated_chunks": "0",
+      "targets_with_chunk_bound_reached": "0",
+      "matching_chunk_rows_observed": "195"
+    }
+  ]
+]

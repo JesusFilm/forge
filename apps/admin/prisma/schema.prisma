@@ -1107,6 +1107,48 @@ model SyncLock {
   @@map("sync_locks")
 }
 
+/// Long Core phases execute on the native worker, not in Workflow HTTP steps.
+/// The unique run/phase pair makes workflow retries reuse the same result.
+model CoreSyncPhaseExecution {
+  id         String   @id @default(cuid())
+  syncRunId  String   @map("sync_run_id")
+  phase      String
+  input      Json
+  state      String   @default("PENDING")
+  claimToken String?  @map("claim_token")
+  attempts   Int      @default(0)
+  result     Json?
+  error      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@unique([syncRunId, phase])
+  @@index([state, createdAt])
+  @@map("core_sync_phase_execution")
+}
+
+/// Coalesced content delivery. Search-engine qualification stays on the base
+/// Candidate; generationId names an immutable, automatically refreshed catalog.
+model WatchCatalogPublication {
+  id               String                          @id
+  requestedVersion Int                             @default(0) @map("requested_version")
+  searchVersion    Int                             @default(0) @map("search_version")
+  webVersion       Int                             @default(0) @map("web_version")
+  baseGenerationId String?                         @map("base_generation_id")
+  generationId     String?                         @map("generation_id") @db.VarChar(128)
+  generation       WatchSearchCandidateGeneration? @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  rankingRevision  String?                         @map("ranking_revision")
+  sourceDigest     String?                         @map("source_digest")
+  lastRequestedAt  DateTime                        @default(now()) @map("last_requested_at")
+  lastPublishedAt  DateTime?                       @map("last_published_at")
+  retryAt          DateTime                        @default(now()) @map("retry_at")
+  attempts         Int                             @default(0)
+  lastError        String?                         @map("last_error")
+  updatedAt        DateTime                        @updatedAt @map("updated_at")
+
+  @@map("watch_catalog_publication")
+}
+
 /// Admin-owned product ledger for workflow runs. Postgres World remains the
 /// runtime source of truth; this table adds operator context that can be joined
 /// to runtime rows by `runtime_run_id`.
@@ -1304,9 +1346,10 @@ model WatchSearchCandidateGeneration {
   createdAt                    DateTime                            @default(now()) @map("created_at")
   updatedAt                    DateTime                            @updatedAt @map("updated_at")
 
-  pointers       WatchSearchCandidatePointer[]
-  qualifications WatchSearchCandidateQualification[]
-  leases         WatchSearchCandidateLease[]
+  pointers            WatchSearchCandidatePointer[]
+  qualifications      WatchSearchCandidateQualification[]
+  leases              WatchSearchCandidateLease[]
+  catalogPublications WatchCatalogPublication[]
 
   @@index([state, createdAt])
   @@index([transcriptCollection, transcriptProjectionRevision])
@@ -2647,6 +2690,9 @@ model Video {
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
   watchProgress  WatchProgress[]
+  precomputedRecommendationSources RecommendationPrecomputedSource[]
+  precomputedBuildSources RecommendationPrecomputedBuildSource[]
+  precomputedContentProfiles RecommendationPrecomputedContentProfile[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -3170,6 +3216,10 @@ model ExperienceLocale {
   slug                       String
   /// True when this locale is the homepage for its locale.
   isHomepage                 Boolean                      @default(false) @map("is_homepage")
+  /// Renders with the Watch home layout and admits homepage-only blocks
+  /// without assigning the live homepage (that is `isHomepage`). Set on
+  /// duplicates of a homepage so the copy previews and edits as a homepage.
+  homepageLayout             Boolean                      @default(false) @map("homepage_layout")
   /// Optional URL path prefix; combines with `slug` to form the canonical path.
   pathSegment                String?                      @map("path_segment")
   title                      String?
@@ -3615,6 +3665,7 @@ enum RecommendationExperimentEvaluationRunState {
 }
 
 enum RecommendationPromotionStage {
+  OWNER_APPROVED @map("owner_approved")
   CONTROL   @map("control")
   BOUNDED   @map("bounded")
   PERMANENT @map("permanent")
@@ -3669,9 +3720,12 @@ model RecommendationStrategyManifest {
   experimentExposures          RecommendationExperimentExposure[]          @relation("RecommendationExperimentExposureManifest")
   promotionApprovals           RecommendationPromotionApproval[]
   profileProjectionGenerations RecommendationProfileProjectionGeneration[]
+  ownerReleases               RecommendationOwnerRelease[]
   personalizationDecisions     RecommendationPersonalizationDecision[]
   activePromotionPointers      RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerActive")
   fallbackPromotionPointers    RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerFallback")
+  privatePrecomputedControls    RecommendationPrecomputedExperiment[]       @relation("PrecomputedExperimentControl")
+  privatePrecomputedChallengers RecommendationPrecomputedExperiment[]       @relation("PrecomputedExperimentChallenger")
 
   @@unique([strategyVersion, contractVersion, surfaceVersion], map: "recommendation_manifest_contract_key")
   @@map("recommendation_strategy_manifest")
@@ -3706,7 +3760,11 @@ model RecommendationRequest {
   seedMediaId            String?                             @map("seed_media_id") @db.VarChar(191)
   locale                 String                              @db.VarChar(32)
   purpose                String                              @default("seeded") @db.VarChar(32)
+  /// Bounded language identities and observed retrieval stages; expires with this request.
+  deliveryDiagnostics    Json?                               @map("delivery_diagnostics") @db.JsonB
   expectedItemCount      Int                                 @map("expected_item_count")
+  /// Versioned immutable presentation and provenance snapshots keyed by served item id.
+  servedItemPayload      Json?                               @map("served_item_payload") @db.JsonB
   state                  RecommendationRequestState          @default(PREPARED)
   result                 RecommendationDeliveryResult
   fallbackReason         String?                             @map("fallback_reason") @db.VarChar(64)
@@ -3718,6 +3776,8 @@ model RecommendationRequest {
   createdAt              DateTime                            @default(now()) @map("created_at")
   issuedAt               DateTime?                           @map("issued_at")
   expiresAt              DateTime                            @map("expires_at")
+  ownerReleaseId String? @map("owner_release_id") @db.Uuid
+  ownerReleaseGeneration Int? @map("owner_release_generation")
   experimentAssignmentId String?                             @map("experiment_assignment_id")
   experimentAssignment   RecommendationExperimentAssignment? @relation(fields: [experimentAssignmentId], references: [id], onDelete: SetNull)
   experimentBypassReason String?                             @map("experiment_bypass_reason") @db.VarChar(64)
@@ -3726,6 +3786,7 @@ model RecommendationRequest {
   renderedFacts           RecommendationRenderedFact[]
   impressions             RecommendationImpression[]
   selections              RecommendationSelection[]
+  precomputedBaselineVisits RecommendationPrecomputedBaselineVisitRequest[]
   episodes                RecommendationPlaybackEpisode[]
   playbackFacts           RecommendationPlaybackFact[]
   outcomes                RecommendationOutcomeRevision[]
@@ -3739,6 +3800,9 @@ model RecommendationRequest {
   experimentExposures     RecommendationExperimentExposure[]
   promotionSlateFence     RecommendationPromotionSlateFence?
   personalizationDecision RecommendationPersonalizationDecision?
+  precomputedVisitLink    RecommendationPrecomputedVisitRequest?
+  /// Survives the link cascade until this bounded request itself expires.
+  privatePrecomputedVisitId String? @map("private_precomputed_visit_id") @db.Uuid
 
   @@index([expiresAt, id], map: "recommendation_request_expiry_idx")
   @@index([createdAt, id], map: "recommendation_request_created_idx")
@@ -3776,6 +3840,9 @@ model RecommendationCandidateRun {
   shortfallReason            String?               @map("shortfall_reason") @db.VarChar(64)
   evidenceComplete           Boolean               @map("evidence_complete")
   fallbackReason             String?               @map("fallback_reason") @db.VarChar(64)
+  traceFormatVersion         Int?                  @map("trace_format_version")
+  tracePayload               Json?                 @map("trace_payload") @db.JsonB
+  legacyDetailRetiredAt       DateTime?             @map("legacy_detail_retired_at")
   createdAt                  DateTime              @default(now()) @map("created_at")
   expiresAt                  DateTime              @map("expires_at")
 
@@ -3839,8 +3906,6 @@ model RecommendationCandidateStageEvidence {
   expiresAt          DateTime                   @map("expires_at")
 
   @@unique([runId, stage, ordinal], map: "recommendation_candidate_stage_ordinal_key")
-  @@index([runId, stage, ordinal], map: "recommendation_candidate_stage_run_stage_idx")
-  @@index([expiresAt, id], map: "recommendation_candidate_stage_expiry_idx")
   @@map("recommendation_candidate_stage_evidence")
 }
 
@@ -3848,6 +3913,8 @@ model RecommendationCandidateStageEvidence {
 /// candidate evaluation. It cannot alter serving control, assignment, or a
 /// request's canonical served items. Terminal rows are immutable in SQL.
 model RecommendationShadowEvaluation {
+  /// Immutable retained graph identity; no FK may prevent graph expiry.
+  cowatchGenerationId String? @map("cowatch_generation_id") @db.Char(64)
   id                     String                              @id @default(cuid())
   manifestId             String                              @map("manifest_id") @db.VarChar(191)
   manifest               RecommendationStrategyManifest      @relation(fields: [manifestId], references: [id], onDelete: Restrict)
@@ -3862,6 +3929,7 @@ model RecommendationShadowEvaluation {
   windowEnd              DateTime                            @map("window_end")
   requestedSampleSize    Int                                 @map("requested_sample_size")
   sampledCount           Int                                 @default(0) @map("sampled_count")
+  sampledAt              DateTime?                           @map("sampled_at") @db.Timestamptz(6)
   processedCount         Int                                 @default(0) @map("processed_count")
   failedCount            Int                                 @default(0) @map("failed_count")
   fencedCount            Int                                 @default(0) @map("fenced_count")
@@ -3941,8 +4009,10 @@ model RecommendationShadowRun {
   expiresAt                DateTime                       @map("expires_at")
 
   nominations RecommendationShadowNomination[]
+  compositionObservation RecommendationCompositionObservation?
 
   @@unique([evaluationId, requestId], map: "recommendation_shadow_run_evaluation_request_key")
+  @@index([requestId], map: "recommendation_shadow_run_request_idx")
   @@index([evaluationId, state, sampleOrdinal], map: "recommendation_shadow_run_evaluation_state_idx")
   @@index([projectionProfileId, privacyGeneration], map: "recommendation_shadow_run_profile_generation_idx")
   @@index([heartbeatAt], map: "recommendation_shadow_run_heartbeat_idx")
@@ -3998,6 +4068,7 @@ model RecommendationShadowDecision {
 /// Immutable experiment definition. U17 activates only a behaviorally
 /// equivalent semantic A/A challenger, so assignment cannot change item order.
 model RecommendationExperiment {
+  study RecommendationStudy?
   id                      String                         @id @db.VarChar(191)
   experimentVersion       String                         @map("experiment_version") @db.VarChar(64)
   surfaceVersion          String                         @map("surface_version") @db.VarChar(64)
@@ -4122,6 +4193,7 @@ model RecommendationExperimentEvaluationRun {
 /// Immutable multi-outcome evaluation. Late evidence appends a new revision
 /// and records an explicit supersedes edge rather than mutating prior truth.
 model RecommendationExperimentEvaluation {
+  studyAuthority RecommendationStudyEvaluation?
   id                      String                                  @id @default(cuid())
   experimentId            String                                  @map("experiment_id") @db.VarChar(191)
   experiment              RecommendationExperiment                @relation(fields: [experimentId], references: [id], onDelete: Cascade)
@@ -4203,6 +4275,9 @@ model RecommendationPromotionApproval {
 /// Compare-and-swap online promotion authority. The separate serving control
 /// remains the coarse recommendation-surface switch and semantic fallback.
 model RecommendationPromotionPointer {
+  activeOwnerReleaseId String? @map("active_owner_release_id") @db.Uuid
+  activeOwnerRelease RecommendationOwnerRelease? @relation(fields: [activeOwnerReleaseId], references: [id], onDelete: Restrict)
+  ownerInfluenceFloorGeneration Int @default(0) @map("owner_influence_floor_generation")
   id                      String                           @id @db.VarChar(64)
   activeManifestId        String                           @map("active_manifest_id") @db.VarChar(191)
   activeManifest          RecommendationStrategyManifest   @relation("RecommendationPromotionPointerActive", fields: [activeManifestId], references: [id], onDelete: Restrict)
@@ -4371,7 +4446,6 @@ model RecommendationRenderedFact {
   receivedAt    DateTime                 @default(now()) @map("received_at")
   expiresAt     DateTime                 @map("expires_at")
 
-  @@unique([capabilityJti, eventId], map: "recommendation_render_event_key")
   @@unique([requestId, itemId], map: "recommendation_render_item_request_key")
   @@index([requestId], map: "recommendation_render_request_idx")
   @@index([expiresAt])
@@ -4390,15 +4464,42 @@ model RecommendationImpression {
   eventId          String                   @map("event_id") @db.VarChar(191)
   payloadDigest    String                   @map("payload_digest") @db.Char(64)
   visibilityPolicy String                   @map("visibility_policy") @db.VarChar(64)
+  visibilityCapability String               @default("unknown") @map("visibility_capability") @db.VarChar(32)
   occurredAt       DateTime                 @map("occurred_at")
   receivedAt       DateTime                 @default(now()) @map("received_at")
   expiresAt        DateTime                 @map("expires_at")
 
-  @@unique([capabilityJti, eventId], map: "recommendation_impression_event_key")
   @@unique([requestId, itemId], map: "recommendation_impression_item_request_key")
   @@index([requestId], map: "recommendation_impression_request_idx")
   @@index([expiresAt])
   @@map("recommendation_impression")
+}
+
+/// Anonymous Watch card evidence. windowId is random per block mount and has no
+/// viewer, session, cookie, IP, or capability binding. Public target paths only.
+model WatchSurfaceExposure {
+  id                   String   @id @default(cuid())
+  eventId              String   @unique @map("event_id") @db.Uuid
+  windowId             String   @map("window_id") @db.Uuid
+  surface              String   @db.VarChar(40)
+  block                String   @db.VarChar(40)
+  presentation         String   @db.VarChar(40)
+  placement            String   @db.VarChar(64)
+  policyVersion        String   @map("policy_version") @db.VarChar(40)
+  position             Int
+  itemPath             String   @map("item_path") @db.VarChar(512)
+  kind                 String   @db.VarChar(16)
+  visibilityCapability String?  @map("visibility_capability") @db.VarChar(32)
+  duplicateCount       Int      @default(0) @map("duplicate_count")
+  occurredAt           DateTime @map("occurred_at")
+  receivedAt           DateTime @default(now()) @map("received_at")
+  expiresAt            DateTime @map("expires_at")
+
+  @@index([windowId, surface, block, presentation, placement, position], map: "watch_surface_exposure_window_item_narrow_idx")
+  @@index([surface, block, presentation, position, occurredAt], map: "watch_surface_exposure_aggregate_idx")
+  @@index([occurredAt, windowId], map: "watch_surface_exposure_window_cohort_idx")
+  @@index([expiresAt], map: "watch_surface_exposure_expiry_idx")
+  @@map("watch_surface_exposure")
 }
 
 /// Selection and one-use handoff authority commit together. The browser keeps
@@ -4477,6 +4578,7 @@ model RecommendationPlaybackEpisode {
   transportReplayReceipts RecommendationPlaybackTransportReplayReceipt[] @relation("RecommendationPlaybackTransportReplayEpisode")
   traceAccessAudits       RecommendationTraceAccessAudit[]               @relation("RecommendationTraceAccessEpisode")
   viewingModeEvidence     RecommendationViewingModeEvidence?
+  cowatchSuppression      RecommendationCowatchSuppression?
 
   @@unique([requestId, itemId, id], map: "recommendation_episode_request_item_id_key")
   @@unique([requestId, itemId, selectionId], map: "recommendation_episode_selection_lineage_key")
@@ -4600,6 +4702,9 @@ model RecommendationOutcomeRevision {
 
   eligibilityDecisions           RecommendationEligibilityDecision[]           @relation("RecommendationEligibilityOutcome")
   profileProjectionContributions RecommendationProfileProjectionContribution[]
+  cowatchSourceRows RecommendationCowatchSourceContribution[]
+  cowatchSourceContributions RecommendationCowatchContribution[] @relation("CowatchSourceOutcome")
+  cowatchTargetContributions RecommendationCowatchContribution[] @relation("CowatchTargetOutcome")
 
   @@unique([episodeId, classifierVersion, revision], map: "recommendation_outcome_episode_classifier_revision_key")
   @@unique([episodeId, classifierVersion, factWatermark, inputDigest], map: "recommendation_outcome_input_key")
@@ -4640,6 +4745,50 @@ model PlaybackProxyEvaluation {
   @@map("playback_proxy_evaluation")
 }
 
+/// Aggregate, identity-free readiness ledger for the two diagnostic playback
+/// families. A decision can authorize shadow study only, never live ranking.
+model RecommendationPlaybackSignalReadiness {
+  id                    String   @id @default(cuid())
+  family                String   @db.VarChar(16)
+  policyVersion         String   @map("policy_version") @db.VarChar(64)
+  revision              Int
+  windowStart           DateTime @map("window_start")
+  windowEnd             DateTime @map("window_end")
+  episodeCount          Int      @map("episode_count")
+  v2SummaryCount        Int      @map("v2_summary_count")
+  observedCount         Int      @map("observed_count")
+  partialCount          Int      @map("partial_count")
+  missingCount          Int      @map("missing_count")
+  ingestionHealth       String   @map("ingestion_health") @db.VarChar(16)
+  decision              String   @db.VarChar(48)
+  reasonCodes           String[] @default([]) @map("reason_codes")
+  reevaluationCondition String   @map("reevaluation_condition") @db.VarChar(191)
+  rankingInfluence      Boolean  @default(false) @map("ranking_influence")
+  inputDigest           String   @map("input_digest") @db.Char(64)
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  @@unique([family, revision], map: "recommendation_playback_signal_readiness_revision_key")
+  @@unique([family, windowStart, windowEnd, inputDigest], map: "recommendation_playback_signal_readiness_input_key")
+  @@index([family, createdAt], map: "recommendation_playback_signal_readiness_created_idx")
+  @@map("recommendation_playback_signal_readiness")
+}
+
+/// At most one identity-free Admin funnel snapshot per preset. Each successful
+/// daily refresh atomically replaces its predecessor; failed refreshes retain
+/// the last successful snapshot, whose exact window and age remain visible.
+model RecommendationPlaybackObservationSnapshot {
+  preset          String    @id @db.VarChar(3)
+  schemaVersion   String    @map("schema_version") @db.VarChar(64)
+  windowStart     DateTime? @map("window_start")
+  windowEnd       DateTime? @map("window_end")
+  computedAt      DateTime? @map("computed_at")
+  payload         Json?
+  lastAttemptedAt DateTime  @map("last_attempted_at")
+  lastErrorCode   String?   @map("last_error_code") @db.VarChar(32)
+
+  @@map("recommendation_playback_observation_snapshot")
+}
+
 /// Append-only integrity verdict. Raw facts without a current decision are
 /// explicitly pre-policy/pending and never become eligible through a read.
 /// `isCurrent` is protected by a migration-owned partial unique index; the
@@ -4671,6 +4820,7 @@ model RecommendationEligibilityDecision {
   expiresAt             DateTime                              @map("expires_at")
 
   profileProjectionContributions RecommendationProfileProjectionContribution[]
+  cowatchSourceRows RecommendationCowatchSourceContribution[]
 
   @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
   // Current-source lookup indexes are migration-owned partial indexes.
@@ -4797,6 +4947,8 @@ model RecommendationProfile {
   projectionPointers    RecommendationProfileProjectionPointer[]
   projectionRuns        RecommendationProfileProjectionRun[]
   viewingModeEvidence   RecommendationViewingModeEvidence[]
+  cowatchSourceRows RecommendationCowatchSourceContribution[]
+  cowatchContributions RecommendationCowatchContribution[]
 
   @@index([state, updatedAt], map: "recommendation_profile_state_updated_idx")
   @@index([erasureState, erasureRequestedAt], map: "recommendation_profile_erasure_idx")
@@ -4952,7 +5104,9 @@ model RecommendationProfileInterest {
   interestOrdinal    Int                                       @map("interest_ordinal")
   medoidMediaId      String                                    @map("medoid_media_id") @db.VarChar(191)
   medoidSourceDigest String                                    @map("medoid_source_digest") @db.Char(64)
-  embedding          Unsupported("vector(1536)")
+  embedding          Unsupported("vector(1536)")?
+  vectorDigest       String?                                   @map("vector_digest") @db.Char(64)
+  vectorSnapshot     RecommendationProfileVectorSnapshot?      @relation(fields: [vectorDigest], references: [digest], onDelete: Restrict)
   weight             Float
   supportCount       Int                                       @map("support_count")
   stability          Float
@@ -4962,7 +5116,19 @@ model RecommendationProfileInterest {
   @@unique([generationId, kind, interestOrdinal], map: "recommendation_profile_interest_generation_kind_ordinal_key")
   @@index([generationId, kind], map: "recommendation_profile_interest_generation_kind_idx")
   @@index([expiresAt], map: "recommendation_profile_interest_expiry_idx")
+  // The partial non-null vector_digest index is managed in migration 0116.
   @@map("recommendation_profile_interest")
+}
+
+/// Immutable content-only vector value reused by exact matching profile medoids.
+/// Profile identity, membership, weights and source lineage stay on interests.
+model RecommendationProfileVectorSnapshot {
+  digest    String                          @id @db.Char(64)
+  embedding Unsupported("vector(1536)")
+  createdAt DateTime                        @default(now()) @map("created_at")
+  interests RecommendationProfileInterest[]
+
+  @@map("recommendation_profile_vector_snapshot")
 }
 
 /// Exact ticket-local contribution lineage for replay, revision, integrity
@@ -5275,19 +5441,22 @@ model RecommendationCuratedPointer {
 
 // Shorts authoring is independent of Manager render jobs and catalog lifecycle.
 model Short {
-  sourceVideoDubId      String?           @map("source_video_dub_id")
-  sourceVideoDub        VideoDub?         @relation(fields: [sourceVideoDubId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  deletedAt             DateTime?                 @map("deleted_at")
+  narrationAllowance    ShortNarrationAllowance?
+  narrationAdmissions   ShortNarrationAdmission[]
+  sourceVideoDubId      String?                   @map("source_video_dub_id")
+  sourceVideoDub        VideoDub?                 @relation(fields: [sourceVideoDubId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   publication           ShortPublication?
   calendarSlots         ShortPlanSlot[]
-  id                    String            @id @db.VarChar(128)
-  currentRevision       Int               @map("current_revision")
-  ownerId               String            @map("owner_id") @db.VarChar(128)
-  lifecycle             String            @default("DRAFT") @db.VarChar(16)
-  firstPublishedAt      DateTime?         @map("first_published_at")
-  unpublishedAt         DateTime?         @map("unpublished_at")
-  createdAt             DateTime          @default(now()) @map("created_at")
-  currentRevisionRecord ShortRevision     @relation("CurrentShortRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "short_current_revision_fk")
-  revisions             ShortRevision[]   @relation("ShortHistory")
+  id                    String                    @id @db.VarChar(128)
+  currentRevision       Int                       @map("current_revision")
+  ownerId               String                    @map("owner_id") @db.VarChar(128)
+  lifecycle             String                    @default("DRAFT") @db.VarChar(16)
+  firstPublishedAt      DateTime?                 @map("first_published_at")
+  unpublishedAt         DateTime?                 @map("unpublished_at")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  currentRevisionRecord ShortRevision             @relation("CurrentShortRevision", fields: [id, currentRevision], references: [projectId, number], onDelete: NoAction, onUpdate: NoAction, map: "short_current_revision_fk")
+  revisions             ShortRevision[]           @relation("ShortHistory")
   commands              ShortCommand[]
 
   @@index([sourceVideoDubId])
@@ -5326,6 +5495,7 @@ model ShortCommand {
 }
 
 model ShortAttempt {
+  inspections            ShortRenderInspection[]
   muxJob                 ShortMuxJob?
   renderJob              ShortRenderJob?
   productionRun          ShortProductionRun?
@@ -5372,6 +5542,7 @@ model ShortApproval {
 
 /// Shorts families group versions; each version pins a separate registry blob.
 model ShortAssetVersion {
+  inspections      ShortRenderInspection[]
   renderRetentions ShortRenderRetainedAsset[]
   usages           ShortAssetUsage[]
   id               String                     @id @default(cuid())
@@ -5447,8 +5618,8 @@ model ShortSourceSnapshot {
   dub         VideoDub         @relation(fields: [dubId], references: [id], onDelete: Restrict)
   editionId   String           @map("edition_id")
   edition     VideoEdition     @relation(fields: [editionId], references: [id], onDelete: Restrict)
-  trackId     String           @map("track_id")
-  track       VideoSubtitle    @relation(fields: [trackId], references: [id], onDelete: Restrict)
+  trackId     String?          @map("track_id")
+  track       VideoSubtitle?   @relation(fields: [trackId], references: [id], onDelete: Restrict)
   downloadId  String           @map("download_id")
   download    VideoDubDownload @relation(fields: [downloadId], references: [id], onDelete: Restrict)
   snapshot    Json
@@ -5551,16 +5722,17 @@ model ShortPack {
 }
 
 model ShortProductionRun {
-  id            String                @id @default(cuid())
-  attemptId     String?               @unique @map("attempt_id") @db.VarChar(128)
-  attempt       ShortAttempt?         @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  experimentId  String?               @unique @map("experiment_id")
-  experiment    ShortExperiment?      @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  actor         Json
-  maxCostMicros BigInt                @map("max_cost_micros")
-  state         String                @default("READY")
-  createdAt     DateTime              @default(now()) @map("created_at")
-  calls         ShortProductionCall[]
+  narrationAdmission ShortNarrationAdmission?
+  id                 String                   @id @default(cuid())
+  attemptId          String?                  @unique @map("attempt_id") @db.VarChar(128)
+  attempt            ShortAttempt?            @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  experimentId       String?                  @unique @map("experiment_id")
+  experiment         ShortExperiment?         @relation(fields: [experimentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor              Json
+  maxCostMicros      BigInt                   @map("max_cost_micros")
+  state              String                   @default("READY")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  calls              ShortProductionCall[]
 
   @@map("short_production_run")
 }
@@ -5626,7 +5798,20 @@ model ShortRenderExecution {
   @@map("short_render_execution")
 }
 
+model ShortRenderPreparation {
+  attemptId String           @map("attempt_id") @db.VarChar(128)
+  leaseId   String           @map("lease_id")
+  inputHash String           @map("input_hash") @db.VarChar(64)
+  document  Json
+  createdAt DateTime         @default(now()) @map("created_at")
+  lease     ShortRenderLease @relation(fields: [attemptId, leaseId], references: [attemptId, leaseId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptId, leaseId])
+  @@map("short_render_preparation")
+}
+
 model ShortRenderLease {
+  preparation    ShortRenderPreparation?
   retainedAssets ShortRenderRetainedAsset[]
   attemptId      String                     @map("attempt_id") @db.VarChar(128)
   leaseId        String                     @map("lease_id")
@@ -5820,4 +6005,1467 @@ model ShortScheduleDispatch {
   lastError       String?                    @map("last_error") @db.VarChar(80)
 
   @@map("short_schedule_dispatch")
+}
+
+/// Durable authoring-cycle allowance. Only interactive commands may add passes.
+model ShortNarrationAllowance {
+  projectId   String @id @map("project_id") @db.VarChar(128)
+  project     Short  @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  extraPasses Int    @default(0) @map("extra_passes")
+
+  @@map("short_narration_allowance")
+}
+
+/// Immutable accepted plan and charged-pass evidence, including reuse-only runs.
+model ShortNarrationAdmission {
+  runId        String             @id @map("run_id")
+  run          ShortProductionRun @relation(fields: [runId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  projectId    String             @map("project_id") @db.VarChar(128)
+  project      Short              @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  consumesPass Boolean            @map("consumes_pass")
+  plan         Json
+  createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([projectId], map: "short_narration_admission_project")
+  @@map("short_narration_admission")
+}
+
+model ShortRenderInspection {
+  attemptId       String            @map("attempt_id") @db.VarChar(128)
+  version         String            @db.VarChar(128)
+  outputVersionId String            @map("output_version_id")
+  evidence        Json
+  createdAt       DateTime          @default(now()) @map("created_at")
+  attempt         ShortAttempt      @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  output          ShortAssetVersion @relation(fields: [outputVersionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([attemptId, version])
+  @@map("short_render_inspection")
+}
+
+// Localized push campaigns (feat-524). Push owns its own tables; the
+// recommendation tables are untouched. Partial unique indexes and CHECK
+// constraints live in migration 0120 because Prisma cannot model them.
+
+enum PushPlatform {
+  IOS     @map("ios")
+  ANDROID @map("android")
+}
+
+enum PushRegistrationStatus {
+  ACTIVE     @map("active")
+  INACTIVE   @map("inactive")
+  INVALID    @map("invalid")
+  SUPERSEDED @map("superseded")
+}
+
+enum PushCountrySource {
+  EDGE         @map("edge")
+  PHONE_REGION @map("phone_region")
+  UNKNOWN      @map("unknown")
+}
+
+enum PushCampaignStatus {
+  DRAFT     @map("draft")
+  TESTED    @map("tested")
+  SCHEDULED @map("scheduled")
+  SENDING   @map("sending")
+  SENT      @map("sent")
+  PAUSED    @map("paused")
+  CANCELLED @map("cancelled")
+}
+
+enum PushCampaignMode {
+  WAVE      @map("wave")
+  IMMEDIATE @map("immediate")
+}
+
+enum PushAudienceScope {
+  EVERYWHERE @map("everywhere")
+  COUNTRIES  @map("countries")
+}
+
+enum PushDestinationKind {
+  VIDEO      @map("video")
+  SERIES     @map("series")
+  EXPERIENCE @map("experience")
+}
+
+enum PushZoneStatus {
+  PENDING     @map("pending")
+  DISPATCHING @map("dispatching")
+  DISPATCHED  @map("dispatched")
+  MISSED      @map("missed")
+  CANCELLED   @map("cancelled")
+}
+
+enum PushDeliveryKind {
+  LIVE @map("live")
+  TEST @map("test")
+}
+
+/// Claim statuses, under which the phone may have been reached: reserved,
+/// sending, accepted, handed_off, unknown. Report-only outcomes, under which
+/// it never was: failed, invalid, suppressed, unreachable, missed. Only the
+/// claim statuses sit under the daily-claim index.
+enum PushDeliveryStatus {
+  RESERVED    @map("reserved")
+  SENDING     @map("sending")
+  ACCEPTED    @map("accepted")
+  HANDED_OFF  @map("handed_off")
+  UNKNOWN     @map("unknown")
+  FAILED      @map("failed")
+  INVALID     @map("invalid")
+  SUPPRESSED  @map("suppressed")
+  UNREACHABLE @map("unreachable")
+  MISSED      @map("missed")
+}
+
+/// One phone's push address. `viewerDigest` is the recommendation viewer token
+/// digest; an identity erasure or expiry nulls it and the registration stays.
+/// Migration 0120 adds the active and retired partial indexes the audience and
+/// the purge read.
+model PushRegistration {
+  id                String                 @id @default(cuid())
+  expoPushToken     String                 @unique @map("expo_push_token") @db.VarChar(191)
+  /// Revealed on the app's mission screen so an admin user can list a test phone.
+  /// It is a separate identifier and never the push token.
+  testDeviceId      String                 @unique @map("test_device_id") @db.VarChar(64)
+  viewerDigest      String?                @map("viewer_digest") @db.Char(64)
+  /// An identifier the app mints once per install and keeps in its own store.
+  /// A token rotation on the same install carries the same id; a reinstall
+  /// does not. Migration 0120 adds the partial index the supersede pass reads.
+  installId         String?                @map("install_id") @db.VarChar(64)
+  platform          PushPlatform
+  appBuild          String                 @map("app_build") @db.VarChar(64)
+  appLanguageSlug   String                 @map("app_language_slug") @db.VarChar(191)
+  phoneLocale       String                 @map("phone_locale") @db.VarChar(35)
+  phoneLanguageSlug String?                @map("phone_language_slug") @db.VarChar(191)
+  timeZone          String                 @map("time_zone") @db.VarChar(64)
+  country           String?                @db.VarChar(8)
+  countrySource     PushCountrySource      @map("country_source")
+  status            PushRegistrationStatus @default(ACTIVE)
+  statusChangedAt   DateTime               @default(now()) @map("status_changed_at") @db.Timestamptz()
+  refreshedAt       DateTime               @default(now()) @map("refreshed_at") @db.Timestamptz()
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt         DateTime               @updatedAt @map("updated_at") @db.Timestamptz()
+
+  testDevice   PushTestDevice?
+  deliveries   PushDelivery[]
+  opens        PushOpen[]
+  attributions PushAttribution[]
+
+  @@index([viewerDigest])
+  @@index([createdAt])
+  @@map("push_registration")
+}
+
+/// A phone an admin user listed as a test device. A test send never claims the
+/// phone's day, so the same phone still receives the live campaign.
+model PushTestDevice {
+  id             String           @id @default(cuid())
+  label          String           @db.VarChar(120)
+  registrationId String           @unique @map("registration_id")
+  registration   PushRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  createdById    String?          @map("created_by_id")
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@map("push_test_device")
+}
+
+/// One announcement. Copy, destination, and audience freeze when sending
+/// starts; only cancel is allowed after that.
+model PushCampaign {
+  id                     String               @id @default(cuid())
+  status                 PushCampaignStatus   @default(DRAFT)
+  destinationKind        PushDestinationKind? @map("destination_kind")
+  destinationSlug        String?              @map("destination_slug") @db.VarChar(191)
+  audienceScope          PushAudienceScope    @default(EVERYWHERE) @map("audience_scope")
+  countries              String[]
+  languageFilter         String[]             @map("language_filter")
+  sendDate               DateTime?            @map("send_date") @db.Date
+  localHour              Int?                 @map("local_hour")
+  mode                   PushCampaignMode     @default(WAVE)
+  testSentAt             DateTime?            @map("test_sent_at") @db.Timestamptz()
+  sendingStartedAt       DateTime?            @map("sending_started_at") @db.Timestamptz()
+  completedAt            DateTime?            @map("completed_at") @db.Timestamptz()
+  workflowRunLogId       String?              @map("workflow_run_log_id")
+  lastActorId            String?              @map("last_actor_id")
+  lastError              String?              @map("last_error") @db.VarChar(256)
+  /// Increases only when the stored copy, destination, or audience changes.
+  contentVersion         Int                  @default(0) @map("content_version")
+  /// The content version that the last test send carried.
+  lastTestContentVersion Int?                 @map("last_test_content_version")
+  /// The AI marker: the person and time of the most recent MCP write.
+  aiLastActorId          String?              @map("ai_last_actor_id")
+  aiLastWrittenAt        DateTime?            @map("ai_last_written_at") @db.Timestamptz()
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt              DateTime             @updatedAt @map("updated_at") @db.Timestamptz()
+
+  copies       PushCampaignCopy[]
+  zones        PushCampaignZone[]
+  deliveries   PushDelivery[]
+  opens        PushOpen[]
+  attributions PushAttribution[]
+
+  @@index([status, createdAt])
+  @@map("push_campaign")
+}
+
+/// One language's title and body. English is required; the send path falls
+/// back to it when neither phone language has a row.
+model PushCampaignCopy {
+  id           String       @id @default(cuid())
+  campaignId   String       @map("campaign_id")
+  campaign     PushCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  languageSlug String       @map("language_slug") @db.VarChar(191)
+  title        String       @db.VarChar(50)
+  body         String       @db.VarChar(120)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@unique([campaignId, languageSlug])
+  @@map("push_campaign_copy")
+}
+
+/// One time zone's group in the wave. `scheduledAt` is the absolute instant on
+/// which the campaign's local hour falls for this zone.
+model PushCampaignZone {
+  id            String         @id @default(cuid())
+  campaignId    String         @map("campaign_id")
+  campaign      PushCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  timeZone      String         @map("time_zone") @db.VarChar(64)
+  scheduledAt   DateTime       @map("scheduled_at") @db.Timestamptz()
+  status        PushZoneStatus @default(PENDING)
+  audienceCount Int            @default(0) @map("audience_count")
+  dispatchedAt  DateTime?      @map("dispatched_at") @db.Timestamptz()
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@unique([campaignId, timeZone])
+  @@index([campaignId, scheduledAt])
+  @@map("push_campaign_zone")
+}
+
+/// One campaign's row for one phone. `error` holds the provider's error code
+/// and an admin classification only, because the provider's message embeds the
+/// push token. Migration 0120 adds the daily-claim and live-uniqueness partial
+/// indexes.
+model PushDelivery {
+  id             String             @id @default(cuid())
+  nonce          String             @unique @db.VarChar(64)
+  kind           PushDeliveryKind   @default(LIVE)
+  campaignId     String             @map("campaign_id")
+  campaign       PushCampaign       @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  registrationId String?            @map("registration_id")
+  registration   PushRegistration?  @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  localDay       DateTime           @map("local_day") @db.Date
+  languageSlug   String             @map("language_slug") @db.VarChar(191)
+  country        String?            @db.VarChar(8)
+  timeZone       String             @map("time_zone") @db.VarChar(64)
+  status         PushDeliveryStatus @default(RESERVED)
+  ticketId       String?            @map("ticket_id") @db.VarChar(191)
+  sendingAt      DateTime?          @map("sending_at") @db.Timestamptz()
+  error          String?            @db.VarChar(64)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz()
+
+  open PushOpen?
+
+  @@index([campaignId, status, id])
+  @@index([createdAt, id])
+  @@index([registrationId])
+  @@map("push_delivery")
+}
+
+/// One tap, resolved from the delivery nonce. Unique on the delivery, so a
+/// replayed open report cannot double-count.
+model PushOpen {
+  id             String            @id @default(cuid())
+  deliveryId     String            @unique @map("delivery_id")
+  delivery       PushDelivery      @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  campaignId     String            @map("campaign_id")
+  campaign       PushCampaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  registrationId String?           @map("registration_id")
+  registration   PushRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  viewerDigest   String?           @map("viewer_digest") @db.Char(64)
+  sessionDigest  String?           @map("session_digest") @db.Char(64)
+  languageSlug   String?           @map("language_slug") @db.VarChar(191)
+  country        String?           @db.VarChar(8)
+  viewerMismatch Boolean           @default(false) @map("viewer_mismatch")
+  receivedAt     DateTime          @map("received_at") @db.Timestamptz()
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz()
+
+  attributions PushAttribution[]
+
+  @@index([viewerDigest, receivedAt])
+  @@index([sessionDigest, receivedAt])
+  @@index([createdAt, id])
+  @@index([campaignId])
+  @@index([registrationId])
+  @@map("push_open")
+}
+
+/// One attributed watch start. `episodeId` carries no foreign key on purpose,
+/// so the recommendation purge of a playback episode leaves the report intact.
+/// The report counts the row through its open, so `openId` is required and a
+/// deleted open takes its attributions with it.
+model PushAttribution {
+  id             String            @id @default(cuid())
+  episodeId      String            @unique @map("episode_id") @db.VarChar(191)
+  openId         String            @map("open_id")
+  open           PushOpen          @relation(fields: [openId], references: [id], onDelete: Cascade)
+  campaignId     String            @map("campaign_id")
+  campaign       PushCampaign      @relation(fields: [campaignId], references: [id], onDelete: Restrict)
+  registrationId String?           @map("registration_id")
+  registration   PushRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  viewerDigest   String?           @map("viewer_digest") @db.Char(64)
+  languageSlug   String?           @map("language_slug") @db.VarChar(191)
+  country        String?           @db.VarChar(8)
+  mediaId        String            @map("media_id") @db.VarChar(191)
+  attributedAt   DateTime          @map("attributed_at") @db.Timestamptz()
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([campaignId])
+  @@index([createdAt, id])
+  @@index([openId])
+  @@index([registrationId])
+  @@index([viewerDigest])
+  @@map("push_attribution")
+}
+
+/// Shadow-only population graph publication. Its edges never authorize live
+/// delivery. A changed source contribution count fences inspection/use.
+model RecommendationCowatchGeneration {
+  lineageVersion String @default("discovery-link-v1") @map("lineage_version") @db.VarChar(64)
+  invalidatedAt DateTime? @map("invalidated_at")
+  invalidationReason String? @map("invalidation_reason") @db.VarChar(96)
+  id                    String                             @id @db.Char(64)
+  projectionVersion     String                             @map("projection_version") @db.VarChar(64)
+  featureVersion        String                             @map("feature_version") @db.VarChar(64)
+  sourceCount           Int                                @map("source_count")
+  contributionCount     Int                                @map("contribution_count")
+  edgeCount             Int                                @map("edge_count")
+  distinctViewerCount   Int                                @map("distinct_viewer_count")
+  windowEnd             DateTime                           @map("window_end")
+  sourceWindowVersion   String                             @default("legacy-outcome-write-window-v1") @map("source_window_version") @db.VarChar(64)
+  windowStart           DateTime?                          @map("window_start")
+  evaluationAsOf        DateTime?                          @map("evaluation_as_of")
+  rawSourceCount        Int?                               @map("raw_source_count")
+  attemptedPairCount    Int?                               @map("attempted_pair_count")
+  terminalDecision      String                             @map("terminal_decision") @db.VarChar(48)
+  decisionReason        String                             @map("decision_reason") @db.VarChar(96)
+  publishedAt           DateTime                           @default(now()) @map("published_at")
+  expiresAt             DateTime                           @map("expires_at")
+  sources               RecommendationCowatchSourceContribution[]
+  contributions         RecommendationCowatchContribution[]
+  edges                 RecommendationCowatchEdge[]
+
+  purpose          String @default("shadow_population_graph") @db.VarChar(64)
+  identityClass    String @default("aggregate_identity_free") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_admin_aggregates") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("manual_bounded_snapshot") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("expire_generation_cascade") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@index([publishedAt(sort: Desc)], map: "recommendation_cowatch_generation_published_idx")
+  @@index([expiresAt], map: "recommendation_cowatch_generation_expiry_idx")
+  @@map("recommendation_cowatch_generation")
+}
+
+/// One current integrity-eligible finalized outcome revision per generation.
+/// Singleton rows are retained because they change popularity denominators.
+model RecommendationCowatchSourceContribution {
+  viewerPrivacyGeneration Int? @map("viewer_privacy_generation")
+  id                 String                          @id @default(cuid())
+  generationId       String                          @map("generation_id") @db.Char(64)
+  generation         RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  outcomeId          String                          @map("outcome_id")
+  outcome            RecommendationOutcomeRevision   @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  eligibilityDecisionId String                       @map("eligibility_decision_id")
+  eligibilityDecision   RecommendationEligibilityDecision @relation(fields: [eligibilityDecisionId], references: [id], onDelete: Cascade)
+  eligibilityRevision Int                            @map("eligibility_revision")
+  eligibilityPolicyVersion String                     @map("eligibility_policy_version") @db.VarChar(64)
+  viewerProfileId    String?                         @map("viewer_profile_id")
+  viewerProfile      RecommendationProfile?          @relation(fields: [viewerProfileId], references: [id], onDelete: Cascade)
+  mediaId            String                          @map("media_id") @db.VarChar(191)
+  sessionDigest      String                          @map("session_digest") @db.Char(64)
+  viewerKeyDigest    String                          @map("viewer_key_digest") @db.Char(64)
+  qualityWeight      Float                           @map("quality_weight")
+  occurredAt         DateTime                        @map("occurred_at")
+  expiresAt          DateTime                        @map("expires_at")
+
+  purpose          String @default("exact_outcome_lineage") @db.VarChar(64)
+  identityClass    String @default("private_pseudonymous") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_projection_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("current_eligible_outcome") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_outcome_or_profile") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@unique([generationId, outcomeId], map: "recommendation_cowatch_source_generation_outcome_key")
+  @@index([viewerProfileId], map: "recommendation_cowatch_source_profile_idx")
+  @@index([sessionDigest], map: "recommendation_cowatch_source_session_idx")
+  @@index([outcomeId], map: "recommendation_cowatch_source_outcome_idx")
+  @@index([eligibilityDecisionId], map: "recommendation_cowatch_source_eligibility_idx")
+  @@index([generationId, mediaId], map: "recommendation_cowatch_source_media_idx")
+  @@index([expiresAt], map: "recommendation_cowatch_source_expiry_idx")
+  @@map("recommendation_cowatch_source_contribution")
+}
+
+/// Exact eligible episode-pair lineage. Outcome and profile deletion cascades
+/// remove influence; current generations are then fenced until rebuilt.
+model RecommendationCowatchContribution {
+  id                    String                          @id @default(cuid())
+  generationId          String                          @map("generation_id") @db.Char(64)
+  generation            RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceOutcomeId       String                          @map("source_outcome_id")
+  sourceOutcome         RecommendationOutcomeRevision   @relation("CowatchSourceOutcome", fields: [sourceOutcomeId], references: [id], onDelete: Cascade)
+  targetOutcomeId       String                          @map("target_outcome_id")
+  targetOutcome         RecommendationOutcomeRevision   @relation("CowatchTargetOutcome", fields: [targetOutcomeId], references: [id], onDelete: Cascade)
+  viewerProfileId       String?                         @map("viewer_profile_id")
+  viewerProfile         RecommendationProfile?          @relation(fields: [viewerProfileId], references: [id], onDelete: Cascade)
+  sourceMediaId         String                          @map("source_media_id") @db.VarChar(191)
+  targetMediaId         String                          @map("target_media_id") @db.VarChar(191)
+  sessionDigest         String                          @map("session_digest") @db.Char(64)
+  viewerKeyDigest       String                          @map("viewer_key_digest") @db.Char(64)
+  gapMs                 Int                             @map("gap_ms")
+  qualityWeight         Float                           @map("quality_weight")
+  recencyWeight         Float                           @map("recency_weight")
+  effectiveWeight       Float                           @map("effective_weight")
+  expiresAt             DateTime                        @map("expires_at")
+
+  purpose          String @default("directional_pair_lineage") @db.VarChar(64)
+  identityClass    String @default("private_pseudonymous") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_projection_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("bounded_pair_projection") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_outcome_or_profile") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@unique([generationId, sourceOutcomeId, targetOutcomeId], map: "recommendation_cowatch_contribution_pair_key")
+  @@index([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_contribution_edge_idx")
+  @@index([viewerProfileId], map: "recommendation_cowatch_contribution_profile_idx")
+  @@index([expiresAt], map: "recommendation_cowatch_contribution_expiry_idx")
+  @@map("recommendation_cowatch_contribution")
+}
+
+/// Immutable directional feature values for a single graph generation.
+model RecommendationCowatchEdge {
+  id                       String                          @id @default(cuid())
+  generationId             String                          @map("generation_id") @db.Char(64)
+  generation               RecommendationCowatchGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceMediaId            String                          @map("source_media_id") @db.VarChar(191)
+  targetMediaId            String                          @map("target_media_id") @db.VarChar(191)
+  sessionSupport           Int                             @map("session_support")
+  distinctViewerSupport    Int                             @map("distinct_viewer_support")
+  confidence               Float
+  popularityCorrectedLift  Float                           @map("popularity_corrected_lift")
+  recencyWeight            Float                           @map("recency_weight")
+  qualityWeight            Float                           @map("quality_weight")
+  effectiveWeight          Float                           @map("effective_weight")
+  contamination            Float
+  eligible                 Boolean
+
+  purpose          String @default("directional_feature_contract") @db.VarChar(64)
+  identityClass    String @default("aggregate_identity_free") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_admin_aggregates") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("immutable_generation_publish") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_generation") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@unique([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_edge_direction_key")
+  @@index([generationId, eligible, sourceMediaId], map: "recommendation_cowatch_edge_anchor_idx")
+  @@index([generationId, sourceMediaId, eligible, confidence(sort: Desc), popularityCorrectedLift(sort: Desc), targetMediaId], map: "recommendation_cowatch_edge_live_idx")
+  @@map("recommendation_cowatch_edge")
+}
+
+/// Outcome-scoped erasure marker, deliberately detached from the erased profile.
+/// It expires with the raw outcome and prevents a rebuild from reimporting it.
+model RecommendationCowatchSuppression {
+  episodeId String                        @id @map("episode_id")
+  episode   RecommendationPlaybackEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  expiresAt       DateTime                      @map("expires_at")
+
+  purpose          String @default("privacy_erasure_fence") @db.VarChar(64)
+  identityClass    String @default("private_episode_scoped") @map("identity_class") @db.VarChar(64)
+  accessClass      String @default("recommendation_privacy_service") @map("access_class") @db.VarChar(64)
+  ingestionHealth  String @default("profile_erasure_transaction") @map("ingestion_health") @db.VarChar(64)
+  deletionBehavior String @default("cascade_episode_expiry") @map("deletion_behavior") @db.VarChar(64)
+  fallbackBehavior String @default("observed_live_baseline") @map("fallback_behavior") @db.VarChar(64)
+  retentionDays    Int    @default(29) @map("retention_days")
+
+  @@index([expiresAt], map: "recommendation_cowatch_suppression_expiry_idx")
+  @@map("recommendation_cowatch_suppression")
+}
+
+/// Frozen before shadow execution. Aggregate operator contract; no viewer identity.
+/// Revision/revocation are the sole mutable authority fields and never restore approval.
+model RecommendationCompositionProtocol {
+  id                   String                                 @id @db.Uuid
+  shadowEvaluationId   String                                 @unique @map("shadow_evaluation_id")
+  sourceManifestId     String                                 @map("source_manifest_id") @db.VarChar(191)
+  generatorVersion     String                                 @map("generator_version") @db.VarChar(64)
+  challengerManifestId String                                 @map("challenger_manifest_id") @db.VarChar(191)
+  composerVersion      String                                 @map("composer_version") @db.VarChar(64)
+  protocolVersion      String                                 @map("protocol_version") @db.VarChar(64)
+  config               Json
+  configDigest         String                                 @map("config_digest") @db.Char(64)
+  actorId              String                                 @map("actor_id") @db.VarChar(191)
+  authorityRevision    Int                                    @default(1) @map("authority_revision")
+  revokedAt            DateTime?                              @map("revoked_at")
+  createdAt            DateTime                               @default(now()) @map("created_at")
+  expiresAt            DateTime                               @map("expires_at")
+  observations         RecommendationCompositionObservation[]
+  decision             RecommendationCompositionDecision?
+  calibration          RecommendationCompositionCalibration?
+
+  @@index([expiresAt])
+  @@map("recommendation_composition_protocol")
+}
+
+/// Request-rooted bounded scalar evidence. Cascade/expiry or privacy changes revoke authority.
+model RecommendationCompositionObservation {
+  runId        String                            @id @map("run_id")
+  run          RecommendationShadowRun           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  protocolId   String                            @map("protocol_id") @db.Uuid
+  protocol     RecommendationCompositionProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  inputDigest  String                            @map("input_digest") @db.Char(64)
+  outputDigest String                            @map("output_digest") @db.Char(64)
+  metrics      Json
+  createdAt    DateTime                          @default(now()) @map("created_at")
+  expiresAt    DateTime                          @map("expires_at")
+
+  @@index([protocolId])
+  @@index([expiresAt])
+  @@map("recommendation_composition_observation")
+}
+
+/// Immutable structural/operational conclusion; never usefulness or serving authority alone.
+model RecommendationCompositionDecision {
+  protocolId        String                            @id @map("protocol_id") @db.Uuid
+  protocol          RecommendationCompositionProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  decision          String                            @db.VarChar(64)
+  reasonCode        String                            @map("reason_code") @db.VarChar(64)
+  evidenceVersion   String                            @map("evidence_version") @db.VarChar(64)
+  evidenceDigest    String                            @map("evidence_digest") @db.Char(64)
+  inputDigest       String                            @map("input_digest") @db.Char(64)
+  observationCount  Int                               @map("observation_count")
+  summary           Json
+  authorityRevision Int                               @map("authority_revision")
+  validUntil        DateTime                          @map("valid_until")
+  decidedAt         DateTime                          @default(now()) @map("decided_at")
+  expiresAt         DateTime                          @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("recommendation_composition_decision")
+}
+
+/// Explicit operator review of real retained shadow observations, only for a controlled study.
+model RecommendationCompositionCalibration {
+  protocolId        String                            @id @map("protocol_id") @db.Uuid
+  protocol          RecommendationCompositionProtocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  evidenceDigest    String                            @map("evidence_digest") @db.Char(64)
+  configDigest      String                            @map("config_digest") @db.Char(64)
+  reviewDigest      String                            @map("review_digest") @db.Char(64)
+  authorityRevision Int                               @map("authority_revision")
+  actorId           String                            @map("actor_id") @db.VarChar(191)
+  rationale         String                            @db.VarChar(512)
+  reviewedAt        DateTime                          @default(now()) @map("reviewed_at")
+  expiresAt         DateTime                          @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("recommendation_composition_calibration")
+}
+
+/// Immutable reviewed protocol; no viewer identity. Operators only; expiry follows
+/// its experiment. Aggregate enrollment survives subject erasure so loss cannot
+/// silently repair a denominator. Privacy revision invalidates prior authority.
+model RecommendationStudy {
+  experimentId    String                          @id @map("experiment_id") @db.VarChar(191)
+  experiment      RecommendationExperiment        @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  protocol        Json
+  protocolDigest  String                          @map("protocol_digest") @db.Char(64)
+  preparedById    String                          @map("prepared_by_id") @db.VarChar(191)
+  preparedAt      DateTime                        @default(now()) @map("prepared_at")
+  activationId    String?                         @unique @map("activation_id") @db.Uuid
+  activationInputDigest String? @map("activation_input_digest") @db.Char(64)
+  activatedAt     DateTime?                       @map("activated_at")
+  enrolledCount   Int                             @default(0) @map("enrolled_count")
+  privacyRevision Int                             @default(0) @map("privacy_revision")
+  expiresAt       DateTime                        @map("expires_at")
+  evidence        RecommendationStudyEvidence[]
+  evaluations     RecommendationStudyEvaluation[]
+
+  @@index([expiresAt])
+  @@map("recommendation_study")
+}
+
+/// Immutable authenticated operator attestation of minimized external receipts.
+/// Numerical gates are computed, never uploaded as a PASS. No profile identifiers.
+model RecommendationStudyEvidence {
+  id             String                          @id @db.Uuid
+  studyId        String                          @map("study_id") @db.VarChar(191)
+  study          RecommendationStudy             @relation(fields: [studyId], references: [experimentId], onDelete: Cascade)
+  protocolDigest String                          @map("protocol_digest") @db.Char(64)
+  kind           String                          @db.VarChar(32)
+  payload        Json
+  inputDigest    String                          @map("input_digest") @db.Char(64)
+  evaluations    RecommendationStudyEvaluation[]
+  reviewedById   String                          @map("reviewed_by_id") @db.VarChar(191)
+  reviewedAt     DateTime                        @default(now()) @map("reviewed_at")
+  expiresAt      DateTime                        @map("expires_at")
+
+  @@index([studyId, reviewedAt])
+  @@index([expiresAt])
+  @@map("recommendation_study_evidence")
+}
+
+/// Immutable authority binding; retained aggregate only. Every advancement checks
+/// the latest revision, privacy epoch, protocol, manifests and validity again.
+model RecommendationStudyEvaluation {
+  evaluationId         String                             @id @map("evaluation_id")
+  evaluation           RecommendationExperimentEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  studyId              String                             @map("study_id") @db.VarChar(191)
+  study                RecommendationStudy                @relation(fields: [studyId], references: [experimentId], onDelete: Cascade)
+  protocolDigest       String                             @map("protocol_digest") @db.Char(64)
+  experimentGeneration Int                                @map("experiment_generation")
+  privacyRevision      Int                                @map("privacy_revision")
+  publishedById String @map("published_by_id") @db.VarChar(191)
+  evidenceId           String                             @map("evidence_id") @db.Uuid
+  evidence             RecommendationStudyEvidence        @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  mode                 String                             @db.VarChar(32)
+  result               Json
+  expiresAt            DateTime                           @map("expires_at")
+
+  @@index([studyId])
+  @@index([expiresAt])
+  @@map("recommendation_study_evaluation")
+}
+
+/// Immutable single-use frozen trial qualification. Outlives graph deletion;
+/// contains only aggregate authority identity, never viewer identity.
+model RecommendationCowatchTrialAuthority {
+  ownerInfluenceFloorGeneration Int @default(0) @map("owner_influence_floor_generation")
+  generationId String @id @map("generation_id") @db.Char(64)
+  revokedAt DateTime? @map("revoked_at")
+  rawPopulationExpiresAt DateTime @map("raw_population_expires_at")
+  bindingDigest String @map("binding_digest") @db.Char(64)
+  binding Json
+  mode String @default("frozen-source-controlled-trial-v1") @db.VarChar(64)
+  dependencyExpiresAt DateTime @map("dependency_expires_at")
+  trialValidUntil DateTime @map("trial_valid_until")
+  qualifiedAt DateTime @default(now()) @map("qualified_at")
+  @@index([rawPopulationExpiresAt], map: "recommendation_cowatch_authority_expiry_idx")
+  @@map("recommendation_cowatch_trial_authority")
+}
+
+/// Exact owner-authorized configuration and one-use graph authority, never causal evidence.
+/// No graph/source FK: their retention must remain independent.
+model RecommendationOwnerRelease {
+  id                     String                           @id @db.Uuid
+  pointerGeneration      Int                              @map("pointer_generation")
+  manifestId             String                           @map("manifest_id") @db.VarChar(191)
+  manifest               RecommendationStrategyManifest   @relation(fields: [manifestId], references: [id], onDelete: Restrict)
+  manifestDigest         String                           @map("manifest_digest") @db.Char(64)
+  graphGenerationId      String                           @unique(map: "recommendation_owner_release_graph_key") @map("graph_generation_id") @db.Char(64)
+  bindingDigest          String                           @map("binding_digest") @db.Char(64)
+  binding                Json
+  qualifiedAt            DateTime                         @map("qualified_at")
+  validUntil             DateTime                         @map("valid_until")
+  dependencyExpiresAt    DateTime                         @map("dependency_expires_at")
+  rawPopulationExpiresAt DateTime                         @map("raw_population_expires_at")
+  approvedById           String                           @map("approved_by_id") @db.VarChar(191)
+  approvedAt             DateTime                         @map("approved_at")
+  expiresAt              DateTime                         @map("expires_at")
+  revokedAt              DateTime?                        @map("revoked_at")
+  revocationReason       String?                          @map("revocation_reason") @db.VarChar(64)
+  pointers               RecommendationPromotionPointer[]
+
+  @@index([expiresAt], map: "recommendation_owner_release_expiry_idx")
+  @@map("recommendation_owner_release")
+}
+
+/// Narrow owner delegation for the fixed bounded co-watch refresh policy.
+/// Source and release identities are audit values, never retention-extending FKs.
+model RecommendationCowatchRefreshGrant {
+  id String @id @db.Uuid
+  anchorReleaseId String @map("anchor_release_id") @db.Uuid
+  anchorPointerGeneration Int @map("anchor_pointer_generation")
+  influenceFloorGeneration Int @map("influence_floor_generation")
+  manifestDigest String @map("manifest_digest") @db.Char(64)
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  policyVersion String @map("policy_version") @db.VarChar(64)
+  budget Json
+  approvedById String @map("approved_by_id") @db.VarChar(191)
+  approvedAt DateTime @map("approved_at")
+  validUntil DateTime @map("valid_until")
+  revokedAt DateTime? @map("revoked_at")
+  revocationReason String? @map("revocation_reason") @db.VarChar(64)
+  attempts RecommendationCowatchRefreshAttempt[]
+
+  @@index([approvedAt(sort: Desc)], map: "recommendation_cowatch_refresh_grant_time_idx")
+  @@map("recommendation_cowatch_refresh_grant")
+}
+
+/// One durable operation identity fixes the complete source scope before work.
+model RecommendationCowatchRefreshAttempt {
+  id String @id @db.Uuid
+  grantId String @map("grant_id") @db.Uuid
+  grant RecommendationCowatchRefreshGrant @relation(fields: [grantId], references: [id], onDelete: Restrict)
+  expectedPointerGeneration Int @map("expected_pointer_generation")
+  windowStart DateTime @map("window_start")
+  windowEnd DateTime @map("window_end")
+  evaluationAsOf DateTime @map("evaluation_as_of")
+  startedAt DateTime @map("started_at")
+  leaseUntil DateTime @map("lease_until")
+  status String @db.VarChar(32)
+  expectedGraphGenerationId String? @map("expected_graph_generation_id") @db.Char(64)
+  publishedAt DateTime? @map("published_at")
+  completedAt DateTime? @map("completed_at")
+  reason String? @db.VarChar(64)
+  pointerGeneration Int? @map("pointer_generation")
+
+  @@index([grantId, startedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_grant_idx")
+  @@index([publishedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_publication_idx")
+  @@map("recommendation_cowatch_refresh_attempt")
+}
+
+/// Private, versioned model build. Completion does not select a public strategy.
+model RecommendationPrecomputedGeneration {
+  id String @id
+  modelId String @map("model_id")
+  promptVersion String @map("prompt_version")
+  inputDigest String @map("input_digest")
+  sourceSetDigest String @map("source_set_digest")
+  inputCutoff DateTime @map("input_cutoff")
+  expectedSourceCount Int @map("expected_source_count")
+  protocolVersion Int @default(1) @map("protocol_version")
+  /// Set only when a new generation is explicitly started by the local subscription runner.
+  executionBackend String? @map("execution_backend")
+  manifestCommittedAt DateTime? @map("manifest_committed_at")
+  /// Physical free-space is externally attested against the PostgreSQL cluster;
+  /// Admin cross-checks the cluster and database size, never its own filesystem.
+  capacityPreflight Json? @map("capacity_preflight") @db.JsonB
+  historicalQualification Json? @map("historical_qualification") @db.JsonB
+  historicalQualificationDigest String? @map("historical_qualification_digest") @db.Char(64)
+  cancelledAt DateTime? @map("cancelled_at")
+  /// Content-only builds do not claim to include historical GA warehouse inputs.
+  inputMode String @default("fixture") @map("input_mode")
+  /// observed_fenced means current rows were checked against the cutoff;
+  /// preflight_failed means that input discovery failed before a full digest.
+  /// Overwritten/deleted historic content cannot be reconstructed.
+  inputSnapshotMode String @default("fixture") @map("input_snapshot_mode")
+  /// Compact aggregate provenance only; no warehouse rows, viewer IDs, or credentials.
+  historicalProvenance Json? @map("historical_provenance") @db.JsonB
+  status String @default("incomplete")
+  createdAt DateTime @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+  failedAt DateTime? @map("failed_at")
+  failureCode String? @map("failure_code")
+  /// An operator-required rollback target survives terminal-generation cleanup.
+  /// The two newest complete generations are protected independently of this pin.
+  rollbackRetentionHold Boolean @default(false) @map("rollback_retention_hold")
+  /// Retiring is a non-servable, bounded child-drain state; terminal timestamps remain.
+  retiringAt DateTime? @map("retiring_at")
+  sources RecommendationPrecomputedSource[]
+  modelCalls RecommendationPrecomputedModelCall[]
+  executionAttempts RecommendationPrecomputedExecutionAttempt[]
+  contentProfiles RecommendationPrecomputedContentProfile[]
+  profileCalls RecommendationPrecomputedProfileCall[]
+  edgeBatchCalls RecommendationPrecomputedEdgeBatchCall[]
+  buildSources RecommendationPrecomputedBuildSource[]
+  historyCalls RecommendationPrecomputedHistoryCall[]
+  buildBudget RecommendationPrecomputedBuildBudget?
+  privateExperiments RecommendationPrecomputedExperiment[]
+
+  @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
+  @@map("recommendation_precomputed_generation")
+}
+
+/// Bounded identity proof for Mastra runtime cleanup after the generation and
+/// its larger child graph have been reclaimed. No FK deliberately extends it.
+model RecommendationPrecomputedGenerationRetentionProof {
+  generationId String @id @map("generation_id")
+  generationProtocolVersion Int @map("generation_protocol_version")
+  inputCutoff DateTime @map("input_cutoff")
+  inputDigest String @map("input_digest") @db.Char(64)
+  inputMode String @map("input_mode")
+  state String
+  recordedAt DateTime @map("recorded_at")
+  expiresAt DateTime @map("expires_at")
+  snapshotSha256 String? @map("snapshot_sha256") @db.Char(64)
+  artifactDeletedAt DateTime? @map("artifact_deleted_at")
+
+  @@index([expiresAt, generationId], map: "precomputed_retention_proof_expiry_idx")
+  @@map("recommendation_precomputed_generation_retention_proof")
+}
+
+/// Compact lifecycle receipt for a private immutable GA capture object. No FK
+/// keeps unbound uploads visible to cleanup after generation retirement.
+model RecommendationPrecomputedGaCaptureArtifact {
+  generationId String @map("generation_id")
+  artifactSha256 String @map("artifact_sha256") @db.Char(64)
+  storageKey String @map("storage_key") @db.VarChar(300)
+  artifactBytes BigInt @map("artifact_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+  boundAt DateTime? @map("bound_at")
+
+  @@id([generationId, artifactSha256])
+  @@index([createdAt, generationId], map: "precomputed_ga_capture_artifact_created_idx")
+  @@map("recommendation_precomputed_ga_capture_artifact")
+}
+
+/// Destination-owned import evidence and cleanup handle. Deliberately no FK:
+/// staged or bound objects remain discoverable after generation retirement.
+model RecommendationPrecomputedGaCaptureImport {
+  destinationGenerationId String @id @map("destination_generation_id")
+  destinationIdentity Json @map("destination_identity") @db.JsonB
+  preparedDigest String @map("prepared_digest") @db.Char(64)
+  originGenerationId String? @map("origin_generation_id")
+  originIdentity Json? @map("origin_identity") @db.JsonB
+  originProofDigest String? @map("origin_proof_digest") @db.Char(64)
+  copyRequestDigest String? @map("copy_request_digest") @db.Char(64)
+  copyAttemptId String? @map("copy_attempt_id") @db.Uuid
+  artifactSha256 String? @map("artifact_sha256") @db.Char(64)
+  artifactBytes BigInt? @map("artifact_bytes")
+  storageKey String? @map("storage_key") @db.VarChar(300)
+  state String
+  copyClaimId String? @map("copy_claim_id") @db.Uuid
+  copyClaimEpoch Int @default(0) @map("copy_claim_epoch")
+  copyLeaseExpiresAt DateTime? @map("copy_lease_expires_at")
+  tempReservedBytes BigInt @default(0) @map("temp_reserved_bytes")
+  stagingDeadlineAt DateTime? @map("staging_deadline_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  boundAt DateTime? @map("bound_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  lastCleanupAt DateTime? @map("last_cleanup_at")
+  cleanedAt DateTime? @map("cleaned_at")
+
+  @@index([state, stagingDeadlineAt], map: "precomputed_ga_import_state_deadline_idx")
+  @@index([originGenerationId, state], map: "precomputed_ga_import_origin_state_idx")
+  @@map("recommendation_precomputed_ga_capture_import")
+}
+
+/// Frozen Watch cohort. Only the separate, explicit public pointer can select it.
+model RecommendationPrecomputedExperiment {
+  id String @id @db.VarChar(191)
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  controlManifestId String @map("control_manifest_id") @db.VarChar(191)
+  controlManifest RecommendationStrategyManifest @relation("PrecomputedExperimentControl", fields: [controlManifestId], references: [id], onDelete: Restrict)
+  challengerManifestId String @map("challenger_manifest_id") @db.VarChar(191)
+  challengerManifest RecommendationStrategyManifest @relation("PrecomputedExperimentChallenger", fields: [challengerManifestId], references: [id], onDelete: Restrict)
+  controlManifestDigest String @map("control_manifest_digest") @db.Char(64)
+  controlRoutingDigest String @map("control_routing_digest") @db.Char(64)
+  sourceSetDigest String @map("source_set_digest") @db.Char(64)
+  assignmentPolicyVersion String @map("assignment_policy_version") @db.VarChar(64)
+  eligibilityPolicyVersion String @map("eligibility_policy_version") @db.VarChar(64)
+  deliveryPolicyVersion String @map("delivery_policy_version") @db.VarChar(64)
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  /// Compact evidence snapshot for a verified live prepare; null for fixtures.
+  liveEvidence Json? @map("live_evidence") @db.JsonB
+  state String @default("private_test") @db.VarChar(32)
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  visits RecommendationPrecomputedVisit[]
+  ctrPolicy RecommendationPrecomputedCtrPolicy?
+  ctrArchivedVisits RecommendationPrecomputedCtrArchivedVisit[]
+  ctrClusters RecommendationPrecomputedCtrCluster[]
+  ctrTotals RecommendationPrecomputedCtrTotals[]
+  ctrReports RecommendationPrecomputedCtrReport[]
+  finalCalibration RecommendationPrecomputedFinalCalibration?
+  activePublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicActiveExperiment")
+  retainedPublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicRetainedExperiment")
+
+  @@index([state, startsAt, endsAt], map: "recommendation_precomputed_experiment_window_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_experiment_expiry_idx")
+  @@map("recommendation_precomputed_experiment")
+}
+
+/// Separate append-only physical headroom evidence for a completed build.
+/// Refreshing this never changes the generation's build-capacity receipt.
+model RecommendationPrecomputedLaunchCapacityReceipt {
+  id String @id @db.Uuid
+  generationId String @map("generation_id")
+  actorId String @map("actor_id") @db.VarChar(191)
+  measurement Json @db.JsonB
+  receiptDigest String @map("receipt_digest") @db.Char(64)
+  status String @db.VarChar(16)
+  measuredAt DateTime @map("measured_at") @db.Timestamptz(6)
+  observedDbBytes BigInt @map("observed_db_bytes")
+  projectedBytes BigInt @map("projected_bytes")
+  availableAfterReserveBytes BigInt @map("available_after_reserve_bytes")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([generationId, createdAt(sort: Desc)], map: "precomputed_launch_capacity_generation_idx")
+  @@index([expiresAt], map: "precomputed_launch_capacity_expiry_idx")
+  @@map("recommendation_precomputed_launch_capacity_receipt")
+}
+
+/// Singleton manual serving choice. Migrations seed incumbent; builds and
+/// evaluations never update this pointer.
+model RecommendationPrecomputedPublicControl {
+  id String @id @db.VarChar(64)
+  version Int @default(1)
+  mode String @default("incumbent") @db.VarChar(16)
+  activeExperimentId String? @map("active_experiment_id") @db.VarChar(191)
+  activeExperiment RecommendationPrecomputedExperiment? @relation("PrecomputedPublicActiveExperiment", fields: [activeExperimentId], references: [id], onDelete: Restrict)
+  retainedExperimentId String? @map("retained_experiment_id") @db.VarChar(191)
+  retainedExperiment RecommendationPrecomputedExperiment? @relation("PrecomputedPublicRetainedExperiment", fields: [retainedExperimentId], references: [id], onDelete: Restrict)
+  reportRevision Int? @map("report_revision")
+  reportEvidenceDigest String? @map("report_evidence_digest") @db.Char(64)
+  authority String? @db.VarChar(32)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("recommendation_precomputed_public_control")
+}
+
+/// Compact, append-only operator decisions; no raw visit identities or
+/// model response bodies. Ordinary retention removes events after one year.
+model RecommendationPrecomputedPublicControlEvent {
+  id String @id @db.Uuid
+  controlVersion Int @unique @map("control_version")
+  action String @db.VarChar(32)
+  actorId String @map("actor_id") @db.VarChar(191)
+  reasonCode String? @map("reason_code") @db.VarChar(64)
+  experimentId String? @map("experiment_id") @db.VarChar(191)
+  generationId String? @map("generation_id")
+  reportRevision Int? @map("report_revision")
+  reportEvidenceDigest String? @map("report_evidence_digest") @db.Char(64)
+  authority String? @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt, controlVersion], map: "recommendation_precomputed_public_control_event_expiry_idx")
+  @@map("recommendation_precomputed_public_control_event")
+}
+
+/// Minimal 29-day admission root, including visits without any delivery request.
+/// The browser unit is a per-experiment digest; raw cookies are never stored.
+model RecommendationPrecomputedVisit {
+  id String @id @db.Uuid
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  browserUnitDigest String? @map("browser_unit_digest") @db.Char(64)
+  /// Legacy receipt binding retained for old private visits. New visits use
+  /// browserUnitDigest and leave this nullable field empty.
+  consentBindingDigest String? @map("consent_binding_digest") @db.Char(64)
+  sourceVideoId String @map("source_video_id") @db.VarChar(191)
+  locale String @db.VarChar(32)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
+  eligibility String @db.VarChar(24)
+  qualification String @db.VarChar(40)
+  exclusionReason String? @map("exclusion_reason") @db.VarChar(64)
+  arm RecommendationExperimentArm?
+  deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  actualStrategy String? @map("actual_strategy") @db.VarChar(64)
+  deliveryRequestId String? @map("delivery_request_id") @db.VarChar(191)
+  fallbackReason String? @map("fallback_reason") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  requests RecommendationPrecomputedVisitRequest[]
+
+  @@index([experimentId, eligibility, arm, createdAt], map: "recommendation_precomputed_visit_report_idx")
+  @@index([expiresAt, id], map: "recommendation_precomputed_visit_expiry_idx")
+  @@map("recommendation_precomputed_visit")
+}
+
+/// A thin request-to-visit lineage for retries and later click attribution.
+model RecommendationPrecomputedVisitRequest {
+  requestId String @id @map("request_id") @db.VarChar(191)
+  request RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([visitId, createdAt], map: "recommendation_precomputed_visit_request_visit_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_visit_request_expiry_idx")
+  @@map("recommendation_precomputed_visit_request")
+}
+
+/// Operator-enabled, incumbent-only human baseline. It has no experiment FK
+/// and cannot alter the public serving pointer.
+model RecommendationPrecomputedBaselineRun {
+  id String @id @db.Uuid
+  enabled Boolean @default(false)
+  verificationAuthority String @map("verification_authority") @db.VarChar(32)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  stoppedAt DateTime? @map("stopped_at") @db.Timestamptz(6)
+  stoppedBy String? @map("stopped_by") @db.VarChar(191)
+  controlRoutingDigest String @map("control_routing_digest") @db.Char(64)
+  actorId String @map("actor_id") @db.VarChar(191)
+  finalReport Json? @map("final_report") @db.JsonB
+  finalReportDigest String? @map("final_report_digest") @db.Char(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  visits RecommendationPrecomputedBaselineVisit[]
+
+  @@index([endsAt, enabled], map: "recommendation_precomputed_baseline_run_window_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_baseline_run_expiry_idx")
+  @@map("recommendation_precomputed_baseline_run")
+}
+
+/// Minimal, verified visit. Raw browser identity and tokens are not persisted.
+model RecommendationPrecomputedBaselineVisit {
+  id String @id @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  run RecommendationPrecomputedBaselineRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  browserUnitDigest String @map("browser_unit_digest") @db.Char(64)
+  sourceVideoId String @map("source_video_id") @db.VarChar(191)
+  locale String @db.VarChar(32)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
+  deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  requests RecommendationPrecomputedBaselineVisitRequest[]
+
+  @@index([runId, createdAt], map: "recommendation_precomputed_baseline_visit_report_idx")
+  @@index([runId, browserUnitDigest], map: "recommendation_precomputed_baseline_visit_browser_idx")
+  @@index([expiresAt, id], map: "recommendation_precomputed_baseline_visit_expiry_idx")
+  @@map("recommendation_precomputed_baseline_visit")
+}
+
+model RecommendationPrecomputedBaselineVisitRequest {
+  requestId String @id @map("request_id") @db.VarChar(191)
+  request RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedBaselineVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([visitId], map: "recommendation_precomputed_baseline_request_visit_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_baseline_request_expiry_idx")
+  @@map("recommendation_precomputed_baseline_visit_request")
+}
+
+/// Immutable fixture/prelaunch settings; no public activation authority.
+model RecommendationPrecomputedCtrPolicy {
+  experimentId String @id @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  version String @db.VarChar(64)
+  method String @db.VarChar(64)
+  settings Json @db.JsonB
+  lateEventCutoffHours Int @map("late_event_cutoff_hours")
+  settingsDigest String @map("settings_digest") @db.Char(64)
+  authority String @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("recommendation_precomputed_ctr_policy")
+}
+
+/// UUID-only replay marker after a raw visit transfers to compact counters.
+model RecommendationPrecomputedCtrArchivedVisit {
+  visitId String @id @map("visit_id") @db.Uuid
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId], map: "recommendation_precomputed_ctr_archived_visit_experiment_idx")
+  @@map("recommendation_precomputed_ctr_archived_visit")
+}
+
+/// Per-browser counters retain the cluster-delta method after raw expiry.
+model RecommendationPrecomputedCtrCluster {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  browserUnitDigest String @map("browser_unit_digest") @db.Char(64)
+  arm RecommendationExperimentArm
+  eligibleVisits BigInt @default(0) @map("eligible_visits")
+  clickedVisits BigInt @default(0) @map("clicked_visits")
+
+  @@id([experimentId, browserUnitDigest])
+  @@map("recommendation_precomputed_ctr_cluster")
+}
+
+/// Archived diagnostic counts, separate from the cluster uncertainty rows.
+model RecommendationPrecomputedCtrTotals {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  arm String @db.VarChar(16)
+  eligibleVisits BigInt @default(0) @map("eligible_visits")
+  clickedVisits BigInt @default(0) @map("clicked_visits")
+  acceptedSelections BigInt @default(0) @map("accepted_selections")
+  qualifiedImpressions BigInt @default(0) @map("qualified_impressions")
+  matchedSelections BigInt @default(0) @map("matched_selections")
+  servedVisits BigInt @default(0) @map("served_visits")
+  emptyVisits BigInt @default(0) @map("empty_visits")
+  unavailableVisits BigInt @default(0) @map("unavailable_visits")
+  notAttemptedVisits BigInt @default(0) @map("not_attempted_visits")
+  actualFallbackVisits BigInt @default(0) @map("actual_fallback_visits")
+  privateRecoveryAttemptVisits BigInt @default(0) @map("private_recovery_attempt_visits")
+  unlinkedDeliveredVisits BigInt @default(0) @map("unlinked_delivered_visits")
+  excludedAutomation BigInt @default(0) @map("excluded_automation")
+  excludedPreview BigInt @default(0) @map("excluded_preview")
+  excludedUnknown BigInt @default(0) @map("excluded_unknown")
+  excludedOutsideCohort BigInt @default(0) @map("excluded_outside_cohort")
+  excludedOther BigInt @default(0) @map("excluded_other")
+  unversionedArchivedVisits BigInt @default(0) @map("unversioned_archived_visits")
+
+  @@id([experimentId, arm])
+  @@map("recommendation_precomputed_ctr_totals")
+}
+
+/// A reviewed revision is append-only until the parent config expires.
+model RecommendationPrecomputedCtrReport {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  revision Int
+  policyDigest String @map("policy_digest") @db.Char(64)
+  evidenceDigest String @map("evidence_digest") @db.Char(64)
+  asOf DateTime @map("as_of")
+  isFinal Boolean @map("is_final")
+  result Json @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([experimentId, revision])
+  @@map("recommendation_precomputed_ctr_report")
+}
+
+/// One independently signed, append-only final-horizon calibration per live
+/// experiment. It follows the frozen experiment's bounded retention.
+model RecommendationPrecomputedFinalCalibration {
+  experimentId String @id @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  generationId String @map("generation_id")
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  policyDigest String @map("policy_digest") @db.Char(64)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  finalAt DateTime @map("final_at") @db.Timestamptz(6)
+  sourceId String @map("source_id") @db.VarChar(191)
+  sourceRunId String @map("source_run_id") @db.VarChar(191)
+  keyId String @map("key_id") @db.VarChar(191)
+  publicKeyDigest String @map("public_key_digest") @db.Char(64)
+  assertion String @db.VarChar(8192)
+  assertionDigest String @map("assertion_digest") @db.Char(64)
+  lossUpperBound Float @map("loss_upper_bound")
+  observedAt DateTime @map("observed_at") @db.Timestamptz(6)
+  actorId String @map("actor_id") @db.VarChar(191)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt], map: "precomputed_final_calibration_expiry_idx")
+  @@map("recommendation_precomputed_final_calibration")
+}
+
+/// One compact choice set per source Video per generation. Reasons and evidence
+/// are stored here once, never copied onto visit or served-item rows.
+model RecommendationPrecomputedSource {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceVideoId String @map("source_video_id")
+  sourceVideo Video @relation(fields: [sourceVideoId], references: [id], onDelete: Restrict)
+  payload Json @db.JsonB
+  submissionDigest String @map("submission_digest")
+  acceptedCount Int @map("accepted_count")
+  status String @default("complete")
+  failureCode String? @map("failure_code")
+
+  @@id([generationId, sourceVideoId])
+  @@map("recommendation_precomputed_source")
+}
+
+/// One compact provider-call record; prompts, transcript text, and credentials
+/// are intentionally excluded. Nullable usage means the provider did not
+/// report it, not that the call cost zero tokens.
+model RecommendationPrecomputedModelCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id")
+  attemptId String? @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt? @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  sourceVideoId String @map("source_video_id")
+  stage String
+  status String
+  modelId String @map("model_id")
+  inputDigest String @map("input_digest")
+  outputDigest String? @map("output_digest")
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  costUsd Decimal? @map("cost_usd") @db.Decimal(18, 9)
+  reservationLeaseToken String? @map("reservation_lease_token") @db.Uuid
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  receiptCheckpointApplied Boolean? @map("receipt_checkpoint_applied")
+  receiptAppliedRevision Int? @map("receipt_applied_revision")
+  errorCode String? @map("error_code")
+  startedAt DateTime @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@id([generationId, callId])
+  @@index([generationId, sourceVideoId], map: "recommendation_precomputed_model_call_source_idx")
+  @@map("recommendation_precomputed_model_call")
+}
+
+/// One explicit local start/resume, with bounded runner-reported account and
+/// allowance provenance. The producer bearer authenticates writes, not a person.
+model RecommendationPrecomputedExecutionAttempt {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  attemptId String @map("attempt_id") @db.Uuid
+  invocation String
+  accountRef String @map("account_ref")
+  backend String
+  billingBasis String @map("billing_basis")
+  authMethod String @map("auth_method")
+  modelId String @map("model_id")
+  identityObservedAt DateTime @map("identity_observed_at")
+  allowanceObservedAt DateTime @map("allowance_observed_at")
+  weeklyRemainingPercent Decimal @map("weekly_remaining_percent") @db.Decimal(5, 2)
+  fiveHourKind String @map("five_hour_kind")
+  fiveHourRemainingPercent Decimal? @map("five_hour_remaining_percent") @db.Decimal(5, 2)
+  startedAt DateTime @default(now()) @map("started_at")
+  endedAt DateTime? @map("ended_at")
+  endReason String? @map("end_reason")
+  modelCalls RecommendationPrecomputedModelCall[]
+  profileCalls RecommendationPrecomputedProfileCall[]
+  edgeBatchCalls RecommendationPrecomputedEdgeBatchCall[]
+
+  @@id([generationId, attemptId])
+  @@map("recommendation_precomputed_execution_attempt")
+}
+
+/// Compact, generation-scoped content navigation aid. The selected transcript
+/// and model prompt stay outside PostgreSQL; only digests and bounded output live here.
+model RecommendationPrecomputedContentProfile {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  cacheKey String @map("cache_key") @db.Char(64)
+  videoId String @map("video_id")
+  video Video @relation(fields: [videoId], references: [id], onDelete: Restrict)
+  modelId String @map("model_id")
+  backend String
+  promptVersion String @map("prompt_version")
+  schemaVersion String @map("schema_version")
+  metadataDigest String @map("metadata_digest") @db.Char(64)
+  chunkDigest String @map("chunk_digest") @db.Char(64)
+  selectedTranscriptCount Int @map("selected_transcript_count")
+  selectedChunkCount Int @map("selected_chunk_count")
+  sourceTextBytes Int @map("source_text_bytes")
+  partDigests Json @map("part_digests") @db.JsonB
+  coverageDigest String @map("coverage_digest") @db.Char(64)
+  kind String
+  state String
+  finalCallId String? @map("final_call_id") @db.Uuid
+  finalizationDigest String? @map("finalization_digest") @db.Char(64)
+  profileJson Json? @map("profile_json") @db.JsonB
+  failureCode String? @map("failure_code")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  terminalAt DateTime? @map("terminal_at")
+  calls RecommendationPrecomputedProfileCall[]
+  edgeSourceMembers RecommendationPrecomputedEdgeBatchMember[]
+
+  @@id([generationId, cacheKey])
+  @@index([generationId, videoId], map: "precomputed_content_profile_video_idx")
+  @@map("recommendation_precomputed_content_profile")
+}
+
+/// One physical Astra invocation and one observed-usage receipt. A pending row
+/// remains pending after an ambiguous local process outcome.
+model RecommendationPrecomputedProfileCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id") @db.Uuid
+  attemptId String @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  cacheKey String @map("cache_key") @db.Char(64)
+  profile RecommendationPrecomputedContentProfile @relation(fields: [generationId, cacheKey], references: [generationId, cacheKey], onDelete: Restrict)
+  nodeKey String @map("node_key") @db.Char(64)
+  stage String
+  stagePromptVersion String @map("stage_prompt_version")
+  inputDigest String @map("input_digest") @db.Char(64)
+  partIndex Int? @map("part_index")
+  childCallIds Json? @map("child_call_ids") @db.JsonB
+  startedAt DateTime @map("started_at")
+  status String
+  outputDigest String? @map("output_digest") @db.Char(64)
+  nodeJson Json? @map("node_json") @db.JsonB
+  coveredPartStart Int? @map("covered_part_start")
+  coveredPartEnd Int? @map("covered_part_end")
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  errorCode String? @map("error_code")
+  finishedAt DateTime? @map("finished_at")
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  receiptNodeApplied Boolean? @map("receipt_node_applied")
+
+  @@id([generationId, callId])
+  @@index([generationId, cacheKey, startedAt], map: "precomputed_profile_call_profile_idx")
+  @@map("recommendation_precomputed_profile_call")
+}
+
+/// One physical Astra invocation shared by one or two source members. Usage is
+/// recorded here once, never copied to member rows.
+model RecommendationPrecomputedEdgeBatchCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id") @db.Uuid
+  attemptId String @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  modelId String @map("model_id")
+  backend String
+  promptVersion String @map("prompt_version")
+  schemaVersion String @map("schema_version")
+  inputDigest String @map("input_digest") @db.Char(64)
+  membershipDigest String @map("membership_digest") @db.Char(64)
+  selectedCorpusDigest String @map("selected_corpus_digest") @db.Char(64)
+  candidatePoolDigest String @map("candidate_pool_digest") @db.Char(64)
+  captureRefDigest String? @map("capture_ref_digest") @db.Char(64)
+  spanOfferDigest String @map("span_offer_digest") @db.Char(64)
+  spanOffers Json @map("span_offers") @db.JsonB
+  requestDigest String @map("request_digest") @db.Char(64)
+  startedAt DateTime @map("started_at")
+  status String
+  outputDigest String? @map("output_digest") @db.Char(64)
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  errorCode String? @map("error_code")
+  finishedAt DateTime? @map("finished_at")
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  recoveryReplacementCallId String? @map("recovery_replacement_call_id") @db.Uuid
+  recoveryOperatorAccountRef String? @map("recovery_operator_account_ref")
+  recoveryAcknowledgedAt DateTime? @map("recovery_acknowledged_at")
+  recoveryOldProcessExitedAttested Boolean? @map("recovery_old_process_exited_attested")
+  noDispatchDisposition RecommendationPrecomputedEdgeNoDispatchDisposition?
+  members RecommendationPrecomputedEdgeBatchMember[]
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_edge_batch_call")
+}
+
+/// Explicit operator evidence that this reviewed reservation never dispatched.
+/// Provider usage stays null on the immutable original call.
+model RecommendationPrecomputedEdgeNoDispatchDisposition {
+  generationId String @map("generation_id")
+  callId String @map("call_id") @db.Uuid
+  call RecommendationPrecomputedEdgeBatchCall @relation(fields: [generationId, callId], references: [generationId, callId], onDelete: Cascade)
+  originalAttemptId String @map("original_attempt_id") @db.Uuid
+  maintenanceAttemptId String @map("maintenance_attempt_id") @db.Uuid
+  requestDigest String @map("request_digest") @db.Char(64)
+  evidenceDigest String @map("evidence_digest") @db.Char(64)
+  operatorAccountRef String @map("operator_account_ref")
+  reason String
+  acknowledgedAt DateTime @map("acknowledged_at")
+  oldProcessExitedAttested Boolean @map("old_process_exited_attested")
+  originalMembers Json @map("original_members") @db.JsonB
+  memberSnapshotDigest String @map("member_snapshot_digest") @db.Char(64)
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_edge_no_dispatch_disposition")
+}
+
+/// A fenced source/page in one shared edge call; it carries no token charge.
+model RecommendationPrecomputedEdgeBatchMember {
+  generationId String @map("generation_id")
+  callId String @map("call_id") @db.Uuid
+  call RecommendationPrecomputedEdgeBatchCall @relation(fields: [generationId, callId], references: [generationId, callId], onDelete: Restrict, map: "precomputed_edge_batch_member_call_fk")
+  sourceVideoId String @map("source_video_id")
+  source RecommendationPrecomputedBuildSource @relation(fields: [generationId, sourceVideoId], references: [generationId, sourceVideoId], onDelete: Restrict, map: "precomputed_edge_batch_member_source_fk")
+  leaseToken String @map("lease_token") @db.Uuid
+  checkpointRevision Int @map("checkpoint_revision")
+  pageIndex Int @map("page_index")
+  sourceProfileKey String @map("source_profile_key") @db.Char(64)
+  sourceProfile RecommendationPrecomputedContentProfile @relation(fields: [generationId, sourceProfileKey], references: [generationId, cacheKey], onDelete: Restrict, map: "precomputed_edge_batch_member_profile_fk")
+  candidates Json @db.JsonB
+  candidatePageDigest String @map("candidate_page_digest") @db.Char(64)
+  sourceCandidateCount Int @map("source_candidate_count")
+  sourceCandidateDigest String @map("source_candidate_digest") @db.Char(64)
+  historicalRefDigest String @map("historical_ref_digest") @db.Char(64)
+  applicationState String @map("application_state")
+  appliedRevision Int? @map("applied_revision")
+  resultChoiceCount Int? @map("result_choice_count")
+
+  @@id([generationId, callId, sourceVideoId])
+  @@index([generationId, sourceVideoId, pageIndex, callId], map: "precomputed_edge_batch_member_source_idx")
+  @@map("recommendation_precomputed_edge_batch_member")
+}
+
+/// Source membership and progress are independent of the final immutable
+/// choice set. Leases fence stale producers without storing transcript text.
+model RecommendationPrecomputedBuildSource {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceVideoId String @map("source_video_id")
+  sourceVideo Video @relation(fields: [sourceVideoId], references: [id], onDelete: Restrict)
+  state String @default("pending")
+  claimId String? @map("claim_id")
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseExpiresAt DateTime? @map("lease_expires_at")
+  attemptNumber Int @default(0) @map("attempt_number")
+  checkpoint Json @default("{}") @db.JsonB
+  historicalProvenance Json? @map("historical_provenance") @db.JsonB
+  checkpointRevision Int @default(0) @map("checkpoint_revision")
+  checkpointId String? @map("checkpoint_id")
+  checkpointDigest String? @map("checkpoint_digest")
+  failureCode String? @map("failure_code")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+  choices RecommendationPrecomputedBuildChoice[]
+  edgeBatchMembers RecommendationPrecomputedEdgeBatchMember[]
+  edgeSourceCandidateCount Int? @map("edge_source_candidate_count")
+  edgeSourceCandidateDigest String? @map("edge_source_candidate_digest") @db.Char(64)
+  edgeSourceProfileKey String? @map("edge_source_profile_key") @db.Char(64)
+  edgeCandidatePoolDigest String? @map("edge_candidate_pool_digest") @db.Char(64)
+  edgeHistoricalRefDigest String? @map("edge_historical_ref_digest") @db.Char(64)
+
+  @@id([generationId, sourceVideoId])
+  @@index([generationId, state], map: "recommendation_precomputed_build_source_state_idx")
+  @@map("recommendation_precomputed_build_source")
+}
+
+/// Provisional, bounded one-target decisions; only a finalized source is read
+/// by private comparison/Watch. Exact-target retries cannot create duplicates.
+model RecommendationPrecomputedBuildChoice {
+  generationId String @map("generation_id")
+  sourceVideoId String @map("source_video_id")
+  source RecommendationPrecomputedBuildSource @relation(fields: [generationId, sourceVideoId], references: [generationId, sourceVideoId], onDelete: Cascade)
+  targetVideoId String @map("target_video_id")
+  payload Json @db.JsonB
+  submissionDigest String @map("submission_digest") @db.Char(64)
+
+  @@id([generationId, sourceVideoId, targetVideoId])
+  @@map("recommendation_precomputed_build_choice")
+}
+
+/// One reservation per actual GA request, including qualification and retry
+/// requests. Pending means incurred bytes/charges could not be established.
+model RecommendationPrecomputedHistoryCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id")
+  sourceVideoId String? @map("source_video_id")
+  stage String
+  status String @default("pending")
+  requestDigest String @map("request_digest") @db.Char(64)
+  bytesProcessed BigInt? @map("bytes_processed")
+  costUsd Decimal? @map("cost_usd") @db.Decimal(18, 9)
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  errorCode String? @map("error_code")
+  startedAt DateTime @map("started_at")
+  reservedAt DateTime @default(now()) @map("reserved_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_history_call")
+}
+
+/// A conservative byte admission counter since the latest physical capacity
+/// attestation. This is not a substitute for measured database/volume size.
+model RecommendationPrecomputedBuildBudget {
+  generationId String @id @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  consumedBytes BigInt @default(0) @map("consumed_bytes")
+
+  @@map("recommendation_precomputed_build_budget")
 }

@@ -1,0 +1,65 @@
+[
+  [],
+  [],
+  [],
+  [
+    {
+      "observed_at": "2026-09-30T19:33:42.129Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "successor_timing": "later",
+      "successors": "11",
+      "first_successor_at": "2026-09-30T05:47:50.613Z",
+      "last_successor_at": "2026-09-30T14:54:28.014Z",
+      "expiry_changed": "0",
+      "captured_expired_at_successor": "0",
+      "watermark_changed": "0",
+      "source_changed": "0",
+      "actor_changed": "0",
+      "policy_changed": "0",
+      "ordinal_changed": "0",
+      "support_changed": "1",
+      "concentration_changed": "10",
+      "missing_current_dependencies": "0",
+      "outcome_now_superseded": "0",
+      "current_outcome_expiry_differs": "0",
+      "current_transport_replay_sources": "9",
+      "current_replay_sources": "0",
+      "current_conflict_sources": "0",
+      "receipts_before_captured": "9",
+      "sources_with_receipts_between_capture_and_successor": "0",
+      "receipts_between_capture_and_successor": "0",
+      "sources_with_receipts_after_successor": "0",
+      "receipt_bound_exceeded": "0"
+    },
+    {
+      "successor_timing": "near_60s",
+      "successors": "12",
+      "first_successor_at": "2026-09-30T03:07:38.994Z",
+      "last_successor_at": "2026-09-30T03:07:45.521Z",
+      "expiry_changed": "0",
+      "captured_expired_at_successor": "0",
+      "watermark_changed": "0",
+      "source_changed": "0",
+      "actor_changed": "0",
+      "policy_changed": "0",
+      "ordinal_changed": "0",
+      "support_changed": "0",
+      "concentration_changed": "12",
+      "missing_current_dependencies": "0",
+      "outcome_now_superseded": "0",
+      "current_outcome_expiry_differs": "0",
+      "current_transport_replay_sources": "9",
+      "current_replay_sources": "0",
+      "current_conflict_sources": "0",
+      "receipts_before_captured": "9",
+      "sources_with_receipts_between_capture_and_successor": "0",
+      "receipts_between_capture_and_successor": "0",
+      "sources_with_receipts_after_successor": "0",
+      "receipt_bound_exceeded": "0"
+    }
+  ]
+]

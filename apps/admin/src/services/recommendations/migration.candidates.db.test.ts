@@ -33,6 +33,10 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0100_recommendation_candidate_compact_trace",
+  "0101_recommendation_candidate_compact_trace_validate",
+  "0102_recommendation_candidate_stage_duplicate_index_drop",
+  "0118_recommendation_candidate_stage_expiry_index_drop",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -238,6 +242,174 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       )
       expect(remaining.rows).toEqual([{ runs: 0, stages: 0 }])
     })
+
+    it("keeps the unique stage index and enforces complete compact traces", async () => {
+      const indexes = await client.query<{ indexname: string }>(
+        `SELECT indexname FROM pg_indexes
+         WHERE schemaname = $1 AND tablename = 'recommendation_candidate_stage_evidence'`,
+        [schemaName],
+      )
+      expect(indexes.rows.map((row) => row.indexname)).toContain(
+        "recommendation_candidate_stage_ordinal_key",
+      )
+      expect(indexes.rows.map((row) => row.indexname)).not.toContain(
+        "recommendation_candidate_stage_run_stage_idx",
+      )
+      expect(indexes.rows.map((row) => row.indexname)).not.toContain(
+        "recommendation_candidate_stage_expiry_idx",
+      )
+
+      await insertRequest("compact-trace-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, nominated_count,
+          canonicalized_count, deduplicated_count, rejected_count,
+          scored_count, ordered_count, composed_count, evidence_complete,
+          trace_format_version, trace_payload, expires_at
+        ) VALUES (
+          'compact-trace-run', 'compact-trace-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', 0, 0, 0, 0, 0, 0, 0, true,
+          1, '{"stages":[]}'::jsonb, $1
+        )`,
+        [expiresAt],
+      )
+      const stage = {
+        id: "compact-stage-1",
+        stage: "composed",
+        ordinal: 0,
+        candidateKey: "video-a",
+        targetMediaId: "video-a",
+        sourceGenerator: "semantic",
+        sourceRank: 1,
+        sourceScore: 0.9,
+        normalizedScore: 1,
+        rrfScore: null,
+        deterministicScore: 0.9,
+        finalPosition: 0,
+        reasonCodes: ["playable_localized_deduplicated"],
+        sourceEvidence: [{ generator: "semantic", rank: 1, score: 0.9 }],
+        createdAt: "2026-09-28T00:00:00.000Z",
+      }
+      const update = (payload: unknown, version: number | null = 1) =>
+        client.query(
+          `UPDATE recommendation_candidate_run
+           SET trace_format_version = $1, trace_payload = $2::jsonb
+           WHERE id = 'compact-trace-run'`,
+          [version, JSON.stringify(payload)],
+        )
+      await update({ stages: [stage] })
+      const fullTrace = [
+        "nominated",
+        "canonicalized",
+        "deduplicated",
+        "rejected",
+        "scored",
+        "ordered",
+        "composed",
+      ].flatMap((stageName) =>
+        Array.from({ length: 64 }, (_, ordinal) => ({
+          ...stage,
+          id: `compact-${stageName}-${ordinal}`,
+          stage: stageName,
+          ordinal,
+          finalPosition: stageName === "composed" ? ordinal : null,
+        })),
+      )
+      await update({ stages: fullTrace })
+      await expect(
+        update({ stages: [...fullTrace, { ...stage, id: "overflow" }] }),
+      ).rejects.toMatchObject({ code: "23514" })
+      for (const payload of [
+        { stages: [{ ...stage, sourceScore: 2 }] },
+        { stages: [{ ...stage, sourceEvidence: Array(17).fill({}) }] },
+        { stages: [{ ...stage, ordinal: 64 }] },
+        { stages: [{ ...stage, reasonCodes: [null] }] },
+        { stages: [stage, { ...stage, id: "compact-stage-2" }] },
+        { stages: [stage, { ...stage, id: "compact-stage-2", ordinal: 0.0 }] },
+        { stages: [{ ...stage, createdAt: "2026-99-99T00:00:00.000Z" }] },
+        { stages: [{ ...stage, reasonCodes: "not-an-array" }] },
+        { stages: [{ ...stage, sourceEvidence: "not-an-array" }] },
+        { stages: [{ ...stage, targetMediaId: undefined }] },
+        { stages: [{ ...stage, unboundedExtra: "unexpected" }] },
+      ]) {
+        await expect(update(payload)).rejects.toMatchObject({ code: "23514" })
+      }
+      await expect(update({ stages: [] }, null)).rejects.toMatchObject({
+        code: "23514",
+      })
+      await expect(update({ stages: "not-an-array" })).rejects.toMatchObject({
+        code: "23514",
+      })
+      await expect(
+        update({ stages: [], unboundedExtra: true }),
+      ).rejects.toMatchObject({
+        code: "23514",
+      })
+      await expect(update({ stages: [] }, 2)).rejects.toMatchObject({
+        code: "23514",
+      })
+      const stored = await client.query(
+        `SELECT trace_format_version, trace_payload
+         FROM recommendation_candidate_run WHERE id = 'compact-trace-run'`,
+      )
+      expect(stored.rows).toEqual([
+        { trace_format_version: 1, trace_payload: { stages: fullTrace } },
+      ])
+      await client.query(
+        `DELETE FROM recommendation_request WHERE id = 'compact-trace-request'`,
+      )
+      const remaining = await client.query(
+        `SELECT count(*)::int AS count FROM recommendation_candidate_run
+         WHERE id = 'compact-trace-run'`,
+      )
+      expect(remaining.rows).toEqual([{ count: 0 }])
+    })
+
+    it("fails a contended duplicate-index drop promptly and succeeds on retry", async () => {
+      const dropSql = migrationSql.find((sql) =>
+        sql.includes(
+          'DROP INDEX "recommendation_candidate_stage_run_stage_idx"',
+        ),
+      )!
+      await client.query(
+        `CREATE INDEX recommendation_candidate_stage_run_stage_idx
+         ON recommendation_candidate_stage_evidence (run_id, stage, ordinal)`,
+      )
+      const blocker = new Client({ connectionString: databaseUrl })
+      await blocker.connect()
+      try {
+        await blocker.query(`SET search_path TO "${schemaName}", public`)
+        await blocker.query("BEGIN")
+        await blocker.query(
+          "LOCK TABLE recommendation_candidate_stage_evidence IN ACCESS SHARE MODE",
+        )
+        await expect(client.query(dropSql)).rejects.toMatchObject({
+          code: "55P03",
+        })
+        await client.query("ROLLBACK")
+        const blockedIndex = await client.query<{ indexname: string }>(
+          `SELECT indexname FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_run_stage_idx'`,
+          [schemaName],
+        )
+        expect(blockedIndex.rows).toHaveLength(1)
+      } finally {
+        await blocker.query("ROLLBACK")
+        await blocker.end()
+      }
+      await client.query(dropSql)
+      const removedIndex = await client.query<{ indexname: string }>(
+        `SELECT indexname FROM pg_indexes WHERE schemaname = $1
+         AND indexname = 'recommendation_candidate_stage_run_stage_idx'`,
+        [schemaName],
+      )
+      expect(removedIndex.rows).toHaveLength(0)
+    }, 10_000)
 
     it("keeps shadow output offline, bounded, immutable, and request-owned", async () => {
       await insertRequest("shadow-request", 0)
@@ -766,6 +938,90 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(index.rows[0]?.indexdef).toContain(
         "WHERE (finalization_due_at IS NOT NULL)",
       )
+    })
+
+    it("leaves stage evidence and its index intact on a contended drop, then succeeds", async () => {
+      const dropSql = migrationSql.find((sql) =>
+        sql.includes('DROP INDEX "recommendation_candidate_stage_expiry_idx"'),
+      )!
+      await insertRequest("expiry-index-retained-request", 0)
+      await client.query(
+        `INSERT INTO recommendation_candidate_run (
+          id, request_id, purpose, context_version, generator_version,
+          union_version, eligibility_version, ranker_version, composer_version,
+          candidate_eligibility_parity, ranker_parity, nominated_count,
+          canonicalized_count, deduplicated_count, rejected_count,
+          scored_count, ordered_count, composed_count, evidence_complete,
+          expires_at
+        ) VALUES (
+          'expiry-index-retained-run', 'expiry-index-retained-request', 'watch',
+          'recommendation-context-v1', 'semantic-transcript-candidate-v1',
+          'canonical-video-union-v1', 'watch-playable-locale-v1',
+          'semantic-deterministic-ranker-v1', 'minimal-playable-slate-v1',
+          'passed', 'passed', 1, 1, 1, 0, 1, 1, 1, true, $1
+        )`,
+        [expiresAt],
+      )
+      await client.query(
+        `INSERT INTO recommendation_candidate_stage_evidence
+          (id, run_id, stage, ordinal, candidate_key, expires_at)
+         VALUES ('expiry-index-retained-stage', 'expiry-index-retained-run',
+           'nominated', 0, 'video-a', $1)`,
+        [expiresAt],
+      )
+      await client.query(
+        `CREATE INDEX recommendation_candidate_stage_expiry_idx
+         ON recommendation_candidate_stage_evidence (expires_at, id)`,
+      )
+      const other = new Client({ connectionString: databaseUrl })
+      await other.connect()
+      try {
+        await other.query(`SET search_path TO "${schemaName}", public`)
+        await client.query("BEGIN")
+        await client.query(
+          "LOCK TABLE recommendation_candidate_stage_evidence IN ACCESS SHARE MODE",
+        )
+        await expect(other.query(dropSql)).rejects.toMatchObject({
+          code: "55P03",
+        })
+        await other.query("ROLLBACK")
+        const retained = await client.query(
+          `SELECT count(*)::int AS stages FROM recommendation_candidate_stage_evidence`,
+        )
+        expect(retained.rows[0]?.stages).toBeGreaterThan(0)
+        const index = await client.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_expiry_idx'`,
+          [schemaName],
+        )
+        expect(index.rows).toHaveLength(1)
+        await client.query("COMMIT")
+        await other.query(dropSql)
+        const dropped = await client.query(
+          `SELECT 1 FROM pg_indexes WHERE schemaname = $1
+           AND indexname = 'recommendation_candidate_stage_expiry_idx'`,
+          [schemaName],
+        )
+        expect(dropped.rows).toHaveLength(0)
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS stages FROM recommendation_candidate_stage_evidence`,
+            )
+          ).rows[0]?.stages,
+        ).toBe(retained.rows[0]?.stages)
+        await client.query(
+          "DELETE FROM recommendation_request WHERE id = 'expiry-index-retained-request'",
+        )
+        const cascaded = await client.query(
+          `SELECT 1 FROM recommendation_candidate_stage_evidence
+           WHERE run_id = 'expiry-index-retained-run'`,
+        )
+        expect(cascaded.rows).toHaveLength(0)
+      } finally {
+        await client.query("ROLLBACK")
+        await other.end()
+      }
     })
 
     afterAll(async () => {

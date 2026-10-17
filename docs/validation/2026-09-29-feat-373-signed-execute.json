@@ -1,0 +1,13 @@
+{
+  "mode": "signed-execute",
+  "startedAt": "2026-09-28T21:02:23.355999+00:00",
+  "endedAt": "2026-09-28T21:02:27.313098+00:00",
+  "transportElapsedMs": 3957,
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "exitCode": 0,
+  "sqlstates": [],
+  "statementTimeout": false,
+  "returnedAggregateGroups": 6
+}

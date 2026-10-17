@@ -1,0 +1,2933 @@
+{
+  "kind": "row-envelope-storage-fixture",
+  "productionClearance": false,
+  "generationCorrectnessOrPublisherLatencyEvidence": false,
+  "startedAt": "2026-09-29T06:07:32.230Z",
+  "scope": "One unqualified synthetic retained graph at maximum source/pair/output row counts. Direct batched SQL, not the production publisher.",
+  "fixture": {
+    "container": "forge-cowatch-envelope-20260929-552a",
+    "volume": "forge-cowatch-envelope-20260929-552a",
+    "database": "forge_cowatch_envelope_552a",
+    "image": "pgvector/pgvector:pg18-trixie",
+    "cpus": 2,
+    "memoryBytes": 2147483648,
+    "swapBytes": 0,
+    "concurrentWorkloadConnections": 1,
+    "batchRows": 5000,
+    "statementTimeoutMs": 5000,
+    "lockTimeoutMs": 1000,
+    "transactionTimeoutMs": 30000,
+    "timeboxMs": 600000,
+    "imageId": "sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff",
+    "imageDigest": "[\"pgvector/pgvector@sha256:78bf48b801e792f99e3ac62b5036fd3876e9be48afda16c1e331af1c75ceb2ff\"]",
+    "port": 32784,
+    "actualCgroupLimits": "2147483648\n0\n200000 100000"
+  },
+  "diskBefore": {
+    "totalBytes": 209129086976,
+    "availableBytes": 32220794880
+  },
+  "phases": [
+    {
+      "name": "support_profiles",
+      "requestedRows": 1000,
+      "insertedRows": 1000,
+      "elapsedMs": 433,
+      "maxBatchMs": 276,
+      "walBytes": "849128",
+      "batches": [
+        {
+          "from": 1,
+          "to": 1000,
+          "rows": 1000,
+          "elapsedMs": 276
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:07:33.616Z",
+        "lsn": "0/289AD78",
+        "database": {
+          "size_bytes": "23623359",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 32188166144
+          },
+          "volumeAndWal": "81428480\t/var/lib/postgresql\n33566720\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "136753152\n144338944\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 2423140\nuser_usec 1561927\nsystem_usec 861212\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 132\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:07:34.031Z",
+        "lsn": "0/296A260",
+        "database": {
+          "size_bytes": "24188607",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 32187600896
+          },
+          "volumeAndWal": "81993728\t/var/lib/postgresql\n33566720\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "277737472\n281825280\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 2616159\nuser_usec 1650337\nsystem_usec 965821\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 137\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    },
+    {
+      "name": "support_episodes",
+      "requestedRows": 50000,
+      "insertedRows": 50000,
+      "elapsedMs": 7503,
+      "maxBatchMs": 823,
+      "walBytes": "119245568",
+      "batches": [
+        {
+          "from": 1,
+          "to": 5000,
+          "rows": 5000,
+          "elapsedMs": 745
+        },
+        {
+          "from": 5001,
+          "to": 10000,
+          "rows": 5000,
+          "elapsedMs": 718
+        },
+        {
+          "from": 10001,
+          "to": 15000,
+          "rows": 5000,
+          "elapsedMs": 710
+        },
+        {
+          "from": 15001,
+          "to": 20000,
+          "rows": 5000,
+          "elapsedMs": 823
+        },
+        {
+          "from": 20001,
+          "to": 25000,
+          "rows": 5000,
+          "elapsedMs": 740
+        },
+        {
+          "from": 25001,
+          "to": 30000,
+          "rows": 5000,
+          "elapsedMs": 713
+        },
+        {
+          "from": 30001,
+          "to": 35000,
+          "rows": 5000,
+          "elapsedMs": 729
+        },
+        {
+          "from": 35001,
+          "to": 40000,
+          "rows": 5000,
+          "elapsedMs": 716
+        },
+        {
+          "from": 40001,
+          "to": 45000,
+          "rows": 5000,
+          "elapsedMs": 717
+        },
+        {
+          "from": 45001,
+          "to": 50000,
+          "rows": 5000,
+          "elapsedMs": 744
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:07:34.189Z",
+        "lsn": "0/296A260",
+        "database": {
+          "size_bytes": "24188607",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 32187535360
+          },
+          "volumeAndWal": "81993728\t/var/lib/postgresql\n33566720\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "277663744\n281899008\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 2692159\nuser_usec 1697209\nsystem_usec 994949\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 138\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:07:41.693Z",
+        "lsn": "0/9B22D60",
+        "database": {
+          "size_bytes": "101627583",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31991758848
+          },
+          "volumeAndWal": "277037056\t/var/lib/postgresql\n151007232\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "579321856\n583446528\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 9841776\nuser_usec 8388235\nsystem_usec 1453541\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 213\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    },
+    {
+      "name": "support_outcomes",
+      "requestedRows": 50000,
+      "insertedRows": 50000,
+      "elapsedMs": 10928,
+      "maxBatchMs": 1142,
+      "walBytes": "126821232",
+      "batches": [
+        {
+          "from": 1,
+          "to": 5000,
+          "rows": 5000,
+          "elapsedMs": 1067
+        },
+        {
+          "from": 5001,
+          "to": 10000,
+          "rows": 5000,
+          "elapsedMs": 1054
+        },
+        {
+          "from": 10001,
+          "to": 15000,
+          "rows": 5000,
+          "elapsedMs": 1071
+        },
+        {
+          "from": 15001,
+          "to": 20000,
+          "rows": 5000,
+          "elapsedMs": 1093
+        },
+        {
+          "from": 20001,
+          "to": 25000,
+          "rows": 5000,
+          "elapsedMs": 1097
+        },
+        {
+          "from": 25001,
+          "to": 30000,
+          "rows": 5000,
+          "elapsedMs": 1142
+        },
+        {
+          "from": 30001,
+          "to": 35000,
+          "rows": 5000,
+          "elapsedMs": 1080
+        },
+        {
+          "from": 35001,
+          "to": 40000,
+          "rows": 5000,
+          "elapsedMs": 1062
+        },
+        {
+          "from": 40001,
+          "to": 45000,
+          "rows": 5000,
+          "elapsedMs": 1061
+        },
+        {
+          "from": 45001,
+          "to": 50000,
+          "rows": 5000,
+          "elapsedMs": 1041
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:07:41.839Z",
+        "lsn": "0/9B22D60",
+        "database": {
+          "size_bytes": "101627583",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31991754752
+          },
+          "volumeAndWal": "277037056\t/var/lib/postgresql\n151007232\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "579649536\n583700480\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 9920960\nuser_usec 8439016\nsystem_usec 1481943\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 215\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:07:52.766Z",
+        "lsn": "0/114150D0",
+        "database": {
+          "size_bytes": "188339903",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31770738688
+          },
+          "volumeAndWal": "498040832\t/var/lib/postgresql\n285224960\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "845369344\n849793024\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 20664846\nuser_usec 18693216\nsystem_usec 1971630\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 324\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    },
+    {
+      "name": "support_eligibility",
+      "requestedRows": 50000,
+      "insertedRows": 50000,
+      "elapsedMs": 8603,
+      "maxBatchMs": 864,
+      "walBytes": "82251144",
+      "batches": [
+        {
+          "from": 1,
+          "to": 5000,
+          "rows": 5000,
+          "elapsedMs": 816
+        },
+        {
+          "from": 5001,
+          "to": 10000,
+          "rows": 5000,
+          "elapsedMs": 846
+        },
+        {
+          "from": 10001,
+          "to": 15000,
+          "rows": 5000,
+          "elapsedMs": 856
+        },
+        {
+          "from": 15001,
+          "to": 20000,
+          "rows": 5000,
+          "elapsedMs": 839
+        },
+        {
+          "from": 20001,
+          "to": 25000,
+          "rows": 5000,
+          "elapsedMs": 858
+        },
+        {
+          "from": 25001,
+          "to": 30000,
+          "rows": 5000,
+          "elapsedMs": 864
+        },
+        {
+          "from": 30001,
+          "to": 35000,
+          "rows": 5000,
+          "elapsedMs": 852
+        },
+        {
+          "from": 35001,
+          "to": 40000,
+          "rows": 5000,
+          "elapsedMs": 854
+        },
+        {
+          "from": 40001,
+          "to": 45000,
+          "rows": 5000,
+          "elapsedMs": 825
+        },
+        {
+          "from": 45001,
+          "to": 50000,
+          "rows": 5000,
+          "elapsedMs": 844
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:07:52.925Z",
+        "lsn": "0/114150D0",
+        "database": {
+          "size_bytes": "188339903",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31770734592
+          },
+          "volumeAndWal": "498040832\t/var/lib/postgresql\n285224960\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "850034688\n850034688\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 20740082\nuser_usec 18744037\nsystem_usec 1996044\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 325\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:08:01.523Z",
+        "lsn": "0/16285E58",
+        "database": {
+          "size_bytes": "243766975",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31631360000
+          },
+          "volumeAndWal": "637407232\t/var/lib/postgresql\n369111040\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "990199808\n993759232\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 29319453\nuser_usec 27005297\nsystem_usec 2314156\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 411\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    },
+    {
+      "name": "cowatch_sources",
+      "requestedRows": 50000,
+      "insertedRows": 50000,
+      "elapsedMs": 7812,
+      "maxBatchMs": 804,
+      "walBytes": "132993816",
+      "batches": [
+        {
+          "from": 1,
+          "to": 5000,
+          "rows": 5000,
+          "elapsedMs": 774
+        },
+        {
+          "from": 5001,
+          "to": 10000,
+          "rows": 5000,
+          "elapsedMs": 797
+        },
+        {
+          "from": 10001,
+          "to": 15000,
+          "rows": 5000,
+          "elapsedMs": 740
+        },
+        {
+          "from": 15001,
+          "to": 20000,
+          "rows": 5000,
+          "elapsedMs": 719
+        },
+        {
+          "from": 20001,
+          "to": 25000,
+          "rows": 5000,
+          "elapsedMs": 796
+        },
+        {
+          "from": 25001,
+          "to": 30000,
+          "rows": 5000,
+          "elapsedMs": 723
+        },
+        {
+          "from": 30001,
+          "to": 35000,
+          "rows": 5000,
+          "elapsedMs": 754
+        },
+        {
+          "from": 35001,
+          "to": 40000,
+          "rows": 5000,
+          "elapsedMs": 762
+        },
+        {
+          "from": 40001,
+          "to": 45000,
+          "rows": 5000,
+          "elapsedMs": 804
+        },
+        {
+          "from": 45001,
+          "to": 50000,
+          "rows": 5000,
+          "elapsedMs": 794
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:08:01.835Z",
+        "lsn": "0/162862D0",
+        "database": {
+          "size_bytes": "243799743",
+          "temp_files": "0",
+          "temp_bytes": "0"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31631327232
+          },
+          "volumeAndWal": "637440000\t/var/lib/postgresql\n369111040\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "990908416\n995061760\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 29490391\nuser_usec 27112101\nsystem_usec 2378289\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 415\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:08:09.657Z",
+        "lsn": "0/1E15B5E8",
+        "database": {
+          "size_bytes": "337458879",
+          "temp_files": "10",
+          "temp_bytes": "44100000"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31403495424
+          },
+          "volumeAndWal": "865222656\t/var/lib/postgresql\n503328768\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "1232756736\n1237274624\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 36939825\nuser_usec 34150589\nsystem_usec 2789235\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 493\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    },
+    {
+      "name": "cowatch_pairs",
+      "requestedRows": 250000,
+      "insertedRows": 250000,
+      "elapsedMs": 52859,
+      "maxBatchMs": 1173,
+      "walBytes": "983574752",
+      "batches": [
+        {
+          "from": 1,
+          "to": 5000,
+          "rows": 5000,
+          "elapsedMs": 890
+        },
+        {
+          "from": 5001,
+          "to": 10000,
+          "rows": 5000,
+          "elapsedMs": 900
+        },
+        {
+          "from": 10001,
+          "to": 15000,
+          "rows": 5000,
+          "elapsedMs": 934
+        },
+        {
+          "from": 15001,
+          "to": 20000,
+          "rows": 5000,
+          "elapsedMs": 995
+        },
+        {
+          "from": 20001,
+          "to": 25000,
+          "rows": 5000,
+          "elapsedMs": 994
+        },
+        {
+          "from": 25001,
+          "to": 30000,
+          "rows": 5000,
+          "elapsedMs": 1048
+        },
+        {
+          "from": 30001,
+          "to": 35000,
+          "rows": 5000,
+          "elapsedMs": 1063
+        },
+        {
+          "from": 35001,
+          "to": 40000,
+          "rows": 5000,
+          "elapsedMs": 1086
+        },
+        {
+          "from": 40001,
+          "to": 45000,
+          "rows": 5000,
+          "elapsedMs": 1173
+        },
+        {
+          "from": 45001,
+          "to": 50000,
+          "rows": 5000,
+          "elapsedMs": 1017
+        },
+        {
+          "from": 50001,
+          "to": 55000,
+          "rows": 5000,
+          "elapsedMs": 1021
+        },
+        {
+          "from": 55001,
+          "to": 60000,
+          "rows": 5000,
+          "elapsedMs": 1019
+        },
+        {
+          "from": 60001,
+          "to": 65000,
+          "rows": 5000,
+          "elapsedMs": 1042
+        },
+        {
+          "from": 65001,
+          "to": 70000,
+          "rows": 5000,
+          "elapsedMs": 1069
+        },
+        {
+          "from": 70001,
+          "to": 75000,
+          "rows": 5000,
+          "elapsedMs": 1132
+        },
+        {
+          "from": 75001,
+          "to": 80000,
+          "rows": 5000,
+          "elapsedMs": 1099
+        },
+        {
+          "from": 80001,
+          "to": 85000,
+          "rows": 5000,
+          "elapsedMs": 1034
+        },
+        {
+          "from": 85001,
+          "to": 90000,
+          "rows": 5000,
+          "elapsedMs": 1024
+        },
+        {
+          "from": 90001,
+          "to": 95000,
+          "rows": 5000,
+          "elapsedMs": 1088
+        },
+        {
+          "from": 95001,
+          "to": 100000,
+          "rows": 5000,
+          "elapsedMs": 1154
+        },
+        {
+          "from": 100001,
+          "to": 105000,
+          "rows": 5000,
+          "elapsedMs": 1136
+        },
+        {
+          "from": 105001,
+          "to": 110000,
+          "rows": 5000,
+          "elapsedMs": 1072
+        },
+        {
+          "from": 110001,
+          "to": 115000,
+          "rows": 5000,
+          "elapsedMs": 1077
+        },
+        {
+          "from": 115001,
+          "to": 120000,
+          "rows": 5000,
+          "elapsedMs": 1066
+        },
+        {
+          "from": 120001,
+          "to": 125000,
+          "rows": 5000,
+          "elapsedMs": 1008
+        },
+        {
+          "from": 125001,
+          "to": 130000,
+          "rows": 5000,
+          "elapsedMs": 1051
+        },
+        {
+          "from": 130001,
+          "to": 135000,
+          "rows": 5000,
+          "elapsedMs": 1106
+        },
+        {
+          "from": 135001,
+          "to": 140000,
+          "rows": 5000,
+          "elapsedMs": 1003
+        },
+        {
+          "from": 140001,
+          "to": 145000,
+          "rows": 5000,
+          "elapsedMs": 1001
+        },
+        {
+          "from": 145001,
+          "to": 150000,
+          "rows": 5000,
+          "elapsedMs": 1028
+        },
+        {
+          "from": 150001,
+          "to": 155000,
+          "rows": 5000,
+          "elapsedMs": 1146
+        },
+        {
+          "from": 155001,
+          "to": 160000,
+          "rows": 5000,
+          "elapsedMs": 1082
+        },
+        {
+          "from": 160001,
+          "to": 165000,
+          "rows": 5000,
+          "elapsedMs": 1037
+        },
+        {
+          "from": 165001,
+          "to": 170000,
+          "rows": 5000,
+          "elapsedMs": 1036
+        },
+        {
+          "from": 170001,
+          "to": 175000,
+          "rows": 5000,
+          "elapsedMs": 1083
+        },
+        {
+          "from": 175001,
+          "to": 180000,
+          "rows": 5000,
+          "elapsedMs": 1095
+        },
+        {
+          "from": 180001,
+          "to": 185000,
+          "rows": 5000,
+          "elapsedMs": 1048
+        },
+        {
+          "from": 185001,
+          "to": 190000,
+          "rows": 5000,
+          "elapsedMs": 1045
+        },
+        {
+          "from": 190001,
+          "to": 195000,
+          "rows": 5000,
+          "elapsedMs": 1172
+        },
+        {
+          "from": 195001,
+          "to": 200000,
+          "rows": 5000,
+          "elapsedMs": 1061
+        },
+        {
+          "from": 200001,
+          "to": 205000,
+          "rows": 5000,
+          "elapsedMs": 1042
+        },
+        {
+          "from": 205001,
+          "to": 210000,
+          "rows": 5000,
+          "elapsedMs": 1106
+        },
+        {
+          "from": 210001,
+          "to": 215000,
+          "rows": 5000,
+          "elapsedMs": 1014
+        },
+        {
+          "from": 215001,
+          "to": 220000,
+          "rows": 5000,
+          "elapsedMs": 1007
+        },
+        {
+          "from": 220001,
+          "to": 225000,
+          "rows": 5000,
+          "elapsedMs": 1028
+        },
+        {
+          "from": 225001,
+          "to": 230000,
+          "rows": 5000,
+          "elapsedMs": 1043
+        },
+        {
+          "from": 230001,
+          "to": 235000,
+          "rows": 5000,
+          "elapsedMs": 1094
+        },
+        {
+          "from": 235001,
+          "to": 240000,
+          "rows": 5000,
+          "elapsedMs": 1121
+        },
+        {
+          "from": 240001,
+          "to": 245000,
+          "rows": 5000,
+          "elapsedMs": 1058
+        },
+        {
+          "from": 245001,
+          "to": 250000,
+          "rows": 5000,
+          "elapsedMs": 1057
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:08:09.806Z",
+        "lsn": "0/1E15B5E8",
+        "database": {
+          "size_bytes": "337458879",
+          "temp_files": "10",
+          "temp_bytes": "44100000"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 31403491328
+          },
+          "volumeAndWal": "865222656\t/var/lib/postgresql\n503328768\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "1232867328\n1237311488\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 37018423\nuser_usec 34199630\nsystem_usec 2818793\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 494\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:09:02.669Z",
+        "lsn": "0/58B5DEC8",
+        "database": {
+          "size_bytes": "1029726735",
+          "temp_files": "60",
+          "temp_bytes": "308600000"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 30140567552
+          },
+          "volumeAndWal": "2127925248\t/var/lib/postgresql\n1073754112\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "2143031296\n2147483648\nlow 0\nhigh 0\nmax 606\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 95495199\nuser_usec 89698800\nsystem_usec 5796398\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 1023\nnr_throttled 10\nthrottled_usec 3157\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    },
+    {
+      "name": "cowatch_edges",
+      "requestedRows": 250000,
+      "insertedRows": 250000,
+      "elapsedMs": 55219,
+      "maxBatchMs": 1322,
+      "walBytes": "1256626688",
+      "batches": [
+        {
+          "from": 1,
+          "to": 5000,
+          "rows": 5000,
+          "elapsedMs": 821
+        },
+        {
+          "from": 5001,
+          "to": 10000,
+          "rows": 5000,
+          "elapsedMs": 866
+        },
+        {
+          "from": 10001,
+          "to": 15000,
+          "rows": 5000,
+          "elapsedMs": 901
+        },
+        {
+          "from": 15001,
+          "to": 20000,
+          "rows": 5000,
+          "elapsedMs": 1003
+        },
+        {
+          "from": 20001,
+          "to": 25000,
+          "rows": 5000,
+          "elapsedMs": 1058
+        },
+        {
+          "from": 25001,
+          "to": 30000,
+          "rows": 5000,
+          "elapsedMs": 1048
+        },
+        {
+          "from": 30001,
+          "to": 35000,
+          "rows": 5000,
+          "elapsedMs": 1047
+        },
+        {
+          "from": 35001,
+          "to": 40000,
+          "rows": 5000,
+          "elapsedMs": 1102
+        },
+        {
+          "from": 40001,
+          "to": 45000,
+          "rows": 5000,
+          "elapsedMs": 1156
+        },
+        {
+          "from": 45001,
+          "to": 50000,
+          "rows": 5000,
+          "elapsedMs": 1123
+        },
+        {
+          "from": 50001,
+          "to": 55000,
+          "rows": 5000,
+          "elapsedMs": 1158
+        },
+        {
+          "from": 55001,
+          "to": 60000,
+          "rows": 5000,
+          "elapsedMs": 1049
+        },
+        {
+          "from": 60001,
+          "to": 65000,
+          "rows": 5000,
+          "elapsedMs": 1113
+        },
+        {
+          "from": 65001,
+          "to": 70000,
+          "rows": 5000,
+          "elapsedMs": 1024
+        },
+        {
+          "from": 70001,
+          "to": 75000,
+          "rows": 5000,
+          "elapsedMs": 1089
+        },
+        {
+          "from": 75001,
+          "to": 80000,
+          "rows": 5000,
+          "elapsedMs": 1115
+        },
+        {
+          "from": 80001,
+          "to": 85000,
+          "rows": 5000,
+          "elapsedMs": 1089
+        },
+        {
+          "from": 85001,
+          "to": 90000,
+          "rows": 5000,
+          "elapsedMs": 1092
+        },
+        {
+          "from": 90001,
+          "to": 95000,
+          "rows": 5000,
+          "elapsedMs": 1089
+        },
+        {
+          "from": 95001,
+          "to": 100000,
+          "rows": 5000,
+          "elapsedMs": 1090
+        },
+        {
+          "from": 100001,
+          "to": 105000,
+          "rows": 5000,
+          "elapsedMs": 1140
+        },
+        {
+          "from": 105001,
+          "to": 110000,
+          "rows": 5000,
+          "elapsedMs": 1116
+        },
+        {
+          "from": 110001,
+          "to": 115000,
+          "rows": 5000,
+          "elapsedMs": 1322
+        },
+        {
+          "from": 115001,
+          "to": 120000,
+          "rows": 5000,
+          "elapsedMs": 1121
+        },
+        {
+          "from": 120001,
+          "to": 125000,
+          "rows": 5000,
+          "elapsedMs": 1190
+        },
+        {
+          "from": 125001,
+          "to": 130000,
+          "rows": 5000,
+          "elapsedMs": 1158
+        },
+        {
+          "from": 130001,
+          "to": 135000,
+          "rows": 5000,
+          "elapsedMs": 1207
+        },
+        {
+          "from": 135001,
+          "to": 140000,
+          "rows": 5000,
+          "elapsedMs": 1184
+        },
+        {
+          "from": 140001,
+          "to": 145000,
+          "rows": 5000,
+          "elapsedMs": 1155
+        },
+        {
+          "from": 145001,
+          "to": 150000,
+          "rows": 5000,
+          "elapsedMs": 1158
+        },
+        {
+          "from": 150001,
+          "to": 155000,
+          "rows": 5000,
+          "elapsedMs": 1176
+        },
+        {
+          "from": 155001,
+          "to": 160000,
+          "rows": 5000,
+          "elapsedMs": 1115
+        },
+        {
+          "from": 160001,
+          "to": 165000,
+          "rows": 5000,
+          "elapsedMs": 1078
+        },
+        {
+          "from": 165001,
+          "to": 170000,
+          "rows": 5000,
+          "elapsedMs": 1074
+        },
+        {
+          "from": 170001,
+          "to": 175000,
+          "rows": 5000,
+          "elapsedMs": 1111
+        },
+        {
+          "from": 175001,
+          "to": 180000,
+          "rows": 5000,
+          "elapsedMs": 1081
+        },
+        {
+          "from": 180001,
+          "to": 185000,
+          "rows": 5000,
+          "elapsedMs": 1077
+        },
+        {
+          "from": 185001,
+          "to": 190000,
+          "rows": 5000,
+          "elapsedMs": 1066
+        },
+        {
+          "from": 190001,
+          "to": 195000,
+          "rows": 5000,
+          "elapsedMs": 1061
+        },
+        {
+          "from": 195001,
+          "to": 200000,
+          "rows": 5000,
+          "elapsedMs": 1063
+        },
+        {
+          "from": 200001,
+          "to": 205000,
+          "rows": 5000,
+          "elapsedMs": 1203
+        },
+        {
+          "from": 205001,
+          "to": 210000,
+          "rows": 5000,
+          "elapsedMs": 1106
+        },
+        {
+          "from": 210001,
+          "to": 215000,
+          "rows": 5000,
+          "elapsedMs": 1090
+        },
+        {
+          "from": 215001,
+          "to": 220000,
+          "rows": 5000,
+          "elapsedMs": 1099
+        },
+        {
+          "from": 220001,
+          "to": 225000,
+          "rows": 5000,
+          "elapsedMs": 1132
+        },
+        {
+          "from": 225001,
+          "to": 230000,
+          "rows": 5000,
+          "elapsedMs": 1107
+        },
+        {
+          "from": 230001,
+          "to": 235000,
+          "rows": 5000,
+          "elapsedMs": 1168
+        },
+        {
+          "from": 235001,
+          "to": 240000,
+          "rows": 5000,
+          "elapsedMs": 1161
+        },
+        {
+          "from": 240001,
+          "to": 245000,
+          "rows": 5000,
+          "elapsedMs": 1141
+        },
+        {
+          "from": 245001,
+          "to": 250000,
+          "rows": 5000,
+          "elapsedMs": 1168
+        }
+      ],
+      "before": {
+        "at": "2026-09-29T06:09:02.819Z",
+        "lsn": "0/58B5DEC8",
+        "database": {
+          "size_bytes": "1029726735",
+          "temp_files": "60",
+          "temp_bytes": "308600000"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 30140559360
+          },
+          "volumeAndWal": "2127925248\t/var/lib/postgresql\n1073754112\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "2142752768\n2147483648\nlow 0\nhigh 0\nmax 606\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 95572405\nuser_usec 89746905\nsystem_usec 5825499\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 1024\nnr_throttled 10\nthrottled_usec 3157\nnr_bursts 0\nburst_usec 0"
+        }
+      },
+      "after": {
+        "at": "2026-09-29T06:09:58.035Z",
+        "lsn": "0/A39C78C8",
+        "database": {
+          "size_bytes": "1819345423",
+          "temp_files": "60",
+          "temp_bytes": "308600000"
+        },
+        "physical": {
+          "disk": {
+            "totalBytes": 209129086976,
+            "availableBytes": 29350854656
+          },
+          "volumeAndWal": "2917564416\t/var/lib/postgresql\n1073754112\t/var/lib/postgresql/18/docker/pg_wal",
+          "cgroup": "2143002624\n2147487744\nlow 0\nhigh 0\nmax 2182\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 158033235\nuser_usec 149386365\nsystem_usec 8646870\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 1577\nnr_throttled 50\nthrottled_usec 52316\nnr_bursts 0\nburst_usec 0"
+        }
+      }
+    }
+  ],
+  "migrations": [
+    {
+      "name": "0001_init",
+      "sha256": "31366403c9bf38e9736ecc3f006939cf22b7d9a9cad710b0da10f5465101ede8"
+    },
+    {
+      "name": "0002_auth",
+      "sha256": "56eb694fe188ce6002add1c2bf7004fc0f590e4874a7c2fd51abc8dd1acedce8"
+    },
+    {
+      "name": "0003_scene_embeddings",
+      "sha256": "7666708d05a40384486d2ff434c67a59e8b1ffb4c53f616b00af4d817d5c4e46"
+    },
+    {
+      "name": "0004_transcript_embeddings",
+      "sha256": "f5283f2d765e6009890343850545c9d3243f273dc21c614187ba4427645c6f0e"
+    },
+    {
+      "name": "0005_media_assets",
+      "sha256": "96a267861f0bd4b54644902cd9c517d1189d3afb208bcdf4e3f9da324322a18b"
+    },
+    {
+      "name": "0005_r3_experience_cms_dump_snapshot",
+      "sha256": "b20e0bd46ed21e4fac2647737f970f353912fce8d4784b9816f3c80ca70e26f2"
+    },
+    {
+      "name": "0006_hybrid_search_gin",
+      "sha256": "342e5994c2cc5f8dce6bd81507c9c05dd14ab5551402810d4f7faaf413adea00"
+    },
+    {
+      "name": "0006_media_folders",
+      "sha256": "61adcbb28e99a69bbbb9e3ed65e2dabb66ab6decbd06ac64bb3fa924c5948b4b"
+    },
+    {
+      "name": "0007_admin_core_sync_coverage",
+      "sha256": "64764c08a3086abab83e25a4aba70dad9f7e897afea2965f3aadf6eb2d622a9b"
+    },
+    {
+      "name": "0008_reference_locale_rows",
+      "sha256": "4a7e488b467144f8789c3ce27d9189cd488fa6d2473e4be4d54b7987371ce6f9"
+    },
+    {
+      "name": "0009_keyword_first_lexical",
+      "sha256": "b8182d370c5b073fb247cd3de4c8f0afba2c89f363bb9e3736eb35420aace71b"
+    },
+    {
+      "name": "0009_workflow_run_ledger",
+      "sha256": "bc779eada9f6e495879255be4a5b704456547636813d72b963d4494733963d11"
+    },
+    {
+      "name": "0010_camelcase_tsv_and_description_trigram",
+      "sha256": "9883fad1f85ae7abfe23ef983d10a5b3bfaa59888eca634e13279e2b9c79219a"
+    },
+    {
+      "name": "0010_workflow_worker_heartbeat",
+      "sha256": "2ef9c71ad2d8da4fddd44eef20e94d5f54ae62ec623159ea2df22679e46f226c"
+    },
+    {
+      "name": "0011_media_image_enrichment",
+      "sha256": "a1ddaa2ebc7a84b87ef8d5bab72be82337429b0b67874cb6c22cedb599fd216c"
+    },
+    {
+      "name": "0012_drop_media_asset_canonical_text",
+      "sha256": "59c93b6718e4e20d2bea8e2ec04319f38545eb3c4dbd5ac4a2bd54b9454eae57"
+    },
+    {
+      "name": "0013_rename_legacy_video_source_column",
+      "sha256": "c3e81caefe348220c16b010f5d1feb1be104f353056ab8e28b0c7de7a42ee6c0"
+    },
+    {
+      "name": "0014_drop_experience_locale_cms_snapshot",
+      "sha256": "309811626c05e1ceefc3c3c9c4b41b02094c05b9d8ccc04bb9d869ccc4b14b7a"
+    },
+    {
+      "name": "0015_partner_api_keys",
+      "sha256": "3501574da552c3a897f5d14c567b3d3e7cda4b3e0505c2dea1ebef83aa9bf01e"
+    },
+    {
+      "name": "0016_manager_membership",
+      "sha256": "afcf00ece06002a06ecab2412eecdca8f942b1f28d695848145e8f9b08d86e96"
+    },
+    {
+      "name": "0017_manager_backend_contracts",
+      "sha256": "511ed55a08d16cd2847f599135df9473ee9baac4303149b46706a66534356a2d"
+    },
+    {
+      "name": "0018_transcript_embedding_mastra_provenance",
+      "sha256": "d1d4cf7df634056259c437ad7a7efac4211aeb2291d2248fd57b8c1804635e71"
+    },
+    {
+      "name": "0019_scene_embedding_mastra_provenance",
+      "sha256": "569ed88d3d5cdaa2365f9c693bb29a7ad23ea1d65b77e0e4ab3b2c6135b70aa1"
+    },
+    {
+      "name": "0020_experience_embedding_mastra_provenance",
+      "sha256": "a7ccb636aaab7f17dff15dcdb2b320455fd0c674fd8452a37aff363fd2b25fb4"
+    },
+    {
+      "name": "0021_admin_search_trace_storage_retention",
+      "sha256": "b30c8a46ffbc2244b40b45e525dec8afa68b6c8e4e99c3f0049d0536edf64f84"
+    },
+    {
+      "name": "0022_search_trace_query_label_provenance",
+      "sha256": "edcf720bd6a41829f07a4df006310a0454cfb7fc7799e9824abd07fb358fd0af"
+    },
+    {
+      "name": "0023_search_eval_candidates",
+      "sha256": "884ab49b223cb2954ce574efbc3ecc69a8879fd86ab883f882afb45d1e0c73e6"
+    },
+    {
+      "name": "0024_search_eval_human_promotion",
+      "sha256": "6eea11f892540068df362c4e2dda16cc5e1d4fcb996d86529ad18dad82088efc"
+    },
+    {
+      "name": "0025_watch_route_manifest_snapshot",
+      "sha256": "c20b250556c05a1c6c62699949e78d40fcbd804a0eda6396bdd2a4c40f5b8287"
+    },
+    {
+      "name": "0026_video_locale_language_identity",
+      "sha256": "3ae746ebdf22fd174a98e4c98ceae712343d240df55a32ed84b2754309b4a7c3"
+    },
+    {
+      "name": "0026_watch_seo_manifest_snapshot",
+      "sha256": "5f61e832760355f316be18463c187706ef18947158a20bc86a479e83562fb170"
+    },
+    {
+      "name": "0027_video_localized_language_slug_identity",
+      "sha256": "a36625d4cd661f2ae1e083f5e46592c203404024a1077a074fcb738f57cbc4d4"
+    },
+    {
+      "name": "0028_content_embedding_provider_provenance",
+      "sha256": "888b01619c35c396aa0d5830a1952ad4af4bc9642c089c43c8900426e8f33085"
+    },
+    {
+      "name": "0029_experience_chat",
+      "sha256": "015b48c91e6b8c0922bb29be5b6c23a068a82c775013f9c029c7066999e89aab"
+    },
+    {
+      "name": "0030_mastra_schema",
+      "sha256": "ff40db10e5fb1ee085ad16a2dceb04722c840015c498a9f577db0787e18a60d5"
+    },
+    {
+      "name": "0031_chat_message_produced_by",
+      "sha256": "de01f3531b1690663eb356c59a5f2370951fd166f32b886dd23c79ab4021fcf6"
+    },
+    {
+      "name": "0032_video_embedding_qwen",
+      "sha256": "aa796e3fc63a1c184506aeaa6cb1122b856cd89a965319595b2ba50abf500aa8"
+    },
+    {
+      "name": "0033_drop_video_embedding_qwen",
+      "sha256": "69d0b1b52c3b5bae5946bf2575bbeaa49c7ac822865663d4d20eaeaf2b008795"
+    },
+    {
+      "name": "0034_enriched_transcript_chunks",
+      "sha256": "ab85f6c3ad120aea79deb5f07b4037998614d5cac48d766753564da5e67a83db"
+    },
+    {
+      "name": "0035_watch_video_query_indexes",
+      "sha256": "b922c91b450bcb649521a4c3584afe81634518908956f243993bd33b20150eaf"
+    },
+    {
+      "name": "0036_mux_image_derivatives",
+      "sha256": "532297fe277dedf92023160090c74a5e7ff4baeaf0a82aa536fbd84e2e07082b"
+    },
+    {
+      "name": "0037_bible_passage_cache",
+      "sha256": "e7a0b061621eba6963de43b439d9c919dd927c0b938a43dd6099a4e14775fec5"
+    },
+    {
+      "name": "0037_watch_events",
+      "sha256": "856d8f43b5427179f2cde004242c0fe93b6a6549ac4f08c186ddfdd4eb8e9ee7"
+    },
+    {
+      "name": "0038_watch_progress",
+      "sha256": "7f23190b65152ccdcaffb0f95c6ebc7a783a12240943c5b569d3555e97e27517"
+    },
+    {
+      "name": "0039_video_image_blur_data_url",
+      "sha256": "aabe3f4c41b01bb6761a132b44ba3a535d2e3e380bcebb6c010ae3029922bc73"
+    },
+    {
+      "name": "0040_video_and_mux_dominant_color",
+      "sha256": "6b11bf72ddd05c5ff25bfd62ee930f722a28b8c219534701119b5951e73dfeaf"
+    },
+    {
+      "name": "0041_watch_language_inventory_indexes",
+      "sha256": "75c1ec51499365d311df824be387bc9302037744a98f3577fae5fd804409a6f6"
+    },
+    {
+      "name": "0042_watch_search_trace_metadata",
+      "sha256": "4d07edd43424d39c2fecba0e43d9d8cc57161783541722f56712ac1729926571"
+    },
+    {
+      "name": "0043_watch_search_events",
+      "sha256": "4bc48c9120a42526a409e952d9d0e9c32af3cab2be858ce8d411a01c36730183"
+    },
+    {
+      "name": "0044_language_fallbacks",
+      "sha256": "f8bc9b79f9213700b2bddf31440f7322e77cc7091655586d54e2223fed433118"
+    },
+    {
+      "name": "0045_query_embedding_cache",
+      "sha256": "ab4254f07d6680306d3f14f24d1ed32d2d39cc5d46f10d5ab8b2cd6c5ff4e08f"
+    },
+    {
+      "name": "0046_watch_search_availability_indexes",
+      "sha256": "afbbf7cc5c9f7fb412939de0fe9178626b3297246136b11363a0a7feb4332603"
+    },
+    {
+      "name": "0047_video_locale_search_social_metadata",
+      "sha256": "be667984cf751183c68794a67d13613c094c7d961ab4d20da072aa2d4cd66ad2"
+    },
+    {
+      "name": "0048_video_restrict_view_platforms",
+      "sha256": "fffd0699da0fd14d9d5ca35c7ad864b6e995a5e01cfd2a351a3bb4dabd12b7ca"
+    },
+    {
+      "name": "0048_watch_search_candidate_generations",
+      "sha256": "eaf3f337580eca227720b3a759440e3e600be7333a98529371e229c1b596a48a"
+    },
+    {
+      "name": "0049_add_seo_experiment_ledger",
+      "sha256": "831f3ba3af420b61812ab988aaec3943f9f6fce933a4b7fa36e5783e41515617"
+    },
+    {
+      "name": "0050_fix_watch_search_candidate_trigger_precedence",
+      "sha256": "97781ed5b90f03f34524c1f93846e1fc788a2b1a1ae67837910451c3059b1f73"
+    },
+    {
+      "name": "0051_watch_search_candidate_operator_acceptance",
+      "sha256": "d793369a82a2236fe5fd67e49e94fc6c5800689c96a11101624085d9d0f3ab12"
+    },
+    {
+      "name": "0052_experience_draft_preview_token",
+      "sha256": "0e4aa6b5bf7e710567e74075e8354ef0aec018a6765a9abd9fe4c413ab9dc0b8"
+    },
+    {
+      "name": "0052_production_semantic_recommendation_tracer",
+      "sha256": "a7127717025bf4f33898656f77f496b9278dba8a56c7d286931f0315ce750800"
+    },
+    {
+      "name": "0052_subtitle_quality_lab",
+      "sha256": "591bd0b0c17ea2d00d48597aa8ef9c3a1f747d147f5bdc9135569fa573aed53c"
+    },
+    {
+      "name": "0053_recommendation_active_playback_proxy",
+      "sha256": "0aac86fa3776909f6f2fa0b6e945c1d6d407870e6f1710d8a453f21fb321cc27"
+    },
+    {
+      "name": "0053_whats_new_feature_vote",
+      "sha256": "2e68ef4077e26959914c46dbd5d72e18ec7554bf2eed5b13a5f22084a1d1ce9a"
+    },
+    {
+      "name": "0054_recommendation_mission_value_actions",
+      "sha256": "f91a5e0b95acba0a688faae78abad9b29a03c62d42a18a31637d6f9c99f6a55f"
+    },
+    {
+      "name": "0055_recommendation_integrity_eligibility",
+      "sha256": "90c85a995d2a259e0b357cd6f62aaf1ad090e0a1ecfc24f54acb1cf1b4827287"
+    },
+    {
+      "name": "0056_consent_aware_recommendation_profile",
+      "sha256": "a9dac3ad2ac0591ffc3ed8204069f88b34d47615741ba7335cfc5d01aef8e3ea"
+    },
+    {
+      "name": "0057_semantic_control_readiness",
+      "sha256": "ece9ee7d1b38c10a12ff4c84b53fccf524d7c69aa35dabea436af2d6154c08bd"
+    },
+    {
+      "name": "0058_recommendation_candidate_platform",
+      "sha256": "af94e7fd96aad835e0c049727ae33fd6ccedbb87f68fcf19998313db2ca301f6"
+    },
+    {
+      "name": "0059_recommendation_shadow_candidate_evaluation",
+      "sha256": "3c126e352cb809bca196d14b49c270dcc9f017c7502b561504496f8f890f56c5"
+    },
+    {
+      "name": "0060_recommendation_experiment_spine",
+      "sha256": "31637a2f1f6ce66a0028e472c8bcc11b5ae7b2f0bd9190bb4afa8e127962131d"
+    },
+    {
+      "name": "0061_recommendation_hybrid_promotion",
+      "sha256": "4e1d04d5ffed409a44de984e98ad7fe2786f545bbf21f1b1ff0de30d8fbe7aa9"
+    },
+    {
+      "name": "0062_recommendation_multi_interest_profile_shadow",
+      "sha256": "cfb6bd6ba7a0bd154b74669e30ed209ccd2eef342ef2fe43ae5233cbf566ee74"
+    },
+    {
+      "name": "0063_recommendation_live_profile_pilot",
+      "sha256": "912fd1503a5716f1af75c08c8349b4904eb90065fb480d861f6f16016db3501d"
+    },
+    {
+      "name": "0064_recommendation_governance_review_guards",
+      "sha256": "a1aa2efb86364f75568aaffd3b021d8691c236ab992777f416c5adcfdcc2dac5"
+    },
+    {
+      "name": "0065_recommendation_strategy_manifest_immutability",
+      "sha256": "117edd69b5f94d68bff86bfafb688c0f0567329be6c2e43d7c3baa2a07ccc17e"
+    },
+    {
+      "name": "0066_recommendation_playback_finalization_repair",
+      "sha256": "c3cf2259d58b9d9e8cfb365705712dc16983ee806bc2f2d13290480325092a14"
+    },
+    {
+      "name": "0067_recommendation_episode_submission_budget_repair",
+      "sha256": "45dd0a40c932c7cdae932f42d942ab49e6466429aece77fcfed52f3783ba2a85"
+    },
+    {
+      "name": "0068_recommendation_trace_actor_digest_repair",
+      "sha256": "2c7233ee49c146d8d675ef06822927897c80e6207cba0c8ae6b61784467a31ef"
+    },
+    {
+      "name": "0069_recommendation_hybrid_composition",
+      "sha256": "6e0afd3a7ee1fde6b7c5c9ee04671dbd1f47c11dc905f7a28bac06e265c5a2db"
+    },
+    {
+      "name": "0070_recommendation_consent_receipts",
+      "sha256": "883b42fda7843b66c8a29c944928a031ee02729aaaef067bb996f37ca951161d"
+    },
+    {
+      "name": "0071_recommendation_assignment_generation_key",
+      "sha256": "353fae78fab60b55b442f06f0929fcc47c709df0f1cbddf906e53c9b928980d6"
+    },
+    {
+      "name": "0072_content_embedding_contract_authority",
+      "sha256": "bf051eeba4aa53387d43c56bf8960d48a00e5a1d9799840eb05b58744b362134"
+    },
+    {
+      "name": "0072_recommendation_source_neutral_playback_episodes",
+      "sha256": "6735a5abacf3ddd2eae7a85b52f5bee353c89654f87d88c74e8fc8d8b68653d9"
+    },
+    {
+      "name": "0073_watch_search_candidate_exact_compatibility_identities",
+      "sha256": "c2e421786350481b812631c93f492d2d5498301e93180e8bcded52a40daf29b5"
+    },
+    {
+      "name": "0074_watch_route_alerts",
+      "sha256": "f3fbdef2136cc9d106d7ece2f60d4c8860412e213531acd2965d7aad191e417c"
+    },
+    {
+      "name": "0075_recommendation_selection_attribution_eligibility",
+      "sha256": "ebbc1907035acb7efae7aa98315e0f6ae749630b6a30192a880d08b230d58265"
+    },
+    {
+      "name": "0076_recommendation_profile_eligibility_reconciliation",
+      "sha256": "a86517dd835d32f690a1348d136925d4e5415012267633a6e796a047051517bf"
+    },
+    {
+      "name": "0077_watch_search_current_transcript_publication",
+      "sha256": "830abf7663239d933cf01f739bf478ef3be6e571e14e353fe841a9b01c42db6e"
+    },
+    {
+      "name": "0078_watch_search_transcript_publication_names",
+      "sha256": "1e981efdf4c7b2bbd1ac76e7d3cf40a9e1c346b0bf79f010be7c5e9eddd1f815"
+    },
+    {
+      "name": "0079_watch_search_curations",
+      "sha256": "ac0535c971bbc89e43306f479f967b2a8e58754e5e9ac98de432dea53cfb3bc5"
+    },
+    {
+      "name": "0080_fireworks_content_embedding_contract",
+      "sha256": "4602f4e2fae42538378a34fcd85eef8e9dec69aec516ddcd6f0fbb499717a10c"
+    },
+    {
+      "name": "0081_watch_search_transcript_publication_convergence",
+      "sha256": "6d17f3e4de2661ae51d2bc4b07a1f5622a0d56263c3b9d410ba860a1ca0e76c6"
+    },
+    {
+      "name": "0082_user_recommendation_identity",
+      "sha256": "1fbb1ec20daf15aaec586733206e709f66d7e79eba216305a2b0e3ce6eb07e5e"
+    },
+    {
+      "name": "0083_recommendation_curated_pools",
+      "sha256": "15566a1d2601720fa04d43dabec54f94d3ec2c3d21ca0abe45b98759956c8807"
+    },
+    {
+      "name": "0094_shorts",
+      "sha256": "397d69eb1fe3c1ddaefbd78d4a3564e7421a637cb7dbfb014ac7e18e3c50ed8c"
+    },
+    {
+      "name": "0095_experience_editor_dub_indexes",
+      "sha256": "3c523bcaf5813f7d27df825c2d992f7ae3ac61b777ac0bb5eafd7a548c4e122b"
+    },
+    {
+      "name": "0096_recommendation_recent_episode_index",
+      "sha256": "7e103aadc3940fe6dda2d15a8126177f66eb8acd61212e7a5b7dd8fb786920d9"
+    },
+    {
+      "name": "0097_recommendation_curated_fallback_mode",
+      "sha256": "e102a29bb52890199a6538ef5e9e7c6368e181b279a9b8000db784bb91f27e41"
+    },
+    {
+      "name": "0098_recommendation_viewing_mode",
+      "sha256": "c5fe4e5200dc6213ab7c461bb2f985ea9c2343573001668763c539f3204eb54b"
+    },
+    {
+      "name": "0099_recommendation_playback_signal_readiness",
+      "sha256": "5119c0d1247a57a26e8ddec3804d98076f18fb2b4515ba25ed20643e47f2f7e9"
+    },
+    {
+      "name": "0100_recommendation_candidate_compact_trace",
+      "sha256": "a48b8e7018cb2f8a58fb5a841a38924498f99ebbb22794fc6b70eb1d69449513"
+    },
+    {
+      "name": "0101_recommendation_candidate_compact_trace_validate",
+      "sha256": "1e5e88e148bf87eefeaea40bf37718607ee315f71acb34257e98a872c9c360f7"
+    },
+    {
+      "name": "0102_recommendation_candidate_stage_duplicate_index_drop",
+      "sha256": "869d00672128cf4604a54561ceb4dfc18c683b7605fc1b0df2d4ebd8763779e5"
+    },
+    {
+      "name": "0103_recommendation_impression_visibility_capability",
+      "sha256": "5fd304a3123c417f2be208aad6577d69575635d0fd55a98f18133844ce5e2010"
+    },
+    {
+      "name": "0104_recommendation_cowatch_shadow",
+      "sha256": "43596af0efb7f3c6bacf6a1fb21797506a5a8679df870cbf64c1af077fae950f"
+    },
+    {
+      "name": "0105_watch_surface_served_manifest",
+      "sha256": "7989bebff29a36d70a8c0412b69fa805f06cf1d5e1407a17b63d5bac60f348ac"
+    },
+    {
+      "name": "0106_recommendation_cowatch_source_window",
+      "sha256": "b3064a7897ab2a9ccec846e4b299fe7db0d5acdc259ec6ab6dd5c74a22577c2b"
+    },
+    {
+      "name": "0107_recommendation_governed_study",
+      "sha256": "d29bee126d57fd5886f1a9aeb0ee90341019690c2c979e17050b52ce56e501b5"
+    },
+    {
+      "name": "0108_recommendation_cowatch_frozen_trial",
+      "sha256": "94260bd78c39a1d6c1b740801becc54967c405a16087c057acb276650897e3e7"
+    },
+    {
+      "name": "0109_recommendation_composition_authority",
+      "sha256": "d8c0cb7fd54f7b94b113dd5e989c04949199341043f138ce884e8e612c0e09e7"
+    },
+    {
+      "name": "0110_recommendation_live_policy_manifests",
+      "sha256": "ce2bed91c7063b83a8d6960c2555b0af399da558f59dfe7350945e24f0b9c2c2"
+    }
+  ],
+  "caveats": [
+    "No production access or measurements. This is synthetic row-envelope storage evidence, not a production capacity clearance.",
+    "Full application migrations and all enabled constraints, indexes, and triggers are retained. Workload runs as a non-superuser without schema ownership or trigger-disable privileges.",
+    "Batched autocommit inserts are not the real repeatable-read atomic publisher. This does not prove generation correctness, the 30-second publication transaction, source-query scan cost, or application peak heap.",
+    "One fresh graph, no concurrent workload, no accumulated revisions, no production bloat, no historical generations, no replication slots, no replicas, no backups. Future retained generations and raw revision volumes are outside this bound.",
+    "Maximum 191-byte media IDs and 64-byte synthetic row IDs are used; PostgreSQL TEXT IDs and variable JSON/arrays have no universal byte bound. This fixture is a measured distribution, not a schema-wide worst-case byte proof.",
+    "Edge support is one and eligible=false: all 250000 output rows are retained but this sparse fixture cannot qualify for serving. No shadow PASS, review, study, or live authority is created.",
+    "LSN deltas include isolated-cluster background WAL. Allocated WAL directory bytes differ from WAL bytes generated. Disk snapshots include unrelated host activity; relation/index sizes and container-volume sizes are fixture-local.",
+    "Cgroup memory peak includes PostgreSQL processes and charged page cache; it is not an application heap measurement. Database temp counters cover spill files, not temporary relation storage, which is reported separately.",
+    "Autovacuum and checkpoint defaults remain enabled. Measurements do not exercise mutation, erasure, retention batches, rollback at maximum rows, or concurrent publishers.",
+    "The cgroup memory peak covers container initialization, migrations, and fixture loading together; no measured process/application heap bound is inferred.",
+    "The 328817856 temp bytes are cumulative spill across workload statements, not peak concurrent temp disk. WAL directory and volume maxima are sampled at phase boundaries; transient intra-phase peaks were not measured. This leaves the complete peak heap/temp/WAL envelope unproven.",
+    "The fixture was deliberately not run through the real publisher: constructing a generation that reaches all three row ceilings under its scoring/support rules and atomic 30-second deadline is separate correctness/performance work. The 115890ms batched graph insertion result must not be advertised as publisher deadline compliance.",
+    "Before-load database/volume/WAL baselines were captured, but individual empty-table/index baselines were not sampled. Per-relation/index measurements below are final absolute allocation, not a measured per-relation allocation delta."
+  ],
+  "migrationElapsedMs": 1042,
+  "server": {
+    "version": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "current_user": "envelope_writer",
+    "server_version": "18.6 (Debian 18.6-1.pgdg13+2)",
+    "statement_timeout": "5s",
+    "lock_timeout": "1s",
+    "transaction_timeout": "30s",
+    "shared_buffers": "128MB",
+    "work_mem": "4MB",
+    "maintenance_work_mem": "64MB",
+    "wal_level": "replica",
+    "full_page_writes": "on",
+    "wal_compression": "off",
+    "max_wal_size": "1GB",
+    "checkpoint_timeout": "5min",
+    "synchronous_commit": "on",
+    "autovacuum": "on",
+    "session_replication_role": "origin"
+  },
+  "workloadRole": {
+    "rolname": "envelope_writer",
+    "rolsuper": false,
+    "rolcreatedb": false,
+    "rolcreaterole": false,
+    "rolreplication": false,
+    "rolbypassrls": false
+  },
+  "beforeWorkload": {
+    "at": "2026-09-29T06:07:33.466Z",
+    "lsn": "0/2898648",
+    "database": {
+      "size_bytes": "23590591",
+      "temp_files": "0",
+      "temp_bytes": "0"
+    },
+    "physical": {
+      "disk": {
+        "totalBytes": 209129086976,
+        "availableBytes": 32188198912
+      },
+      "volumeAndWal": "81395712\t/var/lib/postgresql\n33566720\t/var/lib/postgresql/18/docker/pg_wal",
+      "cgroup": "136404992\n144338944\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 2345884\nuser_usec 1509123\nsystem_usec 836760\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 131\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+    }
+  },
+  "beforeGraph": {
+    "at": "2026-09-29T06:08:01.671Z",
+    "lsn": "0/16285E58",
+    "database": {
+      "size_bytes": "243766975",
+      "temp_files": "0",
+      "temp_bytes": "0"
+    },
+    "physical": {
+      "disk": {
+        "totalBytes": 209129086976,
+        "availableBytes": 31631360000
+      },
+      "volumeAndWal": "637407232\t/var/lib/postgresql\n369111040\t/var/lib/postgresql/18/docker/pg_wal",
+      "cgroup": "990248960\n994873344\nlow 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 29404755\nuser_usec 27060590\nsystem_usec 2344164\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 413\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0"
+    }
+  },
+  "afterGraph": {
+    "at": "2026-09-29T06:09:58.195Z",
+    "lsn": "0/A39C78C8",
+    "database": {
+      "size_bytes": "1819345423",
+      "temp_files": "60",
+      "temp_bytes": "308600000"
+    },
+    "physical": {
+      "disk": {
+        "totalBytes": 209129086976,
+        "availableBytes": 29350846464
+      },
+      "volumeAndWal": "2917564416\t/var/lib/postgresql\n1073754112\t/var/lib/postgresql/18/docker/pg_wal",
+      "cgroup": "2142851072\n2147487744\nlow 0\nhigh 0\nmax 2182\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 158105988\nuser_usec 149435894\nsystem_usec 8670094\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 1578\nnr_throttled 50\nthrottled_usec 52316\nnr_bursts 0\nburst_usec 0"
+    }
+  },
+  "relations": [
+    {
+      "table": "recommendation_profile",
+      "rows": "1000",
+      "average_tuple_bytes": "224",
+      "max_tuple_bytes": "224",
+      "main_heap_bytes": "237568",
+      "table_including_toast_fsm_vm_bytes": "270336",
+      "indexes_bytes": "344064",
+      "total_bytes": "614400",
+      "indexes": [
+        {
+          "indexname": "recommendation_profile_erasure_idx",
+          "indexdef": "CREATE INDEX recommendation_profile_erasure_idx ON public.recommendation_profile USING btree (erasure_state, erasure_requested_at)",
+          "bytes": "16384"
+        },
+        {
+          "indexname": "recommendation_profile_expiry_idx",
+          "indexdef": "CREATE INDEX recommendation_profile_expiry_idx ON public.recommendation_profile USING btree (expires_at)",
+          "bytes": "16384"
+        },
+        {
+          "indexname": "recommendation_profile_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_profile_pkey ON public.recommendation_profile USING btree (id)",
+          "bytes": "155648"
+        },
+        {
+          "indexname": "recommendation_profile_state_updated_idx",
+          "indexdef": "CREATE INDEX recommendation_profile_state_updated_idx ON public.recommendation_profile USING btree (state, updated_at)",
+          "bytes": "16384"
+        },
+        {
+          "indexname": "recommendation_profile_token_digest_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_profile_token_digest_key ON public.recommendation_profile USING btree (token_digest)",
+          "bytes": "139264"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_a_21026",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21027",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21031",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21032",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21349",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21350",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21567",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_21568",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22134",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22135",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22238",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22239",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22281",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22282",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22390",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22391",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24037",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24038",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24224",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24225",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24283",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24284",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "composition_profile_fence",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_profile_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_study_profile_fence",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_playback_episode",
+      "rows": "50000",
+      "average_tuple_bytes": "468",
+      "max_tuple_bytes": "468",
+      "main_heap_bytes": "24100864",
+      "table_including_toast_fsm_vm_bytes": "24141824",
+      "indexes_bytes": "53428224",
+      "total_bytes": "77570048",
+      "indexes": [
+        {
+          "indexname": "recommendation_episode_capability_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_episode_capability_key ON public.recommendation_playback_episode USING btree (capability_jti)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_episode_claim_nonce_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_episode_claim_nonce_key ON public.recommendation_playback_episode USING btree (claim_nonce_digest)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_episode_created_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_created_idx ON public.recommendation_playback_episode USING btree (created_at, id)",
+          "bytes": "6840320"
+        },
+        {
+          "indexname": "recommendation_episode_finalization_due_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_finalization_due_idx ON public.recommendation_playback_episode USING btree (finalization_due_at, id) INCLUDE (generation, active_until, expires_at) WHERE (finalization_due_at IS NOT NULL)",
+          "bytes": "8192"
+        },
+        {
+          "indexname": "recommendation_episode_finalized_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_finalized_idx ON public.recommendation_playback_episode USING btree (finalized_at, id)",
+          "bytes": "6914048"
+        },
+        {
+          "indexname": "recommendation_episode_request_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_request_idx ON public.recommendation_playback_episode USING btree (request_id)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_episode_request_item_id_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_episode_request_item_id_key ON public.recommendation_playback_episode USING btree (request_id, item_id, id)",
+          "bytes": "6914048"
+        },
+        {
+          "indexname": "recommendation_episode_selection_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_episode_selection_key ON public.recommendation_playback_episode USING btree (selection_id)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_episode_selection_lineage_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_episode_selection_lineage_key ON public.recommendation_playback_episode USING btree (request_id, item_id, selection_id)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_episode_session_created_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_session_created_idx ON public.recommendation_playback_episode USING btree (session_digest, created_at DESC, id DESC)",
+          "bytes": "16654336"
+        },
+        {
+          "indexname": "recommendation_episode_source_created_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_source_created_idx ON public.recommendation_playback_episode USING btree (discovery_source, created_at, id)",
+          "bytes": "7462912"
+        },
+        {
+          "indexname": "recommendation_episode_state_deadline_idx",
+          "indexdef": "CREATE INDEX recommendation_episode_state_deadline_idx ON public.recommendation_playback_episode USING btree (state, active_until)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_playback_episode_expires_at_idx",
+          "indexdef": "CREATE INDEX recommendation_playback_episode_expires_at_idx ON public.recommendation_playback_episode USING btree (expires_at)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_playback_episode_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_playback_episode_pkey ON public.recommendation_playback_episode USING btree (id)",
+          "bytes": "6225920"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_a_22464",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22465",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22470",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22471",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22477",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22478",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22483",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22484",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22498",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22499",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22503",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22504",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22513",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22514",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22558",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22559",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22808",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22809",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24032",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24033",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24356",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24357",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19682",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19683",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19687",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19688",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19692",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19693",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "cowatch_episode_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_episode_source_normalize",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_playback_episode_root_expiry_guard",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_study_source_fence",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_outcome_revision",
+      "rows": "50000",
+      "average_tuple_bytes": "396",
+      "max_tuple_bytes": "396",
+      "main_heap_bytes": "20480000",
+      "table_including_toast_fsm_vm_bytes": "20520960",
+      "indexes_bytes": "66289664",
+      "total_bytes": "86810624",
+      "indexes": [
+        {
+          "indexname": "recommendation_outcome_classifier_created_idx",
+          "indexdef": "CREATE INDEX recommendation_outcome_classifier_created_idx ON public.recommendation_outcome_revision USING btree (classifier_version, created_at, episode_id, revision)",
+          "bytes": "8822784"
+        },
+        {
+          "indexname": "recommendation_outcome_episode_classifier_revision_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_episode_classifier_revision_key ON public.recommendation_outcome_revision USING btree (episode_id, classifier_version, revision)",
+          "bytes": "7438336"
+        },
+        {
+          "indexname": "recommendation_outcome_episode_id_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_episode_id_key ON public.recommendation_outcome_revision USING btree (episode_id, id)",
+          "bytes": "11157504"
+        },
+        {
+          "indexname": "recommendation_outcome_input_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_input_key ON public.recommendation_outcome_revision USING btree (episode_id, classifier_version, fact_watermark, input_digest)",
+          "bytes": "12853248"
+        },
+        {
+          "indexname": "recommendation_outcome_lineage_id_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_lineage_id_key ON public.recommendation_outcome_revision USING btree (request_id, item_id, episode_id, id)",
+          "bytes": "11796480"
+        },
+        {
+          "indexname": "recommendation_outcome_request_idx",
+          "indexdef": "CREATE INDEX recommendation_outcome_request_idx ON public.recommendation_outcome_revision USING btree (request_id)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_outcome_revision_expires_at_idx",
+          "indexdef": "CREATE INDEX recommendation_outcome_revision_expires_at_idx ON public.recommendation_outcome_revision USING btree (expires_at)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_outcome_revision_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_revision_pkey ON public.recommendation_outcome_revision USING btree (id)",
+          "bytes": "6275072"
+        },
+        {
+          "indexname": "recommendation_outcome_supersedes_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_supersedes_key ON public.recommendation_outcome_revision USING btree (supersedes_id)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_outcome_supersedes_lineage_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_outcome_supersedes_lineage_key ON public.recommendation_outcome_revision USING btree (request_id, item_id, episode_id, supersedes_id)",
+          "bytes": "6914048"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_a_20916",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_20917",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22207",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22208",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22488",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22489",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22493",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22494",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24214",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24215",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24273",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24274",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24278",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24279",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19786",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19787",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19791",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_19792",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22479",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22480",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22485",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22486",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22490",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22491",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22495",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22496",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "cowatch_outcome_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_outcome_removed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_outcome_revision_append_only_guard",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_outcome_revision_root_expiry_guard",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_study_source_fence",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_eligibility_decision",
+      "rows": "50000",
+      "average_tuple_bytes": "449",
+      "max_tuple_bytes": "449",
+      "main_heap_bytes": "24100864",
+      "table_including_toast_fsm_vm_bytes": "24141824",
+      "indexes_bytes": "31367168",
+      "total_bytes": "55508992",
+      "indexes": [
+        {
+          "indexname": "recommendation_eligibility_actor_state_idx",
+          "indexdef": "CREATE INDEX recommendation_eligibility_actor_state_idx ON public.recommendation_eligibility_decision USING btree (actor_class, state, decided_at)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_eligibility_current_source_policy_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_eligibility_current_source_policy_key ON public.recommendation_eligibility_decision USING btree (source_key, policy_version) WHERE (is_current = true)",
+          "bytes": "8626176"
+        },
+        {
+          "indexname": "recommendation_eligibility_decision_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_eligibility_decision_pkey ON public.recommendation_eligibility_decision USING btree (id)",
+          "bytes": "6193152"
+        },
+        {
+          "indexname": "recommendation_eligibility_expiry_idx",
+          "indexdef": "CREATE INDEX recommendation_eligibility_expiry_idx ON public.recommendation_eligibility_decision USING btree (expires_at)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_eligibility_outcome_current_idx",
+          "indexdef": "CREATE INDEX recommendation_eligibility_outcome_current_idx ON public.recommendation_eligibility_decision USING btree (outcome_id, is_current, state) WHERE (outcome_id IS NOT NULL)",
+          "bytes": "6275072"
+        },
+        {
+          "indexname": "recommendation_eligibility_selection_current_idx",
+          "indexdef": "CREATE INDEX recommendation_eligibility_selection_current_idx ON public.recommendation_eligibility_decision USING btree (selection_id, is_current, state) WHERE (selection_id IS NOT NULL)",
+          "bytes": "8192"
+        },
+        {
+          "indexname": "recommendation_eligibility_source_policy_revision_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_eligibility_source_policy_revision_key ON public.recommendation_eligibility_decision USING btree (source_key, policy_version, revision)",
+          "bytes": "9232384"
+        },
+        {
+          "indexname": "recommendation_eligibility_state_decided_idx",
+          "indexdef": "CREATE INDEX recommendation_eligibility_state_decided_idx ON public.recommendation_eligibility_decision USING btree (state, decided_at)",
+          "bytes": "344064"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_a_22817",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_22818",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24219",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24220",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_20918",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_20919",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_20923",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_20924",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22782",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_22783",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "cowatch_eligibility_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "recommendation_study_source_fence",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_cowatch_generation",
+      "rows": "1",
+      "average_tuple_bytes": "502",
+      "max_tuple_bytes": "502",
+      "main_heap_bytes": "8192",
+      "table_including_toast_fsm_vm_bytes": "16384",
+      "indexes_bytes": "49152",
+      "total_bytes": "65536",
+      "indexes": [
+        {
+          "indexname": "recommendation_cowatch_generation_expiry_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_generation_expiry_idx ON public.recommendation_cowatch_generation USING btree (expires_at)",
+          "bytes": "16384"
+        },
+        {
+          "indexname": "recommendation_cowatch_generation_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_generation_pkey ON public.recommendation_cowatch_generation USING btree (id)",
+          "bytes": "16384"
+        },
+        {
+          "indexname": "recommendation_cowatch_generation_published_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_generation_published_idx ON public.recommendation_cowatch_generation USING btree (published_at DESC)",
+          "bytes": "16384"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_a_24209",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24210",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24268",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24269",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24327",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_a_24328",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "composition_graph_invalidated",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "composition_graph_removed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_generation_immutable",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_generation_removed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_cowatch_source_contribution",
+      "rows": "50000",
+      "average_tuple_bytes": "896",
+      "max_tuple_bytes": "896",
+      "main_heap_bytes": "45514752",
+      "table_including_toast_fsm_vm_bytes": "45563904",
+      "indexes_bytes": "48177152",
+      "total_bytes": "93741056",
+      "indexes": [
+        {
+          "indexname": "recommendation_cowatch_source_contribution_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_source_contribution_pkey ON public.recommendation_cowatch_source_contribution USING btree (id)",
+          "bytes": "6193152"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_eligibility_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_source_eligibility_idx ON public.recommendation_cowatch_source_contribution USING btree (eligibility_decision_id)",
+          "bytes": "6193152"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_expiry_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_source_expiry_idx ON public.recommendation_cowatch_source_contribution USING btree (expires_at)",
+          "bytes": "344064"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_generation_outcome_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_source_generation_outcome_key ON public.recommendation_cowatch_source_contribution USING btree (generation_id, outcome_id)",
+          "bytes": "11395072"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_media_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_source_media_idx ON public.recommendation_cowatch_source_contribution USING btree (generation_id, media_id)",
+          "bytes": "16556032"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_outcome_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_source_outcome_idx ON public.recommendation_cowatch_source_contribution USING btree (outcome_id)",
+          "bytes": "6275072"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_profile_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_source_profile_idx ON public.recommendation_cowatch_source_contribution USING btree (viewer_profile_id)",
+          "bytes": "606208"
+        },
+        {
+          "indexname": "recommendation_cowatch_source_session_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_source_session_idx ON public.recommendation_cowatch_source_contribution USING btree (session_digest)",
+          "bytes": "614400"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_c_24211",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24212",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24216",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24217",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24221",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24222",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24226",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24227",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "cowatch_source_appended",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_source_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_cowatch_contribution",
+      "rows": "250000",
+      "average_tuple_bytes": "1072",
+      "max_tuple_bytes": "1072",
+      "main_heap_bytes": "292577280",
+      "table_including_toast_fsm_vm_bytes": "292691968",
+      "indexes_bytes": "399425536",
+      "total_bytes": "692117504",
+      "indexes": [
+        {
+          "indexname": "recommendation_cowatch_contribution_edge_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_contribution_edge_idx ON public.recommendation_cowatch_contribution USING btree (generation_id, source_media_id, target_media_id)",
+          "bytes": "273326080"
+        },
+        {
+          "indexname": "recommendation_cowatch_contribution_expiry_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_contribution_expiry_idx ON public.recommendation_cowatch_contribution USING btree (expires_at)",
+          "bytes": "1622016"
+        },
+        {
+          "indexname": "recommendation_cowatch_contribution_pair_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_contribution_pair_key ON public.recommendation_cowatch_contribution USING btree (generation_id, source_outcome_id, target_outcome_id)",
+          "bytes": "90316800"
+        },
+        {
+          "indexname": "recommendation_cowatch_contribution_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_contribution_pkey ON public.recommendation_cowatch_contribution USING btree (id)",
+          "bytes": "31285248"
+        },
+        {
+          "indexname": "recommendation_cowatch_contribution_profile_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_contribution_profile_idx ON public.recommendation_cowatch_contribution USING btree (viewer_profile_id)",
+          "bytes": "2875392"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_c_24270",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24271",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24275",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24276",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24280",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24281",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24285",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24286",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "cowatch_pair_appended",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_pair_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_cowatch_edge",
+      "rows": "250000",
+      "average_tuple_bytes": "772",
+      "max_tuple_bytes": "772",
+      "main_heap_bytes": "204800000",
+      "table_including_toast_fsm_vm_bytes": "204890112",
+      "indexes_bytes": "584704000",
+      "total_bytes": "789594112",
+      "indexes": [
+        {
+          "indexname": "recommendation_cowatch_edge_anchor_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_edge_anchor_idx ON public.recommendation_cowatch_edge USING btree (generation_id, eligible, source_media_id)",
+          "bytes": "5603328"
+        },
+        {
+          "indexname": "recommendation_cowatch_edge_direction_key",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_edge_direction_key ON public.recommendation_cowatch_edge USING btree (generation_id, source_media_id, target_media_id)",
+          "bytes": "273326080"
+        },
+        {
+          "indexname": "recommendation_cowatch_edge_live_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_edge_live_idx ON public.recommendation_cowatch_edge USING btree (generation_id, source_media_id, eligible, confidence DESC, popularity_corrected_lift DESC, target_media_id)",
+          "bytes": "274595840"
+        },
+        {
+          "indexname": "recommendation_cowatch_edge_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_edge_pkey ON public.recommendation_cowatch_edge USING btree (id)",
+          "bytes": "31178752"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "RI_ConstraintTrigger_c_24329",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "RI_ConstraintTrigger_c_24330",
+          "tgenabled": "O",
+          "tgisinternal": true
+        },
+        {
+          "tgname": "cowatch_edge_appended",
+          "tgenabled": "O",
+          "tgisinternal": false
+        },
+        {
+          "tgname": "cowatch_edge_changed",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    },
+    {
+      "table": "recommendation_cowatch_trial_authority",
+      "rows": "0",
+      "average_tuple_bytes": null,
+      "max_tuple_bytes": null,
+      "main_heap_bytes": "0",
+      "table_including_toast_fsm_vm_bytes": "8192",
+      "indexes_bytes": "16384",
+      "total_bytes": "24576",
+      "indexes": [
+        {
+          "indexname": "recommendation_cowatch_authority_expiry_idx",
+          "indexdef": "CREATE INDEX recommendation_cowatch_authority_expiry_idx ON public.recommendation_cowatch_trial_authority USING btree (raw_population_expires_at)",
+          "bytes": "8192"
+        },
+        {
+          "indexname": "recommendation_cowatch_trial_authority_pkey",
+          "indexdef": "CREATE UNIQUE INDEX recommendation_cowatch_trial_authority_pkey ON public.recommendation_cowatch_trial_authority USING btree (generation_id)",
+          "bytes": "8192"
+        }
+      ],
+      "triggers": [
+        {
+          "tgname": "cowatch_authority_immutable",
+          "tgenabled": "O",
+          "tgisinternal": false
+        }
+      ]
+    }
+  ],
+  "lengthsAndCardinality": {
+    "source_id_bytes": 64,
+    "media_id_bytes": 191,
+    "media_ids": "50000",
+    "sessions": "1000",
+    "profiles": "1000",
+    "retained_private_sources": "50000"
+  },
+  "distribution": {
+    "sources": 50000,
+    "profiles": 1000,
+    "sessions": 1000,
+    "episodesPerSession": 50,
+    "pairsPerSession": 250,
+    "directedDistinctEdges": 250000,
+    "allProfileReferencesNonNull": true,
+    "rowIdsBytes": 64,
+    "mediaIdsBytes": 191,
+    "digestsBytes": 64,
+    "maximumPairGapMs": 2940000,
+    "outputEligible": false,
+    "activeIntervals": "one [0,60000] pair per outcome",
+    "rawReasons": "empty arrays",
+    "sourceAndOutcomeExpiry": "one shared 27-days-after-fixture-clock timestamp",
+    "profileExpiry": "28 days after fixture clock",
+    "generationCount": 1,
+    "authorityCount": 0
+  },
+  "temporaryFixtureRelations": [
+    {
+      "relname": "envelope_clock",
+      "bytes": "8192"
+    },
+    {
+      "relname": "envelope_pairs",
+      "bytes": "16384"
+    }
+  ],
+  "afterWorkload": {
+    "at": "2026-09-29T06:09:59.750Z",
+    "lsn": "0/A39D3CC0",
+    "database": {
+      "size_bytes": "1819506367",
+      "temp_files": "63",
+      "temp_bytes": "328817856"
+    },
+    "physical": {
+      "disk": {
+        "totalBytes": 209129086976,
+        "availableBytes": 29350682624
+      },
+      "volumeAndWal": "2917728256\t/var/lib/postgresql\n1073754112\t/var/lib/postgresql/18/docker/pg_wal",
+      "cgroup": "2092724224\n2147491840\nlow 0\nhigh 0\nmax 2409\noom 0\noom_kill 0\noom_group_kill 0\nsock_throttled 0\nusage_usec 160512785\nuser_usec 151228161\nsystem_usec 9284623\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 1594\nnr_throttled 57\nthrottled_usec 901511\nnr_bursts 0\nburst_usec 0"
+    }
+  },
+  "workloadElapsedMs": 146425,
+  "walBytes": {
+    "wholeWorkload": "2702423672",
+    "graphOnly": "2373196400"
+  },
+  "status": "completed_maximum_row_envelope",
+  "cleanup": {
+    "containerRemoved": true,
+    "volumeRemoved": true,
+    "databaseRemovedWithDedicatedVolume": true,
+    "temporaryScript": "/tmp/cowatch-envelope-storage-552a.mjs"
+  },
+  "diskAfterCleanup": {
+    "totalBytes": 209129086976,
+    "availableBytes": 31261868032
+  },
+  "finishedAt": "2026-09-29T06:10:00.544Z",
+  "summary": {
+    "graphRows": {
+      "recommendation_cowatch_generation": 1,
+      "recommendation_cowatch_source_contribution": 50000,
+      "recommendation_cowatch_contribution": 250000,
+      "recommendation_cowatch_edge": 250000,
+      "recommendation_cowatch_trial_authority": 0
+    },
+    "graphHeapBytes": 542900224,
+    "graphTableBytes": 543170560,
+    "graphIndexBytes": 1032372224,
+    "graphTotalRelationBytes": 1575542784,
+    "supportTotalRelationBytes": 220504064,
+    "wholeWorkloadElapsedMs": 146425,
+    "graphLoadElapsedMs": 115890,
+    "largestBatchElapsedMs": 1322,
+    "databaseTempBytesDelta": 328817856,
+    "databaseTempFilesDelta": 63,
+    "walBytes": {
+      "wholeWorkload": "2702423672",
+      "graphOnly": "2373196400"
+    },
+    "containerMemory": {
+      "limitBytes": 2147483648,
+      "peakChargedBytes": 2147491840,
+      "finalChargedBytes": 2092724224,
+      "maxEvents": 2409,
+      "oomEvents": 0,
+      "oomKillEvents": 0,
+      "interpretation": "Includes page cache and container initialization/migrations. The configured limit caused reclaim; Linux reports a transient peak 8192 bytes above memory.max. No application heap or production memory headroom claim."
+    },
+    "volumeBytesAtSampledMaximum": 2917728256,
+    "walDirectoryBytesAtSampledMaximum": 1073754112,
+    "minimumHostAvailableBytesDuringSampledWorkload": 29350682624,
+    "allRecordedTriggersEnabled": true
+  },
+  "benchmarkScriptSha256": "933dd765a41d6d041fcee6427b4059c760ffeb10a3b7cbcdeb2897b14d2b7543"
+}

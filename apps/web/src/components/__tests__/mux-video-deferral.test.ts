@@ -25,7 +25,7 @@ import { describe, expect, it } from "vitest"
  *   3. a direct import of the upstream `@mux/*` packages, bypassing the
  *      workspace wrapper entirely.
  *
- * See FGE-138 / feat-535, and
+ * See FGE-138 / feat-719, and
  * `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`.
  */
 const SPECIFIER = "@forge/video-player/mux-video"

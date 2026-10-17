@@ -1,7 +1,7 @@
 ---
 title: "Bottom sheet migration pitfalls in Expo SDK 54 with @gorhom/bottom-sheet"
 date: "2026-05-27"
-last_updated: "2026-06-05"
+last_updated: "2026-09-29"
 category: best-practices
 module: apps/mobile
 problem_type: best_practice
@@ -12,7 +12,7 @@ applies_when:
   - "Upgrading expo-file-system from v18 to v19"
   - "Adding a download-and-share flow in React Native"
   - "Using bottom sheets with multiple snap points and scrollable content"
-  - "Adding react-native-gesture-handler to an Expo managed workflow app"
+  - "Adding react-native-gesture-handler to an Expo managed workflow app (not apps/mobile, which excludes it from autolinking)"
 tags:
   - react-native
   - expo
@@ -34,6 +34,8 @@ related_components:
 # Bottom sheet migration pitfalls in Expo SDK 54 with @gorhom/bottom-sheet
 
 > **Status update (2026-06-05):** the watch sheets (Language / Subtitle / Download) were migrated OFF `@gorhom/bottom-sheet` to **native formSheet** (`react-native-screens`, `presentation: "formSheet"`) shortly after this doc was written. `@gorhom/bottom-sheet` and `react-native-gesture-handler` are no longer dependencies, and `BottomSheet.tsx` was removed. So the `@gorhom`-specific pitfalls below — **#1** (GestureHandlerRootView), **#2** (onChange-on-every-snap), **#3** (enableContentPanningGesture), and **#9** (BottomSheetFlatList) — no longer describe the current sheets; keep them only as reference if you adopt `@gorhom` elsewhere. The **library-independent** pitfalls still apply to the current native `DownloadSheet.tsx`: **#4–#6** (expo-file-system v19 legacy API + null guard + documentId filename prefix), **#8** (shareAsync iOS-cancel), and **#10** (native language-name extraction). For the current sheet stack see [`flashlist-v2-maintainvisiblecontentposition-default-20260605.md`](./flashlist-v2-maintainvisiblecontentposition-default-20260605.md) (FlashList v2 list behavior) and the native-formSheet refactor plan in Related.
+
+> **Update (2026-09-29):** `apps/mobile` now excludes `react-native-gesture-handler` from autolinking (`apps/mobile/package.json`, `expo.autolinking.exclude`), because it crashes Expo Go. So do not add it back for a gesture in a sheet. A JS `PanResponder` drag inside a native formSheet loses its touch when the finger drifts about 10 pt up or down. Use a native control for a drag in a sheet, as in [`panresponder-slider-in-ios-formsheet-loses-drifting-drags.md`](../ui-bugs/panresponder-slider-in-ios-formsheet-loses-drifting-drags.md).
 
 ## Context
 

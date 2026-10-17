@@ -1,3 +1,4 @@
+import { getT } from "../../i18n/useT"
 import {
   buildLibraryViewModel,
   effectiveDownloadBytes,
@@ -175,6 +176,17 @@ describe("buildLibraryViewModel — ordering", () => {
       "legacy-b",
     ])
   })
+
+  it("breaks a tie by code unit, never by the device's collation (KTD15)", () => {
+    const lower = record("legacy-a", "downloaded")
+    const upper = record("legacy-B", "downloaded")
+    const model = buildLibraryViewModel([lower, upper])
+    // "B" (U+0042) sorts before "a" (U+0061); a collator puts "a" first.
+    expect(model.standaloneRecords.map((r) => r.videoSlug)).toEqual([
+      "legacy-B",
+      "legacy-a",
+    ])
+  })
 })
 
 describe("buildLibraryViewModel — section emptiness", () => {
@@ -194,6 +206,7 @@ describe("buildLibraryViewModel — section emptiness", () => {
 const SWAP_FROM = {
   committedPath: "/old/committed.mp4",
   renditionDocumentId: "old-rend",
+  dubDocumentId: "old-dub",
   qualityLabel: "Low",
   subtitleLanguageSlug: null,
   totalBytes: 74 * MB,
@@ -201,9 +214,11 @@ const SWAP_FROM = {
 }
 
 describe("libraryRowState (R6)", () => {
+  const t = getT("Library")
+
   it("downloaded → check, '<size> · Downloaded'", () => {
     const r = record("a", "downloaded", { totalBytes: 74 * MB })
-    expect(libraryRowState(r)).toEqual({
+    expect(libraryRowState(r, t)).toEqual({
       subtitle: "74 MB · Downloaded",
       affordance: "check",
     })
@@ -215,7 +230,7 @@ describe("libraryRowState (R6)", () => {
       totalBytes: 200 * MB,
       swapFrom: SWAP_FROM,
     })
-    expect(libraryRowState(r)).toEqual({
+    expect(libraryRowState(r, t)).toEqual({
       subtitle: "74 MB · Downloaded",
       affordance: "check",
     })
@@ -226,7 +241,7 @@ describe("libraryRowState (R6)", () => {
       bytesWritten: 12 * MB,
       totalBytes: 200 * MB,
     })
-    expect(libraryRowState(r).affordance).toBe("ring")
+    expect(libraryRowState(r, t).affordance).toBe("ring")
   })
 
   it("downloading → ring with '<pct>% · <size>' and 0..1 progress", () => {
@@ -234,7 +249,7 @@ describe("libraryRowState (R6)", () => {
       bytesWritten: 42 * MB,
       totalBytes: 100 * MB,
     })
-    const s = libraryRowState(r)
+    const s = libraryRowState(r, t)
     expect(s.affordance).toBe("ring")
     expect(s.subtitle).toBe("42% · 100 MB")
     expect(s.progress).toBeCloseTo(0.42)
@@ -242,7 +257,7 @@ describe("libraryRowState (R6)", () => {
 
   it("downloading with an unknown total (0) reports 0 progress, no divide-by-zero", () => {
     const r = record("a", "downloading", { bytesWritten: 10, totalBytes: 0 })
-    const s = libraryRowState(r)
+    const s = libraryRowState(r, t)
     expect(s.progress).toBe(0)
     expect(s.subtitle).toBe("0% · 0 MB")
   })
@@ -252,27 +267,27 @@ describe("libraryRowState (R6)", () => {
       bytesWritten: 110 * MB,
       totalBytes: 100 * MB,
     })
-    const s = libraryRowState(r)
+    const s = libraryRowState(r, t)
     expect(s.progress).toBe(1)
     expect(s.subtitle).toBe("100% · 100 MB")
   })
 
   it("queued → none affordance, 'Queued'", () => {
-    expect(libraryRowState(record("a", "queued"))).toEqual({
+    expect(libraryRowState(record("a", "queued"), t)).toEqual({
       subtitle: "Queued",
       affordance: "none",
     })
   })
 
   it("paused → resume affordance, 'Paused'", () => {
-    expect(libraryRowState(record("a", "paused"))).toEqual({
+    expect(libraryRowState(record("a", "paused"), t)).toEqual({
       subtitle: "Paused",
       affordance: "resume",
     })
   })
 
   it("failed → retry affordance, 'Download failed'", () => {
-    expect(libraryRowState(record("a", "failed"))).toEqual({
+    expect(libraryRowState(record("a", "failed"), t)).toEqual({
       subtitle: "Download failed",
       affordance: "retry",
     })

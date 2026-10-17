@@ -9,13 +9,11 @@ duration: 6
 depends_on:
   - "feat-376"
   - "feat-378"
-  - "feat-379"
   - "feat-382"
   - "feat-383"
 blocks:
   - "feat-447"
   - "feat-387"
-  - "feat-392"
   - "feat-459"
 tags:
   - "admin"

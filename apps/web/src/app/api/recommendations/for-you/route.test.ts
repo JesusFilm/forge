@@ -41,7 +41,14 @@ beforeEach(() => {
 const deliveryLogs = () =>
   vi
     .mocked(console.info)
-    .mock.calls.map(([message]) => message)
+    .mock.calls.map(([message]) =>
+      typeof message === "string"
+        ? message.replace(
+            /trafficCategory=\S+ trafficClassifierVersion=\S+ trustedEdgeSource=\S+ persistenceDisposition=\S+ attempted=\S+ avoidedPersistence=\S+ committed=\S+ /,
+            "",
+          )
+        : message,
+    )
     .filter(
       (message) =>
         typeof message === "string" &&
@@ -122,3 +129,63 @@ describe("source-free Web adapter", () => {
     expect(query).not.toHaveBeenCalled()
   })
 })
+
+it.each([
+  [
+    { "user-agent": "meta-externalagent/1.1" },
+    "declared_crawler",
+    "contextual",
+  ],
+  [{ purpose: "prefetch" }, "speculative_prefetch", "deferred"],
+  [
+    { "sec-purpose": "prefetch;prerender" },
+    "speculative_prerender",
+    "deferred",
+  ],
+] as const)(
+  "isolates For You %s before reading identities",
+  async (headers, category, disposition) => {
+    query.mockResolvedValue({
+      data: {
+        userRecommendations: {
+          ...delivery,
+          requestId: "upstream-private",
+          expiresAt: "private-expiry",
+          items: [{ id: "card", capability: "signed-secret" }],
+        },
+      },
+    })
+    const response = await POST(
+      request(body, {
+        ...headers,
+        cookie: `forge_recommendation_session=${"a".repeat(43)}; forge_recommendation_profile=${"b".repeat(43)}`,
+      }),
+    )
+    expect(response.headers.get("set-cookie")).toBeNull()
+    const value = await response.json()
+    expect(value).toMatchObject({
+      deliveryDisposition: disposition,
+      delivery: { requestId: null, expiresAt: null, personalization: null },
+    })
+    expect(JSON.stringify(value)).not.toContain("signed-secret")
+    expect(JSON.stringify(value)).not.toContain("upstream-private")
+    expect(query.mock.calls[0][0].variables).toMatchObject({
+      trafficCategory: category,
+      sessionDigest: "0".repeat(64),
+      profileTokenDigest: null,
+      consentReceiptDigest: null,
+    })
+    expect(
+      vi
+        .mocked(console.info)
+        .mock.calls.some(
+          ([message]) =>
+            String(message).includes(`trafficCategory=${category}`) &&
+            String(message).includes(
+              "persistenceDisposition=unexpected_commit",
+            ) &&
+            String(message).includes("avoidedPersistence=0"),
+        ),
+    ).toBe(true)
+  },
+)

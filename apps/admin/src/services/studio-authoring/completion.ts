@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client"
 import {
+  studioActorSchema,
   studioCompleteSchema,
   studioDocumentSchema,
 } from "@forge/studio-contracts"
@@ -131,8 +132,20 @@ export async function completeStudioAttempt(
       await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       revision += 1
+      const origin = studioActorSchema.parse(attempt.actor)
+      const revisionActor =
+        attempt.kind === "NARRATION" &&
+        origin.kind === "human" &&
+        origin.authority === "delegated"
+          ? origin
+          : actor
       await tx.shortRevision.create({
-        data: { projectId: project.id, number: revision, document, actor },
+        data: {
+          projectId: project.id,
+          number: revision,
+          document,
+          actor: revisionActor,
+        },
       })
       await tx.short.update({
         where: { id: project.id },

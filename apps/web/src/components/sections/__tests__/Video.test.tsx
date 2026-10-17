@@ -7,6 +7,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToString } from "react-dom/server"
 import {
   afterEach,
   beforeAll,
@@ -17,6 +18,11 @@ import {
   vi,
 } from "vitest"
 
+import {
+  holdDeferredChunk,
+  rejectDeferredChunk,
+  resetDeferredChunk,
+} from "@/__mocks__/next-dynamic-sync"
 import { Video } from "@/components/sections/Video"
 import {
   WatchModalActivityProvider,
@@ -24,7 +30,7 @@ import {
 } from "@/components/watch/WatchModalActivityProvider"
 // This section defers `@forge/video-player/mux-video` through `next/dynamic`
 // so hls.js and mux-embed stay out of the Watch routes' first-load script set
-// (feat-535 / FGE-138). Resolve it synchronously here so the cases below keep
+// (feat-719 / FGE-138). Resolve it synchronously here so the cases below keep
 // driving a real <video>. See the mock module for what that erases.
 vi.mock("next/dynamic", async () => import("@/__mocks__/next-dynamic-sync"))
 // `React.lazy` settles its payload across microtask turns, and the real
@@ -65,6 +71,7 @@ afterEach(async () => {
     root.unmount()
   })
   container.remove()
+  resetDeferredChunk()
   vi.restoreAllMocks()
 })
 
@@ -156,6 +163,76 @@ describe("Video", () => {
     })
 
     expect(container.querySelector('[data-testid="VideoSection"]')).toBeNull()
+  })
+
+  const posterFragment = {
+    ...baseFragment,
+    media: { url: "https://image.mux.com/poster-id/thumbnail.jpg" },
+  } as Parameters<typeof Video>[0]["data"]
+
+  function posterImage() {
+    return container.querySelector(
+      '[data-testid="deferred-video-poster"] img',
+    ) as HTMLImageElement | null
+  }
+
+  // The player is `ssr: false`, so neither the server markup nor a client
+  // whose chunk is still in flight has a <video> to carry the poster. The
+  // pending stub stands in for both: Next renders the same empty loading slot
+  // on the server as it does while the chunk downloads.
+  it("paints the poster without the player chunk, server and client", async () => {
+    holdDeferredChunk()
+
+    const html = renderToString(<Video data={posterFragment} />)
+    expect(html).not.toContain("<video")
+    expect(html).toContain("https://image.mux.com/poster-id/thumbnail.jpg")
+
+    await act(async () => {
+      root.render(<Video data={posterFragment} />)
+    })
+
+    expect(container.querySelector("video")).toBeNull()
+    expect(posterImage()?.getAttribute("src")).toBe(
+      "https://image.mux.com/poster-id/thumbnail.jpg",
+    )
+  })
+
+  it("keeps the poster behind the player once the chunk arrives", async () => {
+    const release = holdDeferredChunk()
+    await act(async () => {
+      root.render(<Video data={posterFragment} />)
+    })
+
+    await act(async () => {
+      release()
+    })
+
+    expect(container.querySelector("video")).not.toBeNull()
+    expect(posterImage()).not.toBeNull()
+  })
+
+  // A rejected chunk never attaches a media element, so no media event can
+  // ever end the loading state. Before this, the spinner ran forever over
+  // controls whose handlers all null-guard on the missing element.
+  it("ends in a finite failure state when the player chunk fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    rejectDeferredChunk()
+
+    await act(async () => {
+      root.render(<Video data={posterFragment} />)
+    })
+
+    expect(container.querySelector("video")).toBeNull()
+    expect(
+      container.querySelector('[data-testid="video-player-loading"]'),
+    ).toBeNull()
+    const alert = container.querySelector('[role="alert"]')
+    expect(alert?.textContent).toContain("Something went wrong.")
+    expect(alert?.querySelector("button")?.textContent).toBe("Try again")
+    // Inert controls go with the player; the artwork stays.
+    expect(container.querySelector('input[type="range"]')).toBeNull()
+    expect(container.querySelector('button[aria-label="Unmute"]')).toBeNull()
+    expect(posterImage()).not.toBeNull()
   })
 
   it("pauses its authored media when modal activity opens", async () => {

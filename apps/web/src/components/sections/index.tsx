@@ -6,7 +6,7 @@ import type { RouteVideo, Section } from "@/lib/content"
 // route bundle. Default `ssr: true` keeps SSR markup identical HERE — but
 // note Video/VideoHero/CarouselVideo each defer their player through
 // `components/video/deferred-mux-video` with `ssr: false`, so their own
-// server markup no longer carries a `<video>` element (feat-535). Each
+// server markup no longer carries a `<video>` element (feat-719). Each
 // reserves its box in CSS, so that costs no layout shift.
 // Type-only imports stay (zero runtime cost) so `Parameters<typeof X>`
 // callsites in the dispatch switch keep their original signatures.

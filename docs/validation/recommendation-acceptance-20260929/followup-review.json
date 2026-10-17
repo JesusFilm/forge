@@ -1,0 +1,23 @@
+{
+  "head": "40e481d52286805ff980fc7e0ede6b2ca6a3a264",
+  "base": "2787f5300",
+  "standard_reviewers": [
+    "correctness",
+    "testing",
+    "maintainability",
+    "project-standards",
+    "agent-native",
+    "learnings"
+  ],
+  "findings": [],
+  "failed_reviewers": [],
+  "conditional_coverage": "parent exact-head security/API, performance/reliability, adversarial/TypeScript/frontend races; no >=80 actionable finding",
+  "residual_risks": [
+    "production cardinality/full-page/SSR/media/persistence acceptance pending",
+    "combined StrictMode/nested-root/pending-receipt/key-switch untested",
+    "native BFCache during in-flight hero transition unobserved",
+    "user-scoped fallback/editorial coverage unresolved"
+  ],
+  "verdict": "Review complete",
+  "source": "Six child-owned independent whole-diff standard lenses and parent conditional reviews; synthesized before merge. Runtime verification remains separate."
+}

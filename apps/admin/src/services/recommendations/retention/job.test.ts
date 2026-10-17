@@ -46,6 +46,7 @@ vi.mock("@/services/recommendations/retention.service", async (original) => {
 import {
   ensureRecommendationRetentionSchedulerStarted,
   markRecommendationRetentionSchedulerRuntimeStarted,
+  nextRecommendationRetentionCatchUpRunAt,
   recordRecommendationRetentionSchedulerHeartbeat,
   runRecommendationRetentionFromScheduler,
   runRecommendationRetentionJob,
@@ -60,6 +61,7 @@ const purgeResult = {
   rowCounts: { requests: 2 },
   oldestExpiredAtAfter: null,
   overdueAfterRun: false,
+  batchLimitReached: false,
 }
 
 beforeEach(() => {
@@ -79,6 +81,14 @@ beforeEach(() => {
 })
 
 describe("recommendation retention job", () => {
+  it("schedules a bounded continuation one minute later", () => {
+    expect(
+      nextRecommendationRetentionCatchUpRunAt(
+        new Date("2026-10-06T10:30:00.000Z"),
+      ).toISOString(),
+    ).toBe("2026-10-06T10:31:00.000Z")
+  })
+
   it("runs the purge and records the purge ledger lifecycle", async () => {
     await expect(
       runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
@@ -90,6 +100,89 @@ describe("recommendation retention job", () => {
       data: expect.objectContaining({
         status: "SUCCEEDED",
         summary: "Purged 2 recommendation request root(s).",
+      }),
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        details: expect.objectContaining({
+          batchLimitReached: false,
+          profileVectorSweepSkipped: false,
+          purgeStatus: "succeeded",
+        }),
+      }),
+    })
+  })
+
+  it("records a busy vector sweep without marking the root purge as skipped", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      profileVectorSweepSkipped: true,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      profileVectorSweepSkipped: true,
+      batchLimitReached: false,
+    })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        status: "SUCCEEDED",
+        details: expect.objectContaining({
+          purgeStatus: "succeeded",
+          batchLimitReached: false,
+          profileVectorSweepSkipped: true,
+        }),
+      }),
+    })
+  })
+
+  it("records a skipped purge accurately for the scheduler to retry", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      status: "skipped",
+      rootsDeleted: 0,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({ status: "skipped" })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        summary:
+          "Recommendation retention purge skipped because its lock was held.",
+        details: expect.objectContaining({ purgeStatus: "skipped" }),
+      }),
+    })
+  })
+
+  it("records a budget yield with unknown backlog and a continuation signal", async () => {
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce({
+      ...purgeResult,
+      status: "yielded",
+      oldestExpiredAtAfter: null,
+      overdueAfterRun: null,
+      continuationRequired: true,
+      batchLimitReached: true,
+    })
+
+    await expect(
+      runRecommendationRetentionJob({ ledgerRunId: "ledger-1" }),
+    ).resolves.toMatchObject({ status: "yielded", continuationRequired: true })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        status: "SUCCEEDED",
+        summary: expect.stringContaining("yielded after purging 2"),
+        details: expect.objectContaining({
+          purgeStatus: "yielded",
+          overdueAfterRun: null,
+          continuationRequired: true,
+        }),
       }),
     })
   })

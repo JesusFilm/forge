@@ -6,10 +6,10 @@
 // The label is all the viewer gets on a card whose passage did not resolve, so
 // every nullable combination must render without a dangling separator.
 
+import type { UiT } from "../i18n/useT"
 import type { WatchBibleCitation } from "./normalizeVideo"
 
 const EN_DASH = "–"
-const UNKNOWN_BOOK = "Unknown Book"
 
 type CitationLabelInput = Pick<
   WatchBibleCitation,
@@ -28,12 +28,15 @@ type CitationLabelInput = Pick<
  * | null or =cs | null       | any      | book cs             | Genesis 3           |
  * | !=cs        | null       | any      | book cs–ce          | Genesis 3–5         |
  */
-export function formatCitationLabel(citation: CitationLabelInput): string {
+export function formatCitationLabel(
+  citation: CitationLabelInput,
+  t: UiT<"BibleQuotes">,
+): string {
   const { chapterStart, chapterEnd, verseStart, verseEnd } = citation
   const bookName =
     citation.bookName != null && citation.bookName.length > 0
       ? citation.bookName
-      : UNKNOWN_BOOK
+      : t("unknownBook")
 
   // A citation with no chapter is malformed. Render the book alone rather than
   // "Genesis 0:0".

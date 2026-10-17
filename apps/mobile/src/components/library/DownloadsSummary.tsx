@@ -1,6 +1,7 @@
 import { memo } from "react"
 import { StyleSheet, Text, View } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import { TEXT_PRIMARY } from "../../lib/color"
 
@@ -15,11 +16,12 @@ export const DownloadsSummary = memo(function DownloadsSummary({
   count,
 }: DownloadsSummaryProps) {
   const typography = useTypography()
+  const t = useT("Library")
 
   return (
     <View style={styles.root}>
       <Text style={[styles.label, typography.bodySmall]}>
-        {`${count} download${count === 1 ? "" : "s"}`}
+        {t("downloadCount", { count })}
       </Text>
       <View testID="downloads-summary-separator" style={styles.separator} />
     </View>

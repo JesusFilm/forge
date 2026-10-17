@@ -1,0 +1,242 @@
+{
+  "mode": "anonymous-explain",
+  "startedAt": "2026-09-28T21:01:12.295796+00:00",
+  "endedAt": "2026-09-28T21:01:15.586242+00:00",
+  "transportElapsedMs": 3290,
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "readOnly": true,
+  "exitCode": 0,
+  "sqlstates": [],
+  "statementTimeout": false,
+  "plan": [
+    {
+      "Plan": {
+        "Node Type": "Limit",
+        "Parallel Aware": false,
+        "Async Capable": false,
+        "Startup Cost": 371866.88,
+        "Total Cost": 17537701.46,
+        "Plan Rows": 129,
+        "Plan Width": 622,
+        "Disabled": false,
+        "Plans": [
+          {
+            "Node Type": "WindowAgg",
+            "Parent Relationship": "InitPlan",
+            "Subplan Name": "CTE ranked",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 45448.29,
+            "Total Cost": 83912.78,
+            "Plan Rows": 241967,
+            "Plan Width": 225,
+            "Disabled": false,
+            "Window": "w1 AS (PARTITION BY fact_1.window_id, fact_1.surface, fact_1.block, fact_1.presentation, fact_1.placement, fact_1.policy_version, fact_1.\"position\", fact_1.item_path, fact_1.kind ORDER BY fact_1.occurred_at, fact_1.received_at, fact_1.id ROWS UNBOUNDED PRECEDING)",
+            "Plans": [
+              {
+                "Node Type": "Gather Merge",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 45448.14,
+                "Total Cost": 73629.18,
+                "Plan Rows": 241967,
+                "Plan Width": 217,
+                "Disabled": false,
+                "Workers Planned": 2,
+                "Plans": [
+                  {
+                    "Node Type": "Sort",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "Startup Cost": 44448.11,
+                    "Total Cost": 44700.16,
+                    "Plan Rows": 100820,
+                    "Plan Width": 217,
+                    "Disabled": false,
+                    "Sort Key": [
+                      "fact_1.window_id",
+                      "fact_1.surface",
+                      "fact_1.block",
+                      "fact_1.presentation",
+                      "fact_1.placement",
+                      "fact_1.policy_version",
+                      "fact_1.\"position\"",
+                      "fact_1.item_path",
+                      "fact_1.kind",
+                      "fact_1.occurred_at",
+                      "fact_1.received_at",
+                      "fact_1.id"
+                    ],
+                    "Plans": [
+                      {
+                        "Node Type": "Hash Join",
+                        "Parent Relationship": "Outer",
+                        "Parallel Aware": false,
+                        "Async Capable": false,
+                        "Join Type": "Inner",
+                        "Startup Cost": 15369.45,
+                        "Total Cost": 25383.75,
+                        "Plan Rows": 100820,
+                        "Plan Width": 217,
+                        "Disabled": false,
+                        "Inner Unique": true,
+                        "Hash Cond": "(fact_1.window_id = watch_surface_exposure.window_id)",
+                        "Plans": [
+                          {
+                            "Node Type": "Seq Scan",
+                            "Parent Relationship": "Outer",
+                            "Parallel Aware": true,
+                            "Async Capable": false,
+                            "Relation Name": "watch_surface_exposure",
+                            "Alias": "fact_1",
+                            "Startup Cost": 0.0,
+                            "Total Cost": 9749.58,
+                            "Plan Rows": 100820,
+                            "Plan Width": 217,
+                            "Disabled": false,
+                            "Filter": "((occurred_at < CURRENT_TIMESTAMP) AND (received_at < CURRENT_TIMESTAMP))"
+                          },
+                          {
+                            "Node Type": "Hash",
+                            "Parent Relationship": "Inner",
+                            "Parallel Aware": false,
+                            "Async Capable": false,
+                            "Startup Cost": 15160.11,
+                            "Total Cost": 15160.11,
+                            "Plan Rows": 16747,
+                            "Plan Width": 16,
+                            "Disabled": false,
+                            "Plans": [
+                              {
+                                "Node Type": "Aggregate",
+                                "Strategy": "Hashed",
+                                "Partial Mode": "Simple",
+                                "Parent Relationship": "Outer",
+                                "Parallel Aware": false,
+                                "Async Capable": false,
+                                "Startup Cost": 14992.64,
+                                "Total Cost": 15160.11,
+                                "Plan Rows": 16747,
+                                "Plan Width": 16,
+                                "Disabled": false,
+                                "Group Key": [
+                                  "watch_surface_exposure.window_id"
+                                ],
+                                "Planned Partitions": 0,
+                                "Plans": [
+                                  {
+                                    "Node Type": "Seq Scan",
+                                    "Parent Relationship": "Outer",
+                                    "Parallel Aware": false,
+                                    "Async Capable": false,
+                                    "Relation Name": "watch_surface_exposure",
+                                    "Alias": "watch_surface_exposure",
+                                    "Startup Cost": 0.0,
+                                    "Total Cost": 14387.73,
+                                    "Plan Rows": 241967,
+                                    "Plan Width": 16,
+                                    "Disabled": false,
+                                    "Filter": "((occurred_at < CURRENT_TIMESTAMP) AND (received_at < CURRENT_TIMESTAMP) AND (occurred_at >= (CURRENT_TIMESTAMP - '24:00:00'::interval)))"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Node Type": "Aggregate",
+            "Strategy": "Sorted",
+            "Partial Mode": "Simple",
+            "Parent Relationship": "Outer",
+            "Parallel Aware": false,
+            "Async Capable": false,
+            "Startup Cost": 287954.1,
+            "Total Cost": 3220146087.53,
+            "Plan Rows": 24197,
+            "Plan Width": 622,
+            "Disabled": false,
+            "Group Key": [
+              "fact.surface",
+              "fact.block",
+              "fact.presentation",
+              "fact.placement",
+              "fact.\"position\"",
+              "fact.policy_version"
+            ],
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parent Relationship": "Outer",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "Startup Cost": 287954.1,
+                "Total Cost": 288558.96,
+                "Plan Rows": 241944,
+                "Plan Width": 1226,
+                "Disabled": false,
+                "Sort Key": [
+                  "fact.surface",
+                  "fact.block",
+                  "fact.presentation",
+                  "fact.placement",
+                  "fact.\"position\"",
+                  "fact.policy_version"
+                ],
+                "Plans": [
+                  {
+                    "Node Type": "CTE Scan",
+                    "Parent Relationship": "Outer",
+                    "Parallel Aware": false,
+                    "Async Capable": false,
+                    "CTE Name": "ranked",
+                    "Alias": "fact",
+                    "Startup Cost": 0.0,
+                    "Total Cost": 6654.09,
+                    "Plan Rows": 241944,
+                    "Plan Width": 1226,
+                    "Disabled": false,
+                    "Filter": "(occurred_at >= (CURRENT_TIMESTAMP - '24:00:00'::interval))"
+                  }
+                ]
+              },
+              {
+                "Node Type": "CTE Scan",
+                "Parent Relationship": "SubPlan",
+                "Subplan Name": "SubPlan 2",
+                "Parallel Aware": false,
+                "Async Capable": false,
+                "CTE Name": "ranked",
+                "Alias": "eligible",
+                "Startup Cost": 0.0,
+                "Total Cost": 13308.18,
+                "Plan Rows": 1,
+                "Plan Width": 0,
+                "Disabled": false,
+                "Filter": "((occurred_at <= fact.occurred_at) AND (window_id = fact.window_id) AND ((surface)::text = (fact.surface)::text) AND ((block)::text = (fact.block)::text) AND ((presentation)::text = (fact.presentation)::text) AND ((placement)::text = (fact.placement)::text) AND ((policy_version)::text = (fact.policy_version)::text) AND (\"position\" = fact.\"position\") AND ((item_path)::text = (fact.item_path)::text) AND ((kind)::text = 'eligible'::text) AND (ordinal = 1) AND (occurred_at >= (CURRENT_TIMESTAMP - '24:00:00'::interval)))"
+              }
+            ]
+          }
+        ]
+      },
+      "JIT": {
+        "Functions": 32,
+        "Options": {
+          "Inlining": true,
+          "Optimization": true,
+          "Expressions": true,
+          "Deforming": true
+        }
+      }
+    }
+  ]
+}
