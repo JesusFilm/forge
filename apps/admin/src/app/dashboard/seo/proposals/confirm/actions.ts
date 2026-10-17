@@ -1,7 +1,7 @@
 "use server"
 
 /**
- * feat-720 — the Admin-origin half of a Watch "Apply/Decline" opportunity.
+ * feat-722 — the Admin-origin half of a Watch "Apply/Decline" opportunity.
  *
  * Watch never writes. It links here; this action re-checks the Admin session
  * and the live database role, takes the actor only from that session, and

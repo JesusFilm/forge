@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 16, 2026)
 
-- **Total tickets:** 852
-- **Complete:** 632
+- **Total tickets:** 853
+- **Complete:** 633
 - **Cancelled:** 41
 - **In progress:** 69
 - **Not started:** 52
@@ -188,6 +188,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-683](content-discovery/feat-683-watch-home-touch-prefetch-gate.md)                                       | Gate Watch home hero CTA and category rail prefetch on touch                                    | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-694](content-discovery/feat-694-develop-recommendation-origin.md)                                        | Allow develop Watch recommendation requests                                                     | nisal      | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
 | [feat-710](content-discovery/feat-710-full-library-video-recommendations.md)                                   | Full-library directional video recommendations                                                  | nisal      | P1       | 2026-10-16 | 3    | 2026-10-18 | complete    |
+| [feat-720](content-discovery/feat-720-disable-unused-typesense-highlights.md)                                  | Disable unused Typesense search highlights                                                      | vlad       | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -408,7 +409,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-639](platform/feat-639-current-base-dependency-backports.md)                     | Refresh held dependency backports on October default                               | tataihono  | P0       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
-| [feat-721](platform/feat-721-validate-enable-watch-seo-workspace.md)                   | Validate and enable the Watch SEO workspace                                        | unassigned | P1       | —          | —    | —          | not-started |
+| [feat-723](platform/feat-723-validate-enable-watch-seo-workspace.md)                   | Validate and enable the Watch SEO workspace                                        | unassigned | P1       | —          | —    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                       | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)                  | Roadmap Operations and Owner Hygiene                                               | josh       | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
@@ -699,7 +700,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-719](platform/feat-719-support-research-disabled-migration-readiness.md)         | Keep disabled support research independent of database migration                   | nisal      | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
-| [feat-720](platform/feat-720-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
+| [feat-722](platform/feat-722-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
