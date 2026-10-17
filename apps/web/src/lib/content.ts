@@ -36,6 +36,10 @@ import {
   isWatchAudioLanguageSlug,
 } from "@/lib/watch-route-manifest"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import {
+  omitWatchAudienceSelection,
+  partitionWatchAudienceBlockLag,
+} from "@/lib/watch-audience-content"
 import { isWatchBlock } from "@/lib/watch-blocks"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import { logWatchServerEvent } from "@/lib/watch-observability"
@@ -135,6 +139,15 @@ const GET_PRE_COPY_WATCH_SETTINGS = adminGraphql(
   `,
   [preCopyWatchExperienceFragment],
 )
+
+// Admin and Web deploy independently. The same selections without the
+// `WatchAudienceBlock` union member, for an Admin that predates it; derived from
+// the current documents so they cannot drift. Delete with the tier below once
+// no Admin schema without the block can serve traffic.
+const PRE_AUDIENCE_GET_WATCH_EXPERIENCE =
+  omitWatchAudienceSelection(GET_WATCH_EXPERIENCE)
+const PRE_AUDIENCE_GET_WATCH_SETTINGS =
+  omitWatchAudienceSelection(GET_WATCH_SETTINGS)
 
 type WatchSettingsData = AdminResultOf<typeof GET_WATCH_SETTINGS>
 type GetWatchLanguagePickerVariantsData = AdminResultOf<
@@ -578,9 +591,24 @@ function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
   return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
 }
 
-type CategoryRailSchemaLag = "none" | "copy" | "legacy"
+// "audience": every error says Admin predates `WatchAudienceBlock`; the
+// pre-audience selection (otherwise identical) is the compatible one.
+type CategoryRailSchemaLag = "none" | "copy" | "legacy" | "audience"
 
 function classifyCategoryRailSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[] | undefined
+}): CategoryRailSchemaLag {
+  const { audience, rest } = partitionWatchAudienceBlockLag(result)
+  if (!audience) return classifyRailSchemaLag(result)
+  // The audience block never appears in the pre-copy or legacy selections, so
+  // an Admin that also lags on the rail needs only those existing tiers.
+  return graphqlErrorsFromResult(rest).length === 0
+    ? "audience"
+    : classifyRailSchemaLag(rest)
+}
+
+function classifyRailSchemaLag(result: {
   error?: ErrorLike | null
   errors?: unknown[] | undefined
 }): CategoryRailSchemaLag {
@@ -655,6 +683,9 @@ async function getExperienceBySlug(
   locale: string,
   slug: string,
   categoryRailCompatibility?: "supported" | "pre-copy" | "legacy-schema",
+  query:
+    | typeof GET_WATCH_EXPERIENCE
+    | typeof PRE_AUDIENCE_GET_WATCH_EXPERIENCE = GET_WATCH_EXPERIENCE,
 ): Promise<NonNullable<WatchExperience> | null> {
   if (categoryRailCompatibility === "legacy-schema") {
     return getLegacyExperienceBySlug(locale, slug)
@@ -694,7 +725,7 @@ async function getExperienceBySlug(
   let rejectedLag: CategoryRailSchemaLag = "none"
   const result = await client
     .query({
-      query: GET_WATCH_EXPERIENCE,
+      query,
       variables: { locale, slug },
       fetchPolicy: "no-cache",
     })
@@ -714,6 +745,14 @@ async function getExperienceBySlug(
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "audience" && query === GET_WATCH_EXPERIENCE) {
+    return getExperienceBySlug(
+      locale,
+      slug,
+      categoryRailCompatibility,
+      PRE_AUDIENCE_GET_WATCH_EXPERIENCE,
+    )
+  }
   if (lag === "copy") {
     return getExperienceBySlug(locale, slug, "pre-copy")
   }
@@ -729,14 +768,19 @@ async function getExperienceBySlug(
     null) as NonNullable<WatchExperience> | null
 }
 
-async function getWatchSettings(locale: string): Promise<{
+async function getWatchSettings(
+  locale: string,
+  query:
+    | typeof GET_WATCH_SETTINGS
+    | typeof PRE_AUDIENCE_GET_WATCH_SETTINGS = GET_WATCH_SETTINGS,
+): Promise<{
   setting: WatchSetting | null
   categoryRailCompatibility: "supported" | "pre-copy" | "legacy-schema"
 }> {
   let rejectedLag: CategoryRailSchemaLag = "none"
   const result = await client
     .query({
-      query: GET_WATCH_SETTINGS,
+      query,
       variables: { locale },
       fetchPolicy: "no-cache",
     })
@@ -756,6 +800,9 @@ async function getWatchSettings(locale: string): Promise<{
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
+  if (lag === "audience" && query === GET_WATCH_SETTINGS) {
+    return getWatchSettings(locale, PRE_AUDIENCE_GET_WATCH_SETTINGS)
+  }
   if (lag === "copy") {
     let preCopyRejectedLag: CategoryRailSchemaLag = "none"
     const preCopyResult = await client

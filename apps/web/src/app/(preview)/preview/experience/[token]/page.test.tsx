@@ -23,6 +23,17 @@ const {
   watchHomeExperiencePageMock: vi.fn(() => null),
 }))
 
+vi.mock("@/lib/admin-client", () => ({
+  default: {
+    query: () => {
+      throw new Error("Draft preview must not query published content")
+    },
+  },
+}))
+vi.mock("next/cache", () => ({ unstable_cache: (fn: unknown) => fn }))
+vi.mock("@/components/watch/WatchAudienceBlock", () => ({
+  WatchAudienceBlock: () => null,
+}))
 vi.mock("next/navigation", () => ({ notFound: notFoundMock }))
 vi.mock("next-intl/server", () => ({
   setRequestLocale: setRequestLocaleMock,
@@ -47,6 +58,8 @@ vi.mock("@/components/home/WatchHomeExperiencePage", () => ({
 vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: sectionRendererMock,
 }))
+
+import { WATCH_AUDIENCE_CODE_CONFIG } from "@/lib/watch-audience-config"
 
 import ExperiencePreviewPage, {
   dynamic,
@@ -328,5 +341,152 @@ describe("Experience draft preview page", () => {
       }),
     ).rejects.toThrow("NEXT_NOT_FOUND")
     expect(notFoundMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("draft audience questionnaire preview", () => {
+  it.each([false, true])(
+    "passes only capability-owned draft configuration into the shared viewer (homepage %s)",
+    async (homepage) => {
+      const configuration = structuredClone(WATCH_AUDIENCE_CODE_CONFIG)
+      configuration.roles[0]!.questions[0]!.prompt =
+        "Draft-only question before publication?"
+      const block = {
+        __typename: "WatchAudienceBlock",
+        sectionKey: "audience-draft",
+        configurationJson: JSON.stringify(configuration),
+      }
+      getExperiencePreviewMock.mockResolvedValue({
+        ...draft,
+        isHomepage: homepage,
+        isTemplate: true,
+        isDefaultTemplate: true,
+        blocks: [...draft.blocks, block],
+      })
+      resolveWatchHomePreviewMock.mockResolvedValue({
+        data: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        error: null,
+      })
+      const page = await ExperiencePreviewPage({
+        params: Promise.resolve({ token: "draft-only-capability" }),
+      })
+      const content = page.props.children.props.children[1]
+      expect(content.props.audience).toMatchObject({
+        kind: "authored",
+        config: configuration,
+      })
+      if (homepage) expect(content.props.audienceEnabled).toBe(true)
+      expect(content.props.blocks).toEqual([...draft.blocks, block])
+      expect(getExperiencePreviewMock).toHaveBeenCalledWith(
+        "draft-only-capability",
+      )
+    },
+  )
+
+  it("rejects an invalid present draft rather than replacing it with code questions", async () => {
+    getExperiencePreviewMock.mockResolvedValue({
+      ...draft,
+      isTemplate: true,
+      isDefaultTemplate: true,
+      blocks: [
+        {
+          __typename: "WatchAudienceBlock",
+          sectionKey: "audience-draft",
+          configurationJson: "invalid JSON",
+        },
+      ],
+    })
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "invalid-draft-capability" }),
+    })
+    expect(page.props.children.props.children[1].props.audience).toEqual({
+      kind: "rejected",
+    })
+  })
+
+  // Public reads project only the default template's published block, so a
+  // staged block on any other Experience must not promise a questionnaire.
+  describe.each([
+    ["homepage", true],
+    ["ordinary page", false],
+  ])("non-template Experience (%s)", (_label, homepage) => {
+    const audienceBlock = () => ({
+      __typename: "WatchAudienceBlock",
+      sectionKey: "audience-draft",
+      configurationJson: JSON.stringify(
+        structuredClone(WATCH_AUDIENCE_CODE_CONFIG),
+      ),
+    })
+    const stage = (
+      isTemplate: boolean | undefined,
+      isDefaultTemplate?: boolean,
+    ) => {
+      getExperiencePreviewMock.mockResolvedValue({
+        ...draft,
+        isHomepage: homepage,
+        ...(isTemplate === undefined ? {} : { isTemplate }),
+        ...(isDefaultTemplate === undefined ? {} : { isDefaultTemplate }),
+        blocks: [...draft.blocks, audienceBlock()],
+      })
+      resolveWatchHomePreviewMock.mockResolvedValue({
+        data: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        error: null,
+      })
+    }
+
+    it.each([
+      ["explicitly not a template", false],
+      ["without template identity (older Admin)", undefined],
+    ])("ignores the staged questionnaire when %s", async (_why, isTemplate) => {
+      stage(isTemplate)
+      const page = await ExperiencePreviewPage({
+        params: Promise.resolve({ token: "non-template-capability" }),
+      })
+      const content = page.props.children.props.children[1]
+      expect(content.props.audience).toBeUndefined()
+      expect(content.props.audienceEnabled).toBeUndefined()
+      // Existing sibling blocks are preserved, never stripped.
+      expect(
+        content.props.blocks.map((b: { __typename: string }) => b.__typename),
+      ).toEqual(["TextBlock", "MediaCollectionBlock", "WatchAudienceBlock"])
+    })
+
+    it.each([
+      ["non-default B", false],
+      ["an older producer with no selected identity", undefined],
+    ] as const)(
+      "ignores generic route-template authority for %s",
+      async (_why, isDefaultTemplate) => {
+        // This is the discriminating regression: the old renderer admits B.
+        stage(true, isDefaultTemplate)
+        const page = await ExperiencePreviewPage({
+          params: Promise.resolve({ token: "route-template-b-capability" }),
+        })
+        const content = page.props.children.props.children[1]
+        expect(content.props.audience).toBeUndefined()
+        expect(content.props.audienceEnabled).toBeUndefined()
+        expect(content.props.blocks).toEqual([...draft.blocks, audienceBlock()])
+      },
+    )
+
+    it("still previews the questionnaire for the default template", async () => {
+      stage(true, true)
+      const page = await ExperiencePreviewPage({
+        params: Promise.resolve({ token: "template-capability" }),
+      })
+      const content = page.props.children.props.children[1]
+      expect(content.props.audience).toMatchObject({ kind: "authored" })
+      if (homepage) expect(content.props.audienceEnabled).toBe(true)
+    })
   })
 })
