@@ -3,6 +3,9 @@
 import { useEffect, useRef } from "react"
 import { useTranslations } from "next-intl"
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+
 export function RecommendationCookieSettings({
   open,
   personalization,
@@ -24,6 +27,7 @@ export function RecommendationCookieSettings({
 }) {
   const t = useTranslations("RecommendationConsent")
   const titleRef = useRef<HTMLHeadingElement>(null)
+  const dialogRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -32,10 +36,48 @@ export function RecommendationCookieSettings({
     titleRef.current?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !busy) onClose()
+      if (event.key !== "Tab") return
+      // The modal is not a native <dialog>, so keep Tab / Shift+Tab inside it
+      // by hand (wrapping at both ends) instead of letting focus reach the
+      // page behind the backdrop.
+      const dialog = dialogRef.current
+      if (!dialog) return
+      const items = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      )
+      const active = document.activeElement
+      if (items.length === 0) {
+        event.preventDefault()
+        titleRef.current?.focus()
+        return
+      }
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (!dialog.contains(active) || active === titleRef.current) {
+        event.preventDefault()
+        ;(event.shiftKey ? last : first).focus()
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+    const onFocusIn = (event: FocusEvent) => {
+      const dialog = dialogRef.current
+      if (
+        dialog &&
+        event.target instanceof Node &&
+        !dialog.contains(event.target)
+      )
+        titleRef.current?.focus()
     }
     window.addEventListener("keydown", onKeyDown)
+    document.addEventListener("focusin", onFocusIn)
     return () => {
       window.removeEventListener("keydown", onKeyDown)
+      document.removeEventListener("focusin", onFocusIn)
       document.body.style.overflow = previousBodyOverflow
     }
   }, [busy, onClose, open])
@@ -47,6 +89,7 @@ export function RecommendationCookieSettings({
       className="fixed inset-0 z-[110] flex overflow-x-hidden overflow-y-auto bg-black/75 p-4"
     >
       <section
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="recommendation-cookie-settings-title"
