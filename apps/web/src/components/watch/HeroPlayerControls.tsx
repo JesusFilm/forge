@@ -180,15 +180,11 @@ export function HeroPlayerControls({
     chromeVisibilityRef.current = chromeVisibility
   }, [chromeVisibility])
 
-  const chromeOpacity =
-    chromeVisibility === "bright" ? 1 : chromeVisibility === "dim" ? 1 : 0
-  const chromeVisible = chromeVisibility !== "hidden"
-  const chromeOpacityClass =
-    chromeVisibility === "bright"
-      ? "opacity-100"
-      : chromeVisibility === "dim"
-        ? "opacity-100"
-        : "opacity-0"
+  // Buffering reveals the existing controls without restarting their idle timer.
+  const displayVisibility = playbackLoading ? "bright" : chromeVisibility
+  const chromeVisible = displayVisibility !== "hidden"
+  const chromeOpacity = chromeVisible ? 1 : 0
+  const chromeOpacityClass = chromeVisible ? "opacity-100" : "opacity-0"
   const subtitleHeading = languagePickerT("subtitlesHeading")
   const subtitleStateLabel = !showSubtitleButton
     ? languagePickerT("notAvailable")
@@ -1078,8 +1074,8 @@ export function HeroPlayerControls({
     <div
       data-testid="hero-player-custom-chrome"
       data-visible={chromeVisible ? "true" : "false"}
-      data-bright={chromeVisibility === "bright" ? "true" : "false"}
-      data-visibility={chromeVisibility}
+      data-bright={displayVisibility === "bright" ? "true" : "false"}
+      data-visibility={displayVisibility}
       onPointerEnter={() => {
         if (revealControls({ pointerDriven: true })) {
           setHoveringControls(true)

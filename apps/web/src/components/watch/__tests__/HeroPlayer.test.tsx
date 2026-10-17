@@ -518,13 +518,6 @@ async function fireWaiting() {
   })
 }
 
-async function fireSeeked() {
-  const handler = lastMuxProps()?.onSeeked
-  await act(async () => {
-    handler?.(new Event("seeked"))
-  })
-}
-
 async function fireTimeUpdate() {
   const handler = lastMuxProps()?.onTimeUpdate
   await act(async () => {
@@ -2371,40 +2364,72 @@ describe("HeroPlayer — loading spinner lifecycle", () => {
     ).toBeNull()
   })
 
-  it("shows the chrome spinner when committed playback buffers", async () => {
-    setSearchParams("autoplay=1")
-    act(() => {
-      root.render(<HeroPlayer block={makeBlock()} />)
-    })
+  it.each([
+    ["onWaiting", "onPlaying"],
+    ["onStalled", "onCanPlay"],
+    ["onWaiting", "onSeeked"],
+  ] as const)(
+    "keeps buffering feedback visible after auto-hide (%s → %s)",
+    async (bufferEvent, recoveryEvent) => {
+      vi.useFakeTimers()
+      try {
+        setSearchParams("autoplay=1")
+        act(() => {
+          root.render(<HeroPlayer block={makeBlock()} />)
+        })
 
-    await fireCanPlay()
-    await firePlaying()
-    expect(
-      container.querySelector('[data-testid="hero-player-loading"]'),
-    ).toBeNull()
-    expect(
-      container.querySelector('[data-testid="hero-chrome-loading"]'),
-    ).toBeNull()
+        await fireCanPlay()
+        await firePlaying()
+        await act(async () => vi.advanceTimersByTime(5_001))
+        const chrome = container.querySelector(
+          '[data-testid="hero-player-custom-chrome"]',
+        ) as HTMLElement
+        expect(chrome.classList.contains("opacity-0")).toBe(true)
+        expect(
+          container.querySelector('[data-testid="hero-player-loading"]'),
+        ).toBeNull()
+        expect(
+          container.querySelector('[data-testid="hero-chrome-loading"]'),
+        ).toBeNull()
 
-    await fireWaiting()
-    expect(
-      container.querySelector('[data-testid="hero-player-loading"]'),
-    ).toBeNull()
-    expect(
-      container.querySelector('[data-testid="hero-chrome-loading"]'),
-    ).not.toBeNull()
-    expect(
-      container.querySelector('[data-testid="watch-player-loading-indicator"]'),
-    ).toBeNull()
+        await act(async () => {
+          lastMuxProps()[bufferEvent]?.(
+            new Event(bufferEvent === "onWaiting" ? "waiting" : "stalled"),
+          )
+        })
+        expect(
+          container.querySelector('[data-testid="hero-player-loading"]'),
+        ).toBeNull()
+        expect(
+          container.querySelector('[data-testid="hero-chrome-loading"]'),
+        ).not.toBeNull()
+        expect(chrome.classList.contains("opacity-0")).toBe(false)
+        expect(chrome.getAttribute("data-visible")).toBe("true")
+        await act(async () => vi.advanceTimersByTime(10_000))
+        expect(chrome.classList.contains("opacity-0")).toBe(false)
+        expect(
+          container.querySelector(
+            '[data-testid="watch-player-loading-indicator"]',
+          ),
+        ).toBeNull()
 
-    await fireSeeked()
-    expect(
-      container.querySelector('[data-testid="hero-player-loading"]'),
-    ).toBeNull()
-    expect(
-      container.querySelector('[data-testid="hero-chrome-loading"]'),
-    ).toBeNull()
-  })
+        await act(async () => {
+          lastMuxProps()[recoveryEvent]?.(
+            new Event(recoveryEvent.slice(2).toLowerCase()),
+          )
+        })
+        expect(
+          container.querySelector('[data-testid="hero-player-loading"]'),
+        ).toBeNull()
+        expect(
+          container.querySelector('[data-testid="hero-chrome-loading"]'),
+        ).toBeNull()
+        expect(chrome.classList.contains("opacity-0")).toBe(true)
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
 
   it("clears committed playback buffering on timeupdate", async () => {
     setSearchParams("autoplay=1")
@@ -2919,6 +2944,7 @@ describe("HeroPlayer — fade timer", () => {
 
   it("starts fully visible, ignores pointer movement for 5s, then video mouse movement wakes the rail", async () => {
     await revealChrome()
+    await fireCanPlay()
     if (mockPlayerRef.current) mockPlayerRef.current.paused = false
     const chrome = container.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
@@ -3045,6 +3071,7 @@ describe("HeroPlayer — fade timer", () => {
       await act(async () => {
         pill.click()
       })
+      await fireCanPlay()
 
       expect(languageEvents.at(-1)?.visible).toBe(true)
       expect(visibilityEvents.some((event) => event.opacity === 1)).toBe(true)
@@ -3107,6 +3134,7 @@ describe("HeroPlayer — fade timer", () => {
       await act(async () => {
         pill.click()
       })
+      await fireCanPlay()
 
       await act(async () => {
         vi.advanceTimersByTime(5001)
@@ -3149,6 +3177,7 @@ describe("HeroPlayer — fade timer", () => {
 
   it("ignores controls hover during the 5s lockout, then reveals and does not hide while hovered", async () => {
     await revealChrome()
+    await fireCanPlay()
     const chrome = container.querySelector(
       '[data-testid="hero-player-custom-chrome"]',
     ) as HTMLElement
@@ -3192,6 +3221,7 @@ describe("HeroPlayer — fade timer", () => {
 
   it("keeps the mouse cursor visible while paused", async () => {
     await revealChrome()
+    await fireCanPlay()
     if (mockPlayerRef.current) mockPlayerRef.current.paused = true
     callPlayerListener("pause")
 
