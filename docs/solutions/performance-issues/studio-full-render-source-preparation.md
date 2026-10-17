@@ -171,3 +171,55 @@ RSS. Streaming does not bound codec allocations or total output bytes; feat-723
 adds duration-based rate control and measures encoder/browser memory before
 repeating full-project acceptance. Do not infer complete rendering from a
 published host candidate or a partial encoded stream.
+
+## Encoding and tile-policy correction
+
+PR #2773 merged as `893cf873c237ab9c1abe34cf17864b608147c2d9` after all
+PR CI and CodeQL checks passed. Worker tests passed (82 passed, 10 existing
+qualification skips), build, ESLint and the normal full-repository formatting
+hook passed. It budgets H264 target/max/VBV rates from the complete duration,
+keeps explicit 48kHz/320kbps AAC, selects `veryfast`, and replaces the SDK's
+4096MiB compositor tile allowance with 256MiB in the trusted launcher.
+
+The installed-SDK/native regression fully decodes 90 detailed 1080x1920 frames
+and audible AAC within the derived envelope; default CRF18 exceeds it. With the
+same rate/thread policy, medium peaks at 474.3MiB and takes 11.45s; veryfast
+peaks at 269.6MiB and takes 6.87s. Those fixture measurements are not full-project
+acceptance or an aggregate memory guarantee.
+
+Hosted release [39004203386](https://github.com/JesusFilm/forge/actions/runs/39004203386)
+publishes that exact main source. Candidate SHA256:
+`f9fa6682f40c2f0acd4123ff8354b17fd07cc93254bea70b38365e2a7fb4a204`.
+The unchanged host bundle is
+`613f069ffcbb8e775ff3d9d06ca175167653872c32a671c3e31a6b001d51c2d3`;
+the new render image is
+`ghcr.io/jesusfilm/forge-studio-render@sha256:3fd98d60aef5f383ee80a73bc96e3d3e4ddc7cc945711712259db0a605fa41bd`.
+Trusted acquisition and inactive selection completed, then the matching v3
+worker was activated through the normal switcher.
+
+Fresh revision-21 attempt `cmvbxfc1u0001ruk1njy8i0v7` leases at
+04:58:56.811Z, commits preparation at 04:59:50.823Z (54.012s), delivers input
+in 75.328s, and starts native rendering at 05:00:15.627Z. Live flags confirm
+2558kbps target, 2843kbps maximum, 5686kb VBV, veryfast and the 256MiB tile
+allowance. Final full-project codec proof and retained output remain pending.
+
+## Duplicate remux allocation
+
+The same diagnostic run reaches 4689 encoded frames and 49,807,408 video-only
+bytes at 05:25:38Z without a cgroup limit event. Maximum sampled aggregate usage
+is 2,100,133,888 bytes under the 2,147,483,648-byte cap. Temporary files reach
+437,021,750 bytes as more sources are visited. This is capacity evidence, not a
+completed codec or retained-output proof.
+
+Read-only SHA256 comparisons establish seven exact copied remuxes totaling
+93,483,312 bytes under the SDK's `remotion-assets-dir`; all 17 original remuxes
+already occupy 247,200,184 bytes. The SDK retains downloads until final cleanup;
+its 32MiB decoded-frame cache does not bound those complete source copies.
+
+The diagnostic attempt was cancelled through the normal canonical command, then
+the trusted switcher confirmed physical retirement and left the worker drained
+and inactive. Preserve its CANCELLED result; do not relabel it as an OOM failure
+or a successful full render. Feat-724 removes the second allocation with a narrow
+paired worker-only resolver for generated remux paths, retaining native audio
+analysis, cancellation and default SDK behavior for other consumers. Full
+acceptance requires the next immutable worker release and a fresh complete run.
