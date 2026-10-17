@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 17, 2026)
 
-- **Total tickets:** 857
-- **Complete:** 638
+- **Total tickets:** 858
+- **Complete:** 639
 - **Cancelled:** 41
 - **In progress:** 69
 - **Not started:** 52
@@ -705,6 +705,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | —     | 1    | —   | complete    |
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | —     | 1    | —   | complete    |
 | [feat-719](platform/feat-719-support-research-disabled-migration-readiness.md)         | Keep disabled support research independent of database migration                   | nisal      | P1       | —     | 1    | —   | complete    |
+| [feat-727](platform/feat-727-watch-consent-share-copy-validation.md)                   | Validate Watch download consent and share copy on current main                     | vlad       | P1       | —     | 1    | —   | complete    |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | —     | 46   | —   | not-started |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | —     | 78   | —   | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                        | vlad       | P2       | —     | 31   | —   | blocked     |
