@@ -42,31 +42,37 @@ describe("WatchSeoManifestService.generate", () => {
           contentSlug: "jesus",
           languageSlug: "english",
           bcp47: "en",
+          lastModified: new Date("2026-06-01T00:00:00.000Z"),
         },
         {
           contentSlug: "jesus",
           languageSlug: "spanish-castilian",
           bcp47: "es",
+          lastModified: new Date("2026-06-02T00:00:00.000Z"),
         },
         {
           contentSlug: "jesus",
           languageSlug: "spanish-latin-american",
           bcp47: "es",
+          lastModified: new Date("2026-06-03T00:00:00.000Z"),
         },
         {
           contentSlug: "jesus",
           languageSlug: "bad-script",
           bcp47: "zh-Hans",
+          lastModified: new Date("2026-06-04T00:00:00.000Z"),
         },
         {
           contentSlug: "pentecost",
           languageSlug: "english",
           bcp47: "en",
+          lastModified: new Date("2026-06-05T00:00:00.000Z"),
         },
         {
           contentSlug: "pentecost",
           languageSlug: "portuguese-brazil",
           bcp47: "pt-BR",
+          lastModified: new Date("2026-06-06T00:00:00.000Z"),
         },
       ])
       .mockResolvedValueOnce([
@@ -81,6 +87,7 @@ describe("WatchSeoManifestService.generate", () => {
           childSlug: "pentecost",
           languageSlug: "portuguese-brazil",
           bcp47: "pt-BR",
+          lastModified: new Date("2026-06-06T00:00:00.000Z"),
         },
       ])
 
@@ -96,6 +103,7 @@ describe("WatchSeoManifestService.generate", () => {
       videoRouteGroups: [
         {
           contentSlug: "jesus",
+          lastModified: "2026-06-02T00:00:00.000Z",
           alternates: [
             { hreflang: "en", languageSlug: "english" },
             { hreflang: "es", languageSlug: "spanish-castilian" },
@@ -103,6 +111,7 @@ describe("WatchSeoManifestService.generate", () => {
         },
         {
           contentSlug: "pentecost",
+          lastModified: "2026-06-06T00:00:00.000Z",
           alternates: [
             { hreflang: "en", languageSlug: "english" },
             { hreflang: "pt-BR", languageSlug: "portuguese-brazil" },
@@ -145,6 +154,13 @@ describe("WatchSeoManifestService.generate", () => {
     expect(allSql).toContain("published = TRUE")
     expect(allSql).toContain("hls IS NOT NULL")
     expect(allSql).toContain("parent_video_audio")
+    expect(allSql).toContain(
+      "GREATEST(v.updated_at, vl.updated_at, dub.updated_at)",
+    )
+    expect(allSql).toContain(
+      "MAX(GREATEST(v.updated_at, vl.updated_at, dub.updated_at))",
+    )
+    expect(allSql).toContain("GROUP BY v.slug, lang.slug, lang.bcp47")
     expect(allSql).toContain("child_lang.bcp47")
   })
 
@@ -173,6 +189,7 @@ describe("WatchSeoManifestService.generate", () => {
           contentSlug: "pentecost",
           languageSlug: "english",
           bcp47: "en",
+          lastModified: new Date("2026-06-05T00:00:00.000Z"),
         },
       ])
       .mockResolvedValueOnce([
@@ -181,6 +198,7 @@ describe("WatchSeoManifestService.generate", () => {
           childSlug: "pentecost",
           languageSlug: "portuguese-brazil",
           bcp47: "pt-BR",
+          lastModified: new Date("2026-06-06T00:00:00.000Z"),
         },
       ])
     const service = new WatchSeoManifestService(prisma)

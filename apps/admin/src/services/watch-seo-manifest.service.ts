@@ -9,6 +9,7 @@ const LanguageAlternateSchema = z.object({
 
 const VideoRouteGroupSchema = z.object({
   contentSlug: z.string().min(1),
+  lastModified: z.string().datetime().optional(),
   alternates: z.array(LanguageAlternateSchema),
 })
 
@@ -22,6 +23,7 @@ const ContentLanguageRowSchema = z.object({
   contentSlug: z.string().min(1),
   languageSlug: z.string().min(1),
   bcp47: z.string().nullable(),
+  lastModified: z.date(),
 })
 
 const EpisodeLanguageRowSchema = z.object({
@@ -119,10 +121,11 @@ export class WatchSeoManifestService {
   private async loadContentLanguageRows(): Promise<ContentLanguageRow[]> {
     const rows = await this.prisma.$queryRaw<unknown[]>`
       WITH playable_video_audio AS (
-        SELECT DISTINCT
+        SELECT
           v.slug AS "contentSlug",
           lang.slug AS "languageSlug",
-          lang.bcp47 AS "bcp47"
+          lang.bcp47 AS "bcp47",
+          MAX(GREATEST(v.updated_at, vl.updated_at, dub.updated_at)) AS "lastModified"
         FROM "video" v
         JOIN "video_locale" vl
           ON vl."video_id" = v.id
@@ -141,12 +144,14 @@ export class WatchSeoManifestService {
           AND lang.slug <> ''
         WHERE v."deleted_at" IS NULL
           AND v.slug <> ''
+        GROUP BY v.slug, lang.slug, lang.bcp47
       ),
       parent_video_audio AS (
-        SELECT DISTINCT
+        SELECT
           parent.slug AS "contentSlug",
           child_lang.slug AS "languageSlug",
-          child_lang.bcp47 AS "bcp47"
+          child_lang.bcp47 AS "bcp47",
+          MAX(GREATEST(parent.updated_at, parent_locale.updated_at, child.updated_at, child_locale.updated_at, child_dub.updated_at)) AS "lastModified"
         FROM "video" parent
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
@@ -175,10 +180,11 @@ export class WatchSeoManifestService {
           AND child_lang.slug <> ''
         WHERE parent."deleted_at" IS NULL
           AND parent.slug <> ''
+        GROUP BY parent.slug, child_lang.slug, child_lang.bcp47
       )
-      SELECT "contentSlug", "languageSlug", "bcp47" FROM playable_video_audio
+      SELECT "contentSlug", "languageSlug", "bcp47", "lastModified" FROM playable_video_audio
       UNION
-      SELECT "contentSlug", "languageSlug", "bcp47" FROM parent_video_audio
+      SELECT "contentSlug", "languageSlug", "bcp47", "lastModified" FROM parent_video_audio
       ORDER BY "contentSlug" ASC, "bcp47" ASC NULLS LAST, "languageSlug" ASC
     `
 
@@ -313,10 +319,25 @@ function toVideoRouteGroups(
   }
 
   return [...byContent.entries()]
-    .map(([contentSlug, contentRows]) => ({
-      contentSlug,
-      alternates: toAlternates(contentRows, skippedHreflangValues),
-    }))
+    .map(([contentSlug, contentRows]) => {
+      const alternates = toAlternates(contentRows, skippedHreflangValues)
+      const alternateLanguageSlugs = new Set(
+        alternates.map((alternate) => alternate.languageSlug),
+      )
+      const datedRows = contentRows.filter((row) =>
+        alternateLanguageSlugs.has(row.languageSlug),
+      )
+      const lastModified = datedRows.reduce<Date | undefined>(
+        (latest, row) =>
+          !latest || row.lastModified > latest ? row.lastModified : latest,
+        undefined,
+      )
+      return {
+        contentSlug,
+        ...(lastModified ? { lastModified: lastModified.toISOString() } : {}),
+        alternates,
+      }
+    })
     .filter((group) => group.alternates.length > 0)
     .sort((a, b) => a.contentSlug.localeCompare(b.contentSlug))
 }

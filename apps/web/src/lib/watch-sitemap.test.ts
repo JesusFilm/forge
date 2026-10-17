@@ -19,6 +19,7 @@ const manifest: WatchSeoManifest = {
   videoRouteGroups: [
     {
       contentSlug: "jesus",
+      lastModified: "2026-06-02T00:00:00.000Z",
       alternates: [
         { hreflang: "en", languageSlug: "english" },
         { hreflang: "es", languageSlug: "spanish-castilian" },
@@ -30,6 +31,7 @@ const manifest: WatchSeoManifest = {
     },
     {
       contentSlug: "wedding-in-cana",
+      lastModified: "2026-06-03T00:00:00.000Z",
       alternates: [{ hreflang: "en", languageSlug: "english" }],
     },
   ],
@@ -73,6 +75,7 @@ describe("watch sitemap rendering", () => {
     expect(entries).toHaveLength(5)
     expect(entries[0]).toEqual({
       loc: "https://www.jesusfilm.org/watch/jesus.html",
+      lastModified: "2026-06-02T00:00:00.000Z",
       alternates: [
         {
           hreflang: "en",
@@ -146,6 +149,7 @@ describe("watch sitemap rendering", () => {
     expect(xml).toContain(
       "<loc>https://www.jesusfilm.org/watch/jesus.html</loc>",
     )
+    expect(xml).toContain("<lastmod>2026-06-02T00:00:00.000Z</lastmod>")
     expect(xml).toContain(
       'hreflang="es" href="https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"',
     )
@@ -198,6 +202,30 @@ describe("watch sitemap rendering", () => {
     expect(byteChunks.every((chunk) => chunk.bytes <= 600)).toBe(true)
   })
 
+  it("uses source lastmod on video routes and the latest contained route in each index entry", () => {
+    const index = renderWatchSitemapIndex(manifest, { maxUrls: 1 })
+    const firstChunk = renderWatchSitemapChunk(manifest, 0, { maxUrls: 1 })
+
+    expect(firstChunk).toContain("<lastmod>2026-06-02T00:00:00.000Z</lastmod>")
+    expect(index).toContain(
+      "<sitemap><loc>https://www.jesusfilm.org/watch/sitemap/0.xml</loc><lastmod>2026-06-02T00:00:00.000Z</lastmod></sitemap>",
+    )
+    expect(index).not.toContain(manifest.generatedAt)
+  })
+
+  it("omits lastmod when a legacy manifest has no source timestamp", () => {
+    const legacy = {
+      ...manifest,
+      videoRouteGroups: manifest.videoRouteGroups.map(
+        ({ lastModified: _lastModified, ...group }) => group,
+      ),
+    }
+    const chunk = renderWatchSitemapChunk(legacy, 0)
+
+    expect(chunk).not.toContain("<lastmod>")
+    expect(chunk).not.toContain(legacy.generatedAt)
+  })
+
   it("uses safety ceilings below search-engine hard limits", () => {
     expect(DEFAULT_MAX_SITEMAP_BYTES).toBe(35_000_000)
     expect(DEFAULT_MAX_SITEMAP_URLS).toBe(49_999)
@@ -209,6 +237,7 @@ describe("watch sitemap rendering", () => {
       videoRouteGroups: [
         {
           contentSlug: "jesus",
+          lastModified: '2026-06-02T12:00:00Z"&',
           alternates: [
             { hreflang: "français", languageSlug: "french" },
             { hreflang: "日本語", languageSlug: "japanese" },
@@ -227,6 +256,33 @@ describe("watch sitemap rendering", () => {
 
     expect(chunk?.bytes).toBe(Buffer.byteLength(xml ?? "", "utf8"))
     expect(chunk?.bytes).toBeGreaterThan(xml?.length ?? 0)
+  })
+
+  it("renders timestamps only for dated groups in a mixed manifest", () => {
+    const mixed = {
+      ...manifest,
+      videoRouteGroups: [
+        manifest.videoRouteGroups[0]!,
+        {
+          contentSlug: "wedding-in-cana",
+          alternates: [{ hreflang: "en", languageSlug: "english" }],
+        },
+      ],
+    }
+
+    const dated = renderWatchSitemapChunk(mixed, 0)
+    const oneEntryChunks = getWatchSitemapChunks(mixed, { maxUrls: 1 })
+    const undatedChunkId = oneEntryChunks.findIndex((chunk) =>
+      chunk.entries.some((entry) =>
+        entry.loc.endsWith("/wedding-in-cana.html"),
+      ),
+    )
+    const undated = renderWatchSitemapChunk(mixed, undatedChunkId, {
+      maxUrls: 1,
+    })
+
+    expect(dated).toContain("<lastmod>")
+    expect(undated).not.toContain("<lastmod>")
   })
 
   it("rejects invalid limits and entries that cannot fit", () => {

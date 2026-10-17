@@ -7,6 +7,7 @@ export type WatchSeoManifestAlternate = {
 
 export type WatchSeoManifestVideoRouteGroup = {
   contentSlug: string
+  lastModified?: string
   alternates: WatchSeoManifestAlternate[]
 }
 
@@ -66,7 +67,11 @@ function isVideoRouteGroup(
 ): value is WatchSeoManifestVideoRouteGroup {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
-  return isString(record.contentSlug) && isAlternateArray(record.alternates)
+  return (
+    isString(record.contentSlug) &&
+    (record.lastModified === undefined || isString(record.lastModified)) &&
+    isAlternateArray(record.alternates)
+  )
 }
 
 function isEpisodeRouteGroup(
