@@ -1,3 +1,4 @@
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import type { ReactNode } from "react"
 import type { Metadata } from "next"
 import { NextIntlClientProvider } from "next-intl"
@@ -134,6 +135,7 @@ export default async function HomePage({ params }: PageProps) {
     <>
       <WatchStructuredData json={structuredData} />
       <WatchHomeExperiencePage
+        audienceEnabled={await isWatchAudienceEnabled()}
         heroModel={heroResult.data}
         blocks={visibleContent.blocks}
         locale={locale}

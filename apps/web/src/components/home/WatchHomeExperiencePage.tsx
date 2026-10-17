@@ -1,3 +1,4 @@
+import { WatchHomeRoleBand } from "@/components/home/WatchHomeRoleBand"
 import {
   signWatchHomeHeroManifestCatalog,
   signWatchSurfaceManifest,
@@ -26,6 +27,7 @@ import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
 
 type WatchHomeExperiencePageProps = {
+  audienceEnabled?: boolean
   heroModel: WatchHomeModel
   blocks: readonly Section[]
   locale?: string
@@ -146,6 +148,7 @@ function isDynamicMediaCollectionBlock(block: Section) {
 }
 
 export function WatchHomeExperiencePage({
+  audienceEnabled = false,
   heroModel,
   blocks,
   locale = "en",
@@ -364,6 +367,9 @@ export function WatchHomeExperiencePage({
           <WatchHomeBodyZone>
             {heroAboveBodyZone ? (
               <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
+            ) : null}
+            {audienceEnabled ? (
+              <WatchHomeRoleBand languageSlug={languageSlug} locale={locale} />
             ) : null}
             {bodyZoneBlocks.map((block, index) => {
               // Keep the original index so a block without a `sectionKey`
