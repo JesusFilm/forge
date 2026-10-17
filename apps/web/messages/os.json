@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} æвзагмæ æхцон христианон видеотæ | Jesus Film Project",
-    "metadataDescription": "Jesus filmтæ, библион æрвæзæгтæ, disciple-æттæн сериятæ æмæ outreach видеотæ фæзынд кæн {language} æвзагмæ дубляж æмæ субтитртимæ.",
+    "metadataDescription": "Йесойы тыххæй фильмтæ, библион æрвæзæгтæ, disciple-æттæн сериятæ æмæ outreach видеотæ фæзынд кæн {language} æвзагмæ дубляж æмæ субтитртимæ.",
     "heroTitle": "{language} æвзагмæ æхцон христианон видеотæ",
-    "heroDescription": "Jesus filmтæ, библион æрвæзæгтæ, disciple-æттæн сериятæ æмæ outreach видеотæ фæзынд кæн {language} æвзагмæ. Æппæт дубляж кæнæг видеотæ уæрæджы æрхæсст æмæ субтитртæ æнцæй уымæгъ.",
+    "heroDescription": "Йесойы тыххæй фильмтæ, библион æрвæзæгтæ, disciple-æттæн сериятæ æмæ outreach видеотæ фæзынд кæн {language} æвзагмæ. Æппæт дубляж кæнæг видеотæ уæрæджы æрхæсст æмæ субтитртæ æнцæй уымæгъ.",
     "languageCollection": "Æвзагæй æмбырд",
     "itemCount": "{count, plural, one {# æгъдау} other {# æгъдаутæ}}",
     "videoCount": "{count, plural, one {# видео} other {# видеотæ}}",

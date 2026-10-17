@@ -9,7 +9,10 @@ import {
   PermanentApiError,
   requestTranslations,
 } from "./openai-catalog-translator.mjs"
-import { catalogPolicyFor } from "./ui-catalog-policy.mjs"
+import {
+  catalogPolicyFor,
+  isLocaleSharedMessage,
+} from "./ui-catalog-policy.mjs"
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appDir = join(scriptDir, "..")
@@ -285,6 +288,7 @@ function validateCatalogIntegrity(
   catalogMessages,
   maximumSourceCopiedMessages,
   policy = loadTranslationPolicy(),
+  locale,
 ) {
   const { intentionallyLocaleNeutral } = policy
   validateCatalogKeys(sourceMessages, catalogMessages)
@@ -297,7 +301,9 @@ function validateCatalogIntegrity(
 
   const sourceCopiedMessages = Object.entries(sourceMessages).filter(
     ([key, source]) =>
-      !intentionallyLocaleNeutral.has(key) && catalogMessages[key] === source,
+      !intentionallyLocaleNeutral.has(key) &&
+      catalogMessages[key] === source &&
+      !isLocaleSharedMessage(locale, key, source, catalogMessages[key]),
   ).length
   if (sourceCopiedMessages > maximumSourceCopiedMessages) {
     throw new CatalogValidationError(
@@ -528,6 +534,7 @@ function validateCompletedProvisionalCatalogs({
       flatCatalog,
       maximumSourceCopiedMessages,
       policy,
+      locale,
     )
   }
 }
@@ -554,6 +561,7 @@ function validatedCatalogDigests({
         flatCatalog,
         maximumSourceCopiedMessages,
         policy,
+        locale,
       )
       return [locale, contentDigest(flatCatalog)]
     }),
@@ -736,6 +744,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
               flatCatalog,
               maximumSourceCopiedMessages,
               policy,
+              locale,
             )
             console.log(
               JSON.stringify({
@@ -770,7 +779,13 @@ async function main({ args = process.argv, environment = process.env } = {}) {
               ? scopedKeys.has(key)
               : missingKeys.has(key) ||
                 shouldTranslateEntireCatalog ||
-                flatCatalog[key] === sourceFlat[key] ||
+                (flatCatalog[key] === sourceFlat[key] &&
+                  !isLocaleSharedMessage(
+                    locale,
+                    key,
+                    sourceFlat[key],
+                    flatCatalog[key],
+                  )) ||
                 messageContractError(key, sourceFlat[key], flatCatalog[key]) !==
                   null),
         )
@@ -820,6 +835,7 @@ async function main({ args = process.argv, environment = process.env } = {}) {
           flatCatalog,
           maximumSourceCopiedMessages,
           policy,
+          locale,
         )
         if (missing.length > 0 || keysToTranslate.length > 0) {
           writeJsonAtomic(path, unflattenCatalog(flatCatalog))

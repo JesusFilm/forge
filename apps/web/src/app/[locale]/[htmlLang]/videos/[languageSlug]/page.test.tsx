@@ -236,6 +236,31 @@ describe("/{language}.html/videos route", () => {
     )
   })
 
+  it("does not double the Thai word for language in Thai SEO metadata", async () => {
+    resolveWatchLanguageInventoryMock.mockResolvedValueOnce({
+      ...(await resolveWatchLanguageInventoryMock("th", "thai")),
+      languageSlug: "thai",
+      languageName: "Thai",
+      // Admin's own Thai name for Thai.
+      languageNativeName: "ภาษาไทย",
+    })
+    resolveWatchLanguageInventoryMock.mockClear()
+
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "th",
+        htmlLang: "th",
+        languageSlug: "thai",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "วิดีโอคริสเตียนฟรีในภาษาไทย | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain("คำบรรยายภาษาไทย")
+    expect(`${pageMetadata.description}`).not.toContain("ภาษาภาษา")
+  })
+
   it("uses Russian ICU plural categories in route-render tests", () => {
     setRequestLocale("ru")
     const html = renderToString(<RussianPluralProbe />)

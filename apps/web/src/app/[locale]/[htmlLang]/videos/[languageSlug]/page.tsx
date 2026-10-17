@@ -6,6 +6,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 import { LanguageInventoryPage } from "@/components/watch-language-inventory/LanguageInventoryPage"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN } from "@/lib/routes"
+import { languageNameForUiTemplate } from "@/lib/search-language-display-name"
 import {
   isAdmittedWatchInventoryLanguageSlug,
   resolveWatchLanguageInventory,
@@ -45,8 +46,10 @@ export async function generateMetadata({
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   const inventory = await resolveWatchLanguageInventory(locale, languageSlug)
   const t = await getTranslations({ locale, namespace: "LanguageInventory" })
-  const languageDisplayName =
-    inventory.languageNativeName?.trim() || inventory.languageName
+  const languageDisplayName = languageNameForUiTemplate(
+    inventory.languageNativeName?.trim() || inventory.languageName,
+    locale,
+  )
   const title = t("metadataTitle", { language: languageDisplayName })
   const description = t("metadataDescription", {
     language: languageDisplayName,

@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos bɔ ka saraa nɔŋ {language} | Jesus Film Project",
-    "metadataDescription": "Jesus films, Bible stories, discipleship series, and outreach videos browse ka {language} audio wala subtitles nɔŋ.",
+    "metadataDescription": "filmis di Jesus, Bible stories, discipleship series, and outreach videos browse ka {language} audio wala subtitles nɔŋ.",
     "heroTitle": "Christian videos bɔ ka saraa nɔŋ {language}",
-    "heroDescription": "Jesus films, Bible stories, discipleship series, and outreach videos browse ka {language} nɔŋ. Fully dubbed videos a tɔŋsɔrɔ nɔŋ, subtitles only option dɔ yɔŋ kɛ.",
+    "heroDescription": "filmis di Jesus, Bible stories, discipleship series, and outreach videos browse ka {language} nɔŋ. Fully dubbed videos a tɔŋsɔrɔ nɔŋ, subtitles only option dɔ yɔŋ kɛ.",
     "languageCollection": "Language collection sɛn",
     "itemCount": "{count, plural, one {# item} other {# items baara}}",
     "videoCount": "{count, plural, one {# video} other {# videos baara}}",

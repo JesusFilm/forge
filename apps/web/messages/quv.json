@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Videos cristianos free pa {language} | Jesus Film Project",
-    "metadataDescription": "Titz'et Jesus films, historias de la Biblia, series de discipulado, chuqa' videos de outreach riq'in audio o subtítulos pa {language}.",
+    "metadataDescription": "Titz'et películas chrij ri Jesús, historias de la Biblia, series de discipulado, chuqa' videos de outreach riq'in audio o subtítulos pa {language}.",
     "heroTitle": "Videos cristianos free pa {language}",
-    "heroDescription": "Titz'et Jesus films, historias de la Biblia, series de discipulado, chuqa' videos de outreach e k'o pa {language}. Ri videos totalmente doblados nikiq'alajisäx nab'e, we subtitles-only opkiones k'o chuxe'.",
+    "heroDescription": "Titz'et películas chrij ri Jesús, historias de la Biblia, series de discipulado, chuqa' videos de outreach e k'o pa {language}. Ri videos totalmente doblados nikiq'alajisäx nab'e, we subtitles-only opkiones k'o chuxe'.",
     "languageCollection": "Ruch'akulal ch'ab'äl",
     "itemCount": "{count, plural, one {# ruwäch} other {# taq ruwäch}}",
     "videoCount": "{count, plural, one {# video} other {# taq video}}",

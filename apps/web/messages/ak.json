@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos a wontua hwee wɔ {language} mu | Jesus Film Project",
-    "metadataDescription": "Hwehwɛ Jesus films, Bible nsɛm, discipleship series, ne outreach videos a wɔde kasa a wɔaka mu anaa subtitles wɔ {language} mu.",
+    "metadataDescription": "Hwehwɛ Yesu ho sini, Bible nsɛm, discipleship series, ne outreach videos a wɔde kasa a wɔaka mu anaa subtitles wɔ {language} mu.",
     "heroTitle": "Christian videos a wontua hwee wɔ {language} mu",
-    "heroDescription": "Hwehwɛ Jesus films, Bible nsɛm, discipleship series, ne outreach videos a ɛwɔ {language} mu. Videos a wɔaka mu pasɛɛ no na wɔde wɔn kan kyerɛ, na subtitles-only no da ase ase ha.",
+    "heroDescription": "Hwehwɛ Yesu ho sini, Bible nsɛm, discipleship series, ne outreach videos a ɛwɔ {language} mu. Videos a wɔaka mu pasɛɛ no na wɔde wɔn kan kyerɛ, na subtitles-only no da ase ase ha.",
     "languageCollection": "Kasa mu nhyehyɛe",
     "itemCount": "{count, plural, one {# ade} other {# nneɛma}}",
     "videoCount": "{count, plural, one {# video} other {# video ahorow}}",

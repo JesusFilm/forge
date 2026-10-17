@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Christian videos el di tia kelungel er a {language} | Jesus Film Project",
-    "metadataDescription": "Mesei a Jesus films, Bible stories, discipleship series, mar a outreach videos el ngar ngii a dubbed audio ke subtitles er a {language}.",
+    "metadataDescription": "Mesei a sinema el kirel a Jesus, Bible stories, discipleship series, mar a outreach videos el ngar ngii a dubbed audio ke subtitles er a {language}.",
     "heroTitle": "Christian videos el di tia kelungel er a {language}",
-    "heroDescription": "Mesei a Jesus films, Bible stories, discipleship series, mar a outreach videos el ngar ngii er a {language}. Videos el fully dubbed a omes el mloop, mar a subtitle-only options el ngar a rere.",
+    "heroDescription": "Mesei a sinema el kirel a Jesus, Bible stories, discipleship series, mar a outreach videos el ngar ngii er a {language}. Videos el fully dubbed a omes el mloop, mar a subtitle-only options el ngar a rere.",
     "languageCollection": "Collection er a language",
     "itemCount": "{count, plural, one {# ngii} other {# ngii}}",
     "videoCount": "{count, plural, one {# el video} other {# el video}}",

@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Videos Khristian ni free n {language} | Jesus Film Project",
-    "metadataDescription": "Rangia te Jesus films, Bible stories, discipleship series, ao outreach videos ma te dubbed audio ke subtitles n {language}.",
+    "metadataDescription": "Rangia taian film ibukin Jesus, Bible stories, discipleship series, ao outreach videos ma te dubbed audio ke subtitles n {language}.",
     "heroTitle": "Videos Khristian ni free n {language}",
-    "heroDescription": "Rangia te Jesus films, Bible stories, discipleship series, ao outreach videos e kona n {language}. A tabaaki naba te videos e dubbed ma te subtitles only i babae.",
+    "heroDescription": "Rangia taian film ibukin Jesus, Bible stories, discipleship series, ao outreach videos e kona n {language}. A tabaaki naba te videos e dubbed ma te subtitles only i babae.",
     "languageCollection": "Te collection n te i-ki",
     "itemCount": "{count, plural, one {# te bwai} other {# bwaai}}",
     "videoCount": "{count, plural, one {# te video} other {# videos}}",

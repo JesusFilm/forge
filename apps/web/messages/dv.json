@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ގައި ނުވާގަތު Christian videos | Jesus Film Project",
-    "metadataDescription": "{language} ގައި dubbed audio ނުވަތަ subtitles އާއިގެ Jesus films, Bible stories, discipleship series, and outreach videos ބަލާ.",
+    "metadataDescription": "{language} ގައި ޑަބްކޮށްފައިވާ އޯޑިއޯ ނުވަތަ ސަބްޓައިޓަލްތަކާއެކު އީސާގެ ފިލްމުތައް، ބައިބަލްގެ ވާހަކަތައް، ތަބާވުމުގެ ސީރީޒްތަކާއި ދަޢުވަތުގެ ވީޑިއޯތައް ބަލާ.",
     "heroTitle": "{language} ގައި ނުވާގަތު Christian videos",
-    "heroDescription": "{language} ގައި ލިބޭ Jesus films, Bible stories, discipleship series, and outreach videos ބަލާ. Fully dubbed videos ފުރަތަމަ ހެޔޮކޮށް ދައްކައި، subtitle-only options ތިރިއަށް ހުރޭ.",
+    "heroDescription": "{language} ގައި ލިބެން ހުރި އީސާގެ ފިލްމުތައް، ބައިބަލްގެ ވާހަކަތައް، ތަބާވުމުގެ ސީރީޒްތަކާއި ދަޢުވަތުގެ ވީޑިއޯތައް ބަލާ. ފުރިހަމައަށް ޑަބްކޮށްފައިވާ ވީޑިއޯތައް ފުރަތަމަ ދައްކައި، ސަބްޓައިޓަލް އެކަނި ހުރި އިޚްތިޔާރުތައް ތިރީގައި.",
     "languageCollection": "ބަސް ކޮލެކްޝަން",
     "itemCount": "{count, plural, one {# އިޓަމް} other {# އިޓަމްތައް}}",
     "videoCount": "{count, plural, one {# ވީޑިއޯ} other {# ވީޑިއޯތައް}}",

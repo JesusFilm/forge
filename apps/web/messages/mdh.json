@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Free Christian videos sa {language} | Jesus Film Project",
-    "metadataDescription": "Tuklason so Jesus films, Bible stories, discipleship series, ago outreach videos a may dubbed audio o subtitles sa {language}.",
+    "metadataDescription": "Tuklason so mga pelikula tungkol kay Jesus, Bible stories, discipleship series, ago outreach videos a may dubbed audio o subtitles sa {language}.",
     "heroTitle": "Free Christian videos sa {language}",
-    "heroDescription": "Tuklason so Jesus films, Bible stories, discipleship series, ago outreach videos na naa sa {language}. So fully dubbed videos una a ginahighlight, agod so subtitle-only options naa sa ubos.",
+    "heroDescription": "Tuklason so mga pelikula tungkol kay Jesus, Bible stories, discipleship series, ago outreach videos na naa sa {language}. So fully dubbed videos una a ginahighlight, agod so subtitle-only options naa sa ubos.",
     "languageCollection": "Koleksyon sa wika",
     "itemCount": "{count, plural, one {# bagay} other {# mga bagay}}",
     "videoCount": "{count, plural, one {# video} other {# mga video}}",

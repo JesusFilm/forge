@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Christian video siwo menɔa mahã le {language} me | Jesus Film Project",
-    "metadataDescription": "Kpɔ Jesus films, Bible stories, discipleship series, kple outreach videos kple dubbed audio alo subtitles le {language} me.",
+    "metadataDescription": "Kpɔ Yesu ŋuti sinimawo, Bible stories, discipleship series, kple outreach videos kple dubbed audio alo subtitles le {language} me.",
     "heroTitle": "Christian video siwo menɔa mahã le {language} me",
-    "heroDescription": "Kpɔ Jesus films, Bible stories, discipleship series, kple outreach videos siwo menɔa le {language} me. Videos siwo le dubbed la va gbɔna gbɔgblɔ sia me teti, subtitles only options le ete.",
+    "heroDescription": "Kpɔ Yesu ŋuti sinimawo, Bible stories, discipleship series, kple outreach videos siwo menɔa le {language} me. Videos siwo le dubbed la va gbɔna gbɔgblɔ sia me teti, subtitles only options le ete.",
     "languageCollection": "Gbegblẽ collection",
     "itemCount": "{count, plural, one {# nu} other {# nuwo}}",
     "videoCount": "{count, plural, one {video #} other {videowo #}}",

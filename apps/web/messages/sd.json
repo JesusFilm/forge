@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ۾ مفت مسيحي وڊيوز | Jesus Film Project",
-    "metadataDescription": "{language} ۾ ڊب ٿيل آڊيو يا سب ٽائيٽلز سان Jesus films، بائبل ڪهاڻيون، شاگردي سيريز، ۽ outreach وڊيوز ڳوليو.",
+    "metadataDescription": "{language} ۾ ڊب ٿيل آڊيو يا سب ٽائيٽلز سان عيسيٰ بابت فلمون، بائبل ڪهاڻيون، شاگردي سيريز، ۽ outreach وڊيوز ڳوليو.",
     "heroTitle": "{language} ۾ مفت مسيحي وڊيوز",
-    "heroDescription": "{language} ۾ موجود Jesus films، بائبل ڪهاڻيون، شاگردي سيريز، ۽ outreach وڊيوز ڳوليو. مڪمل ڊب ٿيل وڊيوز پهرين نمايان آهن، ۽ هيٺ صرف سب ٽائيٽلز وارا آپشن آهن.",
+    "heroDescription": "{language} ۾ موجود عيسيٰ بابت فلمون، بائبل ڪهاڻيون، شاگردي سيريز، ۽ outreach وڊيوز ڳوليو. مڪمل ڊب ٿيل وڊيوز پهرين نمايان آهن، ۽ هيٺ صرف سب ٽائيٽلز وارا آپشن آهن.",
     "languageCollection": "ٻولي جو مجموعو",
     "itemCount": "{count, plural, one {# شيءِ} other {# شيون}}",
     "videoCount": "{count, plural, one {# وڊيو} other {# وڊيوز}}",

@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Vitio faka-Kelisiano e maua fua i te {language} | Jesus Film Project",
-    "metadataDescription": "Saili Jesus films, Bible stories, discipleship series, mo outreach videos mo te leo io me subtitles i te {language}.",
+    "metadataDescription": "Saili ata e uiga ki a Iesu, Bible stories, discipleship series, mo outreach videos mo te leo io me subtitles i te {language}.",
     "heroTitle": "Vitio faka-Kelisiano e maua fua i te {language}",
-    "heroDescription": "Saili Jesus films, Bible stories, discipleship series, mo outreach videos e maua i te {language}. Vitio fully dubbed e fakailoa muamua, kae filifiliga subtitle-only i lalo.",
+    "heroDescription": "Saili ata e uiga ki a Iesu, Bible stories, discipleship series, mo outreach videos e maua i te {language}. Vitio fully dubbed e fakailoa muamua, kae filifiliga subtitle-only i lalo.",
     "languageCollection": "Collection o te language",
     "itemCount": "{count, plural, one {# mea} other {# mea}}",
     "videoCount": "{count, plural, one {# vitio} other {# vitio}}",

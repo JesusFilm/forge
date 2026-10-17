@@ -8,6 +8,7 @@ import {
   hasUiLocale,
 } from "@/i18n/generated-ui-locales"
 import { isSourceEquivalent } from "../../../scripts/openai-catalog-translator.mjs"
+import { isLocaleSharedMessage } from "../../../scripts/ui-catalog-policy.mjs"
 
 vi.unmock("next-intl")
 
@@ -60,6 +61,143 @@ describe("verified Turkmen subtitle labels", () => {
     expect(
       Object.values(turkmen).filter((value) => value.includes("ə")),
     ).toEqual([])
+  })
+})
+
+function westernDigits(value: string): string {
+  return value.replace(/[٠-٩]/g, (digit) =>
+    String(digit.charCodeAt(0) - 0x0660),
+  )
+}
+
+describe("Arabic count plurals", () => {
+  // CLDR Arabic: 0 zero, 1 one, 2 two, 3-10 few, 11-99 many, 100-102 other.
+  const counts = [0, 1, 2, 3, 11, 52, 100, 673] as const
+
+  function formatArabic(key: string, values: Record<string, number>): string {
+    const translate = createTranslator({
+      locale: "ar",
+      messages: loadCatalog("ar") as AbstractIntlMessages,
+    }) as unknown as (key: string, values: Record<string, number>) => string
+    return westernDigits(translate(key, values))
+  }
+
+  it("samples every Arabic CLDR plural category", () => {
+    const rules = new Intl.PluralRules("ar")
+    expect(counts.map((count) => rules.select(count))).toEqual([
+      "zero",
+      "one",
+      "two",
+      "few",
+      "many",
+      "many",
+      "other",
+      "many",
+    ])
+  })
+
+  it.each([
+    [
+      "LanguageInventory.itemCount",
+      [
+        "0 عناصر",
+        "1 عنصر",
+        "2 عنصران",
+        "3 عناصر",
+        "11 عنصرًا",
+        "52 عنصرًا",
+        "100 عنصر",
+        "673 عنصرًا",
+      ],
+    ],
+    [
+      "LanguageInventory.videoCount",
+      [
+        "0 فيديوهات",
+        "1 فيديو",
+        "2 فيديو",
+        "3 فيديوهات",
+        "11 فيديو",
+        "52 فيديو",
+        "100 فيديو",
+        "673 فيديو",
+      ],
+    ],
+    [
+      "WatchLanguageIndex.languageCount",
+      [
+        "0 لغات",
+        "1 لغة",
+        "2 لغتان",
+        "3 لغات",
+        "11 لغةً",
+        "52 لغةً",
+        "100 لغة",
+        "673 لغةً",
+      ],
+    ],
+  ])("formats %s with the Arabic plural form for each count", (key, forms) => {
+    expect(counts.map((count) => formatArabic(key, { count }))).toEqual(forms)
+  })
+
+  it("keeps the counted group noun grammatical after the preposition", () => {
+    // After "في" the dual is genitive (مجموعتين); 11-99 keep the accusative
+    // singular tamyiz (مجموعةً).
+    expect(
+      formatArabic("LanguageInventory.videosInGroups", {
+        videoCount: 673,
+        groupCount: 52,
+      }),
+    ).toBe("673 فيديو في 52 مجموعةً")
+    expect(
+      formatArabic("LanguageInventory.videosInGroups", {
+        videoCount: 3,
+        groupCount: 2,
+      }),
+    ).toBe("3 فيديوهات في 2 مجموعتين")
+  })
+})
+
+describe("Watch catalog copy corrections", () => {
+  const englishCatalogs = new Set(["en", ...provisionalLocales])
+
+  it("does not leave the English phrase 'Jesus films' in translated language pages", () => {
+    const leftovers = readdirSync(messagesDir)
+      .filter((file) => file.endsWith(".json"))
+      .map((file) => file.slice(0, -5))
+      .filter((locale) => !englishCatalogs.has(locale))
+      .flatMap((locale) =>
+        ["heroDescription", "metadataDescription"]
+          .filter((key) =>
+            /Jesus film/i.test(
+              flattenCatalog(locale)[`LanguageInventory.${key}`] ?? "",
+            ),
+          )
+          .map((key) => `${locale}:${key}`),
+      )
+
+    expect(leftovers).toEqual([])
+  })
+
+  it("uses Latin American Spanish video consistently, including ICU counts", () => {
+    expect(
+      Object.entries(flattenCatalog("es"))
+        .filter(([, value]) => /vídeo/i.test(value))
+        .map(([path]) => path),
+    ).toEqual([])
+    const t = createTranslator({
+      locale: "es",
+      messages: loadCatalog("es") as AbstractIntlMessages,
+    }) as unknown as (
+      key: string,
+      values?: Record<string, string | number>,
+    ) => string
+    expect(t("VideoLabels.video")).toBe("Video")
+    expect(t("LanguageInventory.videoCount", { count: 1 })).toBe("1 video")
+    expect(t("LanguageInventory.videoCount", { count: 2 })).toBe("2 videos")
+    expect(
+      t("LanguagePickerModal.seeAllVideosInLanguage", { language: "español" }),
+    ).toBe("Ver todos los videos en español")
   })
 })
 
@@ -260,7 +398,9 @@ describe("non-English catalogs — translated-copy gate", () => {
       .flatMap((locale) => {
         const catalog = flattenCatalog(locale)
         const exactCopies = translatablePaths.filter(
-          (path) => catalog[path] === source[path],
+          (path) =>
+            catalog[path] === source[path] &&
+            !isLocaleSharedMessage(locale, path, source[path], catalog[path]),
         )
         const normalizedCopies = translatablePaths.filter(
           (path) =>

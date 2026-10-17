@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "Libre a Kristiano a video iti {language} | Jesus Film Project",
-    "metadataDescription": "Sukimaten dagiti Jesus films, istoria ti Biblia, discipleship series, ken outreach videos nga adda dubbing audio wenno subtitles iti {language}.",
+    "metadataDescription": "Sukimaten dagiti pelikula maipapan ken Jesus, istoria ti Biblia, discipleship series, ken outreach videos nga adda dubbing audio wenno subtitles iti {language}.",
     "heroTitle": "Libre a Kristiano a video iti {language}",
-    "heroDescription": "Sukimaten dagiti Jesus films, istoria ti Biblia, discipleship series, ken outreach videos nga adda iti {language}. Dagiti fully dubbed nga video ket iparangarang manipud iti uneg, ken dagiti subtitle-only a pagpilian ket adda iti baba.",
+    "heroDescription": "Sukimaten dagiti pelikula maipapan ken Jesus, istoria ti Biblia, discipleship series, ken outreach videos nga adda iti {language}. Dagiti fully dubbed nga video ket iparangarang manipud iti uneg, ken dagiti subtitle-only a pagpilian ket adda iti baba.",
     "languageCollection": "Kalap ti pagsasao",
     "itemCount": "{count, plural, one {# a banag} other {# a banag}}",
     "videoCount": "{count, plural, one {# a video} other {# a video}}",

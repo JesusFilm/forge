@@ -1436,3 +1436,52 @@ describe("LanguageInventoryPage back-to-top", () => {
     }
   })
 })
+
+describe("LanguageInventoryPage Thai language name", () => {
+  let container: HTMLDivElement
+  let root: Root
+
+  beforeEach(() => {
+    setRequestLocale("th")
+    container = document.createElement("div")
+    document.body.appendChild(container)
+    root = createRoot(container)
+  })
+
+  afterEach(() => {
+    act(() => root.unmount())
+    container.remove()
+    setRequestLocale("en")
+  })
+
+  it("does not double the Thai word for language when Admin's Thai name already has it", () => {
+    const inventory: WatchLanguageInventoryModel = {
+      languageSlug: "thai",
+      languageName: "Thai",
+      // Admin's own Thai name for Thai (watchLanguageInventory "thai").
+      languageNativeName: "ภาษาไทย",
+      switcherLanguages: [],
+      counts: {
+        audioCollections: 0,
+        audioVideos: 1,
+        subtitleOnlyVideos: 0,
+        total: 1,
+      },
+      promoted: [],
+      audioCollections: [],
+      audioVideos: [card("thai-video", "วิดีโอ", "/thai-video.html" as Route)],
+      subtitleOnlyVideos: [],
+      collectionLanguageCounts: {},
+    }
+
+    act(() => {
+      root.render(<LanguageInventoryPage inventory={inventory} />)
+    })
+
+    expect(container.querySelector("h1")?.textContent).toBe(
+      "วิดีโอคริสเตียนฟรีในภาษาไทย",
+    )
+    expect(container.textContent).toContain("ภาษาไทย")
+    expect(container.textContent).not.toContain("ภาษาภาษา")
+  })
+})

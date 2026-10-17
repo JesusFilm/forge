@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedOn": "2026-10-14",
+    "generatedOn": "2026-10-15",
     "sourceInventory": "docs/i18n/watch-ui-official-language-inventory.json",
     "sourceCatalog": "apps/web/messages/en.json",
     "policy": "Missing inventory locales are provisional UI catalogs seeded from the English source catalog. Existing authored catalogs are preserved and are not marked provisional. Before authoring a listed provisional locale, remove it from provisionalLocales and run the generator without --refresh-provisional to promote its ownership; --refresh-provisional overwrites every locale that remains listed.",
@@ -12,7 +12,7 @@
       "sourceCatalog": "apps/web/messages/en.json",
       "approvedByUser": true,
       "preservedExistingTranslations": true,
-      "generatedOn": "2026-10-14",
+      "generatedOn": "2026-10-15",
       "reviewStatus": "machine-translated; native-speaker review recommended",
       "sourceExtensions": [
         {
@@ -495,6 +495,48 @@
             "yo": "Medium confidence; corrected tone mark on Ìlànà.",
             "za": "Low confidence: catalog uses English 'Terms of Use'; wrote Standard Zhuang with Chinese-derived loans. Needs native review."
           }
+        },
+        {
+          "generatedOn": "2026-10-15",
+          "method": "Claude in-session contextual machine translation",
+          "model": "claude-opus-5-5",
+          "messagePaths": [
+            "LanguageInventory.heroDescription",
+            "LanguageInventory.itemCount",
+            "LanguageInventory.metadataDescription",
+            "LanguageInventory.videoCount",
+            "LanguageInventory.videosInGroups",
+            "LanguagePickerModal.seeAllVideosInLanguage",
+            "WatchLanguageIndex.languageCount"
+          ],
+          "notes": "Translated by the assistant in-session during the QA catalog copy-corrections pull request (QA findings N33, N48b, N50b); not produced by scripts/translate-ui-catalogs.mjs, and the top-level OpenAI method does not describe this round. ar: added the CLDR zero/two/few/many plural forms to the listed count messages. es: aligned seeAllVideosInLanguage to the catalog's dominant 'videos' spelling (VideoLabels.video and LanguageInventory.videoCount keep 'vídeo' because the accent-free spelling is byte-identical to English and fails the translated-copy gate). LanguageInventory hero/metadata descriptions: replaced the English phrase 'Jesus films' in each listed catalog, and fully translated bo, dz, dv and sa where the whole sentence was still English; other English words in those sentences in loan-heavy catalogs are left for a follow-up. Locales whose catalog is written in a bridge language follow that catalog's language. Native-speaker review recommended, especially for reviewNotes locales.",
+          "reviewNotes": {
+            "ady": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "bjt": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "bo": "Whole hero and metadata sentences were still English; translated in full. Medium confidence on Classical-register phrasing.",
+            "bsc": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "den": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "dgr": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "dv": "Whole hero and metadata sentences were still English; translated in full. Jesus rendered as އީސާ.",
+            "dz": "Whole hero and metadata sentences were still English; translated in full. Medium-low confidence on Dzongkha phrasing.",
+            "gil": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "gwi": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "ho": "Catalog uses Tok Pisin; rendered as 'ol filem bilong Jisas'.",
+            "ixl": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "knf": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "lbe": "Catalog text is Udmurt rather than Lak; followed the catalog (Иисус сярысь фильмъёс).",
+            "mh": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "myv": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "na": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "pau": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "quv": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "sa": "Whole hero and metadata sentences were still English; translated in full as a Sanskrit compound list.",
+            "sd-Deva": "Catalog is written in Arabic script; followed it.",
+            "tnr": "Catalog is written in Wolof; followed the catalog. Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review.",
+            "za": "Very low confidence: best-effort phrase for 'Jesus films' in the catalog's existing loan-heavy style; needs native review."
+          },
+          "previousSourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
+          "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3"
         }
       ],
       "fallbackModels": {
@@ -505,8 +547,8 @@
         "ab": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "432924fd3c673b4c6aa89424ac4e1421f0a0db24024bf7a8aac946ae11061968",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "3a6ad12b6831724c60a866825ace1322af1d4980a33cc2507b244dfd67b9e91d",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -622,14 +664,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "ady": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "224767cfa1c49532b4344c2800a595eba789b28816e8a8a1b5720b706e754065",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "70a28e4c8ecbfe2956764d1e2f50012179a9393052d86fecd5fbbd3bb6c265f1",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -745,6 +795,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -874,8 +932,8 @@
         "ak": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "ce15a3669ebe6fee0acd98bb2de3f960aec3ceeb5a2f29096ee27662457189ed",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "46375f057f82a01423b56ff54de174da5d6375bf0634e3454c721bc161d14523",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -991,6 +1049,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -1120,8 +1186,8 @@
         "ar": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "786571ad50d6c41fc5950425a13e308892777fbf82606c18859ef567c86b3e7b",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "3cb9eec67c1366f8dc07a9e5f8accb7294fb20e22c7a07c92941f59f203c79f8",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -1237,6 +1303,16 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.itemCount",
+                "LanguageInventory.videoCount",
+                "LanguageInventory.videosInGroups",
+                "WatchLanguageIndex.languageCount"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -1489,8 +1565,8 @@
         "av": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "7ff2b09d27e3cffaadcb356e5525a9fe6ec003066b67a3ae1eea460ac064ea7a",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "027dd0ffa711cb234424a32264eacecc550b004c099259a55e28d1196d1d9f25",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -1606,6 +1682,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -2506,8 +2590,8 @@
         "bi": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "496a0ba6cefd8dcd237c5cc4432b4c5ddbec991bdaf3f6b38de5455823a0d610",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "cc160f6fe5f30ed821004800504df9437ca7e3dafae58aec7edb491494adeef8",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -2623,14 +2707,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "bjt": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "d6ca6baa98e95383c8d4d58eb48c4956a3a8401fd6ab89fc27ad42c2b63a18b2",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "5637d0c1d8b545d397e4a87355e76aa50837638a0ecf7b28e5cd9aab20b65f14",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -2751,6 +2843,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -2880,8 +2980,8 @@
         "bo": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "1db6e86e99cb0ba84ff2bb39381c459a28c954904a2d3fbe8bbe675e98d4a14e",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "0ac307e6bb15c06a00c177a9e54a2839c8859b1ef67df931dea730a572f2b2fa",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -2997,6 +3097,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -3270,8 +3378,8 @@
         "bsc": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "4b92a8caa8ced6063df7e5408a64c548214322ada654f8eb18c426c4fa6f6e53",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "78d6a7d7b14031842f31075645f327980a51dbbdae44d7d43cf6cd5003e72cb6",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -3387,6 +3495,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -3639,8 +3755,8 @@
         "caa": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "c8b2069502ef167c647c3ef85c87402aca176bd61c152d755bfa3d7b8fee0c38",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "615b4d8922fe1bd8fa91ec586c35c13c043827e49316caa076cc4b6bc57bcd68",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -3756,14 +3872,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "cak": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "def5cbcdff047c28590de4fbcc4e73d748670341b62c643e8dc6ac6fc203fbb4",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "88a0c5ffad26318a2f987e397737087afc5441a859317fd4175861c04f6ba191",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -3879,6 +4003,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -4131,8 +4263,8 @@
         "ch": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "f076f3884e557b77257525e55421f64f110ebe14b4849cf31021a7e8f8039b6a",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "1134ca5b13acfbf5eb5c352954f536a88a528d054c9df2f6153b2104ad612439",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -4248,6 +4380,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -5128,8 +5268,8 @@
         "den": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "f8847cc80374d968e527341c52eb5725b687a444b57059467e87061bc7faa63a",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "7ef614f904dab204bba55bed0a30c0d4da598e9015cd61550d3bef9a46dfbb5f",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5245,14 +5385,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "dgr": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "47db741ab29b43707d7fe2d2f26d73eefc3a1dfcfa2ee78183385b052033de5e",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "9cdef7b5cd1ec8791b25e38c4490c26cf0a2bfdffbd254e1334668195d2851a9",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5368,14 +5516,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "dv": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "c79e29e06136465e0598429680e62c02ddd565086175abd07206b53995cd72e1",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "b75dddd9abf205e5102bb71b4332eb91f0113e13e2c95b96a62e56c76bf9c44d",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5491,6 +5647,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -5620,8 +5784,8 @@
         "dz": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "985f4e0e0d8a69f125c1f72f232330b1eff8a70016ac333b6021da32d565a610",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "53665d1ac7012677fd584334daade3713b1e68958fe6f33c57f1d484db7bf336",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5737,14 +5901,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "ee": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "1067154f5438b249242bfd8de101e1edf3c0a99ce8f7efe6eef7166cfcd9592f",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "90fddd3e5538f4a79c46fe61c63f2e8fc202a5503c2573d44f850e1c09f6c007",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -5860,6 +6032,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -5989,8 +6169,8 @@
         "es": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "b042f483c6924210550ba14011690362ea75549b652cf7336e730031421a511c",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "9b3c79fc62a16eb4f1f9e829117db94fb4b823a21da7eec084b1e5743fe94ff0",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -6106,6 +6286,11 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": ["LanguagePickerModal.seeAllVideosInLanguage"],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -7865,8 +8050,8 @@
         "gil": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "0d8a73889b993f2d67834f9909c6717a82382e082e0b110db05b421c1e958cef",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "5860271d2fb6ee044a7b83e34dd47937715b4936fe51eb814fb7ba5109f164b4",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -7982,6 +8167,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -8357,8 +8550,8 @@
         "gu": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "6c05acaad72b79c105f050b3f19e25729bbc907bd3a8facb65267a69b9750970",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "a0bd6adcb0b5c4b3c3177e4fc085e32635a1ca82feb458577033b74266275303",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -8474,6 +8667,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -8603,8 +8804,8 @@
         "gwi": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "6743524d043d19ed29230e60c9726bda095be48785459ab12898cac282b5b6cf",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "12af38d809e41ea17d2de5066759a1e6fe823c9480972a11fbf6dce11f61aeba",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -8720,6 +8921,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -9095,8 +9304,8 @@
         "hi": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "d83b91755369a1e9997355f5f944519b7c580f20b40aa830780365ee6300439d",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "c089d27708cf8decf1e32ee28a1f978046978bbd16fc07b195c45b7667a2ae73",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -9217,14 +9426,22 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "hif": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "26af4746c2d9c83d531c818d17efc16c885ee6b66bf0c1db8da98470c25babb2",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "ada21d42e9f664fec815b95088f80752cdd9abb448347018216509d46441af0b",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -9340,6 +9557,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -9469,8 +9694,8 @@
         "ho": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "8f26b53b8cb4ff19598303252b9faa7a28e6a0ca4eced8bc697f801b44dffe50",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "914e7d9c21cf37b5afa09eadd44c30eeb09b86cf8da1a65ce12d15320c22e147",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -9586,6 +9811,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -10238,8 +10471,8 @@
         "ilo": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "cfee24b5e365ecaea2041dd1ecfe3fd283e4332cd47c46b868e2824b7e346434",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "d147c4db9653cb1be091976b02e7a3312c6c066c9c916f34cbc137b46883506b",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -10360,6 +10593,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -11004,8 +11245,8 @@
         "ixl": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "3d6704b53f289c3ced6dd23c28ae5fb5b85dc2a9f8bd105f0c6637bfb0204419",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "0d47aebf8bc49fcc2984207e42113a7ef5e3e886f2fa8ea6bc3f8dcadc3ebc9c",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -11121,6 +11362,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -11378,8 +11627,8 @@
         "kbd": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "e6de288e8105acc81bd90e53f126a6735c2929ea27c32a42d62d4ae0b3739709",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "c54dfa1bb8ef382eda583d18db872a97257f25734970cc9b89755e97c0446e39",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -11500,6 +11749,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -12262,8 +12519,8 @@
         "knf": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "be6c4ac1788f8f82b3d6fd1fffb06de1f1cedd4287fcd8c0b04369c291e47c94",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "4ec2160d07cc6a2e9444ffe52a2da6ac3967f0c6572ee390fcc6236d8991aa68",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -12384,6 +12641,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -12641,8 +12906,8 @@
         "kok": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "ebfa6a1451bd547d139e0a9bd54f8388e8be6acba3abf67871f201cb97339ba0",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "32181c539205dbb9bead7bb89b8c0d28b11b9c5b9e4c43e194e3ed663ef63885",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -12758,6 +13023,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -13522,8 +13795,8 @@
         "lbe": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "b1f49213383cb52f5b892abd903a8f860a8745b9f7a9c10e42a1bbd4074abfaa",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "944ca22f5fa732bc3d08afeb88b9a9344068f552e3d02c222e9bb147a368c794",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -13644,6 +13917,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -14670,8 +14951,8 @@
         "mdh": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "4d8f47f2ad0d7f01126a33368c41b3c453ab0f6c3cfd6f07f9727e3c7de7da0f",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "14b8948ffc76458d8408c580cb534ca5644e3b41ebe560bd2949d5ba99c323e7",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -14787,6 +15068,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -15039,8 +15328,8 @@
         "mh": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "14bd61c27e64ae0ae74b9c497753ff16f5d9cbca33b8b9b31983ddf227253369",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "ae7161f96e3097eb52fbb792c9cf1d140025dce9be1c6c71f8db2b05ee33c1b7",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -15156,6 +15445,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -15782,8 +16079,8 @@
         "mr": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "022382295d75f906dd6b0f70c2c33a365ec0e4b4ea0d03bca157d6399938d3b3",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "d349c3ec21f773aebc72918ced2336394e85873faac84b72f60b42f81fe20e91",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -15899,6 +16196,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -16397,8 +16702,8 @@
         "myv": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "bb13ec9cca8050524d960f3eadd4ec1701edee3b60843e644689ef96bcd7f655",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "3f37e53b68043aa1f27990fe0011e7f55f3fb9b2678fd8fd37a51f14ae0e2ff6",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -16514,14 +16819,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "na": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "5c01344142ce230e0d665675c476ad5f7775404d0acdd8181f92a7c7e95c8fd8",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "0fdf092d48b5b75e65acf1e00e7fe2fa980b11ca10a4e59822d0b3f8ba2d9db0",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -16637,6 +16950,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -18134,8 +18455,8 @@
         "os": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "0f378a941b73cbb6ad4e38c26fce752be6377f5a5f8f176e88280f223377913c",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "c3ac992307dea724f1921fdec039a0becbfbe5954d13a9f9328e29e841fb0f5b",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -18256,6 +18577,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -18631,8 +18960,8 @@
         "pau": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "8445adc341917292bbd2b6688a77aab7fddd9131b2e60306426d22b5113fad80",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "649b1d62b42f74297ca9ff76e1a0fff3bebab4cfb61f48706f71455a603638d3",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -18748,6 +19077,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -19136,8 +19473,8 @@
         "qu": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "865b8446abc0af174b7bcefb3988ba00409df32abc93e90cb27afe81df27db00",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "5199bf80279616ebee0f3b6c287aa3302b9909d65ac91be58690012d955f4015",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -19253,6 +19590,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -19382,8 +19727,8 @@
         "quv": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "8342bc5313f33954b5e4de35eab4ced661eb4ea1cf806bc2a0dc574999c79aa2",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "4a7e5bdd3f5bf36cf0ce381d028a74e63a6259f29c5542ec812ba7f9dba67b5d",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -19499,6 +19844,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -20120,8 +20473,8 @@
         "sa": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "e076115c6d700ed88b2b50edcfd2257f3559287213021aafd18090fe34258fa2",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "05f0c8c5d6b52c15a114c36eafab1a01b9e6f892bab03afb0c8b875a9f97239f",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -20242,6 +20595,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -20627,8 +20988,8 @@
         "sd": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "088aa002e99daea34e49b2bd809c954ee1005d101f5a0db5758ae22e892d1430",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "dd58db48354e6171b0a6f68b0754d60a842d595f9b4d864eee78d535c60f85a4",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -20744,14 +21105,22 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
         "sd-Deva": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "762af8319bf077d17bebce93f1892b412ab40fda9b29d4b8f0140491c347698d",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "deba417f355d7aa3e09eee42a65ce05a624a3009338dc7f657ac8110e22b7ac7",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -20867,6 +21236,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -23154,8 +23531,8 @@
         "ta": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "af0d46411dd8a9cee65a6b969522e3b533aa38d36643e7dcabf617043585253e",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "12aee26dd79e68b5bb2385844671e31feb1b6654e7798da26110123993c8d4f2",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -23271,6 +23648,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -23400,8 +23785,8 @@
         "tet": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "24d38deacb365a5b03b66ff307d76746e9b34415759949feb9da87257fdc9225",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "c1f678637d19dc7c6b4828f765c764f0660d0731939795f7f415612876f37cba",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -23517,6 +23902,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -23777,8 +24170,8 @@
         "tk": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "929528d8e38da59ebbf4b0881103cf5b0d5e3e9abc0ffdcd392e236d4cbd6985",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "a275b321531827fc94dd5bd4cc09a295185c411f3efb4014a73e17ecde64ab8b",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -23908,6 +24301,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -24165,8 +24566,8 @@
         "tnr": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "a1bd0c497150918ae5bd878b92981603daebd25b22206ea2dd90b8cfa021bd92",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "26e1b185ce6903b2e3b013441d05ba6b78d18d8cd6e4bbfb690784bbbe9f2683",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -24287,6 +24688,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -24416,8 +24825,8 @@
         "tpi": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "0669efdc072ed16239ba88f7f3bed2f6cb688dcb8c7f988a397825274a33f307",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "dac123eaa669d6bb088e14cb134d234232a73bc3ce6c3e72abe92f2f6a2c37bd",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -24533,6 +24942,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -25036,8 +25453,8 @@
         "tvl": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "2ed0000ab234b1b23dfa1d4440ee958909f8727915e509823fa2df848587bad2",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "2c6b0ba4e5c3b23b14ba0ff3c4b4e367fdef97cf34eb19d50a43c54b73efae1f",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -25153,6 +25570,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -27027,8 +27452,8 @@
         "wo": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "bb773cec4c5e3075c6ab9145cd32cd46a050432736159a2258260108d5e0e33c",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "4b6546ec32c099c8ae09b5d222b3db0df30a9b4508605e2c60dbee13dd27e0fe",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -27144,6 +27569,14 @@
                 "ShareModal.opensInNewTab"
               ],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },
@@ -27652,8 +28085,8 @@
         "za": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "a3aa0edeb5c3321ad770d44e0d36996ea58b731168c8cbd42dd0ee1d0b92e435",
-          "catalogDigest": "2560f0f48fa7ae7296501f8cd349bf908a4a02c00c78a40257959de332a5ca76",
-          "generatedOn": "2026-10-14",
+          "catalogDigest": "17a813e03ac18b1a9e064991ca3ecc3b785b009f47c9b891590f0db00a2f064b",
+          "generatedOn": "2026-10-15",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -27774,6 +28207,14 @@
               "model": "claude-opus-5-5",
               "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": [
+                "LanguageInventory.heroDescription",
+                "LanguageInventory.metadataDescription"
+              ],
+              "generatedOn": "2026-10-15"
             }
           ]
         },

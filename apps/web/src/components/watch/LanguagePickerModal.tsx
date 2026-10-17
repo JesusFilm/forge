@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation"
 import { Captions, Check, Languages, RefreshCw, Sparkles } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import type { RefObject } from "react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { flushSync } from "react-dom"
@@ -43,6 +43,7 @@ import {
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
+import { languageNameForUiTemplate } from "@/lib/search-language-display-name"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
@@ -95,6 +96,7 @@ export function LanguagePickerModal({
 }: LanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
   const headingId = useId()
+  const uiLocale = useLocale()
   const router = useRouter()
 
   // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
@@ -163,7 +165,9 @@ export function LanguagePickerModal({
   const draftLanguageInventoryName =
     draftLanguageOption?.nativeName?.trim() || draftLanguageDisplay.name
   const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
-    language: isolateLanguageName(draftLanguageInventoryName),
+    language: isolateLanguageName(
+      languageNameForUiTemplate(draftLanguageInventoryName, uiLocale),
+    ),
   })
   const draftLanguageInventoryPath = useMemo(() => {
     const slug = tryAsLocaleSlug(draftSlug)

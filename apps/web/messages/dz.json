@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} ནང་རིན་མེད་ཀྱི་གསོལ་བཤད་བརྙན་སྡེ | Jesus Film Project",
-    "metadataDescription": "{language} ནང་སྐད་སྒྲ་བསྒྱུར་ཡང་ན་བརྡ་དཔེ་དང་བཅས་པའི་Jesus films, Bible stories, discipleship series, and outreach videos ལྟ་སྐོར་འབད།",
+    "metadataDescription": "{language} ནང་སྐད་སྒྲ་བསྒྱུར་ཡང་ན་བརྡ་དཔེ་དང་བཅས་པའི་ཡེ་ཤུའི་གློག་བརྙན་དང་ བཱའི་བཱལ་གྱི་སྒྲུང་། རྗེས་འབྲང་གི་རིམ་པ། ཆོས་སྤེལ་གྱི་བརྙན་སྡེ་ཚུ་ལྟ་སྐོར་འབད།",
     "heroTitle": "{language} ནང་རིན་མེད་ཀྱི་གསོལ་བཤད་བརྙན་སྡེ།",
-    "heroDescription": "{language} ནང་ཡོད་པའི་Jesus films, Bible stories, discipleship series, and outreach videos ལྟ་སྐོར་འབད། སྒྲ་བསྒྱུར་ཡོད་པའི་བརྙན་སྡེ་སྔོན་ལས་ཐོན་ཡོད། བརྡ་དཔེ་རྐྱང་པའི་གདམ་ཁ་འོག་ལས་ཡོད།",
+    "heroDescription": "{language} ནང་ཡོད་པའི་ཡེ་ཤུའི་གློག་བརྙན་དང་ བཱའི་བཱལ་གྱི་སྒྲུང་། རྗེས་འབྲང་གི་རིམ་པ། ཆོས་སྤེལ་གྱི་བརྙན་སྡེ་ཚུ་ལྟ་སྐོར་འབད། སྒྲ་བསྒྱུར་ཡོད་པའི་བརྙན་སྡེ་སྔོན་ལས་ཐོན་ཡོད། བརྡ་དཔེ་རྐྱང་པའི་གདམ་ཁ་འོག་ལས་ཡོད།",
     "languageCollection": "སྐད་ཡིག་བསྡུ་ཚན།",
     "itemCount": "{count, plural, one {# རྣམ་གྲངས} other {# རྣམ་གྲངས་ཚུ}}",
     "videoCount": "{count, plural, one {# བརྙན་སྡེ} other {# བརྙན་སྡེ་ཚུ}}",

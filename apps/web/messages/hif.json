@@ -453,9 +453,9 @@
   },
   "LanguageInventory": {
     "metadataTitle": "{language} me muft Christian videos | Jesus Film Project",
-    "metadataDescription": "{language} me dubbed audio ya subtitles ke saath Jesus films, Bible kahaniyan, discipleship series, aur outreach videos dekhiye.",
+    "metadataDescription": "{language} me dubbed audio ya subtitles ke saath Jesus ke baare me films, Bible kahaniyan, discipleship series, aur outreach videos dekhiye.",
     "heroTitle": "{language} me muft Christian videos",
-    "heroDescription": "{language} me available Jesus films, Bible kahaniyan, discipleship series, aur outreach videos dekhiye. Poori tarah dubbed videos pehle dikhaye gaye hain, aur niche sirf subtitles wale options hain.",
+    "heroDescription": "{language} me available Jesus ke baare me films, Bible kahaniyan, discipleship series, aur outreach videos dekhiye. Poori tarah dubbed videos pehle dikhaye gaye hain, aur niche sirf subtitles wale options hain.",
     "languageCollection": "Bhasha collection",
     "itemCount": "{count, plural, one {# cheez} other {# cheezein}}",
     "videoCount": "{count, plural, one {# video} other {# video}}",
