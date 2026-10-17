@@ -38,12 +38,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
   const segments: { date: string; position: number }[][] = []
   let segment: { date: string; position: number }[] = []
   for (const point of points) {
-    const previous = segment[segment.length - 1]
-    if (
-      !validPosition(point.position) ||
-      (previous &&
-        Date.parse(point.date) - Date.parse(previous.date) > 86_400_000)
-    ) {
+    if (!validPosition(point.position)) {
       if (segment.length) segments.push(segment)
       segment = []
     }
@@ -56,13 +51,13 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
     data.averagePosition == null ? null : Math.round(data.averagePosition)
   return (
     <div>
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start">
+      <div className="flex flex-wrap items-start justify-between gap-5">
         <div>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-5xl font-semibold tracking-[-0.05em] text-white tabular-nums sm:text-7xl">
+            <span className="text-4xl font-bold tracking-[-0.05em] text-white tabular-nums sm:text-5xl">
               {roundedPosition == null ? "—" : `#${roundedPosition}`}
             </span>
-            <span className="max-w-xs text-sm leading-relaxed text-stone-300">
+            <span className="max-w-xs text-xs leading-relaxed text-stone-300">
               {roundedPosition == null
                 ? "Current position unavailable"
                 : roundedPosition <= 10
@@ -70,12 +65,11 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   : "Average Google position"}
             </span>
           </div>
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-400">
-            Smaller numbers are better. The line moving upward means this page
-            is becoming easier to find.
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-stone-400">
+            Higher on the chart is better. Position 1 is the first result.
           </p>
         </div>
-        <dl className="grid grid-cols-3 gap-4 border-t border-white/10 pt-5 lg:grid-cols-1 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+        <dl className="grid min-w-[18rem] grid-cols-3 gap-4">
           <Metric label="Search clicks" value={data.clicks} />
           <Metric label="Search appearances" value={data.impressions} />
           <Metric
@@ -90,13 +84,13 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
       </dl>
       {points.some((point) => validPosition(point.position)) ? (
         <div
-          className="relative mt-8 overflow-hidden rounded-xl border border-white/8 bg-[#101318] px-3 pt-5 sm:px-5"
+          className="relative mt-5 overflow-hidden rounded-lg border border-white/8 bg-[#111014] px-3 pt-3 sm:px-4"
           onKeyDown={(event) => {
             if (event.key === "Escape") setActive(null)
           }}
         >
           <svg
-            viewBox="0 0 640 270"
+            viewBox="0 0 640 238"
             className="block h-auto w-full overflow-visible text-stone-400"
             role="img"
             aria-labelledby={`${id}-title ${id}-desc`}
@@ -108,6 +102,61 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
               Average search position by date. Missing observations are gaps.
               Use the observation table for every value.
             </desc>
+            <rect
+              x="64"
+              y="28"
+              width="536"
+              height={Math.max(0, y(Math.min(3, ceiling)) - 28)}
+              fill="#14271f"
+            />
+            <rect
+              x="64"
+              y={y(Math.min(3, ceiling))}
+              width="536"
+              height={Math.max(
+                0,
+                y(Math.min(10, ceiling)) - y(Math.min(3, ceiling)),
+              )}
+              fill="#171d2c"
+            />
+            {ceiling > 10 ? (
+              <rect
+                x="64"
+                y={y(10)}
+                width="536"
+                height={Math.max(0, y(ceiling) - y(10))}
+                fill="#2b2016"
+              />
+            ) : null}
+            <text
+              x="590"
+              y="45"
+              fill="#56d99d"
+              textAnchor="end"
+              className="text-[9px] font-semibold"
+            >
+              TOP 3
+            </text>
+            <text
+              x="590"
+              y={y(Math.min(6, ceiling))}
+              fill="#7fa1ff"
+              textAnchor="end"
+              className="text-[9px] font-semibold"
+            >
+              FIRST PAGE
+            </text>
+            {ceiling > 10 ? (
+              <text
+                x="590"
+                y={y(ceiling) - 8}
+                fill="#f4ae55"
+                textAnchor="end"
+                className="text-[9px] font-semibold"
+              >
+                PAGE 2+
+              </text>
+            ) : null}
             {[1, Math.round((ceiling + 1) / 2), ceiling].map((tick) => (
               <g key={tick}>
                 <line
@@ -145,8 +194,8 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   points={run
                     .map((point) => `${x(point.date)},${y(point.position)}`)
                     .join(" ")}
-                  stroke="#6e91ff"
-                  strokeWidth="4"
+                  stroke="#f33448"
+                  strokeWidth="4.5"
                   fill="none"
                 />
               ))}
@@ -157,8 +206,8 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   cx={x(point.date)}
                   cy={y(point.position)}
                   r="5"
-                  fill="#6e91ff"
-                  stroke="#101318"
+                  fill="#f33448"
+                  stroke="#111014"
                   strokeWidth="2"
                   tabIndex={0}
                   className="cursor-help focus-visible:stroke-white focus-visible:stroke-[4] focus-visible:outline-none"
@@ -180,7 +229,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
             )}
             <text
               x="64"
-              y="214"
+              y="222"
               fill="currentColor"
               className="text-[30px] sm:text-xs"
             >
@@ -189,7 +238,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
             {last !== first ? (
               <text
                 x="600"
-                y="214"
+                y="222"
                 fill="currentColor"
                 textAnchor="end"
                 className="text-[30px] sm:text-xs"
@@ -199,7 +248,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
             ) : null}
             <text
               x="332"
-              y="260"
+              y="234"
               fill="currentColor"
               textAnchor="middle"
               className="text-[30px] sm:text-xs"
@@ -226,7 +275,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
       <p className="mt-2 flex items-center gap-2 text-xs text-stone-300">
         <span
           aria-hidden="true"
-          className="inline-block h-0.5 w-6 shrink-0 bg-[#6e91ff]"
+          className="inline-block h-0.5 w-6 shrink-0 bg-brand-red"
         />
         Average search position. Gaps mean no observation; they do not mean
         zero.

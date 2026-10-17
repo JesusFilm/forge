@@ -82,7 +82,7 @@ export function OpportunityList({
       </p>
     )
   return (
-    <div className="space-y-5">
+    <div className="grid gap-3">
       {items.map((opportunity) => {
         const current =
           actionsAvailable && opportunity.decisionState === "current"
@@ -106,54 +106,54 @@ export function OpportunityList({
           <article
             key={`${opportunity.proposalId}-${opportunity.version}`}
             data-proposal-id={opportunity.proposalId}
-            className="min-w-0 overflow-hidden rounded-xl border border-white/10 bg-[#111110]"
+            className="min-w-0 overflow-hidden rounded-[9px] border border-white/10 border-l-4 border-l-brand-red bg-[#111013]"
           >
-            <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_15rem]">
+            <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
               <div>
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-brand-red/15 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-red-200 uppercase">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-brand-red/15 px-2 py-1 text-[9px] font-semibold tracking-wide text-red-200 uppercase">
                     Recommended test
                   </span>
-                  <span className="text-xs text-stone-400">
+                  <span className="text-[10px] text-stone-400">
                     {opportunity.confidence} confidence
                   </span>
                 </div>
-                <h4 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                <h4 className="text-base font-semibold tracking-tight text-white sm:text-lg">
                   {opportunity.title}
                 </h4>
-                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-300">
+                <p className="mt-2 max-w-2xl text-xs leading-relaxed text-stone-300">
                   {opportunity.evidence}
                 </p>
-                <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs font-semibold tracking-wide text-stone-400 uppercase">
-                      Why it matters
+                <dl className="mt-4 grid gap-2 text-xs sm:grid-cols-2">
+                  <div className="rounded-md bg-white/[0.035] p-3">
+                    <dt className="text-[9px] font-semibold tracking-wide text-stone-500 uppercase">
+                      Expected impact
                     </dt>
-                    <dd className="mt-1.5 leading-relaxed text-stone-200">
+                    <dd className="mt-1 leading-relaxed text-stone-200">
                       {opportunity.expectedImpact}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-xs font-semibold tracking-wide text-stone-400 uppercase">
-                      What will happen
+                  <div className="rounded-md bg-white/[0.035] p-3">
+                    <dt className="text-[9px] font-semibold tracking-wide text-stone-500 uppercase">
+                      Action
                     </dt>
-                    <dd className="mt-1.5 leading-relaxed text-stone-200">
+                    <dd className="mt-1 leading-relaxed text-stone-200">
                       {opportunity.actionSummary}
                     </dd>
                   </div>
                 </dl>
               </div>
-              <div className="space-y-4 border-t border-white/8 pt-5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+              <div className="space-y-3 rounded-md border border-white/8 bg-[#1b181c] p-3">
                 {opportunity.ctaEvidence.length ? (
                   opportunity.ctaEvidence.map((family, index) => {
                     const cta = displayableData(family)
                     return (
-                      <div key={index} className="space-y-3 text-stone-200">
+                      <div key={index} className="space-y-2 text-stone-200">
                         <AvailabilityBadge state={family.state} />
                         {cta ? (
                           <CtaOutcome cta={cta} />
                         ) : (
-                          <p className="text-sm">
+                          <p className="text-xs">
                             CTA click and outcome evidence: Unavailable.
                           </p>
                         )}
@@ -162,20 +162,24 @@ export function OpportunityList({
                     )
                   })
                 ) : (
-                  <p className="text-sm text-stone-300">
+                  <p className="text-xs text-stone-300">
                     CTA click and outcome evidence: Unavailable. No measured
                     outcome is implied by this recommendation.
                   </p>
                 )}
               </div>
             </div>
-            <div className="grid gap-4 border-t border-white/10 bg-white/[0.025] p-5 sm:grid-cols-2 sm:p-6">
+            <div className="grid gap-3 border-t border-white/10 bg-white/[0.025] p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+              <p className="text-[10px] leading-relaxed text-stone-400">
+                Choose a decision. Admin confirmation opens before anything is
+                recorded; Apply never publishes directly.
+              </p>
               <div className="min-w-0">
                 {apply ? (
                   <a
                     className={cn(
                       seoActionClass,
-                      "w-full bg-brand-red font-semibold text-white hover:bg-red-700",
+                      "w-full min-w-24 bg-brand-red font-semibold text-white hover:bg-red-700",
                     )}
                     href={apply}
                     target="_blank"
@@ -198,7 +202,7 @@ export function OpportunityList({
                     Apply
                   </button>
                 )}
-                <p className="mt-2 text-sm leading-relaxed text-stone-300">
+                <p className="mt-1 max-w-40 text-[9px] leading-relaxed text-stone-500">
                   {opportunity.applyOutcome}
                 </p>
               </div>
@@ -207,7 +211,7 @@ export function OpportunityList({
                   <a
                     className={cn(
                       seoActionClass,
-                      "w-full border-stone-500 bg-transparent text-stone-100 hover:bg-stone-700",
+                      "w-full min-w-24 border-stone-500 bg-transparent text-stone-100 hover:bg-stone-700",
                     )}
                     href={decline}
                     target="_blank"
@@ -230,19 +234,14 @@ export function OpportunityList({
                     Decline
                   </button>
                 )}
-                <p className="mt-2 text-sm leading-relaxed text-stone-300">
+                <p className="mt-1 max-w-40 text-[9px] leading-relaxed text-stone-500">
                   {opportunity.declineOutcome}
                 </p>
               </div>
-              <p className="text-xs leading-relaxed text-stone-400 sm:col-span-2">
-                Both actions open Admin confirmation in a new tab. Applying may
-                create a draft or ticket; it never publishes or deploys
-                directly. Declining records a decision after confirmation.
-              </p>
               {!current || !apply || !decline ? (
                 <p
                   role="status"
-                  className="text-sm font-medium text-amber-100 sm:col-span-2"
+                  className="text-xs font-medium text-amber-100 sm:col-span-3"
                 >
                   {!actionsAvailable
                     ? "Refresh out-of-date opportunity evidence before making a decision."

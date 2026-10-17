@@ -68,7 +68,7 @@ export function EvidenceProvenance({
   family: EvidenceFamily<unknown>
 }) {
   return (
-    <div className="mt-6 flex flex-wrap gap-x-5 gap-y-1 border-t border-white/8 pt-3 text-[11px] leading-relaxed text-stone-400">
+    <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-white/8 pt-3 text-[10px] leading-relaxed text-stone-500">
       <p>Source: {family.source || "Unavailable"}</p>
       <p>{displayWindow(family.window)}</p>
       <p>Observed {displayDate(family.observedAt)}</p>
@@ -115,23 +115,23 @@ export function SeoFamily<T>({
       data-seo-family={name}
       data-availability={family.state}
       className={cn(
-        "min-w-0 rounded-2xl border border-white/10 bg-[#171715] p-5 [overflow-wrap:anywhere] sm:p-7",
+        "min-w-0 overflow-hidden rounded-[10px] border border-white/10 bg-[#151316] p-4 [overflow-wrap:anywhere] sm:p-[18px]",
         className,
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h3
           id={id}
-          className="text-xl leading-snug font-semibold tracking-tight text-white sm:text-2xl"
+          className="text-base leading-snug font-semibold tracking-tight text-white sm:text-lg"
         >
           {title}
         </h3>
         <AvailabilityBadge state={family.state} />
       </div>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-400">
+      <p className="mt-1 max-w-3xl text-xs leading-relaxed text-stone-400">
         {description}
       </p>
-      <div className="mt-5">
+      <div className="mt-4">
         {data != null ? (
           children(data)
         ) : (
@@ -161,11 +161,11 @@ export function Metric({
 }) {
   return (
     <div data-metric={label} className="min-w-0">
-      <dt className="text-sm leading-snug text-stone-300">{label}</dt>
+      <dt className="text-[11px] leading-snug text-stone-400">{label}</dt>
       <dd
         className={cn(
           "mt-1 font-semibold text-stone-100 tabular-nums",
-          value == null ? "text-base" : "text-2xl sm:text-3xl",
+          value == null ? "text-sm" : "text-xl sm:text-2xl",
         )}
       >
         {displayNumber(value, suffix)}
@@ -176,24 +176,24 @@ export function Metric({
 
 export function CtaOutcome({ cta }: { cta: CtaEvidence }) {
   return (
-    <div className="min-w-0 space-y-2 text-sm leading-relaxed">
-      <h4 className="font-semibold text-white">{cta.label}</h4>
-      <p className="text-stone-100">
-        <span className="font-semibold tabular-nums">
+    <div className="min-w-0 text-xs leading-relaxed">
+      <h4 className="text-[10px] font-semibold text-stone-400">{cta.label}</h4>
+      <p className="mt-1 text-stone-100">
+        <span className="text-xl font-bold tabular-nums">
           {displayNumber(cta.clicks)}
         </span>{" "}
         clicks
       </p>
-      <p>
+      <p className="mt-1 text-stone-300">
         {cta.outcomeLabel}:{" "}
         <span className="font-semibold tabular-nums">
           {displayNumber(cta.outcomes)}
         </span>
       </p>
-      <p className="text-stone-300">
+      <p className="mt-1 text-[10px] text-stone-500">
         Measurement population: {displayNumber(cta.denominator)}
       </p>
-      <p className="text-stone-300">{cta.attributionNote}</p>
+      <p className="mt-1 text-[10px] text-stone-500">{cta.attributionNote}</p>
     </div>
   )
 }
