@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 17, 2026)
 
-- **Total tickets:** 860
-- **Complete:** 640
+- **Total tickets:** 861
+- **Complete:** 641
 - **Cancelled:** 41
 - **In progress:** 69
 - **Not started:** 53
