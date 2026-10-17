@@ -227,8 +227,11 @@ export function SeoMarketingPanel({
         <div className="mt-4 space-y-6">
           <nav
             aria-label="SEO evidence sections"
-            className="sticky top-[76px] z-10 flex gap-6 overflow-x-auto border-b border-white/10 bg-[#0c0b0d]/95 text-xs backdrop-blur-md"
+            className="flex items-center gap-5 overflow-x-auto border-y border-white/10 py-3 text-[11px]"
           >
+            <span className="shrink-0 font-semibold tracking-[0.14em] text-stone-500 uppercase">
+              Sections
+            </span>
             {[
               ["overview", "Overview"],
               ["search", "Search"],
@@ -236,15 +239,23 @@ export function SeoMarketingPanel({
               ["content", "Content & crawlers"],
               ["previews", "Previews"],
               ["opportunities", "Opportunities"],
-            ].map(([anchor, label]) => (
+            ].map(([anchor, label], index) => (
               <a
                 key={anchor}
                 href={`#${prefix}-${anchor}`}
                 className={cn(
-                  "shrink-0 border-b-2 border-transparent px-0 py-3 font-semibold text-stone-400 transition-colors hover:border-brand-red hover:text-white",
+                  "group flex shrink-0 items-center gap-2 py-1 font-semibold text-stone-400 transition-colors hover:text-white",
+                  index === 0 && "text-white",
                   seoFocusClass,
                 )}
               >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "size-1.5 rounded-full bg-transparent transition-colors group-hover:bg-brand-red",
+                    index === 0 && "bg-brand-red",
+                  )}
+                />
                 {label}
               </a>
             ))}
