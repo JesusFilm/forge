@@ -6,6 +6,7 @@ import {
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
+  watchUnavailableLanguagePath,
   WATCH_BASE_PATH,
   WATCH_PUBLIC_METADATA_ORIGIN,
 } from "./routes"
@@ -507,21 +508,20 @@ export function watchVideoSurfaceSources(
 export function watchSeriesEpisodesSource(
   series: ResolvedSeriesBySlug["video"],
   languageSlug: string,
+  unavailableEpisodeIds: readonly string[] = [],
 ): WatchSurfaceManifestSource {
+  const unavailableIds = new Set(unavailableEpisodeIds)
   const language = tryAsLocaleSlug(languageSlug)
   const parent = tryAsContentSlug(series.slug ?? "")
   const hrefs = (series.children ?? []).flatMap((child) => {
     if (!child?.slug) return []
     const slug = tryAsContentSlug(child.slug)
-    return [
-      slug && language
-        ? isSeriesRecord(child)
-          ? watchVideoPath(slug, language)
-          : parent
-            ? watchEpisodePath(parent, slug, language)
-            : null
-        : null,
-    ]
+    if (!slug || !language) return [null]
+    if (isSeriesRecord(child)) return [watchVideoPath(slug, language)]
+    if (unavailableIds.has(child.documentId)) {
+      return [watchUnavailableLanguagePath(slug, language)]
+    }
+    return [parent ? watchEpisodePath(parent, slug, language) : null]
   })
   return watchSurfaceSource(
     {

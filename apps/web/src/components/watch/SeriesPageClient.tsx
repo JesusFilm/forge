@@ -72,6 +72,7 @@ import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 
 type SeriesPageClientProps = {
   surfaceManifest?: SignedWatchSurfaceManifest
+  unavailableEpisodeIds?: readonly string[]
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
@@ -82,6 +83,7 @@ type SeriesPageClientProps = {
 
 export function SeriesPageClient({
   surfaceManifest,
+  unavailableEpisodeIds,
   series,
   selectedVariant,
   locale,
@@ -594,6 +596,8 @@ export function SeriesPageClient({
           episodes={episodes}
           languageSlug={currentLanguageSlug}
           parentSlug={series.slug ?? ""}
+          unavailableEpisodeIds={unavailableEpisodeIds}
+          requestedLanguageName={currentLanguageOption?.name}
         />
       </WatchExposureBoundary>
 

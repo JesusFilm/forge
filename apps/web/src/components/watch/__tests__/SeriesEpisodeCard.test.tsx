@@ -26,12 +26,14 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     children,
+    prefetch,
     ...rest
   }: {
     href: string
     children: React.ReactNode
+    prefetch?: boolean
   } & Record<string, unknown>) => (
-    <a href={href} {...rest}>
+    <a href={href} data-prefetch={prefetch} {...rest}>
       {children}
     </a>
   ),
@@ -66,6 +68,7 @@ afterEach(() => {
     root.unmount()
   })
   container.remove()
+  window.localStorage.clear()
 })
 
 function makeEpisode(overrides: Partial<Episode> = {}): Episode {
@@ -95,6 +98,8 @@ function renderCard(props: {
   index?: number
   languageSlug?: string
   parentSlug?: string
+  unavailable?: boolean
+  requestedLanguageName?: string
 }) {
   act(() => {
     root.render(
@@ -103,6 +108,8 @@ function renderCard(props: {
         index={props.index ?? 0}
         languageSlug={props.languageSlug ?? "english"}
         parentSlug={props.parentSlug ?? "lumo-the-gospel-of-john"}
+        unavailable={props.unavailable}
+        requestedLanguageName={props.requestedLanguageName}
       />,
     )
   })
@@ -120,6 +127,76 @@ function getRuntimeText(): string | null {
   const runtime = spans.find((s) => !s.hasAttribute("data-testid"))
   return runtime?.textContent ?? null
 }
+
+describe("SeriesEpisodeCard unavailable-language recovery", () => {
+  it("retains a labeled selected-language recovery link without stale playback cues or Mux artwork", () => {
+    window.localStorage.setItem(
+      "forge.watch_progress.v1.anonymous",
+      JSON.stringify({
+        "episode-1": {
+          videoId: "episode-1",
+          positionSeconds: 90,
+          durationSeconds: 189,
+          updatedAt: Date.now(),
+        },
+      }),
+    )
+    renderCard({
+      episode: makeEpisode({
+        slug: "make-way-for-the-king",
+        title: "Make Way for the King",
+        images: [],
+        muxPlaybackId: "stale-primary-dub",
+        muxThumbnailBlurDataUrl: "data:image/jpeg;base64,stale",
+        durationSeconds: 189,
+      }),
+      parentSlug: "christmas",
+      languageSlug: "spanish-latin-american",
+      requestedLanguageName: "Spanish, Latin American",
+      unavailable: true,
+    })
+
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/make-way-for-the-king.html/spanish-latin-american.html",
+    )
+    expect(
+      container.querySelector('[data-testid="series-card-availability-badge"]')
+        ?.textContent,
+    ).toContain("Not available")
+    expect(
+      container.querySelector('[data-testid="series-card-availability-badge"]')
+        ?.textContent,
+    ).toContain("Spanish, Latin American")
+    expect(container.textContent).toContain("Make Way for the King")
+    expect(container.textContent).not.toContain("3:09")
+    expect(container.querySelector('[data-testid="play-icon"]')).toBeNull()
+    expect(container.querySelector('img[src*="mux.com"]')).toBeNull()
+    expect(
+      container.querySelector('[data-testid="mux-hover-preview"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-progress-bar"]'),
+    ).toBeNull()
+    act(() => {
+      container.querySelector("a")?.dispatchEvent(new Event("focus"))
+    })
+    expect(container.querySelector('img[src*="mux.com"]')).toBeNull()
+    expect(container.querySelector("a")?.className).not.toContain(
+      "hover:scale-105",
+    )
+    expect(container.querySelector("a")?.getAttribute("data-prefetch")).toBe(
+      "false",
+    )
+  })
+
+  it("keeps authored artwork and a keyboard-focusable link on unavailable cards", () => {
+    renderCard({ episode: makeEpisode(), unavailable: true })
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "https://cdn.example/high.jpg",
+    )
+    expect(container.querySelector("a")?.className).toContain("focus-visible")
+  })
+})
 
 describe("SeriesEpisodeCard interaction frame", () => {
   it("uses the shared white hover and keyboard-focus thumbnail frame", () => {

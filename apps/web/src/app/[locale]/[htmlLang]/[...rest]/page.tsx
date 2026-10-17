@@ -86,6 +86,7 @@ import {
   isWatchEpisodeRouteExactlyAdmittedByManifest,
   isWatchNestedContainerRouteAdmittedByManifest,
   isWatchRouteAdmittedByManifest,
+  proveWatchContentAudioLanguageByManifest,
   type WatchRouteManifest,
 } from "@/lib/watch-route-manifest"
 import { resolveSeriesLanguageIdentity } from "@/lib/series-language"
@@ -1214,6 +1215,21 @@ async function renderVideo(
     )
     if (!seriesLanguage || seriesLanguage.slug !== rawLocale) notFound()
     const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")
+    // A collection's language union proves at least one playable child, not
+    // that every child has that dub. Only exact missing-dub proof changes a
+    // card into recovery; old/unavailable manifests remain inconclusive.
+    const unavailableEpisodeIds = series.video.children.flatMap((child) =>
+      !isSeriesRecord(child) &&
+      child.slug &&
+      routeManifest &&
+      proveWatchContentAudioLanguageByManifest(
+        routeManifest,
+        child.slug,
+        seriesLanguage.slug,
+      ).kind === "known-missing"
+        ? [child.documentId]
+        : [],
+    )
     const visibleSeries = {
       ...series.video,
       childDubLanguages: languageOptions,
@@ -1249,9 +1265,14 @@ async function renderVideo(
         <WatchStructuredData json={structuredData} />
         <SeriesPageClient
           series={visibleSeries}
+          unavailableEpisodeIds={unavailableEpisodeIds}
           surfaceManifest={
             signWatchSurfaceManifest(
-              watchSeriesEpisodesSource(visibleSeries, seriesLanguage.slug),
+              watchSeriesEpisodesSource(
+                visibleSeries,
+                seriesLanguage.slug,
+                unavailableEpisodeIds,
+              ),
             ) ?? undefined
           }
           selectedVariant={

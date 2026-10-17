@@ -4,6 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import type { Route } from "next"
 import { FolderOpen, Play } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 import {
   VideoThumbnailCaption,
@@ -25,6 +26,7 @@ import {
   tryAsLocaleSlug,
   watchEpisodePath,
   watchVideoPath,
+  watchUnavailableLanguagePath,
 } from "@/lib/routes"
 import { cn } from "@/lib/utils"
 
@@ -36,6 +38,8 @@ type SeriesEpisodeCardProps = {
   index: number
   languageSlug: string
   parentSlug: string
+  unavailable?: boolean
+  requestedLanguageName?: string
 }
 
 // Production-style duration label: "M:SS" or "H:MM:SS". Returns null when
@@ -51,42 +55,74 @@ function formatRuntime(seconds: number | null | undefined): string | null {
   return h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${m}:${pad2(s)}`
 }
 
+function UnavailableSeriesLanguageBadge({
+  requestedLanguageName,
+}: {
+  requestedLanguageName?: string
+}) {
+  const t = useTranslations("LanguagePickerModal")
+  return (
+    <span
+      data-testid="series-card-availability-badge"
+      className="absolute top-3 left-3 z-30 inline-flex max-w-[calc(100%-1.5rem)] rounded-md bg-stone-100/95 px-2.5 py-1 text-xs leading-4 font-semibold text-stone-950 sm:text-[11px] shadow-lg ring-1 ring-black/20 backdrop-blur-sm"
+    >
+      <span className="truncate">
+        <span>{t("notAvailable")}</span>
+        {requestedLanguageName ? (
+          <>
+            <span aria-hidden="true"> · </span>
+            <bdi dir="auto">{requestedLanguageName}</bdi>
+          </>
+        ) : null}
+      </span>
+    </span>
+  )
+}
+
 export function SeriesEpisodeCard({
   episode,
   index,
   languageSlug,
   parentSlug,
+  unavailable = false,
+  requestedLanguageName,
 }: SeriesEpisodeCardProps) {
+  const isContainer = isSeriesRecord(episode)
+  const isUnavailable = unavailable && !isContainer
   const slug = episode.slug ? tryAsContentSlug(episode.slug) : null
   const parent = tryAsContentSlug(parentSlug)
   const lang = tryAsLocaleSlug(languageSlug)
   let href: Route | undefined
   if (slug && lang) {
-    if (isSeriesRecord(episode)) {
+    if (isUnavailable) {
+      href = watchUnavailableLanguagePath(slug, lang)
+    } else if (isContainer) {
       href = watchVideoPath(slug, lang)
     } else if (parent) {
       href = watchEpisodePath(parent, slug, lang)
     }
   }
-  const { url: thumbnailUrl, blurDataUrl } = resolveEpisodeThumbnail(episode)
-  const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
-  const isContainer = isSeriesRecord(episode)
+  const { url: thumbnailUrl, blurDataUrl } = resolveEpisodeThumbnail(
+    isUnavailable ? { ...episode, muxPlaybackId: null } : episode,
+  )
+  const muxPreviewUrl = isUnavailable
+    ? null
+    : resolveMuxAnimatedPreviewUrl(episode.muxPlaybackId)
   const containerLabel =
     episode.label?.toLowerCase() === "collection" ? "Collection" : "Series"
   // Per-chapter runtime now arrives precomputed as a single Int
   // (admin's Video.durationSeconds — the primary playable dub's runtime)
   // rather than being derived from a per-child dub list.
-  const runtimeLabel = isContainer
-    ? null
-    : formatRuntime(episode.durationSeconds)
+  const runtimeLabel =
+    isContainer || isUnavailable ? null : formatRuntime(episode.durationSeconds)
 
   // Shared card surface. When the slug/locale is malformed (rare data bug)
   // the href is undefined, so we render a plain <div> with identical attrs
   // rather than a dead <Link>.
   const cardClassName = cn(
     "animate-card-enter relative flex aspect-video w-full overflow-hidden rounded-xl ring-1 ring-white/5 transition duration-300",
-    href &&
-      "group cursor-pointer hover:z-10 hover:scale-105 focus:outline-none",
+    href && "group cursor-pointer focus:outline-none",
+    href && !isUnavailable && "hover:z-10 hover:scale-105",
     href && VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
   )
   const cardStyle = { animationDelay: `${index * 40}ms` }
@@ -99,7 +135,10 @@ export function SeriesEpisodeCard({
           alt={episode.title ?? `Episode ${index + 1} thumbnail`}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
-          className="object-cover object-left-top"
+          className={cn(
+            "object-cover object-left-top",
+            isUnavailable && "opacity-40",
+          )}
           {...(blurDataUrl
             ? { placeholder: "blur" as const, blurDataURL: blurDataUrl }
             : {})}
@@ -107,11 +146,13 @@ export function SeriesEpisodeCard({
       ) : (
         <div className="absolute inset-0 bg-stone-800" aria-hidden="true" />
       )}
-      <MuxHoverPreview
-        previewUrl={href ? muxPreviewUrl : null}
-        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
-        imageClassName="object-left-top"
-      />
+      {!isUnavailable ? (
+        <MuxHoverPreview
+          previewUrl={href ? muxPreviewUrl : null}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"
+          imageClassName="object-left-top"
+        />
+      ) : null}
 
       {/* Bottom-anchored scrim. Stronger at the bottom so the EPISODE
           label and title stay legible regardless of thumbnail luminance. */}
@@ -119,7 +160,14 @@ export function SeriesEpisodeCard({
         aria-hidden="true"
         className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent"
       />
-      <WatchProgressBar videoId={episode.documentId} />
+      {!isUnavailable ? (
+        <WatchProgressBar videoId={episode.documentId} />
+      ) : null}
+      {isUnavailable ? (
+        <UnavailableSeriesLanguageBadge
+          requestedLanguageName={requestedLanguageName}
+        />
+      ) : null}
       {href ? (
         <VideoThumbnailInteractionFrame data-testid="series-episode-card-hover-outline" />
       ) : null}
@@ -134,7 +182,7 @@ export function SeriesEpisodeCard({
             aria-label={`Open ${containerLabel.toLowerCase()}`}
           />
         </div>
-      ) : href || runtimeLabel ? (
+      ) : !isUnavailable && (href || runtimeLabel) ? (
         <div className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/40 px-2 py-1 text-sm sm:text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur-sm">
           {href ? (
             <Play size={12} className="fill-white" strokeWidth={0} />
@@ -170,6 +218,7 @@ export function SeriesEpisodeCard({
   return (
     <Link
       href={href}
+      prefetch={isUnavailable ? false : undefined}
       data-testid="series-episode-card"
       className={cardClassName}
       style={cardStyle}

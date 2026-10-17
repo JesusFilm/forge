@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
 import { MediaCollection } from "@/components/sections/MediaCollection"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
+import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
 import { WatchHomeCategoryRailExperience } from "@/components/sections/WatchHomeCategoryRailExperience"
 import { BibleQuotesCarousel } from "@/components/sections/BibleQuotesCarousel"
 import { Text } from "@/components/sections/Text"
@@ -18,6 +19,7 @@ import type {
 import {
   authoredWatchSurfaceSource,
   watchChaptersSource,
+  watchSeriesEpisodesSource,
 } from "./watch-surface-manifest.sources"
 
 // Model Next Link's configured production /watch basePath; raw anchors stay unchanged.
@@ -48,6 +50,36 @@ const config = {
   presentation: "authored-block",
   placement: "authored-parity",
 } as const
+
+it("keeps collection exposure paths aligned with unavailable-language recovery cards", () => {
+  const children = [
+    child("considering-christmas"),
+    child("make-way-for-the-king"),
+  ]
+  const unavailableEpisodeIds = ["make-way-for-the-king"]
+  const markup = renderToStaticMarkup(
+    <SeriesEpisodesGrid
+      episodes={children}
+      languageSlug="spanish-latin-american"
+      parentSlug="christmas"
+      unavailableEpisodeIds={unavailableEpisodeIds}
+      requestedLanguageName="Spanish, Latin American"
+    />,
+  )
+  expect(renderedHrefs(markup)).toEqual([
+    "/watch/christmas.html/considering-christmas/spanish-latin-american.html",
+    "/watch/make-way-for-the-king.html/spanish-latin-american.html",
+  ])
+  expect(
+    watchSeriesEpisodesSource(
+      { slug: "christmas", children } as Parameters<
+        typeof watchSeriesEpisodesSource
+      >[0],
+      "spanish-latin-american",
+      unavailableEpisodeIds,
+    ).items.map((item) => item.itemPath),
+  ).toEqual(measuredPaths(markup))
+})
 function child(slug: string | null): WatchChild {
   return {
     documentId: slug ?? "missing",

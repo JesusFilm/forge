@@ -10,13 +10,18 @@ type SeriesEpisodesGridProps = {
   episodes: Episodes
   languageSlug: string
   parentSlug: string
+  unavailableEpisodeIds?: readonly string[]
+  requestedLanguageName?: string
 }
 
 export function SeriesEpisodesGrid({
   episodes,
   languageSlug,
   parentSlug,
+  unavailableEpisodeIds,
+  requestedLanguageName,
 }: SeriesEpisodesGridProps) {
+  const unavailableIds = new Set(unavailableEpisodeIds)
   const visibleEpisodes = episodes.filter(
     (episode): episode is Episode => episode != null && Boolean(episode.slug),
   )
@@ -37,6 +42,8 @@ export function SeriesEpisodesGrid({
             index={index}
             languageSlug={languageSlug}
             parentSlug={parentSlug}
+            unavailable={unavailableIds.has(episode.documentId)}
+            requestedLanguageName={requestedLanguageName}
           />
         ))}
       </div>

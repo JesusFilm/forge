@@ -6,7 +6,7 @@
  * the proxy prepends static locale layout params.
  */
 
-import { act } from "react"
+import { act, type ComponentProps } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -48,13 +48,11 @@ const {
     throw new Error(`NEXT_REDIRECT:${destination}`)
   }),
   seriesPageClientMock: vi.fn(
-    (_props: {
-      series: unknown
-      selectedVariant: unknown
-      locale: string
-      audioLanguageCountLabel?: string | null
-      subtitleLanguageCountLabel?: string | null
-    }) => <div data-testid="series-page-client-mock" />,
+    (
+      _props: ComponentProps<
+        typeof import("@/components/watch/SeriesPageClient").SeriesPageClient
+      >,
+    ) => <div data-testid="series-page-client-mock" />,
   ),
   watchPageClientMock: vi.fn((_props: unknown) => (
     <div data-testid="watch-page-client-mock" />
@@ -1079,6 +1077,75 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
+  it("marks only exact missing-dub collection children for recovery without changing the selected language", async () => {
+    const result = makeSeriesResult("christmas")
+    result.video.childDubLanguages = [
+      {
+        slug: "spanish-latin-american",
+        bcp47: "es-419",
+        name: "Spanish, Latin American",
+      },
+    ]
+    result.video.children = [
+      {
+        documentId: "available",
+        slug: "considering-christmas",
+        title: "Pensando en la Navidad",
+        label: "episode",
+        images: [],
+      },
+      {
+        documentId: "missing",
+        slug: "make-way-for-the-king",
+        title: "Make Way for the King",
+        label: "episode",
+        images: [],
+      },
+      {
+        documentId: "unknown",
+        slug: "unindexed-child",
+        title: "Unindexed child",
+        label: "episode",
+        images: [],
+      },
+    ]
+    mockRouteSeries(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-10-14T00:00:00.000Z",
+      contentSlugs: [
+        "christmas",
+        "considering-christmas",
+        "make-way-for-the-king",
+        "unindexed-child",
+      ],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {
+        christmas: [
+          "considering-christmas",
+          "make-way-for-the-king",
+          "unindexed-child",
+        ],
+      },
+      audioLanguageSlugs: ["english", "spanish-latin-american"],
+      audioLanguageIndexesByContent: {
+        "considering-christmas": [0, 1],
+        "make-way-for-the-king": [0],
+      },
+    })
+
+    await render2Seg("christmas", "spanish-latin-american")
+    const props = seriesPageClientMock.mock.calls[0]?.[0]
+    expect(props?.unavailableEpisodeIds).toEqual(["missing"])
+    expect(props?.locale).toBe("spanish-latin-american")
+    expect(
+      props?.series.children.map(
+        (child: { documentId: string }) => child.documentId,
+      ),
+    ).toEqual(["available", "missing", "unknown"])
+    expect(redirectMock).not.toHaveBeenCalled()
+  })
+
   it("returns not found when the requested series language is unavailable", async () => {
     const result = makeSeriesResult("storyclubs")
     result.video.childDubLanguages = [
@@ -1098,6 +1165,29 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       container.querySelector('[data-testid="watch-home-footer"]'),
     ).toBeNull()
   })
+
+  it.each([
+    null,
+    {
+      version: "legacy",
+      generatedAt: "2026-10-14T00:00:00.000Z",
+      contentSlugs: ["ep-1"],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["english"],
+    },
+  ])(
+    "does not classify missing dubs from unavailable or legacy manifest evidence (%j)",
+    async (manifest) => {
+      mockRouteSeries(makeSeriesResult("storyclubs"))
+      getWatchRouteManifestMock.mockResolvedValue(manifest)
+      await render2Seg("storyclubs", "english")
+      const props = seriesPageClientMock.mock.calls[0]?.[0]
+      expect(props?.unavailableEpisodeIds).toEqual([])
+      expect(props?.series.children).toHaveLength(1)
+      expect(props?.locale).toBe("english")
+    },
+  )
 
   it("hides nested containers that are not admitted in the selected language", async () => {
     const result = makeSeriesResult("storyclubs")
