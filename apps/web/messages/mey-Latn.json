@@ -628,7 +628,25 @@
   },
   "VideoRecommendations": {
     "match": "{percent}% match",
-    "none": "No recommendations found for this video in this language."
+    "none": "No recommendations found for this video in this language.",
+    "heading": "Recommended videos",
+    "loadingLabel": "Loading recommended videos",
+    "openingTitle": "Opening {title}",
+    "openingVideo": "Opening video",
+    "activityNotRecorded": "Recommendation activity could not be recorded. Links still work.",
+    "showingContextual": "Showing contextual recommendations.",
+    "showingSaved": "Showing saved recommendations.",
+    "explanationCurated": "Selected videos to explore.",
+    "explanationViewingMode": "Recommended from this video and how you watch.",
+    "explanationCowatch": "Recommended from this video and your interests.",
+    "explanationHybrid": "Recommended from this video and interests you chose to remember.",
+    "explanationContextual": "Recommended from what you're watching now.",
+    "explanationSemanticFallback": "Recommended from what you're watching now while personalization is unavailable.",
+    "explanationProfileDurable": "Personalized from interests you chose to remember.",
+    "explanationProfileVisit": "Personalized for this visit.",
+    "personalizationLabel": "Recommendation personalization",
+    "personalizationPrompt": "Want to change how recommendations are personalized?",
+    "openCookieSettings": "Open cookie settings"
   },
   "RecommendationConsent": {
     "bannerLabel": "Cookie choices",
