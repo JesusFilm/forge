@@ -3,7 +3,7 @@ id: "feat-724"
 title: "Reuse admitted Studio remux files without duplicate tmpfs downloads"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 1
 depends_on: []
@@ -57,3 +57,17 @@ Maximum sampled aggregate usage is 2,100,133,888 bytes under the 2GiB cap,
 without a limit event. It is normally cancelled before releasing the reuse fix;
 the trusted switcher confirms physical retirement and inactive drain. Preserve
 that CANCELLED receipt. It is neither an OOM failure nor full acceptance.
+
+## Full-project acceptance
+
+All source checks find 17 originals / 247,200,184 bytes and zero duplicate
+MP4 downloads; all 8856 frames render and independently decode.
+Fresh revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` is canonically SUCCEEDED
+and non-stale after independent decode and retained-byte verification. Cloudflare
+rejects its large final upload; authorized recovery uses normal asset/completion
+services within the original issued lease, preserving every deadline and prior
+receipt. Mux upload and physical retirement complete. Automatic transport is
+tracked in feat-726; CPU/memory capacity qualification in feat-725.
+
+Exact release/digest/timing and recovery evidence:
+`docs/solutions/performance-issues/studio-full-render-source-preparation.md`.

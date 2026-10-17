@@ -3,7 +3,7 @@ id: "feat-722"
 title: "Keep full Studio execution within fixed worker resources"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 1
 depends_on: []
@@ -50,3 +50,16 @@ test the corrected opt-in and encoder backpressure. Run worker tests/build and
 patch-consumer validation. Normal PR/main and CI-built immutable worker release,
 then verify full revision 21, independent codec proof and retained output. Preserve
 failed attempts and historical data.
+
+## Full-project acceptance
+
+All 8856 frames stream through encoding without accumulated JPEG files.
+Fresh revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` is canonically SUCCEEDED
+and non-stale after independent decode and retained-byte verification. Cloudflare
+rejects its large final upload; authorized recovery uses normal asset/completion
+services within the original issued lease, preserving every deadline and prior
+receipt. Mux upload and physical retirement complete. Automatic transport is
+tracked in feat-726; CPU/memory capacity qualification in feat-725.
+
+Exact release/digest/timing and recovery evidence:
+`docs/solutions/performance-issues/studio-full-render-source-preparation.md`.

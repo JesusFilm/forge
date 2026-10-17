@@ -53,7 +53,12 @@ export async function POST(request: Request) {
             finish.data.input,
           )
     } else if (studioRenderRpcSchema.safeParse(raw).success)
-      result = await executeStudioRender(studioRenderPrisma, caller, raw)
+      result = await executeStudioRender(
+        studioRenderPrisma,
+        caller,
+        raw,
+        request.signal,
+      )
     else if (studioProductionRpcSchema.safeParse(raw).success)
       result = await executeStudioProduction(prisma, caller, raw)
     else result = await executeStudioDelegated(prisma, caller, raw)

@@ -2,6 +2,7 @@ import { StudioRenderPoolBindingError } from "./studio-render-pool-errors"
 import {
   STUDIO_RENDER_PROFILE,
   STUDIO_RENDER_WIRE_BYTES,
+  STUDIO_RENDER_OUTPUT_PART_BYTES,
 } from "@forge/studio-contracts/render"
 import { readStudioBody, StudioRequestTooLarge } from "@/lib/studio-request"
 import {
@@ -20,11 +21,16 @@ const limits = {
     ms: STUDIO_RENDER_PROFILE.retentionTransferMs,
     bytes: STUDIO_RENDER_WIRE_BYTES,
   },
+  "retain-part": {
+    ms: STUDIO_RENDER_PROFILE.retentionTransferMs,
+    bytes: Math.ceil(STUDIO_RENDER_OUTPUT_PART_BYTES / 3) * 4 + 8192,
+  },
   receipt: { ms: 5000, bytes: 1049600 },
   finish: { ms: STUDIO_RENDER_PROFILE.terminalRecordingMs, bytes: 1049600 },
 } as const
 type Action = keyof typeof limits
-type Gateway = Pick<StudioRenderPoolGateway, Action>
+type Gateway = Pick<StudioRenderPoolGateway, Exclude<Action, "retain-part">> &
+  Pick<Partial<StudioRenderPoolGateway>, "retainPart">
 const response = (body: unknown, status = 200) =>
   Response.json(body, { status, headers: { "cache-control": "no-store" } })
 
@@ -48,7 +54,8 @@ export function createStudioPoolHandler(
     } catch {
       return response({ error: "Authorization refused" }, 401)
     }
-    const expensive = name === "input" || name === "retain"
+    const expensive =
+      name === "input" || name === "retain" || name === "retain-part"
     if (active >= 4 || (expensive && heavy))
       return response({ error: "Busy" }, 503)
     active++
@@ -80,7 +87,11 @@ export function createStudioPoolHandler(
       signal.throwIfAborted()
       let result: unknown
       if (name === "claim") result = await gateway.claim(header, raw, signal)
-      else if (name === "retain") {
+      else if (name === "retain-part") {
+        if (!gateway.retainPart)
+          throw new StudioRenderPoolBindingError("Part retention unavailable")
+        result = await gateway.retainPart(token, raw, signal)
+      } else if (name === "retain") {
         // Keep5s within the same45s operation for signing/delivering a partial
         // receipt after cooperative transfer timeout; never reset the window.
         const transfer = AbortSignal.any([

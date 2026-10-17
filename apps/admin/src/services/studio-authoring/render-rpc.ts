@@ -17,6 +17,7 @@ import { studioHash } from "./state"
 import { studioCatalogReadinessProofSchema } from "@forge/studio-contracts/publication-state"
 import { StudioRenderJobs } from "./render-jobs"
 import { executeStudioRpc } from "./interactive"
+import { StudioRenderRetention } from "./render-retention"
 
 export const studioRenderRpcSchema = z
   .object({
@@ -45,6 +46,7 @@ export const studioRenderRpcSchema = z
       "assigned",
       "claim-assigned",
       "finish",
+      "retain-output",
       "owns",
       "asset",
       "asset-read",
@@ -63,6 +65,7 @@ export async function executeStudioRender(
   db: PrismaClient,
   caller: StudioCaller,
   raw: unknown,
+  signal?: AbortSignal,
 ) {
   if (
     caller.authority !== "delegated" ||
@@ -230,6 +233,8 @@ export async function executeStudioRender(
     }
     case "finish":
       return jobs.finish(worker, request.input)
+    case "retain-output":
+      return new StudioRenderRetention(db).retain(worker, request.input, signal)
     case "owns": {
       const input = z
         .object({ attemptId: studioIdSchema, leaseId: z.uuid() })
