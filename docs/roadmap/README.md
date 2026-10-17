@@ -12,7 +12,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 - **In progress:** 68
 - **Not started:** 51
 - **Blocked:** 57
-- **Overdue and open:** 160
+- **Overdue and open:** 161
 
 ## Feature Index
 
@@ -391,6 +391,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-501](platform/feat-501-experience-editor-bounded-video-data.md)                  | Bound experience editor video data and load languages on demand                    | vlad       | P0       | 2026-09-14 | 3    | 2026-09-16 | complete    |
 | [feat-502](platform/feat-502-homepage-publication-scoped-revalidation.md)              | Validate experience publication before promotion and scoped invalidation           | vlad       | P0       | 2026-09-17 | 6    | 2026-09-22 | not-started |
 | [feat-524](platform/feat-524-mobile-expo-sdk57-0-24-alignment.md)                      | Align Mobile Expo SDK 57.0.24 patches                                              | jaco       | P0       | 2026-09-21 | 1    | 2026-09-21 | complete    |
+| [feat-719](platform/feat-719-watch-defer-hls-mux-embed-initial-bundle.md)              | Defer hls.js and mux-embed out of the Watch initial bundle                         | vlad       | P0       | 2026-09-22 | 1    | 2026-09-22 | in-progress |
 | [feat-550](platform/feat-550-nextjs-security-update.md)                                | Apply Next.js September security update                                            | tataihono  | P0       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-551](platform/feat-551-auth-discovery-startup.md)                                | Make Auth discovery independent of initialization                                  | edmondshen | P0       | 2026-09-25 | 1    | 2026-09-25 | complete    |
 | [feat-554](platform/feat-554-recommendation-storage-rollout-verification.md)           | Roll out compact recommendation traces and verify production headroom              | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | in-progress |

@@ -1,7 +1,11 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import MuxVideo from "@forge/video-player/mux-video"
+import MuxVideo from "@/components/video/deferred-mux-video"
+import {
+  DeferredVideoLoadFailed,
+  DeferredVideoPoster,
+} from "@/components/video/deferred-video-fallbacks"
 import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
@@ -182,6 +186,10 @@ function MuxBackedVideoPlayer({
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  // Terminal: the chunk rejection is cached, so no later render can attach a
+  // media element, and only media events could ever end `isLoading`.
+  const [playerFailed, setPlayerFailed] = useState(false)
+  const handlePlayerLoadError = useCallback(() => setPlayerFailed(true), [])
   const [loadingSrc, setLoadingSrc] = useState(src)
   if (loadingSrc !== src) {
     setLoadingSrc(src)
@@ -334,6 +342,7 @@ function MuxBackedVideoPlayer({
   return (
     <div className="relative" ref={containerRef}>
       <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
+        {poster ? <DeferredVideoPoster src={poster} /> : null}
         <div
           className="absolute inset-0 h-full w-full cursor-pointer"
           onClick={handlePlayPause}
@@ -348,49 +357,59 @@ function MuxBackedVideoPlayer({
             // control). Default applied in MuxVideo wrapper; restated here
             // for clarity at the call site.
             disableTracking
+            onLoadError={handlePlayerLoadError}
             className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
 
-        <FullscreenButton
-          isFullscreen={isFullscreen}
-          onClick={handleFullscreen}
-        />
+        {playerFailed ? (
+          <DeferredVideoLoadFailed />
+        ) : (
+          <>
+            <FullscreenButton
+              isFullscreen={isFullscreen}
+              onClick={handleFullscreen}
+            />
 
-        {isLoading ? (
-          <div
-            data-testid="video-player-loading"
-            className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
-          >
-            <WatchPlayerLoadingIndicator />
-          </div>
-        ) : null}
+            {isLoading ? (
+              <div
+                data-testid="video-player-loading"
+                className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center"
+              >
+                <WatchPlayerLoadingIndicator />
+              </div>
+            ) : null}
 
-        {isMuted && <CenterUnmute onClick={handleMuteToggle} />}
-        {!isMuted && <CornerMute onClick={handleMuteToggle} />}
+            {isMuted && <CenterUnmute onClick={handleMuteToggle} />}
+            {!isMuted && <CornerMute onClick={handleMuteToggle} />}
 
-        <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
-          <PlayPauseButton isPlaying={isPlaying} onClick={handlePlayPause} />
+            <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
+              <PlayPauseButton
+                isPlaying={isPlaying}
+                onClick={handlePlayPause}
+              />
 
-          <input
-            ref={sliderRef}
-            type="range"
-            min={0}
-            max={100}
-            defaultValue={0}
-            step="any"
-            onChange={handleSeek}
-            className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label={t("seek")}
-          />
+              <input
+                ref={sliderRef}
+                type="range"
+                min={0}
+                max={100}
+                defaultValue={0}
+                step="any"
+                onChange={handleSeek}
+                className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                aria-label={t("seek")}
+              />
 
-          <span
-            ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
-          >
-            0:00 / 0:00
-          </span>
-        </div>
+              <span
+                ref={timeRef}
+                className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
+              >
+                0:00 / 0:00
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type MutableRefObject,
@@ -17,7 +18,7 @@ import {
   type RefObject,
 } from "react"
 import type { MuxPlayerRef } from "@forge/video-player"
-import MuxVideo from "@forge/video-player/mux-video"
+import MuxVideo from "@/components/video/deferred-mux-video"
 import { useTranslations } from "next-intl"
 import { Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -244,8 +245,47 @@ function PrimaryAction({
   )
 }
 
+function subscribeToDocumentLoad(onStoreChange: () => void): () => void {
+  if (document.readyState === "complete") return () => {}
+  window.addEventListener("load", onStoreChange, { once: true })
+  return () => {
+    window.removeEventListener("load", onStoreChange)
+  }
+}
+
+function readDocumentLoaded(): boolean {
+  return document.readyState === "complete"
+}
+
+function readDocumentLoadedOnServer(): boolean {
+  return false
+}
+
+/**
+ * Opens once the document has finished loading, and stays open.
+ *
+ * The deferred `MuxVideo` chunk is only requested once this is true, so the
+ * video engine competes with neither the initial script set nor the rest of
+ * the page load. Until then the frame renders exactly what it renders today
+ * before the video fades in: the poster visual layer.
+ *
+ * An external store rather than state-plus-effect: the browser owns this
+ * value, so there is nothing for a StrictMode remount to leave poisoned, and
+ * an already-complete document needs no listener at all (the subscribe that
+ * returns a no-op is the repeat-visit / bfcache path, where `load` has
+ * already fired and would never fire again).
+ */
+function useDocumentLoaded(): boolean {
+  return useSyncExternalStore(
+    subscribeToDocumentLoad,
+    readDocumentLoaded,
+    readDocumentLoadedOnServer,
+  )
+}
+
 function WatchHomeTvMedia({
   activeSlide,
+  documentLoaded,
   isMuted,
   leavingSlide,
   mediaReady,
@@ -263,6 +303,7 @@ function WatchHomeTvMedia({
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
+  documentLoaded: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   mediaReady: boolean
@@ -279,6 +320,13 @@ function WatchHomeTvMedia({
   videoRef: MutableRefObject<HTMLVideoElement | null>
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
+  // The deferred `<MuxVideo>` attaches in a LATER commit than the one that
+  // opens the gate -- the chunk has to resolve first -- so a ref alone never
+  // re-runs the effects that read the element. This mirror is what re-arms
+  // them at the moment it actually attaches (and detaches).
+  const [mediaElement, setMediaElement] = useState<HTMLVideoElement | null>(
+    null,
+  )
   const subtitleVttSrc = isMuted ? (activeSlide.subtitleVttSrc ?? null) : null
   const subtitleLanguageBcp47 = isMuted
     ? (activeSlide.subtitleLanguageBcp47 ?? null)
@@ -286,15 +334,16 @@ function WatchHomeTvMedia({
 
   useWatchHomeMutedSubtitles({
     activeSlideId: activeSlide.id,
+    mediaElement,
     onCueTextChange: onSubtitleCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
-    videoRef,
   })
 
   const handleVideoRef = useCallback(
     (next: HTMLVideoElement | null) => {
       videoRef.current = next
+      setMediaElement(next)
       onPlayerReady?.((next ?? null) as MuxPlayerRef | null)
     },
     [onPlayerReady, videoRef],
@@ -351,7 +400,7 @@ function WatchHomeTvMedia({
         className="watch-home-media-enter z-10"
         priority
       />
-      {previewSrc ? (
+      {previewSrc && documentLoaded ? (
         <MuxVideo
           key={activeSlide.id}
           ref={handleVideoRef}
@@ -420,19 +469,28 @@ function WatchHomeTvMedia({
 
 function useWatchHomeMutedSubtitles({
   activeSlideId,
+  mediaElement,
   onCueTextChange,
   subtitleLanguageBcp47,
   subtitleVttSrc,
-  videoRef,
 }: {
   activeSlideId: string
+  /**
+   * The mounted element, mirrored into state by the ref callback.
+   *
+   * Read directly below rather than through `videoRef` on purpose: the
+   * deferred `<MuxVideo>` attaches in a later commit than the one that opens
+   * the load gate, and a ref never re-runs an effect. Reading the state value
+   * makes the dependency load-bearing, so an "unused dependency" cleanup
+   * cannot silently reintroduce the missing re-attach.
+   */
+  mediaElement: HTMLVideoElement | null
   onCueTextChange: (cueText: string | null) => void
   subtitleLanguageBcp47: string | null
   subtitleVttSrc: string | null
-  videoRef: RefObject<HTMLVideoElement | null>
 }) {
   useEffect(() => {
-    const media = videoRef.current as HTMLMediaElement | null
+    const media = mediaElement as HTMLMediaElement | null
     if (!media) return undefined
 
     const video = (() => {
@@ -493,10 +551,10 @@ function useWatchHomeMutedSubtitles({
     }
   }, [
     activeSlideId,
+    mediaElement,
     onCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
-    videoRef,
   ])
 }
 
@@ -1108,11 +1166,18 @@ export function WatchHomeTvCarousel({
   sequence = null,
   slides,
 }: WatchHomeTvCarouselProps) {
+  // One gate, read once here and threaded BOTH ways: down to the media frame
+  // that mounts the deferred player, and into the hook whose media-wait
+  // ceiling must not run while nothing can clear its buffering flag.
+  const documentLoaded = useDocumentLoaded()
   const carouselSlides = useMemo(
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
   const watchModalActive = useIsWatchModalActive()
+  // Declared before the hook so it can learn when the deferred element
+  // actually attaches, which is later than the gate opening.
+  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   const {
     activeIndex,
     activeSlide,
@@ -1137,6 +1202,10 @@ export function WatchHomeTvCarousel({
     toggleMuted,
     videoRef,
   } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    // The player is deferred, so the hook's dead-stream ceiling must stay
+    // parked until the element is allowed to mount. See feat-719.
+    mediaGateOpen: documentLoaded,
+    mediaAttached: player != null,
     playbackHeld: watchModalActive,
   })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
@@ -1145,7 +1214,6 @@ export function WatchHomeTvCarousel({
   // below the frame while muted. Coverage must be measured against the frame
   // the viewer actually sees.
   const heroFrameRef = useRef<HTMLDivElement | null>(null)
-  const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   usePauseForWatchModal(player, activeSlide?.id ?? null)
   const fittedHeroHeight = useWatchHomeHeroFittedHeight(pinned && isMuted)
   useWatchHomeHeroScrollPause({
@@ -1228,6 +1296,7 @@ export function WatchHomeTvCarousel({
       >
         <WatchHomeTvMedia
           activeSlide={activeSlide}
+          documentLoaded={documentLoaded}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           mediaReady={mediaReady}

@@ -244,6 +244,28 @@ export function useWatchHomeTvCarousel(
   sequence: WatchHomeCarouselSequenceData | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
+    /**
+     * Whether the media element is allowed to mount yet.
+     *
+     * The player is deferred behind a document-load gate (feat-719), so between
+     * mount and that gate opening there is no element that could ever clear
+     * `isBufferingMedia`. The dead-stream ceiling below must not run in that
+     * window or it advances the hero every 12 s for a stream nobody asked for.
+     * Defaults to `true` so a caller that mounts its player synchronously keeps
+     * the original behaviour.
+     */
+    mediaGateOpen?: boolean
+    /**
+     * Whether the media element is attached right now.
+     *
+     * Later than `mediaGateOpen`: the deferred chunk still has to resolve, and
+     * if it fails this never turns true. The turn's poster-hold play request
+     * waits for it, because that request is the play-before-`canplay` startup
+     * attempt native HLS depends on (see `turnStartPlayTimeoutRef`), and a timer that fires before the
+     * element exists has nothing to call `play()` on. Defaults to `true` for a
+     * caller whose element is there from the first commit.
+     */
+    mediaAttached?: boolean
     // True while something else owns interaction (a Watch modal). Playback
     // this hook would start is deferred until it clears, because the owner
     // pauses media that starts under it and only resumes media that was
@@ -454,6 +476,7 @@ export function useWatchHomeTvCarousel(
       )
     : 0
   const playbackBlocked = autoAdvancePaused || options.playbackHeld === true
+  const mediaAttached = options.mediaAttached !== false
   const playbackBlockedRef = useRef(playbackBlocked)
   const randomSourceRef = useRef(options.randomSource ?? Math.random)
   const randomStartAppliedRef = useRef(false)
@@ -789,11 +812,13 @@ export function useWatchHomeTvCarousel(
   // which never pass through `selectIndex` -- gets its poster hold, after
   // which playback is requested whether or not `canplay` has arrived. Keyed
   // on the slide id, so a same-slide replay (which plays by hand in
-  // `selectIndex`) arms nothing.
+  // `selectIndex`) arms nothing. A turn whose element is not attached yet
+  // arms when it attaches, so the hold is measured from there.
   useEffect(() => {
     posterHoldServedRef.current = false
     turnSlideIdRef.current = activeSlide?.id ?? null
     if (!activeSlide?.id || !activeSlide.src) return undefined
+    if (!mediaAttached) return undefined
 
     const armedForTurn = turnTokenRef.current
     turnStartPlayTimeoutRef.current = window.setTimeout(() => {
@@ -813,7 +838,13 @@ export function useWatchHomeTvCarousel(
     return () => {
       clearTurnStartPlay()
     }
-  }, [activeSlide?.id, activeSlide?.src, clearTurnStartPlay, requestPlayback])
+  }, [
+    activeSlide?.id,
+    activeSlide?.src,
+    clearTurnStartPlay,
+    mediaAttached,
+    requestPlayback,
+  ])
 
   const handlePause = useCallback(() => {
     // Browsers fire `pause` immediately before `ended` at natural end of
@@ -1012,6 +1043,12 @@ export function useWatchHomeTvCarousel(
   // turn, so one dead video cannot strand the hero.
   useEffect(() => {
     clearMediaWaitTimeout()
+    // Nothing can clear `isBufferingMedia` before the player is allowed to
+    // mount -- only `handleCanPlay` does, and that needs an element. Arming the
+    // ceiling in that window would burn a slide every 12 s, mark each one
+    // played in localStorage, and never show a frame of video. Unbounded while
+    // a stalled subresource holds the document's `load` event open.
+    if (options.mediaGateOpen === false) return undefined
     // Buffering and paused are not exclusive: a viewer who scrolls away
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
@@ -1036,6 +1073,7 @@ export function useWatchHomeTvCarousel(
     clearMediaWaitTimeout,
     isBuffering,
     isMediaHeld,
+    options.mediaGateOpen,
   ])
 
   useEffect(() => {

@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import MuxVideo from "@forge/video-player/mux-video"
+import MuxVideo from "@/components/video/deferred-mux-video"
+import {
+  DeferredVideoLoadFailed,
+  DeferredVideoPoster,
+} from "@/components/video/deferred-video-fallbacks"
 import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
 import { useTranslations } from "next-intl"
 import type {
@@ -155,6 +159,10 @@ function MuxBackedCarouselVideoPlayer({
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  // Terminal: the chunk rejection is cached, so no media element will attach
+  // and every control below would act on nothing.
+  const [playerFailed, setPlayerFailed] = useState(false)
+  const handlePlayerLoadError = useCallback(() => setPlayerFailed(true), [])
   const formatTime = useCallback(
     (seconds: number) =>
       Number.isFinite(seconds) && seconds >= 0
@@ -261,18 +269,23 @@ function MuxBackedCarouselVideoPlayer({
   return (
     <div className="relative" ref={containerRef}>
       <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
+        {poster ? <DeferredVideoPoster src={poster} /> : null}
         <div
-          role="button"
-          tabIndex={0}
+          {...(playerFailed
+            ? {}
+            : {
+                role: "button",
+                tabIndex: 0,
+                onClick: handlePlayPause,
+                onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    handlePlayPause()
+                  }
+                },
+                "aria-label": isPlaying ? t("pause") : t("play"),
+              })}
           className="absolute inset-0 h-full w-full cursor-pointer"
-          onClick={handlePlayPause}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              handlePlayPause()
-            }
-          }}
-          aria-label={isPlaying ? t("pause") : t("play")}
         >
           <MuxVideo
             ref={setVideoRef}
@@ -284,70 +297,79 @@ function MuxBackedCarouselVideoPlayer({
             // control). Default applied in MuxVideo wrapper; restated here
             // for clarity at the call site.
             disableTracking
+            onLoadError={handlePlayerLoadError}
             className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
 
-        <button
-          type="button"
-          onClick={handleFullscreen}
-          className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-          aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
-        >
-          <FullscreenIcon isFullscreen={isFullscreen} />
-        </button>
+        {playerFailed ? (
+          <DeferredVideoLoadFailed />
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={handleFullscreen}
+              className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+              aria-label={
+                isFullscreen ? t("exitFullscreen") : t("enterFullscreen")
+              }
+            >
+              <FullscreenIcon isFullscreen={isFullscreen} />
+            </button>
 
-        {isMuted && (
-          <button
-            type="button"
-            onClick={handleMuteToggle}
-            className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
-            aria-label={t("unmute")}
-          >
-            <MutedCenterIcon />
-          </button>
+            {isMuted && (
+              <button
+                type="button"
+                onClick={handleMuteToggle}
+                className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
+                aria-label={t("unmute")}
+              >
+                <MutedCenterIcon />
+              </button>
+            )}
+
+            {!isMuted && (
+              <button
+                type="button"
+                onClick={handleMuteToggle}
+                className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
+                aria-label={t("mute")}
+              >
+                <VolumeOnIcon />
+              </button>
+            )}
+
+            <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
+              <button
+                type="button"
+                onClick={handlePlayPause}
+                className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
+                aria-label={isPlaying ? t("pause") : t("play")}
+              >
+                <PlayIcon isPlaying={isPlaying} />
+              </button>
+
+              <input
+                ref={sliderRef}
+                type="range"
+                min={0}
+                max={100}
+                defaultValue={0}
+                step="any"
+                onChange={handleSeek}
+                className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
+                aria-label={t("seek")}
+              />
+
+              <span
+                ref={timeRef}
+                className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
+              >
+                0:00 / 0:00
+              </span>
+            </div>
+          </>
         )}
-
-        {!isMuted && (
-          <button
-            type="button"
-            onClick={handleMuteToggle}
-            className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-            aria-label={t("mute")}
-          >
-            <VolumeOnIcon />
-          </button>
-        )}
-
-        <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
-          <button
-            type="button"
-            onClick={handlePlayPause}
-            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
-            aria-label={isPlaying ? t("pause") : t("play")}
-          >
-            <PlayIcon isPlaying={isPlaying} />
-          </button>
-
-          <input
-            ref={sliderRef}
-            type="range"
-            min={0}
-            max={100}
-            defaultValue={0}
-            step="any"
-            onChange={handleSeek}
-            className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label={t("seek")}
-          />
-
-          <span
-            ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
-          >
-            0:00 / 0:00
-          </span>
-        </div>
       </div>
     </div>
   )

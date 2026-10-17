@@ -7,7 +7,16 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { renderToString } from "react-dom/server"
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 
 // Embla / next/image are heavy. Mock the carousel & next/image down to
 // trivial pass-throughs so the test focuses on the player path.
@@ -29,14 +38,34 @@ vi.mock("@/components/ui/carousel", () => {
 })
 
 vi.mock("next/image", () => ({
-  default: () => null,
+  default: ({ src, alt }: { src: string; alt: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt={alt} />
+  ),
 }))
 
+import {
+  holdDeferredChunk,
+  rejectDeferredChunk,
+  resetDeferredChunk,
+} from "@/__mocks__/next-dynamic-sync"
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
 import {
   WatchModalActivityProvider,
   useWatchModalActivity,
 } from "@/components/watch/WatchModalActivityProvider"
+// This section defers `@forge/video-player/mux-video` through `next/dynamic`
+// so hls.js and mux-embed stay out of the Watch routes' first-load script set
+// (feat-719 / FGE-138). Resolve it synchronously here so the cases below keep
+// driving a real <video>. See the mock module for what that erases.
+vi.mock("next/dynamic", async () => import("@/__mocks__/next-dynamic-sync"))
+// `React.lazy` settles its payload across microtask turns, and the real
+// `@mux/mux-video-react` module graph needs more than one. Warming the module
+// registry first means the loader's promise is already resolved, so the very
+// first `await act(...)` render commits the player instead of suspending.
+beforeAll(async () => {
+  await import("@forge/video-player/mux-video")
+})
 
 const baseFragment = {
   t: "videoCarousel",
@@ -75,6 +104,7 @@ afterEach(async () => {
     root.unmount()
   })
   container.remove()
+  resetDeferredChunk()
   vi.restoreAllMocks()
 })
 
@@ -94,6 +124,62 @@ describe("CarouselVideo", () => {
       )
     })
   }
+
+  const posterFragment = {
+    ...baseFragment,
+    items: [
+      {
+        ...baseFragment.items![0],
+        imageUrl: "https://image.mux.com/poster-id/thumbnail.jpg",
+      },
+    ],
+  } as Parameters<typeof CarouselVideo>[0]["data"]
+
+  function posterImage() {
+    return container.querySelector(
+      '[data-testid="deferred-video-poster"] img',
+    ) as HTMLImageElement | null
+  }
+
+  // `ssr: false` leaves no <video> to carry the poster on the server or while
+  // the chunk is in flight; the pending stub stands in for both.
+  it("paints the selected item's poster without the player chunk", async () => {
+    holdDeferredChunk()
+
+    const html = renderToString(<CarouselVideo data={posterFragment} />)
+    expect(html).not.toContain("<video")
+    expect(html).toContain('data-testid="deferred-video-poster"')
+
+    await act(async () => {
+      root.render(<CarouselVideo data={posterFragment} />)
+    })
+
+    expect(container.querySelector("video")).toBeNull()
+    expect(posterImage()?.getAttribute("src")).toBe(
+      "https://image.mux.com/poster-id/thumbnail.jpg",
+    )
+  })
+
+  it("keeps the poster and a way out when the player chunk fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    rejectDeferredChunk()
+
+    await act(async () => {
+      root.render(<CarouselVideo data={posterFragment} />)
+    })
+
+    expect(container.querySelector("video")).toBeNull()
+    expect(posterImage()).not.toBeNull()
+    const alert = container.querySelector('[role="alert"]')
+    expect(alert?.textContent).toContain("Something went wrong.")
+    expect(alert?.querySelector("button")?.textContent).toBe("Try again")
+    expect(container.querySelector('input[type="range"]')).toBeNull()
+    // The rest of the section survives: copy and the item picker.
+    expect(container.textContent).toContain("Series")
+    expect(
+      container.querySelector('button[data-slot="carousel-next"]'),
+    ).not.toBeNull()
+  })
 
   it("mounts via Mux Video for the selected item", async () => {
     await act(async () => {
