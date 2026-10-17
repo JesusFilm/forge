@@ -36,3 +36,17 @@ PR/main deployment; no direct production source publishing or historical edits.
 
 Reproduce the measured cause, test the correction and run Manager validation.
 After release, verify the full repaired revision through the existing worker pool.
+
+## Measured follow-up after registration reuse
+
+PR #2767 deployed as `b1a3913acd99e0aa6bc0bd64096dec5d282676a2`,
+Manager deployment `91e60a23-4911-43b3-b1cf-683ed53c7780`. Retry
+`cmvbmxkuj0001lbfdyof1lsxr` committed source preparation at
+2026-10-17T00:06:21.999Z, 72.347 seconds after its lease was created.
+It still failed at 00:06:43.570Z while delivering/packaging input.
+
+Reuse successful complete codec verification for identical ordered actual byte
+digests, durations and expected height within one preparation. Keep range proofs
+and per-clip materialization separate. Use content-derived playlist/manifest
+filenames so identical registrations and retained references can also be reused.
+Measure the complete production input path again after normal PR/main rollout.

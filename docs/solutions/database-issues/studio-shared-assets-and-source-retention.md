@@ -171,7 +171,7 @@ The same project's repeated backgrounds exposed a second source-preparation limi
 (51.43 MiB) are needed. A preparation now caches exact canonical downloads within
 the existing 256 MiB aggregate budget. Shared segment filenames use URL identity,
 so repeated clips do not multiply temporary disk usage. The cache is local to one
-preparation; per-read limits, cancellation, origin checks, per-clip decode checks,
+preparation; per-read limits, cancellation, origin checks, complete codec verification,
 and immutable source/materialization proofs remain mandatory.
 
 Worker input has a separate 128 MiB budget. It reuses retained reads by complete
@@ -190,3 +190,19 @@ to one broker instance and key it by the full validated registration payload,
 including source provenance and dependencies. Never merge different source
 identities by byte digest alone, cache a failed upload, or return cached authority
 after cancellation. Keep codec checks and range-specific proofs intact.
+
+### Reuse completed verification without reusing clip authority
+
+Even after transfer reuse, 17 clips can repeat 34 probe/decode pairs. Within one
+preparation, reuse successful codec/dimension/full-decode results only for identical
+ordered actual byte digests, matching segment durations and expected height. Keep
+the verifier profile/configuration fixed for that preparation, and check cancellation
+before hits and after decoding. Different trims selecting the same complete segments
+may share verification, but every clip still gets its own range-bound manifest,
+signature and canonical source materialization.
+
+Content-derived playlist and manifest filenames allow the existing full-registration
+cache to reuse identical retained versions. Dependencies and recorded provenance
+remain part of registration identity; filenames or byte digest alone never grant
+source authority. Subprocess fixture tests count actual probe/decode invocations
+through the complete 17-clip staging path and check each resulting trim.

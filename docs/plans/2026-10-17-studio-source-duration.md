@@ -60,3 +60,11 @@ the existing 90-second deadline unchanged. Propagate that deadline to source
 materialization as well. Re-test registration isolation, distinct provenance,
 dependencies, failed PUTs and cancellation, then release through PR/main and rerun
 the full revision.
+
+Registration reuse allowed source preparation to commit at 72.347 seconds,
+but the full input path still exhausted the shared deadline. Extend feat-715
+with preparation-local reuse of completed codec verification by actual ordered
+byte digests, durations and expected height. Keep per-clip ranges and proofs.
+Use content-derived playlist/manifest names to avoid distinct immutable versions
+for identical bytes/metadata. Exercise the actual subprocess seam in tests and
+measure source preparation plus packaging together in the production retry.
