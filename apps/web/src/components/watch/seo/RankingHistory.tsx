@@ -54,10 +54,10 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div>
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <span className="text-4xl font-bold tracking-[-0.05em] text-white tabular-nums sm:text-5xl">
+            <span className="text-4xl font-bold tracking-[-0.05em] text-stone-950 tabular-nums sm:text-5xl">
               {roundedPosition == null ? "—" : `#${roundedPosition}`}
             </span>
-            <span className="max-w-xs text-xs leading-relaxed text-stone-300">
+            <span className="max-w-xs text-xs leading-relaxed text-stone-700">
               {roundedPosition == null
                 ? "Current position unavailable"
                 : roundedPosition <= 10
@@ -65,7 +65,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   : "Average Google position"}
             </span>
           </div>
-          <p className="mt-2 max-w-xl text-xs leading-relaxed text-stone-400">
+          <p className="mt-2 max-w-xl text-xs leading-relaxed text-stone-600">
             Higher on the chart is better. Position 1 is the first result.
           </p>
         </div>
@@ -84,7 +84,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
       </dl>
       {points.some((point) => validPosition(point.position)) ? (
         <div
-          className="relative mt-5 overflow-hidden rounded-lg border border-white/8 bg-[#111014] px-3 pt-3 sm:px-4"
+          className="relative mt-5 overflow-hidden rounded-lg border border-stone-200 bg-stone-50 px-3 pt-3 sm:px-4"
           onKeyDown={(event) => {
             if (event.key === "Escape") setActive(null)
           }}
@@ -107,7 +107,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
               y="28"
               width="536"
               height={Math.max(0, y(Math.min(3, ceiling)) - 28)}
-              fill="#14271f"
+              fill="#eaf7f0"
             />
             <rect
               x="64"
@@ -117,7 +117,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                 0,
                 y(Math.min(10, ceiling)) - y(Math.min(3, ceiling)),
               )}
-              fill="#171d2c"
+              fill="#eef2ff"
             />
             {ceiling > 10 ? (
               <rect
@@ -125,13 +125,13 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                 y={y(10)}
                 width="536"
                 height={Math.max(0, y(ceiling) - y(10))}
-                fill="#2b2016"
+                fill="#fff4e5"
               />
             ) : null}
             <text
               x="590"
               y="45"
-              fill="#56d99d"
+              fill="#178552"
               textAnchor="end"
               className="text-[9px] font-semibold"
             >
@@ -140,7 +140,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
             <text
               x="590"
               y={y(Math.min(6, ceiling))}
-              fill="#7fa1ff"
+              fill="#3f63c9"
               textAnchor="end"
               className="text-[9px] font-semibold"
             >
@@ -150,7 +150,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
               <text
                 x="590"
                 y={y(ceiling) - 8}
-                fill="#f4ae55"
+                fill="#b56512"
                 textAnchor="end"
                 className="text-[9px] font-semibold"
               >
@@ -207,10 +207,10 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
                   cy={y(point.position)}
                   r="5"
                   fill="#f33448"
-                  stroke="#111014"
+                  stroke="#fafaf9"
                   strokeWidth="2"
                   tabIndex={0}
-                  className="cursor-help focus-visible:stroke-white focus-visible:stroke-[4] focus-visible:outline-none"
+                  className="cursor-help focus-visible:stroke-stone-950 focus-visible:stroke-[4] focus-visible:outline-none"
                   aria-label={`${displayDate(point.date)}: position ${displayNumber(point.position)}`}
                   aria-describedby={
                     active === index ? `${id}-tooltip` : undefined
@@ -260,7 +260,7 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
             <div
               id={`${id}-tooltip`}
               role="tooltip"
-              className="pointer-events-none absolute top-0 right-0 max-w-full rounded-lg border border-stone-500 bg-stone-950 px-3 py-2 text-sm text-stone-100 shadow-lg"
+              className="pointer-events-none absolute top-0 right-0 max-w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-900 shadow-lg"
             >
               {displayDate(activePoint.date)}: position{" "}
               {displayNumber(activePoint.position)}
@@ -268,11 +268,11 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
           ) : null}
         </div>
       ) : (
-        <p className="mt-5 text-sm text-stone-300">
+        <p className="mt-5 text-sm text-stone-700">
           Ranking history unavailable. No measured positions were supplied.
         </p>
       )}
-      <p className="mt-2 flex items-center gap-2 text-xs text-stone-300">
+      <p className="mt-2 flex items-center gap-2 text-xs text-stone-700">
         <span
           aria-hidden="true"
           className="inline-block h-0.5 w-6 shrink-0 bg-brand-red"
@@ -281,20 +281,20 @@ export function RankingHistory({ data }: { data: RankingEvidence }) {
         zero.
       </p>
       {data.comparisonWindow ? (
-        <p className="mt-2 text-xs text-stone-300">
+        <p className="mt-2 text-xs text-stone-700">
           Comparison window: {displayWindow(data.comparisonWindow)}. No change
           is inferred from missing comparison values.
         </p>
       ) : null}
       <details className="mt-4 text-sm">
         <summary
-          className={`w-fit cursor-pointer py-2 text-stone-100 ${seoFocusClass}`}
+          className={`w-fit cursor-pointer py-2 text-stone-900 ${seoFocusClass}`}
         >
           View ranking observations
         </summary>
         <table
           aria-label="Ranking observations"
-          className="mt-2 w-full text-left text-stone-200"
+          className="mt-2 w-full text-left text-stone-800"
         >
           <thead>
             <tr className="border-b border-stone-600">

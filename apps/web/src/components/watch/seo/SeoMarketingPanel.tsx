@@ -22,16 +22,18 @@ import type { SeoMarketingPanelProps, ViewingEvidence } from "./types"
 
 function VideoPerformance({ data }: { data: ViewingEvidence }) {
   return (
-    <div className="grid gap-0 overflow-hidden rounded-lg border border-white/8 bg-[#111013] md:grid-cols-[17rem_1fr]">
-      <div className="border-b border-white/8 bg-[#1b181c] p-5 md:border-r md:border-b-0">
+    <div className="grid gap-0 overflow-hidden rounded-lg border border-stone-200 bg-white md:grid-cols-[17rem_1fr]">
+      <div className="border-b border-stone-200 bg-stone-50 p-5 md:border-r md:border-b-0">
         <p className="text-[10px] font-bold tracking-[0.16em] text-stone-500 uppercase">
           Video performance
         </p>
-        <p className="mt-2 text-4xl font-bold tracking-[-0.05em] text-white tabular-nums">
+        <p className="mt-2 text-4xl font-bold tracking-[-0.05em] text-stone-950 tabular-nums">
           {displayNumber(data.averageWatchedPercent, "%")}
         </p>
-        <h4 className="mt-1 font-semibold text-white">watched on average</h4>
-        <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-white/8 pt-4">
+        <h4 className="mt-1 font-semibold text-stone-950">
+          watched on average
+        </h4>
+        <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-stone-200 pt-4">
           <Metric label="Started" value={data.starts} />
           <Metric label="Completed" value={data.completions} />
         </dl>
@@ -39,12 +41,14 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
       <div className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h4 className="font-semibold text-white">How deep people watch</h4>
-            <p className="mt-1 text-[11px] text-stone-400">
+            <h4 className="font-semibold text-stone-950">
+              How deep people watch
+            </h4>
+            <p className="mt-1 text-[11px] text-stone-500">
               Starts reaching each milestone
             </p>
           </div>
-          <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold text-amber-100">
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-800">
             {displayNumber(data.starts)} starters
           </span>
         </div>
@@ -62,7 +66,7 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
                     key={index}
                     className="grid grid-cols-[3.25rem_1fr_7rem] items-center gap-3 text-[11px]"
                   >
-                    <span className="font-semibold text-white tabular-nums">
+                    <span className="font-semibold text-stone-950 tabular-nums">
                       {displayNumber(milestone.percentWatched)}%
                       <span className="sr-only"> of the video</span>
                     </span>
@@ -80,7 +84,7 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
                             ? `${displayNumber(milestone.percentOfStarts)}% of starts`
                             : "Unavailable"
                         }
-                        className="h-3 overflow-hidden rounded-full bg-white/8"
+                        className="h-3 overflow-hidden rounded-full bg-stone-200"
                       >
                         {measured ? (
                           <div
@@ -90,7 +94,7 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
                         ) : null}
                       </div>
                     </div>
-                    <span className="text-right text-[10px] text-stone-400 tabular-nums">
+                    <span className="text-right text-[10px] text-stone-500 tabular-nums">
                       {milestone.viewers != null && data.starts != null
                         ? `${displayNumber(milestone.viewers)} of ${displayNumber(data.starts)} starts · ${displayNumber(milestone.percentOfStarts)}%`
                         : "Unavailable"}
@@ -104,7 +108,7 @@ function VideoPerformance({ data }: { data: ViewingEvidence }) {
             </p>
           </>
         ) : (
-          <p className="mt-3 text-sm text-stone-300">
+          <p className="mt-3 text-sm text-stone-700">
             Watch-depth milestones unavailable.
           </p>
         )}
@@ -137,19 +141,19 @@ export function SeoMarketingPanel({
       aria-busy={state.status === "loading"}
       data-dd-privacy="mask"
       className={cn(
-        "w-full min-w-0 scroll-mt-28 border-t border-white/10 py-7 font-sans text-stone-100 [overflow-wrap:anywhere] sm:scroll-mt-24 sm:py-8",
+        "w-full min-w-0 scroll-mt-28 border-t border-stone-200 bg-[#f8f7f3] px-4 py-7 font-sans text-stone-900 [overflow-wrap:anywhere] sm:scroll-mt-24 sm:px-6 sm:py-8 lg:px-8",
         seoFocusClass,
       )}
     >
-      <div className="rounded-[10px] border border-white/10 bg-[#151316] px-4 py-3">
-        <div className="flex flex-wrap items-center gap-3 text-xs text-stone-300">
-          <ShieldCheck className="size-4 text-emerald-300" aria-hidden="true" />
-          <strong className="text-white">Private page intelligence</strong>
+      <div className="rounded-[10px] border border-stone-200 bg-white px-4 py-3 shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-stone-600">
+          <ShieldCheck className="size-4 text-emerald-600" aria-hidden="true" />
+          <strong className="text-stone-950">Private page intelligence</strong>
           <span>Only signed-in admins see this tab</span>
-          <span className="ml-auto text-emerald-300">● Live page</span>
+          <span className="ml-auto text-emerald-700">● Live page</span>
         </div>
       </div>
-      <div className="mt-7 flex flex-wrap items-end justify-between gap-5 border-b border-white/10 pb-5">
+      <div className="mt-7 flex flex-wrap items-end justify-between gap-5 border-b border-stone-200 pb-5">
         <div
           id={`${prefix}-overview`}
           className="min-w-0 max-w-3xl scroll-mt-24"
@@ -157,16 +161,16 @@ export function SeoMarketingPanel({
           <div className="mb-2 text-[10px] font-bold tracking-[0.16em] text-stone-500 uppercase">
             SEO &amp; marketing
           </div>
-          <h2 className="text-2xl leading-none font-semibold tracking-[-0.025em] text-white sm:text-3xl">
+          <h2 className="text-2xl leading-none font-semibold tracking-[-0.025em] text-stone-950 sm:text-3xl">
             How people discover and use this page
           </h2>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-400">
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">
             Search reach, video viewing, sharing, AI referrals and the next
             changes worth testing—all tied to stored evidence.
           </p>
           {data ? (
-            <p className="mt-3 truncate text-xs text-stone-400">
-              <span className="font-semibold text-stone-200">
+            <p className="mt-3 truncate text-xs text-stone-500">
+              <span className="font-semibold text-stone-800">
                 {data.page.title}
               </span>
               {" · "}
@@ -181,7 +185,7 @@ export function SeoMarketingPanel({
             type="button"
             className={cn(
               seoActionClass,
-              "gap-2 border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white",
+              "gap-2 border-stone-300 bg-white text-stone-900 hover:bg-stone-100 hover:text-stone-950",
             )}
             onClick={onRetry}
           >
@@ -195,14 +199,14 @@ export function SeoMarketingPanel({
           {state.status === "loading" ? (
             <div role="status">
               <p className="font-semibold">Loading stored evidence…</p>
-              <p className="mt-2 text-sm text-stone-300">
+              <p className="mt-2 text-sm text-stone-600">
                 Search, audience and crawler observations will appear here.
               </p>
             </div>
           ) : state.status === "error" ? (
             <div role="alert">
               <p className="font-semibold">Evidence could not be loaded</p>
-              <p className="mt-2 text-sm text-stone-300">
+              <p className="mt-2 text-sm text-stone-600">
                 Try again to request the latest stored evidence.
               </p>
             </div>
@@ -211,7 +215,7 @@ export function SeoMarketingPanel({
               <p className="font-semibold">
                 No evidence is available for this page yet
               </p>
-              <p className="mt-2 text-sm text-stone-300">
+              <p className="mt-2 text-sm text-stone-600">
                 Missing observations do not mean zero traffic or no
                 opportunities.
               </p>
@@ -227,7 +231,7 @@ export function SeoMarketingPanel({
         <div className="mt-4 space-y-6">
           <nav
             aria-label="SEO evidence sections"
-            className="flex items-center gap-5 overflow-x-auto border-y border-white/10 py-3 text-[11px]"
+            className="flex items-center gap-5 overflow-x-auto border-y border-stone-200 py-3 text-[11px]"
           >
             <span className="shrink-0 font-semibold tracking-[0.14em] text-stone-500 uppercase">
               Sections
@@ -244,8 +248,8 @@ export function SeoMarketingPanel({
                 key={anchor}
                 href={`#${prefix}-${anchor}`}
                 className={cn(
-                  "group flex shrink-0 items-center gap-2 py-1 font-semibold text-stone-400 transition-colors hover:text-white",
-                  index === 0 && "text-white",
+                  "group flex shrink-0 items-center gap-2 py-1 font-semibold text-stone-500 transition-colors hover:text-stone-950",
+                  index === 0 && "text-stone-950",
                   seoFocusClass,
                 )}
               >
@@ -260,7 +264,7 @@ export function SeoMarketingPanel({
               </a>
             ))}
           </nav>
-          <dl className="grid grid-cols-2 overflow-hidden rounded-[10px] border border-white/10 bg-[#151316] sm:grid-cols-3 lg:grid-cols-5">
+          <dl className="grid grid-cols-2 overflow-hidden rounded-[10px] border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)] sm:grid-cols-3 lg:grid-cols-5">
             {[
               ["Seen in Google", rankings?.impressions, "search appearances"],
               ["Search visits", rankings?.clicks, "Search Console"],
@@ -270,10 +274,10 @@ export function SeoMarketingPanel({
             ].map(([label, value, note]) => (
               <div
                 key={String(label)}
-                className="border-r border-b border-white/8 p-4 even:border-r-0 last:col-span-2 last:border-b-0 sm:even:border-r sm:last:col-span-1 lg:last:border-r-0"
+                className="border-r border-b border-stone-200 p-4 even:border-r-0 last:col-span-2 last:border-b-0 sm:even:border-r sm:last:col-span-1 lg:last:border-r-0"
               >
                 <dt className="text-[10px] text-stone-400">{label}</dt>
-                <dd className="mt-1 text-xl font-bold text-white tabular-nums">
+                <dd className="mt-1 text-xl font-bold text-stone-950 tabular-nums">
                   {displayNumber(value as number | null | undefined)}
                 </dd>
                 <dd className="mt-0.5 text-[9px] text-stone-500">{note}</dd>
@@ -289,19 +293,19 @@ export function SeoMarketingPanel({
               title="Usually visible on Google’s first page"
               description="Average search position over the supplied reporting window."
               family={data.rankings}
-              className="border-white/15 bg-[#151316]"
+              className="border-stone-200 bg-white"
             >
               {(rankingData) => <RankingHistory data={rankingData} />}
             </SeoFamily>
-            <aside className="overflow-hidden rounded-[10px] border border-white/10 bg-[#151316]">
-              <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+            <aside className="overflow-hidden rounded-[10px] border border-stone-200 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.04)]">
+              <div className="flex items-center justify-between border-b border-stone-200 px-4 py-3">
                 <div>
-                  <h3 className="font-semibold text-white">Warnings</h3>
+                  <h3 className="font-semibold text-stone-950">Warnings</h3>
                   <p className="text-[10px] text-stone-500">
                     Ordered by consequence
                   </p>
                 </div>
-                <span className="rounded-full bg-amber-300/10 px-2 py-1 text-[10px] text-amber-100">
+                <span className="rounded-full bg-amber-100 px-2 py-1 text-[10px] text-amber-800">
                   {data.alerts.length} items
                 </span>
               </div>
@@ -310,7 +314,7 @@ export function SeoMarketingPanel({
                   <div
                     key={alert.id}
                     role={alert.severity === "info" ? "status" : "alert"}
-                    className="grid grid-cols-[8px_1fr] gap-2.5 border-b border-white/8 px-4 py-3 last:border-b-0"
+                    className="grid grid-cols-[8px_1fr] gap-2.5 border-b border-stone-200 px-4 py-3 last:border-b-0"
                   >
                     <span
                       className={cn(
@@ -323,17 +327,17 @@ export function SeoMarketingPanel({
                       )}
                     />
                     <div>
-                      <p className="text-xs font-semibold text-white">
+                      <p className="text-xs font-semibold text-stone-950">
                         {alert.title}
                       </p>
-                      <p className="mt-1 text-[10px] leading-relaxed text-stone-400">
+                      <p className="mt-1 text-[10px] leading-relaxed text-stone-600">
                         {alert.detail}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="p-4 text-xs text-stone-400">
+                <p className="p-4 text-xs text-stone-600">
                   No active warnings.
                 </p>
               )}
@@ -348,7 +352,7 @@ export function SeoMarketingPanel({
               title="Search reach"
               description="Visits to this page and discovery through video search. Google Search totals are summarized above."
               family={data.reach}
-              className="bg-[#171a18]"
+              className="bg-white"
             >
               {(reach) => (
                 <dl className="grid grid-cols-2 gap-5">
@@ -383,18 +387,18 @@ export function SeoMarketingPanel({
             >
               {(outcomes) =>
                 outcomes.items.length ? (
-                  <div className="grid overflow-hidden rounded-lg border border-white/8 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid overflow-hidden rounded-lg border border-stone-200 sm:grid-cols-2 lg:grid-cols-3">
                     {outcomes.items.map((cta) => (
                       <div
                         key={cta.id}
-                        className="border-b border-white/8 p-3 sm:border-r"
+                        className="border-b border-stone-200 p-3 sm:border-r"
                       >
                         <CtaOutcome cta={cta} />
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-stone-300">
+                  <p className="text-sm text-stone-700">
                     CTA click and outcome evidence unavailable.
                   </p>
                 )
@@ -405,7 +409,7 @@ export function SeoMarketingPanel({
               title="AI-assistant traffic"
               description="Recorded visits attributed to an AI assistant. Referral traffic does not prove a citation or mention in an answer."
               family={data.aiTraffic}
-              className="bg-[#18171b] lg:col-start-2 lg:row-start-1"
+              className="bg-white lg:col-start-2 lg:row-start-1"
             >
               {(traffic) => (
                 <div>
@@ -427,7 +431,7 @@ export function SeoMarketingPanel({
                       ))}
                     </dl>
                   ) : (
-                    <p className="mt-4 text-sm text-stone-300">
+                    <p className="mt-4 text-sm text-stone-700">
                       Assistant breakdown unavailable.
                     </p>
                   )}
@@ -455,7 +459,7 @@ export function SeoMarketingPanel({
                     ].map(([label, value]) => (
                       <div key={label}>
                         <dt className="font-semibold">{label}</dt>
-                        <dd className="mt-1 text-stone-300">
+                        <dd className="mt-1 text-stone-700">
                           {value || "Unavailable"}
                         </dd>
                       </div>
@@ -471,7 +475,7 @@ export function SeoMarketingPanel({
                           <p
                             className={
                               check.state === "warning"
-                                ? "font-semibold text-amber-100"
+                                ? "font-semibold text-amber-800"
                                 : "font-semibold"
                             }
                           >
@@ -482,12 +486,12 @@ export function SeoMarketingPanel({
                                 : "Unavailable"}
                             : {check.label}
                           </p>
-                          <p className="mt-1 text-stone-300">{check.detail}</p>
+                          <p className="mt-1 text-stone-700">{check.detail}</p>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-4 text-sm text-stone-300">
+                    <p className="mt-4 text-sm text-stone-700">
                       Content checks unavailable.
                     </p>
                   )}
@@ -505,7 +509,7 @@ export function SeoMarketingPanel({
                   <dl className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
                     <div>
                       <dt className="font-semibold">Rendering observation</dt>
-                      <dd className="mt-1 text-stone-300">
+                      <dd className="mt-1 text-stone-700">
                         {crawler.renderingMode === "direct_http"
                           ? "Stored direct HTTP observation"
                           : crawler.renderingMode === "rendered"
@@ -515,19 +519,19 @@ export function SeoMarketingPanel({
                     </div>
                     <div>
                       <dt className="font-semibold">Bot visits</dt>
-                      <dd className="mt-1 text-stone-300">
+                      <dd className="mt-1 text-stone-700">
                         {displayNumber(crawler.botVisits)}
                       </dd>
                     </div>
                     <div>
                       <dt className="font-semibold">Last bot visit</dt>
-                      <dd className="mt-1 text-stone-300">
+                      <dd className="mt-1 text-stone-700">
                         {displayDate(crawler.lastVisitAt)}
                       </dd>
                     </div>
                     <div>
                       <dt className="font-semibold">Caching</dt>
-                      <dd className="mt-1 text-stone-300">
+                      <dd className="mt-1 text-stone-700">
                         {crawler.cacheStatus || "Unavailable"}
                       </dd>
                     </div>
@@ -535,7 +539,7 @@ export function SeoMarketingPanel({
                       <dt className="font-semibold">
                         Search indexing evidence
                       </dt>
-                      <dd className="mt-1 text-stone-300">
+                      <dd className="mt-1 text-stone-700">
                         {crawler.indexingStatus || "Unavailable"}
                       </dd>
                     </div>
@@ -546,12 +550,12 @@ export function SeoMarketingPanel({
                     >
                       Read the observed page text
                     </summary>
-                    <p className="mt-2 max-h-64 overflow-y-auto rounded-lg bg-stone-800/60 p-3 leading-relaxed whitespace-pre-wrap">
+                    <p className="mt-2 max-h-64 overflow-y-auto rounded-lg bg-stone-100 p-3 leading-relaxed whitespace-pre-wrap">
                       {crawler.textExcerpt || "Observed text unavailable."}
                     </p>
                   </details>
                   {crawler.notes.length ? (
-                    <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-stone-300">
+                    <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-relaxed text-stone-700">
                       {crawler.notes.map((note, index) => (
                         <li key={index}>{note}</li>
                       ))}
