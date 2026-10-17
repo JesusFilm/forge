@@ -3,7 +3,7 @@ id: "feat-715"
 title: "Keep full Studio source preparation inside its execution deadline"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 1
 depends_on: ["feat-714"]
@@ -58,3 +58,16 @@ After PR #2768 (`674cd28d80058b41e906b0483d872e056f56c0ea`), attempt
 read-only packaging measurement took 26.407 seconds for 24 files / 47,716,903
 bytes. The 90-second combined input deadline cannot fit these measured stages.
 Continue with the explicitly versioned execution contract in feat-716.
+
+## Full-project acceptance
+
+Preparation commits in 53.710s; complete input delivery takes 73.382s.
+Fresh revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` is canonically SUCCEEDED
+and non-stale after independent decode and retained-byte verification. Cloudflare
+rejects its large final upload; authorized recovery uses normal asset/completion
+services within the original issued lease, preserving every deadline and prior
+receipt. Mux upload and physical retirement complete. Automatic transport is
+tracked in feat-726; CPU/memory capacity qualification in feat-725.
+
+Exact release/digest/timing and recovery evidence:
+`docs/solutions/performance-issues/studio-full-render-source-preparation.md`.

@@ -3,7 +3,7 @@ id: "feat-716"
 title: "Version the Studio full-render preparation and execution budget"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 1
 depends_on: ["feat-715"]
@@ -35,3 +35,17 @@ transport/native parity, cancellation and immutable release validation. Drain th
 existing VM before main deploys v2; publish CI-built main artifacts, select and
 activate the matching VM release, then run repaired revision 21 end to end.
 Preserve failed attempts and old revisions. Never publish local worktree code.
+
+## Full-project acceptance
+
+The immutable v3 contract covers native rendering and independent decode within
+the original cumulative execution/lease deadlines.
+Fresh revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u` is canonically SUCCEEDED
+and non-stale after independent decode and retained-byte verification. Cloudflare
+rejects its large final upload; authorized recovery uses normal asset/completion
+services within the original issued lease, preserving every deadline and prior
+receipt. Mux upload and physical retirement complete. Automatic transport is
+tracked in feat-726; CPU/memory capacity qualification in feat-725.
+
+Exact release/digest/timing and recovery evidence:
+`docs/solutions/performance-issues/studio-full-render-source-preparation.md`.

@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 16, 2026)
+## Status (October 17, 2026)
 
-- **Total tickets:** 853
-- **Complete:** 633
+- **Total tickets:** 859
+- **Complete:** 639
 - **Cancelled:** 41
 - **In progress:** 69
-- **Not started:** 52
-- **Blocked:** 58
-- **Overdue and open:** 160
+- **Not started:** 53
+- **Blocked:** 57
+- **Overdue and open:** 162
 
 ## Feature Index
 
@@ -323,8 +323,13 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-718](media-generation/feat-718-studio-mux-terminal-asset-failure.md)                  | Stop Studio Mux reconciliation after terminal asset failure           | nisal     | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
 | [feat-713](media-generation/feat-713-studio-verified-source-duration.md)                    | Bound Studio descriptor sources by actual HLS duration                | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
 | [feat-714](media-generation/feat-714-studio-reused-source-segment-budget.md)                | Reuse source downloads within Studio render preparation               | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
-| [feat-715](media-generation/feat-715-studio-preparation-deadline.md)                        | Keep full Studio source preparation inside its execution deadline     | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | in-progress |
-| [feat-716](media-generation/feat-716-studio-full-render-profile.md)                         | Version the Studio full-render preparation and execution budget       | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | blocked     |
+| [feat-715](media-generation/feat-715-studio-preparation-deadline.md)                        | Keep full Studio source preparation inside its execution deadline     | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
+| [feat-716](media-generation/feat-716-studio-full-render-profile.md)                         | Version the Studio full-render preparation and execution budget       | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
+| [feat-721](media-generation/feat-721-studio-control-plane-contention.md)                    | Protect Studio ownership reads from shared control-plane contention   | tataihono | P1       | 2026-10-17 | 2    | 2026-10-18 | complete    |
+| [feat-722](media-generation/feat-722-studio-bounded-frame-streaming.md)                     | Keep full Studio execution within fixed worker resources              | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
+| [feat-723](media-generation/feat-723-studio-output-encoding-budget.md)                      | Fit complete Studio encoding within fixed output and execution limits | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
+| [feat-724](media-generation/feat-724-studio-remux-file-reuse.md)                            | Reuse admitted Studio remux files without duplicate tmpfs downloads   | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | complete    |
+| [feat-726](media-generation/feat-726-studio-bounded-output-retention.md)                    | Retain full Studio outputs through bounded edge-safe transfers        | tataihono | P1       | 2026-10-17 | 1    | 2026-10-17 | in-progress |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -334,6 +339,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-494](media-generation/feat-494-studio-bounded-failure-diagnostics.md)                 | Retain bounded Studio worker failure classifications                  | tataihono | P2       | 2026-09-13 | 2    | 2026-09-14 | not-started |
 | [feat-065](media-generation/feat-065-full-content-translation.md)                           | Full Content Translation                                              | vlad      | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-693](media-generation/feat-693-studio-history-navigation-fallback.md)                 | Studio history navigation protection without Navigation API           | tataihono | P2       | 2026-10-13 | 2    | 2026-10-14 | not-started |
+| [feat-725](media-generation/feat-725-studio-render-capacity-qualification.md)               | Qualify Studio render parallelism and memory headroom                 | tataihono | P2       | 2026-10-17 | 2    | 2026-10-18 | not-started |
 
 ### Platform
 
@@ -409,7 +415,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-639](platform/feat-639-current-base-dependency-backports.md)                     | Refresh held dependency backports on October default                               | tataihono  | P0       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
-| [feat-723](platform/feat-723-validate-enable-watch-seo-workspace.md)                   | Validate and enable the Watch SEO workspace                                        | unassigned | P1       | —          | —    | —          | not-started |
+| [feat-728](platform/feat-728-validate-enable-watch-seo-workspace.md)                   | Validate and enable the Watch SEO workspace                                        | unassigned | P1       | —          | —    | —          | not-started |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                       | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-077](platform/feat-077-roadmap-operations-and-owner-hygiene.md)                  | Roadmap Operations and Owner Hygiene                                               | josh       | P1       | 2026-04-10 | 14   | 2026-04-23 | in-progress |
@@ -700,7 +706,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-719](platform/feat-719-support-research-disabled-migration-readiness.md)         | Keep disabled support research independent of database migration                   | nisal      | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
-| [feat-722](platform/feat-722-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
+| [feat-727](platform/feat-727-watch-page-seo-marketing-tab.md)                          | Add an admin-only SEO marketing tab to Watch video pages                           | codex      | P1       | 2026-10-16 | 8    | 2026-10-23 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |

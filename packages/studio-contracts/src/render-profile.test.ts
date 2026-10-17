@@ -2,6 +2,7 @@ import { expect, it } from "vitest"
 import {
   STUDIO_RENDER_PROFILE,
   STUDIO_RENDER_PROFILE_V1,
+  STUDIO_RENDER_PROFILE_V2,
   studioRenderExecutionProfileSchema,
   studioRenderAdmissionSchema,
 } from "./render"
@@ -13,9 +14,22 @@ it("reads exact historical and current profiles without upgrading historical bou
   expect(STUDIO_RENDER_PROFILE_V1.preparationMs).toBe(90000)
   expect(STUDIO_RENDER_PROFILE_V1.jobMs).toBe(900000)
   expect(
+    studioRenderExecutionProfileSchema.parse(STUDIO_RENDER_PROFILE_V2),
+  ).toEqual(STUDIO_RENDER_PROFILE_V2)
+  expect(STUDIO_RENDER_PROFILE_V2.jobMs).toBe(1200000)
+  expect(
+    studioRenderAdmissionSchema.shape.profileId.safeParse(
+      STUDIO_RENDER_PROFILE_V2.id,
+    ).success,
+  ).toBe(false)
+  expect(
     studioRenderExecutionProfileSchema.parse(STUDIO_RENDER_PROFILE),
   ).toEqual(STUDIO_RENDER_PROFILE)
-  for (const profile of [STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE]) {
+  for (const profile of [
+    STUDIO_RENDER_PROFILE_V1,
+    STUDIO_RENDER_PROFILE_V2,
+    STUDIO_RENDER_PROFILE,
+  ]) {
     expect(
       studioRenderExecutionProfileSchema.safeParse({
         ...profile,
@@ -48,7 +62,7 @@ it("admits only the current profile and keeps physical resource bounds unchanged
   ] as const)
     expect(STUDIO_RENDER_PROFILE[key]).toBe(STUDIO_RENDER_PROFILE_V1[key])
   expect(STUDIO_RENDER_PROFILE.preparationMs).toBe(180000)
-  expect(STUDIO_RENDER_PROFILE.jobMs).toBe(1200000)
+  expect(STUDIO_RENDER_PROFILE.jobMs).toBe(3600000)
   expect(STUDIO_RENDER_PROFILE.leaseMs).toBeGreaterThan(
     STUDIO_RENDER_PROFILE.requestMs,
   )
