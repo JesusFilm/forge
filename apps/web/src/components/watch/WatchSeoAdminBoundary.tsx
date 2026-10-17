@@ -22,6 +22,7 @@ const CAPABILITY_CACHE_KEY = "watch-seo-capability-v1"
 const CAPABILITY_CACHE_TTL_MS = 30_000
 const PREVIEW_QUERY_PARAM = "seoAdminPreview"
 const PREVIEW_SESSION_KEY = "watch-seo-admin-preview-v1"
+const PREVIEW_HASH = "#seo-marketing"
 
 function readDevelopmentPreview(): boolean {
   if (process.env.NODE_ENV === "production") return false
@@ -109,7 +110,23 @@ export function WatchSeoAdminBoundary({
     if (!readDevelopmentPreview()) return
     setDevelopmentPreview(true)
     setAuthorized(true)
+    if (window.location.hash === PREVIEW_HASH) setSelected(true)
   }, [])
+
+  useEffect(() => {
+    if (
+      !developmentPreview ||
+      !selected ||
+      window.location.hash !== PREVIEW_HASH
+    )
+      return
+    const timer = window.setTimeout(() => {
+      document
+        .getElementById("watch-seo-marketing")
+        ?.scrollIntoView({ block: "start" })
+    }, 100)
+    return () => window.clearTimeout(timer)
+  }, [developmentPreview, panelState.status, selected])
 
   useEffect(() => {
     if (developmentPreview) {
@@ -270,7 +287,11 @@ export function WatchSeoAdminBoundary({
   }
 
   return (
-    <section data-testid="watch-seo-admin-boundary" className="min-w-0">
+    <section
+      id="watch-seo-marketing"
+      data-testid="watch-seo-admin-boundary"
+      className="min-w-0 scroll-mt-24"
+    >
       <div role="tablist" aria-label="Admin page tools">
         <WatchSeoTab
           id={tabId}
