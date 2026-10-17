@@ -5,6 +5,7 @@ import {
   isDeferredRecommendationResponse,
 } from "@/lib/recommendation-activation"
 
+import { useTranslations } from "next-intl"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
@@ -496,6 +497,7 @@ export function WatchSemanticRecommendations({
   audioLanguageSlug: string
   navigate?: (href: string) => void
 }) {
+  const t = useTranslations("VideoRecommendations")
   const [profileRevision, setProfileRevision] = useState(0)
   const requestKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}\0${profileRevision}`
   const [state, setState] = useState<RecommendationState>({
@@ -1087,10 +1089,13 @@ export function WatchSemanticRecommendations({
   const instrumentationDegraded =
     instrumentationState.requestKey === requestKey &&
     instrumentationState.degraded
-  const recommendationExplanation =
+  const recommendationExplanationKey =
     currentState.status === "ready"
-      ? viewerRecommendationExplanation(currentState.envelope)
+      ? viewerRecommendationExplanationKey(currentState.envelope)
       : null
+  const recommendationExplanation = recommendationExplanationKey
+    ? t(recommendationExplanationKey)
+    : null
 
   if (currentState.status === "loading") {
     return (
@@ -1098,7 +1103,7 @@ export function WatchSemanticRecommendations({
         data-block-type="SemanticRecommendations"
         data-state="loading"
         aria-busy="true"
-        aria-label="Loading recommended videos"
+        aria-label={t("loadingLabel")}
         className="min-h-48 rounded-xl bg-stone-800/40 p-6"
       >
         {verification?.requestKey === requestKey ? (
@@ -1121,17 +1126,19 @@ export function WatchSemanticRecommendations({
 
   let announcement = ""
   if (busyItemId) {
-    announcement = `Opening ${itemById.get(busyItemId)?.videoTitle ?? "video"}`
+    const busyTitle = itemById.get(busyItemId)?.videoTitle
+    announcement = busyTitle
+      ? t("openingTitle", { title: busyTitle })
+      : t("openingVideo")
   } else if (instrumentationDegraded) {
-    announcement =
-      "Recommendation activity could not be recorded. Links still work."
+    announcement = t("activityNotRecorded")
   } else if (currentState.envelope.result === "fallback") {
     announcement = currentState.envelope.items.every(
       (item) =>
         item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
     )
-      ? "Showing contextual recommendations."
-      : "Showing saved recommendations."
+      ? t("showingContextual")
+      : t("showingSaved")
   }
 
   return (
@@ -1140,12 +1147,10 @@ export function WatchSemanticRecommendations({
       data-state={
         currentState.envelope.result === "fallback" ? "fallback" : "ready"
       }
-      aria-label="Recommended videos"
+      aria-label={t("heading")}
       className="min-h-48"
     >
-      <h2 className="mb-4 text-2xl font-semibold text-white">
-        Recommended videos
-      </h2>
+      <h2 className="mb-4 text-2xl font-semibold text-white">{t("heading")}</h2>
       <VideoRecommendations
         recommendations={currentState.envelope.items}
         locale={locale}
@@ -1170,28 +1175,32 @@ export function WatchSemanticRecommendations({
   )
 }
 
-function viewerRecommendationExplanation(envelope: SemanticEnvelope) {
+type RecommendationExplanationKey =
+  | "explanationCurated"
+  | "explanationViewingMode"
+  | "explanationCowatch"
+  | "explanationHybrid"
+  | "explanationContextual"
+  | "explanationSemanticFallback"
+  | "explanationProfileDurable"
+  | "explanationProfileVisit"
+
+function viewerRecommendationExplanationKey(
+  envelope: SemanticEnvelope,
+): RecommendationExplanationKey | null {
   const mode = envelope.personalization?.executionMode
-  if (mode === "curated_fallback") return "Selected videos to explore."
-  if (mode === "viewing_mode_personalized")
-    return "Recommended from this video and how you watch."
-  if (mode === "cowatch_mmr_personalized")
-    return "Recommended from this video and your interests."
-  if (mode === "hybrid_personalized") {
-    return "Recommended from this video and interests you chose to remember."
-  }
-  if (mode === "semantic_contextual") {
-    return "Recommended from what you're watching now."
-  }
-  if (mode === "semantic_fallback") {
-    return "Recommended from what you're watching now while personalization is unavailable."
-  }
+  if (mode === "curated_fallback") return "explanationCurated"
+  if (mode === "viewing_mode_personalized") return "explanationViewingMode"
+  if (mode === "cowatch_mmr_personalized") return "explanationCowatch"
+  if (mode === "hybrid_personalized") return "explanationHybrid"
+  if (mode === "semantic_contextual") return "explanationContextual"
+  if (mode === "semantic_fallback") return "explanationSemanticFallback"
   // Historic deliveries predate the additive execution-mode field. Preserve
   // their existing viewer explanation without reinterpreting lane semantics.
   if (envelope.personalization?.lane === "profile_challenger") {
     return envelope.personalization.profileState === "durable"
-      ? "Personalized from interests you chose to remember."
-      : "Personalized for this visit."
+      ? "explanationProfileDurable"
+      : "explanationProfileVisit"
   }
   return null
 }

@@ -17,6 +17,7 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
+import { correctedBcp47 } from "@/lib/locale"
 import {
   declaredLanguageAttributes,
   derivedNativeNameLang,
@@ -102,7 +103,8 @@ function nativeNameForOption(
       lang: declaredLanguageAttributes(option.nativeNameLang)?.lang ?? null,
     }
   }
-  const language = primaryLanguageCode(option.bcp47)?.toLowerCase()
+  const bcp47 = correctedBcp47(option.slug, option.bcp47)
+  const language = primaryLanguageCode(bcp47)?.toLowerCase()
   if (!language) return null
   try {
     // Unsupported locales silently fall back to English, which is not an endonym.
@@ -117,7 +119,7 @@ function nativeNameForOption(
     // tag when the row's script differs (a ku-Arab row is not Latin `kurdî`).
     return {
       text: capitalizeNativeName(displayName, language),
-      lang: derivedNativeNameLang(option.bcp47),
+      lang: derivedNativeNameLang(bcp47),
     }
   } catch {
     return null

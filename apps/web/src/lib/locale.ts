@@ -110,7 +110,57 @@ export function parseAcceptLanguage(
   return null
 }
 
+/**
+ * Slugs whose admin `Language.bcp47` (and so the generated
+ * `LANGUAGE_BCP47_MAP`) is not a valid tag. The generated map is overwritten
+ * by `generate:language-bcp47-map`, so the correction lives here and the
+ * source record should be fixed in Core.
+ *   - `kurmanji-standard` arrives as `ko-kmr` (not a valid tag; the `ko`
+ *     primary made Watch show Korean UI, a KO badge and a Korean name).
+ *
+ * `french-african` (`fra`, which BCP 47 replaces with `fr`) is deliberately
+ * NOT here: it only needs the HTML `lang` fix below, while its picker/badge
+ * code stays `FRA` so it remains distinguishable from French (`FR`).
+ */
+const LANGUAGE_TAG_CORRECTIONS: Readonly<Record<string, string>> =
+  Object.freeze({
+    "kurmanji-standard": "kmr",
+  })
+
+/**
+ * Return the corrected tag for a slug with a known-bad admin tag, else the
+ * tag as supplied. Use at every consumer that reads `bcp47` straight from
+ * admin data (picker rows, badges) rather than through `slugToBcp47Tag`.
+ */
+export function correctedBcp47(
+  slug: string | null | undefined,
+  bcp47: string | null | undefined,
+): string | null | undefined {
+  return slug && Object.hasOwn(LANGUAGE_TAG_CORRECTIONS, slug)
+    ? LANGUAGE_TAG_CORRECTIONS[slug]
+    : bcp47
+}
+
+/** Admin carries ISO 639-3 `fra`; BCP 47 canonicalizes it to `fr`. */
+const FRENCH_AFRICAN_HTML_LANG_OVERRIDE: Readonly<Record<string, string>> =
+  Object.freeze({ "french-african": "fr" })
+
+/**
+ * Slugs whose declared tag is corrected above but whose admin CONTENT locale
+ * must stay on admin's own key. Admin's broad copy layer matches
+ * `VideoLocale.locale`, which Core sync fills from the raw `bcp47`, so sending
+ * the corrected `kmr` / `fr` would pull fallback titles and study questions
+ * from other languages' rows (other Kurdish dialects, standard French)
+ * instead of falling back to English as before.
+ */
+const ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS: ReadonlySet<string> = new Set([
+  ...Object.keys(LANGUAGE_TAG_CORRECTIONS),
+  ...Object.keys(FRENCH_AFRICAN_HTML_LANG_OVERRIDE),
+])
+
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
+  ...LANGUAGE_TAG_CORRECTIONS,
+  ...FRENCH_AFRICAN_HTML_LANG_OVERRIDE,
   // Admin currently exposes generic `eng` for this regional public audio
   // slug. Keep the distinct British homepage on its actual regional identity
   // so HTML language and sitemap hreflang signals agree.
@@ -280,6 +330,21 @@ export function slugToBcp47Tag(slug: string): string | null {
   // [htmlLang] segment and locale-family verification.
   if (BCP47_TAG_PATTERN.test(slug)) return normalizeBcp47Tag(slug)
   return null
+}
+
+/**
+ * The `locale` admin's content queries key on for a URL language segment.
+ * Same as `slugToBcp47Tag`, except slugs in
+ * `ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS` keep admin's raw tag (see there).
+ */
+export function slugToAdminContentLocale(slug: string): string | null {
+  if (
+    ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS.has(slug) &&
+    Object.hasOwn(LANGUAGE_BCP47_MAP, slug)
+  ) {
+    return normalizeBcp47Tag(LANGUAGE_BCP47_MAP[slug])
+  }
+  return slugToBcp47Tag(slug)
 }
 
 /**

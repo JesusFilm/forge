@@ -171,6 +171,30 @@ describe("LanguageCombobox native-name markup (FGE-50)", () => {
     expect(bdi?.hasAttribute("lang")).toBe(false)
   })
 
+  it("shows the Kurdish endonym and KMR code for kurmanji-standard despite admin's ko-kmr tag", () => {
+    renderOpen(
+      [
+        {
+          slug: "kurmanji-standard",
+          name: "Kurmanji Standard",
+          bcp47: "ko-kmr",
+        },
+      ],
+      "kurmanji-standard",
+    )
+    const bdi = optionNative("kurmanji-standard")?.querySelector("bdi")
+    expect(bdi?.textContent).not.toContain("한국어")
+    expect(bdi?.textContent).toMatch(/^Kurd/i)
+    expect(bdi?.getAttribute("lang")).toBe("kmr")
+    const codes = Array.from(
+      document.querySelectorAll(
+        '[data-testid="language-combobox-option-code"]',
+      ),
+    ).map((node) => node.textContent)
+    expect(codes).toContain("KMR")
+    expect(codes).not.toContain("KO")
+  })
+
   it("declares the selected trigger's native name too", () => {
     act(() => {
       root.render(
