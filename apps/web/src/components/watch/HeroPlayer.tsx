@@ -464,6 +464,11 @@ export function HeroPlayer({
         trackEl.src = subtitleVttSrc
         trackEl.default = true
         trackEl.setAttribute("data-subtitle-track", "true")
+        // Declare the language for assistive tech and the native track
+        // menu. The label stays the forge sentinel (see subtitle-track.ts).
+        if (subtitleLanguageCode) {
+          trackEl.srclang = subtitleLanguageCode.toLowerCase()
+        }
         video.appendChild(trackEl)
         trackEl.track.mode = "showing"
         forgeTrack = trackEl.track
@@ -479,7 +484,7 @@ export function HeroPlayer({
     return () => {
       tracks.removeEventListener("addtrack", onAddTrack)
     }
-  }, [subtitleVttSrc, player])
+  }, [subtitleVttSrc, subtitleLanguageCode, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)

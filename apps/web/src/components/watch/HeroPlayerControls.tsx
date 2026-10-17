@@ -79,6 +79,9 @@ function getWebKitFullscreenVideo(
     : null
 }
 
+const PLAYER_SHORTCUT_KEYS = new Set([" ", "k", "j", "l", "m", "f"])
+const PLAYER_SHORTCUT_SEEK_SECONDS = 10
+
 export function HeroPlayerControls({
   mediaId,
   player,
@@ -155,6 +158,25 @@ export function HeroPlayerControls({
   useEffect(() => {
     setWrapperEl(wrapperRef.current)
   }, [wrapperRef])
+  // The F shortcut flips the chrome portal between overlayAnchor and the
+  // wrapper, which replaces the focused control's DOM node and drops focus
+  // to <body>; neither shortcut listener sees keys from there, so a second F
+  // (or K/M) would go dead. The shortcut arms this latch (a timestamp, so a
+  // refused fullscreen request cannot leave it armed forever) and the effect
+  // below hands focus to the click surface, which lives outside the portal.
+  // Trade-off: the click surface is aria-hidden, so a screen reader will not
+  // announce this focus, but it is the only node that is inside the wrapper
+  // (so the listeners hear it) and outside the portal (so it survives).
+  const clickSurfaceRef = useRef<HTMLButtonElement | null>(null)
+  const refocusAfterFullscreenAtRef = useRef<number | null>(null)
+  useEffect(() => {
+    const armedAt = refocusAfterFullscreenAtRef.current
+    refocusAfterFullscreenAtRef.current = null
+    if (armedAt == null || Date.now() - armedAt > 2000) return
+    const active = document.activeElement
+    if (active != null && active !== document.body) return
+    clickSurfaceRef.current?.focus({ preventScroll: true })
+  }, [isFullscreen])
   const [chromeVisibility, setChromeVisibility] =
     useState<ChromeVisibility>("dim")
   const [hoveringControls, setHoveringControls] = useState(false)
@@ -779,6 +801,99 @@ export function HeroPlayerControls({
     }
   }, [playerRef, wrapperRef])
 
+  const toggleFullscreenKeepingFocus = useCallback(() => {
+    refocusAfterFullscreenAtRef.current = Date.now()
+    toggleFullscreen()
+  }, [toggleFullscreen])
+
+  // Player-surface keyboard shortcuts (YouTube-style): Space/K play-pause,
+  // J/L seek -/+10s, M mute, F fullscreen. Bound to the player wrapper and
+  // the portaled chrome anchor only (never window) so they fire only while
+  // focus is inside the player. Text entry, dialogs, sliders (which own
+  // their arrow keys) and modifier chords are left alone; Space/Enter on a
+  // focused button/link keeps its native activation.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      // Only other native listeners can have claimed the event here: React
+      // handlers run later (root delegation), so this is not a guard for them.
+      if (event.defaultPrevented || event.isComposing) return
+      if (event.ctrlKey || event.metaKey || event.altKey) return
+      const key = event.key.length === 1 ? event.key.toLowerCase() : event.key
+      if (!PLAYER_SHORTCUT_KEYS.has(key)) return
+      const target = event.target
+      if (target instanceof Element) {
+        if (
+          target.closest(
+            'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="dialog"], [role="alertdialog"], [role="textbox"], [role="combobox"], [role="menu"], [role="listbox"]',
+          )
+        ) {
+          return
+        }
+        if (
+          key === " " &&
+          target.closest(
+            'button, a[href], summary, [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role^="menuitem"]',
+          )
+        ) {
+          return
+        }
+      }
+      const p = playerRef.current
+      if (!p) return
+      // Held keys must not flap toggles (fullscreen/mute/play); seek repeats.
+      // Still swallow the key so a held Space does not scroll the page.
+      if (event.repeat && key !== "j" && key !== "l") {
+        event.preventDefault()
+        return
+      }
+      switch (key) {
+        case " ":
+        case "k":
+          togglePlay()
+          break
+        case "j":
+        case "l": {
+          const delta =
+            key === "j"
+              ? -PLAYER_SHORTCUT_SEEK_SECONDS
+              : PLAYER_SHORTCUT_SEEK_SECONDS
+          // Before metadata loads there is no finite duration; writing a
+          // start position then could land past the end of a short clip.
+          if (!Number.isFinite(p.duration) || p.duration <= 0) break
+          if (!Number.isFinite(p.currentTime)) break
+          p.currentTime = Math.min(
+            p.duration,
+            Math.max(0, p.currentTime + delta),
+          )
+          break
+        }
+        case "m":
+          toggleMute()
+          break
+        case "f":
+          toggleFullscreenKeepingFocus()
+          break
+      }
+      event.preventDefault()
+    }
+    const targets = [wrapperRef.current, overlayAnchor].filter(
+      (t): t is HTMLDivElement => t != null,
+    )
+    for (const target of targets) target.addEventListener("keydown", onKeyDown)
+    return () => {
+      for (const target of targets) {
+        target.removeEventListener("keydown", onKeyDown)
+      }
+    }
+  }, [
+    overlayAnchor,
+    playerRef,
+    toggleFullscreenKeepingFocus,
+    toggleMute,
+    togglePlay,
+    wrapperRef,
+  ])
+
   // Compute the 0..1 scrub fraction for a clientX within the timeline rect.
   // Clamped at the edges so dragging past the bar's bounds still produces a
   // valid percentage rather than a wild seek target. During an active drag
@@ -1361,7 +1476,7 @@ export function HeroPlayerControls({
         ) : null}
 
         <ChromeButton
-          onClick={toggleFullscreen}
+          onClick={toggleFullscreenKeepingFocus}
           ariaLabel={fullscreenLabel}
           testId="hero-chrome-fullscreen"
         >
@@ -1378,6 +1493,7 @@ export function HeroPlayerControls({
           this surface out of the accessibility tree so it doesn't duplicate. */}
       <button
         type="button"
+        ref={clickSurfaceRef}
         aria-hidden="true"
         tabIndex={-1}
         data-testid="hero-player-click-surface"

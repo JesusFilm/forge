@@ -1474,3 +1474,281 @@ describe("HeroPlayerControls — visibility callback", () => {
     }
   })
 })
+
+describe("HeroPlayerControls — keyboard shortcuts", () => {
+  function press(
+    target: Element,
+    key: string,
+    init: KeyboardEventInit = {},
+  ): KeyboardEvent {
+    const event = new KeyboardEvent("keydown", {
+      key,
+      bubbles: true,
+      cancelable: true,
+      ...init,
+    })
+    act(() => {
+      target.dispatchEvent(event)
+    })
+    return event
+  }
+
+  it("toggles play with Space and K", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true }),
+    )
+    const spaceEvent = press(wrapperEl, " ")
+    press(wrapperEl, "k")
+    expect(player.play).toHaveBeenCalledTimes(2)
+    expect(spaceEvent.defaultPrevented).toBe(true)
+  })
+
+  it("pauses when playing", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: false }),
+    )
+    press(wrapperEl, "K")
+    expect(player.pause).toHaveBeenCalledTimes(1)
+  })
+
+  it("seeks 10s back and forward with J and L, clamped to the media range", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ currentTime: 30, duration: 100 }),
+    )
+    press(wrapperEl, "l")
+    expect(player.currentTime).toBe(40)
+    press(wrapperEl, "j")
+    press(wrapperEl, "j")
+    expect(player.currentTime).toBe(20)
+    player.currentTime = 4
+    press(wrapperEl, "j")
+    expect(player.currentTime).toBe(0)
+    player.currentTime = 95
+    press(wrapperEl, "l")
+    expect(player.currentTime).toBe(100)
+  })
+
+  it("does not write a seek position before the duration is known", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ currentTime: 0, duration: Number.NaN }),
+    )
+    press(wrapperEl, "l")
+    expect(player.currentTime).toBe(0)
+    const zero = renderControlsFixture(
+      makePlayer({ currentTime: 0, duration: 0 }),
+    )
+    press(zero.wrapperEl, "l")
+    expect(zero.player.currentTime).toBe(0)
+  })
+
+  it("toggles mute with M", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    press(wrapperEl, "m")
+    expect(player.muted).toBe(true)
+  })
+
+  it("toggles fullscreen with F", () => {
+    const { wrapperEl } = renderControlsFixture()
+    const request = vi.fn(() => Promise.resolve())
+    Object.defineProperty(wrapperEl, "requestFullscreen", {
+      configurable: true,
+      value: request,
+    })
+    press(wrapperEl, "f")
+    expect(request).toHaveBeenCalledTimes(1)
+  })
+
+  it("also works from the portaled chrome anchor", () => {
+    const { overlayAnchor, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    press(overlayAnchor, "m")
+    expect(player.muted).toBe(true)
+  })
+
+  it("ignores events from text inputs and dialogs", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    const input = document.createElement("input")
+    const dialog = document.createElement("div")
+    dialog.setAttribute("role", "dialog")
+    const dialogButton = document.createElement("button")
+    dialog.appendChild(dialogButton)
+    wrapperEl.append(input, dialog)
+    const inputEvent = press(input, "m")
+    press(dialogButton, "m")
+    expect(player.muted).toBe(false)
+    expect(inputEvent.defaultPrevented).toBe(false)
+  })
+
+  it("leaves Space on a focused button to its native click", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true }),
+    )
+    const button = document.createElement("button")
+    wrapperEl.appendChild(button)
+    const event = press(button, " ")
+    expect(player.play).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("ignores keys outside the shortcut set", () => {
+    const { wrapperEl, player } = renderControlsFixture()
+    const event = press(wrapperEl, "x")
+    expect(player.play).not.toHaveBeenCalled()
+    expect(event.defaultPrevented).toBe(false)
+  })
+
+  it("ignores auto-repeat for toggles but keeps repeating seeks", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false, currentTime: 50, duration: 100 }),
+    )
+    const held = press(wrapperEl, "m", { repeat: true })
+    expect(player.muted).toBe(false)
+    expect(held.defaultPrevented).toBe(true)
+    press(wrapperEl, "l", { repeat: true })
+    expect(player.currentTime).toBe(60)
+  })
+
+  it("leaves Space on non-button ARIA controls to their own activation", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true }),
+    )
+    const sw = document.createElement("div")
+    sw.setAttribute("role", "switch")
+    wrapperEl.appendChild(sw)
+    press(sw, " ")
+    expect(player.play).not.toHaveBeenCalled()
+  })
+
+  it("handles shifted letters and Space from a focused slider", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ paused: true, currentTime: 30, duration: 100 }),
+    )
+    const slider = document.createElement("div")
+    slider.setAttribute("role", "slider")
+    wrapperEl.appendChild(slider)
+    press(slider, "L", { shiftKey: true })
+    expect(player.currentTime).toBe(40)
+    press(slider, " ")
+    expect(player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps shortcuts alive after F swaps the portaled chrome into fullscreen", async () => {
+    const { wrapperEl, overlayAnchor, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    const request = vi.fn(() => Promise.resolve())
+    Object.defineProperty(wrapperEl, "requestFullscreen", {
+      configurable: true,
+      value: request,
+    })
+    // Production renders HeroPlayerControls as a child of the wrapper, so the
+    // click surface (outside the chrome portal) sits inside it.
+    wrapperEl.appendChild(container)
+    const muteButton = overlayAnchor.querySelector<HTMLButtonElement>(
+      '[data-testid="hero-chrome-mute"]',
+    )
+    expect(muteButton).not.toBeNull()
+    muteButton?.focus()
+    expect(document.activeElement).toBe(muteButton)
+
+    press(muteButton as HTMLElement, "f")
+    expect(request).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      setFullscreenElement(wrapperEl)
+    })
+
+    // The portal target swapped, so the focused node was replaced; focus must
+    // land on a node that survives, and the next key must still be handled.
+    const active = document.activeElement as HTMLElement
+    expect(active.getAttribute("data-testid")).toBe("hero-player-click-surface")
+    press(active, "m")
+    expect(player.muted).toBe(true)
+    // Fullscreen is now active, so a second F must take the exit branch.
+    const exit = vi.fn(() => Promise.resolve())
+    Object.defineProperty(document, "exitFullscreen", {
+      configurable: true,
+      value: exit,
+    })
+    press(active, "f")
+    expect(exit).toHaveBeenCalledTimes(1)
+    Reflect.deleteProperty(document, "exitFullscreen")
+  })
+
+  it("does not steal focus on fullscreen changes the shortcut did not start", async () => {
+    const { wrapperEl, overlayAnchor } = renderControlsFixture()
+    const muteButton = overlayAnchor.querySelector<HTMLButtonElement>(
+      '[data-testid="hero-chrome-mute"]',
+    )
+    muteButton?.focus()
+    await act(async () => {
+      setFullscreenElement(wrapperEl)
+    })
+    expect(document.activeElement?.getAttribute("data-testid")).not.toBe(
+      "hero-player-click-surface",
+    )
+  })
+
+  it("ignores events another native listener already handled", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    const child = document.createElement("div")
+    wrapperEl.appendChild(child)
+    child.addEventListener("keydown", (e) => e.preventDefault())
+    press(child, "m")
+    expect(player.muted).toBe(false)
+  })
+
+  it("ignores keys typed during IME composition", () => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    press(wrapperEl, "m", { isComposing: true })
+    expect(player.muted).toBe(false)
+  })
+
+  it.each([
+    "textarea",
+    "select",
+    "contenteditable",
+    "role=textbox",
+    "role=combobox",
+    "role=menu",
+    "role=listbox",
+    "role=alertdialog",
+  ])("ignores events from %s", (kind) => {
+    const { wrapperEl, player } = renderControlsFixture(
+      makePlayer({ muted: false }),
+    )
+    const el = document.createElement(
+      kind === "textarea" ? "textarea" : kind === "select" ? "select" : "div",
+    )
+    if (kind === "contenteditable") el.setAttribute("contenteditable", "true")
+    if (kind.startsWith("role=")) el.setAttribute("role", kind.slice(5))
+    wrapperEl.appendChild(el)
+    press(el, "m")
+    expect(player.muted).toBe(false)
+  })
+
+  it.each([["metaKey"], ["ctrlKey"], ["altKey"]] as const)(
+    "ignores %s chords",
+    (modifier) => {
+      const { wrapperEl, player } = renderControlsFixture(
+        makePlayer({ muted: false }),
+      )
+      press(wrapperEl, "m", { [modifier]: true })
+      expect(player.muted).toBe(false)
+    },
+  )
+
+  it("does not listen on window", () => {
+    const { player } = renderControlsFixture(makePlayer({ muted: false }))
+    press(document.body, "m")
+    expect(player.muted).toBe(false)
+  })
+})
