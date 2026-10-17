@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 16, 2026)
 
-- **Total tickets:** 844
-- **Complete:** 627
+- **Total tickets:** 845
+- **Complete:** 628
 - **Cancelled:** 41
 - **In progress:** 68
 - **Not started:** 51
@@ -693,6 +693,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-707](platform/feat-707-watch-feedback-mobile-overflow.md)                        | Keep Watch feedback within the mobile dialog width                                 | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-719](platform/feat-719-support-research-disabled-migration-readiness.md)         | Keep disabled support research independent of database migration                   | nisal      | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
