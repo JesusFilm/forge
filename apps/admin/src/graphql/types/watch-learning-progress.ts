@@ -5,6 +5,7 @@
 import { GraphQLError } from "graphql"
 
 import { builder } from "@/graphql/builder"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import type { Principal } from "@/auth/principal"
 import {
   WatchLearningSubjectErasedError,
@@ -30,6 +31,17 @@ function requireLearningSubject(user: Principal | null): string {
     })
   }
   return user.id
+}
+
+// Release gate for reading and saving. Reset is deliberately NOT gated (nor
+// is account-deletion erasure): deleting data a viewer already saved must keep
+// working after a public rollback.
+async function requireWatchAudienceEnabled(): Promise<void> {
+  if (!(await isWatchAudienceEnabled())) {
+    throw new GraphQLError("Watch learning progress is not available", {
+      extensions: { code: "FORBIDDEN", reason: "watch_audience_disabled" },
+    })
+  }
 }
 
 async function mapLearningErrors<T>(run: () => Promise<T>): Promise<T> {
@@ -118,8 +130,9 @@ builder.queryFields((t) => ({
       courseId: t.arg.string({ required: true }),
       contentVersion: t.arg.string({ required: true }),
     },
-    resolve: (_root, args, ctx) => {
+    resolve: async (_root, args, ctx) => {
       const userId = requireLearningSubject(ctx.user)
+      await requireWatchAudienceEnabled()
       return mapLearningErrors(() =>
         listWatchLearningProgress({
           userId,
@@ -139,8 +152,9 @@ builder.mutationFields((t) => ({
     args: {
       input: t.arg({ type: WatchLearningProgressSaveInput, required: true }),
     },
-    resolve: (_root, { input }, ctx) => {
+    resolve: async (_root, { input }, ctx) => {
       const userId = requireLearningSubject(ctx.user)
+      await requireWatchAudienceEnabled()
       return mapLearningErrors(() =>
         saveWatchLearningProgress({
           userId,

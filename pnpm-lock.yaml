@@ -184,6 +184,9 @@ importers:
       '@forge/experience-schema':
         specifier: workspace:*
         version: link:../../packages/experience-schema
+      '@forge/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
       '@forge/studio-contracts':
         specifier: workspace:*
         version: link:../../packages/studio-contracts
@@ -1475,6 +1478,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/experience-schema':
+        specifier: workspace:*
+        version: link:../../packages/experience-schema
       '@forge/feature-flags':
         specifier: workspace:*
         version: link:../../packages/feature-flags

@@ -129,6 +129,14 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
+const resolveWatchAudienceMock = vi.hoisted(() => vi.fn())
+vi.mock("@/lib/watch-audience-content", async () => ({
+  ...(await vi.importActual<typeof import("@/lib/watch-audience-content")>(
+    "@/lib/watch-audience-content",
+  )),
+  resolveWatchAudience: resolveWatchAudienceMock,
+}))
+
 vi.mock("@/lib/feature-flags", () => ({
   isWatchAudienceEnabled: vi.fn(async () => false),
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
@@ -164,6 +172,8 @@ let root: Root
 
 beforeEach(() => {
   vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
+  resolveWatchAudienceMock.mockReset()
+  resolveWatchAudienceMock.mockResolvedValue({ kind: "absent" })
   resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
@@ -3759,5 +3769,81 @@ describe("Catch-all routing — manifest-only audio language (FGE-81)", () => {
     resolveManifest(null)
     await renderPromise
     expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("published audience configuration", () => {
+  const authored = {
+    kind: "authored",
+    config: { roles: [] },
+    identity: "en:watch-audience:abc",
+  } as const
+
+  it("resolves one definition for the requested locale and hands it to the video frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(resolveWatchAudienceMock).toHaveBeenCalledTimes(1)
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+    )
+  })
+
+  it("resolves the same definition for a series episode", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+    await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+    )
+  })
+
+  it("hands the same definition, for the same locale, to the localized home frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    resolveWatchAudienceMock.mockResolvedValue(authored)
+    resolveWatchHomeMock.mockResolvedValue({
+      data: {
+        heroSlides: [{ id: "hero-es" }],
+        sections: [],
+        carousel: { pools: [] },
+        missingData: [],
+      },
+      error: null,
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        watchHomeCategoryRailCompatibility: "supported",
+        experience: {
+          id: "exp",
+          slug: "watch-home",
+          title: "Home",
+          blocks: [],
+        },
+      },
+      error: null,
+    })
+    await render1Seg("spanish-castilian.html")
+    expect(resolveWatchAudienceMock).toHaveBeenCalledWith("es")
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true, audience: authored }),
+      undefined,
+    )
+  })
+
+  it("never loads the configuration while the rollout is off", async () => {
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(resolveWatchAudienceMock).not.toHaveBeenCalled()
+    const props = watchPageClientMock.mock.calls[0]?.[0] as Record<
+      string,
+      unknown
+    >
+    expect(props.audienceEnabled).toBe(false)
+    expect(props.audience).toBeUndefined()
   })
 })

@@ -41,6 +41,7 @@ import {
   assertProductionAuthSecrets,
   env,
   getAdminWatchProgressErasureConfig,
+  isWatchLearningErasureRequired,
   getAppleNativeClientConfig,
   getAuthBaseUrl,
   getAuthCustomAudiences,
@@ -64,6 +65,7 @@ const accountDeletionHooks = buildAccountDeletionHooks({
     }),
   getAppleConfig: getAppleNativeClientConfig,
   getAdminErasureConfig: getAdminWatchProgressErasureConfig,
+  isLearningErasureRequired: isWatchLearningErasureRequired,
 })
 
 const isNextBuild = process.env.NEXT_PHASE === "phase-production-build"

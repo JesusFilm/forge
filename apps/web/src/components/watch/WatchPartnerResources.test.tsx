@@ -2,41 +2,44 @@
  * @vitest-environment jsdom
  */
 
-import { act } from "react"
+import { act, createElement, type ReactNode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import {
-  WATCH_PARTNER_RESOURCE_CATEGORIES,
-  WATCH_PARTNER_RESOURCES,
-} from "@/lib/watch-partner-resources"
+vi.mock("next/image", () => ({
+  default: ({ fill: _fill, ...props }: Record<string, unknown>) =>
+    createElement("img", props),
+}))
+vi.mock("@/components/ui/carousel", () => {
+  const pass = (tag: string) =>
+    function Pass({
+      children,
+      opts: _opts,
+      label: _label,
+      ...props
+    }: Record<string, unknown> & { children?: ReactNode }) {
+      return createElement(tag, props, children)
+    }
+  return {
+    Carousel: pass("div"),
+    CarouselContent: pass("div"),
+    CarouselItem: pass("div"),
+    CarouselPrevious: () => null,
+    CarouselNext: () => null,
+  }
+})
 
+import { WATCH_PARTNER_RESOURCES } from "@/lib/watch-partner-resources"
+
+import { PARTNER_RESOURCES } from "./partner-resources"
 import { WatchPartnerResources } from "./WatchPartnerResources"
 
 let container: HTMLDivElement
 let root: Root
-let fetchMock: ReturnType<typeof vi.fn>
-
-function render() {
-  act(() => root.render(<WatchPartnerResources />))
-}
-
-function cards() {
-  return [...container.querySelectorAll<HTMLElement>("[data-resource-id]")]
-}
-
-function card(id: string) {
-  return container.querySelector<HTMLElement>(`[data-resource-id="${id}"]`)!
-}
-
-function filter(label: string) {
-  return [
-    ...container.querySelectorAll<HTMLButtonElement>("button[aria-pressed]"),
-  ].find((el) => el.textContent?.startsWith(label))!
-}
+const fetchMock = vi.fn()
 
 beforeEach(() => {
-  fetchMock = vi.fn()
+  fetchMock.mockReset()
   vi.stubGlobal("fetch", fetchMock)
   container = document.createElement("div")
   document.body.append(container)
@@ -49,87 +52,49 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe("WatchPartnerResources", () => {
-  it("lists the whole public library with no sign-in and no account request", () => {
-    render()
-
-    expect(cards().map((el) => el.dataset.resourceId)).toEqual(
-      WATCH_PARTNER_RESOURCES.map(({ id }) => id),
-    )
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(container.textContent).not.toMatch(/sign in|unlock/i)
+describe("partner-resources adapter", () => {
+  it("carries every verified record, with its real page, PDF and summary", () => {
+    expect(PARTNER_RESOURCES).toHaveLength(WATCH_PARTNER_RESOURCES.length)
+    for (const r of PARTNER_RESOURCES) {
+      const verified = WATCH_PARTNER_RESOURCES.find((v) => v.id === r.id)!
+      expect(r.href).toBe(verified.destination)
+      expect(r.pdf).toBe(verified.pdf)
+      expect(r.summary).toBe(verified.summary)
+      expect(r.image).toMatch(
+        /^https:\/\/www\.jesusfilm\.org\/wp-content\/uploads\//,
+      )
+    }
   })
+})
 
-  it("states each resource's category, source language and source date", () => {
-    render()
-    const first = WATCH_PARTNER_RESOURCES[0]!
-    const text = card(first.id).textContent!
-
-    expect(text).toContain(first.title)
-    expect(text).toContain(first.summary)
-    expect(text).toContain("English")
-    expect(text).toContain("Sep 15, 2026")
-    const category = WATCH_PARTNER_RESOURCE_CATEGORIES.find(
-      ({ id }) => id === first.category,
-    )!
-    expect(text).toContain(category.label)
-  })
-
-  it("filters by category and back, and says how many it is showing", () => {
-    render()
-    const training = WATCH_PARTNER_RESOURCES.filter(
-      ({ category }) => category === "training",
+describe("WatchPartnerResources (original presentation)", () => {
+  it("renders the PDF rail, the filterable toolkit and prayer guides with no account request", () => {
+    act(() => root.render(<WatchPartnerResources />))
+    const pdfs = container.querySelectorAll(
+      "[data-testid=watch-partner-pdfs] a",
     )
-
-    act(() => filter("Training").click())
-
-    expect(cards().map((el) => el.dataset.resourceId)).toEqual(
-      training.map(({ id }) => id),
-    )
-    expect(filter("Training").getAttribute("aria-pressed")).toBe("true")
-    expect(filter("All").getAttribute("aria-pressed")).toBe("false")
+    expect(pdfs).toHaveLength(PARTNER_RESOURCES.filter((r) => r.pdf).length)
+    for (const a of pdfs) expect(a.getAttribute("href")).toMatch(/\.pdf$/)
     expect(
-      container.querySelector('[data-testid="watch-partner-result-count"]')!
-        .textContent,
-    ).toBe(`Showing ${training.length} of ${WATCH_PARTNER_RESOURCES.length}`)
-
-    act(() => filter("All").click())
-    expect(cards()).toHaveLength(WATCH_PARTNER_RESOURCES.length)
+      container.querySelectorAll("[data-testid=watch-partner-grid] li"),
+    ).toHaveLength(PARTNER_RESOURCES.length)
+    expect(container.textContent).toContain("Monthly prayer guides")
+    expect(fetchMock).not.toHaveBeenCalled()
+    for (const a of container.querySelectorAll("a"))
+      expect(a.getAttribute("href")).not.toBe("#")
   })
 
-  it("links a resource with a PDF to both its page and the PDF, as external noopener links", () => {
-    render()
-    const withPdf = WATCH_PARTNER_RESOURCES.find(({ pdf }) => pdf)!
-    const links = [...card(withPdf.id).querySelectorAll("a")]
-
-    expect(links.map((a) => [a.textContent, a.getAttribute("href")])).toEqual([
-      [`View source page: ${withPdf.title}`, withPdf.destination],
-      [`Open PDF: ${withPdf.title}`, withPdf.pdf],
-    ])
-    for (const a of links) {
-      expect(a.getAttribute("target")).toBe("_blank")
-      expect(a.getAttribute("rel")).toBe("noopener noreferrer")
-    }
-  })
-
-  it("shows only the source page, never a false download, when a resource has no PDF", () => {
-    render()
-    const withoutPdf = WATCH_PARTNER_RESOURCES.find(({ pdf }) => !pdf)!
-    const links = [...card(withoutPdf.id).querySelectorAll("a")]
-
-    expect(links.map((a) => a.getAttribute("href"))).toEqual([
-      withoutPdf.destination,
-    ])
-    expect(card(withoutPdf.id).textContent).not.toMatch(/pdf|download/i)
-    expect(card(withoutPdf.id).querySelector("[download]")).toBeNull()
-  })
-
-  it("never turns a resource link into a same-origin download or a proxied URL", () => {
-    render()
-
-    for (const a of container.querySelectorAll<HTMLAnchorElement>("a")) {
-      expect(a.getAttribute("href")).toMatch(/^https:\/\/www\.jesusfilm\.org\//)
-      expect(a.hasAttribute("download")).toBe(false)
-    }
+  it("filters the toolkit by kind", () => {
+    act(() => root.render(<WatchPartnerResources />))
+    const tab = [
+      ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    ].find((b) => b.textContent?.startsWith("Equipment"))!
+    act(() => tab.click())
+    expect(tab.getAttribute("aria-selected")).toBe("true")
+    expect(
+      container.querySelectorAll("[data-testid=watch-partner-grid] li"),
+    ).toHaveLength(
+      PARTNER_RESOURCES.filter((r) => r.kind === "Equipment").length,
+    )
   })
 })

@@ -48,10 +48,12 @@ vi.mock("@/lib/dynamic-collection-cache-signature", () => ({
   createInitialDynamicCollectionFeedCacheSignatures: createCacheSignatures,
 }))
 
+const roleBandMock = vi.hoisted(() => vi.fn())
 vi.mock("@/components/home/WatchHomeRoleBand", () => ({
-  WatchHomeRoleBand: () => (
-    <section data-testid="watch-home-audience-frame-mock" />
-  ),
+  WatchHomeRoleBand: (props: unknown) => {
+    roleBandMock(props)
+    return <section data-testid="watch-home-audience-frame-mock" />
+  },
 }))
 
 vi.mock("@/components/home/WatchHomeFooter", () => ({
@@ -218,6 +220,61 @@ afterEach(async () => {
 })
 
 describe("WatchHomeExperiencePage", () => {
+  it("hands the published audience configuration to the one home band", async () => {
+    roleBandMock.mockClear()
+    const audience = { kind: "rejected" } as const
+    await act(async () =>
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={[makePageHeadingBlock("Fixture heading", "fixture-heading")]}
+          languageSlug="spanish"
+          locale="es"
+          audienceEnabled
+          audience={audience}
+        />,
+      ),
+    )
+    expect(roleBandMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        audience,
+        languageSlug: "spanish",
+      }),
+    )
+  })
+
+  it("recognizes the authored audience block without mounting a second frame or disturbing its neighbours", async () => {
+    const authored = {
+      __typename: "WatchAudienceBlock",
+      t: "watchAudience",
+      sectionKey: "watch-audience",
+      configurationJson: "{}",
+    } as unknown as Section
+    const first = makePageHeadingBlock("First", "first")
+    const second = makePageHeadingBlock("Second", "second")
+    const html = async (blocks: Section[]) => {
+      await act(async () =>
+        root.render(
+          <WatchHomeExperiencePage
+            heroModel={heroModel}
+            blocks={blocks}
+            languageSlug="spanish"
+            audienceEnabled
+          />,
+        ),
+      )
+      return container.innerHTML
+    }
+    const without = await html([first, second])
+    const withBlock = await html([first, authored, second])
+    expect(withBlock).toBe(without)
+    expect(
+      container.querySelectorAll(
+        '[data-testid="watch-home-audience-frame-mock"]',
+      ),
+    ).toHaveLength(1)
+  })
+
   it("keeps the audience frame off by default and adds it beside the unchanged authored content", async () => {
     const blocks = [makePageHeadingBlock("Fixture heading", "fixture-heading")]
     await act(async () =>

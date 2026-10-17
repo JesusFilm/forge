@@ -3,7 +3,7 @@ id: "feat-732"
 title: "Editor-owned Watch audience questionnaires"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-17"
 duration: 7
 depends_on:
@@ -93,3 +93,33 @@ The linked plan governs all KTDs and R-IDs cited above. Preserve the original di
 ## Verification
 
 Use the linked Verification Contract and the unit-specific scenarios above. Record real behavior, cross-layer checks where applicable, and a page-load comparison against the preceding stack parent. Run formatter and applicable lint/typecheck/build/schema drift checks before PR publication. Update this ticket to in-progress when implementation starts and complete only after the scoped implementation and checks finish; completion does not claim deployment.
+
+## Demonstrated local verification
+
+The shared schema, editor, projection, isolated publication/history/preview and idempotent import checks passed. Existing block starter and exhaustive union fixtures cover the new top-level block. Admin/Web/shared-package relevant lint/type checks, generated SDL/introspection validation and the production Web build passed. A normal hosted-Auth Admin session used Save Draft, Preview and Publish: the draft stayed out of live content, the capability preview rendered the draft questionnaire, and the normal watch-setting webhook updated home and synthetic video together. All six published-config browser cases passed at desktop and 390px. Public flag-off/on and genuine signed-in versus anonymous HTML checks retain public ISR headers, canonicals and session-independent markup.
+
+Parent/candidate production-load evidence includes the initial phone-home investigation and seven additional matched samples per variant. All original samples remain in the expanded result: phone-home median +6.84%, other cells below 1%, unchanged CLS and initial request counts. Poster paint remains bimodal; no causal claim about the mode-frequency difference is made. Exact receipts and raw evidence are in `/home/lado/.local/share/forge-watch-stack-20261017/`.
+
+## Rollout and compatibility
+
+Deploy the Admin producer schema before new modern selections where no compatibility tier exists. Web's public and capability-preview readers narrowly retry only known audience-schema lag; unrelated/execution errors remain failures. Current Mobile and TV explicitly use the unchanged legacy fragment, which was validated against both current and pre-audience SDL; their adapters skip unsupported metadata. Full native-app builds were not run for this Web/Admin scope.
+
+Use the reviewed local importer in dry-run mode first, then `--apply` to stage one draft; it never publishes and refuses non-local connection hosts. Publish only through the existing editorial lifecycle. One published default-template locale definition feeds both surfaces. Present rejected/unavailable authored configuration is omitted, never silently replaced. Code definitions remain only the declared temporary absent/old-schema fallback. Capability previews use their own staged configuration without querying the published source or entering public ISR caches. No production content or external flag was changed.
+
+## Review regression verification (2026-10-17)
+
+Review fix: watch-audience-editor.tsx retains action-score ownership across transient ID collisions and atomically remaps only unambiguous unique IDs. Colliding-prefix, editing/reorder/removal and ID-swap regressions pass without relaxing schema validation. 232 editor-scope tests and 22 shared-schema tests passed; the offered three simplification files are integrated. Publication/importer real DB suites enter CI only at stage 6. Full final Admin/Auth/Web typechecks and Web production build passed; matched desktop/390px home/video loading stayed within the plan budget.
+
+Detailed commands, red/green logs, real runtime proof, limits and six-stage reassembly receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r1/`.
+
+## Round 2 review corrections (2026-10-17)
+
+R2 corrections: the block library and insert backstop admit Watch Audience only on a template, preserving existing unrelated Experience blocks. Capability preview now gets template identity from the parent row and omits the staged questionnaire elsewhere; an older producer without that field fails closed. SDL/introspection regenerated together. Real isolated PostgreSQL preview/publication and built-Web template, ordinary-page and homepage-layout preview checks passed without publishing content.
+
+Exact red/green, integration, performance, stage replay and limitations receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r2/return-to-caller.json`. Parent owns final independent review and PR shipping.
+
+## Round 3 selected-template repair (2026-10-17)
+
+Generic route-template identity does not establish Watch ownership when multiple templates exist. Editor insertion and capability preview now use a separate server-derived selected identity, sharing public Watch's non-archived `createdAt`, then `id` ordering. Missing selected identity fails closed; historical blocks and generic route authoring remain intact. An older producer's exact missing-field error omits both the new identity and questionnaire; unrelated errors remain errors. SDL and introspection regenerate together.
+
+The second-template editor and renderer cases failed before the fix and pass after it. All 117 editor/service cases, 68 preview cases and the isolated real-PostgreSQL two-template publication proof pass. The retained performance clearance applies to frozen `0199bef`; final repair impact and integration checks are recorded separately before shipping.
