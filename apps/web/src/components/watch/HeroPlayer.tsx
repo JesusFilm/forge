@@ -75,6 +75,7 @@ import {
 } from "@/lib/watch-hero-preview-overlap"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
 import { MUX_HERO_POSTER_MAX_WIDTH, resolveMuxHeroPosterUrl } from "@/lib/url"
+import { withBandwidthTestStart } from "@/lib/hls-start-level"
 import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
 import { HeroPlayerControls } from "./HeroPlayerControls"
 import { SubtitleOverlay } from "./SubtitleOverlay"
@@ -228,7 +229,9 @@ const REVEALED_VIDEO_OBJECT_FIT_STYLE: CSSProperties = {
   objectFit: "contain",
 }
 
-const HERO_HLS_CONFIG = {
+// Measure bandwidth before picking the first rendition, so slow connections
+// start low instead of on Mux's first-listed 720p rung. See hls-start-level.ts.
+const HERO_HLS_CONFIG = withBandwidthTestStart({
   maxBufferLength: 10,
   maxBufferSize: 5_000_000,
   backBufferLength: 5,
@@ -236,7 +239,7 @@ const HERO_HLS_CONFIG = {
   // subtitle selection through the injected track below, so keep HLS.js from
   // creating/auto-selecting Mux's generated caption tracks.
   enableWebVTT: false,
-}
+})
 const HERO_PLAYER_ID = "watch-hero-player"
 const HERO_PLAYER_MEDIA_ID = "watch-hero-player-media"
 const HERO_POSTER_TIME_SECONDS = 2
