@@ -1,7 +1,7 @@
 ---
 title: "Admin experience media picker should persist asset IDs and resolve app URLs at read boundaries"
 date: "2026-07-07"
-last_updated: "2026-07-23"
+last_updated: "2026-10-16"
 category: best-practices
 module: "apps/admin media assets, apps/web watch home"
 problem_type: best_practice
@@ -12,6 +12,7 @@ applies_when:
   - "Serving admin-managed image assets to web, mobile, or TV consumers"
   - "Replacing raw persisted media URLs with structured MediaAsset references"
   - "Adding GraphQL block fields that expose public media asset metadata"
+  - "Reading legacy Experience rows after strict block schemas retire old fields"
 tags:
   - admin
   - media-assets
@@ -20,6 +21,7 @@ tags:
   - graphql
   - watch-home
   - public-preview
+  - legacy-json
 ---
 
 # Admin experience media picker should persist asset IDs and resolve app URLs at read boundaries
@@ -117,6 +119,29 @@ temporary read-time canonicalizer and a production backfill. The safe sequence i
    no explicit card shape, promote `thumbnailOrientation: "vertical"` so poster
    rails keep their intended layout after the image field is canonical.
 5. Run the backfill dry-run against production, inspect counts, then execute.
+
+Do not assume a completed backfill means every persisted locale and revision is
+clean forever. Locales outside the sampled path, old revisions, imports, and
+partial operational runs can leave legacy JSON behind. Keep a narrow
+storage-read compatibility boundary for retired fields while such rows may
+exist:
+
+```ts
+const persistedBlocks = stripRetiredBlockVisualUrls(locale.blocks)
+const draft = ExperienceLocaleDraftDataSchema.parse({
+  ...localeOwnedFields,
+  blocks: persistedBlocks,
+})
+```
+
+Apply this only to canonical rows and revision snapshots read from storage.
+New editor, GraphQL, and MCP input must still pass the unmodified strict
+`BlocksSchema`, so compatibility does not silently re-admit retired authoring
+fields. When duplication intentionally preserves saved JSON instead of Zod's
+defaulted output, persist the sanitized saved JSON; otherwise the newly created
+draft carries the same invalid keys and its preview fails. The sanitizer must
+not mutate the source and must leave legitimate URL contracts such as
+`mediaUrl` intact.
 
 For app consumers, do not require the admin session cookie for previews. Serve
 only READY previews anonymously, use public cache headers for anonymous preview

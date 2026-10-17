@@ -30,6 +30,7 @@ import { runExperienceEmbedding } from "@/workflows/experienceEmbedding"
 import { emitRevalidateWebhook } from "./revalidate-webhook"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
 import { validateExperienceEditorDubSelections } from "./experience-editor-video.service"
+import { stripRetiredBlockVisualUrls } from "./experience-persisted-blocks"
 import {
   CreateExperienceInput,
   DuplicateExperienceInput,
@@ -293,7 +294,7 @@ export function draftDataFromLocale(
     ogTitle: locale.ogTitle,
     ogDescription: locale.ogDescription,
     ogImageUrl: locale.ogImageUrl,
-    blocks: locale.blocks,
+    blocks: stripRetiredBlockVisualUrls(locale.blocks),
   })
 }
 
@@ -320,7 +321,13 @@ function effectiveDraftData(
   const data = asSnapshotRecord(envelope?.data)
   // Older and SEO-created revisions may be partial. Adopt them by filling all
   // missing locale-owned fields from canonical before the next write.
-  return ExperienceLocaleDraftDataSchema.parse({ ...base, ...(data ?? {}) })
+  return ExperienceLocaleDraftDataSchema.parse({
+    ...base,
+    ...(data ?? {}),
+    ...(data && "blocks" in data
+      ? { blocks: stripRetiredBlockVisualUrls(data.blocks) }
+      : {}),
+  })
 }
 
 function effectiveLocale<T extends LocaleSnapshotSource>(
@@ -712,10 +719,13 @@ export class ExperienceService {
           }
           // Validate through the persistence schema, but store the saved JSON
           // itself so schema defaults never rewrite authored content.
-          const savedBlocks = activeDraft
-            ? (asSnapshotRecord(asSnapshotRecord(activeDraft.snapshot)?.data)
-                ?.blocks ?? canonical.blocks)
-            : canonical.blocks
+          // Blocks saved before raw image URLs were retired lose those keys.
+          const savedBlocks = stripRetiredBlockVisualUrls(
+            activeDraft
+              ? (asSnapshotRecord(asSnapshotRecord(activeDraft.snapshot)?.data)
+                  ?.blocks ?? canonical.blocks)
+              : canonical.blocks,
+          )
           return {
             sourceLocaleId: canonical.id,
             copiedFrom: activeDraft

@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 16, 2026)
 
-- **Total tickets:** 843
+- **Total tickets:** 844
 - **Complete:** 627
 - **Cancelled:** 41
-- **In progress:** 67
+- **In progress:** 68
 - **Not started:** 51
 - **Blocked:** 57
 - **Overdue and open:** 160
@@ -70,6 +70,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | complete    |
 | [feat-559](content-discovery/feat-559-recommendation-crawler-traffic-isolation.md)                             | Isolate crawler and speculative recommendation traffic before persistence                       | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
+| [feat-712](content-discovery/feat-712-recommendation-reconciliation-shared-memory.md)                          | Bound recommendation reconciliation shared memory                                               | nisal      | P0       | 2026-10-16 | 1    | 2026-10-16 | in-progress |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | cancelled   |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | cancelled   |
@@ -318,7 +319,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-629](media-generation/feat-629-studio-failed-render-diagnosis.md)                     | Diagnose Lyuba's failed Studio export                                 | tataihono | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-630](media-generation/feat-630-shorts-project-deletion.md)                            | Owner project deletion in Shorts Studio and MCP                       | tataihono | P1       | 2026-10-09 | 1    | 2026-10-09 | complete    |
 | [feat-692](media-generation/feat-692-studio-autosave-and-session-warning.md)                | Studio autosave and expired-session edit protection                   | tataihono | P1       | 2026-10-12 | 2    | 2026-10-13 | complete    |
-| [feat-713](media-generation/feat-713-studio-mux-terminal-asset-failure.md)                  | Stop Studio Mux reconciliation after terminal asset failure           | nisal     | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
+| [feat-716](media-generation/feat-716-studio-mux-terminal-asset-failure.md)                  | Stop Studio Mux reconciliation after terminal asset failure           | nisal     | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -864,6 +865,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-699](topic-experiences/feat-699-watch-uncached-upstream-errors.md)                    | Keep transient Watch lookup failures out of shared Data Cache                    | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-700](topic-experiences/feat-700-watch-transient-html-cache-errors.md)                 | Prevent transient Watch render failures from becoming cached HTML                | vlad          | P1       | 2026-10-14 | 3    | 2026-10-16 | not-started |
 | [feat-711](topic-experiences/feat-711-independent-page-duplication.md)                      | Independent unpublished page duplication with working draft preview              | vlad          | P1       | 2026-10-15 | 2    | 2026-10-16 | complete    |
+| [feat-712](topic-experiences/feat-712-legacy-experience-block-read-compatibility.md)        | Restore legacy Experience block read compatibility                               | codex         | P1       | 2026-10-16 | 1    | 2026-10-16 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad          | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit       | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim          | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
