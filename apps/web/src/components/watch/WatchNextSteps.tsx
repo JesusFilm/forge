@@ -1,6 +1,11 @@
 "use client"
 
+import dynamic from "next/dynamic"
+import Link from "next/link"
+import type { WatchShareFilm } from "@/lib/watch-share-kit"
+
 import {
+  languageVideosIndexPath,
   languagesIndexPath,
   localizedHistoryPath,
   localizedLanguagesPath,
@@ -24,7 +29,13 @@ import {
 } from "./WatchRoleJourney"
 import { WatchRoleTabs } from "./WatchRoleTabs"
 
+const WatchShareIdeas = dynamic(() =>
+  import("./WatchShareIdeas").then((module) => module.WatchShareIdeas),
+)
+
 export type WatchNextStepsProps = {
+  shareFilm?: WatchShareFilm | null
+  onRequestShareLanguages?: () => void
   languageSlug?: string
   locale?: string
   config?: WatchAudienceConfig
@@ -35,6 +46,8 @@ export type WatchNextStepsProps = {
 
 /** Shared home/video frame. The host supplies only controls that work here. */
 export function WatchNextSteps({
+  shareFilm = null,
+  onRequestShareLanguages,
   languageSlug,
   locale,
   config = WATCH_AUDIENCE_CODE_CONFIG,
@@ -111,6 +124,23 @@ export function WatchNextSteps({
                       locale={locale}
                     />
                   </div>
+                ) : role === "share" ? (
+                  <WatchShareIdeas
+                    film={shareFilm}
+                    onShareClick={currentVideoActions.share}
+                    onRequestLanguageOptions={onRequestShareLanguages}
+                    collection={
+                      language ? (
+                        <Link
+                          href={languageVideosIndexPath(language)}
+                          prefetch={false}
+                          className="inline-flex min-h-11 items-center underline underline-offset-4"
+                        >
+                          Browse films in this audio language
+                        </Link>
+                      ) : null
+                    }
+                  />
                 ) : null
               }
             />
