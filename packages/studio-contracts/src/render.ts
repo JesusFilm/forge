@@ -17,7 +17,7 @@ export const studioRenderAssignmentSchema = z
   .strict()
 
 /** Versioned execution contract. Changing a bound requires a new profile ID. */
-export const STUDIO_RENDER_PROFILE = Object.freeze({
+export const STUDIO_RENDER_PROFILE_V1 = Object.freeze({
   id: "studio-render-1/900s-2cpu-2g-128p-96child-128m",
   jobMs: 900000,
   uploadMs: 10000,
@@ -36,6 +36,30 @@ export const STUDIO_RENDER_PROFILE = Object.freeze({
   childPids: 96,
   outputBytes: 134217728,
 } as const)
+
+/** Current execution only. Legacy descriptors remain readable for settlements. */
+export const STUDIO_RENDER_PROFILE = Object.freeze({
+  ...STUDIO_RENDER_PROFILE_V1,
+  id: "studio-render-2/1200s-180prep-2cpu-2g-128p-96child-128m",
+  jobMs: 1200000,
+  requestMs: 1220000,
+  leaseMs: 1500000,
+  preparationMs: 180000,
+} as const)
+
+export const studioRenderExecutionProfileSchema = z
+  .record(z.string(), z.union([z.string(), z.number()]))
+  .refine(
+    (value) =>
+      [STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE].some(
+        (profile) =>
+          Object.keys(value).length === Object.keys(profile).length &&
+          Object.entries(profile).every(
+            ([key, expected]) => value[key] === expected,
+          ),
+      ),
+    "Unsupported immutable render profile",
+  )
 
 export const STUDIO_RENDER_INPUT_BYTES = 128 * 1024 * 1024
 export const STUDIO_RENDER_WIRE_BYTES = 180 * 1024 * 1024

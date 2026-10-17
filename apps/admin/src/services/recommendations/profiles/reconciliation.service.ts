@@ -67,9 +67,14 @@ export async function runRecommendationProfileReconciliationBatch(
     `)
     if (lock[0]?.acquired !== true) return null
 
-    // These short batches lose seconds to JIT compilation. Transaction-local
-    // scope restores the connection's setting on both commit and rollback.
+    // These short batches lose seconds to JIT compilation. The lineage scan can
+    // also select a parallel plan whose dynamic shared-memory allocations exceed
+    // Railway Postgres' /dev/shm budget. Keep both guards transaction-local so
+    // pooled connections return to their configured defaults on commit/rollback.
     await tx.$executeRaw(Prisma.sql`SET LOCAL jit = off`)
+    await tx.$executeRaw(
+      Prisma.sql`SET LOCAL max_parallel_workers_per_gather = 0`,
+    )
 
     const attemptsExhausted = await tx.$executeRaw(Prisma.sql`
       UPDATE recommendation_profile_projection_run

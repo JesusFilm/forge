@@ -1,3 +1,8 @@
+import {
+  StudioHlsError,
+  studioHlsRendition,
+  studioHlsSegments,
+} from "@forge/studio-contracts/hls"
 import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { adminGraphql } from "@forge/admin-graphql"
 import { print } from "@apollo/client/utilities"
@@ -74,7 +79,6 @@ const resolvedSchema = z.array(
     eligibility: z.unknown(),
   }),
 )
-type Segment = { url: string; duration: number; startMs: number; endMs: number }
 
 async function readBounded(response: Response, max: number) {
   if (!response.ok || !response.body)
@@ -99,10 +103,43 @@ async function readBounded(response: Response, max: number) {
   }
   return Buffer.concat(chunks)
 }
+/** One preparation owns this bounded cache. Callers stage segments sequentially;
+ * repeated clips reuse the same bytes without spending the transfer budget again. */
+export function createStudioSourceDownload(
+  signal?: AbortSignal,
+  budget = LIMIT,
+) {
+  const cache = new Map<string, Buffer>()
+  let transferred = 0
+  return async (raw: string, max = LIMIT) => {
+    signal?.throwIfAborted()
+    const url = canonicalMediaUrl(raw)
+    const prior = cache.get(url.href)
+    if (prior) {
+      if (prior.length > max)
+        throw new StudioBrokerError("Preview transfer exceeds its byte budget")
+      return prior
+    }
+    const bytes = await readBounded(
+      await fetch(url, {
+        redirect: "error",
+        signal: boundedSignal(20000, signal),
+      }),
+      Math.min(max, budget - transferred),
+    )
+    transferred += bytes.length
+    cache.set(url.href, bytes)
+    return bytes
+  }
+}
+
 export function createStudioAssetBroker(
   call: StudioBrokerClient,
   signal?: AbortSignal,
 ) {
+  // This broker belongs to one preparation. A completed immutable registration
+  // can be reused without issuing another upload grant or transferring its bytes.
+  const registered = new Map<string, StudioAssetReference>()
   return {
     async read(ref: StudioAssetReference, max = LIMIT) {
       const grant = z
@@ -132,6 +169,7 @@ export function createStudioAssetBroker(
         string | number | number[] | StudioAssetReference
       > = {},
     ) {
+      signal?.throwIfAborted()
       const input = studioAssetUploadSchema.parse({
         metadata: {
           idempotencyKey: `broker-${hash(bytes)}-${hash(JSON.stringify({ filename, type, role, dependencies, recorded })).slice(0, 24)}`,
@@ -144,6 +182,9 @@ export function createStudioAssetBroker(
         digest: hash(bytes),
         byteSize: bytes.length,
       })
+      const identity = hash(canonical(input))
+      const prior = registered.get(identity)
+      if (prior) return prior
       const grant = z
         .object({ path: z.string() })
         .parse(await call("asset-upload", input))
@@ -160,74 +201,35 @@ export function createStudioAssetBroker(
       )
       if (!response.ok)
         throw new StudioBrokerError("Could not retain preview media")
-      return studioAssetVersionSchema.parse(await response.json()).reference
+      const reference = studioAssetVersionSchema.parse(
+        await response.json(),
+      ).reference
+      signal?.throwIfAborted()
+      registered.set(identity, reference)
+      return reference
     },
   }
 }
-function rendition(
-  master: string,
-  base: string,
-  target: number,
-  exact: boolean,
-) {
-  const lines = master.trim().split(/\r?\n/),
-    choices: { url: string; height: number }[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const resolution = lines[i]!.match(
-      /^#EXT-X-STREAM-INF:.*RESOLUTION=(\d+)x(\d+)/,
-    )
-    if (resolution && lines[i + 1] && !lines[i + 1]!.startsWith("#"))
-      choices.push({
-        url: new URL(lines[i + 1]!, base).href,
-        height: Number(resolution[2]),
-      })
+function brokerHls<T>(parse: () => T): T {
+  try {
+    return parse()
+  } catch (error) {
+    if (error instanceof StudioHlsError)
+      throw new StudioBrokerError(error.message)
+    throw error
   }
-  const selected = exact
-    ? choices.find((c) => c.height === target)
-    : (choices
-        .filter((c) => c.height <= target)
-        .sort((a, b) => b.height - a.height)[0] ??
-      choices.sort((a, b) => a.height - b.height)[0])
-  if (!selected)
-    throw new StudioBrokerError("The admitted source rendition is unavailable")
-  return selected
 }
+const rendition = (...args: Parameters<typeof studioHlsRendition>) =>
+  brokerHls(() => studioHlsRendition(...args))
 function playlistSegments(
   text: string,
   base: string,
   startMs: number,
   endMs: number,
 ) {
-  if (
-    /#EXT-X-(KEY|MAP|BYTERANGE|DISCONTINUITY|MEDIA)(?::|\r?$)/m.test(text) ||
-    !text.includes("#EXT-X-ENDLIST")
+  const all = brokerHls(() => studioHlsSegments(text, base)).filter(
+    (segment) => segment.endMs > startMs && segment.startMs < endMs,
   )
-    throw new StudioBrokerError(
-      "Unsupported HLS structure; select another catalog source",
-    )
-  const lines = text.trim().split(/\r?\n/)
-  let elapsed = 0
-  const all: Segment[] = []
-  for (let i = 0; i < lines.length; i++) {
-    if (!lines[i]!.startsWith("#EXTINF:")) continue
-    const duration = Number(lines[i]!.slice(8).split(",")[0])
-    if (
-      !Number.isFinite(duration) ||
-      duration <= 0 ||
-      duration > 30 ||
-      !lines[i + 1] ||
-      lines[i + 1]!.startsWith("#")
-    )
-      throw new StudioBrokerError("Invalid HLS segment")
-    const segment = {
-      url: new URL(lines[i + 1]!, base).href,
-      duration,
-      startMs: elapsed,
-      endMs: elapsed + duration * 1000,
-    }
-    elapsed = segment.endMs
-    if (segment.endMs > startMs && segment.startMs < endMs) all.push(segment)
-  }
   if (
     !all.length ||
     all.length > 128 ||
@@ -256,7 +258,9 @@ export async function materialize(
   snapshot: ShortSourceSnapshot,
   preview: StudioAssetReference,
   exportRef: StudioAssetReference,
+  signal?: AbortSignal,
 ) {
+  signal?.throwIfAborted()
   if (!env.ADMIN_MANAGER_API_KEY)
     throw new StudioBrokerError(
       "Trusted source materialization is not configured",
@@ -283,12 +287,13 @@ export async function materialize(
       },
     }),
     redirect: "error",
-    signal: AbortSignal.timeout(30000),
+    signal: boundedSignal(30000, signal),
   })
   const payload = (await response.json()) as {
     data?: { materializeShortsSource: unknown }
     errors?: unknown
   }
+  signal?.throwIfAborted()
   if (!response.ok || payload.errors)
     throw new StudioBrokerError("Source materialization was rejected")
   return studioSourceSnapshotSchema.parse(payload.data?.materializeShortsSource)
@@ -375,20 +380,14 @@ export async function prepareStudioRenderSources(
         await call("preview-sources", { projectId, document }),
       ),
       assets = createStudioAssetBroker(call, signal)
-    let transferred = 0
-    async function download(raw: string, max = LIMIT) {
-      const url = canonicalMediaUrl(raw)
-      const bytes = await readBounded(
-        await fetch(url, {
-          redirect: "error",
-          signal: boundedSignal(20000, signal),
-        }),
-        Math.min(max, LIMIT - transferred),
-      )
-      transferred += bytes.length
-      return bytes
-    }
+    const download = createStudioSourceDownload(signal)
     const mediaStarts = studioMediaStartTimes(document)
+    // Only completed verification of the same ordered bytes/durations and height
+    // is reusable. The executable configuration is fixed for this preparation.
+    const verifiedCodecs = new Map<
+      string,
+      { width: number; height: number; codec_name: string }
+    >()
     for (const resolvedEntry of resolved) {
       const entry = {
         ...resolvedEntry,
@@ -442,11 +441,13 @@ export async function prepareStudioRenderSources(
           entry.startMs,
           entry.endMs,
         )
-        const prefix = `${id.replace(/[^a-zA-Z0-9_-]/g, "_")}-${purpose}`,
-          names = segments.map((_, i) => `${prefix}-${i}.ts`),
-          refs: StudioAssetReference[] = []
+        // Shared URL identities keep staged files within the unique-byte budget.
+        const names = segments.map((segment) => `${hash(segment.url)}.ts`),
+          refs: StudioAssetReference[] = [],
+          digests: string[] = []
         for (let i = 0; i < segments.length; i++) {
           const bytes = await download(segments[i]!.url)
+          digests.push(hash(bytes))
           await writeFile(join(directory, names[i]!), bytes)
           refs.push(
             await assets.register(
@@ -468,61 +469,82 @@ export async function prepareStudioRenderSources(
             segments.map((s) => s.duration),
             names,
           ),
-          listName = `${prefix}.m3u8`
+          listName = `${hash(list)}.m3u8`
         await writeFile(join(directory, listName), list)
-        const { stdout } = await exec(
-          env.STUDIO_FFPROBE_PATH,
-          [
-            "-v",
-            "error",
-            "-protocol_whitelist",
-            "file,crypto,data",
-            "-show_streams",
-            "-of",
-            "json",
-            join(directory, listName),
-          ],
-          { timeout: 30000, maxBuffer: 262144, signal },
+        const verificationIdentity = hash(
+          canonical({
+            verification: "decoded-h264-v1",
+            height: variant.height,
+            segments: segments.map((segment, i) => [
+              digests[i],
+              segment.duration,
+            ]),
+          }),
         )
-        const probe = z
-          .object({
-            streams: z.array(
-              z.object({
-                codec_type: z.string(),
-                codec_name: z.string().optional(),
-                height: z.number().optional(),
-                width: z.number().optional(),
-              }),
-            ),
-          })
-          .parse(JSON.parse(stdout))
-        const video = probe.streams.find((s) => s.codec_type === "video")
-        if (
-          video?.codec_name !== "h264" ||
-          video.height !== variant.height ||
-          !video.width
-        )
-          throw new StudioBrokerError(
-            "Selected media does not match the admitted codec and resolution",
+        signal?.throwIfAborted()
+        let video = verifiedCodecs.get(verificationIdentity)
+        if (!video) {
+          const { stdout } = await exec(
+            env.STUDIO_FFPROBE_PATH,
+            [
+              "-v",
+              "error",
+              "-protocol_whitelist",
+              "file,crypto,data",
+              "-show_streams",
+              "-of",
+              "json",
+              join(directory, listName),
+            ],
+            { timeout: 30000, maxBuffer: 262144, signal },
           )
-        // Decode the complete bounded segment selection; no MP4 movie/render prerequisite.
-        await exec(
-          env.STUDIO_FFMPEG_PATH,
-          [
-            "-v",
-            "error",
-            "-protocol_whitelist",
-            "file,crypto,data",
-            "-i",
-            join(directory, listName),
-            "-map",
-            "0:v:0",
-            "-f",
-            "null",
-            "-",
-          ],
-          { timeout: 60000, maxBuffer: 262144, signal },
-        )
+          const probe = z
+            .object({
+              streams: z.array(
+                z.object({
+                  codec_type: z.string(),
+                  codec_name: z.string().optional(),
+                  height: z.number().optional(),
+                  width: z.number().optional(),
+                }),
+              ),
+            })
+            .parse(JSON.parse(stdout))
+          const measured = probe.streams.find((s) => s.codec_type === "video")
+          if (
+            measured?.codec_name !== "h264" ||
+            measured.height !== variant.height ||
+            !measured.width
+          )
+            throw new StudioBrokerError(
+              "Selected media does not match the admitted codec and resolution",
+            )
+          // Decode the complete bounded segment selection; no MP4 movie/render prerequisite.
+          await exec(
+            env.STUDIO_FFMPEG_PATH,
+            [
+              "-v",
+              "error",
+              "-protocol_whitelist",
+              "file,crypto,data",
+              "-i",
+              join(directory, listName),
+              "-map",
+              "0:v:0",
+              "-f",
+              "null",
+              "-",
+            ],
+            { timeout: 60000, maxBuffer: 262144, signal },
+          )
+          signal?.throwIfAborted()
+          video = {
+            width: measured.width,
+            height: variant.height,
+            codec_name: measured.codec_name,
+          }
+          verifiedCodecs.set(verificationIdentity, video)
+        }
         const listRef = await assets.register(
           listName,
           "application/vnd.apple.mpegurl",
@@ -553,7 +575,7 @@ export async function prepareStudioRenderSources(
           .digest("hex")
         manifests.push(
           await assets.register(
-            `${prefix}.json`,
+            `${hash(bytes)}.json`,
             "application/json",
             "manifest",
             bytes,
@@ -563,7 +585,12 @@ export async function prepareStudioRenderSources(
         )
       }
 
-      const verified = await materialize(snapshot, manifests[0]!, manifests[1]!)
+      const verified = await materialize(
+        snapshot,
+        manifests[0]!,
+        manifests[1]!,
+        signal,
+      )
       document = {
         ...document,
         items: document.items.map((i) =>

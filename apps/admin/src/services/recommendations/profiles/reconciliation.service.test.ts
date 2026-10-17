@@ -114,6 +114,14 @@ describe("profile eligibility reconciliation", () => {
     expect(queries).toContain("LIMIT ?")
     expect(queries).toContain("source_eligibility_revision")
     expect(queries).toContain("lease_expires_at")
+
+    const transactionSettings = harness.executeRaw.mock.calls
+      .map(([sql]) => sqlText(sql))
+      .filter((sql) => sql.startsWith("SET LOCAL"))
+    expect(transactionSettings).toEqual([
+      "SET LOCAL jit = off",
+      "SET LOCAL max_parallel_workers_per_gather = 0",
+    ])
   })
 
   it("does no work when another bounded batch owns the advisory lock", async () => {

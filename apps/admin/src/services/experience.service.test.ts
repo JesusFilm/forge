@@ -165,6 +165,45 @@ describe("ExperienceService", () => {
       expect(prisma.contentRevision.update).not.toHaveBeenCalled()
     })
 
+    it("loads canonical and draft blocks that still carry retired image URLs", async () => {
+      const staleItem = {
+        t: "mediaCollection",
+        variant: "collection",
+        itemsSource: "manual",
+        showItemNumbers: false,
+        items: [{ videoId: "video-1", imageUrl: "https://cdn/retired.jpg" }],
+      }
+      const draft = {
+        id: "stale-draft",
+        entityType: "ExperienceLocale",
+        entityId: locale.id,
+        status: "DRAFT",
+        previewToken: "token",
+        snapshot: { v: 1, data: { blocks: [staleItem] } },
+      }
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+        ...locale,
+        blocks: [staleItem],
+      })
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(draft)
+
+      const state = await service.getLocaleDraftState({
+        id: locale.id,
+        user: EDITOR_ALICE,
+      })
+
+      // The editor state is schema-parsed, so defaults may appear; the
+      // retired key must not, and the rest of the item must survive.
+      expect(JSON.stringify(state.effective.blocks)).not.toContain("imageUrl")
+      expect(state.effective.blocks[0]).toMatchObject({
+        t: "mediaCollection",
+        items: [{ videoId: "video-1" }],
+      })
+      // Reads never write the cleaned shape back.
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      expect(draft.snapshot.data.blocks).toEqual([staleItem])
+    })
+
     it("atomically adopts an SEO-created draft without a preview token", async () => {
       const seoDraft = {
         id: "seo-draft",
@@ -773,6 +812,136 @@ describe("ExperienceService", () => {
       ).toEqual(authoredBlocks)
     })
 
+    describe("persisted blocks written before raw image URLs were retired", () => {
+      function staleBlocks() {
+        return [
+          { t: "text", heading: "Ordinary block" },
+          {
+            t: "mediaCollection",
+            variant: "collection",
+            itemsSource: "manual",
+            showItemNumbers: false,
+            items: [
+              {
+                videoId: "video-1",
+                imageUrl: "https://cdn.example.com/retired.jpg",
+                imageAssetId: "asset-1",
+              },
+              { videoId: "video-2", imageUrl: "/api/media-assets/a/preview" },
+            ],
+          },
+        ]
+      }
+
+      function cleanedBlocks() {
+        return [
+          { t: "text", heading: "Ordinary block" },
+          {
+            t: "mediaCollection",
+            variant: "collection",
+            itemsSource: "manual",
+            showItemNumbers: false,
+            items: [
+              { videoId: "video-1", imageAssetId: "asset-1" },
+              { videoId: "video-2" },
+            ],
+          },
+        ]
+      }
+
+      it("duplicates canonical blocks after dropping the retired keys, leaving the source untouched", async () => {
+        const stale = staleBlocks()
+        const sourceRow = sourceLocale({
+          status: "PUBLISHED",
+          publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          blocks: stale,
+        })
+        prisma.experience.findFirst.mockResolvedValueOnce(source([sourceRow]))
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        await service.duplicate({
+          input: { id: "exp-source", sourceVersion: "CANONICAL" },
+          user: ADMIN,
+        })
+
+        const createdBlocks =
+          prisma.experience.create.mock.calls[0][0].data.locales.create[0]
+            .blocks
+        expect(createdBlocks).toEqual(cleanedBlocks())
+        expect(JSON.stringify(createdBlocks)).not.toContain("imageUrl")
+        expect(
+          (stagedDrafts()[0]!.snapshot as { data: { blocks: unknown } }).data
+            .blocks,
+        ).toEqual(cleanedBlocks())
+        // The source row is read, never rewritten or mutated.
+        expect(sourceRow.blocks).toEqual(staleBlocks())
+        expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+        expect(prisma.experienceLocale.updateMany).not.toHaveBeenCalled()
+        expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      })
+
+      it("duplicates an active draft snapshot after dropping the retired keys", async () => {
+        const activeDraft = {
+          id: "rev-stale",
+          entityId: "loc-en",
+          snapshot: { v: 1, data: { blocks: staleBlocks() } },
+          revisedAt: new Date("2026-10-14T00:00:00.000Z"),
+          revisedBy: "bob",
+          reason: null,
+        }
+        const draftBefore = structuredClone(activeDraft)
+        prisma.experience.findFirst.mockResolvedValueOnce(
+          source([sourceLocale({ blocks: [] })]),
+        )
+        prisma.contentRevision.findMany.mockResolvedValueOnce([activeDraft])
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        const result = await service.duplicate({
+          input: { id: "exp-source" },
+          user: ADMIN,
+        })
+
+        expect(
+          prisma.experience.create.mock.calls[0][0].data.locales.create[0]
+            .blocks,
+        ).toEqual(cleanedBlocks())
+        expect(
+          (stagedDrafts()[0]!.snapshot as { data: { blocks: unknown } }).data
+            .blocks,
+        ).toEqual(cleanedBlocks())
+        expect(result.duplication.locales[0]!.source.copiedFrom).toBe(
+          "ACTIVE_DRAFT",
+        )
+        expect(activeDraft).toEqual(draftBefore)
+        expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+      })
+
+      it("still rejects blocks that are invalid for any other reason", async () => {
+        prisma.experience.findFirst.mockResolvedValueOnce(
+          source([
+            sourceLocale({
+              blocks: [
+                {
+                  t: "mediaCollection",
+                  variant: "collection",
+                  itemsSource: "manual",
+                  showItemNumbers: false,
+                  items: [{ videoId: "video-1", surprise: "unknown" }],
+                },
+              ],
+            }),
+          ]),
+        )
+
+        await expect(
+          service.duplicate({ input: { id: "exp-source" }, user: ADMIN }),
+        ).rejects.toThrow("cannot be duplicated")
+        expect(prisma.experience.create).not.toHaveBeenCalled()
+      })
+    })
+
     it("allows an ADMIN to duplicate an archived Experience", async () => {
       prisma.experience.findFirst.mockResolvedValueOnce(
         source([sourceLocale({ slug: "archived", status: "ARCHIVED" })], {
@@ -1284,6 +1453,30 @@ describe("ExperienceService", () => {
           }),
         }),
       )
+    })
+
+    it("rejects new raw image URL input even when the stored draft is stale", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await expect(
+        service.updateLocale({
+          input: {
+            id: "loc-1",
+            blocks: [
+              {
+                t: "mediaCollection",
+                variant: "collection",
+                itemsSource: "manual",
+                showItemNumbers: false,
+                items: [{ videoId: "video-1", imageUrl: "/new.jpg" }],
+              },
+            ],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toThrow()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
     })
 
     it("runs block validation inside the draft transaction before writing", async () => {
