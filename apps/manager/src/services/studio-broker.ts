@@ -382,6 +382,12 @@ export async function prepareStudioRenderSources(
       assets = createStudioAssetBroker(call, signal)
     const download = createStudioSourceDownload(signal)
     const mediaStarts = studioMediaStartTimes(document)
+    // Only completed verification of the same ordered bytes/durations and height
+    // is reusable. The executable configuration is fixed for this preparation.
+    const verifiedCodecs = new Map<
+      string,
+      { width: number; height: number; codec_name: string }
+    >()
     for (const resolvedEntry of resolved) {
       const entry = {
         ...resolvedEntry,
@@ -435,13 +441,13 @@ export async function prepareStudioRenderSources(
           entry.startMs,
           entry.endMs,
         )
-        const prefix = `${id.replace(/[^a-zA-Z0-9_-]/g, "_")}-${purpose}`,
-          // Shared URL identities keep staged files within the same unique-byte
-          // budget as downloads, even when many clips reuse a segment.
-          names = segments.map((segment) => `${hash(segment.url)}.ts`),
-          refs: StudioAssetReference[] = []
+        // Shared URL identities keep staged files within the unique-byte budget.
+        const names = segments.map((segment) => `${hash(segment.url)}.ts`),
+          refs: StudioAssetReference[] = [],
+          digests: string[] = []
         for (let i = 0; i < segments.length; i++) {
           const bytes = await download(segments[i]!.url)
+          digests.push(hash(bytes))
           await writeFile(join(directory, names[i]!), bytes)
           refs.push(
             await assets.register(
@@ -463,61 +469,82 @@ export async function prepareStudioRenderSources(
             segments.map((s) => s.duration),
             names,
           ),
-          listName = `${prefix}.m3u8`
+          listName = `${hash(list)}.m3u8`
         await writeFile(join(directory, listName), list)
-        const { stdout } = await exec(
-          env.STUDIO_FFPROBE_PATH,
-          [
-            "-v",
-            "error",
-            "-protocol_whitelist",
-            "file,crypto,data",
-            "-show_streams",
-            "-of",
-            "json",
-            join(directory, listName),
-          ],
-          { timeout: 30000, maxBuffer: 262144, signal },
+        const verificationIdentity = hash(
+          canonical({
+            verification: "decoded-h264-v1",
+            height: variant.height,
+            segments: segments.map((segment, i) => [
+              digests[i],
+              segment.duration,
+            ]),
+          }),
         )
-        const probe = z
-          .object({
-            streams: z.array(
-              z.object({
-                codec_type: z.string(),
-                codec_name: z.string().optional(),
-                height: z.number().optional(),
-                width: z.number().optional(),
-              }),
-            ),
-          })
-          .parse(JSON.parse(stdout))
-        const video = probe.streams.find((s) => s.codec_type === "video")
-        if (
-          video?.codec_name !== "h264" ||
-          video.height !== variant.height ||
-          !video.width
-        )
-          throw new StudioBrokerError(
-            "Selected media does not match the admitted codec and resolution",
+        signal?.throwIfAborted()
+        let video = verifiedCodecs.get(verificationIdentity)
+        if (!video) {
+          const { stdout } = await exec(
+            env.STUDIO_FFPROBE_PATH,
+            [
+              "-v",
+              "error",
+              "-protocol_whitelist",
+              "file,crypto,data",
+              "-show_streams",
+              "-of",
+              "json",
+              join(directory, listName),
+            ],
+            { timeout: 30000, maxBuffer: 262144, signal },
           )
-        // Decode the complete bounded segment selection; no MP4 movie/render prerequisite.
-        await exec(
-          env.STUDIO_FFMPEG_PATH,
-          [
-            "-v",
-            "error",
-            "-protocol_whitelist",
-            "file,crypto,data",
-            "-i",
-            join(directory, listName),
-            "-map",
-            "0:v:0",
-            "-f",
-            "null",
-            "-",
-          ],
-          { timeout: 60000, maxBuffer: 262144, signal },
-        )
+          const probe = z
+            .object({
+              streams: z.array(
+                z.object({
+                  codec_type: z.string(),
+                  codec_name: z.string().optional(),
+                  height: z.number().optional(),
+                  width: z.number().optional(),
+                }),
+              ),
+            })
+            .parse(JSON.parse(stdout))
+          const measured = probe.streams.find((s) => s.codec_type === "video")
+          if (
+            measured?.codec_name !== "h264" ||
+            measured.height !== variant.height ||
+            !measured.width
+          )
+            throw new StudioBrokerError(
+              "Selected media does not match the admitted codec and resolution",
+            )
+          // Decode the complete bounded segment selection; no MP4 movie/render prerequisite.
+          await exec(
+            env.STUDIO_FFMPEG_PATH,
+            [
+              "-v",
+              "error",
+              "-protocol_whitelist",
+              "file,crypto,data",
+              "-i",
+              join(directory, listName),
+              "-map",
+              "0:v:0",
+              "-f",
+              "null",
+              "-",
+            ],
+            { timeout: 60000, maxBuffer: 262144, signal },
+          )
+          signal?.throwIfAborted()
+          video = {
+            width: measured.width,
+            height: variant.height,
+            codec_name: measured.codec_name,
+          }
+          verifiedCodecs.set(verificationIdentity, video)
+        }
         const listRef = await assets.register(
           listName,
           "application/vnd.apple.mpegurl",
@@ -548,7 +575,7 @@ export async function prepareStudioRenderSources(
           .digest("hex")
         manifests.push(
           await assets.register(
-            `${prefix}.json`,
+            `${hash(bytes)}.json`,
             "application/json",
             "manifest",
             bytes,
