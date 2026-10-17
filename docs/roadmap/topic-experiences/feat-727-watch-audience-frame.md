@@ -1,14 +1,14 @@
 ---
-id: "feat-721"
+id: "feat-727"
 title: "Watch audience frame and three-question journeys"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 5
 depends_on: []
 blocks:
-  - "feat-722"
+  - "feat-728"
 tags:
   - "web"
   - "watch"
@@ -16,7 +16,7 @@ tags:
 
 ## Problem
 
-Deliver stage 1 of the six-stage audience stack. Implementation has not started; the prototype is evidence only.
+Deliver stage 1 of the six-stage audience stack. The shared frame and all four three-question journeys are implemented; the prototype remains read-only evidence.
 The governing scope, product requirements, technical decisions, verification and completion contract are in [2026-10-17-0010-feat-watch-audience-stack-plan](../../plans/2026-10-17-0010-feat-watch-audience-stack-plan.md).
 This ticket covers U1, U2 only; keep a separate PR whose base is main.
 
@@ -96,3 +96,21 @@ The linked plan governs all KTDs and R-IDs cited above. Preserve the original di
 ## Verification
 
 Use the linked Verification Contract and the unit-specific scenarios above. Record real behavior, cross-layer checks where applicable, and a page-load comparison against the preceding stack parent. Run formatter and applicable lint/typecheck/build/schema drift checks before PR publication. Update this ticket to in-progress when implementation starts and complete only after the scoped implementation and checks finish; completion does not claim deployment.
+
+## Local completion evidence — 2026-10-17
+
+- U1: 42 focused role/configuration tests passed. U2/integration: 298 Web tests and 23 feature-flag tests passed; Web lint/typecheck, feature-flag typecheck and production build passed.
+- Browser: all ten named scenarios passed (nine in the first run, Spanish navigation/reload case passed after warming Admin and refreshing the isolated local cache). Both surfaces, all roles, 390px keyboard/overflow and canonical Spanish audio navigation are covered.
+- Matched production cold entries: three runs per route and viewport, twelve parent and twelve stage samples. No median LCP/player-readiness increase; maximum added CLS 0.00932. Existing account-header session request occurs once in both builds; audience adds no account/finder/course work before intent.
+- Native real playback: same video element remained playing across a role change; source block keys, authored order and manifests remain characterized by regression tests. Public HTML retains ISR cache headers and sets no cookie.
+- Durable raw receipts and comparison: /home/lado/.local/share/forge-watch-stack-20261017/stage1-\*. No deployment, production write or shipping claim. Configured GA/Datadog integration tests pass; local external telemetry is not configured. Existing local recommendation admission worker is unavailable in both control and changed builds.
+
+## Rollout assumption
+
+Autonomous implementation keeps `forge.watch.audience` default-off across the six stages. R1 describes the enabled frame. The release owner enables it after normal deployment and release verification; implementation completion does not deploy or change LaunchDarkly. Review advisory #9 is recorded without changing behavior.
+
+## Review regression verification (2026-10-17)
+
+Rollout advisory recorded without changing the default-off behavior; implementation does not enable the flag or deploy.
+
+Detailed commands, red/green logs, real runtime proof, limits and six-stage reassembly receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r1/`.

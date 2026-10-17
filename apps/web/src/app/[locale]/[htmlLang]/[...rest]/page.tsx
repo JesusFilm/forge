@@ -46,6 +46,7 @@ import {
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
+  isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
@@ -794,6 +795,7 @@ async function renderOneSegment(shape: {
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
+          audienceEnabled={await isWatchAudienceEnabled()}
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
@@ -970,6 +972,7 @@ async function renderEpisode(
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
+        audienceEnabled={await isWatchAudienceEnabled()}
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
@@ -1146,6 +1149,7 @@ async function renderVideo(
         />
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
+          audienceEnabled={await isWatchAudienceEnabled()}
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}

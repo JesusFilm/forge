@@ -1,5 +1,5 @@
 ---
-id: "feat-726"
+id: "feat-732"
 title: "Editor-owned Watch audience questionnaires"
 owner: "vlad"
 priority: "P1"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 7
 depends_on:
-  - "feat-725"
+  - "feat-731"
 blocks: []
 tags:
   - "web"
@@ -17,7 +17,7 @@ tags:
 
 ## Problem
 
-Deliver stage 6 of the six-stage audience stack. Implementation has not started; the prototype is evidence only.
+Deliver stage 6 of the six-stage audience stack. The prototype is evidence only; this ticket records the implemented scope and verification.
 The governing scope, product requirements, technical decisions, verification and completion contract are in [2026-10-17-0010-feat-watch-audience-stack-plan](../../plans/2026-10-17-0010-feat-watch-audience-stack-plan.md).
 This ticket covers U11, U12 only; keep a separate PR whose base is the preceding stage PR.
 

@@ -1,3 +1,4 @@
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 /**
  * @vitest-environment jsdom
  *
@@ -129,6 +130,7 @@ vi.mock("@/components/sections", () => ({
 }))
 
 vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
   isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
@@ -161,6 +163,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
   resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
@@ -1257,6 +1260,15 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(jsonLdByType("CollectionPage")).toBeNull()
+  })
+
+  it("passes the explicit audience rollout to the synthetic video frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true }),
+    )
   })
 
   it("renders WatchPageClient when label is non-series (regression guard)", async () => {

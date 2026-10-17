@@ -1,5 +1,5 @@
 ---
-id: "feat-723"
+id: "feat-729"
 title: "Share film kits and practical ideas"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 4
 depends_on:
-  - "feat-722"
+  - "feat-728"
 blocks:
-  - "feat-724"
+  - "feat-730"
 tags:
   - "web"
   - "watch"
@@ -17,7 +17,7 @@ tags:
 
 ## Problem
 
-Deliver stage 3 of the six-stage audience stack. Implementation has not started; the prototype is evidence only.
+Deliver stage 3 of the six-stage audience stack. The prototype is evidence only; this ticket records the implemented scope and verification.
 The governing scope, product requirements, technical decisions, verification and completion contract are in [2026-10-17-0010-feat-watch-audience-stack-plan](../../plans/2026-10-17-0010-feat-watch-audience-stack-plan.md).
 This ticket covers U5 only; keep a separate PR whose base is the preceding stage PR.
 

@@ -1,5 +1,5 @@
 ---
-id: "feat-722"
+id: "feat-728"
 title: "Admin-backed Explore film finder"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 5
 depends_on:
-  - "feat-721"
+  - "feat-727"
 blocks:
-  - "feat-723"
+  - "feat-729"
 tags:
   - "web"
   - "graphql"
@@ -18,7 +18,7 @@ tags:
 
 ## Problem
 
-Deliver stage 2 of the six-stage audience stack. Implementation has not started; the prototype is evidence only.
+Deliver stage 2 of the six-stage audience stack. The prototype is evidence only; this ticket records the implemented scope and verification.
 The governing scope, product requirements, technical decisions, verification and completion contract are in [2026-10-17-0010-feat-watch-audience-stack-plan](../../plans/2026-10-17-0010-feat-watch-audience-stack-plan.md).
 This ticket covers U3, U4 only; keep a separate PR whose base is the preceding stage PR.
 

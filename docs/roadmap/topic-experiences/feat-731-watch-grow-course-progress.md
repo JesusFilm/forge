@@ -1,5 +1,5 @@
 ---
-id: "feat-725"
+id: "feat-731"
 title: "Grow course story and durable account progress"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 10
 depends_on:
-  - "feat-724"
+  - "feat-730"
 blocks:
-  - "feat-726"
+  - "feat-732"
 tags:
   - "web"
   - "auth"
@@ -18,7 +18,7 @@ tags:
 
 ## Problem
 
-Deliver stage 5 of the six-stage audience stack. Implementation has not started; the prototype is evidence only.
+Deliver stage 5 of the six-stage audience stack. The prototype is evidence only; this ticket records the implemented scope and verification.
 The governing scope, product requirements, technical decisions, verification and completion contract are in [2026-10-17-0010-feat-watch-audience-stack-plan](../../plans/2026-10-17-0010-feat-watch-audience-stack-plan.md).
 This ticket covers U8, U9, U10 only; keep a separate PR whose base is the preceding stage PR.
 
