@@ -98,7 +98,7 @@ class LocalHost:
         selected = current.resolve()
         if selected.parent != Path('/opt/forge-studio/releases') or len(selected.name) != 64:
             raise ReleaseRefused('Current release identity refused')
-        command(['/usr/bin/python3', str(OPS / 'switch-supervisor.py'), selected.name], 1250)
+        command(['/usr/bin/python3', str(OPS / 'switch-supervisor.py'), selected.name], 1550)
         self.config_raw = read_private(CONFIG)
         write_once(self.stage / 'previous-worker.json', self.config_raw)
         write_once(self.stage / 'previous-release', (selected.name + '\n').encode())
@@ -113,7 +113,7 @@ class LocalHost:
         write_once(pending, (json.dumps(value, sort_keys=True) + '\n').encode())
         os.replace(pending, CONFIG)
         sync(CONFIG.parent)
-        command(['/usr/bin/python3', str(OPS / 'switch-supervisor.py'), candidate['bundle']['sha256']], 1250)
+        command(['/usr/bin/python3', str(OPS / 'switch-supervisor.py'), candidate['bundle']['sha256']], 1550)
         write_once(self.stage / 'selected-inactive', b'')
 
 

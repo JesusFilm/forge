@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-10-17"
 duration: 1
 depends_on: ["feat-714"]
-blocks: []
+blocks: ["feat-716"]
 tags: [studio, sources, rendering]
 ---
 
@@ -50,3 +50,11 @@ digests, durations and expected height within one preparation. Keep range proofs
 and per-clip materialization separate. Use content-derived playlist/manifest
 filenames so identical registrations and retained references can also be reused.
 Measure the complete production input path again after normal PR/main rollout.
+
+## Final measurement
+
+After PR #2768 (`674cd28d80058b41e906b0483d872e056f56c0ea`), attempt
+`cmvbom8yu0001lbo7l9xcnwn3` committed preparation in 80.177 seconds. A separate
+read-only packaging measurement took 26.407 seconds for 24 files / 47,716,903
+bytes. The 90-second combined input deadline cannot fit these measured stages.
+Continue with the explicitly versioned execution contract in feat-716.

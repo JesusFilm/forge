@@ -1,3 +1,4 @@
+import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
 import { expect, it, vi } from "vitest"
 vi.mock("@/config/env", () => ({ env: {} }))
 import { StudioRenderPoolAuth } from "./studio-render-pool-auth"
@@ -141,4 +142,63 @@ it("cancels an ownership read immediately when its caller disconnects", async ()
   controller.abort()
   expect((await pending).status).toBe(409)
   expect(owns.mock.calls[0][1].aborted).toBe(true)
+})
+
+it("allows input work past 90 seconds and expires within the fixed outer preparation budget", async () => {
+  vi.useFakeTimers()
+  const timers: ReturnType<typeof setTimeout>[] = []
+  const timeout = vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+    const controller = new AbortController()
+    timers.push(setTimeout(() => controller.abort(new Error("deadline")), ms))
+    return controller.signal
+  })
+  try {
+    const auth = new StudioRenderPoolAuth(config)
+    const token = auth.issue(
+      {
+        poolId: "pool",
+        workerId: "worker",
+        dispatchId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        attemptId: "attempt",
+        leaseId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        expiresAt: Date.now() + STUDIO_RENDER_PROFILE.leaseMs,
+      },
+      "a".repeat(64),
+    )
+    const input = vi.fn(
+      (_token: string | null, signal: AbortSignal) =>
+        new Promise((resolve) =>
+          signal.addEventListener("abort", () => resolve({}), { once: true }),
+        ),
+    )
+    const handler = createStudioPoolHandler(auth, {
+      claim: vi.fn(),
+      input,
+      owns: vi.fn(),
+      retain: vi.fn(),
+      finish: vi.fn(),
+      receipt: vi.fn(),
+      mux: vi.fn(),
+    })
+    const pending = handler(
+      new Request("https://fixture.invalid/input", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+        body: "{}",
+      }),
+      "input",
+    )
+    await vi.waitFor(() => expect(input).toHaveBeenCalledTimes(1))
+    await vi.advanceTimersByTimeAsync(90001)
+    expect(input.mock.calls[0][1].aborted).toBe(false)
+    await vi.advanceTimersByTimeAsync(
+      STUDIO_RENDER_PROFILE.preparationMs - 5000 - 90001,
+    )
+    expect((await pending).status).toBe(409)
+    expect(input.mock.calls[0][1].aborted).toBe(true)
+  } finally {
+    for (const timer of timers) clearTimeout(timer)
+    timeout.mockRestore()
+    vi.useRealTimers()
+  }
 })
