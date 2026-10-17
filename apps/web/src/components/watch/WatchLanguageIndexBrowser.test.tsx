@@ -2,9 +2,10 @@
  * @vitest-environment jsdom
  */
 import { act } from "react"
-import { createRoot, type Root } from "react-dom/client"
+import { createRoot, hydrateRoot, type Root } from "react-dom/client"
 import { renderToString } from "react-dom/server"
-import { afterEach, describe, expect, it } from "vitest"
+import { setRequestLocale } from "next-intl/server"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { WatchLanguageIndexLanguage } from "@/lib/language-index"
@@ -25,7 +26,23 @@ afterEach(() => {
   container?.remove()
   container = null
   root = null
+  setRequestLocale("en")
+  vi.restoreAllMocks()
 })
+
+// Chromium's trimmed ICU has no number data for Assamese (or Tswana, Ewe, ...)
+// and formats those counts in the visitor's browser locale, while Node's full
+// ICU uses the locale's own digits. Stand-in for the browser side of that seam.
+function installBrowserLikeNumberFormat() {
+  const NativeNumberFormat = Intl.NumberFormat
+  vi.spyOn(Intl, "NumberFormat").mockImplementation(
+    ((_locales?: string | string[], options?: Intl.NumberFormatOptions) =>
+      new NativeNumberFormat(
+        "de",
+        options,
+      )) as unknown as typeof Intl.NumberFormat,
+  )
+}
 
 function language(index: number, overrides: TestLanguageOverrides = {}) {
   const publicSlug = overrides.publicSlug ?? `language-${index}`
@@ -523,5 +540,49 @@ describe("WatchLanguageIndexBrowser", () => {
         (section) => section.querySelector("h4")?.textContent,
       ),
     ).toEqual(["China", "Hong Kong"])
+  })
+  it("hydrates language counts without a mismatch when browser ICU lacks the UI locale", () => {
+    // Assamese counts use Bengali digits from the shared table on both sides;
+    // the runtime formatter would render ২ on the server and 2 in the browser.
+    setRequestLocale("as")
+    const languages = [language(1), language(2)]
+    const regions = [
+      {
+        name: "Africa",
+        languages,
+        countries: [
+          {
+            id: "country-gh",
+            coreId: "GH",
+            name: "Ghana",
+            flagPngSrc: null,
+            speakerCount: 50_000,
+            languageSpeakerCounts: languageSpeakerCounts(languages),
+            languages,
+          },
+        ],
+      },
+    ]
+    const serverHtml = renderToString(
+      <WatchLanguageIndexBrowser regions={regions} />,
+    )
+    expect(serverHtml).toContain("২ languages")
+
+    installBrowserLikeNumberFormat()
+    const hydrationErrors: unknown[] = []
+    container = document.createElement("div")
+    container.innerHTML = serverHtml
+    document.body.appendChild(container)
+    act(() => {
+      root = hydrateRoot(
+        container!,
+        <WatchLanguageIndexBrowser regions={regions} />,
+        { onRecoverableError: (error) => hydrationErrors.push(error) },
+      )
+    })
+
+    expect(hydrationErrors).toEqual([])
+    expect(container.textContent).toContain("২ languages")
+    expect(container.textContent).not.toContain("2 languages")
   })
 })

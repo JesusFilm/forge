@@ -4,6 +4,7 @@
 
 import { act, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { GlobalLanguageOption } from "@/lib/watch-language-switcher"
@@ -101,6 +102,8 @@ afterEach(() => {
   act(() => root.unmount())
   container.remove()
   document.body.innerHTML = ""
+  setRequestLocale("en")
+  vi.restoreAllMocks()
 })
 
 function deferred<T>() {
@@ -209,6 +212,30 @@ describe("GlobalLanguagePickerModal", () => {
     )
     expect(query("global-language-picker-count")?.textContent).toContain(
       "3 languages",
+    )
+  })
+
+  it("formats the language count from the shared table, not the browser's ICU", async () => {
+    // Chromium has no Assamese number data and would format this count in the
+    // visitor's browser locale ("3"); the server uses Bengali digits ("৩").
+    setRequestLocale("as")
+    const NativeNumberFormat = Intl.NumberFormat
+    vi.spyOn(Intl, "NumberFormat").mockImplementation(
+      ((_locales?: string | string[], options?: Intl.NumberFormatOptions) =>
+        new NativeNumberFormat(
+          "de",
+          options,
+        )) as unknown as typeof Intl.NumberFormat,
+    )
+    loadGlobalWatchLanguageOptionsMock.mockResolvedValue(options)
+
+    await renderHarness()
+
+    expect(query("global-language-picker-count")?.textContent).toContain(
+      "৩ languages",
+    )
+    expect(query("global-language-picker-status")?.textContent).toContain(
+      "৩ languages",
     )
   })
 

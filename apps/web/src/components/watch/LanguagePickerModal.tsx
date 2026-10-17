@@ -44,6 +44,7 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import { useCountTranslations } from "@/i18n/use-count-translations"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type LanguagePickerVariant = WatchLanguagePickerVariant
@@ -94,6 +95,7 @@ export function LanguagePickerModal({
   onRetryLanguageOptions,
 }: LanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
+  const tCount = useCountTranslations("LanguagePickerModal")
   const router = useRouter()
 
   // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
@@ -545,7 +547,7 @@ export function LanguagePickerModal({
             <LanguagePickerHeader
               allLanguagesHref={allLanguagesPath}
               allLanguagesLabel={t("seeAllLanguages")}
-              countLabel={t("languageCount", { count: options.length })}
+              countLabel={tCount("languageCount", { count: options.length })}
               heading={t("languageHeading")}
               loading={languageOptionsLoading}
               testIdPrefix="watch-language-picker"
@@ -636,7 +638,7 @@ export function LanguagePickerModal({
                       data-testid="watch-language-picker-subtitle-count"
                       className="text-xs font-normal text-stone-400 sm:text-sm"
                     >
-                      {t("languageCount", {
+                      {tCount("languageCount", {
                         count: allSubtitleOptions.length,
                       })}
                     </span>

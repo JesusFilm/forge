@@ -1,0 +1,186 @@
+// Generates apps/web/src/i18n/generated-count-number-formats.ts.
+//
+// Why a committed table: Watch counts ("2,273 languages") render on the server
+// (Node full-icu) AND in the browser. The two ICU builds do not ship the same
+// locale data: Chromium has no number data for Tswana, Ewe, Kyrgyz and ~150
+// other Watch UI locales and silently falls back to the VISITOR's browser
+// locale, and even locales both sides support can differ by CLDR version (az,
+// kk, uz). So the same count could read 2'273 in server HTML and 2,273 or
+// 2.273 after hydration. Capturing each locale's integer grouping rules once,
+// here, and formatting counts from that table on both sides makes the output
+// identical by construction.
+//
+// Run with the Node version you trust (it records the ICU/CLDR versions it
+// used); the script verifies its own table against that runtime before writing.
+// Not wired into build/test: the output depends on the generating runtime's
+// CLDR, so a `--check` mode would fail spuriously across Node versions.
+// Completeness (every UI catalog has an entry) is pinned by count-format tests.
+
+import { readdirSync, writeFileSync } from "node:fs"
+import { dirname, join } from "node:path"
+import { fileURLToPath } from "node:url"
+
+import * as prettier from "prettier"
+
+const scriptDir = dirname(fileURLToPath(import.meta.url))
+const appDir = join(scriptDir, "..")
+const messagesDir = join(appDir, "messages")
+const outputPath = join(appDir, "src/i18n/generated-count-number-formats.ts")
+// Locales Node has no data for must fall back to English explicitly, not to
+// the generating machine's own locale (LC_ALL), which would leak into the table.
+const FALLBACK_LOCALE = "en"
+
+function discoverLocales() {
+  return readdirSync(messagesDir)
+    .filter((file) => file.endsWith(".json"))
+    .map((file) => file.slice(0, -5))
+    .sort((a, b) => a.localeCompare(b))
+}
+
+function integerGroupSizes(formatter, value) {
+  return formatter
+    .formatToParts(value)
+    .filter((part) => part.type === "integer")
+    .map((part) => [...part.value].length)
+}
+
+function specFor(locale) {
+  const formatter = new Intl.NumberFormat([locale, FALLBACK_LOCALE])
+  const parts = formatter.formatToParts(1234567890)
+  const group = parts.find((part) => part.type === "group")?.value ?? ""
+  const sizes = integerGroupSizes(formatter, 1234567890)
+  const primaryGroupSize = sizes.at(-1) ?? 3
+  const secondaryGroupSize = sizes.length > 2 ? sizes.at(-2) : primaryGroupSize
+  // CLDR minimumGroupingDigits: the smallest number of leading digits that
+  // must sit before the first separator. Probe the first value that would
+  // need a separator under the primary group size.
+  let minimumGroupingDigits = 1
+  while (
+    minimumGroupingDigits < 4 &&
+    integerGroupSizes(
+      formatter,
+      10 ** (primaryGroupSize + minimumGroupingDigits - 1),
+    ).length < 2
+  ) {
+    minimumGroupingDigits += 1
+  }
+  const digits = Array.from({ length: 10 }, (_, digit) =>
+    formatter.format(digit),
+  ).join("")
+  return {
+    digits,
+    group,
+    minimumGroupingDigits,
+    primaryGroupSize,
+    secondaryGroupSize,
+  }
+}
+
+// Mirror of formatCountWithSpec in src/i18n/count-format.ts; used only to
+// self-verify the generated table against the generating runtime.
+function formatWithSpec(value, spec) {
+  const latin = String(value)
+  const native = [...latin].map((digit) => [...spec.digits][Number(digit)])
+  if (
+    !spec.group ||
+    native.length < spec.primaryGroupSize + spec.minimumGroupingDigits
+  ) {
+    return native.join("")
+  }
+  const groups = [native.splice(-spec.primaryGroupSize).join("")]
+  while (native.length > 0) {
+    groups.unshift(native.splice(-spec.secondaryGroupSize).join(""))
+  }
+  return groups.join(spec.group)
+}
+
+const VERIFY_VALUES = [
+  0, 1, 9, 10, 99, 100, 999, 1000, 2273, 9999, 10000, 12273, 99999, 100000,
+  123456, 1234567, 12345678, 123456789,
+]
+
+// Separators such as U+00A0 and U+202F are invisible in source, so escape
+// every whitespace or format character; native digits stay readable.
+function literal(value) {
+  return `"${[...value]
+    .map((char) =>
+      /[\s\p{Cf}"\\]/u.test(char)
+        ? `\\u${char.codePointAt(0).toString(16).padStart(4, "0")}`
+        : char,
+    )
+    .join("")}"`
+}
+
+function render(classes) {
+  const entries = classes
+    .map(({ locales, spec }) => {
+      const localeList = locales
+        .map((locale) => `      ${JSON.stringify(locale)},`)
+        .join("\n")
+      return [
+        "  {",
+        "    spec: {",
+        `      digits: ${literal(spec.digits)},`,
+        `      group: ${literal(spec.group)},`,
+        `      minimumGroupingDigits: ${spec.minimumGroupingDigits},`,
+        `      primaryGroupSize: ${spec.primaryGroupSize},`,
+        `      secondaryGroupSize: ${spec.secondaryGroupSize},`,
+        "    },",
+        "    locales: [",
+        localeList,
+        "    ],",
+        "  },",
+      ].join("\n")
+    })
+    .join("\n")
+  return [
+    "// This file is generated by `pnpm --filter @forge/web generate:count-number-formats`.",
+    "// Do not edit it by hand. See scripts/generate-count-number-formats.mjs for why",
+    "// Watch counts use a committed table instead of the runtime's ICU data.",
+    `// Source: Node ${process.versions.node}, ICU ${process.versions.icu}, CLDR ${process.versions.cldr}.`,
+    "",
+    'import type { CountNumberFormatSpec } from "./count-format"',
+    "",
+    "export const COUNT_NUMBER_FORMAT_CLASSES: readonly {",
+    "  spec: CountNumberFormatSpec",
+    "  locales: readonly string[]",
+    "}[] = [",
+    entries,
+    "]",
+    "",
+  ].join("\n")
+}
+
+async function main() {
+  const byKey = new Map()
+  for (const locale of discoverLocales()) {
+    const spec = specFor(locale)
+    const formatter = new Intl.NumberFormat([locale, FALLBACK_LOCALE])
+    for (const value of VERIFY_VALUES) {
+      const expected = formatter.format(value)
+      const actual = formatWithSpec(value, spec)
+      if (expected !== actual) {
+        throw new Error(
+          `Spec for ${locale} formats ${value} as ${JSON.stringify(actual)}, runtime gives ${JSON.stringify(expected)}`,
+        )
+      }
+    }
+    const key = JSON.stringify(spec)
+    const entry = byKey.get(key) ?? { spec, locales: [] }
+    entry.locales.push(locale)
+    byKey.set(key, entry)
+  }
+  const classes = [...byKey.values()].sort(
+    (a, b) =>
+      b.locales.length - a.locales.length ||
+      a.locales[0].localeCompare(b.locales[0]),
+  )
+  const config = (await prettier.resolveConfig(outputPath)) ?? {}
+  const formatted = await prettier.format(render(classes), {
+    ...config,
+    filepath: outputPath,
+  })
+  writeFileSync(outputPath, formatted)
+}
+
+await main()

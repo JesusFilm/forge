@@ -1,7 +1,6 @@
 import React from "react"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { createTranslator } from "next-intl"
 import { run, state } from "../control.ts"
 
 export * from "../../../src/lib/watch-route-manifest.ts"
@@ -10,16 +9,14 @@ const english = JSON.parse(
   readFileSync(join(__dirname, "../../../messages/en.json"), "utf8"),
 )
 
-// next-intl/server: same shape as the real async getTranslations; success uses
-// the real ICU translator over the real en.json catalog.
+// next-intl/server: same shape as the real async getMessages; success returns
+// the real en.json catalog, which the route's real count translator formats.
+// The "translator" control step gates this load, the hero translator's input.
 export function setRequestLocale() {}
-export async function getTranslations(options: {
-  locale: string
-  namespace: string
-}) {
+export async function getMessages(_options: { locale: string }) {
   const { scenario } = state.getStore()!
   await run("translator", scenario.translator)
-  return createTranslator({ ...options, messages: english } as never)
+  return english
 }
 
 // LaunchDarkly and Admin-backed manifest: inert.
