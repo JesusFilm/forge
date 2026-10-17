@@ -47,7 +47,7 @@ Watch category tiles place white labels over unrestricted gradient backgrounds, 
 ## What To Build
 
 - Add a dark text scrim on category tiles to preserve label contrast over authored gradients.
-- Keep backdrop blur on desktop and raise the header scrim opacity so the LIBRARY label remains legible over moving video.
+- Keep desktop backdrop blur disabled and raise the header scrim opacity so the LIBRARY label remains legible over moving video.
 - Make footer links, CTA pills, and compact carousel slide selectors at least 44px tall/wide with adequate spacing.
 - Preserve layout, navigation behavior, and localized content.
 
@@ -61,7 +61,9 @@ Watch category tiles place white labels over unrestricted gradient backgrounds, 
 
 - Added a contrast scrim to all Watch category tile labels and increased the header gradient alpha while preserving the no-desktop-blur performance behavior.
 - Footer navigation/contact controls, section and collection CTAs, and compact timeline selectors now meet 44px target sizing. Compact selectors use a 54px progress ring with a 3.5px outer margin; the mobile hero action row wraps below `sm` when needed.
-- Focused category rail, footer, FloatingSearchProvider, Watch Home, and MediaCollection tests: 313 passed. Web typecheck, targeted ESLint, Prettier, and `git diff --check` passed.
-- Claude Code US Team review completed with layout concerns resolved; final review found no blockers.
-- CSS-only visual changes add no JavaScript or network requests; desktop backdrop blur remains disabled to avoid added compositing work over moving hero video.
-- 2026-10-15 follow-up (QA N62a / N66): the footer cookie settings trigger now shows the pointer cursor. Hero "Watch now" (white on `brand-red` #ef3340, 4.02:1), language-index native names (stone-500 on black, 4.39:1) and inventory row numbers (stone-500, about 3.7-3.9:1) still miss AA. Colours are not changed here; the body of PR #2669 lists AA-passing candidates for design to choose from.
+- Original PR verification: focused category rail, footer, FloatingSearchProvider, Watch Home, and MediaCollection tests: 313 passed. Web typecheck, targeted ESLint, Prettier, and `git diff --check` passed.
+- Original PR review record: Claude Code US Team review completed with layout concerns resolved; final review found no blockers. Independent review of the October 17 repair remains owned by the parent QA loop.
+- The original CSS changes preserve runtime initialization and desktop backdrop blur remains disabled. This source inspection is not a measured page-load performance result.
+- 2026-10-15 follow-up (QA N62a): the footer cookie settings trigger now shows the pointer cursor; its three-case test covers the cursor, 44px target, and settings event with return-focus target.
+- 2026-10-17 isolated repair: rebased the exact published head `5da88b679` onto main `848ce82f8`. All 13 scoped source/test files match the merge of current main and the original PR; only the generated roadmap index conflicted. Six focused suites passed (391 tests), as did Web typecheck, targeted ESLint with zero warnings, UI-locale drift, Prettier, and `git diff --check`. No new rendering or initialization logic was authored, and no new browser/page-load measurement is claimed.
+- 2026-10-17 N66 proposal verification: white on hero `brand-red` #ef3340 is 4.025:1 at rest and hover. Tailwind 4.2.4 stone-500 native names are 4.368:1 on black and 3.639:1 on the 10%-white hover surface. Inventory row numbers are 3.866:1 at rest and 3.392:1 on hover, accounting for the 3.5%-white group over stone-950 and the additional 5.5%-white row hover. These normal-sized labels miss the 4.5:1 AA threshold. N66 colors and hover treatment remain pending human design approval; this PR applies none of those proposals.
