@@ -3,7 +3,7 @@ id: "feat-534"
 title: "Watch hero CTA href stops carrying live playback time"
 owner: "vlad"
 priority: "P0"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
@@ -101,3 +101,22 @@ default away from returning:
 - A ~35 s idle browser session on `/watch` showing **zero** repeated `?_rsc=`
   fetches for the hero destination.
 - Page-load performance evidence per the convention above.
+
+## Verification status
+
+Still `in-progress`: this note covers one unit-test repair only.
+
+- **Test gap closed.** The mocked-`next/link` primaryAction suite now asserts
+  that the successful resume click's `event.defaultPrevented` is `true`. Before,
+  the suite asserted only the push count, which does not show that the handler's
+  `preventDefault` ran. With only `event.preventDefault()` removed from
+  `PrimaryAction`, that one test fails (`expected false to be true`) and the
+  other nine pass; with the line restored, both affected home suites pass 80/80.
+- **Scope of the claim.** This pins the handler's cancellation only. It does not
+  show what the real `next/link` or App Router does with a cancelled event, and
+  no native or browser dispatch was observed. `WatchHomePage.test.tsx` no longer
+  says its push count proves that.
+- **Still open:** integration with current `main`, current-head CI, runtime and
+  device checks (including the idle-tab prefetch window and click-to-commit),
+  and page-load performance evidence. The original reporter is unknown, and the
+  W003 canvas row is not mapped.

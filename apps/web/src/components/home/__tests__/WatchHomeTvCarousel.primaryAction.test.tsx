@@ -167,8 +167,12 @@ describe("Watch home hero CTA href", () => {
   it("navigates to the resume position on a plain click", () => {
     renderAt(21)
 
-    clickAnchor()
+    const event = clickAnchor()
 
+    // `clickAnchor` returns the MouseEvent it dispatched. This pins only the
+    // handler's cancellation; `next/link` is mocked here, so it does not show
+    // what the real Link does with a cancelled event.
+    expect(event.defaultPrevented).toBe(true)
     expect(pushMock).toHaveBeenCalledTimes(1)
     const pushed = String(pushMock.mock.calls[0]?.[0] ?? "")
     expect(pushed).toContain("t=21")

@@ -1801,11 +1801,10 @@ describe("WatchHomePage", () => {
 
     clickWatchNow()
 
-    // This suite renders the REAL `next/link`, which calls the consumer's
-    // onClick and then runs its own navigation unless the event was already
-    // defaultPrevented. Exactly one push is therefore the proof that the
-    // handler's preventDefault suppresses Link's own navigation rather than
-    // racing it into a double navigation.
+    // This shows only that the handler called the mocked router's push once.
+    // The real `next/link` renders here with no live routing context, so the
+    // push count does not show whether Link's own navigation was suppressed.
+    // The cancellation is pinned in WatchHomeTvCarousel.primaryAction.test.tsx.
     expect(routerPushMock).toHaveBeenCalledTimes(1)
     expect(routerPushMock).toHaveBeenLastCalledWith(
       "/jesus.html/english.html?t=12&autoplay=1",
