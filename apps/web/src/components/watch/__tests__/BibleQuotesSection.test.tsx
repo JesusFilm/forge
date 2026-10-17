@@ -171,6 +171,11 @@ describe("BibleQuotesSection — visibility", () => {
     expect(
       container.querySelector('[data-testid="watch-bible-quotes-promo-cta"]'),
     ).not.toBeNull()
+    const promoImage = container.querySelector(
+      '[data-testid="watch-bible-quotes-promo"] img',
+    )
+    expect(promoImage?.getAttribute("loading")).toBe("lazy")
+    expect(promoImage?.getAttribute("fetchpriority")).not.toBe("high")
     const eyebrow = container.querySelector(
       '[data-testid="watch-bible-quotes-promo-eyebrow"]',
     )
@@ -205,6 +210,11 @@ describe("BibleQuotesSection — visibility", () => {
     )
     expect(section).not.toBeNull()
     expect(section!.getAttribute("data-block-type")).toBe("BibleQuotes")
+    expect(
+      container
+        .querySelector('[data-testid="watch-bible-quotes-promo"] img')
+        ?.getAttribute("loading"),
+    ).toBe("lazy")
   })
 })
 

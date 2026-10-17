@@ -7,10 +7,13 @@ import {
   WATCH_STRUCTURED_DATA_CONTRACTS,
   classifyProbe,
   parseDocumentIdentity,
+  parseImagePreloadHints,
   parseJsonLdScripts,
+  heroImagePreloadViolations,
   primaryVideoIdentityViolations,
   probeUrl,
   validateStructuredDataContract,
+  type ImagePreloadIdentity,
   type ProbeResult,
 } from "./watch-url-probe"
 
@@ -59,6 +62,135 @@ describe("WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS", () => {
       expect(fixturePaths.has(pair.contextual)).toBe(true)
       expect(fixturePaths.has(pair.standalone)).toBe(true)
     }
+  })
+})
+
+describe("Watch hero image preload contract", () => {
+  const heroSrcSet =
+    "https://image.mux.com/pb/thumbnail.webp?width=640 640w, https://image.mux.com/pb/thumbnail.webp?width=1280 1280w"
+  const heroResult = (
+    imagePreloads: ImagePreloadIdentity[] = [
+      {
+        href: null,
+        imageSrcSet: heroSrcSet,
+        fetchPriority: "high",
+      },
+    ],
+  ) =>
+    result({
+      imagePreloads,
+      heroPoster: {
+        src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
+        srcSet: heroSrcSet,
+      },
+      highPriorityImages: [
+        {
+          src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
+          srcSet: heroSrcSet,
+        },
+      ],
+    })
+
+  it("parses responsive image preload attributes and the hero poster identity", () => {
+    expect(
+      parseImagePreloadHints(`
+        <link rel="preload" as="image" fetchpriority="high" imagesrcset="${heroSrcSet}" imagesizes="100vw">
+        <img data-testid="hero-player-poster" src="https://image.mux.com/pb/thumbnail.webp?width=1280" srcset="${heroSrcSet}" fetchpriority="high">
+      `),
+    ).toEqual({
+      imagePreloads: [
+        { href: null, imageSrcSet: heroSrcSet, fetchPriority: "high" },
+      ],
+      heroPoster: {
+        src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
+        srcSet: heroSrcSet,
+      },
+      highPriorityImages: [
+        {
+          src: "https://image.mux.com/pb/thumbnail.webp?width=1280",
+          srcSet: heroSrcSet,
+        },
+      ],
+    })
+  })
+
+  it("counts a React-style image preload from the HTTP Link header", () => {
+    expect(
+      parseImagePreloadHints(
+        '<img data-testid="hero-player-poster" src="/poster.jpg" fetchpriority="high">',
+        '</poster.jpg>; rel="preload"; as="image"; fetchpriority="high"',
+      ).imagePreloads,
+    ).toEqual([
+      { href: "/poster.jpg", imageSrcSet: null, fetchPriority: "high" },
+    ])
+  })
+
+  it("accepts exactly one high-priority preload matching the hero poster", () => {
+    expect(heroImagePreloadViolations(heroResult())).toEqual([])
+  })
+
+  it("rejects a non-hero high-priority image or a missing hero poster", () => {
+    const valid = heroResult()
+    expect(
+      heroImagePreloadViolations({
+        ...valid,
+        highPriorityImages: [{ src: "/promo.jpg", srcSet: null }],
+      }),
+    ).toContain("high-priority image does not match the hero poster")
+    expect(
+      heroImagePreloadViolations({ ...valid, heroPoster: null }),
+    ).toContain("hero poster image is missing from initial HTML")
+  })
+
+  it.each([
+    ["no preload", []],
+    [
+      "a duplicate preload",
+      [
+        { href: null, imageSrcSet: heroSrcSet, fetchPriority: "high" },
+        { href: "/promo.jpg", imageSrcSet: null, fetchPriority: "high" },
+      ],
+    ],
+    [
+      "a non-high-priority preload",
+      [{ href: null, imageSrcSet: heroSrcSet, fetchPriority: "auto" }],
+    ],
+    [
+      "a preload for a different image",
+      [{ href: "/promo.jpg", imageSrcSet: null, fetchPriority: "high" }],
+    ],
+  ] as const)(
+    "rejects %s on representative Watch routes",
+    (_name, imagePreloads) => {
+      expect(
+        heroImagePreloadViolations(heroResult([...imagePreloads])),
+      ).not.toEqual([])
+    },
+  )
+
+  it("makes an opted-in preview fixture fail when the hero preload contract regresses", () => {
+    const fixture = WATCH_URL_FIXTURES.find(
+      ({ path }) => path === "/watch/jesus.html",
+    )
+    expect(fixture?.performanceHint).toBe("hero-image-preload")
+    const performanceFixture = {
+      path: "/watch/performance-contract-test",
+      group: "test",
+      expect: "ok" as const,
+      performanceHint: "hero-image-preload" as const,
+    }
+    expect(
+      classifyProbe(
+        result(),
+        heroResult([
+          { href: "/promo.jpg", imageSrcSet: null, fetchPriority: "high" },
+        ]),
+        performanceFixture,
+      ),
+    ).toEqual({
+      outcome: "hard-regression",
+      note: expect.stringContaining("IMAGE PRELOAD CONTRACT"),
+    })
   })
 })
 

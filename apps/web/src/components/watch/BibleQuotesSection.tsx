@@ -185,11 +185,7 @@ export function BibleQuotesSection({
                   src={PROMO_IMAGE_URL}
                   alt=""
                   aria-hidden="true"
-                  // When there are no editorial citations the promo card is
-                  // the section's only content and would otherwise lazy-load
-                  // into view with a visible pop-in. Mark it eager only on
-                  // that path so the typical N-citations case stays lazy.
-                  priority={bibleCitations.length === 0}
+                  loading="lazy"
                   className="absolute top-0 overflow-hidden rounded-xl object-cover"
                   sizes={BIBLE_QUOTE_IMAGE_SIZES}
                 />
