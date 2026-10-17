@@ -20,7 +20,7 @@ import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-st
 export const WATCH_HERO_ACTION_CLASS =
   "inline-flex cursor-pointer items-center gap-3 rounded-full px-5 py-2.5 text-base font-medium shadow-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/90 focus-visible:ring-2 focus-visible:ring-brand-red/70 md:py-3 md:text-lg compact-landscape:min-h-11 compact-landscape:py-2 compact-landscape:text-base"
 
-export const WATCH_HERO_PRIMARY_ACTION_CLASS = `${WATCH_HERO_ACTION_CLASS} bg-brand-red text-white hover:bg-brand-red`
+export const WATCH_HERO_PRIMARY_ACTION_CLASS = `${WATCH_HERO_ACTION_CLASS} bg-[#d33a43] text-white hover:bg-[#d33a43]`
 
 export const WATCH_HERO_SECONDARY_ACTION_CLASS = `${WATCH_HERO_ACTION_CLASS} border border-transparent bg-transparent text-white hover:border-white/50 hover:bg-white/12`
 

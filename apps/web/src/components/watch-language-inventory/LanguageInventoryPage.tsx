@@ -521,7 +521,7 @@ function CompactVideoRow({
           row's `px-2`/`gap-2`, so the space either side of the digits is equal
           whatever their count; `sm` and up keep the wider right-aligned column
           so the numbers stay in one vertical line beside a roomier row. */}
-      <span className="min-w-5 shrink-0 text-center text-base font-medium text-stone-500 tabular-nums sm:mr-2 sm:w-10 sm:text-right sm:text-lg">
+      <span className="min-w-5 shrink-0 text-center text-base font-medium text-[#928a85] tabular-nums sm:mr-2 sm:w-10 sm:text-right sm:text-lg">
         {index + 1}
       </span>
       <span
