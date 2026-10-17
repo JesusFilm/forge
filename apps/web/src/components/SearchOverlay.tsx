@@ -70,6 +70,7 @@ import {
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
 import { localizedSearchLanguageName } from "@/lib/search-language-display-name"
+import { splitSearchLanguageTemplate } from "@/lib/search-language-template"
 import {
   parseWatchPath,
   tryAsContentSlug,
@@ -988,8 +989,13 @@ export function SearchOverlay() {
   )
   const renderSemanticLanguageCombobox = (
     takeoverRect?: SuggestionListPosition,
+    attached?: { start: boolean; end: boolean },
   ) => (
-    <span className="pointer-events-auto relative mx-1 inline-flex shrink-0">
+    <span
+      className={`pointer-events-auto relative inline-flex shrink-0 ${
+        attached?.start ? "" : "ms-1"
+      } ${attached?.end ? "" : "me-1"}`}
+    >
       <LanguageCombobox
         options={semanticLanguageComboboxOptions}
         value={semanticLanguageComboboxValue}
@@ -1013,44 +1019,51 @@ export function SearchOverlay() {
     hasUnsubmittedSearchIntent ? (
       <>
         <span className="min-w-0 flex-1 truncate">
-          {(t.raw("searchSuggestionWithLanguage") as string)
-            .split(/(\{language\}|\{suggestion\})/u)
-            .map((part, index) => {
-              if (part === "{language}") {
-                return (
-                  <span key={`language-${index}`}>
-                    {renderSemanticLanguageCombobox(takeoverRect)}
-                  </span>
-                )
-              }
-              if (part === "{suggestion}") {
-                return (
-                  <strong
-                    key={`suggestion-${index}`}
-                    className="font-semibold text-white"
-                  >
-                    <bdi dir="auto">{query.trim()}</bdi>
-                  </strong>
-                )
-              }
-              return <span key={`copy-${index}`}>{part}</span>
-            })}
+          {splitSearchLanguageTemplate(
+            t.raw("searchSuggestionWithLanguage") as string,
+            ["{language}", "{suggestion}"],
+          ).map((segment, index) => {
+            if (segment.kind === "text") {
+              return <span key={`copy-${index}`}>{segment.text}</span>
+            }
+            if (segment.token === "{language}") {
+              return (
+                <span key={`language-${index}`}>
+                  {renderSemanticLanguageCombobox(takeoverRect, {
+                    start: segment.attachedStart,
+                    end: segment.attachedEnd,
+                  })}
+                </span>
+              )
+            }
+            return (
+              <strong
+                key={`suggestion-${index}`}
+                className="font-semibold text-white"
+              >
+                <bdi dir="auto">{query.trim()}</bdi>
+              </strong>
+            )
+          })}
         </span>
         <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
       </>
     ) : (
       <span className="min-w-0 flex-1 truncate text-base sm:text-sm">
-        {languageContextMessage
-          .split(/(\{language\})/u)
-          .map((part, index) =>
-            part === "{language}" ? (
-              <span key={`language-${index}`}>
-                {renderSemanticLanguageCombobox(takeoverRect)}
-              </span>
-            ) : (
-              <span key={`copy-${index}`}>{part}</span>
-            ),
-          )}
+        {splitSearchLanguageTemplate(languageContextMessage, [
+          "{language}",
+        ]).map((segment, index) =>
+          segment.kind === "placeholder" ? (
+            <span key={`language-${index}`}>
+              {renderSemanticLanguageCombobox(takeoverRect, {
+                start: segment.attachedStart,
+                end: segment.attachedEnd,
+              })}
+            </span>
+          ) : (
+            <span key={`copy-${index}`}>{segment.text}</span>
+          ),
+        )}
       </span>
     )
   const headerTopClass = headerPinned
