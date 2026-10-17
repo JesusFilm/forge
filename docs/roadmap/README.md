@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 16, 2026)
 
-- **Total tickets:** 842
+- **Total tickets:** 843
 - **Complete:** 626
 - **Cancelled:** 41
-- **In progress:** 67
+- **In progress:** 68
 - **Not started:** 51
 - **Blocked:** 57
 - **Overdue and open:** 160
@@ -70,6 +70,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-338](content-discovery/feat-338-watch-search-chinese-lexical-identity.md)                                | Watch Search Chinese lexical identity                                                           | codex      | P0       | 2026-08-06 | 1    | 2026-08-06 | complete    |
 | [feat-470](content-discovery/feat-470-recommendation-delivery-and-funnel-investigation.md)                     | Investigate and repair recommendation retrieval timeouts                                        | nisal      | P0       | 2026-09-09 | 3    | 2026-09-11 | complete    |
 | [feat-559](content-discovery/feat-559-recommendation-crawler-traffic-isolation.md)                             | Isolate crawler and speculative recommendation traffic before persistence                       | nisal      | P0       | 2026-09-28 | 2    | 2026-09-29 | complete    |
+| [feat-712](content-discovery/feat-712-recommendation-reconciliation-shared-memory.md)                          | Bound recommendation reconciliation shared memory                                               | nisal      | P0       | 2026-10-16 | 1    | 2026-10-16 | in-progress |
 | [feat-265](content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md)                               | Hassaniyya-Latin Watch UI localization                                                          | urim       | P1       | —          | 1    | —          | not-started |
 | [feat-371](content-discovery/feat-371-recommendation-subtitle-audio-signals.md)                                | Recommendation subtitle and audio signals                                                       | nisal      | P1       | —          | 3    | —          | cancelled   |
 | [feat-374](content-discovery/feat-374-recommendation-acquisition-share-attribution.md)                         | Recommendation acquisition and share attribution                                                | nisal      | P1       | —          | 4    | —          | cancelled   |
