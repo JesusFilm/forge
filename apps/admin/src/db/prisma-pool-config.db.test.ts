@@ -38,7 +38,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     })
 
-    it.each(["main", "sync"] as const)(
+    it.each(["main", "sync", "studio-render"] as const)(
       "reads the requested catalog schema through the %s application pool",
       async (profile) => {
         const prisma = createPrismaClient(profile)

@@ -35,7 +35,7 @@ def candidate():
 
 class ApprovedReleaseRecord(unittest.TestCase):
     def test_current_and_retained_rollback_profiles_are_closed(self):
-        for profile in (module.PROFILE, 'studio-render-1/900s-2cpu-2g-128p-96child-128m'):
+        for profile in tuple(module.SUPPORTED_PROFILES):
             value = candidate()
             value['profile'] = profile
             raw = json.dumps(value).encode()
