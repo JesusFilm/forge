@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import {
+  AccountDeletionSideEffectError,
   buildAccountDeletionHooks,
   type AccountDeletionDeps,
 } from "./account-deletion.service"
@@ -27,9 +28,20 @@ function buildDeps(overrides: Partial<AccountDeletionDeps> = {}) {
   return { deps, log }
 }
 
+// What a current admin answers: erasure succeeded and covered learning
+// progress (feat-731).
+function erasedBody() {
+  return JSON.stringify({
+    deletedCount: 0,
+    deletedWatchEventCount: 0,
+    deletedLearningProgressCount: 0,
+    learningProgressErased: true,
+  })
+}
+
 function ok() {
   return vi.fn(
-    async () => new Response(null, { status: 200 }),
+    async () => new Response(erasedBody(), { status: 200 }),
   ) as unknown as typeof fetch
 }
 
@@ -130,7 +142,7 @@ describe("beforeDelete — admin watch-data erasure", () => {
         expect((init?.headers as Record<string, string>).Authorization).toBe(
           "Bearer erasure-key",
         )
-        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+        return new Response(erasedBody(), { status: 200 })
       },
     ) as unknown as typeof fetch
 
@@ -152,7 +164,7 @@ describe("beforeDelete — admin watch-data erasure", () => {
     const erasureFetch = vi.fn(
       async (_url: RequestInfo | URL, init?: RequestInit) => {
         body = JSON.parse(String(init?.body))
-        return new Response(null, { status: 200 })
+        return new Response(erasedBody(), { status: 200 })
       },
     ) as unknown as typeof fetch
 
@@ -220,12 +232,81 @@ describe("beforeDelete — admin watch-data erasure", () => {
     )
   })
 
+  it("reports a possibly committed erasure and preserves its fence when deletion aborts", async () => {
+    // Admin committed, but Auth lost its response. There is no distributed
+    // rollback: claiming an intact account or removing the fence is unsafe.
+    const fences = new Set<string>()
+    const deleteAccount = vi.fn()
+    const erasureFetch = vi.fn(async () => {
+      fences.add("user-1")
+      throw new TypeError("response lost after commit")
+    }) as unknown as typeof fetch
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    let failure: unknown
+    try {
+      await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+      deleteAccount()
+    } catch (error) {
+      failure = error
+    }
+
+    expect(failure).toBeInstanceOf(AccountDeletionSideEffectError)
+    expect(failure).toMatchObject({
+      reason: "admin_erasure_unreachable",
+      adminErasureMayHaveCommitted: true,
+    })
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("adminErasureMayHaveCommitted=true"),
+    )
+    expect(deleteAccount).not.toHaveBeenCalled()
+    expect(fences.has("user-1")).toBe(true)
+    // No automatic compensating request can race a late Admin commit.
+    expect(erasureFetch).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    [
+      "an admin that predates learning erasure",
+      JSON.stringify({ deletedCount: 1, deletedWatchEventCount: 0 }),
+    ],
+    [
+      "an explicit non-acknowledgement",
+      JSON.stringify({ learningProgressErased: false }),
+    ],
+    ["an empty body", null],
+    ["a non-JSON body", "ok"],
+  ])(
+    "aborts the deletion when %s does not acknowledge learning erasure",
+    async (_label, body) => {
+      // A 2xx alone is not proof the account's learning progress is gone.
+      const erasureFetch = vi.fn(
+        async () => new Response(body, { status: 200 }),
+      ) as unknown as typeof fetch
+
+      const { deps, log } = buildDeps({
+        getAdminErasureConfig: () => ERASURE_CONFIG,
+        fetchImpl: erasureFetch,
+      })
+
+      await expect(
+        buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+      ).rejects.toThrow(/admin_erasure_incomplete:learning_progress/)
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("reason=learning_progress_unacknowledged"),
+      )
+    },
+  )
+
   it("bounds the erasure call so a hung admin cannot wedge deletion", async () => {
     let signal: AbortSignal | null | undefined
     const erasureFetch = vi.fn(
       async (_url: RequestInfo | URL, init?: RequestInit) => {
         signal = init?.signal
-        return new Response(null, { status: 200 })
+        return new Response(erasedBody(), { status: 200 })
       },
     ) as unknown as typeof fetch
 

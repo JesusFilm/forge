@@ -5,8 +5,10 @@ import {
 
 /**
  * Account-deletion side effects (KTD12), strict: every side effect runs
- * BEFORE the user row is deleted, and any failure aborts the deletion with
- * the account fully intact. The user is asked to retry or contact support.
+ * BEFORE the user row is deleted. Any failure aborts deletion of the Auth
+ * user row. Earlier external side effects may already have committed; this
+ * is not a distributed
+ * transaction. The user is asked to retry or contact support.
  *
  * Strict over best-effort (user-directed, 2026-08-04): both an Apple outage
  * and an account deletion are rare, so the combined odds are very low — and
@@ -22,13 +24,24 @@ import {
  * Absent erasure config is NOT a failure — the env vars are `.optional()`,
  * so an unprovisioned environment must still be able to delete accounts
  * (it logs a skip). Only a configured-but-failing admin aborts.
+ *
+ * A configured admin must also ACKNOWLEDGE learning-progress erasure
+ * (feat-731): a 2xx without `learningProgressErased: true` comes from an
+ * admin that predates it and left that data in place, so it aborts like any
+ * other failed erasure rather than reporting a full deletion. Deploy admin
+ * first. An ambiguous failure can leave learning writes fenced for a live
+ * account. Never compensate automatically: a late erasure or stale write may
+ * still be in flight. See apps/auth/docs/watch-learning-erasure-recovery.md.
  */
 
 const ADMIN_ERASURE_TIMEOUT_MS = 5000
 
 /** Aborts the deletion; the account row is untouched when this is thrown. */
 export class AccountDeletionSideEffectError extends Error {
-  constructor(readonly reason: string) {
+  constructor(
+    readonly reason: string,
+    readonly adminErasureMayHaveCommitted = false,
+  ) {
     super(`account deletion aborted: ${reason}`)
     this.name = "AccountDeletionSideEffectError"
   }
@@ -100,26 +113,51 @@ export function buildAccountDeletionHooks(deps: AccountDeletionDeps) {
             Authorization: `Bearer ${erasure.apiKey}`,
           },
           // apps/web clears history through this same route with an
-          // identical body, so admin cannot tell the two apart. The reason
-          // is what a future tombstone would have to key on.
+          // identical body. The reason makes account deletion erase learning
+          // progress and record its permanent stale-write fence.
           body: JSON.stringify({ userId, reason: "account-deleted" }),
           signal: AbortSignal.timeout(ADMIN_ERASURE_TIMEOUT_MS),
         },
       )
     } catch {
       log(
-        `[auth] event=account_deletion_admin_erasure_failed reason=network_error userId=${userId}`,
+        `[auth] event=account_deletion_admin_erasure_failed reason=network_error adminErasureMayHaveCommitted=true userId=${userId}`,
       )
-      throw new AccountDeletionSideEffectError("admin_erasure_unreachable")
+      throw new AccountDeletionSideEffectError(
+        "admin_erasure_unreachable",
+        true,
+      )
     }
 
     if (!response.ok) {
       log(
-        `[auth] event=account_deletion_admin_erasure_failed status=${response.status} userId=${userId}`,
+        `[auth] event=account_deletion_admin_erasure_failed status=${response.status} adminErasureMayHaveCommitted=true userId=${userId}`,
       )
       throw new AccountDeletionSideEffectError(
         `admin_erasure_rejected:${response.status}`,
+        true,
       )
     }
+
+    if (!(await acknowledgesLearningErasure(response))) {
+      log(
+        `[auth] event=account_deletion_admin_erasure_failed reason=learning_progress_unacknowledged adminErasureMayHaveCommitted=true userId=${userId}`,
+      )
+      throw new AccountDeletionSideEffectError(
+        "admin_erasure_incomplete:learning_progress",
+        true,
+      )
+    }
+  }
+}
+
+async function acknowledgesLearningErasure(response: Response) {
+  try {
+    const body = (await response.json()) as {
+      learningProgressErased?: unknown
+    } | null
+    return body?.learningProgressErased === true
+  } catch {
+    return false
   }
 }
