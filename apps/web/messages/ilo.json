@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usaren ti default a pagsasao ti panagsapul ti website",
     "removeLanguage": "Ikkaten {language}",
     "browseMode": "Mode ti panagsapul ken panagsukisok",
-    "searchingInLanguage": "Dagiti resulta iti {language}"
+    "searchingInLanguage": "Dagiti resulta iti {language}",
+    "slowSearch": "Ad-adu ti oras a kasapulan ngem iti kadawyan…"
   },
   "HeroPlayer": {
     "playWithSound": "Kitaen ita",
@@ -766,5 +767,8 @@
     "loadError": "Saan a naikarga ti pinilim. Mabalinmo latta nga agpili iti baba.",
     "grantError": "Saan a napalubosan ti personalisasion. Dagiti nasken laeng ti magun-od.",
     "saveError": "Saan a naisalakan ti pinilim. Padasem manen."
+  },
+  "WatchNoScript": {
+    "message": "Pangngaasiyo ta i-on ti JavaScript iti browser-yo tapno maipagaraw dagiti video ken mausar ti panagsapul."
   }
 }

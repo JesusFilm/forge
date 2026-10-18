@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайт шорта ларчаран мотт пайдалла",
     "removeLanguage": "{language} дӀахьа",
     "browseMode": "Ларчан режим",
-    "searchingInLanguage": "ЖамӀийн мотт: {language}"
+    "searchingInLanguage": "ЖамӀийн мотт: {language}",
+    "slowSearch": "Хӏара даларчул дукха хан оьцуш ю…"
   },
   "HeroPlayer": {
     "playWithSound": "ХӀинца хьажа",
@@ -766,5 +767,8 @@
     "loadError": "Хьан харжам чуйолуш хила ца мегира. Хьо кхузахьа харжам бан мега.",
     "grantError": "Шенна таӀоран тӀетуьйра ца мегира. Цхьанна лазаме кхин а карор ду.",
     "saveError": "Хьан харжам ларбан ца мегира. Дехар ду, юха а хьажа."
+  },
+  "WatchNoScript": {
+    "message": "Видео гайта а, лахар лела дан а хьайн браузерехь JavaScript хьалаеза."
   }
 }

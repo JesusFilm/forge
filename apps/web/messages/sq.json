@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Përdor gjuhën e parazgjedhur të kërkimit të faqes",
     "removeLanguage": "Hiq {language}",
     "browseMode": "Modaliteti i shfletimit të kërkimit",
-    "searchingInLanguage": "Rezultate në {language}"
+    "searchingInLanguage": "Rezultate në {language}",
+    "slowSearch": "Po zgjat më shumë se zakonisht…"
   },
   "HeroPlayer": {
     "playWithSound": "Shiko tani",
@@ -766,5 +767,8 @@
     "loadError": "Zgjedhja juaj nuk mund të ngarkohej. Mund të zgjidhni gjithsesi më poshtë.",
     "grantError": "Personalizimi nuk mund të aktivizohej. Opsioni vetëm thelbësoret mbetet i disponueshëm.",
     "saveError": "Zgjedhja juaj nuk mund të ruhej. Ju lutemi, provoni përsëri."
+  },
+  "WatchNoScript": {
+    "message": "Aktivizoni JavaScript në shfletuesin tuaj për të luajtur videot dhe për të përdorur kërkimin."
   }
 }

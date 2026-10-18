@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Tajb'ej ch'ab'äl ta sa'j default ta web",
     "removeLanguage": "Tz'aku' {language}",
     "browseMode": "Modo ta k'axpa' sa'j",
-    "searchingInLanguage": "Resultados ta {language}"
+    "searchingInLanguage": "Resultados ta {language}",
+    "slowSearch": "Ja'x nuk'ani'x tz'akaj tiempo…"
   },
   "HeroPlayer": {
     "playWithSound": "Watz'otz' chanim",
@@ -766,5 +767,8 @@
     "loadError": "Ma ani uyub'i ak'ochres ajch'ubir. Pero uyub'it ajcha'res tara' ixin.",
     "grantError": "Ma ani uyub'i uk'ani personalización. Majaxir ixto ayan ajni.",
     "saveError": "Ma ani uyub'i ak'ajpes ajch'ubir. Tz'akpes ch'i otronyajr."
+  },
+  "WatchNoScript": {
+    "message": "Tak'axpa' JavaScript tama' atinavegador para ira' videos y ira' sa'j."
   }
 }

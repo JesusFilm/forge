@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Saytın defolt axtarış dilindən istifadə edin",
     "removeLanguage": "{language} sil",
     "browseMode": "Axtarış-gözdən keçirmə rejimi",
-    "searchingInLanguage": "{language} дили үзрә нәтиҹәләр"
+    "searchingInLanguage": "{language} дили үзрә нәтиҹәләр",
+    "slowSearch": "Bu, adətən olduğundan daha uzun çəkir…"
   },
   "HeroPlayer": {
     "playWithSound": "İndi baxın",
@@ -766,5 +767,8 @@
     "loadError": "Сечиминиз йцкляня билмяди. Йеня дя ашаьыда сечя билярсиниз.",
     "grantError": "Фярдилэшдирмяни активляшдирмяк мцмкцн олмады. Йалныз зярури вариант ялчатан галыр.",
     "saveError": "Сечиминиз сахланыла билмяди. Зящмят олмаса, йенидян жящд един."
+  },
+  "WatchNoScript": {
+    "message": "Videoları oynatmaq və axtarışdan istifadə etmək üçün brauzerinizdə JavaScript-i aktiv edin."
   }
 }

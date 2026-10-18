@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gamitin ang default na wika ng paghahanap ng website",
     "removeLanguage": "Alisin ang {language}",
     "browseMode": "Mode ng pag-browse sa paghahanap",
-    "searchingInLanguage": "Mga resulta sa wikang {language}"
+    "searchingInLanguage": "Mga resulta sa wikang {language}",
+    "slowSearch": "Mas matagal ito kaysa karaniwan…"
   },
   "HeroPlayer": {
     "playWithSound": "Manood ngayon",
@@ -766,5 +767,8 @@
     "loadError": "Hindi na-load ang iyong pinili. Maaari ka pa ring pumili sa ibaba.",
     "grantError": "Hindi na-enable ang pag-personalize. Mahahalaga lang ang mananatiling available.",
     "saveError": "Hindi na-save ang iyong pinili. Pakisubukan muli."
+  },
+  "WatchNoScript": {
+    "message": "I-on ang JavaScript sa iyong browser para makapag-play ng mga video at magamit ang paghahanap."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Saytın standart axtarış dilindən istifadə et",
     "removeLanguage": "{language} dilini sil",
     "browseMode": "Axtarışda gözdən keçirmə rejimi",
-    "searchingInLanguage": "Nəticələr {language} dili ilə məhdudlaşdırılıb"
+    "searchingInLanguage": "Nəticələr {language} dili ilə məhdudlaşdırılıb",
+    "slowSearch": "Bu, adətən olduğundan daha uzun çəkir…"
   },
   "HeroPlayer": {
     "playWithSound": "İndi baxın",
@@ -766,5 +767,8 @@
     "loadError": "Seçiminiz yüklənə bilmədi. Yenə də aşağıdan seçim edə bilərsiniz.",
     "grantError": "Fərdiləşdirmə aktiv edilə bilmədi. Yalnız vacib seçim mövcud olaraq qalır.",
     "saveError": "Seçiminiz yadda saxlanıla bilmədi. Zəhmət olmasa yenidən cəhd edin."
+  },
+  "WatchNoScript": {
+    "message": "Videoları oynatmaq və axtarışdan istifadə etmək üçün brauzerinizdə JavaScript-i aktiv edin."
   }
 }

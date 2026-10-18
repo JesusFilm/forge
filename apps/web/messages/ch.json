@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Ufa'i i website default search language",
     "removeLanguage": "Na'kåta {language}",
     "browseMode": "Modo gi search browse",
-    "searchingInLanguage": "Resulta siha gi {language}"
+    "searchingInLanguage": "Resulta siha gi {language}",
+    "slowSearch": "Mas atrasao este ki di costumbre…"
   },
   "HeroPlayer": {
     "playWithSound": "Atan ni' ahora",
@@ -766,5 +767,8 @@
     "loadError": "Ti siña ma'karga i inafan-mu. Lao siña ha' un ayek guini gi papa'.",
     "grantError": "Ti siña ma'aktiba i personalizasion. I nesesåt ha' siempre guaha.",
     "saveError": "Ti siña ma'såttba i inafan-mu. Pot fabot, chule' fanu nuebu."
+  },
+  "WatchNoScript": {
+    "message": "Paki na'la'la' i JavaScript gi browser-mu para un na'huyong i video siha yan un usa i search."
   }
 }

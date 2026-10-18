@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Fa website no default search language di dwuma",
     "removeLanguage": "Yi {language} fi hɔ",
     "browseMode": "Hwehwɛɛ kɛ kpɛlɛɛ gbɛ",
-    "searchingInLanguage": "Nii ni anaa yɛ {language} gbɛ mli"
+    "searchingInLanguage": "Nii ni anaa yɛ {language} gbɛ mli",
+    "slowSearch": "Eyi redi bere tenten sen sɛnea ɛtaa yɛ…"
   },
   "HeroPlayer": {
     "playWithSound": "Hwɛ seesei",
@@ -766,5 +767,8 @@
     "loadError": "O hewɔmɔi lɛ ekɔ able shia. Otsɔɔ akɛ oyaa lɛshi amɛnaa ni shikpon.",
     "grantError": "Personalization lɛ ekɔ able shia. Essential only etsɔɔ wɔ mli.",
     "saveError": "O hewɔmɔi lɛ ekɔ able hee. Bɔŋ yɛ shia ake."
+  },
+  "WatchNoScript": {
+    "message": "Yɛsrɛ sɛ bue JavaScript wɔ wo browser no so na wobɛtumi abɔ videos na woahwehwɛ."
   }
 }

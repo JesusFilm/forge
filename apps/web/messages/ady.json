@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language къыплъэкIэ",
     "removeLanguage": "{language} къыхэ",
     "browseMode": "Search къыжьыбжьыным и режим",
-    "searchingInLanguage": "Къэгъотыгъохэр {language}-мкӏэ"
+    "searchingInLanguage": "Къэгъотыгъохэр {language}-мкӏэ",
+    "slowSearch": "Search-м уахътэ нахьыбэ еубыты…"
   },
   "HeroPlayer": {
     "playWithSound": "Ары къыщыбжь",
@@ -766,5 +767,8 @@
     "loadError": "Уи тхьэщыӏэр къыгъэзэщӏэныр къэхъукӏыфакӏым. Ащыгъу мыдэ къыбгъэбжьафай.",
     "grantError": "Хэтэгъэкӏыр къыщыгъэхьэжыныр къэхъукӏыфакӏым. Фӏэкӏа мыкӏодхэр къытэп.",
     "saveError": "Уи тхьэщыӏэр гъэсэбэпын къэхъукӏыфакӏым. Къытегъэплъыжьыу."
+  },
+  "WatchNoScript": {
+    "message": "Видеохэр плъэгъунхэм ыкӏи search-р бгъэфедэнымкӏэ уи browser-м JavaScript щыгъэкӏэ."
   }
 }

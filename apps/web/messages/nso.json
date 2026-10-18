@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Diriša polelo ya go nyaka ya sefala ka tlwaelo",
     "removeLanguage": "Tloša {language}",
     "browseMode": "Mokgwa wa go phetla nyakišišo",
-    "searchingInLanguage": "Dipoelo ka {language}"
+    "searchingInLanguage": "Dipoelo ka {language}",
+    "slowSearch": "Se se tšea nako ye telele go feta ka mehla…"
   },
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
@@ -766,5 +767,8 @@
     "loadError": "Kgetho ya gago ga se ya kgona go laetšwa. O sa ka kgetha ka mo tlase.",
     "grantError": "Go dira gore e be ya gago ga se gwa kgona go kgontšhwa. Tša bohlokwa feela di sa le gona.",
     "saveError": "Kgetho ya gago ga se ya kgona go bolokwa. Hle leka gape."
+  },
+  "WatchNoScript": {
+    "message": "Bulela JavaScript ka go sebatli sa gago gore o kgone go bapala divideo le go šomiša nyakišišo."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gamita ang default nga lenguahe sang website para sa search",
     "removeLanguage": "Kuhaa ang {language}",
     "browseMode": "Browse mode sang search",
-    "searchingInLanguage": "Mga resulta sa {language}"
+    "searchingInLanguage": "Mga resulta sa {language}",
+    "slowSearch": "Mas madugay ini sang sa kinaandan…"
   },
   "HeroPlayer": {
     "playWithSound": "Tan-awon subong",
@@ -766,5 +767,8 @@
     "loadError": "Wala nakarga ang imo pilian. Makapili ka gihapon sa idalom.",
     "grantError": "Wala ma-enable ang personalization. Ang kinahanglanon lang nga kapilian amo gihapon ang available.",
     "saveError": "Wala masave ang imo pilian. Palihog, liwat liwat."
+  },
+  "WatchNoScript": {
+    "message": "I-on ang JavaScript sa imo browser para makatan-aw sang mga video kag magamit ang search."
   }
 }

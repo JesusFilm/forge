@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "使用網站預設搜尋語言",
     "removeLanguage": "移除 {language}",
     "browseMode": "搜尋瀏覽模式",
-    "searchingInLanguage": "結果限於 {language}"
+    "searchingInLanguage": "結果限於 {language}",
+    "slowSearch": "所需時間比平常還要久…"
   },
   "HeroPlayer": {
     "playWithSound": "立即觀看",
@@ -766,5 +767,8 @@
     "loadError": "無法載入你个選擇。你還係做得在下背選擇。",
     "grantError": "無法啟用個人化。還係做得使用單淨必要。",
     "saveError": "無法保存你个選擇。請再試一次。"
+  },
+  "WatchNoScript": {
+    "message": "請在瀏覽器中開啟 JavaScript，才能播放影片及使用搜尋。"
   }
 }

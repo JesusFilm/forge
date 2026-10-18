@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Geavat neahttasiiddu várásstandárda ohcan giela",
     "removeLanguage": "Váldde {language} eret",
     "browseMode": "Ohcan geahččanmáddi",
-    "searchingInLanguage": "Bohtosat dán gillii: {language}"
+    "searchingInLanguage": "Bohtosat dán gillii: {language}",
+    "slowSearch": "Dát ádjána guhkit go dábálaččat…"
   },
   "HeroPlayer": {
     "playWithSound": "Geahččal dál",
@@ -766,5 +767,8 @@
     "loadError": "Du válljen ii sáhttán viežžat. Don sáhtát vel válljet vuolábealde.",
     "grantError": "Persovdnalaš heiveheapmi ii sáhttán aktiveret. Dušše vuđolaččat leat ain olamuttus.",
     "saveError": "Du válljen ii sáhttán vurkejuvvot. Geahččal ođđasit."
+  },
+  "WatchNoScript": {
+    "message": "Bija JavaScript doaibmat iežat neahttalohkkis vai sáhtát čájehit videoid ja geavahit ohcama."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "D'Standard-Sueschispräch vo dr Website benutze",
     "removeLanguage": "{language} entferne",
     "browseMode": "Durstöber-Modus",
-    "searchingInLanguage": "Resultat uf {language}"
+    "searchingInLanguage": "Resultat uf {language}",
+    "slowSearch": "Das gaht länger als süsch…"
   },
   "HeroPlayer": {
     "playWithSound": "Jetzt luege",
@@ -766,5 +767,8 @@
     "loadError": "Dini Uuswahl het nöd chöne glade werde. Du chasch wiiter unde trotzdem uswürde.",
     "grantError": "Personalisierig het nöd chöne aktiviert werde. Nur notwändigi bliibt verfüegbar.",
     "saveError": "Dini Uuswahl het nöd chöne gspeicheret werde. Bitte probier's nomal."
+  },
+  "WatchNoScript": {
+    "message": "Schalt JavaScript i dim Browser y, damit du Videos abspiele und d Suechi bruuche chasch."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Lo èdè ìwádìí aiyélujára",
     "removeLanguage": "Yọ {language} kúrò",
     "browseMode": "Ipo ìwádìí àwárí",
-    "searchingInLanguage": "Àwọn èsì ní {language}"
+    "searchingInLanguage": "Àwọn èsì ní {language}",
+    "slowSearch": "Èyí ń gba àkókò ju bí ó ṣe máa ń gbà lọ…"
   },
   "HeroPlayer": {
     "playWithSound": "Wo báyìí",
@@ -766,5 +767,8 @@
     "loadError": "A kò lè gbé yíyàn rẹ wọlé. O ṣì lè yan ní ìsàlẹ̀.",
     "grantError": "A kò lè mú ṣíṣe àdáni ṣiṣẹ́. Àwọn pàtàkì nìkan ṣì wà.",
     "saveError": "A kò lè fi yíyàn rẹ pamọ́. Jọ̀wọ́ tún gbìyànjú."
+  },
+  "WatchNoScript": {
+    "message": "Jọ̀wọ́ tan JavaScript nínú aṣàwákiri rẹ láti wo àwọn fídíò àti láti ṣe ìwádìí."
   }
 }

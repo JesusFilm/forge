@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайт тӏадбухъараб search тил пайдалан гьабе",
     "removeLanguage": "{language} алып хъвазе",
     "browseMode": "Кӏалъай browse режим",
-    "searchingInLanguage": "Нәтижал {language} мацӏалда"
+    "searchingInLanguage": "Нәтижал {language} мацӏалда",
+    "slowSearch": "Кӏалъан цӏакъ халатлъана…"
   },
   "HeroPlayer": {
     "playWithSound": "Гьанжиде бец",
@@ -766,5 +767,8 @@
     "loadError": "Дур къагӀара щвезе кӀвечӀо. АскӀоб тӀаса бищизе мунде хӀанжар буго.",
     "grantError": "Хаслъи гьабиял кабизе кӀвечӀо. ХӀажатал гӀинтӀаме хӀалтӀизе бегьула.",
     "saveError": "Дур къагӀара цӀунизе кӀвечӀо. Хадуб цойги хӀалбихьизе."
+  },
+  "WatchNoScript": {
+    "message": "Видео бихьизе ва кӏалъан гьабизе браузералда JavaScript рагье."
   }
 }

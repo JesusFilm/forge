@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Karoa te website default search i-ki",
     "removeLanguage": "Tamatoa {language}",
     "browseMode": "Browse mode n te kimotaki",
-    "searchingInLanguage": "Results aika n {language}"
+    "searchingInLanguage": "Results aika n {language}",
+    "slowSearch": "E a rangi n anaa te tai riki nakon are e kaineti…"
   },
   "HeroPlayer": {
     "playWithSound": "Karaoaki iou",
@@ -766,5 +767,8 @@
     "loadError": "Am babaire e aki kona n riai. Iangoi, ko kona n babaire i aanne.",
     "grantError": "Kabongana ni aron am nano e aki kona n kabonganaaki. Aika kakawaki du a mena naba.",
     "saveError": "Am babaire e aki kona n kabooaki. Kam na katoabong manena."
+  },
+  "WatchNoScript": {
+    "message": "Kakabonganaa te JavaScript n am browser bwa ko aonga ni karaoaki videos ao ni kimotaki."
   }
 }

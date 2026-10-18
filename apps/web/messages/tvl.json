@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Fakamalosi te language o te search default a te website",
     "removeLanguage": "Tukuese {language}",
     "browseMode": "Auala browse o te search",
-    "searchingInLanguage": "Results i te {language}"
+    "searchingInLanguage": "Results i te {language}",
+    "slowSearch": "Ko leva atu te taimi i lō te mea masani…"
   },
   "HeroPlayer": {
     "playWithSound": "Matamata nei",
@@ -766,5 +767,8 @@
     "loadError": "Ne seki mafai o uta mai tau filifiliga. E mafai faeloa o filifili koe i lalo.",
     "grantError": "Ne seki mafai o fakaola te fakatino ki a koe. Mea tāua fua e avanoa faeloa.",
     "saveError": "Ne seki mafai o faasao tau filifiliga. Fakamolemole toe taumafai."
+  },
+  "WatchNoScript": {
+    "message": "Fakamolemole, fakaola a te JavaScript i tou browser ke mafai o matamata ki vitio kae saili."
   }
 }

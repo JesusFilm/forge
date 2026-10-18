@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Tawokisaj ri rutikirisaxik ch'ab'äl richin ri website",
     "removeLanguage": "Tiyuj {language}",
     "browseMode": "Modo richin kanoxïk y k'utun",
-    "searchingInLanguage": "Taq resultados pa {language}"
+    "searchingInLanguage": "Taq resultados pa {language}",
+    "slowSearch": "Kanaj na kub'an we ri' chi kanoxïk…"
   },
   "HeroPlayer": {
     "playWithSound": "Tatz'eta' wakami",
@@ -766,5 +767,8 @@
     "loadError": "Man xkwinik ta xqasik'ij ri acha'oj. K'a yatikïr na katcha'on chuxe'.",
     "grantError": "Man xkwinik ta xya' q'ij che ri ichinan nuk'ulem. Xa xe ri k'atzinel k'a k'o na.",
     "saveError": "Man xkwinik ta xyak ri acha'oj. Tatojtob'ej chik."
+  },
+  "WatchNoScript": {
+    "message": "Tatzija' ri JavaScript pa ri browser richin katz'et taq video y kakoj ri kanoxïk."
   }
 }

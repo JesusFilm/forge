@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "वेबसाइटाचो मूळ शोध भास वापरात",
     "removeLanguage": "{language} काडात",
     "browseMode": "शोध ब्राऊझ मोड",
-    "searchingInLanguage": "निकालांचो भास: {language}"
+    "searchingInLanguage": "निकालांचो भास: {language}",
+    "slowSearch": "हाका सदांपरस चड वेळ लागता…"
   },
   "HeroPlayer": {
     "playWithSound": "आतां पळयात",
@@ -766,5 +767,8 @@
     "loadError": "तुमची निवड लोड जावंक शकली ना. तरीय तुमी खाल्यान निवड करूंक शकतात.",
     "grantError": "वैयक्तिकीकरण सुरू जावंक शकले ना. फक्त आवश्यक पर्याय उपलब्ध आसा.",
     "saveError": "तुमची निवड जतन जावंक शकली ना. उपकार करून परत प्रयत्न करा."
+  },
+  "WatchNoScript": {
+    "message": "व्हिडियो प्ले करपाक आनी सोद वापरपाक तुमच्या ब्राउझरांत JavaScript सुरू करात."
   }
 }

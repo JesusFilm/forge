@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Nota sjálfgefið leitartungumál vefsvæðis",
     "removeLanguage": "Fjarlægja {language}",
     "browseMode": "Vafurleit",
-    "searchingInLanguage": "Niðurstöður á völdu tungumáli: {language}"
+    "searchingInLanguage": "Niðurstöður á völdu tungumáli: {language}",
+    "slowSearch": "Þetta tekur lengri tíma en venjulega…"
   },
   "HeroPlayer": {
     "playWithSound": "Horfa núna",
@@ -766,5 +767,8 @@
     "loadError": "Ekki tókst að hlaða vali þínu. Þú getur samt valið hér fyrir neðan.",
     "grantError": "Ekki tókst að virkja sérsníðingu. Aðeins nauðsynlegt er áfram í boði.",
     "saveError": "Ekki tókst að vista val þitt. Reyndu aftur."
+  },
+  "WatchNoScript": {
+    "message": "Kveiktu á JavaScript í vafranum þínum til að spila myndbönd og nota leit."
   }
 }

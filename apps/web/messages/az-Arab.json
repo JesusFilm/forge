@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "استفاده از زبان پیش‌فرض جستجوی وب‌سایت",
     "removeLanguage": "حذف {language}",
     "browseMode": "حالت مرور جستجو",
-    "searchingInLanguage": "نتیجه‌لرین دیلی: {language}"
+    "searchingInLanguage": "نتیجه‌لرین دیلی: {language}",
+    "slowSearch": "این کار بیشتر از معمول طول می‌کشد…"
   },
   "HeroPlayer": {
     "playWithSound": "اکنون تماشا کنید",
@@ -766,5 +767,8 @@
     "loadError": "سئچیمینیز یوکلنه بیلمه‌دی. یئنه‌ده آشاغیدا سئچە بیلرسینیز.",
     "grantError": "شخصی‌لەشدیرمه فعّال‌لاشدیریلا بیلمه‌دی. یالنیز اساس سئچنه‌یی الچاتاندیر.",
     "saveError": "سئچیمینیز ساخلانا بیلمه‌دی. لطفاً یئنه‌دن یوخلايين."
+  },
+  "WatchNoScript": {
+    "message": "برای پخش ویدیوها و استفاده از جستجو، JavaScript را در مرورگر خود فعال کنید."
   }
 }

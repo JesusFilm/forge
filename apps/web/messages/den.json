@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search yatı́ ɂat’ı̨́",
     "removeLanguage": "{language} ɂáɂa",
     "browseMode": "Search t’á gho nats’edé",
-    "searchingInLanguage": "Result yatı́: {language}"
+    "searchingInLanguage": "Result yatı́: {language}",
+    "slowSearch": "Náɂa… search ɂeyíle k’ı̨́ı̨́ dǫ́ hı̨lé…"
   },
   "HeroPlayer": {
     "playWithSound": "Kǫ́ta gúhta",
@@ -766,5 +767,8 @@
     "loadError": "Nedáeɂa ts'ı̨lı̨ k'enehtł'e load ayıle. K'á ekw'ı̨ı̨ hots'ę́ k'ehłe hǫ́lı̨.",
     "grantError": "Personalization enáhshı̨ ayıle. Essential only t'a hǫ́lı̨.",
     "saveError": "Nedáeɂa ts'ı̨lı̨ k'enehtł'e eghálı̨ ayıle. T'á segha nəgha."
+  },
+  "WatchNoScript": {
+    "message": "Video gúhta gha, search náɂa gha, ne browser t’á JavaScript ɂehtsı."
   }
 }

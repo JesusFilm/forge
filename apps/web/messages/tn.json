@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Šomiša leleme la nyakišišo la motheo la weposaete",
     "removeLanguage": "Tloša {language}",
     "browseMode": "Mokgwa wa go phetla nyakišišo",
-    "searchingInLanguage": "Dipholo ka {language}"
+    "searchingInLanguage": "Dipholo ka {language}",
+    "slowSearch": "Se se tšea nako e telele go feta ka mehla…"
   },
   "HeroPlayer": {
     "playWithSound": "Bogela bjale",
@@ -766,5 +767,8 @@
     "loadError": "Kgetho ya gago ga e a kgona go laisiwa. O sa ntse o ka tlhopha fa tlase.",
     "grantError": "Go dira gore e nne ya motho ka namana ga go a kgona go tsenngwa tirisong. Tsa botlhokwa fela di sa ntse di le teng.",
     "saveError": "Kgetho ya gago ga e a kgona go bolokwa. Tsweetswee leka gape."
+  },
+  "WatchNoScript": {
+    "message": "Bula JavaScript go browser ya gago gore o kgone go bapala dibidio le go nyaka."
   }
 }

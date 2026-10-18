@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gamiten so default a lengguahe na saliksik na website",
     "removeLanguage": "Alisen so {language}",
     "browseMode": "Browse mode na saliksik",
-    "searchingInLanguage": "Mga resulta ed {language}"
+    "searchingInLanguage": "Mga resulta ed {language}",
+    "slowSearch": "Mas mabayag iyan nen saray kabiasan…"
   },
   "HeroPlayer": {
     "playWithSound": "Panooren na ngatan",
@@ -766,5 +767,8 @@
     "loadError": "Agew na-load so pinilim. Mabalin ka la met a mamili ed baba.",
     "grantError": "Agew na-on so personalisasion. Available la so importantin cookie labat.",
     "saveError": "Agew naisalba so pinilim. Pangaasi ta subok manen."
+  },
+  "WatchNoScript": {
+    "message": "Ipaandar so JavaScript ed browser mo pian napatsut so saray video tan nagamit so saliksik."
   }
 }

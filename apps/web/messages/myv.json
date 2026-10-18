@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language-ть пайдаломс",
     "removeLanguage": "{language}-ть онксемс",
     "browseMode": "Вешемань вановтома режим",
-    "searchingInLanguage": "{language}-са муевть результатт"
+    "searchingInLanguage": "{language}-са муевть результатт",
+    "slowSearch": "Те кузи седе кувать, мезе эрьва-шкане…"
   },
   "HeroPlayer": {
     "playWithSound": "СЫ ТЕ",
@@ -766,5 +767,8 @@
     "loadError": "Тонть кочкамоц эйстэ а маштовсь ловномс. Уликик зярдояк ало кочкамс.",
     "grantError": "Личастомо ладямось а маштовсь нолдамс. Ансяк важнойтне улихть зярдояк.",
     "saveError": "Тонть кочкамоц а маштовсь ванстомс. Варштадо одов."
+  },
+  "WatchNoScript": {
+    "message": "Browser-сэть JavaScript-нть педявтыть, штобу video-ть вановтомс ды search-ть пайдаломс."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтдин асла чӏалдалди гъарун",
     "removeLanguage": "{language} хьунун",
     "browseMode": "Гъарун режим",
-    "searchingInLanguage": "{language} чӏалал натижаяр"
+    "searchingInLanguage": "{language} чӏалал натижаяр",
+    "slowSearch": "Им адет тирдалай гзаф вахт кьазва…"
   },
   "HeroPlayer": {
     "playWithSound": "Азиздик къарагъун",
@@ -766,5 +767,8 @@
     "loadError": "Куь кьил къачуз хьанач. Куьне агъа кIаник кьил авун мумкин я.",
     "grantError": "Шахсий авун кабулариз хьанач. Садра зарурбур гележегъ я.",
     "saveError": "Куь кьил хуьз хьанач. Зегьмет олна, мад сеферда хъийиз."
+  },
+  "WatchNoScript": {
+    "message": "Видеояр ахъайдай ва жагъурун ишлемишдай, куь браузерда JavaScript куькIуьра."
   }
 }

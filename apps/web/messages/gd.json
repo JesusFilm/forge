@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Cleachd cànan bunaiteach an làraich-lìn airson an rannsachaidh",
     "removeLanguage": "Thoir air falbh {language}",
     "browseMode": "Modh brobhsaidh an rannsachaidh",
-    "searchingInLanguage": "Toraidhean sa chànan seo: {language}"
+    "searchingInLanguage": "Toraidhean sa chànan seo: {language}",
+    "slowSearch": "Tha seo a’ toirt nas fhaide na an àbhaist…"
   },
   "HeroPlayer": {
     "playWithSound": "Coimhead a-nis",
@@ -766,5 +767,8 @@
     "loadError": "Cha b’ urrainn dhuinn an roghainn agad a luchdadh. Faodaidh tu fhathast taghadh gu h-ìosal.",
     "grantError": "Cha b’ urrainn dhuinn pearsanachadh a chur an comas. Tha an roghainn riatanach a-mhàin fhathast ri fhaighinn.",
     "saveError": "Cha b’ urrainn dhuinn an roghainn agad a shàbhaladh. Feuch ris a-rithist."
+  },
+  "WatchNoScript": {
+    "message": "Cuir JavaScript an comas sa bhrabhsair agad gus bhideothan a chluich agus an rannsachadh a chleachdadh."
   }
 }

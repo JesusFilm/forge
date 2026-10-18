@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sitio webpa ñawpa siminwan maskayta llamk’achiy",
     "removeLanguage": "{language} hurqoy",
     "browseMode": "Maskay qhaway modo",
-    "searchingInLanguage": "Resultados: {language}-pi"
+    "searchingInLanguage": "Resultados: {language}-pi",
+    "slowSearch": "Kayqa sapa kutimanta aswan unayta ruwakuchkan…"
   },
   "HeroPlayer": {
     "playWithSound": "Kunan qhawariy",
@@ -766,5 +767,8 @@
     "loadError": "Akllayniykiqa mana apamuyta atikurqanchu. Uraypiqa akllayta atinkiraqmi.",
     "grantError": "Personalización nisqataqa mana ruwachiyta atikurqanchu. Pisi mana faltakuqllaqa kanqaraqmi.",
     "saveError": "Akllayniykiqa mana waqaychayta atikurqanchu. Yapamanta kallpachakuy."
+  },
+  "WatchNoScript": {
+    "message": "Navegadorniykipi JavaScript nisqata kichariy, videokunata purichinaykipaq maskanaykipaqpas."
   }
 }

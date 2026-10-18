@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Tirhisa ririmi ra ku lava ra xiviri ra website",
     "removeLanguage": "Susa {language}",
     "browseMode": "Maitiro ya ku languta",
-    "searchingInLanguage": "Mimbuyelo leyi nga hi {language}"
+    "searchingInLanguage": "Mimbuyelo leyi nga hi {language}",
+    "slowSearch": "Leswi swi teka nkarhi wo leha ku tlula ndlela leyi tolovelekeke…"
   },
   "HeroPlayer": {
     "playWithSound": "Languta sweswi",
@@ -766,5 +767,8 @@
     "loadError": "Ku hlawula ka wena a ku kotekanga ku layicha. Wa ha kota ku hlawula laha hansi.",
     "grantError": "Ku endleriwa wena a ku kotekanga ku pfumeleriwa. Ta nkoka ntsena ta ha kumeka.",
     "saveError": "Ku hlawula ka wena a ku kotekanga ku hlayisiwa. Hi kombela u ringeta nakambe."
+  },
+  "WatchNoScript": {
+    "message": "Pfula JavaScript eka browser ya wena leswaku u ta kota ku tlanga tivhidiyo ni ku lava."
   }
 }

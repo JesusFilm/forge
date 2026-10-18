@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Použiť predvolený vyhľadávací jazyk webu",
     "removeLanguage": "Odstrániť {language}",
     "browseMode": "Režim prehliadania vyhľadávania",
-    "searchingInLanguage": "Výsledky v jazyku {language}"
+    "searchingInLanguage": "Výsledky v jazyku {language}",
+    "slowSearch": "Trvá to dlhšie ako zvyčajne…"
   },
   "HeroPlayer": {
     "playWithSound": "Sledovať teraz",
@@ -766,5 +767,8 @@
     "loadError": "Vašu voľbu sa nepodarilo načítať. Stále si ju môžete vybrať nižšie.",
     "grantError": "Personalizáciu sa nepodarilo zapnúť. Možnosť len nevyhnutných zostáva k dispozícii.",
     "saveError": "Vašu voľbu sa nepodarilo uložiť. Skúste to znova."
+  },
+  "WatchNoScript": {
+    "message": "Zapnite si v prehliadači JavaScript, aby ste mohli prehrávať videá a vyhľadávať."
   }
 }

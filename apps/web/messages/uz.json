@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Saytning standart qidiruv tilidan foydalanish",
     "removeLanguage": "{language}ni olib tashlash",
     "browseMode": "Ko‘rib chiqish rejimi",
-    "searchingInLanguage": "Natijalar {language} tili bo‘yicha"
+    "searchingInLanguage": "Natijalar {language} tili bo‘yicha",
+    "slowSearch": "Bu odatdagidan uzoqroq davom etmoqda…"
   },
   "HeroPlayer": {
     "playWithSound": "Hozir tomosha qiling",
@@ -766,5 +767,8 @@
     "loadError": "Tanlovingizni yuklab bo‘lmadi. Baribir quyida tanlashingiz mumkin.",
     "grantError": "Shaxsiylashtirishni yoqib bo‘lmadi. Faqat zarur sozlama mavjud bo‘lib qoladi.",
     "saveError": "Tanlovingizni saqlab bo‘lmadi. Iltimos, qayta urinib ko‘ring."
+  },
+  "WatchNoScript": {
+    "message": "Videolarni ijro etish va qidiruvdan foydalanish uchun brauzeringizda JavaScript’ni yoqing."
   }
 }

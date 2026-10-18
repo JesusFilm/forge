@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Uporabi privzeti jezik iskanja spletnega mesta",
     "removeLanguage": "Odstrani {language}",
     "browseMode": "Način brskanja po iskanju",
-    "searchingInLanguage": "Rezultati v jeziku {language}"
+    "searchingInLanguage": "Rezultati v jeziku {language}",
+    "slowSearch": "To traja dlje kot običajno …"
   },
   "HeroPlayer": {
     "playWithSound": "Glej zdaj",
@@ -766,5 +767,8 @@
     "loadError": "Vaše izbire ni bilo mogoče naložiti. Še vedno lahko izberete spodaj.",
     "grantError": "Prilagajanja ni bilo mogoče omogočiti. Možnost samo nujnih ostaja na voljo.",
     "saveError": "Vaše izbire ni bilo mogoče shraniti. Poskusite znova."
+  },
+  "WatchNoScript": {
+    "message": "Vklopite JavaScript v brskalniku, da boste lahko predvajali videoposnetke in uporabljali iskanje."
   }
 }

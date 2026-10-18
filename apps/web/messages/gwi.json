@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search gwich’in gwitr’it",
     "removeLanguage": "{language} nąįį",
     "browseMode": "Search ts’àt nah’in mode",
-    "searchingInLanguage": "{language} k’it results"
+    "searchingInLanguage": "{language} k’it results",
+    "slowSearch": "Search gwiłtsąįį, ąįį dagoo gwanzhįį…"
   },
   "HeroPlayer": {
     "playWithSound": "Jùu nah’in",
@@ -766,5 +767,8 @@
     "loadError": "Nakhwanjit zhìh dagoo’ìi łeek’it. Nihkhwanh deetth’ak choo.",
     "grantError": "Personalization k’eh tr’igiinlih łeek’it. Essential only łi’ gwintsal.",
     "saveError": "Nakhwanjit zhìh nagwahłìi łeek’it. Gwintsii, zheh gwahandaii."
+  },
+  "WatchNoScript": {
+    "message": "Niin browser kat JavaScript nah’in, videos jùu nah’in ts’à’ search gwitr’it."
   }
 }

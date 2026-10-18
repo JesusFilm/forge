@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтлысь тӧлкызык кылез пайдаланыл",
     "removeLanguage": "{language} вань",
     "browseMode": "Утчало режим",
-    "searchingInLanguage": "{language} кылын результатъёс"
+    "searchingInLanguage": "{language} кылын результатъёс",
+    "slowSearch": "Татын дырыез озьыгес кема мынэ…"
   },
   "HeroPlayer": {
     "playWithSound": "Тагьыр ӧтӥл",
@@ -766,5 +767,8 @@
     "loadError": "Тонлэн быръемед эз быдӟа лыдъяськыны. Улын на бырены быгатоды.",
     "grantError": "Персонализациязэ утьыны эз лу. Важезлэсь гинэ вариант кельше.",
     "saveError": "Тонлэн быръемедэз возьматыны эз лу. Мар вераськыса выльысь туртты."
+  },
+  "WatchNoScript": {
+    "message": "Видеоез учкыны но утчаны браузерад JavaScript-ез пыртэ."
   }
 }

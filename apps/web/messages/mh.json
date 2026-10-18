@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Jipan in website default search language",
     "removeLanguage": "Bōk jān {language}",
     "browseMode": "Wāween browse ilo search",
-    "searchingInLanguage": "Result ko ilo {language}"
+    "searchingInLanguage": "Result ko ilo {language}",
+    "slowSearch": "Ej to jidik jen ke ej jokkun…"
   },
   "HeroPlayer": {
     "playWithSound": "Lale kio",
@@ -766,5 +767,8 @@
     "loadError": "Ejjab maroñ loe kelet eo am. Kwōmaroñ wot kelet ijin ilal.",
     "grantError": "Personalization ejjab maroñ jerbal. Men ko aikuij wot rej bed.",
     "saveError": "Ejjab maroñ kōjparok kelet eo am. Jouj im bar etale."
+  },
+  "WatchNoScript": {
+    "message": "Kōjerbal JavaScript ilo browser eo am bwe kwōn maron̄ kōjọọj video ko im kōjerbal search."
   }
 }

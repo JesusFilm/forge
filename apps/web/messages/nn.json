@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Bruk standard søkjespråk for nettstaden",
     "removeLanguage": "Fjern {language}",
     "browseMode": "Søkje- og bla-modus",
-    "searchingInLanguage": "Treff på {language}"
+    "searchingInLanguage": "Treff på {language}",
+    "slowSearch": "Dette tek lengre tid enn vanleg…"
   },
   "HeroPlayer": {
     "playWithSound": "Sjå no",
@@ -766,5 +767,8 @@
     "loadError": "Valet ditt kunne ikkje lastast inn. Du kan framleis velje nedanfor.",
     "grantError": "Personleg tilpassing kunne ikkje aktiverast. Berre nødvendige er framleis tilgjengeleg.",
     "saveError": "Valet ditt kunne ikkje lagrast. Prøv igjen."
+  },
+  "WatchNoScript": {
+    "message": "Slå på JavaScript i nettlesaren din for å spela av videoar og bruka søk."
   }
 }

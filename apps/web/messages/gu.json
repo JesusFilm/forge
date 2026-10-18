@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "વેબસાઇટની ડિફૉલ્ટ શોધ ભાષાનો ઉપયોગ કરો",
     "removeLanguage": "{language} દૂર કરો",
     "browseMode": "બ્રાઉઝ શોધ મોડ",
-    "searchingInLanguage": "{language} માં શોધનાં પરિણામો"
+    "searchingInLanguage": "{language} માં શોધનાં પરિણામો",
+    "slowSearch": "આમાં સામાન્ય કરતાં વધુ સમય લાગી રહ્યો છે…"
   },
   "HeroPlayer": {
     "playWithSound": "હમણાં જુઓ",
@@ -766,5 +767,8 @@
     "loadError": "તમારી પસંદગી લોડ થઈ શકી નથી. તેમ છતાં તમે નીચે પસંદગી કરી શકો છો.",
     "grantError": "વ્યક્તિગતીકરણ સક્રિય થઈ શક્યું નથી. ફક્ત આવશ્યક વિકલ્પ ઉપલબ્ધ રહેશે.",
     "saveError": "તમારી પસંદગી સાચવી શકાઈ નથી. કૃપા કરીને ફરી પ્રયાસ કરો."
+  },
+  "WatchNoScript": {
+    "message": "વીડિયો ચલાવવા અને શોધનો ઉપયોગ કરવા માટે તમારા બ્રાઉઝરમાં JavaScript ચાલુ કરો."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sebenzisa ulimi lokusesha oluzenzakalelayo lwewebhusayithi",
     "removeLanguage": "Susa {language}",
     "browseMode": "Imodi yokuphequlula usesho",
-    "searchingInLanguage": "Imiphumela yokusesha ngesi-{language}"
+    "searchingInLanguage": "Imiphumela yokusesha ngesi-{language}",
+    "slowSearch": "Lokhu kuthatha isikhathi eside kunokujayelekileko…"
   },
   "HeroPlayer": {
     "playWithSound": "Buka manje",
@@ -766,5 +767,8 @@
     "loadError": "Ukukhetha kwakho akukalayitjhwa. Usengakhetha ngezansi.",
     "grantError": "Ukwenzelwa umuntu mathupha akukavunyeliswa. Okuqakathekileko kwaphela kusatholakala.",
     "saveError": "Ukukhetha kwakho akukagcinwa. Sibawa uzame godu."
+  },
+  "WatchNoScript": {
+    "message": "Vula iJavaScript esipheqululini sakho bona udlale amavidiyo begodu usebenzise ukusesha."
   }
 }

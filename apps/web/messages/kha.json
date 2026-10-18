@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Pyndonkam ia ka ktien search by default jong ka website",
     "removeLanguage": "Pynlait ia {language}",
     "browseMode": "Ka rukom peit search",
-    "searchingInLanguage": "Ki result ha {language}"
+    "searchingInLanguage": "Ki result ha {language}",
+    "slowSearch": "Kane ka shim por jrong palat ban ia kaba la dei…"
   },
   "HeroPlayer": {
     "playWithSound": "Peit mynta",
@@ -766,5 +767,8 @@
     "loadError": "Ym shym la lah ban load ïa ka jingjied jong phi. Phi dang lah ban jied hapoh.",
     "grantError": "Ym shym la lah ban pynïaid ïa ka personalization. Tang kiba donkam ki dang don.",
     "saveError": "Ym shym la lah ban save ïa ka jingjied jong phi. Sngewbha pyrshang biang."
+  },
+  "WatchNoScript": {
+    "message": "Sngewbha pynlong ia ka JavaScript ha ka browser jong phi ban pynïaid ia ki video bad ban pyndonkam ia ka jingwad."
   }
 }

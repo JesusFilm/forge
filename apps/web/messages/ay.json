@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Sitio web ukan sapüru thaqhañ arup apnaqaña",
     "removeLanguage": "{language} apsuña",
     "browseMode": "Thaqhañat uñakipaña modo",
-    "searchingInLanguage": "{language} arun jikxatäwinaka"
+    "searchingInLanguage": "{language} arun jikxatäwinaka",
+    "slowSearch": "Akax walja pachaw apasktixa…"
   },
   "HeroPlayer": {
     "playWithSound": "Jichhax uñch’ukiña",
@@ -766,5 +767,8 @@
     "loadError": "Ajlliwimax janiw qhantkaspati. Ukampis aynachanx ajlliskakismawa.",
     "grantError": "Personalización ukax janiw qhantayaskaspati. Wakiskirinakakïskiwa.",
     "saveError": "Ajlliwimax janiw imatäkaspati. Mira, wasitamp yant'am."
+  },
+  "WatchNoScript": {
+    "message": "Videonak uñjañataki ukat thaqhañ apnaqañatakix browser ukan JavaScript ukar ch'iqtayañamawa."
   }
 }

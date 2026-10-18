@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "د وېبپاڼې د لټون اصلي ژبه وکاروئ",
     "removeLanguage": "{language} لرې کړئ",
     "browseMode": "د لټون د پلټنې بڼه",
-    "searchingInLanguage": "پایلې په {language} کې دي"
+    "searchingInLanguage": "پایلې په {language} کې دي",
+    "slowSearch": "دا تر معمول ډېر وخت نیسي…"
   },
   "HeroPlayer": {
     "playWithSound": "اوس یې وګورئ",
@@ -766,5 +767,8 @@
     "loadError": "ستاسو انتخاب پورته نه شو. بیا هم لاندې انتخاب کولی شئ.",
     "grantError": "شخصي کول فعال نه شول. یوازې اړین لا هم شته.",
     "saveError": "ستاسو انتخاب خوندي نه شو. مهرباني وکړئ بیا هڅه وکړئ."
+  },
+  "WatchNoScript": {
+    "message": "د ویډیوګانو د غږولو او لټون د کارولو لپاره په خپل براوزر کې JavaScript فعال کړئ."
   }
 }

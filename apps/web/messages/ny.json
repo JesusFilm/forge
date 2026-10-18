@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gwiritsani ntchito chinenero chokhazikika cha webusaiti kufufuza",
     "removeLanguage": "Chotsani {language}",
     "browseMode": "Njira yofufuzira kusakatula",
-    "searchingInLanguage": "Zotsatira zili mu {language}"
+    "searchingInLanguage": "Zotsatira zili mu {language}",
+    "slowSearch": "Izi zikutenga nthawi yaitali kuposa nthawi zonse…"
   },
   "HeroPlayer": {
     "playWithSound": "Onerani tsopano",
@@ -766,5 +767,8 @@
     "loadError": "Sitinathe kutsegula chisankho chanu. Mutha kusankhabe pansipa.",
     "grantError": "Sitinathe kuyatsa kukonzedwa mogwirizana ndi inu. Zofunikira zokha zikadalipo.",
     "saveError": "Sitinathe kusunga chisankho chanu. Chonde yesaninso."
+  },
+  "WatchNoScript": {
+    "message": "Yatsani JavaScript mu msakatuli wanu kuti muzitha kusewera mavidiyo ndi kugwiritsa ntchito kusaka."
   }
 }

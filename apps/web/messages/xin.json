@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usar el idioma de búsqueda predeterminado del sitio",
     "removeLanguage": "Quitar {language}",
     "browseMode": "Modo de exploración",
-    "searchingInLanguage": "Resultados en {language}"
+    "searchingInLanguage": "Resultados en {language}",
+    "slowSearch": "Esto está tardando más de lo normal…"
   },
   "HeroPlayer": {
     "playWithSound": "Ver ahora",
@@ -766,5 +767,8 @@
     "loadError": "Elección ay ma' naxik'ama cargar. Kaway puy nachaw abajo.",
     "grantError": "Personalización ma' naxik'ama habilitar. Esencial sanan kaway disponible.",
     "saveError": "Elección ay ma' naxik'ama nimaq'ar. Chanin, k'ulna intento chik."
+  },
+  "WatchNoScript": {
+    "message": "Activa JavaScript en tu navegador para reproducir videos y usar la búsqueda."
   }
 }

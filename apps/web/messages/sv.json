@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Använd webbplatsens standardsökspråk",
     "removeLanguage": "Ta bort {language}",
     "browseMode": "Bläddringsläge för sökning",
-    "searchingInLanguage": "Resultat på {language}"
+    "searchingInLanguage": "Resultat på {language}",
+    "slowSearch": "Det här tar längre tid än vanligt…"
   },
   "HeroPlayer": {
     "playWithSound": "Titta nu",
@@ -766,5 +767,8 @@
     "loadError": "Ditt val kunde inte läsas in. Du kan fortfarande göra ett val nedan.",
     "grantError": "Anpassning kunde inte aktiveras. Endast nödvändiga är fortfarande tillgängliga.",
     "saveError": "Ditt val kunde inte sparas. Försök igen."
+  },
+  "WatchNoScript": {
+    "message": "Aktivera JavaScript i webbläsaren för att spela upp videor och använda sökningen."
   }
 }

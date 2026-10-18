@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Ampiasao ny fiteny fikarohana mahazatra an'ny tranonkala",
     "removeLanguage": "Esory {language}",
     "browseMode": "Fomba fijerena fikarohana",
-    "searchingInLanguage": "Valiny amin'ny {language}"
+    "searchingInLanguage": "Valiny amin'ny {language}",
+    "slowSearch": "Maharitra kokoa noho ny mahazatra izao…"
   },
   "HeroPlayer": {
     "playWithSound": "Jereo izao",
@@ -766,5 +767,8 @@
     "loadError": "Tsy azo nalaina ny safidinao. Mbola afaka misafidy etsy ambany ianao.",
     "grantError": "Tsy afaka navela ny fampanokanana manokana. Mbola azo ampiasaina ny safidy ilaina ihany.",
     "saveError": "Tsy voatahiry ny safidinao. Andramo indray azafady."
+  },
+  "WatchNoScript": {
+    "message": "Alefaso ny JavaScript ao amin'ny mpitety tranonkalanao mba hijerena horonan-tsary sy hampiasana ny fikarohana."
   }
 }

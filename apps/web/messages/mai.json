@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "वेबसाइटक डिफ़ॉल्ट खोज भाषा उपयोग करू",
     "removeLanguage": "{language} हटाउ",
     "browseMode": "ब्राउज़ मोडमे खोज",
-    "searchingInLanguage": "{language} मे परिणाम"
+    "searchingInLanguage": "{language} मे परिणाम",
+    "slowSearch": "एहिमे सामान्य सँ बेसी समय लागि रहल अछि…"
   },
   "HeroPlayer": {
     "playWithSound": "अहिने देखू",
@@ -766,5 +767,8 @@
     "loadError": "अहाँक विकल्प लोड नहि भ' सकल। अहाँ एखनहुँ नीचाँ चुनि सकैत छी।",
     "grantError": "वैयक्तिकरण चालू नहि भ' सकल। केवल जरूरी विकल्प उपलब्ध अछि।",
     "saveError": "अहाँक विकल्प सहेजल नहि भ' सकल। कृपया फेर प्रयास करू।"
+  },
+  "WatchNoScript": {
+    "message": "वीडियो चलाबय आ खोज उपयोग करबाक लेल अपन ब्राउज़र मे JavaScript चालू करू।"
   }
 }

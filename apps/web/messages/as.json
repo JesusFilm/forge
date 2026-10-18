@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "ৱেবছাইটৰ ডিফ’ল্ট সন্ধান ভাষা ব্যৱহাৰ কৰক",
     "removeLanguage": "{language} আঁতৰাওক",
     "browseMode": "ব্ৰাউজ সন্ধান ম’ড",
-    "searchingInLanguage": "{language} ভাষাৰ ফলাফল"
+    "searchingInLanguage": "{language} ভাষাৰ ফলাফল",
+    "slowSearch": "ইয়াত সাধাৰণতকৈ অধিক সময় লাগিছে…"
   },
   "HeroPlayer": {
     "playWithSound": "এতিয়া চাওক",
@@ -766,5 +767,8 @@
     "loadError": "আপোনাৰ বিকল্প ল'ড কৰিব পৰা নগ'ল। তথাপি আপুনি তলত বাছনি কৰিব পাৰে।",
     "grantError": "ব্যক্তিগতকৰণ সক্ষম কৰিব পৰা নগ'ল। কেৱল আৱশ্যকীয় বিকল্প এতিয়াও উপলব্ধ।",
     "saveError": "আপোনাৰ বিকল্প সংৰক্ষণ কৰিব পৰা নগ'ল। অনুগ্ৰহ কৰি পুনৰ চেষ্টা কৰক।"
+  },
+  "WatchNoScript": {
+    "message": "ভিডিঅ' চলাবলৈ আৰু সন্ধান ব্যৱহাৰ কৰিবলৈ আপোনাৰ ব্ৰাউজাৰত JavaScript অন কৰক।"
   }
 }

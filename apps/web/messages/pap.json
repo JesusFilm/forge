@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usa idioma di buskeda por defecto di website",
     "removeLanguage": "Kita {language}",
     "browseMode": "Modo di eksplorashon di buskeda",
-    "searchingInLanguage": "Resultadonan den {language}"
+    "searchingInLanguage": "Resultadonan den {language}",
+    "slowSearch": "Esaki ta tumando mas tempu ku normal…"
   },
   "HeroPlayer": {
     "playWithSound": "Warda aworaki",
@@ -766,5 +767,8 @@
     "loadError": "No por a karga bo eskoho. Aun asina bo por skohé abou.",
     "grantError": "No por a aktivá personalisashon. Solamente esensial ta keda disponibel.",
     "saveError": "No por a warda bo eskoho. Por fabor, purba atrobe."
+  },
+  "WatchNoScript": {
+    "message": "Pone JavaScript na bo navegador pa bo por toka vídeo i usa buska."
   }
 }

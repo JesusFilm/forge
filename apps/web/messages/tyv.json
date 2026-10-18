@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайттын демейки издеу чажытын пайдалан",
     "removeLanguage": "{language} алып сал",
     "browseMode": "Көрүп-издеу режими",
-    "searchingInLanguage": "{language} де харыылар"
+    "searchingInLanguage": "{language} де харыылар",
+    "slowSearch": "Бо үргүлчүден узун үе ап тур…"
   },
   "HeroPlayer": {
     "playWithSound": "Азыр көр",
@@ -766,5 +767,8 @@
     "loadError": "Силерниң шилилиңерни чүктеп болбады. Ындаа ада шилиип болур силер.",
     "grantError": "Хуудаштырулганы идевиктидирип болбады. Чүге керек арыг база-даа бар.",
     "saveError": "Силерниң шилилиңерни хадарып болбады. Катап көрүңер."
+  },
+  "WatchNoScript": {
+    "message": "Видеолар көөрү болгаш издээри-биле браузериңерге JavaScript-ти кожуп алыңар."
   }
 }

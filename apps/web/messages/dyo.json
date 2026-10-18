@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu ñu def ci sit bi",
     "removeLanguage": "Faj {language}",
     "browseMode": "Modu gëstu seet",
-    "searchingInLanguage": "Njureefu seetlu yi ci {language}"
+    "searchingInLanguage": "Njureefu seetlu yi ci {language}",
+    "slowSearch": "Lii dafa yàgg lu ëpp ni mu daan def…"
   },
   "HeroPlayer": {
     "playWithSound": "Seet léegi",
@@ -766,5 +767,8 @@
     "loadError": "Mënu ñu yebbi sa tànn. Waaye mën nga tànn ci suuf.",
     "grantError": "Mënu ñu doxal personalization bi. Yi soxla rekk lañuy wéyal.",
     "saveError": "Mënu ñu denc sa tànn. Jéemaatal."
+  },
+  "WatchNoScript": {
+    "message": "Taal JavaScript ci sa browser ngir tambali wideo yi te seet."
   }
 }

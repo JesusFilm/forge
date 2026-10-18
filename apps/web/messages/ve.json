@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Shumisani luambo lwa u ṱola lwa website nga default",
     "removeLanguage": "Bvisani {language}",
     "browseMode": "Mode ya u browse ṱhoḓisiso",
-    "searchingInLanguage": "Mvelelo dzi kha {language}"
+    "searchingInLanguage": "Mvelelo dzi kha {language}",
+    "slowSearch": "Hezwi zwi khou dzhia tshifhinga tshilapfu u fhira zwa misi…"
   },
   "HeroPlayer": {
     "playWithSound": "Lavhelani zwino",
@@ -766,5 +767,8 @@
     "loadError": "Khetho yanu a yo ngo kona u laisiwa. Ni kha ḓi nga nanga afho fhasi.",
     "grantError": "U ita zwa muthu nga eṱhe a zwo ngo kona u shumiswa. Dza ndeme fhedzi dzi kha ḓi wanala.",
     "saveError": "Khetho yanu a yo ngo kona u vhulungiwa. Ri humbela ni lingedze hafhu."
+  },
+  "WatchNoScript": {
+    "message": "Ndi humbela ni bvule JavaScript kha browser yanu u itela u tamba dzividiyo na u ṱola."
   }
 }

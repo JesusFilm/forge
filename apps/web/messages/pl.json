@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Użyj domyślnego języka wyszukiwania witryny",
     "removeLanguage": "Usuń {language}",
     "browseMode": "Tryb przeglądania wyszukiwania",
-    "searchingInLanguage": "Wyniki w języku: {language}"
+    "searchingInLanguage": "Wyniki w języku: {language}",
+    "slowSearch": "To trwa dłużej niż zwykle…"
   },
   "HeroPlayer": {
     "playWithSound": "Obejrzyj teraz",
@@ -766,5 +767,8 @@
     "loadError": "Nie udało się wczytać Twojego wyboru. Nadal możesz wybrać opcję poniżej.",
     "grantError": "Nie udało się włączyć personalizacji. Nadal dostępna jest opcja tylko niezbędnych plików cookie.",
     "saveError": "Nie udało się zapisać Twojego wyboru. Spróbuj ponownie."
+  },
+  "WatchNoScript": {
+    "message": "Włącz JavaScript w przeglądarce, aby odtwarzać filmy i korzystać z wyszukiwania."
   }
 }

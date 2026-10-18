@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "השתמשו בשפת החיפוש ברירת המחדל של האתר",
     "removeLanguage": "הסירו {language}",
     "browseMode": "מצב עיון בחיפוש",
-    "searchingInLanguage": "תוצאות ב־{language}"
+    "searchingInLanguage": "תוצאות ב־{language}",
+    "slowSearch": "זה לוקח יותר זמן מהרגיל…"
   },
   "HeroPlayer": {
     "playWithSound": "צפו עכשיו",
@@ -766,5 +767,8 @@
     "loadError": "לא ניתן היה לטעון את הבחירה שלך. עדיין אפשר לבחור למטה.",
     "grantError": "לא ניתן היה להפעיל התאמה אישית. האפשרות של חיוניים בלבד עדיין זמינה.",
     "saveError": "לא ניתן היה לשמור את הבחירה שלך. נא לנסות שוב."
+  },
+  "WatchNoScript": {
+    "message": "הפעילו JavaScript בדפדפן כדי לצפות בסרטונים ולהשתמש בחיפוש."
   }
 }

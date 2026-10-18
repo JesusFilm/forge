@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Uza língua peskiza padraun husi website",
     "removeLanguage": "Hasai {language}",
     "browseMode": "Modo peskiza",
-    "searchingInLanguage": "Rezultadu iha {language}"
+    "searchingInLanguage": "Rezultadu iha {language}",
+    "slowSearch": "Ida-ne'e han tempu naruk liu duké baibain…"
   },
   "HeroPlayer": {
     "playWithSound": "Haree agora",
@@ -766,5 +767,8 @@
     "loadError": "Labele karrega ita boot nia opsaun. Ita boot sei bele hili iha kraik.",
     "grantError": "Labele ativa personalizasaun. Esensiál deit sei disponível.",
     "saveError": "Labele guarda ita boot nia opsaun. Favór koko fali."
+  },
+  "WatchNoScript": {
+    "message": "Ativa JavaScript iha ita-nia navegadór atu bele toka vídeu no uza buka."
   }
 }

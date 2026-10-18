@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Onger a website default search language",
     "removeLanguage": "Mesek {language}",
     "browseMode": "Browse mode er a search",
-    "searchingInLanguage": "A results er a {language}"
+    "searchingInLanguage": "A results er a {language}",
+    "slowSearch": "Ng mle kmeed el mo er a ungil a taem…"
   },
   "HeroPlayer": {
     "playWithSound": "Omes ngii",
@@ -766,5 +767,8 @@
     "loadError": "Ngii a omloi er kau a diak lsebeched el losii. Ngdi ke sebechem el omloi er a omengull.",
     "grantError": "A personalization a diak lsebeched el me ngak. A essential only a mesaod el melemalt.",
     "saveError": "Ngii a omloi er kau a diak lsebeched el dulech. Ngklel a ungil chimngii mlo sebechem el melekoi se el mla ta er ngak."
+  },
+  "WatchNoScript": {
+    "message": "Omes a JavaScript er a browser er kau me ke sebechel el omes a video me odos a search."
   }
 }

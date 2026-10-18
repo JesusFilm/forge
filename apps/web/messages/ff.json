@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Huutoro ɗemngal ceɗɗitugol e jayngol suudu",
     "removeLanguage": "Momtu {language}",
     "browseMode": "Laawol ceɗɗitugol",
-    "searchingInLanguage": "Njiyndi e {language}"
+    "searchingInLanguage": "Njiyndi e {language}",
+    "slowSearch": "Ɗum no juuta ɓuri no woowiraa…"
   },
   "HeroPlayer": {
     "playWithSound": "Waɗ now",
@@ -766,5 +767,8 @@
     "loadError": "Cuɓol maa horiima loowaade. Aɗa waawi suɓaade ka les.",
     "grantError": "Daaɓugol keɓagol kisal maa horiima hurminde. Ceertuɗe tan maa heddii woodi.",
     "saveError": "Cuɓol maa horiima danndee. Tiiɗno fuɗɗito kadi."
+  },
+  "WatchNoScript": {
+    "message": "Huutor JavaScript e wanngorde maa ngam wondude videeji e yiylaade."
   }
 }

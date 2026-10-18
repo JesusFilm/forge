@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gebruik webwerf se verstek-soektaal",
     "removeLanguage": "Verwyder {language}",
     "browseMode": "Soekblaaimodus",
-    "searchingInLanguage": "Resultate in {language}"
+    "searchingInLanguage": "Resultate in {language}",
+    "slowSearch": "Dit neem langer as gewoonlik…"
   },
   "HeroPlayer": {
     "playWithSound": "Kyk nou",
@@ -766,5 +767,8 @@
     "loadError": "Jou keuse kon nie gelaai word nie. Jy kan steeds hieronder kies.",
     "grantError": "Verpersoonliking kon nie geaktiveer word nie. Slegs noodsaaklike bly beskikbaar.",
     "saveError": "Jou keuse kon nie gestoor word nie. Probeer asseblief weer."
+  },
+  "WatchNoScript": {
+    "message": "Skakel JavaScript in jou blaaier aan om video's te speel en soek te gebruik."
   }
 }

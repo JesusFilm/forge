@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Úsáid teanga réamhshocraithe chuardaigh an tsuímhéasáin",
     "removeLanguage": "Bain {language}",
     "browseMode": "Mód brabhsála cuardaigh",
-    "searchingInLanguage": "Torthaí i {language}"
+    "searchingInLanguage": "Torthaí i {language}",
+    "slowSearch": "Tá sé seo ag tógáil níos faide ná mar is gnách…"
   },
   "HeroPlayer": {
     "playWithSound": "Féach anois",
@@ -766,5 +767,8 @@
     "loadError": "Níorbh fhéidir do rogha a lódáil. Is féidir leat rogha a dhéanamh thíos fós.",
     "grantError": "Níorbh fhéidir pearsanú a chumasú. Tá an rogha riachtanach amháin ar fáil fós.",
     "saveError": "Níorbh fhéidir do rogha a shábháil. Bain triail eile as, le do thoil."
+  },
+  "WatchNoScript": {
+    "message": "Cuir JavaScript ar siúl i do bhrabhsálaí chun físeáin a sheinm agus an cuardach a úsáid."
   }
 }

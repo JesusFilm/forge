@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Gunakan bahasa pencarian bawaan situs",
     "removeLanguage": "Hapus {language}",
     "browseMode": "Mode jelajah pencarian",
-    "searchingInLanguage": "Hasil dalam {language}"
+    "searchingInLanguage": "Hasil dalam {language}",
+    "slowSearch": "Ini memakan waktu lebih lama dari biasanya…"
   },
   "HeroPlayer": {
     "playWithSound": "Tonton sekarang",
@@ -766,5 +767,8 @@
     "loadError": "Pilihan Anda tidak dapat dimuat. Anda tetap dapat memilih di bawah.",
     "grantError": "Personalisasi tidak dapat diaktifkan. Opsi hanya esensial tetap tersedia.",
     "saveError": "Pilihan Anda tidak dapat disimpan. Silakan coba lagi."
+  },
+  "WatchNoScript": {
+    "message": "Aktifkan JavaScript di browser Anda untuk memutar video dan menggunakan pencarian."
   }
 }

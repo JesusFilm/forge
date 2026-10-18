@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтӧс стандартной корсьӧм кывсӧ вӧчны",
     "removeLanguage": "{language} вештыны",
     "browseMode": "Корсьӧм лыддьыны режим",
-    "searchingInLanguage": "Корсьӧмлӧн результатъяс. Кыв: {language}"
+    "searchingInLanguage": "Корсьӧмлӧн результатъяс. Кыв: {language}",
+    "slowSearch": "Тайӧ мунӧ дырджык, мый пыр…"
   },
   "HeroPlayer": {
     "playWithSound": "Ӧні вӧтны",
@@ -766,5 +767,8 @@
     "loadError": "Тэнад бӧрйӧмсӧ эз позь гӧгӧрвоны. Улын на позьӧ бӧрйыны.",
     "grantError": "Асмоз лӧсьӧдӧмсӧ эз позь юргӧдны. Сӧмын коланаыс на кольччӧ доступнӧйӧн.",
     "saveError": "Тэнад бӧрйӧмсӧ эз позь видзны. Видзӧдлытӧй нӧшта ӧтчыд."
+  },
+  "WatchNoScript": {
+    "message": "Видео лэдзӧм да корсьӧм вылӧ браузерад JavaScript пырт."
   }
 }

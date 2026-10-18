@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Usar la llingua de busca predeterminada del sitiu web",
     "removeLanguage": "Quitar {language}",
     "browseMode": "Mou de navegación de la busca",
-    "searchingInLanguage": "Resultaos en {language}"
+    "searchingInLanguage": "Resultaos en {language}",
+    "slowSearch": "Esto ta tardando más de lo normal…"
   },
   "HeroPlayer": {
     "playWithSound": "Ver agora",
@@ -766,5 +767,8 @@
     "loadError": "Nun se pudo cargar la to opción. Aun así, pues escoyer embaxo.",
     "grantError": "Nun se pudo activar la personalización. Namái siguen disponibles les opciones esenciales.",
     "saveError": "Nun se pudo guardar la to opción. Téntalo otra vez."
+  },
+  "WatchNoScript": {
+    "message": "Activa JavaScript nel to restolador pa reproducir vídeos y usar la busca."
   }
 }

@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Käytä sivuston oletushakukieltä",
     "removeLanguage": "Poista {language}",
     "browseMode": "Hakuselailutila",
-    "searchingInLanguage": "Tulosten kieli: {language}"
+    "searchingInLanguage": "Tulosten kieli: {language}",
+    "slowSearch": "Tämä kestää tavallista kauemmin…"
   },
   "HeroPlayer": {
     "playWithSound": "Katso nyt",
@@ -766,5 +767,8 @@
     "loadError": "Valintaasi ei voitu ladata. Voit silti tehdä valinnan alla.",
     "grantError": "Personointia ei voitu ottaa käyttöön. Vain välttämättömät ovat edelleen käytettävissä.",
     "saveError": "Valintaasi ei voitu tallentaa. Yritä uudelleen."
+  },
+  "WatchNoScript": {
+    "message": "Ota JavaScript käyttöön selaimessasi, jotta voit toistaa videoita ja käyttää hakua."
   }
 }

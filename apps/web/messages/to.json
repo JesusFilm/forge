@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Ngaueʻaki ʻa e lea fekumi tuʻufonua ʻo e uepisaiti",
     "removeLanguage": "Toʻo {language}",
     "browseMode": "Fōtunga vakaiʻi fekumi",
-    "searchingInLanguage": "Ngaahi ola ʻi he {language}"
+    "searchingInLanguage": "Ngaahi ola ʻi he {language}",
+    "slowSearch": "ʻOku fuoloa ange ʻeni ʻi he angamahení…"
   },
   "HeroPlayer": {
     "playWithSound": "Sio he taimí ni",
@@ -766,5 +767,8 @@
     "loadError": "ʻIkai lava ke ʻomi hoʻo fili. ʻE kei lava pē ke ke fili ʻi lalo.",
     "grantError": "ʻIkai lava ke fakaʻatā ʻa e fakataautahaʻi. ʻOku kei ʻatā pē ʻa e ngaahi mahuʻinga.",
     "saveError": "ʻIkai lava ke tuku tauhi hoʻo fili. Kātaki ʻo toe feinga."
+  },
+  "WatchNoScript": {
+    "message": "Kataki ʻo fakaʻaongaʻi ʻa e JavaScript ʻi hoʻo browser ke lava ʻo vakai ki he ngaahi vitiō pea fekumi."
   }
 }

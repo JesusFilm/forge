@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Ymmyd ass çhengey shirrey rosc mot websayt",
     "removeLanguage": "Geddyn {language} magh",
     "browseMode": "Modh scrutaghey shirrey",
-    "searchingInLanguage": "Freggyrtyn ayns {language}"
+    "searchingInLanguage": "Freggyrtyn ayns {language}",
+    "slowSearch": "Ta shoh goaill traa s’odjey na’n cliaghtey…"
   },
   "HeroPlayer": {
     "playWithSound": "Jeeagh nish",
@@ -766,5 +767,8 @@
     "loadError": "Cha dod dty reiht ve lhiassaghey. Foddyms foast reih sheese.",
     "grantError": "Cha dod persoonaghey ve currit er bun. Ta bunneydagh ny lomarcan foast ry-gheddyn.",
     "saveError": "Cha dod dty reiht ve sauailt. Jean ymmyd jeh reesht, my saillt."
+  },
+  "WatchNoScript": {
+    "message": "Cur JavaScript er ayns dty vrowser dy chlou videoyn as dy yannoo ymmyd jeh shirrey."
   }
 }

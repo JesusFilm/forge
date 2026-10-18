@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Nittartakkami toqqarneqarsimasoq oqaatsit atorneqassapput",
     "removeLanguage": "{language} piiaruk",
     "browseMode": "Ujarliup qanoq ingerlanera",
-    "searchingInLanguage": "Inernerit {language}-imiittut"
+    "searchingInLanguage": "Inernerit {language}-imiittut",
+    "slowSearch": "Una nalinginnaasumit sivisunerusumik ingerlavoq…"
   },
   "HeroPlayer": {
     "playWithSound": "Maanna isigiuk",
@@ -766,5 +767,8 @@
     "loadError": "Toqqagassatit aaneqarsinnaanngillat. Taamaattorli ataani toqqaasinnaavutit.",
     "grantError": "Nammineq naleqqussaaneq atorneqalersinnaanngilaq. Pingaaruteqartut kisimik suli atorneqarsinnaapput.",
     "saveError": "Toqqagassatit toqqorneqarsinnaanngillat. Qinnuigineqarlutik misileqqiguk."
+  },
+  "WatchNoScript": {
+    "message": "Videot aallartinniarlugit ujarlernerlu atorniarlugu browserinni JavaScript ikiuk."
   }
 }

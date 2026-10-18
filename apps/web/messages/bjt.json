@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Website default search language nɔŋ kɛ",
     "removeLanguage": "{language} bɔ",
     "browseMode": "Sɛrɛch browsɛ mode",
-    "searchingInLanguage": "Result dɔŋ nɔŋ {language}"
+    "searchingInLanguage": "Result dɔŋ nɔŋ {language}",
+    "slowSearch": "Sɛrɛch kɛ jaŋ ka tɛm…"
   },
   "HeroPlayer": {
     "playWithSound": "Kɔrɔlɛ yɔŋ watch kɛ",
@@ -766,5 +767,8 @@
     "loadError": "N ka pude karga suma bo. Ma bo inda pudi skoji li dibaxu.",
     "grantError": "N ka pude ativa personalizason. Suma i misti sonku inda sta disponivel.",
     "saveError": "N ka pude grava suma bo. Prua outra bes."
+  },
+  "WatchNoScript": {
+    "message": "JavaScript ŋ i browser nɔ kaŋ, video plɛ wɔ kɔ sɛrɛch kɛ."
   }
 }

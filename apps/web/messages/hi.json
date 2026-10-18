@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "वेबसाइट की डिफ़ॉल्ट खोज भाषा का उपयोग करें",
     "removeLanguage": "{language} हटाएँ",
     "browseMode": "खोज ब्राउज़ मोड",
-    "searchingInLanguage": "परिणामों की भाषा: {language}"
+    "searchingInLanguage": "परिणामों की भाषा: {language}",
+    "slowSearch": "इसमें सामान्य से ज़्यादा समय लग रहा है…"
   },
   "HeroPlayer": {
     "playWithSound": "अभी देखें",
@@ -766,5 +767,8 @@
     "loadError": "आपकी पसंद लोड नहीं की जा सकी। फिर भी आप नीचे विकल्प चुन सकते हैं।",
     "grantError": "वैयक्तिकरण चालू नहीं किया जा सका। केवल आवश्यक विकल्प उपलब्ध रहेगा।",
     "saveError": "आपकी पसंद सहेजी नहीं जा सकी। कृपया फिर से प्रयास करें।"
+  },
+  "WatchNoScript": {
+    "message": "वीडियो चलाने और खोज का इस्तेमाल करने के लिए अपने ब्राउज़र में JavaScript चालू करें।"
   }
 }

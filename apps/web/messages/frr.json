@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Bruk de website-standaard-sookspraak",
     "removeLanguage": "{language} wegnim",
     "browseMode": "Sook-blaadmodus",
-    "searchingInLanguage": "Resultaten op {language}"
+    "searchingInLanguage": "Resultaten op {language}",
+    "slowSearch": "Dat düürt linger as wanlik…"
   },
   "HeroPlayer": {
     "playWithSound": "Nu kieken",
@@ -766,5 +767,8 @@
     "loadError": "Din köör koon nit laaden wurd. Dü könst ünjer aunj noch jüüs kaare.",
     "grantError": "Persöönlike oanpasning koon nit aktiweerd wurd. Bloot noodwändig bliiwt beskikboor.",
     "saveError": "Din köör koon nit seekert wurd. Fersäik et noch ans."
+  },
+  "WatchNoScript": {
+    "message": "Maak JavaScript in din Browser an, am Video's of tu spelen un de Sook tu bruken."
   }
 }

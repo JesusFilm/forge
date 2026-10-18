@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Salela monoko ya boluki ya liboso ya site",
     "removeLanguage": "Longola {language}",
     "browseMode": "Mode ya kotala boluki",
-    "searchingInLanguage": "Matomba ya boluki na {language}"
+    "searchingInLanguage": "Matomba ya boluki na {language}",
+    "slowSearch": "Ezali kozwa ntango mingi koleka ndenge ezalaka…"
   },
   "HeroPlayer": {
     "playWithSound": "Tala sikoyo",
@@ -766,5 +767,8 @@
     "loadError": "Liponi na yo ekokaki komonisama te. Kasi okoki kaka kopona awa na nse.",
     "grantError": "Kobongisa mpo na yo ekokaki kofungolama te. Ya ntina kaka ezali naino kozala.",
     "saveError": "Liponi na yo ekokaki kobombama te. Meka lisusu."
+  },
+  "WatchNoScript": {
+    "message": "Svp fungolá JavaScript na navigateur na yo mpo na kotambwisa bavidéo mpe kosalela boluki."
   }
 }

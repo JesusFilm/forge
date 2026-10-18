@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "使用网站默认搜索语言",
     "removeLanguage": "移除{language}",
     "browseMode": "搜索浏览模式",
-    "searchingInLanguage": "结果语言：{language}"
+    "searchingInLanguage": "结果语言：{language}",
+    "slowSearch": "所需时间比平常更久…"
   },
   "HeroPlayer": {
     "playWithSound": "立即观看",
@@ -766,5 +767,8 @@
     "loadError": "无法加载您的选择。您仍可在下方进行选择。",
     "grantError": "无法启用个性化。您仍可使用仅必要项。",
     "saveError": "无法保存您的选择。请重试。"
+  },
+  "WatchNoScript": {
+    "message": "请在浏览器中启用 JavaScript，以播放视频和使用搜索功能。"
   }
 }

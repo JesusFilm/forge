@@ -56,6 +56,7 @@ const UI_SURFACE_CONTEXTS = {
   WatchHomeSections: "content sections on the Watch homepage",
   WatchLanguageIndex: "the all-languages index for Watch",
   WatchModal: "a shared Watch dialog",
+  WatchNoScript: "a notice shown only when the browser has JavaScript disabled",
   WatchNotFound: "the localized Watch 404 page",
   WatchQuestionPanel: "an interactive study-question panel",
   WatchStudyQuestions: "the study questions section on a Watch page",

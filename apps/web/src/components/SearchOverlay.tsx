@@ -37,6 +37,7 @@ import {
   useFloatingSearchInputAutofocus,
 } from "./FloatingSearchField"
 import { CATEGORY_ICON_BY_SEARCH_TERM } from "./SearchCategoryIcons"
+import { SearchSlowNotice } from "./search/SearchSlowNotice"
 import { VideoCard } from "./search/VideoCard"
 import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { reportDatadogRumAction } from "@/components/DatadogRum"
@@ -225,6 +226,7 @@ export function SearchOverlay() {
     closing,
     query,
     submittedQuery,
+    submittedRequestId,
     displayResults,
     displayResultPages,
     exiting,
@@ -1480,6 +1482,12 @@ export function SearchOverlay() {
               })}
             </div>
           )}
+
+          <SearchSlowNotice
+            key={submittedRequestId}
+            pending={loading}
+            resetKey={submittedQuery}
+          />
 
           {loading && showSkeleton && (
             <div

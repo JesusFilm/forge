@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "Сайтым и еплъыкIэ къыщIэну pшыну",
     "removeLanguage": "{language} къыхэу",
     "browseMode": "КъыщIэн режим",
-    "searchingInLanguage": "Результатхэр {language}-м"
+    "searchingInLanguage": "Результатхэр {language}-м",
+    "slowSearch": "Мыр зэрыхабзэм нэхърэ нэхъ куэд йохь…"
   },
   "HeroPlayer": {
     "playWithSound": "Ащ къыдэплъэн",
@@ -766,5 +767,8 @@
     "loadError": "Уи къыхэхам къызэрагъэшэж хъумэщ. Ащыгъу къекIуэу щIалэбжьэу къыхэхын пхуохьэщ.",
     "grantError": "Уи щхьэусыгъуэкIэ гъэпэщытын щIэрымыкIыфIэщ. Мыхъумэ къэзыухьыр щхьэху щыIэу къэнэщт.",
     "saveError": "Уи къыхэхам гъэхъу хъумэщ. Гъэпытэжын къытхъуэ."
+  },
+  "WatchNoScript": {
+    "message": "Видеохэм уеплъын, къыщIэн къэбгъэсэбэпын папщIэ, уи браузерым JavaScript щыгъэхьэ."
   }
 }

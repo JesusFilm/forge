@@ -223,7 +223,8 @@
     "useWebsiteDefaultLanguage": "वेबसाइट डिफ़ॉल्ट खोज ञेरेन बेभार मे",
     "removeLanguage": "{language} हटाव मे",
     "browseMode": "खोज ब्राउज़ मोड",
-    "searchingInLanguage": "{language} रेयाक् परिणाम"
+    "searchingInLanguage": "{language} रेयाक् परिणाम",
+    "slowSearch": "नोवा साधारण खोन बेसी ओकतो ञामेदा…"
   },
   "HeroPlayer": {
     "playWithSound": "एक्हन देख मे",
@@ -766,5 +767,8 @@
     "loadError": "ᱟᱢᱟᱜ ᱵᱟᱪᱷᱟ ᱞᱚᱰ ᱵᱟᱹᱭ ᱦᱩᱭ ᱮᱱᱟ। ᱟᱢ ᱱᱤᱪᱮ ᱛᱮ ᱦᱚᱸ ᱵᱟᱪᱷᱟ ᱠᱚ ᱠᱟᱛᱮ ᱢᱮᱫᱟᱢ।",
     "grantError": "ᱱᱤᱡᱮᱨ ᱢᱚᱛᱚ ᱥᱟᱡᱟᱣ ᱪᱟᱹᱞᱩ ᱵᱟᱹᱭ ᱦᱩᱭ ᱮᱱᱟ। ᱠᱮᱵᱚᱞ ᱡᱟᱹᱨᱩᱲᱤ ᱫᱚ ᱢᱮᱱᱟᱜ ᱨᱮᱦᱚᱸᱜᱼᱟ।",
     "saveError": "ᱟᱢᱟᱜ ᱵᱟᱪᱷᱟ ᱥᱟᱸᱪᱟᱣ ᱵᱟᱹᱭ ᱦᱩᱭ ᱮᱱᱟ। ᱫᱚᱦᱲᱟ ᱠᱟᱛᱮ ᱪᱮᱥᱴᱟ ᱢᱮ।"
+  },
+  "WatchNoScript": {
+    "message": "भिडियो चलाव आर खोज बेभार ला़गित् आमाक् ब्राउज़र रे JavaScript चालु मे।"
   }
 }
