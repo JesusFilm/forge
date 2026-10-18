@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto"
 import { expect, it, vi } from "vitest"
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import {
+  STUDIO_RENDER_PROFILE,
+  STUDIO_RENDER_PROFILE_V1,
+  STUDIO_RENDER_PROFILE_V2,
+} from "@forge/studio-contracts/render"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
 import { StudioRenderPoolAuth } from "./studio-render-pool-auth"
 import { StudioRenderRetentionError } from "./studio-render-runner"
@@ -12,7 +16,12 @@ const config = {
   workerKey: "w".repeat(40),
   capabilityKey: "c".repeat(40),
 }
-function fixture() {
+function fixture(
+  executionProfile:
+    | typeof STUDIO_RENDER_PROFILE
+    | typeof STUDIO_RENDER_PROFILE_V1
+    | typeof STUDIO_RENDER_PROFILE_V2 = STUDIO_RENDER_PROFILE,
+) {
   const auth = new StudioRenderPoolAuth(config)
   const assignment = {
     poolId: "pool",
@@ -26,7 +35,7 @@ function fixture() {
     projectId: "project",
     revision: 1,
     inputHash: "a".repeat(64),
-    executionProfile: STUDIO_RENDER_PROFILE,
+    executionProfile,
     document: {
       version: 1,
       title: "Fixture",
@@ -240,47 +249,54 @@ it("rejects terminalized or edited assignments even when the older job-only owne
   ).rejects.toThrow("lease")
   expect(f.prepare).not.toHaveBeenCalled()
 })
-it("reads the exact accepted receipt after a recording window, without another canonical mutation", async () => {
-  const f = fixture()
-  const record = {
-    attemptId: f.assignment.attemptId,
-    leaseId: f.assignment.leaseId,
-    status: "FAILED" as const,
-    result: { assets: [], costMicros: null },
-  }
-  const { studioHash } = await import("@forge/studio-server")
-  const envelope = {
-    settlement: f.auth.sealSettlement(
-      f.assignment,
-      f.snapshot.inputHash,
-      record,
-    ),
-  }
-  f.call.mockImplementation(async (command) => {
-    if (command === "assigned")
-      return { ...f.assignment, expiresAt: new Date(f.assignment.expiresAt) }
-    if (command === "context")
-      return {
-        snapshot: f.snapshot,
-        executions: [
-          {
-            leaseId: record.leaseId,
-            requestHash: studioHash(record),
-            admitted: false,
-          },
-        ],
-      }
-    throw new Error("No mutation permitted")
-  })
-  await expect(
-    f.gateway.receipt(f.token, envelope, new AbortController().signal),
-  ).resolves.toEqual({ admitted: false })
-  expect(
-    f.call.mock.calls.every(([command]) =>
-      ["assigned", "context"].includes(command),
-    ),
-  ).toBe(true)
-})
+it.each([
+  STUDIO_RENDER_PROFILE_V1,
+  STUDIO_RENDER_PROFILE_V2,
+  STUDIO_RENDER_PROFILE,
+])(
+  "reads the exact accepted receipt after a recording window for $id, without another canonical mutation",
+  async (profile) => {
+    const f = fixture(profile)
+    const record = {
+      attemptId: f.assignment.attemptId,
+      leaseId: f.assignment.leaseId,
+      status: "FAILED" as const,
+      result: { assets: [], costMicros: null },
+    }
+    const { studioHash } = await import("@forge/studio-server")
+    const envelope = {
+      settlement: f.auth.sealSettlement(
+        f.assignment,
+        f.snapshot.inputHash,
+        record,
+      ),
+    }
+    f.call.mockImplementation(async (command) => {
+      if (command === "assigned")
+        return { ...f.assignment, expiresAt: new Date(f.assignment.expiresAt) }
+      if (command === "context")
+        return {
+          snapshot: f.snapshot,
+          executions: [
+            {
+              leaseId: record.leaseId,
+              requestHash: studioHash(record),
+              admitted: false,
+            },
+          ],
+        }
+      throw new Error("No mutation permitted")
+    })
+    await expect(
+      f.gateway.receipt(f.token, envelope, new AbortController().signal),
+    ).resolves.toEqual({ admitted: false })
+    expect(
+      f.call.mock.calls.every(([command]) =>
+        ["assigned", "context"].includes(command),
+      ),
+    ).toBe(true)
+  },
+)
 
 it.each([true, false])(
   "only an admitted successful render can request a direct upload (admitted=%s)",
@@ -335,5 +351,38 @@ it.each([true, false])(
     await expect(
       f.gateway.mux(f.token, other, new AbortController().signal),
     ).rejects.toThrow()
+  },
+)
+
+it.each([STUDIO_RENDER_PROFILE_V1, STUDIO_RENDER_PROFILE_V2])(
+  "refuses legacy input and successful retention but preserves terminal recording: $id",
+  async (legacyProfile) => {
+    const f = fixture(legacyProfile)
+    const signal = new AbortController().signal
+    await expect(f.gateway.input(f.token, signal)).rejects.toThrow("Legacy")
+    await expect(
+      f.gateway.retain(
+        f.token,
+        { status: "SUCCEEDED", output: "YQ==", proof: {} },
+        signal,
+      ),
+    ).rejects.toThrow("Legacy")
+    expect(f.prepare).not.toHaveBeenCalled()
+    expect(f.retain).not.toHaveBeenCalled()
+    const envelope = await f.gateway.retain(
+      f.token,
+      { status: "FAILED" },
+      signal,
+    )
+    f.call.mockImplementation(async (command) => {
+      if (command === "assigned")
+        return { ...f.assignment, expiresAt: new Date(f.assignment.expiresAt) }
+      if (command === "context") return { snapshot: f.snapshot }
+      if (command === "finish") return { admitted: false }
+      throw new Error("Unexpected operation")
+    })
+    await expect(f.gateway.finish(f.token, envelope, signal)).resolves.toEqual({
+      admitted: false,
+    })
   },
 )

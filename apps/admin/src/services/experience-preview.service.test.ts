@@ -53,6 +53,8 @@ describe("ExperiencePreviewService", () => {
       locale: "en",
       slug: "home-draft",
       isHomepage: true,
+      // Written before the field existed, so the schema default applies.
+      homepageLayout: false,
       pathSegment: null,
       title: "Draft home",
       metaDescription: "Draft description",
@@ -72,6 +74,30 @@ describe("ExperiencePreviewService", () => {
         },
       }),
     )
+  })
+
+  it("carries the homepage layout of an unassigned homepage copy", async () => {
+    const base = draftRevision()
+    findUnique.mockResolvedValue({
+      ...base,
+      snapshot: {
+        v: 1,
+        data: {
+          ...base.snapshot.data,
+          isHomepage: false,
+          homepageLayout: true,
+        },
+      },
+    })
+    findFirst.mockResolvedValue({
+      id: "locale-1",
+      experienceId: "experience-1",
+      locale: "en",
+    })
+
+    await expect(
+      service.resolveByToken({ token: TOKEN }),
+    ).resolves.toMatchObject({ isHomepage: false, homepageLayout: true })
   })
 
   it("rejects malformed tokens without touching persistence", async () => {

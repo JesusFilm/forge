@@ -10,6 +10,7 @@ export type ExperiencePreviewShape = {
   locale: string
   slug: string
   isHomepage: boolean
+  homepageLayout: boolean
   pathSegment: string | null
   title: string | null
   metaDescription: string | null

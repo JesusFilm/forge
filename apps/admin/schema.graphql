@@ -310,6 +310,20 @@ Discriminated union of every block kind admin's editor can place at the top leve
 union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
 
 """
+Which saved version of each source locale a duplicate copies. Unsaved editor state is never copied.
+"""
+enum ExperienceDuplicationSourceVersion {
+  """
+  The stored canonical row only; for a published locale, the live published content.
+  """
+  CANONICAL
+  """
+  The locale's active saved draft when one exists, otherwise its canonical row.
+  """
+  EFFECTIVE
+}
+
+"""
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
 """
 type ExperienceLocale {
@@ -319,6 +333,10 @@ type ExperienceLocale {
   blocks: [ExperienceBlock!]!
   createdAt: String
   experienceId: ID
+  """
+  Renders with the Watch home layout and admits homepage-only blocks without being the live homepage (see isHomepage).
+  """
+  homepageLayout: Boolean
   id: ID
   isHomepage: Boolean
   locale: String
@@ -364,6 +382,7 @@ type ExperienceLocaleEffective {
   blocks: [ExperienceBlock!]!
   createdAt: String
   experienceId: ID
+  homepageLayout: Boolean
   id: ID
   isHomepage: Boolean
   locale: String
@@ -383,6 +402,13 @@ type ExperienceLocaleEffective {
 type ExperiencePreview {
   blocks: [ExperienceBlock!]!
   experienceId: ID!
+  """
+  Render this draft with the Watch home layout even though it is not the live homepage. Renderers use isHomepage OR homepageLayout.
+  """
+  homepageLayout: Boolean!
+  """
+  Live homepage assignment carried by this draft. A homepage duplicate is false here and true on homepageLayout.
+  """
   isHomepage: Boolean!
   locale: String!
   localeId: ID!
@@ -2029,9 +2055,9 @@ type Mutation {
   discardExperienceLocaleDraft(id: ID!): ExperienceLocale
   dispositionManagerSubtitleEvalReferenceIssue(input: ManagerSubtitleEvalDispositionReferenceIssueInput!): ManagerSubtitleEvalOperationResult
   """
-  Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
+  Duplicate every locale of an Experience into a new unpublished draft owned by the caller. Each copied locale starts with an active draft and preview capability; the copy never becomes the live homepage, and a homepage copy keeps homepageLayout instead.
   """
-  duplicateExperience(id: ID!): Experience!
+  duplicateExperience(id: ID!, sourceVersion: ExperienceDuplicationSourceVersion = EFFECTIVE): Experience!
   failManagerSubtitleEvalCell(input: ManagerSubtitleEvalFailCellInput!): ManagerSubtitleEvalOperationResult
   finalizeManagerSubtitleEvalCell(input: ManagerSubtitleEvalFinalizeCellInput!): ManagerSubtitleEvalOperationResult
   finalizeManagerSubtitleEvalRun(input: ManagerSubtitleEvalFinalizeRunInput!): ManagerSubtitleEvalOperationResult
@@ -3705,6 +3731,10 @@ type WatchRouteSnapshot {
   preferredVariant: WatchRouteSnapshotPreferredVariant
   primaryLanguage: WatchRouteSnapshotLanguage
   publishedAt: String
+  """
+  Active catalog language whose slug exactly matches the requested languageSlug, independent of whether this video has a playable dub in it. Null when no languageSlug was requested or no active language has that slug. Never taken from preferredVariant, which may be a fallback dub.
+  """
+  requestedLanguage: WatchRouteSnapshotLanguage
   slug: String
 }
 

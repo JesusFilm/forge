@@ -2076,6 +2076,140 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     },
   )
 
+  it("cancels only the current page owner's pending language intent when Search opens", async () => {
+    const staleCancel = vi.fn()
+    const currentCancel = vi.fn()
+    const staleOwner = Symbol("old language owner")
+    const currentOwner = Symbol("current language owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: staleCancel,
+        ownerToken: staleOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        cancelPendingOpen: currentCancel,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: staleOwner,
+      })
+    })
+    expect(currentCancel).not.toHaveBeenCalled()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(currentCancel).toHaveBeenCalledTimes(1)
+    expect(staleCancel).not.toHaveBeenCalled()
+  })
+
+  it("cancels an invisible subtitle-picker owner without taking over the global globe", async () => {
+    const cancelPendingOpen = vi.fn()
+    const oldOwner = Symbol("stale subtitle owner")
+    const currentOwner = Symbol("subtitle owner")
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Single-audio video with subtitles</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        cancelPendingOpen,
+        ownerToken: currentOwner,
+      })
+      dispatchLanguageSwitcher({
+        visible: false,
+        onClick: null,
+        ownerToken: oldOwner,
+      })
+    })
+    expect(cancelPendingOpen).not.toHaveBeenCalled()
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="floating-search-desktop-button"]',
+        )!
+        .click()
+    })
+    expect(cancelPendingOpen).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["matching cleanup", "navigation", "visible replacement"])(
+    "drops invisible cancellation on %s",
+    async (change) => {
+      const cancelPendingOpen = vi.fn()
+      const owner = Symbol("subtitle owner")
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>Video</main>
+          </FloatingSearchProvider>,
+        )
+      })
+      act(() => {
+        dispatchLanguageSwitcher({
+          visible: false,
+          onClick: null,
+          cancelPendingOpen,
+          ownerToken: owner,
+        })
+      })
+      act(() => {
+        if (change === "matching cleanup") {
+          dispatchLanguageSwitcher({
+            visible: false,
+            onClick: null,
+            ownerToken: owner,
+          })
+        } else if (change === "visible replacement") {
+          dispatchLanguageSwitcher({
+            visible: true,
+            onClick: vi.fn(),
+            ownerToken: Symbol("replacement"),
+          })
+        } else {
+          navigationMocks.pathname = "/another-video.html/english.html"
+          root.render(
+            <FloatingSearchProvider>
+              <main>Next video</main>
+            </FloatingSearchProvider>,
+          )
+        }
+      })
+      await act(async () => {
+        document
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="floating-search-desktop-button"]',
+          )!
+          .click()
+      })
+      expect(cancelPendingOpen).not.toHaveBeenCalled()
+    },
+  )
+
   it("uses the registered language name that matches its page-specific badge", () => {
     const onLanguageClick = vi.fn()
     navigationMocks.pathname = "/jesus.html/russian.html"
@@ -2127,7 +2261,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language: English (EN)",
+      "Select language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -2175,8 +2309,148 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )?.textContent,
     ).toBe("PT-MZ")
     expect(languageButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: Portuguese Mozambique (PT-MZ)",
+      "Select language: Portuguese Mozambique (PT-MZ)",
     )
+  })
+
+  it("announces the global language trigger as a dialog opener with its open state", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    expect(languageButton.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).not.toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("true")
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      )
+    })
+    expect(
+      document.querySelector('[data-testid="global-language-picker-modal"]'),
+    ).toBeNull()
+    expect(languageButton.getAttribute("aria-expanded")).toBe("false")
+  })
+
+  it("keeps the audio-language name and omits aria-expanded for the page-specific switcher", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: vi.fn(),
+        languageCode: "PT",
+      })
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(languageButton?.getAttribute("aria-label")).toContain(
+      "Change audio language",
+    )
+    expect(languageButton?.getAttribute("aria-haspopup")).toBe("dialog")
+    expect(languageButton?.hasAttribute("aria-expanded")).toBe(false)
+  })
+
+  it("preselects the route language, not the chrome default, in the global picker", async () => {
+    navigationMocks.pathname = "/aari.html/languages"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      languageButton.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    expect(
+      document
+        .querySelector('[data-testid="global-language-picker-modal"]')
+        ?.getAttribute("data-current-language-slug"),
+    ).toBe("aari")
+  })
+
+  it("names the logo for what activating it does: Home link, or close-search button while search is open", async () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    expect(logo?.getAttribute("aria-label")).toBe("JesusFilm home")
+    expect(logo?.hasAttribute("role")).toBe(false)
+    await openSearchOverlay()
+    const openLogo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    )
+    // Same element across the toggle, so keyboard focus survives the close.
+    expect(openLogo).toBe(logo)
+    expect(openLogo?.getAttribute("role")).toBe("button")
+    expect(openLogo?.getAttribute("aria-label")).toBe("Close search")
+  })
+
+  it("closes search when Space is pressed on the logo while search is open", async () => {
+    vi.useFakeTimers()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await openSearchOverlay()
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLAnchorElement
+    const space = new KeyboardEvent("keydown", {
+      key: " ",
+      bubbles: true,
+      cancelable: true,
+    })
+    await act(async () => {
+      logo.dispatchEvent(space)
+    })
+    expect(space.defaultPrevented).toBe(true)
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]')
+        ?.className,
+    ).toContain("animate-overlay-fade-out")
+    await act(async () => {
+      vi.runAllTimers()
+    })
+    expect(logo.getAttribute("aria-label")).toBe("JesusFilm home")
+    expect(logo.hasAttribute("role")).toBe(false)
   })
 
   it("recovers the global trigger after a module-load failure and retries", async () => {
@@ -4819,6 +5093,59 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
         ?.textContent,
     ).toBe("Результаты на русском")
   })
+
+  // jsdom has no layout, so these pin the wiring (which logical margin
+  // utilities the chip wrapper carries); the rendered flush spacing itself was
+  // checked in a real browser. Each locale pins a different attachment shape:
+  // ar start only, zh-Hans both sides (the only fixture reaching the
+  // attached-end branch), en neither.
+  it.each([
+    ["ar", { start: true, end: false }],
+    ["zh-Hans", { start: true, end: true }],
+    ["en", { start: false, end: false }],
+  ] as const)(
+    "drops chip margin only on the sides glued to copy (%s)",
+    async (locale, glued) => {
+      const language =
+        locale === "en"
+          ? englishSearchLanguage
+          : {
+              englishName: locale === "ar" ? "Arabic" : "Chinese",
+              nativeName: locale === "ar" ? "العربية" : "中文",
+              bcp47: locale === "ar" ? "ar" : "zh-Hans",
+              publicSlug: locale === "ar" ? "arabic" : "chinese",
+              regionNames: ["Asia"],
+            }
+      mockedGetSearchLanguageOptions.mockResolvedValue({
+        ok: true,
+        options: [language],
+        countrySuggestion: null,
+        recommendedLanguage: language,
+        countryCode: null,
+        countryName: null,
+      })
+      const input = await openSearchOverlay(locale)
+
+      const chipWrapper = () =>
+        document
+          .querySelector('[data-testid="searching-in-language-label"]')
+          ?.closest(".pointer-events-auto.inline-flex") as HTMLElement | null
+      const expectMargins = () => {
+        const className = chipWrapper()?.className ?? ""
+        expect(className.split(" ").includes("ms-1")).toBe(!glued.start)
+        expect(className.split(" ").includes("me-1")).toBe(!glued.end)
+      }
+
+      // Idle template (searchInLanguage).
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+
+      // Query-intent template (searchSuggestionWithLanguage).
+      act(() => setInputValue(input, "jesus"))
+      expect(chipWrapper()).not.toBeNull()
+      expectMargins()
+    },
+  )
 
   it("does not mount the full search overlay on initial render without query intent", () => {
     act(() => {

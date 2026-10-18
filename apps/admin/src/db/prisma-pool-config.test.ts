@@ -3,6 +3,18 @@ import { describe, expect, it } from "vitest"
 import { prismaPgAdapterConfigForProfile } from "@/db/prisma-pool-config"
 
 describe("prismaPgAdapterConfigForProfile", () => {
+  it("bounds render control-plane acquisition inside the gateway ownership deadline", () => {
+    expect(
+      prismaPgAdapterConfigForProfile(
+        "postgresql://localhost/fixture",
+        "studio-render",
+      ).poolConfig,
+    ).toMatchObject({
+      max: 2,
+      connectionTimeoutMillis: 5_000,
+      idleTimeoutMillis: 300_000,
+    })
+  })
   it("selects the requested schema without rewriting a libpq multi-host URL", () => {
     const databaseUrl =
       "postgresql://user:p%40ss@host-a:5432,host-b:5433/forge_admin?schema=preview%2Dcatalog&sslmode=require"

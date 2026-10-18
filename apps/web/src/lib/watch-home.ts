@@ -6,7 +6,10 @@ import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
 import client from "@/lib/admin-client"
 import { formatDuration } from "@/lib/format-duration"
 import { localWatchHomeBlurDataUrl } from "@/lib/enrichment"
-import { publicWatchHomeLanguageSlugForLocale } from "@/lib/locale"
+import {
+  correctedBcp47,
+  publicWatchHomeLanguageSlugForLocale,
+} from "@/lib/locale"
 import {
   asLocaleSlug,
   tryAsContentSlug,
@@ -365,7 +368,9 @@ function selectSubtitleTrack(
   return selected?.vttSrc
     ? {
         vttSrc: selected.vttSrc,
-        bcp47: selected.language?.bcp47 ?? null,
+        bcp47:
+          correctedBcp47(selected.language?.slug, selected.language?.bcp47) ??
+          null,
       }
     : null
 }

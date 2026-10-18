@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation"
 import { Captions, Check, Languages, RefreshCw, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
 import type { RefObject } from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { flushSync } from "react-dom"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import {
   LanguageCombobox,
   type LanguageComboboxOption,
@@ -94,6 +94,7 @@ export function LanguagePickerModal({
   onRetryLanguageOptions,
 }: LanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
+  const headingId = useId()
   const router = useRouter()
 
   // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
@@ -518,6 +519,12 @@ export function LanguagePickerModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-language-picker-modal"
+        // Name from the one visible heading; with subtitles, keep the
+        // "Language & Subtitles" name (aria-label adds no second heading).
+        aria-label={
+          subtitles.length > 0 ? t("dialogTitleWithSubtitles") : undefined
+        }
+        aria-labelledby={subtitles.length > 0 ? undefined : headingId}
         className={LANGUAGE_PICKER_MODAL_CLASS}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
@@ -530,12 +537,6 @@ export function LanguagePickerModal({
           testId="watch-language-picker-close"
           renderInline
         />
-        <DialogTitle className="sr-only">
-          {subtitles.length > 0
-            ? t("dialogTitleWithSubtitles")
-            : t("dialogTitle")}
-        </DialogTitle>
-
         <div className="relative flex w-full flex-col gap-10">
           <MultilingualTooltipPanel
             copy={activeTooltipCopy}
@@ -545,8 +546,13 @@ export function LanguagePickerModal({
             <LanguagePickerHeader
               allLanguagesHref={allLanguagesPath}
               allLanguagesLabel={t("seeAllLanguages")}
-              countLabel={t("languageCount", { count: options.length })}
+              countLabel={
+                !languageOptionsLoading && !languageOptionsError
+                  ? t("languageCount", { count: options.length })
+                  : undefined
+              }
               heading={t("languageHeading")}
+              headingId={headingId}
               loading={languageOptionsLoading}
               testIdPrefix="watch-language-picker"
               onActivate={setActiveTooltipCopy}

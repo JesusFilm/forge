@@ -23,6 +23,11 @@ export const WATCH_HEADER_LANGUAGE_SWITCHER_EVENT =
 export type WatchHeaderLanguageSwitcherDetail = {
   visible: boolean
   onClick: (() => void) | null
+  /**
+   * Cancel pending language work on Search, even when only local subtitle
+   * controls are visible. Omit on mount cleanup so only its owner token clears.
+   */
+  cancelPendingOpen?: () => void
   /** Active audio language code, including a compact variant suffix if present. */
   languageCode?: string | null
   /** Display name for the language represented by `languageCode`. */

@@ -1,5 +1,10 @@
 # Hosted Shorts release and VM selection
 
+Current production target (owner decision 2026-10-19): `forge-render-proxmox-1`,
+physical guest `forge-render-01` / Proxmox VM109 on `jfp00`, always running.
+The AI guest and its demand monitor are retired. Preserve historical target-bound
+candidates; publish future candidates for the restored target.
+
 Releases run manually from main. The repository variable `STUDIO_RELEASE_ENABLED` and checked-in `config.json` must both enable releases. Set the dispatch `publish` input to publish the resulting candidate. The `studio-release` environment retains its main branch restriction but has no required reviewer or separate approval step, as requested by the owner on 2026-09-10. Tataihono can dispatch and publish directly.
 
 The candidate job has read-only package access. The publisher checks the actual GitHub workflow run, attempt, main commit, candidate digest, every OCI blob and the host payload before copying artifacts with package-write permission. It never executes downloaded candidate code. GitHub approval history, reviewer identities and approval comments are no longer consulted.
@@ -46,7 +51,7 @@ sudo python3 /usr/local/lib/forge-studio-release/ops/release/host.py \
 
 The command refuses non-root callers, disabled/mismatched policy, altered candidate or bundle bytes before registry acquisition. It serializes release operations, persists an operation record, preloads the exact image digests, installs the bundle inactive, then uses the existing switcher to drain and verify the current release's assignment journals before changing image configuration. It preserves the old private config/release identity and selects the new release **inactive**. The original worker enabled value is retained; it does not enable production or boot startup. Activation remains the explicit existing switcher operation after separate approval.
 
-Clean rollback uses this same command with an earlier explicitly approved candidate, bundle and image digests. Each completed selection has its own operation directory, so a previously selected candidate can be selected again for rollback. Preserve old artifacts and credentials needed to read them. Running work keeps its original image digest/lease/absolute deadline; this orchestration does not reset the900s job budget. The existing switcher waits at most1200s for drain; the command wrapper allows1250s to observe its result.
+Clean rollback uses this same command with an earlier explicitly approved candidate, bundle and image digests. Each completed selection has its own operation directory, so a previously selected candidate can be selected again for rollback. Preserve old artifacts and credentials needed to read them. Running work keeps its original image digest/lease/absolute deadline; this orchestration does not reset the retained job budget (900s for v1;1200s for v2;3600s for v3/v4). The existing switcher waits at most3900s for drain; the command wrapper allows3950s to observe its result.
 
 An incomplete operation leaves `/var/lib/forge-studio/release-pending` and its `selected-releases/<operation-id>` directory. New automatic rollout attempts refuse it. A failed switch can leave new image configuration with the old or new selected symlink; **no automatic rollback or successful selection is inferred**. Preserve drain and inspect the recorded candidate, private previous configuration, current symlink, service state and all journals through the existing trusted switcher/reconciliation contract. Only an operator who establishes physical retirement and the exact intended current selection may archive the pending marker and authorize another attempt. Preserve the operation record; never delete malformed job journals or reset a lease to regain capacity. This exceptional reconciliation is intentionally manual and is not a tested automatic recovery claim.
 

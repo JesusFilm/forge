@@ -64,7 +64,7 @@ describe("languageBadgeCodeFor", () => {
     expect(languageBadgeCodeFor({ slug: "arabic-algerian-spoken" })).toBe(
       "AR-ARQ",
     )
-    expect(languageBadgeCodeFor({ slug: "kurmanji-standard" })).toBe("KO-KMR")
+    expect(languageBadgeCodeFor({ slug: "kurmanji-standard" })).toBe("KMR-KS")
     expect(languageBadgeCodeFor({ slug: "malagasy-antankarana" })).toBe(
       "MG-XMV",
     )
@@ -82,6 +82,18 @@ describe("languageBadgeCodeFor", () => {
     expect(languageBadgeCodeFor({ slug: "french-african" })).toBe("FRA")
     expect(languageBadgeCodeFor({ slug: "english" })).toBe("EN")
     expect(languageBadgeCodeFor({ slug: "russian" })).toBe("RU")
+  })
+
+  it("never derives Korean codes for Kurmanji from admin's ko-kmr tag", () => {
+    expect(
+      languageCodeFor({ slug: "kurmanji-standard", bcp47: "ko-kmr" }),
+    ).toBe("KMR")
+    expect(
+      languageBadgeCodeFor({ slug: "kurmanji-standard", bcp47: "ko-kmr" }),
+    ).toBe("KMR-KS")
+    expect(languageCodeFor({ slug: "french-african", bcp47: "fra" })).toBe(
+      "FRA",
+    )
   })
 
   it("uses variant metadata when no route slug is available", () => {

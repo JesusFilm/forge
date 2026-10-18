@@ -216,6 +216,7 @@ export function FloatingSearchProvider({
   const t = useTranslations("FloatingSearch")
   const searchT = useTranslations("SearchOverlay")
   const languageT = useTranslations("LanguagePickerModal")
+  const languageComboboxT = useTranslations("LanguageCombobox")
   const pathname = usePathname()
   const routeIdentity = useMemo<RouteIdentity>(() => ({ pathname }), [pathname])
   const parsedPath = useMemo(() => parseWatchPath(pathname), [pathname])
@@ -376,6 +377,16 @@ export function FloatingSearchProvider({
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
+  const pageLanguageCancellationRef = useRef<{
+    ownerToken: symbol | null
+    pathname: string
+    cancel: () => void
+  } | null>(null)
+  useLayoutEffect(() => {
+    if (pageLanguageCancellationRef.current?.pathname !== pathname) {
+      pageLanguageCancellationRef.current = null
+    }
+  }, [pathname])
   const invalidateGlobalLanguageIntent = useCallback(() => {
     globalLanguageIntentRef.current += 1
     globalLanguagePendingRouteRef.current = null
@@ -397,6 +408,7 @@ export function FloatingSearchProvider({
         closingTimerRef.current = null
       }
       if (next) {
+        pageLanguageCancellationRef.current?.cancel()
         pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
@@ -578,6 +590,21 @@ export function FloatingSearchProvider({
       const ownerToken = detail.ownerToken ?? null
       const visible = detail.visible && typeof detail.onClick === "function"
 
+      // A subtitle-only or fullscreen picker can own pending work without
+      // replacing the header globe. Cleanup still belongs to its mount token.
+      if (typeof detail.cancelPendingOpen === "function") {
+        pageLanguageCancellationRef.current = {
+          ownerToken,
+          pathname,
+          cancel: detail.cancelPendingOpen,
+        }
+      } else if (
+        visible ||
+        pageLanguageCancellationRef.current?.ownerToken === ownerToken
+      ) {
+        pageLanguageCancellationRef.current = null
+      }
+
       setHeaderLanguageSwitcher((current) => {
         if (!visible) {
           const cleanupMatches = ownerToken
@@ -749,6 +776,19 @@ export function FloatingSearchProvider({
     },
     [closing, modalChromeHidden, resetSearch, setOpen],
   )
+  // While search is open the logo acts as a close control (feat-302), so it is
+  // exposed as a button named for that action rather than a Home link whose
+  // name would disagree with what activating it does (QA N46). It stays the
+  // same element so keyboard focus survives the close. Buttons also activate
+  // on Space, which an anchor does not do natively.
+  const handleLogoKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLAnchorElement>) => {
+      if (!modalChromeHidden || event.key !== " ") return
+      event.preventDefault()
+      if (!closing) setOpen(false)
+    },
+    [closing, modalChromeHidden, setOpen],
+  )
   useWatchModalActivity(modalChromeHidden, { releaseDelayMs: 0 })
   const playerPlayingWithSound =
     playerPlaybackState.playing && !playerPlaybackState.muted
@@ -783,9 +823,15 @@ export function FloatingSearchProvider({
       ? `${globalLanguageName} (${headerLanguageCode})`
       : headerLanguageCode
     : null
+  // The page-specific switcher changes the playback (audio) language; the
+  // global picker changes the site language and content, so it gets a
+  // neutral name.
+  const headerLanguageActionLabel = pageSpecificLanguageSwitcherActive
+    ? t("changeAudioLanguage")
+    : languageComboboxT("selectLanguage")
   const globalLanguageLabel = globalLanguageLoadFailed
-    ? `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
-    : `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
+    ? `${headerLanguageActionLabel}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
+    : `${headerLanguageActionLabel}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
@@ -986,9 +1032,11 @@ export function FloatingSearchProvider({
         >
           <Link
             href={logoHref as Route}
+            role={modalChromeHidden ? "button" : undefined}
             aria-label={modalChromeHidden ? t("closeSearch") : t("home")}
             data-testid="floating-header-logo"
             onClick={handleLogoClick}
+            onKeyDown={handleLogoKeyDown}
             className={`pointer-events-auto flex ${logoSlotClass} ${
               modalChromeHidden ? FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS : ""
             } items-center justify-start transition-opacity duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/80`}
@@ -1075,6 +1123,12 @@ export function FloatingSearchProvider({
                 ref={globalLanguageTriggerRef}
                 data-testid="floating-header-language-button"
                 onClick={headerLanguageClick}
+                aria-haspopup="dialog"
+                aria-expanded={
+                  pageSpecificLanguageSwitcherActive
+                    ? undefined
+                    : globalLanguageOpen
+                }
                 aria-busy={headerLanguageBusy}
                 disabled={headerLanguageBusy}
                 aria-label={globalLanguageLabel}
@@ -1163,7 +1217,7 @@ export function FloatingSearchProvider({
           <LazyGlobalLanguagePickerModal
             open={globalLanguageOpen}
             pathname={pathname}
-            currentLanguageSlug={currentLanguageSlug}
+            currentLanguageSlug={headerLanguageSlug}
             onClose={closeGlobalLanguage}
             returnFocusRef={globalLanguageTriggerRef}
           />

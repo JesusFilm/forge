@@ -650,3 +650,11 @@ behavior, read `docs/plans/2026-09-08-001-feat-studio-vm-execution-plan.md`,
 are defined in `src/config/env.ts`; `STUDIO_RENDER_POOL_ENABLED` gates new
 assignment selection, while configured historical receipt recovery remains
 available. Admin remains the canonical job authority.
+
+### Always-on production render worker (2026-10-19)
+
+Owner restored `forge-render-01` (Proxmox VM109 on `jfp00`) as the sole
+production worker, running continuously. The AI VM and demand watcher are
+retired. `/api/shorts/render-demand` and `STUDIO_RENDER_DEMAND_KEY` are removed;
+normal `/api/shorts/render-pool` polling and canonical leases remain unchanged.
+Read `docs/plans/2026-10-19-studio-always-on-proxmox.md` for the handover record.
