@@ -398,7 +398,7 @@ describe("shared reading builder boundaries", () => {
       ).toEqual([0, 1, 2, 3, 4, 5, 6])
   })
 
-  it("stops at an oversized global handoff without dispatching a pruned rank", async () => {
+  it("stops when even the all-note global handoff overflows without dispatching pruned work", async () => {
     const corpus = fixture()
     const noRankCapacity = async (text: string) => {
       const outer = JSON.parse(text)
@@ -426,7 +426,7 @@ describe("shared reading builder boundaries", () => {
         countTokens: noRankCapacity,
         executionManifest: {},
       }),
-    ).rejects.toThrow("request_exceeds_context")
+    ).rejects.toThrow("selection_exceeds_context")
     expect(transport.requests).toHaveLength(plan.groups[0].readings.length)
     expect(
       transport.requests.every((r) => Boolean(JSON.parse(r.prompt).targets)),

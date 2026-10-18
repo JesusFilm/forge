@@ -13,6 +13,8 @@ import {
 } from "../services/precomputed-recommendations/full-library-v1"
 import {
   planSharedReading,
+  prepareSharedReadingReuse,
+  SharedReadingReuseSchema,
   runSharedReading,
   type SharedReadingPlan,
 } from "../services/precomputed-recommendations/shared-reading-v1"
@@ -22,11 +24,33 @@ import {
 } from "./run-full-library-recommendations"
 
 export const SharedReadingConfigSchema = FullLibraryConfigSchema.extend({
+  readingReuse: SharedReadingReuseSchema.optional(),
   sourceIds: z.array(z.string().min(1)).min(1).optional(),
   maxSourcesPerGroup: z.number().int().min(1).max(4).default(4),
   readingConcurrency: z.union([z.literal(1), z.literal(2)]).default(2),
 })
 export type SharedReadingConfig = z.output<typeof SharedReadingConfigSchema>
+function validatePlanConfig(
+  plan: SharedReadingPlan,
+  config: SharedReadingConfig,
+  allIds: string[],
+) {
+  if (
+    JSON.stringify(plan.sourceIds) !==
+      JSON.stringify(config.sourceIds ?? allIds) ||
+    JSON.stringify(plan.context) !== JSON.stringify(config.context) ||
+    plan.maxSourcesPerGroup !== config.maxSourcesPerGroup ||
+    JSON.stringify(
+      plan.readingReuse
+        ? {
+            parentRunDirectory: plan.readingReuse.parentRunDirectory,
+            parentManifestSha256: plan.readingReuse.parentManifestSha256,
+          }
+        : undefined,
+    ) !== JSON.stringify(config.readingReuse)
+  )
+    throw new FullLibraryError("saved_plan_config_mismatch")
+}
 async function verify(path: string, digest: string) {
   if (sha256(await readFile(path)) !== digest)
     throw new FullLibraryError("evidence_digest_mismatch")
@@ -54,13 +78,26 @@ export async function sharedReadingCli(args: string[]) {
     config.tokenizer.args,
   )
   if (args[0] === "plan") {
-    const plan = await planSharedReading({
-      corpus,
-      sourceIds: config.sourceIds,
-      context: config.context,
-      countTokens,
-      maxSourcesPerGroup: config.maxSourcesPerGroup,
-    })
+    const plan = config.readingReuse
+      ? (
+          await prepareSharedReadingReuse({
+            corpus,
+            readingReuse: config.readingReuse,
+            countTokens,
+          })
+        ).plan
+      : await planSharedReading({
+          corpus,
+          sourceIds: config.sourceIds,
+          context: config.context,
+          countTokens,
+          maxSourcesPerGroup: config.maxSourcesPerGroup,
+        })
+    validatePlanConfig(
+      plan,
+      config,
+      corpus.entries.map((e) => e.video.id).sort(),
+    )
     await writeFile(config.planPath, JSON.stringify(plan, null, 2) + "\n", {
       flag: "wx",
       mode: 0o600,
@@ -84,14 +121,7 @@ export async function sharedReadingCli(args: string[]) {
   const plan = JSON.parse(
     await readFile(config.planPath, "utf8"),
   ) as SharedReadingPlan
-  const sourceIds =
-    config.sourceIds ?? corpus.entries.map((e) => e.video.id).sort()
-  if (
-    JSON.stringify(plan.sourceIds) !== JSON.stringify(sourceIds) ||
-    JSON.stringify(plan.context) !== JSON.stringify(config.context) ||
-    plan.maxSourcesPerGroup !== config.maxSourcesPerGroup
-  )
-    throw new FullLibraryError("saved_plan_config_mismatch")
+  validatePlanConfig(plan, config, corpus.entries.map((e) => e.video.id).sort())
   const account = createLocalCodexAccountReader({
     codexExecutable: config.codexExecutable,
     minimumRemainingPercent: config.minimumRemainingPercent,

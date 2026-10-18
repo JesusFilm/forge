@@ -144,11 +144,21 @@ ranking in declared order, with no assumed model memory. Rereads increase usage.
 An incomplete single-source/single-target assignment stops.
 
 Each source global ranking explicitly receives its complete source, **all**
-carried notes and resolved original evidence with stable discovery IDs. It
+carried notes and a lossless original-evidence lookup with stable discovery IDs. It
 chooses final 5–8 directional recommendations, fewer with a reason, and writes full
 explanations/value with immutable revalidated evidence. Duplicate target
-identities are rejected. Rank requests are measured after discovery; an oversized
-global pool stops without pruning or a shortlist.
+identities are rejected. Rank requests are measured after discovery. If the lossless full-evidence pool
+does not fit, use the automatic two-call finalization below; no discoveries are
+pruned before global final selection.
+
+The ranking payload retains every relation/value and source/target evidence association.
+`evidenceLookup.spans` stores each referenced target span once with its ref, video
+owner, original chunk ID and exact text; metadata lookup items retain field/value.
+Source lookup items use `sourceSpanRef` or `sourceMetadataRef` to resolve exact
+content already present in the complete source, avoiding a second copy. Trusted
+ranking instructions define these same-call lookups and video ownership; model
+notes remain untrusted. Final outputs expand evidence from the frozen catalog,
+not model-written quotes. Deduplication changes no evidence or discovery count.
 
 Complete target transcripts are read during discovery, not repeated wholesale
 at ranking. Selected spans/metadata and concise notes may lose nuance; missed
@@ -189,3 +199,101 @@ including incomplete parents and rejected known responses. Cached/reasoning
 are subsets, not extra usage; absent counters stay null, unknown consumption
 stays unknown. This counts this runner's calls, not all account AI usage.
 Manifest, receipt and producer-lock protections must not be bypassed.
+
+## Fresh ranking with verified completed readings
+
+Use this only after the coordinator settles the parent and admits new ranking
+code. Preserve the old run, results, receipts and unknowns. Do not edit its
+manifest or copy its receipts into the child. This narrow option requires **all
+parent reading trees complete** across every planned source group, including
+valid partial-parent discoveries and complete split children. Failed, pending,
+unknown, missing, semantically invalid or mismatched readings refuse admission.
+There is no partial import or reuse chain. A parent stopped before oversized
+ranking (no physical rank reservation) is valid; completed parent ranking results
+remain separate evidence.
+
+Make a new private config, keeping the identical corpus/hash, source IDs,
+context, tokenizer and group size. Set unused child `planPath` and `runDirectory`,
+new coordinator admission evidence, and add:
+
+```json
+{
+  "readingReuse": {
+    "parentRunDirectory": "/private/shared-reading/original/run",
+    "parentManifestSha256": "0000000000000000000000000000000000000000000000000000000000000000"
+  }
+}
+```
+
+Use the SHA-256 of the settled parent's **manifest bytes**, then run:
+
+```sh
+pnpm exec tsx apps/mastra/src/scripts/run-shared-reading-recommendations.ts plan --config /private/shared-reading/child-config.json
+pnpm exec tsx apps/mastra/src/scripts/run-shared-reading-recommendations.ts run --config /private/shared-reading/child-config.json
+```
+
+Offline `plan` verifies parent corpus/references, discovery instruction digest,
+all exact requests/dynamic schemas, context/measurements, receipt origins/model/
+known usage, exact evidence/acknowledgments, child splits and whole-library
+coverage. It retains the original reading assignments and measurements and
+updates finalization policy and ranking/selection/finalization instruction digests. The child plan includes parent artifact
+hashes and imported reading origins; `run` verifies them again before dispatch.
+The parent must remain immutable thereafter. Ranking still measures its new
+actual envelope/schema and uses the two-call fallback only on full-evidence
+overflow; no old ranking result is imported. Ordinary runs without
+`readingReuse` retain deterministic full planning and checkpoint behavior.
+
+Child summaries distinguish `newKnownPhysicalCalls`, `parentKnownPhysicalCalls`
+and `importedReadingPhysicalCalls` (the latter is a subset of parent calls).
+`newUsage` and `parentUsage` are separate known totals; top-level usage counts
+all linked physical origins once. `lineage`, `parentRun` and `unknownOrigins`
+retain parent receipt pointers, including rejected/unknown ranking work. Never
+add the parent summary again to the combined child total. Unknown is never zero,
+and no-dispatch attempts are not physical calls. Reuse does not authorize blind
+retry of any unknown/failed reading or change subscription/authentication guards.
+
+## Measured overflow: global final selection, then evidence verification
+
+Default full-catalog execution first measures one global evidence-rich ranking
+request for each source. If it fits, that remains the only finalization call.
+Only when that complete request exceeds token/byte capacity, use two calls:
+
+1. **Global final selection** receives the complete source, EVERY original
+   relation/added-value note from every reading/partial-parent/child discovery,
+   stable discovery IDs, original evidence pointers and exact target identity/
+   title metadata. It chooses final5–8 discovery IDs/ranks, fewer with a
+   substantive reason. This compares all discovered options jointly, with no
+   per-batch pools or preliminary eligibility shortlist. Target quote text and
+   other evidence field values are explicitly absent in this representation;
+   the selector cannot resolve pointers here or assume prior-call memory. Notes
+   are untrusted model interpretations, not verified target facts.
+2. **Selected-evidence finalization** receives that chosen final set and selection
+   reason explicitly, complete source and full original resolved source/target
+   evidence. It checks support and writes full connection/added-value text,
+   limiting metadata-only claims. It may reject unsupported choices, with an
+   evidence-specific reason and explained shortfall; it cannot invent replacement
+   IDs or pretend it saw additional target transcript text. Every selected ID
+   must appear once as recommended or rejected. Never force eight weak results.
+
+Both actual envelopes/dynamic schemas/reserves are checked before reservation.
+If even all-note selection or selected-evidence finalization does not fit, stop
+without truncation. Calls use deterministic `gNNNN-rank-SOURCE-select` and
+`gNNNN-rank-SOURCE-finalize` IDs, distinct physical receipts and actual usage.
+The single-call path retains `gNNNN-rank-SOURCE`. Existing fail-closed pause,
+in-flight settlement, allowance guards and unknown replay refusal still apply.
+
+`groups/GROUP/ranking-SOURCE.json` records route, pool digest, measurements and
+information loss; `selected-evidence-SOURCE.json` binds the selection and final
+measurement. Source results record `finalization.mode`, physical call IDs and
+`rejectedSelections` with target IDs/reasons. Requests state their phase/
+representation; plans bind phase instruction digests and finalization policy.
+These changes require fresh reviewed code/plan/admission, never an in-place
+manifest rewrite. Verified complete reading reuse keeps original physical
+origins and does not reread transcripts.
+
+This fallback is **not lossless ranking**: global choice sees original concise
+notes instead of full target evidence and can miss nuance. The finalizer checks
+only selected evidence; it cannot recover discovery or selection omissions.
+Original transcripts, discoveries and evidence remain private and intact, and
+final saved evidence still resolves exactly. Local capacity probes are not
+model choices, universal output bounds, quality/savings proof or calendar ETA.

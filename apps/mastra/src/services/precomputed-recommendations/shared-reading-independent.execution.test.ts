@@ -180,7 +180,7 @@ const readingPrompt = readingWire.transform((wire, context) => {
   }
   return { ...wire, targets }
 })
-const rankingPrompt = z
+const expandedRankingPrompt = z
   .object({
     version: z.literal("shared-reading-v1"),
     source: promptEntry,
@@ -190,6 +190,145 @@ const rankingPrompt = z
     informationLoss: z.string(),
   })
   .strict()
+const rankingEvidence = z
+  .object({
+    basis: z.enum(["transcript", "metadata"]),
+    refs: z.array(z.number()),
+  })
+  .strict()
+const rankingPrompt = z
+  .object({
+    version: z.literal("shared-reading-v1"),
+    stage: z.literal("global-evidence-ranking"),
+    representation: z.literal("lossless-evidence-lookup"),
+    source: promptEntry,
+    videos: z.array(
+      z.object({ ref: z.number(), videoId: z.string() }).strict(),
+    ),
+    discoveries: z.array(
+      z
+        .object({
+          discoveryId: z.string(),
+          source: z.number(),
+          target: z.number(),
+          sourceVideoId: z.string(),
+          targetVideoId: z.string(),
+          connection: z.string(),
+          watchingValue: z.string(),
+          sourceEvidence: rankingEvidence,
+          targetEvidence: rankingEvidence,
+        })
+        .strict(),
+    ),
+    evidenceLookup: z
+      .object({
+        spans: z.array(
+          z
+            .object({
+              ref: z.number(),
+              video: z.number(),
+              chunkId: z.string(),
+              text: z.string().optional(),
+              sourceSpanRef: z.number().optional(),
+            })
+            .strict(),
+        ),
+        metadata: z.array(
+          z
+            .object({
+              ref: z.number(),
+              video: z.number(),
+              field: z.string(),
+              value: z.string().optional(),
+              sourceMetadataRef: z.number().optional(),
+            })
+            .strict(),
+        ),
+      })
+      .strict(),
+    informationLoss: z.string(),
+  })
+  .strict()
+  .transform((wire) => {
+    function evidence(video: number, e: z.output<typeof rankingEvidence>) {
+      if (e.basis === "transcript")
+        return {
+          basis: "transcript",
+          passages: e.refs.map((ref) => {
+            const matches = wire.evidenceLookup.spans.filter(
+              (span) => span.ref === ref,
+            )
+            if (matches.length !== 1 || matches[0].video !== video)
+              throw new Error("Invalid ranking span owner/reference")
+            const span = matches[0]
+            if (span.sourceSpanRef !== undefined) {
+              if (video !== wire.source.ref || span.sourceSpanRef !== ref)
+                throw new Error("Invalid source span alias")
+              const chunk = wire.source.chunks.find(
+                (chunk) => chunk.id === span.chunkId,
+              )
+              const original = chunk?.spans.find((item) => item.ref === ref)
+              if (!original) throw new Error("Missing complete source span")
+              return { chunkId: span.chunkId, excerpt: original.text }
+            }
+            return {
+              chunkId: span.chunkId,
+              excerpt: z.string().parse(span.text),
+            }
+          }),
+        }
+      return {
+        basis: "metadata",
+        fields: e.refs.map((ref) => {
+          const matches = wire.evidenceLookup.metadata.filter(
+            (field) => field.ref === ref,
+          )
+          if (matches.length !== 1 || matches[0].video !== video)
+            throw new Error("Invalid ranking metadata owner/reference")
+          const field = matches[0]
+          if (field.sourceMetadataRef !== undefined) {
+            if (video !== wire.source.ref || field.sourceMetadataRef !== ref)
+              throw new Error("Invalid source metadata alias")
+            const references = z
+              .array(
+                z.object({
+                  ref: z.number(),
+                  field: z.string(),
+                  index: z.number().nullable(),
+                }),
+              )
+              .parse(wire.source.metadataRefs)
+            const original = references.find((item) => item.ref === ref)
+            if (!original || original.field !== field.field)
+              throw new Error("Missing source metadata field")
+            const value = wire.source.video[original.field]
+            return {
+              field: field.field,
+              value:
+                original.index === null
+                  ? z.string().parse(value)
+                  : z.array(z.string()).parse(value)[original.index],
+            }
+          }
+          return { field: field.field, value: z.string().parse(field.value) }
+        }),
+      }
+    }
+    return expandedRankingPrompt.parse({
+      version: wire.version,
+      source: wire.source,
+      informationLoss: wire.informationLoss,
+      discoveries: wire.discoveries.map((d) => ({
+        discoveryId: d.discoveryId,
+        sourceVideoId: d.sourceVideoId,
+        targetVideoId: d.targetVideoId,
+        connection: d.connection,
+        watchingValue: d.watchingValue,
+        sourceEvidence: evidence(d.source, d.sourceEvidence),
+        targetEvidence: evidence(d.target, d.targetEvidence),
+      })),
+    })
+  })
 type Request = Parameters<
   ReservationAwareStructuredModel["generateReserved"]
 >[0]
@@ -890,6 +1029,7 @@ describe("independent shared-reading safety and evidence", () => {
       }).success,
     ).toBe(true)
     const bothStarted = gate(),
+      secondEntered = gate(),
       releaseFirst = gate(),
       releaseSecond = gate(),
       thirdReturned = gate()
@@ -898,8 +1038,20 @@ describe("independent shared-reading safety and evidence", () => {
       starts = 0,
       rankStarted = false
     const modelCompletion: string[] = [],
+      arrivalOrder: number[] = [],
       pools: Array<z.output<typeof rankingPrompt>> = []
-    const fake = model(async (request) => {
+    function assignmentIndex(payload: z.output<typeof readingPrompt>) {
+      const index = plan.groups[0].readings.findIndex(
+        (assignment) =>
+          JSON.stringify(assignment.sources) ===
+            JSON.stringify(payload.sources.map((entry) => entry.ref)) &&
+          JSON.stringify(assignment.targets) ===
+            JSON.stringify(payload.targets.map((entry) => entry.ref)),
+      )
+      expect(index).toBeGreaterThanOrEqual(0)
+      return index
+    }
+    const transport = model(async (request) => {
       const raw: unknown = JSON.parse(request.prompt),
         parsed = readingPrompt.safeParse(raw)
       if (!parsed.success) {
@@ -909,9 +1061,13 @@ describe("independent shared-reading safety and evidence", () => {
         return rank(pool)
       }
       const p = parsed.data,
-        index = starts++
+        index = assignmentIndex(p)
+      expect(arrivalOrder).not.toContain(index)
+      arrivalOrder.push(index)
+      starts++
       active++
       maximum = Math.max(maximum, active)
+      if (index === 1) secondEntered.resolve()
       if (starts === 2) bothStarted.resolve()
       try {
         if (index === 0) await releaseFirst.promise
@@ -928,6 +1084,16 @@ describe("independent shared-reading safety and evidence", () => {
         active--
       }
     })
+    // Request preparation may finish out of declaration order. Force that
+    // interleaving, while still reserving and overlapping two real promises.
+    const fake: ReservationAwareStructuredModel = {
+      async generateReserved(request, reserve) {
+        const parsed = readingPrompt.safeParse(JSON.parse(request.prompt))
+        if (parsed.success && assignmentIndex(parsed.data) === 0)
+          await secondEntered.promise
+        return transport.generateReserved(request, reserve)
+      },
+    }
     const running = runSharedReading({
       corpus: data,
       plan,
@@ -938,6 +1104,7 @@ describe("independent shared-reading safety and evidence", () => {
     })
     await bothStarted.promise
     expect(active).toBe(2)
+    expect(arrivalOrder).toEqual([1, 0])
     releaseSecond.resolve()
     await thirdReturned.promise
     expect(rankStarted).toBe(false)
@@ -945,6 +1112,9 @@ describe("independent shared-reading safety and evidence", () => {
     releaseFirst.resolve()
     const result = await running
     expect(maximum).toBe(2)
+    expect(active).toBe(0)
+    expect(starts).toBe(3)
+    expect(arrivalOrder).toEqual([1, 0, 2])
     expect(modelCompletion).toEqual([
       "target-context",
       "target-metadata",
