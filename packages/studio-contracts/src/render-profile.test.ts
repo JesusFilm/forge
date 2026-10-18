@@ -6,6 +6,7 @@ import {
   STUDIO_RENDER_PROFILE_V3,
   studioRenderExecutionProfileSchema,
   studioRenderAdmissionSchema,
+  studioRenderLegacyAdmissionSchema,
 } from "./render"
 
 it("reads exact historical and current profiles without upgrading historical bounds", () => {
@@ -78,4 +79,17 @@ it("admits the parallel profile while retaining exact v3 history", () => {
   ] as const) {
     expect(STUDIO_RENDER_PROFILE[key]).toBe(STUDIO_RENDER_PROFILE_V3[key])
   }
+})
+
+it("keeps serial HTTP admission on v3 and rejects parallel assignments there", () => {
+  expect(
+    studioRenderLegacyAdmissionSchema.shape.profileId.parse(
+      STUDIO_RENDER_PROFILE_V3.id,
+    ),
+  ).toBe(STUDIO_RENDER_PROFILE_V3.id)
+  expect(
+    studioRenderLegacyAdmissionSchema.shape.profileId.safeParse(
+      STUDIO_RENDER_PROFILE.id,
+    ).success,
+  ).toBe(false)
 })

@@ -552,3 +552,25 @@ transfer scoped private worker configuration over pinned SSH without logging
 secrets, verify Manager/Admin current profile readiness, then explicitly activate
 only the AI-host worker. Enable guest/service boot startup after cutover. Complete
 end-to-end <=300s remains separate from measured render-only improvement.
+
+Full production-source offline qualification inside the AI guest passes in
+241.565s (4m01.565s), 106,378,021 bytes, no OOM, peak RAM 17,787,072,512 bytes
+(16.57GiB), sampled peak tasks1773. Independent full decode counts all8856
+1080x1920/30fps frames, AAC48kHz stereo; complete AAC SHA256 equals production
+reference. Video SHA256 `597eb0c3a1155e2647c94271b3a2eca31c64b36ea731dba620ee974c70cf97a9`.
+Separate operator verification takes66.326s; excluded from render timing. All8856
+same-timestamp frames compared with the serial production reference at108x192
+grayscale: meanSSIM0.996429. Two near-black fade frames below0.95 (minimum0.850914)
+were inspected directly; overlays/background align. This is a lossy scaled visual
+comparison, not pixel identity or exhaustive authored-code correctness proof.
+Retain exact source output/proofs in task artifacts `widow-r21-parallel-release-source*`.
+
+Review catches serial HTTP image advertising the shared current profile despite
+its retained2CPU native bounds. Pin that executor and its signed admission schema
+to immutablev3; keep v4 admission exclusive to the new VM path. Share inventory
+validation through a local schema factory; test mutual profile rejection. Manager's
+current-profile gateway is included in the normal source deployment. Admin's
+checked-in Railway watch patterns now include studio-contracts, so this shared
+execution contract triggers a normal Admin main deployment. Manager currently
+uses dashboard watch patterns; its gateway source comment also triggers this
+release's normal deployment, without changing its build system or live settings.

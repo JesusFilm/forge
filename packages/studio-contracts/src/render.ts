@@ -120,45 +120,60 @@ export const studioRenderOutputPartSchema = z
         ),
     "Invalid bounded output part",
   )
-export const studioRenderAdmissionSchema = z
-  .object({
-    version: z.literal(1),
-    profileId: z.literal(STUDIO_RENDER_PROFILE.id),
-    executionExpiresAt: z.number().int().positive(),
-    instanceId: z.string().uuid(),
-    attemptId: studioIdSchema,
-    leaseId: z.string().uuid(),
-    inputHash: studioDigestSchema,
-    issuedAt: z.number().int().nonnegative(),
-    expiresAt: z.number().int().positive(),
-    input: studioPreviewSchema,
-    files: z
-      .array(
-        z
-          .object({
-            name: z.string().regex(/^[a-zA-Z0-9_-][a-zA-Z0-9._-]{0,159}$/),
-            digest: studioDigestSchema,
-            size: z.number().int().min(1).max(STUDIO_RENDER_INPUT_BYTES),
-            base64: z
-              .string()
-              .max(Math.ceil(STUDIO_RENDER_INPUT_BYTES / 3) * 4),
-          })
-          .strict(),
+function renderAdmissionSchema<const ProfileId extends string>(
+  profileId: ProfileId,
+) {
+  return z
+    .object({
+      version: z.literal(1),
+      profileId: z.literal(profileId),
+      executionExpiresAt: z.number().int().positive(),
+      instanceId: z.string().uuid(),
+      attemptId: studioIdSchema,
+      leaseId: z.string().uuid(),
+      inputHash: studioDigestSchema,
+      issuedAt: z.number().int().nonnegative(),
+      expiresAt: z.number().int().positive(),
+      input: studioPreviewSchema,
+      files: z
+        .array(
+          z
+            .object({
+              name: z.string().regex(/^[a-zA-Z0-9_-][a-zA-Z0-9._-]{0,159}$/),
+              digest: studioDigestSchema,
+              size: z.number().int().min(1).max(STUDIO_RENDER_INPUT_BYTES),
+              base64: z
+                .string()
+                .max(Math.ceil(STUDIO_RENDER_INPUT_BYTES / 3) * 4),
+            })
+            .strict(),
+        )
+        .max(256),
+    })
+    .strict()
+    .superRefine((input, ctx) => {
+      const names = new Set(input.files.map((f) => f.name))
+      if (
+        names.size !== input.files.length ||
+        names.has("input.json") ||
+        input.files.reduce((n, f) => n + f.size, 0) > STUDIO_RENDER_INPUT_BYTES
       )
-      .max(256),
-  })
-  .strict()
-  .superRefine((input, ctx) => {
-    const names = new Set(input.files.map((f) => f.name))
-    if (
-      names.size !== input.files.length ||
-      names.has("input.json") ||
-      input.files.reduce((n, f) => n + f.size, 0) > STUDIO_RENDER_INPUT_BYTES
-    )
-      ctx.addIssue({ code: "custom", message: "Invalid render file inventory" })
-    if (Object.values(input.input.media).some((m) => !names.has(m.file)))
-      ctx.addIssue({ code: "custom", message: "Missing admitted media" })
-  })
+        ctx.addIssue({
+          code: "custom",
+          message: "Invalid render file inventory",
+        })
+      if (Object.values(input.input.media).some((m) => !names.has(m.file)))
+        ctx.addIssue({ code: "custom", message: "Missing admitted media" })
+    })
+}
+
+export const studioRenderAdmissionSchema = renderAdmissionSchema(
+  STUDIO_RENDER_PROFILE.id,
+)
+/** Serial HTTP executor retains its original immutable admission contract. */
+export const studioRenderLegacyAdmissionSchema = renderAdmissionSchema(
+  STUDIO_RENDER_PROFILE_V3.id,
+)
 export type StudioRenderAdmission = z.infer<typeof studioRenderAdmissionSchema>
 
 export const STUDIO_CODEC_VERIFIER_VERSION =
