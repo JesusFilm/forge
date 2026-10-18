@@ -122,6 +122,18 @@ describe("shared reading CLI builder boundary", () => {
       { readingConcurrency: 3 },
       { timeoutMs: 900001 },
       { minimumRemainingPercent: 1 },
+      {
+        readingReuse: {
+          parentRunDirectory: "relative",
+          parentManifestSha256: "0".repeat(64),
+        },
+      },
+      {
+        readingReuse: {
+          parentRunDirectory: "/parent",
+          parentManifestSha256: "bad",
+        },
+      },
     ])
       expect(
         SharedReadingConfigSchema.safeParse({ ...config, ...invalid }).success,
@@ -233,5 +245,49 @@ describe("shared reading CLI builder boundary", () => {
       outputTokens: 60,
     })
     expect(usage.cachedInputTokens).toBeNull()
+    // Offline reuse admission does not access the account or model. The child
+    // executes only its two rankings, with parent physical origins left intact.
+    const reuseConfig = {
+      ...admitted,
+      runDirectory: join(config.runDirectory, "..", "child-run"),
+      planPath: join(config.runDirectory, "..", "child-plan.json"),
+      readingReuse: {
+        parentRunDirectory: config.runDirectory,
+        parentManifestSha256: sha256(
+          await readFile(join(config.runDirectory, "manifest.json")),
+        ),
+      },
+    }
+    await writeFile(configPath, JSON.stringify(reuseConfig))
+    const accountCalls = guards.account.mock.calls.length
+    await sharedReadingCli(["plan", "--config", configPath])
+    expect(guards.account).toHaveBeenCalledTimes(accountCalls)
+    expect(calls).toBe(3)
+    const childPlan = JSON.parse(await readFile(reuseConfig.planPath, "utf8"))
+    expect(childPlan.readingReuse.readingOrigins).toHaveLength(1)
+    expect(
+      childPlan.readingReuse.files.some((f: { path: string }) =>
+        f.path.endsWith("receipt.json"),
+      ),
+    ).toBe(true)
+    await sharedReadingCli(["run", "--config", configPath])
+    expect(calls).toBe(5)
+    const childUsage = JSON.parse(
+      await readFile(
+        join(reuseConfig.runDirectory, "usage-summary.json"),
+        "utf8",
+      ),
+    )
+    expect(childUsage).toMatchObject({
+      knownPhysicalCalls: 5,
+      newKnownPhysicalCalls: 2,
+      parentKnownPhysicalCalls: 3,
+      importedReadingPhysicalCalls: 1,
+      inputTokens: 500,
+      newUsage: { inputTokens: 200, outputTokens: 40 },
+      parentUsage: { inputTokens: 300, outputTokens: 60 },
+    })
+    await sharedReadingCli(["run", "--config", configPath])
+    expect(calls).toBe(5)
   })
 })
