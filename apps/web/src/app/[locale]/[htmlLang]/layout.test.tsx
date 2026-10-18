@@ -16,6 +16,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
+import { watchScriptFontPreload } from "@/lib/watch-script-font"
 
 function findElement(
   node: ReactNode,
@@ -109,6 +110,84 @@ describe("Watch root layout <html lang>/<dir> (FGE-170 / W-082)", () => {
     await expect(htmlAttributes("es", "ars")).resolves.toEqual({
       lang: "es",
       dir: "ltr",
+    })
+  })
+})
+
+describe("Watch script font preloads (FGE-181 / W-084)", () => {
+  it.each([
+    ["ar", "/watch/fonts/noto-sans-arabic.woff2"],
+    ["he", "/watch/fonts/noto-sans-hebrew.woff2"],
+    ["hi", "/watch/fonts/noto-sans-devanagari.woff2"],
+    ["th", "/watch/fonts/noto-sans-thai.woff2"],
+    ["am", "/watch/fonts/noto-sans-ethiopic.woff2"],
+  ])("preloads the matching subset for %s", (htmlLang, expected) => {
+    expect(watchScriptFontPreload(htmlLang)).toBe(expected)
+  })
+
+  it.each(["ur", "ur-PK", "ur-IN"])(
+    "preloads Nastaliq, not Naskh, for Urdu (%s)",
+    (htmlLang) => {
+      expect(watchScriptFontPreload(htmlLang)).toBe(
+        "/watch/fonts/noto-nastaliq-urdu.woff2",
+      )
+    },
+  )
+
+  it.each(["fa", "ps", "sd", "ar-EG"])(
+    "keeps the Naskh preload for other Arabic-script language %s",
+    (htmlLang) => {
+      expect(watchScriptFontPreload(htmlLang)).toBe(
+        "/watch/fonts/noto-sans-arabic.woff2",
+      )
+    },
+  )
+
+  it("keeps the ISO 639-3 urd alias on Naskh, matching the stylesheet's :lang(ur)", () => {
+    // `Intl.Locale("urd").language` canonicalizes to "ur"; CSS `:lang(ur)` does
+    // not match "urd", so a Nastaliq preload there would never be rendered.
+    expect(watchScriptFontPreload("urd")).toBe(
+      "/watch/fonts/noto-sans-arabic.woff2",
+    )
+  })
+
+  it("does not preload Nastaliq for Urdu written in Latin script", () => {
+    expect(watchScriptFontPreload("ur-Latn")).toBeNull()
+  })
+
+  it("renders the Nastaliq preload for an Urdu document only", async () => {
+    const layout = await RootLayout({
+      children: <main>Urdu Watch page</main>,
+      params: Promise.resolve({ locale: "ur", htmlLang: "ur" }),
+    })
+    const preload = findElement(layout, "link") as ReactElement<{
+      href: string
+    }>
+    expect(preload.props.href).toBe("/watch/fonts/noto-nastaliq-urdu.woff2")
+  })
+
+  it.each(["en", "ja", "zh-Hans", "not-a-language"])(
+    "does not preload a mismatched or unconfigured subset for %s",
+    (htmlLang) => {
+      expect(watchScriptFontPreload(htmlLang)).toBeNull()
+    },
+  )
+
+  it("renders the base-path-aware subset preload in the document head", async () => {
+    const layout = await RootLayout({
+      children: <main>Arabic Watch page</main>,
+      params: Promise.resolve({ locale: "ar", htmlLang: "ar" }),
+    })
+    const preload = findElement(layout, "link") as ReactElement<{
+      href: string
+      rel: string
+      as: string
+    }>
+
+    expect(preload.props).toMatchObject({
+      href: "/watch/fonts/noto-sans-arabic.woff2",
+      rel: "preload",
+      as: "font",
     })
   })
 })
