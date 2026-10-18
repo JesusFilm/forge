@@ -147,6 +147,39 @@ describe("ReaderGlassButton", () => {
     expect(fills).toHaveLength(1)
   })
 
+  it.each([
+    ["Liquid Glass", "ios", true, undefined],
+    ["the blur", "ios", false, [{ scale: 0.94 }]],
+    ["the Android fill", "android", true, [{ scale: 0.94 }]],
+  ] as const)(
+    "on %s, a press on the button gives its surface the right scale",
+    async (_name, os, liquid, transform) => {
+      setPlatform(os)
+      mockGlass.liquid = liquid
+      const renderer = await render()
+      const [target] = renderer.root.findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          node.props.accessibilityRole === "button",
+      )
+      await act(async () => {
+        ;(target!.props.onResponderGrant as (e: unknown) => void)({
+          persist: () => {},
+          currentTarget: { measure: () => {} },
+          nativeEvent: { pageX: 0, pageY: 0, touches: [], changedTouches: [] },
+        })
+      })
+      const [surface] = renderer.root.findAll(
+        (node) =>
+          node.type === GlassView ||
+          node.type === PlatformBlur ||
+          (typeof node.type === "string" &&
+            flat(node).backgroundColor === LIGHT.buttonSurface),
+      )
+      expect(flat(surface!).transform).toEqual(transform)
+    },
+  )
+
   it("keeps a 44 x 44 target with a label and the button role (R36)", async () => {
     setPlatform("ios")
     const [target] = (await render()).root.findAll(

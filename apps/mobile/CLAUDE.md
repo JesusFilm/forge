@@ -2238,8 +2238,10 @@ the R, AE and KTD numbers that the source comments cite.
     whole surface reacts to a touch. `pressed` dims the fallback only. On
     glass, the `Pressable` must not dim itself: an opacity below 1 on any
     ancestor stops the glass.
-  - It always sets `colorScheme="dark"`. On 57.0.4 `isInteractive` gave no
-    white flash on remount (owner's iPhone, 2026-10-19). The buttons that draw
+  - It always sets `colorScheme="dark"`. On 57.0.4 the owner saw no white
+    flash with `isInteractive` (iPhone 15 Pro, iOS 26.5, 2026-10-19). A native
+    tab switch may not remount a screen, so that check may not cover the 0.1.9
+    remount trigger. The buttons that draw
     `GlassView` directly (`HomeHeader`, `FloatingBackButton`,
     `ReaderGlassButton`) set it too; a panel or a label does not.
 - **The player chrome dissolves with the controls table.** On glass, the

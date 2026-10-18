@@ -69,8 +69,8 @@ function LiquidGlassSurface({
 }: GlassSurfaceProps) {
   const reduceMotion = useReduceMotion()
   return (
-    // On 57.0.4 isInteractive no longer flashes white on remount (iPhone 15
-    // Pro, iOS 26.5, 2026-10-19). The 0.1.9 flash is why older code omits it.
+    // isInteractive flashed white on remount on 0.1.9. On 57.0.4 the owner saw
+    // no flash (iPhone 15 Pro, 2026-10-19), but a native tab switch may not remount.
     <GlassView
       isInteractive={interactive}
       style={style}

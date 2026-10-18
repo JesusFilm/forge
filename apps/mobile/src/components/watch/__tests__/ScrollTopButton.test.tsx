@@ -146,6 +146,11 @@ describe("ScrollTopButton (feat-705 U5, R7)", () => {
     expect(onPress).toHaveBeenCalledTimes(1)
   })
 
+  it("gives the button Apple's own press response", async () => {
+    const renderer = await render(true)
+    expect(glass(renderer).props.isInteractive).toBe(true)
+  })
+
   it("dissolves the glass on a hide and brings it back on a show", async () => {
     const renderer = await render(true)
     // In and out with the chevron's 200 ms fade.

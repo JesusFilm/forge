@@ -160,7 +160,7 @@ Import color values from `../../lib/color` — never hardcode hex strings. Avail
 
 ## Why This Matters
 
-- The `isInteractive` flash is non-obvious: it only manifests on tab navigation (remount), not during normal tap testing on first load. It will silently regress if `isInteractive` is re-added.
+- The `isInteractive` flash is non-obvious: it only manifests on tab navigation (remount), not during normal tap testing on first load. It will silently regress if `isInteractive` is re-added. (Superseded 2026-10-19: on 57.0.4 `GlassSurface` sets `isInteractive` on buttons through `interactive`. See the dated note under "Do NOT set `isInteractive` when the parent is a Pressable".)
 - `GlassView`'s non-iOS fallback being a plain `<View>` is not documented in the library — it was confirmed by reading the installed package's compiled GlassView module directly. This means no conditional rendering is needed.
 - The `Platform.select` spread pattern is the idiomatic way to apply platform-specific styles without branching component render logic.
 - The z-index layering contract is implicit across `HomeHeader.tsx` and `CuratedHomeLayout.tsx` — a change to either file's zIndex without updating the other will break hit-testing or scroll-over behavior.
@@ -168,7 +168,7 @@ Import color values from `../../lib/color` — never hardcode hex strings. Avail
 ## When to Apply
 
 - Any `apps/mobile` component that uses `GlassView` from `expo-glass-effect`
-- Any `GlassView` used inside a `Pressable` or `TouchableOpacity` — never set `isInteractive` in that context
+- Any `GlassView` used inside a `Pressable` or `TouchableOpacity` — never set `isInteractive` in that context (Superseded 2026-10-19: on 57.0.4 `GlassSurface` sets `isInteractive` on buttons through `interactive`. See the dated note under "Do NOT set `isInteractive` when the parent is a Pressable".)
 - Any header or overlay component that needs to float above a hero layer but allow list content to scroll over it
 - Any third-party native component whose press-state animation is driven by the native layer rather than React state
 

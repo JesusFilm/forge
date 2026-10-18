@@ -23,7 +23,7 @@ An audit on 2026-10-14 listed each non-glass element, drew it with and without g
 
 1. `docs/design-qa/mobile-liquid-glass-audit/index.html` — the summary table and the verdict for each element. Open it in a browser.
 2. `docs/solutions/best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md` — `GlassView` draws nothing under a parent whose opacity animates. Read "The scope boundary" before you generalize.
-3. `docs/solutions/best-practices/expo-glass-effect-interactive-flash-2026-04-08.md` — never set `isInteractive` on a `GlassView` inside a `Pressable`.
+3. `docs/solutions/best-practices/expo-glass-effect-interactive-flash-2026-04-08.md` — never set `isInteractive` on a `GlassView` inside a `Pressable`. (Superseded 2026-10-19: on 57.0.4 `GlassSurface` sets it on buttons through `interactive`. See the note under Constraints.)
 4. `apps/mobile/CLAUDE.md`, section "Tab bar — UIKit's own bar on iOS, a flush JS bar on Android" — the bullets "No test can see the RENDERED material", "A fade is not available on the material", and "Fast Refresh does not reliably apply changes to the material".
 5. `apps/mobile/src/components/ui/TabBarBackground.tsx:17-40` — the reference pattern: `isLiquidGlassAvailable() && isGlassEffectAPIAvailable()`, then `GlassView`, else `PlatformBlur`, and `null` off iOS.
 6. `apps/mobile/src/components/bible/ReaderGlassButton.tsx:38,69,87-119` — the second reference pattern. It dims the content, not the glass, because `GlassView` ignores opacity.

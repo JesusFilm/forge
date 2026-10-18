@@ -136,6 +136,8 @@ describe("the quiz window on Liquid Glass (U11)", () => {
     expect(styleOf(window).flex).toBe(1)
     expect(window.props.tintColor).toBeUndefined()
     expect(window.props.colorScheme).toBe("dark")
+    // The window is a panel, so a touch on it gets no press response.
+    expect(window.props.isInteractive).toBeUndefined()
     // A fill on the glass covers the material.
     expect(styleOf(window).backgroundColor).toBeUndefined()
     expect(
@@ -179,6 +181,7 @@ describe("the quiz close button on Liquid Glass (U8)", () => {
     })
     expect(styleOf(circle).backgroundColor).toBeUndefined()
     expect(circle.props.colorScheme).toBe("dark")
+    expect(circle.props.isInteractive).toBe(true)
     expect(holdsText(circle, "✕")).toBe(true)
     for (const ancestor of ancestorsOf(circle)) {
       expect(styleOf(ancestor).opacity).toBeUndefined()
