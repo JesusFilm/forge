@@ -1,5 +1,10 @@
 # Studio five-minute end-to-end render qualification
 
+> Superseded by owner decision 2026-10-19 (feat-731): production returns to
+> always-on Proxmox VM109 on `jfp00`. The AI guest is disabled/off and the demand
+> monitor is retired. Historical measurements below remain evidence, not current
+> activation instructions. See `docs/plans/2026-10-19-studio-always-on-proxmox.md`.
+
 Target: the complete repaired Widow revision-21 timeline (8856 frames,
 1080x1920/30fps, complete AAC) finishes within 300 seconds from request to
 independently verified retained output. Preserve authored components, source

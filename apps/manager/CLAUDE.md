@@ -651,13 +651,10 @@ are defined in `src/config/env.ts`; `STUDIO_RENDER_POOL_ENABLED` gates new
 assignment selection, while configured historical receipt recovery remains
 available. Admin remains the canonical job authority.
 
-### On-demand AI render worker
+### Always-on production render worker (2026-10-19)
 
-`GET /api/shorts/render-demand` accepts only `STUDIO_RENDER_DEMAND_KEY`, a new
-independent key distinct from worker, capability and generic Manager keys. It
-returns fixed pool/worker/profile identity and boolean demand using the existing
-canonical pending scan; it cannot claim or expose jobs/assets. Missing config,
-invalid backend data and timeouts return503, never an empty-queue assertion.
-Before changing VM wake/drain/shutdown behavior, read
-`apps/studio-render/ops/on-demand/README.md`. The trusted host controller owns
-power management; canonical Admin leases and guest journals still own execution.
+Owner restored `forge-render-01` (Proxmox VM109 on `jfp00`) as the sole
+production worker, running continuously. The AI VM and demand watcher are
+retired. `/api/shorts/render-demand` and `STUDIO_RENDER_DEMAND_KEY` are removed;
+normal `/api/shorts/render-pool` polling and canonical leases remain unchanged.
+Read `docs/plans/2026-10-19-studio-always-on-proxmox.md` for the handover record.

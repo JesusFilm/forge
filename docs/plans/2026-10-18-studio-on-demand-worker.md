@@ -1,5 +1,10 @@
 # On-demand Studio worker on jfpai01
 
+> Superseded by owner decision 2026-10-19 (feat-731): production returns to
+> always-on Proxmox VM109 on `jfp00`. The AI guest is disabled/off and the demand
+> monitor is retired. Historical measurements below remain evidence, not current
+> activation instructions. See `docs/plans/2026-10-19-studio-always-on-proxmox.md`.
+
 Owner authorized this rollout: host polls canonical queue demand, starts
 `forge-render-ai01`, and gracefully shuts down after ten idle minutes. Existing
 AI services and worker execution limits stay unchanged. The 300s full-flow target
@@ -56,8 +61,7 @@ reliability concerns before shipping; independent multi-agent review was not run
 
 Local validation: 21 host-controller tests, four guest-gate tests, 16 Manager
 render-demand/auth/HTTP tests, Manager type check and scoped ESLint passed.
-Production acceptance remains outstanding; this record does not claim cold-start
-or full-render timing results.
+The production acceptance measurements below supersede the initial local-only checkpoint.
 
 ## Production edge qualification correction
 
@@ -74,3 +78,61 @@ request contract, then acquire the corrected controller from reviewed main. No
 Cloudflare policy is relaxed. The deployed Manager endpoint remains compatible;
 controller and Manager source identities are recorded separately. VM autostart
 remains enabled until the corrected controller passes a real healthy cycle.
+
+## Production measurements
+
+Manager endpoint source: `0a505503b86531c166b348272b677a4409e0b8a3` (PR #2795),
+normal deployment `eaf8def5-cd36-4148-99c0-34c4a626e1c4`, healthy at
+2026-10-18T09:33:42Z. Corrected controller source:
+`591f6e5acd736743ccb45fe297e9679d79f00516` (PR #2796). Its actual host
+`Demand.read()` passes; installer confirms active/enabled service and changes
+VM `boot.autostart=false` only after its healthy cycle. Lingering is enabled.
+Manager's watch paths exclude this Python-only follow-up; its existing reviewed
+endpoint contract remains deployed. Guest bundle remains
+`b98e696bf1a698f6efe7d13d7d9b30799443cce5bda553d2f9155c24e9e84ec2`.
+
+The operator invoked the reviewed guest drain action to stage the initial cold
+test. This initial stop is not the automatic 600-second idle acceptance. QEMU is
+absent before submission; host MemAvailable rises from53.36GB to77.96GB (about
+22.9GiB released). Existing VM disk/config/journals remain intact.
+
+Fresh canonical SYSTEM request, stable idempotency key
+`on-demand-ai01-qualification-20261018`, creates attempt
+`cmvdn6d2y0001not28ojfrv0x` for the unchanged draft revision21/8856-frame clip:
+
+| Event                    | UTC time / measurement                                  |
+| ------------------------ | ------------------------------------------------------- |
+| Request                  | 09:47:30.206                                            |
+| First canonical lease    | 09:47:50.097 — **19.891s cold request-to-worker claim** |
+| Retained execution       | 09:54:22.785 — **412.579s (6m52.579s)**                 |
+| Terminal guest journal   | 09:54:35.447                                            |
+| Controller observes idle | 09:54:36.668                                            |
+
+Separate canonical storage readback confirms SUCCEEDED/nonstale/DRAFT at revision21,
+one admitted execution,106338671 output bytes, SHA256
+`34cf0a3f605000a73a070fa25970f97c7e5fe6f176b8992ebf9a3e3111d5afad`.
+Both native exits are0. Aggregate peak17.27GiB/1819 tasks, with no memory-limit or
+OOM events. The supervisor returns idle with0 restarts,0 job containers and0
+unfinished assignments; all15 existing host service identities/start times/restart
+counts match the baseline. Watcher snapshot is about14MiB and one task.
+
+The cold full-flow result fails the separate <=300s target; feat-725 stays open
+on the AI host. Automatic idle stop and independent media verification passed:
+
+- Actual automatic graceful stop: **10:04:45.907Z**, **609.239s** after idle
+  began; the 600s policy includes the subsequent probe and graceful-stop time.
+- Final VM state STOPPED, QEMU absent, recovery marker safely cleared;
+  controller remains enabled/active with lingering and zero restarts.
+- Available host RAM rises by **21,029,482,496 bytes (19.59GiB)** after this
+  render's shutdown. Watcher resident/cgroup snapshot is **12.95MiB**, one task.
+- Independent complete-media verification decodes **8856** H264 frames at
+  1080x1920/30fps, video295.2s, AAC295.253333s. Complete AAC SHA256 matches
+  `3e23235b65ae98c7eb218cbd85028cab37b0b1b422ad1b6941da9aaee1786e44`.
+- All15 existing AI service identities/start times/restart counts match baseline.
+  Installed four-file payload hashes match reviewed controller main exactly.
+
+The operator bundle `forge-render-ai01-setup/on-demand/evidence/summary.json`
+contains the asserted qualification result. It includes no demand key or worker
+credential. This closes feat-729's normal cold-start/render/idle lifecycle;
+additional distributed-failure injection is recorded in feat-730. The full-flow
+five-minute performance objective remains open in feat-725.

@@ -14,7 +14,9 @@ Build the host bundle with `package-supervisor.py --node <reviewed-linux-node> -
 
 ## Install without dispatch
 
-Install Docker from its verified official Ubuntu repository on the dedicated VM. Keep its Unix socket root-only, no TCP listener, and use bounded logs. Preserve pinned SSH access. The VM requires unified cgroup v2 with writable trusted host control, systemd, no swap, and sufficient space for bounded job files and two approved image releases. The selected v4 render profile requires 24 CPUs, 32 GiB job RAM and 4096 tasks, with additional guest memory for the trusted host supervisor and Docker. The jfpai01 guest provides 24 vCPUs and 40 GiB RAM.
+Install Docker from its verified official Ubuntu repository on the dedicated VM. Keep its Unix socket root-only, no TCP listener, and use bounded logs. Preserve pinned SSH access. The VM requires unified cgroup v2 with writable trusted host control, systemd, no swap, and sufficient space for bounded job files and two approved image releases. The selected v4 render profile requires 24 CPUs, 32 GiB job RAM and 4096 tasks, with additional guest memory for the trusted host supervisor and Docker. The always-on production guest is `forge-render-01`, Proxmox VM109 on `jfp00`,
+with 64 vCPUs and 64GiB configured RAM (owner decision 2026-10-19). The AI-host
+guest and its demand monitor are retired. V4 job limits stay 24CPU/32GiB.
 
 Preload only approved image digests as an explicit release step, then verify their local identities. Execution uses `--pull=never`; missing images refuse admission. Do not perform registry acquisition during a claim.
 
