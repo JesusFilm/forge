@@ -149,6 +149,7 @@ class DemandTests(unittest.TestCase):
         with patch.object(self.demand.opener, 'open', return_value=response) as opened:
             value = self.demand.read()
         self.assertEqual(opened.call_args.kwargs['timeout'], 8)
+        self.assertEqual(opened.call_args.args[0].get_header('User-agent'), 'Forge-Studio-OnDemand/1')
         response.read.assert_called_once_with(4097)
         return value
     def test_valid_empty_and_pending(self):

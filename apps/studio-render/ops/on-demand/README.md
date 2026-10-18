@@ -12,6 +12,8 @@ Manager's `GET /api/shorts/render-demand` accepts an independent
 `STUDIO_RENDER_DEMAND_KEY`. It returns only pool/worker/profile identity, enabled
 and pending booleans. This key cannot claim, finish, read assets or author projects.
 The host receives neither a render worker key nor a canonical Admin assertion.
+The HTTP client identifies itself as `Forge-Studio-OnDemand/1`; the production
+edge rejects Python's default client identity before application authentication.
 
 The controller runs as the existing trusted LXD administrator `tataihono`, uses
 only fixed local VM commands, and exposes no listener. This account already has

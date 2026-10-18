@@ -58,3 +58,19 @@ Local validation: 21 host-controller tests, four guest-gate tests, 16 Manager
 render-demand/auth/HTTP tests, Manager type check and scoped ESLint passed.
 Production acceptance remains outstanding; this record does not claim cold-start
 or full-render timing results.
+
+## Production edge qualification correction
+
+After PR #2795 deployed successfully, the actual host demand read returned HTTP
+403 before reaching Manager. A client/route comparison reproduced the same edge
+rejection on the existing render-pool route with Python's default user agent.
+Changing only the user agent to the honest `Forge-Studio-OnDemand/1` identity
+reached Manager and returned its expected unauthenticated HTTP401. The installed
+worker's Node client also reached both routes. This rules out a missing route
+exception and application bearer failure.
+
+Add the explicit service identity to the actual Python client, cover its outgoing
+request contract, then acquire the corrected controller from reviewed main. No
+Cloudflare policy is relaxed. The deployed Manager endpoint remains compatible;
+controller and Manager source identities are recorded separately. VM autostart
+remains enabled until the corrected controller passes a real healthy cycle.
