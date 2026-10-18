@@ -1,9 +1,10 @@
 # Hosted Shorts release and VM selection
 
-Current production target (owner decision 2026-10-19): `forge-render-proxmox-1`,
-physical guest `forge-render-01` / Proxmox VM109 on `jfp00`, always running.
-The AI guest and its demand monitor are retired. Preserve historical target-bound
-candidates; publish future candidates for the restored target.
+Current production target (superseding owner decision 2026-10-19):
+`forge-render-ai01`, the always-on VM on `jfpai01`. Its existing approved policy
+and immutable candidate already use this target. The Proxmox worker is drained
+and disabled, including its release policy. The demand monitor remains removed.
+Preserve historical target-bound candidates; future candidates use the AI target.
 
 Releases run manually from main. The repository variable `STUDIO_RELEASE_ENABLED` and checked-in `config.json` must both enable releases. Set the dispatch `publish` input to publish the resulting candidate. The `studio-release` environment retains its main branch restriction but has no required reviewer or separate approval step, as requested by the owner on 2026-09-10. Tataihono can dispatch and publish directly.
 
@@ -25,7 +26,7 @@ Inspect the run summary for the immutable release artifact and candidate SHA256.
 
 Use the trusted host operator over existing pinned SSH. Install this **reviewed** ops directory under `/usr/local/lib/forge-studio-release/ops`, preserving `release/`, `install-supervisor.py` and `switch-supervisor.py`. Make files and every parent root-owned and non-writable to other users. Install the exact checksum-verified ORAS binary at `/usr/local/lib/forge-studio-release/oras`. Do not execute root release tools from a user-writable checkout. Tool installation is a named release operation, not something CI performs on the VM.
 
-Create `/etc/forge-studio/release-policy.json`, root-owned mode0600, with exactly `{"version":1,"enabled":false,"target":"forge-render-proxmox-1"}`. An approved operator changes enabled to true only for the established target. It contains no approval boolean for a candidate and no registry credentials. Registry read configuration remains `/var/lib/forge-studio/docker-client/config.json`, root-private; jobs never receive it.
+Create `/etc/forge-studio/release-policy.json`, root-owned mode0600, with exactly `{"version":1,"enabled":false,"target":"forge-render-ai01"}`. An approved operator changes enabled to true only for the established target. It contains no approval boolean for a candidate and no registry credentials. Registry read configuration remains `/var/lib/forge-studio/docker-client/config.json`, root-private; jobs never receive it.
 
 Obtain the exact candidate JSON from the approved hosted record, transfer it into a root-private file, and independently compare its SHA256 with the selected digest. This metadata transfer does not grant authority: the following command checks the explicit digest and target again before acquisition. A trusted operator can also fetch the raw candidate blob from the fixed releases package by that SHA using ORAS with a65,536-byte file limit and a bounded command timeout; never use an unbounded pull/extract of arbitrary artifact paths.
 
