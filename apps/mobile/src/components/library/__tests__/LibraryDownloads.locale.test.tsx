@@ -34,7 +34,13 @@ const mockGate = { glass: false }
 jest.mock("../../../lib/liquidGlass", () => ({
   canUseLiquidGlass: () => mockGate.glass,
 }))
-jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
+// Select mode renders the selection bar, whose tab-bar material reads the
+// availability checks directly; false keeps that bar on its fallback.
+jest.mock("expo-glass-effect", () => ({
+  GlassView: "GlassView",
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
 
 const MB = 1024 * 1024
 const mockRecords = [
@@ -315,4 +321,49 @@ describe("the Select pill (feat-705 U8, R9)", () => {
     expect(dimmed.length).toBe(1)
     act(() => pressed.unmount())
   })
+
+  it.each([
+    ["on iOS 26", true],
+    ["without Liquid Glass", false],
+  ] as const)(
+    "%s, Select All and Cancel match the Select pill",
+    async (_name, glass) => {
+      mockGate.glass = glass
+      const list = await render()
+      await act(async () => {
+        pressableByLabel(list, "Select downloads").props.onPress!()
+      })
+      for (const label of ["Select all", "Cancel selection"]) {
+        const control = pressableByLabel(list, label)
+        const views = hostNodesWithin(list, control).filter(
+          (node) => node.type === "GlassView",
+        )
+        if (glass) {
+          expect([label, views.length]).toEqual([label, 1])
+          expect(flatten(views[0]!.props.style)).toMatchObject(PILL_BOX)
+          expect(views[0]!.props.isInteractive).toBe(true)
+        } else {
+          // Today's bare text: no glass and no fill.
+          expect([label, views.length]).toEqual([label, 0])
+          expect(
+            hostNodesWithin(list, control).filter(
+              (node) => flatten(node.props.style).backgroundColor != null,
+            ).length,
+          ).toBe(0)
+        }
+        // On glass the target never dims: an opacity below 1 stops the glass.
+        const [pressable] = list.root.findAll(
+          (node) =>
+            node.props.accessibilityLabel === label &&
+            typeof node.props.style === "function",
+        )
+        const style = pressable!.props.style as (state: {
+          pressed: boolean
+        }) => unknown
+        expect(flatten(style({ pressed: true })).opacity).toBe(
+          glass ? undefined : 0.85,
+        )
+      }
+    },
+  )
 })

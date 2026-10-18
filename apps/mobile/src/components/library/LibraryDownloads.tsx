@@ -411,41 +411,25 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
             <View style={styles.headRow}>
               {selecting ? (
                 <>
-                  <Pressable
-                    onPress={handleToggleSelectAll}
-                    style={({ pressed }) => [
-                      styles.textPill,
-                      pressed && feedback.pressed,
-                    ]}
-                    accessibilityRole="button"
+                  <SelectionPill
+                    label={allSelected ? t("deselectAll") : t("selectAll")}
                     accessibilityLabel={
                       allSelected
                         ? t("deselectAllAriaLabel")
                         : t("selectAllAriaLabel")
                     }
-                    {...{ "dd-action-name": "library-select-all" }}
-                  >
-                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
-                      {allSelected ? t("deselectAll") : t("selectAll")}
-                    </Text>
-                  </Pressable>
+                    actionName="library-select-all"
+                    onPress={handleToggleSelectAll}
+                  />
                   <Text style={[styles.selectionCount, typography.body]}>
                     {t("selectedCount", { count: selection.count })}
                   </Text>
-                  <Pressable
-                    onPress={() => setSelectionState(exitSelection())}
-                    style={({ pressed }) => [
-                      styles.textPill,
-                      pressed && feedback.pressed,
-                    ]}
-                    accessibilityRole="button"
+                  <SelectionPill
+                    label={t("cancel")}
                     accessibilityLabel={t("cancelSelectionAriaLabel")}
-                    {...{ "dd-action-name": "library-cancel-selection" }}
-                  >
-                    <Text style={[styles.textPillLabel, typography.bodySmall]}>
-                      {t("cancel")}
-                    </Text>
-                  </Pressable>
+                    actionName="library-cancel-selection"
+                    onPress={() => setSelectionState(exitSelection())}
+                  />
                 </>
               ) : (
                 <Pressable
@@ -582,6 +566,47 @@ const PILL_BG = "rgba(255, 255, 255, 0.09)"
 const SELECT_PILL_FALLBACK: GlassFallback = {
   kind: "fill",
   style: { backgroundColor: PILL_BG },
+}
+
+// Select All and Cancel stay bare text where Liquid Glass is unavailable.
+const BARE_TEXT: GlassFallback = { kind: "fill", style: null }
+
+/** Select All or Cancel: a glass pill like Select on iOS 26. */
+function SelectionPill({
+  label,
+  accessibilityLabel,
+  actionName,
+  onPress,
+}: {
+  label: string
+  accessibilityLabel: string
+  actionName: string
+  onPress: () => void
+}) {
+  const typography = useTypography()
+  const glass = canUseLiquidGlass()
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.textPill,
+        pressed && !glass && feedback.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      {...{ "dd-action-name": actionName }}
+    >
+      <GlassSurface
+        style={glass ? styles.selectPill : null}
+        fallback={BARE_TEXT}
+        interactive
+      >
+        <Text style={[styles.textPillLabel, typography.bodySmall]}>
+          {label}
+        </Text>
+      </GlassSurface>
+    </Pressable>
+  )
 }
 
 const styles = StyleSheet.create({

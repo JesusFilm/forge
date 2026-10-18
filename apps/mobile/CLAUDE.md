@@ -2235,9 +2235,11 @@ the R, AE and KTD numbers that the source comments cite.
     fallback, pass `fade` on the glass path only.
   - `interactive` gives a button Apple's own press response on glass
     (`isInteractive`). Set it on buttons only: on a panel or a label, the
-    whole surface reacts to a touch. `pressed` dims the fallback only. On
-    glass, the `Pressable` must not dim itself: an opacity below 1 on any
-    ancestor stops the glass.
+    whole surface reacts to a touch. It sees only a touch on the glass
+    itself, so a target larger than the glass needs the glass to fill it (the
+    44 pt back buttons) or its own press cue.
+    `pressed` dims the fallback only. On glass, the `Pressable` must not dim
+    itself: an opacity below 1 on any ancestor stops the glass.
   - It always sets `colorScheme="dark"`. On 57.0.4 the owner saw no white
     flash with `isInteractive` (iPhone 15 Pro, iOS 26.5, 2026-10-19). A native
     tab switch may not remount a screen, so that check may not cover the 0.1.9

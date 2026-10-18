@@ -168,6 +168,7 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
     player: player as unknown as VideoPlayer,
     muted: false,
     paused: false,
+    onResume: jest.fn(),
     fast: false,
     onToggleMute: jest.fn(),
     onSeek: jest.fn(),
@@ -269,6 +270,14 @@ function hostAbove(node: RenderedNode): RenderedNode {
   let at = node.parent
   while (at != null && typeof at.type !== "string") at = at.parent
   if (at == null) throw new Error("no host node above")
+  return at
+}
+
+/** The nearest GlassView host above a node. */
+function glassAbove(node: RenderedNode): RenderedNode {
+  let at = node.parent
+  while (at != null && at.type !== "GlassView") at = at.parent
+  if (at == null) throw new Error("no glass above")
   return at
 }
 
@@ -404,13 +413,22 @@ describe("ClipOverlay — clip information", () => {
 
   it("shows the play glyph only while paused, hidden from screen readers", () => {
     expect(byTestId(render(), "clip-paused-glyph")).toHaveLength(0)
-    const [glyph] = byTestId(
-      render(props({ paused: true })),
-      "clip-paused-glyph",
-    )
+    const onResume = jest.fn()
+    const renderer = render(props({ paused: true, onResume }))
+    const [glyph] = byTestId(renderer, "clip-paused-glyph")
     expect(glyph).toBeDefined()
-    expect(glyph.props.pointerEvents).toBe("none")
+    // Only the glyph takes a touch; the rest of the layer reaches the feed.
+    expect(glyph.props.pointerEvents).toBe("box-none")
     expect(glyph.props.importantForAccessibility).toBe("no-hide-descendants")
+    const [button] = renderer.root.findAll(
+      (n) =>
+        n.props.testID === "clip-paused-glyph-button" &&
+        typeof n.props.onPress === "function",
+    )
+    act(() => {
+      button!.props.onPress!()
+    })
+    expect(onResume).toHaveBeenCalledTimes(1)
   })
 
   it("shows the 2x cue under the safe area only while fast, hidden from screen readers", () => {
@@ -535,7 +553,8 @@ describe("ClipOverlay — glass on the controls (R4)", () => {
   it("draws Mute, Share, the Keep watching rim and the paused glyph on glass, with no fill over it", () => {
     const renderer = render(props({ paused: true }))
     for (const [name, node] of Object.entries(controls(renderer))) {
-      const glass = hostAbove(node)
+      // The paused glyph fades inside the glass, so a fade view sits between.
+      const glass = glassAbove(node)
       expect({ name, inSurface: surfaceAbove(node) != null }).toEqual({
         name,
         inSurface: true,
@@ -619,6 +638,15 @@ describe("ClipOverlay — glass on the controls (R4)", () => {
       }
     }
   })
+
+  it("draws no text under Mute and Share, and a screen reader still reads both", () => {
+    const renderer = render()
+    // The owner removed the visible labels on 2026-10-19.
+    for (const label of ["Mute", "Share"]) {
+      expect([label, hasText(renderer, label)]).toEqual([label, false])
+      expect(pressableByLabel(renderer, label)).toBeDefined()
+    }
+  })
 })
 
 // KTD15: the rail reads the catalog, and each control keeps one RUM action
@@ -656,7 +684,8 @@ describe("ClipOverlay — side rail in another UI language (R7, KTD15)", () => {
       "Поделиться",
       "Смотреть дальше",
     ])
-    expect(hasText(renderer, "Без звука")).toBe(true)
+    // Screen readers only: the label is not drawn (owner, 2026-10-19).
+    expect(hasText(renderer, "Без звука")).toBe(false)
     const keepWatching = pressableByLabel(renderer, "Смотреть дальше")
     expect(keepWatching.props.accessibilityHint).toBe(
       "Открывает полное видео с этого места",

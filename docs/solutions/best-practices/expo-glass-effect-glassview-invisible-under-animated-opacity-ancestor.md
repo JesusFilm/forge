@@ -419,7 +419,9 @@ Taken together the GlassView docs give one operating rule for
 `expo-glass-effect` in this app: use `GlassSurface`. Do not fade the `GlassView`
 or any ancestor of it. Change the material only through `glassEffectStyle` with
 `animate: true`, and fade content only inside the glass. Give a button Apple's
-own press response with `interactive`, and give it to no panel or label. Where Liquid Glass is not available, the
+own press response with `interactive`, and give it to no panel or label. That
+response sees only a touch on the glass, so make the glass fill the touch target
+or give the rest of the target its own cue. Where Liquid Glass is not available, the
 `fallback` draws a `PlatformBlur` or a plain fill.
 
 ## Versions and verification

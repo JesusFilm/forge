@@ -52,6 +52,8 @@ import { act, type ReactElement } from "react"
 import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
 
 import { ACCENT, TEXT_PRIMARY } from "../../../lib/color"
+import { FLOATING_BACK_SIZE } from "../../../lib/playerLayout"
+import { feedback } from "../../../styles/shared"
 import { ScreenTopBar, type ScreenTopBarProps } from "../ScreenTopBar"
 import {
   TestRenderer,
@@ -326,8 +328,7 @@ function backTarget(renderer: TestInstance): RenderedNode {
   return target!
 }
 
-// FloatingBackButton's glass circle, the reference look (R9).
-const FLOATING_BACK_SIZE = 40
+// FLOATING_BACK_SIZE: FloatingBackButton's glass circle, the reference look (R9).
 
 describe("ScreenTopBar back control on Liquid Glass (R9)", () => {
   it("draws the floating back button's glass inside the 44pt target", async () => {
@@ -436,6 +437,72 @@ describe("ScreenTopBar back control without Liquid Glass (R1)", () => {
     expect(
       hostNodes(pressed, (node) => styleOf(node).transform != null),
     ).toHaveLength(0)
+    await unmount(pressed)
+    await unmount(renderer)
+  })
+})
+
+describe("ScreenTopBar trailing action on Liquid Glass", () => {
+  const menu = {
+    icon: "menu" as const,
+    accessibilityLabel: "More",
+    onPress: () => {},
+    actionName: "test-menu",
+  }
+
+  /** Renders the trailing control's content as it looks while pressed. */
+  async function pressedTrailing(renderer: TestInstance) {
+    const [node] = renderer.root.findAll(
+      (candidate) =>
+        typeof candidate.type !== "string" &&
+        candidate.props["dd-action-name"] === "test-menu" &&
+        typeof candidate.props.children === "function",
+    )
+    const content = node!.props.children as (state: {
+      pressed: boolean
+      hovered: boolean
+    }) => ReactElement
+    let pressed!: TestInstance
+    await act(async () => {
+      pressed = TestRenderer.create(content({ pressed: true, hovered: false }))
+    })
+    return pressed
+  }
+
+  it("draws the action in the back button's glass circle, with Apple's press response", async () => {
+    const renderer = await render({ trailingAction: menu })
+    const glass = hostNodes(renderer, (node) => node.type === "GlassView")
+    expect(glass).toHaveLength(1)
+    const circle = styleOf(glass[0]!)
+    expect([circle.width, circle.height, circle.borderRadius]).toEqual([
+      FLOATING_BACK_SIZE,
+      FLOATING_BACK_SIZE,
+      FLOATING_BACK_SIZE / 2,
+    ])
+    expect(glass[0]!.props.isInteractive).toBe(true)
+    expect(mockIconRenders).toContain("menu")
+
+    // An opacity below 1 on any ancestor stops the glass drawing.
+    const pressed = await pressedTrailing(renderer)
+    expect(
+      hostNodes(pressed, (node) => styleOf(node).opacity != null),
+    ).toHaveLength(0)
+    await unmount(pressed)
+    await unmount(renderer)
+  })
+
+  it("keeps the bare glyph without Liquid Glass, and dims it on a press", async () => {
+    mockGate.glass = false
+    const renderer = await render({ trailingAction: menu })
+    expect(
+      hostNodes(renderer, (node) => node.type === "GlassView"),
+    ).toHaveLength(0)
+    const pressed = await pressedTrailing(renderer)
+    expect(
+      hostNodes(pressed, (node) => styleOf(node).opacity != null).map(
+        (node) => styleOf(node).opacity,
+      ),
+    ).toEqual([feedback.pressed.opacity])
     await unmount(pressed)
     await unmount(renderer)
   })

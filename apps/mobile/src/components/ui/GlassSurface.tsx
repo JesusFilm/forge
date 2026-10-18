@@ -35,7 +35,7 @@ export type GlassSurfaceProps = {
    *  the whole surface, so do not also fade an ancestor there. */
   fade?: Animated.WithAnimatedValue<number>
   /** Glass only: Apple's own press response. Set it on a button, not on a
-   *  panel or a label. */
+   *  panel or a label. It reacts only to a touch on the glass itself. */
   interactive?: boolean
   /** Fallback only: a Pressable's pressed state dims the surface. */
   pressed?: boolean

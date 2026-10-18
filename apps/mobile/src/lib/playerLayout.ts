@@ -11,6 +11,11 @@ export const BACK_BUTTON_PROPS = {
   sideOffset: 18,
 }
 
+// The floating back button's glass circle; the top bar's back circle matches
+// it (R9). Apple's press response only sees a touch on the glass, so the glass
+// fills a 44pt target.
+export const FLOATING_BACK_SIZE = 44
+
 // Side inset of the player's edge controls (time pill, fullscreen, route row);
 // the double-tap skip pill lines up with them. The inline seek bar cancels it
 // so the track reaches the player's edges.

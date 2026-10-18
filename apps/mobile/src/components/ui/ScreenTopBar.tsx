@@ -10,7 +10,8 @@ import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { ACCENT, BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
 import { canUseLiquidGlass } from "../../lib/liquidGlass"
-import { HORIZONTAL_PADDING, button, feedback } from "../../styles/shared"
+import { FLOATING_BACK_SIZE } from "../../lib/playerLayout"
+import { HORIZONTAL_PADDING, button } from "../../styles/shared"
 import { GlassSurface, type GlassFallback } from "./GlassSurface"
 import { HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
 
@@ -39,7 +40,7 @@ const TARGET_SIZE = 44
 const EDGE_PULL = 10
 // FloatingBackButton's glass circle (R9). Its edge, not the glyph, sits on
 // the content edge.
-const BACK_GLASS_SIZE = 40
+const BACK_GLASS_SIZE = FLOATING_BACK_SIZE
 const BACK_GLASS_PULL = (TARGET_SIZE - BACK_GLASS_SIZE) / 2
 const BACK_GLASS_TITLE_GAP = 8
 // Without Liquid Glass the bar draws the bare glyph, so it adds no fill.
@@ -102,7 +103,7 @@ export function ScreenTopBar({
           >
             {({ pressed }) => (
               <GlassSurface
-                style={styles.backGlass}
+                style={styles.glassCircle}
                 fallback={BARE_GLYPH}
                 interactive
                 pressed={pressed}
@@ -139,17 +140,25 @@ export function ScreenTopBar({
             {...(trailingAction.actionName != null && {
               "dd-action-name": trailingAction.actionName,
             })}
-            style={({ pressed }) => [
+            style={[
               button.iconButton44,
-              styles.trailing,
-              pressed && feedback.pressed,
+              glass ? styles.trailingGlass : styles.trailing,
             ]}
           >
-            <Ionicons
-              name={trailingAction.icon}
-              size={26}
-              color={TEXT_PRIMARY}
-            />
+            {({ pressed }) => (
+              <GlassSurface
+                style={styles.glassCircle}
+                fallback={BARE_GLYPH}
+                interactive
+                pressed={pressed}
+              >
+                <Ionicons
+                  name={trailingAction.icon}
+                  size={glass ? 22 : 26}
+                  color={TEXT_PRIMARY}
+                />
+              </GlassSurface>
+            )}
           </Pressable>
         )}
       </View>
@@ -192,7 +201,7 @@ const styles = StyleSheet.create({
     marginLeft: -BACK_GLASS_PULL,
     marginRight: BACK_GLASS_TITLE_GAP,
   },
-  backGlass: {
+  glassCircle: {
     width: BACK_GLASS_SIZE,
     height: BACK_GLASS_SIZE,
     borderRadius: BACK_GLASS_SIZE / 2,
@@ -201,6 +210,10 @@ const styles = StyleSheet.create({
   },
   trailing: {
     marginRight: -EDGE_PULL,
+  },
+  // Like the back circle, the glass edge sits on the content edge.
+  trailingGlass: {
+    marginRight: -BACK_GLASS_PULL,
   },
   title: {
     flex: 1,

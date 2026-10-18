@@ -40,6 +40,7 @@ import { act } from "react"
 import { StyleSheet, type StyleProp, type ViewStyle } from "react-native"
 
 import { FloatingBackButton } from "../FloatingBackButton"
+import { FLOATING_BACK_SIZE } from "../../../lib/playerLayout"
 import {
   TestRenderer,
   pressableByLabel,
@@ -70,6 +71,20 @@ afterEach(() => {
 })
 
 describe("FloatingBackButton press", () => {
+  it("draws a 44pt glass with a small ring around it, so most taps land on the glass", async () => {
+    const renderer = await render()
+    const [view] = renderer.root.findAll((n) => n.type === "GlassView")
+    const style = StyleSheet.flatten(view!.props.style as StyleProp<ViewStyle>)
+    expect(FLOATING_BACK_SIZE).toBe(44)
+    expect([style.width, style.height]).toEqual([
+      FLOATING_BACK_SIZE,
+      FLOATING_BACK_SIZE,
+    ])
+    // Apple's press response misses a tap on the ring; 6pt keeps a 56pt target.
+    expect(pressableByLabel(renderer, "Go back").props.hitSlop).toBe(6)
+    await unmount(renderer)
+  })
+
   it.each([
     ["Liquid Glass", true, true, undefined],
     ["no Liquid Glass", false, false, [{ scale: 0.92 }]],

@@ -22,6 +22,7 @@ import type { VideoPlayer } from "expo-video"
 
 import { ClipDescription } from "./ClipDescription"
 import { ClipProgressBar } from "./ClipProgressBar"
+import { PausedGlyph } from "./PausedGlyph"
 import { SubtitleOverlay } from "../watch/SubtitleOverlay"
 import { GlassSurface } from "../ui/GlassSurface"
 import { clipPosterUri } from "../../hooks/useClipAutostart"
@@ -47,8 +48,10 @@ export type ClipOverlayProps = {
   player: VideoPlayer
   /** The saved Explore mute choice (R11). */
   muted: boolean
-  /** Shows the play glyph (R10). The tap target itself is the feed's. */
+  /** Shows the play glyph (R10). A tap on the glyph calls `onResume`; a tap
+   *  anywhere else reaches the feed's own target. */
   paused: boolean
+  onResume: () => void
   /** Shows the 2x cue: the viewer holds a side of the playing clip. */
   fast: boolean
   onToggleMute: () => void
@@ -79,7 +82,6 @@ const SCRIM_RAMP_HEIGHT = 40
 const RAIL_BUTTON_SIZE = 48
 /** The glass that shows around the Keep watching thumbnail. */
 const KEEP_WATCHING_RIM = 3
-const RAIL_LABEL_WIDTH = 76
 const CAPTION_GAP = 8
 /** A portrait clip's captions sit this much higher over it (owner, 2026-09-28). */
 const PORTRAIT_CAPTION_LIFT = 15
@@ -104,6 +106,7 @@ export function ClipOverlay({
   player,
   muted,
   paused,
+  onResume,
   fast,
   onToggleMute,
   onSeek,
@@ -281,22 +284,7 @@ export function ClipOverlay({
         />
       )}
 
-      {paused && (
-        <View
-          testID="clip-paused-glyph"
-          style={[styles.glyphLayer, regionStyle]}
-          pointerEvents="none"
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          <GlassSurface
-            style={styles.glyph}
-            fallback={{ kind: "fill", style: styles.glyphFill }}
-          >
-            <Ionicons name="play" size={40} color={TEXT_ON_OVERLAY} />
-          </GlassSurface>
-        </View>
-      )}
+      <PausedGlyph paused={paused} style={regionStyle} onPress={onResume} />
 
       {fast && (
         <View
@@ -440,7 +428,8 @@ type RailButtonProps = {
   onLayout: (e: LayoutChangeEvent) => void
 }
 
-/** A round button with its label under it. The whole stack is the target. */
+/** A round button. Its label is for screen readers only (owner, 2026-10-19),
+ *  as Keep watching's already was. */
 function RailButton({
   testID,
   icon,
@@ -449,7 +438,6 @@ function RailButton({
   onPress,
   onLayout,
 }: RailButtonProps) {
-  const typography = useTypography()
   const glass = canUseLiquidGlass()
   return (
     <Pressable
@@ -468,9 +456,6 @@ function RailButton({
       >
         <Ionicons name={icon} size={24} color={TEXT_ON_OVERLAY} />
       </GlassSurface>
-      <Text style={[styles.railLabel, typography.caption]} numberOfLines={2}>
-        {label}
-      </Text>
     </Pressable>
   )
 }
@@ -583,21 +568,6 @@ function ClipBandBackdrop({
 }
 
 const styles = StyleSheet.create({
-  glyphLayer: {
-    ...StyleSheet.absoluteFill,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glyph: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  glyphFill: {
-    backgroundColor: hexToRgba(BLACK, 0.45),
-  },
   // A playback cue: the glyph points forward in every layout (feat-695 R12).
   fastCue: {
     position: "absolute",
@@ -636,11 +606,11 @@ const styles = StyleSheet.create({
   scrimSolid: {
     backgroundColor: SCRIM_COLOR,
   },
+  // Without rail labels the circles' edge lines up with the progress bar's.
   row: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingHorizontal: 16,
     gap: 8,
   },
   info: {
@@ -692,14 +662,6 @@ const styles = StyleSheet.create({
     textShadowColor: hexToRgba(BLACK, 0.6),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
-  },
-  railLabel: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontWeight: "600",
-    textAlign: "center",
-    marginTop: 4,
-    maxWidth: RAIL_LABEL_WIDTH,
   },
   bandEdge: {
     backgroundColor: BLACK,

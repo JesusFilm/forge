@@ -8,6 +8,7 @@ import { directionalIcon, type DirectionalIconName } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { ACCENT, SURFACE_COLOR, hexToRgba } from "../../lib/color"
 import { canUseLiquidGlass } from "../../lib/liquidGlass"
+import { FLOATING_BACK_SIZE } from "../../lib/playerLayout"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
 
 type FloatingBackButtonProps = {
@@ -54,7 +55,7 @@ export function FloatingBackButton({
         accessibilityRole="button"
         accessibilityLabel={t("goBackAriaLabel")}
         {...{ "dd-action-name": "floating-back" }}
-        hitSlop={12}
+        hitSlop={6}
         // On glass, Apple's own press response replaces the scale.
         style={({ pressed }) => pressed && !glass && styles.pressed}
       >
@@ -80,9 +81,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.92 }],
   },
   button: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: FLOATING_BACK_SIZE,
+    height: FLOATING_BACK_SIZE,
+    borderRadius: FLOATING_BACK_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
     ...Platform.select({
