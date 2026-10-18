@@ -3,13 +3,19 @@ id: "feat-730"
 title: "Qualify on-demand worker claim-response failure during drain"
 owner: "tataihono"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-10-18"
 duration: 1
-depends_on: ["feat-729"]
+depends_on: []
 blocks: []
 tags: [studio, rendering, recovery, on-demand]
 ---
+
+## Cancelled by owner decision 2026-10-19
+
+Feat-731 removes the demand monitor and restores an always-on Proxmox worker.
+The drain/claim hypothesis below is preserved as history; the removed controller
+is not a mechanism to maintain or fault-qualify. Dependency on feat-729 retired.
 
 ## Scope
 

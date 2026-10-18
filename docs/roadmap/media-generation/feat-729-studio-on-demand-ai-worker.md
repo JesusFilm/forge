@@ -7,9 +7,14 @@ status: "complete"
 start_date: "2026-10-18"
 duration: 1
 depends_on: []
-blocks: ["feat-730"]
+blocks: []
 tags: [studio, rendering, infrastructure, memory, lxd]
 ---
+
+> Superseded by owner decision 2026-10-19 (feat-731): production returns to
+> always-on Proxmox VM109 on `jfp00`. The AI guest is disabled/off and the demand
+> monitor is retired. Historical measurements below remain evidence, not current
+> activation instructions. See `docs/plans/2026-10-19-studio-always-on-proxmox.md`.
 
 ## Problem
 

@@ -11,6 +11,11 @@ blocks: []
 tags: [studio, rendering, worker, performance, memory]
 ---
 
+> Superseded by owner decision 2026-10-19 (feat-731): production returns to
+> always-on Proxmox VM109 on `jfp00`. The AI guest is disabled/off and the demand
+> monitor is retired. Historical measurements below remain evidence, not current
+> activation instructions. See `docs/plans/2026-10-19-studio-always-on-proxmox.md`.
+
 ## Acceptance target
 
 Owner target: the complete repaired 8856-frame portrait project must finish in
