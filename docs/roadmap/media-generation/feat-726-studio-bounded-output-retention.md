@@ -3,7 +3,7 @@ id: "feat-726"
 title: "Retain full Studio outputs through bounded edge-safe transfers"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-17"
 duration: 1
 depends_on: []
@@ -52,3 +52,23 @@ changed digest/proof. Cover cancellation, original deadline exhaustion,
 response loss and exact canonical recovery. Normal PR/main deployments and
 CI-built immutable worker release only. Independently read retained bytes and
 verify their digest; preserve every original terminal record.
+
+## Production acceptance (2026-10-18)
+
+Fresh canonical revision-21 attempt `cmvdhog9q0001noe562itdp43` on the normally
+released v4 AI worker retains its 106,358,376-byte verified output through the
+bounded part path. Both container phases exit zero, all8856 frames decode, and
+full AAC matches the reference. A separate Admin process independently reads
+canonical storage bytes and verifies SHA256
+`c43e1c2bbd444ac987c4a184552673d292b267d835fd1a3f8ea46e8373a6359d`.
+The single execution is admitted/SUCCEEDED and the render job COMPLETED;
+the supervisor retires its scope/containers, completes its journal and returns
+idle with zero unfinished assignments. No response-size bypass, manual database
+repair, or deadline extension is used. Retention/settlement takes24.377s.
+
+The reviewed implementation and hostile-transfer/cancellation/deadline/recovery
+checks are released through normal PR/main and immutable hosted images. This
+fresh full production flow supplies the remaining acceptance evidence. Complete
+request-to-retained-output time is380.478s, so the separate five-minute performance
+target remains open in feat-725 on `jfpai01`. Exact release/production evidence is
+in `docs/plans/2026-10-17-studio-five-minute-render.md`.

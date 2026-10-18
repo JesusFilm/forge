@@ -558,9 +558,9 @@ Full production-source offline qualification inside the AI guest passes in
 (16.57GiB), sampled peak tasks1773. Independent full decode counts all8856
 1080x1920/30fps frames, AAC48kHz stereo; complete AAC SHA256 equals production
 reference. Video SHA256 `597eb0c3a1155e2647c94271b3a2eca31c64b36ea731dba620ee974c70cf97a9`.
-Separate operator verification takes66.326s; excluded from render timing. All8856
+Separate operator verification takes66.326s; excluded from render timing. All 8856
 same-timestamp frames compared with the serial production reference at108x192
-grayscale: meanSSIM0.996429. Two near-black fade frames below0.95 (minimum0.850914)
+grayscale: meanSSIM0.996429. Two near-black fade frames below 0.95 (minimum0.850914)
 were inspected directly; overlays/background align. This is a lossy scaled visual
 comparison, not pixel identity or exhaustive authored-code correctness proof.
 Retain exact source output/proofs in task artifacts `widow-r21-parallel-release-source*`.
@@ -605,3 +605,97 @@ Retained task artifacts `widow-r21-parallel-published*` contain bytes, native
 verification proof, render log/resources and complete-audio equality evidence.
 The 270.118s render-plus-verifier sum excludes preparation/transport/retention;
 it is not complete-flow qualification.
+
+All 8856 frames from the exact hosted-image output are also compared against the
+verified serial reference at matching timestamps (108x192 grayscale). Mean
+SSIM 0.996426, minimum 0.850928, with the same two near-black fade frames below 0.95
+as the source qualification; source/hosted-image behavior agrees. Keep the lossy,
+scaled comparison limitation explicit. Artifact
+`widow-r21-parallel-published-temporal-proof.json` records the complete inventory.
+
+Manager deployment `f83ad533-c2b7-4ac4-bccb-c4d3cfc78a68` normally waits for all
+check suites. Post-merge forge-ci and CodeQL succeed, but an unrelated Dependabot
+refresh of development-tool PR #2691 holds the deployment until its run
+`39103870314` succeeds at 07:05 UTC (about 42 minutes). Manager then enters its
+normal build. No CI gate, dependency update, or deployment check is bypassed.
+Feat-728 separately tracks shared-contract watch triggers and avoiding unrelated
+maintenance-job delays through a reviewed supported deployment mechanism.
+
+The fresh timing request must use `StudioDraftRenderService.request` with a
+truthful SYSTEM service actor and stable idempotency key. Read-only preflight
+confirms all 17 revision-21 handles are valid descriptors; Studio's normal
+asynchronous preparation resolves them after admission. The legacy generic
+materialized-source request intentionally rejects these descriptors. Do not
+forge a human actor, replace handles, or bypass preparation to run qualification.
+
+#### Production cutover
+
+Manager deployment `f83ad533-c2b7-4ac4-bccb-c4d3cfc78a68` succeeds at
+07:12:39 UTC. Separate read-only runtime checks confirm both Manager and Admin
+run exact reviewed main commit `b79a3bc3a8f7d1b0ab3a2238127e80ce6c5383fd`,
+advertise the exact v4 profile, and read revision 21 as an unpublished draft.
+
+At 07:13:29 UTC the AI worker selects hosted bundle
+`b98e696bf1a698f6efe7d13d7d9b30799443cce5bda553d2f9155c24e9e84ec2` active.
+The old physical worker remains disabled and drained. New supervisor confirms
+successful idle polling with zero restarts; enable its systemd boot startup and
+LXD guest autostart. Keep the logical `forge-proxmox` / `forge-render-1` identity
+for existing signing bindings; its physical runtime is now `forge-render-ai01`
+on `jfpai01`. There is only one enabled physical worker for that identity.
+
+Normal `StudioDraftRenderService.request` accepts fresh revision-21 attempt
+`cmvdhog9q0001noe562itdp43` at 07:13:36 UTC, with truthful SYSTEM actor and stable
+idempotency key `parallel-ai01-v4-qualification-20261018`. No direct database
+repair, forged delegation, local code deployment, or deadline extension is used.
+The following production measurements include normal descriptor preparation.
+
+#### Canonical production qualification result
+
+Fresh attempt `cmvdhog9q0001noe562itdp43` succeeds on the activated AI worker.
+Request begins `2026-10-18T07:13:36.407Z`; retained execution commits
+`2026-10-18T07:19:56.885Z`: **380.478s (6m20.478s)**. This fails the strict
+300s target by 80.478s. Keep feat-725 in progress on `jfpai01`.
+
+| Boundary                                          |     Seconds |
+| ------------------------------------------------- | ----------: |
+| Request through lease/dispatch                    |       1.675 |
+| Lease through canonical source preparation commit |      63.099 |
+| Prepared commit through render container start    |      20.355 |
+| Render container start through finish             |     241.990 |
+| Render finish through verifier start              |       0.571 |
+| Independent verifier                              |      28.411 |
+| Verifier finish through retained execution commit |      24.377 |
+| Complete request through retained execution       | **380.478** |
+
+Render and verifier both exit zero without OOM. Aggregate peak memory is
+18,343,280,640 bytes (17.08GiB), sampled peak tasks1792 under the unchanged
+32GiB/4096-task v4 job bounds. Render container peak is 18,122,043,392 bytes;
+CPU5459.987523s (~22.6 cores), throttling7631us. Aggregate memory events record
+zero limit events, zero OOM and zero OOM kills. More guest RAM does not address
+the measured preparation/transfer/retention overhead.
+
+Independent native proof decodes all8856 frames at1080x1920/30fps; full AAC48kHz
+stereo covers295253.333ms. Complete AAC SHA256 equals the serial reference.
+Output is106,358,376 bytes, SHA256
+`c43e1c2bbd444ac987c4a184552673d292b267d835fd1a3f8ea46e8373a6359d`.
+A separate Admin process reads the immutable manifest and retained storage bytes,
+recomputes that digest, and confirms SUCCEEDED/non-stale revision21, completed
+job, single admitted successful execution, draft/unpublished project. Output
+asset `51f2e9ba-db4a-48c3-bb6e-5412e6aee76e`, version
+`cmvdhwkv209p0no0s6mrwea41`; this readback is correctness evidence after settlement,
+not extra time added to the retained-output acceptance boundary.
+
+Native scope retirement and exact container removal pass. After Mux upload,
+the new supervisor returns idle with zero restarts, zero running job containers,
+one completed assignment and zero unfinished assignments. The old worker remains
+disabled/inactive/drained: all92 journals validate, zero unfinished assignments,
+zero containers. Preserve both histories. No production data repair was needed:
+revision21 remains the previously repaired project with its full timeline.
+
+Retain `widow-r21-parallel-production*` task artifacts for the exact output,
+codec/audio proof, canonical retained readback, boundary timings, resource metrics
+and both worker audits. The setup artifact bundle and host copy record the active
+release and autostart state. Remaining performance work belongs to feat-725 on
+this AI host: preparation/input reuse and retention costs are the next measured
+targets; separate cache PR #2785 and busy-host/GPU experiments still need their own
+qualification. No extra VM capacity is required by this observed memory/quota use.

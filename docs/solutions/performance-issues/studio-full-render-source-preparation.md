@@ -356,3 +356,32 @@ activate after matching Admin/Manager deployments. Disable and drain the old
 physical worker before enabling the same logical worker identity on another VM.
 Preserve old journals/configuration/releases; coordinated rollback must also
 restore compatible admission rather than start a historical worker against v4.
+
+The exact hosted v4 images independently reproduce the source result: 241.504s
+render plus 28.614s verification, all 8856 frames and complete AAC retained;
+peak render memory 16.79GiB with no OOM. Treat that 270.118s stage sum separately
+from full request-to-retained-output timing. Adding guest RAM beyond the current
+40GiB does not address preparation, input delivery, or the serial verifier.
+
+For a real Studio draft timing request, use `StudioDraftRenderService.request`
+with an authorized service actor. Descriptor source handles are valid: normal
+asynchronous preparation resolves them after admission. The legacy generic
+materialized-source admission path rejects descriptors by design. Do not replace
+valid handles, forge a human caller, or skip preparation to improve a timing run.
+
+A successful worker image publication also does not imply application readiness.
+Verify the running Manager/Admin source commit and immutable profile separately
+before activating the selected worker. Railway's live check-suite gate delayed
+this release for about 42 minutes on an unrelated Dependabot maintenance run,
+after relevant tests passed; feat-728 tracks a supported deployment-gate fix.
+Never confuse deployment waiting time with render execution performance.
+
+The activated AI worker's first canonical production attempt succeeds in
+380.478s request-to-retained-execution: 63.099s source preparation, 20.355s input
+transfer/startup, 241.990s render, 28.411s independent verification and 24.377s
+retention/settlement (plus admission and verifier startup). Separate canonical
+storage readback confirms the exact verified bytes; complete AAC matches the
+reference. Aggregate peak17.08GiB and zero memory-limit/OOM events leave useful
+memory headroom. This is a successful cutover, not a five-minute acceptance pass.
+The remaining80.478s reduction belongs to feat-725 on `jfpai01`, with preparation,
+input reuse and retention costs measured before increasing VM capacity.

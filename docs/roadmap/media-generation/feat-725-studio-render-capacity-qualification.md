@@ -1,6 +1,6 @@
 ---
 id: "feat-725"
-title: "Qualify Studio render parallelism and memory headroom"
+title: "Qualify five-minute Studio renders on jfpai01"
 owner: "tataihono"
 priority: "P2"
 status: "in-progress"
@@ -72,15 +72,15 @@ configuration and measured speed/headroom changes. Require a fresh complete
 8856-frame 1080x1920/30fps render with complete AAC, independent decode and
 retained-byte verification before qualifying any new production profile.
 
-## Current host qualification (2026-10-18)
+## Host qualification (2026-10-18)
 
-Owner authorized a render VM on existing AI host `jfpai01`. Standby KVM guest
+Owner authorized a render VM on existing AI host `jfpai01`. KVM guest
 `forge-render-ai01` now runs under Canonical LXD on the unchanged Ubuntu host:
 24 pinned logical CPUs (`0-11,16-27`), 40GiB RAM, 60GiB disk, no GPU passthrough.
 LAN DHCP address observed `10.2.70.237`; direct SSH has pinned host-key verification.
 Docker is installed from the official signed repository with root-only socket;
 guest swap disabled. Existing AI containers keep their original uptimes. Guest
-reboot/cloud-init/Docker checks pass. Autostart and production dispatch remain off.
+reboot/cloud-init/Docker checks pass. Activation evidence is recorded below.
 
 Before this VM was created, full offline host CPU/GPU-encoding prototype runs took
 219.650s / 210.427s respectively, both passing full independent decode/frame count
@@ -88,16 +88,15 @@ and audio equality. CPU-only is the initial migration candidate. A full CPU run
 inside the new guest completes in 242.995s (4m03s), with no OOM and 16.86GiB
 peak job RAM; full independent decode/frame count and complete AAC equality pass (56.283s
 operator-side verification excluded from render time). Exact GPU temporal/quality equivalence and
-busy AI-host coexistence remain unqualified. The fast renderer is still prototype
-code; the published v3 release still enforces its immutable 2CPU/2GiB profile.
-Migration alone cannot deliver the prototype's throughput. Complete reviewed
-renderer/profile/release work and full end-to-end qualification before production
-cutover; preserve the original worker and assignment journals for rollback.
+busy AI-host coexistence remain unqualified. These initial prototype measurements
+precede the reviewed v4 CPU release and exact hosted-image qualification below.
+Historical v3 retains its immutable 2CPU/2GiB profile. Preserve the original
+worker and assignment journals for coordinated rollback.
 
 See `docs/plans/2026-10-17-studio-five-minute-render.md` for reproducible evidence
 and host setup artifacts `/home/tataihono/forge-render-vm-setup` on `jfpai01`.
 
-## Parallel production release in progress
+## Reviewed parallel CPU release
 
 Owner approved CPU parallel release and AI-host cutover. New immutable v4 uses
 24 CPU / 32GiB / 4096 tasks; historical v3 stays unchanged. Sixteen bounded frame
@@ -106,7 +105,8 @@ verifier, native cancellation, deadlines and output-size limits remain enforced.
 Old worker is gracefully drained: 92 journals checked, no unfinished assignments
 or containers; preserve VM/artifacts for rollback. Release config targets
 `forge-render-ai01`. Focused contract, Manager, Admin, worker/native and release
-tests pass; full source/image correctness and production timing gates remain.
+tests pass. Full source/image correctness qualification passes; production timing
+evidence follows below.
 
 ## Remaining qualification follows jfpai01
 
@@ -128,6 +128,7 @@ Keep this ticket in progress for all remaining performance work on the AI host:
 
 - Run fresh canonical revision 21 attempts with preparation/input delivery,
   native render/verify, retained-byte readback and total timestamps recorded.
+  The first complete production attempt is recorded below; repeat after changes.
 - Investigate preparation/transport costs before adding CPUs or GPUs. The
   separate input-cache PR #2785 remains unmerged and must qualify independently.
 - Measure coexistence while existing AI services are busy; CPU pinning does
@@ -139,3 +140,26 @@ Keep this ticket in progress for all remaining performance work on the AI host:
 
 The release plan records immutable digests and cutover/production-run evidence.
 Do not mark this ticket complete until the full retained-output flow is <=300s.
+
+## Active AI worker and first production result
+
+Cutover completes at 07:13 UTC on 2026-10-18 after both normal Manager/Admin
+main deployments and exact runtime-profile checks pass. `forge-render-ai01` now
+runs the hosted v4 bundle with service boot startup and guest autostart enabled.
+The old VM supervisor/configuration remain disabled and drained for coordinated
+rollback; both hosts validate zero unfinished assignments after qualification.
+
+Fresh revision-21 attempt `cmvdhog9q0001noe562itdp43` succeeds and independently
+retained output bytes verify, but takes **380.478s (6m20.478s) end to end**,
+missing the target by80.478s. Breakdown: admission/dispatch1.675s,
+source preparation63.099s, input delivery/startup20.355s, render241.990s,
+verifier startup0.571s, independent verification28.411s, retention/settlement24.377s.
+All8856 frames decode and complete AAC equals the serial reference. Aggregate
+peak17.08GiB, zero memory-limit/OOM events; render averages22.6 cores with negligible
+quota throttling. Increasing RAM is not the next measured optimization.
+
+Keep this ticket **in-progress**. Prioritize preparation/input reuse and retention
+costs on `jfpai01`; the current render-plus-verifier leaves only29.6s for all
+other stages. Qualify cache PR #2785 separately, preserve immutable boundaries,
+and repeat the complete retained-output flow after optimization. Deployment-gate
+maintenance is tracked separately in feat-728.
