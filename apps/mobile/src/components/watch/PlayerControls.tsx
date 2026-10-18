@@ -20,7 +20,10 @@ import { useEvent } from "expo"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { BACK_SWIPE_EDGE_WIDTH } from "../../lib/backSwipe"
-import { PLAYER_BAR_PADDING_H } from "../../lib/playerLayout"
+import {
+  PLAYER_BAR_PADDING_H,
+  PLAYER_ROUTE_ROW_TOP,
+} from "../../lib/playerLayout"
 import {
   BLACK,
   SURFACE_COLOR,
@@ -881,7 +884,7 @@ const styles = StyleSheet.create({
   },
   routeRow: {
     position: "absolute",
-    top: 8,
+    top: PLAYER_ROUTE_ROW_TOP,
     right: PLAYER_BAR_PADDING_H,
     flexDirection: "row",
     alignItems: "center",

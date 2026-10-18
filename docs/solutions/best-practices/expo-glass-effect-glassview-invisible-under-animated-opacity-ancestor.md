@@ -420,8 +420,9 @@ Taken together the GlassView docs give one operating rule for
 or any ancestor of it. Change the material only through `glassEffectStyle` with
 `animate: true`, and fade content only inside the glass. Give a button Apple's
 own press response with `interactive`, and give it to no panel or label. That
-response sees only a touch on the glass, so make the glass fill the touch target
-or give the rest of the target its own cue. Where Liquid Glass is not available, the
+response sees only a touch on the glass. A ring of up to 6 pt outside the glass
+with no cue is accepted (owner, 2026-10-19); a wider gap needs the glass to fill
+the touch target or its own cue. Where Liquid Glass is not available, the
 `fallback` draws a `PlatformBlur` or a plain fill.
 
 ## Versions and verification

@@ -2236,8 +2236,10 @@ the R, AE and KTD numbers that the source comments cite.
   - `interactive` gives a button Apple's own press response on glass
     (`isInteractive`). Set it on buttons only: on a panel or a label, the
     whole surface reacts to a touch. It sees only a touch on the glass
-    itself, so a target larger than the glass needs the glass to fill it (the
-    44 pt back buttons) or its own press cue.
+    itself. A ring of up to 6 pt outside the glass with no press cue is
+    accepted (owner, 2026-10-19): the floating back button's `hitSlop` and the
+    bands above and below the My Watch "See all" pill. A wider gap needs the
+    glass to fill the target or its own press cue.
     `pressed` dims the fallback only. On glass, the `Pressable` must not dim
     itself: an opacity below 1 on any ancestor stops the glass.
   - It always sets `colorScheme="dark"`. On 57.0.4 the owner saw no white
