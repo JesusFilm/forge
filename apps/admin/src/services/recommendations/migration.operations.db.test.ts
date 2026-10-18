@@ -27,7 +27,10 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0076_recommendation_profile_eligibility_reconciliation",
+  "0104_recommendation_cowatch_shadow",
   "0158_recommendation_content_action_eligibility_index",
+  "0159_recommendation_cowatch_outcome_cascade_indexes",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -172,10 +175,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           `INSERT INTO recommendation_eligibility_decision (
             id, source_type, source_key, outcome_id, policy_version, revision,
             actor_class, state, contribution_weight, contribution_ordinal,
-            distinct_support, identity_concentration, expires_at
+            distinct_support, identity_concentration, expires_at, input_digest
           ) SELECT 'retention-background-' || n, 'playback_outcome',
             'retention-background-' || n, 'retention-index-outcome',
-            'retention-index-test', 1, 'human_anonymous', 'eligible', 1, 1, 1, 0, $1
+            'retention-index-test', 1, 'human_anonymous', 'eligible', 1, 1, 1, 0, $1, repeat('7', 64)
           FROM generate_series(1, 250000) n`,
           [expiresAt],
         )
@@ -206,11 +209,11 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           `INSERT INTO recommendation_eligibility_decision (
             id, source_type, source_key, content_action_id, policy_version,
             revision, is_current, actor_class, state, contribution_weight,
-            contribution_ordinal, distinct_support, identity_concentration, expires_at
+            contribution_ordinal, distinct_support, identity_concentration, expires_at, input_digest
           ) SELECT 'retention-action-decision-' || n || '-' || r, 'content_action',
             'retention-action-' || n, 'retention-action-' || n,
             'retention-index-test', r, r = 2, 'human_anonymous', 'eligible',
-            1, 1, 1, 0, $1
+            1, 1, 1, 0, $1, repeat('7', 64)
           FROM generate_series(1, 2) r CROSS JOIN (VALUES (1), (101)) actions(n)`,
           [expiresAt],
         )
@@ -241,6 +244,107 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             )
           ).rows,
         ).toEqual([{ id: "retention-action-101" }])
+      } finally {
+        await client.query("ROLLBACK")
+      }
+    }, 60000)
+
+    it("indexes both outcome cascades across unrelated co-watch generations", async () => {
+      await client.query("BEGIN")
+      try {
+        const graph = await insertLifecycleGraph("cowatch-retention-index")
+        await client.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, request_id, item_id, episode_id, classifier_version,
+            fact_watermark, input_digest, revision, qualified_view,
+            view_quality_weight_reason, learning_eligible, generation, expires_at
+          ) SELECT 'cowatch-retention-outcome-' || n, $1, $2, $3,
+            'legacy-position-v0', n, $4, n, false,
+            'continuous_weight_not_available', false, 1, $5
+          FROM generate_series(1, 2601) n`,
+          [
+            graph.requestId,
+            graph.itemId,
+            graph.episodeId,
+            "5".repeat(64),
+            expiresAt,
+          ],
+        )
+        await client.query(
+          `INSERT INTO recommendation_cowatch_generation (
+            id, projection_version, feature_version, source_count,
+            contribution_count, edge_count, distinct_viewer_count,
+            window_end, terminal_decision, decision_reason, expires_at
+          ) SELECT repeat(md5('retention-generation-' || n), 2), 'fixture',
+            'fixture', 2501, 2500, 1, 1, '2026-08-19', 'accepted', 'fixture', $1
+          FROM generate_series(1, 100) n`,
+          [expiresAt],
+        )
+        await client.query(
+          `INSERT INTO recommendation_cowatch_contribution (
+            id, generation_id, source_outcome_id, target_outcome_id,
+            source_media_id, target_media_id, session_digest, viewer_key_digest,
+            gap_ms, quality_weight, recency_weight, effective_weight, expires_at
+          ) SELECT 'cowatch-retention-pair-' || g || '-' || n,
+            repeat(md5('retention-generation-' || g), 2),
+            'cowatch-retention-outcome-1', 'cowatch-retention-outcome-' || n,
+            'fixture-source', 'fixture-target', $1, $1, 1000, 1, 1, 1, $2
+          FROM generate_series(1, 100) g CROSS JOIN generate_series(2, 2501) n`,
+          ["6".repeat(64), expiresAt],
+        )
+        await client.query("ANALYZE recommendation_cowatch_contribution")
+        for (const side of ["source", "target"] as const) {
+          const plan = await client.query(
+            `EXPLAIN (FORMAT JSON) DELETE FROM recommendation_cowatch_contribution
+             WHERE ${side}_outcome_id = $1`,
+            ["cowatch-retention-outcome-2601"],
+          )
+          expect(JSON.stringify(plan.rows)).toContain(
+            `"Index Name":"recommendation_cowatch_contribution_${side}_outcome_idx"`,
+          )
+        }
+        // One expired outcome occurs as the source and another as the target.
+        // The other 98 exercise the empty lookups observed in production.
+        await client.query(
+          `INSERT INTO recommendation_cowatch_contribution (
+            id, generation_id, source_outcome_id, target_outcome_id,
+            source_media_id, target_media_id, session_digest, viewer_key_digest,
+            gap_ms, quality_weight, recency_weight, effective_weight, expires_at
+          ) SELECT 'cowatch-retention-linked-' || source_id,
+            repeat(md5('retention-generation-1'), 2),
+            'cowatch-retention-outcome-' || source_id,
+            'cowatch-retention-outcome-' || target_id,
+            'fixture-source', 'fixture-target', $1, $1, 1000, 1, 1, 1, $2
+          FROM (VALUES (2502, 1), (1, 2503)) pairs(source_id, target_id)`,
+          ["6".repeat(64), expiresAt],
+        )
+        await client.query("SET LOCAL statement_timeout = '1500ms'")
+        const deleted = await client.query(
+          `DELETE FROM recommendation_outcome_revision WHERE id = ANY($1::text[])`,
+          [
+            Array.from(
+              { length: 100 },
+              (_, i) => `cowatch-retention-outcome-${2502 + i}`,
+            ),
+          ],
+        )
+        expect(deleted.rowCount).toBe(100)
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS count FROM recommendation_cowatch_contribution`,
+            )
+          ).rows,
+        ).toEqual([{ count: 250000 }])
+        expect(
+          (
+            await client.query(
+              `SELECT count(*)::int AS count FROM recommendation_outcome_revision
+               WHERE episode_id = $1`,
+              [graph.episodeId],
+            )
+          ).rows,
+        ).toEqual([{ count: 2501 }])
       } finally {
         await client.query("ROLLBACK")
       }

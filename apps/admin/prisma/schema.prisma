@@ -6446,6 +6446,8 @@ model RecommendationCowatchContribution {
   retentionDays    Int    @default(29) @map("retention_days")
 
   @@unique([generationId, sourceOutcomeId, targetOutcomeId], map: "recommendation_cowatch_contribution_pair_key")
+  @@index([sourceOutcomeId], map: "recommendation_cowatch_contribution_source_outcome_idx")
+  @@index([targetOutcomeId], map: "recommendation_cowatch_contribution_target_outcome_idx")
   @@index([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_contribution_edge_idx")
   @@index([viewerProfileId], map: "recommendation_cowatch_contribution_profile_idx")
   @@index([expiresAt], map: "recommendation_cowatch_contribution_expiry_idx")
