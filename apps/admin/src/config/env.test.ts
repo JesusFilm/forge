@@ -692,6 +692,31 @@ describe("env", () => {
       ).not.toThrow()
     })
 
+    it("keeps WATCH_SEO_API_KEYS disjoint from the consumer and workflow CSVs", () => {
+      expect(() =>
+        assertBearerCsvsDisjoint({ WATCH_SEO_API_KEYS: "watch-seo-a" }),
+      ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WATCH_SEO_API_KEYS: "watch-seo-a",
+          WEB_ADMIN_API_KEYS: "web-a",
+          WORKFLOW_API_KEYS: "wf-a",
+        }),
+      ).not.toThrow()
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WATCH_SEO_API_KEYS: "shared-key",
+          WEB_ADMIN_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/WEB_ADMIN_API_KEYS and WATCH_SEO_API_KEYS|WATCH_SEO_API_KEYS/)
+      expect(() =>
+        assertBearerCsvsDisjoint({
+          WATCH_SEO_API_KEYS: "shared-key",
+          FLEET_ADMIN_API_KEYS: "shared-key",
+        }),
+      ).toThrow(/FLEET_ADMIN_API_KEYS and WATCH_SEO_API_KEYS/)
+    })
+
     it("throws when FLEET_ADMIN and WEB_ADMIN share a value", () => {
       // The fleet CSV must stay disjoint from the web SSR CSV — sharing a
       // value would give a fleet key web's per-key bucket (or vice versa).

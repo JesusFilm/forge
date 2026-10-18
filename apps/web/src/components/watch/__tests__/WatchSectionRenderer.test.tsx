@@ -223,6 +223,10 @@ vi.mock("@/components/watch/BibleQuotesSection", () => ({
   BibleQuotesSection: bibleQuotesSectionMock,
 }))
 
+vi.mock("@/components/watch/WatchSeoAdminBoundary", () => ({
+  WatchSeoAdminBoundary: () => <div data-testid="watch-seo-boundary" />,
+}))
+
 import {
   buildBibleQuotesBlock,
   buildHeroBlock,
@@ -320,6 +324,11 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
           blocks={[block]}
           languageSlug="english"
           locale="en"
+          seoContext={{
+            videoSlug: "jesus",
+            languageSlug: "english",
+            locale: "en",
+          }}
         />,
       )
     })
@@ -338,6 +347,20 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
         .querySelector('[data-block-type="SemanticRecommendations"]')
         ?.getAttribute("data-seed-media-id"),
     ).toBe("video-1")
+    const recommendations = container.querySelector(
+      '[data-block-type="SemanticRecommendations"]',
+    )
+    const seoBoundary = container.querySelector(
+      '[data-testid="watch-seo-boundary"]',
+    )
+    expect(recommendations).not.toBeNull()
+    expect(seoBoundary).not.toBeNull()
+    expect(
+      recommendations && seoBoundary
+        ? recommendations.compareDocumentPosition(seoBoundary) &
+            Node.DOCUMENT_POSITION_FOLLOWING
+        : 0,
+    ).toBeTruthy()
   })
 
   it("renders all 6 synthetic block-types with correct data-block-type attributes", () => {

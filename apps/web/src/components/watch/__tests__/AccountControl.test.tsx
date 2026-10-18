@@ -7,6 +7,10 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AccountControl } from "@/components/watch/AccountControl"
+import {
+  resetWatchAccountSessionSignalForTests,
+  subscribeToWatchAccountSession,
+} from "@/lib/watch-account-session-signal"
 
 const floatingChrome = vi.hoisted(() => ({
   searchChromeVisible: true,
@@ -41,6 +45,7 @@ describe("AccountControl", () => {
 
   beforeEach(() => {
     vi.resetAllMocks()
+    resetWatchAccountSessionSignalForTests()
     floatingChrome.searchChromeVisible = true
     window.history.replaceState(null, "", "/watch/jesus/english?t=12")
     assignSpy = vi.fn()
@@ -224,6 +229,8 @@ describe("AccountControl", () => {
   })
 
   it("opens a signed-in account menu with profile details and logout", async () => {
+    const sessionListener = vi.fn()
+    subscribeToWatchAccountSession(sessionListener)
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -258,6 +265,7 @@ describe("AccountControl", () => {
       image: "https://example.test/avatar.jpg",
     })
     expect(clearDatadogRumUserMock).not.toHaveBeenCalled()
+    expect(sessionListener).toHaveBeenCalledWith({ status: "authenticated" })
 
     await act(async () => {
       button.click()

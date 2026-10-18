@@ -19,6 +19,7 @@ import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
 import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
+import { WatchSeoAdminBoundary } from "@/components/watch/WatchSeoAdminBoundary"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -60,6 +61,7 @@ export function WatchSectionRenderer({
   coverBlackoutKey,
   coverBlackoutPhase,
   onChapterNavigateIntent,
+  seoContext,
 }: {
   blocks: MergedWatchBlock[]
   surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
@@ -82,6 +84,12 @@ export function WatchSectionRenderer({
   coverBlackoutKey?: string | null
   coverBlackoutPhase?: "covering" | "revealing" | null
   onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
+  seoContext?: {
+    videoSlug: string
+    locale: string
+    languageSlug: string
+    contextualParentSlug?: string | null
+  }
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -162,32 +170,43 @@ export function WatchSectionRenderer({
                   key={blockKey(block, index + topBlocks.length)}
                   fallback={null}
                 >
-                  <WatchBlockEntry
-                    block={block}
-                    manifest={
-                      surfaceManifests?.[index + topBlocks.length] ?? undefined
-                    }
-                    index={index + topBlocks.length}
-                    downloadButtonLabel={downloadButtonLabel}
-                    downloadError={downloadError}
-                    downloadHref={downloadHref}
-                    downloadPending={downloadPending}
-                    studyQuestionsBlock={studyQuestionsBlock}
-                    modalCallbacks={modalCallbacks}
-                    onPlayerReady={onPlayerReady}
-                    onPlayerActivated={onPlayerActivated}
-                    onPlayerViewabilityChange={onPlayerViewabilityChange}
-                    languageSlug={languageSlug}
-                    locale={locale}
-                    hasSubtitleOptions={hasSubtitleOptions}
-                    subtitleLanguageCode={subtitleLanguageCode}
-                    shareHref={shareHref}
-                    hideBibleQuotes={hideBibleQuotes}
-                    pendingChapter={pendingChapter}
-                    coverBlackoutKey={coverBlackoutKey}
-                    coverBlackoutPhase={coverBlackoutPhase}
-                    onChapterNavigateIntent={onChapterNavigateIntent}
-                  />
+                  <>
+                    <WatchBlockEntry
+                      block={block}
+                      manifest={
+                        surfaceManifests?.[index + topBlocks.length] ??
+                        undefined
+                      }
+                      index={index + topBlocks.length}
+                      downloadButtonLabel={downloadButtonLabel}
+                      downloadError={downloadError}
+                      downloadHref={downloadHref}
+                      downloadPending={downloadPending}
+                      studyQuestionsBlock={studyQuestionsBlock}
+                      modalCallbacks={modalCallbacks}
+                      onPlayerReady={onPlayerReady}
+                      onPlayerActivated={onPlayerActivated}
+                      onPlayerViewabilityChange={onPlayerViewabilityChange}
+                      languageSlug={languageSlug}
+                      locale={locale}
+                      hasSubtitleOptions={hasSubtitleOptions}
+                      subtitleLanguageCode={subtitleLanguageCode}
+                      shareHref={shareHref}
+                      hideBibleQuotes={hideBibleQuotes}
+                      pendingChapter={pendingChapter}
+                      coverBlackoutKey={coverBlackoutKey}
+                      coverBlackoutPhase={coverBlackoutPhase}
+                      onChapterNavigateIntent={onChapterNavigateIntent}
+                    />
+                    {isWatchBlock(block) &&
+                    block.kind === "SemanticRecommendations" &&
+                    seoContext ? (
+                      <WatchSeoAdminBoundary
+                        key={`${seoContext.videoSlug}:${seoContext.languageSlug}:${seoContext.locale}:${seoContext.contextualParentSlug ?? ""}`}
+                        {...seoContext}
+                      />
+                    ) : null}
+                  </>
                 </Suspense>
               ))}
             </div>

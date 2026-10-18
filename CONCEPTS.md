@@ -591,6 +591,17 @@ job completion and carries only short-lived provider/query detail. Later human
 decisions and experiment outcomes remain canonical in the ledger and are
 composed with the report when an operator reads it.
 
+### Watch SEO Workspace
+
+An Admin-only decision surface embedded in a public Watch video page that
+combines retained SEO evidence, page and video performance, crawler visibility,
+and immutable SEO Proposals for that exact page and language.
+
+Its presence is discovered only after the static page hydrates, while every
+evidence read independently rechecks current Admin authority. Apply and Decline
+move to an Admin-origin confirmation and can materialize only the reviewed
+proposal version as a draft or engineering ticket, never publication.
+
 ### Search Pipeline Mode
 
 A request-side selector that chooses which retrieval pipeline Admin search should run for a caller. A Search Pipeline Mode changes how candidates are gathered and fused; it is not a health signal.
