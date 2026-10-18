@@ -1,0 +1,20 @@
+[Unit]
+Description=Forge demand-driven AI render VM
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+ExecStart=/usr/bin/python3 %h/.local/lib/forge-studio-on-demand/current/controller.py %h/.config/forge-studio-on-demand/config.json
+Restart=on-failure
+RestartSec=10s
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1
+# Snap lxc requires snap-confine capabilities; this is a trusted LXD operator.
+MemoryMax=256M
+TasksMax=128
+TimeoutStopSec=45s
+
+[Install]
+WantedBy=default.target

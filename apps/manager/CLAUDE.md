@@ -650,3 +650,14 @@ behavior, read `docs/plans/2026-09-08-001-feat-studio-vm-execution-plan.md`,
 are defined in `src/config/env.ts`; `STUDIO_RENDER_POOL_ENABLED` gates new
 assignment selection, while configured historical receipt recovery remains
 available. Admin remains the canonical job authority.
+
+### On-demand AI render worker
+
+`GET /api/shorts/render-demand` accepts only `STUDIO_RENDER_DEMAND_KEY`, a new
+independent key distinct from worker, capability and generic Manager keys. It
+returns fixed pool/worker/profile identity and boolean demand using the existing
+canonical pending scan; it cannot claim or expose jobs/assets. Missing config,
+invalid backend data and timeouts return503, never an empty-queue assertion.
+Before changing VM wake/drain/shutdown behavior, read
+`apps/studio-render/ops/on-demand/README.md`. The trusted host controller owns
+power management; canonical Admin leases and guest journals still own execution.
