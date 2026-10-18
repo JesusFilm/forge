@@ -574,3 +574,34 @@ checked-in Railway watch patterns now include studio-contracts, so this shared
 execution contract triggers a normal Admin main deployment. Manager currently
 uses dashboard watch patterns; its gateway source comment also triggers this
 release's normal deployment, without changing its build system or live settings.
+
+#### Published parallel release
+
+[PR #2793](https://github.com/JesusFilm/forge/pull/2793) passed all 47 checks and
+merged as `b79a3bc3a8f7d1b0ab3a2238127e80ce6c5383fd`. Hosted main run
+[39103794388](https://github.com/JesusFilm/forge/actions/runs/39103794388)
+successfully built and published the exact reviewed release for `forge-render-ai01`.
+
+- Candidate SHA256: `8909b595cb26b28711882f1d7b23b8f383428cc1035b1a8708c20c5123153fa4`.
+- Host bundle SHA256: `b98e696bf1a698f6efe7d13d7d9b30799443cce5bda553d2f9155c24e9e84ec2`.
+- Render: `ghcr.io/jesusfilm/forge-studio-render@sha256:1a1f28b056abcd5a2807dd08a870cf22ae38bdb5e0cccf9b534481af83d9aee8`.
+- Verifier: `ghcr.io/jesusfilm/forge-studio-verify@sha256:636cd4e56105ff4e4bd836d445d06b0fadbd363413a4af8e356404efe4d71420`.
+
+Old `forge-render-01` worker configuration is persistently disabled, its supervisor
+inactive and disabled at boot, drain flag retained. Root-private rollback config
+is `/root/studio-release/ai01-cutover-20261018/previous-worker.json`; all 92 journals
+and installed images/releases remain. Do not start its historical v3 worker against
+v4-only admission: rollback requires coordinated application/profile selection.
+The original VM has not been destroyed. Qualification and cutover evidence follow.
+
+Exact hosted-image offline qualification passes inside the AI VM with no code
+bind mounts: render 241.504s, separate published verifier 28.614s, both exit zero;
+8856 frames at 1080x1920/30fps, 106,350,845 output bytes, no OOM. Peak job RAM is
+18,027,991,040 bytes (16.79GiB), sampled tasks1763, CPU5454.552547s and quota
+throttling16325us. Complete AAC SHA256 matches the production reference:
+`3e23235b65ae98c7eb218cbd85028cab37b0b1b422ad1b6941da9aaee1786e44`.
+Output SHA256 `d04efbfbe677e04841a83a8643c85065aa390d9963b5dcbe1eced0067cd7dbcc`.
+Retained task artifacts `widow-r21-parallel-published*` contain bytes, native
+verification proof, render log/resources and complete-audio equality evidence.
+The 270.118s render-plus-verifier sum excludes preparation/transport/retention;
+it is not complete-flow qualification.

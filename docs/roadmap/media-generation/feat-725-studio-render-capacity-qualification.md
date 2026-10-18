@@ -20,7 +20,7 @@ alone does not pass. Keep full 1080x1920/30fps video and complete audio.
 
 ## Problem
 
-The production VM has four vCPUs and approximately 8GiB RAM. The v3 job and
+At diagnosis, the production VM had four vCPUs and approximately 8GiB RAM. The v3 job and
 Docker container each enforce two CPUs and 2GiB; rendering concurrency and codec
 threads are one. During revision-21 attempt `cmvbzdb8z0001rut7o9g83y4u`,
 CPU use is about 1.4 cores with negligible quota throttling. A 10s VM sample
@@ -107,3 +107,35 @@ Old worker is gracefully drained: 92 journals checked, no unfinished assignments
 or containers; preserve VM/artifacts for rollback. Release config targets
 `forge-render-ai01`. Focused contract, Manager, Admin, worker/native and release
 tests pass; full source/image correctness and production timing gates remain.
+
+## Remaining qualification follows jfpai01
+
+Parallel CPU release [#2793](https://github.com/JesusFilm/forge/pull/2793) is merged
+at `b79a3bc3a8f7d1b0ab3a2238127e80ce6c5383fd`; hosted run
+[39103794388](https://github.com/JesusFilm/forge/actions/runs/39103794388) publishes
+the exact v4 images and host bundle for `forge-render-ai01`. All 47 PR checks and
+post-merge forge-ci pass. The old VM's worker is persistently disabled and drained;
+keep its VM/config/journals for coordinated rollback, without dispatching it.
+
+The exact hosted render image, without source bind mounts, completes in 241.504s;
+the separate exact hosted verifier completes in 28.614s, both exit zero. Peak job
+RAM 16.79GiB, tasks 1763, no OOM. Complete decode counts 8856 frames at 1080x1920/30fps;
+complete AAC equals the production reference. These two stages sum 270.118s,
+leaving only 29.882s for every other stage of a 300s complete-flow target. This is
+not end-to-end acceptance.
+
+Keep this ticket in progress for all remaining performance work on the AI host:
+
+- Run fresh canonical revision 21 attempts with preparation/input delivery,
+  native render/verify, retained-byte readback and total timestamps recorded.
+- Investigate preparation/transport costs before adding CPUs or GPUs. The
+  separate input-cache PR #2785 remains unmerged and must qualify independently.
+- Measure coexistence while existing AI services are busy; CPU pinning does
+  not prevent host tasks from sharing the guest's selected cores.
+- Preserve native deadlines, output limits, complete audio/video checks and
+  historical receipt identity in any later optimization/profile release.
+- GPU encoding/decoding and authored-video temporal equivalence remain separate
+  experiments; no GPU is needed for this initial CPU production cutover.
+
+The release plan records immutable digests and cutover/production-run evidence.
+Do not mark this ticket complete until the full retained-output flow is <=300s.

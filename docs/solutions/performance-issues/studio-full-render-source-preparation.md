@@ -317,3 +317,42 @@ deadline persisted with the VM's boot-bound monotonic window. The grant expiry
 is capped by that deadline, and all part metadata must agree on it. Upload and
 assembly combine that expiry with request cancellation; a proxy disconnect
 cannot leave a fresh five-minute storage allowance or renew later parts.
+
+## Parallel CPU release on the AI host
+
+Adding vCPUs to the old VM did not change the serial renderer's admitted CPU
+quota or concurrency. The measured improvement required a reviewed renderer
+change and a new immutable execution profile together. PR #2793 introduces v4:
+24 CPU, 32GiB RAM, 4096 aggregate/native tasks and 24GiB scratch. Historical v3
+receipts keep their original bounds; the serial HTTP executor advertises v3,
+while only the new VM executor admits v4. The separate verifier remains bounded
+at 2 CPU / 2GiB / 128 aggregate tasks.
+
+Sixteen persistent frame workers render bounded global ranges into one ordered,
+backpressured encoder. Stitch audio once across the complete frame inventory,
+then close browsers and mux. Independent per-range audio encoding or unbounded
+completed-frame buffering would change the correctness/resource contract. Test
+worker death, encoder failure, ordering, cleanup and output-budget behavior as
+well as throughput. Preserve the actual frame numbers across source seeking.
+
+New worker VM `forge-render-ai01` runs on Ubuntu host `jfpai01` under LXD/KVM,
+with 24 logical vCPUs pinned to `0-11,16-27`, 40GiB RAM and 60GiB disk. No GPU is
+assigned. The remaining four physical CPU cores are excluded from the VM's
+allocation; other host AI workloads can still share its selected cores. Existing
+AI services remain running. Host CPU/GPU experiments do not prove performance
+under busy coexistence.
+
+Production-source qualification rendered all 8856 frames in 241.565s, with
+16.57GiB peak job RAM and no OOM. Independent decode/frame count and complete AAC
+identity pass; scaled all-frame visual comparison averages SSIM 0.996429 against
+the serial output. These are separate measurements, not a <=300s complete-flow
+acceptance. Preparation, input transfer, independent verification and retained
+output must all fit the end-to-end target tracked by feat-725 on this AI host.
+
+Release source, candidate/bundle hashes and immutable image identities are recorded
+in `docs/plans/2026-10-17-studio-five-minute-render.md`. Build once in hosted main
+CI, qualify those exact images without code overlays, select inactive, then
+activate after matching Admin/Manager deployments. Disable and drain the old
+physical worker before enabling the same logical worker identity on another VM.
+Preserve old journals/configuration/releases; coordinated rollback must also
+restore compatible admission rather than start a historical worker against v4.
