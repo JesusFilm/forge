@@ -73,6 +73,7 @@ class Demand:
         req = urllib.request.Request(self.c['endpoint'], headers={
             'Authorization': 'Bearer ' + self.c['key'], 'Accept': 'application/json',
             'Cache-Control': 'no-cache',
+            'User-Agent': 'Forge-Studio-OnDemand/1',
         })
         with self.opener.open(req, timeout=8) as response:
             if response.status != 200:
