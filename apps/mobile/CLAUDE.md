@@ -2289,13 +2289,18 @@ the R, AE and KTD numbers that the source comments cite.
   sits at the bottom; on an iPad it is a button in the top navigation bar.
   `react-native-screens` 4.26.2 cannot turn autocorrect off; `feat-706` tracks
   the upgrade.
-- **No `GlassSurface` ships a tint.** On the iPhone Air simulator (2026-10-15),
+- **No `GlassSurface` ships a tint, except one.** On the iPhone Air simulator (2026-10-15),
   every reachable glass surface with text or an icon met its floor (text
   4.5:1, icons 3:1) over the brightest real frames found. Measure contrast
   beside the glyph or text, inside the surface: the glass rim is brighter and is
   not the ground behind the text. Add a tint only from such a measurement, and
   pin it in a test as `src/lib/__tests__/tabBar.test.ts` pins
   `TAB_BAR_MATERIAL_TINT`.
+  One exception: the mission beta button is white glass (`BETA_GLASS_TINT`,
+  `TEXT_PRIMARY` at 0.9 alpha, in `app/mission.tsx`). The owner chose it on
+  2026-10-19 for the look of the page's main action, not for contrast. Its dark
+  label measured 13.1:1 on the iPhone 17 Pro Max simulator (iOS 26.5), and
+  `app/__tests__/missionBetaGlass.test.tsx` pins the tint.
 - **Prove the material on the simulator with a loud tint.** No test can see it.
   Set a temporary `tintColor` such as `rgba(255, 0, 255, 0.6)` in
   `GlassSurface`, cold-relaunch the dev client, and sample pixels. Remove the

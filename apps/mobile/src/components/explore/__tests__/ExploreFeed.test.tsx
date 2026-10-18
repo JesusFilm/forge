@@ -1636,6 +1636,16 @@ describe("the overlay (R10, R44)", () => {
     expect(overlay().props.paused).toBe(false)
   })
 
+  it("resumes a paused clip from a tap on the play glyph", async () => {
+    await startWithStandby()
+    await tap()
+    expect(overlay().props.paused).toBe(true)
+    // The glyph takes its own tap now, so the feed must wire it to play.
+    await callOverlay("onResume")
+    expect(A.playing).toBe(true)
+    expect(overlay().props.paused).toBe(false)
+  })
+
   it("pauses for share or more, and resumes only a clip that was playing", async () => {
     await startWithStandby()
     await callOverlay("onOverlayOpen")

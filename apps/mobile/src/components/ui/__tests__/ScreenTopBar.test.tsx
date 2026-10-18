@@ -481,6 +481,14 @@ describe("ScreenTopBar trailing action on Liquid Glass", () => {
     ])
     expect(glass[0]!.props.isInteractive).toBe(true)
     expect(mockIconRenders).toContain("menu")
+    // A style function on the target could dim it, and a dim stops the glass.
+    const [target] = renderer.root.findAll(
+      (node) =>
+        typeof node.type !== "string" &&
+        node.props["dd-action-name"] === "test-menu" &&
+        typeof node.props.children === "function",
+    )
+    expect(typeof target!.props.style).not.toBe("function")
 
     // An opacity below 1 on any ancestor stops the glass drawing.
     const pressed = await pressedTrailing(renderer)
