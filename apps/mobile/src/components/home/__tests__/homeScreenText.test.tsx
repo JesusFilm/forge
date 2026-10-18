@@ -383,7 +383,7 @@ describe("Home's hero mute glass (R8, AE6)", () => {
     expect(home.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
   })
 
-  it("scales the pressed mute on glass, and dims it elsewhere", async () => {
+  it("leaves the press to the glass on iOS 26, and dims the mute elsewhere", async () => {
     for (const on of [true, false]) {
       mockGlass.on = on
       const home = await render()
@@ -400,7 +400,8 @@ describe("Home's hero mute glass (R8, AE6)", () => {
       const surface = behindMuteGlyph(home)
       if (on) {
         expect(drawnOpacity(glass(home))).toBe(1)
-        expect(ownStyle(glass(home)).transform).toEqual([{ scale: 0.92 }])
+        expect(glass(home).props.isInteractive).toBe(true)
+        expect(ownStyle(glass(home)).transform).toBeUndefined()
       } else {
         expect(drawnOpacity(surface)).toBeCloseTo(feedback.pressed.opacity)
       }

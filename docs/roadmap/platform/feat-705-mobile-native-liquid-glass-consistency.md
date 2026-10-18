@@ -64,6 +64,10 @@ Every glass element keeps its current look as the Android fallback and as the fa
 - Never put a `GlassView` under a parent whose opacity animates or is set below 1. It draws nothing there, and it ignores its own `opacity`.
 - The `'none'` style with `animate: true` comes from the `expo-glass-effect` 57.0.4 type definitions only. No one has tried it on a device in this app. Prove it on one element before step 3 depends on it.
 - Never set `isInteractive` on a `GlassView` inside a `Pressable`.
+  - **Superseded 2026-10-19:** on `expo-glass-effect` 57.0.4 the owner saw no
+    white flash with it (iPhone 15 Pro, iOS 26.5). So `GlassSurface` sets it on
+    buttons through `interactive`. See the dated note in
+    `docs/solutions/best-practices/expo-glass-effect-interactive-flash-2026-04-08.md`.
 - Leave content-layer elements as they are: card badges, captions, scrims, the hero scroll blurs, and the red Watch Now button. Leave the Cast SDK dialogs (the SDK draws them) and the Home pager dots.
 - The Bible reader sheets follow the reader's own light, dark and true dark themes (`app/reader-*.tsx` set `contentStyle` from `tokens.background`). Glass there needs an owner decision first.
 - The native search tab (`NativeTabs` `role: "search"`) and a native action sheet for the Downloads delete confirmation are design changes. Ask the owner before you build either.

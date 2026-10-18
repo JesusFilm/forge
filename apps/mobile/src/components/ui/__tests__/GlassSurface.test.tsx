@@ -113,7 +113,7 @@ describe("GlassSurface on Liquid Glass", () => {
     })
     // The app is dark while app.json says "automatic".
     expect(glass.props.colorScheme).toBe("dark")
-    // Inside a pressable, isInteractive flashes white on remount.
+    // A panel or a label takes no press response.
     expect(glass.props.isInteractive).toBeUndefined()
     expect(glass.props.tintColor).toBe(TINT)
     expect(flat(glass)).toMatchObject(SHAPE)
@@ -170,13 +170,13 @@ describe("GlassSurface on Liquid Glass", () => {
     expect(flat(wrapper).opacity).toBe(0.4)
   })
 
-  it("scales the glass on press and never dims it", async () => {
-    const glass = tree(await render({ pressed: true }))
+  it("gives a button Apple's press response, with no scale and no dim", async () => {
+    const glass = tree(await render({ interactive: true, pressed: true }))
+    expect(glass.props.isInteractive).toBe(true)
     const style = flat(glass)
+    // An opacity below 1 stops the glass drawing.
     expect(style.opacity).toBeUndefined()
-    const [scale] = style.transform as { scale: number }[]
-    expect(scale.scale).toBeLessThan(1)
-    expect(scale.scale).toBeGreaterThanOrEqual(0.9)
+    expect(style.transform).toBeUndefined()
   })
 })
 

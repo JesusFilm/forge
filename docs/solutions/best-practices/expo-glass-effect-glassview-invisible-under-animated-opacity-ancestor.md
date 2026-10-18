@@ -1,7 +1,7 @@
 ---
 title: "expo-glass-effect GlassView fails under an animated-opacity ancestor; keep the glass out of the fade and dissolve it"
 date: "2026-08-13"
-last_updated: "2026-10-16"
+last_updated: "2026-10-19"
 category: "best-practices"
 module: "apps/mobile"
 problem_type: "best_practice"
@@ -143,12 +143,12 @@ spikes were temporary edits, and neither was committed.
 **Never put a `GlassView` inside a layer whose opacity an ancestor animates.**
 Keep the glass outside the fade, and give each kind of motion its own mechanism:
 
-| What must change                     | Mechanism                                                         | `GlassSurface` prop          |
-| ------------------------------------ | ----------------------------------------------------------------- | ---------------------------- |
-| The material appears or goes         | `glassEffectStyle: { style: "regular" \| "none", animate: true }` | `visible`, `dissolveSeconds` |
-| The glyph or label fades             | One `Animated.View` around the children, inside the `GlassView`   | `fade`                       |
-| The control shows that it is pressed | A scale. An opacity below 1 on any ancestor stops the glass       | `pressed`                    |
-| Liquid Glass is not available        | `PlatformBlur`: a blur on iOS before 26, a flat dim on Android    | `fallback`                   |
+| What must change                  | Mechanism                                                                                                                    | `GlassSurface` prop          |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| The material appears or goes      | `glassEffectStyle: { style: "regular" \| "none", animate: true }`                                                            | `visible`, `dissolveSeconds` |
+| The glyph or label fades          | One `Animated.View` around the children, inside the `GlassView`                                                              | `fade`                       |
+| A button shows that it is pressed | Apple's press response (`isInteractive`) on glass, a dim in the fallback. An opacity below 1 on any ancestor stops the glass | `interactive`, `pressed`     |
+| Liquid Glass is not available     | `PlatformBlur`: a blur on iOS before 26, a flat dim on Android                                                               | `fallback`                   |
 
 Use `GlassSurface` in `apps/mobile/src/components/ui/GlassSurface.tsx` for every
 floating control. It reads `canUseLiquidGlass()` from
@@ -162,14 +162,16 @@ function LiquidGlassSurface({
   dissolveSeconds = DEFAULT_DISSOLVE_SECONDS,
   tintColor,
   fade,
-  pressed = false,
+  interactive,
   children,
 }: GlassSurfaceProps) {
   const reduceMotion = useReduceMotion()
   return (
-    // isInteractive stays unset: inside a Pressable it flashes white on remount.
+    // On 57.0.4 isInteractive no longer flashes white on remount (iPhone 15
+    // Pro, iOS 26.5, 2026-10-19). The 0.1.9 flash is why older code omits it.
     <GlassView
-      style={[style, pressed && styles.pressedGlass]}
+      isInteractive={interactive}
+      style={style}
       glassEffectStyle={{
         style: visible ? "regular" : "none",
         animate: !reduceMotion,
@@ -397,8 +399,9 @@ yet; it is in the PR's device check.
   hide. The `"none"` dissolve is now a second way to show and hide. Its rule 3
   repeats this doc's 0.1.10 wording.
 - [`expo-glass-effect-interactive-flash-2026-04-08.md`](./expo-glass-effect-interactive-flash-2026-04-08.md)
-  — same component, a third failure mode: `isInteractive` flashes white on
-  remount. It is this app's general "how to integrate GlassView" reference. Its
+  — same component, a third failure mode: on 0.1.9, `isInteractive` flashed
+  white on remount. On 57.0.4 the owner saw no flash, so `GlassSurface` now sets
+  it on buttons. It is this app's general "how to integrate GlassView" reference. Its
   section on fading layers repeats this doc's 0.1.10 wording.
 - [`mobile-auto-hide-overlay-fade-race-ref-sync.md`](../design-patterns/mobile-auto-hide-overlay-fade-race-ref-sync.md)
   — documents the auto-hide chrome hook that now also publishes the visibility
@@ -415,8 +418,8 @@ yet; it is in the PR's device check.
 Taken together the GlassView docs give one operating rule for
 `expo-glass-effect` in this app: use `GlassSurface`. Do not fade the `GlassView`
 or any ancestor of it. Change the material only through `glassEffectStyle` with
-`animate: true`, fade content only inside the glass, show a press with a scale,
-and do not set `isInteractive`. Where Liquid Glass is not available, the
+`animate: true`, and fade content only inside the glass. Give a button Apple's
+own press response with `interactive`, and give it to no panel or label. Where Liquid Glass is not available, the
 `fallback` draws a `PlatformBlur` or a plain fill.
 
 ## Versions and verification
@@ -428,4 +431,9 @@ and do not set `isInteractive`. Where Liquid Glass is not available, the
 - October 2026: `expo-glass-effect` `~57.0.4` on Expo SDK 57. The fading-layer
   counts and the dissolve were measured on the iPhone Air simulator, iOS 26.5,
   on 2026-10-15. The player chrome and the skip label ship in PR #2750, which is
-  open and unmerged at the time of writing. No physical device has run them yet.
+  open and unmerged at the time of writing.
+- 2026-10-19: the owner ran the branch on an iPhone 15 Pro, iOS 26.5, through
+  Metro. The glass buttons drew, and `isInteractive` on every `GlassSurface`
+  gave no white flash on tab switches, a video opened and closed, or a return
+  from the background. The tab bar is native now (`NativeTabs`), so a tab switch may not remount a screen, and this check may not have run the 0.1.9 trigger. Fresh mounts did run, such as the player buttons when a video opens. The skip-label fade has no device
+  result yet.

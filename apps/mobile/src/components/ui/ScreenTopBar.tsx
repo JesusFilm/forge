@@ -104,6 +104,7 @@ export function ScreenTopBar({
               <GlassSurface
                 style={styles.backGlass}
                 fallback={BARE_GLYPH}
+                interactive
                 pressed={pressed}
               >
                 <Ionicons

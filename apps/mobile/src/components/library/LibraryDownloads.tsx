@@ -459,6 +459,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
                     <GlassSurface
                       style={styles.selectPill}
                       fallback={SELECT_PILL_FALLBACK}
+                      interactive
                       pressed={pressed}
                     >
                       <Text

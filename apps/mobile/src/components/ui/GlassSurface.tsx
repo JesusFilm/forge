@@ -1,7 +1,6 @@
 import type { ReactNode } from "react"
 import {
   Animated,
-  StyleSheet,
   View,
   type ColorValue,
   type StyleProp,
@@ -35,7 +34,10 @@ export type GlassSurfaceProps = {
   /** On glass it fades one view around the children. In the fallback it fades
    *  the whole surface, so do not also fade an ancestor there. */
   fade?: Animated.WithAnimatedValue<number>
-  /** A Pressable's pressed state: a scale on glass, a dim elsewhere. */
+  /** Glass only: Apple's own press response. Set it on a button, not on a
+   *  panel or a label. */
+  interactive?: boolean
+  /** Fallback only: a Pressable's pressed state dims the surface. */
   pressed?: boolean
   children?: ReactNode
 }
@@ -46,7 +48,7 @@ const DEFAULT_DISSOLVE_SECONDS = { in: 0.1, out: 0.15 }
 /**
  * One glass surface for every floating control (KTD2). On iOS 26 it draws
  * Liquid Glass; elsewhere it draws the caller's current look. Keep it out of
- * any layer whose opacity animates: GlassView draws nothing there.
+ * any layer whose opacity animates: GlassView draws only on some reveals there.
  */
 export function GlassSurface(props: GlassSurfaceProps) {
   return canUseLiquidGlass() ? (
@@ -62,14 +64,16 @@ function LiquidGlassSurface({
   dissolveSeconds = DEFAULT_DISSOLVE_SECONDS,
   tintColor,
   fade,
-  pressed = false,
+  interactive,
   children,
 }: GlassSurfaceProps) {
   const reduceMotion = useReduceMotion()
   return (
-    // isInteractive stays unset: inside a Pressable it flashes white on remount.
+    // On 57.0.4 isInteractive no longer flashes white on remount (iPhone 15
+    // Pro, iOS 26.5, 2026-10-19). The 0.1.9 flash is why older code omits it.
     <GlassView
-      style={[style, pressed && styles.pressedGlass]}
+      isInteractive={interactive}
+      style={style}
       glassEffectStyle={{
         style: visible ? "regular" : "none",
         animate: !reduceMotion,
@@ -123,10 +127,3 @@ function FallbackSurface({
     <Animated.View style={fadeStyle}>{blur}</Animated.View>
   )
 }
-
-const styles = StyleSheet.create({
-  // FloatingBackButton's press: an opacity below 1 stops the glass drawing.
-  pressedGlass: {
-    transform: [{ scale: 0.92 }],
-  },
-})

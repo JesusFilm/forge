@@ -83,7 +83,11 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
           accessibilityLabel={tCommon("closeAriaLabel")}
           {...{ "dd-action-name": "section-quiz-close" }}
         >
-          <GlassSurface style={styles.closeCircle} fallback={CLOSE_FALLBACK}>
+          <GlassSurface
+            style={styles.closeCircle}
+            fallback={CLOSE_FALLBACK}
+            interactive
+          >
             <Text style={styles.closeIcon}>{"\u2715"}</Text>
           </GlassSurface>
         </Pressable>

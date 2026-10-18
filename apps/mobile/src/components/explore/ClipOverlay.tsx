@@ -461,23 +461,16 @@ function RailButton({
       accessibilityLabel={label}
       {...{ "dd-action-name": actionName }}
     >
-      {({ pressed }) => (
-        <>
-          <GlassSurface
-            style={styles.railCircle}
-            fallback={{ kind: "fill", style: styles.railFill }}
-            pressed={glass && pressed}
-          >
-            <Ionicons name={icon} size={24} color={TEXT_ON_OVERLAY} />
-          </GlassSurface>
-          <Text
-            style={[styles.railLabel, typography.caption]}
-            numberOfLines={2}
-          >
-            {label}
-          </Text>
-        </>
-      )}
+      <GlassSurface
+        style={styles.railCircle}
+        fallback={{ kind: "fill", style: styles.railFill }}
+        interactive
+      >
+        <Ionicons name={icon} size={24} color={TEXT_ON_OVERLAY} />
+      </GlassSurface>
+      <Text style={[styles.railLabel, typography.caption]} numberOfLines={2}>
+        {label}
+      </Text>
     </Pressable>
   )
 }
@@ -505,38 +498,37 @@ function KeepWatchingButton({
       accessibilityHint={t("keepWatchingAriaHint")}
       {...{ "dd-action-name": "explore-keep-watching" }}
     >
-      {({ pressed }) => (
-        <GlassSurface
-          style={styles.railCircle}
-          fallback={{ kind: "fill", style: styles.railFill }}
-          pressed={glass && pressed}
+      <GlassSurface
+        style={styles.railCircle}
+        fallback={{ kind: "fill", style: styles.railFill }}
+        interactive
+      >
+        <View
+          testID="clip-keep-watching-circle"
+          style={[styles.thumbCircle, glass && styles.thumbInRim]}
         >
-          <View
-            testID="clip-keep-watching-circle"
-            style={[styles.thumbCircle, glass && styles.thumbInRim]}
-          >
-            {posterUri != null && (
-              <Image
-                source={posterUri}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                recyclingKey={posterUri}
-              />
-            )}
-            <Ionicons
-              name="play"
-              size={24}
-              color={TEXT_ON_OVERLAY}
-              style={styles.playShadow}
+          {posterUri != null && (
+            <Image
+              source={posterUri}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={posterUri}
             />
-          </View>
-        </GlassSurface>
-      )}
+          )}
+          <Ionicons
+            name="play"
+            size={24}
+            color={TEXT_ON_OVERLAY}
+            style={styles.playShadow}
+          />
+        </View>
+      </GlassSurface>
     </Pressable>
   )
 }
 
-/** On glass the circle scales instead: an opacity below 1 stops the glass. */
+/** On glass the circle takes Apple's press response instead: an opacity below
+ *  1 stops the glass. */
 function railButtonStyle(glass: boolean, pressed: boolean) {
   return [styles.railButton, !glass && pressed && feedback.pressed]
 }

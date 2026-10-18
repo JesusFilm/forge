@@ -587,7 +587,7 @@ describe("ClipOverlay — glass on the controls (R4)", () => {
     expect(renderer.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
   })
 
-  it("scales a pressed rail circle on glass, and dims the whole button elsewhere", () => {
+  it("leaves a pressed rail circle to the glass, and dims the whole button elsewhere", () => {
     const buttons = {
       "clip-rail-mute": (r: TestInstance) => icon(r, "volume-high", 24),
       "clip-rail-keep-watching": (r: TestInstance) =>
@@ -612,7 +612,10 @@ describe("ClipOverlay — glass on the controls (R4)", () => {
           button: glass ? undefined : feedback.pressed.opacity,
           circle: undefined,
         })
-        expect(circle.transform).toEqual(glass ? [{ scale: 0.92 }] : undefined)
+        expect(circle.transform).toBeUndefined()
+        if (glass) {
+          expect(hostAbove(inner(renderer)).props.isInteractive).toBe(true)
+        }
       }
     }
   })

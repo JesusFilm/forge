@@ -141,11 +141,14 @@ function Plate({
   style,
   fade,
   visible,
+  interactive = false,
   children,
 }: {
   style: StyleProp<ViewStyle>
   fade: Animated.Value | undefined
   visible: boolean
+  /** True for a button; the time pill and the offline glyph are not buttons. */
+  interactive?: boolean
   children: ReactNode
 }) {
   return (
@@ -154,6 +157,7 @@ function Plate({
       fallback={PLATE_FALLBACK}
       fade={fade}
       visible={visible}
+      interactive={interactive}
     >
       {children}
     </GlassSurface>
@@ -205,7 +209,12 @@ export function RouteButtons({
       // Deliberately NOT gated on `available`: getCastState() was measured
       // reporting noDevicesAvailable with devices already discovered, so the
       // gate never opens. mediarouter 1.8's button never self-hides.
-      <Plate style={styles.iconButton} fade={fade} visible={glassVisible}>
+      <Plate
+        style={styles.iconButton}
+        fade={fade}
+        visible={glassVisible}
+        interactive
+      >
         <NativeCastButton
           accessibilityLabel={castUi.label}
           tintColor={TEXT_ON_OVERLAY}
@@ -221,7 +230,12 @@ export function RouteButtons({
         accessibilityLabel={castUi.label}
         {...{ "dd-action-name": "player-cast" }}
       >
-        <Plate style={styles.iconButton} fade={fade} visible={glassVisible}>
+        <Plate
+          style={styles.iconButton}
+          fade={fade}
+          visible={glassVisible}
+          interactive
+        >
           <MaterialIcons
             name={castUi.connected ? "cast-connected" : "cast"}
             size={22}
@@ -235,7 +249,12 @@ export function RouteButtons({
   // wrapper; the plate matches the sibling icon buttons.
   const airPlayButton =
     Platform.OS === "ios" ? (
-      <Plate style={styles.iconButton} fade={fade} visible={glassVisible}>
+      <Plate
+        style={styles.iconButton}
+        fade={fade}
+        visible={glassVisible}
+        interactive
+      >
         <VideoAirPlayButton
           style={styles.airPlayPicker}
           tint={TEXT_ON_OVERLAY}
@@ -264,7 +283,12 @@ export function RouteButtons({
         accessibilityLabel={t("settingsAriaLabel")}
         {...{ "dd-action-name": "player-settings" }}
       >
-        <Plate style={styles.iconButton} fade={fade} visible={glassVisible}>
+        <Plate
+          style={styles.iconButton}
+          fade={fade}
+          visible={glassVisible}
+          interactive
+        >
           <MaterialIcons name="settings" size={22} color={TEXT_ON_OVERLAY} />
         </Plate>
       </Pressable>
@@ -589,7 +613,12 @@ export function PlayerControls({
           : "player-fullscreen-enter",
       }}
     >
-      <Plate style={styles.iconButton} fade={fade} visible={glassVisible}>
+      <Plate
+        style={styles.iconButton}
+        fade={fade}
+        visible={glassVisible}
+        interactive
+      >
         <Ionicons
           name={fullscreen ? "contract" : "expand"}
           size={20}
@@ -643,7 +672,12 @@ export function PlayerControls({
           accessibilityLabel={t("skipBackAriaLabel", { seconds: SKIP_SECONDS })}
           {...{ "dd-action-name": "player-skip-back" }}
         >
-          <Plate style={styles.skipButton} fade={fade} visible={glassVisible}>
+          <Plate
+            style={styles.skipButton}
+            fade={fade}
+            visible={glassVisible}
+            interactive
+          >
             <Ionicons
               name="play-back"
               size={24}
@@ -684,7 +718,12 @@ export function PlayerControls({
             }
             {...{ "dd-action-name": `player-${centerControl}` }}
           >
-            <Plate style={styles.playButton} fade={fade} visible={glassVisible}>
+            <Plate
+              style={styles.playButton}
+              fade={fade}
+              visible={glassVisible}
+              interactive
+            >
               <Ionicons
                 name={
                   centerControl === "replay"
@@ -713,7 +752,12 @@ export function PlayerControls({
           })}
           {...{ "dd-action-name": "player-skip-forward" }}
         >
-          <Plate style={styles.skipButton} fade={fade} visible={glassVisible}>
+          <Plate
+            style={styles.skipButton}
+            fade={fade}
+            visible={glassVisible}
+            interactive
+          >
             <Ionicons
               name="play-forward"
               size={24}

@@ -35,7 +35,7 @@ type ReaderGlassButtonProps = {
 }
 
 // The app's glass button in the reader's scheme (KTD12, R8, R36). Keep it out
-// of any layer whose opacity animates: GlassView draws nothing there.
+// of any layer whose opacity animates: GlassView draws only on some reveals there.
 export function ReaderGlassButton({
   tokens,
   accessibilityLabel,

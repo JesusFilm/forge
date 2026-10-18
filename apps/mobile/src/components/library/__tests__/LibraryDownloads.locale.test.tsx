@@ -278,12 +278,11 @@ describe("the Select pill (feat-705 U8, R9)", () => {
     // The pill stays at the row's trailing edge.
     expect(flatten(select.props.style).marginLeft).toBe("auto")
 
-    // A press scales the glass; nothing dims, or the glass stops drawing.
+    // The glass answers the press itself; nothing dims, or it stops drawing.
     const pressed = await renderPressed(select)
     const [pressedGlass] = pressed.root.findAll((n) => n.type === "GlassView")
-    expect(flatten(pressedGlass!.props.style).transform).toEqual([
-      { scale: 0.92 },
-    ])
+    expect(pressedGlass!.props.isInteractive).toBe(true)
+    expect(flatten(pressedGlass!.props.style).transform).toBeUndefined()
     expect(
       pressed.root.findAll((n) => flatten(n.props.style).opacity != null)
         .length,

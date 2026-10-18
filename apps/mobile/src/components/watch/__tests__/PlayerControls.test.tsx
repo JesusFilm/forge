@@ -825,6 +825,32 @@ describe("Liquid Glass plates (feat-705 U4)", () => {
     },
   )
 
+  it("gives Apple's press response to the seven buttons and not to the time label", async () => {
+    const renderer = await render(false, allPlates())
+    const plates = renderer.root.findAll(isGlass) as SearchableNode[]
+    const interactive = plateContents(false).map(([name, match]) => {
+      const plate = plates.find((p) => p.findAll(match).length > 0)
+      return [name, plate?.props.isInteractive === true]
+    })
+    expect(interactive).toEqual(
+      plateContents(false).map(([name]) => [name, name !== "time label"]),
+    )
+    await unmount(renderer)
+  })
+
+  it("gives no press response to the offline glyph, which is not a button", async () => {
+    const player = { ...makePlayer(), status: "error" }
+    const renderer = await render(false, { isOnline: false }, player)
+    const [offline] = renderer.root.findAll(
+      (n) =>
+        n.props.accessibilityLabel === "No connection. The video cannot play.",
+    ) as SearchableNode[]
+    const [plate] = offline!.findAll(isGlass)
+    expect(plate).toBeDefined()
+    expect(plate!.props.isInteractive).toBe(false)
+    await unmount(renderer)
+  })
+
   it("dissolves every plate when the published value turns false, and brings it back on true", async () => {
     const store = createControlsVisibleStore(true)
     const renderer = await render(false, allPlates({ visibleStore: store }))

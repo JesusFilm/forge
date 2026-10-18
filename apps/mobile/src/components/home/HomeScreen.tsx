@@ -731,6 +731,7 @@ const HeroChrome = memo(function HeroChrome({
               fallback={{ kind: "fill", style: styles.muteFill }}
               visible={takesTouches}
               fade={glass ? opacity : undefined}
+              interactive
               pressed={pressed}
             >
               <Ionicons

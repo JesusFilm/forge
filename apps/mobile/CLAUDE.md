@@ -2233,10 +2233,14 @@ the R, AE and KTD numbers that the source comments cite.
   - `fade` reaches only one wrapper around the children on glass, and the
     whole surface in the fallback. Where a container keeps its own fade in the
     fallback, pass `fade` on the glass path only.
-  - `pressed` scales the glass and dims the fallback. On glass, the
-    `Pressable` must not dim itself: an opacity below 1 on any ancestor stops
-    the glass.
-  - It always sets `colorScheme="dark"` and never sets `isInteractive`.
+  - `interactive` gives a button Apple's own press response on glass
+    (`isInteractive`). Set it on buttons only: on a panel or a label, the
+    whole surface reacts to a touch. `pressed` dims the fallback only. On
+    glass, the `Pressable` must not dim itself: an opacity below 1 on any
+    ancestor stops the glass.
+  - It always sets `colorScheme="dark"`. On 57.0.4 `isInteractive` gave no
+    white flash on remount (owner's iPhone, 2026-10-19). Components that draw
+    `GlassView` directly still leave it unset.
 - **The player chrome dissolves with the controls table.** On glass, the
   controls layer in `VideoPlayer.tsx` does not fade. Each plate and the seek bar
   take `controls.opacityAnim`, and each plate's `visible` comes from the

@@ -348,7 +348,7 @@ describe("ScreenTopBar back control on Liquid Glass (R9)", () => {
     // A fill on the glass covers it.
     expect(circle.backgroundColor).toBeUndefined()
     expect(glass[0]!.props.colorScheme).toBe("dark")
-    expect(glass[0]!.props.isInteractive).toBeUndefined()
+    expect(glass[0]!.props.isInteractive).toBe(true)
 
     expect(mockIconProps).toContainEqual({
       name: "chevron-back",
@@ -381,7 +381,7 @@ describe("ScreenTopBar back control on Liquid Glass (R9)", () => {
     await unmount(renderer)
   })
 
-  it("scales the glass on a press and never dims the target", async () => {
+  it("leaves the press to the glass and never dims the target", async () => {
     const renderer = await render({ title: "Downloads", showBack: true })
 
     // An opacity below 1 on any ancestor stops the glass drawing.
@@ -389,7 +389,8 @@ describe("ScreenTopBar back control on Liquid Glass (R9)", () => {
     expect(styleOf(backTarget(renderer)).opacity).toBeUndefined()
     const pressed = await renderPressedContent(renderer)
     const [glass] = hostNodes(pressed, (node) => node.type === "GlassView")
-    expect(styleOf(glass!).transform).toEqual([{ scale: 0.92 }])
+    expect(glass!.props.isInteractive).toBe(true)
+    expect(styleOf(glass!).transform).toBeUndefined()
     expect(
       hostNodes(pressed, (node) => styleOf(node).opacity != null),
     ).toHaveLength(0)

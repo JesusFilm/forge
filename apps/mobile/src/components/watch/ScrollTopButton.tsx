@@ -77,6 +77,7 @@ export function ScrollTopButton({ visible, onPress }: ScrollTopButtonProps) {
           visible={visible}
           dissolveSeconds={DISSOLVE_SECONDS}
           fade={opacity}
+          interactive
         >
           <Ionicons name="chevron-up" size={22} color={TEXT_PRIMARY} />
         </GlassSurface>
