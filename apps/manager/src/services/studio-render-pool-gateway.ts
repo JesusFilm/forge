@@ -23,6 +23,8 @@ import {
 import { StudioRenderRetentionError } from "./studio-render-runner"
 import { claimStudioPoolRender } from "./studio-render-pool-claim"
 
+// Persisted snapshots keep their exact historical descriptor. Claim admission
+// below requires the current profile, including v4's parallel CPU resources.
 export const studioRenderSnapshotSchema = z.object({
   projectId: studioIdSchema,
   revision: z.number().int().positive(),

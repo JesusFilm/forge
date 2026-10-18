@@ -47,13 +47,23 @@ export const STUDIO_RENDER_PROFILE_V2 = Object.freeze({
   preparationMs: 180000,
 } as const)
 
-/** Current full-project execution. Earlier descriptors remain immutable history. */
-export const STUDIO_RENDER_PROFILE = Object.freeze({
+/** Retained full-project serial descriptor; never reinterpret issued jobs. */
+export const STUDIO_RENDER_PROFILE_V3 = Object.freeze({
   ...STUDIO_RENDER_PROFILE_V2,
   id: "studio-render-3/3600s-180prep-2cpu-2g-128p-96child-128m",
   jobMs: 3600000,
   requestMs: 3620000,
   leaseMs: 3900000,
+} as const)
+
+/** Parallel CPU worker profile for the dedicated jfpai01 guest. */
+export const STUDIO_RENDER_PROFILE = Object.freeze({
+  ...STUDIO_RENDER_PROFILE_V3,
+  id: "studio-render-4/3600s-180prep-24cpu-32g-4096p-4096child-128m",
+  cpu: 24,
+  memoryBytes: 34359738368,
+  aggregatePids: 4096,
+  childPids: 4096,
 } as const)
 
 export const studioRenderExecutionProfileSchema = z
@@ -63,6 +73,7 @@ export const studioRenderExecutionProfileSchema = z
       [
         STUDIO_RENDER_PROFILE_V1,
         STUDIO_RENDER_PROFILE_V2,
+        STUDIO_RENDER_PROFILE_V3,
         STUDIO_RENDER_PROFILE,
       ].some(
         (profile) =>
@@ -109,45 +120,60 @@ export const studioRenderOutputPartSchema = z
         ),
     "Invalid bounded output part",
   )
-export const studioRenderAdmissionSchema = z
-  .object({
-    version: z.literal(1),
-    profileId: z.literal(STUDIO_RENDER_PROFILE.id),
-    executionExpiresAt: z.number().int().positive(),
-    instanceId: z.string().uuid(),
-    attemptId: studioIdSchema,
-    leaseId: z.string().uuid(),
-    inputHash: studioDigestSchema,
-    issuedAt: z.number().int().nonnegative(),
-    expiresAt: z.number().int().positive(),
-    input: studioPreviewSchema,
-    files: z
-      .array(
-        z
-          .object({
-            name: z.string().regex(/^[a-zA-Z0-9_-][a-zA-Z0-9._-]{0,159}$/),
-            digest: studioDigestSchema,
-            size: z.number().int().min(1).max(STUDIO_RENDER_INPUT_BYTES),
-            base64: z
-              .string()
-              .max(Math.ceil(STUDIO_RENDER_INPUT_BYTES / 3) * 4),
-          })
-          .strict(),
+function renderAdmissionSchema<const ProfileId extends string>(
+  profileId: ProfileId,
+) {
+  return z
+    .object({
+      version: z.literal(1),
+      profileId: z.literal(profileId),
+      executionExpiresAt: z.number().int().positive(),
+      instanceId: z.string().uuid(),
+      attemptId: studioIdSchema,
+      leaseId: z.string().uuid(),
+      inputHash: studioDigestSchema,
+      issuedAt: z.number().int().nonnegative(),
+      expiresAt: z.number().int().positive(),
+      input: studioPreviewSchema,
+      files: z
+        .array(
+          z
+            .object({
+              name: z.string().regex(/^[a-zA-Z0-9_-][a-zA-Z0-9._-]{0,159}$/),
+              digest: studioDigestSchema,
+              size: z.number().int().min(1).max(STUDIO_RENDER_INPUT_BYTES),
+              base64: z
+                .string()
+                .max(Math.ceil(STUDIO_RENDER_INPUT_BYTES / 3) * 4),
+            })
+            .strict(),
+        )
+        .max(256),
+    })
+    .strict()
+    .superRefine((input, ctx) => {
+      const names = new Set(input.files.map((f) => f.name))
+      if (
+        names.size !== input.files.length ||
+        names.has("input.json") ||
+        input.files.reduce((n, f) => n + f.size, 0) > STUDIO_RENDER_INPUT_BYTES
       )
-      .max(256),
-  })
-  .strict()
-  .superRefine((input, ctx) => {
-    const names = new Set(input.files.map((f) => f.name))
-    if (
-      names.size !== input.files.length ||
-      names.has("input.json") ||
-      input.files.reduce((n, f) => n + f.size, 0) > STUDIO_RENDER_INPUT_BYTES
-    )
-      ctx.addIssue({ code: "custom", message: "Invalid render file inventory" })
-    if (Object.values(input.input.media).some((m) => !names.has(m.file)))
-      ctx.addIssue({ code: "custom", message: "Missing admitted media" })
-  })
+        ctx.addIssue({
+          code: "custom",
+          message: "Invalid render file inventory",
+        })
+      if (Object.values(input.input.media).some((m) => !names.has(m.file)))
+        ctx.addIssue({ code: "custom", message: "Missing admitted media" })
+    })
+}
+
+export const studioRenderAdmissionSchema = renderAdmissionSchema(
+  STUDIO_RENDER_PROFILE.id,
+)
+/** Serial HTTP executor retains its original immutable admission contract. */
+export const studioRenderLegacyAdmissionSchema = renderAdmissionSchema(
+  STUDIO_RENDER_PROFILE_V3.id,
+)
 export type StudioRenderAdmission = z.infer<typeof studioRenderAdmissionSchema>
 
 export const STUDIO_CODEC_VERIFIER_VERSION =
