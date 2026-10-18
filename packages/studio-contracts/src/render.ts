@@ -47,13 +47,23 @@ export const STUDIO_RENDER_PROFILE_V2 = Object.freeze({
   preparationMs: 180000,
 } as const)
 
-/** Current full-project execution. Earlier descriptors remain immutable history. */
-export const STUDIO_RENDER_PROFILE = Object.freeze({
+/** Retained full-project serial descriptor; never reinterpret issued jobs. */
+export const STUDIO_RENDER_PROFILE_V3 = Object.freeze({
   ...STUDIO_RENDER_PROFILE_V2,
   id: "studio-render-3/3600s-180prep-2cpu-2g-128p-96child-128m",
   jobMs: 3600000,
   requestMs: 3620000,
   leaseMs: 3900000,
+} as const)
+
+/** Parallel CPU worker profile for the dedicated jfpai01 guest. */
+export const STUDIO_RENDER_PROFILE = Object.freeze({
+  ...STUDIO_RENDER_PROFILE_V3,
+  id: "studio-render-4/3600s-180prep-24cpu-32g-4096p-4096child-128m",
+  cpu: 24,
+  memoryBytes: 34359738368,
+  aggregatePids: 4096,
+  childPids: 4096,
 } as const)
 
 export const studioRenderExecutionProfileSchema = z
@@ -63,6 +73,7 @@ export const studioRenderExecutionProfileSchema = z
       [
         STUDIO_RENDER_PROFILE_V1,
         STUDIO_RENDER_PROFILE_V2,
+        STUDIO_RENDER_PROFILE_V3,
         STUDIO_RENDER_PROFILE,
       ].some(
         (profile) =>

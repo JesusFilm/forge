@@ -29,12 +29,20 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor
 
 // Run the actual child body, replacing only its fixed runtime imports and I/O.
 // The policy stays inline in production; the test cannot substitute its formula.
-async function childOptions(selected = composition, bytes = 1) {
+async function childOptions(
+  selected = composition,
+  bytes = 1,
+  file = "child.mjs",
+) {
   const source = (
-    await readFile(new URL("../src/child.mjs", import.meta.url), "utf8")
+    await readFile(new URL(`../src/${file}`, import.meta.url), "utf8")
   )
     .replace(/^import .* from .*\n/gm, "")
     .replace('import("/runtime/renderer.cjs")', "loadRenderer()")
+    .replace(
+      file === "parallel-child.mjs" ? "await renderMedia(" : "NEVER_MATCH",
+      "await parallelRender(",
+    )
   let captured
   let piped = false
   let closed = false
@@ -58,6 +66,7 @@ async function childOptions(selected = composition, bytes = 1) {
     "resolve",
     "process",
     "loadRenderer",
+    "parallelRender",
     source,
   )(
     () => ({}),
@@ -76,6 +85,9 @@ async function childOptions(selected = composition, bytes = 1) {
         captured = options
       },
     }),
+    async (options) => {
+      captured = options
+    },
   )
   assert.equal(closed, true)
   assert.equal(piped, true)
@@ -523,3 +535,21 @@ test(
     }
   },
 )
+
+test("the parallel entry retains full-duration bitrate, frame allowance and output rejection", async () => {
+  const serial = await childOptions()
+  const parallel = await childOptions(composition, 1, "parallel-child.mjs")
+  for (const key of [
+    "videoBitrate",
+    "encodingMaxRate",
+    "encodingBufferSize",
+    "audioBitrate",
+    "timeoutInMilliseconds",
+  ])
+    assert.equal(parallel[key], serial[key], key)
+  assert.equal(parallel.timeoutInMilliseconds, 30000)
+  await assert.rejects(
+    childOptions(composition, cap + 1, "parallel-child.mjs"),
+    /Output size rejected/,
+  )
+})

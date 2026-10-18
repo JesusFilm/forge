@@ -3,13 +3,20 @@ id: "feat-725"
 title: "Qualify Studio render parallelism and memory headroom"
 owner: "tataihono"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-17"
 duration: 2
 depends_on: []
 blocks: []
 tags: [studio, rendering, worker, performance, memory]
 ---
+
+## Acceptance target
+
+Owner target: the complete repaired 8856-frame portrait project must finish in
+**at most 300 seconds end to end**, including preparation, input transport,
+rendering, independent codec verification and retained output. A faster render
+alone does not pass. Keep full 1080x1920/30fps video and complete audio.
 
 ## Problem
 
@@ -64,3 +71,39 @@ Run scoped contract/worker and patched-consumer checks. Record reproducible
 configuration and measured speed/headroom changes. Require a fresh complete
 8856-frame 1080x1920/30fps render with complete AAC, independent decode and
 retained-byte verification before qualifying any new production profile.
+
+## Current host qualification (2026-10-18)
+
+Owner authorized a render VM on existing AI host `jfpai01`. Standby KVM guest
+`forge-render-ai01` now runs under Canonical LXD on the unchanged Ubuntu host:
+24 pinned logical CPUs (`0-11,16-27`), 40GiB RAM, 60GiB disk, no GPU passthrough.
+LAN DHCP address observed `10.2.70.237`; direct SSH has pinned host-key verification.
+Docker is installed from the official signed repository with root-only socket;
+guest swap disabled. Existing AI containers keep their original uptimes. Guest
+reboot/cloud-init/Docker checks pass. Autostart and production dispatch remain off.
+
+Before this VM was created, full offline host CPU/GPU-encoding prototype runs took
+219.650s / 210.427s respectively, both passing full independent decode/frame count
+and audio equality. CPU-only is the initial migration candidate. A full CPU run
+inside the new guest completes in 242.995s (4m03s), with no OOM and 16.86GiB
+peak job RAM; full independent decode/frame count and complete AAC equality pass (56.283s
+operator-side verification excluded from render time). Exact GPU temporal/quality equivalence and
+busy AI-host coexistence remain unqualified. The fast renderer is still prototype
+code; the published v3 release still enforces its immutable 2CPU/2GiB profile.
+Migration alone cannot deliver the prototype's throughput. Complete reviewed
+renderer/profile/release work and full end-to-end qualification before production
+cutover; preserve the original worker and assignment journals for rollback.
+
+See `docs/plans/2026-10-17-studio-five-minute-render.md` for reproducible evidence
+and host setup artifacts `/home/tataihono/forge-render-vm-setup` on `jfpai01`.
+
+## Parallel production release in progress
+
+Owner approved CPU parallel release and AI-host cutover. New immutable v4 uses
+24 CPU / 32GiB / 4096 tasks; historical v3 stays unchanged. Sixteen bounded frame
+workers feed one continuous encoder and once-global audio stitch. The independent
+verifier, native cancellation, deadlines and output-size limits remain enforced.
+Old worker is gracefully drained: 92 journals checked, no unfinished assignments
+or containers; preserve VM/artifacts for rollback. Release config targets
+`forge-render-ai01`. Focused contract, Manager, Admin, worker/native and release
+tests pass; full source/image correctness and production timing gates remain.
