@@ -8,7 +8,8 @@ start_date: "2026-10-19"
 duration: 3
 depends_on:
   - "feat-710"
-blocks: []
+blocks:
+  - "feat-736"
 tags: [recommendations, ai-pipeline, subscription]
 ---
 
