@@ -33,8 +33,25 @@ deletes. The current schema makes an outcome and content-action link mutually
 exclusive, but `UNION` also preserves count semantics if that changes.
 
 At the measurement time, no decisions were content-action-linked, so a new
-`content_action_id` index was not needed to explain the observed query cost.
-Revisit that FK/index when action-linked decisions actually accumulate.
+`content_action_id` index was not needed to explain the observed count query cost.
+That observation did not establish that content-action cascades were indexed.
 Local tests and read-only plans support the query change; only natural loaded
 production cycles after deployment can establish that the complete five-second
 retention run now passes.
+
+## 2026-10-19: empty FK cascades also need an index
+
+Retention later stalled at `recommendationContentAction.deleteMany`, leaving
+delivery gated by `retention_overdue`. A bounded read-only production lookup
+scanned 247,707 eligibility rows in approximately 92 ms despite finding no
+content-action children. PostgreSQL performs that child lookup for each parent
+deleted; a 100-action batch exhausted the approximately 2.5 seconds remaining.
+An `EXPLAIN` of the child DELETE confirmed the sequential scan without executing
+any production deletion.
+
+Migration `0158_recommendation_content_action_eligibility_index` adds the missing
+leading FK index. Index every revision: `is_current` is not a predicate in an
+FK cascade. Zero matching children does not make the lookup free. Check indexes
+for every inbound FK when investigating slow parent deletion, including nullable
+references that currently have no matching children. Keep the existing retention
+deadline and health gate; verify successful natural cleanup after deployment.

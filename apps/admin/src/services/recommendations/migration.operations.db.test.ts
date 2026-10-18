@@ -27,6 +27,7 @@ const migrationSql = [
   "0070_recommendation_consent_receipts",
   "0071_recommendation_assignment_generation_key",
   "0072_recommendation_source_neutral_playback_episodes",
+  "0158_recommendation_content_action_eligibility_index",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -144,6 +145,106 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.query(`SET search_path TO "${schemaName}", public`)
       for (const migration of migrationSql) await client.query(migration)
     })
+
+    it("indexes empty content-action cascades and deletes every eligibility revision", async () => {
+      await client.query("BEGIN")
+      try {
+        const graph = await insertLifecycleGraph("retention-index")
+        await client.query(
+          `INSERT INTO recommendation_outcome_revision (
+            id, request_id, item_id, episode_id, classifier_version,
+            fact_watermark, input_digest, revision, qualified_view,
+            view_quality_weight_reason, learning_eligible, generation, expires_at
+          ) VALUES ('retention-index-outcome', $1, $2, $3,
+            'legacy-position-v0', 0, $4, 1, false,
+            'continuous_weight_not_available', false, 1, $5)`,
+          [
+            graph.requestId,
+            graph.itemId,
+            graph.episodeId,
+            "3".repeat(64),
+            expiresAt,
+          ],
+        )
+        // Match the production failure: a large eligibility table with no
+        // content-action children still needs an index for each FK cascade.
+        await client.query(
+          `INSERT INTO recommendation_eligibility_decision (
+            id, source_type, source_key, outcome_id, policy_version, revision,
+            actor_class, state, contribution_weight, contribution_ordinal,
+            distinct_support, identity_concentration, expires_at
+          ) SELECT 'retention-background-' || n, 'playback_outcome',
+            'retention-background-' || n, 'retention-index-outcome',
+            'retention-index-test', 1, 'human_anonymous', 'eligible', 1, 1, 1, 0, $1
+          FROM generate_series(1, 250000) n`,
+          [expiresAt],
+        )
+        await client.query(
+          `INSERT INTO recommendation_content_action (
+            id, contract_version, session_digest, event_id, payload_digest,
+            action_class, action_kind, actor_class, purpose, target_media_id,
+            occurred_at, expires_at
+          ) SELECT 'retention-action-' || n, 'content-action-v1', $1,
+            'retention-action-' || n, $1, 'human_action', 'share',
+            'human_anonymous', 'watch', 'seed-video', '2026-08-19', $2
+          FROM generate_series(1, 101) n`,
+          ["4".repeat(64), expiresAt],
+        )
+        await client.query("ANALYZE recommendation_eligibility_decision")
+        const plan = await client.query(
+          `EXPLAIN (FORMAT JSON) DELETE FROM recommendation_eligibility_decision
+           WHERE content_action_id = $1`,
+          ["retention-action-1"],
+        )
+        expect(JSON.stringify(plan.rows)).toContain(
+          '"Index Name":"recommendation_eligibility_content_action_idx"',
+        )
+
+        // Cover current and historical revisions too: a current-only partial
+        // index would not serve the unfiltered FK lookup above.
+        await client.query(
+          `INSERT INTO recommendation_eligibility_decision (
+            id, source_type, source_key, content_action_id, policy_version,
+            revision, is_current, actor_class, state, contribution_weight,
+            contribution_ordinal, distinct_support, identity_concentration, expires_at
+          ) SELECT 'retention-action-decision-' || n || '-' || r, 'content_action',
+            'retention-action-' || n, 'retention-action-' || n,
+            'retention-index-test', r, r = 2, 'human_anonymous', 'eligible',
+            1, 1, 1, 0, $1
+          FROM generate_series(1, 2) r CROSS JOIN (VALUES (1), (101)) actions(n)`,
+          [expiresAt],
+        )
+        // The loaded production phase had about 2.5 seconds left. The query
+        // plan assertion is deterministic; this deadline also bounds the cascade.
+        await client.query("SET LOCAL statement_timeout = '2500ms'")
+        const deleted = await client.query(
+          `DELETE FROM recommendation_content_action WHERE id = ANY($1::text[])`,
+          [Array.from({ length: 100 }, (_, i) => `retention-action-${i + 1}`)],
+        )
+        expect(deleted.rowCount).toBe(100)
+        expect(
+          (
+            await client.query(
+              `SELECT content_action_id, count(*)::int AS count
+               FROM recommendation_eligibility_decision
+               GROUP BY content_action_id ORDER BY content_action_id NULLS LAST`,
+            )
+          ).rows,
+        ).toEqual([
+          { content_action_id: "retention-action-101", count: 2 },
+          { content_action_id: null, count: 250000 },
+        ])
+        expect(
+          (
+            await client.query(
+              `SELECT id FROM recommendation_content_action WHERE id LIKE 'retention-action-%'`,
+            )
+          ).rows,
+        ).toEqual([{ id: "retention-action-101" }])
+      } finally {
+        await client.query("ROLLBACK")
+      }
+    }, 60000)
 
     it("allows only FK-driven lineage detachment while projection children stay immutable", async () => {
       await client.query("BEGIN")

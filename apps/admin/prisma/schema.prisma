@@ -4824,6 +4824,7 @@ model RecommendationEligibilityDecision {
 
   @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
   // Current-source lookup indexes are migration-owned partial indexes.
+  @@index([contentActionId], map: "recommendation_eligibility_content_action_idx")
   @@index([state, decidedAt], map: "recommendation_eligibility_state_decided_idx")
   @@index([actorClass, state, decidedAt], map: "recommendation_eligibility_actor_state_idx")
   @@index([expiresAt], map: "recommendation_eligibility_expiry_idx")
