@@ -430,13 +430,33 @@ only sitemap rendering data for public Watch video and episode URLs.
 
 Snapshot fields the web branch can rely on:
 
-- `videoRouteGroups` — public two-segment Watch content slugs and valid
-  Google-supported hreflang alternates with their public audio language slugs.
+- `videoRouteGroups` — public two-segment Watch content slugs, valid
+  Google-supported hreflang alternates with their public audio language slugs,
+  and `languageSlugs`: **every** playable audio-language slug for that content,
+  hreflang-eligible or not. Sitemap `<loc>` entries come from `languageSlugs`
+  and `<xhtml:link>` annotations come from `alternates`, so a language with no
+  ISO-639-1 code (Cebuano, Ilocano, Hiligaynon) still gets a discoverable URL
+  (feat-733 / FGE-183, formerly feat-716 and feat-533). `languageSlugs` is optional at the schema boundary
+  because `WatchSeoManifestStore.getLatest()` parses the persisted snapshot on
+  every read — a required field would make this route 500 on the snapshot the
+  previous build wrote, until the next Core sync. The generator always emits it.
 - `episodeRouteGroups` — parent/child Watch episode slug pairs and valid
   Google-supported hreflang alternates with their public audio language slugs.
 - `skippedHreflangValues` — aggregate counts for duplicate, missing, or
   unsupported language tags skipped during generation.
 - `version` and `generatedAt` — stable cache/revalidation metadata.
+
+The route's `ETag` is `"<version>.<representation>"`
+(`watchSeoManifestEtag`), not the bare version. `getLatest()` re-parses the
+persisted snapshot with the running build's schema, so an older Admin build
+strips fields it does not know and serves a different body for the SAME
+version; a version-only validator let a web process that cached the stripped
+body get 304 forever after Admin upgraded (PR #2385 R1). Whenever the schema
+gains, drops, or retypes a field, bump `WATCH_SEO_MANIFEST_REPRESENTATION` in
+`watch-seo-manifest.service.ts`; the guard test in
+`watch-seo-manifest.service.test.ts` pins the field set, so it fails on an
+added or dropped field until you do (a retype is not caught). The suffix is a
+constant, so no request hashes or re-serializes the payload.
 
 Refresh triggers:
 

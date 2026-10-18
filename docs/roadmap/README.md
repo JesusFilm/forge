@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 17, 2026)
 
-- **Total tickets:** 858
-- **Complete:** 639
+- **Total tickets:** 861
+- **Complete:** 641
 - **Cancelled:** 41
 - **In progress:** 69
-- **Not started:** 52
+- **Not started:** 53
 - **Blocked:** 57
 - **Overdue and open:** 0
 
@@ -414,6 +414,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-575](platform/feat-575-early-legacy-recommendation-retirement.md)                | Retire legacy recommendation trace detail early                                    | nisal      | P0       | —     | 3    | —   | complete    |
 | [feat-592](platform/feat-592-nextjs-september-30-security.md)                          | Apply the September 30 Next.js security patches                                    | tataihono  | P0       | —     | 1    | —   | complete    |
 | [feat-639](platform/feat-639-current-base-dependency-backports.md)                     | Refresh held dependency backports on October default                               | tataihono  | P0       | —     | 1    | —   | complete    |
+| [feat-733](platform/feat-733-watch-sitemap-full-language-coverage.md)                  | Watch sitemap covers every playable language, not just ISO-639-1 ones              | vlad       | P0       | —     | 1    | —   | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                       | tataihono  | P1       | —     | 21   | —   | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | —     | 1    | —   | complete    |
 | [feat-040](platform/feat-040-partner-activation-network.md)                            | Partner Activation Network                                                         | urim       | P1       | —     | 28   | —   | blocked     |
@@ -707,6 +708,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-709](platform/feat-709-watch-spanish-feedback-wizard.md)                         | Localize the Watch feedback wizard in Spanish                                      | vlad       | P1       | —     | 1    | —   | complete    |
 | [feat-719](platform/feat-719-support-research-disabled-migration-readiness.md)         | Keep disabled support research independent of database migration                   | nisal      | P1       | —     | 1    | —   | complete    |
 | [feat-727](platform/feat-727-watch-consent-share-copy-validation.md)                   | Validate Watch download consent and share copy on current main                     | vlad       | P1       | —     | 1    | —   | complete    |
+| [feat-734](platform/feat-734-watch-sitemap-materialization-and-manifest-byte-cap.md)   | Bound Watch sitemap materialization and the SEO manifest read                      | vlad       | P1       | —     | 3    | —   | not-started |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | —     | 46   | —   | not-started |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | —     | 78   | —   | blocked     |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                        | vlad       | P2       | —     | 31   | —   | blocked     |
