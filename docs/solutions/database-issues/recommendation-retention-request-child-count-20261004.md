@@ -55,3 +55,23 @@ FK cascade. Zero matching children does not make the lookup free. Check indexes
 for every inbound FK when investigating slow parent deletion, including nullable
 references that currently have no matching children. Keep the existing retention
 deadline and health gate; verify successful natural cleanup after deployment.
+
+## 2026-10-19: audit the entire outcome cascade too
+
+After migration 0158, production deleted 100 standalone actions and 50 request
+roots, then failed in the next `recommendationRequest.deleteMany` transaction
+(1,592 ms budget, 1,714 ms elapsed). An inbound-FK audit found two more missing
+leading indexes on `recommendation_cowatch_contribution.source_outcome_id` and
+`target_outcome_id`. The table held 234,653 rows (141 MB). Bounded read-only
+lookups with no matching children took approximately 18 ms for the source and
+40 ms for the target; the latter scanned the whole table. Its generation-leading
+unique pair index does not bound lookups by an outcome alone.
+
+Migration 0159 indexes both endpoints. The real-migration regression covers
+250,000 unrelated pairs across 100 generations, empty lookups, and erasure of
+100 outcomes with source-linked and target-linked children. Audit the full
+inbound cascade graph, then check actual plans: a composite FK can already have
+a selective index on a subset of its columns, while an index containing the
+desired column after an unrelated leading column may still be expensive.
+Continue verifying natural cleanup and serving recovery after each deployment;
+fixing the first failing phase does not establish end-to-end retention health.
