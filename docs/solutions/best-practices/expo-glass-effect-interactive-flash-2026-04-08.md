@@ -61,9 +61,10 @@ Place `GlassView` as the child of `Pressable`, not as the wrapper. `Pressable` o
 > closed, and a return from the background (iPhone 15 Pro, iOS 26.5). The tab bar is native now (`NativeTabs`), so a tab switch may not remount a screen, and this check may not have run the 0.1.9 trigger. Fresh mounts did run, such as the player buttons when a video opens.
 > `GlassSurface` now sets `isInteractive` through its `interactive` prop, on
 > buttons only: on a panel or a label, the whole surface would react to a
-> touch. `HomeHeader`, `FloatingBackButton`, `ReaderGlassSurface` and
-> `TabBarBackground` draw `GlassView` directly and still leave it unset. The
-> text below records the 0.1.9 state.
+> touch. The buttons that draw `GlassView` directly set it too: `HomeHeader`,
+> `FloatingBackButton` and `ReaderGlassButton` (not when disabled). The tab bar
+> background and the reader's notice pill are not buttons and leave it unset.
+> The text below records the 0.1.9 state.
 
 `isInteractive` tells the native iOS glass view to animate its highlight on touch. When the component remounts (e.g., on Expo Router tab switch), the native layer interprets the remount as a touch event and fires the highlight animation, producing a **white flash**.
 

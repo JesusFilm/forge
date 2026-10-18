@@ -13,7 +13,7 @@ import {
 import { READER_TOUCH_TARGET } from "../../../lib/bible/reader/chrome"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
 import { PlatformBlur } from "../../ui/PlatformBlur"
-import { ReaderGlassButton } from "../ReaderGlassButton"
+import { ReaderGlassButton, ReaderGlassSurface } from "../ReaderGlassButton"
 
 // The factory owns its state so a case can flip the Liquid Glass branch.
 jest.mock("expo-glass-effect", () => {
@@ -46,7 +46,7 @@ afterEach(() => {
 // Classic Light: a light scheme, so the app's hard-coded "dark" would fail.
 const LIGHT = readerTokens("light")
 
-async function render(): Promise<TestInstance> {
+async function render({ disabled = false } = {}): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(
@@ -55,6 +55,7 @@ async function render(): Promise<TestInstance> {
         accessibilityLabel="Reader settings"
         actionName="bible-reader-settings"
         onPress={() => {}}
+        disabled={disabled}
       >
         <Text>icon</Text>
       </ReaderGlassButton>,
@@ -76,9 +77,45 @@ describe("ReaderGlassButton", () => {
     expect(glass).toHaveLength(1)
     expect(glass[0]!.props.colorScheme).toBe("light")
     expect(glass[0]!.props.glassEffectStyle).toBe("regular")
-    // Inside a Pressable, isInteractive flashes white on remount.
-    expect(glass[0]!.props.isInteractive).toBeUndefined()
+    // A button takes Apple's own press response.
+    expect(glass[0]!.props.isInteractive).toBe(true)
   })
+
+  it("gives a disabled button no press response", async () => {
+    setPlatform("ios")
+    const [glass] = (await render({ disabled: true })).root.findAll(
+      (node) => node.type === GlassView,
+    )
+    expect(glass!.props.isInteractive).toBe(false)
+  })
+
+  it.each([
+    ["Liquid Glass", "ios", true, undefined],
+    ["the blur", "ios", false, [{ scale: 0.94 }]],
+    ["the Android fill", "android", true, [{ scale: 0.94 }]],
+  ] as const)(
+    "on %s, a pressed surface has the scale it needs",
+    async (_name, os, liquid, transform) => {
+      setPlatform(os)
+      mockGlass.liquid = liquid
+      let renderer!: TestInstance
+      await act(async () => {
+        renderer = TestRenderer.create(
+          <ReaderGlassSurface tokens={LIGHT} style={{ width: 40 }} pressed>
+            <Text>icon</Text>
+          </ReaderGlassSurface>,
+        )
+      })
+      const [surface] = renderer.root.findAll(
+        (node) =>
+          node.type === GlassView ||
+          node.type === PlatformBlur ||
+          (typeof node.type === "string" && flat(node).width === 40),
+      )
+      // On glass, the press response is Apple's, not a scale.
+      expect(flat(surface!).transform).toEqual(transform)
+    },
+  )
 
   it("blurs with the reader's tint and surface where Liquid Glass is absent", async () => {
     setPlatform("ios")

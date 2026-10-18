@@ -2239,8 +2239,9 @@ the R, AE and KTD numbers that the source comments cite.
     glass, the `Pressable` must not dim itself: an opacity below 1 on any
     ancestor stops the glass.
   - It always sets `colorScheme="dark"`. On 57.0.4 `isInteractive` gave no
-    white flash on remount (owner's iPhone, 2026-10-19). Components that draw
-    `GlassView` directly still leave it unset.
+    white flash on remount (owner's iPhone, 2026-10-19). The buttons that draw
+    `GlassView` directly (`HomeHeader`, `FloatingBackButton`,
+    `ReaderGlassButton`) set it too; a panel or a label does not.
 - **The player chrome dissolves with the controls table.** On glass, the
   controls layer in `VideoPlayer.tsx` does not fade. Each plate and the seek bar
   take `controls.opacityAnim`, and each plate's `visible` comes from the
