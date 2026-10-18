@@ -1,6 +1,7 @@
 ---
 title: "expo-glass-effect GlassView: isInteractive flash bug and cross-platform integration"
 date: "2026-04-08"
+last_updated: "2026-10-19"
 category: best-practices
 module: apps/mobile
 problem_type: best_practice
@@ -28,7 +29,7 @@ tags:
 
 ## Context
 
-Adding iOS liquid glass effect buttons to `HomeHeader.tsx` in `apps/mobile` using `expo-glass-effect` (~0.1.9; ~0.1.10 today) on Expo SDK 54 / React Native 0.81. The work required: installing the library, wrapping interactive elements correctly, providing an Android fallback, integrating with the three-layer hero z-index architecture, and fixing a white flash bug caused by `isInteractive`.
+Adding iOS liquid glass effect buttons to `HomeHeader.tsx` in `apps/mobile` using `expo-glass-effect` (~0.1.9 then; 57.0.4 on 2026-10-19) on Expo SDK 54 / React Native 0.81. The work required: installing the library, wrapping interactive elements correctly, providing an Android fallback, integrating with the three-layer hero z-index architecture, and fixing a white flash bug caused by `isInteractive`.
 
 ## Guidance
 
@@ -70,6 +71,16 @@ Place `GlassView` as the child of `Pressable`, not as the wrapper. `Pressable` o
 
 ### Do NOT place `GlassView` inside a layer whose opacity animates
 
+> **Superseded in part 2026-10-16 by feat-705 (PR #2750)** (noted 2026-10-19).
+> The rule stays. Two facts below changed. On `expo-glass-effect` 57.0.4 the
+> glass under a fading ancestor draws on some reveals and not on others. On
+> iOS 26 the fix is no longer `PlatformBlur`: keep the glass outside the fade,
+> dissolve it with `GlassSurface` (`visible={false}`), and fade the glyph inside
+> the glass (`fade`). `PlatformBlur` stays the look on Android and on iOS
+> before 26. See
+> [GlassView fails under an animated-opacity ancestor](./expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
+> The paragraph below records the 0.1.10 state.
+
 `GlassView` renders no material at all when an ancestor animates opacity —
 invisible, not subtle, and nothing logs. Conditional mount does not help, because
 there is nothing to fade. Use `PlatformBlur`
@@ -79,7 +90,7 @@ a separate fix; both are linked under Related.
 
 ### Android fallback via Platform.select spread
 
-`GlassView` falls back to a plain `<View {...props}/>` on non-iOS, so it is safe to render unconditionally on all platforms without a `Platform.OS` guard around the component itself. This was read directly out of the installed package's compiled GlassView module, and re-verified there at 0.1.10. Under pnpm that file sits inside the virtual store (the .pnpm directory, keyed by exact version) rather than at a flat per-package path, so look it up through the virtual store.
+`GlassView` falls back to a plain `<View {...props}/>` on non-iOS, so it is safe to render unconditionally on all platforms without a `Platform.OS` guard around the component itself. This was read directly out of the installed package's compiled GlassView module, and re-verified there at 0.1.10 and at 57.0.4 (2026-10-19). Under pnpm that file sits inside the virtual store (the .pnpm directory, keyed by exact version) rather than at a flat per-package path, so look it up through the virtual store.
 
 Use `Platform.select` in the style to add background color and overflow clipping only on Android:
 
@@ -243,7 +254,7 @@ const styles = StyleSheet.create({
 ## Related
 
 - [`homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md`](../ui-bugs/homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md) — same component. `GlassView` ignores an `opacity` value set on itself on iOS, so mount/unmount is the reliable show-hide. Also raises this doc's `zIndex: 1` to 10.
-- [`expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md`](./expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) — same component, third failure mode. `GlassView` renders nothing inside a layer whose opacity an ancestor animates; use `PlatformBlur` there.
+- [`expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md`](./expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) — same component, third failure mode. `GlassView` fails inside a layer whose opacity an ancestor animates: no material on 0.1.10, and glass on some reveals only on 57.0.4. On iOS 26, keep the glass outside the fade and dissolve it with `GlassSurface`. `PlatformBlur` stays the fallback.
 - [`hero-mute-button-hybrid-overlay-touch-target.md`](../mobile/hero-mute-button-hybrid-overlay-touch-target.md) — Documents the three-layer hero architecture (zIndex 0/2) that HomeHeader integrates with at zIndex 1
 - [`full-bleed-video-hero-with-scroll-over-content.md`](../mobile/full-bleed-video-hero-with-scroll-over-content.md) — Foundational doc for the absolutely-positioned hero behind FlashList pattern
 - [`flashlist-hero-bleed-through-feed-background.md`](../mobile/flashlist-hero-bleed-through-feed-background.md) — Color token system and `hexToRgba` conventions
