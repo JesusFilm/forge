@@ -77,6 +77,8 @@ const INTENDED_PUBLIC_RESOLVERS = [
   "watchCollectionFeed",
   // Forge /watch language inventory lookup: public consumer read, flat card shape.
   "watchLanguageInventory",
+  // feat-728: bounded public catalog projection with exact playable audio.
+  "watchFilmFinder",
   // Forge /watch language-collection sidebar availability indicator: public
   // consumer read of aggregate COUNTS only — no language identities, titles, or
   // ids — over the same child-visibility contract as `childDubLanguages`.

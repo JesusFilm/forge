@@ -3,7 +3,7 @@ id: "feat-740"
 title: "Admin-backed Explore film finder"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-17"
 duration: 5
 depends_on:
@@ -97,3 +97,19 @@ The linked plan governs all KTDs and R-IDs cited above. Preserve the original di
 ## Verification
 
 Use the linked Verification Contract and the unit-specific scenarios above. Record real behavior, cross-layer checks where applicable, and a page-load comparison against the preceding stack parent. Run formatter and applicable lint/typecheck/build/schema drift checks before PR publication. Update this ticket to in-progress when implementation starts and complete only after the scoped implementation and checks finish; completion does not claim deployment.
+
+## Demonstrated local verification
+
+Admin: 130 focused/public/schema tests and 9 real isolated-PostgreSQL cases passed; scoped lint and all four typecheck shards passed. Web: 42 focused tests plus the corrected finder copy case passed; package lint/typecheck and production build passed. Two real browser cases passed (Spanish exact-audio navigation and 390px keyboard/focus/close). Finder data and its 3.1 KB chunk load only after intent. Page-load evidence, performance investigation and exact files/base/head are retained outside the checkout under `/home/lado/.local/share/forge-watch-stack-20261017/`.
+
+## Review regression verification (2026-10-17)
+
+Review fixes: the film-finder route fails closed to no-store 404 before Admin work when audience rollout is off/unavailable. Public catalog reads use a 300s tagged Data Cache; HTTP responses remain no-store so each request rechecks rollout. The Mux fallback reuses the exact WATCH_CHAPTER_CAROUSEL_RECIPE helper. Route/adapter regressions, 9 real SQL cases and a counted real cache/invalidation test passed. The isolated CI database and finder suite enter at stage 2.
+
+Detailed commands, red/green logs, real runtime proof, limits and six-stage reassembly receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r1/`.
+
+## Round 2 review corrections (2026-10-17)
+
+R2 correction: finder cache admission now uses the finite public audio-language corpus and shared manifest before any finder fill. Per-client request admission uses the trusted Cloudflare address, a 5,000-client hard cap and expiry, and a bounded overflow bucket. Lane order remains ranking input; sorting it would change Admin results. Real Next HTTP checks proved repeated/equivalent-filter cache reuse, distinct lane-priority keys, tag invalidation, unknown-language rejection, and burst 429s. No public setting changed.
+
+Exact red/green, integration, performance, stage replay and limitations receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r2/return-to-caller.json`. Parent owns final independent review and PR shipping.

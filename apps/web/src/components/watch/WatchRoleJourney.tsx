@@ -36,11 +36,13 @@ export type WatchRoleJourneyProps = {
   definition: WatchAudienceRoleDefinition
   /** Only actions the current surface can actually serve. */
   actions: WatchJourneyAction[]
+  afterResult?: ReactNode
 }
 
 export function WatchRoleJourney({
   definition,
   actions,
+  afterResult,
 }: WatchRoleJourneyProps) {
   const [answers, setAnswers] = useState<string[]>([])
   const [step, setStep] = useState(0)
@@ -179,6 +181,7 @@ export function WatchRoleJourney({
                 </ul>
               </div>
             ) : null}
+            {afterResult}
           </>
         ) : null}
         <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
