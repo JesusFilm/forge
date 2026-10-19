@@ -11,6 +11,8 @@ issue_url: https://github.com/JesusFilm/forge/issues/2565
 
 ## Owner decision
 
+October 19 supersession: the owner selected exact `gpt-6.1-sol` for **new** calls in this profile/candidate architecture. See [the Sol follow-up](2026-10-19-sol-profile-generation.md) and feat-738. Astra identity, results and known/unknown receipts below remain historical; this is not an authorization to resume or relabel them.
+
 Use the recommended catalog-first architecture with reusable content profiles
 and batched Astra decisions, executed through the existing Codex subscription.
 The owner selected this direction on October 8 after reviewing repeated-input

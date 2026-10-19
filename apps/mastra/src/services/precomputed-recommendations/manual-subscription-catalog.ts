@@ -8,6 +8,10 @@ import {
   CANDIDATE_RETRIEVAL_REVISION,
 } from "./candidate-retrieval"
 import { PRECOMPUTED_MODEL_ID } from "./astra-provider"
+import {
+  subscriptionModelIdSchema,
+  type SubscriptionModelId,
+} from "./subscription-model"
 import type { CodexAccountAttestation } from "./codex-local-account"
 import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import {
@@ -93,6 +97,7 @@ type ImportedHistory = Awaited<ReturnType<typeof loadImportedGaWatchHistory>>
 
 export type ManualSubscriptionCatalogInput = {
   invocation: "start" | "resume"
+  modelId?: SubscriptionModelId
   generationId: string
   generationInputDigest: string
   attemptId: string
@@ -267,6 +272,7 @@ const HEARTBEAT_MS = 5 * 60_000
 const hex = /^[a-f0-9]{64}$/u
 
 export function manualGenerationInputDigest(input: {
+  modelId?: SubscriptionModelId
   inputCutoff: string
   videos: readonly Video[]
   selectedCorpusDigest: string
@@ -279,7 +285,7 @@ export function manualGenerationInputDigest(input: {
     inputMode: "historical_analytics",
     inputSnapshotMode: "observed_fenced",
     importPolicy: "ga_capture_import_v1",
-    modelId: PRECOMPUTED_MODEL_ID,
+    modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
     backend: "codex_chatgpt_subscription",
     promptVersion: BUILD_PROMPT_VERSION,
     profilePromptVersion: PROFILE_PROMPT_VERSION,
@@ -612,6 +618,11 @@ export async function runManualSubscriptionCatalog(
   ports: ManualSubscriptionCatalogPorts,
   options: ManualSubscriptionCatalogOptions = {},
 ): Promise<ManualSubscriptionCatalogResult> {
+  if (
+    !subscriptionModelIdSchema.safeParse(input.modelId ?? PRECOMPUTED_MODEL_ID)
+      .success
+  )
+    throw new ManualSubscriptionCatalogError("input_invalid")
   const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
   if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
     throw new ManualSubscriptionCatalogError("input_invalid")
@@ -678,6 +689,7 @@ export async function runManualSubscriptionCatalog(
   )
   if (
     manualGenerationInputDigest({
+      modelId: input.modelId,
       inputCutoff: input.inputCutoff,
       videos: frozen.videos,
       selectedCorpusDigest: frozen.retrieval.selectedCorpusDigest,
@@ -731,7 +743,7 @@ export async function runManualSubscriptionCatalog(
       video: target,
       chunks: selected.chunks,
       maxPartBytes: MAX_PROFILE_PART_BYTES,
-      modelId: PRECOMPUTED_MODEL_ID,
+      modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
       backend: "codex_chatgpt_subscription",
       promptVersion: PROFILE_PROMPT_VERSION,
       schemaVersion: PROFILE_SCHEMA_VERSION,
@@ -808,7 +820,7 @@ export async function runManualSubscriptionCatalog(
   const attestation = await ports.readAttestation()
   if (
     attestation.admission !== "admitted" ||
-    attestation.modelId !== PRECOMPUTED_MODEL_ID ||
+    attestation.modelId !== (input.modelId ?? PRECOMPUTED_MODEL_ID) ||
     attestation.identity.accountRef !== input.initiatingAccountRef ||
     attestation.allowance.accountRef !== input.initiatingAccountRef ||
     attestation.allowance.billingBasis !== "included_subscription" ||
@@ -835,7 +847,7 @@ export async function runManualSubscriptionCatalog(
     backend: "codex_chatgpt_subscription" as const,
     billingBasis: "included_subscription" as const,
     authMethod: "chatgpt" as const,
-    modelId: PRECOMPUTED_MODEL_ID,
+    modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
     identityObservedAt: attestation.identity.observedAt,
     allowanceObservedAt: attestation.allowance.observedAt,
     weeklyRemainingPercent: attestation.allowance.weeklyRemainingPercent,
@@ -1042,7 +1054,7 @@ export async function runManualSubscriptionCatalog(
         action: "start",
         protocolVersion: 4,
         generationId: input.generationId,
-        modelId: PRECOMPUTED_MODEL_ID,
+        modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
         promptVersion: BUILD_PROMPT_VERSION,
         inputMode: "historical_analytics",
         inputSnapshotMode: "observed_fenced",
@@ -1171,7 +1183,7 @@ export async function runManualSubscriptionCatalog(
         inputCutoff: input.inputCutoff,
         video,
         catalog: frozen.catalog,
-        modelId: PRECOMPUTED_MODEL_ID,
+        modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
         backend: "codex_chatgpt_subscription",
         promptVersion: PROFILE_PROMPT_VERSION,
         schemaVersion: PROFILE_SCHEMA_VERSION,
@@ -1491,7 +1503,7 @@ export async function runManualSubscriptionCatalog(
             selectedCorpusDigest: input.reviewed.selectedCorpusDigest,
             candidatePoolDigest: input.reviewed.candidatePoolDigest,
             captureRefDigest: importedHistory.importBinding.bindingDigest,
-            modelId: PRECOMPUTED_MODEL_ID,
+            modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
             backend: "codex_chatgpt_subscription",
             promptVersion: EDGE_PROMPT_VERSION,
             schemaVersion: EDGE_SCHEMA_VERSION,

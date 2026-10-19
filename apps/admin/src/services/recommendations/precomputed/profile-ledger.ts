@@ -1,3 +1,4 @@
+import { subscriptionModelIdSchema } from "./subscription-model"
 import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -34,7 +35,7 @@ export const profileActionSchema = z.discriminatedUnion("action", [
       action: z.literal("profile_register"),
       cacheKey: digest,
       videoId: id,
-      modelId: z.literal("gpt-6-astra"),
+      modelId: subscriptionModelIdSchema,
       backend: z.literal("codex_chatgpt_subscription"),
       promptVersion: z.string().trim().min(1).max(100),
       schemaVersion: z.string().trim().min(1).max(100),
@@ -390,7 +391,7 @@ export async function submitProfileAction(
       if (
         generation.protocol_version !== 4 ||
         generation.execution_backend !== "codex_chatgpt_subscription" ||
-        generation.model_id !== "gpt-6-astra"
+        !subscriptionModelIdSchema.safeParse(generation.model_id).success
       )
         conflict("Generation does not use the profile protocol")
       if (input.action === "profile_status") {
@@ -443,6 +444,8 @@ export async function submitProfileAction(
       if (input.action !== "profile_call_finish" && !active)
         conflict("Subscription attempt is inactive")
       if (input.action === "profile_register") {
+        if (input.modelId !== generation.model_id)
+          conflict("Profile model differs from generation")
         if (generation.status !== "incomplete") conflict("Generation is closed")
         const expectedKey = hash({
           revision: "complete-selected-profile-plan-v1",

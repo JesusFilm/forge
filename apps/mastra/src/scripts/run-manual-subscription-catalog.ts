@@ -1,3 +1,4 @@
+import { subscriptionModelIdSchema } from "../services/precomputed-recommendations/subscription-model"
 import { execFile } from "node:child_process"
 import { readFile, stat } from "node:fs/promises"
 import { isAbsolute } from "node:path"
@@ -29,6 +30,7 @@ const localPath = z.string().min(1).refine(isAbsolute)
 const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
   .object({
     invocation: z.enum(["start", "resume"]),
+    modelId: subscriptionModelIdSchema.optional(),
     generationId: id,
     generationInputDigest: digest,
     attemptId: z.uuid(),
@@ -165,10 +167,12 @@ async function main(args: string[]) {
     throw new Error("manual_config_invalid")
   const account = createLocalCodexAccountReader({
     codexExecutable: config.codexExecutable,
+    modelId: config.input.modelId,
     minimumRemainingPercent: config.minimumRemainingPercent,
   })
   const model = createCodexSubscriptionAstraModel({
     codexExecutable: config.codexExecutable,
+    modelId: config.input.modelId,
     initiatingAccountRef: config.input.initiatingAccountRef,
     readOperatorIdentity: account.readOperatorIdentity,
     readAllowance: account.readAllowance,

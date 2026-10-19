@@ -1,3 +1,7 @@
+import {
+  subscriptionModelIdSchema,
+  type SubscriptionModelId,
+} from "./subscription-model"
 import { REVIEWED_EDGE_RECOVERIES } from "./reviewed-edge-recoveries"
 import { createHash } from "node:crypto"
 
@@ -285,7 +289,7 @@ export type EdgeBatchPersistencePort = {
       action: "edge_batch_start"
       attemptId: string
       callId: string
-      modelId: "gpt-6-astra"
+      modelId: SubscriptionModelId
       backend: "codex_chatgpt_subscription"
       promptVersion: string
       schemaVersion: string
@@ -382,7 +386,7 @@ export type EdgeBatchInput = Scope & {
   selectedCorpusDigest: string
   candidatePoolDigest: string
   captureRefDigest: string | null
-  modelId: "gpt-6-astra"
+  modelId: SubscriptionModelId
   backend: "codex_chatgpt_subscription"
   promptVersion: string
   schemaVersion: string
@@ -992,7 +996,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     input.members.length > 2 ||
     new Set(input.members.map((member) => member.source.id)).size !==
       input.members.length ||
-    input.modelId !== "gpt-6-astra" ||
+    !subscriptionModelIdSchema.safeParse(input.modelId).success ||
     input.backend !== "codex_chatgpt_subscription" ||
     !digestSchema.safeParse(input.generationInputDigest).success ||
     !digestSchema.safeParse(input.selectedCorpusDigest).success ||

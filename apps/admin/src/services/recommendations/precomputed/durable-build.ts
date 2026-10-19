@@ -1,3 +1,4 @@
+import { subscriptionModelIdSchema } from "./subscription-model"
 import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -248,7 +249,7 @@ const executionAttempt = z
     backend: z.literal("codex_chatgpt_subscription"),
     billingBasis: z.literal("included_subscription"),
     authMethod: z.literal("chatgpt"),
-    modelId: z.literal("gpt-6-astra"),
+    modelId: subscriptionModelIdSchema,
     identityObservedAt: z.string().datetime(),
     allowanceObservedAt: z.string().datetime(),
     weeklyRemainingPercent: z.number().min(0).max(100),
@@ -894,9 +895,12 @@ export async function submitDurablePrecomputedRecommendation(
     if (
       input.executionAttempt &&
       (input.executionAttempt.invocation !== "start" ||
-        input.modelId !== "gpt-6-astra")
+        !subscriptionModelIdSchema.safeParse(input.modelId).success ||
+        input.executionAttempt.modelId !== input.modelId)
     )
-      invalid("Subscription start requires exact Astra and a start attempt")
+      invalid(
+        "Subscription start requires a matching supported model and start attempt",
+      )
     const requestedAttempt = input.executionAttempt
       ? attemptData(input.executionAttempt)
       : null

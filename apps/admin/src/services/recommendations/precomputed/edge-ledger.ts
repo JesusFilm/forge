@@ -1,3 +1,4 @@
+import { subscriptionModelIdSchema } from "./subscription-model"
 import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
@@ -208,7 +209,7 @@ const start = base
   .extend({
     action: z.literal("edge_batch_start"),
     callId: z.uuid(),
-    modelId: z.literal("gpt-6-astra"),
+    modelId: subscriptionModelIdSchema,
     backend: z.literal("codex_chatgpt_subscription"),
     promptVersion: z.string().trim().min(1).max(100),
     schemaVersion: z.string().trim().min(1).max(100),
@@ -916,12 +917,17 @@ export async function submitEdgeAction(
       if (
         generation.protocol_version !== 4 ||
         generation.execution_backend !== "codex_chatgpt_subscription" ||
-        generation.model_id !== "gpt-6-astra"
+        !subscriptionModelIdSchema.safeParse(generation.model_id).success
       )
         throw new PrecomputedRecommendationError(
           "conflict",
           "Generation does not use the edge protocol",
         )
+      if (
+        input.action === "edge_batch_start" &&
+        input.modelId !== generation.model_id
+      )
+        conflict("Edge model differs from generation")
       if (input.action === "edge_batch_status") {
         const source = await tx.recommendationPrecomputedBuildSource.findUnique(
           {

@@ -7,7 +7,8 @@ status: "in-progress"
 start_date: "2026-10-05"
 duration: 7
 depends_on: []
-blocks: []
+blocks:
+  - "feat-738"
 tags:
   - "recommendations"
   - "admin"
