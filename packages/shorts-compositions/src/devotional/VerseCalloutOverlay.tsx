@@ -45,11 +45,20 @@ function fit(text: string, room: number): { width: number; size: number } {
   // Estimated, not measured: the DOM probe sets the upright face, and the
   // light italic Cyrillic runs ~0.66 em a character (6 lines where the probe
   // counted 4, Widow RU 2026-10-14). +10% for the slack of a greedy wrap.
-  const em = /[А-Яа-яЁё]/.test(text) ? 0.66 : 0.56
+  // PT Serif italic (since 2026-10-19) sets Cyrillic narrower than the light
+  // Literata did: the owner's Figma 592:3 fits 35 characters in 904px at
+  // 56px (0.46 em); 0.66 broke Luke 5:10 RU into three lines mid-phrase.
+  const em = /[А-Яа-яЁё]/.test(text) ? 0.5 : 0.56
+  const lines = (size: number, width: number) =>
+    Math.ceil((text.length * em * size * 1.1) / width)
+  // Two lines at full size first, widening the measure for it (the owner's
+  // Luke 5:10 card: two lines at ~930px, not three at 753), then the old
+  // narrowest-that-fits order.
+  for (const width of WIDTHS)
+    if (lines(SIZES[0]!, width) <= 2) return { width, size: SIZES[0]! }
   for (const size of SIZES)
     for (const width of WIDTHS) {
-      const lines = Math.ceil((text.length * em * size * 1.1) / width)
-      if (lines * size * LINE <= room) return { width, size }
+      if (lines(size, width) * size * LINE <= room) return { width, size }
     }
   return { width: WIDTHS[WIDTHS.length - 1]!, size: SIZES[SIZES.length - 1]! }
 }
@@ -145,6 +154,9 @@ export function VerseCalloutOverlay({
             margin: 0,
             width: u(box.width),
             textAlign: "center",
+            // Even lines, so a wide two-line measure does not leave a short
+            // tail ("…отныне / ты будешь ловить людей").
+            textWrap: "balance",
             fontFamily: VERSE_FACE,
             fontStyle: "italic",
             // PT Serif has one italic weight; the lit words differ by colour.

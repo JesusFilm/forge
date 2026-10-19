@@ -4057,6 +4057,12 @@ export async function produceNarration(
         const voice = w.voice ?? devo.voice
         if (!voice) return false
         if ((hit?.take ?? "") !== (takes.get(w.id) ?? "")) return true
+        // A two-voice opening (`--hook-voices`) records its first line's voice
+        // as the segment's voice, which never equals `voices.hook`; the take
+        // above already carries the voice list. Without this, every re-render
+        // re-voiced the opening, and with the key unset dropped it (Great
+        // Catch RU, 2026-10-19).
+        if (w.id === "hook" && opts.hookVoices?.length) return false
         const cachedVoice = hit ? voiceNameForId(hit.audio.voiceId) : undefined
         return cachedVoice != null && cachedVoice !== voice
       })
