@@ -601,6 +601,7 @@ export function ExploreFeed({ focused }: ExploreFeedProps) {
           player={activePlayer}
           muted={exploreMuted}
           paused={state.phase === "paused" && state.overlay == null}
+          onResume={handleTap}
           fast={fastHeld && fastPlayable}
           onToggleMute={handleToggleMute}
           onSeek={seekActive}

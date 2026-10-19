@@ -53,6 +53,7 @@ export function HomeHeader({
         style={styles.glassButton}
         glassEffectStyle="regular"
         colorScheme="dark"
+        isInteractive
       >
         <Ionicons name="search" size={22} color={ACCENT} />
       </GlassView>
@@ -70,6 +71,7 @@ export function HomeHeader({
         style={styles.glassButton}
         glassEffectStyle="regular"
         colorScheme="dark"
+        isInteractive
       >
         <Ionicons name="person" size={16} color={ACCENT} />
       </GlassView>

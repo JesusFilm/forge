@@ -16,7 +16,9 @@ export default function ReaderSettingsRoute() {
   const router = useRouter()
   const request = parseReaderSheetParams(useLocalSearchParams())
   const services = getReaderServices()
-  const { settings, tokens } = useReaderSheetTheme(services.settingsStore)
+  const { settings, tokens, background } = useReaderSheetTheme(
+    services.settingsStore,
+  )
   const { state } = useSheetCatalog(services.loadCatalog)
   const layout = useIsTabletLayout() ? "tablet" : "phone"
 
@@ -33,10 +35,11 @@ export default function ReaderSettingsRoute() {
   return (
     <>
       <Stack.Screen
-        options={{ contentStyle: { backgroundColor: tokens.background } }}
+        options={{ contentStyle: { backgroundColor: background } }}
       />
       <ReaderSettingsSheet
         tokens={tokens}
+        background={background}
         settings={settings}
         layout={layout}
         currentCredit={currentCredit}

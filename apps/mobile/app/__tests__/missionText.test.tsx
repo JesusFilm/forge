@@ -8,7 +8,12 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   default: () => null,
 }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
-jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
+// Glass off: each shared glass surface keeps today's look in this suite.
+jest.mock("expo-glass-effect", () => ({
+  GlassView: () => null,
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
 }))
