@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require("fs")
 const path = require("path")
+const { URL } = require("url")
 const {
   withXcodeProject,
   withEntitlementsPlist,
@@ -10,6 +11,7 @@ const {
 const catalog = require("../top-shelf/catalog.json")
 
 const TARGET_NAME = "ForgeTopShelf"
+const sourceFiles = ["ContentProvider.swift", "TopShelfFeed.swift"]
 const appGroup = (config) => `group.${config.ios.bundleIdentifier}.topshelf`
 const unquote = (value) => String(value ?? "").replace(/^"|"$/g, "")
 const resources = [
@@ -19,6 +21,90 @@ const resources = [
     ...(video.previewName ? [video.previewName] : []),
   ]),
 ]
+
+class TopShelfFeedConfigurationError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = "TopShelfFeedConfigurationError"
+  }
+}
+
+function feedConfiguration(endpoint, localQAFlag) {
+  if (endpoint === undefined || endpoint === "")
+    return { url: undefined, allowLocalFeed: false }
+  if (
+    typeof endpoint !== "string" ||
+    endpoint.length > 2048 ||
+    /[\s\\?#]/.test(endpoint)
+  )
+    throw new TopShelfFeedConfigurationError(
+      "TV_TOP_SHELF_FEED_URL must be a public URL without whitespace, query or fragment.",
+    )
+  let url
+  try {
+    url = new URL(endpoint)
+  } catch {
+    throw new TopShelfFeedConfigurationError(
+      "TV_TOP_SHELF_FEED_URL must be a valid HTTP(S) URL.",
+    )
+  }
+  const authority = endpoint.match(/^https?:\/\/([^/?#]*)/i)?.[1]
+  if (
+    !authority ||
+    authority.includes("@") ||
+    url.href.length > 2048 ||
+    !url.hostname ||
+    url.username ||
+    url.password ||
+    !["https:", "http:"].includes(url.protocol)
+  )
+    throw new TopShelfFeedConfigurationError(
+      "TV_TOP_SHELF_FEED_URL must use HTTP(S) without user information.",
+    )
+  if (url.protocol === "https:") return { url: url.href, allowLocalFeed: false }
+
+  // Match the literal host too: WHATWG URL normalizes shortened/octal IPv4.
+  const literalHost = authority.startsWith("[")
+    ? authority.slice(0, authority.indexOf("]") + 1)
+    : authority.split(":")[0].toLowerCase()
+  if (
+    localQAFlag !== "1" ||
+    !["localhost", "127.0.0.1", "[::1]"].includes(literalHost)
+  )
+    throw new TopShelfFeedConfigurationError(
+      "HTTP Top Shelf feeds require TV_TOP_SHELF_FEED_LOCAL_QA=1 and an exact loopback host.",
+    )
+  return {
+    url: url.href,
+    allowLocalFeed: true,
+    loopbackHost: url.hostname.replace(/^\[|\]$/g, ""),
+  }
+}
+
+function extensionInfo(template, config, feed, debug) {
+  const info = {
+    ...template,
+    ForgeURLScheme: config.scheme,
+    ForgeTopShelfAppGroup: appGroup(config),
+    ForgeTopShelfAllowLocalFeed: false,
+  }
+  delete info.ForgeTopShelfFeedURL
+  delete info.NSAppTransportSecurity
+  if (feed.url && (!feed.allowLocalFeed || debug))
+    info.ForgeTopShelfFeedURL = feed.url
+  if (debug && feed.allowLocalFeed) {
+    info.ForgeTopShelfAllowLocalFeed = true
+    info.NSAppTransportSecurity = {
+      NSExceptionDomains: {
+        [feed.loopbackHost]: {
+          NSExceptionAllowsInsecureHTTPLoads: true,
+          NSIncludesSubdomains: false,
+        },
+      },
+    }
+  }
+  return info
+}
 
 function addTopShelfTarget(project, config) {
   const targets = project.pbxNativeTargetSection()
@@ -58,12 +144,6 @@ function addTopShelfTarget(project, config) {
       "Frameworks",
       target.uuid,
     )
-    project.addSourceFile(
-      "ContentProvider.swift",
-      { target: target.uuid },
-      group.uuid,
-    )
-    project.addFile("Info.plist", group.uuid)
     project.addFramework("TVServices.framework", {
       target: target.uuid,
       link: true,
@@ -75,6 +155,10 @@ function addTopShelfTarget(project, config) {
     ([key, value]) =>
       !key.endsWith("_comment") && unquote(value.name) === TARGET_NAME,
   )
+  for (const file of sourceFiles)
+    project.addSourceFile(file, { target: target.uuid }, groupEntry[0])
+  for (const file of ["Info.plist", "Info-Debug.plist"])
+    project.addFile(file, groupEntry[0])
   for (const resource of resources) {
     const file = project.addFile(resource, groupEntry[0])
     if (!file) continue
@@ -106,7 +190,7 @@ function addTopShelfTarget(project, config) {
         config.ios.buildNumber ?? mainSettings.CURRENT_PROJECT_VERSION ?? "1",
       DEVELOPMENT_TEAM: config.ios.appleTeamId ?? mainSettings.DEVELOPMENT_TEAM,
       GENERATE_INFOPLIST_FILE: "NO",
-      INFOPLIST_FILE: `"${TARGET_NAME}/Info.plist"`,
+      INFOPLIST_FILE: `"${TARGET_NAME}/${unquote(build.name) === "Debug" ? "Info-Debug.plist" : "Info.plist"}"`,
       MARKETING_VERSION: config.version ?? mainSettings.MARKETING_VERSION,
       PRODUCT_BUNDLE_IDENTIFIER: `"${bundleId}"`,
       SDKROOT: "appletvos",
@@ -116,6 +200,15 @@ function addTopShelfTarget(project, config) {
       TARGETED_DEVICE_FAMILY: "3",
       TVOS_DEPLOYMENT_TARGET: mainSettings.TVOS_DEPLOYMENT_TARGET ?? "16.0",
     })
+    if (unquote(build.name) === "Debug") {
+      const configured = build.buildSettings.SWIFT_ACTIVE_COMPILATION_CONDITIONS
+      const conditions = (Array.isArray(configured) ? configured : [configured])
+        .flatMap((value) => unquote(value).split(/\s+/))
+        .filter(Boolean)
+      build.buildSettings.SWIFT_ACTIVE_COMPILATION_CONDITIONS = `"${[
+        ...new Set(["$(inherited)", ...conditions, "DEBUG"]),
+      ].join(" ")}"`
+    }
   }
 
   // Embed before scripts that inspect the finished app to avoid Xcode dependency cycles.
@@ -135,6 +228,10 @@ function addTopShelfTarget(project, config) {
 }
 
 function withTopShelf(config) {
+  const feed = feedConfiguration(
+    process.env.TV_TOP_SHELF_FEED_URL,
+    process.env.TV_TOP_SHELF_FEED_LOCAL_QA,
+  )
   const eas = ((config.extra ??= {}).eas ??= {})
   const ios = (((eas.build ??= {}).experimental ??= {}).ios ??= {})
   ios.appExtensions = [
@@ -168,15 +265,20 @@ function withTopShelf(config) {
       TARGET_NAME,
     )
     fs.mkdirSync(destination, { recursive: true })
-    for (const file of ["ContentProvider.swift", "Info.plist", ...resources]) {
+    for (const file of [...sourceFiles, "Info.plist", ...resources]) {
       fs.copyFileSync(path.join(source, file), path.join(destination, file))
     }
     const plist = require("@expo/plist").default
     const infoPath = path.join(destination, "Info.plist")
     const info = plist.parse(fs.readFileSync(infoPath, "utf8"))
-    info.ForgeURLScheme = config.scheme
-    info.ForgeTopShelfAppGroup = appGroup(config)
-    fs.writeFileSync(infoPath, plist.build(info))
+    fs.writeFileSync(
+      infoPath,
+      plist.build(extensionInfo(info, config, feed, false)),
+    )
+    fs.writeFileSync(
+      path.join(destination, "Info-Debug.plist"),
+      plist.build(extensionInfo(info, config, feed, true)),
+    )
     fs.writeFileSync(
       path.join(destination, "TopShelf.entitlements"),
       plist.build({
@@ -190,3 +292,5 @@ function withTopShelf(config) {
 
 module.exports = withTopShelf
 module.exports.addTopShelfTarget = addTopShelfTarget
+module.exports.feedConfiguration = feedConfiguration
+module.exports.extensionInfo = extensionInfo

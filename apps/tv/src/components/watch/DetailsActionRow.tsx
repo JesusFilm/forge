@@ -59,7 +59,13 @@ export function DetailsActionRow({
   metadataReady = true,
 }: DetailsActionRowProps) {
   const { playVideo, state } = useVideoPlayerContext()
-  const { video, activeVariant, subtitleEnabled } = useWatchSession()
+  const {
+    video,
+    activeVariant,
+    subtitleEnabled,
+    recommendationAttribution,
+    playbackEntry,
+  } = useWatchSession()
   const playState =
     Platform.OS === "android"
       ? deriveDetailsPlayState(metadataReady, activeVariant?.hls)
@@ -124,6 +130,8 @@ export function DetailsActionRow({
             posterUrl: video.upNext.posterUrl,
           }
         : null,
+      recommendationAttribution,
+      playbackEntry,
     )
   }
 

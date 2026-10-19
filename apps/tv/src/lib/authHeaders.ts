@@ -59,6 +59,11 @@ export const RECOMMENDATION_OPERATION_NAMES = [
   "UserRecommendations",
   "CreateRecommendationViewer",
   "UpdateRecommendationViewer",
+  "RecordSemanticRecommendationEvidence",
+  "SelectSemanticRecommendation",
+  "ClaimSemanticRecommendationEpisode",
+  "IssueWatchPlaybackContext",
+  "RecordSemanticRecommendationPlayback",
 ] as const
 
 export const FLEET_TOKEN_OPERATIONS: readonly string[] = [

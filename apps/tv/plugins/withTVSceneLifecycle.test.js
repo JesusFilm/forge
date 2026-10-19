@@ -39,9 +39,35 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {}
 `
 
 describe("TV scene lifecycle", () => {
-  it("starts the existing factory in the connected window scene, not at app launch", () => {
+  it("prepares the Debug launcher before Expo's launch subscribers run", () => {
     const result = plugin.patchAppDelegate(template)
-    expect(result).not.toContain("UIWindow(frame: UIScreen.main.bounds)")
+    const appLaunch = result.slice(
+      0,
+      result.indexOf("class ForgeSceneDelegate:"),
+    )
+    const debugStartup = appLaunch.match(/#if DEBUG\n([\s\S]*?)#endif/)[1]
+    expect(debugStartup).toContain(
+      "window = UIWindow(frame: UIScreen.main.bounds)",
+    )
+    expect(debugStartup).toContain("factory.startReactNative(")
+    expect(appLaunch.indexOf("bindReactNativeFactory(factory)")).toBeLessThan(
+      appLaunch.indexOf("factory.startReactNative("),
+    )
+    expect(appLaunch.indexOf("factory.startReactNative(")).toBeLessThan(
+      appLaunch.indexOf("return super.application(application"),
+    )
+  })
+
+  it("keeps Release React startup in the connected window scene", () => {
+    const result = plugin
+      .patchAppDelegate(template)
+      .replace(/#if DEBUG\n[\s\S]*?#endif\n/g, "")
+    const appLaunch = result.slice(
+      0,
+      result.indexOf("class ForgeSceneDelegate:"),
+    )
+    expect(appLaunch).not.toContain("UIWindow(frame: UIScreen.main.bounds)")
+    expect(appLaunch).not.toContain("factory.startReactNative(")
     expect(result).toContain("forgeLaunchOptions = launchOptions")
     expect(result).toContain("bindReactNativeFactory(factory)")
     expect(result).toContain("return super.application(application")
@@ -49,6 +75,23 @@ describe("TV scene lifecycle", () => {
     expect(result).toContain("appDelegate.window = window")
     expect(result).toContain("factory.startReactNative(")
     expect(result).toContain("if let existingWindow = appDelegate.window")
+  })
+
+  it("attaches the Debug window and forwards scene links without starting React twice", () => {
+    const result = plugin.patchAppDelegate(template)
+    const existingWindow = result.match(
+      /if let existingWindow = appDelegate.window \{([\s\S]*?)\n {4}\}/,
+    )[1]
+    expect(existingWindow).toContain("window = existingWindow")
+    expect(existingWindow).toContain("existingWindow.windowScene = windowScene")
+    expect(existingWindow).toContain("existingWindow.makeKeyAndVisible()")
+    expect(existingWindow).toContain("appDelegate.forgeLaunchOptions = nil")
+    expect(existingWindow).toContain(
+      "openURLContexts: connectionOptions.urlContexts",
+    )
+    expect(existingWindow).toContain("self.scene(scene, continue: activity)")
+    expect(existingWindow).toContain("return")
+    expect(existingWindow).not.toContain("factory.startReactNative(")
   })
 
   it("is idempotent", () => {

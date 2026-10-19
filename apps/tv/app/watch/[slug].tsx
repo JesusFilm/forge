@@ -105,8 +105,14 @@ export default function WatchVideoScreen() {
   const decodedSlug = slug ? decodeURIComponent(slug) : ""
   const router = useRouter()
 
-  const { video, setVideo, activeVariant, setActiveVariantIndex } =
-    useWatchSession()
+  const {
+    video,
+    setVideo,
+    activeVariant,
+    setActiveVariantIndex,
+    recommendationAttribution,
+    playbackEntry,
+  } = useWatchSession()
   const {
     hydrated: preferencesReady,
     audioLanguageSlug: preferredAudioLanguage,
@@ -270,7 +276,6 @@ export default function WatchVideoScreen() {
       if (!loading && (error != null || video != null)) setAutoplayPhase("off")
       return
     }
-
     let cancelled = false
     void (async () => {
       const position = await getResumePosition(videoId)
@@ -294,6 +299,8 @@ export default function WatchVideoScreen() {
               posterUrl: video.upNext.posterUrl,
             }
           : null,
+        recommendationAttribution,
+        playbackEntry,
       )
     })()
     return () => {
@@ -312,6 +319,8 @@ export default function WatchVideoScreen() {
     preferencesReady,
     introActive,
     setActiveVariantIndex,
+    recommendationAttribution,
+    playbackEntry,
   ])
 
   // Player closed on an autoplay pass-through → pop straight back to Home.

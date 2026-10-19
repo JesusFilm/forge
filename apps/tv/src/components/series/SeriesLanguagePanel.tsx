@@ -3,7 +3,7 @@
 // trailer-disabled (AE9). Same virtualization as LanguagePanel; SCREEN owns closing.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FlatList, Modal, Text, View } from "react-native"
+import { FlatList, Modal, Platform, Text, View } from "react-native"
 
 import {
   buildLanguageRows,
@@ -15,30 +15,80 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WatchOptionRow } from "../watch/WatchOptionRow"
 import { WATCH_OPTION_ROW_HEIGHT } from "../watch/watchMenuLayout"
 import { watchMenuStyles } from "../watch/watchMenuStyles"
+import { AndroidTrackChoice } from "../watch/AndroidTrackChoice"
+import { PanelLoading } from "../watch/PanelLoading"
+import type { TrackChoiceOption } from "../watch/androidTrackChoiceSession"
 
-export function SeriesLanguagePanel({
+type Props = {
+  visible: boolean
+  /** The series' language union (from GET_SERIES_LANGUAGES). */
+  languages: WatchChildLanguage[]
+  /** Selected language, falling back to the currently playable trailer's dub. */
+  activeSlug: string | null
+  /** The screen persists the choice and closes the panel. */
+  onSelect: (slug: string) => void
+  onClose: () => void
+  loading: boolean
+  error: boolean
+  onRetry: () => void
+}
+
+export function SeriesLanguagePanel(props: Props) {
+  const options = useMemo<TrackChoiceOption[]>(() => {
+    if (Platform.OS !== "android" || !props.visible) return []
+    const rows: TrackChoiceOption[] = props.languages.map((language) => ({
+      id: language.slug,
+      label: languageDisplayName(language),
+      searchText: language.bcp47 ?? "",
+    }))
+    if (props.error && !props.loading)
+      rows.unshift({ id: "__retry__", label: "Try again", pinned: true })
+    return rows
+  }, [props.visible, props.languages, props.error, props.loading])
+  if (Platform.OS === "android")
+    return props.visible ? (
+      <AndroidTrackChoice
+        title="Audio Language"
+        options={options}
+        selected={props.activeSlug}
+        status={
+          props.loading
+            ? "Loading languages…"
+            : props.error
+              ? "Couldn’t load languages"
+              : options.length === 0
+                ? "No languages available"
+                : null
+        }
+        onClose={props.onClose}
+        onSelect={(id) => {
+          if (id === "__retry__") {
+            props.onRetry()
+            return false
+          }
+          if (props.languages.some((language) => language.slug === id))
+            props.onSelect(id)
+          else props.onClose()
+        }}
+      />
+    ) : null
+  return <ReactSeriesLanguagePanel {...props} />
+}
+
+function ReactSeriesLanguagePanel({
   visible,
   languages,
   activeSlug,
   onSelect,
   onClose,
-}: {
-  visible: boolean
-  /** The series' language union (from GET_SERIES_LANGUAGES). */
-  languages: WatchChildLanguage[]
-  /**
-   * Slug marked active (check + initial scroll/focus target). Screen passes
-   * its selection, falling back to the trailer dub's language so first open
-   * lands on what currently plays.
-   */
-  activeSlug: string | null
-  /** Reports the chosen slug; the screen persists it and closes the panel. */
-  onSelect: (slug: string) => void
-  onClose: () => void
-}) {
+  loading,
+  error,
+  onRetry,
+}: Props) {
+  const ready = !loading && !error
   const rows = useMemo(
-    () => buildLanguageRows(languages, activeSlug),
-    [languages, activeSlug],
+    () => (visible && ready ? buildLanguageRows(languages, activeSlug) : []),
+    [visible, ready, languages, activeSlug],
   )
   const activeDisplayIndex = useMemo(
     () => rows.findIndex((row) => row.active),
@@ -58,6 +108,7 @@ export function SeriesLanguagePanel({
   useEffect(() => {
     if (!visible) return
     setFocusArmed(true)
+    if (!ready) return
     if (activeDisplayIndex > 0) {
       listRef.current?.scrollToIndex({
         index: activeDisplayIndex,
@@ -66,10 +117,9 @@ export function SeriesLanguagePanel({
     } else {
       listRef.current?.scrollToOffset({ offset: 0, animated: false })
     }
-    // Intentionally keyed on `visible` only (not activeDisplayIndex):
-    // selection closes the panel, and re-scrolling a still-open panel under
-    // the user would jank.
-  }, [visible])
+    // Re-arm when async data arrives, while preserving focus during ordinary
+    // selection updates to an already-ready list.
+  }, [visible, ready])
 
   const renderRow = useCallback(
     ({ item: row }: { item: SeriesLanguageRow }) => {
@@ -133,21 +183,41 @@ export function SeriesLanguagePanel({
             </Text>
           </View>
 
-          <FlatList
-            ref={listRef}
-            data={rows}
-            renderItem={renderRow}
-            keyExtractor={keyExtractor}
-            getItemLayout={getItemLayout}
-            initialScrollIndex={
-              activeDisplayIndex > 0 ? activeDisplayIndex : undefined
-            }
-            initialNumToRender={14}
-            windowSize={7}
-            showsVerticalScrollIndicator={false}
-            style={watchMenuStyles.list}
-            contentContainerStyle={watchMenuStyles.listContent}
-          />
+          {loading ? <PanelLoading label="Loading languages…" /> : null}
+          {!loading && error ? (
+            <>
+              <Text style={watchMenuStyles.status}>
+                Couldn’t load languages
+              </Text>
+              <WatchOptionRow
+                icon="refresh-outline"
+                label="Try again"
+                accessibilityLabel="Try again"
+                hasTVPreferredFocus
+                onPress={onRetry}
+              />
+            </>
+          ) : null}
+          {ready && rows.length === 0 ? (
+            <Text style={watchMenuStyles.status}>No languages available</Text>
+          ) : null}
+          {visible && ready && rows.length > 0 ? (
+            <FlatList
+              ref={listRef}
+              data={rows}
+              renderItem={renderRow}
+              keyExtractor={keyExtractor}
+              getItemLayout={getItemLayout}
+              initialScrollIndex={
+                activeDisplayIndex > 0 ? activeDisplayIndex : undefined
+              }
+              initialNumToRender={14}
+              windowSize={7}
+              showsVerticalScrollIndicator={false}
+              style={watchMenuStyles.list}
+              contentContainerStyle={watchMenuStyles.listContent}
+            />
+          ) : null}
 
           {/* Dismiss affordance stays focusable in every state so the viewer
               is never trapped (even when the language union is empty). */}
@@ -157,6 +227,7 @@ export function SeriesLanguagePanel({
               label="Close"
               onPress={onClose}
               accessibilityLabel="Close"
+              hasTVPreferredFocus={loading || (!error && rows.length === 0)}
             />
           </View>
         </TVFocusGuideView>

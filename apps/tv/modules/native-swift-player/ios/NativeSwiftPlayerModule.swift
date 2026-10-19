@@ -24,6 +24,7 @@ public final class NativeSwiftPlayerModule: Module {
         "onEnded",
         "onPlayNext",
         "onPlaybackPosition",
+        "onPlaybackState",
         "onError",
         "onAudioChange",
         "onSubtitleChange",
@@ -34,6 +35,9 @@ public final class NativeSwiftPlayerModule: Module {
 
       Prop("sourceUrl") { (view, value: String?) in
         view.sourceUrl = value
+      }
+      Prop("sourceGeneration") { (view, value: Int?) in
+        view.sourceGeneration = value ?? 0
       }
       Prop("playerVariant") { (view, value: String?) in
         view.playerVariant = value == "native-b" ? "native-b" : "native-a"
