@@ -1,0 +1,22 @@
+{
+  "sources": 1031,
+  "recommendations": 6186,
+  "uniqueOrderedSlates": 574,
+  "editorialGroups": 82,
+  "sourceSpecificSlates": 262,
+  "sharedEditorialDecisionSources": 769,
+  "metadataOnlySources": 172,
+  "uninformativeTranscriptSources": 57,
+  "mismatchedEvidenceSources": [
+    "cmp78utff0ghcqm01ppype541",
+    "cmp78uu4i0ghiqm01lqwq5erd",
+    "cmp783vir03feqm01iu0jas61",
+    "cmp78e30308k6qm01w674orig",
+    "cmp78j4xc0b44qm01ejb8ufxg"
+  ],
+  "targetVideos": 518,
+  "validation": "PASS: all 1031 sources have exactly six distinct existing non-self targets, each with a reason and at least one published playable dub in the export-time availability snapshot.",
+  "catalogueSha256": "3c7514883f7d277b08f17f13bda0faa41cf67d40ac13dcc15f0c15ff340c2d99",
+  "productionWrites": 0,
+  "additionalModelApiCalls": 0
+}
