@@ -26,6 +26,7 @@ export const env = createEnv({
     APPLE_NATIVE_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_WATCH_PROGRESS_BASE_URL: z.string().url().optional(),
     ADMIN_WATCH_PROGRESS_API_KEY: z.string().min(1).optional(),
+    AUTH_WATCH_LEARNING_ERASURE_REQUIRED: z.enum(["true", "false"]).optional(),
     OKTA_CLIENT_ID: z.string().min(1).optional(),
     OKTA_CLIENT_SECRET: z.string().min(1).optional(),
     OKTA_ISSUER: z.string().url().optional(),
@@ -67,6 +68,9 @@ export const env = createEnv({
     ),
     ADMIN_WATCH_PROGRESS_API_KEY: emptyToUndefined(
       process.env.ADMIN_WATCH_PROGRESS_API_KEY,
+    ),
+    AUTH_WATCH_LEARNING_ERASURE_REQUIRED: emptyToUndefined(
+      process.env.AUTH_WATCH_LEARNING_ERASURE_REQUIRED,
     ),
     OKTA_CLIENT_ID: emptyToUndefined(process.env.OKTA_CLIENT_ID),
     OKTA_CLIENT_SECRET: emptyToUndefined(process.env.OKTA_CLIENT_SECRET),
@@ -151,6 +155,18 @@ export function getAppleNativeClientConfig(): {
     bundleId: env.APPLE_APP_BUNDLE_ID,
     clientSecret: env.APPLE_NATIVE_CLIENT_SECRET,
   }
+}
+
+/**
+ * `AUTH_WATCH_LEARNING_ERASURE_REQUIRED` is a receiver-first rollout setting,
+ * default off: enable it only after Admin's learning receiver is live, and
+ * before saved learning launches. It is sticky privacy enforcement — never
+ * derived from the public `forge.watch.audience` flag, and kept on after a
+ * public rollback because learning data written while the flag was on must
+ * still be erased.
+ */
+export function isWatchLearningErasureRequired(): boolean {
+  return env.AUTH_WATCH_LEARNING_ERASURE_REQUIRED === "true"
 }
 
 export function getAdminWatchProgressErasureConfig(): {

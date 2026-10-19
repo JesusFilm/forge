@@ -7,6 +7,17 @@ retain the Auth user row after watch history/events/learning were erased.
 The deleted progress cannot be restored by removing a fence. Do not promise
 that an aborted deletion left external account data intact.
 
+An "invalid acknowledgement" aborts only once
+`AUTH_WATCH_LEARNING_ERASURE_REQUIRED=true` (receiver-first rollout, default
+`false`; see `apps/auth/.env.example`). Before that, a legacy Admin 2xx that
+omits `learningProgressErased` completes the deletion. An explicit
+`learningProgressErased: false`, a network failure, or a non-2xx aborts in
+both modes. With the setting `true`, missing erasure config
+(`ADMIN_WATCH_PROGRESS_BASE_URL`/`ADMIN_WATCH_PROGRESS_API_KEY`) aborts before
+any side effect (`admin_erasure_not_configured:learning_progress`) instead of
+skipping erasure. Keep the setting `true` once learning data may exist, even
+after the public `forge.watch.audience` flag is turned off.
+
 `AccountDeletionSideEffectError.adminErasureMayHaveCommitted` and the matching
 log field are `true` for every failed attempted Admin erasure. This means the
 outcome is uncertain, not that erasure was confirmed. A successful erasure
