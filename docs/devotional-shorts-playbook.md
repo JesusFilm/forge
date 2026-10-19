@@ -388,13 +388,17 @@ and what AI did (drafted, voiced, assembled; on-screen questions written with
 AI help and chosen by the team).
 
 Every caption file also carries one `PINNED COMMENT` line (owner,
-2026-10-14). Publishing posts it under the short and pins it. Its only job is
-to make people write something: a personal, open question about the viewer's
-own life, or a call to comment ("Write one word: …", "Tell us…"). Never a quiz
-whose answer the short already gives. Bad: "Why did the ten lepers shout from
-far away?" (the history short explains exactly that). Good: "The ten waited
-for a priest's word before they could go home. Whose permission are you
-waiting for before you come to God?" RU files get it in Russian.
+2026-10-14; format changed 2026-10-19). Publishing posts it under the YouTube
+video and pins it. Format: a prayer of one or two sentences that comes out of
+the episode, then "Pray it with us and write Amen." (RU: «Помолитесь с нами и
+напишите «Аминь».»). Under 200 characters, no dashes. Example: "Lord, I keep
+asking quietly and I am tired of waiting. Teach me to keep coming to you. Pray
+it with us and write Amen." YouTube only: Facebook and Instagram get no "write
+Amen" line, because Meta demotes comment bait. Personal questions ("Whose
+permission are you waiting for…") are retired: under 14 videos they got 0
+replies, while every comment people wrote on their own was a prayer or an Amen.
+RU files get it in Russian; the prayer is in the first person, so keep it free of
+gendered past forms ("ждать тяжело", not "я устал").
 
 ## 8. QA before delivering
 
