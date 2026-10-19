@@ -1,5 +1,5 @@
 ---
-id: "feat-730"
+id: "feat-742"
 title: "Partner real-account library and download tools"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 6
 depends_on:
-  - "feat-729"
+  - "feat-741"
 blocks:
-  - "feat-731"
+  - "feat-743"
 tags:
   - "web"
   - "auth"

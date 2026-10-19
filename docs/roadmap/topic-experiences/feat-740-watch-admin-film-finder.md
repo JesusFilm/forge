@@ -1,5 +1,5 @@
 ---
-id: "feat-728"
+id: "feat-740"
 title: "Admin-backed Explore film finder"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 5
 depends_on:
-  - "feat-727"
+  - "feat-739"
 blocks:
-  - "feat-729"
+  - "feat-741"
 tags:
   - "web"
   - "graphql"

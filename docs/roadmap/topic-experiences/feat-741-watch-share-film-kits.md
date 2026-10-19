@@ -1,5 +1,5 @@
 ---
-id: "feat-729"
+id: "feat-741"
 title: "Share film kits and practical ideas"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 4
 depends_on:
-  - "feat-728"
+  - "feat-740"
 blocks:
-  - "feat-730"
+  - "feat-742"
 tags:
   - "web"
   - "watch"

@@ -179,12 +179,12 @@ Source licenses and source dates are provenance to retain. They do not block wri
 
 | PR  | Ticket   | Branch                        | Base | Exact diff scope                                                                                          |
 | --- | -------- | ----------------------------- | ---- | --------------------------------------------------------------------------------------------------------- |
-| 1   | feat-727 | `feat/watch-audience-frame`   | main | U1–U2; shared tabs, remembered role, simple questionnaires, existing destinations, home/video integration |
-| 2   | feat-728 | `feat/watch-audience-explore` | PR 1 | U3–U4; bounded Admin catalog resolver and Explore finder                                                  |
-| 3   | feat-729 | `feat/watch-audience-share`   | PR 2 | U5; Share ideas, language-aware links, kit view and real guides                                           |
-| 4   | feat-730 | `feat/watch-audience-partner` | PR 3 | U6–U7; real account surface, resource library, language/bulk-download tools                               |
-| 5   | feat-731 | `feat/watch-audience-grow`    | PR 4 | U8–U10; Grow plans/prayer/course, own progress persistence, lesson-1 story                                |
-| 6   | feat-732 | `feat/watch-audience-editor`  | PR 5 | U11–U12; editor configuration and common published consumer source                                        |
+| 1   | feat-739 | `feat/watch-audience-frame`   | main | U1–U2; shared tabs, remembered role, simple questionnaires, existing destinations, home/video integration |
+| 2   | feat-740 | `feat/watch-audience-explore` | PR 1 | U3–U4; bounded Admin catalog resolver and Explore finder                                                  |
+| 3   | feat-741 | `feat/watch-audience-share`   | PR 2 | U5; Share ideas, language-aware links, kit view and real guides                                           |
+| 4   | feat-742 | `feat/watch-audience-partner` | PR 3 | U6–U7; real account surface, resource library, language/bulk-download tools                               |
+| 5   | feat-743 | `feat/watch-audience-grow`    | PR 4 | U8–U10; Grow plans/prayer/course, own progress persistence, lesson-1 story                                |
+| 6   | feat-744 | `feat/watch-audience-editor`  | PR 5 | U11–U12; editor configuration and common published consumer source                                        |
 
 The explicit stack requirement overrides the root default of targeting main for every PR. Each PR targets its predecessor and presents only its stage delta. No PR is merged in this task. Update the relevant ticket to in-progress only when implementation begins, then complete when its scoped implementation and verification are finished; complete does not claim production deployment.
 

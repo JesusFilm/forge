@@ -1,5 +1,5 @@
 ---
-id: "feat-731"
+id: "feat-743"
 title: "Grow course story and durable account progress"
 owner: "vlad"
 priority: "P1"
@@ -7,9 +7,9 @@ status: "not-started"
 start_date: "2026-10-17"
 duration: 10
 depends_on:
-  - "feat-730"
+  - "feat-742"
 blocks:
-  - "feat-732"
+  - "feat-744"
 tags:
   - "web"
   - "auth"
