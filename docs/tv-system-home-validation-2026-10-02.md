@@ -220,7 +220,7 @@ snapshots are in `.local-tools/top-shelf-refresh/runtime-results.md`, `results.j
 and `deliverables/index.html`; tracked scope and native follow-up architecture are
 in `docs/plans/2026-10-19-top-shelf-fresh-content.md`. Cleanup is separately recorded
 in `cleanup.json`, restoring private configuration and preserving original devices.
-Normal Metro remains stopped under the local-only instruction. feat-750 is complete;
+Normal Metro remains stopped under the local-only instruction. feat-753 is complete;
 feat-630 remains in progress for the broader platform/release work.
 
 ## October 20 native public-feed prototype

@@ -1,5 +1,5 @@
 ---
-id: "feat-750"
+id: "feat-753"
 title: "Refresh Top Shelf content without manual cache resets"
 owner: "ekkasit"
 priority: "P1"

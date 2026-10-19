@@ -54,3 +54,10 @@ on tickets 749 and 630; this completed consolidation is not release approval.
 CI repair: wrap the publication commit message to the repository's 100-character
 body-line limit and isolate the Apple Modal native host in its unit suite. The
 cold-cache full suite passes 186 suites / 2,328 tests before the guarded retry.
+
+## Main merge follow-up
+
+The owner subsequently authorized merging PR 2719 into main. Reconcile the
+new upstream web ticket 750 by renaming TV foreground freshness to 753; all TV
+runtime and native inputs stay unchanged. Use the normal squash-merge path after
+current checks pass, preserving the remaining release gates and default-off feed.

@@ -79,7 +79,7 @@ for its broader platform, performance, distribution and release gates.
 
 ## October 20 foreground freshness follow-up
 
-feat-750 fixes the two application cache limits found above. Existing Continue
+feat-753 fixes the two application cache limits found above. Existing Continue
 metadata and Journey copy now refresh on foreground return without deleting cache
 or history; actual local API replay confirms artwork, order/removal and recovery.
 See `docs/plans/2026-10-19-top-shelf-fresh-content.md`. The native extension remains

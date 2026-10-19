@@ -15,7 +15,7 @@ tags: [tv, tvos, top-shelf, native, cache]
 
 The current extension reads the app snapshot only; changing API content while
 Watch is closed cannot be observed until the main app fetches again. The owner
-authorized a local-only native fetching prototype after feat-750 fixed foreground
+authorized a local-only native fetching prototype after feat-753 fixed foreground
 freshness. Push remains excluded.
 
 ## Entry Points

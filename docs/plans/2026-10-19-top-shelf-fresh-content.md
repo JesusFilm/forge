@@ -2,7 +2,7 @@
 
 ## Scope
 
-Follow feat-750 on `codex/tv-selected-improvements`, starting at
+Follow feat-753 on `codex/tv-selected-improvements`, starting at
 `14f4804a1c6c618a650416829b1e99ff605712b5`. Preserve the earlier interception
 evidence and all existing local documentation changes. Fix stale foreground
 content without user cache resets or fabricated history. Assess, but do not

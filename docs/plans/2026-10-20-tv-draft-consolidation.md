@@ -59,7 +59,7 @@ uses the connected account and verifies exact local/remote tree equality; draft
 PR 2719 remains the review destination, not a production merge.
 
 The final publication receipt and CI state are retained under
-`.local-tools/tv-pr-consolidation/`. TV tickets now use 747–751; historical local
+`.local-tools/tv-pr-consolidation/`. The initial consolidation used TV IDs 747–751; historical local
 logs/recordings retain their original IDs and are not rewritten. Selected
 integration ticket 749 and broader Top Shelf ticket 630 remain in progress for
 previously documented native-control, physical-device and distribution gates.
@@ -79,3 +79,23 @@ reproduced on macOS, but the recorded failure stack identifies native presenter
 introspection. A cold-cache CI-style full run passes 186 suites / 2,328 tests.
 Only `SeriesLanguagePanel.test.tsx` differs among the 610 previously fingerprinted
 TV source/config/test files; production runtime/native inputs are unchanged.
+
+## Authorized main merge
+
+After reviewing the documented remaining gates, the owner explicitly requested
+merging the consolidated work into main. This supersedes the earlier draft-only
+publication boundary for PR 2719. Use normal GitHub requirements and the connected
+`up-tandem` account; preserve all experimental exclusions and release limitations.
+
+Main advanced to `f54a7f1c2` with web telemetry work that claimed roadmap ID 750.
+Rename only the TV foreground-freshness ticket to 753 and update its five active
+references. The upstream web ticket remains unchanged. The new main commit does
+not change TV sources, dependencies, native inputs or shared TV runtime packages.
+No application behavior is changed by this reconciliation. Historical ignored
+logs and recordings retain their original IDs.
+
+After the renewed CI passes, mark the PR ready and use the repository's supported
+squash merge with its exact reviewed head SHA. Confirm GitHub's merged state and
+fetch main locally. Production content API/Push tests, app resets and store uploads
+remain excluded. Native public-feed fetching remains off by default; pending
+player-control/physical-device/backend/distribution gates remain on their tickets.
