@@ -7,8 +7,13 @@ import type { MetricTags } from "./scheduler-pressure"
 // seconds, and its trace shows no span for that time: dd-trace does not trace
 // this Redis client and the cache handler hides its own work. Each Next cache
 // read or write becomes a `next.cache.get` / `next.cache.set` span (a child of
-// the request span) carrying its outcome and synchronous JSON codec time,
-// plus a duration distribution per kind and outcome (feat-745).
+// the request span) carrying its outcome and JSON parse/stringify elapsed time,
+// plus a duration distribution per kind and outcome (feat-745). The rest of a
+// span's duration is unattributed: Redis round trips, base64 conversion, tag
+// checks, scheduling delay and this telemetry all land there.
+//
+// Telemetry is observational. A throwing emitter, span or tracer must never
+// change a cache result or replace a cache error, so every hook is guarded.
 //
 // `cache-handler.mjs` cannot import application modules, so it reaches this
 // recorder through a process-global symbol that `configureDatadog()` installs.
@@ -105,6 +110,14 @@ export function classifyCacheError(error: unknown): ErrorReason {
   return "other"
 }
 
+function observe(action: () => void): void {
+  try {
+    action()
+  } catch {
+    // Dropped on purpose: see the module comment.
+  }
+}
+
 export function createNextCacheTelemetry(
   options: NextCacheTelemetryOptions,
 ): NextCacheTelemetry {
@@ -133,31 +146,33 @@ export function createNextCacheTelemetry(
       record.errorReason ??= classifyCacheError(error)
       throw error
     } finally {
-      const durationMs = now() - startMs
-      const tags: MetricTags = { ...baseTags, kind: record.kind, outcome }
-      if (record.errorReason) tags.error_reason = record.errorReason
+      observe(() => {
+        const durationMs = now() - startMs
+        const tags: MetricTags = { ...baseTags, kind: record.kind, outcome }
+        if (record.errorReason) tags.error_reason = record.errorReason
 
-      span?.setTag("next_cache.outcome", outcome)
-      span?.setTag("next_cache.codec_ms", record.codecMs)
-      if (record.errorReason) {
-        span?.setTag("next_cache.error_reason", record.errorReason)
-      }
-      if (record.valueLength !== undefined) {
-        span?.setTag("next_cache.value_length", record.valueLength)
-      }
+        span?.setTag("next_cache.outcome", outcome)
+        span?.setTag("next_cache.codec_ms", record.codecMs)
+        if (record.errorReason) {
+          span?.setTag("next_cache.error_reason", record.errorReason)
+        }
+        if (record.valueLength !== undefined) {
+          span?.setTag("next_cache.value_length", record.valueLength)
+        }
 
-      options.distribution(
-        record.op === "get"
-          ? NEXT_CACHE_METRICS.getDurationMs
-          : NEXT_CACHE_METRICS.setDurationMs,
-        durationMs,
-        tags,
-      )
+        options.distribution(
+          record.op === "get"
+            ? NEXT_CACHE_METRICS.getDurationMs
+            : NEXT_CACHE_METRICS.setDurationMs,
+          durationMs,
+          tags,
+        )
+      })
     }
   }
 
   return {
-    measure(op, kind, fn) {
+    measure<T>(op: Operation, kind: string | undefined, fn: () => Promise<T>) {
       const record: OperationRecord = {
         op,
         kind: normalizeCacheKind(kind),
@@ -165,16 +180,29 @@ export function createNextCacheTelemetry(
       }
       const tracer = options.tracer
       if (!tracer) return run(record, fn)
-      // One-argument callback: dd-trace treats a two-argument callback as
-      // callback-style and would wait for `done()`.
-      return tracer.trace(
-        `next.cache.${op}`,
-        {
-          resource: `${op} ${record.kind}`,
-          tags: { "next_cache.kind": record.kind },
-        },
-        (span) => run(record, fn, span),
-      )
+      // If the tracer throws, return the cache operation it already started,
+      // or start it untraced; never run it twice.
+      let started: Promise<T> | undefined
+      try {
+        // One-argument callback: dd-trace treats a two-argument callback as
+        // callback-style and would wait for `done()`.
+        const traced = tracer.trace(
+          `next.cache.${op}`,
+          {
+            resource: `${op} ${record.kind}`,
+            tags: { "next_cache.kind": record.kind },
+          },
+          (span) => (started = run(record, fn, span)),
+        )
+        if (!started) return traced
+        // Return the cache operation itself, not the tracer's wrapper, so a
+        // failure while finishing the span cannot reject a good result. The
+        // wrapper's own rejection is then handled here.
+        if (traced !== started) traced.then(undefined, () => undefined)
+        return started
+      } catch {
+        return started ?? run(record, fn)
+      }
     },
     noteResult(found) {
       const record = storage.getStore()
@@ -190,11 +218,13 @@ export function createNextCacheTelemetry(
         record.codecMs += ms
         record.valueLength = valueLength
       }
-      options.distribution(NEXT_CACHE_METRICS.codecMs, ms, {
-        ...baseTags,
-        direction,
-        kind: record?.kind ?? "other",
-      })
+      observe(() =>
+        options.distribution(NEXT_CACHE_METRICS.codecMs, ms, {
+          ...baseTags,
+          direction,
+          kind: record?.kind ?? "other",
+        }),
+      )
     },
   }
 }

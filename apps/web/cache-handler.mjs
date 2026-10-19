@@ -16,21 +16,32 @@ function telemetry() {
   return globalThis[TELEMETRY_KEY]
 }
 
-// Same JSON format as the handler's default serializer, with the synchronous
-// parse/stringify timed so a slow cache read can be split into codec time and
-// waiting time.
+// Telemetry must never change a cache result or replace a cache error.
+function observe(action) {
+  try {
+    action(telemetry())
+  } catch {
+    // Dropped on purpose.
+  }
+}
+
+// Same JSON format as the handler's default serializer, with parse/stringify
+// elapsed time recorded. The rest of a slow read stays unattributed: Redis
+// round trips, base64 conversion, tag checks and scheduling delay.
 export const timedJsonSerializer = {
   serialize(value) {
     const startMs = performance.now()
     const text = JSON.stringify(value)
-    telemetry()?.noteCodec("encode", performance.now() - startMs, text.length)
+    const ms = performance.now() - startMs
+    observe((recorder) => recorder?.noteCodec("encode", ms, text.length))
     return text
   },
   deserialize(stored) {
     const text = typeof stored === "string" ? stored : String(stored)
     const startMs = performance.now()
     const value = JSON.parse(text)
-    telemetry()?.noteCodec("decode", performance.now() - startMs, text.length)
+    const ms = performance.now() - startMs
+    observe((recorder) => recorder?.noteCodec("decode", ms, text.length))
     return value
   },
 }
@@ -44,10 +55,10 @@ export function instrumentStore(store) {
     async get(key, meta) {
       try {
         const value = await store.get(key, meta)
-        telemetry()?.noteResult(Boolean(value))
+        observe((recorder) => recorder?.noteResult(Boolean(value)))
         return value
       } catch (error) {
-        telemetry()?.noteError(error)
+        observe((recorder) => recorder?.noteError(error))
         throw error
       }
     },
@@ -55,7 +66,7 @@ export function instrumentStore(store) {
       try {
         return await store.set(key, value, ctx)
       } catch (error) {
-        telemetry()?.noteError(error)
+        observe((recorder) => recorder?.noteError(error))
         throw error
       }
     },
@@ -136,20 +147,28 @@ function finishConfig(config) {
 }
 
 // Next passes the cache kind only to the class method, so the span opens here
-// and the store hooks above annotate it through async context.
+// and the store hooks above annotate it through async context. If the
+// recorder itself fails, the cache call runs (once) without it.
+async function measured(op, kind, call) {
+  let started
+  const once = () => (started ??= call())
+  try {
+    const traced = telemetry()?.measure(op, kind, once)
+    if (traced) return await traced
+  } catch {
+    // Settle on the cache call's own outcome, never on a telemetry error.
+    return started ?? once()
+  }
+  return once()
+}
+
 export class InstrumentedCacheHandler extends CacheHandler {
   async get(cacheKey, ctx) {
-    const recorder = telemetry()
-    if (!recorder) return super.get(cacheKey, ctx)
-    return recorder.measure("get", ctx?.kind, () => super.get(cacheKey, ctx))
+    return measured("get", ctx?.kind, () => super.get(cacheKey, ctx))
   }
 
   async set(cacheKey, value, ctx) {
-    const recorder = telemetry()
-    if (!recorder) return super.set(cacheKey, value, ctx)
-    return recorder.measure("set", value?.kind, () =>
-      super.set(cacheKey, value, ctx),
-    )
+    return measured("set", value?.kind, () => super.set(cacheKey, value, ctx))
   }
 }
 

@@ -50,7 +50,7 @@ Findings are in `docs/reports/2026-10-19-watch-production-latency-incident.md`
   for a CPU). Every request class queues, including static files. 140–330
   requests are in flight, and 39% end as 499.
 - Measured: the origin completes ~13 requests/s now against 25–30/s before
-  onset. This is not a traffic surge.
+  onset. Arrival load is not observed, so a traffic surge is not ruled out.
 - Matched pair: two cache HITs on `/watch`, same replica, 82 s apart, TTFB
   37.5 s vs 1.45 s. Where the 36 s goes inside the process is not yet
   measured.

@@ -20,14 +20,16 @@ listed in "Review findings and responses" at the end.
 - **Measured:** requests of every kind queue. That includes static files that
   do no rendering (p50 7.7 s). 140–330 requests are in flight at once, against
   0–29 before onset. 39% of requests end as HTTP 499 because the client gave up.
-- **Measured:** the origin is slower with fewer arrivals than before onset.
-  It completes ~13 requests/s, including 499s. Before onset it completed
-  25–30/s at root p95 1.1 s. This is not a traffic surge.
+- **Measured:** the origin finishes fewer requests than before onset: ~13/s
+  including 499s, against 25–30/s at root p95 1.1 s. **Arrival load is not
+  known.** Both Railway logs and Datadog record only finished requests, so a
+  surge before or at onset, or a growing backlog, is not ruled out.
 - **Measured:** a slow and a fast cache HIT on the same route, replica and
   edge, 82 s apart, had TTFB 37.5 s and 1.45 s. Railway's upstream duration
   equals the total, so the time is spent at the origin. **Where inside the Web
-  process is not measured.** No span covers the cache read, decode or response
-  write. This PR adds those spans.
+  process is not measured.** No span covers the cache read or decode. This PR
+  adds spans for cache reads and writes. The response write is still not
+  covered.
 - **Leading hypothesis, not confirmed:** the host's CPU contention, landing on
   a service whose main thread already ran near its limit (event-loop
   utilization average 0.88 before onset). It is not confirmed that the
@@ -88,13 +90,17 @@ What the pair shows, and what it does not:
   So the 36 s cannot yet be split into time before Next starts the request,
   cache read (three Redis round trips plus JSON and base64 decoding), tag
   validation, and response write. **This is the exact evidence gap.** This
-  PR's `next.cache.get` spans close it for any request whose trace is kept.
+  PR's `next.cache.get` spans narrow it for any request whose trace is kept:
+  they bound the time inside cache reads and JSON parsing. They do not split
+  the rest of a read's time into Redis waiting versus other work.
 
-### Arrivals versus completions (Railway HTTP logs, unsampled)
+### Completed requests (Railway HTTP logs, unsampled)
 
 Railway logs one line per finished request, including requests the client
 abandoned (499). Datadog's `trace.web.request.hits` counts only requests the
-tracer finished. That is completed throughput, not arrival load.
+tracer finished. Both measure completions, not arrivals. Arrival times below
+are reconstructed as completion minus duration, so they miss every request
+still running when a window was cut.
 
 | Window (UTC)      | Process       | Requests/min | 499 share | In flight (10 s samples) | Root `/watch` p50 / p95 / max | Content pages p50 / p95 | Static p50 / p95 |
 | ----------------- | ------------- | ------------ | --------- | ------------------------ | ----------------------------- | ----------------------- | ---------------- |
@@ -280,17 +286,17 @@ not kept.
 
 ## Hypotheses: bounded findings
 
-| Hypothesis                                        | Status                                    | What the evidence covers                                                                                                                        | What it does not cover                                                                           |
-| ------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Main-thread saturation causes the stalls          | **Supported (measured)**                  | 99% runnable; all request classes queue; in-flight 140–330; static files wait seconds                                                           | Which work fills the thread                                                                      |
-| Host CPU contention reduces the thread's capacity | **Leading, unconfirmed**                  | Run-queue wait 17–33%; 133–176 runnable tasks on 48 CPUs; host CPU pressure 87%; steal 6.6%                                                     | Predecessor's host never measured; 22% host idle unexplained; ancestor cgroups invisible         |
-| More work per request (code or request mix)       | **Open**                                  | CPU per completed request +39%; diff adds one in-memory flag evaluation per render (flag off in production); no new hotspot in relative profile | Absolute work per request type; MISS/regeneration share before vs after                          |
-| Cold cache / deploy warm-up                       | **Unlikely as the sole cause**            | Saturated from the first minutes and for 3.5 h with no convergence                                                                              | Data Cache key churn on deploy not measured                                                      |
-| Redis server latency                              | **Not seen in what was sampled**          | Redis execution in µs (lifetime) and slowlog ≤35 ms                                                                                             | End-to-end read latency, client queueing, decoding, reconnects; unmeasured until this PR's spans |
-| Admin latency                                     | **Not seen in sampled spans**             | Admin server spans 26–724 ms                                                                                                                    | Connection acquisition, transport, unsampled calls                                               |
-| DNS resolver latency                              | **Not shown**                             | A fresh process resolved quickly                                                                                                                | Errors were discarded; the production process's queue                                            |
-| Container CPU quota or memory                     | **Not seen locally**                      | `nr_throttled 0`; ~1 of 8 CPUs used; RSS ~2 GB                                                                                                  | Ancestor cgroup limits                                                                           |
-| Traffic surge                                     | **Contradicted for the windows compared** | Origin completes ~13 req/s now vs 25–30 req/s at 14:07                                                                                          | Windows at different times of day                                                                |
+| Hypothesis                                        | Status                           | What the evidence covers                                                                                                                        | What it does not cover                                                                                |
+| ------------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Main-thread saturation causes the stalls          | **Supported (measured)**         | 99% runnable; all request classes queue; in-flight 140–330; static files wait seconds                                                           | Which work fills the thread                                                                           |
+| Host CPU contention reduces the thread's capacity | **Leading, unconfirmed**         | Run-queue wait 17–33%; 133–176 runnable tasks on 48 CPUs; host CPU pressure 87%; steal 6.6%                                                     | Predecessor's host never measured; 22% host idle unexplained; ancestor cgroups invisible              |
+| More work per request (code or request mix)       | **Open**                         | CPU per completed request +39%; diff adds one in-memory flag evaluation per render (flag off in production); no new hotspot in relative profile | Absolute work per request type; MISS/regeneration share before vs after                               |
+| Cold cache / deploy warm-up                       | **Unlikely as the sole cause**   | Saturated from the first minutes and for 3.5 h with no convergence                                                                              | Data Cache key churn on deploy not measured                                                           |
+| Redis server latency                              | **Not seen in what was sampled** | Redis execution in µs (lifetime) and slowlog ≤35 ms                                                                                             | End-to-end read latency, client queueing, decoding, reconnects; unmeasured until this PR's spans      |
+| Admin latency                                     | **Not seen in sampled spans**    | Admin server spans 26–724 ms                                                                                                                    | Connection acquisition, transport, unsampled calls                                                    |
+| DNS resolver latency                              | **Not shown**                    | A fresh process resolved quickly                                                                                                                | Errors were discarded; the production process's queue                                                 |
+| Container CPU quota or memory                     | **Not seen locally**             | `nr_throttled 0`; ~1 of 8 CPUs used; RSS ~2 GB                                                                                                  | Ancestor cgroup limits                                                                                |
+| Traffic surge                                     | **Open**                         | Completed throughput is lower now (~13 req/s) than at 14:07 (25–30 req/s)                                                                       | Arrivals are not observed; unfinished requests are missing; windows hours apart; nothing around onset |
 
 ## Instrumentation in this PR
 
@@ -335,12 +341,22 @@ parse/stringify time), and `next_cache.value_length`. Distributions:
 `forge.web.next_cache.codec_ms` by direction. Cache keys and slugs never enter
 tags. Kill switch: `FORGE_NEXT_CACHE_TELEMETRY=false`.
 
-With these spans, a kept trace of a slow HIT separates four parts: time before
-Next reads the cache, time inside the read (waiting vs codec), a timed-out read
-that became a MISS, and time after the read until the response ends.
+With these spans, a kept trace of a slow HIT shows: time before Next reads the
+cache; each read's duration, of which `codec_ms` is JSON parse elapsed time;
+a read that timed out and became a MISS; and time after the reads until the
+response ends. The rest of a read's duration is **unattributed**. It holds
+Redis round trips, base64 conversion, tag checks, scheduling delay and the
+telemetry itself. It is not pure waiting: a test pins that synchronous
+non-JSON work also lands there. Even `codec_ms` includes any time the thread
+was descheduled mid-parse. The scheduler gauges and the profiler must
+separate CPU work from waiting.
+
+The telemetry is observational. A failing emitter, span, tracer or recorder
+cannot change a cache result or replace a cache error, and never reruns a
+cache call. Tests inject each failure.
 
 Measured cost, on an idle development machine with real dd-trace and an
-unreachable agent: ~3.9 µs per cache call (span plus metric), and ~22 µs per
+unreachable agent: ~4–4.5 µs per cache call (span plus metric; 3.9 and 4.5 µs in two runs), and ~22 µs per
 scheduler sample including emit (the earlier "19 µs" covered the snapshot read
 only). These numbers exclude contention. On a saturated host each costs more,
 but stays small next to ~32 ms of CPU per request.
@@ -396,8 +412,8 @@ same-hour baseline from at least one unaffected day.
 ## Evidence gaps
 
 - No kept trace for any matched probe, so a slow HIT's 36 s is not yet split
-  inside the process. Closes when this PR deploys and a slow HIT's trace is
-  kept.
+  inside the process. Narrows when this PR deploys and a slow HIT's trace is
+  kept; the non-JSON remainder of each cache read stays unattributed.
 - No scheduler or host sample for the predecessor `156666c2` process.
 - Old runtime's CPU profile and timeline were not exported for a
   like-for-like comparison.
@@ -428,3 +444,14 @@ was accepted, and the response is in the sections above:
 - **Instrumentation identity, metric naming, cost and sample age:** accepted
   and implemented as described above.
 - **Provenance:** accepted; see the evidence README.
+
+A second independent review (round 2, same reviewer) of revision 2's draft
+raised three more points, all accepted:
+
+- **Traffic surge (P1):** completion-selected logs cannot rule out a surge.
+  The claim is withdrawn; the hypothesis is open.
+- **Telemetry failures (P2):** a throwing emitter or JSON hook could change a
+  cache result. Fixed: every hook is guarded, the cache call is never rerun,
+  and tests inject each failure.
+- **"Waiting" versus codec (P2):** the non-JSON remainder is not pure waiting.
+  The wording is corrected, and a test pins the limitation.

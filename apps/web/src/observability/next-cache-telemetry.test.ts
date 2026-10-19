@@ -60,6 +60,11 @@ afterEach(() => install(undefined))
 
 const PREFIX = "test:"
 
+// The serializer is typed for cache entries; any JSON value exercises it.
+const SAMPLE_VALUE = { a: 1 } as unknown as Parameters<
+  typeof timedJsonSerializer.serialize
+>[0]
+
 function storedEntry(payload: unknown) {
   return JSON.stringify({
     lastModified: Date.now(),
@@ -137,7 +142,7 @@ describe("next cache telemetry primitives", () => {
 })
 
 describe("cache read attribution", () => {
-  it("splits a slow HIT into waiting time and codec time", async () => {
+  it("separates JSON time from the unattributed remainder of a slow HIT", async () => {
     const { emitted, spans, telemetry } = recorder()
     install(telemetry)
     const store = redisStore(fakeRedis(storedEntry({ ok: true }), 60))
@@ -234,6 +239,152 @@ describe("cache read attribution", () => {
     const serialized = JSON.stringify({ emitted, spans })
     expect(serialized).not.toContain("jesus")
     expect(serialized).not.toContain(PREFIX)
+  })
+
+  it("leaves synchronous non-JSON work in the remainder too", async () => {
+    // Limitation, pinned on purpose: a store that burns 60 ms of CPU outside
+    // JSON looks like a slow Redis reply. The remainder is not "waiting";
+    // scheduler gauges and the profiler have to separate the two.
+    const { spans, emitted, telemetry } = recorder()
+    install(telemetry)
+    const busyStore = instrumentStore({
+      name: "busy",
+      async get(_key: string, _meta: { implicitTags: string[] }) {
+        const end = performance.now() + 60
+        while (performance.now() < end) {
+          // Synchronous work that is not JSON decoding.
+        }
+        return timedJsonSerializer.deserialize(storedEntry({ ok: true }))
+      },
+      async set(_key: string, _value: unknown) {},
+    })
+
+    await telemetry.measure("get", "FETCH", () =>
+      busyStore.get("k", { implicitTags: [] }),
+    )
+
+    expect(emitted[emitted.length - 1].value).toBeGreaterThanOrEqual(55)
+    expect(spans[0].tags["next_cache.codec_ms"]).toBeLessThan(20)
+  })
+})
+
+describe("telemetry failures never change cache behaviour", () => {
+  function failing(
+    part: "distribution" | "span" | "tracer-before" | "tracer-after",
+  ) {
+    const tracer: TracerLike = {
+      trace(_name, _options, fn) {
+        if (part === "tracer-before") throw new Error("tracer down")
+        const result = fn({
+          setTag: () => {
+            if (part === "span") throw new Error("span closed")
+          },
+        })
+        if (part === "tracer-after") throw new Error("tracer bookkeeping")
+        return result
+      },
+    }
+    return createNextCacheTelemetry({
+      distribution: () => {
+        if (part === "distribution") throw new Error("statsd down")
+      },
+      tracer,
+    })
+  }
+
+  for (const part of [
+    "distribution",
+    "span",
+    "tracer-before",
+    "tracer-after",
+  ] as const) {
+    it(`keeps the cache result and error when the ${part} fails`, async () => {
+      const telemetry = failing(part)
+      install(telemetry)
+      const calls = { count: 0 }
+      const hit = redisStore(fakeRedis(storedEntry({ ok: true })))
+
+      const value = await telemetry.measure("get", "FETCH", () => {
+        calls.count += 1
+        return swallowingGet(hit, "k")
+      })
+      const cacheError = new Error("Operation aborted")
+      const rejected = telemetry.measure("get", "FETCH", () =>
+        Promise.reject(cacheError),
+      )
+
+      expect(value).toMatchObject({ value: { kind: "FETCH" } })
+      expect(calls.count).toBe(1)
+      await expect(rejected).rejects.toBe(cacheError)
+    })
+  }
+
+  it("still decodes when the codec metric fails", () => {
+    install(failing("distribution"))
+
+    expect(timedJsonSerializer.deserialize('{"a":1}')).toEqual({ a: 1 })
+    expect(timedJsonSerializer.serialize(SAMPLE_VALUE)).toBe('{"a":1}')
+  })
+})
+
+describe("cache-handler hooks with a broken recorder", () => {
+  // The store hooks guard their own calls, independently of the recorder's
+  // internal guards, so even a recorder that throws everywhere is inert.
+  const broken = {
+    measure: () => {
+      throw new Error("broken")
+    },
+    noteCodec: () => {
+      throw new Error("broken")
+    },
+    noteError: () => {
+      throw new Error("broken")
+    },
+    noteResult: () => {
+      throw new Error("broken")
+    },
+  } satisfies NextCacheTelemetry
+
+  it("keeps decoding, store results and store errors intact", async () => {
+    install(broken)
+    const storeError = new Error("Operation aborted")
+    const store = instrumentStore({
+      name: "fake",
+      get: async (key: string, _meta: { implicitTags: string[] }) =>
+        key === "hit" ? { ok: true } : null,
+      set: async (_key: string, _value: unknown): Promise<void> => {
+        throw storeError
+      },
+    })
+
+    expect(timedJsonSerializer.deserialize('{"a":1}')).toEqual({ a: 1 })
+    expect(timedJsonSerializer.serialize(SAMPLE_VALUE)).toBe('{"a":1}')
+    await expect(store.get("hit", { implicitTags: [] })).resolves.toEqual({
+      ok: true,
+    })
+    await expect(store.set("k", {})).rejects.toBe(storeError)
+  })
+
+  it("still serves the Next cache through the handler class", async () => {
+    install(broken)
+    const handler = new InstrumentedCacheHandler({
+      dev: false,
+      serverDistDir: mkdtempSync(join(tmpdir(), "forge-cache-")),
+    })
+
+    await handler.set(
+      "broken-recorder-key",
+      {
+        kind: "FETCH",
+        data: { body: "{}", headers: {}, url: "x" },
+        revalidate: 60,
+      },
+      { revalidate: 60, tags: [] },
+    )
+
+    await expect(
+      handler.get("broken-recorder-key", { kind: "FETCH", softTags: [] }),
+    ).resolves.toMatchObject({ value: { kind: "FETCH" } })
   })
 })
 
