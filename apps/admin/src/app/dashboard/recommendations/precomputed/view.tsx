@@ -98,6 +98,48 @@ export function HistoricalQualificationDetails({
   )
 }
 
+function SharedEvidence({
+  side,
+  evidence,
+  references,
+}: {
+  side: string
+  evidence: NonNullable<ExperimentalCard["sharedReading"]>["sourceEvidence"]
+  references: NonNullable<ExperimentalCard["sharedReading"]>["sourceReferences"]
+}) {
+  return (
+    <div className="mt-2 space-y-1">
+      <p>
+        {side}:{" "}
+        {evidence.basis === "metadata"
+          ? "explicit metadata evidence"
+          : "frozen transcript evidence"}
+      </p>
+      {evidence.basis === "metadata"
+        ? evidence.fields.map((field, index) => (
+            <p key={index}>
+              <code>{field.field}</code>: {field.value}
+            </p>
+          ))
+        : evidence.passages.map((passage, index) => {
+            const ref = references.find((r) => r.chunkId === passage.chunkId)
+            return (
+              <blockquote
+                key={index}
+                className="border-l-2 border-[var(--color-hairline)] pl-2"
+              >
+                <span lang={ref?.language}>{passage.excerpt}</span>
+                <code className="block break-all">
+                  Private source ref {passage.chunkId} · transcript{" "}
+                  {ref?.transcriptId} · {ref?.language}
+                </code>
+              </blockquote>
+            )
+          })}
+    </div>
+  )
+}
+
 function ExperimentalCards({ cards }: { cards: ExperimentalCard[] }) {
   if (cards.length === 0) {
     return (
@@ -128,7 +170,28 @@ function ExperimentalCards({ cards }: { cards: ExperimentalCard[] }) {
               Additional viewing value: {card.addedViewingValueEnglish}
             </p>
           ) : null}
-          {card.evidence.basis === "metadata" ? (
+          {card.sharedReading ? (
+            <div>
+              <SharedEvidence
+                side={`Source ${card.sharedReading.sourceVideoId}`}
+                evidence={card.sharedReading.sourceEvidence}
+                references={card.sharedReading.sourceReferences}
+              />
+              <SharedEvidence
+                side={`Target ${card.targetVideoId}`}
+                evidence={card.sharedReading.targetEvidence}
+                references={card.sharedReading.targetReferences}
+              />
+              <p className="mt-2">
+                Frozen-corpus references, including supplemental subtitles, are
+                provenance references, not database chunk IDs.
+              </p>
+              <code className="block break-all">
+                Private provenance:{" "}
+                {card.sharedReading.privateSourceArtifactKey}
+              </code>
+            </div>
+          ) : card.evidence.basis === "metadata" ? (
             <p className="mt-2 text-[var(--color-text-muted)]">
               Metadata only: {card.evidence.fields.join(", ")}. No transcript
               passage supports this judgment.
@@ -260,13 +323,15 @@ export function PrecomputedComparisonView({
           <p>Input cutoff {comparison.generation.inputCutoff.toISOString()}</p>
           <p>
             Input {comparison.generation.inputMode.replaceAll("_", " ")} ·{" "}
-            {comparison.generation.inputSnapshotMode === "observed_fenced"
-              ? comparison.history
-                ? comparison.history.provider === "ga_data_api"
-                  ? "Catalog rows checked against cutoff; GA Data API aggregates were observed during this build and may change on a later run."
-                  : "Catalog rows checked against cutoff; warehouse aggregates were observed during this build and may change on a later run."
-                : "Observed current rows checked against cutoff; overwritten or deleted historical versions cannot be reconstructed."
-              : "Fixture input"}
+            {comparison.generation.privateImport
+              ? "Producer-verified frozen corpus; current database text freshness and historical/public qualification are not asserted."
+              : comparison.generation.inputSnapshotMode === "observed_fenced"
+                ? comparison.history
+                  ? comparison.history.provider === "ga_data_api"
+                    ? "Catalog rows checked against cutoff; GA Data API aggregates were observed during this build and may change on a later run."
+                    : "Catalog rows checked against cutoff; warehouse aggregates were observed during this build and may change on a later run."
+                  : "Observed current rows checked against cutoff; overwritten or deleted historical versions cannot be reconstructed."
+                : "Fixture input"}
           </p>
           <p>
             {comparison.usage.callCount} model calls ·{" "}
@@ -278,9 +343,34 @@ export function PrecomputedComparisonView({
               : ""}
           </p>
           <p>
-            {comparison.allAcceptedCount} accepted choices stored; up to six
+            {comparison.allAcceptedCount} accepted choices stored;{" "}
+            {comparison.generation.privateImport
+              ? "all playable choices"
+              : "up to six"}{" "}
             shown after current audio-language checks.
           </p>
+          {comparison.generation.privateImport ? (
+            <div className="space-y-1">
+              <p>
+                {comparison.generation.privateImport.scope === "private_pilot"
+                  ? "Private pilot"
+                  : "Full declared catalog"}
+                : {comparison.generation.privateImport.declaredSourceCount}{" "}
+                sources,{" "}
+                {comparison.generation.privateImport.eligibleTargetCount}{" "}
+                targets considered per source.
+              </p>
+              {comparison.generation.privateImport.fewerThanFiveReason ? (
+                <p>
+                  Shortfall:{" "}
+                  {comparison.generation.privateImport.fewerThanFiveReason}
+                </p>
+              ) : null}
+              <code className="block break-all">
+                {comparison.generation.privateImport.manifestKey}
+              </code>
+            </div>
+          ) : null}
           {comparison.history ? (
             <div className="space-y-1 border-t border-[var(--color-hairline)] pt-2">
               <p>
