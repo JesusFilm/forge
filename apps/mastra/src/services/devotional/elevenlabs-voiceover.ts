@@ -70,6 +70,10 @@ export const DEVOTIONAL_VOICES = {
   // owner's pick for the whole Russian female part from the Persistent
   // Widow on (2026-10-14).
   "russian-tatyana": "nkvv6waLzFah2jTNUZGT",
+  // "Rina" from the voice library: warm, articulate, calm young Russian
+  // female narrator. Owner's pick over Tatyana on Great Catch (2026-10-19),
+  // asked for a little less emotion than both.
+  "russian-rina": "ycbyWsnf4hqZgdpKHqiU",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES
