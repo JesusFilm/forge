@@ -1,0 +1,6 @@
+agent-io-guard: ready
+get_without_telemetry 0.61 us/op
+get_with_span_and_metric 6.12 us/op
+request_span_only_reference 1.58 us/op
+telemetry_overhead_us_per_get 3.94
+scheduler_sample_with_emit_us 21.6

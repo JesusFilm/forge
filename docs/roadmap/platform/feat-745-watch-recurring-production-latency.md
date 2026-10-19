@@ -42,14 +42,30 @@ Comparable warm/cold production-mode measurements and a discriminating regressio
 
 ## Progress — 2026-10-19
 
-Investigation findings are in `docs/reports/2026-10-19-watch-production-latency-incident.md`:
+Findings are in `docs/reports/2026-10-19-watch-production-latency-incident.md`
+(revision 2, 18:45 UTC). Sanitized evidence and exact queries are in
+`docs/reports/2026-10-19-watch-production-latency-evidence/`.
 
-- The single Web main thread has been ~99% runnable since the 15:14 UTC process start (82% on CPU, 17% waiting in the run queue). Requests, including cache HITs, queue behind it.
-- GC unit cost rose 50–70% on an unchanged heap, and the host load is 66 on 48 CPUs. This points to host contention on a service with ~0.9 baseline main-thread utilization, not a `3003c520` code regression.
-- Added scheduler-pressure gauges (`forge.web.main_thread.*`, `forge.web.cgroup.*`) so this split is visible in Datadog.
+- Measured: the single Web main thread is ~99% runnable (17–33% of it waiting
+  for a CPU). Every request class queues, including static files. 140–330
+  requests are in flight, and 39% end as 499.
+- Measured: the origin completes ~13 requests/s now against 25–30/s before
+  onset. This is not a traffic surge.
+- Matched pair: two cache HITs on `/watch`, same replica, 82 s apart, TTFB
+  37.5 s vs 1.45 s. Where the 36 s goes inside the process is not yet
+  measured.
+- Leading hypothesis: host CPU contention on a near-capacity main thread. Not
+  confirmed against the predecessor. More work per request (+39% CPU per
+  completed request) is not excluded.
+- Instrumentation in PR #2815: per-replica identity on gauges, `runtime-id` on
+  runtime metrics, main-thread metric naming, sample-interval gauge, and
+  `next.cache.get`/`next.cache.set` spans with outcome and codec time.
 
 Still open (keep in progress):
 
-- Owner decision on a same-commit redeploy and on running ≥2 Web replicas.
-- Production acceptance from the report.
-- A separately reviewed change for the effective 60 s page lifetime.
+- After PR #2815 deploys: split a kept slow-HIT trace with the new cache spans.
+- Owner decision on a same-commit redeploy (recovery attempt, not a placement
+  test) and on running more than one Web replica, after the listed
+  prerequisites are verified.
+- Production acceptance from the report, with thresholds re-baselined on an
+  unaffected day.

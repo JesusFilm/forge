@@ -12,7 +12,8 @@ import {
 
 const PID = 20
 const SCHEDSTAT = `/proc/${PID}/task/${PID}/schedstat`
-const STATUS = `/proc/${PID}/status`
+const STATUS = `/proc/${PID}/task/${PID}/status`
+const PROCESS_STATUS = `/proc/${PID}/status`
 const CPU_STAT = "/sys/fs/cgroup/cpu.stat"
 const CPU_PRESSURE = "/sys/fs/cgroup/cpu.pressure"
 
@@ -118,7 +119,9 @@ describe("computeSchedulerPressure", () => {
       gauges[SCHEDULER_PRESSURE_METRICS.mainThreadRunqueueWaitRatio],
     ).toBeCloseTo(0.168, 3)
     expect(
-      gauges[SCHEDULER_PRESSURE_METRICS.involuntaryContextSwitchesPerSecond],
+      gauges[
+        SCHEDULER_PRESSURE_METRICS.mainThreadInvoluntaryContextSwitchesPerSecond
+      ],
     ).toBeCloseTo(1398.6, 1)
     expect(
       gauges[SCHEDULER_PRESSURE_METRICS.cgroupCpuThrottledRatio],
@@ -129,6 +132,24 @@ describe("computeSchedulerPressure", () => {
     expect(gauges[SCHEDULER_PRESSURE_METRICS.cgroupCpuPressureFullAvg10]).toBe(
       13.5,
     )
+    expect(gauges[SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds]).toBe(10.01)
+  })
+
+  it("counts context switches from the main thread's task status only", () => {
+    // /proc/<pid>/status describes the thread-group leader too, but the gauge
+    // is named for the main thread, so it must read the task file. A reader
+    // that only serves the process-level path yields no counter at all.
+    const processOnly = (path: string) =>
+      path === PROCESS_STATUS ? status(1) : undefined
+
+    expect(
+      readSchedulerSnapshot(processOnly, PID, 0)
+        .mainThreadInvoluntaryContextSwitches,
+    ).toBeUndefined()
+    expect(
+      readSchedulerSnapshot(reader({ [STATUS]: status(7) }), PID, 0)
+        .mainThreadInvoluntaryContextSwitches,
+    ).toBe(7)
   })
 
   it("omits a counter that moved backwards instead of emitting a negative", () => {
@@ -139,6 +160,7 @@ describe("computeSchedulerPressure", () => {
 
     expect(gauges).toEqual({
       [SCHEDULER_PRESSURE_METRICS.mainThreadRunqueueWaitRatio]: 0.01,
+      [SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds]: 1e-6,
     })
   })
 
@@ -169,6 +191,7 @@ describe("computeSchedulerPressure", () => {
       [
         SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio,
         SCHEDULER_PRESSURE_METRICS.mainThreadRunqueueWaitRatio,
+        SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds,
       ].sort(),
     )
   })
@@ -228,14 +251,16 @@ describe("startSchedulerPressureSampler", () => {
     expect(emit).toHaveBeenCalledWith(
       SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio,
       0.8,
+      {},
     )
     expect(emit).toHaveBeenCalledWith(
       SCHEDULER_PRESSURE_METRICS.mainThreadRunqueueWaitRatio,
       0.19,
+      {},
     )
     expect(log).toHaveBeenCalledTimes(1)
     expect(log.mock.calls[0][0]).toBe(
-      "[scheduler-pressure] event=main_thread_saturated on_cpu=0.800 runqueue_wait=0.190 cpu_pressure_full_avg10=na",
+      "[scheduler-pressure] event=main_thread_saturated on_cpu=0.800 runqueue_wait=0.190 cpu_pressure_full_avg10=na sample_interval_s=1.000",
     )
 
     wallNs += 1e9
@@ -244,7 +269,93 @@ describe("startSchedulerPressureSampler", () => {
 
     stop?.()
     vi.advanceTimersByTime(60_000)
-    expect(emit).toHaveBeenCalledTimes(4)
+    // Three gauges (on-CPU, wait, sample interval) per tick, two ticks.
+    expect(emit).toHaveBeenCalledTimes(6)
+  })
+
+  it("reports a late sample as a longer window instead of hiding the stall", () => {
+    const emit = vi.fn()
+    const nextSchedstat = sequence("0 0 0", "4000000000 0 1")
+    let wallNs = 0
+    startSchedulerPressureSampler({
+      emit,
+      intervalMs: 5_000,
+      now: () => wallNs,
+      pid: PID,
+      readFile: (path) => (path === SCHEDSTAT ? nextSchedstat() : undefined),
+    })
+
+    // The timer was due after 5 s but the blocked loop ran it after 40 s.
+    wallNs += 40e9
+    vi.advanceTimersByTime(5_000)
+
+    expect(emit).toHaveBeenCalledWith(
+      SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds,
+      40,
+      {},
+    )
+    expect(emit).toHaveBeenCalledWith(
+      SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio,
+      0.1,
+      {},
+    )
+  })
+
+  it("keeps two replicas' identical readings in separate series", () => {
+    // Both replicas report through one Datadog agent, so `host` is identical;
+    // only the instance tags keep their gauges from overwriting each other.
+    const series = new Map<string, number[]>()
+    const emitFor =
+      () => (metric: string, value: number, tags: Record<string, string>) => {
+        const key = `${metric}|${Object.entries(tags)
+          .sort()
+          .map(([k, v]) => `${k}:${v}`)
+          .join(",")}`
+        series.set(key, [...(series.get(key) ?? []), value])
+      }
+    let wallNs = 0
+    for (const replicaId of ["replica-a", "replica-b"]) {
+      const nextSchedstat = sequence("0 0 0", "500000000 100000000 1")
+      startSchedulerPressureSampler({
+        emit: emitFor(),
+        intervalMs: 5_000,
+        now: () => wallNs,
+        pid: PID,
+        readFile: (path) => (path === SCHEDSTAT ? nextSchedstat() : undefined),
+        tags: { replica_id: replicaId, deployment_id: "deploy-1" },
+      })
+    }
+
+    wallNs += 1e9
+    vi.advanceTimersByTime(5_000)
+
+    const onCpuSeries = [...series.keys()].filter((key) =>
+      key.startsWith(`${SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio}|`),
+    )
+    expect(onCpuSeries).toEqual([
+      `${SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio}|deployment_id:deploy-1,replica_id:replica-a`,
+      `${SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio}|deployment_id:deploy-1,replica_id:replica-b`,
+    ])
+    for (const key of onCpuSeries) expect(series.get(key)).toEqual([0.5])
+  })
+
+  it("names the instance in the saturation log", () => {
+    const log = vi.fn()
+    const nextSchedstat = sequence("0 0 0", "900000000 90000000 1")
+    let wallNs = 0
+    startSchedulerPressureSampler({
+      emit: vi.fn(),
+      log,
+      intervalMs: 5_000,
+      now: () => wallNs,
+      pid: PID,
+      readFile: (path) => (path === SCHEDSTAT ? nextSchedstat() : undefined),
+      tags: { replica_id: "replica-a" },
+    })
+
+    wallNs += 1e9
+    vi.advanceTimersByTime(5_000)
+    expect(log.mock.calls[0][0]).toMatch(/ replica_id=replica-a$/)
   })
 
   it("does not log when the main thread has headroom", () => {
