@@ -1,6 +1,7 @@
 import {
   READER_COVER_ROUTE_PATTERNS,
   READER_ROUTE_PATTERNS,
+  SLOT_SCREEN_ROUTE_PATTERNS,
   TAB_ROOT_ROUTE_PATTERNS,
   canOriginateRoutePattern,
   expandAction,
@@ -9,6 +10,7 @@ import {
   isTabRootRoute,
   miniPlayerPresentation,
   readerRouteKind,
+  slotCoverSource,
   type MiniPlayerPresentation,
 } from "../presentation"
 import { routePattern } from "../suppression"
@@ -381,13 +383,65 @@ describe("the reader cover (KTD10)", () => {
   })
 })
 
+// 2026-10-20: a screen pushed over the watch or series page keeps that page
+// mounted, so its slot stays attached. Any route but the page's own covers it.
+describe("slotCoverSource", () => {
+  const SLOT_SCREENS = [
+    "watch/[slug]",
+    "watch/language",
+    "watch/subtitle",
+    "watch/download",
+    "series/[slug]",
+    "series/language",
+    "series/subtitle",
+    "series/download",
+  ]
+
+  it.each(ROUTE_TABLE)(
+    "%s: the reader, another screen, or the slot's own page",
+    (_pattern, segments) => {
+      const pattern = routePattern(segments)
+      const under = READER_COVER_ROUTE_PATTERNS.some((p) => p === pattern)
+        ? "reader"
+        : SLOT_SCREENS.includes(pattern)
+          ? null
+          : "screen"
+      expect(slotCoverSource(segments, true)).toBe(under)
+      // On top, only the reader's routes cover, as before.
+      expect(slotCoverSource(segments, false)).toBe(
+        under === "reader" ? "reader" : null,
+      )
+    },
+  )
+
+  it("lists the watch and series pages with the sheets of their own groups", () => {
+    expect([...SLOT_SCREEN_ROUTE_PATTERNS]).toEqual(SLOT_SCREENS)
+  })
+
+  // A tap on the window pushes a watch route over the screen cover. The cover
+  // holds until the slot's own screen has focus again; a reader's does not.
+  it("holds a live screen cover over a watch route while the slot stays under", () => {
+    expect(slotCoverSource(["watch", "[slug]"], true, "screen")).toBe("screen")
+    expect(slotCoverSource(["watch", "[slug]"], false, "screen")).toBeNull()
+    expect(slotCoverSource(["watch", "[slug]"], true, "reader")).toBeNull()
+    expect(slotCoverSource(["reader"], true, "screen")).toBe("reader")
+  })
+
+  // The slot's focus changes a commit before the segments do, so on the push
+  // the old route is still the slot's own page: nothing covers yet.
+  it("waits for the new route while the segments still name the page", () => {
+    expect(slotCoverSource(["watch", "[slug]"], true)).toBeNull()
+    expect(slotCoverSource(["experience", "[slug]"], true)).toBe("screen")
+  })
+})
+
 describe("expandAction (KTD10, AE14)", () => {
   const SESSION = { videoId: "video-1", videoSlug: "birth-of-jesus" }
 
   it("pops to the covered watch screen from the reader", () => {
     expect(
       expandAction({
-        covered: true,
+        cover: "reader",
         descriptor: SESSION,
         session: SESSION,
         segments: ["reader"],
@@ -398,7 +452,7 @@ describe("expandAction (KTD10, AE14)", () => {
   it("pops when the descriptor names the video by slug alone", () => {
     expect(
       expandAction({
-        covered: true,
+        cover: "reader",
         descriptor: { videoId: null, videoSlug: "birth-of-jesus" },
         session: SESSION,
         segments: ["reader"],
@@ -409,7 +463,7 @@ describe("expandAction (KTD10, AE14)", () => {
   it("pushes when no watch slot is covered, as from the Bible tab", () => {
     expect(
       expandAction({
-        covered: false,
+        cover: null,
         descriptor: null,
         session: SESSION,
         segments: ["(tabs)", "bible"],
@@ -420,7 +474,7 @@ describe("expandAction (KTD10, AE14)", () => {
   it("pushes when the covered slot plays another video", () => {
     expect(
       expandAction({
-        covered: true,
+        cover: "reader",
         descriptor: { videoId: "video-2", videoSlug: "other" },
         session: SESSION,
         segments: ["reader"],
@@ -431,7 +485,7 @@ describe("expandAction (KTD10, AE14)", () => {
   it("pushes when the top route is a reader sheet, not the reader", () => {
     expect(
       expandAction({
-        covered: true,
+        cover: "reader",
         descriptor: SESSION,
         session: SESSION,
         segments: ["reader-settings"],
@@ -439,10 +493,24 @@ describe("expandAction (KTD10, AE14)", () => {
     ).toBe("push")
   })
 
+  // A pop closes only the top route; the watch screen may be several below.
+  it("pushes over a screen cover, even with the reader on top of it", () => {
+    for (const segments of [["downloads"], ["reader"]]) {
+      expect(
+        expandAction({
+          cover: "screen",
+          descriptor: SESSION,
+          session: SESSION,
+          segments,
+        }),
+      ).toBe("push")
+    }
+  })
+
   it("pushes with no descriptor or no session", () => {
     expect(
       expandAction({
-        covered: true,
+        cover: "reader",
         descriptor: null,
         session: SESSION,
         segments: ["reader"],
@@ -450,7 +518,7 @@ describe("expandAction (KTD10, AE14)", () => {
     ).toBe("push")
     expect(
       expandAction({
-        covered: true,
+        cover: "reader",
         descriptor: SESSION,
         session: null,
         segments: ["reader"],

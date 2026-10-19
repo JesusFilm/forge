@@ -16,8 +16,8 @@ import {
 export function usePlaybackFrameVisible(): boolean {
   const store = getPlaybackRequestStore()
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  // A reader cover (feat-553 KTD10) draws nothing into the slot, so the
-  // screen shows its own back button again.
+  // A cover (feat-553 KTD10) draws nothing into the slot, so the screen
+  // shows its own back button again.
   return (
     snapshot.rect != null && snapshot.slotId != null && snapshot.cover == null
   )

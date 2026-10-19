@@ -144,7 +144,7 @@ export function PlayerSlot({
   const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
   // The RECT, not just the attachment: the host draws nothing until it has one,
   // so treating "attached" as drawn would drop this poster over a black box.
-  // A reader cover (feat-553 KTD10) keeps the rect but draws nothing here.
+  // A cover (feat-553 KTD10) keeps the rect but draws nothing here.
   const isDrawn =
     snapshot.slotId != null &&
     snapshot.slotId === slotIdRef.current &&
@@ -196,9 +196,9 @@ export function PlayerSlot({
     }
   }, [measureIntoStore])
 
-  // feat-553 KTD10: the reader pops on the ROOT stack, so only the parent
-  // navigator sees the transition end. Measure once then: a rect taken while
-  // covered can be stale (a rotation), or its callback can have dropped.
+  // feat-553 KTD10: a covering screen pops on the ROOT stack, so only the
+  // parent navigator sees the transition end. Measure once then: a rect taken
+  // while covered can be stale (a rotation), or its callback can have dropped.
   const coveredRef = useRef(false)
   if (snapshot.cover != null && snapshot.slotId === slotIdRef.current)
     coveredRef.current = true
@@ -212,6 +212,31 @@ export function PlayerSlot({
       measureIntoStore()
     })
   }, [navigation, measureIntoStore])
+
+  // A screen pushed over this one keeps it mounted, so the slot never detaches
+  // and the host would draw over that screen. A pop blurs this screen too, but
+  // its `beforeRemove` comes first, and a screen that is leaving is not under.
+  const leavingRef = useRef(false)
+  useEffect(() => {
+    const publish = () => {
+      const id = slotIdRef.current
+      if (id == null) return
+      const focused = navigation.isFocused?.() ?? true
+      store.setSlotUnderScreen(id, !leavingRef.current && !focused)
+    }
+    const unsubscribes = [
+      navigation.addListener?.("beforeRemove", () => {
+        leavingRef.current = true
+        publish()
+      }),
+      navigation.addListener?.("focus", publish),
+      navigation.addListener?.("blur", publish),
+    ]
+    publish()
+    return () => {
+      for (const unsubscribe of unsubscribes) unsubscribe?.()
+    }
+  }, [navigation, store])
 
   const playerHeight = Math.round(
     (screenWidth - horizontalInset * 2) * PLAYER_HEIGHT_RATIO,

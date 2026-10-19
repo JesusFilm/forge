@@ -1113,6 +1113,25 @@ routes, every rule in this section is unchanged.
     (the app) and at the top left on a phone reader, bottom left on an iPad.
     The corner frames and the snap stay physical.
 
+**Any other screen pushed over a watch or series page covers its slot too
+(2026-10-20).** A pushed screen keeps the page mounted, so the slot never
+detaches. Before this fix, the host drew the full view over the new screen: a
+deep link to Downloads, or a push tap to an experience.
+
+- **The slot tells the host, from its own navigation.** `PlayerSlot` publishes
+  `underScreen` when its screen loses focus. A pop also blurs the screen, but
+  its `beforeRemove` comes first, so a pop never sets the flag.
+- **`slotCoverSource` in `presentation.ts` decides.** It starts a `screen`
+  cover on every route except the page and its own sheets
+  (`SLOT_SCREEN_ROUTE_PATTERNS`). It holds the cover until the page has focus
+  again, because the segments change a commit after the focus does.
+- **The admission and the return are the reader's.** A started video floats
+  and keeps playing. Any other video hides and pauses.
+- **Two things differ from the reader.** The window keeps the app's corner
+  layout. A tap on it pushes a watch screen, because a pop closes only one
+  route of several. That screen adopts the session: `uncoverSlot` clears it
+  only when the covered slot is current again.
+
 **Picture-in-picture: one props object, one latch, chrome-only suppression.**
 Every video view that can enter the OS window spreads
 `pictureInPictureViewProps()` from `src/lib/miniPlayer/pictureInPicture.ts`.

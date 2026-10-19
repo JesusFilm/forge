@@ -17,6 +17,7 @@ import {
   type MiniPlayerSession,
   type MiniPlayerStoreSnapshot,
 } from "./store"
+import type { CoverSource } from "./playbackRequest"
 import { isSuppressedBySheet, routePattern } from "./suppression"
 
 export type MiniPlayerPresentation =
@@ -111,10 +112,42 @@ const READER_COVER_ROUTES: ReadonlySet<string> = new Set(
   READER_COVER_ROUTE_PATTERNS,
 )
 
-/** The one cover predicate. The host, the slot poster and the screen's back
- *  button all follow the cover it starts (KTD10). */
+/** The reader's cover predicate. The host, the slot poster and the screen's
+ *  back button all follow the cover it starts (KTD10). */
 export function isReaderCovering(segments: readonly string[]): boolean {
   return READER_COVER_ROUTES.has(routePattern(segments))
+}
+
+/** The two screens that mount a `PlayerSlot`, with their own groups' sheets
+ *  (`app/watch/_layout.tsx`, `app/series/_layout.tsx`): there the slot's
+ *  screen is the page in view, or the page under its sheet. */
+export const SLOT_SCREEN_ROUTE_PATTERNS = [
+  ...FULL_SCREEN_ROUTE_PATTERNS,
+  "series/[slug]",
+  "series/language",
+  "series/subtitle",
+  "series/download",
+] as const
+
+const SLOT_SCREEN_ROUTES: ReadonlySet<string> = new Set(
+  SLOT_SCREEN_ROUTE_PATTERNS,
+)
+
+/** What covers the current slot. A screen pushed over the slot's screen keeps
+ *  it mounted, so the host would draw the full view over that screen. A pop
+ *  never sets `underScreen`; the route check waits for the new segments. */
+export function slotCoverSource(
+  segments: readonly string[],
+  underScreen: boolean,
+  /** The source of the current slot's live cover, or null. */
+  liveCover: CoverSource | null = null,
+): CoverSource | null {
+  if (isReaderCovering(segments)) return "reader"
+  if (!underScreen) return null
+  // Held until the slot's own screen has focus again: a tap on the window
+  // pushes a watch route, and the newer slot attaches a commit later.
+  if (liveCover === "screen") return "screen"
+  return SLOT_SCREEN_ROUTES.has(routePattern(segments)) ? null : "screen"
 }
 
 /** Where the reader runs: the Bible tab, the pushed route, or one of the
@@ -135,15 +168,19 @@ export type ExpandAction = "pop" | "push"
 
 /** KTD10, AE14: a tap on the window over the reader goes back to the watch
  *  screen under it, so the stack never holds a second one. Anything else
- *  pushes, as the Bible tab does: no watch slot is mounted under it. */
+ *  pushes: the Bible tab has no slot, and a pop closes one route of several. */
 export function expandAction(input: {
-  /** The current slot is covered and its window floats. */
-  covered: boolean
+  /** What covers the current slot while its window floats, or null. */
+  cover: CoverSource | null
   descriptor: Pick<MiniPlayerSession, "videoId" | "videoSlug"> | null
   session: Pick<MiniPlayerSession, "videoId" | "videoSlug"> | null
   segments: readonly string[]
 }): ExpandAction {
-  if (!input.covered || input.descriptor == null || input.session == null)
+  if (
+    input.cover !== "reader" ||
+    input.descriptor == null ||
+    input.session == null
+  )
     return "push"
   if (!sameSessionContent(input.descriptor, input.session)) return "push"
   return routePattern(input.segments) === "reader" ? "pop" : "push"
