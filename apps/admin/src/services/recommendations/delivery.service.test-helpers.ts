@@ -2,6 +2,7 @@ import { vi } from "vitest"
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
 import { RecommendationDeliveryService } from "./delivery.service"
+import type { DeliveryDependencies } from "./delivery.types"
 import type { RecommendationAdmissionResult } from "./admission"
 import {
   runCandidatePlatform,
@@ -119,6 +120,7 @@ export function makeHarness(
       "resolveOwnerAuthority" | "composeOwnerCowatch"
     >
     nowMilliseconds?: () => number
+    getServingState?: DeliveryDependencies["getServingState"]
   } = {},
 ) {
   const requests = new Map<string, Record<string, unknown>>()
@@ -231,7 +233,7 @@ export function makeHarness(
       acquire,
       release,
     },
-    getServingState,
+    getServingState: options.getServingState ?? getServingState,
     retrieve,
     ...(options.curatedFallback ? { retrieveCuratedFallback } : {}),
     recheckCached,
