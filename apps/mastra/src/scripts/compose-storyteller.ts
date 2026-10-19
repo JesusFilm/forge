@@ -176,6 +176,22 @@ const STORIES: Record<
     ],
     out: "Paralytic",
   },
+  "lumo-luke-5-catch": {
+    // No setting: the card starts on 5:1, the first words of the segment.
+    terms: [
+      "Fish",
+      "Fisher",
+      "Net",
+      "Ship",
+      "Gennesaret",
+      "Peter",
+      "Simon",
+      "Zebedee",
+      "Sin",
+      "BY THE SEA OF GALILEE - THE FINAL CALL OF THE FIRST DISCIPLES, AND THE MIRACULOUS DRAUGHT OF FISHES",
+    ],
+    out: "Great Catch",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the

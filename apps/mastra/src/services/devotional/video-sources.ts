@@ -259,6 +259,32 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-5-paralytic.ru.vtt" },
     },
   },
+  {
+    // The great catch opens the Luke 5 segment: 5:1 ("One day as Jesus was
+    // standing by the Lake of Gennesaret") starts at 0.7, and "left
+    // everything and followed him" ends at 104.3; the leper (5:12) only
+    // starts at ~116 (whisper per speech burst, 2026-10-19).
+    key: "lumo-luke-5-catch",
+    index: 1008,
+    mediaComponentId: "6_GOLuke2605",
+    title: "The Great Catch of Fish",
+    film: "lumo",
+    passage: { reference: "Luke 5:1-11", osisRef: "Luke.5.1-Luke.5.11" },
+    window: { startSec: 0, lengthSec: 105.5 },
+    // The Russian dub ends «пошли за Ним» at 103.95.
+    windowByLang: { ru: { startSec: 0, lengthSec: 105.2 } },
+    // ~105.5s ×1.05 → ~100.5s on screen, plus a breath.
+    maxVideoCardSec: 103,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-5-catch.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-5-catch.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))
