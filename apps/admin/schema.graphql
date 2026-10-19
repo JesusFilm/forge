@@ -2458,6 +2458,10 @@ type Query {
     slugs: [String!]!
   ): [WatchCollectionLanguageCounts!]!
   """
+  Bounded film finder over a fixed set of Watch collections. Exact playable audio only; empty supply returns an empty page.
+  """
+  watchFilmFinder(input: WatchFilmFinderInput!): WatchFilmFinderPage!
+  """
   Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
   """
   watchHomeVideos(coreIds: [String!]!): [Video!]!
@@ -3578,6 +3582,70 @@ type WatchEvent {
 enum WatchEventType {
   download
   meaningful_playback
+}
+
+"""
+One film in a finder lane, in the requested audio language. Hrefs are derived by the consumer from slug + the requested language.
+"""
+type WatchFilmFinderCard {
+  durationSeconds: Int
+  imageUrl: String
+  laneId: WatchFilmFinderLane!
+  """
+  Mux playback id of the audio Dub, for a frame thumbnail when imageUrl is null.
+  """
+  muxPlaybackId: String
+  slug: String!
+  """
+  Localized title: requested language, then English, then any published locale.
+  """
+  title: String!
+  """The playable Dub in the requested audio language."""
+  videoDubId: ID!
+  videoId: ID!
+}
+
+"""
+Runtime cap for the requested audio Dub. SHORT is up to 6 minutes, MEDIUM up to 25 minutes, ANY applies no cap.
+"""
+enum WatchFilmFinderDuration {
+  ANY
+  MEDIUM
+  SHORT
+}
+
+input WatchFilmFinderInput {
+  """Opaque cursor from a previous page's endCursor."""
+  after: String
+  duration: WatchFilmFinderDuration
+  """Page size, 1 to 24. Defaults to 24."""
+  first: Int
+  """1 to 8 lanes; duplicates collapse, requested order is kept."""
+  laneIds: [WatchFilmFinderLane!]!
+  """
+  Public Watch language slug. Only Videos with playable audio in exactly this language are returned.
+  """
+  languageSlug: String!
+}
+
+"""
+Allowlisted Watch film-finder lanes. Each maps to one fixed collection inside Admin.
+"""
+enum WatchFilmFinderLane {
+  ANIMATED
+  CONVERSATION
+  CULTURE
+  GETTING_STARTED
+  KIDS
+  QUESTIONS
+  SEVEN_DAYS
+  WOMEN
+}
+
+type WatchFilmFinderPage {
+  cards: [WatchFilmFinderCard!]!
+  endCursor: String
+  hasNextPage: Boolean!
 }
 
 """
