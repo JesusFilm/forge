@@ -2,7 +2,7 @@
 
 ## Decision
 
-Tatai owns the ongoing investigation (`feat-745`). The evidence supports
+Tatai owns the ongoing investigation (`feat-750`, formerly `feat-745`). The evidence supports
 main-thread saturation and request queueing. Host contention, increased work
 per request, and request/regeneration mix remain possible contributors. Neither
 investigation proves a triggering code regression or progressive degradation

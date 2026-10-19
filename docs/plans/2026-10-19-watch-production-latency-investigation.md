@@ -1,6 +1,6 @@
 # Watch recurring production latency investigation
 
-Owner: vlad. Execution: delegated Claude Opus 5.5. Tracking: feat-745.
+Owner: vlad. Execution: delegated Claude Opus 5.5. Tracking: feat-750 (renumbered from feat-745 before merge).
 
 ## Objective and boundaries
 

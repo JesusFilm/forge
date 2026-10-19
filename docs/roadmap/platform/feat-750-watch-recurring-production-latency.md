@@ -1,5 +1,5 @@
 ---
-id: "feat-745"
+id: "feat-750"
 title: "Diagnose and repair recurring Watch production latency"
 owner: "tataihono"
 priority: "P0"
@@ -86,3 +86,11 @@ observed red before the guards; the observability suite now passes 45/45.
 Root cause, telemetry rollout and the full recovery acceptance remain open;
 keep this ticket in progress. Current public HIT probes are much faster, but
 short samples and unmatched traffic do not prove sustained recovery.
+
+## ID correction — 2026-10-20
+
+Renumbered from `feat-745` to `feat-750` before merge because main already
+uses `feat-745` for the editorial A/B feasibility assessment. Earlier incident
+reports and implementation comments use the investigation's former ID; this
+file is its current tracking ticket. IDs through `feat-749` were already
+allocated in the shared working copy at the time of correction.
