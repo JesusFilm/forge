@@ -387,9 +387,9 @@ source with its year (Easton 1897, Smith 1863, Abbott-Smith 1922, Ryle 1858)
 and what AI did (drafted, voiced, assembled; on-screen questions written with
 AI help and chosen by the team).
 
-Every caption file also carries one `PINNED COMMENT` line (owner,
-2026-10-14; format changed 2026-10-19). Publishing posts it under the YouTube
-video and pins it. Format: a prayer of one or two sentences that comes out of
+Long-form caption files carry one `PINNED COMMENT` line (owner,
+2026-10-14; format changed 2026-10-19). Shorts get no pinned comment (owner,
+2026-10-19). Publishing posts it under the YouTube long form and pins it. Format: a prayer of one or two sentences that comes out of
 the episode, then "Pray it with us and write Amen." (RU: «Помолитесь с нами и
 напишите «Аминь».»). Under 200 characters, no dashes. Example: "Lord, I keep
 asking quietly and I am tired of waiting. Teach me to keep coming to you. Pray
