@@ -26,16 +26,17 @@ import {
   PRECOMPUTED_PUBLIC_CONTROL_ID,
   PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY,
   PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY,
+  PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY,
 } from "./public-control"
 import { verifyWatchHumanReceipt } from "./human-verification"
 import {
   PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
   PRECOMPUTED_VISIT_DELIVERY_POLICY,
   readControlRouting,
-  recordPrivatePrecomputedVisitDelivery,
+  recordPrecomputedVisitDelivery,
 } from "./visit-admission"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
-import { deliverPrecomputedWatchPreview } from "./watch-delivery"
+import { deliverSelectedPrecomputedWatchGeneration } from "./watch-delivery"
 import { verifyPrecomputedSourceEligibility } from "./watch-reader"
 import {
   admitPrecomputedIncumbentBaseline,
@@ -177,7 +178,10 @@ async function admitPublicVisit(
         } as Admission
         if (control.authority === "isolated_fixture")
           await assertIsolatedPrecomputedControlFixture(tx)
-        else if (control.authority !== "live_verified")
+        else if (
+          control.authority !== "live_verified" &&
+          control.authority !== "public_browser"
+        )
           return {
             ...base,
             status: "unavailable",
@@ -186,10 +190,14 @@ async function admitPublicVisit(
         const live = control.authority === "live_verified"
         const eligibilityPolicy = live
           ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
-          : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+          : control.authority === "public_browser"
+            ? PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+            : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
         const qualification = live
           ? "turnstile_verified_browser"
-          : "fixture_human"
+          : control.authority === "public_browser"
+            ? "unverified_browser"
+            : "fixture_human"
         const experiment =
           await tx.recommendationPrecomputedExperiment.findUnique({
             where: { id: control.experimentId! },
@@ -413,7 +421,7 @@ export async function deliverPrecomputedPublicWatchVisit(
       (admission.disposition === "promoted" &&
         admission.status === "not_applicable")
     ) {
-      delivery = await deliverPrecomputedWatchPreview(
+      delivery = await deliverSelectedPrecomputedWatchGeneration(
         prisma,
         {
           seedMediaId: input.seedMediaId,
@@ -461,7 +469,7 @@ export async function deliverPrecomputedPublicWatchVisit(
       : admission.disposition === "ab" &&
           admission.status === "eligible" &&
           input.browserDigest
-        ? await recordPrivatePrecomputedVisitDelivery(prisma, {
+        ? await recordPrecomputedVisitDelivery(prisma, {
             visitId: input.visitId,
             browserDigest: input.browserDigest,
             result: delivery.result,

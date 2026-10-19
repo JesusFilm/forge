@@ -1,14 +1,48 @@
 # Saved Video recommendation A/B control
 
 The manual control is visible at Admin
-`/dashboard/recommendations/precomputed/public`. The incumbent remains the
-default after migration and after every catalog build, report read, or CTR
-evaluation. The isolated rehearsal can select an A/B cohort, promote an exact
-final fixture result, and restore the incumbent. Live `prepare` and `start`
-exist, but they require the owner-entered numeric policy, complete real Astra
-generation and catalog, verified seven-day incumbent baseline, Web request
-health, and separate launch-capacity receipt. Do not interpret a fixture winner
-as live evidence or treat a successful preparation as activation.
+`/dashboard/recommendations/precomputed/public`. Select a completed saved
+generation and click **Start 50/50 A/B**. Editorial imports are supported as
+stored; no regeneration, producer qualification, baseline, capacity certificate,
+Turnstile setup, or private-test flag is required. The migration alone does not
+activate traffic.
+
+## Ordinary public test
+
+The `start_saved` action takes `experimentId`, `generationId`, and the current
+`expectedControlVersion`. Keep the same experiment ID when retrying a lost
+acknowledgement. It requires an authenticated operator, the existing same-origin
+CSRF header, and a recent login. It freezes current routing and the saved source
+set, starts immediately, and ends one UTC calendar month later. Existing public
+tests cannot be overwritten. Known automation, missing browser identity,
+unplayable sources, and sources outside the saved set are excluded. Empty and
+short lists are valid and remain in the denominator.
+
+Use **Save CTR revision** to read counts, browser-clustered 95% confidence
+intervals, empty/unavailable deliveries, and fallback rates. Reports have
+`evidenceBasis: public_observed`; this describes observed browser traffic, not
+verified-human traffic or complete browser-to-server event capture. Generation
+metadata and model/GA provenance remain unchanged. Public delivery and click
+binding work with both private feature flags disabled.
+
+The fixed final look is 24 hours after the month ends. Defaults require 1,000
+visits and effective independent browsers per arm, a confidence interval
+excluding zero, at least one percentage point of observed uplift, at most 5%
+fallback and 1% unlinked delivery. The stored zero baseline is an unused planning
+placeholder, not an observed baseline. Results never promote themselves. A
+clear final challenger result exposes **Use winning saved generation** for an
+explicit operator decision. Insufficient data remains inconclusive.
+
+**Restore incumbent now** stops public serving immediately and preserves the
+cohort for review. At the month cutoff, incumbent serving resumes automatically
+while the saved cohort awaits evaluation. Rollback does not require a fresh login.
+
+## Optional verified measurement workflow
+
+Advanced controls retain the existing baseline, analytics-generated catalog,
+capacity and independently calibrated measurement workflow. Those requirements
+apply only to `live_verified` experiments. Fixture evidence cannot satisfy that
+workflow or be presented as observed public evidence.
 
 ## Obtain the first real catalog cost and coverage
 

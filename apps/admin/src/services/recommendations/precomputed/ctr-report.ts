@@ -44,6 +44,7 @@ export type PrecomputedCtrReport = {
   schemaVersion: 1
   evidenceBasis?:
     | "private_unverified"
+    | "public_observed"
     | "isolated_fixture"
     | "live_incomplete"
     | "live_verified"
@@ -79,7 +80,7 @@ export type PrecomputedCtrReport = {
     version: string
     method: typeof METHOD
     digest: string
-    authority: "fixture_only" | "prelaunch_agreed"
+    authority: "fixture_only" | "prelaunch_agreed" | "public_observed"
     settings: CtrPolicySettings
   }
   cohort: { startsAt: string; endsAt: string; finalAt: string }
@@ -402,7 +403,11 @@ async function evaluatePrecomputedCtrReport(
     experimentId: string
     operator: Principal | null
     now?: Date
-    evidenceBasis: "private_unverified" | "isolated_fixture" | "live_public"
+    evidenceBasis:
+      | "private_unverified"
+      | "isolated_fixture"
+      | "live_public"
+      | "public_observed"
     webMeasurement?: WebWatchMeasurementRead | null
     experimentMeasurement?: WebExperimentMeasurementRead | null
     testTrustedKeyring?: string
@@ -418,7 +423,9 @@ async function evaluatePrecomputedCtrReport(
     publicEligibilityPolicy =
       input.evidenceBasis === "isolated_fixture"
         ? control.PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
-        : control.PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+        : input.evidenceBasis === "public_observed"
+          ? control.PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+          : control.PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
   }
   return prisma.$transaction(
     async (tx) => {
@@ -595,13 +602,22 @@ async function evaluatePrecomputedCtrReport(
         botEligibility:
           input.evidenceBasis === "isolated_fixture" || botVerified
             ? "verified"
-            : "unverified",
+            : input.evidenceBasis === "public_observed"
+              ? "browser_filtered"
+              : "unverified",
         trackingLoss:
           input.evidenceBasis === "isolated_fixture" || calibratedLossVerified
             ? "verified"
-            : "unobservable",
+            : input.evidenceBasis === "public_observed"
+              ? "server_observed"
+              : "unobservable",
       })
       const reasons = [...evaluation.reasons]
+      if (
+        input.evidenceBasis === "public_observed" &&
+        policy.authority !== "public_observed"
+      )
+        reasons.push("public_policy_authority_mismatch")
       if (
         input.evidenceBasis === "private_unverified" &&
         policy.authority !== "prelaunch_agreed"
@@ -640,11 +656,12 @@ async function evaluatePrecomputedCtrReport(
       const revision = (latest?.revision ?? 0) + 1
       const report: PrecomputedCtrReport = {
         schemaVersion: 1,
-        evidenceBasis: livePublic
-          ? calibratedLossVerified
-            ? "live_verified"
-            : "live_incomplete"
-          : (input.evidenceBasis as "private_unverified" | "isolated_fixture"),
+        evidenceBasis:
+          input.evidenceBasis === "live_public"
+            ? calibratedLossVerified
+              ? "live_verified"
+              : "live_incomplete"
+            : input.evidenceBasis,
         experimentId: experiment.id,
         revision,
         isFinal,
@@ -703,7 +720,8 @@ async function evaluatePrecomputedCtrReport(
           version: policy.version,
           method: METHOD,
           digest: policy.settingsDigest,
-          authority: policy.authority as "fixture_only" | "prelaunch_agreed",
+          authority:
+            policy.authority as PrecomputedCtrReport["policy"]["authority"],
           settings,
         },
         cohort: {
@@ -869,8 +887,7 @@ async function evaluatePrecomputedCtrReport(
           conservativeDegreesOfFreedom: evaluation.conservativeDegreesOfFreedom,
         },
         outcome:
-          (input.evidenceBasis === "isolated_fixture" || livePublic) &&
-          reasons.length === 0
+          input.evidenceBasis !== "private_unverified" && reasons.length === 0
             ? evaluation.outcome
             : "inconclusive",
         reasons,
@@ -975,7 +992,12 @@ export async function evaluatePublicPrecomputedCtr(
   return evaluatePrecomputedCtrReport(prisma, {
     ...input,
     now,
-    evidenceBasis: livePublic ? "live_public" : "isolated_fixture",
+    evidenceBasis: livePublic
+      ? "live_public"
+      : experiment?.eligibilityPolicyVersion ===
+          control.PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+        ? "public_observed"
+        : "isolated_fixture",
     webMeasurement,
     experimentMeasurement,
     testTrustedKeyring: input.testTrustedKeyring,

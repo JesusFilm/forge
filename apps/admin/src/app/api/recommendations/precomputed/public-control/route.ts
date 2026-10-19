@@ -12,6 +12,7 @@ import {
   releaseRetainedPrecomputedPublicExperiment,
   rollbackPrecomputedPublicExperiment,
   startPrecomputedPublicExperiment,
+  startSavedPrecomputedPublicExperiment,
 } from "@/services/recommendations/precomputed/public-control"
 import { loadPrecomputedPublicReadiness } from "@/services/recommendations/precomputed/public-readiness"
 import {
@@ -34,7 +35,11 @@ const id = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,190}$/)
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
 const version = z.number().int().positive()
 const isoTime = z.string().datetime({ offset: true })
-const authority = z.enum(["isolated_fixture", "live_verified"])
+const authority = z.enum([
+  "isolated_fixture",
+  "live_verified",
+  "public_browser",
+])
 const policy = z
   .object({
     baselineHumanVisitCtr: z.number().min(0).max(1),
@@ -51,6 +56,14 @@ const policy = z
   })
   .strict()
 const mutation = z.discriminatedUnion("action", [
+  z
+    .object({
+      action: z.literal("start_saved"),
+      experimentId: id,
+      generationId: id,
+      expectedControlVersion: version,
+    })
+    .strict(),
   z
     .object({ action: z.literal("policy_digest"), policySettings: policy })
     .strict(),
@@ -184,6 +197,7 @@ export async function POST(request: Request): Promise<Response> {
   if (
     [
       "prepare",
+      "start_saved",
       "start",
       "promote",
       "start_baseline",
@@ -196,6 +210,15 @@ export async function POST(request: Request): Promise<Response> {
   )
     return error(401, "recent_authentication_required")
   try {
+    if (input.action === "start_saved") {
+      const control = await startSavedPrecomputedPublicExperiment(prisma, {
+        experimentId: input.experimentId,
+        generationId: input.generationId,
+        expectedControlVersion: input.expectedControlVersion,
+        operator: session.principal,
+      })
+      return Response.json({ ok: true, control }, { headers: NO_STORE })
+    }
     if (input.action === "policy_digest") {
       try {
         validateCtrPolicySettings(input.policySettings)

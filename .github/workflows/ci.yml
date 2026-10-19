@@ -324,6 +324,9 @@ jobs:
         run: |
           pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed src/app/api/internal/mastra/precomputed-recommendations/route.test.ts --no-file-parallelism --maxWorkers=1
           pnpm --filter @forge/admin test:precomputed-integration
+          env -u RECOMMENDATION_PRECOMPUTED_TEST_ENABLED -u RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED \
+            pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed/public-control.db.test.ts \
+            -t 'ordinary editorial|observed public result'
 
   web-redis-integration:
     runs-on: ubuntu-latest

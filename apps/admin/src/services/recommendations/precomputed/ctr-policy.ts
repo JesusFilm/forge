@@ -34,8 +34,8 @@ export type CtrEvaluationEvidence = {
   endsAt: Date
   asOf: Date
   byArm: { control: CtrArmMoments; challenger: CtrArmMoments }
-  botEligibility: "verified" | "unverified"
-  trackingLoss: "verified" | "unobservable"
+  botEligibility: "verified" | "unverified" | "browser_filtered"
+  trackingLoss: "verified" | "unobservable" | "server_observed"
 }
 
 export type CtrEvaluation = {
@@ -227,9 +227,11 @@ export function evaluatePrecomputedCtr(
     )
       reasons.push(`${name}_unlinked_delivery_unhealthy`)
   }
-  if (evidence.botEligibility !== "verified")
+  // Ordinary public tests estimate CTR for observed, browser-filtered traffic.
+  // They do not assert verified humans or complete end-to-end event capture.
+  if (evidence.botEligibility === "unverified")
     reasons.push("bot_eligibility_unverified")
-  if (evidence.trackingLoss !== "verified")
+  if (evidence.trackingLoss === "unobservable")
     reasons.push("tracking_loss_unobservable")
   if (!usableError) reasons.push("uncertainty_unavailable")
   let outcome: CtrEvaluation["outcome"] = "inconclusive"
