@@ -653,8 +653,10 @@ available. Admin remains the canonical job authority.
 
 ### Always-on production render worker (2026-10-19)
 
-Owner restored `forge-render-01` (Proxmox VM109 on `jfp00`) as the sole
-production worker, running continuously. The AI VM and demand watcher are
-retired. `/api/shorts/render-demand` and `STUDIO_RENDER_DEMAND_KEY` are removed;
-normal `/api/shorts/render-pool` polling and canonical leases remain unchanged.
-Read `docs/plans/2026-10-19-studio-always-on-proxmox.md` for the handover record.
+Owner selected `forge-render-ai01` on `jfpai01` as the sole production worker,
+running continuously with VM autostart and supervisor boot startup (feat-732,
+superseding the temporary Proxmox placement in feat-731). The original Proxmox
+worker is drained and disabled. The demand watcher remains retired;
+`/api/shorts/render-demand` and `STUDIO_RENDER_DEMAND_KEY` remain removed.
+Normal `/api/shorts/render-pool` polling and canonical leases remain unchanged.
+Read `docs/plans/2026-10-19-studio-always-on-ai.md` for current operating guidance.

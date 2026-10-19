@@ -112,3 +112,21 @@ Old worker is gracefully drained: 92 journals checked, no unfinished assignments
 or containers; preserve VM/artifacts for rollback. Release config targets
 `forge-render-ai01`. Focused contract, Manager, Admin, worker/native and release
 tests pass; full source/image correctness and production timing gates remain.
+
+### 2026-10-19 owner-selected return to always-on Proxmox
+
+Feat-731 restores `forge-render-01` / VM109 on `jfp00`, preserving v4 renderer
+optimizations and retiring the AI guest/monitor. Fresh same-clip revision21 attempt
+`cmvdqe8bm0001no0bc4biokrc` succeeds in852.889s request-to-retained,652.040s render
+and83.974s verifier. Complete frames/audio/canonical digest pass; no OOM. This is
+materially slower than the380.478s warm AI-host result. The placement is the
+owner's current decision, and the300s target remains unmet; do not claim the
+rollback improves speed. Future work belongs on the selected original worker.
+
+Current placement superseded by feat-732: use always-on jfpai01. The measured
+AI warm full-flow result is380.478s; the300s objective remains unmet. Keep prior
+Proxmox measurements as history, not the active host selection.
+
+Fresh always-on AI restoration attempt `cmve94qj00001noaklz47a4ts` succeeds in
+390.967s full flow with complete retained-byte/frame/audio verification.
+The300s target remains unmet; active placement is jfpai01 (feat-732).
