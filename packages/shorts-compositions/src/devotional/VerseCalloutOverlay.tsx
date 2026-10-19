@@ -1,5 +1,6 @@
 import { Easing, interpolate, interpolateColors } from "remotion"
 
+import { SHORT_FONT_FAMILIES } from "../fonts"
 import type { DevotionalCard } from "./schema"
 import type { CardFrames } from "./timing"
 
@@ -17,6 +18,10 @@ const EASE = Easing.bezier(0.4, 0, 0.2, 1)
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 const GOLD = "#F2C46B"
 const REST = "rgba(255,255,255,0.92)"
+/** The verse sets in PT Serif italic, the lit words in gold at the same
+ *  weight (owner's Figma 592:3, Great Catch, 2026-10-19). The address under
+ *  it stays in the devotional serif. */
+const VERSE_FACE = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
 
 /** The callout must end above the reflection's own subtitles (1080 frame:
  *  a two-line caption starts near y 700; measured on the Widow RU draft). A long verse first widens, then shrinks, instead
@@ -26,11 +31,17 @@ const BOTTOM = 620
 const WIDTHS = [753, 960, 1180, 1400]
 const SIZES = [56, 52, 48, 44, 40]
 const LINE = 1.25
+/** The verse's address under it ("Luke 5:8"), so the viewer knows where the
+ *  words are from (owner, 2026-10-16, Paralytic). Its line comes out of the
+ *  same space above the subtitles. */
+const REF_SIZE = 30
+const REF_GAP = 18
+const REF_H = REF_SIZE * 1.2 + REF_GAP
 /** A lit phrase is set on one line (it is an inline block with its rule);
  *  longer than this it would force its own line, so it is not lit. */
 const MAX_LIT_CHARS = 24
 
-function fit(text: string): { width: number; size: number } {
+function fit(text: string, room: number): { width: number; size: number } {
   // Estimated, not measured: the DOM probe sets the upright face, and the
   // light italic Cyrillic runs ~0.66 em a character (6 lines where the probe
   // counted 4, Widow RU 2026-10-14). +10% for the slack of a greedy wrap.
@@ -38,7 +49,7 @@ function fit(text: string): { width: number; size: number } {
   for (const size of SIZES)
     for (const width of WIDTHS) {
       const lines = Math.ceil((text.length * em * size * 1.1) / width)
-      if (lines * size * LINE <= BOTTOM - TOP) return { width, size }
+      if (lines * size * LINE <= room) return { width, size }
     }
   return { width: WIDTHS[WIDTHS.length - 1]!, size: SIZES[SIZES.length - 1]! }
 }
@@ -109,7 +120,11 @@ export function VerseCalloutOverlay({
     // Russian takes guillemets, English curly quotes.
     const cyrillic = /[А-Яа-яЁё]/.test(text)
     const [open, close] = cyrillic ? ["«", "»"] : ["“", "”"]
-    const box = fit(`${open}${text}${close}`)
+    const reference = c.reference?.trim() ?? ""
+    const box = fit(
+      `${open}${text}${close}`,
+      BOTTOM - TOP - (reference ? REF_H : 0),
+    )
     return (
       <div
         style={{
@@ -118,7 +133,8 @@ export function VerseCalloutOverlay({
           left: 0,
           right: 0,
           display: "flex",
-          justifyContent: "center",
+          flexDirection: "column",
+          alignItems: "center",
           pointerEvents: "none",
           opacity,
           transform: `translateY(${(u(10) * (1 - fade(0.1, 0.9))).toFixed(2)}px)`,
@@ -129,11 +145,10 @@ export function VerseCalloutOverlay({
             margin: 0,
             width: u(box.width),
             textAlign: "center",
-            fontFamily: serif,
+            fontFamily: VERSE_FACE,
             fontStyle: "italic",
-            // Lighter than the Figma frame's regular (owner, 2026-09-30:
-            // too bold on the picture), the word a step above it.
-            fontWeight: 300,
+            // PT Serif has one italic weight; the lit words differ by colour.
+            fontWeight: 400,
             fontSize: u(box.size),
             lineHeight: LINE,
             color: REST,
@@ -144,7 +159,7 @@ export function VerseCalloutOverlay({
           {at >= 0 ? (
             <>
               {text.slice(0, at)}
-              {/* The word turns white and a gold rule is drawn under it,
+              {/* The word turns gold and a gold rule is drawn under it,
                   left to right, as the voice reaches it; then the rule
                   breathes a soft glow (owner's Figma variant B, 2026-10-08:
                   5px at 56px type, square ends, tilted 0.8°). */}
@@ -153,8 +168,7 @@ export function VerseCalloutOverlay({
                   position: "relative",
                   display: "inline-block",
                   whiteSpace: "nowrap",
-                  fontWeight: 500,
-                  color: interpolateColors(lit, [0, 1], [REST, "#ffffff"]),
+                  color: interpolateColors(lit, [0, 1], [REST, GOLD]),
                 }}
               >
                 {word}
@@ -180,6 +194,22 @@ export function VerseCalloutOverlay({
           )}
           {close}
         </p>
+        {reference ? (
+          <p
+            style={{
+              margin: 0,
+              marginTop: u(REF_GAP),
+              fontFamily: serif,
+              fontWeight: 400,
+              fontSize: u(REF_SIZE),
+              letterSpacing: "0.08em",
+              color: "rgba(255,255,255,0.72)",
+              textShadow: "0 2px 12px rgba(0,0,0,0.55)",
+            }}
+          >
+            {reference}
+          </p>
+        ) : null}
       </div>
     )
   }
