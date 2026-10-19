@@ -14,6 +14,8 @@ export type ReaderSheetMessageProps = {
   /** `actionName` is the Datadog tap name; it never changes with the label. */
   action: { label: string; actionName: string; onPress: () => void }
   onClose: () => void
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
+  background?: string
 }
 
 /** A sheet that cannot show its content says why and offers one action. */
@@ -24,10 +26,14 @@ export function ReaderSheetMessage({
   body,
   action,
   onClose,
+  background = tokens.background,
 }: ReaderSheetMessageProps) {
   const controls = readerSheetControlColors(tokens)
   return (
-    <View style={[styles.root, { backgroundColor: tokens.background }]}>
+    <View
+      testID="reader-sheet-message"
+      style={[styles.root, { backgroundColor: background }]}
+    >
       <ReaderSheetHeader tokens={tokens} title={sheetTitle} onClose={onClose} />
       <View style={styles.message}>
         <Text

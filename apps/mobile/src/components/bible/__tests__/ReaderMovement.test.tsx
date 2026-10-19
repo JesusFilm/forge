@@ -24,8 +24,9 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// GlassView renders its children: the end-of-Bible notice sits on glass (R13).
 jest.mock("expo-glass-effect", () => ({
-  GlassView: () => null,
+  GlassView: ({ children }: { children?: unknown }) => children ?? null,
   isLiquidGlassAvailable: () => true,
   isGlassEffectAPIAvailable: () => true,
 }))

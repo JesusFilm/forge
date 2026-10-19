@@ -8,8 +8,11 @@ import { useTypography } from "../../hooks/useTypography"
 import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
-import { BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
-import { HORIZONTAL_PADDING, button, feedback } from "../../styles/shared"
+import { ACCENT, BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
+import { FLOATING_BACK_SIZE } from "../../lib/playerLayout"
+import { HORIZONTAL_PADDING, button } from "../../styles/shared"
+import { GlassSurface, type GlassFallback } from "./GlassSurface"
 import { HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
 
 export type ScreenTopBarAction = {
@@ -35,6 +38,13 @@ export type ScreenTopBarProps = {
 const TARGET_SIZE = 44
 // Pulls each 44pt target out so its glyph lines up with the content edge.
 const EDGE_PULL = 10
+// FloatingBackButton's glass circle (R9). Its edge, not the glyph, sits on
+// the content edge.
+const BACK_GLASS_SIZE = FLOATING_BACK_SIZE
+const BACK_GLASS_PULL = (TARGET_SIZE - BACK_GLASS_SIZE) / 2
+const BACK_GLASS_TITLE_GAP = 8
+// Without Liquid Glass the bar draws the bare glyph, so it adds no fill.
+const BARE_GLYPH: GlassFallback = { kind: "fill", style: null }
 
 type LeaveRouter = Pick<
   ReturnType<typeof useRouter>,
@@ -59,6 +69,7 @@ export function ScreenTopBar({
   const typography = useTypography()
   const t = useT("Common")
   const uiDirection = useTextDirection().ui
+  const glass = canUseLiquidGlass()
 
   const handleBack = () => leaveToMyWatch(router)
   // Overlaid, only the controls take touches, so a drag beside them scrolls.
@@ -85,17 +96,25 @@ export function ScreenTopBar({
             accessibilityRole="button"
             accessibilityLabel={t("goBackAriaLabel")}
             {...{ "dd-action-name": "screen-top-bar-back" }}
-            style={({ pressed }) => [
+            style={[
               button.iconButton44,
-              styles.leading,
-              pressed && feedback.pressed,
+              glass ? styles.leadingGlass : styles.leading,
             ]}
           >
-            <Ionicons
-              name={directionalIcon("chevron-back")}
-              size={28}
-              color={TEXT_PRIMARY}
-            />
+            {({ pressed }) => (
+              <GlassSurface
+                style={styles.glassCircle}
+                fallback={BARE_GLYPH}
+                interactive
+                pressed={pressed}
+              >
+                <Ionicons
+                  name={directionalIcon("chevron-back")}
+                  size={glass ? 24 : 28}
+                  color={glass ? ACCENT : TEXT_PRIMARY}
+                />
+              </GlassSurface>
+            )}
           </Pressable>
         )}
         {title != null ? (
@@ -121,17 +140,25 @@ export function ScreenTopBar({
             {...(trailingAction.actionName != null && {
               "dd-action-name": trailingAction.actionName,
             })}
-            style={({ pressed }) => [
+            style={[
               button.iconButton44,
-              styles.trailing,
-              pressed && feedback.pressed,
+              glass ? styles.trailingGlass : styles.trailing,
             ]}
           >
-            <Ionicons
-              name={trailingAction.icon}
-              size={26}
-              color={TEXT_PRIMARY}
-            />
+            {({ pressed }) => (
+              <GlassSurface
+                style={styles.glassCircle}
+                fallback={BARE_GLYPH}
+                interactive
+                pressed={pressed}
+              >
+                <Ionicons
+                  name={trailingAction.icon}
+                  size={glass ? 22 : 26}
+                  color={TEXT_PRIMARY}
+                />
+              </GlassSurface>
+            )}
           </Pressable>
         )}
       </View>
@@ -169,8 +196,24 @@ const styles = StyleSheet.create({
   leading: {
     marginLeft: -EDGE_PULL,
   },
+  // The circle fills its target, so it keeps the glyph's gap to the title.
+  leadingGlass: {
+    marginLeft: -BACK_GLASS_PULL,
+    marginRight: BACK_GLASS_TITLE_GAP,
+  },
+  glassCircle: {
+    width: BACK_GLASS_SIZE,
+    height: BACK_GLASS_SIZE,
+    borderRadius: BACK_GLASS_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   trailing: {
     marginRight: -EDGE_PULL,
+  },
+  // Like the back circle, the glass edge sits on the content edge.
+  trailingGlass: {
+    marginRight: -BACK_GLASS_PULL,
   },
   title: {
     flex: 1,

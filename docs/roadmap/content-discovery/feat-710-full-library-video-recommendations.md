@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-10-16"
 duration: 3
 depends_on: []
-blocks: []
+blocks:
+  - "feat-733"
 tags:
   - "ai-pipeline"
   - "recommendations"

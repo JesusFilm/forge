@@ -657,6 +657,57 @@ describe("recommendation retention service", () => {
   })
 
   it.each([
+    { selected: 10, episodeMs: 400, deleted: 5, continuation: true },
+    { selected: 25, episodeMs: 40, deleted: 25, continuation: true },
+    { selected: 10, episodeMs: 40, deleted: 10, continuation: false },
+  ])(
+    "reserves request cleanup time after $deleted of $selected standalone episodes",
+    async ({ selected, episodeMs, deleted, continuation }) => {
+      const { prisma, transaction } = buildPrisma()
+      const now = new Date("2026-09-17T00:00:00.000Z")
+      let clock = now.getTime()
+      const time = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      transaction.recommendationPlaybackEpisode.findMany.mockResolvedValueOnce(
+        Array.from({ length: selected }, (_, index) => ({
+          id: `episode-${index}`,
+        })),
+      )
+      for (let index = 0; index < selected; index += 1) {
+        transaction.recommendationPlaybackEpisode.findFirst.mockResolvedValueOnce(
+          {
+            expiresAt: new Date(now.getTime() - 60_000),
+          },
+        )
+      }
+      transaction.recommendationPlaybackEpisode.deleteMany.mockImplementation(
+        async () => {
+          clock += episodeMs
+          return { count: 1 }
+        },
+      )
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(prisma as never, now),
+        ).resolves.toMatchObject({
+          status: "succeeded",
+          rootsDeleted: 2,
+          rowCounts: { expiredStandaloneEpisodes: deleted },
+          batchLimitReached: continuation,
+          overdueAfterRun: false,
+        })
+        expect(
+          transaction.recommendationRequest.deleteMany,
+        ).toHaveBeenCalledOnce()
+        expect(
+          transaction.recommendationPlaybackEpisode.deleteMany,
+        ).toHaveBeenCalledTimes(deleted)
+      } finally {
+        time.mockRestore()
+      }
+    },
+  )
+
+  it.each([
     "requests",
     "watch exposures",
     "direct actions",
