@@ -670,10 +670,15 @@ export async function runContentProfile(input: {
   cacheKey: string
   profile: CompactProfile | null
 }> {
-  const citationIds = ["complete-profile-v5", "complete-profile-v6"].includes(
-    input.promptVersion,
-  )
-  const anchorReferences = input.promptVersion === "complete-profile-v6"
+  const citationIds = [
+    "complete-profile-v5",
+    "complete-profile-v6",
+    "complete-profile-v7-priority-anchors",
+  ].includes(input.promptVersion)
+  const anchorReferences = [
+    "complete-profile-v6",
+    "complete-profile-v7-priority-anchors",
+  ].includes(input.promptVersion)
   const selected = await readCompleteSelectedChunks(
     input.catalog,
     input.video,
@@ -841,7 +846,11 @@ export async function runContentProfile(input: {
     const budgetInstruction = part
       ? `The stored profile JSON budget for this node is ${profileBudget} UTF-8 bytes. Verified anchor IDs, language, offsets, and SHA-256 are added locally. The maximum JSON expansion is ${mapExpansionBound} UTF-8 bytes per returned anchor. Keep minified response profile JSON bytes + returned anchor count × ${mapExpansionBound} at or below ${profileBudget} UTF-8 bytes; count JSON escaping and Unicode bytes. Schema field maxima are ceilings, not targets.`
       : `The profile JSON budget for this node is ${profileBudget} UTF-8 bytes.`
-    const system = `${stage === "map" ? (citationIds ? CITATION_MAP_SYSTEM : MAP_SYSTEM) : anchorReferences ? REFERENCE_REDUCE_SYSTEM : REDUCE_SYSTEM} The complete stored node, including profile, covered range, and child digests, must be at most 16,384 UTF-8 bytes. ${budgetInstruction} Use at most 8 anchors with 12–180-character claims; summaryEnglish at most 600 characters; each themes, people, places, and citations list at most 12 entries of at most 80 characters. Keep the whole answer within that byte budget. Do not rely on truncation.`
+    const priorityInstruction =
+      input.promptVersion === "complete-profile-v7-priority-anchors"
+        ? " Choose diverse, distinctive anchors in priority order. When supported by this part or the supplied children, let the first two distinct anchors cover the central question or tension and its specific answer, development, practice, change, or outcome. Put these before introductions or incidental scenes. Do not invent a resolution, force two anchors when unsupported, or spend multiple slots on the same passage. Use remaining anchors for other useful dimensions. Preserve complete part/child coverage and exact citation or child-anchor provenance."
+        : ""
+    const system = `${stage === "map" ? (citationIds ? CITATION_MAP_SYSTEM : MAP_SYSTEM) : anchorReferences ? REFERENCE_REDUCE_SYSTEM : REDUCE_SYSTEM}${priorityInstruction} The complete stored node, including profile, covered range, and child digests, must be at most 16,384 UTF-8 bytes. ${budgetInstruction} Use at most 8 anchors with 12–180-character claims; summaryEnglish at most 600 characters; each themes, people, places, and citations list at most 12 entries of at most 80 characters. Keep the whole answer within that byte budget. Do not rely on truncation.`
     const prompt = part
       ? JSON.stringify(
           citationIds ? citationProfilePartInput(part.input) : part.input,

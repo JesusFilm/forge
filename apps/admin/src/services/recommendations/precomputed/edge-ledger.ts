@@ -1621,9 +1621,10 @@ async function startEdgeBatch(
   }
   if (
     generation.input_mode === "content_only" &&
-    input.captureRefDigest !== null
+    (input.captureRefDigest !== null ||
+      input.members.some((member) => member.historicalRefDigest !== hash(null)))
   )
-    invalid("Content-only edge call cannot claim historical capture")
+    invalid("Content-only edge call cannot claim historical capture or history")
   if (generation.input_mode === "historical_analytics") {
     const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow(
       {
@@ -2611,6 +2612,11 @@ async function closeEmptyEdgeSource(
     ))
   )
     conflict("Subscription attempt is inactive")
+  if (
+    generation.input_mode === "content_only" &&
+    input.historicalRefDigest !== hash(null)
+  )
+    invalid("Content-only empty source cannot claim analytics history")
   guards.requireCapacityFresh(generation)
   if (input.sourceCandidateDigest !== hash([]))
     invalid("Empty source candidate digest differs")

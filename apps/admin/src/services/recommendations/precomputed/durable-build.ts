@@ -297,6 +297,14 @@ const actionSchema = z.discriminatedUnion("action", [
     action: z.literal("capacity"),
     measurement: capacityMeasurement,
   }),
+  base
+    .omit({ attemptId: true })
+    .extend({
+      action: z.literal("capacity_pause"),
+      reason: z.literal("superseded_by_new_sol_generation"),
+      noLiveProducerAttested: z.literal(true),
+    })
+    .strict(),
   base.extend({ action: z.literal("claim"), sourceVideoId: id, claimId: id }),
   sourceBase.extend({ action: z.literal("heartbeat") }),
   sourceBase.extend({
@@ -881,6 +889,13 @@ export async function submitDurablePrecomputedRecommendation(
     input.action === "history_qualification" &&
     "snapshotRef" in input.qualification
   ) {
+    const historyGeneration =
+      await prisma.recommendationPrecomputedGeneration.findUnique({
+        where: { id: input.generationId },
+        select: { inputMode: true },
+      })
+    if (historyGeneration?.inputMode === "content_only")
+      conflict("Content-only generation cannot accept analytics history")
     try {
       verifiedCapture = await verifyBoundGaCapture(
         input.qualification.snapshotRef,
@@ -1831,12 +1846,24 @@ async function mutate(
     [
       "manifest",
       "capacity",
+      "capacity_pause",
       "history_qualification",
       "complete",
       "cancel",
     ].includes(input.action) ||
     (input.action === "fail" && !input.sourceVideoId)
   const generation = await checkedGeneration(tx, input, exclusive)
+  if (
+    generation.input_mode === "content_only" &&
+    [
+      "source_history",
+      "history_qualification",
+      "history_call_start",
+      "history_call",
+      "history_call_reconcile",
+    ].includes(input.action)
+  )
+    conflict("Content-only generation cannot accept analytics history")
   if (
     generation.protocol_version === 4 &&
     ([
@@ -1849,8 +1876,6 @@ async function mutate(
       "history_call",
       "history_call_reconcile",
     ].includes(input.action) ||
-      (input.action === "complete" &&
-        generation.input_mode !== "historical_analytics") ||
       (input.action === "fail" && Boolean(input.sourceVideoId)))
   )
     conflict("Profile protocol awaits edge and historical readiness")
@@ -1870,7 +1895,8 @@ async function mutate(
       "complete",
     ].includes(input.action) ||
       (input.action === "fail" && Boolean(input.sourceVideoId))) &&
-    (!input.attemptId ||
+    (!("attemptId" in input) ||
+      !input.attemptId ||
       !(await hasOpenSubscriptionAttempt(
         tx,
         input.generationId,
@@ -2088,6 +2114,67 @@ async function mutate(
       replay: false,
     }
   }
+  if (input.action === "capacity_pause") {
+    if (
+      ![3, 4].includes(generation.protocol_version) ||
+      !["incomplete", "capacity_blocked"].includes(generation.status)
+    )
+      conflict("Generation cannot be capacity paused")
+    // Same order as capacity admission: generation row, then global capacity
+    // lock. Claims, attempts and reservations hold the generation lock too.
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('recommendation_precomputed_build_capacity'))::text AS held`
+    if (await hasOpenSubscriptionAttempt(tx, input.generationId))
+      conflict("An execution attempt is still open")
+    const liveLeases = await tx.recommendationPrecomputedBuildSource.count({
+      where: {
+        generationId: input.generationId,
+        leaseExpiresAt: { gt: new Date() },
+      },
+    })
+    if (liveLeases) conflict("A source lease is still live")
+    const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow(
+      { where: { id: input.generationId } },
+    )
+    const previous = meta.capacityPreflight as Record<string, unknown> | null
+    if (previous?.status === "paused") {
+      if (!meta.rollbackRetentionHold)
+        conflict("Paused generation preservation hold is missing")
+      return {
+        generationId: meta.id,
+        state: "capacity_blocked",
+        replay: true,
+        capacity: previous,
+      }
+    }
+    const pausedAt = new Date().toISOString()
+    const capacity = {
+      ...previous,
+      status: "paused",
+      // Keep held bytes and lastPassedAt. A pre-pause physical sample must
+      // still charge them; only a strictly newer sample can exclude them.
+      blockedAt: pausedAt,
+      pause: previous?.pause ?? {
+        reason: input.reason,
+        pausedAt,
+        noLiveProducerAttested: input.noLiveProducerAttested,
+        priorCapacity: previous,
+      },
+    }
+    await tx.recommendationPrecomputedGeneration.update({
+      where: { id: meta.id },
+      data: {
+        status: "capacity_blocked",
+        capacityPreflight: checkedJson(capacity, 16_000),
+        rollbackRetentionHold: true,
+      },
+    })
+    return {
+      generationId: meta.id,
+      state: "capacity_blocked",
+      replay: false,
+      capacity,
+    }
+  }
   if (input.action === "capacity") {
     const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow(
       { where: { id: input.generationId } },
@@ -2112,6 +2199,7 @@ async function mutate(
                 "heldProjectionBytes",
                 "blockedAt",
                 "lastPassedAt",
+                "pause",
               ].includes(key),
           ),
         )
@@ -2137,6 +2225,11 @@ async function mutate(
         capacity: meta.capacityPreflight,
       }
     const measuredAt = date(measurement.measuredAt).getTime()
+    if (
+      previous?.status === "paused" &&
+      measuredAt <= Date.parse(String(previous.blockedAt))
+    )
+      conflict("Capacity observation must postdate the pause")
     if (
       measuredAt > Date.now() ||
       Date.now() - measuredAt > CAPACITY_MAX_AGE_MS
@@ -2218,6 +2311,7 @@ async function mutate(
         : "insufficient"
     const capacity = {
       ...measurement,
+      ...(previous?.pause ? { pause: previous.pause } : {}),
       status,
       // Preserve the largest admitted projection across refreshes. A later
       // insufficient attestation cannot erase writes made under an old pass.
@@ -2241,7 +2335,7 @@ async function mutate(
     await tx.recommendationPrecomputedGeneration.update({
       where: { id: meta.id },
       data: {
-        capacityPreflight: capacity,
+        capacityPreflight: checkedJson(capacity, 16_000),
         status: status === "passed" ? "incomplete" : "capacity_blocked",
       },
     })
@@ -3280,6 +3374,25 @@ async function mutateCallsAndFinish(
           sources.some((source) => !source.historicalProvenance)))
     )
       conflict("Generation source coverage is incomplete or failed")
+    if (
+      generation.protocol_version === 4 &&
+      meta.inputMode === "content_only"
+    ) {
+      if (
+        meta.historicalQualification !== null ||
+        sources.some((source) => source.historicalProvenance !== null)
+      )
+        conflict("Content-only generation cannot contain analytics history")
+      if (
+        (await tx.recommendationPrecomputedProfileCall.count({
+          where: { generationId: input.generationId, status: "pending" },
+        })) !== 0 ||
+        (await tx.recommendationPrecomputedEdgeBatchCall.count({
+          where: { generationId: input.generationId, status: "pending" },
+        })) !== 0
+      )
+        conflict("Content-only generation has unresolved physical consumption")
+    }
     const finalized = await tx.recommendationPrecomputedSource.findMany({
       where: { generationId: input.generationId },
       select: { sourceVideoId: true, status: true, acceptedCount: true },

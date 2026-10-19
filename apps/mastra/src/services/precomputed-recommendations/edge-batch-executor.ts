@@ -1006,6 +1006,23 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     (input.historical !== undefined) !== (input.captureRefDigest !== null)
   )
     throw new EdgeBatchExecutionError("input_invalid")
+  const contentOnly = input.promptVersion === "shared-edge-content-only-v1"
+  if (
+    contentOnly &&
+    (input.modelId !== "gpt-6.1-sol" ||
+      input.historical !== undefined ||
+      input.captureRefDigest !== null)
+  )
+    throw new EdgeBatchExecutionError("input_invalid")
+  const system = contentOnly
+    ? EDGE_SYSTEM.replace(
+        "profiles, transcripts, and historical aggregates",
+        "profiles, and transcripts",
+      ).replace(
+        "Historical GA referrer links indicate navigation, not consecutive playback; no exposure is not negative evidence, and unverified bot traffic is not qualified.",
+        "Analytics are intentionally disabled. Judge only the supplied content and exact evidence; do not expect, infer, or invent audience, navigation, playback, or engagement history.",
+      )
+    : EDGE_SYSTEM
   const members = [...input.members].sort((a, b) =>
     a.source.id < b.source.id ? -1 : 1,
   )
@@ -1170,7 +1187,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
       ? (renderedPrompt?.legacyPrompt ?? JSON.stringify(promptDocument))
       : renderedPrompt.prompt
   if (
-    Buffer.byteLength(EDGE_SYSTEM, "utf8") + Buffer.byteLength(prompt, "utf8") >
+    Buffer.byteLength(system, "utf8") + Buffer.byteLength(prompt, "utf8") >
     MAX_PROMPT_BYTES
   ) {
     if (input.recovery) throw new EdgeBatchExecutionError("input_invalid")
@@ -1250,7 +1267,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     input.selectedCorpusDigest,
     input.candidatePoolDigest,
     input.captureRefDigest,
-    EDGE_SYSTEM,
+    system,
     prompt,
   ])
   let reservationAccepted = false
@@ -1305,7 +1322,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     const invocation = await input.model.generateReserved(
       {
         schema: edgeBatchModelOutputSchema,
-        system: EDGE_SYSTEM,
+        system,
         prompt,
         maxOutputTokens: 8_192,
       },
