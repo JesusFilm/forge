@@ -23,6 +23,28 @@ const PLIST_KEY = "NSLocalNetworkUsageDescription"
 const ENGLISH =
   "The app uses your local network to find Cast devices, so you can play videos on your TV."
 
+// Apple's evidence, copied from the ITMS-90176 email for build 16
+// (2026-10-19). A second copy on purpose: it fails if the script's list drops one.
+const APPLE_REJECTED_LPROJ_TAGS = [
+  "bjt",
+  "caa",
+  "hak-Hant",
+  "iu-Latn",
+  "ixl",
+  "knf",
+  "lbe",
+  "mey-Latn",
+  "mfv",
+  "nan-Hant",
+  "quv",
+  "sav",
+  "snf",
+  "tnr",
+  "tsg",
+  "usp",
+  "xin",
+]
+
 const tempDirs = []
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"))
 
@@ -81,6 +103,34 @@ describe("iOS InfoPlist.strings locale files (feat-627)", () => {
     const english =
       readJson(EN_CATALOG).NativePermissions.localNetworkUsageDescription
     expect(readJson(APP_JSON).expo.ios.infoPlist[PLIST_KEY]).toBe(english)
+  })
+
+  it("writes no .lproj source for a tag that App Store Connect rejected", () => {
+    const declared = readJson(
+      path.join(MOBILE_DIR, "i18n", "native-locales.json"),
+    )
+    const { locales } = readJson(APP_JSON).expo
+    for (const tag of APPLE_REJECTED_LPROJ_TAGS) {
+      // Still a native locale, so the skip is what keeps it out.
+      expect(declared).toContain(tag)
+      expect(locales).not.toHaveProperty([tag])
+      expect(
+        fs.existsSync(path.join(MOBILE_DIR, "i18n", "native", `${tag}.json`)),
+      ).toBe(false)
+    }
+  })
+
+  it("skips a rejected tag in a run and keeps the tags around it", () => {
+    const { outDir, appJson, args } = fixture(
+      { es: "La app usa tu red local." },
+      ["bjt", "en", "es", "hak-Hant"],
+    )
+    expect(runGenerator(args).status).toBe(0)
+
+    expect(outFiles(outDir)).toEqual(["es.json"])
+    expect(readJson(appJson).expo.locales).toEqual({
+      es: "./i18n/native/es.json",
+    })
   })
 
   it("writes one iOS-only file per native locale and lists it in app.json", () => {
