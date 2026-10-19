@@ -1,7 +1,7 @@
 ---
 id: "feat-745"
 title: "Diagnose and repair recurring Watch production latency"
-owner: "vlad"
+owner: "tataihono"
 priority: "P0"
 status: "in-progress"
 start_date: "2026-10-19"
@@ -69,3 +69,20 @@ Still open (keep in progress):
   prerequisites are verified.
 - Production acceptance from the report, with thresholds re-baselined on an
   unaffected day.
+
+## Takeover — 2026-10-20 NZDT
+
+Tatai now owns the investigation. See
+`docs/reports/2026-10-20-watch-investigation-takeover.md` for the PR review,
+fresh production evidence and ordered experiments. The archived chat
+**Diagnose Watch performance reports** already applied an authorized second
+replica; PR #2816 preserves it and tracks the separate `feat-747` repair.
+The earlier owner-decision item above is historical and does not mean scaling
+is still unapplied.
+
+Review found and fixed one telemetry crash path: exceptions from scheduler
+metric/log hooks could escape the timer callback. Two regression cases were
+observed red before the guards; the observability suite now passes 45/45.
+Root cause, telemetry rollout and the full recovery acceptance remain open;
+keep this ticket in progress. Current public HIT probes are much faster, but
+short samples and unmatched traffic do not prove sustained recovery.

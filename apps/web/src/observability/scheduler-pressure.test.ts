@@ -273,6 +273,56 @@ describe("startSchedulerPressureSampler", () => {
     expect(emit).toHaveBeenCalledTimes(6)
   })
 
+  it.each(["emit", "log"] as const)(
+    "keeps sampling when the %s hook throws",
+    (failingHook) => {
+      const emit = vi.fn()
+      const log = vi.fn()
+      const failed = failingHook === "emit" ? emit : log
+      failed.mockImplementationOnce(() => {
+        throw new Error("telemetry unavailable")
+      })
+      const nextSchedstat = sequence(
+        "0 0 0",
+        "800000000 190000000 1",
+        "1600000000 380000000 2",
+      )
+      let wallNs = 0
+      const stop = startSchedulerPressureSampler({
+        emit,
+        log,
+        intervalMs: 5_000,
+        now: () => wallNs,
+        pid: PID,
+        readFile: (path) => (path === SCHEDSTAT ? nextSchedstat() : undefined),
+      })
+
+      try {
+        wallNs += 1e9
+        expect(() => vi.advanceTimersByTime(5_000)).not.toThrow()
+        // A failed metric must not suppress the remaining metrics or log.
+        expect(emit).toHaveBeenCalledWith(
+          SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds,
+          1,
+          {},
+        )
+        expect(log).toHaveBeenCalledTimes(1)
+
+        wallNs += 1e9
+        expect(() => vi.advanceTimersByTime(5_000)).not.toThrow()
+        // A later tick must still use the previous sample, without restarting.
+        expect(emit).toHaveBeenCalledTimes(6)
+        expect(emit).toHaveBeenLastCalledWith(
+          SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds,
+          1,
+          {},
+        )
+      } finally {
+        stop?.()
+      }
+    },
+  )
+
   it("reports a late sample as a longer window instead of hiding the stall", () => {
     const emit = vi.fn()
     const nextSchedstat = sequence("0 0 0", "4000000000 0 1")

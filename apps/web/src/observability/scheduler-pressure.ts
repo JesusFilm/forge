@@ -252,7 +252,11 @@ export function startSchedulerPressureSampler(
     previous = next
 
     for (const [metric, value] of Object.entries(gauges)) {
-      options.emit(metric as SchedulerPressureMetric, value, tags)
+      try {
+        options.emit(metric as SchedulerPressureMetric, value, tags)
+      } catch {
+        // A failed telemetry hook must not escape the timer or skip other gauges.
+      }
     }
 
     const onCpu = gauges[SCHEDULER_PRESSURE_METRICS.mainThreadOnCpuRatio]
@@ -266,9 +270,13 @@ export function startSchedulerPressureSampler(
         next.wallNs - lastSaturationLogNs >= SATURATION_LOG_INTERVAL_MS * 1e6)
     ) {
       lastSaturationLogNs = next.wallNs
-      options.log(
-        `[scheduler-pressure] event=main_thread_saturated on_cpu=${formatRatio(onCpu)} runqueue_wait=${formatRatio(wait)} cpu_pressure_full_avg10=${formatRatio(gauges[SCHEDULER_PRESSURE_METRICS.cgroupCpuPressureFullAvg10])} sample_interval_s=${formatRatio(gauges[SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds])}${logIdentity}`,
-      )
+      try {
+        options.log(
+          `[scheduler-pressure] event=main_thread_saturated on_cpu=${formatRatio(onCpu)} runqueue_wait=${formatRatio(wait)} cpu_pressure_full_avg10=${formatRatio(gauges[SCHEDULER_PRESSURE_METRICS.cgroupCpuPressureFullAvg10])} sample_interval_s=${formatRatio(gauges[SCHEDULER_PRESSURE_METRICS.sampleIntervalSeconds])}${logIdentity}`,
+        )
+      } catch {
+        // Keep sampling even when log forwarding fails.
+      }
     }
   }
 
