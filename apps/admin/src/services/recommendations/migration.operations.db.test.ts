@@ -31,6 +31,7 @@ const migrationSql = [
   "0104_recommendation_cowatch_shadow",
   "0158_recommendation_content_action_eligibility_index",
   "0159_recommendation_cowatch_outcome_cascade_indexes",
+  "0160_recommendation_projection_run_reference_index",
 ].map((migration) =>
   readFileSync(
     new URL(
@@ -345,6 +346,82 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             )
           ).rows,
         ).toEqual([{ count: 2501 }])
+      } finally {
+        await client.query("ROLLBACK")
+      }
+    }, 60000)
+
+    it("indexes projection run references and preserves completed runs on generation erasure", async () => {
+      await client.query("BEGIN")
+      try {
+        await client.query(
+          `INSERT INTO recommendation_profile_projection_generation (
+            id, manifest_id, scope, session_digest, generation, state,
+            projection_version, clustering_version, eligibility_policy_version,
+            outcome_classifier_version, input_window_start, input_window_end,
+            input_digest, retention_days, created_at, published_at, expires_at
+          ) SELECT 'projection-index-generation-' || n,
+            'multi-interest-profile-shadow-v1', 'session', repeat('8', 64), n,
+            'published', 'fixture', 'fixture', 'fixture', 'fixture',
+            '2026-08-18', '2026-08-19', repeat(md5(n::text), 2), 1,
+            '2026-08-19', '2026-08-19', '2026-08-20'
+          FROM generate_series(1, 101) n`,
+        )
+        await client.query(
+          `INSERT INTO recommendation_profile_projection_run (
+            id, scope, session_digest, state, projection_id,
+            created_at, completed_at, expires_at
+          ) SELECT 'projection-index-run-' || n, 'session', repeat('8', 64),
+            'completed', 'projection-index-generation-' ||
+              CASE WHEN n > 100000 THEN n - 99999 ELSE 1 END,
+            '2026-08-19', '2026-08-19', '2026-08-20'
+          FROM generate_series(1, 100002) n`,
+        )
+        await client.query("ANALYZE recommendation_profile_projection_run")
+        const plan = await client.query(
+          `EXPLAIN (FORMAT JSON) UPDATE recommendation_profile_projection_run
+           SET projection_id = NULL WHERE projection_id = $1`,
+          ["projection-index-generation-101"],
+        )
+        expect(JSON.stringify(plan.rows)).toContain(
+          '"Index Name":"recommendation_profile_projection_run_projection_idx"',
+        )
+        await client.query("SET LOCAL statement_timeout = '1500ms'")
+        const deleted = await client.query(
+          `DELETE FROM recommendation_profile_projection_generation
+           WHERE id = ANY($1::text[])`,
+          [
+            Array.from(
+              { length: 100 },
+              (_, i) => `projection-index-generation-${i + 2}`,
+            ),
+          ],
+        )
+        expect(deleted.rowCount).toBe(100)
+        expect(
+          (
+            await client.query(
+              `SELECT projection_id, state, count(*)::int AS count
+               FROM recommendation_profile_projection_run
+               GROUP BY projection_id, state ORDER BY projection_id NULLS LAST`,
+            )
+          ).rows,
+        ).toEqual([
+          {
+            projection_id: "projection-index-generation-1",
+            state: "completed",
+            count: 100000,
+          },
+          { projection_id: null, state: "completed", count: 2 },
+        ])
+        expect(
+          (
+            await client.query(
+              `SELECT id FROM recommendation_profile_projection_generation
+               WHERE id LIKE 'projection-index-generation-%'`,
+            )
+          ).rows,
+        ).toEqual([{ id: "projection-index-generation-1" }])
       } finally {
         await client.query("ROLLBACK")
       }

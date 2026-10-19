@@ -75,3 +75,19 @@ a selective index on a subset of its columns, while an index containing the
 desired column after an unrelated leading column may still be expensive.
 Continue verifying natural cleanup and serving recovery after each deployment;
 fixing the first failing phase does not establish end-to-end retention health.
+
+## 2026-10-19: include SET NULL references in the audit
+
+Migration 0159 reduced production outcome lookups below 1 ms and let cleanup
+reach profile generation erasure. That phase then timed out at
+`recommendationProfileProjectionGeneration.deleteMany` (2,192 ms remaining,
+2,219 ms elapsed). `recommendation_profile_projection_run.projection_id` lacked
+an index: proving an empty reference scanned 71,122 runs (35 MB) in about 27 ms.
+The `ON DELETE SET NULL` action repeats that lookup for every parent, just as a
+delete cascade does. The production `EXPLAIN` of its child UPDATE also chose a
+sequential scan; no production UPDATE was executed for diagnosis.
+
+Migration 0160 adds the projection reference index. Its real-migration fixture
+covers 100,000 unrelated completed runs, 100 parent erasures, and two linked
+completed runs that survive with their reference cleared. Inspect all FK actions,
+including `SET NULL`, and all retention phases when auditing a cleanup failure.
