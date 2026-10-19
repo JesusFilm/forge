@@ -5089,6 +5089,7 @@ model RecommendationProfileProjectionRun {
   expiresAt                 DateTime                                   @map("expires_at")
 
   @@index([state, leaseExpiresAt, attemptCount], map: "recommendation_profile_projection_run_lease_idx")
+  @@index([projectionId], map: "recommendation_profile_projection_run_projection_idx")
   @@index([profileId, privacyGeneration, state], map: "recommendation_profile_projection_run_profile_idx")
   @@index([sessionDigest, state], map: "recommendation_profile_projection_run_session_idx")
   @@index([expiresAt], map: "recommendation_profile_projection_run_expiry_idx")
