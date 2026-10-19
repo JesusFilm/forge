@@ -1,6 +1,7 @@
 import tracer from "dd-trace"
 
 import { configureDatadogLogForwarding } from "./datadog-logs"
+import { startSchedulerPressureMetrics } from "./scheduler-pressure"
 
 let configured = false
 
@@ -24,4 +25,7 @@ export function configureDatadog(): void {
 
   tracer.use("graphql", DATADOG_GRAPHQL_CONFIG)
   configureDatadogLogForwarding()
+  startSchedulerPressureMetrics((metric, value) =>
+    tracer.dogstatsd.gauge(metric, value),
+  )
 }
