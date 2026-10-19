@@ -1,5 +1,5 @@
 ---
-id: "feat-734"
+id: "feat-740"
 title: "Reconcile five recommendation content-profile mismatches"
 owner: "tataihono"
 priority: "P1"
@@ -24,7 +24,7 @@ language needs reconciliation. Their six recommendations remain flagged drafts.
 1. `docs/plans/2026-10-19-editorial-related-video-selection.md`
 2. `docs/recommendations/editorial-2026-10-19/recommendations.json`
    (committed choices); `output/editorial-recommendations/catalogue.json`
-   (local ignored evidence export from feat-733).
+   (local ignored evidence export from feat-739).
 3. `apps/admin/AGENTS.md` and `apps/admin/CLAUDE.md` before implementation.
 
 ## Grep These

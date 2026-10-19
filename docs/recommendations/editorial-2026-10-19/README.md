@@ -4,6 +4,12 @@ Review draft dated 19 October 2026: **1,031 source videos, six ordered choices
 each, 6,186 links**. This PR stores content decisions for review; merging it does
 not import them into Admin or change production recommendation behavior.
 
+An explicit operator import is documented in the
+[import runbook](../../operations/editorial-recommendation-import.md). It uses
+the existing saved-generation contract and records rejected/unresolved choices
+as gaps; the original editorial list here remains the full review artifact.
+Importing a separate generation does not activate an A/B experiment.
+
 - [CSV list](recommendations.csv): one row per source/target connection.
 - [JSON list](recommendations.json): ordered choices with canonical IDs, titles,
   reasons, decision method, and evidence flags. This is the authoritative copy.
@@ -24,7 +30,7 @@ not measured evidence of viewer preference or usefulness.
 172 sources had no profile despite its ready state, and 57 had uninformative
 transcript profiles; catalogue descriptions supplied the evidence in those cases.
 Five sources carry `title-profile-mismatch-or-transcript-language-issue` and need
-verification under [feat-734](../../roadmap/content-discovery/feat-734-reconcile-recommendation-profile-mismatches.md).
+verification under [feat-740](../../roadmap/content-discovery/feat-740-reconcile-recommendation-profile-mismatches.md).
 Their selections are provisional. Shared selections and metadata-only evidence
 are explicitly labeled in JSON and CSV.
 
@@ -55,3 +61,16 @@ distinct canonical and core targets per source, no self-links, contiguous ranks,
 target membership/title/core fidelity, playback snapshot eligibility, CSV/JSON
 agreement, embedded review-page agreement, and reported counts. It does not
 judge editorial quality or query production.
+
+## Completed operator import
+
+The deployed Admin endpoint completed generation `editorial-catalog-20261019-v1`
+on 19 October 2026. [Preflight exclusions](import-preflight.json) and the
+[completion/readback receipt](import-receipt.json) preserve exactly what was
+admitted: 1,017 sources with six choices, nine with five after duplicate-content
+rejection, and five empty sources pending evidence reconciliation. Total: 1,031
+source rows and 6,147 links. Original JSON/CSV/HTML retain all 6,186 draft links.
+
+[Compare JESUS in Admin](https://admin.jesusfilm.org/dashboard/recommendations/precomputed?generation=editorial-catalog-20261019-v1&source=cmp76xcw602imny01vnsbwwy9&audio=english).
+The completed generation is selectable by existing private A/B tools. No
+experiment was activated and public controls are unchanged.

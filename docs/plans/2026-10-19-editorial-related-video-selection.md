@@ -1,6 +1,6 @@
 # Editorial related-video selection
 
-Scope: feat-733, local catalogue curation only. The user wants this assistant
+Scope: feat-739, local catalogue curation only. The user wants this assistant
 to work through the library and make six editorial choices per video.
 
 Use Railway CLI credentials to export the 1,031 ready profiles from Admin's
@@ -28,7 +28,7 @@ The remaining 769 sources share authored decisions for closely related content.
 Treat a ready profile state separately from evidence quality: 172 ready rows had
 null profiles, and 57 profiles contained uninformative transcript descriptions.
 Catalogue metadata supplied the evidence for those cases. Five title/profile or
-transcript-language discrepancies require reconciliation under `feat-734`.
+transcript-language discrepancies require reconciliation under `feat-740`.
 Full videos were not viewed; no playback-language-specific review was performed.
 
 Validation checks cover source membership, canonical and core target uniqueness,
@@ -44,5 +44,5 @@ The tracked review artifact is `docs/recommendations/editorial-2026-10-19/`.
 It contains JSON, CSV, a self-contained review page, playback snapshot, the
 historical validation report, and an offline validator. The full raw profile
 export and local curation tooling remain outside Git. Roadmap IDs were reassigned
-to feat-733 and feat-734 against current main to avoid collisions. This is a
+to feat-739 and feat-740 against current main to avoid collisions. This is a
 data-only PR and does not wire the choices into production.

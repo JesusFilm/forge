@@ -1,5 +1,5 @@
 ---
-id: "feat-733"
+id: "feat-739"
 title: "Choose six editorial recommendations per catalogue video"
 owner: "tataihono"
 priority: "P1"
@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-10-19"
 duration: 2
 depends_on: []
-blocks: []
+blocks:
+  - "feat-741"
 tags:
   - "recommendations"
   - "editorial"
@@ -67,7 +68,7 @@ and core target IDs per source, no self-links, correct titles, and at least one
 published playable dub per target in the availability snapshot. Serving-time
 language and visibility checks remain necessary. No production writes or new
 model API calls were made. Five evidence mismatches are flagged in the artifact;
-follow-up: `feat-734`.
+follow-up: `feat-740`.
 
 The PR also includes the playback snapshot, review page, README, and an offline
 validator. Validation command:
