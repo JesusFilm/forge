@@ -85,6 +85,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 
 ## Workflow
 
+- Recommendation cleanup runs concurrently with serving. Keep retention health
+  reporting separate from delivery admission and preserve per-record privacy
+  and expiry checks; see `docs/analytics-and-recommendation-policy.md`.
+
 - Requirements: `docs/brainstorms/2026-04-13-admin-app-graphql-postgres-requirements.md`
 - Plan: `docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md`
 - Follow compound engineering: `ce:plan` -> `ce:work` -> `ce:review` -> `ce:compound`.

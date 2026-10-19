@@ -15,6 +15,29 @@ tags: [recommendations, retention, postgres, prisma, query-plan]
 
 # Count retention children from indexed request parents
 
+## Serving must remain independent of cleanup
+
+On October 19, the owner removed global retention health as a prerequisite for
+recommendation delivery. Slow cleanup had caused `delivery.factory.ts` to read
+`readRecommendationRetentionHealth` on every request; `manifest.service.ts`
+then rejected issuance with `retention_overdue` before retrieval. The public
+`watch-below-player-v1` component hid the resulting unavailable row. Improving
+cleanup throughput alone left that availability dependency in place.
+
+Delivery now reads its manifest/control without consulting cleanup health.
+Cleanup and operator health reporting continue independently. Keep per-record
+expiry, erasure, privacy-generation and video eligibility enforcement; global
+health is not a substitute for those read-time checks. The authoritative owner
+decision is in `docs/analytics-and-recommendation-policy.md`.
+
+`delivery.factory.test.ts` exercises the real factory serving-state path and
+delivery service with overdue data, a missing success watermark, and a failed
+health probe. Each case returned no cards before the fix and now issues a
+Watch card without reading global cleanup health. Retention and operational
+health tests still verify that cleanup failures are reported truthfully.
+
+## Indexed request-parent cleanup
+
 Prisma emitted a `LEFT JOIN` from eligibility decisions to outcomes and content
 actions, with an `OR` across the two parents' `request_id` filters. On an owned
 fixture, the emitted SQL shape was captured with dummy IDs. A bounded read-only
