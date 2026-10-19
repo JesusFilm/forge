@@ -324,10 +324,13 @@
   .tile:hover .pic {
     transform: scale(1.05);
   }
+  /* The name sits right of the thumbnail; when the cell is too narrow for it,
+     it wraps under the thumbnail instead of squashing into a letter column. */
   .long {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
+    gap: 4px 8px;
     min-width: 0;
   }
   .long .pic {
@@ -339,8 +342,9 @@
     font-size: 11px;
     line-height: 1.25;
     color: var(--soft);
+    flex: 1 1 56px;
     min-width: 0;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
   }
   .short {
     display: grid;
