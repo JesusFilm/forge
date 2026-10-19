@@ -39,6 +39,19 @@ retrieval source, fixture assertion or scan setting was changed for Studio.
 Railway skipped Manager's deployment after the failed main check, requiring a
 fresh normal PR/main delivery after the relevant checks pass.
 
+October 19 recurrence after Watch Film Finder #2779, main
+`7dae8b626f1c8b20f933193eba0b9a8e122848ad`:
+[run 39277314035, job 118145539145](https://github.com/JesusFilm/forge/actions/runs/39277314035/job/118145539145)
+failed the same six-card assertion with ANN zero and 12 exact eligible videos.
+The diagnostic rerun again reported eight HNSW loops, zero rows and 951 filter
+removals per loop; the expanded scan also returned zero. Retrieval source was
+unchanged. The new Film Finder CI steps passed against a separate database.
+One failed-job retry was requested; its result cannot close this ticket.
+Admin and its worker deployed, while Railway skipped Web and retained the
+previous healthy build. Recovery follows the normal PR-to-main flow, with
+deployment SHA verification before the next audience-stack merge. No retrieval
+assertion, scan setting, production flag or data was changed.
+
 ## Entry Points — Read These First
 
 1. `apps/admin/src/services/recommendations/delivery-retriever.db.test.ts` — `fills a six-card slate through HNSW despite nearer incompatible vectors`, `installIndexedContractSkew`, and its failure diagnostic.
