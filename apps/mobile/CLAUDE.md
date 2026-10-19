@@ -3073,6 +3073,16 @@ runs the pre-install hook before `pnpm install`.
   - Every tag in `i18n/native-locales.json` except `en` gets a file. A tag
     with no translation (pending, English-only, or no catalog) gets the
     English text, so iOS shows English.
+  - **Superseded in part 2026-10-19:** a tag in `IOS_REJECTED_LPROJ_TAGS` in
+    the script gets no file and no `expo.locales` entry. App Store Connect
+    refused 17 `.lproj` folder names in build 16 (ITMS-90176, "Unrecognized
+    Locale"). The upload succeeded, but Apple asks for a fix. iOS shows those
+    languages the `Info.plist` English. No local locale data predicts Apple's
+    list: macOS knows `hak` and `iu`, which Apple refused, and does not know
+    `bsc` or `cak`, which Apple accepted. So when a delivery email names a new
+    tag, add it to the script's list and to the test's copy of Apple's list,
+    then run the script. The tag stays in `native-locales.json` and in
+    `CFBundleLocalizations`, which Apple did not refuse.
   - So `expo.locales` changes only when `native-locales.json` changes, at a
     native build. A later translation changes only its own file. The
     fingerprint does not hash that file (checked with
