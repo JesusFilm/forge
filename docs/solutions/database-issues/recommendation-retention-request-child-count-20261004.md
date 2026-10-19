@@ -91,3 +91,27 @@ Migration 0160 adds the projection reference index. Its real-migration fixture
 covers 100,000 unrelated completed runs, 100 parent erasures, and two linked
 completed runs that survive with their reference cleared. Inspect all FK actions,
 including `SET NULL`, and all retention phases when auditing a cleanup failure.
+
+## 2026-10-19: successful cleanup can still be too slow to restore serving
+
+After those indexes deployed, more than 200 natural cleanup runs succeeded with
+no new failures. The public `watch-below-player-v1` row still received
+`retention_overdue`: approximately 9,700 overdue standalone episodes remained,
+and the pre-request phase admitted only five per run. Successful batches do not
+establish serving recovery when the health gate also requires an empty overdue
+backlog.
+
+Measure throughput against the loaded native fixture before increasing a cap.
+The current indexes allowed 25 episodes plus 12 request roots and 100 profile
+runs in 2,551 ms, compared with five episodes in 1,199 ms. Retain the five-second
+deadline and the original five-admission floor; admit up to 25 only while more
+than three seconds remain for requests and the tail. A slower fixture admitted
+23 and still completed those later phases in 2,543 ms. Tests should accept the
+bounded variable page while requiring exact committed counts and eventual
+clearance. If time stops a partial selection, explicitly request continuation;
+checking only whether the selection filled its page can leave younger expired
+records waiting for the next daily run.
+
+Confirm recovery through the public frontend's recommendation request and
+visible cards after normal deployment. Do not bypass the health gate to hide
+the remaining backlog.
