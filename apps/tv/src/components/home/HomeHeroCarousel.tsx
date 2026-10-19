@@ -15,7 +15,7 @@ import {
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
   },
   ctaLabel: {
     fontFamily: "System",
-    fontSize: Math.round(scale(25)),
+    fontSize: readableFontSize(25),
     fontWeight: "700",
     color: WATCH_THEME.accentText,
   },

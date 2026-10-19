@@ -59,16 +59,7 @@ function unavailable(
 
 export async function deliverPrecomputedWatchPreview(
   prisma: PrismaClient,
-  input: {
-    seedMediaId: string
-    locale: string
-    audioLanguageSlug: string
-    sessionDigest: string
-    caller: Principal | null
-    /** Only the private experiment may select a fixed saved generation. */
-    generationId?: string
-    deadlineAt?: number
-  },
+  input: Parameters<typeof deliverPrecomputedWatch>[1],
   tokenService: DeliveryTokenService | null,
 ): Promise<PreviewDelivery> {
   assertWebRecommendationCaller(input.caller)
@@ -78,6 +69,36 @@ export async function deliverPrecomputedWatchPreview(
       : env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED !== "1"
   )
     throw new RecommendationAuthenticationError()
+  return deliverPrecomputedWatch(prisma, input, tokenService)
+}
+
+/** Called only after the public serving pointer selects this generation.
+ * Preview and private experiment entry points retain their own feature gates. */
+export async function deliverSelectedPrecomputedWatchGeneration(
+  prisma: PrismaClient,
+  input: Parameters<typeof deliverPrecomputedWatch>[1] & {
+    generationId: string
+  },
+  tokenService: DeliveryTokenService | null,
+): Promise<PreviewDelivery> {
+  return deliverPrecomputedWatch(prisma, input, tokenService)
+}
+
+async function deliverPrecomputedWatch(
+  prisma: PrismaClient,
+  input: {
+    seedMediaId: string
+    locale: string
+    audioLanguageSlug: string
+    sessionDigest: string
+    caller: Principal | null
+    /** The admitting experiment selects a fixed saved generation. */
+    generationId?: string
+    deadlineAt?: number
+  },
+  tokenService: DeliveryTokenService | null,
+): Promise<PreviewDelivery> {
+  assertWebRecommendationCaller(input.caller)
   if (!tokenService) return unavailable("signing_unavailable")
   const deadlineAt = Math.min(Date.now() + 1_500, input.deadlineAt ?? Infinity)
   let read: Awaited<ReturnType<typeof readPrecomputedWatchChoices>>

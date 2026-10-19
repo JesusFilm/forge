@@ -31,8 +31,16 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve tested PR baseline
+        id: pr-baseline
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/resolve-pr-baseline.mjs >> "$GITHUB_OUTPUT"
       - name: Validate commit messages
-        run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+        env:
+          COMMIT_BASE: ${{ steps.pr-baseline.outputs.commit_base }}
+          PR_HEAD: ${{ steps.pr-baseline.outputs.head }}
+        run: pnpm exec commitlint --from "$COMMIT_BASE" --to "$PR_HEAD"
 
   affected:
     runs-on: ubuntu-latest
@@ -172,7 +180,20 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
-        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
+        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts src/services/watch-seo-manifest.db.test.ts
+      - name: Create isolated Watch audience database
+        env:
+          PGPASSWORD: postgres
+        run: psql --host localhost --username postgres --dbname postgres --command 'CREATE DATABASE forge_watch_audience_test;'
+      - name: Apply migrations to isolated Watch audience database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise film finder SQL against isolated PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+          WATCH_FILM_FINDER_DB_TEST: "1"
+        run: pnpm --filter @forge/admin test -- src/services/watch-film-finder.service.db.test.ts --no-file-parallelism
       - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -303,6 +324,9 @@ jobs:
         run: |
           pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed src/app/api/internal/mastra/precomputed-recommendations/route.test.ts --no-file-parallelism --maxWorkers=1
           pnpm --filter @forge/admin test:precomputed-integration
+          env -u RECOMMENDATION_PRECOMPUTED_TEST_ENABLED -u RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED \
+            pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed/public-control.db.test.ts \
+            -t 'ordinary editorial|observed public result'
 
   web-redis-integration:
     runs-on: ubuntu-latest
@@ -500,10 +524,15 @@ jobs:
         with:
           fetch-depth: 0
       - name: Test roadmap ID check
-        run: node --test scripts/check-new-roadmap-ids.test.mjs
+        run: node --test scripts/check-new-roadmap-ids.test.mjs scripts/resolve-pr-baseline.test.mjs
+      - name: Resolve tested PR baseline
+        id: pr-baseline
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/resolve-pr-baseline.mjs >> "$GITHUB_OUTPUT"
       - name: Check newly introduced roadmap IDs
         env:
-          ROADMAP_ID_BASE: ${{ github.event.pull_request.base.sha }}
+          ROADMAP_ID_BASE: ${{ steps.pr-baseline.outputs.target }}
         run: node scripts/check-new-roadmap-ids.mjs
 
   dev-port-contract:

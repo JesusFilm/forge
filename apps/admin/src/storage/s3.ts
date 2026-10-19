@@ -10,6 +10,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
+import { addAbortSignal, Readable } from "node:stream"
 import { env } from "@/config/env"
 
 const useS3 = Boolean(env.RAILWAY_S3_BUCKET)
@@ -347,14 +348,16 @@ export async function writeObject(
   key: string,
   body: Buffer | Uint8Array | string,
   contentType?: string,
+  signal?: AbortSignal,
 ): Promise<string> {
+  signal?.throwIfAborted()
   validateObjectKey(key)
   assertStorageConfiguredForProduction()
 
   if (!useS3) {
     const filePath = join(LOCAL_OBJECT_DIR, key)
     await mkdir(dirname(filePath), { recursive: true })
-    await writeFile(filePath, body)
+    await writeFile(filePath, body, { signal })
     return key
   }
 
@@ -368,6 +371,7 @@ export async function writeObject(
       Body: body,
       ContentType: contentType,
     }),
+    { abortSignal: signal },
   )
 
   console.log(
@@ -381,12 +385,16 @@ export async function writeObject(
   return key
 }
 
-export async function readObject(key: string): Promise<Uint8Array> {
+export async function readObject(
+  key: string,
+  signal?: AbortSignal,
+): Promise<Uint8Array> {
+  signal?.throwIfAborted()
   validateObjectKey(key)
   assertStorageConfiguredForProduction()
 
   if (!useS3) {
-    return readFile(join(LOCAL_OBJECT_DIR, key))
+    return readFile(join(LOCAL_OBJECT_DIR, key), { signal })
   }
 
   const { GetObjectCommand } = await import("@aws-sdk/client-s3")
@@ -397,10 +405,17 @@ export async function readObject(key: string): Promise<Uint8Array> {
       Bucket: env.RAILWAY_S3_BUCKET,
       Key: key,
     }),
+    { abortSignal: signal },
   )
 
   if (!response.Body) throw new Error(`Empty body for ${key}`)
-  return new Uint8Array(await response.Body.transformToByteArray())
+  // Smithy resolves at headers and clears request timeouts; own cancellation for
+  // the Node response stream until its body is consumed or destroyed.
+  if (signal && response.Body instanceof Readable)
+    addAbortSignal(signal, response.Body)
+  const bytes = await response.Body.transformToByteArray()
+  signal?.throwIfAborted()
+  return new Uint8Array(bytes)
 }
 
 /**

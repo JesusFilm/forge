@@ -13,7 +13,7 @@ vi.mock("@/lib/watch-font", () => ({
 import RootLayout from "./layout"
 import DatadogRum from "@/components/DatadogRum"
 import GoogleAnalytics from "@/components/GoogleAnalytics"
-import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
+import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
 
@@ -87,6 +87,21 @@ describe("Watch root layout <html lang>/<dir> (FGE-170 / W-082)", () => {
     })
   })
 
+  it("preserves generated BCP-47 values in the internal htmlLang segment", async () => {
+    await expect(htmlAttributes("en", "awa")).resolves.toEqual({
+      lang: "awa",
+      dir: "ltr",
+    })
+    await expect(htmlAttributes("en", "ble-x-Naga")).resolves.toEqual({
+      lang: "ble-x-naga",
+      dir: "ltr",
+    })
+    await expect(htmlAttributes("mey-Latn", "mey-Latn")).resolves.toEqual({
+      lang: "mey-Latn",
+      dir: "ltr",
+    })
+  })
+
   // The layout's own guard drops htmlLang whenever it does not belong to the
   // rendered UI locale's family. That guard is separate from the resolver's,
   // and it must survive the resolver change.
@@ -109,21 +124,20 @@ describe("Watch root layout", () => {
     expect(findElement(layout, DatadogRum)).not.toBeNull()
   })
 
-  it("leaves the runtime beta tester CTA flag out of the static layout", async () => {
+  it("preserves recommendation and search providers without beta signup", async () => {
     const layout = await RootLayout({
       children: <main>Watch page</main>,
       params: Promise.resolve({ locale: "en", htmlLang: "english" }),
     })
 
-    expect(findElement(layout, BetaTesterModalProvider)).toBeNull()
     expect(findElement(layout, RecommendationConsentShell)).not.toBeNull()
 
     const routeShell = WatchChromeShell({
       children: <main>Watch page</main>,
       locale: "en",
     })
-    const provider = findElement(routeShell, BetaTesterModalProvider)
+    const provider = findElement(routeShell, FloatingSearchProvider)
     expect(provider).not.toBeNull()
-    expect(provider?.props).not.toHaveProperty("showGlobalTrigger")
+    expect(findElement(provider, "main")).not.toBeNull()
   })
 })

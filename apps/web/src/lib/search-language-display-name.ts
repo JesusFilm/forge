@@ -8,7 +8,10 @@ function primaryLanguage(locale: string): string | null {
   }
 }
 
-export type SearchLanguageNameUsage = "standalone" | "search-prepositional"
+export type SearchLanguageNameUsage =
+  | "standalone"
+  | "search-prepositional"
+  | "catalog-identity"
 
 function russianPrepositionalWord(word: string): string {
   if (/(?:ий|ый|ой)$/u.test(word)) return `${word.slice(0, -2)}ом`
@@ -52,6 +55,36 @@ export function localizedSearchLanguageName(
   fallback: string,
   usage: SearchLanguageNameUsage = "standalone",
 ): string {
+  // Recovery copy names an exact catalog selection. ICU collapses some
+  // three-letter catalog tags into their two-letter alias (fra -> fr), which
+  // drops the provider's qualifier ("French, African"). Keep the provider name
+  // ONLY when ICU really aliased the tag AND the provider name is ICU's name
+  // plus extra words. Un-aliased tags (de, es-ES, pt, zh) and pure synonyms
+  // (Adygey/Adyghe) keep localizing; other usages are unchanged.
+  if (usage === "catalog-identity" && option?.englishName && option.bcp47) {
+    try {
+      const canonicalTag = Intl.getCanonicalLocales(option.bcp47)[0]
+      if (canonicalTag?.toLowerCase() !== option.bcp47.toLowerCase()) {
+        const canonicalEnglish = new Intl.DisplayNames(["en"], {
+          type: "language",
+        }).of(option.bcp47)
+        const words = (value: string) =>
+          value.toLocaleLowerCase("en").match(/\p{L}+/gu) ?? []
+        const providerWords = new Set(words(option.englishName))
+        const canonicalWords = words(canonicalEnglish ?? "")
+        if (
+          canonicalWords.length > 0 &&
+          canonicalWords.every((word) => providerWords.has(word)) &&
+          providerWords.size > new Set(canonicalWords).size
+        ) {
+          return option.englishName
+        }
+      }
+    } catch {
+      // Unknown tag: fall through to the normal localization path.
+    }
+  }
+
   if (option?.bcp47) {
     try {
       const displayNames = new Intl.DisplayNames([uiLocale], {

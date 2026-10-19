@@ -23,6 +23,7 @@ export async function getTranslations(options: {
 }
 
 // LaunchDarkly and Admin-backed manifest: inert.
+export const isWatchAudienceEnabled = async () => false
 export const isWatchCtaTextCopyEnabled = async () => false
 export const isWatchHideBibleQuotesEnabled = async () => false
 export const isWatchQuestionPanelEnabled = async () => false

@@ -574,7 +574,12 @@ export function SiblingCarousel({
                   data-testid="sibling-carousel-bevel"
                   className="pointer-events-none absolute inset-0 z-40 rounded-lg border border-white opacity-40 mix-blend-soft-light"
                 />
-                <WatchProgressBar videoId={child.documentId} />
+                {/* Chapter tiles use a slimmer, glow-free resume line than
+                    the shared default. */}
+                <WatchProgressBar
+                  videoId={child.documentId}
+                  className="h-0.5 bg-white/35 shadow-none [&>div]:shadow-none"
+                />
 
                 {href ? (
                   <VideoThumbnailInteractionFrame

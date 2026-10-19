@@ -29,7 +29,6 @@ import {
 } from "./delivery-owner.service"
 import { getRecommendationServingState } from "./manifest.service"
 import { getRecommendationRecentContext } from "./recent-context.service"
-import { readRecommendationRetentionHealth } from "./retention.service"
 import { createRuntimeRecommendationTokenService } from "./runtime-token"
 
 export function createRecommendationDeliveryService(
@@ -88,18 +87,13 @@ export function createRecommendationDeliveryDependencies(
       runRecommendationDeliveryTransaction(
         prisma,
         deadlineAt,
-        async (tx) => {
-          const scopedPrisma = tx as unknown as PrismaClient
-          const retention =
-            await readRecommendationRetentionHealth(scopedPrisma)
-          return getRecommendationServingState({
-            prisma: scopedPrisma,
+        (tx) =>
+          getRecommendationServingState({
+            prisma: tx as unknown as PrismaClient,
             environmentEnabled:
               env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED === "true",
             hasActiveSigner: token != null,
-            retentionHealthy: retention.healthy,
-          })
-        },
+          }),
         Date.now,
       ),
     ),

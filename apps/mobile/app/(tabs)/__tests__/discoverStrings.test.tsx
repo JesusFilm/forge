@@ -1,5 +1,6 @@
 /** Discover in the UI language: the search language of each generation (U7,
  *  R9, KTD16) and the catalog text, with one tap name per control (U10).
+ *  On Liquid Glass, the native search field (feat-705 U13, KTD9).
  *  React re-points: "Component render tests". */
 
 jest.mock("react", () => {
@@ -29,8 +30,19 @@ const mockTopics: { onSelect: ((term: string) => void) | null } = {
 const mockGetLocales = jest.fn()
 // Stable identities, as in the app: a new callback each render would re-render
 // every memoized cell and hide a cell that misses the language change.
-const mockRouter = { push: () => {} }
+// The native field and the router write here, so a case can read their order.
+const mockOrder: string[] = []
+const mockRouter = { push: (href: string) => mockOrder.push(`push:${href}`) }
 const mockSelection = { selectExperience: () => {} }
+// KTD1. Off by default, so the other cases render today's field.
+const mockGlass = { current: false }
+const mockSearchBar: { props: Record<string, unknown> | null } = {
+  props: null,
+}
+const mockSearchBarCommands = {
+  setText: jest.fn(),
+  blur: jest.fn(() => mockOrder.push("blur")),
+}
 
 jest.mock("expo-localization", () => ({
   getLocales: () => mockGetLocales(),
@@ -77,6 +89,17 @@ jest.mock("../../../src/i18n/pluralData.generated", () => {
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
   useIsFocused: () => true,
+  Stack: {
+    // The real one hands its props to the native header and renders nothing.
+    SearchBar: (props: { ref?: { current: unknown } }) => {
+      mockSearchBar.props = props
+      if (props.ref) props.ref.current = mockSearchBarCommands
+      return null
+    },
+  },
+}))
+jest.mock("../../../src/lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGlass.current,
 }))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -118,7 +141,11 @@ jest.mock("../../../src/components/search/SearchResultSkeleton", () => ({
 jest.mock("../../../src/components/search/BrowseTopics", () => ({
   BrowseTopics: ({ onSelect }: { onSelect: (term: string) => void }) => {
     mockTopics.onSelect = onSelect
-    return null
+    const { createElement: h } =
+      jest.requireActual<typeof import("react")>("react")
+    const { Text: RNText } =
+      jest.requireActual<typeof import("react-native")>("react-native")
+    return h(RNText, null, "browse-topics")
   },
 }))
 jest.mock("../../../src/components/search/useSearchPreviewCycle", () => ({
@@ -129,12 +156,13 @@ import { StrictMode, act, createElement } from "react"
 import type React from "react"
 import { Animated, TextInput } from "react-native"
 
-import DiscoverScreen from "../watch"
+import DiscoverScreen from "../watch/index"
 import {
   refreshLocale,
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../../../src/i18n/localeStore"
+import { reportDatadogAction } from "../../../src/lib/datadog"
 import { recordResultsViewed } from "../../../src/lib/watchSearchEvents"
 import {
   phoneLocales,
@@ -289,6 +317,12 @@ beforeEach(() => {
   jest.useFakeTimers()
   mockCalls.length = 0
   mockTopics.onSelect = null
+  mockOrder.length = 0
+  mockGlass.current = false
+  mockSearchBar.props = null
+  mockSearchBarCommands.setText.mockClear()
+  mockSearchBarCommands.blur.mockClear()
+  jest.mocked(reportDatadogAction).mockClear()
   startIn("en-US")
   // The results animate on the native driver, which jest does not run.
   jest.spyOn(Animated, "parallel").mockImplementation(
@@ -479,5 +513,147 @@ describe("Discover text (U10)", () => {
     ]
     expect(russian).toEqual(english)
     expect(english).toEqual(["discover-search-clear", "discover-load-more"])
+  })
+})
+
+describe("Discover native search (feat-705 U13)", () => {
+  function searchBar(): Record<string, unknown> {
+    expect(mockSearchBar.props).not.toBeNull()
+    return mockSearchBar.props!
+  }
+
+  /** The event the native field sends: the text sits on nativeEvent. */
+  function nativeType(text: string): void {
+    const onChangeText = searchBar().onChangeText as (event: {
+      nativeEvent: { text: string }
+    }) => void
+    act(() => onChangeText({ nativeEvent: { text } }))
+  }
+
+  // A count, never the nodes: a failing diff of fibers can exhaust memory.
+  function textInputCount(renderer: TestInstance): number {
+    return renderer.root.findAll((node) => node.type === TextInput).length
+  }
+
+  function pressFirstResult(renderer: TestInstance): void {
+    const card = renderer.root.findAll(
+      (node) =>
+        node.props["dd-action-name"] === "search-result" &&
+        typeof node.props.onPress === "function",
+    )[0]
+    expect(card).toBeDefined()
+    act(() => card!.props.onPress!())
+  }
+
+  it("shows the native field on Liquid Glass, with the catalog placeholder, and no field of its own", async () => {
+    mockGlass.current = true
+    const screen = render()
+    expect(textInputCount(screen)).toBe(0)
+    expect(searchBar()).toMatchObject({
+      placement: "automatic",
+      placeholder: "Search for videos about any topic...",
+      autoCapitalize: "none",
+    })
+    // KTD9: `stacked` or `false` gives an empty capsule.
+    expect(searchBar().allowToolbarIntegration).toBeUndefined()
+
+    await changePhoneLanguage("ru-RU")
+    expect(searchBar().placeholder).toBe("Поиск видео на любую тему...")
+  })
+
+  // Stack.SearchBar re-registers the header whenever a prop changes identity.
+  it("keeps the native field's handlers across renders", async () => {
+    mockGlass.current = true
+    const screen = render()
+    const before = searchBar()
+    nativeType("jesus")
+    await settle(300)
+    await answer(mockCalls[0]!, page(videos("english", "a")))
+    expect(titles(screen)).toEqual(["english a"])
+    expect(searchBar()).not.toBe(before)
+    expect(searchBar().onChangeText).toBe(before.onChangeText)
+    expect(searchBar().onCancelButtonPress).toBe(before.onCancelButtonPress)
+  })
+
+  it("keeps today's field, and mounts no native field, without Liquid Glass", () => {
+    const screen = render()
+    expect(textInputCount(screen)).toBe(1)
+    expect(mockSearchBar.props).toBeNull()
+  })
+
+  it("runs the debounced search with the text of a change event", async () => {
+    mockGlass.current = true
+    render()
+    nativeType("jesus")
+    await settle(299)
+    expect(mockCalls).toHaveLength(0)
+    await settle(1)
+    expect(mockCalls).toHaveLength(1)
+    expect(mockCalls[0]!.input).toMatchObject({ query: "jesus", offset: 0 })
+  })
+
+  it("clears at once on Cancel, shows the categories, and reports one clear action", async () => {
+    mockGlass.current = true
+    const screen = render()
+    nativeType("jesus")
+    await settle(300)
+    await answer(mockCalls[0]!, page(videos("english", "a")))
+    expect(titles(screen)).toEqual(["english a"])
+    expect(hasText(screen, "browse-topics")).toBe(false)
+
+    // The native order: the cancel event, then a change event with "".
+    const onCancel = searchBar().onCancelButtonPress as () => void
+    act(() => onCancel())
+    nativeType("")
+    await settle()
+
+    expect(titles(screen)).toEqual([])
+    expect(hasText(screen, "browse-topics")).toBe(true)
+    expect(reportDatadogAction).toHaveBeenCalledTimes(1)
+    expect(reportDatadogAction).toHaveBeenCalledWith("discover-search-clear")
+
+    // The trailing change event's debounce sends nothing and reports nothing.
+    await settle(300)
+    expect(mockCalls).toHaveLength(1)
+    expect(reportDatadogAction).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports nothing from today's clear button, which the tap name covers", async () => {
+    const screen = render()
+    await type(screen, "jesus")
+    await answer(mockCalls[0]!, page(videos("english", "a")))
+    const clear = pressableByLabel(screen, "Clear search")
+    act(() => clear!.props.onPress!())
+    await settle()
+    expect(hasText(screen, "browse-topics")).toBe(true)
+    expect(reportDatadogAction).not.toHaveBeenCalled()
+  })
+
+  it("puts a topic in the native field and searches once", async () => {
+    mockGlass.current = true
+    render()
+    await act(async () => {
+      mockTopics.onSelect?.("family")
+    })
+    await settle()
+    expect(mockSearchBarCommands.setText).toHaveBeenCalledTimes(1)
+    expect(mockSearchBarCommands.setText).toHaveBeenCalledWith("family")
+    expect(mockCalls).toHaveLength(1)
+    expect(mockCalls[0]!.input).toMatchObject({ query: "family" })
+    await settle(300)
+    expect(mockCalls).toHaveLength(1)
+  })
+
+  it("blurs the native field before it opens a result", async () => {
+    mockGlass.current = true
+    const screen = render()
+    nativeType("jesus")
+    await settle(300)
+    await answer(mockCalls[0]!, page(videos("english", "a")))
+    pressFirstResult(screen)
+    expect(mockOrder).toEqual([
+      "blur",
+      expect.stringMatching(/^push:\/watch\/slug-a\?/),
+    ])
   })
 })

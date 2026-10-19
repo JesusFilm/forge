@@ -4,6 +4,7 @@ import {
 } from "./release-controls"
 import {
   STUDIO_RENDER_PROFILE,
+  studioRenderExecutionProfileSchema,
   studioRenderAssignmentSchema as assignmentSchema,
 } from "@forge/studio-contracts/render"
 import { z } from "zod"
@@ -63,8 +64,25 @@ export class StudioRenderJobs {
         status: { in: ["QUEUED", "RUNNING"] },
         OR: [
           { renderJob: null },
-          { renderJob: { state: "QUEUED" } },
-          { renderJob: { state: "RUNNING", leaseExpiresAt: { lte: now } } },
+          {
+            renderJob: {
+              state: "QUEUED",
+              snapshot: {
+                path: ["executionProfile", "id"],
+                equals: STUDIO_RENDER_PROFILE.id,
+              },
+            },
+          },
+          {
+            renderJob: {
+              state: "RUNNING",
+              leaseExpiresAt: { lte: now },
+              snapshot: {
+                path: ["executionProfile", "id"],
+                equals: STUDIO_RENDER_PROFILE.id,
+              },
+            },
+          },
         ],
       },
       select: { id: true },
@@ -244,7 +262,11 @@ export class StudioRenderJobs {
   ) {
     requireWorker(user)
     const attemptId = studioIdSchema.parse(rawId)
-    if (!Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 3600000)
+    if (
+      !Number.isInteger(leaseMs) ||
+      leaseMs < 1000 ||
+      leaseMs > STUDIO_RENDER_PROFILE.leaseMs
+    )
       throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
       // All assigned claims take dispatch, then worker, then project/job locks.
@@ -271,10 +293,16 @@ export class StudioRenderJobs {
         where: { attemptId },
       })
       const now = clock ?? new Date()
+      const profile = studioRenderExecutionProfileSchema.safeParse(
+        (job.snapshot as Prisma.JsonObject).executionProfile,
+      )
+      const supported =
+        profile.success && profile.data.id === STUDIO_RENDER_PROFILE.id
       if (issued) {
         return {
           execute:
             studioProductionEnabled() &&
+            supported &&
             issued.leaseId === job.leaseId &&
             issued.expiresAt > now &&
             job.state === "RUNNING" &&
@@ -296,6 +324,7 @@ export class StudioRenderJobs {
         job.leaseExpiresAt > now
       )
         return { execute: false, leaseId: null }
+      if (!supported) return { execute: false, leaseId: null }
       assertStudioProductionEnabled()
       if (assignment) {
         const active = await tx.$queryRaw<{ attempt_id: string }[]>`

@@ -354,8 +354,20 @@ export function SettingsScreen() {
 }
 
 function BetaTopShelfPreviewSync() {
-  const { model } = useWatchHome()
+  const { topShelfPreviewRevision, setTopShelfPreviewMessage } =
+    useWatchPreferences()
+  const { model, refreshing, error } = useWatchHome({
+    refreshOnForeground: true,
+    refreshKey: topShelfPreviewRevision,
+  })
   const [entries, setEntries] = useState<ContinueWatchingEntry[]>([])
+  useEffect(() => {
+    if (refreshing) setTopShelfPreviewMessage("Preparing Top Shelf content…")
+    else if (error)
+      setTopShelfPreviewMessage(
+        "Could not update Top Shelf (home content). Try again.",
+      )
+  }, [refreshing, error, setTopShelfPreviewMessage])
   useEffect(() => {
     let cancelled = false
     void loadContinueWatching().then((value) => {
@@ -365,7 +377,7 @@ function BetaTopShelfPreviewSync() {
       cancelled = true
     }
   }, [])
-  useTopShelfSync(model, entries, true, true)
+  useTopShelfSync(model, entries, !refreshing && !error, true)
   return null
 }
 

@@ -7,7 +7,10 @@ import {
   type CodexAccountAttestation,
 } from "../services/precomputed-recommendations/codex-local-account"
 
-export function preflightReport(attestation: CodexAccountAttestation) {
+export function preflightReport(
+  attestation: CodexAccountAttestation,
+  minimumRemainingPercent: 0 | 25 = 25,
+) {
   return {
     accountRef: attestation.identity.accountRef,
     modelId: attestation.modelId,
@@ -15,6 +18,7 @@ export function preflightReport(attestation: CodexAccountAttestation) {
     weeklyRemainingPercent: attestation.allowance.weeklyRemainingPercent,
     fiveHour: attestation.allowance.fiveHour,
     admission: attestation.admission,
+    minimumRemainingPercent,
     billingBasis: attestation.allowance.billingBasis,
     providerEnforcedIncludedOnlySpendCap: false,
   }
@@ -22,6 +26,17 @@ export function preflightReport(attestation: CodexAccountAttestation) {
 
 async function main() {
   try {
+    const args = process.argv.slice(2)
+    if (
+      args.length !== 0 &&
+      !(
+        args.length === 2 &&
+        args[0] === "--minimum-remaining-percent" &&
+        (args[1] === "0" || args[1] === "25")
+      )
+    )
+      throw new CodexLocalAccountError("operator_only")
+    const minimumRemainingPercent = args[1] === "0" ? 0 : 25
     const executable = resolve(
       execFileSync("which", ["codex"], {
         encoding: "utf8",
@@ -32,7 +47,9 @@ async function main() {
     const report = preflightReport(
       await createLocalCodexAccountReader({
         codexExecutable: executable,
+        minimumRemainingPercent,
       }).readAttestation(),
+      minimumRemainingPercent,
     )
     process.stdout.write(JSON.stringify(report) + "\n")
     if (report.admission !== "admitted") process.exitCode = 1

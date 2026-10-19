@@ -20,6 +20,7 @@ import {
   type ManualSubscriptionCatalogInput,
 } from "../services/precomputed-recommendations/manual-subscription-catalog"
 import { createAdminSourceDependencies } from "../services/precomputed-recommendations/source-generation"
+import { loadFrozenCatalog } from "../services/precomputed-recommendations/frozen-catalog"
 
 const runFile = promisify(execFile)
 const id = z.string().trim().min(1).max(191)
@@ -57,7 +58,7 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
       .optional(),
     recovery: z
       .object({
-        originalCallId: z.literal("8ab8a620-1608-4115-812e-200bb2fb4b6d"),
+        originalCallId: z.uuid(),
         replacementCallId: z.uuid(),
         oldProcessExitedAttested: z.literal(true),
       })
@@ -109,6 +110,12 @@ const configSchema = z
   .object({
     input: inputSchema,
     concurrency: z.number().int().min(1).max(16).optional(),
+    minCallStartIntervalMs: z.number().int().min(0).max(30_000).optional(),
+    minimumRemainingPercent: z.union([z.literal(0), z.literal(25)]).optional(),
+    frozenCatalog: z
+      .object({ path: localPath, sha256: digest })
+      .strict()
+      .optional(),
     codexExecutable: localPath,
     stagingDirectory: localPath,
     capacityProbe: z
@@ -119,6 +126,9 @@ const configSchema = z
       .strict(),
   })
   .strict()
+  .refine(
+    (value) => !value.frozenCatalog || value.input.invocation === "resume",
+  )
 
 export function parseManualCatalogCommand(raw: unknown, args: string[]) {
   if (
@@ -155,6 +165,7 @@ async function main(args: string[]) {
     throw new Error("manual_config_invalid")
   const account = createLocalCodexAccountReader({
     codexExecutable: config.codexExecutable,
+    minimumRemainingPercent: config.minimumRemainingPercent,
   })
   const model = createCodexSubscriptionAstraModel({
     codexExecutable: config.codexExecutable,
@@ -162,8 +173,13 @@ async function main(args: string[]) {
     readOperatorIdentity: account.readOperatorIdentity,
     readAllowance: account.readAllowance,
     concurrency: config.concurrency,
+    minCallStartIntervalMs: config.minCallStartIntervalMs,
+    minimumRemainingPercent: config.minimumRemainingPercent,
   })
   const admin = createAdminSourceDependencies()
+  const catalog = config.frozenCatalog
+    ? await loadFrozenCatalog({ ...config.frozenCatalog, scope: config.input })
+    : admin.catalog
   const importClient = createGaCaptureImportClient(admin.ingest)
   const transport = createAdminGaCaptureTransport()
   const controller = new AbortController()
@@ -173,7 +189,7 @@ async function main(args: string[]) {
   const result = await runManualSubscriptionCatalog(
     config.input,
     {
-      catalog: admin.catalog,
+      catalog,
       ingest: admin.ingest,
       model,
       readAttestation: account.readAttestation,
@@ -196,7 +212,11 @@ async function main(args: string[]) {
         return capacityMeasurement.parse(JSON.parse(stdout) as unknown)
       },
     },
-    { concurrency: config.concurrency, signal: controller.signal },
+    {
+      concurrency: config.concurrency,
+      signal: controller.signal,
+      minimumRemainingPercent: config.minimumRemainingPercent,
+    },
   ).finally(() => {
     process.off("SIGINT", pause)
     process.off("SIGTERM", pause)

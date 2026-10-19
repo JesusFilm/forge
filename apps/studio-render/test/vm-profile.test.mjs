@@ -7,7 +7,7 @@ const image = "sha256:" + "b".repeat(64)
 const job = { identity, image, deadlineMs: 123456789, phase: "render" }
 test("render scratch accommodates retained media and Chrome without expanding verifier memory", () => {
   for (const [phase, bytes] of [
-    ["render", 1073741824],
+    ["render", 25769803776],
     ["verify", 268435456],
   ]) {
     const args = containerArguments({ ...job, phase })
@@ -16,8 +16,9 @@ test("render scratch accommodates retained media and Chrome without expanding ve
         `--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=${bytes},uid=1000,gid=1000,mode=700`,
       ),
     )
-    assert.ok(args.includes("--memory=2147483648"))
-    assert.ok(args.includes("--memory-swap=2147483648"))
+    const memory = phase === "render" ? 34359738368 : 2147483648
+    assert.ok(args.includes(`--memory=${memory}`))
+    assert.ok(args.includes(`--memory-swap=${memory}`))
   }
 })
 test("disposable render has only exact readonly input and no runtime authority", () => {
@@ -29,10 +30,10 @@ test("disposable render has only exact readonly input and no runtime authority",
     "--cap-drop=ALL",
     "--security-opt=no-new-privileges",
     "--user=1000:1000",
-    "--pids-limit=128",
-    "--cpus=2",
-    "--memory=2147483648",
-    "--memory-swap=2147483648",
+    "--pids-limit=4096",
+    "--cpus=24",
+    "--memory=34359738368",
+    "--memory-swap=34359738368",
     "--restart=no",
     "--log-driver=none",
   ])
@@ -65,6 +66,8 @@ test("verifier gets a separate input inventory and the unchanged deadline", () =
       `--mount=type=bind,source=${identity.directory}/verify-input,target=/input,readonly`,
     ),
   )
+  for (const limit of ["--pids-limit=128", "--cpus=2", "--memory=2147483648"])
+    assert.ok(args.includes(limit))
   assert.equal(
     args.some((arg) => arg.includes("render-input")),
     false,

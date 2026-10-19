@@ -36,6 +36,26 @@ function arm(clicks: number) {
 }
 
 describe("fixed-horizon clustered visit CTR", () => {
+  it("evaluates observed public traffic without claiming human or loss verification", () => {
+    const evidence = {
+      startsAt: start,
+      endsAt: end,
+      asOf: afterCutoff,
+      byArm: { control: arm(10), challenger: arm(30) },
+      botEligibility: "browser_filtered" as const,
+      trackingLoss: "server_observed" as const,
+    }
+    expect(evaluatePrecomputedCtr(settings, evidence)).toMatchObject({
+      outcome: "challenger",
+      reasons: [],
+    })
+    expect(
+      evaluatePrecomputedCtr(settings, { ...evidence, asOf: start }),
+    ).toMatchObject({
+      outcome: "inconclusive",
+      reasons: expect.arrayContaining(["before_fixed_horizon"]),
+    })
+  })
   it("does not invent a loss limit and rejects an invalid owner value", () => {
     expect(() =>
       validateCtrPolicySettings({

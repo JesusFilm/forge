@@ -1878,9 +1878,15 @@ The pinned U1 versions are `semantic-recommendation-v1` (delivery),
 `semantic-transcript-pgvector-v1` (manifest), and `legacy-position-v0`
 (provisional, learning-ineligible outcome). The migration registers the exact
 manifest and a disabled shared control. New issuance requires the environment
-ceiling, shared control, valid active keyring, healthy retention, authenticated
+ceiling, shared control, valid active keyring, authenticated
 Web consumer caller, and production Redis admission to agree. Disabling or
 degrading this plane must never make either Watch player unavailable.
+
+Retention cleanup runs concurrently with recommendation delivery. Global purge
+backlog or a stale/missing cleanup watermark must not block new issuance or add
+a health probe to the delivery path. Keep operator retention health reporting
+and per-record expiry, erasure, privacy-generation and eligibility enforcement.
+See the October 19 decision in `docs/analytics-and-recommendation-policy.md`.
 
 Treat request `expiresAt` as the immutable 29-day lifecycle root. Descendants
 cannot extend it; the daily bounded purge has a 24-hour propagation SLA and a
@@ -2919,7 +2925,11 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
     Experience. Authored content and template classification are preserved,
     slugs receive an available `-copy` suffix, and every locale is forced to
     DRAFT with homepage and publication state cleared. It never copies
-    embeddings, revisions, or chat threads.
+    embeddings, revision history, or chat threads. Since feat-711 it stages a
+    fresh active draft (with its own preview URL) per copied locale, accepts
+    `sourceVersion` (`EFFECTIVE` default, or `CANONICAL`), and a homepage copy
+    keeps `homepageLayout: true` (homepage rendering context) while
+    `isHomepage` (live assignment) stays false.
   - `experience.generate` (scope `experience:generate`) — server-side chain:
     `loadExperienceAiVideoCandidates` → mastra quick draft
     (`/forge-experience-variant` when `personaId` present, else

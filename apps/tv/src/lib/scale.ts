@@ -7,6 +7,7 @@ import { Dimensions, Platform } from "react-native"
  */
 
 export const REFERENCE_WIDTH = 1920
+export const MIN_READABLE_FONT_SIZE = 28
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 
@@ -19,4 +20,9 @@ const SCALE_FACTOR =
 export function scale(size: number): number {
   if (SCALE_FACTOR === 1) return size
   return Math.round(size * SCALE_FACTOR)
+}
+
+/** Keep functional TV text readable from a 10-foot viewing distance. */
+export function readableFontSize(size: number): number {
+  return Math.max(scale(size), scale(MIN_READABLE_FONT_SIZE))
 }

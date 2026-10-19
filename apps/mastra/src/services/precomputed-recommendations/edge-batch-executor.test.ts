@@ -12,39 +12,51 @@ import {
 } from "./edge-batch-executor"
 import { decodeEdgePrompt } from "./edge-prompt-renderer"
 
-it("exempts only the reviewed unknown call for its one replacement or after reconciliation", () => {
-  const original = {
-    callId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
-    status: "pending" as const,
-    applicationState: "acknowledged_unknown" as const,
-    recoveryReplacementCallId: "22222222-2222-4222-8222-222222222222",
-    recoveryReconciled: false,
-  }
-  const recovery = {
-    originalCallId: original.callId,
-    replacementCallId: original.recoveryReplacementCallId,
-  }
-  expect(acknowledgedUnknownIsSafe(original)).toBe(false)
-  expect(acknowledgedUnknownIsSafe(original, recovery)).toBe(true)
-  expect(
-    acknowledgedUnknownIsSafe(original, {
-      ...recovery,
-      replacementCallId: "33333333-3333-4333-8333-333333333333",
-    }),
-  ).toBe(false)
-  expect(
-    acknowledgedUnknownIsSafe({ ...original, recoveryReconciled: true }),
-  ).toBe(true)
-  expect(
-    acknowledgedUnknownIsSafe({ ...original, applicationState: "pending" }),
-  ).toBe(false)
-  expect(
-    acknowledgedUnknownIsSafe(
-      { ...original, callId: recovery.replacementCallId },
-      recovery,
-    ),
-  ).toBe(false)
-})
+it.each([
+  "8ab8a620-1608-4115-812e-200bb2fb4b6d",
+  "0f532ef1-3358-42b8-859b-61957633f591",
+  "16540542-b0cd-4000-a1cf-300c11f5d721",
+  "1b52ddfd-6ec9-48c8-b87f-1f290c2e8125",
+  "1c9be609-c76c-4828-8934-6e976ca135ce",
+  "23b3b0a0-af22-4f40-b499-790d84a3cb2c",
+  "6cf1da28-020c-4ad2-9572-3bc4c91af9d5",
+  "beeba49b-0f6f-4d70-87c0-4d36a9e81f16",
+])(
+  "exempts reviewed call %s only for its replacement or after reconciliation",
+  (callId) => {
+    const original = {
+      callId,
+      status: "pending" as const,
+      applicationState: "acknowledged_unknown" as const,
+      recoveryReplacementCallId: "22222222-2222-4222-8222-222222222222",
+      recoveryReconciled: false,
+    }
+    const recovery = {
+      originalCallId: original.callId,
+      replacementCallId: original.recoveryReplacementCallId,
+    }
+    expect(acknowledgedUnknownIsSafe(original)).toBe(false)
+    expect(acknowledgedUnknownIsSafe(original, recovery)).toBe(true)
+    expect(
+      acknowledgedUnknownIsSafe(original, {
+        ...recovery,
+        replacementCallId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).toBe(false)
+    expect(
+      acknowledgedUnknownIsSafe({ ...original, recoveryReconciled: true }),
+    ).toBe(true)
+    expect(
+      acknowledgedUnknownIsSafe({ ...original, applicationState: "pending" }),
+    ).toBe(false)
+    expect(
+      acknowledgedUnknownIsSafe(
+        { ...original, callId: recovery.replacementCallId },
+        recovery,
+      ),
+    ).toBe(false)
+  },
+)
 import type { Video } from "./source-generation"
 import type { HistoricalSnapshot } from "./historical-analytics"
 import type { StructuredModel } from "./astra-provider"
@@ -726,8 +738,14 @@ describe("shared edge batch candidate pages", () => {
     const batchInput: FixtureInput = {
       ...identity,
       members: [
-        member("source-a", "33333333-3333-4333-8333-333333333333"),
-        member("source-b", "44444444-4444-4444-8444-444444444444"),
+        member(
+          "cmokmj8ka0njkqsccfvhbto3g",
+          "33333333-3333-4333-8333-333333333333",
+        ),
+        member(
+          "cmokmjc390nk2qscc79tyun6g",
+          "44444444-4444-4444-8444-444444444444",
+        ),
       ],
       catalog: {
         async video() {
@@ -779,8 +797,8 @@ describe("shared edge batch candidate pages", () => {
           return {
             output: request.schema.parse({
               results: [
-                { sourceVideoId: "source-a", edges: [] },
-                { sourceVideoId: "source-b", edges: [] },
+                { sourceVideoId: "cmokmj8ka0njkqsccfvhbto3g", edges: [] },
+                { sourceVideoId: "cmokmjc390nk2qscc79tyun6g", edges: [] },
               ],
             }),
             usage: { inputTokens: 5_000, outputTokens: 30 },
@@ -843,8 +861,11 @@ describe("shared edge batch candidate pages", () => {
     const result = await runEdgeBatch(batchInput)
     expect(result.state).toBe("succeeded")
     batchInput.callId = "55555555-5555-4555-8555-555555555555"
+    batchInput.generationId = "subscription-astra-budget2-20261008-v4"
+    batchInput.generationInputDigest =
+      "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
     batchInput.recovery = {
-      originalCallId: identity.callId,
+      originalCallId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
       replacementCallId: batchInput.callId,
     }
     batchInput.members.forEach((item) => {
@@ -855,7 +876,7 @@ describe("shared edge batch candidate pages", () => {
     expect(modelPrompts).toHaveLength(2)
     expect(JSON.parse(modelPrompts[1]!)).toHaveProperty("spanOffers")
     expect(createHash("sha256").update(modelPrompts[1]!).digest("hex")).toBe(
-      "9d0c881807445b35a396510517778a6fc633630a19bb1d71aae80ad32f3b899e",
+      "4bf2dfd692e49884a8eeab0a67f009cd7d6318c4c9751ebce74f0235a981207d",
     )
 
     // An unresolved old-format receipt fences a new compact call before
@@ -884,7 +905,10 @@ describe("shared edge batch candidate pages", () => {
           appliedRevision: null,
           startedAt: "2026-10-06T20:48:05.001Z",
           finishedAt: null,
-          memberSourceVideoIds: ["source-a", "source-b"],
+          memberSourceVideoIds: [
+            "cmokmj8ka0njkqsccfvhbto3g",
+            "cmokmjc390nk2qscc79tyun6g",
+          ],
         },
       ],
       nextCursor: null,

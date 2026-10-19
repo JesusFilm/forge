@@ -62,6 +62,35 @@ survives hiding the picker, but its override is ignored while the flag is off.
 The native extension must already be in the installed app; a JavaScript flag
 cannot add it to an older binary. See [preview options](src/lib/topShelf/preview.ts).
 
+### Native public-feed refresh — rebuild required
+
+The native public-feed prototype is **off by default**. Without an endpoint,
+Top Shelf continues using the app-owned snapshot and bundled fallback. The
+Settings style picker flag above does not enable native fetching.
+
+| Native build setting           | Effect                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `TV_TOP_SHELF_FEED_URL`        | Optional public HTTPS feed URL, without credentials, query or fragment. Export it to the prebuild process, then rebuild and reinstall the Apple TV app/extension.                                |
+| `TV_TOP_SHELF_FEED_LOCAL_QA=1` | Allows exact-loopback HTTP only in a Debug simulator build. The plugin removes the local endpoint and its ATS exception from Release; the native client also enforces the Debug simulator guard. |
+
+These are native build inputs, not `EXPO_PUBLIC_*` variables or Metro settings.
+Restarting Metro cannot change the installed extension's endpoint. An HTTPS
+endpoint must implement the separate public-feed contract; pointing this at the
+app's GraphQL URL is not sufficient. No production feed service is implemented
+by this prototype, and Push is not included.
+
+When tvOS invokes the extension, it can fetch public Spotlight, Collection, Short
+and Journey content while Watch is closed. The system controls invocation;
+there is no guaranteed polling interval or immediate refresh after an API edit.
+For an enabled feed, endpoint/language/style determine public-content authority:
+same-style app copy or item changes do not replace an accepted public feed or
+its empty response. Continue Watching stays app-owned; the feed sends no viewing
+history or progress. See the
+[contract and cache rules](../../docs/solutions/integration-issues/tv-native-top-shelf-public-feed-20261020.md)
+and the
+[native validation record](../../docs/tv-system-home-validation-2026-10-02.md#october-20-native-public-feed-prototype)
+for observed results and remaining limits.
+
 ### EAS profile values
 
 These are the explicit values in [eas.json](eas.json), separate from local Metro:
@@ -70,9 +99,12 @@ These are the explicit values in [eas.json](eas.json), separate from local Metro
 | ------------- | ---------------- | --------------- | --------------- |
 | `development` | `true`           | `true`          | `development`   |
 | `preview`     | `true`           | `true`          | `preview`       |
+| `beta`        | `true`           | `true`          | `preview`       |
 | `production`  | `false`          | `true`          | `production`    |
 
-All three set `EXPO_TV=1` and the Hermes override to `0.81.5`. A local `expo start`
+All profiles set `EXPO_TV=1` and the Hermes override to `0.81.5`. Only
+`development` opts into local networking. `preview` produces an Android APK;
+`beta` produces an Android App Bundle for store testing. A local `expo start`
 does not select an EAS build profile. Changing `.env.local` does not update an
 already distributed app or its EAS environment. For a new EAS build, check both
 the selected profile and its associated remote environment.
@@ -130,6 +162,12 @@ environment; do not copy them into this guide, commits, screenshots or logs.
 
 ## Native/build booleans — rebuild required
 
+`TV_STARTUP_QA=1` selects the isolated Android package
+`org.jesusfilm.tv.startupqa`. It also changes the **global** app name to
+`Watch Startup QA` and URI scheme to `org.jesusfilm.startupqa`, including Apple
+builds. The Apple bundle identifier stays unchanged. Leave this flag unset for
+normal builds and Apple TV testing. See [app.config.js](app.config.js).
+
 | Setting                                   | Current value / behavior                                                                                                                                                                                                                                                                                                                                                      |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EXPO_TV`                                 | `1` in TV commands/profiles; selects TV builds. It is not a menu toggle.                                                                                                                                                                                                                                                                                                      |
@@ -137,7 +175,8 @@ environment; do not copy them into this guide, commits, screenshots or logs.
 | `expo.newArchEnabled`                     | `false` in [app.json](app.json); architecture setting, not a feature switch to toggle casually.                                                                                                                                                                                                                                                                               |
 | Config TV plugin `isTV`                   | `true` in [app.json](app.json).                                                                                                                                                                                                                                                                                                                                               |
 | Expo video `supportsBackgroundPlayback`   | `false` in [app.json](app.json).                                                                                                                                                                                                                                                                                                                                              |
-| iOS `NSAllowsLocalNetworking`             | `true` in [app.json](app.json), for local networking.                                                                                                                                                                                                                                                                                                                         |
+| `EXPO_TV_ALLOW_LOCAL_NETWORKING`          | Exact `1` keeps the Apple local-network ATS exception during prebuild. Set on the EAS development profile only; unset/other values remove it. Local builds must export it explicitly when using Metro/local admin over HTTP. It is a build-time flag, not a Metro menu switch.                                                                                                |
+| iOS `NSAllowsLocalNetworking`             | Seeded as `true` in [app.json](app.json), then removed by [withTVInfoPlistFixes.js](plugins/withTVInfoPlistFixes.js) unless the explicit development opt-in is set. Store profiles keep the exception off.                                                                                                                                                                    |
 | iOS `ITSAppUsesNonExemptEncryption`       | `false` in [app.json](app.json); a distribution declaration, not an encryption enable/disable switch.                                                                                                                                                                                                                                                                         |
 | `extra.router.origin`                     | `false` in [app.json](app.json); router configuration, not a visible feature.                                                                                                                                                                                                                                                                                                 |
 | EAS `developmentClient` / `autoIncrement` | `developmentClient: true` on development; `autoIncrement: true` on production in [eas.json](eas.json). Build/distribution behavior only.                                                                                                                                                                                                                                      |
@@ -145,6 +184,21 @@ environment; do not copy them into this guide, commits, screenshots or logs.
 Internal booleans such as loading, focus, request-in-flight, subtitle state,
 platform checks and `__DEV__` are runtime state or derived conditions. They are
 not additional user configuration. Do not flip those to expose a menu.
+
+For a local Apple TV development build that connects to Metro or a local admin,
+export the local-network flag to the **prebuild process** before generating the
+native project:
+
+```bash
+cd apps/tv
+EXPO_TV=1 EXPO_TV_ALLOW_LOCAL_NETWORKING=1 REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION=0.81.5 pnpm exec expo prebuild --platform ios --no-install
+```
+
+Preserve existing generated native edits before regenerating. Follow the app
+guide for Pods and the actual native build; starting Metro alone cannot change
+an installed binary’s ATS settings. For store/native configuration verification,
+leave this flag unset and inspect the generated app’s Info.plist to confirm the
+local-network exception is absent. Do not enable arbitrary HTTP loads globally.
 
 ## Apply and verify a change
 

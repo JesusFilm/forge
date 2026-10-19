@@ -73,7 +73,7 @@ describe("buildResultClickedVariables", () => {
 
   it("maps mobile's uppercase EXPERIENCE wire value to EXPERIENCE", () => {
     // The production-reachable shape: SearchResult.type carries admin's
-    // uppercase enum (watch.tsx compares result.type === "EXPERIENCE").
+    // uppercase enum (Discover's index.tsx compares result.type === "EXPERIENCE").
     expect(
       buildResultClickedVariables({ ...clickInput, resultType: "EXPERIENCE" }),
     ).toMatchObject({ resultType: "EXPERIENCE" })

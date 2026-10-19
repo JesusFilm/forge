@@ -75,6 +75,20 @@ describe("reconcileWatchHome — config fallback reasons (R8, R12)", () => {
     expect(emptyResult.nextLastGoodBlocks).toBeUndefined()
   })
 
+  it("retires last-good when an editor explicitly empties the blocks", () => {
+    const result = reconcile({
+      experienceOutcome: "present",
+      experienceSections: [],
+      experienceBlocks: [],
+    })
+    expect(result).toMatchObject({
+      kind: "model",
+      usedExperience: false,
+      nextLastGoodBlocks: null,
+      logs: ["empty"],
+    })
+  })
+
   it("watchSetting error with no last-good → config rows + one `error` log (AE7)", () => {
     const result = reconcile({
       experienceOutcome: "error",

@@ -15,7 +15,7 @@ const read = (file) => fs.readFileSync(path.join(APP, file), "utf8")
 
 describe("series search result -> episode discovery mark", () => {
   it("the search tab carries the hand-off into the series route only", () => {
-    const source = read(path.join("(tabs)", "watch.tsx"))
+    const source = read(path.join("(tabs)", "watch", "index.tsx"))
     expect(source).toMatch(
       /route === "series"\s*\?\s*`&\$\{DISCOVERY_ROUTE_PARAM\}=search`\s*:\s*""/,
     )

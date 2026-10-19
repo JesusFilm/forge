@@ -16,8 +16,27 @@ export const CreateExperienceInput = z.object({
 })
 export type CreateExperienceInput = z.infer<typeof CreateExperienceInput>
 
+/**
+ * Which saved version of each source locale a duplicate copies.
+ *
+ * - `EFFECTIVE`: the locale's active saved draft when one exists, otherwise its
+ *   canonical row. This is what the editor shows after a save.
+ * - `CANONICAL`: the stored canonical row only, ignoring any active draft. For
+ *   a published locale this is the live published content.
+ *
+ * Neither reads unsaved editor state; the service only sees saved rows.
+ */
+export const ExperienceDuplicationSourceVersion = z.enum([
+  "EFFECTIVE",
+  "CANONICAL",
+])
+export type ExperienceDuplicationSourceVersion = z.infer<
+  typeof ExperienceDuplicationSourceVersion
+>
+
 export const DuplicateExperienceInput = z.object({
   id: z.string().min(1),
+  sourceVersion: ExperienceDuplicationSourceVersion.default("EFFECTIVE"),
 })
 export type DuplicateExperienceInput = z.infer<typeof DuplicateExperienceInput>
 
@@ -31,6 +50,7 @@ export const CreateExperienceLocaleInput = z.object({
   ogDescription: z.string().max(500).optional(),
   ogImageUrl: z.string().url().optional().nullable(),
   isHomepage: z.boolean().optional(),
+  homepageLayout: z.boolean().optional(),
   pathSegment: z.string().max(200).optional().nullable(),
   blocks: BlocksSchema.optional().default([]),
 })
@@ -47,6 +67,7 @@ export const UpdateExperienceLocaleInput = z.object({
   ogDescription: z.string().max(500).nullable().optional(),
   ogImageUrl: z.string().url().optional().nullable(),
   isHomepage: z.boolean().optional(),
+  homepageLayout: z.boolean().optional(),
   pathSegment: z.string().max(200).optional().nullable(),
   blocks: BlocksSchema.optional(),
 })
@@ -71,7 +92,13 @@ export type DiscardExperienceLocaleDraftInput = z.infer<
 /** The complete locale-owned state persisted in an ExperienceLocale draft. */
 export const ExperienceLocaleDraftDataSchema = z.object({
   slug: z.string().min(1).max(200),
+  /** Live homepage assignment once published. */
   isHomepage: z.boolean(),
+  /**
+   * Homepage rendering context without assignment. Defaults so snapshots
+   * written before the field existed (and partial SEO snapshots) still parse.
+   */
+  homepageLayout: z.boolean().default(false),
   pathSegment: z.string().max(200).nullable(),
   title: z.string().max(500).nullable(),
   metaDescription: z.string().max(1000).nullable(),

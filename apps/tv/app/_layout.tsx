@@ -1,6 +1,6 @@
-import { Component, useCallback, useEffect, useRef } from "react"
+import { Component, useCallback, useEffect, useRef, useState } from "react"
 import { requireNativeModule } from "expo"
-import { Platform, ScrollView, Text, View } from "react-native"
+import { Platform, Pressable, ScrollView, Text, View } from "react-native"
 import type { ErrorInfo, ReactNode } from "react"
 
 import {
@@ -30,6 +30,7 @@ import {
   useStartupIntroActive,
 } from "../src/contexts/StartupIntroProvider"
 import { useRecommendationPlayback } from "../src/lib/recommendations/useRecommendationPlayback"
+import { traceHomeStartup } from "../src/lib/watchHome/startupTrace"
 import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
 
 /** Background color from Crimson Gallery design system */
@@ -302,6 +303,16 @@ class ErrorBoundary extends Component<
     })
   }
 
+  /**
+   * Clearing the captured error remounts the subtree. This recovers a transient
+   * fault (a failed fetch during render, a bad frame of data); a deterministic
+   * one throws again and lands back here, which is the honest outcome — the
+   * viewer is told to reopen the app rather than being stranded with no input.
+   */
+  retry = () => {
+    this.setState({ error: null, errorInfo: null })
+  }
+
   render() {
     if (this.state.error) {
       return (
@@ -310,43 +321,61 @@ class ErrorBoundary extends Component<
             flex: 1,
             backgroundColor: BG_COLOR,
             padding: 80,
+            justifyContent: "center",
           }}
         >
           <Text
             style={{
-              color: "#ef4444",
-              fontSize: 28,
+              color: "#F5F5F4",
+              fontSize: 40,
               fontWeight: "bold",
               marginBottom: 16,
             }}
           >
-            App Error
+            Something went wrong
           </Text>
-          <ScrollView>
-            <Text
-              style={{
-                color: "#fbbf24",
-                fontSize: 18,
-                fontFamily: "monospace",
-              }}
-              selectable
-            >
-              {this.state.error.message}
-            </Text>
-            {this.state.errorInfo?.componentStack && (
+          <Text
+            style={{
+              color: "#A8A29E",
+              fontSize: 22,
+              lineHeight: 32,
+              maxWidth: 900,
+              marginBottom: 40,
+            }}
+          >
+            The app ran into a problem and could not continue. Try again — if it
+            keeps happening, quit the app and reopen it.
+          </Text>
+          <ErrorRetryPill onPress={this.retry} />
+          {/* Diagnostics are for developers, never for a viewer on a couch.
+              Release builds get the message above and a way out; nothing else. */}
+          {__DEV__ && (
+            <ScrollView style={{ marginTop: 40 }}>
               <Text
                 style={{
-                  color: "#a8a29e",
-                  fontSize: 14,
+                  color: "#fbbf24",
+                  fontSize: 18,
                   fontFamily: "monospace",
-                  marginTop: 16,
                 }}
                 selectable
               >
-                {this.state.errorInfo.componentStack}
+                {this.state.error.message}
               </Text>
-            )}
-          </ScrollView>
+              {this.state.errorInfo?.componentStack && (
+                <Text
+                  style={{
+                    color: "#a8a29e",
+                    fontSize: 14,
+                    fontFamily: "monospace",
+                    marginTop: 16,
+                  }}
+                  selectable
+                >
+                  {this.state.errorInfo.componentStack}
+                </Text>
+              )}
+            </ScrollView>
+          )}
         </View>
       )
     }
@@ -354,7 +383,58 @@ class ErrorBoundary extends Component<
   }
 }
 
+/**
+ * Focusable recovery affordance for the root boundary. Deliberately built from
+ * bare RN primitives rather than the shared focus module or ScreenStateView:
+ * this renders when the module graph may already be broken, so it must not
+ * depend on anything that could itself be the thing that threw.
+ */
+function ErrorRetryPill({ onPress }: { onPress: () => void }) {
+  const [focused, setFocused] = useState(false)
+  return (
+    <Pressable
+      onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      hasTVPreferredFocus
+      accessibilityRole="button"
+      accessibilityLabel="Try again"
+      style={{
+        alignSelf: "flex-start",
+        paddingVertical: 18,
+        paddingHorizontal: 44,
+        borderRadius: 999,
+        backgroundColor: focused ? "#FFFFFF" : "rgba(245,245,244,0.12)",
+        borderWidth: 2,
+        borderColor: focused ? "#FFFFFF" : "rgba(245,245,244,0.25)",
+      }}
+    >
+      <Text
+        style={{
+          color: focused ? "#0a0a0b" : "#F5F5F4",
+          fontSize: 24,
+          fontWeight: "600",
+        }}
+      >
+        Try again
+      </Text>
+    </Pressable>
+  )
+}
+
 export default function RootLayout() {
+  useEffect(() => {
+    traceHomeStartup("root-mounted")
+    if (Platform.OS === "android") {
+      const native = requireNativeModule<{
+        setPerformanceTracing: (enabled: boolean) => Promise<void>
+      }>("NativeAndroidPlayer")
+      void native
+        .setPerformanceTracing(process.env.EXPO_PUBLIC_TV_STARTUP_TRACE === "1")
+        .catch(() => {})
+    }
+  }, [])
+
   const clientRef = useRef(moduleError == null ? getApolloClient() : null)
   useEffect(() => {
     if (Platform.OS !== "android") return

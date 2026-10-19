@@ -558,3 +558,64 @@ export async function getExperiencePreview(
   if (!legacy.ok) throw new Error("Experience preview query failed")
   return legacy.preview
 }
+
+// Fetched beside the main preview, never inside its fallback ladder: the
+// homepage rendering context is one boolean, and adding it to the ladder's
+// selections would double every tier for one field.
+const EXPERIENCE_PREVIEW_LAYOUT = adminGraphql(`
+  query ExperiencePreviewLayout($token: String!) {
+    experiencePreview(token: $token) {
+      homepageLayout
+    }
+  }
+`)
+
+const LAYOUT_SCHEMA_LAG_MESSAGES = [
+  /^Cannot query field "homepageLayout" on type "ExperiencePreview"\./,
+]
+
+function isLayoutSchemaLag(value: unknown): boolean {
+  const errors = graphqlErrorsFrom(value)
+  return (
+    errors.length > 0 &&
+    errors.every((entry) =>
+      matchesSchemaLagMessage(entry, LAYOUT_SCHEMA_LAG_MESSAGES),
+    )
+  )
+}
+
+/**
+ * Whether the draft renders with the Watch home layout although it is not the
+ * live homepage (a homepage duplicate). An Admin that predates the field
+ * rejects it with a validation error; that degrades to `false`, which renders
+ * exactly what Web rendered before the field existed. Any other failure keeps
+ * the capability-redacting public error.
+ */
+export async function getExperiencePreviewLayout(
+  token: string,
+): Promise<boolean> {
+  let result
+  try {
+    result = await client.query({
+      query: EXPERIENCE_PREVIEW_LAYOUT,
+      variables: { token },
+      fetchPolicy: "no-cache",
+      context: {
+        fetchOptions: { cache: "no-store" },
+      },
+    })
+  } catch (error) {
+    if (isLayoutSchemaLag(error)) return false
+    throw new Error("Experience preview query failed")
+  }
+
+  const response = result as typeof result & {
+    error?: ErrorLike
+    errors?: readonly unknown[]
+  }
+  if (isLayoutSchemaLag(response)) return false
+  if (response.error || response.errors?.length) {
+    throw new Error("Experience preview query failed")
+  }
+  return result.data?.experiencePreview?.homepageLayout === true
+}

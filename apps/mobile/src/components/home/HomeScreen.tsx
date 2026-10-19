@@ -22,6 +22,7 @@ import { useNavigation, useRouter, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { GlassSurface } from "../ui/GlassSurface"
 import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { useUiTag } from "../../hooks/useUiTag"
@@ -37,6 +38,7 @@ import {
   TEXT_SECONDARY,
   hexToRgba,
 } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { useTabBarClearance } from "../../lib/tabBar"
 import { heroSwipeTarget } from "../../lib/horizontalPaging"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
@@ -666,16 +668,22 @@ const HeroChrome = memo(function HeroChrome({
 }: HeroChromeProps) {
   const typography = useTypography()
   const t = useT("Home")
+  // Stop taking touches once half-faded: feed content starts overlapping
+  // at ~25% fade, and half-visible buttons must not intercept taps aimed
+  // at the feed beneath them.
+  const takesTouches = opacity >= 0.5
+  // KTD6: glass draws nothing under a fading ancestor, so on glass each part
+  // takes the fade, and the mute glass dissolves at the touch cut.
+  const glass = canUseLiquidGlass()
+  const partFade = glass ? { opacity } : null
 
   return (
     <View
-      style={[styles.heroChrome, { opacity }]}
-      // Stop taking touches once half-faded: feed content starts overlapping
-      // at ~25% fade, and half-visible buttons must not intercept taps aimed
-      // at the feed beneath them.
-      pointerEvents={opacity < 0.5 ? "none" : "box-none"}
+      testID="home-hero-chrome"
+      style={[styles.heroChrome, !glass && { opacity }]}
+      pointerEvents={takesTouches ? "box-none" : "none"}
     >
-      <View style={styles.heroChromeLeft} pointerEvents="box-none">
+      <View style={[styles.heroChromeLeft, partFade]} pointerEvents="box-none">
         {slide.kind === "video" && slide.slug != null && (
           <Pressable
             style={({ pressed }) => [
@@ -712,20 +720,27 @@ const HeroChrome = memo(function HeroChrome({
       </View>
       {slide.kind === "video" && (
         <Pressable
-          style={({ pressed }) => [
-            styles.muteButton,
-            pressed && feedback.pressed,
-          ]}
           onPress={onToggleMute}
           accessibilityLabel={muted ? t("unmuteAriaLabel") : t("muteAriaLabel")}
           accessibilityRole="button"
           {...{ "dd-action-name": "hero-mute-toggle" }}
         >
-          <Ionicons
-            name={muted ? "volume-mute" : "volume-high"}
-            size={20}
-            color={TEXT_ON_OVERLAY}
-          />
+          {({ pressed }) => (
+            <GlassSurface
+              style={styles.muteButton}
+              fallback={{ kind: "fill", style: styles.muteFill }}
+              visible={takesTouches}
+              fade={glass ? opacity : undefined}
+              interactive
+              pressed={pressed}
+            >
+              <Ionicons
+                name={muted ? "volume-mute" : "volume-high"}
+                size={20}
+                color={TEXT_ON_OVERLAY}
+              />
+            </GlassSurface>
+          )}
         </Pressable>
       )}
     </View>
@@ -784,9 +799,11 @@ const styles = StyleSheet.create({
     width: HERO_CTA_HEIGHT,
     height: HERO_CTA_HEIGHT,
     borderRadius: HERO_CTA_HEIGHT / 2,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  muteFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),

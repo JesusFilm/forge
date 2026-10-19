@@ -15,7 +15,7 @@ import {
   type View as ViewType,
 } from "react-native"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontFamily: "System",
-    fontSize: Math.round(scale(17)),
+    fontSize: readableFontSize(17),
     fontWeight: "700",
     // .16em of the 17px eyebrow.
     letterSpacing: scale(2.7),

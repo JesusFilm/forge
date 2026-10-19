@@ -126,14 +126,23 @@ export default function HomeScreen() {
   const { state: playerState } = useVideoPlayerContext()
   const { audioLanguageSlug } = useWatchPreferences()
   const [recommendationVisit, setRecommendationVisit] = useState(0)
+  const [homeRefreshRevision, setHomeRefreshRevision] = useState(0)
+  const homeHasFocused = useRef(false)
+  const appleTv = Platform.OS === "ios" && Platform.isTV
   useFocusEffect(
     useCallback(() => {
       setIsFocused(true)
       setRecommendationVisit((v) => v + 1)
+      if (appleTv && homeHasFocused.current)
+        setHomeRefreshRevision((value) => value + 1)
+      homeHasFocused.current = true
       return () => setIsFocused(false)
-    }, []),
+    }, [appleTv]),
   )
-  const { model, loading, error, refetch } = useWatchHome()
+  const { model, loading, error, refetch, refreshing } = useWatchHome({
+    refreshOnForeground: appleTv && isFocused,
+    refreshKey: appleTv ? homeRefreshRevision : undefined,
+  })
 
   // Continue Watching shelf (feat-322): reloaded on every screen focus so
   // returning from playback shows the fresh resume position immediately.
@@ -141,7 +150,11 @@ export default function HomeScreen() {
     ContinueWatchingEntry[]
   >([])
   const [myListEntries, setMyListEntries] = useState<MyListEntry[]>([])
-  useTopShelfSync(model, continueEntries, usePathname() === "/" && !introActive)
+  useTopShelfSync(
+    model,
+    continueEntries,
+    usePathname() === "/" && !introActive && !refreshing && !error,
+  )
   useEffect(() => {
     if (model && isFocused && !introActive && !playerState.isVisible)
       void syncGoogleTvHome(model, continueEntries)

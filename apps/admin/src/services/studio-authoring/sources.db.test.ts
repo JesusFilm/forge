@@ -65,7 +65,15 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
       )
     db = new PrismaClient({ datasources: { db: { url } } })
     server = createServer((req, res) => {
-      res.end(req.url === "/track.vtt" ? vtt : "actual source fixture bytes")
+      res.end(
+        req.url === "/track.vtt"
+          ? vtt
+          : req.url === "/stream.m3u8"
+            ? "#EXTM3U\n#EXT-X-STREAM-INF:RESOLUTION=480x270\npreview.m3u8\n#EXT-X-STREAM-INF:RESOLUTION=1920x1080\nexport.m3u8"
+            : req.url?.endsWith(".m3u8")
+              ? "#EXTM3U\n#EXTINF:5.98,\nsource.ts\n#EXT-X-ENDLIST"
+              : "actual source fixture bytes",
+      )
     })
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r))
     const address = server.address()
@@ -297,6 +305,15 @@ suite("exact catalog source capture with real HTTP and retained bytes", () => {
       idempotencyKey: randomUUID(),
     })
     expect(descriptor.materialization).toBe("descriptor")
+    expect(descriptor.durationMs).toBe(5980)
+    await expect(
+      service.capture(user, {
+        ...selection,
+        retainOriginalBytes: false,
+        endMs: 5990,
+        idempotencyKey: randomUUID(),
+      }),
+    ).rejects.toThrow("INVALID")
     expect(descriptor.originalByteDigest).toBeNull()
     await expect(
       db.$transaction((tx) =>

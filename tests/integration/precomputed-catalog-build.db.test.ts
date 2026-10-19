@@ -30,7 +30,7 @@ import {
 import { precomputedBrowserUnitDigest } from "../../apps/admin/src/services/recommendations/precomputed/visit-identity"
 import { chooseExperimentArm } from "../../apps/admin/src/services/recommendations/experiment/assignment"
 import { RecommendationEpisodeService } from "../../apps/admin/src/services/recommendations/episode.service"
-import { createRuntimeRecommendationTokenService } from "../../apps/admin/src/services/recommendations/runtime-token"
+import * as runtimeToken from "../../apps/admin/src/services/recommendations/runtime-token"
 import { getSemanticDeliveryCandidatePool } from "../../apps/admin/src/services/recommendations/delivery-retriever"
 import {
   createRecommendationTokenService,
@@ -54,6 +54,7 @@ import { createGaCaptureImportClient } from "../../apps/mastra/src/services/prec
 import { loadImportedGaWatchHistory } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-reader"
 import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import { planContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-plan"
+import { loadFrozenCatalog } from "../../apps/mastra/src/services/precomputed-recommendations/frozen-catalog"
 import { readCompleteSelectedChunks } from "../../apps/mastra/src/services/precomputed-recommendations/selected-transcript"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
@@ -1344,10 +1345,37 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             })
           return response
         }
+        const snapshotPath = join(directory, "frozen-catalog.json")
+        const snapshot = JSON.stringify({
+          version: "frozen_catalog_v1",
+          generationId: manualInput.generationId,
+          generationInputDigest: manualInput.generationInputDigest,
+          inputCutoff: cutoff,
+          entries: videos.map((video) => ({ video, chunks: [] })),
+        })
+        await writeFile(snapshotPath, snapshot)
+        manualPorts.catalog = await loadFrozenCatalog({
+          path: snapshotPath,
+          sha256: createHash("sha256").update(snapshot).digest("hex"),
+          scope: manualInput,
+        })
+        await prisma.videoLocale.updateMany({
+          where: { videoId: { in: videoIds } },
+          data: { updatedAt: new Date() },
+        })
+        await expect(
+          connected.catalog.catalog({ cutoff }),
+        ).rejects.toMatchObject({ code: "stale_cutoff" })
         const manual = await runManualSubscriptionCatalog(
           { ...manualInput, invocation: "resume", attemptId: randomUUID() },
           manualPorts,
-        )
+        ).finally(async () => {
+          // Restore only this isolated fixture for the later serving assertions.
+          await prisma.videoLocale.updateMany({
+            where: { videoId: { in: videoIds } },
+            data: { updatedAt: catalogCreatedAt },
+          })
+        })
         expect(manual).toMatchObject({
           state: "completed",
           completedSourceCount: 2,
@@ -2807,7 +2835,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
-    it("promotes only an evaluated fixture winner and retains its evidence through rollback", async () => {
+    it("promotes only an evaluated fixture winner and retains its evidence through rollback", async ({
+      onTestFinished,
+    }) => {
+      // Explicitly fault the incumbent signer while keeping the saved-card
+      // signer below available. Cleanup health no longer blocks delivery.
+      const incumbentSigner = vi
+        .spyOn(runtimeToken, "createRuntimeRecommendationTokenService")
+        .mockReturnValue(null)
+      onTestFinished(() => incumbentSigner.mockRestore())
       const generationId = `catalog-winner-${suffix}`
       const refreshId = `catalog-winner-refresh-${suffix}`
       const experimentId = `catalog-winner-test-${suffix}`
@@ -2934,8 +2970,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       for (const arm of ["control", "challenger"] as const) {
         for (const [index, browser] of browsers[arm].entries()) {
           // Two genuinely empty saved-source visits remain in the challenger
-          // denominator. The isolated incumbent lacks a healthy retention
-          // watermark, so its unavailable deliveries also remain in the count.
+          // denominator. The incumbent's unavailable signer keeps its failed
+          // deliveries in the count independently of cleanup health.
           const input = visit(
             browser,
             arm === "challenger" && index >= 18 ? targetId : sourceId,
@@ -2953,6 +2989,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           })
           if (arm === "control") {
             expect(delivered.delivery?.result).toBe("unavailable")
+            expect(delivered.delivery?.reason).toBe("keyring_unavailable")
           } else if (index >= 18) {
             expect(delivered.delivery?.result).toBe("empty")
           } else {
@@ -3360,7 +3397,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           strategyVersion: routing.manifest.strategyVersion,
         },
       })
-      const tokenService = createRuntimeRecommendationTokenService(prisma)
+      const tokenService =
+        runtimeToken.createRuntimeRecommendationTokenService(prisma)
       if (!tokenService)
         throw new Error("Missing native fixture runtime signer")
       const card = recovered.delivery!.items[0]!

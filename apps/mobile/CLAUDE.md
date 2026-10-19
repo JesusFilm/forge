@@ -476,7 +476,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - `Math.round()` all scaled font sizes on Android (sub-pixel = blurry).
 - Admin blocks use flat `videoId` — no nested `video { slug, images }` join. Use block-level `imageUrl`/`mediaUrl` for thumbnails, `deriveMuxThumbnailUrl()` for VideoHero poster.
 - **`replaceAsync` settles when the source is SET, not LOADED** (on Android it is aliased to `replace`), so anything written in its `.then()` runs while the player still holds the OUTGOING item. A `currentTime` write there is silently discarded; a `play()` is the mild form. Resume and seek on `sourceLoad`, and scope the listener to the source that requested it — the app shares ONE player, so another surface's load will otherwise take your seek. Codified in `src/hooks/useAutostartPlayback.ts` and `src/lib/recoverPlayback.ts`; the tvOS route to the same premise is `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`. The shared jest double reproduces the real settle-before-load order, so this is testable.
-- **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. `useManagedVideoPlayer` sets it at creation, which covers every surface that can change speed (the heroes are muted and never change rate). Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertion in `useManagedVideoPlayer.test.tsx` can only pass if the app sets it.
+- **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. Two creation sites set it, and together they cover every surface that can change speed. `useManagedVideoPlayer` sets it for the managed players. `useFeedPlayers` sets it in `configure()` for the two Explore feed players, which are created outside `useManagedVideoPlayer` and play at 2x during a side hold. The heroes are muted and never change rate. Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertions in `useManagedVideoPlayer.test.tsx` and `useFeedPlayers.test.tsx` can only pass if the app sets it.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
   - **Superseded 2026-10-12 by feat-695 U3:** in a right-to-left layout, react-native-screens moves the strip to the right edge, and `mayStartScrub` declines the right strip there. Touch x stays physical, so the guard measures from the window's right edge.
@@ -1065,13 +1065,16 @@ sheet closes.
   `src/lib/miniPlayer/suppression.ts` names it. The counter's `inlineCount`
   feeds `miniPlayerPresentation`'s `openInlineSheetCount`. The other three
   component-state sheets, the quiz, the player settings, and the player-door
-  feedback sheet, are `Modal`s.
+  feedback sheet, are `Modal`s. On iOS 26 the delete confirm is the native
+  action sheet (`libraryDeleteActionSheet`, feat-705 U12). It is not inline,
+  because iOS draws it above the host, as it draws a `Modal`.
 - **Two mechanisms count the sheets, because the app presents them two
   ways.** The first is the ten sheet ROUTES in `IN_APP_SHEET_ROUTE_PATTERNS`
   (`src/lib/miniPlayer/suppression.ts`). Six come from `app/watch/_layout.tsx`
   and `app/series/_layout.tsx`. The three Bible reader sheets and the
-  `feedback` sheet come from the root `app/_layout.tsx`. The second is the four
-  sheets that are component state. `getNonRouteSheetCounter()` counts them by
+  `feedback` sheet come from the root `app/_layout.tsx`. The second is the five
+  sheet ids that are component state (four sheets, plus the iOS 26 native
+  delete sheet). `getNonRouteSheetCounter()` counts them by
   id, so an unbalanced call is attributable. Keep both in step with those
   layouts.
 - **Give a new sheet a route or a `Modal`.** A sheet drawn inside a route must
@@ -1239,6 +1242,12 @@ and `useExploreTakeover` hooks.
   carries `explore_swipe_trigger` (`viewer` or `clipEnd`). Filter on `viewer`
   to count only the viewer's swipes.
 
+- **A tap on the description text works as "more" and "less" (owner,
+  2026-10-15).** `ClipDescription.tsx` wraps the text in a `Pressable`, not a
+  `Text` `onPress`, which draws a grey highlight box on iOS. The cut text
+  takes the tap only when it overflows. The `Pressable` is `accessible={false}`,
+  so screen readers keep "more" and "less" as the controls. A drag that moves
+  the pager, or scrolls the open text, cancels the tap.
 - **A child that scrolls on the pager's axis must hold the pager (owner,
   2026-10-01).** On Fabric iOS, a pager that takes the JS responder stops every
   nested scroll view from starting a drag. `RCTScrollViewComponentView`'s
@@ -1271,6 +1280,17 @@ and `useExploreTakeover` hooks.
     `console.log` of the move trigger in `ExploreFeed`'s `handleMove` tells a
     leaked swipe from a clip-end move. Fast Refresh keeps the old pager
     engine in its ref, so a pager change needs a cold relaunch to show.
+- **A hold on either side of a clip plays it at 2x (owner, 2026-10-14).**
+  `ClipFastSides` in `ExploreFeed.tsx` puts two strips over the tap surface,
+  each `EXPLORE_FAST_SIDE_SHARE` (25%) of the width. A hold of
+  `EXPLORE_FAST_HOLD_MS` (250 ms) starts 2x, a lift or a pager drag ends it,
+  and a shorter press pauses. On a paused clip the strips have no long press,
+  so a press of any length resumes it. The middle keeps the old surface, because a
+  long-press-as-tap there would pause the clip when the pager takes the
+  finger. The hold takes the pager's `feedMove` hold, so a clip end loops.
+  `useFeedPlayers` writes `playbackRate` only while the player plays, just
+  before `play()`, and on `playingChange(true)`: on iOS a rate write starts a
+  paused player.
 - **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
   See the Common Pitfalls entry on frames that miss their parent's bounds.
   `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
@@ -1658,7 +1678,7 @@ design record is
   it moves the fingerprint runtime version on Android and iOS. An
   `eas update` published before that build reaches no installed app.
 - **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
-  tripwire.** It pins `expo` 57.0.28, `expo-notifications` 57.0.22,
+  tripwire.** It pins `expo` 57.0.30, `expo-notifications` 57.0.23,
   `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
   Expo's `isFCMIntent` gate, which is why removing the key makes the listener
   ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
@@ -1676,7 +1696,11 @@ design record is
     `local-maven-repo/`, because the build links that prebuilt library.
   - The device pass ran on `expo` 57.0.27 and `expo-updates` 57.0.25. On
     2026-10-13 the pins moved to 57.0.28 and 57.0.26 by that check: only each
-    package's own `version` and `versionName` lines differed.
+    package's own `version` and `versionName` lines differed. On 2026-10-15
+    `expo` moved to 57.0.29 and `expo-notifications` to 57.0.23 by the same
+    check. The prebuilt library's `.pom` and its Kotlin sources did not change.
+    On 2026-10-16 `expo` moved to 57.0.30 by the same check: only
+    `build.gradle`'s `version` and `versionName` lines differed.
 - **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
   Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
   player keeps the process alive, and `am kill` then does nothing. Check that
@@ -2170,15 +2194,119 @@ from there, so no two files can disagree about the bar's size.
   read `useTabLabels()` in `src/lib/tabBar.ts`, which maps each tab through
   `TAB_LABEL_KEYS` to the `Tabs` catalog namespace, so a rename is a one-line
   change and a language change relabels the bar without a remount.
-- **A fade is not available on the material.** `GlassView` renders nothing
-  inside a layer whose opacity an ancestor animates, so any fade of
-  `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
-  look.
+- **Do not put glass inside a fading layer; dissolve it instead (feat-705).**
+  On `expo-glass-effect` 0.1.10, `GlassView` drew nothing inside a layer whose
+  opacity an ancestor animates. On 57.0.4 it draws on some reveals only: in the
+  player's fading layer, AirPlay drew on 5 of 5 reveals, Back 10 on 1 of 5, and
+  the others on none. Keep the glass outside the fade, and dissolve it with
+  `glassEffectStyle: { style: "none", animate: true }`, which worked on 5 of 5
+  changes. `GlassSurface` does this; see "Liquid Glass (feat-705)" below.
+  `TabBarBackground` still has no fade.
 - **Fast Refresh does not reliably apply changes to the material.** A branch
   swap looked applied and measured identically to the previous run; a magenta
   probe proved the old code was still live. Terminate and relaunch the dev
   client, and prove the reload landed with an unmistakable colour before
   trusting any measurement.
+
+## Liquid Glass (feat-705)
+
+On iOS 26 every floating control shows native Liquid Glass, every sheet is the
+native iOS 26 sheet, and every native system part is dark. Android and iOS
+before 26 keep the old look. The design record is
+`docs/plans/2026-10-15-1036-feat-mobile-native-liquid-glass-plan.md`; it defines
+the R, AE and KTD numbers that the source comments cite.
+
+- **One availability check: `canUseLiquidGlass()` in `src/lib/liquidGlass.ts`.**
+  It is true only on iOS when `isLiquidGlassAvailable()` and
+  `isGlassEffectAPIAvailable()` are both true. It keeps its first answer for the
+  launch, because a change to a `NativeTabs.Trigger` `role` remounts the whole
+  navigator. Every glass surface, the sheet options, the delete sheet and the
+  search tab read it. jest-expo reports glass as available, so a render suite
+  that does not mock the predicate or `expo-glass-effect` takes the glass path.
+  Pin the branch in each suite.
+- **One surface: `GlassSurface` in `src/components/ui/GlassSurface.tsx`.**
+  - `fallback` is the element's look where glass is not available: a
+    `PlatformBlur` configuration or a plain fill. Never put a fill in `style`,
+    because a fill covers the glass.
+  - `visible` maps to the `"regular"` or `"none"` style, so the material
+    dissolves. Reduce Motion snaps it.
+  - `fade` reaches only one wrapper around the children on glass, and the
+    whole surface in the fallback. Where a container keeps its own fade in the
+    fallback, pass `fade` on the glass path only.
+  - `interactive` gives a button Apple's own press response on glass
+    (`isInteractive`). Set it on buttons only: on a panel or a label, the
+    whole surface reacts to a touch. It sees only a touch on the glass
+    itself. A ring of up to 6 pt outside the glass with no press cue is
+    accepted (owner, 2026-10-19): the floating back button's `hitSlop` and the
+    bands above and below the My Watch "See all" pill. A wider gap needs the
+    glass to fill the target or its own press cue.
+    `pressed` dims the fallback only. On glass, the `Pressable` must not dim
+    itself: an opacity below 1 on any ancestor stops the glass.
+  - It always sets `colorScheme="dark"`. On 57.0.4 the owner saw no white
+    flash with `isInteractive` (iPhone 15 Pro, iOS 26.5, 2026-10-19). A native
+    tab switch may not remount a screen, so that check may not cover the 0.1.9
+    remount trigger. The buttons that draw
+    `GlassView` directly (`HomeHeader`, `FloatingBackButton`,
+    `ReaderGlassButton`) set it too; a panel or a label does not.
+- **The player chrome dissolves with the controls table.** On glass, the
+  controls layer in `VideoPlayer.tsx` does not fade. Each plate and the seek bar
+  take `controls.opacityAnim`, and each plate's `visible` comes from the
+  table's published value (`visibleStore`, read with
+  `useControlsGlassVisible`). A press during the 150 ms hide fade stops the
+  fade and sets the value to 1, and the native side then reports the stopped
+  fade's position late. `snapReveal` in `useControlsVisibility.ts` resets the
+  value again in a `stopAnimation` reply; without it, a plate that re-rendered
+  drew a glyph at about 30% (measured 2026-10-15).
+- **The dark style is a runtime window override.**
+  `src/lib/appearance/darkInterfaceStyle.ts` calls
+  `Appearance.setColorScheme("dark")` on iOS at module scope in
+  `app/_layout.tsx`, and again on each AppState "active". `app.json` keeps
+  `userInterfaceStyle: "automatic"`: the Info.plist key would make every trait
+  source report dark, and the reader could not read the phone's setting. The
+  override reaches form sheets, alerts and action sheets on iOS 26.5 and 18.6.
+  System prompts that iOS draws outside the app's window (permission alerts,
+  the "Open in" prompt) stay in the phone's style.
+- **Only the reader reads the phone's own setting.** After the override,
+  `useColorScheme()` is always "dark" on iOS. `usePhoneColorScheme()` reads the
+  window scene's style from the local module `modules/system-appearance`, and
+  returns `useColorScheme()` on Android. A missing module (Expo Go, an old dev
+  client, Jest) gives null, which resolves to Dark.
+  `app/__tests__/colorSchemeReaders.guard.test.js` fails on any other
+  `useColorScheme` or `Appearance.getColorScheme` reader, and on a dark
+  `userInterfaceStyle` in `app.json`. The module is native, so it moved the
+  fingerprint runtime version.
+- **Native sheets: `src/lib/sheetOptions.ts`.** On iOS 26 the form sheets drop
+  the 16 pt corner and the solid `contentStyle`, because the solid fill, not
+  the corner, hides the system glass. A sheet is glass at a partial height and
+  iOS's own solid dark sheet, rgb(28,28,30), at full height. The reader sheets
+  go transparent only in the reader's Dark theme; Light and True Dark keep
+  their solid fill.
+- **The Downloads delete confirmation on iOS 26 is `ActionSheetIOS`**
+  (`src/lib/library/deleteActionSheet.ts`). Its actions arrive in Datadog as
+  CUSTOM actions, not TAP actions. A tap outside reports
+  `library-delete-cancel`, like Cancel.
+- **The Search tab on iOS 26 is the system search tab.** Discover lives in
+  `app/(tabs)/watch/` with a `Stack` on iOS (`_layout.ios.tsx`) and a `Slot`
+  elsewhere, and mounts `Stack.SearchBar` only on glass. On an iPhone the field
+  sits at the bottom; on an iPad it is a button in the top navigation bar.
+  `react-native-screens` 4.26.2 cannot turn autocorrect off; `feat-706` tracks
+  the upgrade.
+- **No `GlassSurface` ships a tint, except one.** On the iPhone Air simulator (2026-10-15),
+  every reachable glass surface with text or an icon met its floor (text
+  4.5:1, icons 3:1) over the brightest real frames found. Measure contrast
+  beside the glyph or text, inside the surface: the glass rim is brighter and is
+  not the ground behind the text. Add a tint only from such a measurement, and
+  pin it in a test as `src/lib/__tests__/tabBar.test.ts` pins
+  `TAB_BAR_MATERIAL_TINT`.
+  One exception: the mission beta button is white glass (`BETA_GLASS_TINT`,
+  `TEXT_PRIMARY` at 0.9 alpha, in `app/mission.tsx`). The owner chose it on
+  2026-10-19 for the look of the page's main action, not for contrast. Its dark
+  label measured 13.1:1 on the iPhone 17 Pro Max simulator (iOS 26.5), and
+  `app/__tests__/missionBetaGlass.test.tsx` pins the tint.
+- **Prove the material on the simulator with a loud tint.** No test can see it.
+  Set a temporary `tintColor` such as `rgba(255, 0, 255, 0.6)` in
+  `GlassSurface`, cold-relaunch the dev client, and sample pixels. Remove the
+  tint after.
 
 ## Bible reader (feat-553)
 
@@ -2945,6 +3073,16 @@ runs the pre-install hook before `pnpm install`.
   - Every tag in `i18n/native-locales.json` except `en` gets a file. A tag
     with no translation (pending, English-only, or no catalog) gets the
     English text, so iOS shows English.
+  - **Superseded in part 2026-10-19:** a tag in `IOS_REJECTED_LPROJ_TAGS` in
+    the script gets no file and no `expo.locales` entry. App Store Connect
+    refused 17 `.lproj` folder names in build 16 (ITMS-90176, "Unrecognized
+    Locale"). The upload succeeded, but Apple asks for a fix. iOS shows those
+    languages the `Info.plist` English. No local locale data predicts Apple's
+    list: macOS knows `hak` and `iu`, which Apple refused, and does not know
+    `bsc` or `cak`, which Apple accepted. So when a delivery email names a new
+    tag, add it to the script's list and to the test's copy of Apple's list,
+    then run the script. The tag stays in `native-locales.json` and in
+    `CFBundleLocalizations`, which Apple did not refuse.
   - So `expo.locales` changes only when `native-locales.json` changes, at a
     native build. A later translation changes only its own file. The
     fingerprint does not hash that file (checked with

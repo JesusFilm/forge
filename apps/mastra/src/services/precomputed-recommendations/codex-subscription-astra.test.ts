@@ -49,10 +49,12 @@ async function fakeCli(
   const directory = await mkdtemp(join(tmpdir(), "forge-codex-astra-test-"))
   scratch.push(directory)
   const capture = join(directory, "capture.json")
+  const starts = join(directory, "starts.jsonl")
   const release = join(directory, "release")
   const executable = join(directory, "fake-codex.cjs")
   const script = `#!/usr/bin/env node
 const fs = require("node:fs")
+fs.appendFileSync(${JSON.stringify(starts)}, JSON.stringify({ at: Date.now() }) + "\\n")
 const capture = ${JSON.stringify(capture)}
 const prompt = fs.readFileSync(0, "utf8")
 const schemaPath = process.argv[process.argv.indexOf("--output-schema") + 1]
@@ -77,7 +79,7 @@ process.stderr.write(${JSON.stringify(options.stderr ?? "")})
 `
   await writeFile(executable, script, { mode: 0o700 })
   await chmod(executable, 0o700)
-  return { executable, capture, release }
+  return { executable, capture, release, starts }
 }
 
 async function fakeNodeLauncher(eventsToEmit: unknown[]) {
@@ -135,6 +137,8 @@ function model(
   }),
   timeoutMs?: number,
   concurrency?: number,
+  minCallStartIntervalMs?: number,
+  minimumRemainingPercent?: 0 | 25,
 ) {
   const adapter = createCodexSubscriptionAstraModel({
     codexExecutable: executable,
@@ -143,6 +147,8 @@ function model(
     readOperatorIdentity: identity,
     timeoutMs,
     concurrency,
+    minCallStartIntervalMs,
+    minimumRemainingPercent,
   })
   const legacyFixture: StructuredModel = {
     async generate(request) {
@@ -170,6 +176,222 @@ const summary = {
 }
 
 describe("local ChatGPT-subscription Astra adapter", () => {
+  it.each([25, 1])(
+    "allows %s percent with an explicit zero reserve",
+    async (remaining) => {
+      const cli = await fakeCli(events(summary))
+      const adapter = model(
+        cli.executable,
+        async () => ({
+          observedAt: new Date().toISOString(),
+          accountRef: "initiating-account-123",
+          billingBasis: "included_subscription",
+          weeklyRemainingPercent: remaining,
+          fiveHour: { kind: "limited", remainingPercent: remaining },
+        }),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        0,
+      )
+      await expect(adapter.generate(input)).resolves.toMatchObject({
+        output: summary,
+      })
+    },
+  )
+
+  it.each(["weekly", "fiveHour"])(
+    "refuses an exhausted %s window even with zero reserve",
+    async (window) => {
+      const adapter = model(
+        "/tmp/unused-codex",
+        async () => ({
+          observedAt: new Date().toISOString(),
+          accountRef: "initiating-account-123",
+          billingBasis: "included_subscription",
+          weeklyRemainingPercent: window === "weekly" ? 0 : 1,
+          fiveHour: {
+            kind: "limited",
+            remainingPercent: window === "fiveHour" ? 0 : 1,
+          },
+        }),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        0,
+      )
+      const reserve = vi.fn(async () => ({
+        kind: "dispatch" as const,
+        reservation: null,
+      }))
+      await expect(
+        adapter.generateReserved(input, reserve),
+      ).rejects.toMatchObject({ code: "allowance_insufficient" })
+      expect(reserve).not.toHaveBeenCalled()
+    },
+  )
+
+  it("still refuses credit-only billing with zero reserve", async () => {
+    const adapter = model(
+      "/tmp/unused-codex",
+      async () => ({
+        observedAt: new Date().toISOString(),
+        accountRef: "initiating-account-123",
+        billingBasis: "credit_only",
+        weeklyRemainingPercent: 25,
+        fiveHour: { kind: "not_applicable", plan: "pro" },
+      }),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      0,
+    )
+    const reserve = vi.fn(async () => ({
+      kind: "dispatch" as const,
+      reservation: null,
+    }))
+    await expect(
+      adapter.generateReserved(input, reserve),
+    ).rejects.toMatchObject({ code: "allowance_unavailable" })
+    expect(reserve).not.toHaveBeenCalled()
+  })
+
+  it.each([-1, 0.5, 30_001, NaN, Infinity])(
+    "refuses invalid process-start interval %s before dispatch",
+    (interval) => {
+      expect(() =>
+        model(
+          "/tmp/unused-codex",
+          undefined,
+          undefined,
+          undefined,
+          2,
+          interval,
+        ),
+      ).toThrow("operator_only")
+    },
+  )
+
+  it.each([25, 0] as const)(
+    "reads fresh allowance after pacing and stops at the %s floor",
+    async (floor) => {
+      const cli = await fakeCli(events(summary), { waitForRelease: true })
+      let remaining = 70
+      const allowance = vi.fn(
+        async (): Promise<CodexAllowanceSnapshot> => ({
+          observedAt: new Date().toISOString(),
+          accountRef: "initiating-account-123",
+          billingBasis: "included_subscription",
+          weeklyRemainingPercent: remaining,
+          fiveHour: { kind: "not_applicable", plan: "pro" },
+        }),
+      )
+      const adapter = model(
+        cli.executable,
+        allowance,
+        undefined,
+        undefined,
+        2,
+        300,
+        floor,
+      )
+      const reserve = vi.fn(async () => ({
+        kind: "dispatch" as const,
+        reservation: null,
+      }))
+      const first = adapter.generateReserved(input, reserve)
+      const second = adapter.generateReserved(input, reserve)
+      const settled = Promise.allSettled([first, second])
+      try {
+        await vi.waitFor(async () =>
+          expect(await readFile(cli.starts, "utf8")).toBeTruthy(),
+        )
+        expect(allowance).toHaveBeenCalledTimes(1)
+        remaining = floor
+        await expect(second).rejects.toMatchObject({
+          code: "allowance_insufficient",
+        })
+        expect(reserve).toHaveBeenCalledTimes(1)
+      } finally {
+        await writeFile(cli.release, "ready")
+        await settled
+      }
+      await expect(first).resolves.toMatchObject({ kind: "dispatched" })
+    },
+  )
+
+  it("stops paced waiters before reservation when a model call fails", async () => {
+    const cli = await fakeCli(
+      [{ type: "error", message: "fixture rate limit" }],
+      { exitCode: 1 },
+    )
+    const adapter = model(
+      cli.executable,
+      undefined,
+      undefined,
+      undefined,
+      3,
+      250,
+    )
+    const reserve = vi.fn(async () => ({
+      kind: "dispatch" as const,
+      reservation: null,
+    }))
+    const results = await Promise.allSettled(
+      [0, 1, 2].map(() => adapter.generateReserved(input, reserve)),
+    )
+    expect(reserve).toHaveBeenCalledTimes(1)
+    expect(results).toMatchObject([
+      { status: "rejected", reason: { consumptionUnknown: true } },
+      { status: "rejected", reason: { code: "adapter_paused" } },
+      { status: "rejected", reason: { code: "adapter_paused" } },
+    ])
+  })
+
+  it("paces process starts while allowing model calls to overlap", async () => {
+    const cli = await fakeCli(events(summary), { waitForRelease: true })
+    const adapter = model(
+      cli.executable,
+      undefined,
+      undefined,
+      undefined,
+      3,
+      250,
+    )
+    let completed = 0
+    const calls = [0, 1, 2].map(() =>
+      adapter.generate(input).then((result) => {
+        completed++
+        return result
+      }),
+    )
+    const settled = Promise.allSettled(calls)
+    try {
+      await vi.waitFor(
+        async () => {
+          const starts = (await readFile(cli.starts, "utf8")).trim().split("\n")
+          expect(starts).toHaveLength(3)
+        },
+        { timeout: 3000 },
+      )
+      expect(completed).toBe(0)
+      const starts: Array<{ at: number }> = (await readFile(cli.starts, "utf8"))
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line))
+      // Allow process startup scheduling jitter; an unpaced burst is under 50ms.
+      expect(starts[1]!.at - starts[0]!.at).toBeGreaterThanOrEqual(200)
+      expect(starts[2]!.at - starts[1]!.at).toBeGreaterThanOrEqual(200)
+    } finally {
+      await writeFile(cli.release, "ready")
+      await settled
+    }
+    expect((await settled).every((r) => r.status === "fulfilled")).toBe(true)
+  })
+
   it("stops queued reservations after a sibling fails while preserving an admitted sibling", async () => {
     const cli = await fakeCli(events(summary), { waitForRelease: true })
     const adapter = model(cli.executable, undefined, undefined, undefined, 2)
@@ -568,10 +790,31 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     expect(reserve).toHaveBeenCalledTimes(2)
   })
 
+  it("dispatches once after a valid twenty-second Admin reservation", async () => {
+    const cli = await fakeCli(events(summary))
+    const reserve = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20_000))
+      return {
+        kind: "dispatch" as const,
+        reservation: "committed-within-admin-budget",
+      }
+    })
+    expect(
+      await model(cli.executable).generateReserved(input, reserve),
+    ).toMatchObject({
+      kind: "dispatched",
+      reservation: "committed-within-admin-budget",
+    })
+    expect(reserve).toHaveBeenCalledTimes(1)
+    expect(
+      (await readFile(cli.starts, "utf8")).trim().split("\n"),
+    ).toHaveLength(1)
+  }, 30_000)
+
   it("keeps reservation latency within the admission snapshot's freshness budget", async () => {
     const cli = await fakeCli(events(summary))
     const allowance = async (): Promise<CodexAllowanceSnapshot> => ({
-      observedAt: new Date(Date.now() - 50_000).toISOString(),
+      observedAt: new Date(Date.now() - 16_000).toISOString(),
       accountRef: "initiating-account-123",
       billingBasis: "included_subscription",
       weeklyRemainingPercent: 70,
@@ -585,6 +828,26 @@ describe("local ChatGPT-subscription Astra adapter", () => {
       model(cli.executable, allowance).generateReserved(input, reserve),
     ).rejects.toMatchObject({ code: "allowance_stale" })
     expect(reserve).not.toHaveBeenCalled()
+    await expect(readFile(cli.capture)).rejects.toMatchObject({
+      code: "ENOENT",
+    })
+  })
+
+  it("refuses dispatch when the admission expires before a reservation reply is handled", async () => {
+    const cli = await fakeCli(events(summary))
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date())
+    const reserve = vi.fn(async () => {
+      vi.setSystemTime(Date.now() + 61_000)
+      return {
+        kind: "dispatch" as const,
+        reservation: "committed-after-clock-stall",
+      }
+    })
+    await expect(
+      model(cli.executable).generateReserved(input, reserve),
+    ).rejects.toMatchObject({ code: "identity_stale" })
+    expect(reserve).toHaveBeenCalledTimes(1)
     await expect(readFile(cli.capture)).rejects.toMatchObject({
       code: "ENOENT",
     })
@@ -609,7 +872,7 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     await expect(readFile(cli.capture)).rejects.toMatchObject({
       code: "ENOENT",
     })
-  }, 30_000)
+  }, 60_000)
 
   it("preserves known usage when the signed-in account drifts after a reserved call", async () => {
     const cli = await fakeCli(events(summary))

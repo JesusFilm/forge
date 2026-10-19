@@ -93,6 +93,22 @@ function press(renderer: TestInstance, label: string) {
   })
 }
 
+/** The touch target around the description text, by its test id. */
+function textTap(renderer: TestInstance, testID: string): RenderedNode[] {
+  return renderer.root.findAll(
+    (n) => n.props.testID === testID && typeof n.props.onPress === "function",
+  )
+}
+
+function tapText(renderer: TestInstance, testID: string) {
+  const [node] = textTap(renderer, testID)
+  expect(node).toBeDefined()
+  expect(node.props.disabled).not.toBe(true)
+  act(() => {
+    node.props.onPress?.()
+  })
+}
+
 describe("ClipDescription", () => {
   it("shows the description on one line", () => {
     const { renderer } = render(LONG)
@@ -125,12 +141,13 @@ describe("ClipDescription", () => {
     expect(toggle(renderer, "Show the full description")).not.toHaveLength(0)
     expect(hasText(renderer, "more")).toBe(true)
 
-    // "At the end of the line": the toggle is the one-line copy's next sibling
-    // in a row, not a control on a line of its own.
+    // "At the end of the line": the toggle is the next sibling of the one-line
+    // copy's tap target in a row, not a control on a line of its own.
     const json = renderer.toJSON() as JsonNode
     const row = findJson(json, (n) =>
       (n.children ?? []).some(
-        (c) => typeof c !== "string" && c.props.numberOfLines === 1,
+        (c) =>
+          typeof c !== "string" && c.props.testID === "clip-description-text",
       ),
     )
     expect(row).not.toBeNull()
@@ -139,7 +156,10 @@ describe("ClipDescription", () => {
       (c): c is JsonNode => typeof c !== "string",
     )
     expect(kids).toHaveLength(2)
-    expect(kids[0].props.numberOfLines).toBe(1)
+    const [line] = (kids[0].children ?? []).filter(
+      (c): c is JsonNode => typeof c !== "string",
+    )
+    expect(line.props.numberOfLines).toBe(1)
     expect(kids[1].props.accessibilityLabel).toBe("Show the full description")
   })
 
@@ -186,6 +206,69 @@ describe("ClipDescription", () => {
     expect(visibleCopy(renderer, LONG).props.numberOfLines).toBe(1)
   })
 
+  // The owner (2026-10-15): a tap on the text works as "more" and "less".
+  it("expands on a tap on the cut text and collapses on a tap on the open text", () => {
+    const { renderer, onExpand, onCollapse } = render(LONG)
+    measure(renderer, 3)
+
+    tapText(renderer, "clip-description-text")
+    expect(onExpand).toHaveBeenCalledTimes(1)
+    expect(visibleCopy(renderer, LONG).props.numberOfLines).toBeUndefined()
+    expect(textTap(renderer, "clip-description-text")).toHaveLength(0)
+
+    tapText(renderer, "clip-description-open-text")
+    expect(onCollapse).toHaveBeenCalledTimes(1)
+    expect(onExpand).toHaveBeenCalledTimes(1)
+    expect(visibleCopy(renderer, LONG).props.numberOfLines).toBe(1)
+  })
+
+  it("animates a text tap as it animates 'more'", () => {
+    const configure = jest.spyOn(LayoutAnimation, "configureNext")
+    const { renderer } = render(LONG)
+    measure(renderer, 3)
+    configure.mockClear()
+
+    tapText(renderer, "clip-description-text")
+    expect(configure).toHaveBeenCalledWith(DESCRIPTION_TOGGLE_ANIMATION)
+    configure.mockRestore()
+  })
+
+  it("keeps the tap on the text inert until the text measures as cut", () => {
+    const { renderer } = render(SHORT)
+    const [beforeMeasure] = textTap(renderer, "clip-description-text")
+    expect(beforeMeasure.props.disabled).toBe(true)
+
+    measure(renderer, 1)
+    const [fits] = textTap(renderer, "clip-description-text")
+    expect(fits.props.disabled).toBe(true)
+
+    act(() => {
+      renderer.update(
+        <ClipDescription
+          description={LONG}
+          onExpand={jest.fn()}
+          onCollapse={jest.fn()}
+        />,
+      )
+    })
+    measure(renderer, 3)
+    const [cut] = textTap(renderer, "clip-description-text")
+    expect(cut.props.disabled).toBe(false)
+  })
+
+  it("leaves 'more' and 'less' as the screen reader's controls, and the text as text", () => {
+    const { renderer } = render(LONG)
+    measure(renderer, 3)
+    const [cut] = textTap(renderer, "clip-description-text")
+    expect(cut.props).toMatchObject({ accessible: false, focusable: false })
+    expect(cut.props.accessibilityRole).toBeUndefined()
+
+    tapText(renderer, "clip-description-text")
+    const [open] = textTap(renderer, "clip-description-open-text")
+    expect(open.props).toMatchObject({ accessible: false, focusable: false })
+    expect(toggle(renderer, "Show less of the description")).toHaveLength(1)
+  })
+
   it("re-measures a new description, and a reset raises no resume", () => {
     // The reducer clears the pause on a swipe. A collapse event here would
     // arrive after that and act on the next clip.
@@ -218,6 +301,17 @@ describe("ClipDescription", () => {
     press(renderer, "Show the full description")
     const [less] = toggle(renderer, "Show less of the description")
     expect(tapActionName(less)).toBe("explore-description-less")
+  })
+
+  it("names the text taps apart from 'more' and 'less'", () => {
+    const { renderer } = render(LONG)
+    measure(renderer, 3)
+    const [cut] = textTap(renderer, "clip-description-text")
+    expect(tapActionName(cut)).toBe("explore-description-text-more")
+
+    tapText(renderer, "clip-description-text")
+    const [open] = textTap(renderer, "clip-description-open-text")
+    expect(tapActionName(open)).toBe("explore-description-text-less")
   })
 })
 

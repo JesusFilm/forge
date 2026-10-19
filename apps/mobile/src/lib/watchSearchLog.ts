@@ -4,7 +4,7 @@ import { MAX_QUERY_LENGTH } from "./watchSearch"
 
 // Pure, React-free helpers for the watch_search Log (search screen), so
 // request-id generation, outcome selection, and error-code classification are
-// unit-testable without the native Datadog SDK. The emit stays in watch.tsx.
+// unit-testable without the native Datadog SDK. The emit stays in Discover.
 
 /** Fresh correlation id for one search — unique across installs, not per-process. */
 export function generateSearchRequestId(): string {

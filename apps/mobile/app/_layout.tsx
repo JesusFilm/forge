@@ -16,6 +16,7 @@ let ACCENT: string
 let BG_COLOR: string
 let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
 let READER_SHEET_SCREEN_OPTIONS: typeof import("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
+let formSheetOptions: typeof import("../src/lib/sheetOptions").formSheetOptions
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -86,6 +87,7 @@ try {
     require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
   READER_SHEET_SCREEN_OPTIONS =
     require("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
+  formSheetOptions = require("../src/lib/sheetOptions").formSheetOptions
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -134,6 +136,9 @@ try {
   // the layout returns a bare view and the host does not mount at all.
   nativeSplash.preventNativeSplashAutoHide()
   getSplashSession?.().start()
+  // feat-705 KTD3: iOS draws its own sheets, alerts and keyboard dark, from
+  // the first frame. The reader still follows the phone (usePhoneColorScheme).
+  require("../src/lib/appearance/darkInterfaceStyle").applyDarkInterfaceStyle()
   // KTD3: module scope, so the first frame and the first request use the
   // phone's language. A failed phone read keeps English and does not throw.
   const localeStore = require("../src/i18n/localeStore")
@@ -308,13 +313,11 @@ function HeaderBackButton() {
 // One FULL detent, unlike the watch/series list sheets: the feedback form is
 // taller, it hosts a keyboard, and its two steps differ in height — a single
 // detent cannot resize between them or hide the message field behind the keys.
-const FEEDBACK_SHEET_OPTIONS = {
-  headerShown: false,
-  presentation: "formSheet" as const,
-  sheetInitialDetentIndex: 0,
-  sheetGrabberVisible: true,
-  sheetCornerRadius: 16,
-  sheetAllowedDetents: [1],
+function feedbackSheetOptions() {
+  return {
+    ...formSheetOptions(),
+    sheetAllowedDetents: [1],
+  }
 }
 
 export default function RootLayout() {
@@ -516,7 +519,7 @@ function AppRoot() {
                                   IN_APP_SHEET_ROUTE_PATTERNS. */}
                               <Stack.Screen
                                 name="feedback"
-                                options={FEEDBACK_SHEET_OPTIONS}
+                                options={feedbackSheetOptions()}
                               />
                               {/* Both player stacks confine the back-swipe to the
                                 left edge: iOS 26 defaults it to full-width,

@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense } from "react"
+import dynamic from "next/dynamic"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
@@ -34,11 +35,18 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 // "cover" the hero during scroll. Demoting the carousel into the body zone
 // keeps it directly below the hero in normal flow, with the rest of the body
 // content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
+const WatchNextSteps = dynamic(() =>
+  import("@/components/watch/WatchNextSteps").then(
+    (module) => module.WatchNextSteps,
+  ),
+)
+
 const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
 import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 
 export function WatchSectionRenderer({
+  audienceEnabled = false,
   surfaceManifests,
   blocks,
   downloadButtonLabel,
@@ -61,6 +69,7 @@ export function WatchSectionRenderer({
   coverBlackoutPhase,
   onChapterNavigateIntent,
 }: {
+  audienceEnabled?: boolean
   blocks: MergedWatchBlock[]
   surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
@@ -190,6 +199,20 @@ export function WatchSectionRenderer({
                   />
                 </Suspense>
               ))}
+              {audienceEnabled ? (
+                <WatchNextSteps
+                  languageSlug={languageSlug}
+                  locale={locale}
+                  currentVideoActions={{
+                    ...(modalCallbacks?.openShare
+                      ? { share: modalCallbacks.openShare }
+                      : {}),
+                    ...(modalCallbacks?.openDownload
+                      ? { download: modalCallbacks.openDownload }
+                      : {}),
+                  }}
+                />
+              ) : null}
             </div>
           </div>
         </section>
@@ -386,6 +409,7 @@ function SyntheticBlock({
           onPlayerActivated={onPlayerActivated}
           onPlayerViewabilityChange={onPlayerViewabilityChange}
           onLanguageClick={modalCallbacks?.openLanguage}
+          onCancelLanguageOpen={modalCallbacks?.cancelPendingLanguage}
           onShareClick={modalCallbacks?.openShare}
           languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}

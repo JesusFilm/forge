@@ -2,7 +2,7 @@
 
 Branch: `codex/tv-personalized-recommendations`.
 Baseline: `cdfcb4eab` (consolidated TV beta).
-Roadmap: `feat-697`, still **in progress**.
+Roadmap: `feat-747`, still **in progress**.
 
 ## Implemented
 

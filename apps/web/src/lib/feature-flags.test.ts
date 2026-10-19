@@ -8,11 +8,11 @@ function setRequiredWebEnv() {
   process.env.REVALIDATION_SECRET = "test-revalidation-secret"
   process.env.NEXT_PUBLIC_CANONICAL_ORIGIN = "http://localhost:3000"
   delete process.env.LAUNCHDARKLY_SDK_KEY
+  delete process.env.FORGE_WATCH_AUDIENCE_DEFAULT
   delete process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT
   delete process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT
   delete process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT
   delete process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT
-  delete process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT
   delete process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT
   delete process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT
   delete process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION
@@ -27,6 +27,17 @@ describe("web feature flag helpers", () => {
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV }
+  })
+
+  it("keeps the audience frame off without LD and allows the explicit local preview fallback", async () => {
+    const { isWatchAudienceEnabled } = await import("./feature-flags")
+    await expect(isWatchAudienceEnabled()).resolves.toBe(false)
+
+    vi.resetModules()
+    process.env.FORGE_WATCH_AUDIENCE_DEFAULT = "true"
+    const { isWatchAudienceEnabled: enabledForPreview } =
+      await import("./feature-flags")
+    await expect(enabledForPreview()).resolves.toBe(true)
   })
 
   it("keeps homepage recommendations off without LD and allows the explicit local preview fallback", async () => {
@@ -76,25 +87,6 @@ describe("web feature flag helpers", () => {
     const { isWatchCtaTextCopyEnabled } = await import("./feature-flags")
 
     await expect(isWatchCtaTextCopyEnabled()).resolves.toBe(true)
-  })
-
-  it("keeps the global beta tester CTA hidden by default", async () => {
-    delete process.env.LAUNCHDARKLY_SDK_KEY
-
-    const { isWatchGlobalBetaTesterCtaEnabled } =
-      await import("./feature-flags")
-
-    await expect(isWatchGlobalBetaTesterCtaEnabled()).resolves.toBe(false)
-  })
-
-  it("shows the global beta tester CTA from the server-side fallback", async () => {
-    delete process.env.LAUNCHDARKLY_SDK_KEY
-    process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT = "true"
-
-    const { isWatchGlobalBetaTesterCtaEnabled } =
-      await import("./feature-flags")
-
-    await expect(isWatchGlobalBetaTesterCtaEnabled()).resolves.toBe(true)
   })
 
   it("keeps the watch download account gate disabled by default", async () => {
@@ -155,7 +147,6 @@ describe("web feature flag helpers", () => {
     process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT = "true"
     process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT = "false"
     process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT = "true"
-    process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT = "true"
     process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT = "true"
     process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT = "false"
     const booleanVariation = vi.fn(async () => false)
@@ -181,17 +172,18 @@ describe("web feature flag helpers", () => {
           FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: "true",
           FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: "false",
           FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: "true",
-          FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: "true",
           FORGE_WATCH_QUESTION_PANEL_DEFAULT: "true",
           FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: "false",
+          FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT: undefined,
+          FORGE_WATCH_AUDIENCE_DEFAULT: undefined,
         },
         defaultValues: {
           "forge.watch.playerMigration": false,
           "forge.watch.ctaTextCopy": false,
           "forge.watch.downloadAccountGate": false,
-          "forge.watch.globalBetaTesterCta": false,
           "forge.watch.questionPanel": false,
           "forge.watch.hideBibleQuotes": false,
+          "forge.watch.audience": false,
         },
       }),
     )

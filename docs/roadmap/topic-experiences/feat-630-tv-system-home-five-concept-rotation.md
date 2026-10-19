@@ -56,3 +56,46 @@ and Google TV device gates are in
 `docs/plans/2026-10-14-tv-discovery-local-integration.md`.
 No push, deployment or beta upload was requested or performed. Overall release
 status remains in progress until the documented runtime gates are closed.
+
+## October 19 API interception verification
+
+The owner authorized test-only local API interception against the unchanged
+selected-integration build in a separate 4K QA simulator. Cover content changes,
+fallback/recovery, foreground refresh and background/terminated observations;
+preserve real content identities and original simulator data. Execution and
+evidence: `docs/plans/2026-10-19-top-shelf-api-interception.md`. No admin-content
+edits, push implementation, release or app behavior changes are part of this run.
+
+The authorized interception exercise is complete. Actual system Home evidence
+confirms foreground content updates, filtering, error retention/recovery and real
+native film destinations. Background and terminated observations each exceeded
+60 seconds without a request or snapshot update. Journey copy required reopening;
+Continue metadata remained cached through reopening and refreshed only after a
+documented QA-only catalogue-cache reset that preserved real history. These are
+verification findings, not new refresh or push implementations. See the October
+19 outcome table in `docs/tv-system-home-validation-2026-10-02.md` and the local
+captioned-video gallery linked from the plan. Overall feat-630 remains in progress
+for its broader platform, performance, distribution and release gates.
+
+## October 20 foreground freshness follow-up
+
+feat-750 fixes the two application cache limits found above. Existing Continue
+metadata and Journey copy now refresh on foreground return without deleting cache
+or history; actual local API replay confirms artwork, order/removal and recovery.
+See `docs/plans/2026-10-19-top-shelf-fresh-content.md`. The native extension remains
+snapshot-only: add a bounded native content fetch with independent public cache and
+revision/ownership fencing to support system-requested closed-app freshness.
+The local background/terminated observations showed no refresh over 60 seconds;
+Push was excluded by the owner. Overall feature/release status remains in progress.
+
+## October 20 native public-feed prototype
+
+feat-751 adds opt-in extension-side public fetching and a separate bounded cache.
+The final local Debug build has actual native HTTP/cache/visible Journey evidence
+while Watch remains stopped, including API failure, invalid data, timeout, empty
+and recovery. This supersedes the snapshot-only behavior above only when the
+native public feed is configured; the default remains off. Continue remains
+app-owned. See the new native section in
+`docs/tv-system-home-validation-2026-10-02.md` and the feat-751 plan. There is no
+production feed service, admin/push integration or physical-device/store claim.
+Overall feat-630 remains in progress for its broader platform/release gates.

@@ -85,8 +85,7 @@ function makeRequest(
 ): ProxyRequest {
   // Test stand-in for the `ProxyRequest` structural subset proxy() reads.
   // No cast needed — the factory's return type matches the production
-  // contract directly. NOTE: proxy() no longer reads cookies — the URL is
-  // the sole locale carrier, so there is no cookie field to mock.
+  // contract directly. Headers can model language and preference cookies.
   const url = new URL(pathname, options.origin ?? "https://www.jesusfilm.org")
   return {
     nextUrl: Object.assign(url, {
@@ -382,11 +381,8 @@ describe("proxy config matcher — reserved first-segment exclusions", () => {
 })
 
 // ---------------------------------------------------------------------------
-// No cookie override: the URL is the sole locale carrier. An explicit locale
-// already named in a canonical watch URL must NEVER be redirected to some
-// other language — this is the regression guard for the production bug where
-// a stale `forge_watch_lang` cookie hijacked `/jesus.html/english.html` to
-// `/jesus.html/bangla-2.html`. proxy() no longer reads cookies at all.
+// The URL is the sole locale carrier. Cookies and browser language headers
+// must never redirect either an entry route or an explicit localized route.
 // ---------------------------------------------------------------------------
 
 describe("proxy — explicit locale URLs are never language-redirected", () => {
@@ -419,9 +415,35 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   })
 
-  it("does not emit a Vary: Cookie header (no cookie-dependent redirects)", async () => {
-    const response = await proxy(makeRequest("/jesus.html/english.html"))
+  it("ignores language state for explicit and bare routes", async () => {
+    const response = await proxy(
+      makeRequest("/jesus.html/english.html", {
+        acceptLanguage: "ar-EG,ar;q=0.9",
+        headers: { cookie: "forge_watch_lang=spanish-castilian" },
+      }),
+    )
     expect(response.headers.get("vary") ?? "").not.toContain("Cookie")
+    expect(rewritePath(response)).toBe("/en/en/jesus.html/english.html")
+
+    for (const [publicPath, internalPath] of [
+      ["/", "/en/en"],
+      ["/languages", "/en/en/languages"],
+      ["/history", "/en/en/history"],
+      ["/whats-new", "/en/en/whats-new"],
+    ] as const) {
+      const entryResponse = await proxy(
+        makeRequest(publicPath, {
+          acceptLanguage: "ja-JP,ja;q=0.9",
+          headers: { cookie: "forge_watch_lang=japanese" },
+        }),
+      )
+      expect(entryResponse.status).not.toBe(307)
+      expect(rewritePath(entryResponse)).toBe(internalPath)
+      expect(entryResponse.headers.get("vary") ?? "").not.toContain("Cookie")
+      expect(entryResponse.headers.get("vary") ?? "").not.toContain(
+        "Accept-Language",
+      )
+    }
   })
 })
 
@@ -466,9 +488,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
         "/es/es-419/videos/spanish-latin-american",
       ],
     ] as const) {
-      const response = await proxy(
-        makeRequest(publicPath, { acceptLanguage: "es-ES,es;q=0.9" }),
-      )
+      const response = await proxy(makeRequest(publicPath))
       expect(response.status).not.toBe(307)
       expect(response.status).not.toBe(308)
       expect(rewritePath(response)).toBe(internalPath)

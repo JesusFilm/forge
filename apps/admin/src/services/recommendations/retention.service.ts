@@ -34,7 +34,9 @@ const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
 // An admitted phase may still exhaust the deadline; that remains a failure.
 const RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS = 750
 const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
-const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 5
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 25
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS = 5
+const RECOMMENDATION_RETENTION_POST_STANDALONE_RESERVE_MS = 3_000
 class RetentionPhaseBusy extends RecommendationConflictError {}
 class RetentionBudgetYield extends Error {}
 
@@ -393,8 +395,8 @@ export async function purgeExpiredRecommendationRequests(
     )
     const directActionIds = directActions.map((action) => action.id)
     // Preserve per-episode dependency admission and atomic deletion, but cap
-    // this pre-root phase independently so a playback backlog cannot consume
-    // the whole run before expired requests are reached.
+    // this pre-root phase independently. Process the original five-episode
+    // floor, then reserve time for requests/tail before admitting more work.
     const standaloneEpisodePageSize = Math.min(
       batchSize,
       RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE,
@@ -411,7 +413,15 @@ export async function purgeExpiredRecommendationRequests(
     rowCounts.expiredStandalonePlaybackFacts = 0
     rowCounts.expiredStandaloneOutcomes = 0
     rowCounts.expiredStandaloneEpisodes = 0
+    let standaloneEpisodesProcessed = 0
     for (const episodeId of standaloneEpisodeIds) {
+      if (
+        standaloneEpisodesProcessed >=
+          RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS &&
+        deadline - Date.now() <=
+          RECOMMENDATION_RETENTION_POST_STANDALONE_RESERVE_MS
+      )
+        break
       await phase(async (tx) => {
         await lockRetentionRoots(tx, { episodeIds: [episodeId] })
         const current = await tx.recommendationPlaybackEpisode.findFirst({
@@ -429,6 +439,7 @@ export async function purgeExpiredRecommendationRequests(
           })
         ).count
       })
+      standaloneEpisodesProcessed += 1
     }
     await phase(async (tx) => {
       const actions = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -1241,6 +1252,7 @@ export async function purgeExpiredRecommendationRequests(
       precomputedGenerationPurge.pageFull ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
+      standaloneEpisodesProcessed < standaloneEpisodeIds.length ||
       standaloneEpisodeIds.length === standaloneEpisodePageSize ||
       expiredProjectionRunPage === batchSize ||
       expiredContributionPage === batchSize ||

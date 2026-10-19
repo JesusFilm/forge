@@ -8,34 +8,21 @@ import {
   validatePrecomputedChoices,
 } from "./contract"
 import {
-  assertPrecomputedObservedVersion,
+  assertPrecomputedProfileVersion,
   PrecomputedCatalogError,
   selectedTranscriptSelections,
 } from "./catalog"
 import { verifiedImportedGaCapture } from "./ga-capture-import"
+import {
+  REVIEWED_EDGE_RECOVERIES,
+  reviewedEdgeRecovery,
+  type ReviewedEdgeRecovery,
+} from "./reviewed-edge-recoveries"
 
 const id = z.string().trim().min(1).max(191)
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
 const count = z.number().int().nonnegative().max(2_147_483_647)
 const failureCode = z.string().regex(/^[a-z][a-z0-9_]{2,63}$/)
-// Exact, owner-reviewed budget2 checkpoint. This is not a general retry path.
-const RECOVERY_GENERATION_ID = "subscription-astra-budget2-20261008-v4"
-const RECOVERY_ORIGINAL_CALL_ID = "8ab8a620-1608-4115-812e-200bb2fb4b6d"
-const RECOVERY_GENERATION_INPUT_DIGEST =
-  "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
-const RECOVERY_OLD_ATTEMPT_ID = "6ef8681b-1607-4ae9-b0b1-c28c41225d6b"
-const RECOVERY_SOURCE_IDS = [
-  "cmokmj8ka0njkqsccfvhbto3g",
-  "cmokmjc390nk2qscc79tyun6g",
-] as const
-const RECOVERY_INPUT_DIGEST =
-  "d87ad22523187a6e2bdedbb6a948057fddaa9d18f7a1efe8bb3a3224587a8824"
-const RECOVERY_MEMBERSHIP_DIGEST =
-  "ec3d4b7ffdfad5bd1ef03d68a5577df2aa6b14969191e9de53b9a0ac8d983b72"
-const RECOVERY_CANDIDATE_POOL_DIGEST =
-  "0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a"
-const RECOVERY_CAPTURE_REF_DIGEST =
-  "8edf8cce9a1ed5abf1ad847c47dd7f3389a9d1e431f8690ad9b3f0450b3e1cc8"
 const NO_DISPATCH_GENERATION_ID = "production-astra-catalog-20261013-v6"
 const NO_DISPATCH_GENERATION_INPUT_DIGEST =
   "e2ad59bb95b497738290c6dee1d0dd487886f34019ea721ce6971e12dfddd3a5"
@@ -83,6 +70,32 @@ const REVIEWED_NO_DISPATCH = [
         firstRank: 7,
         candidateCount: 3,
         sourceCandidateCount: 51,
+      },
+    ],
+  },
+  {
+    callId: "734caa08-6a97-4704-b1a7-bab5b2b017e7",
+    attemptId: "b29eb01c-ba09-4ae2-8d32-a0fb5b581b15",
+    requestDigest:
+      "025d1acbe592eb0b91d9bf38335659d6674c1b9d00913eaa912d7592ffe827c6",
+    evidenceDigest:
+      "b988c277eb6acc82ef3cbacde68407292ae700d2143eba6199dceb55863b1d3f",
+    members: [
+      {
+        sourceVideoId: "cmokmltnh0o4sqscc538f8ft5",
+        pageIndex: 9,
+        checkpointRevision: 10,
+        firstRank: 32,
+        candidateCount: 3,
+        sourceCandidateCount: 54,
+      },
+      {
+        sourceVideoId: "cmokmlvtk0o5cqscc95pobxr0",
+        pageIndex: 9,
+        checkpointRevision: 10,
+        firstRank: 29,
+        candidateCount: 2,
+        sourceCandidateCount: 62,
       },
     ],
   },
@@ -174,7 +187,7 @@ const status = z
 const recoveryAck = base
   .extend({
     action: z.literal("edge_manual_recovery_ack"),
-    originalCallId: z.literal(RECOVERY_ORIGINAL_CALL_ID),
+    originalCallId: z.uuid(),
     replacementCallId: z.uuid(),
     operatorAccountRef: z.string().regex(/^[A-Za-z0-9:_-]{8,128}$/),
     oldProcessExitedAttested: z.literal(true),
@@ -460,6 +473,7 @@ async function offeredExcerpt(
   tx: Tx,
   offer: z.infer<typeof spanOffer>,
   cutoff: Date,
+  generationId: string,
   evidence?: {
     selected: Awaited<ReturnType<typeof selectedTranscriptSelections>>
     chunks: Map<
@@ -475,7 +489,12 @@ async function offeredExcerpt(
 ): Promise<string | null> {
   if (!evidence) {
     try {
-      await assertPrecomputedObservedVersion(tx, [offer.videoId], cutoff)
+      await assertPrecomputedProfileVersion(
+        tx,
+        [offer.videoId],
+        cutoff,
+        generationId,
+      )
     } catch (error) {
       if (!(error instanceof PrecomputedCatalogError)) throw error
       return null
@@ -533,7 +552,12 @@ async function validateSpanOffers(
   if (input.spanOffers.length === 0) return
   const videoIds = [...new Set(input.spanOffers.map((offer) => offer.videoId))]
   try {
-    await assertPrecomputedObservedVersion(tx, videoIds, cutoff)
+    await assertPrecomputedProfileVersion(
+      tx,
+      videoIds,
+      cutoff,
+      input.generationId,
+    )
   } catch (error) {
     if (!(error instanceof PrecomputedCatalogError)) throw error
     invalid("Edge span offer is not an exact selected passage")
@@ -578,7 +602,7 @@ async function validateSpanOffers(
       ) ||
       ![offer.sourceVideoId, offer.targetVideoId].includes(offer.videoId) ||
       (pairCounts.get(pair) ?? 0) >= 8 ||
-      !(await offeredExcerpt(tx, offer, cutoff, evidence))
+      !(await offeredExcerpt(tx, offer, cutoff, input.generationId, evidence))
     )
       invalid("Edge span offer is not an exact selected passage")
     seen.add(offer.spanId)
@@ -601,44 +625,142 @@ function publicMembers(
   }))
 }
 
+type RecoveryCall = Prisma.RecommendationPrecomputedEdgeBatchCallGetPayload<{
+  include: { members: true }
+}>
+function matchesReviewedRecovery(
+  original: RecoveryCall,
+  scope: ReviewedEdgeRecovery,
+): boolean {
+  const offers = z.array(spanOffer).safeParse(original.spanOffers)
+  if (
+    original.generationId !== scope.generationId ||
+    original.callId !== scope.callId ||
+    original.attemptId !== scope.attemptId ||
+    original.inputDigest !== scope.inputDigest ||
+    original.membershipDigest !== scope.membershipDigest ||
+    original.candidatePoolDigest !== scope.candidatePoolDigest ||
+    original.captureRefDigest !== scope.captureRefDigest ||
+    original.modelId !== "gpt-6-astra" ||
+    original.backend !== "codex_chatgpt_subscription" ||
+    original.status !== "pending" ||
+    original.inputTokens !== null ||
+    original.outputTokens !== null ||
+    original.cachedInputTokens !== null ||
+    original.outputDigest !== null ||
+    original.errorCode !== null ||
+    original.finishedAt !== null ||
+    original.receiptDigest !== null ||
+    (scope.requestDigest !== undefined &&
+      original.requestDigest !== scope.requestDigest) ||
+    (scope.spanOfferDigest !== undefined &&
+      (original.spanOfferDigest !== scope.spanOfferDigest ||
+        !offers.success ||
+        hash(offers.data) !== scope.spanOfferDigest)) ||
+    (scope.selectedCorpusDigest !== undefined &&
+      original.selectedCorpusDigest !== scope.selectedCorpusDigest) ||
+    original.members.length !== scope.members.length
+  )
+    return false
+  return original.members.every((member, index) => {
+    const expected = scope.members[index]!
+    const candidates = z.array(candidate).safeParse(member.candidates)
+    if (
+      member.sourceVideoId !== expected.sourceVideoId ||
+      member.pageIndex !== expected.pageIndex ||
+      (scope.requestDigest !== undefined &&
+        (member.appliedRevision !== null ||
+          member.resultChoiceCount !== null)) ||
+      !candidates.success ||
+      candidates.data.length !== expected.candidateCount ||
+      candidates.data.some(
+        (item, index) => item.poolRank !== expected.firstRank + index,
+      ) ||
+      member.candidatePageDigest !==
+        hash([
+          member.sourceVideoId,
+          member.pageIndex,
+          candidates.data.map((item) => [
+            item.poolRank,
+            item.targetVideoId,
+            item.targetProfileKey,
+          ]),
+        ])
+    )
+      return false
+    return (
+      (expected.checkpointRevision === undefined ||
+        member.checkpointRevision === expected.checkpointRevision) &&
+      (expected.sourceProfileKey === undefined ||
+        member.sourceProfileKey === expected.sourceProfileKey) &&
+      (expected.candidatePageDigest === undefined ||
+        member.candidatePageDigest === expected.candidatePageDigest) &&
+      (expected.sourceCandidateCount === undefined ||
+        member.sourceCandidateCount === expected.sourceCandidateCount) &&
+      (expected.sourceCandidateDigest === undefined ||
+        member.sourceCandidateDigest === expected.sourceCandidateDigest) &&
+      (expected.historicalRefDigest === undefined ||
+        member.historicalRefDigest === expected.historicalRefDigest)
+    )
+  })
+}
+
 async function replacementReconciled(
-  tx: Tx,
+  tx: ReadDb,
   generationId: string,
   replacementCallId: string | null,
 ): Promise<boolean> {
   if (!replacementCallId) return false
-  const replacement =
-    await tx.recommendationPrecomputedEdgeBatchCall.findUnique({
-      where: {
-        generationId_callId: { generationId, callId: replacementCallId },
-      },
-      include: {
-        members: { orderBy: { sourceVideoId: "asc" } },
-        executionAttempt: { select: { endedAt: true } },
-      },
-    })
+  const original = await tx.recommendationPrecomputedEdgeBatchCall.findFirst({
+    where: { generationId, recoveryReplacementCallId: replacementCallId },
+    select: { callId: true },
+  })
+  const scope = original && reviewedEdgeRecovery(generationId, original.callId)
   return Boolean(
-    replacement &&
-    replacement.status === "succeeded" &&
-    replacement.inputTokens !== null &&
-    replacement.outputTokens !== null &&
-    replacement.receiptDigest !== null &&
-    replacement.executionAttempt.endedAt !== null &&
-    replacement.members.length === RECOVERY_SOURCE_IDS.length &&
-    replacement.members.every(
-      (item, index) =>
-        item.sourceVideoId === RECOVERY_SOURCE_IDS[index] &&
-        ["applied_edges", "applied_empty"].includes(item.applicationState),
-    ),
+    scope &&
+    (await loadOneQualifiedManualEdgeRecovery(tx, generationId, scope))
+      .qualifiedAcknowledgedUnknownCount === 1,
   )
 }
 
-/** The single owner-acknowledged reservation stays pending with unknown usage.
- * This read-only proof qualifies that exception only after the exact replacement
- * has a known receipt and both frozen members have been applied. */
+/** Qualify reviewed unknown calls separately; their original usage stays unknown. */
 export async function loadQualifiedManualEdgeRecovery(
   db: ReadDb,
   generationId: string,
+): Promise<{
+  qualifiedAcknowledgedUnknownCount: number
+  qualifiedAcknowledgmentDigest: string | null
+}> {
+  const qualified: string[] = []
+  for (const scope of REVIEWED_EDGE_RECOVERIES.filter(
+    (scope) => scope.generationId === generationId,
+  )) {
+    const result = await loadOneQualifiedManualEdgeRecovery(
+      db,
+      generationId,
+      scope,
+    )
+    if (result.qualifiedAcknowledgmentDigest)
+      qualified.push(result.qualifiedAcknowledgmentDigest)
+  }
+  return {
+    qualifiedAcknowledgedUnknownCount: qualified.length,
+    qualifiedAcknowledgmentDigest:
+      qualified.length === 1
+        ? qualified[0]!
+        : qualified.length
+          ? hash(["qualified-manual-edge-recoveries-v2", qualified])
+          : null,
+  }
+}
+
+/** Each owner-acknowledged reservation stays pending with unknown usage.
+ * This read-only proof qualifies that exception only after the exact replacement
+ * has a known receipt and all frozen members have been applied. */
+async function loadOneQualifiedManualEdgeRecovery(
+  db: ReadDb,
+  generationId: string,
+  scope: ReviewedEdgeRecovery,
 ): Promise<{
   qualifiedAcknowledgedUnknownCount: 0 | 1
   qualifiedAcknowledgmentDigest: string | null
@@ -647,16 +769,16 @@ export async function loadQualifiedManualEdgeRecovery(
     qualifiedAcknowledgedUnknownCount: 0 as const,
     qualifiedAcknowledgmentDigest: null,
   }
-  if (generationId !== RECOVERY_GENERATION_ID) return unqualified
+  if (generationId !== scope.generationId) return unqualified
   const generation = await db.recommendationPrecomputedGeneration.findUnique({
     where: { id: generationId },
     select: { inputDigest: true },
   })
-  if (generation?.inputDigest !== RECOVERY_GENERATION_INPUT_DIGEST)
+  if (generation?.inputDigest !== scope.generationInputDigest)
     return unqualified
   const original = await db.recommendationPrecomputedEdgeBatchCall.findUnique({
     where: {
-      generationId_callId: { generationId, callId: RECOVERY_ORIGINAL_CALL_ID },
+      generationId_callId: { generationId, callId: scope.callId },
     },
     include: {
       members: { orderBy: { sourceVideoId: "asc" } },
@@ -665,49 +787,17 @@ export async function loadQualifiedManualEdgeRecovery(
   })
   if (
     !original ||
-    original.attemptId !== RECOVERY_OLD_ATTEMPT_ID ||
-    original.modelId !== "gpt-6-astra" ||
-    original.backend !== "codex_chatgpt_subscription" ||
-    original.status !== "pending" ||
-    original.inputDigest !== RECOVERY_INPUT_DIGEST ||
-    original.membershipDigest !== RECOVERY_MEMBERSHIP_DIGEST ||
-    original.candidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST ||
-    original.captureRefDigest !== RECOVERY_CAPTURE_REF_DIGEST ||
-    original.inputTokens !== null ||
-    original.outputTokens !== null ||
-    original.cachedInputTokens !== null ||
-    original.outputDigest !== null ||
-    original.errorCode !== null ||
-    original.finishedAt !== null ||
-    original.receiptDigest !== null ||
+    !matchesReviewedRecovery(original, scope) ||
     !original.executionAttempt.endedAt ||
     !original.recoveryAcknowledgedAt ||
     !original.recoveryOperatorAccountRef ||
     original.recoveryOldProcessExitedAttested !== true ||
     !original.recoveryReplacementCallId ||
-    original.members.length !== RECOVERY_SOURCE_IDS.length ||
-    original.members.some((member, index) => {
-      const candidates = z.array(candidate).safeParse(member.candidates)
-      return (
-        member.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
-        member.pageIndex !== 0 ||
+    original.members.some(
+      (member) =>
         member.applicationState !== "acknowledged_unknown" ||
-        member.appliedRevision !== null ||
-        !candidates.success ||
-        candidates.data.length !== 4 ||
-        candidates.data.some((item, rank) => item.poolRank !== rank) ||
-        member.candidatePageDigest !==
-          hash([
-            member.sourceVideoId,
-            member.pageIndex,
-            candidates.data.map((item) => [
-              item.poolRank,
-              item.targetVideoId,
-              item.targetProfileKey,
-            ]),
-          ])
-      )
-    })
+        member.appliedRevision !== null,
+    )
   )
     return unqualified
   const replacement =
@@ -1211,11 +1301,13 @@ async function acknowledgeManualRecovery(
   generation: Generation,
   guards: Guards,
 ): Promise<Record<string, unknown>> {
+  const scope = reviewedEdgeRecovery(input.generationId, input.originalCallId)
   if (
-    input.generationId !== RECOVERY_GENERATION_ID ||
-    input.generationInputDigest !== RECOVERY_GENERATION_INPUT_DIGEST ||
-    input.attemptId === RECOVERY_OLD_ATTEMPT_ID ||
-    input.replacementCallId === RECOVERY_ORIGINAL_CALL_ID ||
+    !scope ||
+    input.generationInputDigest !== scope.generationInputDigest ||
+    input.attemptId === scope.attemptId ||
+    input.replacementCallId === scope.callId ||
+    reviewedEdgeRecovery(input.generationId, input.replacementCallId) ||
     generation.status !== "incomplete"
   )
     conflict("Manual recovery scope differs from the reviewed checkpoint")
@@ -1257,41 +1349,7 @@ async function acknowledgeManualRecovery(
     },
     include: { members: { orderBy: { sourceVideoId: "asc" } } },
   })
-  if (
-    !original ||
-    original.attemptId !== RECOVERY_OLD_ATTEMPT_ID ||
-    original.status !== "pending" ||
-    original.inputDigest !== RECOVERY_INPUT_DIGEST ||
-    original.membershipDigest !== RECOVERY_MEMBERSHIP_DIGEST ||
-    original.candidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST ||
-    original.captureRefDigest !== RECOVERY_CAPTURE_REF_DIGEST ||
-    original.inputTokens !== null ||
-    original.outputTokens !== null ||
-    original.cachedInputTokens !== null ||
-    original.finishedAt !== null ||
-    original.receiptDigest !== null ||
-    original.members.length !== RECOVERY_SOURCE_IDS.length ||
-    original.members.some((item, index) => {
-      const parsed = z.array(candidate).safeParse(item.candidates)
-      return (
-        item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
-        item.pageIndex !== 0 ||
-        !parsed.success ||
-        parsed.data.length !== 4 ||
-        parsed.data.some((candidate, rank) => candidate.poolRank !== rank) ||
-        item.candidatePageDigest !==
-          hash([
-            item.sourceVideoId,
-            item.pageIndex,
-            parsed.data.map((candidate) => [
-              candidate.poolRank,
-              candidate.targetVideoId,
-              candidate.targetProfileKey,
-            ]),
-          ])
-      )
-    })
-  )
+  if (!original || !matchesReviewedRecovery(original, scope))
     conflict("Original unresolved edge reservation differs")
   if (original.recoveryReplacementCallId !== null) {
     if (
@@ -1311,12 +1369,42 @@ async function acknowledgeManualRecovery(
       replay: true,
     }
   }
+  if (
+    await tx.recommendationPrecomputedEdgeBatchCall.findUnique({
+      where: {
+        generationId_callId: {
+          generationId: input.generationId,
+          callId: input.replacementCallId,
+        },
+      },
+      select: { callId: true },
+    })
+  )
+    conflict("Replacement edge call ID is already used")
+  const previousAcknowledgments =
+    await tx.recommendationPrecomputedEdgeBatchCall.findMany({
+      where: {
+        generationId: input.generationId,
+        recoveryReplacementCallId: { not: null },
+      },
+      select: { recoveryReplacementCallId: true },
+    })
+  for (const previous of previousAcknowledgments) {
+    if (
+      !(await replacementReconciled(
+        tx,
+        input.generationId,
+        previous.recoveryReplacementCallId,
+      ))
+    )
+      conflict("Replacement edge receipt has not safely applied")
+  }
   const oldAttempt =
     await tx.recommendationPrecomputedExecutionAttempt.findUnique({
       where: {
         generationId_attemptId: {
           generationId: input.generationId,
-          attemptId: RECOVERY_OLD_ATTEMPT_ID,
+          attemptId: scope.attemptId,
         },
       },
       select: { endedAt: true },
@@ -1324,9 +1412,6 @@ async function acknowledgeManualRecovery(
   if (!oldAttempt?.endedAt)
     conflict("Original subscription attempt remains active")
   if (
-    (await tx.recommendationPrecomputedEdgeBatchCall.count({
-      where: { generationId: input.generationId },
-    })) !== 1 ||
     (await tx.recommendationPrecomputedProfileCall.count({
       where: { generationId: input.generationId, status: "pending" },
     })) !== 0 ||
@@ -1339,26 +1424,30 @@ async function acknowledgeManualRecovery(
       },
     })) !== 0
   )
-    conflict("Manual recovery requires one unresolved call and no live leases")
+    conflict(
+      "Manual recovery requires reviewed pending members and no live leases",
+    )
   const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow({
     where: { id: input.generationId },
   })
   const binding = await verifiedImportedGaCapture(tx, meta)
   if (
     !binding ||
-    binding.bindingDigest !== RECOVERY_CAPTURE_REF_DIGEST ||
-    binding.destination.candidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST
+    binding.bindingDigest !== scope.captureRefDigest ||
+    binding.destination.candidatePoolDigest !== scope.candidatePoolDigest
   )
     conflict("Historical recovery capture identity differs")
   const sources = await tx.recommendationPrecomputedBuildSource.findMany({
     where: {
       generationId: input.generationId,
-      sourceVideoId: { in: [...RECOVERY_SOURCE_IDS] },
+      sourceVideoId: {
+        in: scope.members.map((member) => member.sourceVideoId),
+      },
     },
     orderBy: { sourceVideoId: "asc" },
   })
   if (
-    sources.length !== RECOVERY_SOURCE_IDS.length ||
+    sources.length !== scope.members.length ||
     sources.some((source, index) => {
       const member = original.members[index]!
       return (
@@ -1370,7 +1459,7 @@ async function acknowledgeManualRecovery(
         source.edgeSourceCandidateCount !== member.sourceCandidateCount ||
         source.edgeSourceCandidateDigest !== member.sourceCandidateDigest ||
         source.edgeSourceProfileKey !== member.sourceProfileKey ||
-        source.edgeCandidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST ||
+        source.edgeCandidatePoolDigest !== scope.candidatePoolDigest ||
         source.edgeHistoricalRefDigest !== member.historicalRefDigest ||
         source.historicalProvenance === null
       )
@@ -1457,18 +1546,19 @@ async function startEdgeBatch(
   )
     conflict("Subscription attempt is inactive")
   guards.requireCapacityFresh(generation)
-  const acknowledged =
-    await tx.recommendationPrecomputedEdgeBatchCall.findFirst({
+  const acknowledgments =
+    await tx.recommendationPrecomputedEdgeBatchCall.findMany({
       where: {
         generationId: input.generationId,
         recoveryReplacementCallId: { not: null },
       },
       include: { members: { orderBy: { sourceVideoId: "asc" } } },
     })
-  if (acknowledged) {
+  for (const acknowledged of acknowledgments) {
+    const scope = reviewedEdgeRecovery(input.generationId, acknowledged.callId)
     if (
-      input.generationId !== RECOVERY_GENERATION_ID ||
-      acknowledged.callId !== RECOVERY_ORIGINAL_CALL_ID ||
+      !scope ||
+      !matchesReviewedRecovery(acknowledged, scope) ||
       !acknowledged.recoveryReplacementCallId ||
       acknowledged.members.some(
         (item) => item.applicationState !== "acknowledged_unknown",
@@ -1477,7 +1567,7 @@ async function startEdgeBatch(
       conflict("Manual recovery acknowledgment differs")
     if (input.callId === acknowledged.recoveryReplacementCallId) {
       if (
-        input.members.length !== RECOVERY_SOURCE_IDS.length ||
+        input.members.length !== scope.members.length ||
         input.members.some((item, index) => {
           const original = acknowledged.members[index]
           const originalCandidates = z
@@ -1486,9 +1576,9 @@ async function startEdgeBatch(
           return (
             !original ||
             !originalCandidates.success ||
-            item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
+            item.sourceVideoId !== scope.members[index]?.sourceVideoId ||
             item.sourceVideoId !== original.sourceVideoId ||
-            item.pageIndex !== 0 ||
+            item.pageIndex !== scope.members[index]?.pageIndex ||
             item.pageIndex !== original.pageIndex ||
             item.sourceProfileKey !== original.sourceProfileKey ||
             item.candidatePageDigest !== original.candidatePageDigest ||
@@ -1521,17 +1611,6 @@ async function startEdgeBatch(
         ))
       )
         conflict("Replacement edge receipt has not safely applied")
-      if (
-        (await tx.recommendationPrecomputedEdgeBatchCall.count({
-          where: {
-            generationId: input.generationId,
-            status: "pending",
-            callId: { not: RECOVERY_ORIGINAL_CALL_ID },
-            NOT: auditedNoDispatchReservationWhere,
-          },
-        })) !== 0
-      )
-        conflict("Another unknown edge call remains pending")
     }
   }
   if (
@@ -1994,7 +2073,8 @@ async function checkedResults(
             offer.sourceVideoId !== result.sourceVideoId ||
             offer.targetVideoId !== choice.targetVideoId ||
             offer.chunkId !== passage.chunkId ||
-            (await offeredExcerpt(tx, offer, cutoff)) !== passage.excerpt
+            (await offeredExcerpt(tx, offer, cutoff, input.generationId)) !==
+              passage.excerpt
           )
             return null
         }
@@ -2394,7 +2474,7 @@ async function finalizeEdgeSource(
         select: { recoveryReplacementCallId: true },
       })
     if (
-      item.callId !== RECOVERY_ORIGINAL_CALL_ID ||
+      !reviewedEdgeRecovery(input.generationId, item.callId) ||
       !(await replacementReconciled(
         tx,
         input.generationId,
@@ -2454,10 +2534,11 @@ async function finalizeEdgeSource(
     where: { id: input.generationId },
     select: { inputCutoff: true },
   })
-  await assertPrecomputedObservedVersion(
+  await assertPrecomputedProfileVersion(
     tx,
     [input.sourceVideoId, ...choices.map((item) => item.targetVideoId)],
     meta.inputCutoff,
+    input.generationId,
   )
   const payload = await validatePrecomputedChoices(
     tx,
