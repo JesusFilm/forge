@@ -77,13 +77,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontFamily: "System",
     fontSize: 18,
     fontWeight: "600",
     textAlign: "center",
   },
   body: {
-    fontFamily: "System",
     fontSize: 15,
     lineHeight: 21,
     textAlign: "center",
@@ -97,7 +95,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   actionText: {
-    fontFamily: "System",
     fontSize: 16,
     fontWeight: "600",
   },

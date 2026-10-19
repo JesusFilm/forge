@@ -288,11 +288,9 @@ const styles = StyleSheet.create({
   },
   body: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   toggleText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   more: {

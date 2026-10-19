@@ -309,7 +309,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "700",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   muteButton: {
     width: 48,
@@ -324,7 +323,6 @@ const styles = StyleSheet.create({
   subheading: {
     fontWeight: "400",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
     marginTop: 4,
@@ -342,6 +340,5 @@ const styles = StyleSheet.create({
   ctaText: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

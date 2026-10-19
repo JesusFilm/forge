@@ -135,7 +135,6 @@ const styles = StyleSheet.create({
     height: READER_TOUCH_TARGET,
   },
   sizeGlyph: {
-    fontFamily: "System",
     fontWeight: "500",
   },
   spacingGlyph: {

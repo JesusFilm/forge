@@ -275,13 +275,11 @@ const styles = StyleSheet.create({
   },
   headline: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     marginBottom: 12,
   },
   intro: {
     color: hexToRgba(TEXT_PRIMARY, 0.8),
-    fontFamily: "System",
     marginBottom: 28,
   },
   cardStack: {
@@ -303,7 +301,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     marginTop: 12,
   },
@@ -312,12 +309,10 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     color: hexToRgba(TEXT_PRIMARY, 0.7),
-    fontFamily: "System",
     marginTop: 8,
   },
   buildingNextLabel: {
     color: hexToRgba(TEXT_PRIMARY, 0.8),
-    fontFamily: "System",
     fontWeight: "600",
     marginTop: 28,
     marginBottom: 12,
@@ -331,7 +326,6 @@ const styles = StyleSheet.create({
   },
   inviteHeadline: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     textAlign: "center",
     marginBottom: 12,
@@ -344,7 +338,6 @@ const styles = StyleSheet.create({
   },
   inviteBody: {
     color: hexToRgba(TEXT_PRIMARY, 0.8),
-    fontFamily: "System",
     textAlign: "center",
     marginBottom: 24,
   },
@@ -359,7 +352,6 @@ const styles = StyleSheet.create({
   },
   betaButtonText: {
     color: BG_COLOR,
-    fontFamily: "System",
     fontWeight: "600",
   },
   betaGlass: {
@@ -372,7 +364,6 @@ const styles = StyleSheet.create({
   },
   betaGlassText: {
     color: BG_COLOR,
-    fontFamily: "System",
     fontWeight: "600",
   },
 })

@@ -957,7 +957,6 @@ const styles = StyleSheet.create({
   },
   externalRouteText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontSize: 13,
     fontWeight: "600",
   },

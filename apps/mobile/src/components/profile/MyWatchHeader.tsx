@@ -351,13 +351,11 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   name: {
     flexShrink: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   noticeCard: {
@@ -372,7 +370,6 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   noticeTextError: {
     color: TEXT_PRIMARY,
@@ -392,11 +389,9 @@ const styles = StyleSheet.create({
   },
   signInTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   signInSubtitle: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 2,
   },
   // Title only. The same dim on the subtitle gives about 2.6:1 on

@@ -225,14 +225,12 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 11,
     fontWeight: "700",
-    fontFamily: "System",
     letterSpacing: 1,
   },
   buttonLabel: {
     flex: 1,
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   arrow: {

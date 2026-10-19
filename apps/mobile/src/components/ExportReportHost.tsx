@@ -251,16 +251,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   headline: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   detail: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
 })
 

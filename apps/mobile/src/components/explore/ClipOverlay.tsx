@@ -587,7 +587,6 @@ const styles = StyleSheet.create({
   },
   fastLabel: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   bottom: {
@@ -620,7 +619,6 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   rail: {

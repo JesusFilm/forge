@@ -85,7 +85,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 
 - Follow Expo Router file-based routing conventions.
 - Use `@forge/admin-graphql` for all GraphQL operations — never define queries in `@forge/admin-graphql` package itself.
-- System font (`fontFamily: 'System'`) for platform-native typography (SF Pro iOS, Roboto Android).
+- Leave `fontFamily` unset for platform-native typography (SF Pro on iOS, Roboto on Android). Never write `fontFamily: "System"`: on Android, React Native draws a named family in Regular or Bold only, so weight 500 and 600 draw Regular (`ReactFontManager.getTypeface`). With no family, iOS draws the same system font, and Android keeps the numeric weight. `src/styles/__tests__/noSystemFontFamily.guard.test.js` enforces this.
 - `hexToRgba(color, 0)` for gradient stops — never `"transparent"`.
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.

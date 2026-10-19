@@ -1144,7 +1144,6 @@ const styles = StyleSheet.create({
   retryLink: {
     // ACCENT_ON_DARK, not ACCENT: 15px link text needs >= 4.5:1 on the dark bg.
     color: ACCENT_ON_DARK,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,

@@ -714,7 +714,6 @@ const styles = StyleSheet.create({
   },
   retryLink: {
     color: ACCENT,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,

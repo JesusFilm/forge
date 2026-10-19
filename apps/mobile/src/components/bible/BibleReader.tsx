@@ -1003,7 +1003,6 @@ const styles = StyleSheet.create({
   noticeText: {
     fontSize: 15,
     lineHeight: 20,
-    fontFamily: "System",
     textAlign: "center",
   },
 })

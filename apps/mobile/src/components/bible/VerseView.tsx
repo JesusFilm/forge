@@ -616,7 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontStyle: "italic",
-    fontFamily: "System",
     textAlign: "center",
     paddingHorizontal: 24,
   },

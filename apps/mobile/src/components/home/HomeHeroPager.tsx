@@ -863,26 +863,22 @@ const styles = StyleSheet.create({
   },
   wordmark: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
     letterSpacing: 3,
     marginBottom: 8,
   },
   eyebrow: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "600",
     letterSpacing: 2,
     marginBottom: 6,
   },
   title: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   description: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 6,
   },
   dotsOverlay: {

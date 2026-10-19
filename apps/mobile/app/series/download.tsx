@@ -852,12 +852,10 @@ const styles = StyleSheet.create({
   title: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 4,
   },
   subtitle: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginBottom: 24,
   },
   statusPanel: {
@@ -872,11 +870,9 @@ const styles = StyleSheet.create({
   },
   statusText: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   skippedText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   failedRow: {
     flexDirection: "row",
@@ -887,12 +883,10 @@ const styles = StyleSheet.create({
   retryFailedText: {
     color: ACCENT,
     fontWeight: "600",
-    fontFamily: "System",
     textDecorationLine: "underline",
   },
   storageError: {
     color: ACCENT,
-    fontFamily: "System",
     marginBottom: 16,
   },
   confirmButton: {
@@ -912,6 +906,5 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

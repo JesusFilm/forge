@@ -488,7 +488,6 @@ const styles = StyleSheet.create({
   noVideoText: {
     color: TEXT_SECONDARY,
     fontSize: 15,
-    fontFamily: "System",
   },
   listContent: {
     paddingBottom: 48,
@@ -503,7 +502,6 @@ const styles = StyleSheet.create({
   },
   description: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 6,
     lineHeight: 20,
   },
@@ -549,7 +547,6 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontWeight: "500",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   rowTitleActive: {
     color: TEXT_PRIMARY,
