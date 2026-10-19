@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-10-19"
 duration: 1
 depends_on: ["feat-734"]
-blocks: ["feat-736"]
+blocks: ["feat-737"]
 tags: [recommendations, retention, postgres, reliability]
 ---
 
