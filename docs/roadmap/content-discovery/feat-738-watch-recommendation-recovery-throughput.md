@@ -3,7 +3,7 @@ id: "feat-738"
 title: "Restore Watch recommendation cards during background cleanup"
 owner: "nisal"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-19"
 duration: 1
 depends_on: ["feat-737"]
@@ -86,4 +86,23 @@ standalone page was partial. Keep each episode's existing atomic transaction.
   issue cards for overdue, missing-watermark and failed-probe conditions.
   All 77 focused delivery, manifest, privacy-mode, retention and health tests,
   scoped typechecking and touched-file lint passed.
-- Public frontend recovery verification remains pending normal deployment.
+- [PR #2810](https://github.com/JesusFilm/forge/pull/2810) merged with all CI
+  checks green as `1982a2894c874a1ffd0e7515a05434f3a97291a2`. Admin deployment
+  `1b22635f-4282-470c-9616-50148992e8e4` and worker deployment
+  `ced8cee5-954f-4ce2-a510-2ad5abca26e5` were verified successful on that commit
+  at October 19, 03:26:50 UTC.
+- Both public JESUS and How to Know Jesus Personally pages returned HTTP 200,
+  `served`, six cards, no failure reason and `watch-below-player-v1`. Observed
+  request times were 1,071 ms and 496 ms respectively.
+- Browser verification confirmed both visible recommendation rows and navigation
+  from JESUS to Day 2: Miraculous Birth. The second page's six-card grid was also
+  visually verified, including artwork and titles.
+- At 03:28 UTC, cleanup had completed seven successful runs and one bounded
+  budget yield after the verified deployment cutoff, with no failures. The
+  successful runs deleted 123 standalone episodes while 3,380 overdue episodes
+  remained. Cards served during that backlog; retention health reporting still
+  reported the overdue data independently.
+- All 63 native PostgreSQL integration tests passed after updating the
+  promotion fixture to explicitly fault the incumbent signer instead of relying
+  on a missing cleanup watermark. Its unavailable-visit and rollback assertions
+  remain intact.
