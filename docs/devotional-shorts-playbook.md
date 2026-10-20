@@ -242,7 +242,14 @@ are not reframed yet.
 
 Sound: the film's own sound only. A clip-first long form speaks its opening
 over the film card; that narration is dropped from the short (Martha's first
-cut had both voices at once).
+cut had both voices at once). The film is heard from the first frame (owner,
+Paralytic 2026-10-20): low (0.32, about -10 dB) under the opening question,
+up to its level over the last half second before the scene speaks, and back
+down to 0.32 over 1.2 s as the closing turn arrives, to the end. Borrowed
+quiet footage (lead or tail) comes from where the film has sound: a
+clip-first pack's clip is silent for its `mutedLeadSec`, and a tail taken
+from there played the closing card in silence. The muted lead is used only
+when the scene has no other quiet stretch.
 
 Look (Figma 411-2366): film full frame; the film's narration as numbered
 scrolling verses centred in a 660 wide block, five lines visible
@@ -264,7 +271,12 @@ scene still playing with sound; when the scene ends within ~4.4 s of its last
 line (Martha: 1.5 s), the rest of the card's picture is a quiet stretch of the
 same scene played live after the window (never footage already in it), and the
 outro is lengthened to fit; the small line under it (PT Serif italic
-32, 85%) eases in 1.0 to 1.8 s after. On-screen text credit is the film's
+32, 85%) eases in 1.0 to 1.8 s after. The closing turn and its small line sit
+flush left in the column, not centred, and the small line is set at 40
+(`--film-close-sub-size=40`; owner, Paralytic 2026-10-20). Write the turn with
+names, not pronouns ("The friends came for the man's legs. Jesus started with
+his heart.", not "They came for his legs. He started with his heart.": the
+owner could not tell who "he" was). On-screen text credit is the film's
 translation (LUMO reads NIV).
 
 ### 6.3 history

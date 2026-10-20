@@ -25,6 +25,8 @@ import {
   verseWindowByRareWords,
   sameChapter,
   musicStartSec,
+  longestQuietStretch,
+  quietStretchBefore,
   type DevotionalText,
   type Manifest,
   type ShortPlan,
@@ -580,5 +582,40 @@ describe("a closing verse from elsewhere (Bartimaeus)", () => {
     const w = verseWindowByRareWords(subs, verse)!
     expect(w.toSec).toBeCloseTo(66.5, 5)
     expect(w.fromSec).toBeLessThan(43)
+  })
+})
+
+describe("quiet stretches skip the clip's muted lead", () => {
+  // Paralytic EN (2026-10-20): a clip-first long form plays its first 22s
+  // without the film's sound, and the closing card was given 4.7s of that
+  // silence. Lines as in the pack: the opening is the longest quiet stretch.
+  const subs = [
+    { text: "a", startSec: 23.0, endSec: 26.0 },
+    { text: "b", startSec: 30.0, endSec: 104.8 },
+    { text: "c", startSec: 108.4, endSec: 160.0 },
+  ]
+  it("takes the silent opening when nothing says it is muted", () => {
+    expect(
+      longestQuietStretch(subs, 4.7, 163, { fromSec: 86.9, toSec: 105.3 })!
+        .toSec,
+    ).toBeLessThan(23)
+  })
+  it("never starts inside the muted lead", () => {
+    const q = longestQuietStretch(
+      subs,
+      3.5,
+      163,
+      { fromSec: 86.9, toSec: 105.3 },
+      22.02,
+    )
+    expect(q).not.toBeNull()
+    expect(q!.fromSec).toBeGreaterThanOrEqual(22.02)
+  })
+  it("keeps the preroll out of the muted lead too", () => {
+    expect(quietStretchBefore(subs, 30, 0.5, 22.02)!.fromSec).toBeCloseTo(
+      22.02,
+      5,
+    )
+    expect(quietStretchBefore(subs, 30, 4, 22.02)).toBeNull()
   })
 })

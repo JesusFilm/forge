@@ -37,10 +37,14 @@ export function StampLine({
   t,
   f,
   sharp = false,
+  align = "center",
 }: {
   text: string
   t: number
   f: (n: number) => number
+  /** The film short's closing turn sits flush left (owner, Paralytic
+   *  2026-10-20); the spread then grows from the left edge. */
+  align?: "center" | "left"
   /** A harder hit (owner, 2026-10-02, the film short's opening question):
    *  lands in ~0.35s from a larger size and overshoots slightly before it
    *  settles, instead of easing in over 0.8s. */
@@ -65,12 +69,13 @@ export function StampLine({
           fontWeight: 600,
           fontSize: f(stampLineSize(text)),
           lineHeight: 1.2,
-          textAlign: "center",
+          textAlign: align,
           textTransform: "uppercase",
           letterSpacing: f(3.2),
           color: "#ffffff",
           opacity: p,
           transform: `scale(${scale.toFixed(4)})`,
+          transformOrigin: align === "left" ? "left center" : undefined,
           filter:
             p < 0.99 ? `blur(${(f(4) * (1 - p)).toFixed(2)}px)` : undefined,
           textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
@@ -93,7 +98,7 @@ export function StampLine({
         fontWeight: 600,
         fontSize: f(stampLineSize(text)),
         lineHeight: 1.2,
-        textAlign: "center",
+        textAlign: align,
         textTransform: "uppercase",
         // Fixed tracking: animating it re-wrapped the line mid-stamp
         // ("HIS HANDS / ARE DIRTY." then "HIS HANDS ARE / DIRTY.", owner
@@ -103,6 +108,7 @@ export function StampLine({
         color: "#ffffff",
         opacity: p,
         transform: `scale(${(0.96 + 0.04 * p + 0.1 * (1 - p)).toFixed(4)}, ${(0.96 + 0.04 * p).toFixed(4)})`,
+        transformOrigin: align === "left" ? "left center" : undefined,
         filter: p < 0.99 ? `blur(${(f(7) * (1 - p)).toFixed(2)}px)` : undefined,
         textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
       }}

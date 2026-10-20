@@ -1741,11 +1741,16 @@ function PaperStripsOpen({
 /** The film short's opening question types in at this pace (quick). */
 const TYPE_CHARS_PER_SEC = 28
 
+/** The film's level under the film short's question cards (about -10 dB). */
+const SHORT_CARD_FILM_LEVEL = 0.32
+
 /**
  * The film short's silent question cards (owner, 2026-10-02): a question
  * before the scene speaks ("Is this worth celebrating?") and a turn after it
  * ends ("But someone had a good reason to stay outside."), stamped like the
  * reflection's short lines, centred in the safe column over a dimmed film.
+ * The closing turn and its small line sit flush left in that column (owner,
+ * Paralytic 2026-10-20: "left-aligned, not centred").
  */
 function ShortQuestionCards({
   cards,
@@ -1767,6 +1772,7 @@ function ShortQuestionCards({
     subSize?: number,
     subStrips = false,
     blur = false,
+    align: "center" | "left" = "center",
   ) => {
     if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
     const fade =
@@ -1872,7 +1878,13 @@ function ShortQuestionCards({
                     )}
               </p>
             ) : (
-              <StampLine text={text} t={t - fromSec} f={f} sharp={false} />
+              <StampLine
+                text={text}
+                t={t - fromSec}
+                f={f}
+                sharp={false}
+                align={align}
+              />
             )}
             {sub && subStrips ? null : sub ? (
               // Set like the scrolling verses' address ("Luke 15:22-24"):
@@ -1885,7 +1897,7 @@ function ShortQuestionCards({
                   fontStyle: "italic",
                   fontSize: f(subSize ?? 32),
                   lineHeight: `${f((subSize ?? 32) * 1.5)}px`,
-                  textAlign: "center",
+                  textAlign: align,
                   color: "rgba(255,255,255,0.92)",
                   opacity:
                     0.85 *
@@ -1944,6 +1956,8 @@ function ShortQuestionCards({
             cards.close.sub,
             cards.close.subSize,
             cards.close.subStrips ?? false,
+            false,
+            "left",
           )
         : null}
       {cards.close?.sub && cards.close.subStrips ? (
@@ -6684,6 +6698,31 @@ function Background({
             props.ctaMusicAtSec != null
               ? Math.round(props.ctaMusicAtSec * fps)
               : null
+          // Film short (owner, Paralytic 2026-10-20): the film is heard from
+          // the first frame, low under the opening question, up to its
+          // level as the scene speaks, and back down under the closing turn.
+          const qc = props.shortForm ? props.shortCards : undefined
+          const atSec = (f + fromFrame) / fps
+          const underCards = qc
+            ? Math.min(
+                qc.open
+                  ? interpolate(
+                      atSec,
+                      [qc.open.toSec - 0.45, qc.open.toSec + 0.45],
+                      [SHORT_CARD_FILM_LEVEL, 1],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                    )
+                  : 1,
+                qc.close
+                  ? interpolate(
+                      atSec,
+                      [qc.close.fromSec - 0.2, qc.close.fromSec + 1.0],
+                      [1, SHORT_CARD_FILM_LEVEL],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
+                    )
+                  : 1,
+              )
+            : 1
           const ctaHush =
             ctaAt != null
               ? interpolate(f, [ctaAt - Math.round(0.4 * fps), ctaAt], [1, 0], {
@@ -6696,7 +6735,8 @@ function Background({
             Math.sqrt(rise) *
             (slow ? fall * fall : fall) *
             duck *
-            ctaHush
+            ctaHush *
+            underCards
           )
         }}
         style={

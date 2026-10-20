@@ -75,6 +75,8 @@ export type Card = {
   verse?: string
   citation?: string
   subtitles?: Subtitle[]
+  /** Clip-first long form: the film's opening seconds play without sound. */
+  mutedLeadSec?: number
   [k: string]: unknown
 }
 
@@ -346,11 +348,15 @@ export function longestQuietStretch(
   footageEnd: number,
   /** Footage already in the short: never replay it. */
   avoid?: { fromSec: number; toSec: number },
+  /** Where the clip's own sound starts: a clip-first long form opens on a
+   *  muted lead, and a closing card over it played in silence (owner,
+   *  Paralytic 2026-10-20). */
+  soundFromSec = 0,
 ): { fromSec: number; toSec: number } | null {
   const edges = [0, ...subs.flatMap((x) => [x.startSec, x.endSec]), footageEnd]
   let best: { a: number; b: number } | null = null
   for (let i = 0; i + 1 < edges.length; i += 2) {
-    let a = edges[i] + (i === 0 ? 0 : 0.2)
+    let a = Math.max(soundFromSec, edges[i] + (i === 0 ? 0 : 0.2))
     let b = edges[i + 1] - 0.2
     if (avoid && a < avoid.toSec && b > avoid.fromSec) {
       // Keep the larger side of the gap that lies outside the window.
@@ -586,7 +592,15 @@ export function planCutdown(
               )
             : 0
           if (lead > 0 && made.film) {
-            const preroll = quietStretchBefore(subs, win.fromSec, lead)
+            // Footage with the film's sound first; the muted lead only when
+            // the scene has no other quiet (better than a held frame).
+            const preroll =
+              quietStretchBefore(
+                subs,
+                win.fromSec,
+                lead,
+                film.mutedLeadSec ?? 0,
+              ) ?? quietStretchBefore(subs, win.fromSec, lead)
             made.film = {
               ...made.film,
               leadSec: Number(lead.toFixed(2)),
@@ -617,12 +631,16 @@ export function planCutdown(
                 SHORT_OUTRO_SEC,
                 needs - (toSec - lastEnd) - CARD_TAIL_SEC,
               )
-              const postroll = longestQuietStretch(
-                subs,
-                outroSec + CARD_TAIL_SEC + 0.2,
-                footageEnd,
-                { fromSec: made.film.fromSec, toSec },
-              )
+              const postrollSec = outroSec + CARD_TAIL_SEC + 0.2
+              const avoid = { fromSec: made.film.fromSec, toSec }
+              const postroll =
+                longestQuietStretch(
+                  subs,
+                  postrollSec,
+                  footageEnd,
+                  avoid,
+                  film.mutedLeadSec ?? 0,
+                ) ?? longestQuietStretch(subs, postrollSec, footageEnd, avoid)
               if (postroll) {
                 made.durationSec -= made.film.toSec - toSec
                 made.film = {
@@ -1034,12 +1052,17 @@ export function quietStretchBefore(
   subs: ReadonlyArray<Subtitle>,
   beforeSec: number,
   lengthSec: number,
+  /** Where the clip's own sound starts (see longestQuietStretch). */
+  soundFromSec = 0,
 ): { fromSec: number; toSec: number } | null {
   const lines = subs.filter((x) => x.startSec < beforeSec)
   // Down to i = 0: the quiet before the scene's first line counts too (a
   // scene often opens on seconds of establishing shots).
   for (let i = lines.length - 1; i >= 0; i--) {
-    const gapStart = i > 0 ? lines[i - 1].endSec + 0.2 : 0.2
+    const gapStart = Math.max(
+      soundFromSec,
+      i > 0 ? lines[i - 1].endSec + 0.2 : 0.2,
+    )
     const gapEnd = lines[i].startSec - 0.2
     if (gapEnd - gapStart >= lengthSec) {
       return {
