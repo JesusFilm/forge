@@ -986,13 +986,21 @@ function RevealText({
               >
                 {w.word}
               </span>
-              {i < sentence.length - 1 ? " " : ""}
+              {i < sentence.length - 1 ? wordGap(w.word) : ""}
             </span>
           )
         })}
       </p>
     </div>
   )
+}
+
+/** A short Russian preposition or conjunction rides with the next word, so
+ *  a line never ends on «к» or «и» («Мы тоже приходим к / Богу», Paralytic
+ *  RU 2026-10-20). */
+const RU_GLUE = /^(а|в|во|и|к|ко|о|об|с|со|у|я|на|не|ни|но|по|за|из|от|до|да)$/i
+function wordGap(word: string): string {
+  return RU_GLUE.test(word.replace(/[«"(]/g, "")) ? "\u00a0" : " "
 }
 
 // --- reflection ------------------------------------------------------------

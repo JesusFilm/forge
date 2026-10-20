@@ -922,6 +922,18 @@ export function backgroundStarts(m: Manifest): number[] {
 }
 
 type Mark = { label?: string; source?: string; portrait?: string }
+
+/** The devotional's commentary credit, in any language: a localized long
+ *  form labels it "Комментарий", and matching the English label alone left
+ *  the RU reflection short without its credit (Paralytic, 2026-10-20). A
+ *  person's portrait (not the book or scroll emblem of a fact) also marks it. */
+export function isCommentaryMark(mark: Mark | undefined): boolean {
+  if (!mark) return false
+  if (/^(commentary|комментари|comentario)/i.test(mark.label ?? "")) return true
+  return Boolean(
+    mark.portrait && mark.portrait !== "book" && mark.portrait !== "scroll",
+  )
+}
 type Callout = { text?: string; highlight?: string; reference?: string }
 
 /**
@@ -956,9 +968,8 @@ function factLayout(m: Manifest, plan: ShortPlan): Partial<Manifest> {
     // 2026-10-02, Figma 415-2610). A history or language note is never used
     // here: it credits one fact, not the reflection.
     const mark = (cards.find((c) => c.sourceMark)?.sourceMark ??
-      m.cards.find(
-        (c) => (c.sourceMark as Mark | undefined)?.label === "Commentary",
-      )?.sourceMark) as Mark | undefined
+      m.cards.find((c) => isCommentaryMark(c.sourceMark as Mark | undefined))
+        ?.sourceMark) as Mark | undefined
     return {
       shortFact: {
         layout: "reflection",

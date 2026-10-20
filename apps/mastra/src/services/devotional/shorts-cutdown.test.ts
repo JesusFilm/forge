@@ -26,6 +26,7 @@ import {
   sameChapter,
   musicStartSec,
   longestQuietStretch,
+  isCommentaryMark,
   quietStretchBefore,
   type DevotionalText,
   type Manifest,
@@ -617,5 +618,24 @@ describe("quiet stretches skip the clip's muted lead", () => {
       5,
     )
     expect(quietStretchBefore(subs, 30, 4, 22.02)).toBeNull()
+  })
+})
+
+describe("commentary credit in any language", () => {
+  it("finds the RU commentary mark, never a fact's emblem", () => {
+    expect(isCommentaryMark({ label: "Commentary", portrait: "ryle" })).toBe(
+      true,
+    )
+    expect(
+      isCommentaryMark({
+        label: "Комментарий",
+        source: "Дж. К. Райл (1816–1900)",
+        portrait: "ryle",
+      }),
+    ).toBe(true)
+    expect(
+      isCommentaryMark({ label: "Исторический контекст", portrait: "book" }),
+    ).toBe(false)
+    expect(isCommentaryMark(undefined)).toBe(false)
   })
 })
