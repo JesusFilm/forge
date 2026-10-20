@@ -62,6 +62,13 @@ clock that parks while held, CSS that already drops slide transitions under
   kind of looping muted preview after page load. Under reduced motion it now
   keeps the poster: `canActivatePreview` refuses automatic activation. Watch
   now and an `?autoplay=1` arrival (an explicit request) still play.
+- Review correction (round 07): the scroll-cover hold
+  (`useWatchHomeHeroScrollPause`) and the Watch modal hold resume the element
+  they paused, without knowing about a user pause. In a real browser, a hero
+  covered by scrolling, then switched to reduced motion, started playing again
+  when scrolled back up while its control still read "Play". `handlePlay` now
+  re-pauses any start while the viewer's hold is on; the circle's own Play
+  clears the hold first, so it still plays.
 
 ## Entry Points — Read These First
 
@@ -101,3 +108,12 @@ clock that parks while held, CSS that already drops slide transitions under
 - Real browser: Tab reaches the toggle; Space toggles; with
   `prefers-reduced-motion: reduce` the video stays paused after 10 s.
 - Before/after page-load timing for `/watch` on a mobile profile.
+- Round 07 real-browser scenarios (local fixture with the real carousel and
+  public Mux streams, Chromium): pause holds for 25 s; pause survives a
+  scroll-cover round trip; covered → reduce → uncover stays paused; a slide
+  chosen while paused stays parked until Play; reduce at load parks and Play
+  plays; a switch to reduce pauses and a switch away does not resume; Play
+  pressed while covered is re-paused by the cover and resumes on uncover.
+  Not tested: the Watch modal path in a browser (its Play control is behind
+  the modal), autoplay refusal and dead streams (unit tests only), real
+  devices and screen readers.

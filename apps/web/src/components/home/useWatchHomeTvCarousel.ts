@@ -889,7 +889,16 @@ export function useWatchHomeTvCarousel(
     setIsMediaPaused(true)
   }, [])
 
+  // Every start passes through here, including ones this hook does not own:
+  // the scroll-cover and watch-modal holds resume the element they paused. A
+  // hero the viewer (or a reduced-motion preference) holds while one of those
+  // had it paused must stay paused, so such a start is undone at once.
   const handlePlay = useCallback(() => {
+    const video = videoRef.current
+    if (isUserPausedRef.current && video && !video.paused) {
+      video.pause()
+      return
+    }
     setIsMediaPaused(false)
   }, [])
 

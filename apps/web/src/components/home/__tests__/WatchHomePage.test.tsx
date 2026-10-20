@@ -1565,6 +1565,37 @@ describe("WatchHomePage", () => {
       }
     })
 
+    // Round 07: the scroll-cover and modal holds resume the element they
+    // paused. Pausing (or a switch to reduced motion) while one of them held
+    // it must survive that resume.
+    it("re-pauses a start it did not ask for while the viewer holds the hero", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        Object.defineProperty(video, "paused", {
+          configurable: true,
+          value: false,
+        })
+        const pause = vi.fn()
+        video.pause = pause
+        await act(async () => {
+          pauseToggles()[0]!.click()
+        })
+        expect(pause).toHaveBeenCalledTimes(1)
+
+        await act(async () => {
+          video.dispatchEvent(new Event("play"))
+        })
+        expect(pause).toHaveBeenCalledTimes(2)
+        expect(pauseToggles()[0]!.getAttribute("aria-label")).toBe("Play")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it("starts paused on the poster under prefers-reduced-motion", async () => {
       const originalMatchMedia = window.matchMedia
       window.matchMedia = ((query: string) => ({
