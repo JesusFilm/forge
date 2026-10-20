@@ -43,6 +43,8 @@ export type TranslationPickerProps = {
    *  card has no button. */
   onPressDownload?: (translation: CatalogTranslation) => void
   onClose: () => void
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
+  background?: string
 }
 
 const getId = (translation: CatalogTranslation) => translation.id
@@ -62,6 +64,7 @@ export function TranslationPicker({
   confirmPick,
   onPressDownload,
   onClose,
+  background = tokens.background,
 }: TranslationPickerProps) {
   const t = useT("BibleTranslationPicker")
   const [onDeviceOnly, setOnDeviceOnly] = useState(offline)
@@ -161,7 +164,10 @@ export function TranslationPicker({
   )
 
   return (
-    <View style={[styles.root, { backgroundColor: tokens.background }]}>
+    <View
+      testID="reader-translation-picker"
+      style={[styles.root, { backgroundColor: background }]}
+    >
       <SearchableListSheet<CatalogTranslation>
         rows={rows}
         keepRowOrder
@@ -197,7 +203,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   note: {
-    fontFamily: "System",
     fontSize: 14,
     lineHeight: 20,
   },
@@ -210,7 +215,6 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     flex: 1,
-    fontFamily: "System",
     fontSize: 16,
   },
 })

@@ -81,7 +81,9 @@ export function resolveDefaultVariantIndex(
 export function slugToPersistForPick(
   video: WatchVideoRecord | null,
   index: number,
+  persistPreference = true,
 ): string | null {
+  if (!persistPreference) return null
   return video?.variants[index]?.languageSlug ?? null
 }
 

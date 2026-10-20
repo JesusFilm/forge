@@ -27,11 +27,13 @@ type SubtitleOverlayProps = {
   /** Horizontal padding so captions clear the notch / home-indicator in
    *  landscape fullscreen. Defaults to the inline value. */
   horizontalInset?: number
-  /** Right padding only, when a column of controls sits beside the caption. */
-  rightInset?: number
-  /** With `rightInset`: take it only when the full-width caption covers one
+  /** Padding on one side only, when a column of controls sits beside the caption. */
+  sideInset?: number
+  /** The side of `sideInset`, physical: the caption lays out left to right. */
+  insetSide?: "left" | "right"
+  /** With `sideInset`: take it only when the full-width caption covers one
    *  of these boxes, in this overlay's parent frame. Without them it always applies. */
-  rightInsetBoxes?: readonly CaptionBox[]
+  sideInsetBoxes?: readonly CaptionBox[]
   /** Caption text size — larger in fullscreen where the video fills the screen. */
   fontSize?: number
   /** Animate vertical-offset changes (used only in fullscreen, where the caption
@@ -73,8 +75,9 @@ export function SubtitleOverlay({
   vttSrc,
   bottomOffset = 16,
   horizontalInset = 16,
-  rightInset,
-  rightInsetBoxes,
+  sideInset,
+  insetSide = "right",
+  sideInsetBoxes,
   fontSize = 16,
   animate = false,
 }: SubtitleOverlayProps) {
@@ -85,22 +88,22 @@ export function SubtitleOverlay({
   // inset. The inset box cannot decide: it wraps taller and moves, so the
   // decision would flip back and forth.
   const fitKey =
-    rightInset == null || rightInsetBoxes == null
+    sideInset == null || sideInsetBoxes == null
       ? null
       : JSON.stringify([
           activeText,
           bottomOffset,
           fontSize,
           horizontalInset,
-          rightInset,
-          rightInsetBoxes,
+          sideInset,
+          sideInsetBoxes,
         ])
   const [fit, setFit] = useState<{ key: string; inset: boolean } | null>(null)
   const measuring = fitKey != null && fit?.key !== fitKey
   const insetApplies = fitKey == null || (!measuring && fit?.inset === true)
   const handleTextLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      if (fitKey == null || rightInsetBoxes == null) return
+      if (fitKey == null || sideInsetBoxes == null) return
       const { x, width, height } = e.nativeEvent.layout
       const inset = captionMeetsBox(
         {
@@ -109,12 +112,12 @@ export function SubtitleOverlay({
           bottom: bottomOffset,
           top: bottomOffset + height,
         },
-        rightInsetBoxes,
+        sideInsetBoxes,
       )
       // The first layout of this cue only: later ones are the inset layout.
       setFit((prev) => (prev?.key === fitKey ? prev : { key: fitKey, inset }))
     },
-    [fitKey, rightInsetBoxes, bottomOffset],
+    [fitKey, sideInsetBoxes, bottomOffset],
   )
 
   // Vertical offset via translateY (native-driver friendly on Fabric), anchored
@@ -254,8 +257,8 @@ export function SubtitleOverlay({
         styles.container,
         {
           paddingHorizontal: horizontalInset,
-          paddingRight: insetApplies
-            ? (rightInset ?? horizontalInset)
+          [insetSide === "left" ? "paddingLeft" : "paddingRight"]: insetApplies
+            ? (sideInset ?? horizontalInset)
             : horizontalInset,
           transform: [{ translateY }],
         },
@@ -291,6 +294,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     paddingHorizontal: 16,
+    // The side inset and the caption boxes use physical x values (feat-695
+    // KTD7), so the inset stays on its physical side in every app direction.
+    direction: "ltr",
   },
   measuring: {
     opacity: 0,
@@ -298,7 +304,6 @@ const styles = StyleSheet.create({
   text: {
     color: TEXT_ON_OVERLAY,
     fontSize: 16,
-    fontFamily: "System",
     textAlign: "center",
     backgroundColor: hexToRgba(BLACK, 0.7),
     paddingHorizontal: 10,

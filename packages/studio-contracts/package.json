@@ -8,6 +8,7 @@
     "./transitions": "./src/transitions.ts",
     "./assets": "./src/assets.ts",
     "./content-packs": "./src/content-packs.ts",
+    "./hls": "./src/hls.ts",
     "./sources": "./src/sources.ts",
     "./experiments": "./src/experiments.ts",
     "./catalog": "./src/catalog.ts",

@@ -138,6 +138,7 @@
     "versesAriaValue": "Versetele de la {first} la {last} din {total}, {chapter}",
     "demoVerse": "Glisează în sus pentru versetul următor",
     "demoChapter": "Glisează spre stânga pentru capitolul următor",
+    "demoChapterRtl": "Glisează spre dreapta pentru capitolul următor",
     "demoSkip": "Atinge pentru a sări peste",
     "demoSkipAriaLabel": "Sari peste demonstrația de glisare",
     "selectVerseAriaHint": "Atinge de două ori pentru a selecta acest verset",
@@ -773,5 +774,8 @@
     "send": "Trimite",
     "sending": "Se trimite…",
     "sendAriaLabel": "Trimite feedbackul"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplicația folosește rețeaua ta locală pentru a găsi dispozitive de proiectare, ca să poți reda videoclipuri pe televizorul tău."
   }
 }

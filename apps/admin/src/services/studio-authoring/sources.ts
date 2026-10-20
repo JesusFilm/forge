@@ -1,3 +1,4 @@
+import { descriptorDurationMs } from "./source-duration"
 import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
@@ -46,7 +47,11 @@ export const downloadStudioSource: StudioSourceDownload = async (
     url.username ||
     url.password ||
     url.port ||
-    !["api-media-core.jesusfilm.org", "stream.mux.com"].includes(url.hostname)
+    !(
+      url.hostname === "api-media-core.jesusfilm.org" ||
+      url.hostname === "mux.com" ||
+      url.hostname.endsWith(".mux.com")
+    )
   )
     throw new StudioCommandError("INVALID")
   const response = await fetch(url, {
@@ -267,6 +272,11 @@ export class StudioSourceService {
     const catalog = await exactCatalog(this.db, input)
     if (input.startMs >= input.endMs || input.endMs > catalog.durationMs)
       throw new StudioCommandError("INVALID")
+    if (!input.retainOriginalBytes) {
+      catalog.durationMs = await descriptorDurationMs(catalog, this.download)
+      if (input.endMs > catalog.durationMs)
+        throw new StudioCommandError("INVALID")
+    }
     const subtitleBytes = catalog.subtitleUrl
       ? await this.download(catalog.subtitleUrl, 1048576)
       : null

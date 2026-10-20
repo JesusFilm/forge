@@ -138,6 +138,7 @@
     "versesAriaValue": "Ves {first} kasem {last} long {total}, {chapter}",
     "demoVerse": "Swaepem i go antap blong nekis ves",
     "demoChapter": "Swaepem i go long lef blong nekis japta",
+    "demoChapterRtl": "Swaepem i go long raet blong nekis japta",
     "demoSkip": "Tajem blong jamp ova",
     "demoSkipAriaLabel": "Jamp ova long soem blong swaep",
     "selectVerseAriaHint": "Tajem tu taem blong jusum ves ia",
@@ -773,5 +774,8 @@
     "send": "Sanem",
     "sending": "I stap sanem…",
     "sendAriaLabel": "Sanem tingting blong yu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App ia i yusum lokol netwok blong yu blong faenem ol masin blong soem long TV, blong mekem se yu save pleim ol vidio long TV blong yu."
   }
 }

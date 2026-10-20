@@ -438,6 +438,12 @@ describe("WatchExposureBoundary", () => {
     expect(
       bodies().every((event) => event.policyVersion === "watch-exposure-v1"),
     ).toBe(true)
+    // FGE-188 / feat-687 deliberately leaves the exposure browser deadline at
+    // its existing 700 ms literal; feat-688 owns any change to it.
+    expect(fetchWithRetry.mock.calls.length).toBeGreaterThan(0)
+    expect(fetchWithRetry.mock.calls.map((call) => call[2])).toEqual(
+      fetchWithRetry.mock.calls.map(() => 700),
+    )
   })
 
   it("bounds waiting age and never replays fallback facts when a late receipt arrives", async () => {

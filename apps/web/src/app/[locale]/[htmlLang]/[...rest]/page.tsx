@@ -46,6 +46,7 @@ import {
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
+  isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
@@ -56,6 +57,7 @@ import {
   isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
+  correctedBcp47,
   slugToBcp47Tag,
   type UiLocale,
 } from "@/lib/locale"
@@ -374,8 +376,19 @@ type Shape =
   | { kind: "unknown" }
 
 function stripSafeSegment(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    // Catch-all params can contain UTF-8 percent escapes after Next parses the
+    // internal rewrite. Keep encoded separators/reserved characters encoded so
+    // the safe slug grammar still rejects them.
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function routeIntentFromRest(rest: string[]) {
@@ -679,6 +692,13 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment"
       ? null
       : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
+  // Started early so it overlaps the message load, but it is only awaited after
+  // that load. Without a handler attached now, a rejection while the load is
+  // pending (or after the load rejects and the page has already thrown) is an
+  // unhandled rejection. This marks the rejection observed without changing
+  // it: the original promise is still awaited below and still throws there, and
+  // a loadClientMessages failure still wins because it is awaited first.
+  translateAvailabilityCountsPromise?.catch(() => {})
   const messages = await loadClientMessages(shape.locale, namespaces)
 
   let content: ReactNode
@@ -776,6 +796,7 @@ async function renderOneSegment(shape: {
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
+          audienceEnabled={await isWatchAudienceEnabled()}
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
@@ -952,6 +973,7 @@ async function renderEpisode(
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
+        audienceEnabled={await isWatchAudienceEnabled()}
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
@@ -1128,6 +1150,7 @@ async function renderVideo(
         />
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
+          audienceEnabled={await isWatchAudienceEnabled()}
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
@@ -1222,7 +1245,7 @@ async function renderVideo(
       languageSlug: seriesLanguage?.slug ?? "",
       canonicalUrl,
       inLanguage:
-        seriesLanguage?.bcp47 ??
+        correctedBcp47(seriesLanguage?.slug, seriesLanguage?.bcp47) ??
         slugToBcp47Tag(seriesLanguage?.slug ?? rawLocale),
       routeManifest,
     })

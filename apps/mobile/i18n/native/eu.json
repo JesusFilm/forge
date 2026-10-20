@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Aplikazioak zure sare lokala erabiltzen du igorpenerako gailuak aurkitzeko, bideoak zure telebistan erreproduzitu ahal izan ditzazun."
+  }
+}

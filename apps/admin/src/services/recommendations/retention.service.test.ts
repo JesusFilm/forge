@@ -12,6 +12,8 @@ type RetentionHealthSnapshot = Array<{
 
 function rawSqlText(query: unknown): string {
   if (typeof query === "string") return query
+  if (Array.isArray(query) && query.every((part) => typeof part === "string"))
+    return query.join("?")
   return query != null && typeof query === "object" && "sql" in query
     ? String(query.sql)
     : ""
@@ -49,17 +51,22 @@ function retentionQuery(
     return []
   }
 }
-function buildPrisma() {
+function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
   const requestIds = [{ id: "request-1" }, { id: "request-2" }]
   const count = () => vi.fn(async () => 0)
   const transaction = {
-    $executeRaw: vi.fn(async (query: unknown) =>
-      rawSqlText(query).includes(
-        "DELETE FROM recommendation_profile_vector_snapshot",
+    $executeRaw: vi.fn(async (query: unknown) => {
+      const sql = rawSqlText(query)
+      if (sql.includes("DELETE FROM recommendation_profile_vector_snapshot"))
+        return 0
+      if (
+        sql.includes(
+          "DELETE FROM recommendation_precomputed_public_control_event",
+        )
       )
-        ? 0
-        : 1,
-    ),
+        return expiredPublicControlEvents
+      return 1
+    }),
     $queryRaw: vi.fn(
       retentionQuery([{ id: "expired-profile-1", privacyGeneration: 3 }]),
     ),
@@ -86,6 +93,31 @@ function buildPrisma() {
       findMany: vi.fn(async () => requestIds),
       deleteMany: vi.fn(async () => ({ count: requestIds.length })),
       findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
+    },
+    recommendationPrecomputedVisit: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPrecomputedVisitRequest: { count: count() },
+    recommendationPrecomputedBaselineRun: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPrecomputedBaselineVisit: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPrecomputedLaunchCapacityReceipt: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    recommendationPrecomputedExperiment: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
     },
     watchSurfaceExposure: {
       findMany: vi.fn(async (): Promise<Array<{ id: string }>> => []),
@@ -625,6 +657,57 @@ describe("recommendation retention service", () => {
   })
 
   it.each([
+    { selected: 10, episodeMs: 400, deleted: 5, continuation: true },
+    { selected: 25, episodeMs: 40, deleted: 25, continuation: true },
+    { selected: 10, episodeMs: 40, deleted: 10, continuation: false },
+  ])(
+    "reserves request cleanup time after $deleted of $selected standalone episodes",
+    async ({ selected, episodeMs, deleted, continuation }) => {
+      const { prisma, transaction } = buildPrisma()
+      const now = new Date("2026-09-17T00:00:00.000Z")
+      let clock = now.getTime()
+      const time = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      transaction.recommendationPlaybackEpisode.findMany.mockResolvedValueOnce(
+        Array.from({ length: selected }, (_, index) => ({
+          id: `episode-${index}`,
+        })),
+      )
+      for (let index = 0; index < selected; index += 1) {
+        transaction.recommendationPlaybackEpisode.findFirst.mockResolvedValueOnce(
+          {
+            expiresAt: new Date(now.getTime() - 60_000),
+          },
+        )
+      }
+      transaction.recommendationPlaybackEpisode.deleteMany.mockImplementation(
+        async () => {
+          clock += episodeMs
+          return { count: 1 }
+        },
+      )
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(prisma as never, now),
+        ).resolves.toMatchObject({
+          status: "succeeded",
+          rootsDeleted: 2,
+          rowCounts: { expiredStandaloneEpisodes: deleted },
+          batchLimitReached: continuation,
+          overdueAfterRun: false,
+        })
+        expect(
+          transaction.recommendationRequest.deleteMany,
+        ).toHaveBeenCalledOnce()
+        expect(
+          transaction.recommendationPlaybackEpisode.deleteMany,
+        ).toHaveBeenCalledTimes(deleted)
+      } finally {
+        time.mockRestore()
+      }
+    },
+  )
+
+  it.each([
     "requests",
     "watch exposures",
     "direct actions",
@@ -706,7 +789,29 @@ describe("recommendation retention service", () => {
       purgeExpiredRecommendationRequests(prisma as never, new Date(), 1),
     ).resolves.toMatchObject({
       status: "succeeded",
+      rowCounts: { expiredPrecomputedControlEvents: 0 },
       batchLimitReached: false,
+    })
+  })
+
+  it("continues when expired public-control events fill the bounded batch", async () => {
+    const { prisma, transaction } = buildPrisma({
+      expiredPublicControlEvents: 1,
+    })
+    transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
+    transaction.recommendationViewer.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, new Date(), 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      rowCounts: { expiredPrecomputedControlEvents: 1 },
+      batchLimitReached: true,
     })
   })
 

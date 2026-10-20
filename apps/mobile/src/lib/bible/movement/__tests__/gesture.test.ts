@@ -2,6 +2,7 @@ import { BACK_SWIPE_EDGE_WIDTH } from "../../../backSwipe"
 import { READER_TOP_BAR_HEIGHT, readerFooterHeight } from "../../reader/chrome"
 import {
   READER_SWIPE,
+  chapterDirection,
   claimSwipe,
   mayStartReaderSwipe,
   readerTouchZones,
@@ -114,49 +115,90 @@ describe("claimSwipe (R12)", () => {
   })
 })
 
-describe("releaseSwipe (R12)", () => {
+describe("releaseSwipe (R12, R14)", () => {
   const far = READER_SWIPE.commitPx
   const still = { vx: 0, vy: 0 }
+  const LTR = 1
+  const RTL = -1
 
-  it("maps each direction to its move", () => {
-    expect(releaseSwipe("verse", { dx: 0, dy: -far }, still)).toEqual({
+  it("maps each direction to its move in a left-to-right layout", () => {
+    expect(releaseSwipe("verse", { dx: 0, dy: -far }, still, LTR)).toEqual({
       axis: "verse",
       direction: "forward",
     })
-    expect(releaseSwipe("verse", { dx: 0, dy: far }, still)).toEqual({
+    expect(releaseSwipe("verse", { dx: 0, dy: far }, still, LTR)).toEqual({
       axis: "verse",
       direction: "back",
     })
-    expect(releaseSwipe("chapter", { dx: -far, dy: 0 }, still)).toEqual({
+    expect(releaseSwipe("chapter", { dx: -far, dy: 0 }, still, LTR)).toEqual({
       axis: "chapter",
       direction: "forward",
     })
-    expect(releaseSwipe("chapter", { dx: far, dy: 0 }, still)).toEqual({
+    expect(releaseSwipe("chapter", { dx: far, dy: 0 }, still, LTR)).toEqual({
       axis: "chapter",
       direction: "back",
     })
   })
 
+  it("covers AE6: a drag to the right opens the next chapter in a right-to-left layout", () => {
+    expect(releaseSwipe("chapter", { dx: far, dy: 0 }, still, RTL)).toEqual({
+      axis: "chapter",
+      direction: "forward",
+    })
+    expect(releaseSwipe("chapter", { dx: -far, dy: 0 }, still, RTL)).toEqual({
+      axis: "chapter",
+      direction: "back",
+    })
+    // A swipe up is still the next verse.
+    expect(releaseSwipe("verse", { dx: 0, dy: -far }, still, RTL)).toEqual({
+      axis: "verse",
+      direction: "forward",
+    })
+  })
+
   it("commits nothing for a short, slow drag", () => {
-    expect(releaseSwipe("verse", { dx: 0, dy: -(far - 1) }, still)).toBeNull()
-    expect(releaseSwipe("chapter", { dx: far - 1, dy: 0 }, still)).toBeNull()
+    expect(
+      releaseSwipe("verse", { dx: 0, dy: -(far - 1) }, still, LTR),
+    ).toBeNull()
+    expect(
+      releaseSwipe("chapter", { dx: far - 1, dy: 0 }, still, LTR),
+    ).toBeNull()
   })
 
   it("commits a short, fast flick in the direction it moves", () => {
     const flick = { dx: 0, dy: -READER_SWIPE.flickPx }
     const fast = { vx: 0, vy: -READER_SWIPE.flickVelocity }
-    expect(releaseSwipe("verse", flick, fast)).toEqual({
+    expect(releaseSwipe("verse", flick, fast, LTR)).toEqual({
       axis: "verse",
       direction: "forward",
     })
     // A flick back against the drag commits nothing.
     expect(
-      releaseSwipe("verse", flick, { vx: 0, vy: READER_SWIPE.flickVelocity }),
+      releaseSwipe(
+        "verse",
+        flick,
+        { vx: 0, vy: READER_SWIPE.flickVelocity },
+        LTR,
+      ),
     ).toBeNull()
   })
 
   it("reads only the claimed axis", () => {
-    expect(releaseSwipe("verse", { dx: -200, dy: 0 }, still)).toBeNull()
-    expect(releaseSwipe("chapter", { dx: 0, dy: -200 }, still)).toBeNull()
+    expect(releaseSwipe("verse", { dx: -200, dy: 0 }, still, LTR)).toBeNull()
+    expect(releaseSwipe("chapter", { dx: 0, dy: -200 }, still, LTR)).toBeNull()
+  })
+})
+
+// The chapter swipe preview (R13) and the release read this one rule, so the
+// preview always names the chapter that the release opens.
+describe("chapterDirection (R14)", () => {
+  it("opens the next chapter on a drag to the left in a left-to-right layout", () => {
+    expect(chapterDirection(-30, 1)).toBe("forward")
+    expect(chapterDirection(30, 1)).toBe("back")
+  })
+
+  it("opens the next chapter on a drag to the right in a right-to-left layout", () => {
+    expect(chapterDirection(30, -1)).toBe("forward")
+    expect(chapterDirection(-30, -1)).toBe("back")
   })
 })

@@ -39,9 +39,8 @@
     "posterAlt": "Miniatura del video",
     "noDownloads": "No hay descargas disponibles para este video.",
     "fileSizeLabel": "Selecciona un tamaño de archivo",
-    "termsAgreementPrefix": "Acepto los ",
+    "termsAgreement": "Acepto los <link>Términos de uso</link>",
     "termsOfUse": "Términos de uso",
-    "termsAgreementSuffix": "",
     "close": "Cerrar",
     "download": "Descargar",
     "authRequiredTitle": "¿Quieres descargar este video?",
@@ -153,6 +152,7 @@
     "shareOnFacebookUnavailable": "Compartir en Facebook (no disponible en esta versión)",
     "shareOnX": "Compartir en X",
     "shareOnXUnavailable": "Compartir en X (no disponible en esta versión)",
+    "opensInNewTab": "{label} (se abre en una pestaña nueva)",
     "shareDisabledHint": "Compartir requiere una página desplegada — funciona cuando este video esté en producción.",
     "shareFormat": "Formato para compartir",
     "shareLinkTab": "Enlace para compartir",
@@ -390,7 +390,7 @@
     "screenReaderPrefix": "Página no encontrada:",
     "title": "Esta escena no está aquí.",
     "description": "Puede que la página se haya movido, pero la historia continúa.",
-    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "languageDescription": "No pudimos encontrar la página que buscas, pero la historia continúa en películas y videos en idiomas de todo el mundo.",
     "actionsLabel": "Acciones de página no encontrada",
     "backToWatch": "Volver a Ver",
     "browseVideos": "Explorar videos"
@@ -463,24 +463,26 @@
     "daysUntilChristmas": "{count, plural, one {Falta # día para Navidad} other {Faltan # días para Navidad}}"
   },
   "WatchHomeCategories": {
-    "eyebrow": "Browse the library",
-    "title": "Browse by category",
-    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
-    "seeAll": "See all videos",
+    "eyebrow": "Explora la biblioteca",
+    "title": "Explorar por categoría",
+    "description": "Ve directamente a la parte de la biblioteca que necesitas: la vida de Jesús, los tiempos del año litúrgico y videos hechos para familias, estudiantes y grupos pequeños.",
+    "seeAll": "Ver todos los videos",
+    "previous": "Categorías anteriores",
+    "next": "Categorías siguientes",
     "categories": {
-      "jesus": "The JESUS Film",
-      "gospels": "Gospels",
-      "shortVideos": "Short videos",
-      "family": "Family",
-      "relationships": "Relationships",
-      "women": "For Women",
-      "students": "For Students",
-      "sports": "Sports",
-      "goodNews": "Good News",
-      "hope": "Hope",
-      "training": "Training",
-      "easter": "Easter",
-      "christmas": "Christmas"
+      "jesus": "La película JESÚS",
+      "gospels": "Evangelios",
+      "shortVideos": "Videos cortos",
+      "family": "Familia",
+      "relationships": "Relaciones",
+      "women": "Para mujeres",
+      "students": "Para estudiantes",
+      "sports": "Deportes",
+      "goodNews": "Buenas Nuevas",
+      "hope": "Esperanza",
+      "training": "Capacitación",
+      "easter": "Pascua",
+      "christmas": "Navidad"
     }
   },
   "Feedback": {
@@ -492,184 +494,202 @@
     "cancel": "Cancelar",
     "closeForm": "Cerrar formulario de comentarios",
     "header": {
-      "title": "Share feedback",
-      "description": "Quick note, big impact. Help us make Watch better for everyone."
+      "title": "Compartir comentarios",
+      "description": "Un comentario breve puede marcar la diferencia. Ayúdanos a mejorar Watch para todos."
     },
     "steps": {
-      "progressLabel": "Step {step} of {count}",
+      "progressLabel": "Paso {step} de {count}",
       "type": {
-        "title": "Choose a feedback type",
-        "helper": "What best describes your feedback?"
+        "title": "Elige el tipo de comentario",
+        "helper": "¿Qué opción describe mejor tu comentario?"
       },
       "context": {
-        "title": "Add helpful context",
-        "helper": "Tell us whether language or specific content is involved."
+        "title": "Añade contexto útil",
+        "helper": "Cuéntanos si tiene que ver con el idioma o con algún contenido en particular."
       },
       "point": {
-        "title": "Point to something",
-        "helper": "Optionally mark the exact element or area on this page."
+        "title": "Señala un elemento",
+        "helper": "Si quieres, marca el elemento o la zona exacta de esta página."
       },
       "describe": {
-        "title": "Describe what happened",
-        "helper": "Share the details and attach technical context if useful."
+        "title": "Describe lo que pasó",
+        "helper": "Comparte los detalles y, si resulta útil, incluye información técnica."
       },
       "about": {
-        "title": "About you",
-        "helper": "Add your name and an optional email so we can follow up."
+        "title": "Sobre ti",
+        "helper": "Añade tu nombre y, si quieres, tu correo electrónico para que podamos contactarte."
       }
     },
     "categories": {
-      "legend": "Feedback category",
+      "legend": "Tipo de comentario",
       "problem": {
-        "label": "Problem",
-        "prompt": "What went wrong?",
-        "helper": "Tell us what happened and what you expected to see."
+        "label": "Problema",
+        "prompt": "¿Qué salió mal?",
+        "helper": "Cuéntanos qué pasó y qué esperabas ver."
       },
       "confusing": {
-        "label": "Confusing",
-        "prompt": "What was hard to understand?",
-        "helper": "Tell us where you got stuck or what felt unclear."
+        "label": "Algo no está claro",
+        "prompt": "¿Qué fue difícil de entender?",
+        "helper": "Cuéntanos dónde te quedaste sin saber cómo seguir o qué no quedó claro."
       },
       "idea": {
         "label": "Idea",
-        "prompt": "What would make Watch better?",
-        "helper": "Describe the change and how it would help you."
+        "prompt": "¿Qué mejoraría Watch?",
+        "helper": "Describe el cambio y cómo te ayudaría."
       },
       "praise": {
-        "label": "Praise",
-        "prompt": "What worked well?",
-        "helper": "Tell us what you enjoyed so we can do more of it."
+        "label": "Felicitación",
+        "prompt": "¿Qué funcionó bien?",
+        "helper": "Cuéntanos qué te gustó para que podamos seguir mejorando en ese aspecto."
       }
     },
     "languageAreas": {
-      "none": "No language issue",
-      "audio": "Audio or dubbing",
-      "subtitles": "Subtitles or captions",
-      "interface": "Buttons or interface text",
-      "titleDescription": "Title or description",
-      "other": "Other language issue"
+      "none": "No hay problemas con el idioma",
+      "audio": "Audio o doblaje",
+      "subtitles": "Subtítulos",
+      "interface": "Botones o texto de la interfaz",
+      "titleDescription": "Título o descripción",
+      "other": "Otro problema con el idioma"
     },
     "contentScopes": {
-      "none": "No specific content",
-      "current": "This page or video",
-      "other": "Another video or resource"
+      "none": "Ningún contenido en particular",
+      "current": "Esta página o video",
+      "other": "Otro video o recurso"
     },
     "fields": {
       "details": {
-        "label": "Details",
-        "placeholder": "Share details here…"
+        "label": "Detalles",
+        "placeholder": "Escribe los detalles aquí…"
       },
       "languageArea": {
-        "label": "Is this language-related?"
+        "label": "¿Está relacionado con el idioma?"
       },
       "affectedLanguage": {
-        "label": "Affected language",
-        "placeholder": "Type the affected language"
+        "label": "Idioma afectado",
+        "placeholder": "Escribe el idioma afectado"
       },
       "contentScope": {
-        "label": "Is this about specific content?"
+        "label": "¿Se trata de algún contenido en particular?"
       },
       "contentSearch": {
-        "label": "Search or enter media and collections",
-        "placeholder": "Search or type a title…"
+        "label": "Busca o escribe el título de un video, recurso o colección",
+        "placeholder": "Busca o escribe un título…"
       },
       "name": {
-        "label": "Name"
+        "label": "Nombre"
       },
       "email": {
-        "label": "Email",
-        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+        "label": "Correo electrónico",
+        "helper": "Añade tu correo si quieres que te hagamos preguntas sobre tus comentarios o te avisemos cuando se resuelva el problema."
       },
-      "optional": "optional"
+      "optional": "opcional"
     },
     "validation": {
-      "category": "Choose a feedback type to continue.",
-      "message": "Please share at least 10 characters.",
-      "name": "Name is required.",
-      "email": "Enter a valid email address."
+      "category": "Elige un tipo de comentario para continuar.",
+      "message": "Escribe al menos 10 caracteres.",
+      "name": "El nombre es obligatorio.",
+      "email": "Introduce una dirección de correo electrónico válida."
     },
     "languagePicker": {
-      "loading": "Loading languages…",
-      "select": "Select language",
-      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
-      "retryList": "Retry list",
-      "chooseFromList": "Choose from list",
-      "enterManually": "Enter manually",
-      "cantFind": "Can’t find the right language?"
+      "loading": "Cargando idiomas…",
+      "select": "Seleccionar idioma",
+      "unavailable": "La lista de idiomas no está disponible. Se enviará el idioma que escribas.",
+      "retryList": "Volver a cargar la lista",
+      "chooseFromList": "Elegir de la lista",
+      "enterManually": "Escribir el idioma",
+      "cantFind": "¿No encuentras el idioma que buscas?"
     },
     "contentSearch": {
-      "searching": "Searching titles…",
-      "error": "Couldn’t search titles. You can continue with what you typed.",
-      "noMatch": "No direct match. Your typed title will still be submitted.",
-      "mediaFallback": "Media",
-      "clearSelected": "Clear selected content"
+      "searching": "Buscando títulos…",
+      "error": "No se pudieron buscar títulos. Puedes continuar con lo que escribiste.",
+      "noMatch": "No hay una coincidencia exacta. Se enviará el título que escribiste.",
+      "mediaFallback": "Contenido multimedia",
+      "clearSelected": "Quitar el contenido seleccionado"
     },
     "picker": {
-      "title": "Choose something on the page",
-      "hint": "Point to a heading, button, image, or section",
-      "cancel": "Cancel",
-      "mark": "Mark something on the page",
-      "markHint": "Highlight or point out an area",
-      "selected": "Selected {role} · choose again"
+      "title": "Elige un elemento de la página",
+      "hint": "Señala un encabezado, botón, imagen o sección",
+      "cancel": "Cancelar",
+      "mark": "Marcar algo en la página",
+      "markHint": "Resalta o señala una zona",
+      "selected": "Elemento seleccionado: {role} · elegir de nuevo"
     },
     "diagnostics": {
-      "include": "Include technical details",
-      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
-      "viewDetails": "View details",
+      "include": "Incluir detalles técnicos",
+      "description": "Navegador, dispositivo, sistema operativo, tamaño de pantalla, URL de la página, idioma, zona horaria y versión de la aplicación. Nunca se incluyen contraseñas ni el contenido de los formularios.",
+      "viewDetails": "Ver detalles",
       "labels": {
-        "browser": "browser",
-        "operatingSystem": "operating System",
-        "device": "device",
-        "viewport": "viewport",
-        "timeZone": "time Zone",
-        "appVersion": "app Version"
+        "browser": "navegador",
+        "operatingSystem": "sistema operativo",
+        "device": "dispositivo",
+        "viewport": "área de visualización",
+        "timeZone": "zona horaria",
+        "appVersion": "versión de la aplicación"
       }
     },
     "nav": {
-      "back": "Back",
-      "continue": "Continue",
-      "skip": "Skip for now",
-      "send": "Send feedback",
-      "sending": "Sending…"
+      "back": "Atrás",
+      "continue": "Continuar",
+      "skip": "Omitir por ahora",
+      "send": "Enviar comentarios",
+      "sending": "Enviando…"
     },
     "success": {
-      "title": "Thank you",
-      "description": "Your feedback is with our team.",
-      "done": "Done",
+      "title": "Gracias",
+      "description": "Nuestro equipo ha recibido tus comentarios.",
+      "done": "Listo",
       "followUp": {
-        "addEmail": "Add email",
-        "adding": "Adding…",
-        "emailPlaceholder": "you@example.com",
+        "addEmail": "Añadir correo electrónico",
+        "adding": "Añadiendo…",
+        "emailPlaceholder": "tu@ejemplo.com",
         "idea": {
-          "confirmation": "We’ll email you once we implement your idea.",
-          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+          "confirmation": "Te enviaremos un correo cuando implementemos tu idea.",
+          "invitation": "¿Quieres saber si implementamos tu idea? Añade tu correo y te avisaremos."
         },
         "other": {
-          "confirmation": "If our team needs anything else, we’ll email you.",
-          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+          "confirmation": "Si nuestro equipo necesita más información, te enviaremos un correo.",
+          "invitation": "Añade tu correo si quieres que nuestro equipo te contacte sobre tus comentarios."
         },
         "problem": {
-          "confirmation": "We’ll email you when the problem is resolved.",
-          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+          "confirmation": "Te enviaremos un correo cuando se resuelva el problema.",
+          "invitation": "¿Quieres saber cuándo se resolverá? Añade tu correo y te avisaremos."
         }
       }
     },
     "footer": {
-      "reviewed": "Your feedback is reviewed by our team."
+      "reviewed": "Nuestro equipo revisa tus comentarios."
     },
     "errors": {
-      "invalid": "Please check the form and try again.",
-      "rateLimited": "Too many feedback requests. Please try again later.",
-      "sendFailed": "We could not send your feedback. Please try again.",
-      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
-      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
-      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
-      "openSupportForm": "Open support form"
+      "invalid": "Revisa el formulario e inténtalo de nuevo.",
+      "rateLimited": "Has enviado demasiados comentarios. Inténtalo de nuevo más tarde.",
+      "sendFailed": "No pudimos enviar tus comentarios. Inténtalo de nuevo.",
+      "timeout": "Está tardando más de lo esperado. Es posible que hayamos recibido tus comentarios; espera antes de intentarlo de nuevo.",
+      "followUpExpired": "Este enlace de seguimiento ha vencido. Usa el formulario de ayuda para contactarnos.",
+      "followUpFailed": "No pudimos añadir tu correo. Usa el formulario de ayuda para contactarnos.",
+      "openSupportForm": "Abrir formulario de ayuda"
     }
   },
   "VideoRecommendations": {
     "match": "{percent} % de coincidencia",
-    "none": "No se encontraron recomendaciones para este video en este idioma."
+    "none": "No se encontraron recomendaciones para este video en este idioma.",
+    "heading": "Videos recomendados",
+    "loadingLabel": "Cargando videos recomendados",
+    "openingTitle": "Abriendo {title}",
+    "openingVideo": "Abriendo video",
+    "activityNotRecorded": "No se pudo registrar la actividad de recomendaciones. Los enlaces siguen funcionando.",
+    "showingContextual": "Mostrando recomendaciones contextuales.",
+    "showingSaved": "Mostrando recomendaciones guardadas.",
+    "explanationCurated": "Videos seleccionados para explorar.",
+    "explanationViewingMode": "Recomendados según este video y tu forma de ver.",
+    "explanationCowatch": "Recomendados según este video y tus intereses.",
+    "explanationHybrid": "Recomendados según este video y los intereses que elegiste recordar.",
+    "explanationContextual": "Recomendados según lo que estás viendo ahora.",
+    "explanationSemanticFallback": "Recomendados según lo que estás viendo ahora mientras la personalización no está disponible.",
+    "explanationProfileDurable": "Personalizados según los intereses que elegiste recordar.",
+    "explanationProfileVisit": "Personalizados para esta visita.",
+    "personalizationLabel": "Personalización de recomendaciones",
+    "personalizationPrompt": "¿Quieres cambiar cómo se personalizan las recomendaciones?",
+    "openCookieSettings": "Abrir configuración de cookies"
   },
   "BetaTesterModal": {
     "title": "Conviértete en beta tester",

@@ -138,6 +138,7 @@
     "versesAriaValue": "Verše {first} až {last} z {total}, {chapter}",
     "demoVerse": "Potiahnutím nahor prejdete na ďalší verš",
     "demoChapter": "Potiahnutím doľava prejdete na ďalšiu kapitolu",
+    "demoChapterRtl": "Potiahnutím doprava prejdete na ďalšiu kapitolu",
     "demoSkip": "Ťuknutím preskočíte",
     "demoSkipAriaLabel": "Preskočiť ukážku potiahnutia",
     "selectVerseAriaHint": "Dvojitým ťuknutím vyberiete tento verš",
@@ -773,5 +774,8 @@
     "send": "Odoslať",
     "sending": "Odosiela sa…",
     "sendAriaLabel": "Odoslať spätnú väzbu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikácia používa vašu lokálnu sieť na vyhľadanie zariadení na prenos, aby ste mohli prehrávať videá vo svojom televízore."
   }
 }

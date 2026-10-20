@@ -115,7 +115,14 @@ jest.mock("../../src/contexts/WatchPreferencesProvider", () => ({
 }))
 jest.mock("../../src/lib/datadog", () => ({
   datadogLog: { info: () => {}, warn: () => {}, error: () => {} },
+  reportDatadogAction: jest.fn(),
 }))
+// True stands for iOS 26 with Liquid Glass; Android and older iOS are false.
+const mockGate = { glass: false }
+jest.mock("../../src/lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGate.glass,
+}))
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 
 // Each of these pulls a native module (expo-image, expo-blur) that this suite
 // has no reason to load. Named functions, so a case can find each by type and
@@ -154,7 +161,14 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
 }))
 
 import { Children, act, isValidElement, type ReactNode } from "react"
-import { BackHandler, Dimensions, Platform, ScrollView } from "react-native"
+import {
+  ActionSheetIOS,
+  BackHandler,
+  Dimensions,
+  Platform,
+  ScrollView,
+  type ActionSheetIOSOptions,
+} from "react-native"
 
 import DownloadsScreen from "../downloads"
 import { DeleteConfirmSheet } from "../../src/components/library/DeleteConfirmSheet"
@@ -163,6 +177,8 @@ import { SelectionActionBar } from "../../src/components/library/SelectionAction
 import { SeriesGroupCard } from "../../src/components/library/SeriesGroupCard"
 import { ScreenTopBar } from "../../src/components/ui/ScreenTopBar"
 import { Snackbar } from "../../src/components/ui/Snackbar"
+import { reportDatadogAction } from "../../src/lib/datadog"
+import { getNonRouteSheetCounter } from "../../src/lib/miniPlayer/suppression"
 import { TAB_BAR_HEIGHT_IOS } from "../../src/lib/tabBar"
 import {
   resetTabBarHidden,
@@ -182,6 +198,7 @@ import {
 
 const mockedSetTabBarHidden = jest.mocked(setTabBarHidden)
 const mockedResetTabBarHidden = jest.mocked(resetTabBarHidden)
+const mockedReport = jest.mocked(reportDatadogAction)
 
 const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
 function setPlatform(os: "ios" | "android") {
@@ -217,6 +234,8 @@ afterEach(() => {
   mockBlurListeners.length = 0
   mockDownloads.offlineRecords = ONE_VIDEO
   mockDownloads.isReady = true
+  mockGate.glass = false
+  mockedReport.mockClear()
   delete mockParams.series
   Object.assign(mockInsets, { top: 59, right: 0, bottom: 34, left: 0 })
 })
@@ -293,6 +312,13 @@ function elementHasLabel(node: ReactNode, label: string): boolean {
   )
 }
 
+function isWithin(node: RenderedNode, ancestor: RenderedNode): boolean {
+  for (let n: RenderedNode | null | undefined = node; n; n = n.parent) {
+    if (n === ancestor) return true
+  }
+  return false
+}
+
 function flatten(raw: unknown): Record<string, unknown> {
   if (Array.isArray(raw)) {
     return Object.assign({}, ...raw.map(flatten))
@@ -351,31 +377,35 @@ describe("the Downloads screen", () => {
     await unmount(renderer)
   })
 
-  it("lets the head pills grow under a large text size, so no label clips", async () => {
-    const renderer = await renderScreen("ios")
-    const pillStyle = (label: string) => {
-      const [control] = renderer.root.findAll(
-        (node) =>
-          node.props.accessibilityLabel === label &&
-          typeof node.props.onPress === "function",
-      )
-      const style = control!.props.style as
-        | ((state: { pressed: boolean }) => unknown)
-        | unknown
-      return flatten(
-        typeof style === "function" ? style({ pressed: false }) : style,
-      )
-    }
+  it.each([false, true])(
+    "lets the head pills grow under a large text size, so no label clips (glass %s)",
+    async (glass) => {
+      mockGate.glass = glass
+      const renderer = await renderScreen("ios")
+      // The Select pill draws its box in GlassSurface, a child of the
+      // pressable, so read every host box inside each control.
+      const boxes = (label: string) => {
+        const control = pressableByLabel(renderer, label)
+        return renderer.root
+          .findAll(
+            (node) => typeof node.type === "string" && isWithin(node, control),
+          )
+          .map((node) => flatten(node.props.style))
+      }
+      const expectGrows = (label: string) => {
+        expect(boxes(label).some((style) => style.minHeight === 34)).toBe(true)
+        expect(boxes(label).every((style) => style.height === undefined)).toBe(
+          true,
+        )
+      }
 
-    expect(pillStyle("Select downloads").height).toBeUndefined()
-    expect(pillStyle("Select downloads").minHeight).toBe(34)
-    await enterSelection(renderer)
-    for (const label of ["Select all", "Cancel selection"]) {
-      expect(pillStyle(label).height).toBeUndefined()
-      expect(pillStyle(label).minHeight).toBe(34)
-    }
-    await unmount(renderer)
-  })
+      expectGrows("Select downloads")
+      await enterSelection(renderer)
+      expectGrows("Select all")
+      expectGrows("Cancel selection")
+      await unmount(renderer)
+    },
+  )
 
   it("wraps the selection row under a large text size, so Cancel stays on screen", async () => {
     const renderer = await renderScreen("ios")
@@ -551,6 +581,192 @@ describe("deleting on the Downloads screen", () => {
     expect(topBar.parent === sheet.parent).toBe(true)
     await unmount(renderer)
   })
+})
+
+describe("the delete confirmation by platform (AE4)", () => {
+  const MB = 1024 * 1024
+  function sizedRecord(videoSlug: string, megabytes: number): MockRecord {
+    const bytes = megabytes * MB
+    return { ...mockRecord(videoSlug), bytesWritten: bytes, totalBytes: bytes }
+  }
+  const TWO_VIDEOS = [sizedRecord("a", 100), sizedRecord("b", 50)]
+  const counter = getNonRouteSheetCounter()
+
+  function spyOnNativeSheet() {
+    return {
+      show: jest
+        .spyOn(ActionSheetIOS, "showActionSheetWithOptions")
+        .mockImplementation(() => {}),
+      dismiss: jest
+        .spyOn(ActionSheetIOS, "dismissActionSheet")
+        .mockImplementation(() => {}),
+    }
+  }
+
+  async function selectAllAndDelete(renderer: TestInstance) {
+    await enterSelection(renderer)
+    await press(pressableByLabel(renderer, "Select all"))
+    const bar = nodesOfType(renderer, SelectionActionBar)[0]!
+    await act(async () => {
+      ;(bar.props.onDeletePress as () => void)()
+    })
+  }
+
+  /** The native sheet's answer: 0 is Delete, 1 is Cancel or a tap outside.
+   *  The timer lets the delete's promise chain finish inside act. */
+  async function answer(show: jest.SpyInstance, index: number) {
+    await act(async () => {
+      ;(show.mock.calls[0]![1] as (buttonIndex: number) => void)(index)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+  }
+
+  function toast(renderer: TestInstance) {
+    return nodesOfType(renderer, Snackbar)[0]!.props
+  }
+
+  describe("on iOS 26", () => {
+    beforeEach(() => {
+      mockGate.glass = true
+      mockDownloads.offlineRecords = TWO_VIDEOS
+    })
+
+    it("shows the native dark sheet, not the card, and Delete removes both", async () => {
+      const { show } = spyOnNativeSheet()
+      const renderer = await renderScreen("ios")
+      await selectAllAndDelete(renderer)
+
+      expect(nodesOfType(renderer, DeleteConfirmSheet).length).toBe(0)
+      expect(show).toHaveBeenCalledTimes(1)
+      const options = show.mock.calls[0]![0] as ActionSheetIOSOptions
+      expect(options.title).toBe("Delete 2 videos?")
+      expect(options.message).toBe(
+        "They'll be removed from your downloads and free up 150 MB. You can download them again anytime.",
+      )
+      expect(options.userInterfaceStyle).toBe("dark")
+      expect(counter.count()).toBe(1)
+
+      await answer(show, 0)
+
+      expect(mockDownloads.offlineRecords.length).toBe(0)
+      expect(mockedReport).toHaveBeenCalledTimes(1)
+      expect(mockedReport).toHaveBeenCalledWith("library-delete-confirm")
+      expect(nodesOfType(renderer, LibraryEmptyState).length).toBe(1)
+      expect(toast(renderer).message).toBe("2 videos deleted · 150 MB freed")
+      expect(counter.count()).toBe(0)
+      await unmount(renderer)
+    })
+
+    it("deletes nothing on a tap outside and keeps the selection", async () => {
+      const { show } = spyOnNativeSheet()
+      const renderer = await renderScreen("ios")
+      await selectAllAndDelete(renderer)
+
+      await answer(show, 1)
+
+      expect(mockDownloads.offlineRecords.length).toBe(2)
+      expect(mockedReport).toHaveBeenCalledTimes(1)
+      expect(mockedReport).toHaveBeenCalledWith("library-delete-cancel")
+      expect(hasControl(renderer, "Cancel selection")).toBe(true)
+      expect(toast(renderer).visible).toBe(false)
+      expect(counter.count()).toBe(0)
+      await unmount(renderer)
+    })
+
+    it("closes the sheet with no report when the screen blurs", async () => {
+      const { show, dismiss } = spyOnNativeSheet()
+      const renderer = await renderScreen("ios")
+      await selectAllAndDelete(renderer)
+      expect(mockBlurListeners).toHaveLength(1)
+
+      await act(async () => {
+        mockBlurListeners.forEach((listener) => listener())
+      })
+
+      expect(dismiss).toHaveBeenCalledTimes(1)
+      expect(counter.count()).toBe(0)
+      // A late answer from the closed sheet changes nothing.
+      await answer(show, 0)
+      expect(mockDownloads.offlineRecords.length).toBe(2)
+      expect(mockedReport).not.toHaveBeenCalled()
+      await unmount(renderer)
+    })
+
+    it("closes the sheet when every selected download goes", async () => {
+      const { dismiss } = spyOnNativeSheet()
+      const renderer = await renderScreen("ios")
+      await selectAllAndDelete(renderer)
+
+      // The provider drops both records; the prune ends selection.
+      mockDownloads.offlineRecords = []
+      await act(async () => {
+        renderer.update(<DownloadsScreen />)
+      })
+
+      expect(hasControl(renderer, "Cancel selection")).toBe(false)
+      expect(dismiss).toHaveBeenCalledTimes(1)
+      expect(counter.count()).toBe(0)
+      expect(mockedReport).not.toHaveBeenCalled()
+      await unmount(renderer)
+    })
+
+    it("closes the sheet when the screen unmounts with it open", async () => {
+      const { dismiss } = spyOnNativeSheet()
+      const renderer = await renderScreen("ios")
+      await selectAllAndDelete(renderer)
+
+      await unmount(renderer)
+
+      expect(dismiss).toHaveBeenCalledTimes(1)
+      expect(counter.count()).toBe(0)
+    })
+
+    it("deletes what was selected at open against the live downloads", async () => {
+      const { show, dismiss } = spyOnNativeSheet()
+      const renderer = await renderScreen("ios")
+      await selectAllAndDelete(renderer)
+
+      // "b" goes while the sheet is open; selection shrinks but stays on.
+      mockDownloads.offlineRecords = [TWO_VIDEOS[0]!]
+      await act(async () => {
+        renderer.update(<DownloadsScreen />)
+      })
+      expect(hasControl(renderer, "Cancel selection")).toBe(true)
+      expect(dismiss).not.toHaveBeenCalled()
+
+      await answer(show, 0)
+
+      expect(mockDownloads.offlineRecords.length).toBe(0)
+      // A stale record list would count "b" again: 2 videos, 150 MB.
+      expect(toast(renderer).message).toBe("1 video deleted · 100 MB freed")
+      await unmount(renderer)
+    })
+  })
+
+  it.each(["android", "ios"] as const)(
+    "keeps today's card and its delete without Liquid Glass (%s)",
+    async (os) => {
+      mockDownloads.offlineRecords = TWO_VIDEOS
+      const { show } = spyOnNativeSheet()
+      const renderer = await renderScreen(os)
+      await selectAllAndDelete(renderer)
+
+      const sheet = nodesOfType(renderer, DeleteConfirmSheet)[0]!
+      expect(sheet.props.visible).toBe(true)
+      expect(sheet.props.count).toBe(2)
+      expect(show).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await (sheet.props.onConfirm as () => Promise<void>)()
+      })
+
+      expect(mockDownloads.offlineRecords.length).toBe(0)
+      expect(toast(renderer).message).toBe("2 videos deleted · 150 MB freed")
+      // The card reports through its tap names, not custom actions.
+      expect(mockedReport).not.toHaveBeenCalled()
+      await unmount(renderer)
+    },
+  )
 })
 
 describe("the list's bottom pad on a root route", () => {

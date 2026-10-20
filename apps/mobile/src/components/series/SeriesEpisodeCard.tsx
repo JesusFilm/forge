@@ -196,7 +196,6 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontFamily: "System",
     fontWeight: "700",
     fontSize: 13,
     lineHeight: 15,

@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { ScreenTopBar } from "../src/components/ui/ScreenTopBar"
 import { useMiniPlayerBottomClearance } from "../src/hooks/useMiniPlayerBottomClearance"
 import { useTypography } from "../src/hooks/useTypography"
+import { directionalIcon } from "../src/i18n/layoutRtl"
 import { useTextDirection } from "../src/i18n/textDirection"
 import { useT } from "../src/i18n/useT"
 import { formatAppVersion, readAppVersionParts } from "../src/lib/appVersion"
@@ -171,7 +172,11 @@ function RouteRow({
       >
         {label}
       </Text>
-      <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
+      <Ionicons
+        name={directionalIcon("chevron-forward")}
+        size={18}
+        color={TEXT_SECONDARY}
+      />
     </Pressable>
   )
 }
@@ -231,7 +236,6 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     marginRight: 12,
   },
   socialRow: {
@@ -245,7 +249,6 @@ const styles = StyleSheet.create({
   },
   version: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
 })

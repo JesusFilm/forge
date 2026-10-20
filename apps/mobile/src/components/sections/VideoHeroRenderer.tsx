@@ -26,6 +26,7 @@ import {
 import { feedback } from "../../styles/shared"
 import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { GlassSurface } from "../ui/GlassSurface"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
@@ -241,16 +242,23 @@ export function VideoHeroRenderer({
               {heading}
             </Text>
             {hasValidStream && onMuteToggle != null && (
+              // CuratedHomeLayout's tap target copies this measured box, so
+              // the glass draws inside it and leaves its size alone.
               <View
+                testID="video-hero-mute"
                 ref={muteButtonRef}
                 onLayout={handleMuteButtonLayout}
-                style={styles.muteButton}
               >
-                <Ionicons
-                  name={mutedProp ? "volume-mute" : "volume-high"}
-                  size={20}
-                  color={TEXT_ON_OVERLAY}
-                />
+                <GlassSurface
+                  style={styles.muteButton}
+                  fallback={{ kind: "fill", style: styles.muteFill }}
+                >
+                  <Ionicons
+                    name={mutedProp ? "volume-mute" : "volume-high"}
+                    size={20}
+                    color={TEXT_ON_OVERLAY}
+                  />
+                </GlassSurface>
               </View>
             )}
           </View>
@@ -301,20 +309,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "700",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   muteButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  muteFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   subheading: {
     fontWeight: "400",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
     marginTop: 4,
@@ -332,6 +340,5 @@ const styles = StyleSheet.create({
   ctaText: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

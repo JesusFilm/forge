@@ -1,4 +1,5 @@
 import type { ErrorLike } from "@apollo/client"
+import type { SearchLanguageOption } from "@/lib/search-language"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import {
@@ -16,6 +17,7 @@ import {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   legacyWatchExperienceFragment,
   preCopyWatchExperienceFragment,
   watchExperienceFragment,
@@ -26,8 +28,9 @@ import {
 import {
   hasPublicWatchLanguageSlugShape,
   isPublicWatchLanguageSlug,
-  slugToBcp47Tag,
+  slugToAdminContentLocale,
 } from "@/lib/locale"
+import { selectOwnLanguageName } from "@/lib/language-native-name"
 import {
   getWatchRouteManifest,
   isWatchAudioLanguageSlug,
@@ -252,7 +255,11 @@ export type WatchVariantLanguage = {
   iso3?: string | null
   slug: string | null
   name: string | null
+  /** `"en"` only when `name` is known English; absent means untagged. */
+  nameLang?: "en"
   nativeName: string | null
+  /** Verified declarable tag of `nativeName`; null/absent means untagged. */
+  nativeNameLang?: string | null
 }
 
 export type WatchVariantDownload = {
@@ -294,7 +301,11 @@ export type WatchLanguagePickerVariant = {
     bcp47?: string | null
     slug: string | null
     name: string | null
+    /** `"en"` only when `name` is known English; absent means untagged. */
+    nameLang?: "en"
     nativeName?: string | null
+    /** Verified declarable tag of `nativeName`; absent means untagged. */
+    nativeNameLang?: string | null
   } | null
   videoEdition?: null
 }
@@ -335,7 +346,11 @@ export type WatchSubtitle = {
   language: {
     slug: string
     name: string
+    /** `"en"` only when `name` is known English; absent means untagged. */
+    nameLang?: "en"
     nativeName: string | null
+    /** Verified declarable tag of `nativeName`; null/absent means untagged. */
+    nativeNameLang?: string | null
     bcp47: string
   }
   vttSrc: string
@@ -986,9 +1001,16 @@ type AdminVideoRouteSnapshotParentRelation = {
     | null
 }
 
+type AdminRequestedLanguageRaw = {
+  slug?: string | null
+  name?: unknown
+  bcp47?: string | null
+} | null
+
 type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
@@ -1071,15 +1093,34 @@ const LOCALIZED_NAME_FALLBACK_ORDER = [
   "zh-Hans-CN",
 ] as const
 
-function pickNativeName(value: unknown): string | null {
-  if (typeof value !== "object" || !value) return null
-  const map = value as Record<string, unknown>
-  const english = map.en
-  for (const [key, val] of Object.entries(map)) {
-    if (key === "en") continue
-    if (typeof val === "string" && val.length > 0 && val !== english) return val
+// The language's OWN name, selected by its own BCP 47 key (see
+// `selectOwnLanguageName`). Never "first non-en": core sync keys the name map by
+// translation language, so the first non-en entry can be a translation.
+function pickNativeName(
+  value: unknown,
+  bcp47: string | null | undefined,
+): { nativeName: string | null; nativeNameLang?: string } {
+  const own = selectOwnLanguageName(value, bcp47)
+  return {
+    nativeName: own?.text ?? null,
+    // Only when verified, so unproven rows keep their legacy shape.
+    ...(own?.lang ? { nativeNameLang: own.lang } : {}),
   }
-  return null
+}
+
+// Language rows only: declare English only for the map's `en` entry.
+// A public-slug fallback is useful display text but has no language provenance.
+function pickEnglishLanguage(
+  value: unknown,
+  slug: string | null | undefined,
+): { name: string | null; nameLang?: "en" } {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const english = (value as Record<string, unknown>).en
+    if (typeof english === "string" && english.trim().length > 0) {
+      return { name: english.trim(), nameLang: "en" }
+    }
+  }
+  return { name: humanizeContentSlug(slug) }
 }
 
 function pickLocalizedName(value: unknown): string | null {
@@ -1194,8 +1235,8 @@ function normalizeVariant(
           bcp47: v.language.bcp47 ?? null,
           iso3: v.language.iso3 ?? null,
           slug: v.language.slug ?? null,
-          name: pickLocalizedName(v.language.name),
-          nativeName: pickNativeName(v.language.name),
+          ...pickEnglishLanguage(v.language.name, v.language.slug),
+          ...pickNativeName(v.language.name, v.language.bcp47),
         }
       : null,
     downloads: (v.downloads ?? [])
@@ -1228,8 +1269,14 @@ function normalizeVariant(
                   bcp47: subtitle.language.bcp47 ?? null,
                   iso3: subtitle.language.iso3 ?? null,
                   slug: subtitle.language.slug ?? null,
-                  name: pickLocalizedName(subtitle.language.name),
-                  nativeName: pickNativeName(subtitle.language.name),
+                  ...pickEnglishLanguage(
+                    subtitle.language.name,
+                    subtitle.language.slug,
+                  ),
+                  ...pickNativeName(
+                    subtitle.language.name,
+                    subtitle.language.bcp47,
+                  ),
                 }
               : null,
           })),
@@ -1272,7 +1319,11 @@ function normalizeSubtitlesFromVariants(
         language: {
           slug: s.language!.slug!,
           name: s.language!.name ?? s.language!.slug!,
+          ...(s.language!.nameLang ? { nameLang: s.language!.nameLang } : {}),
           nativeName: s.language!.nativeName,
+          ...(s.language!.nativeNameLang
+            ? { nativeNameLang: s.language!.nativeNameLang }
+            : {}),
           bcp47: s.language!.bcp47 ?? s.language!.slug!,
         },
         vttSrc: s.vttSrc!,
@@ -1558,25 +1609,18 @@ const fetchResolvedWatchPage = unstable_cache(
     locale: string,
     slugOrNull: string | null,
   ): Promise<WatchPageResult> => {
-    try {
-      const resolved =
-        slugOrNull === null
-          ? await resolveHomepage(locale)
-          : await resolveSlugPage(locale, slugOrNull)
+    const resolved =
+      slugOrNull === null
+        ? await resolveHomepage(locale)
+        : await resolveSlugPage(locale, slugOrNull)
 
-      if (!resolved) {
-        return { data: null, error: missingExperienceError() }
-      }
+    if (!resolved) {
+      return { data: null, error: missingExperienceError() }
+    }
 
-      return {
-        data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
-        error: null,
-      }
-    } catch (error) {
-      return {
-        data: null,
-        error: error instanceof Error ? error : new Error(String(error)),
-      }
+    return {
+      data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
+      error: null,
     }
   },
   ["watch-page", "v6-category-rail-copy"],
@@ -1594,33 +1638,33 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchPage(locale, slug ?? null)
-  },
-)
-
-const fetchResolvedWatchExperiencePage = unstable_cache(
-  async (locale: string, slug: string): Promise<WatchPageResult> => {
     try {
-      const experience = await getExperienceBySlug(locale, slug)
-      if (!experience) {
-        return { data: null, error: missingExperienceError() }
-      }
-
-      return {
-        data: JSON.parse(
-          JSON.stringify({
-            kind: "experience",
-            experience,
-            watchHomeCategoryRailCompatibility: "supported",
-          }),
-        ) as ResolvedWatchPage,
-        error: null,
-      }
+      return await fetchResolvedWatchPage(locale, slug ?? null)
     } catch (error) {
       return {
         data: null,
         error: error instanceof Error ? error : new Error(String(error)),
       }
+    }
+  },
+)
+
+const fetchResolvedWatchExperiencePage = unstable_cache(
+  async (locale: string, slug: string): Promise<WatchPageResult> => {
+    const experience = await getExperienceBySlug(locale, slug)
+    if (!experience) {
+      return { data: null, error: missingExperienceError() }
+    }
+
+    return {
+      data: JSON.parse(
+        JSON.stringify({
+          kind: "experience",
+          experience,
+          watchHomeCategoryRailCompatibility: "supported",
+        }),
+      ) as ResolvedWatchPage,
+      error: null,
     }
   },
   ["watch-experience-page", "v3-category-rail-copy"],
@@ -1634,7 +1678,14 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
  */
 export const resolveWatchExperiencePage = cache(
   async (locale: string, slug: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchExperiencePage(locale, slug)
+    try {
+      return await fetchResolvedWatchExperiencePage(locale, slug)
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error(String(error)),
+      }
+    }
   },
 )
 
@@ -1753,7 +1804,7 @@ type WatchContentIdentity = {
 async function contentIdentityForWatchLanguage(
   languageSlugOrLocale: string,
 ): Promise<WatchContentIdentity> {
-  const mappedLocale = slugToBcp47Tag(languageSlugOrLocale)
+  const mappedLocale = slugToAdminContentLocale(languageSlugOrLocale)
   const locale = mappedLocale ?? languageSlugOrLocale
 
   if (isPublicWatchLanguageSlug(languageSlugOrLocale)) {
@@ -2068,6 +2119,42 @@ async function queryWatchLanguagePickerVariantsBySlug(
   return result.data?.videoBySlug ?? null
 }
 
+// TEMPORARY (FGE-284): deploy-window shim for the additive
+// `WatchRouteSnapshot.requestedLanguage` field. Remove once admin with that
+// field is live in every environment plus one release: delete this cooldown,
+// `isRequestedLanguageSchemaLag`, the retry branches in
+// `queryWatchVideoRouteSnapshotBySlug`, and
+// `getLegacyWatchVideoRouteSnapshotBySlugOperation` (fragments/watch-video.ts,
+// its barrel export, the `visit` import and tests). Grep: `TEMPORARY (FGE-284)`.
+//
+// Retry only the exact additive-field validation failure during independent
+// deploys. A brief process-local cooldown avoids repeated failed probes; all
+// other GraphQL/server failures preserve their existing error behavior.
+let requestedLanguageSnapshotRetryAfter = 0
+function noteRequestedLanguageSchemaLag(videoSlug: string) {
+  requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+  logWatchServerEvent("watch_route_snapshot.requested_language_schema_lag", {
+    videoSlug,
+  })
+}
+function isRequestedLanguageSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[]
+}): boolean {
+  const errors = graphqlErrorsFromResult(result)
+  return (
+    errors.length > 0 &&
+    errors.every(
+      (entry) =>
+        isValidationShaped(entry) &&
+        typeof entry.message === "string" &&
+        /^Cannot query field "requestedLanguage" on type "WatchRouteSnapshot"\./.test(
+          entry.message,
+        ),
+    )
+  )
+}
+
 async function queryWatchVideoRouteSnapshotBySlug(
   videoSlug: string,
   variables: {
@@ -2076,18 +2163,39 @@ async function queryWatchVideoRouteSnapshotBySlug(
     subtitleLanguageSlug?: string | null
   },
 ): Promise<AdminVideoRouteSnapshotRaw | null> {
-  const result = await client.query({
-    query: getWatchVideoRouteSnapshotBySlugOperation,
-    variables: {
-      locale: variables.locale,
-      languageSlug: variables.languageSlug,
-      ...(variables.subtitleLanguageSlug
-        ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
-        : {}),
-      videoSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+  const queryVariables = {
+    locale: variables.locale,
+    languageSlug: variables.languageSlug,
+    ...(variables.subtitleLanguageSlug
+      ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
+      : {}),
+    videoSlug,
+  }
+  const query = (legacy: boolean) =>
+    client.query({
+      query: legacy
+        ? getLegacyWatchVideoRouteSnapshotBySlugOperation
+        : getWatchVideoRouteSnapshotBySlugOperation,
+      variables: queryVariables,
+      fetchPolicy: "no-cache",
+    })
+  const useLegacy = Date.now() < requestedLanguageSnapshotRetryAfter
+  let result
+  try {
+    result = await query(useLegacy)
+  } catch (error) {
+    if (
+      useLegacy ||
+      !isRequestedLanguageSchemaLag({ error: error as ErrorLike })
+    )
+      throw error
+    noteRequestedLanguageSchemaLag(videoSlug)
+    result = await query(true)
+  }
+  if (!useLegacy && isRequestedLanguageSchemaLag(result)) {
+    noteRequestedLanguageSchemaLag(videoSlug)
+    result = await query(true)
+  }
 
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
@@ -2178,6 +2286,7 @@ export const resolveWatchLanguagePickerVariants = cache(
 )
 
 export type WatchUnavailableRecoveryTarget = {
+  requestedLanguage: SearchLanguageOption | null
   contentTitle: string | null
   imageUrl: string | null
 }
@@ -2201,9 +2310,23 @@ export const resolveWatchUnavailableRecoveryTarget = cache(
     const video = normalizeAdminVideo(localizedCopy)
     if (!video) return null
 
+    const requestedLanguageName = pickLocalizedName(
+      snapshot.requestedLanguage?.name,
+    )?.trim()
     return {
       contentTitle: video.title,
       imageUrl: resolvePosterUrl(video.images[0]),
+      requestedLanguage:
+        snapshot.requestedLanguage?.slug === requestedLanguageSlug &&
+        requestedLanguageName
+          ? {
+              publicSlug: requestedLanguageSlug,
+              englishName: requestedLanguageName,
+              nativeName: null,
+              bcp47: snapshot.requestedLanguage.bcp47 ?? null,
+              regionNames: [],
+            }
+          : null,
     }
   },
 )
@@ -2288,6 +2411,7 @@ function mergeParentRelationsShellAndCopy(
 
 function mergeWatchVideoShellWithCopy(
   shell: AdminVideoRaw & {
+    requestedLanguage?: AdminRequestedLanguageRaw
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     variants?: AdminVideoVariantRaw[] | null

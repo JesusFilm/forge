@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { directionalIcon } from "../../../i18n/layoutRtl"
 import { useT } from "../../../i18n/useT"
 import { READER_TOUCH_TARGET } from "../../../lib/bible/reader/chrome"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
@@ -33,7 +34,11 @@ export function ReaderSheetHeader({
           style={({ pressed }) => [styles.back, pressed && feedback.pressed]}
           {...{ "dd-action-name": "bible-sheet-back" }}
         >
-          <Ionicons name="chevron-back" size={22} color={tokens.icon} />
+          <Ionicons
+            name={directionalIcon("chevron-back")}
+            size={22}
+            color={tokens.icon}
+          />
           <Text
             style={[styles.backLabel, { color: tokens.text }]}
             numberOfLines={1}
@@ -78,12 +83,10 @@ const styles = StyleSheet.create({
     marginLeft: -6,
   },
   backLabel: {
-    fontFamily: "System",
     fontSize: 16,
   },
   title: {
     flex: 1,
-    fontFamily: "System",
     fontSize: 18,
     fontWeight: "600",
   },

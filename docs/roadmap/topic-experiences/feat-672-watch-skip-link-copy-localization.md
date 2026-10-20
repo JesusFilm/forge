@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-10-09"
 duration: 2
 depends_on:
-  - "feat-631"
+  - "feat-770"
 blocks: []
 tags:
   - "web"

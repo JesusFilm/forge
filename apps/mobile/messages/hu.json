@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}. verstől {last}. versig, összesen {total} vers, {chapter}",
     "demoVerse": "Húzd felfelé a következő vershez",
     "demoChapter": "Húzd balra a következő fejezethez",
+    "demoChapterRtl": "Húzd jobbra a következő fejezethez",
     "demoSkip": "Koppints a kihagyáshoz",
     "demoSkipAriaLabel": "A húzási bemutató kihagyása",
     "selectVerseAriaHint": "Koppints duplán a vers kijelöléséhez",
@@ -773,5 +774,8 @@
     "send": "Küldés",
     "sending": "Küldés…",
     "sendAriaLabel": "Visszajelzés küldése"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Az alkalmazás a helyi hálózatodat használja az átküldésre alkalmas eszközök megtalálásához, hogy videókat játszhass le a tévéden."
   }
 }

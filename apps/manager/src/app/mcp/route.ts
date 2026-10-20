@@ -67,6 +67,7 @@ export async function POST(request: Request) {
             name: t.name,
             description: t.description,
             inputSchema: z.toJSONSchema(t.schema),
+            ...("annotations" in t ? { annotations: t.annotations } : {}),
           })),
       }
     else if (call && tool) {

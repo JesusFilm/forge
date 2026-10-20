@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} av {total}, {chapter}",
     "demoVerse": "Sveip opp for neste vers",
     "demoChapter": "Sveip til venstre for neste kapittel",
+    "demoChapterRtl": "Sveip til høyre for neste kapittel",
     "demoSkip": "Trykk for å hoppe over",
     "demoSkipAriaLabel": "Hopp over sveipedemonstrasjonen",
     "selectVerseAriaHint": "Dobbelttrykk for å velge dette verset",
@@ -773,5 +774,8 @@
     "send": "Send inn",
     "sending": "Sender …",
     "sendAriaLabel": "Send tilbakemelding"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen bruker det lokale nettverket ditt til å finne enheter å sende til, slik at du kan spille av videoer på TV-en din."
   }
 }

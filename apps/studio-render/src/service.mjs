@@ -5,9 +5,9 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises"
 import { join } from "node:path"
 import { finished } from "node:stream/promises"
 import {
-  studioRenderAdmissionSchema,
+  studioRenderLegacyAdmissionSchema as studioRenderAdmissionSchema,
   STUDIO_RENDER_WIRE_BYTES,
-  STUDIO_RENDER_PROFILE,
+  STUDIO_RENDER_PROFILE_V3 as STUDIO_RENDER_PROFILE,
 } from "@forge/studio-contracts/render"
 import { verifyExecutionBudget, currentCgroupDirectory } from "./budget.mjs"
 import { executeStudioChild, StudioExecutionError } from "./isolation.mjs"

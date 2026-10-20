@@ -138,6 +138,7 @@
     "versesAriaValue": "Versicles del {first} al {last} de {total}, {chapter}",
     "demoVerse": "Llisca cap amunt per veure el versicle següent",
     "demoChapter": "Llisca cap a l’esquerra per veure el capítol següent",
+    "demoChapterRtl": "Llisca cap a la dreta per veure el capítol següent",
     "demoSkip": "Toca per ometre",
     "demoSkipAriaLabel": "Omet la demostració de lliscament",
     "selectVerseAriaHint": "Toca dues vegades per seleccionar aquest versicle",
@@ -773,5 +774,8 @@
     "send": "Envia",
     "sending": "S’està enviant…",
     "sendAriaLabel": "Envia els comentaris"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’aplicació fa servir la teva xarxa local per trobar dispositius on emetre, perquè puguis reproduir vídeos al teu televisor."
   }
 }

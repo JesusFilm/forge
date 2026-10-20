@@ -5,7 +5,7 @@
 
 import { act, createRef } from "react"
 import type React from "react"
-import { Share, type GestureResponderEvent } from "react-native"
+import { I18nManager, Share, type GestureResponderEvent } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
 const mockInsets = { top: 59, right: 0, bottom: 83, left: 0 }
@@ -34,6 +34,14 @@ jest.mock("expo-image", () => {
     Image: (props: object) => createElement("ExpoImage", props),
   }
 })
+// The `mock` prefix lets babel-plugin-jest-hoist accept this name. A case
+// takes the glass branch unless it turns the gate off.
+const mockGlass = { on: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGlass.on,
+}))
+// A host stand-in, so a case can see where the glass draws.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 // The real overlay reads the shared cue cache. Here only its mount and its
 // source matter, which is what the captions rule decides.
 const mockSubtitleOverlay = jest.fn((_props: Record<string, unknown>) => null)
@@ -98,7 +106,10 @@ jest.mock("../../../i18n/pluralData.generated", () =>
 
 import { ClipOverlay, type ClipOverlayProps } from "../ClipOverlay"
 import { ExplorePager, type ExplorePagerHandle } from "../ExplorePager"
+import { GlassSurface } from "../../ui/GlassSurface"
 import { clipPosterUri } from "../../../hooks/useClipAutostart"
+import { BLACK, hexToRgba } from "../../../lib/color"
+import { feedback } from "../../../styles/shared"
 import {
   refreshLocale,
   resetLocaleStoreForTests,
@@ -127,6 +138,7 @@ import {
   phoneLocales,
   tapActionName,
 } from "../../../test-utils/uiLocaleFixture"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 // 12:04 to 12:31: a 27 s window inside the full asset.
 const CLIP: FeedClip = {
@@ -156,6 +168,8 @@ function props(overrides: Partial<ClipOverlayProps> = {}): ClipOverlayProps {
     player: player as unknown as VideoPlayer,
     muted: false,
     paused: false,
+    onResume: jest.fn(),
+    fast: false,
     onToggleMute: jest.fn(),
     onSeek: jest.fn(),
     onKeepWatching: jest.fn(),
@@ -251,6 +265,50 @@ function childIds(node: JsonNode): unknown[] {
     .map((c) => c.props.testID)
 }
 
+/** The nearest host node above a node. */
+function hostAbove(node: RenderedNode): RenderedNode {
+  let at = node.parent
+  while (at != null && typeof at.type !== "string") at = at.parent
+  if (at == null) throw new Error("no host node above")
+  return at
+}
+
+/** The nearest GlassView host above a node. */
+function glassAbove(node: RenderedNode): RenderedNode {
+  let at = node.parent
+  while (at != null && at.type !== "GlassView") at = at.parent
+  if (at == null) throw new Error("no glass above")
+  return at
+}
+
+/** The GlassSurface that holds a node, or null. */
+function surfaceAbove(node: RenderedNode): RenderedNode | null {
+  let at = node.parent
+  while (at != null && at.type !== GlassSurface) at = at.parent
+  return at ?? null
+}
+
+/** The one icon with this name and size. */
+function icon(renderer: TestInstance, name: string, size: number) {
+  const found = renderer.root.findAll(
+    (n) => n.props.name === name && n.props.size === size,
+  )
+  expect(found).toHaveLength(1)
+  return found[0]
+}
+
+/** A finger down on a Pressable's host view, through its responder. */
+function pressIn(host: RenderedNode) {
+  const event = {
+    persist: () => {},
+    currentTarget: { measure: () => {} },
+    nativeEvent: { pageX: 0, pageY: 0, touches: [], changedTouches: [] },
+  }
+  act(() => {
+    ;(host.props.onResponderGrant as (e: unknown) => void)(event)
+  })
+}
+
 function progressBar(renderer: TestInstance): RenderedNode {
   const [bar] = renderer.root.findAll(
     (n) =>
@@ -318,6 +376,7 @@ afterEach(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
   jest.restoreAllMocks()
+  mockGlass.on = true
 })
 
 describe("ClipOverlay — clip information", () => {
@@ -354,13 +413,36 @@ describe("ClipOverlay — clip information", () => {
 
   it("shows the play glyph only while paused, hidden from screen readers", () => {
     expect(byTestId(render(), "clip-paused-glyph")).toHaveLength(0)
-    const [glyph] = byTestId(
-      render(props({ paused: true })),
-      "clip-paused-glyph",
-    )
+    const onResume = jest.fn()
+    const renderer = render(props({ paused: true, onResume }))
+    const [glyph] = byTestId(renderer, "clip-paused-glyph")
     expect(glyph).toBeDefined()
-    expect(glyph.props.pointerEvents).toBe("none")
+    // Only the glyph takes a touch; the rest of the layer reaches the feed.
+    expect(glyph.props.pointerEvents).toBe("box-none")
     expect(glyph.props.importantForAccessibility).toBe("no-hide-descendants")
+    const [button] = renderer.root.findAll(
+      (n) =>
+        n.props.testID === "clip-paused-glyph-button" &&
+        typeof n.props.onPress === "function",
+    )
+    act(() => {
+      button!.props.onPress!()
+    })
+    expect(onResume).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows the 2x cue under the safe area only while fast, hidden from screen readers", () => {
+    expect(byTestId(render(), "clip-fast-cue")).toHaveLength(0)
+    const renderer = render(props({ fast: true }))
+    const [cue] = byTestId(renderer, "clip-fast-cue")
+    expect(cue).toBeDefined()
+    expect(cue.props.pointerEvents).toBe("none")
+    expect(cue.props.importantForAccessibility).toBe("no-hide-descendants")
+    expect(flatStyle(cue.props.style)).toMatchObject({
+      top: mockInsets.top + 12,
+      direction: "ltr",
+    })
+    expect(textsIn(jsonById(renderer, "clip-fast-cue"))).toEqual(["2×"])
   })
 })
 
@@ -389,7 +471,6 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     const circleJson = jsonById(renderer, "clip-keep-watching-circle")
     const circle = flatStyle(circleJson.props.style)
     expect(circle.borderRadius).toBe(Number(circle.width) / 2)
-    expect(Number(circle.width)).toBeGreaterThanOrEqual(44)
     expect(circle.overflow).toBe("hidden")
     const [thumbnail] = imagesIn(circleJson)
     expect(thumbnail?.props.source).toBe(clipPosterUri(CLIP))
@@ -403,12 +484,23 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
     expect(textsIn(json)).toEqual([])
   })
 
-  it("keeps a dark circle behind the glyph for a clip with no thumbnail", () => {
+  it("keeps a backing behind the glyph for a clip with no thumbnail: glass, else a dark circle", () => {
     const clip = { ...CLIP, imageUrl: null, muxPlaybackId: null }
-    const renderer = render(props({ clip }))
-    const circleJson = jsonById(renderer, "clip-keep-watching-circle")
-    expect(imagesIn(circleJson)).toHaveLength(0)
-    expect(flatStyle(circleJson.props.style).backgroundColor).toBeDefined()
+    for (const glass of [true, false]) {
+      mockGlass.on = glass
+      const renderer = render(props({ clip }))
+      const circleJson = jsonById(renderer, "clip-keep-watching-circle")
+      expect(imagesIn(circleJson)).toHaveLength(0)
+      const [circle] = byTestId(renderer, "clip-keep-watching-circle")
+      const backing = hostAbove(circle)
+      if (glass) {
+        expect(backing.type).toBe("GlassView")
+      } else {
+        expect(flatStyle(backing.props.style).backgroundColor).toBe(
+          hexToRgba(BLACK, 0.35),
+        )
+      }
+    }
   })
 
   it("names the mute action from the current state and raises the toggle", () => {
@@ -447,6 +539,116 @@ describe("ClipOverlay — side rail (R11, R16, R18)", () => {
   })
 })
 
+describe("ClipOverlay — glass on the controls (R4)", () => {
+  /** Each control by the node that the glass draws behind. */
+  function controls(renderer: TestInstance): Record<string, RenderedNode> {
+    return {
+      mute: icon(renderer, "volume-high", 24),
+      share: icon(renderer, "share-outline", 24),
+      keepWatching: byTestId(renderer, "clip-keep-watching-circle")[0],
+      paused: icon(renderer, "play", 40),
+    }
+  }
+
+  it("draws Mute, Share, the Keep watching rim and the paused glyph on glass, with no fill over it", () => {
+    const renderer = render(props({ paused: true }))
+    for (const [name, node] of Object.entries(controls(renderer))) {
+      // The paused glyph fades inside the glass, so a fade view sits between.
+      const glass = glassAbove(node)
+      expect({ name, inSurface: surfaceAbove(node) != null }).toEqual({
+        name,
+        inSurface: true,
+      })
+      expect({
+        name,
+        type: glass.type,
+        fill: flatStyle(glass.props.style).backgroundColor,
+      }).toEqual({
+        name,
+        type: "GlassView",
+        fill: undefined,
+      })
+      expect(glass.props.glassEffectStyle).toMatchObject({ style: "regular" })
+    }
+  })
+
+  it("rims the Keep watching thumbnail with glass in the rail's circle, and keeps its tap name", () => {
+    const renderer = render()
+    const mute = icon(renderer, "volume-high", 24)
+    const [keepWatching] = byTestId(renderer, "clip-keep-watching-circle")
+    const rim = flatStyle(hostAbove(keepWatching).props.style)
+    const thumbnail = flatStyle(keepWatching.props.style)
+    expect(rim.width).toBe(flatStyle(hostAbove(mute).props.style).width)
+    expect(Number(thumbnail.width)).toBeLessThan(Number(rim.width))
+    expect(
+      imagesIn(jsonById(renderer, "clip-keep-watching-circle"))[0]?.props
+        .source,
+    ).toBe(clipPosterUri(CLIP))
+    expect(tapActionName(pressableByLabel(renderer, "Keep watching"))).toBe(
+      "explore-keep-watching",
+    )
+  })
+
+  it("keeps today's dark fills where Liquid Glass is unavailable", () => {
+    mockGlass.on = false
+    const renderer = render(props({ paused: true }))
+    const { mute, share, keepWatching, paused } = controls(renderer)
+    const fill = (node: RenderedNode) =>
+      flatStyle(hostAbove(node).props.style).backgroundColor
+    expect(fill(mute)).toBe(hexToRgba(BLACK, 0.35))
+    expect(fill(share)).toBe(hexToRgba(BLACK, 0.35))
+    expect(fill(keepWatching)).toBe(hexToRgba(BLACK, 0.35))
+    expect(fill(paused)).toBe(hexToRgba(BLACK, 0.45))
+    // No rim: the thumbnail fills its circle, as before.
+    expect(flatStyle(keepWatching.props.style).width).toBe(
+      flatStyle(hostAbove(keepWatching).props.style).width,
+    )
+    expect(renderer.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
+  })
+
+  it("leaves a pressed rail circle to the glass, and dims the whole button elsewhere", () => {
+    const buttons = {
+      "clip-rail-mute": (r: TestInstance) => icon(r, "volume-high", 24),
+      "clip-rail-keep-watching": (r: TestInstance) =>
+        byTestId(r, "clip-keep-watching-circle")[0],
+    }
+    for (const glass of [true, false]) {
+      for (const [id, inner] of Object.entries(buttons)) {
+        mockGlass.on = glass
+        const renderer = render()
+        pressIn(byTestId(renderer, id)[0])
+        const button = flatStyle(byTestId(renderer, id)[0].props.style)
+        const circle = flatStyle(hostAbove(inner(renderer)).props.style)
+        // Any opacity below 1 above the glass stops it drawing.
+        expect({
+          glass,
+          id,
+          button: button.opacity,
+          circle: circle.opacity,
+        }).toEqual({
+          glass,
+          id,
+          button: glass ? undefined : feedback.pressed.opacity,
+          circle: undefined,
+        })
+        expect(circle.transform).toBeUndefined()
+        if (glass) {
+          expect(hostAbove(inner(renderer)).props.isInteractive).toBe(true)
+        }
+      }
+    }
+  })
+
+  it("draws no text under Mute and Share, and a screen reader still reads both", () => {
+    const renderer = render()
+    // The owner removed the visible labels on 2026-10-19.
+    for (const label of ["Mute", "Share"]) {
+      expect([label, hasText(renderer, label)]).toEqual([label, false])
+      expect(pressableByLabel(renderer, label)).toBeDefined()
+    }
+  })
+})
+
 // KTD15: the rail reads the catalog, and each control keeps one RUM action
 // name in every language, because Datadog otherwise names a tap by its label.
 describe("ClipOverlay — side rail in another UI language (R7, KTD15)", () => {
@@ -482,7 +684,8 @@ describe("ClipOverlay — side rail in another UI language (R7, KTD15)", () => {
       "Поделиться",
       "Смотреть дальше",
     ])
-    expect(hasText(renderer, "Без звука")).toBe(true)
+    // Screen readers only: the label is not drawn (owner, 2026-10-19).
+    expect(hasText(renderer, "Без звука")).toBe(false)
     const keepWatching = pressableByLabel(renderer, "Смотреть дальше")
     expect(keepWatching.props.accessibilityHint).toBe(
       "Открывает полное видео с этого места",
@@ -608,7 +811,7 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
         bottomOffset: number
-        rightInset?: number
+        sideInset?: number
       }
     layOutBottom(renderer)
     // The lower bar runs from the frame's bottom edge to the region's, which
@@ -616,7 +819,7 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
 
     expect(caption().bottomOffset).toBe(124 + 200 + 8)
-    expect(caption().rightInset).toBe(402 - 318 + 8)
+    expect(caption().sideInset).toBe(402 - 318 + 8)
 
     // A frame that fills the region leaves no lower bar: the caption sits on
     // the title's top edge.
@@ -634,7 +837,7 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
         bottomOffset: number
-        rightInset?: number
+        sideInset?: number
       }
     layOutBottom(renderer)
 
@@ -643,20 +846,20 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     expect(byTestId(renderer, "clip-band-backdrop")).toHaveLength(0)
     expect(caption().bottomOffset).toBe(200 + 15 + 8)
     // Beside Mute and Share now, so it narrows when it would cover them.
-    expect(caption().rightInset).toBe(402 - 318 + 8)
+    expect(caption().sideInset).toBe(402 - 318 + 8)
   })
 
   it("takes the inset only over Mute or Share, measured in the caption's frame", () => {
     const renderer = render(props({ muted: true }))
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
-        rightInset?: number
-        rightInsetBoxes?: unknown
+        sideInset?: number
+        sideInsetBoxes?: unknown
       }
     layOutBottom(renderer)
     fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
     // Until both buttons are measured, the inset always applies.
-    expect(caption().rightInsetBoxes).toBeUndefined()
+    expect(caption().sideInsetBoxes).toBeUndefined()
 
     fireLayout(renderer, "clip-overlay-rail", { x: 318, y: 20 })
     fireLayout(renderer, "clip-rail-mute", { x: 10, width: 60, height: 74 })
@@ -667,9 +870,9 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
       height: 74,
     })
 
-    expect(caption().rightInset).toBe(402 - 318 + 8)
+    expect(caption().sideInset).toBe(402 - 318 + 8)
     // Up from the page's bottom edge: the block is 380 tall, the rail 20 in.
-    expect(caption().rightInsetBoxes).toEqual([
+    expect(caption().sideInsetBoxes).toEqual([
       { left: 328, right: 388, bottom: 380 - 20 - 74, top: 380 - 20 },
       { left: 332, right: 384, bottom: 380 - 106 - 74, top: 380 - 106 },
     ])
@@ -1150,5 +1353,37 @@ describe("ClipOverlay — a scrub holds the clip end", () => {
     grab(renderer)
     hideOverlay()
     expect(requestNext()).toBe(true)
+  })
+})
+
+describe("ClipOverlay — in a right-to-left layout (feat-695 R11, KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+
+  it("mirrors the rail and the clip information with the app", () => {
+    const renderer = render(props({ muted: true }))
+    const [rail] = byTestId(renderer, "clip-overlay-rail")
+    expect(directionAbove(rail)).toBeUndefined()
+  })
+
+  it("puts the caption inset on the left when the rail sits on the left", () => {
+    const renderer = render(props({ muted: true }))
+    const caption = () =>
+      mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
+        sideInset?: number
+        insetSide?: string
+      }
+    layOutBottom(renderer)
+    expect(caption().insetSide).toBe("right")
+
+    // Yoga gives a mirrored rail a physical x at the left edge.
+    fireLayout(renderer, "clip-overlay-rail", { x: 8, width: 76 })
+    expect(caption().insetSide).toBe("left")
+    expect(caption().sideInset).toBe(8 + 76 + 8)
   })
 })

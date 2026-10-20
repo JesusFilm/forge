@@ -22,6 +22,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useTypography } from "../../hooks/useTypography"
 import { useUiTag } from "../../hooks/useUiTag"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import {
@@ -82,7 +83,7 @@ export function FeedbackSheetContent({
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
   const t = useT("Feedback")
-  const uiDirection = useTextDirection().ui
+  const { ui: uiDirection, uiParagraph } = useTextDirection()
   const uiTag = useUiTag()
   const [state, dispatch] = useReducer(
     feedbackFlowReducer,
@@ -231,7 +232,11 @@ export function FeedbackSheetContent({
             accessibilityLabel={t("backAriaLabel")}
             {...{ "dd-action-name": "feedback-back" }}
           >
-            <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
+            <Ionicons
+              name={directionalIcon("chevron-back")}
+              size={22}
+              color={TEXT_PRIMARY}
+            />
           </Pressable>
         ) : (
           <View style={styles.headerSlot} />
@@ -275,7 +280,11 @@ export function FeedbackSheetContent({
             <Text style={[styles.tileLabel, typography.body, uiDirection]}>
               {feedbackKindLabel(t, kind)}
             </Text>
-            <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
+            <Ionicons
+              name={directionalIcon("chevron-forward")}
+              size={18}
+              color={TEXT_SECONDARY}
+            />
           </Pressable>
         ))}
       </View>,
@@ -288,7 +297,7 @@ export function FeedbackSheetContent({
         <View style={styles.noticeRow}>
           <Ionicons name="warning" size={20} color={WARNING_COLOR} />
           {/* R13/KD10: the one message, whatever the refusal was. */}
-          <Text style={[styles.noticeText, typography.body, uiDirection]}>
+          <Text style={[styles.noticeText, typography.body, uiParagraph]}>
             {t("failureMessage")}
           </Text>
         </View>
@@ -397,7 +406,12 @@ export function FeedbackSheetContent({
 
       <View style={styles.field}>
         <TextInput
-          style={[styles.input, styles.messageInput, typography.body]}
+          style={[
+            styles.input,
+            styles.messageInput,
+            typography.body,
+            uiDirection,
+          ]}
           value={state.message}
           onChangeText={(value) =>
             dispatch({ type: "editField", field: "message", value })
@@ -518,7 +532,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   step: {
@@ -540,12 +553,10 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   kindLine: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   tile: {
     minHeight: 56,
@@ -558,7 +569,6 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   tagRow: {
@@ -573,14 +583,12 @@ const styles = StyleSheet.create({
   tagText: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   field: {
     gap: 6,
   },
   fieldLabel: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   input: {
     minHeight: 48,
@@ -589,7 +597,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: SURFACE_COLOR,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   messageInput: {
     minHeight: 132,
@@ -605,12 +612,10 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   problemText: {
     flex: 1,
     color: STATUS_FAILED_COLOR,
-    fontFamily: "System",
   },
   switchRow: {
     flexDirection: "row",
@@ -622,7 +627,6 @@ const styles = StyleSheet.create({
   switchLabel: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   disclosure: {
     gap: 2,
@@ -633,12 +637,10 @@ const styles = StyleSheet.create({
   },
   disclosureTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   disclosureRow: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   noticeRow: {
     flexDirection: "row",
@@ -648,7 +650,6 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   sendButton: {
     minHeight: 50,
@@ -659,7 +660,6 @@ const styles = StyleSheet.create({
   },
   sendLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 16,
     fontWeight: "700",
   },
@@ -670,7 +670,6 @@ const styles = StyleSheet.create({
   },
   quietLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },
@@ -683,7 +682,6 @@ const styles = StyleSheet.create({
   },
   successText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
     textAlign: "center",
   },

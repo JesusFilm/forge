@@ -138,6 +138,7 @@
     "versesAriaValue": "Versets {first} a {last} sus {total}, {chapter}",
     "demoVerse": "Fasètz lisar cap amont pel verset seguent",
     "demoChapter": "Fasètz lisar cap a esquèrra pel capítol seguent",
+    "demoChapterRtl": "Fasètz lisar cap a drecha pel capítol seguent",
     "demoSkip": "Tocatz per passar",
     "demoSkipAriaLabel": "Passar la demostracion de lisada",
     "selectVerseAriaHint": "Tocatz dos còps per seleccionar aqueste verset",
@@ -773,5 +774,8 @@
     "send": "Mandar",
     "sending": "Mandadís…",
     "sendAriaLabel": "Mandar l’avís"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’aplicacion utiliza vòstra ret locala per trobar d’aparelhs de difusion, per que poscatz legir de vidèos sus vòstre televisor."
   }
 }

@@ -5,14 +5,13 @@ import { Platform } from "react-native"
 
 /**
  * Dev: relative paths hit the local Next.js server serving apps/web/public/.
- * Prod: Cloudflare intercepts static paths, so resolve to the GitHub raw URL
- * for the same apps/web/public/ files.
+ * Prod: relative assets resolve from the public Watch website.
  */
 const STATIC_BASE_URL = __DEV__
   ? Platform.OS === "android"
     ? "http://10.0.2.2:3000/watch"
     : "http://localhost:3000/watch"
-  : "https://raw.githubusercontent.com/JesusFilm/forge/main/apps/web/public"
+  : "https://www.jesusfilm.org/watch"
 
 /**
  * Resolve and validate a CMS image URL. Relative paths get the env static base

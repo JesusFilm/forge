@@ -319,6 +319,33 @@ describe("AE15: a live move before the saved position loads", () => {
   })
 })
 
+describe("the read's outcome (quote cards, KTD8)", () => {
+  it("reports a read that reached storage, also when nothing is saved", async () => {
+    const store = createReadingPositionStore(makeStorage())
+
+    await expect(store.hydrate()).resolves.toBe("reached")
+    await expect(store.hydrate()).resolves.toBe("reached")
+  })
+
+  it("reports a read that hit the time limit as missed", async () => {
+    jest.useFakeTimers()
+    const storage = makeStorage(blob(ROMANS_8_5))
+    storage.getItem.mockReturnValueOnce(new Promise<string | null>(() => {}))
+    const store = createReadingPositionStore(storage)
+
+    const first = store.hydrate()
+    await jest.advanceTimersByTimeAsync(READING_POSITION_HYDRATE_TIMEOUT_MS)
+
+    await expect(first).resolves.toBe("missed")
+    expect(store.getSnapshot()).toEqual({
+      ref: null,
+      translationId: null,
+      sessionTranslationId: null,
+      status: "ready",
+    })
+  })
+})
+
 describe("a read that fails", () => {
   it("opens at John 3:16 after the time limit, and a later read still applies", async () => {
     jest.useFakeTimers()

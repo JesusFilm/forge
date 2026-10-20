@@ -23,6 +23,11 @@ import { advanceByDelta } from "../src/components/home/heroPagerState"
 import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
+import { ForYouRail, FOR_YOU_SECTION } from "../src/components/home/ForYouRail"
+import { recommendationsEnabled } from "../src/lib/recommendations/client"
+import { useWatchPreferences } from "../src/contexts/WatchPreferencesProvider"
+import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
+import { useVideoPlayerContext } from "../src/contexts/VideoPlayerContext"
 import { resolveHomeRailVariant } from "../src/components/home/homeRailVariant"
 import { BrandedLoading } from "../src/components/BrandedLoading"
 import { useStartupIntroActive } from "../src/contexts/StartupIntroProvider"
@@ -91,6 +96,8 @@ import { useShowcasePrefs } from "../src/lib/showcaseMode/useShowcasePrefs"
 import { scale } from "../src/lib/scale"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
 import type { WatchHomeCard } from "../src/lib/watchHome/model"
+import { useTopShelfSync } from "../src/lib/topShelf/useTopShelfSync"
+import { syncGoogleTvHome } from "../src/lib/googleTvHomeSync"
 
 /**
  * Forge TV Home redesign: curated watch-home set (useWatchHome lean fetch, R8)
@@ -115,7 +122,27 @@ let autoStartConsumed = false
 export default function HomeScreen() {
   const introActive = useStartupIntroActive()
   const router = useRouter()
-  const { model, loading, error, refetch } = useWatchHome()
+  const [isFocused, setIsFocused] = useState(true)
+  const { state: playerState } = useVideoPlayerContext()
+  const { audioLanguageSlug } = useWatchPreferences()
+  const [recommendationVisit, setRecommendationVisit] = useState(0)
+  const [homeRefreshRevision, setHomeRefreshRevision] = useState(0)
+  const homeHasFocused = useRef(false)
+  const appleTv = Platform.OS === "ios" && Platform.isTV
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true)
+      setRecommendationVisit((v) => v + 1)
+      if (appleTv && homeHasFocused.current)
+        setHomeRefreshRevision((value) => value + 1)
+      homeHasFocused.current = true
+      return () => setIsFocused(false)
+    }, [appleTv]),
+  )
+  const { model, loading, error, refetch, refreshing } = useWatchHome({
+    refreshOnForeground: appleTv && isFocused,
+    refreshKey: appleTv ? homeRefreshRevision : undefined,
+  })
 
   // Continue Watching shelf (feat-322): reloaded on every screen focus so
   // returning from playback shows the fresh resume position immediately.
@@ -123,6 +150,15 @@ export default function HomeScreen() {
     ContinueWatchingEntry[]
   >([])
   const [myListEntries, setMyListEntries] = useState<MyListEntry[]>([])
+  useTopShelfSync(
+    model,
+    continueEntries,
+    usePathname() === "/" && !introActive && !refreshing && !error,
+  )
+  useEffect(() => {
+    if (model && isFocused && !introActive && !playerState.isVisible)
+      void syncGoogleTvHome(model, continueEntries)
+  }, [model, continueEntries, isFocused, introActive, playerState.isVisible])
   useFocusEffect(
     useCallback(() => {
       let cancelled = false
@@ -152,7 +188,7 @@ export default function HomeScreen() {
   >([])
   const seedVideoId = recommendationSeed?.videoId ?? null
   useEffect(() => {
-    if (seedVideoId == null) {
+    if (recommendationsEnabled() || seedVideoId == null) {
       setRecommendationRows([])
       return
     }
@@ -185,7 +221,7 @@ export default function HomeScreen() {
     return [
       continueSection,
       myListSection,
-      recommendationsSection,
+      recommendationsEnabled() ? FOR_YOU_SECTION : recommendationsSection,
       ...model.sections,
     ].filter((section) => section != null)
   }, [
@@ -449,7 +485,13 @@ export default function HomeScreen() {
   const handleCardPress = useCallback(
     (card: WatchHomeCard) => {
       const path = resolveHomeCardPath(card)
-      if (path != null) router.push(path)
+      if (path != null) {
+        if (card.slug)
+          rememberPlaybackEntry(card.slug, {
+            source: card.id.startsWith("ml-") ? "direct" : "editorial",
+          })
+        router.push(path)
+      }
     },
     [router],
   )
@@ -461,7 +503,10 @@ export default function HomeScreen() {
   const handleResumeCardPress = useCallback(
     (card: WatchHomeCard) => {
       const path = resolveHomeCardPath(card, { autoplay: true })
-      if (path != null) router.push(path)
+      if (path != null) {
+        if (card.slug) rememberPlaybackEntry(card.slug, { source: "direct" })
+        router.push(path)
+      }
     },
     [router],
   )
@@ -683,45 +728,61 @@ export default function HomeScreen() {
               key={section.id}
               onLayout={rowLayoutHandlers[sectionIndex + 1]}
             >
-              <HomeRail
-                rowIndex={sectionIndex + 1}
-                eyebrow={section.eyebrow}
-                title={section.title}
-                cards={section.cards}
-                variant={resolveHomeRailVariant(section)}
-                onCardFocus={handleCardFocus}
-                onRowFocus={handleRowFocus}
-                onCardPress={
-                  section.id === CONTINUE_WATCHING_SECTION_ID
-                    ? handleResumeCardPress
-                    : handleCardPress
-                }
-                onCardLongPress={
-                  section.id === CONTINUE_WATCHING_SECTION_ID
-                    ? handleResumeCardLongPress
-                    : section.id === MY_LIST_SECTION_ID
-                      ? handleMyListCardLongPress
-                      : undefined
-                }
-                // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
-                // is on the LEFT — wire every card's D-pad-up to the CTA node
-                // rather than letting geometry dead-end under the artwork.
-                upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
-                // ...and restore its last-focused card on re-entry from ABOVE (Down
-                // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
-                // off so Up-from-below keeps column-preserving geometry.
-                restoreLastFocus={sectionIndex === 0 && !belowTopmost}
-                // Android loads images near focus; tvOS loads every rail.
-                active={
-                  IS_ANDROID
-                    ? isRailActive(
-                        sectionIndex + 1,
-                        focusedRow,
-                        RAIL_WINDOW_BUFFER,
-                      )
-                    : true
-                }
-              />
+              {section.id === FOR_YOU_SECTION.id ? (
+                <ForYouRail
+                  rowIndex={sectionIndex + 1}
+                  audioLanguageSlug={audioLanguageSlug ?? "english"}
+                  visit={recommendationVisit}
+                  visible={isFocused && !playerState.isVisible}
+                  onSelected={(slug) =>
+                    router.push(`/watch/${encodeURIComponent(slug)}`)
+                  }
+                  onCardFocus={handleCardFocus}
+                  onRowFocus={handleRowFocus}
+                  upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
+                  restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+                />
+              ) : (
+                <HomeRail
+                  rowIndex={sectionIndex + 1}
+                  eyebrow={section.eyebrow}
+                  title={section.title}
+                  cards={section.cards}
+                  variant={resolveHomeRailVariant(section)}
+                  onCardFocus={handleCardFocus}
+                  onRowFocus={handleRowFocus}
+                  onCardPress={
+                    section.id === CONTINUE_WATCHING_SECTION_ID
+                      ? handleResumeCardPress
+                      : handleCardPress
+                  }
+                  onCardLongPress={
+                    section.id === CONTINUE_WATCHING_SECTION_ID
+                      ? handleResumeCardLongPress
+                      : section.id === MY_LIST_SECTION_ID
+                        ? handleMyListCardLongPress
+                        : undefined
+                  }
+                  // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
+                  // is on the LEFT — wire every card's D-pad-up to the CTA node
+                  // rather than letting geometry dead-end under the artwork.
+                  upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
+                  // ...and restore its last-focused card on re-entry from ABOVE (Down
+                  // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
+                  // off so Up-from-below keeps column-preserving geometry.
+                  restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+                  // Android loads images near focus; tvOS loads every rail.
+                  active={
+                    IS_ANDROID
+                      ? isRailActive(
+                          sectionIndex + 1,
+                          focusedRow,
+                          RAIL_WINDOW_BUFFER,
+                        )
+                      : true
+                  }
+                />
+              )}
             </View>
           ))}
 

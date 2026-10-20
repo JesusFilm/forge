@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "700",
     color: "rgba(0, 0, 0, 0.85)",
-    fontFamily: "System",
     marginRight: 12,
   },
   chevron: {
@@ -194,17 +193,14 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontWeight: "500",
     color: "rgba(0, 0, 0, 0.5)",
-    fontFamily: "System",
   },
   datePrimary: {
     fontWeight: "700",
     color: "rgba(0, 0, 0, 0.85)",
-    fontFamily: "System",
     letterSpacing: -0.5,
   },
   dateSecondary: {
     fontWeight: "700",
     color: "rgba(0, 0, 0, 0.75)",
-    fontFamily: "System",
   },
 })

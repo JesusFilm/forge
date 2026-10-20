@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} bilen {last} aralygyndaky aýatlar, jemi {total}, {chapter}",
     "demoVerse": "Indiki aýat üçin ýokary süýşüriň",
     "demoChapter": "Indiki bap üçin çepe süýşüriň",
+    "demoChapterRtl": "Indiki bap üçin saga süýşüriň",
     "demoSkip": "Geçmek üçin basyň",
     "demoSkipAriaLabel": "Süýşürmek görkezmesini geç",
     "selectVerseAriaHint": "Bu aýaty saýlamak üçin iki gezek basyň",
@@ -773,5 +774,8 @@
     "send": "Iber",
     "sending": "Iberilýär…",
     "sendAriaLabel": "Seslenme iber"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Programma wideo geçirip bolýan enjamlary tapmak üçin ýerli toruňyzy ulanýar, şeýdip wideolary telewizoryňyzda oýnadyp bilersiňiz."
   }
 }

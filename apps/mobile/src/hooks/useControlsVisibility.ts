@@ -1,9 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { AccessibilityInfo, Animated, AppState, Easing } from "react-native"
 import { useEvent } from "expo"
 import type { VideoPlayer, VideoPlayerStatus } from "expo-video"
 import { shouldArmHideTimer } from "../lib/autoHide"
-import { nextControlsState } from "../lib/controlsVisibility"
+import {
+  createControlsVisibleStore,
+  nextControlsState,
+  type ControlsEvent,
+  type ControlsVisibleReader,
+} from "../lib/controlsVisibility"
+import { SEEK_LOADING_GRACE_MS } from "../lib/seekLoading"
 
 const HIDE_DELAY_MS = 3000
 const FADE_OUT_MS = 150
@@ -18,15 +30,22 @@ export type ControlsVisibility = {
    *  chrome stops intercepting touches. */
   mounted: boolean
   opacityAnim: Animated.Value
+  /** The table's `visible` value, changed at hide start and on reveal; the
+   *  player glass reads it (feat-705 KTD5). Not React state, so a change
+   *  re-renders only its readers. Read it with `useControlsGlassVisible`. */
+  visibleStore: ControlsVisibleReader
   /** Hide chrome if currently visible (no-op if already hidden). */
   hide: () => void
-  /** Reveal only if currently hidden (immediate, e.g. on press-in). */
+  /** Reveal only if currently hidden (immediate, e.g. a resolved single tap). */
   revealIfHidden: () => void
-  /** Ground-truth visibility (the ref, not the lagging render state) so a tap
-   *  landing mid-fade reads "hiding" and is routed to reveal, not hide. */
+  /** Ground-truth visibility (the store, not the lagging render state) so a
+   *  tap landing mid-fade reads "hiding" and is routed to reveal, not hide. */
   isVisibleNow: () => boolean
   /** A control was used — keep chrome up and restart the idle timer. */
   noteInteraction: () => void
+  /** A seek started. Its own loading edge does not reveal hidden chrome
+   *  unless the load outlasts SEEK_LOADING_GRACE_MS. */
+  noteSeek: () => void
   isPlaying: boolean
 }
 
@@ -40,21 +59,22 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   const [controlsVisible, setControlsVisible] = useState(true)
   const [mounted, setMounted] = useState(true)
   const opacityAnim = useRef(new Animated.Value(1)).current
+  // Ground-truth visibility AND the published glass value, one object so the
+  // two cannot disagree. Every write goes through `step` and the table.
+  const [visibleStore] = useState(() => createControlsVisibleStore(true))
 
   const isPausedRef = useRef(false)
   const statusRef = useRef<VideoPlayerStatus>("idle")
   const screenReaderRef = useRef(false)
   const reduceMotionRef = useRef(false)
-  const controlsVisibleRef = useRef(true)
   const hideAnimRef = useRef<Animated.CompositeAnimation | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const lastSeekAtRef = useRef<number | null>(null)
+  const seekGraceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isMountedRef = useRef(true)
   const scheduleHideRef = useRef<() => void>(() => {})
   const revealRef = useRef<() => void>(() => {})
-
-  useEffect(() => {
-    controlsVisibleRef.current = controlsVisible
-  }, [controlsVisible])
+  const snapRevealRef = useRef<() => void>(() => {})
 
   const clearTimer = useCallback(() => {
     if (timerRef.current != null) {
@@ -63,27 +83,33 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     }
   }, [])
 
+  const step = useCallback(
+    (event: ControlsEvent) => {
+      const next = nextControlsState(
+        { visible: visibleStore.get(), mounted: true },
+        event,
+      )
+      visibleStore.set(next.visible)
+      return next
+    },
+    [visibleStore],
+  )
+
   const hideNow = useCallback(() => {
     clearTimer()
     // hideStart: mark logically hidden NOW, before the fade resolves. The
-    // timer-driven path calls hideNow directly; without this the ref stays
+    // timer-driven path calls hideNow directly; without this the store stays
     // "visible" through the fade, making revealIfHidden() a no-op mid-fade.
-    controlsVisibleRef.current = nextControlsState(
-      { visible: controlsVisibleRef.current, mounted: true },
-      "hideStart",
-    ).visible
+    step("hideStart")
     if (hideAnimRef.current != null) {
       hideAnimRef.current.stop()
       hideAnimRef.current = null
     }
     // hideDone: unmount only if still logically hidden. A reveal/interaction
-    // during the fade flips the ref back true, making this completion stale —
+    // during the fade flips the store back true, making this completion stale —
     // it then keeps the chrome mounted (mount-after-fade, DeleteConfirmSheet:74-92).
     const finishHide = () => {
-      const next = nextControlsState(
-        { visible: controlsVisibleRef.current, mounted: true },
-        "hideDone",
-      )
+      const next = step("hideDone")
       setControlsVisible(next.visible)
       setMounted(next.mounted)
     }
@@ -103,7 +129,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
       if (finished) finishHide()
       hideAnimRef.current = null
     })
-  }, [clearTimer, opacityAnim])
+  }, [clearTimer, opacityAnim, step])
 
   const scheduleHide = useCallback(() => {
     clearTimer()
@@ -125,11 +151,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
       hideAnimRef.current.stop()
       hideAnimRef.current = null
     }
-    const next = nextControlsState(
-      { visible: controlsVisibleRef.current, mounted: true },
-      "reveal",
-    )
-    controlsVisibleRef.current = next.visible
+    const next = step("reveal")
     setMounted(next.mounted)
     setControlsVisible(next.visible)
     if (reduceMotionRef.current) {
@@ -143,40 +165,51 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
       }).start()
     }
     scheduleHide()
-  }, [clearTimer, opacityAnim, scheduleHide])
+  }, [clearTimer, opacityAnim, scheduleHide, step])
 
   const hide = useCallback(() => {
-    if (!controlsVisibleRef.current) return
-    controlsVisibleRef.current = false
+    if (!visibleStore.get()) return
     hideNow()
-  }, [hideNow])
+  }, [hideNow, visibleStore])
 
   const revealIfHidden = useCallback(() => {
-    if (!controlsVisibleRef.current) reveal()
-  }, [reveal])
+    if (!visibleStore.get()) reveal()
+  }, [reveal, visibleStore])
 
-  const isVisibleNow = useCallback(() => controlsVisibleRef.current, [])
+  const isVisibleNow = useCallback(() => visibleStore.get(), [visibleStore])
 
-  const noteInteraction = useCallback(() => {
-    // Stop any in-flight hide fade — a control pressed during the ~150ms fade
-    // must keep chrome up, not let the hide's completion callback unmount it.
-    if (hideAnimRef.current != null) {
-      hideAnimRef.current.stop()
+  const noteSeek = useCallback(() => {
+    lastSeekAtRef.current = Date.now()
+  }, [])
+
+  // Show at full opacity at once and re-arm: a control press, and the return
+  // from background. Stopping an in-flight hide fade keeps its completion
+  // callback from unmounting the chrome the viewer just brought back.
+  const snapReveal = useCallback(() => {
+    const stoppedFade = hideAnimRef.current
+    if (stoppedFade != null) {
+      stoppedFade.stop()
       hideAnimRef.current = null
     }
-    const next = nextControlsState(
-      { visible: controlsVisibleRef.current, mounted: true },
-      "reveal",
-    )
-    controlsVisibleRef.current = next.visible
+    const next = step("reveal")
     setMounted(next.mounted)
     setControlsVisible(next.visible)
     opacityAnim.setValue(1)
+    if (stoppedFade != null) {
+      // The stopped fade reports its native position late and overwrites the
+      // 1; a plate that re-renders then draws a dim glyph. Reset in the reply.
+      opacityAnim.stopAnimation(() => {
+        if (visibleStore.get() && hideAnimRef.current == null) {
+          opacityAnim.setValue(1)
+        }
+      })
+    }
     scheduleHide()
-  }, [opacityAnim, scheduleHide])
+  }, [opacityAnim, scheduleHide, step, visibleStore])
 
   scheduleHideRef.current = scheduleHide
   revealRef.current = reveal
+  snapRevealRef.current = snapReveal
 
   // isPlaying drives the timer: arm on play, clear on pause/end.
   const { isPlaying } = useEvent(player, "playingChange", {
@@ -199,7 +232,25 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         statusRef.current = next
         if (next === "loading") {
           clearTimer()
-          if (!controlsVisibleRef.current) revealRef.current()
+          if (visibleStore.get()) return
+          // A double tap seeks with the chrome hidden, and the seek's own
+          // buffering must not show it. A stall past the grace still does.
+          const sinceSeek =
+            lastSeekAtRef.current == null
+              ? Infinity
+              : Date.now() - lastSeekAtRef.current
+          if (sinceSeek >= SEEK_LOADING_GRACE_MS) {
+            revealRef.current()
+            return
+          }
+          if (seekGraceTimerRef.current != null) {
+            clearTimeout(seekGraceTimerRef.current)
+          }
+          seekGraceTimerRef.current = setTimeout(() => {
+            seekGraceTimerRef.current = null
+            if (!isMountedRef.current || statusRef.current !== "loading") return
+            if (!visibleStore.get()) revealRef.current()
+          }, SEEK_LOADING_GRACE_MS - sinceSeek)
           return
         }
         if (next === "readyToPlay") scheduleHideRef.current()
@@ -212,7 +263,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         // player already released
       }
     }
-  }, [player, clearTimer])
+  }, [player, clearTimer, visibleStore])
 
   // Accessibility: seed + subscribe. Screen reader disables auto-hide and
   // force-reveals; reduce-motion snaps the fade.
@@ -237,7 +288,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         if (!isMountedRef.current) return
         screenReaderRef.current = v
         if (v) {
-          if (!controlsVisibleRef.current) revealRef.current()
+          if (!visibleStore.get()) revealRef.current()
         } else {
           scheduleHideRef.current()
         }
@@ -255,21 +306,14 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         // noop
       }
     }
-  }, [])
+  }, [visibleStore])
 
-  // Foreground resume: snap controls visible and re-arm.
+  // Foreground resume: through the table like any reveal, so the glass value
+  // comes back with the chrome (feat-705 AE1).
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       if (!isMountedRef.current || next !== "active") return
-      if (hideAnimRef.current != null) {
-        hideAnimRef.current.stop()
-        hideAnimRef.current = null
-      }
-      controlsVisibleRef.current = true
-      setMounted(true)
-      setControlsVisible(true)
-      opacityAnim.setValue(1)
-      scheduleHideRef.current()
+      snapRevealRef.current()
     })
     return () => {
       try {
@@ -278,7 +322,7 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
         // noop
       }
     }
-  }, [opacityAnim])
+  }, [])
 
   // Initial-arming fallback: if playingChange never fires (stalled autoplay),
   // still arm the hide after a short delay. scheduleHide is idempotent.
@@ -290,11 +334,17 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   // Unmount: flip the mounted guard and tear down the timer + animation so no
   // late callback runs setState on an unmounted component.
   useEffect(() => {
+    // StrictMode re-runs this setup on the same instance after the cleanup.
+    isMountedRef.current = true
     return () => {
       isMountedRef.current = false
       if (timerRef.current != null) {
         clearTimeout(timerRef.current)
         timerRef.current = null
+      }
+      if (seekGraceTimerRef.current != null) {
+        clearTimeout(seekGraceTimerRef.current)
+        seekGraceTimerRef.current = null
       }
       if (hideAnimRef.current != null) {
         hideAnimRef.current.stop()
@@ -307,10 +357,17 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
     controlsVisible,
     mounted,
     opacityAnim,
+    visibleStore,
     hide,
     revealIfHidden,
     isVisibleNow,
-    noteInteraction,
+    noteInteraction: snapReveal,
+    noteSeek,
     isPlaying,
   }
+}
+
+/** Reads the published glass value; a change re-renders only the caller. */
+export function useControlsGlassVisible(store: ControlsVisibleReader): boolean {
+  return useSyncExternalStore(store.subscribe, store.get)
 }

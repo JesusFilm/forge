@@ -182,6 +182,17 @@ export const env = createEnv({
     WATCH_FOR_YOU_ENABLED: z.enum(["true", "false"]).default("true"),
     // Separate from account authentication. Missing/weak secrets disable tester access.
     WATCH_RECOMMENDATION_TESTER_SECRET: z.string().optional(),
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED: z
+      .enum(["true"])
+      .optional(),
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED: z.enum(["true"]).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_SECRET_KEY: z.string().optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
+      .enum(["1"])
+      .optional(),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().optional(),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: z.string().optional(),
     // Optional Cloudflare cache-tag purge credentials. The dynamic collection
     // route emits shared edge-cache headers only when both are configured, so
     // a long-lived edge object can always be purged after content publication.
@@ -198,11 +209,11 @@ export const env = createEnv({
     // helpers return local defaults so preview/local environments can boot
     // before LaunchDarkly is provisioned.
     LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    FORGE_WATCH_AUDIENCE_DEFAULT: z.string().optional(),
     FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT: z.string().optional(),
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
-    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: z.string().optional(),
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
     // Admin GraphQL URL. Required — web's data layer reads from admin.
@@ -282,6 +293,7 @@ export const env = createEnv({
     WATCH_SEARCH_DEFAULT_SHADOW_ENABLED: booleanEnv(true),
   },
   client: {
+    NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY: z.string().optional(),
     // U12 — Mux watch-page player migration flag.
     // Boolean env var (true|false). Per-environment value, no per-user
     // targeting. When `true`, VideoHero/Video/CarouselVideo render via
@@ -378,12 +390,27 @@ export const env = createEnv({
     WATCH_FOR_YOU_ENABLED: process.env.WATCH_FOR_YOU_ENABLED,
     WATCH_RECOMMENDATION_TESTER_SECRET:
       process.env.WATCH_RECOMMENDATION_TESTER_SECRET,
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED:
+      process.env.WATCH_PRECOMPUTED_RECOMMENDATIONS_PREVIEW_ENABLED,
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED:
+      process.env.WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED,
+    WATCH_RECOMMENDATION_TURNSTILE_SECRET_KEY:
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_SECRET_KEY,
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES:
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES,
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED:
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED,
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET:
+      process.env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY:
+      process.env.WATCH_RECOMMENDATION_MEASUREMENT_API_KEY,
     CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
     CLOUDFLARE_CACHE_PURGE_TOKEN: emptyToUndefined(
       process.env.CLOUDFLARE_CACHE_PURGE_TOKEN,
     ),
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
     LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_WATCH_AUDIENCE_DEFAULT: process.env.FORGE_WATCH_AUDIENCE_DEFAULT,
     FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
       process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
@@ -392,8 +419,6 @@ export const env = createEnv({
       process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
-    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT:
-      process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT,
     FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
       process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT:
@@ -439,5 +464,7 @@ export const env = createEnv({
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
     NEXT_PUBLIC_ADMIN_GRAPHQL_URL: process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+    NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY:
+      process.env.NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY,
   },
 })

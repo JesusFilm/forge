@@ -50,6 +50,21 @@ The owner accepted the post-repair observations in the
 The exact-audio and Chinese identity defects were repaired and deployed in
 [PR #2527](https://github.com/JesusFilm/forge/pull/2527).
 
+## Cleanup and serving operate concurrently
+
+Owner decision: October 19, 2026. Retention cleanup is background work and must
+run concurrently with recommendation serving. A cleanup backlog, stale or
+missing success watermark, or unavailable retention-health probe must not block
+new recommendation issuance. This supersedes the global retention-health
+serving prerequisite in earlier plans and runbooks.
+
+Keep retention health reporting, alerts, bounded cleanup and failure ledgers.
+Keep per-record expiry, erasure, privacy-generation fencing, authenticated
+access, publication/playback eligibility and delivery deadlines. Removing the
+global housekeeping prerequisite does not authorize using expired or erased
+personal data. Operational retention health may remain degraded while public
+recommendations are successfully serving.
+
 ## Roadmap scope after October 2 closeout
 
 The owner's final closeout request authorizes retiring obsolete or optional

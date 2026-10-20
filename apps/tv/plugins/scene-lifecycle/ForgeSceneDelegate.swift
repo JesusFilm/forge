@@ -19,6 +19,7 @@ class ForgeSceneDelegate: UIResponder, UIWindowSceneDelegate {
       window = existingWindow
       existingWindow.windowScene = windowScene
       existingWindow.makeKeyAndVisible()
+      appDelegate.forgeLaunchOptions = nil
       self.scene(scene, openURLContexts: connectionOptions.urlContexts)
       for activity in connectionOptions.userActivities {
         self.scene(scene, continue: activity)
