@@ -16,6 +16,7 @@ import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
 import { insetPadding } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BG_COLOR, BLACK, hexToRgba } from "../../lib/color"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 import { FeedbackSheetContent } from "./FeedbackSheetContent"
 import type { FeedbackSheetContext } from "./feedbackFlow"
 
@@ -88,14 +89,11 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           pointerEvents="box-none"
         >
+          {/* Only a slide here: an opacity on any ancestor stops the glass. */}
           <Animated.View
             onLayout={onPanelLayout}
             style={[
-              styles.panel,
-              {
-                paddingBottom: Math.max(insets.bottom, 12),
-                ...insetPadding(insets),
-              },
+              styles.panelSlot,
               {
                 transform: [
                   {
@@ -110,11 +108,22 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
               },
             ]}
           >
-            <FeedbackSheetContent
-              context={context}
-              onClose={close}
-              onDismissLockedChange={handleDismissLockedChange}
-            />
+            <GlassSurface
+              style={[
+                styles.panel,
+                {
+                  paddingBottom: Math.max(insets.bottom, 12),
+                  ...insetPadding(insets),
+                },
+              ]}
+              fallback={PANEL_FALLBACK}
+            >
+              <FeedbackSheetContent
+                context={context}
+                onClose={close}
+                onDismissLockedChange={handleDismissLockedChange}
+              />
+            </GlassSurface>
           </Animated.View>
         </KeyboardAvoidingView>
       </View>
@@ -138,15 +147,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
   },
-  // The app's hard-coded dark surface — the sheet must not follow the system
-  // appearance the player chrome ignores. A percentage, not a measured
-  // height, so the panel shrinks with the room the keyboard leaves.
-  panel: {
+  // A percentage, not a measured height, so the panel shrinks with the room
+  // the keyboard leaves.
+  panelSlot: {
     height: "92%",
-    backgroundColor: BG_COLOR,
+  },
+  panel: {
+    flex: 1,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingTop: 4,
     overflow: "hidden",
   },
+  // The app's hard-coded dark surface — the sheet must not follow the system
+  // appearance the player chrome ignores.
+  panelFill: {
+    backgroundColor: BG_COLOR,
+  },
 })
+
+// The solid panel where Liquid Glass is unavailable (R1).
+const PANEL_FALLBACK: GlassFallback = { kind: "fill", style: styles.panelFill }

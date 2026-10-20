@@ -3,6 +3,7 @@ const mockWrite = jest.fn(async (_json: string) => true)
 const mockClear = jest.fn(async () => {})
 const mockFetch = jest.fn()
 const mockQuery = jest.fn()
+const mockStoreSet = jest.fn()
 let mockGeneration = 0
 jest.mock("react-native", () => ({
   Platform: { OS: "ios", isTV: true },
@@ -12,7 +13,7 @@ jest.mock("../safeStorage", () => ({
   getStorage: () => ({
     getItem: async (key: string) => mockStore.get(key) ?? null,
     setItem: async (key: string, value: string) => {
-      mockStore.set(key, value)
+      await mockStoreSet(key, value)
     },
     removeItem: async (key: string) => {
       mockStore.delete(key)
@@ -39,6 +40,7 @@ import {
   invalidateTopShelfLanguage,
 } from "./sync"
 import type { WatchHomeModel } from "../watchHome/model"
+import type { ContinueWatchingEntry } from "../watchEvents/continueWatching"
 import { localDay } from "./model"
 
 const model: WatchHomeModel = { featured: [], sections: [], missingData: [] }
@@ -59,10 +61,220 @@ const delivery = {
 }
 beforeEach(() => {
   mockStore.clear()
-  jest.clearAllMocks()
+  jest.resetAllMocks()
+  mockWrite.mockResolvedValue(true)
+  mockStoreSet.mockImplementation(async (key: string, value: string) => {
+    mockStore.set(key, value)
+  })
   mockGeneration = 0
   mockFetch.mockResolvedValue(delivery)
   delete process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED
+})
+
+const resumeEntry = (slug = "real-film"): ContinueWatchingEntry => ({
+  videoId: slug,
+  slug,
+  title: "Saved title",
+  imageUrl: "https://image.mux.com/original/thumbnail.jpg",
+  positionSeconds: 159,
+  durationSeconds: 3600,
+  progress: 159 / 3600,
+  updatedAt: "2026-10-19T09:00:00.000Z",
+})
+const videoResponse = (title = "Current title", slug = "real-film") => ({
+  data: {
+    videoBySlug: {
+      id: slug,
+      slug,
+      durationSeconds: 3600,
+      locales: [{ title, snippet: "Current description" }],
+      images: [
+        { mobileCinematicHigh: "https://image.mux.com/current/thumbnail.jpg" },
+      ],
+      preferredPlayableDub: {
+        published: true,
+        hls: "https://stream.mux.com/current.m3u8",
+        language: { slug: "english" },
+      },
+    },
+  },
+})
+
+it("revalidates same-day persisted metadata without deleting genuine history", async () => {
+  process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+  const history = JSON.stringify([resumeEntry()])
+  mockStore.set("forge.watch.continue_watching", history)
+  mockStore.set(
+    "watch.top-shelf.catalog.v1",
+    JSON.stringify({
+      day: localDay(new Date()),
+      language: "english",
+      slugs: "real-film",
+      videos: [
+        {
+          id: "real-film",
+          slug: "real-film",
+          title: "Old same-day title",
+          summary: "Old",
+          imageURL: "https://image.mux.com/old/thumbnail.jpg",
+          duration: 3600,
+          kind: "video",
+        },
+      ],
+      journeys: [],
+    }),
+  )
+  mockQuery.mockResolvedValue(videoResponse())
+  await syncTopShelf(model, [resumeEntry()], "english", "continue")
+  expect(mockQuery).toHaveBeenCalledTimes(1)
+  expect(mockQuery).toHaveBeenCalledWith(
+    expect.objectContaining({
+      fetchPolicy: "network-only",
+      context: expect.objectContaining({ queryDeduplication: false }),
+    }),
+  )
+  expect(JSON.parse(mockWrite.mock.calls[0][0])).toMatchObject({
+    concept: "continue",
+    items: [
+      { title: "Current title", slug: "real-film", progress: 159 / 3600 },
+    ],
+  })
+  expect(mockStore.get("forge.watch.continue_watching")).toBe(history)
+})
+
+it("updates resume copy again in the same process without a cache reset", async () => {
+  process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+  mockQuery.mockResolvedValueOnce(videoResponse("First title"))
+  await syncTopShelf(model, [resumeEntry()], "english", "continue")
+  mockQuery.mockResolvedValueOnce(videoResponse("Changed title"))
+  await syncTopShelf(model, [resumeEntry()], "english", "continue")
+  expect(mockQuery).toHaveBeenCalledTimes(2)
+  expect(JSON.parse(mockWrite.mock.calls[1][0]).items[0].title).toBe(
+    "Changed title",
+  )
+  expect(mockStore.has("watch.top-shelf.catalog.v1")).toBe(false)
+})
+
+it("keeps the exact unexpired snapshot when metadata transport fails, then recovers", async () => {
+  process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+  mockQuery.mockResolvedValueOnce(videoResponse())
+  await syncTopShelf(model, [resumeEntry()], "english", "continue")
+  const before = mockStore.get("watch.top-shelf.snapshot.v1")
+  mockWrite.mockClear()
+  mockQuery.mockRejectedValueOnce(new Error("offline"))
+  const status = jest.fn()
+  await syncTopShelf(model, [resumeEntry()], "english", "continue", status)
+  expect(mockWrite).not.toHaveBeenCalled()
+  expect(mockStore.get("watch.top-shelf.snapshot.v1")).toBe(before)
+  expect(status).toHaveBeenLastCalledWith(
+    "Could not update Top Shelf (video information). Try again.",
+  )
+  mockQuery.mockResolvedValueOnce(videoResponse("Recovered title"))
+  await syncTopShelf(model, [resumeEntry()], "english", "continue")
+  expect(JSON.parse(mockWrite.mock.calls[0][0]).items[0].title).toBe(
+    "Recovered title",
+  )
+})
+
+it.each(["removed", "unpublished", "wrong-language"])(
+  "drops newly %s resume content without changing local viewing history",
+  async (reason) => {
+    process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+    mockQuery.mockResolvedValueOnce(videoResponse())
+    await syncTopShelf(model, [resumeEntry()], "english", "continue")
+    const response = videoResponse()
+    if (reason === "unpublished")
+      response.data.videoBySlug.preferredPlayableDub.published = false
+    if (reason === "wrong-language")
+      response.data.videoBySlug.preferredPlayableDub.language.slug = "thai"
+    mockQuery.mockResolvedValueOnce(
+      reason === "removed" ? { data: { videoBySlug: null } } : response,
+    )
+    await syncTopShelf(model, [resumeEntry()], "english", "continue")
+    expect(
+      JSON.parse(mockWrite.mock.calls[1][0]).items.map(
+        (item: { slug: string }) => item.slug,
+      ),
+    ).not.toContain("real-film")
+  },
+)
+
+it("prunes confirmed removal even when another metadata request fails, without extending stale expiry", async () => {
+  process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+  const resume = [resumeEntry("removed-film"), resumeEntry("offline-film")]
+  mockQuery.mockImplementation(
+    async ({ variables }: { variables: { slug: string } }) =>
+      videoResponse("Original title", variables.slug),
+  )
+  await syncTopShelf(model, resume, "english", "continue")
+  const before = JSON.parse(mockStore.get("watch.top-shelf.snapshot.v1")!)
+  mockQuery.mockImplementation(
+    async ({ variables }: { variables: { slug: string } }) => {
+      if (variables.slug === "removed-film")
+        return { data: { videoBySlug: null } }
+      throw new Error("offline")
+    },
+  )
+  await syncTopShelf(model, resume, "english", "continue")
+  const after = JSON.parse(mockWrite.mock.calls[1][0])
+  expect(after.items.map((item: { slug: string }) => item.slug)).toEqual([
+    "offline-film",
+  ])
+  expect(after.expiresAt).toBe(before.expiresAt)
+  expect(after.generatedAt).toBe(before.generatedAt)
+})
+
+it("does not reintroduce a removed resume film through an overlapping recommendation", async () => {
+  mockFetch.mockResolvedValue({
+    ...delivery,
+    items: [
+      {
+        ...delivery.items[0],
+        targetMediaId: "real-film",
+        videoSlug: "real-film",
+      },
+    ],
+  })
+  mockQuery.mockResolvedValue({ data: { videoBySlug: null } })
+  await syncTopShelf(model, [resumeEntry()], "english")
+  expect(JSON.parse(mockWrite.mock.calls[0][0]).items).toEqual([])
+})
+
+it("ignores a superseded metadata completion instead of overwriting a newer refresh", async () => {
+  process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+  let finish: (value: ReturnType<typeof videoResponse>) => void = () => {}
+  let started: () => void = () => {}
+  const querying = new Promise<void>((resolve) => {
+    started = resolve
+  })
+  mockQuery.mockImplementationOnce(() => {
+    started()
+    return new Promise((resolve) => {
+      finish = resolve
+    })
+  })
+  const stale = syncTopShelf(model, [resumeEntry()], "english", "continue")
+  await querying
+  mockQuery.mockResolvedValueOnce(videoResponse("Newest title"))
+  await syncTopShelf(model, [resumeEntry()], "english", "continue")
+  finish(videoResponse("Obsolete title"))
+  await stale
+  expect(mockWrite).toHaveBeenCalledTimes(1)
+  expect(JSON.parse(mockWrite.mock.calls[0][0]).items[0].title).toBe(
+    "Newest title",
+  )
+})
+
+it("does not restore retired content after metadata resolves following personalization reset", async () => {
+  mockQuery.mockImplementationOnce(async () => {
+    mockGeneration++
+    await clearPersonalTopShelf()
+    return videoResponse()
+  })
+  await syncTopShelf(model, [resumeEntry()], "english")
+  expect(mockWrite).not.toHaveBeenCalled()
+  expect(mockStore.has("watch.top-shelf.snapshot.v1")).toBe(false)
+  expect(mockStore.has("watch.top-shelf.catalog.v1")).toBe(false)
 })
 
 function fixedRotation() {
@@ -181,4 +393,77 @@ it("does not repopulate a retired cache after an in-flight native write resolves
   expect(status).not.toHaveBeenCalledWith(
     "Top Shelf updated. Return to Apple TV Home.",
   )
+})
+
+it("does not restore a retired snapshot after awaiting the rotation write", async () => {
+  mockStoreSet.mockImplementation(async (key: string, value: string) => {
+    mockStore.set(key, value)
+    if (key === "watch.top-shelf.rotation.v1") {
+      mockGeneration++
+      await clearPersonalTopShelf()
+    }
+  })
+  const status = jest.fn()
+  await syncTopShelf(model, [], "english", "automatic", status)
+  expect(mockClear).toHaveBeenCalled()
+  expect(mockStore.has("watch.top-shelf.snapshot.v1")).toBe(false)
+  expect(status).not.toHaveBeenCalledWith(
+    "Top Shelf updated. Return to Apple TV Home.",
+  )
+})
+
+it("does not keep removed local history in the fallback when remaining metadata is offline", async () => {
+  process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED = "true"
+  mockQuery.mockImplementation(
+    async ({ variables }: { variables: { slug: string } }) =>
+      videoResponse("Original title", variables.slug),
+  )
+  await syncTopShelf(
+    model,
+    [resumeEntry("removed-history"), resumeEntry("remaining-film")],
+    "english",
+    "continue",
+  )
+  const before = JSON.parse(mockStore.get("watch.top-shelf.snapshot.v1")!)
+  mockQuery.mockRejectedValue(new Error("offline"))
+  await syncTopShelf(
+    model,
+    [resumeEntry("remaining-film")],
+    "english",
+    "continue",
+  )
+  const after = JSON.parse(mockWrite.mock.calls[1][0])
+  expect(after.items.map((item: { slug: string }) => item.slug)).toEqual([
+    "remaining-film",
+  ])
+  expect(after.expiresAt).toBe(before.expiresAt)
+})
+
+it("does not keep a removed Journey in the fallback during unrelated metadata failure", async () => {
+  const previous = {
+    schemaVersion: 1,
+    concept: "journey",
+    language: "english",
+    source: "recommendations",
+    generatedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 60000).toISOString(),
+    items: [
+      {
+        id: "removed-section",
+        slug: "removed-section",
+        title: "Jesus stories",
+        summary: "Former section",
+        imageURL: "https://image.mux.com/old/thumbnail.jpg",
+        duration: 0,
+        kind: "section",
+      },
+    ],
+  }
+  mockStore.set("watch.top-shelf.snapshot.v1", JSON.stringify(previous))
+  mockQuery.mockRejectedValue(new Error("offline"))
+  await syncTopShelf(model, [resumeEntry()], "english")
+  expect(JSON.parse(mockWrite.mock.calls[0][0])).toEqual({
+    ...previous,
+    items: [],
+  })
 })

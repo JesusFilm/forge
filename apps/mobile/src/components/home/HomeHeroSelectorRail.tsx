@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 2,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "500",
   },
   titleActive: {

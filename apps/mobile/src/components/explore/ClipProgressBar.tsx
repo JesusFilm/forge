@@ -12,6 +12,7 @@ import {
 } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
+import { GlassSurface } from "../ui/GlassSurface"
 import { useTypography } from "../../hooks/useTypography"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
@@ -285,18 +286,20 @@ export function ClipProgressBar({
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           onLayout={(e) => setPillWidth(Math.round(e.nativeEvent.layout.width))}
-          style={[
-            styles.pill,
-            // Hidden for the one frame before its width is known.
-            {
-              opacity: pillWidth > 0 ? 1 : 0,
-              transform: [{ translateX: pillX }],
-            },
-          ]}
+          style={[styles.pill, { transform: [{ translateX: pillX }] }]}
         >
-          <Text style={[styles.pillText, typography.caption]}>
-            {scrubTime(scrubSeconds, total)}
-          </Text>
+          {/* Hidden for the one frame before its width is known. On glass
+              only the time fades, and the glass dissolves. */}
+          <GlassSurface
+            style={styles.pillShape}
+            fallback={{ kind: "fill", style: styles.pillFill }}
+            visible={pillWidth > 0}
+            fade={pillWidth > 0 ? 1 : 0}
+          >
+            <Text style={[styles.pillText, typography.caption]}>
+              {scrubTime(scrubSeconds, total)}
+            </Text>
+          </GlassSurface>
         </Animated.View>
       )}
     </View>
@@ -340,15 +343,18 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     bottom: HIT_HEIGHT / 2 + THUMB / 2 + 6,
+  },
+  pillShape: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
+  },
+  pillFill: {
     backgroundColor: hexToRgba(BLACK, 0.75),
   },
   // Fixed-width digits, so the pill does not change width as the time runs.
   pillText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },

@@ -17,7 +17,7 @@ export default async function PublicPrecomputedControlPage() {
       <DashboardPageHeader
         eyebrow="Recommendation operations / saved Video"
         title="A/B serving control"
-        description="Review the frozen generation, measured result, and exact serving pointer before each manual transition. Building or reading a result never changes Watch serving."
+        description="Compare a saved generation with current Watch recommendations, review results, and stop or select a winner."
         action={
           <Link
             href="/dashboard/recommendations/precomputed"
@@ -27,52 +27,6 @@ export default async function PublicPrecomputedControlPage() {
           </Link>
         }
       />
-      <PageSection title="Live readiness" meta="BLOCKED">
-        <div className="space-y-3 p-4 text-[13px]">
-          <p>
-            Verified-browser incumbent visits and accepted clicks are measured
-            separately from Web request-health counters. Missing Web hours,
-            incomplete tracking, fixture-only evidence, and the unagreed live
-            stopping policy keep launch blocked. No winner is activated
-            automatically. A quiet hour and a telemetry outage currently look
-            the same to Web; missing hours remain unknown rather than counting
-            as zero traffic.
-          </p>
-          <ul className="list-inside list-disc space-y-1">
-            {readiness.liveActivation.unresolved.map((reason) => (
-              <li key={reason}>{reason.replaceAll("_", " ")}</li>
-            ))}
-          </ul>
-          {readiness.authoritativeCatalogCoverage ? (
-            <p>
-              Admin catalog coverage at the build cutoff:{" "}
-              {readiness.authoritativeCatalogCoverage
-                .authoritativeSourceCount ?? "unavailable"}{" "}
-              eligible Videos versus{" "}
-              {readiness.authoritativeCatalogCoverage.generationSourceCount} in
-              the generation. Both the count and source-set digest must match
-              before live preparation.
-            </p>
-          ) : null}
-          <p>
-            Inspect{" "}
-            <Link
-              className="underline"
-              href="/dashboard/recommendations/precomputed/storage"
-            >
-              storage
-            </Link>{" "}
-            and the{" "}
-            <Link
-              className="underline"
-              href="/dashboard/recommendations/precomputed"
-            >
-              build report
-            </Link>{" "}
-            before planning a launch. No refresh schedule is enabled.
-          </p>
-        </div>
-      </PageSection>
       <PublicPrecomputedControls
         readiness={readiness}
         canOperate={hasPermission(
@@ -81,6 +35,53 @@ export default async function PublicPrecomputedControlPage() {
         )}
         canRollback={hasPermission(principal, "rollback:recommendations")}
       />
+      <details>
+        <summary className="cursor-pointer text-[13px] underline">
+          Advanced measurement readiness
+        </summary>
+        <PageSection title="Verified measurement" meta="OPTIONAL">
+          <div className="space-y-3 p-4 text-[13px]">
+            <p>
+              These checks apply to the optional verified-browser workflow. They
+              are not required to start a public test of a saved generation. No
+              winner is activated automatically.
+            </p>
+            <ul className="list-inside list-disc space-y-1">
+              {readiness.liveActivation.unresolved.map((reason) => (
+                <li key={reason}>{reason.replaceAll("_", " ")}</li>
+              ))}
+            </ul>
+            {readiness.authoritativeCatalogCoverage ? (
+              <p>
+                Admin catalog coverage at the build cutoff:{" "}
+                {readiness.authoritativeCatalogCoverage
+                  .authoritativeSourceCount ?? "unavailable"}{" "}
+                eligible Videos versus{" "}
+                {readiness.authoritativeCatalogCoverage.generationSourceCount}{" "}
+                in the generation. Both the count and source-set digest must
+                match before live preparation.
+              </p>
+            ) : null}
+            <p>
+              Inspect{" "}
+              <Link
+                className="underline"
+                href="/dashboard/recommendations/precomputed/storage"
+              >
+                storage
+              </Link>{" "}
+              and the{" "}
+              <Link
+                className="underline"
+                href="/dashboard/recommendations/precomputed"
+              >
+                build report
+              </Link>{" "}
+              before planning a launch. No refresh schedule is enabled.
+            </p>
+          </div>
+        </PageSection>
+      </details>
     </div>
   )
 }

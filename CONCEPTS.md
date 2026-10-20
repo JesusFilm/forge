@@ -934,6 +934,20 @@ A reviewed, profile-scoped, data-only export of production Admin video data for 
 
 A Video Database Snapshot reuses stored vectors; it does not generate Content Embeddings or perform an Embedding Backfill.
 
+## Mobile playback
+
+### Mini Player Session
+
+The one playback of a video that outlives its watch page and floats in a small window over the rest of the mobile app. It starts only for a video that plays on the device (not on a cast receiver), has started, and has not finished, when the viewer leaves its page or a Slot Cover sits over that page.
+
+It ends when the viewer closes the window, when another video takes the player, or when the viewer returns to the page whose Slot Cover started it. That last ending sends no end report, so the page continues the same playback as if the cover never happened.
+
+### Slot Cover
+
+A screen that sits over a watch or series page while the page stays mounted, so the app's one root player must step aside without the page leaving. It is either a Bible reader route or any other screen pushed over the page; the page's own sheets are not covers.
+
+Under a Slot Cover, a started video becomes a Mini Player Session and keeps playing, and any other video hides and pauses. The cover ends when the covered page is in view again. Only a reader cover lays the floating window out for the reader and returns to the page by going back; a tap on the window over any other cover opens the video's page again.
+
 ## Recommendations
 
 ### Video Connection

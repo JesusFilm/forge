@@ -32,7 +32,12 @@ import { openExternalUrl } from "../src/lib/openExternalUrl"
 import { PUSH_TEST_ID_REVEAL_HOLD_MS } from "../src/lib/push/constants"
 import { revealPushTestId } from "../src/lib/push/testIdReveal"
 import { FloatingBackButton } from "../src/components/ui/FloatingBackButton"
-import { BACK_BUTTON_PROPS } from "../src/lib/playerLayout"
+import {
+  GlassSurface,
+  type GlassFallback,
+} from "../src/components/ui/GlassSurface"
+import { canUseLiquidGlass } from "../src/lib/liquidGlass"
+import { BACK_BUTTON_PROPS, FLOATING_BACK_SIZE } from "../src/lib/playerLayout"
 import {
   CARD_BORDER_RADIUS,
   HORIZONTAL_PADDING,
@@ -46,13 +51,15 @@ import {
   MISSION_WASH,
 } from "../src/components/home/missionContent"
 
-// Floating back button (top 10 + 40pt tall) plus breathing room, so the
-// eyebrow clears it now that no native header reserves that space.
-const BACK_BUTTON_CLEARANCE = BACK_BUTTON_PROPS.topOffset + 40 + 14
+// Floating back button (its top offset and height) plus breathing room, so
+// the eyebrow clears it now that no native header reserves that space.
+const BACK_BUTTON_CLEARANCE =
+  BACK_BUTTON_PROPS.topOffset + FLOATING_BACK_SIZE + 14
 
 export default function MissionScreen() {
   const typography = useTypography()
   const t = useT("Mission")
+  const glass = canUseLiquidGlass()
   // feat-695 R17: the prose keeps the start edge of its own language.
   const paragraph = useTextDirection().uiParagraph
   const [headlineBefore, headlineAfter] = splitAtMarker(
@@ -211,18 +218,37 @@ export default function MissionScreen() {
             // that ends before the hold completes still opens the signup page.
             onLongPress={handleBetaLongPress}
             delayLongPress={PUSH_TEST_ID_REVEAL_HOLD_MS}
-            style={({ pressed }) => [
-              styles.betaButton,
-              pressed && Platform.OS === "ios" && feedback.pressed,
-            ]}
+            // The fallback keeps the white button: the ripple draws on the
+            // Pressable's own fill, so a child fill would hide it.
+            style={({ pressed }) =>
+              glass
+                ? null
+                : [
+                    styles.betaButton,
+                    pressed && Platform.OS === "ios" && feedback.pressed,
+                  ]
+            }
             android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
             accessibilityRole="button"
             accessibilityLabel={t("betaCta")}
             {...{ "dd-action-name": "mission-beta-signup" }}
           >
-            <Text style={[styles.betaButtonText, typography.body]}>
-              {t("betaCta")}
-            </Text>
+            {glass ? (
+              <GlassSurface
+                style={styles.betaGlass}
+                fallback={NO_FILL}
+                tintColor={BETA_GLASS_TINT}
+                interactive
+              >
+                <Text style={[styles.betaGlassText, typography.body]}>
+                  {t("betaCta")}
+                </Text>
+              </GlassSurface>
+            ) : (
+              <Text style={[styles.betaButtonText, typography.body]}>
+                {t("betaCta")}
+              </Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>
@@ -249,13 +275,11 @@ const styles = StyleSheet.create({
   },
   headline: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     marginBottom: 12,
   },
   intro: {
     color: hexToRgba(TEXT_PRIMARY, 0.8),
-    fontFamily: "System",
     marginBottom: 28,
   },
   cardStack: {
@@ -277,7 +301,6 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     marginTop: 12,
   },
@@ -286,12 +309,10 @@ const styles = StyleSheet.create({
   },
   cardBody: {
     color: hexToRgba(TEXT_PRIMARY, 0.7),
-    fontFamily: "System",
     marginTop: 8,
   },
   buildingNextLabel: {
     color: hexToRgba(TEXT_PRIMARY, 0.8),
-    fontFamily: "System",
     fontWeight: "600",
     marginTop: 28,
     marginBottom: 12,
@@ -305,7 +326,6 @@ const styles = StyleSheet.create({
   },
   inviteHeadline: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     textAlign: "center",
     marginBottom: 12,
@@ -318,7 +338,6 @@ const styles = StyleSheet.create({
   },
   inviteBody: {
     color: hexToRgba(TEXT_PRIMARY, 0.8),
-    fontFamily: "System",
     textAlign: "center",
     marginBottom: 24,
   },
@@ -333,7 +352,23 @@ const styles = StyleSheet.create({
   },
   betaButtonText: {
     color: BG_COLOR,
-    fontFamily: "System",
+    fontWeight: "600",
+  },
+  betaGlass: {
+    borderRadius: 999,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  betaGlassText: {
+    color: BG_COLOR,
     fontWeight: "600",
   },
 })
+
+// Only the glass branch renders a GlassSurface, so its fallback never draws.
+const NO_FILL: GlassFallback = { kind: "fill", style: null }
+// White glass keeps the page's main action as bright as the old white button.
+const BETA_GLASS_TINT = hexToRgba(TEXT_PRIMARY, 0.9)

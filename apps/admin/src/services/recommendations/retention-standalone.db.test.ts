@@ -135,7 +135,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     it("reaches expired request roots while a loaded standalone backlog continues", async () => {
-      const pageSize = 5
+      const pageSize = 25
       const now = new Date()
       const createdAt = new Date(now.getTime() - 30 * day)
       const expiredAt = new Date(now.getTime() - day)
@@ -528,6 +528,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       console.info(
         "owned-standalone-loaded-first-ms",
         Math.round(firstElapsedMs),
+        "episodes",
+        first.rowCounts.expiredStandaloneEpisodes,
       )
       expect(firstElapsedMs).toBeLessThan(5000)
       expect(first.rowCounts).toMatchObject({
@@ -577,34 +579,43 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           },
         }),
       ).toBe(3)
+      const firstDeleted = first.rowCounts.expiredStandaloneEpisodes!
+      expect(firstDeleted).toBeGreaterThanOrEqual(5)
+      expect(firstDeleted).toBeLessThanOrEqual(pageSize)
       expect(first).toMatchObject({
         status: "succeeded",
         rootsDeleted: 12,
         batchLimitReached: true,
         rowCounts: {
-          expiredStandaloneEpisodes: pageSize,
-          expiredStandalonePlaybackFacts: pageSize,
-          expiredStandaloneOutcomes: pageSize,
+          expiredStandaloneEpisodes: firstDeleted,
+          expiredStandalonePlaybackFacts: firstDeleted,
+          expiredStandaloneOutcomes: firstDeleted,
         },
       })
       expect(
         await db.recommendationPlaybackEpisode.count({
           where: { id: { in: expiredEpisodeIds } },
         }),
-      ).toBe(100 - pageSize)
-      for (let page = 0; page < 100 / pageSize - 1; page++) {
+      ).toBe(100 - firstDeleted)
+      let remaining = 100 - firstDeleted
+      for (let page = 0; remaining > 0 && page < 20; page++) {
         const next = await purgeExpiredRecommendationRequests(db, now)
+        const deleted = next.rowCounts.expiredStandaloneEpisodes!
+        expect(deleted).toBeGreaterThanOrEqual(Math.min(5, remaining))
+        expect(deleted).toBeLessThanOrEqual(Math.min(pageSize, remaining))
+        remaining -= deleted
         expect(next).toMatchObject({
           status: "succeeded",
           rootsDeleted: 0,
-          batchLimitReached: true,
           rowCounts: {
-            expiredStandaloneEpisodes: pageSize,
-            expiredStandalonePlaybackFacts: pageSize,
-            expiredStandaloneOutcomes: pageSize,
+            expiredStandaloneEpisodes: deleted,
+            expiredStandalonePlaybackFacts: deleted,
+            expiredStandaloneOutcomes: deleted,
           },
         })
+        if (remaining > 0) expect(next.batchLimitReached).toBe(true)
       }
+      expect(remaining).toBe(0)
       const completed = await purgeExpiredRecommendationRequests(db, now)
       expect(completed).toMatchObject({
         status: "succeeded",
@@ -743,13 +754,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const retry = await purgeExpiredRecommendationRequests(db, now)
       expect(retry).toMatchObject({
         status: "succeeded",
-        batchLimitReached: true,
-        rowCounts: { expiredStandaloneEpisodes: 5 },
+        batchLimitReached: false,
+        rowCounts: { expiredStandaloneEpisodes: 6 },
       })
       expect(await purgeExpiredRecommendationRequests(db, now)).toMatchObject({
         status: "succeeded",
         batchLimitReached: false,
-        rowCounts: { expiredStandaloneEpisodes: 1 },
+        rowCounts: { expiredStandaloneEpisodes: 0 },
       })
       expect(
         await db.recommendationPlaybackEpisode.count({

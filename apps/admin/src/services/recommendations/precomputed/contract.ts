@@ -16,6 +16,12 @@ import {
   PrecomputedCatalogError,
 } from "./catalog"
 
+import {
+  SHARED_IMPORT_VERSION,
+  storedSharedChoiceSchema,
+  type StoredSharedChoice,
+} from "./shared-reading-import-contract"
+
 const id = z.string().trim().min(1).max(191)
 const englishText = z.string().trim().min(12).max(600)
 const passage = z.object({
@@ -452,6 +458,7 @@ const submission = z.discriminatedUnion("action", [
 
 type Choice = z.infer<typeof choice>
 type SavedChoice = Omit<Choice, "evidence"> & {
+  sharedReading?: StoredSharedChoice["sharedReading"]
   evidence:
     | { basis: "metadata"; fields: string[] }
     | {
@@ -491,6 +498,13 @@ export type PrecomputedComparison =
         inputMode: string
         inputSnapshotMode: string
         acceptedCount: number
+        privateImport?: {
+          scope: "private_pilot" | "full_catalog"
+          declaredSourceCount: number
+          eligibleTargetCount: number
+          fewerThanFiveReason: string | null
+          manifestKey: string
+        }
       }
       usage: ModelUsage
       history: z.output<typeof historicalProvenance> | null
@@ -605,11 +619,12 @@ async function lockGeneration(
       input_cutoff: Date
       historical_provenance: unknown
       protocol_version: number
+      prompt_version: string
     }>
   >`
     SELECT id, status, expected_source_count, source_set_digest,
            input_mode, input_snapshot_mode, input_cutoff, historical_provenance,
-           protocol_version
+           protocol_version, prompt_version
     FROM recommendation_precomputed_generation
     WHERE id = ${generationId}
     FOR UPDATE
@@ -619,7 +634,10 @@ async function lockGeneration(
       "not_found",
       "Generation not found",
     )
-  if (rows[0].protocol_version !== 1)
+  if (
+    rows[0].protocol_version !== 1 ||
+    rows[0].prompt_version === SHARED_IMPORT_VERSION
+  )
     throw new PrecomputedRecommendationError(
       "conflict",
       "Generation uses the durable build protocol",
@@ -807,6 +825,11 @@ export async function submitPrecomputedRecommendation(
     )
   const input = parsed.data
   if (input.action === "start") {
+    if (input.promptVersion === SHARED_IMPORT_VERSION)
+      throw new PrecomputedRecommendationError(
+        "invalid",
+        "Use the versioned shared-reading import boundary",
+      )
     return prisma.$transaction(async (tx) => {
       const cutoff = new Date(input.inputCutoff)
       const snapshotMode =
@@ -1335,7 +1358,19 @@ export async function loadPrecomputedRecommendationComparison(
       semanticBaseline: [],
       coverageGap: null,
     }
-  const choices = source.payload as SavedChoice[]
+  const isSharedReading = generation.promptVersion === SHARED_IMPORT_VERSION
+  const choices: SavedChoice[] = isSharedReading
+    ? z.array(storedSharedChoiceSchema).parse(source.payload)
+    : (source.payload as SavedChoice[])
+  const privateImport = isSharedReading
+    ? await (
+        await import("./shared-reading-import")
+      ).loadSharedReviewProvenance(
+        generation.id,
+        generation.inputDigest,
+        input.sourceVideoId,
+      )
+    : undefined
   const candidates = await prisma.video.findMany({
     where: { id: { in: choices.map((item) => item.targetVideoId) } },
     select: {
@@ -1483,12 +1518,13 @@ export async function loadPrecomputedRecommendationComparison(
       inputMode: generation.inputMode,
       inputSnapshotMode: generation.inputSnapshotMode,
       acceptedCount: source.acceptedCount,
+      ...(privateImport ? { privateImport } : {}),
     },
     usage: await modelUsage(prisma, generation.id),
     history: historicalProvenance
       .nullable()
       .parse(generation.historicalProvenance),
-    experimental: accepted.slice(0, 6),
+    experimental: isSharedReading ? accepted : accepted.slice(0, 6),
     allAcceptedCount: source.acceptedCount,
     coverageGap:
       choices.length === 0

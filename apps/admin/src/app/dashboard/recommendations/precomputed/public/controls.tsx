@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { EngagementComparison } from "../engagement-comparison"
 import { PageSection, StatusPill } from "@/components/admin-ui"
 import type { PrecomputedCtrReport } from "@/services/recommendations/precomputed/ctr-report"
 import type { loadPrecomputedPublicReadiness } from "@/services/recommendations/precomputed/public-readiness"
@@ -48,6 +49,10 @@ export function PublicPrecomputedControls({
   const [generationId, setGenerationId] = useState(
     readiness.generations[0]?.id ?? "",
   )
+  const launchAttempt = useRef<{
+    generationId: string
+    experimentId: string
+  } | null>(null)
   const [startsAt, setStartsAt] = useState(
     new Date(Date.now() - 60_000).toISOString(),
   )
@@ -134,318 +139,400 @@ export function PublicPrecomputedControls({
 
   return (
     <>
-      <PageSection
-        title="Verified incumbent baseline"
-        meta="DEFAULT OFF / INCUMBENT ONLY"
-      >
+      <PageSection title="Public A/B test" meta="50/50 / SAVED GENERATION">
         <div className="space-y-3 p-4 text-[13px]">
           <p>
-            This seven-day baseline verifies real browsers and records incumbent
-            Watch visits and clicks. It schedules on the next full UTC hour and
-            does not expose saved recommendations or enroll an A/B cohort.
+            Compare current recommendations with a completed saved generation.
+            Browsers keep the same arm for one calendar month. The test records
+            observed visits and clicks, then returns to current recommendations
+            for review. You can stop it at any time.
           </p>
-          {readiness.baseline ? (
-            <>
-              <p className="break-all">
-                <StatusPill
-                  tone={
-                    readiness.baseline.status === "active"
-                      ? "success"
-                      : "warning"
+          <label className="block">
+            Saved generation
+            <select
+              value={generationId}
+              onChange={(event) => setGenerationId(event.target.value)}
+              className="mt-1 block w-full border border-[var(--color-hairline)] bg-transparent p-2"
+            >
+              {readiness.generations.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.id} · {item.expectedSourceCount} sources
+                </option>
+              ))}
+            </select>
+          </label>
+          {selectedGeneration ? (
+            <p>
+              Origin: {selectedGeneration.modelId} ·{" "}
+              {selectedGeneration.inputMode}. Saved recommendations are used as
+              imported.
+            </p>
+          ) : (
+            <p>No completed generation is available.</p>
+          )}
+          {canOperate ? (
+            <button
+              type="button"
+              disabled={
+                busy ||
+                !selectedGeneration ||
+                !readiness.incumbentRouting ||
+                control.mode !== "incumbent" ||
+                Boolean(pendingManualReview)
+              }
+              onClick={() => {
+                if (launchAttempt.current?.generationId !== generationId)
+                  launchAttempt.current = {
+                    generationId,
+                    experimentId: `public-watch-${crypto.randomUUID()}`,
                   }
-                >
-                  {readiness.baseline.status}
-                </StatusPill>{" "}
-                {readiness.baseline.id} · {readiness.baseline.startsAt} to{" "}
-                {readiness.baseline.endsAt}
-              </p>
-              {readiness.baselineReport ? (
-                <p>
-                  Verified incumbent visit CTR:{" "}
-                  {readiness.baselineReport.clickedVisits}/
-                  {readiness.baselineReport.eligibleVisits} visits
-                  {readiness.baselineReport.visitCtr === null
-                    ? ""
-                    : ` (${(100 * readiness.baselineReport.visitCtr).toFixed(2)}%)`}
-                  ; {readiness.baselineReport.independentBrowsers} independent
-                  browsers.{" "}
-                  {readiness.baselineReport.isFinal
-                    ? "Final DB evidence."
-                    : "Provisional DB evidence."}{" "}
-                  Evidence basis: {readiness.baselineReport.evidenceBasis}. An
-                  isolated fixture cannot satisfy live launch readiness.
-                </p>
-              ) : null}
+                void post({
+                  action: "start_saved",
+                  experimentId: launchAttempt.current.experimentId,
+                  generationId,
+                  expectedControlVersion: control.version,
+                })
+              }}
+              className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+            >
+              {busy ? "Working…" : "Start 50/50 A/B"}
+            </button>
+          ) : null}
+          {message ? <p role="alert">{message.replaceAll("_", " ")}</p> : null}
+        </div>
+      </PageSection>
+      <details>
+        <summary className="cursor-pointer text-[13px] underline">
+          Advanced verified measurement (optional)
+        </summary>
+        <div className="mt-4 flex flex-col gap-6">
+          <PageSection
+            title="Verified incumbent baseline"
+            meta="DEFAULT OFF / INCUMBENT ONLY"
+          >
+            <div className="space-y-3 p-4 text-[13px]">
               <p>
-                Web request health:{" "}
-                {readiness.baselineWebMeasurement === null
-                  ? "No completed baseline hours yet"
-                  : readiness.baselineWebMeasurement.status === "unavailable"
-                    ? readiness.baselineWebMeasurement.reason
-                    : `${readiness.baselineWebMeasurement.status}; ${readiness.baselineWebMeasurement.coveredHours}/${readiness.baselineWebMeasurement.requestedHours} hours observed; ${readiness.baselineWebMeasurement.missingHours.length} missing hours; ${readiness.baselineWebMeasurement.imbalancedHours.length} counter imbalances; ${readiness.baselineWebMeasurement.counters.delivery_qualified} qualified Web request attempts`}
-                . These are request attempts, not distinct visits or clicks.
-                {!readiness.baselineFullHourWindow
-                  ? " The full baseline window has not ended on a completed UTC-hour boundary."
-                  : ""}
-                {readiness.baselineRequestToVisitGap
-                  ? " Qualified Web requests are fewer than durable eligible visits; inspect tracking loss."
-                  : ""}
+                This seven-day baseline verifies real browsers and records
+                incumbent Watch visits and clicks. It schedules on the next full
+                UTC hour and does not expose saved recommendations or enroll an
+                A/B cohort.
               </p>
-              {readiness.baselineWebMeasurement &&
-              readiness.baselineWebMeasurement.status !== "unavailable" ? (
-                <p>
-                  Web request diagnostics: excluded{" "}
-                  {readiness.baselineWebMeasurement.counters.delivery_excluded},
-                  unknown{" "}
-                  {readiness.baselineWebMeasurement.counters.delivery_unknown},
-                  missing browser identity{" "}
-                  {
-                    readiness.baselineWebMeasurement.counters
-                      .delivery_missing_identity
-                  }
-                  , verification unavailable{" "}
-                  {
-                    readiness.baselineWebMeasurement.counters
-                      .delivery_verification_unavailable
-                  }
-                  , click attempts/acknowledgements{" "}
-                  {readiness.baselineWebMeasurement.counters.click_attempt}/
-                  {readiness.baselineWebMeasurement.counters.click_ack}.
-                </p>
-              ) : null}
+              {readiness.baseline ? (
+                <>
+                  <p className="break-all">
+                    <StatusPill
+                      tone={
+                        readiness.baseline.status === "active"
+                          ? "success"
+                          : "warning"
+                      }
+                    >
+                      {readiness.baseline.status}
+                    </StatusPill>{" "}
+                    {readiness.baseline.id} · {readiness.baseline.startsAt} to{" "}
+                    {readiness.baseline.endsAt}
+                  </p>
+                  {readiness.baselineReport ? (
+                    <p>
+                      Verified incumbent visit CTR:{" "}
+                      {readiness.baselineReport.clickedVisits}/
+                      {readiness.baselineReport.eligibleVisits} visits
+                      {readiness.baselineReport.visitCtr === null
+                        ? ""
+                        : ` (${(100 * readiness.baselineReport.visitCtr).toFixed(2)}%)`}
+                      ; {readiness.baselineReport.independentBrowsers}{" "}
+                      independent browsers.{" "}
+                      {readiness.baselineReport.isFinal
+                        ? "Final DB evidence."
+                        : "Provisional DB evidence."}{" "}
+                      Evidence basis: {readiness.baselineReport.evidenceBasis}.
+                      An isolated fixture cannot satisfy live launch readiness.
+                    </p>
+                  ) : null}
+                  <p>
+                    Web request health:{" "}
+                    {readiness.baselineWebMeasurement === null
+                      ? "No completed baseline hours yet"
+                      : readiness.baselineWebMeasurement.status ===
+                          "unavailable"
+                        ? readiness.baselineWebMeasurement.reason
+                        : `${readiness.baselineWebMeasurement.status}; ${readiness.baselineWebMeasurement.coveredHours}/${readiness.baselineWebMeasurement.requestedHours} hours observed; ${readiness.baselineWebMeasurement.missingHours.length} missing hours; ${readiness.baselineWebMeasurement.imbalancedHours.length} counter imbalances; ${readiness.baselineWebMeasurement.counters.delivery_qualified} qualified Web request attempts`}
+                    . These are request attempts, not distinct visits or clicks.
+                    {!readiness.baselineFullHourWindow
+                      ? " The full baseline window has not ended on a completed UTC-hour boundary."
+                      : ""}
+                    {readiness.baselineRequestToVisitGap
+                      ? " Qualified Web requests are fewer than durable eligible visits; inspect tracking loss."
+                      : ""}
+                  </p>
+                  {readiness.baselineWebMeasurement &&
+                  readiness.baselineWebMeasurement.status !== "unavailable" ? (
+                    <p>
+                      Web request diagnostics: excluded{" "}
+                      {
+                        readiness.baselineWebMeasurement.counters
+                          .delivery_excluded
+                      }
+                      , unknown{" "}
+                      {
+                        readiness.baselineWebMeasurement.counters
+                          .delivery_unknown
+                      }
+                      , missing browser identity{" "}
+                      {
+                        readiness.baselineWebMeasurement.counters
+                          .delivery_missing_identity
+                      }
+                      , verification unavailable{" "}
+                      {
+                        readiness.baselineWebMeasurement.counters
+                          .delivery_verification_unavailable
+                      }
+                      , click attempts/acknowledgements{" "}
+                      {readiness.baselineWebMeasurement.counters.click_attempt}/
+                      {readiness.baselineWebMeasurement.counters.click_ack}.
+                    </p>
+                  ) : null}
+                  {canOperate &&
+                  (readiness.baseline.status === "active" ||
+                    readiness.baseline.status === "scheduled" ||
+                    readiness.baseline.status === "ended") ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        void post({
+                          action: "stop_baseline",
+                          baselineId: readiness.baseline!.id,
+                        })
+                      }
+                      className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+                    >
+                      Stop baseline admission
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <p>No baseline has been started.</p>
+              )}
               {canOperate &&
-              (readiness.baseline.status === "active" ||
-                readiness.baseline.status === "scheduled" ||
-                readiness.baseline.status === "ended") ? (
+              control.mode === "incumbent" &&
+              (!readiness.baseline ||
+                readiness.baseline.status === "stopped") ? (
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() =>
+                  onClick={() => void post({ action: "start_baseline" })}
+                  className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+                >
+                  Schedule verified baseline
+                </button>
+              ) : null}
+            </div>
+          </PageSection>
+          <PageSection
+            title="Launch capacity attestation"
+            meta="SEPARATE FROM BUILD / DEFAULT OFF"
+          >
+            <div className="space-y-3 p-4 text-[13px]">
+              <p>
+                Refresh physical headroom for the completed generation after the
+                verified baseline is final. This appends a launch receipt and
+                leaves the build and serving pointer untouched. The PostgreSQL
+                cluster, database size, retained-visit sample, active build
+                reservations, and five-gigabyte reserve are checked by Admin.
+              </p>
+              {readiness.launchCapacityReceipt ? (
+                <p className="break-all">
+                  Latest receipt: {readiness.launchCapacityReceipt.status} ·{" "}
+                  {readiness.launchCapacityReceipt.id} · measured{" "}
+                  {readiness.launchCapacityReceipt.measuredAt.toISOString()} ·
+                  digest {readiness.launchCapacityReceipt.receiptDigest} ·
+                  projected {readiness.launchCapacityReceipt.projectedBytes}{" "}
+                  bytes · after reserve{" "}
+                  {readiness.launchCapacityReceipt.availableAfterReserveBytes}{" "}
+                  bytes.
+                </p>
+              ) : (
+                <p>No launch capacity receipt has been recorded.</p>
+              )}
+              {readiness.baselineCapacitySample ? (
+                <p>
+                  Final baseline:{" "}
+                  {readiness.baselineCapacitySample.verifiedVisits} verified
+                  visits. The two thin baseline tables occupy{" "}
+                  {readiness.baselineCapacitySample.physicalVisitBytes} bytes;
+                  this is only a lower bound. Admin also measures all
+                  recommendation requests in the baseline window, including
+                  failed and excluded attempts, plus their retained child rows.
+                  Physical overhead, WAL, future demand, and A/B visit growth
+                  are projection assumptions. A thin-table-only sample is
+                  rejected.
+                </p>
+              ) : null}
+              {canOperate && selectedGeneration ? (
+                <form
+                  className="space-y-2"
+                  onSubmit={(event) => {
+                    event.preventDefault()
+                    try {
+                      void post({
+                        action: "attest_launch_capacity",
+                        generationId,
+                        measurement: JSON.parse(launchCapacityJson),
+                      })
+                    } catch {
+                      setMessage("invalid_launch_capacity_measurement_json")
+                    }
+                  }}
+                >
+                  <label className="block">
+                    Externally observed capacity measurement JSON
+                    <textarea
+                      value={launchCapacityJson}
+                      onChange={(event) =>
+                        setLaunchCapacityJson(event.target.value)
+                      }
+                      rows={9}
+                      placeholder='{"measuredAt":"...","clusterSystemId":"...","observedDbBytes":0,"availableBytes":0,"reserveBytes":5000000000,"projectedBytes":0,"sampleSourceCount":0,"sampleBytes":0,"source":"operator_verified_pgdata_df"}'
+                      className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2 font-mono"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={busy || !launchCapacityJson.trim()}
+                    className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+                  >
+                    Record launch capacity receipt
+                  </button>
+                </form>
+              ) : null}
+            </div>
+          </PageSection>
+          {canOperate && readiness.incumbentRouting && selectedGeneration ? (
+            <PageSection
+              title="Prepare a verified live cohort"
+              meta="EXPLICIT AGREEMENT / NO SERVING CHANGE"
+            >
+              <form
+                className="grid gap-3 p-4 text-[13px] md:grid-cols-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  try {
+                    if (
+                      liveAgreement !== "prelaunch_agreed" ||
+                      !livePolicyDigest ||
+                      !readiness.baseline?.finalReportDigest ||
+                      !readiness.launchCapacityReceipt?.receiptDigest
+                    )
+                      throw new Error("agreement_or_evidence_missing")
                     void post({
-                      action: "stop_baseline",
-                      baselineId: readiness.baseline!.id,
+                      action: "prepare",
+                      experimentId: `public-watch-${crypto.randomUUID()}`,
+                      generationId,
+                      startsAt: liveStartsAt,
+                      endsAt: liveEndsAt,
+                      expectedControlRoutingDigest:
+                        readiness.incumbentRouting!.routingDigest,
+                      expectedSourceSetDigest:
+                        selectedGeneration.sourceSetDigest,
+                      policySettings: JSON.parse(livePolicyJson),
+                      authority: "live_verified",
+                      policyAgreement: {
+                        authority: "prelaunch_agreed",
+                        settingsDigest: livePolicyDigest,
+                        baselineReportDigest:
+                          readiness.baseline.finalReportDigest,
+                        launchCapacityReceiptDigest:
+                          readiness.launchCapacityReceipt.receiptDigest,
+                      },
                     })
+                  } catch {
+                    setMessage("live_policy_agreement_or_evidence_missing")
+                  }
+                }}
+              >
+                <p className="md:col-span-2">
+                  Enter owner-agreed numeric settings. No live policy has been
+                  approved by this page. Previewing a digest only checks the
+                  settings; preparation requires the final verified baseline and
+                  a fresh capacity receipt. Set a numeric
+                  <code> maximumEndToEndLossRate</code> from the owner decision;
+                  null or absence cannot start a live cohort. Starting traffic
+                  is a separate action.
+                </p>
+                <label className="md:col-span-2">
+                  Agreed stopping policy JSON
+                  <textarea
+                    value={livePolicyJson}
+                    onChange={(event) => {
+                      setLivePolicyJson(event.target.value)
+                      setLivePolicyDigest("")
+                    }}
+                    rows={12}
+                    className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2 font-mono"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={busy || !livePolicyJson.trim()}
+                  onClick={() => {
+                    try {
+                      void post({
+                        action: "policy_digest",
+                        policySettings: JSON.parse(livePolicyJson),
+                      })
+                    } catch {
+                      setMessage("invalid_live_policy_json")
+                    }
+                  }}
+                  className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+                >
+                  Preview policy digest
+                </button>
+                <p className="self-center break-all">
+                  {livePolicyDigest || "No policy digest previewed"}
+                </p>
+                <label>
+                  Cohort start (full UTC hour)
+                  <input
+                    value={liveStartsAt}
+                    onChange={(event) => setLiveStartsAt(event.target.value)}
+                    className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2"
+                  />
+                </label>
+                <p className="self-end break-all">End: {liveEndsAt}</p>
+                <p className="md:col-span-2 break-all">
+                  Baseline digest:{" "}
+                  {readiness.baseline?.finalReportDigest ?? "missing"}. Capacity
+                  digest:{" "}
+                  {readiness.launchCapacityReceipt?.receiptDigest ?? "missing"}.
+                </p>
+                <label className="md:col-span-2">
+                  After the owner agrees the exact numeric policy, type
+                  prelaunch_agreed
+                  <input
+                    value={liveAgreement}
+                    onChange={(event) => setLiveAgreement(event.target.value)}
+                    className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={
+                    busy ||
+                    liveAgreement !== "prelaunch_agreed" ||
+                    !livePolicyDigest
                   }
                   className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
                 >
-                  Stop baseline admission
+                  Prepare live cohort
                 </button>
-              ) : null}
-            </>
-          ) : (
-            <p>No baseline has been started.</p>
-          )}
-          {canOperate &&
-          control.mode === "incumbent" &&
-          (!readiness.baseline || readiness.baseline.status === "stopped") ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void post({ action: "start_baseline" })}
-              className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
-            >
-              Schedule verified baseline
-            </button>
+              </form>
+            </PageSection>
           ) : null}
         </div>
-      </PageSection>
-      <PageSection
-        title="Launch capacity attestation"
-        meta="SEPARATE FROM BUILD / DEFAULT OFF"
-      >
-        <div className="space-y-3 p-4 text-[13px]">
-          <p>
-            Refresh physical headroom for the completed generation after the
-            verified baseline is final. This appends a launch receipt and leaves
-            the build and serving pointer untouched. The PostgreSQL cluster,
-            database size, retained-visit sample, active build reservations, and
-            five-gigabyte reserve are checked by Admin.
-          </p>
-          {readiness.launchCapacityReceipt ? (
-            <p className="break-all">
-              Latest receipt: {readiness.launchCapacityReceipt.status} ·{" "}
-              {readiness.launchCapacityReceipt.id} · measured{" "}
-              {readiness.launchCapacityReceipt.measuredAt.toISOString()} ·
-              digest {readiness.launchCapacityReceipt.receiptDigest} · projected{" "}
-              {readiness.launchCapacityReceipt.projectedBytes} bytes · after
-              reserve{" "}
-              {readiness.launchCapacityReceipt.availableAfterReserveBytes}{" "}
-              bytes.
-            </p>
-          ) : (
-            <p>No launch capacity receipt has been recorded.</p>
-          )}
-          {readiness.baselineCapacitySample ? (
-            <p>
-              Final baseline: {readiness.baselineCapacitySample.verifiedVisits}{" "}
-              verified visits. The two thin baseline tables occupy{" "}
-              {readiness.baselineCapacitySample.physicalVisitBytes} bytes; this
-              is only a lower bound. Admin also measures all recommendation
-              requests in the baseline window, including failed and excluded
-              attempts, plus their retained child rows. Physical overhead, WAL,
-              future demand, and A/B visit growth are projection assumptions. A
-              thin-table-only sample is rejected.
-            </p>
-          ) : null}
-          {canOperate && selectedGeneration ? (
-            <form
-              className="space-y-2"
-              onSubmit={(event) => {
-                event.preventDefault()
-                try {
-                  void post({
-                    action: "attest_launch_capacity",
-                    generationId,
-                    measurement: JSON.parse(launchCapacityJson),
-                  })
-                } catch {
-                  setMessage("invalid_launch_capacity_measurement_json")
-                }
-              }}
-            >
-              <label className="block">
-                Externally observed capacity measurement JSON
-                <textarea
-                  value={launchCapacityJson}
-                  onChange={(event) =>
-                    setLaunchCapacityJson(event.target.value)
-                  }
-                  rows={9}
-                  placeholder='{"measuredAt":"...","clusterSystemId":"...","observedDbBytes":0,"availableBytes":0,"reserveBytes":5000000000,"projectedBytes":0,"sampleSourceCount":0,"sampleBytes":0,"source":"operator_verified_pgdata_df"}'
-                  className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2 font-mono"
-                />
-              </label>
-              <button
-                type="submit"
-                disabled={busy || !launchCapacityJson.trim()}
-                className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
-              >
-                Record launch capacity receipt
-              </button>
-            </form>
-          ) : null}
-        </div>
-      </PageSection>
-      {canOperate && readiness.incumbentRouting && selectedGeneration ? (
-        <PageSection
-          title="Prepare a verified live cohort"
-          meta="EXPLICIT AGREEMENT / NO SERVING CHANGE"
-        >
-          <form
-            className="grid gap-3 p-4 text-[13px] md:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              try {
-                if (
-                  liveAgreement !== "prelaunch_agreed" ||
-                  !livePolicyDigest ||
-                  !readiness.baseline?.finalReportDigest ||
-                  !readiness.launchCapacityReceipt?.receiptDigest
-                )
-                  throw new Error("agreement_or_evidence_missing")
-                void post({
-                  action: "prepare",
-                  experimentId: `public-watch-${crypto.randomUUID()}`,
-                  generationId,
-                  startsAt: liveStartsAt,
-                  endsAt: liveEndsAt,
-                  expectedControlRoutingDigest:
-                    readiness.incumbentRouting!.routingDigest,
-                  expectedSourceSetDigest: selectedGeneration.sourceSetDigest,
-                  policySettings: JSON.parse(livePolicyJson),
-                  authority: "live_verified",
-                  policyAgreement: {
-                    authority: "prelaunch_agreed",
-                    settingsDigest: livePolicyDigest,
-                    baselineReportDigest: readiness.baseline.finalReportDigest,
-                    launchCapacityReceiptDigest:
-                      readiness.launchCapacityReceipt.receiptDigest,
-                  },
-                })
-              } catch {
-                setMessage("live_policy_agreement_or_evidence_missing")
-              }
-            }}
-          >
-            <p className="md:col-span-2">
-              Enter owner-agreed numeric settings. No live policy has been
-              approved by this page. Previewing a digest only checks the
-              settings; preparation requires the final verified baseline and a
-              fresh capacity receipt. Set a numeric
-              <code> maximumEndToEndLossRate</code> from the owner decision;
-              null or absence cannot start a live cohort. Starting traffic is a
-              separate action.
-            </p>
-            <label className="md:col-span-2">
-              Agreed stopping policy JSON
-              <textarea
-                value={livePolicyJson}
-                onChange={(event) => {
-                  setLivePolicyJson(event.target.value)
-                  setLivePolicyDigest("")
-                }}
-                rows={12}
-                className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2 font-mono"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={busy || !livePolicyJson.trim()}
-              onClick={() => {
-                try {
-                  void post({
-                    action: "policy_digest",
-                    policySettings: JSON.parse(livePolicyJson),
-                  })
-                } catch {
-                  setMessage("invalid_live_policy_json")
-                }
-              }}
-              className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
-            >
-              Preview policy digest
-            </button>
-            <p className="self-center break-all">
-              {livePolicyDigest || "No policy digest previewed"}
-            </p>
-            <label>
-              Cohort start (full UTC hour)
-              <input
-                value={liveStartsAt}
-                onChange={(event) => setLiveStartsAt(event.target.value)}
-                className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2"
-              />
-            </label>
-            <p className="self-end break-all">End: {liveEndsAt}</p>
-            <p className="md:col-span-2 break-all">
-              Baseline digest:{" "}
-              {readiness.baseline?.finalReportDigest ?? "missing"}. Capacity
-              digest:{" "}
-              {readiness.launchCapacityReceipt?.receiptDigest ?? "missing"}.
-            </p>
-            <label className="md:col-span-2">
-              After the owner agrees the exact numeric policy, type
-              prelaunch_agreed
-              <input
-                value={liveAgreement}
-                onChange={(event) => setLiveAgreement(event.target.value)}
-                className="mt-1 w-full border border-[var(--color-hairline)] bg-transparent p-2"
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={
-                busy ||
-                liveAgreement !== "prelaunch_agreed" ||
-                !livePolicyDigest
-              }
-              className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
-            >
-              Prepare live cohort
-            </button>
-          </form>
-        </PageSection>
-      ) : null}
+      </details>
       <PageSection title="Serving pointer" meta="MANUAL / VERSIONED">
         <div className="min-w-0 space-y-3 p-4 text-[13px]">
           <p className="break-all">
@@ -537,7 +624,7 @@ export function PublicPrecomputedControls({
                   <th>Experiment</th>
                   <th>Generation</th>
                   <th>Window</th>
-                  <th>Latest result</th>
+                  <th>Latest CTR result</th>
                   <th>Manual action</th>
                 </tr>
               </thead>
@@ -548,7 +635,9 @@ export function PublicPrecomputedControls({
                   const selected = selectedExperimentId === item.id
                   const winner =
                     report?.isFinal &&
-                    result?.evidenceBasis === "isolated_fixture" &&
+                    (result?.evidenceBasis === "public_observed" ||
+                      (fixture &&
+                        result?.evidenceBasis === "isolated_fixture")) &&
                     result.outcome === "challenger" &&
                     result.reasons.length === 0
                   return (
@@ -572,9 +661,9 @@ export function PublicPrecomputedControls({
                           ? `r${report.revision} ${report.isFinal ? "final" : "provisional"} ${result?.outcome ?? "unavailable"}`
                           : "not evaluated"}
                         {result ? (
-                          <details>
+                          <details className="w-[40rem] max-w-[80vw] whitespace-normal">
                             <summary className="cursor-pointer underline">
-                              Review visit CTR and gates
+                              Review clicks, engagement and delivery health
                             </summary>
                             <p>
                               Control: {result.byArm.control.clickedVisits}/
@@ -583,20 +672,46 @@ export function PublicPrecomputedControls({
                               {result.byArm.challenger.clickedVisits}/
                               {result.byArm.challenger.eligibleVisits}.
                             </p>
-                            <p>
-                              Visit CTR: control{" "}
-                              {result.byArm.control.visitCtr == null
-                                ? "—"
-                                : `${(100 * result.byArm.control.visitCtr).toFixed(2)}%`}
-                              ; challenger{" "}
-                              {result.byArm.challenger.visitCtr == null
-                                ? "—"
-                                : `${(100 * result.byArm.challenger.visitCtr).toFixed(2)}%`}
-                              .
-                            </p>
+                            <EngagementComparison report={result} />
                             <p>
                               Basis: {result.evidenceBasis ?? "unverified"}.
                             </p>
+                            {result.uncertainty ? (
+                              <p>
+                                Challenger minus control:{" "}
+                                {result.uncertainty.difference == null
+                                  ? "—"
+                                  : `${(100 * result.uncertainty.difference).toFixed(2)} percentage points`}
+                                . 95% confidence interval:{" "}
+                                {result.uncertainty.lowerBound == null ||
+                                result.uncertainty.upperBound == null
+                                  ? "not enough data"
+                                  : `${(100 * result.uncertainty.lowerBound).toFixed(2)} to ${(100 * result.uncertainty.upperBound).toFixed(2)} percentage points`}
+                                .
+                              </p>
+                            ) : null}
+                            <p>
+                              Empty visits:{" "}
+                              {result.byArm.control.emptyVisits ?? 0} control /{" "}
+                              {result.byArm.challenger.emptyVisits ?? 0}{" "}
+                              challenger. Unavailable deliveries:{" "}
+                              {result.byArm.control.unavailableVisits ?? 0} /{" "}
+                              {result.byArm.challenger.unavailableVisits ?? 0}.
+                              Fallback visits:{" "}
+                              {result.byArm.control.actualFallbackVisits ?? 0} /{" "}
+                              {result.byArm.challenger.actualFallbackVisits ??
+                                0}
+                              .
+                            </p>
+                            {result.evidenceBasis === "public_observed" ? (
+                              <p>
+                                Observed browser CTR with known automation
+                                filtered. Human identity and events lost before
+                                reaching the server are unverified. Review the
+                                confidence interval and delivery health before
+                                deciding.
+                              </p>
+                            ) : null}
                             {result.evidenceBasis === "live_incomplete" ? (
                               <p>
                                 This live cohort cannot certify a winner:
@@ -779,7 +894,9 @@ export function PublicPrecomputedControls({
                           </button>
                         ) : null}
                         {canOperate &&
-                        (fixture || item.liveEvidence) &&
+                        (fixture ||
+                          item.liveEvidence ||
+                          item.ctrPolicy?.authority === "public_observed") &&
                         selected &&
                         (control.mode === "ab" || pendingManualReview) ? (
                           <button
@@ -796,8 +913,7 @@ export function PublicPrecomputedControls({
                             Save CTR revision
                           </button>
                         ) : null}
-                        {fixture &&
-                        canOperate &&
+                        {canOperate &&
                         selected &&
                         (control.mode === "ab" || pendingManualReview) &&
                         winner ? (
@@ -817,7 +933,9 @@ export function PublicPrecomputedControls({
                             }
                             className="underline disabled:opacity-50"
                           >
-                            Promote exact fixture result
+                            {result?.evidenceBasis === "public_observed"
+                              ? "Use winning saved generation"
+                              : "Promote exact fixture result"}
                           </button>
                         ) : null}
                       </td>

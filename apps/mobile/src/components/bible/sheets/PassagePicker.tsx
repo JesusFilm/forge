@@ -49,6 +49,8 @@ export type PassagePickerProps = {
   /** Called once, in BSB numbering (R38). */
   onPick: (bsbRef: VerseRef) => void
   onClose: () => void
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
+  background?: string
 }
 
 type Step =
@@ -66,6 +68,7 @@ export function PassagePicker({
   current,
   onPick,
   onClose,
+  background = tokens.background,
 }: PassagePickerProps) {
   const t = useT("BiblePassagePicker")
   const insets = useSafeAreaInsets()
@@ -154,7 +157,7 @@ export function PassagePicker({
   return (
     <View
       testID="reader-passage-picker"
-      style={[styles.root, { height, backgroundColor: tokens.background }]}
+      style={[styles.root, { height, backgroundColor: background }]}
     >
       <View style={styles.header}>
         <ReaderSheetHeader
@@ -349,7 +352,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontFamily: "System",
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 4,
@@ -367,14 +369,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   bookName: {
-    fontFamily: "System",
     fontSize: 17,
   },
   bookNameSelected: {
     fontWeight: "600",
   },
   bookNote: {
-    fontFamily: "System",
     fontSize: 14,
     marginTop: 2,
   },
@@ -392,7 +392,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cellText: {
-    fontFamily: "System",
     fontSize: 17,
     fontVariant: ["tabular-nums"],
   },

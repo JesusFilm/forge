@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   readiness: vi.fn(),
   prepare: vi.fn(),
   start: vi.fn(),
+  startSaved: vi.fn(),
   evaluate: vi.fn(),
   promote: vi.fn(),
   rollback: vi.fn(),
@@ -62,6 +63,7 @@ vi.mock("@/services/recommendations/precomputed/public-control", () => ({
   },
   preparePrecomputedPublicExperiment: mocks.prepare,
   startPrecomputedPublicExperiment: mocks.start,
+  startSavedPrecomputedPublicExperiment: mocks.startSaved,
   promotePrecomputedPublicExperiment: mocks.promote,
   rollbackPrecomputedPublicExperiment: mocks.rollback,
   releaseRetainedPrecomputedPublicExperiment: mocks.release,
@@ -99,6 +101,11 @@ describe("manual precomputed public control endpoint", () => {
       liveActivation: { status: "blocked" },
     })
     mocks.start.mockResolvedValue({ mode: "ab", version: 2 })
+    mocks.startSaved.mockResolvedValue({
+      mode: "ab",
+      version: 2,
+      authority: "public_browser",
+    })
     mocks.promote.mockResolvedValue({ mode: "promoted", version: 3 })
     mocks.rollback.mockResolvedValue({ mode: "incumbent", version: 4 })
     mocks.release.mockResolvedValue({ mode: "incumbent", version: 5 })
@@ -120,6 +127,37 @@ describe("manual precomputed public control endpoint", () => {
       sourceId: "independent-edge-1",
       quietHours: new Set(["2026100600"]),
     })
+  })
+
+  it("starts an editorial generation without qualification and keeps authentication and CSRF", async () => {
+    const body = {
+      action: "start_saved",
+      experimentId: "editorial-ab",
+      generationId: "editorial-catalog-20261019-v1",
+      expectedControlVersion: 1,
+    }
+    expect((await POST(request(body, "https://attacker.example"))).status).toBe(
+      403,
+    )
+    mocks.permission.mockReturnValueOnce(false)
+    expect((await POST(request(body))).status).toBe(403)
+    expect(mocks.startSaved).not.toHaveBeenCalled()
+    expect((await POST(request(body))).status).toBe(200)
+    expect(mocks.startSaved).toHaveBeenCalledWith(
+      {},
+      {
+        experimentId: body.experimentId,
+        generationId: body.generationId,
+        expectedControlVersion: 1,
+        operator: { id: "operator", role: "ADMIN" },
+      },
+    )
+    mocks.session.mockResolvedValueOnce({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-05T00:00:00.000Z"),
+    })
+    expect((await POST(request(body))).status).toBe(401)
+    expect(mocks.startSaved).toHaveBeenCalledTimes(1)
   })
 
   it("accepts only a recent operator session for signed final calibration", async () => {

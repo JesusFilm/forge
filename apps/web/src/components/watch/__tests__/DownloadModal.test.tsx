@@ -19,6 +19,7 @@
  * `document` (not the local container) for elements inside the modal.
  */
 
+import { setRequestLocale } from "next-intl/server"
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -555,6 +556,103 @@ describe("DownloadModal — Terms of Use agreement", () => {
     })
     expect(checkbox.checked).toBe(false)
     expect(confirm.disabled).toBe(true)
+  })
+
+  // QA N65: the consent sentence used to be a translated prefix + link +
+  // suffix, so verb-final languages lost the verb ("मैं उपयोग की शर्तों" =
+  // "I … Terms of Use"). Render the dialog and pin the whole sentence: the
+  // verb follows the linked phrase in hi/ur, which a prefix + link layout
+  // cannot produce.
+  it.each([
+    {
+      locale: "hi",
+      sentence: "मैं उपयोग की शर्तों से सहमत हूँ",
+      link: "उपयोग की शर्तों",
+    },
+    {
+      locale: "ur",
+      sentence: "میں استعمال کی شرائط سے متفق ہوں",
+      link: "استعمال کی شرائط",
+    },
+    {
+      locale: "ru",
+      sentence: "Я принимаю Условия использования",
+      link: "Условия использования",
+    },
+  ])(
+    "renders the $locale consent as one sentence with the Terms link inside it",
+    ({ locale, sentence, link }) => {
+      setRequestLocale(locale)
+      try {
+        act(() => {
+          root.render(
+            <TestDownloadModal
+              open
+              downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+              onClose={vi.fn()}
+            />,
+          )
+        })
+
+        const label = $('[data-testid="watch-download-modal-tos-label"]')
+        const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
+        const checkbox = $(
+          '[data-testid="watch-download-modal-tos"]',
+        ) as HTMLInputElement
+        expect(label?.textContent).toBe(sentence)
+        expect(trigger?.textContent).toBe(link)
+        expect(label?.contains(trigger)).toBe(true)
+        expect(checkbox.getAttribute("aria-label")).toBe(sentence)
+        // The Terms button is not nested inside a <label>.
+        expect(trigger?.closest("label")).toBeNull()
+      } finally {
+        setRequestLocale("en")
+      }
+    },
+  )
+
+  it("toggles the checkbox from the sentence text but not from the Terms button", () => {
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const label = $(
+      '[data-testid="watch-download-modal-tos-label"]',
+    ) as HTMLElement
+    const checkbox = $(
+      '[data-testid="watch-download-modal-tos"]',
+    ) as HTMLInputElement
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(true)
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(false)
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(true)
+
+    act(() => {
+      ;(
+        $('[data-testid="watch-download-modal-tos-trigger"]') as HTMLElement
+      ).click()
+    })
+    expect(checkbox.checked).toBe(true)
+    expect(
+      $('[data-testid="watch-download-modal-terms-dialog"]'),
+    ).not.toBeNull()
   })
 
   it("opens Terms without accepting; Cancel keeps the outer modal disabled", () => {

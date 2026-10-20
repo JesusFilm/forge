@@ -372,7 +372,6 @@ const styles = StyleSheet.create({
   },
   entryLabel: {
     color: DANGER,
-    fontFamily: "System",
   },
   panel: {
     gap: 10,
@@ -380,13 +379,11 @@ const styles = StyleSheet.create({
   },
   panelTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   panelBody: {
     flex: 1,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   noticeRow: {
     flexDirection: "row",
@@ -407,7 +404,6 @@ const styles = StyleSheet.create({
   },
   dangerLabel: {
     color: "#ffffff",
-    fontFamily: "System",
     fontWeight: "700",
   },
   cancelButton: {
@@ -417,7 +413,6 @@ const styles = StyleSheet.create({
   },
   cancelLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
 })

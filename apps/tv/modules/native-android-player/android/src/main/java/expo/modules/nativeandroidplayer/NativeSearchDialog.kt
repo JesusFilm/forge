@@ -27,7 +27,8 @@ internal class NativeSearchDialog(
   context: Context,
   title: String,
   private val onChoice: (String) -> Unit,
-  onClosed: () -> Unit
+  onClosed: () -> Unit,
+  initialQuery: String = ""
 ) : Dialog(context) {
   private val list = ListView(context)
   private val search = EditText(context)
@@ -38,6 +39,7 @@ internal class NativeSearchDialog(
   private var activeId: String? = null
   private var status: String? = null
   private val icon = if (title == "Subtitles") R.drawable.native_player_text else R.drawable.native_player_globe
+  val queryText: String get() = search.text.toString()
 
   init {
     requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -154,6 +156,7 @@ internal class NativeSearchDialog(
     close.nextFocusUpId = list.id
     close.nextFocusDownId = close.id
     close.nextFocusLeftId = list.id
+    search.setText(initialQuery)
   }
 
   fun update(options: List<NativeChoiceRow>, selectedId: String?, message: String?) {

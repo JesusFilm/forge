@@ -1,7 +1,7 @@
 ---
 title: "HomeHeader buttons untappable due to z-index layering with FlashList; GlassView ignores opacity on iOS"
 date: "2026-04-09"
-last_updated: "2026-09-30"
+last_updated: "2026-10-19"
 category: ui-bugs
 module: apps/mobile
 problem_type: ui_bug
@@ -147,6 +147,16 @@ const handleScroll = useCallback(
 1. **Never use `opacity: 0` to hide `GlassView` on iOS.** The native blur layer retains a minimum visible blur at zero opacity. Use conditional rendering (`condition && <GlassView>`) for show/hide. Non-zero opacity values (0.1-1.0) work correctly for fade animation once mounted.
 2. **Wrapping `GlassView` in a `View` and applying `opacity: 0` to the wrapper also fails.** Mount/unmount is the only reliable mechanism for fully hiding GlassView on iOS.
 3. **Rules 1 and 2 cover opacity applied TO the `GlassView` or its own wrapper. They do not cover an ANCESTOR that animates opacity.** There the glass renders nothing at all, so conditional mount does not help — there is nothing to fade. Do not read rule 2 as "a fading parent leaves the glass visible"; the opposite is true. Use `PlatformBlur` (`apps/mobile/src/components/ui/PlatformBlur.tsx`) inside any fading layer. See [GlassView renders no material under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
+
+   > **Rule 3 superseded in part 2026-10-16 by feat-705 (PR #2750)** (noted
+   > 2026-10-19). The rule stays: do not put glass inside a fading layer. Two
+   > facts changed. On `expo-glass-effect` 57.0.4 the glass there draws on some
+   > reveals and not on others. On iOS 26 the fix is no longer `PlatformBlur`:
+   > keep the glass outside the fade, dissolve it with `GlassSurface`
+   > (`visible={false}`), and fade the glyph inside the glass (`fade`).
+   > `PlatformBlur` stays the look on Android and on iOS before 26. See
+   > [GlassView fails under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
+
 4. **Use `flexShrink: 1` on dynamically-sized elements** between fixed-width siblings in a row layout, especially when content is CMS-sourced.
 5. **Document z-index layer ordering** near the style definitions. For the home screen: `heroLayer` (0), `heroInteractiveLayer` (2), `HomeHeader` (10).
 6. **FlashList intercepts touches across its entire rendered frame on iOS**, including padding/inset regions. Any fixed UI overlapping FlashList's frame must have a higher z-index.
@@ -155,7 +165,7 @@ const handleScroll = useCallback(
 
 ## Related Issues
 
-- [GlassView renders no material under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) -- same component, opposite direction. This doc is GlassView failing to HIDE; that one is GlassView failing to RENDER.
+- [GlassView fails under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) -- same component, opposite direction. This doc is GlassView failing to HIDE; that one is GlassView failing to RENDER, and how to dissolve it with `GlassSurface` instead.
 - [expo-glass-effect interactive flash](../best-practices/expo-glass-effect-interactive-flash-2026-04-08.md) -- same component, different bug (`isInteractive` flash)
 - [Hero mute button hybrid overlay touch target](../mobile/hero-mute-button-hybrid-overlay-touch-target.md) -- same root cause (FlashList touch interception), different fix (hybrid overlay with `measureLayout`)
 - [React Native ScrollView touch event z-index fix](../mobile/react-native-scrollview-touch-event-z-index-fix.md) -- foundational reference on ScrollView/FlashList gesture preemption

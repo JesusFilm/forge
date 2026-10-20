@@ -195,6 +195,16 @@ const {
   ),
 }))
 
+const { audienceFrameMock } = vi.hoisted(() => ({
+  audienceFrameMock: vi.fn((props: { languageSlug?: string }) => (
+    <div
+      data-testid="watch-audience-frame-mock"
+      data-language={props.languageSlug}
+    />
+  )),
+}))
+vi.mock("next/dynamic", () => ({ default: () => audienceFrameMock }))
+
 vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: experienceSectionRendererMock,
 }))
@@ -240,6 +250,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  audienceFrameMock.mockClear()
   experienceSectionRendererMock.mockClear()
   heroPlayerMock.mockClear()
   siblingCarouselMock.mockClear()
@@ -675,6 +686,46 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
     expect(container.textContent).toContain(
       "STRAPI:ComponentSectionsPromoBanner",
+    )
+  })
+})
+
+describe("audience integration", () => {
+  it("adds the frame without moving authored blocks or remounting the player", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const blocks = [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+    ]
+    act(() =>
+      root.render(
+        <WatchSectionRenderer blocks={blocks} languageSlug="spanish" />,
+      ),
+    )
+    const player = container.querySelector('[data-block-type="HeroPlayer"]')
+    expect(
+      container.querySelector('[data-testid="watch-audience-frame-mock"]'),
+    ).toBeNull()
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audienceEnabled
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(container.querySelector('[data-block-type="HeroPlayer"]')).toBe(
+      player,
+    )
+    expect(
+      Array.from(container.querySelectorAll("[data-block-type]"), (element) =>
+        element.getAttribute("data-block-type"),
+      ),
+    ).toEqual(["HeroPlayer", "WatchBody"])
+    expect(audienceFrameMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ languageSlug: "spanish" }),
     )
   })
 })

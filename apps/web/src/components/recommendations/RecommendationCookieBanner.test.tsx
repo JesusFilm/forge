@@ -272,6 +272,133 @@ describe("RecommendationConsentShell", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
+  describe("Cookie settings focus containment", () => {
+    let outside: HTMLButtonElement
+
+    beforeEach(() => {
+      outside = document.createElement("button")
+      document.body.appendChild(outside)
+    })
+
+    afterEach(() => outside.remove())
+
+    const tab = (shiftKey = false) => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      })
+      act(() => {
+        window.dispatchEvent(event)
+      })
+      return event
+    }
+    const title = () =>
+      container.querySelector<HTMLElement>(
+        "#recommendation-cookie-settings-title",
+      )!
+    const checkbox = () =>
+      container.querySelector<HTMLInputElement>(
+        'input[name="recommendation-personalization"]',
+      )!
+
+    it("keeps Tab and Shift+Tab inside the dialog and restores focus on Escape", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(response(undecided))
+          .mockResolvedValueOnce(response(activeProfile)),
+      )
+      renderShell()
+      await flush()
+      const manage = button("Cookie settings")
+      manage.focus()
+      act(() => manage.click())
+      const cancel = button("Cancel")
+      const save = button("Save choices")
+
+      // Focus starts on the title; Tab enters the first control, Shift+Tab the last.
+      expect(document.activeElement).toBe(title())
+      expect(tab().defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(checkbox())
+      title().focus()
+      expect(tab(true).defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(save)
+
+      // Wrap at both ends.
+      save.focus()
+      expect(tab().defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(checkbox())
+      expect(tab(true).defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(save)
+
+      // Mid-dialog Tab is left to the browser.
+      cancel.focus()
+      expect(tab().defaultPrevented).toBe(false)
+
+      // Focus that reaches the page behind the dialog is pulled back in.
+      act(() => outside.focus())
+      expect(document.activeElement).toBe(title())
+
+      // Focus lost to <body> re-enters the dialog from either direction.
+      act(() => (document.activeElement as HTMLElement).blur())
+      expect(document.activeElement).toBe(document.body)
+      expect(tab().defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(checkbox())
+      act(() => (document.activeElement as HTMLElement).blur())
+      expect(tab(true).defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(save)
+
+      act(() => {
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+      })
+      expect(container.querySelector('[role="dialog"]')).toBeNull()
+      expect(document.activeElement).toBe(manage)
+
+      // The trap is released once the dialog closes.
+      act(() => outside.focus())
+      expect(document.activeElement).toBe(outside)
+    })
+
+    it("keeps focus on the title while every control is disabled during a save", async () => {
+      const pendingGrant = new Promise<Response>(() => {})
+      vi.stubGlobal(
+        "fetch",
+        vi
+          .fn()
+          .mockResolvedValueOnce(response(undecided))
+          .mockReturnValueOnce(pendingGrant),
+      )
+      renderShell()
+      await flush()
+      // Opening the dialog starts a profile request that never settles, so
+      // the dialog is busy and every control is disabled.
+      act(() => button("Cookie settings").click())
+      expect(button("Saving…").disabled).toBe(true)
+      expect(button("Cancel").disabled).toBe(true)
+
+      // A throw inside the window listener would not fail the test by itself.
+      const errors: unknown[] = []
+      const onError = (event: ErrorEvent) => {
+        event.preventDefault()
+        errors.push(event.error)
+      }
+      window.addEventListener("error", onError)
+      try {
+        for (const shiftKey of [false, true]) {
+          act(() => title().focus())
+          expect(tab(shiftKey).defaultPrevented).toBe(true)
+          expect(document.activeElement).toBe(title())
+        }
+      } finally {
+        window.removeEventListener("error", onError)
+      }
+      expect(errors).toEqual([])
+    })
+  })
+
   it("shows the defaulted optional choice in Cookie settings and persists nothing when cancelled", async () => {
     const fetchMock = vi
       .fn()

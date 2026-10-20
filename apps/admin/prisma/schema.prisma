@@ -4824,6 +4824,7 @@ model RecommendationEligibilityDecision {
 
   @@unique([sourceKey, policyVersion, revision], map: "recommendation_eligibility_source_policy_revision_key")
   // Current-source lookup indexes are migration-owned partial indexes.
+  @@index([contentActionId], map: "recommendation_eligibility_content_action_idx")
   @@index([state, decidedAt], map: "recommendation_eligibility_state_decided_idx")
   @@index([actorClass, state, decidedAt], map: "recommendation_eligibility_actor_state_idx")
   @@index([expiresAt], map: "recommendation_eligibility_expiry_idx")
@@ -5088,6 +5089,7 @@ model RecommendationProfileProjectionRun {
   expiresAt                 DateTime                                   @map("expires_at")
 
   @@index([state, leaseExpiresAt, attemptCount], map: "recommendation_profile_projection_run_lease_idx")
+  @@index([projectionId], map: "recommendation_profile_projection_run_projection_idx")
   @@index([profileId, privacyGeneration, state], map: "recommendation_profile_projection_run_profile_idx")
   @@index([sessionDigest, state], map: "recommendation_profile_projection_run_session_idx")
   @@index([expiresAt], map: "recommendation_profile_projection_run_expiry_idx")
@@ -6445,6 +6447,8 @@ model RecommendationCowatchContribution {
   retentionDays    Int    @default(29) @map("retention_days")
 
   @@unique([generationId, sourceOutcomeId, targetOutcomeId], map: "recommendation_cowatch_contribution_pair_key")
+  @@index([sourceOutcomeId], map: "recommendation_cowatch_contribution_source_outcome_idx")
+  @@index([targetOutcomeId], map: "recommendation_cowatch_contribution_target_outcome_idx")
   @@index([generationId, sourceMediaId, targetMediaId], map: "recommendation_cowatch_contribution_edge_idx")
   @@index([viewerProfileId], map: "recommendation_cowatch_contribution_profile_idx")
   @@index([expiresAt], map: "recommendation_cowatch_contribution_expiry_idx")
@@ -7081,6 +7085,8 @@ model RecommendationPrecomputedCtrCluster {
   eligibleVisits BigInt @default(0) @map("eligible_visits")
   clickedVisits BigInt @default(0) @map("clicked_visits")
 
+  engagedVisits BigInt @default(0) @map("engaged_visits")
+
   @@id([experimentId, browserUnitDigest])
   @@map("recommendation_precomputed_ctr_cluster")
 }
@@ -7108,6 +7114,18 @@ model RecommendationPrecomputedCtrTotals {
   excludedOutsideCohort BigInt @default(0) @map("excluded_outside_cohort")
   excludedOther BigInt @default(0) @map("excluded_other")
   unversionedArchivedVisits BigInt @default(0) @map("unversioned_archived_visits")
+
+  engagementMeasuredVisits BigInt @default(0) @map("engagement_measured_visits")
+  engagedVisits BigInt @default(0) @map("engaged_visits")
+  activePlaybackMilliseconds BigInt @default(0) @map("active_playback_milliseconds")
+  claimedPlaybacks BigInt @default(0) @map("claimed_playbacks")
+  observedPlaybacks BigInt @default(0) @map("observed_playbacks")
+  completePlaybacks BigInt @default(0) @map("complete_playbacks")
+  partialPlaybacks BigInt @default(0) @map("partial_playbacks")
+  missingOutcomePlaybacks BigInt @default(0) @map("missing_outcome_playbacks")
+  missingCoveragePlaybacks BigInt @default(0) @map("missing_coverage_playbacks")
+  pendingPlaybacks BigInt @default(0) @map("pending_playbacks")
+  invalidPlaybacks BigInt @default(0) @map("invalid_playbacks")
 
   @@id([experimentId, arm])
   @@map("recommendation_precomputed_ctr_totals")

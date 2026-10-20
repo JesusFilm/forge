@@ -1,3 +1,4 @@
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 /**
  * @vitest-environment jsdom
  *
@@ -129,6 +130,7 @@ vi.mock("@/components/sections", () => ({
 }))
 
 vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
   isWatchCtaTextCopyEnabled: isWatchCtaTextCopyEnabledMock,
   isWatchHideBibleQuotesEnabled: isWatchHideBibleQuotesEnabledMock,
   isWatchQuestionPanelEnabled: isWatchQuestionPanelEnabledMock,
@@ -161,6 +163,7 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
   resolveWatchRouteBySlugMock.mockReset()
   resolveSeriesEpisodeBySlugMock.mockReset()
   resolveWatchExperiencePageMock.mockReset()
@@ -1079,6 +1082,37 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
+  it("declares Kurmanji Standard series JSON-LD from the corrected tag, not admin's ko-kmr", async () => {
+    const result = makeSeriesResult("storyclubs")
+    // Admin's real row: kurmanji-standard carries the invalid `ko-kmr` tag.
+    result.video.childDubLanguages = [
+      { slug: "kurmanji-standard", bcp47: "ko-kmr", name: "Kurmanji Standard" },
+    ]
+    mockRouteSeries(result)
+    getWatchRouteManifestMock.mockResolvedValue({
+      version: "test",
+      generatedAt: "2026-07-23T00:00:00.000Z",
+      contentSlugs: ["ep-1"],
+      oneSegmentSlugs: [],
+      episodePairsByParent: {},
+      audioLanguageSlugs: ["kurmanji-standard"],
+      audioLanguageIndexesByContent: { "ep-1": [0] },
+    })
+
+    const html = await renderServerHtml(
+      ["storyclubs.html", "kurmanji-standard.html"],
+      "kurmanji-standard",
+    )
+    const document = new DOMParser().parseFromString(html, "text/html")
+    const payload = JSON.parse(
+      document.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? "{}",
+    )
+
+    // `kmr` canonicalizes to `ku`; the raw `ko-kmr` would be dropped entirely.
+    expect(payload.inLanguage).toBe("ku")
+  })
+
   it("returns not found when the requested series language is unavailable", async () => {
     const result = makeSeriesResult("storyclubs")
     result.video.childDubLanguages = [
@@ -1257,6 +1291,15 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 
     expect(seriesPageClientMock).toHaveBeenCalledTimes(1)
     expect(jsonLdByType("CollectionPage")).toBeNull()
+  })
+
+  it("passes the explicit audience rollout to the synthetic video frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    mockRouteVideo(makeWatchVideoResult("featureFilm"))
+    await render2Seg("jesus", "english")
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ audienceEnabled: true }),
+    )
   })
 
   it("renders WatchPageClient when label is non-series (regression guard)", async () => {

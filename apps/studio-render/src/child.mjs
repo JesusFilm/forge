@@ -112,7 +112,10 @@ try {
       mediaUrls,
     },
     browserExecutable: "/runtime/chrome-launcher",
-    timeoutInMilliseconds: 7000,
+    // Remotion reserves 2s of this limit for reporting, so 7s allowed only 5s
+    // for a cold retained-video seek. Use its normal 30s frame allowance;
+    // the native guard and host watchdog still enforce the original job end.
+    timeoutInMilliseconds: 30000,
     logLevel: "error",
   }
   const composition = await selectComposition({ ...options, id: "Studio" })

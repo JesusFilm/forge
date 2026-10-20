@@ -46,6 +46,7 @@ import {
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
 import {
+  isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
   isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
@@ -56,6 +57,7 @@ import {
   isPublicWatchLanguageSlug,
   publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
+  correctedBcp47,
   slugToBcp47Tag,
   type UiLocale,
 } from "@/lib/locale"
@@ -794,6 +796,7 @@ async function renderOneSegment(shape: {
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
+          audienceEnabled={await isWatchAudienceEnabled()}
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
@@ -970,6 +973,7 @@ async function renderEpisode(
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
+        audienceEnabled={await isWatchAudienceEnabled()}
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
@@ -1146,6 +1150,7 @@ async function renderVideo(
         />
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
+          audienceEnabled={await isWatchAudienceEnabled()}
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}
@@ -1240,7 +1245,7 @@ async function renderVideo(
       languageSlug: seriesLanguage?.slug ?? "",
       canonicalUrl,
       inLanguage:
-        seriesLanguage?.bcp47 ??
+        correctedBcp47(seriesLanguage?.slug, seriesLanguage?.bcp47) ??
         slugToBcp47Tag(seriesLanguage?.slug ?? rawLocale),
       routeManifest,
     })

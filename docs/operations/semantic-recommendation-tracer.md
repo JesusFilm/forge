@@ -81,8 +81,9 @@ Deploy in expand-then-activate order:
    startup ceiling; it cannot override an unhealthy or disabled database
    control.
 4. Confirm the bootstrap manifest is exactly
-   `semantic-transcript-pgvector-v1`, retention has a fresh successful run, the
-   database probe is healthy, and Admin reports no overdue roots.
+   `semantic-transcript-pgvector-v1` and the database probe is healthy. Monitor
+   retention watermarks and overdue roots separately; cleanup runs concurrently
+   and is not a serving prerequisite (October 19 owner decision).
 5. Enable the singleton serving-control row with a bounded reason code and
    increment its version. Every delivery rereads this row; do not replace it
    with an environment-only switch or cache it per viewer.
@@ -166,7 +167,7 @@ present; their absence is normal on current requests.
 Production must have Redis available. Redis loss fails new attributed delivery
 closed before retrieval; only non-production uses the process-local admission
 adapter. A missing keyring, disabled environment ceiling, disabled/mismatched
-manifest control, or overdue retention also issues no attributed slate. None
+manifest control also issues no attributed slate. None
 of these conditions may block the source or target player.
 
 ## Serving Disable and Recovery
@@ -187,10 +188,11 @@ issuance and verification reread this set on every request, so revocation takes
 effect on each replica's next use. Record only a reason code, never key
 material.
 
-After remediation, require all activation gates again. In particular, clear
-retention backlog with the bounded purge, verify the oldest overdue root is
-gone and a fresh successful retention ledger exists, then re-enable the shared
-control. Do not infer recovery from an empty request window.
+After remediation, require the serving activation gates again and re-enable
+the shared control. Repair retention backlog independently with the bounded
+purge; do not stop serving or wait for backlog clearance to restore cards.
+Verify delivery and cleanup separately. Do not infer recovery from an empty
+request window.
 
 ## Capability Key Rotation
 
@@ -258,7 +260,7 @@ Admin health is a truth table over recommendation-owned durable evidence:
 | `conflict`            | The same event identity arrived with a different digest and was quarantined.                                             |
 | `late`                | A fact that occurred inside the active window was received later, before the hard horizon.                               |
 | `classifier_lag`      | A terminal/deadline episode has no outcome, or an open episode is past its deadline.                                     |
-| `retention_overdue`   | Purge propagation or success-watermark freshness failed; attributed serving stays disabled.                              |
+| `retention_overdue`   | Purge propagation or success-watermark freshness failed; investigate cleanup while recommendation serving continues.     |
 
 Selection without an impression and valid out-of-order facts stay visible as
 facts; they are not manufactured into loss. Read counters together with the
@@ -331,7 +333,8 @@ blocked by the browser if the forwarded origin is omitted.
 
 Start Admin first. The durable workflow runner performs an initial bounded
 retention run and then sleeps until the daily schedule. Confirm the bootstrap
-rows and retention watermark before enabling the shared control:
+rows before enabling the shared control, and inspect the retention watermark
+independently:
 
 ```sql
 SELECT id, strategy_version, contract_version, surface_version, generator,

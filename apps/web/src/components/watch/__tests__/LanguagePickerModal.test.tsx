@@ -274,6 +274,7 @@ function renderModal({
   currentSubtitleSlug,
   onSubtitleChange,
   languageOptionsError,
+  languageOptionsLoading,
   onRetryLanguageOptions,
 }: {
   open: boolean
@@ -289,6 +290,7 @@ function renderModal({
   currentSubtitleSlug?: string | null
   onSubtitleChange?: (enabled: boolean, slug: string | null) => void
   languageOptionsError?: boolean
+  languageOptionsLoading?: boolean
   onRetryLanguageOptions?: () => void
 }) {
   act(() => {
@@ -307,6 +309,7 @@ function renderModal({
         currentSubtitleSlug={currentSubtitleSlug}
         onSubtitleChange={onSubtitleChange}
         languageOptionsError={languageOptionsError}
+        languageOptionsLoading={languageOptionsLoading}
         onRetryLanguageOptions={onRetryLanguageOptions}
       />,
     )
@@ -724,6 +727,36 @@ describe("LanguagePickerModal — globe overlay", () => {
       '[data-testid="watch-language-picker-apply"]',
     ) as HTMLButtonElement
     expect(apply.disabled).toBe(true)
+  })
+
+  it("names the dialog from its single visible heading", () => {
+    renderModal({ open: true, variants: baseVariants })
+    const modal = $('[data-testid="watch-language-picker-modal"]')
+    const headings = $$("h2").filter((h) => h.textContent === "Language")
+    expect(headings).toHaveLength(1)
+    expect(modal?.getAttribute("aria-labelledby")).toBe(headings[0]?.id)
+    expect(headings[0]?.id).not.toBe("")
+    expect(modal?.hasAttribute("aria-label")).toBe(false)
+  })
+
+  it("keeps the subtitles-aware dialog name when subtitles exist", () => {
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      subtitles: [makeSubtitle("s1", "spanish", "Spanish")],
+    })
+    const modal = $('[data-testid="watch-language-picker-modal"]')
+    expect(modal?.getAttribute("aria-label")).toBe("Language & Subtitles")
+    expect(modal?.hasAttribute("aria-labelledby")).toBe(false)
+    expect($$("h2").filter((h) => h.textContent === "Language")).toHaveLength(1)
+  })
+
+  it.each([
+    ["loading", { languageOptionsLoading: true }],
+    ["error", { languageOptionsError: true }],
+  ])("hides the language count while %s", (_name, state) => {
+    renderModal({ open: true, variants: [], ...state })
+    expect($('[data-testid="watch-language-picker-count"]')).toBeNull()
   })
 
   it("renders the count of playable variants in the header", () => {

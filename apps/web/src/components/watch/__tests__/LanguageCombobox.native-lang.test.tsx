@@ -171,6 +171,30 @@ describe("LanguageCombobox native-name markup (FGE-50)", () => {
     expect(bdi?.hasAttribute("lang")).toBe(false)
   })
 
+  it("shows the Kurdish endonym and KMR code for kurmanji-standard despite admin's ko-kmr tag", () => {
+    renderOpen(
+      [
+        {
+          slug: "kurmanji-standard",
+          name: "Kurmanji Standard",
+          bcp47: "ko-kmr",
+        },
+      ],
+      "kurmanji-standard",
+    )
+    const bdi = optionNative("kurmanji-standard")?.querySelector("bdi")
+    expect(bdi?.textContent).not.toContain("한국어")
+    expect(bdi?.textContent).toMatch(/^Kurd/i)
+    expect(bdi?.getAttribute("lang")).toBe("kmr")
+    const codes = Array.from(
+      document.querySelectorAll(
+        '[data-testid="language-combobox-option-code"]',
+      ),
+    ).map((node) => node.textContent)
+    expect(codes).toContain("KMR")
+    expect(codes).not.toContain("KO")
+  })
+
   it("declares the selected trigger's native name too", () => {
     act(() => {
       root.render(
@@ -270,5 +294,55 @@ describe("LanguageCombobox native-name markup (FGE-50)", () => {
       expect(bdis.map((b) => b.getAttribute("lang"))).toEqual(["en", "ar"])
       expect(bdis.map((b) => b.getAttribute("dir"))).toEqual(["ltr", "rtl"])
     })
+  })
+})
+
+describe("LanguageCombobox truncated-name tooltips (N31)", () => {
+  const options: LanguageComboboxOption[] = [
+    {
+      slug: "chinese-simplified",
+      name: "Chinese, Simplified",
+      nativeName: "中文（简体）",
+      bcp47: "zh-Hans",
+    },
+    { slug: "english", name: "English", bcp47: "en" },
+  ]
+
+  it("puts the full name and native name on the truncating trigger spans", () => {
+    renderOpen(options, "chinese-simplified")
+    const trigger = document.querySelector<HTMLElement>(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    const primary = Array.from(trigger?.querySelectorAll("span") ?? []).find(
+      (span) => span.classList.contains("truncate") && !span.dataset.testid,
+    )
+    expect(primary?.getAttribute("title")).toBe("Chinese, Simplified")
+    expect(
+      trigger
+        ?.querySelector('[data-testid="language-combobox-trigger-native"]')
+        ?.getAttribute("title"),
+    ).toBe("中文（简体）")
+  })
+
+  it("puts the full name and native name on the truncating option spans", () => {
+    renderOpen(options, "english")
+    const row = document.querySelector<HTMLElement>(
+      '[data-testid="language-combobox-option"][data-language-slug="chinese-simplified"]',
+    )
+    const primary = Array.from(row?.querySelectorAll("span") ?? []).find(
+      (span) => span.classList.contains("truncate") && !span.dataset.testid,
+    )
+    expect(primary?.getAttribute("title")).toBe("Chinese, Simplified")
+    expect(optionNative("chinese-simplified")?.getAttribute("title")).toBe(
+      "中文（简体）",
+    )
+  })
+
+  it("does not title the placeholder when nothing is selected", () => {
+    renderOpen(options, "")
+    const trigger = document.querySelector<HTMLElement>(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    expect(trigger?.querySelector("[title]")).toBeNull()
   })
 })

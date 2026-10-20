@@ -333,7 +333,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     fontWeight: "600",
-    fontFamily: "System",
   },
   // The passage pill shrinks first; a short name is at most five letters.
   translation: {
@@ -343,7 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "600",
-    fontFamily: "System",
   },
   pillStatus: {
     marginLeft: 6,
@@ -385,6 +383,5 @@ const styles = StyleSheet.create({
   tipText: {
     fontSize: 15,
     lineHeight: 20,
-    fontFamily: "System",
   },
 })

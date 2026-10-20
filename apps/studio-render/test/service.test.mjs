@@ -1,5 +1,5 @@
 const { fetch, Buffer, performance, setTimeout } = globalThis
-import { STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
+import { STUDIO_RENDER_PROFILE_V3 as STUDIO_RENDER_PROFILE } from "@forge/studio-contracts/render"
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { generateKeyPairSync, sign, randomUUID, createHash } from "node:crypto"

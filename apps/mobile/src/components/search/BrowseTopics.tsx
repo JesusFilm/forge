@@ -75,7 +75,6 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1,

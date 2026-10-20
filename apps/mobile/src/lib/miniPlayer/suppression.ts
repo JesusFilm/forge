@@ -50,12 +50,15 @@ export function isInAppSheetRoute(segments: readonly string[]): boolean {
  *  feedback sheets, since a routed sheet cannot cover fullscreen. */
 export type NonRouteSheetId =
   | "libraryDeleteConfirm"
+  /** The iOS 26 native delete sheet (`src/lib/library/deleteActionSheet.ts`). */
+  | "libraryDeleteActionSheet"
   | "sduiQuiz"
   | "playerSettings"
   | "feedbackModal"
 
 /** Drawn inside a route, so the host covers it on every platform. The other
- *  ids are React Native `Modal`s, which iOS presents above the host. */
+ *  ids are React Native `Modal`s or the native action sheet, which iOS
+ *  presents above the host. */
 const INLINE_SHEET_IDS: ReadonlySet<NonRouteSheetId> = new Set([
   "libraryDeleteConfirm",
 ])

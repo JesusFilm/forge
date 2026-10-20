@@ -35,15 +35,21 @@ jest.mock("../../../lib/datadog", () => ({
 // machine has its own suite.
 jest.mock("../../../hooks/useControlsVisibility", () => {
   const { Animated } = jest.requireActual("react-native")
+  const { createControlsVisibleStore } = jest.requireActual(
+    "../../../lib/controlsVisibility",
+  )
   const opacityAnim = new Animated.Value(1)
+  const visibleStore = createControlsVisibleStore(true)
   return {
     useControlsVisibility: () => ({
       controlsVisible: true,
       mounted: true,
       opacityAnim,
+      visibleStore,
       hide: () => {},
       revealIfHidden: () => {},
       isVisibleNow: () => true,
+      noteSeek: () => {},
       noteInteraction: () => {},
       isPlaying: true,
     }),

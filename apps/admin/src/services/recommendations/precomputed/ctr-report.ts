@@ -9,6 +9,10 @@ import {
   rawCtrVisitSql,
   type CtrTotals,
 } from "./ctr-evidence"
+import {
+  buildEngagementReport,
+  type PrecomputedEngagementReport,
+} from "./engagement-report"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
 import { reconcileFinalCalibrationLoss } from "./final-calibration"
 import { loadPrecomputedFinalCalibration } from "./final-calibration-receipt"
@@ -38,12 +42,17 @@ type MomentRow = {
   sum_visits_squared: string
   sum_clicks_squared: string
   sum_visits_clicks: string
+  engaged_visits: string
+  sum_engaged_squared: string
+  sum_visits_engaged: string
 }
 
 export type PrecomputedCtrReport = {
   schemaVersion: 1
+  engagement?: PrecomputedEngagementReport
   evidenceBasis?:
     | "private_unverified"
+    | "public_observed"
     | "isolated_fixture"
     | "live_incomplete"
     | "live_verified"
@@ -79,7 +88,7 @@ export type PrecomputedCtrReport = {
     version: string
     method: typeof METHOD
     digest: string
-    authority: "fixture_only" | "prelaunch_agreed"
+    authority: "fixture_only" | "prelaunch_agreed" | "public_observed"
     settings: CtrPolicySettings
   }
   cohort: { startsAt: string; endsAt: string; finalAt: string }
@@ -278,29 +287,44 @@ async function readEvidence(
       WITH active AS (${active}), cluster_parts AS (
         SELECT arm, browser_unit_digest,
           count(*)::numeric AS n,
-          count(*) FILTER (WHERE accepted_selections > 0)::numeric AS c
+          count(*) FILTER (WHERE accepted_selections > 0)::numeric AS c,
+          count(*) FILTER (WHERE qualified_playbacks > 0)::numeric AS g
         FROM active WHERE eligibility = 'eligible'
         GROUP BY arm, browser_unit_digest
         UNION ALL
         SELECT arm::text, browser_unit_digest,
-          eligible_visits::numeric, clicked_visits::numeric
+          eligible_visits::numeric, clicked_visits::numeric, engaged_visits::numeric
         FROM recommendation_precomputed_ctr_cluster
         WHERE experiment_id = ${experimentId}
       ), combined AS (
-        SELECT arm, browser_unit_digest, sum(n) AS n, sum(c) AS c
+        SELECT arm, browser_unit_digest, sum(n) AS n, sum(c) AS c, sum(g) AS g
         FROM cluster_parts GROUP BY arm, browser_unit_digest
       )
       SELECT arm, count(*)::text AS browsers,
         sum(n)::text AS eligible_visits, sum(c)::text AS clicked_visits,
         sum(n*n)::text AS sum_visits_squared,
         sum(c*c)::text AS sum_clicks_squared,
-        sum(n*c)::text AS sum_visits_clicks
+        sum(n*c)::text AS sum_visits_clicks,
+        sum(g)::text AS engaged_visits, sum(g*g)::text AS sum_engaged_squared,
+        sum(n*g)::text AS sum_visits_engaged
       FROM combined GROUP BY arm
     `),
     tx.$queryRaw<TotalsRow[]>(Prisma.sql`
       WITH active AS (${active})
       SELECT CASE WHEN eligibility = 'eligible' THEN arm::text ELSE 'excluded' END AS arm,
         count(*) FILTER (WHERE eligibility = 'eligible') AS "eligibleVisits",
+        count(*) FILTER (WHERE eligibility = 'eligible') AS "engagementMeasuredVisits",
+        count(*) FILTER (WHERE eligibility = 'eligible' AND qualified_playbacks > 0) AS "engagedVisits",
+        coalesce(sum(active_playback_milliseconds) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "activePlaybackMilliseconds",
+        coalesce(sum(claimed_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "claimedPlaybacks",
+        coalesce(sum(observed_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "observedPlaybacks",
+        coalesce(sum(complete_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "completePlaybacks",
+        coalesce(sum(partial_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "partialPlaybacks",
+        coalesce(sum(missing_outcome_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "missingOutcomePlaybacks",
+        coalesce(sum(missing_coverage_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "missingCoveragePlaybacks",
+        coalesce(sum(pending_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "pendingPlaybacks",
+        coalesce(sum(invalid_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "invalidPlaybacks",
+
         count(*) FILTER (WHERE eligibility = 'eligible' AND accepted_selections > 0) AS "clickedVisits",
         coalesce(sum(accepted_selections) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "acceptedSelections",
         coalesce(sum(qualified_impressions) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "qualifiedImpressions",
@@ -338,6 +362,10 @@ async function readEvidence(
     for (const field of ctrTotalFields) totals[row.arm][field] += row[field]
   }
   const moments = { control: blankMoments(), challenger: blankMoments() }
+  const engagementMoments = {
+    control: blankMoments(),
+    challenger: blankMoments(),
+  }
   for (const row of momentRows) {
     if (row.arm !== "control" && row.arm !== "challenger")
       throw new Error("precomputed_ctr_invalid_arm")
@@ -351,15 +379,22 @@ async function readEvidence(
       actualFallbackVisits: safe(totals[row.arm].actualFallbackVisits),
       unlinkedDeliveredVisits: safe(totals[row.arm].unlinkedDeliveredVisits),
     }
+    engagementMoments[row.arm] = {
+      ...moments[row.arm],
+      clickedVisits: safe(row.engaged_visits),
+      sumClicksSquared: safe(row.sum_engaged_squared),
+      sumVisitsClicks: safe(row.sum_visits_engaged),
+    }
   }
   for (const arm of ["control", "challenger"] as const) {
     if (
       moments[arm].eligibleVisits !== safe(totals[arm].eligibleVisits) ||
-      moments[arm].clickedVisits !== safe(totals[arm].clickedVisits)
+      moments[arm].clickedVisits !== safe(totals[arm].clickedVisits) ||
+      engagementMoments[arm].clickedVisits !== safe(totals[arm].engagedVisits)
     )
       throw new Error("precomputed_ctr_cluster_totals_mismatch")
   }
-  return { totals, moments }
+  return { totals, moments, engagementMoments }
 }
 
 function armReport(
@@ -402,7 +437,11 @@ async function evaluatePrecomputedCtrReport(
     experimentId: string
     operator: Principal | null
     now?: Date
-    evidenceBasis: "private_unverified" | "isolated_fixture" | "live_public"
+    evidenceBasis:
+      | "private_unverified"
+      | "isolated_fixture"
+      | "live_public"
+      | "public_observed"
     webMeasurement?: WebWatchMeasurementRead | null
     experimentMeasurement?: WebExperimentMeasurementRead | null
     testTrustedKeyring?: string
@@ -418,7 +457,9 @@ async function evaluatePrecomputedCtrReport(
     publicEligibilityPolicy =
       input.evidenceBasis === "isolated_fixture"
         ? control.PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
-        : control.PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+        : input.evidenceBasis === "public_observed"
+          ? control.PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+          : control.PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
   }
   return prisma.$transaction(
     async (tx) => {
@@ -482,7 +523,7 @@ async function evaluatePrecomputedCtrReport(
           status: "available",
           report: latest.result as unknown as PrecomputedCtrReport,
         } as const
-      const { totals, moments } = await readEvidence(
+      const { totals, moments, engagementMoments } = await readEvidence(
         tx,
         input.experimentId,
         asOf,
@@ -595,13 +636,22 @@ async function evaluatePrecomputedCtrReport(
         botEligibility:
           input.evidenceBasis === "isolated_fixture" || botVerified
             ? "verified"
-            : "unverified",
+            : input.evidenceBasis === "public_observed"
+              ? "browser_filtered"
+              : "unverified",
         trackingLoss:
           input.evidenceBasis === "isolated_fixture" || calibratedLossVerified
             ? "verified"
-            : "unobservable",
+            : input.evidenceBasis === "public_observed"
+              ? "server_observed"
+              : "unobservable",
       })
       const reasons = [...evaluation.reasons]
+      if (
+        input.evidenceBasis === "public_observed" &&
+        policy.authority !== "public_observed"
+      )
+        reasons.push("public_policy_authority_mismatch")
       if (
         input.evidenceBasis === "private_unverified" &&
         policy.authority !== "prelaunch_agreed"
@@ -640,11 +690,12 @@ async function evaluatePrecomputedCtrReport(
       const revision = (latest?.revision ?? 0) + 1
       const report: PrecomputedCtrReport = {
         schemaVersion: 1,
-        evidenceBasis: livePublic
-          ? calibratedLossVerified
-            ? "live_verified"
-            : "live_incomplete"
-          : (input.evidenceBasis as "private_unverified" | "isolated_fixture"),
+        evidenceBasis:
+          input.evidenceBasis === "live_public"
+            ? calibratedLossVerified
+              ? "live_verified"
+              : "live_incomplete"
+            : input.evidenceBasis,
         experimentId: experiment.id,
         revision,
         isFinal,
@@ -703,7 +754,8 @@ async function evaluatePrecomputedCtrReport(
           version: policy.version,
           method: METHOD,
           digest: policy.settingsDigest,
-          authority: policy.authority as "fixture_only" | "prelaunch_agreed",
+          authority:
+            policy.authority as PrecomputedCtrReport["policy"]["authority"],
           settings,
         },
         cohort: {
@@ -711,6 +763,7 @@ async function evaluatePrecomputedCtrReport(
           endsAt: experiment.endsAt.toISOString(),
           finalAt: finalAt.toISOString(),
         },
+        engagement: buildEngagementReport(totals, engagementMoments),
         byArm: {
           control: armReport(
             totals.control,
@@ -869,8 +922,7 @@ async function evaluatePrecomputedCtrReport(
           conservativeDegreesOfFreedom: evaluation.conservativeDegreesOfFreedom,
         },
         outcome:
-          (input.evidenceBasis === "isolated_fixture" || livePublic) &&
-          reasons.length === 0
+          input.evidenceBasis !== "private_unverified" && reasons.length === 0
             ? evaluation.outcome
             : "inconclusive",
         reasons,
@@ -975,7 +1027,12 @@ export async function evaluatePublicPrecomputedCtr(
   return evaluatePrecomputedCtrReport(prisma, {
     ...input,
     now,
-    evidenceBasis: livePublic ? "live_public" : "isolated_fixture",
+    evidenceBasis: livePublic
+      ? "live_public"
+      : experiment?.eligibilityPolicyVersion ===
+          control.PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+        ? "public_observed"
+        : "isolated_fixture",
     webMeasurement,
     experimentMeasurement,
     testTrustedKeyring: input.testTrustedKeyring,

@@ -192,7 +192,6 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   identityText: {
@@ -200,12 +199,10 @@ const styles = StyleSheet.create({
   },
   name: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   email: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 2,
   },
   actions: {
@@ -225,12 +222,10 @@ const styles = StyleSheet.create({
   },
   signOutLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   notSignedIn: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingTop: 16,
   },

@@ -34,8 +34,8 @@ export type CtrEvaluationEvidence = {
   endsAt: Date
   asOf: Date
   byArm: { control: CtrArmMoments; challenger: CtrArmMoments }
-  botEligibility: "verified" | "unverified"
-  trackingLoss: "verified" | "unobservable"
+  botEligibility: "verified" | "unverified" | "browser_filtered"
+  trackingLoss: "verified" | "unobservable" | "server_observed"
 }
 
 export type CtrEvaluation = {
@@ -147,13 +147,11 @@ function tCritical(degreesOfFreedom: number): number {
   return 12.706204736
 }
 
-export function evaluatePrecomputedCtr(
-  settings: CtrPolicySettings,
-  evidence: CtrEvaluationEvidence,
-): CtrEvaluation {
-  validateCtrPolicySettings(settings)
-  const control = armUncertainty(evidence.byArm.control)
-  const challenger = armUncertainty(evidence.byArm.challenger)
+export function comparePrecomputedVisitRates(
+  byArm: CtrEvaluationEvidence["byArm"],
+) {
+  const control = armUncertainty(byArm.control)
+  const challenger = armUncertainty(byArm.challenger)
   const difference =
     control.ctr == null || challenger.ctr == null
       ? null
@@ -168,8 +166,8 @@ export function evaluatePrecomputedCtr(
       ? null
       : Math.floor(
           Math.min(
-            evidence.byArm.control.browsers,
-            evidence.byArm.challenger.browsers,
+            byArm.control.browsers,
+            byArm.challenger.browsers,
             control.effective,
             challenger.effective,
           ),
@@ -191,6 +189,35 @@ export function evaluatePrecomputedCtr(
     difference == null || !usableError
       ? null
       : difference + criticalValue * standardError
+  return {
+    control,
+    challenger,
+    difference,
+    standardError,
+    conservativeDegreesOfFreedom,
+    criticalValue,
+    usableError,
+    lowerBound,
+    upperBound,
+  }
+}
+
+export function evaluatePrecomputedCtr(
+  settings: CtrPolicySettings,
+  evidence: CtrEvaluationEvidence,
+): CtrEvaluation {
+  validateCtrPolicySettings(settings)
+  const {
+    control,
+    challenger,
+    difference,
+    standardError,
+    conservativeDegreesOfFreedom,
+    criticalValue,
+    usableError,
+    lowerBound,
+    upperBound,
+  } = comparePrecomputedVisitRates(evidence.byArm)
   const reasons: string[] = []
   if (!control.coherent || !challenger.coherent)
     reasons.push("incoherent_cluster_moments")
@@ -227,9 +254,11 @@ export function evaluatePrecomputedCtr(
     )
       reasons.push(`${name}_unlinked_delivery_unhealthy`)
   }
-  if (evidence.botEligibility !== "verified")
+  // Ordinary public tests estimate CTR for observed, browser-filtered traffic.
+  // They do not assert verified humans or complete end-to-end event capture.
+  if (evidence.botEligibility === "unverified")
     reasons.push("bot_eligibility_unverified")
-  if (evidence.trackingLoss !== "verified")
+  if (evidence.trackingLoss === "unobservable")
     reasons.push("tracking_loss_unobservable")
   if (!usableError) reasons.push("uncertainty_unavailable")
   let outcome: CtrEvaluation["outcome"] = "inconclusive"

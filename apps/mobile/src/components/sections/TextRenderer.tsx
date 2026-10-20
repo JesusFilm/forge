@@ -121,7 +121,6 @@ const styles = StyleSheet.create({
   },
   paragraph: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   paragraphSpacing: {
     marginBottom: 12,

@@ -304,7 +304,6 @@ const styles = StyleSheet.create({
   text: {
     color: TEXT_ON_OVERLAY,
     fontSize: 16,
-    fontFamily: "System",
     textAlign: "center",
     backgroundColor: hexToRgba(BLACK, 0.7),
     paddingHorizontal: 10,

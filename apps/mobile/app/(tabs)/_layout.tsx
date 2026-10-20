@@ -26,7 +26,6 @@ export default function TabLayout() {
         tabBarStyle,
         tabBarLabelStyle: {
           fontSize: Platform.select({ ios: 10, android: 12 }),
-          fontFamily: "System",
         },
       }}
     >

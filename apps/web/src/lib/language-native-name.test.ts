@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   declaredLanguageAttributes,
   derivedNativeNameLang,
+  nativeNameMatchesLanguageScript,
   primaryTagMatchesScript,
   selectOwnLanguageName,
 } from "@/lib/language-native-name"
@@ -121,6 +122,74 @@ describe("selectOwnLanguageName", () => {
       text: "Zed",
       lang: null,
     })
+  })
+})
+
+describe("nativeNameMatchesLanguageScript (N23)", () => {
+  it.each([
+    ["Tajik in Arabic script", "تاجيكي", "tg", false],
+    ["Tajik in Cyrillic", "тоҷикӣ", "tg", true],
+    ["Malay in Jawi", "بهاس ملايو", "ms", false],
+    ["Malay in Latin", "Bahasa Melayu", "ms", true],
+    ["Uzbek in Arabic script", "اوزبېک", "uz", false],
+    ["Uzbek Arabic row keeps Arabic", "اوزبېک", "uz-Arab", true],
+    ["Mongolian in traditional script", "ᠮᠣᠩᠭᠣᠯ", "mn", false],
+    ["Mongolian in Cyrillic", "Монгол", "mn", true],
+    ["Latin Somali", "Soomaali", "so", true],
+    ["Arabic for ar", "العربية", "ar", true],
+    ["Latin text for ar", "Arabic", "ar", false],
+    ["Traditional Chinese", "繁體中文", "zh-Hant", true],
+    ["Simplified Chinese", "中文", "zh", true],
+    ["Japanese kana and kanji", "日本語ひらがな", "ja", true],
+    ["Korean", "한국어", "ko", true],
+    ["Latin text for a Hrkt row", "Nihongo", "ja-Hrkt", false],
+    ["Kana for a Hrkt row", "にほんご", "ja-Hrkt", true],
+    // Negatives only the composite-script table can reject: Hans/Hant/Jpan/
+    // Kore are not Unicode scripts, so without it the guard fails open.
+    ["Latin text for zh", "Chinese", "zh", false],
+    ["Latin text for zh-Hant", "Chinese", "zh-Hant", false],
+    ["Cyrillic text for ja", "Японский", "ja", false],
+    ["Latin text for ko", "Korean", "ko", false],
+    ["Latin plus Arabic, no Cyrillic, for tg", "Tajik تاجيكي", "tg", false],
+    ["Thai", "ภาษาไทย", "th", true],
+    ["Latin Khmer label", "Khmer, Standard", "km", false],
+  ])("%s", (_label, text, bcp47, expected) => {
+    expect(nativeNameMatchesLanguageScript(text, bcp47)).toBe(expected)
+  })
+
+  it("keeps a native name that mixes in a minority of other-script letters", () => {
+    expect(nativeNameMatchesLanguageScript("Русский (ru)", "ru")).toBe(true)
+  })
+
+  it("fails open when there is no script evidence", () => {
+    expect(nativeNameMatchesLanguageScript("تاجيكي", null)).toBe(true)
+    expect(nativeNameMatchesLanguageScript("تاجيكي", "  ")).toBe(true)
+    // `und` would otherwise maximize to en-Latn.
+    expect(nativeNameMatchesLanguageScript("تاجيكي", "und")).toBe(true)
+    // Unparseable tag: no likely script.
+    expect(nativeNameMatchesLanguageScript("تاجيكي", "hus-MX-SLP")).toBe(true)
+    // No letters at all.
+    expect(nativeNameMatchesLanguageScript("123", "tg")).toBe(true)
+  })
+})
+
+describe("selectOwnLanguageName script guard (N23)", () => {
+  it("rejects an own-tag entry written in the wrong script", () => {
+    expect(
+      selectOwnLanguageName({ en: "Tajik", tg: "تاجيكي" }, "tg"),
+    ).toBeNull()
+    expect(
+      selectOwnLanguageName({ en: "Malay", ms: "بهاس ملايو" }, "ms"),
+    ).toBeNull()
+  })
+
+  it("keeps Latin Somali and Arabic Arabic", () => {
+    expect(
+      selectOwnLanguageName({ en: "Somali", so: "Soomaali" }, "so"),
+    ).toEqual({ text: "Soomaali", lang: "so" })
+    expect(
+      selectOwnLanguageName({ en: "Arabic", ar: "العربية" }, "ar"),
+    ).toEqual({ text: "العربية", lang: "ar" })
   })
 })
 

@@ -199,9 +199,9 @@ import type {
 import {
   LOOP_SEEK_SETTLE_MS,
   EXPLORE_QUALITY_TIER,
-  SEEK_LOADING_GRACE_MS,
   STANDBY_LOAD_AFTER_BUFFERED_SECONDS,
 } from "../../../hooks/useFeedPlayers"
+import { SEEK_LOADING_GRACE_MS } from "../../../lib/seekLoading"
 import {
   refreshLocale,
   resetLocaleStoreForTests,
@@ -1632,6 +1632,16 @@ describe("the overlay (R10, R44)", () => {
     expect(A.playing).toBe(false)
     expect(overlay().props.paused).toBe(true)
     await tap()
+    expect(A.playing).toBe(true)
+    expect(overlay().props.paused).toBe(false)
+  })
+
+  it("resumes a paused clip from a tap on the play glyph", async () => {
+    await startWithStandby()
+    await tap()
+    expect(overlay().props.paused).toBe(true)
+    // The glyph takes its own tap now, so the feed must wire it to play.
+    await callOverlay("onResume")
     expect(A.playing).toBe(true)
     expect(overlay().props.paused).toBe(false)
   })

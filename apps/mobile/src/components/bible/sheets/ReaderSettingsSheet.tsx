@@ -73,6 +73,8 @@ export type ReaderSettingsSheetProps = {
   currentCredit: { name: string; credit: string } | null
   onChange: (patch: Partial<ReaderSettings>) => void
   onClose: () => void
+  /** The sheet's fill, `tokens.background` by default (`useReaderSheetTheme`). */
+  background?: string
 }
 
 // R33's six settings and the "About the text" credits (KTD6). Each change
@@ -84,6 +86,7 @@ export function ReaderSettingsSheet({
   currentCredit,
   onChange,
   onClose,
+  background = tokens.background,
 }: ReaderSettingsSheetProps) {
   const t = useT("BibleReaderSettings")
   const insets = useSafeAreaInsets()
@@ -95,7 +98,7 @@ export function ReaderSettingsSheet({
   return (
     <View
       testID="reader-settings-sheet"
-      style={[styles.root, { height, backgroundColor: tokens.background }]}
+      style={[styles.root, { height, backgroundColor: background }]}
     >
       <View style={styles.header}>
         <ReaderSheetHeader
@@ -373,7 +376,6 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   groupLabel: {
-    fontFamily: "System",
     fontSize: 14,
     fontWeight: "600",
     marginBottom: 8,
@@ -391,7 +393,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   optionText: {
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "500",
   },
@@ -406,11 +407,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   switchLabel: {
-    fontFamily: "System",
     fontSize: 16,
   },
   hint: {
-    fontFamily: "System",
     fontSize: 14,
     marginTop: 2,
   },
@@ -419,7 +418,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   credit: {
-    fontFamily: "System",
     fontSize: 14,
     lineHeight: 20,
     writingDirection: "ltr",

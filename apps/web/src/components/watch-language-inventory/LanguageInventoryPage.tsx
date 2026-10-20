@@ -2,7 +2,7 @@ import type { ComponentType, ReactNode } from "react"
 import type { Route } from "next"
 import Image from "next/image"
 import Link from "next/link"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import {
   ArrowUp,
   ArrowUpRight,
@@ -28,6 +28,7 @@ import {
   WATCH_SECTION_EYEBROW_CLASS,
 } from "@/components/watch/watch-section-styles"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { inventoryLanguageNameForTemplate } from "@/lib/inventory-language-name"
 import {
   resolveBlurredBackdropUrl,
   resolveMuxFrameThumbnailUrl,
@@ -1014,8 +1015,17 @@ export function LanguageInventoryPage({
   inventory,
 }: LanguageInventoryPageProps) {
   const t = useTranslations("LanguageInventory")
+  const uiLocale = useLocale()
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
+  // Per-template: the in-sentence casing depends on where the catalog string
+  // places `{language}` (see `inventoryLanguageNameForTemplate`).
+  const languageFor = (key: Parameters<typeof t.raw>[0]) =>
+    inventoryLanguageNameForTemplate({
+      name: languageDisplayName,
+      uiLocale,
+      template: t.raw(key),
+    })
   const now = new Date()
   const groupedAudioVideos = groupVideosByParent(
     inventory.audioVideos,
@@ -1092,10 +1102,12 @@ export function LanguageInventoryPage({
         >
           <div className="max-w-4xl">
             <h1 className="text-2xl leading-[1.08] font-bold text-balance break-words text-white drop-shadow-lg sm:text-4xl md:max-w-[18ch] md:text-6xl xl:max-w-[20ch] xl:text-7xl">
-              {t("heroTitle", { language: languageDisplayName })}
+              {t("heroTitle", { language: languageFor("heroTitle") })}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-relaxed font-normal text-stone-200/80 md:text-lg">
-              {t("heroDescription", { language: languageDisplayName })}
+              {t("heroDescription", {
+                language: languageFor("heroDescription"),
+              })}
             </p>
           </div>
           <LanguageCollectionSwitcher
@@ -1113,9 +1125,11 @@ export function LanguageInventoryPage({
         <GroupedVideoListSection
           id="audio-collections"
           eyebrow={t("fullyDubbed")}
-          title={t("dubbedVideosTitle", { language: languageDisplayName })}
+          title={t("dubbedVideosTitle", {
+            language: languageFor("dubbedVideosTitle"),
+          })}
           description={t("dubbedVideosDescription", {
-            language: languageDisplayName,
+            language: languageFor("dubbedVideosDescription"),
           })}
           icon={Library}
           groups={groupedAudioVideos}
@@ -1145,9 +1159,11 @@ export function LanguageInventoryPage({
           assistToken="labelSubtitlesOnly"
           id="subtitles-only"
           eyebrow={t("subtitlesAvailable")}
-          title={t("subtitlesTitle", { language: languageDisplayName })}
+          title={t("subtitlesTitle", {
+            language: languageFor("subtitlesTitle"),
+          })}
           description={t("subtitlesDescription", {
-            language: languageDisplayName,
+            language: languageFor("subtitlesDescription"),
           })}
           icon={Captions}
           items={inventory.subtitleOnlyVideos}
