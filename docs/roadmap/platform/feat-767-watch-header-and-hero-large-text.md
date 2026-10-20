@@ -27,8 +27,12 @@ overflow, but on the home page:
   language globe.
 - The hero title breaks mid-word ("Samarita/n") and climbs under the
   header.
-- The hero primary action shows only its play icon. PR #2829's wrapping
-  row may fix this; re-check it.
+- The hero primary action shows only its play icon. With PR #2829's
+  wrapping row (local fixture, real carousel, 390x844 at 200%) it reads
+  "Watch N…" (166/189 px). The title still climbs under the header there:
+  the overlay outgrows the fixed-height muted hero frame
+  (`WATCH_MUTED_INTRO_HEIGHT_CLASS` / `useWatchHomeHeroFittedHeight`), so
+  the frame or overlay has to account for the overlay's real height.
 - The feedback intro pill covers body copy.
 
 Other templates (film, series, episode, languages) reflowed. Their long
