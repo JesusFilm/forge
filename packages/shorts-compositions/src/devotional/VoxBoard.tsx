@@ -341,16 +341,98 @@ export function Photo({
 
 /** A newspaper clipping on the owner's paper: section line, headline, rule,
  *  body with one word banded, source in italics. */
+/** A hand-drawn heap of stones (local units 200 x 120): lumpy outlines,
+ *  each drawn in turn, then a grey wash and a stroke of shading. */
+const STONES: {
+  cx: number
+  cy: number
+  rx: number
+  ry: number
+  seed: number
+}[] = [
+  { cx: 50, cy: 90, rx: 42, ry: 26, seed: 3 },
+  { cx: 130, cy: 94, rx: 46, ry: 24, seed: 8 },
+  { cx: 90, cy: 54, rx: 36, ry: 24, seed: 5 },
+  { cx: 162, cy: 58, rx: 28, ry: 20, seed: 11 },
+  { cx: 28, cy: 50, rx: 22, ry: 16, seed: 2 },
+]
+/** A lumpy closed outline: a stone, not an ellipse. */
+function stonePath(
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  seed: number,
+): string {
+  const n = 9
+  const pts: [number, number][] = []
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2 + seed
+    const k = 0.82 + 0.18 * Math.abs(Math.sin(seed * 3.1 + i * 1.7))
+    pts.push([
+      cx + Math.cos(a) * rx * k,
+      cy + Math.sin(a) * ry * k * (a % 6.28 > 3.14 ? 0.9 : 1),
+    ])
+  }
+  const mid = (p: [number, number], q: [number, number]) =>
+    `${((p[0] + q[0]) / 2).toFixed(1)},${((p[1] + q[1]) / 2).toFixed(1)}`
+  let d = `M${mid(pts[n - 1]!, pts[0]!)}`
+  for (let i = 0; i < n; i++) {
+    const p = pts[i]!
+    d += ` Q${p[0].toFixed(1)},${p[1].toFixed(1)} ${mid(p, pts[(i + 1) % n]!)}`
+  }
+  return d + " Z"
+}
+function StonePile({ t, start }: { t: number; start: number }) {
+  return (
+    <svg
+      viewBox="0 0 200 120"
+      width="100%"
+      height="100%"
+      style={{ overflow: "visible" }}
+    >
+      {STONES.map((st, i) => {
+        const k = prog(t, start + i * 0.22, 0.4)
+        const d = stonePath(st.cx, st.cy, st.rx, st.ry, st.seed)
+        return (
+          <g key={i}>
+            <path
+              d={d}
+              fill="rgba(110,98,82,0.38)"
+              opacity={prog(t, start + i * 0.22 + 0.3, 0.3)}
+            />
+            <Draw d={d} p={k} color={INK} width={3.2} />
+            <Draw
+              d={handLine(
+                st.cx - st.rx * 0.4,
+                st.cy + st.ry * 0.3,
+                st.cx + st.rx * 0.25,
+                st.cy + st.ry * 0.5,
+                0.12,
+              )}
+              p={prog(t, start + i * 0.22 + 0.3, 0.2)}
+              color="rgba(29,23,18,0.55)"
+              width={2.4}
+            />
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
 function Clipping({
   f,
   t,
   c,
   markAt,
+  stonesAt,
 }: {
   f: (n: number) => number
   t: number
   c: BoardClip
   markAt: number
+  stonesAt?: number
 }) {
   return (
     <div
@@ -434,6 +516,19 @@ function Clipping({
           </div>
         ) : null}
       </div>
+      {stonesAt != null && Number.isFinite(stonesAt) ? (
+        <div
+          style={{
+            position: "absolute",
+            right: f(16),
+            bottom: f(14),
+            width: f(165),
+            height: f(99),
+          }}
+        >
+          <StonePile t={t} start={stonesAt} />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -456,6 +551,10 @@ export type BoardClip = {
   rough?: boolean
   /** The charge sheet's warm aged paper instead of the newsprint scan. */
   aged?: boolean
+  /** A pile of stones drawn by hand in the bottom-right corner, stone by
+   *  stone from this word (owner, Paralytic 2026-10-20: the clipping sat
+   *  still too long). */
+  stonesOn?: string | number
 }
 type BoardPhoto = {
   kind: "photo"
@@ -1513,6 +1612,9 @@ export function VoxBoard({
                 t={t}
                 c={it}
                 markAt={at(words, it.markOn ?? it.mark, a + 1)}
+                {...(it.stonesOn != null
+                  ? { stonesAt: at(words, it.stonesOn, Infinity) }
+                  : {})}
               />
             ) : it.kind === "photo" ? (
               <Photo
