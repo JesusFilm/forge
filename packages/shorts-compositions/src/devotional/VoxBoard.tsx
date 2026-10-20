@@ -514,6 +514,24 @@ type BoardFlow = {
   steps: { text: string; on: string; ok?: boolean }[]
   home: { text: string; on: string; houseOn?: string }
 }
+/** A rubber stamp slammed onto the board ("BLASPHEMY"): red caps in a
+ *  double frame, landing from large with a small shake. */
+type BoardStamp = {
+  kind: "stamp"
+  id: string
+  x: number
+  y: number
+  w: number
+  rot?: number
+  on?: string | number
+  text: string
+}
+/** A red thread pinned between evidence (canvas units), drawn when `on`
+ *  is said (the case file, owner, Paralytic 2026-10-20). */
+export type BoardThread = {
+  on: string | number
+  points: [number, number][]
+}
 export type BoardItem =
   | BoardClip
   | BoardPhoto
@@ -521,11 +539,16 @@ export type BoardItem =
   | BoardNote
   | BoardMap
   | BoardFlow
+  | BoardStamp
 
 export type BoardSpec = {
   /** Canvas size in frame units. */
   width: number
   height: number
+  /** `cork` (default) or `desk`: dark wood, everything taped down (the
+   *  case file, owner, Paralytic 2026-10-20). */
+  surface?: "cork" | "desk"
+  threads?: BoardThread[]
   items: BoardItem[]
   /** Camera: centre (canvas units) and zoom, from the word `on`. */
   shots: { on: string | number; x: number; y: number; zoom: number }[]
@@ -1016,11 +1039,14 @@ export function VoxBoard({
   t,
   words,
   spec,
+  outAt,
 }: {
   f: (n: number) => number
   t: number
   words: ReadonlyArray<TimedWord>
   spec: BoardSpec
+  /** The closing turn's arrival: the board darkens under it. */
+  outAt?: number
 }) {
   // Camera: hold each shot, glide to the next in 0.9s starting a beat early.
   const shots = spec.shots
@@ -1071,23 +1097,45 @@ export function VoxBoard({
           transform: `translate(${f(fx - x * z).toFixed(2)}px, ${f(fy - y * z).toFixed(2)}px) scale(${z.toFixed(4)})`,
         }}
       >
-        {/* The board: warm cork, darker to the edges. */}
-        <div
-          style={{
-            position: "absolute",
-            inset: -f(400),
-            background: `radial-gradient(ellipse at 50% 45%, #a4825a 0%, #8a6a45 55%, #5b4129 100%)`,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: -f(400),
-            backgroundImage: `radial-gradient(rgba(40,25,10,0.35) 1px, transparent 1.6px), radial-gradient(rgba(255,240,210,0.12) 1px, transparent 1.6px)`,
-            backgroundSize: `${f(9)}px ${f(9)}px, ${f(13)}px ${f(13)}px`,
-            backgroundPosition: `0 0, ${f(4)}px ${f(6)}px`,
-          }}
-        />
+        {spec.surface === "desk" ? (
+          <>
+            {/* A dark walnut desk under a lamp: grain, then a warm pool. */}
+            <div
+              style={{
+                position: "absolute",
+                inset: -f(400),
+                background: `repeating-linear-gradient(92deg, #3b2617 0px, #45301d ${f(14)}px, #36231a ${f(29)}px, #4a321f ${f(47)}px, #3b2617 ${f(63)}px)`,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: -f(400),
+                background: `radial-gradient(ellipse at 50% 42%, rgba(255,214,150,0.28) 0%, rgba(255,200,130,0.08) 40%, rgba(0,0,0,0.45) 100%)`,
+              }}
+            />
+          </>
+        ) : (
+          <>
+            {/* The board: warm cork, darker to the edges. */}
+            <div
+              style={{
+                position: "absolute",
+                inset: -f(400),
+                background: `radial-gradient(ellipse at 50% 45%, #a4825a 0%, #8a6a45 55%, #5b4129 100%)`,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: -f(400),
+                backgroundImage: `radial-gradient(rgba(40,25,10,0.35) 1px, transparent 1.6px), radial-gradient(rgba(255,240,210,0.12) 1px, transparent 1.6px)`,
+                backgroundSize: `${f(9)}px ${f(9)}px, ${f(13)}px ${f(13)}px`,
+                backgroundPosition: `0 0, ${f(4)}px ${f(6)}px`,
+              }}
+            />
+          </>
+        )}
         {spec.items.map((it) => {
           // On the board from the start unless an item names its word: the
           // camera travels to things already there (owner, 2026-10-13).
@@ -1118,6 +1166,27 @@ export function VoxBoard({
               <MapSheet f={f} t={t} m={it} words={words} />
             ) : it.kind === "flow" ? (
               <FlowSheet f={f} t={t} fl={it} words={words} />
+            ) : it.kind === "stamp" ? (
+              <div
+                style={{
+                  width: f(it.w),
+                  border: `${f(6)}px double ${RED}`,
+                  padding: `${f(10)}px ${f(16)}px`,
+                  fontFamily: SANS,
+                  fontWeight: 800,
+                  fontSize: f(it.w / Math.max(6, it.text.length * 0.78)),
+                  letterSpacing: f(4),
+                  textTransform: "uppercase",
+                  color: RED,
+                  textAlign: "center",
+                  opacity: 0.88,
+                  // Ink on paper, not a sticker: a faint mottle.
+                  mixBlendMode: "multiply",
+                  transform: `scale(${(1 + 0.5 * (1 - prog(t, a, 0.22))).toFixed(4)})`,
+                }}
+              >
+                {it.text}
+              </div>
             ) : it.kind === "strip" ? (
               <div
                 style={{
@@ -1184,7 +1253,56 @@ export function VoxBoard({
             </div>
           )
         })}
+        {spec.threads?.length ? (
+          <svg
+            width={f(spec.width)}
+            height={f(spec.height)}
+            viewBox={`0 0 ${spec.width} ${spec.height}`}
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              overflow: "visible",
+            }}
+          >
+            {spec.threads.map((th, i) => {
+              const k = prog(t, at(words, th.on, Infinity), 0.8)
+              if (k <= 0) return null
+              const d = th.points
+                .map(([px, py], j) => `${j ? "L" : "M"}${px},${py}`)
+                .join(" ")
+              return (
+                <g key={i}>
+                  <Draw d={d} p={k} color="#b3261e" width={3.5} />
+                  {th.points.map(([px, py], j) => (
+                    <circle
+                      key={j}
+                      cx={px}
+                      cy={py}
+                      r={9}
+                      fill="#c8412f"
+                      stroke="rgba(0,0,0,0.35)"
+                      strokeWidth={2}
+                      opacity={Math.min(1, k * 2)}
+                    />
+                  ))}
+                </g>
+              )
+            })}
+          </svg>
+        ) : null}
       </div>
+      {outAt != null ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#000",
+            opacity: 0.72 * prog(t, outAt - 0.4, 0.8),
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
       {/* A soft vignette on the frame, like a lens. */}
       <div
         style={{

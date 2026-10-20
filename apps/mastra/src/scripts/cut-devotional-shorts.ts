@@ -647,15 +647,15 @@ async function main() {
         ;(m.shortFact as { voxHistory?: unknown }).voxHistory = JSON.parse(
           arg("history-vox")!,
         )
-        // `--history-photo=<path>`: the still the charge sheet pins in as
-        // its `accused.photoFile` (style "casefile"), copied into the stage.
-        const photo = (
-          m.shortFact as {
-            voxHistory?: { casefile?: { accused?: { photoFile?: string } } }
-          }
-        ).voxHistory?.casefile?.accused?.photoFile
-        if (photo && arg("history-photo")) {
-          await copyFile(arg("history-photo")!, path.join(stage, photo))
+        // `--history-photo=<path,path>`: film stills the spec pins up (the
+        // board's photos, the charge sheet's accused), copied into the stage
+        // under their own names.
+        for (const src of (arg("history-photo") ?? "").split(",")) {
+          if (src.trim())
+            await copyFile(
+              src.trim(),
+              path.join(stage, path.basename(src.trim())),
+            )
         }
       }
       // A film short plays the film's own sound; `--music-film-verse` adds the

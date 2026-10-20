@@ -251,6 +251,9 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           t={t}
           words={words}
           spec={voxHistory.board as BoardSpec}
+          {...(fact?.closeCard && words.length
+            ? { outAt: words[words.length - 1].endSec + 0.5 }
+            : {})}
         />
       ) : drawn && voxHistory?.style === "notebook" ? (
         <VoxNotebook
@@ -1226,7 +1229,9 @@ function ReflectionLayout({
             position: "absolute",
             // Same gap below four lines of text as the Figma keeps below
             // three (1068 - 614 - 89*3 = 187, less the fourth line).
-            top: f(REFLECTION_TOP + 89 * 4 + 30),
+            // 34 lower than the Figma's gap (owner, Paralytic 2026-10-20:
+            // a big phrase sat right on the divider); still ends by 1430.
+            top: f(REFLECTION_TOP + 89 * 4 + 64),
             left: "50%",
             width: f(SAFE_COLUMN),
             transform: `translateX(-50%) translateY(${(1 - head) * f(10)}px)`,
