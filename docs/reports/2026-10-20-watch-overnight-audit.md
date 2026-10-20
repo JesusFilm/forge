@@ -153,7 +153,8 @@ Font trade-offs (#2834), stated plainly:
   (full `name` table kept).
 - A Latin page that contains any combining mark now loads all three files
   (about 250 KB).
-- A Russian-only page loads about 103 KB and a Vietnamese page about 190 KB.
+- Updated per-language transfer and timing results were not measured after the
+  combining-mark fix; the earlier Russian/Vietnamese figures are obsolete.
 - A mixed-script page can load all three files.
 - Kerning across two files is lost, about 1 CSS px per affected pair.
 - Not every locale gets faster. Latin-only pages gain the most.
@@ -177,7 +178,9 @@ Open performance ideas that need a decision, access or field data:
 
 - Blur placeholders only for the first cards per rail. Saves about 10 KB br
   per home HTML. Needs a design call.
-- Cloudflare brotli level for dynamic HTML. Saves about 15 KB per view.
+- Cloudflare brotli level for dynamic HTML. An offline compression comparison
+  suggests about 15 KB less per view; the actual infrastructure setting and
+  server cost remain unverified.
   Needs an infra check.
 - A client env module without classic zod. Saves about 67 KB br on every
   route. Needs a validation-policy decision.
