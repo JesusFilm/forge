@@ -267,6 +267,10 @@ function PrimaryAction({
  * fixture with public Mux streams. The poster layer underneath is
  * unaffected, so the hero never blanks while it waits. The watch-page
  * `HeroPlayer` follows the same rule for its preview.
+ *
+ * Only the passive intro waits. A viewer who presses Play or unmutes before
+ * `load` mounts the player at once (`viewerRequestedMedia`): a slow image
+ * further down the page must not hold back playback they asked for.
  */
 function useWindowLoaded() {
   const [loaded, setLoaded] = useState(false)
@@ -299,6 +303,7 @@ function WatchHomeTvMedia({
   onTimeUpdate,
   onWaiting,
   videoRef,
+  viewerRequestedMedia,
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
@@ -316,6 +321,8 @@ function WatchHomeTvMedia({
   onTimeUpdate: () => void
   onWaiting: () => void
   videoRef: MutableRefObject<HTMLVideoElement | null>
+  /** Play or unmute pressed before `load`: mount without waiting for it. */
+  viewerRequestedMedia: boolean
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
   const subtitleVttSrc = isMuted ? (activeSlide.subtitleVttSrc ?? null) : null
@@ -324,9 +331,10 @@ function WatchHomeTvMedia({
     : null
 
   const pageLoaded = useWindowLoaded()
+  const mediaAllowed = pageLoaded || viewerRequestedMedia
   useWatchHomeMutedSubtitles({
     activeSlideId: activeSlide.id,
-    mediaMounted: pageLoaded && Boolean(activeSlide.src),
+    mediaMounted: mediaAllowed && Boolean(activeSlide.src),
     onCueTextChange: onSubtitleCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
@@ -342,17 +350,17 @@ function WatchHomeTvMedia({
   )
   // One seam covers both slide builders. Memoized so the mounted element is
   // never handed a fresh string: a `src` swap reloads HLS from zero while the
-  // advance clock keeps counting. Null until the page's `load` event: see
-  // `useWindowLoaded`.
+  // advance clock keeps counting. Null until the page's `load` event or the
+  // viewer's own Play/unmute: see `useWindowLoaded`.
   const previewSrc = useMemo(
     () =>
-      pageLoaded && activeSlide.src
+      mediaAllowed && activeSlide.src
         ? applyMuxMaxResolution(
             activeSlide.src,
             WATCH_HOME_INTRO_MAX_RESOLUTION,
           )
         : null,
-    [activeSlide.src, pageLoaded],
+    [activeSlide.src, mediaAllowed],
   )
   return (
     <div
@@ -1257,6 +1265,17 @@ export function WatchHomeTvCarousel({
     player,
     videoRef,
   })
+  // Latched by an explicit Play or unmute, so the player mounts before `load`
+  // for a viewer who asked for it (see `useWindowLoaded`).
+  const [viewerRequestedMedia, setViewerRequestedMedia] = useState(false)
+  const handleToggleUserPaused = useCallback(() => {
+    if (isUserPaused) setViewerRequestedMedia(true)
+    toggleUserPaused()
+  }, [isUserPaused, toggleUserPaused])
+  const handleToggleMuted = useCallback(() => {
+    if (isMuted) setViewerRequestedMedia(true)
+    toggleMuted()
+  }, [isMuted, toggleMuted])
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
     setPlayer((current) => (current === next ? current : next))
   }, [])
@@ -1274,9 +1293,9 @@ export function WatchHomeTvCarousel({
       ) {
         return
       }
-      toggleMuted()
+      handleToggleMuted()
     },
-    [isMuted, toggleMuted],
+    [handleToggleMuted, isMuted],
   )
   // Chrome visibility is shell-level state that survives client-side
   // navigation, so arriving from a watch page whose player hid the header has
@@ -1347,6 +1366,7 @@ export function WatchHomeTvCarousel({
           onTimeUpdate={handleTimeUpdate}
           onWaiting={handleWaiting}
           videoRef={videoRef}
+          viewerRequestedMedia={viewerRequestedMedia}
           wrapperRef={wrapperRef}
         />
         <WatchHomeTvOverlay
@@ -1359,8 +1379,8 @@ export function WatchHomeTvCarousel({
           isUserPaused={isUserPaused}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
-          onToggleMuted={toggleMuted}
-          onToggleUserPaused={toggleUserPaused}
+          onToggleMuted={handleToggleMuted}
+          onToggleUserPaused={handleToggleUserPaused}
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}

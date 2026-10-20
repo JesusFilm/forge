@@ -57,6 +57,12 @@ Delivered:
 - The muted-subtitle hook re-runs when the player mounts. Without this, the
   subtitle track never reached a player that mounted after its effect had
   run. An existing test caught that.
+- Only the passive intro waits. Pressing Play (including under reduced
+  motion) or unmuting before `load` mounts the player at once. Pressing
+  Pause before `load` does not mount it; the late player then starts
+  paused. Added in review on 2026-10-20: the first version held an
+  explicit Play until `load`, which started playback about 8 s late when a
+  below-fold image was held for 8 s.
 - The buffer, the 480p cap and the pause and reduced-motion behaviour are
   unchanged.
 
@@ -74,8 +80,8 @@ every cold run:
 | 1280x800, 1x CPU, 20 ms, 20 Mbps  | first frame | 2,608-2,740 ms  | 2,548-2,938 ms  |
 
 On both throttled profiles the first segment already started only after
-`load`, so holding the player back costs it nothing. Stalls were 0 in every
-cold run.
+`load`, so holding the passive intro back did not delay its first frame in
+these runs. Stalls were 0 in every cold run.
 
 ## Constraints
 
@@ -88,14 +94,17 @@ cold run.
 - Do not shorten the 24-second read-ahead or lower the 480p cap to win a
   byte count. Both are documented design choices.
 - Keep the poster-first layer. The intro must never blank while it waits.
-- Known limit: a slow resource that delays `load` also delays the intro.
-  This is the same trade-off `HeroPlayer` already makes. A viewer's Pause
-  or Play pressed before `load` is respected once the player mounts.
+- Known limit: a slow resource that delays `load` also delays the passive
+  intro. This is the same trade-off `HeroPlayer` already makes. It must not
+  delay an explicit Play or unmute; those mount the player at once.
 
 ## Verification
 
 - `pnpm --filter @forge/web exec vitest run src/components/home`
 - The new test fails if the gate is removed and if `mediaMounted` is
   dropped from the subtitle effect's dependencies.
+- "mounts the intro player at once when the viewer presses Play before
+  load" fails if the mount ignores the viewer's request; "keeps waiting for
+  load when the viewer pauses before it" fails if Pause also mounts it.
 - In a production build, the home HTML has no `<mux-video>`. The first
   `stream.mux.com` request starts after `loadEventEnd`.

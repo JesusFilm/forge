@@ -531,6 +531,83 @@ describe("WatchHomePage", () => {
     }
   })
 
+  // Only the passive intro waits for `load`. A slow below-fold resource must
+  // not hold back playback the viewer explicitly asked for.
+  it("mounts the intro player at once when the viewer presses Play before load", async () => {
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    const originalMatchMedia = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(prefers-reduced-motion: reduce)",
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+      onchange: null,
+    })) as unknown as typeof window.matchMedia
+    const video = () =>
+      container.querySelector('[data-testid="watch-home-tv-video"]')
+    const toggle = () =>
+      container.querySelector<HTMLButtonElement>(
+        '[data-testid="watch-home-hero-pause-toggle"]',
+      )!
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [{ ...makeCard(), eyebrow: "Featured" }],
+            })}
+          />,
+        )
+      })
+      expect(video()).toBeNull()
+      expect(toggle().getAttribute("aria-label")).toBe("Play")
+
+      await act(async () => {
+        toggle().click()
+      })
+
+      expect(video()).not.toBeNull()
+      expect(toggle().getAttribute("aria-label")).toBe("Pause")
+    } finally {
+      readyState.mockRestore()
+      window.matchMedia = originalMatchMedia
+    }
+  })
+
+  it("keeps waiting for load when the viewer pauses before it", async () => {
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    const video = () =>
+      container.querySelector('[data-testid="watch-home-tv-video"]')
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [{ ...makeCard(), eyebrow: "Featured" }],
+            })}
+          />,
+        )
+      })
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>(
+            '[data-testid="watch-home-hero-pause-toggle"]',
+          )!
+          .click()
+      })
+      expect(video()).toBeNull()
+    } finally {
+      readyState.mockRestore()
+    }
+  })
+
   it("caps the requested rendition on a Mux hero stream", async () => {
     await act(async () => {
       root.render(
