@@ -683,6 +683,35 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it("returns focus to the language trigger when Escape closes the open dropdown", () => {
+    const onClose = vi.fn()
+    renderModal({ open: true, variants: baseVariants, onClose })
+
+    const trigger = $(
+      '[data-testid="watch-language-picker-modal"] [data-testid="language-combobox-trigger"]',
+    ) as HTMLButtonElement
+    act(() => {
+      trigger.click()
+    })
+    const search = $(
+      '[data-testid="language-combobox-popover"] input',
+    ) as HTMLInputElement
+    expect(document.activeElement).toBe(search)
+
+    // Dispatched from the focused search input, as a real key press is: the
+    // modal's capture-phase handler stops it before the input's own handler.
+    act(() => {
+      search.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      )
+    })
+
+    expect($('[data-testid="language-combobox-popover"]')).toBeNull()
+    expect($('[data-testid="watch-language-picker-modal"]')).not.toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(document.activeElement).toBe(trigger)
+  })
+
   it("re-opening after a cancelled change resets the draft to the current language", () => {
     renderModal({ open: true, variants: baseVariants })
     act(() => {
