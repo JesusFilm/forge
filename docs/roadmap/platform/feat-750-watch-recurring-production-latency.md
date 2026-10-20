@@ -110,3 +110,18 @@ Eight alternating local timing pairs overlap, and the fixture substitutes data
 and view dependencies. Persistent cache policy, deployment configuration and
 the production app remain unchanged. Keep this ticket in progress; owner review,
 normal authorized rollout and representative production acceptance are pending.
+
+## Remaining transport failure — 2026-10-20
+
+PR #2818 is now deployed and its 60-minute verification remains in progress.
+A retained inventory render shows one inventory-sized data-cache write,
+consistent with the intended work reduction. At 03:03:22 UTC, another English
+inventory document failed on its fetch to Admin GraphQL and invoked the legacy
+fallback, which returned 404. Trace `6ad6d9fa0000000013358a2cff05074d` and its
+four duplicate console records retain only `TypeError: fetch failed`.
+
+`docs/plans/2026-10-20-watch-transport-cause-codes.md` scopes a diagnostic repair:
+preserve allowlisted transport codes from bounded Error causes in the existing
+console formatter. It does not retry requests or establish that memoization
+caused the failure. Underlying network cause and sustained incident recovery
+remain unproven; keep this ticket in progress.

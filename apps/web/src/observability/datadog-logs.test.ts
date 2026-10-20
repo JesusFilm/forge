@@ -81,6 +81,104 @@ describe("formatConsoleArguments", () => {
     expect(message).toContain("message Error: boom")
     expect(message).toContain("{ ok: true }")
   })
+
+  it("retains an allowlisted transport cause code without the cause payload", () => {
+    const cause = Object.assign(new Error("private upstream URL"), {
+      code: "ECONNRESET",
+      headers: { Authorization: "private-token" },
+      address: "private-address",
+    })
+    const error = new TypeError("fetch failed", { cause })
+    error.stack = "TypeError: fetch failed\n    at fixture"
+
+    const message = formatConsoleArguments([error])
+
+    expect(message).toBe(
+      "TypeError: fetch failed [transport_codes=ECONNRESET]\n    at fixture",
+    )
+    for (const secret of [
+      "private upstream URL",
+      "Authorization",
+      "private-token",
+      "private-address",
+    ]) {
+      expect(message).not.toContain(secret)
+    }
+  })
+
+  it("finds distinct codes in nested aggregate causes", () => {
+    const causes = [
+      Object.assign(new Error("first"), { code: "ECONNREFUSED" }),
+      Object.assign(new Error("second"), { code: "ENETUNREACH" }),
+      Object.assign(new Error("duplicate"), { code: "ECONNREFUSED" }),
+    ]
+    const error = new TypeError("fetch failed", {
+      cause: new AggregateError(causes, "private aggregate detail"),
+    })
+    error.stack = "TypeError: fetch failed"
+
+    expect(formatConsoleArguments([error])).toBe(
+      "TypeError: fetch failed [transport_codes=ECONNREFUSED,ENETUNREACH]",
+    )
+  })
+
+  it("preserves output for errors with unknown codes or no causes", () => {
+    const error = new Error("original", {
+      cause: { code: "secret-arbitrary-value", message: "private detail" },
+    })
+    error.stack = "Error: original\n    at fixture"
+
+    expect(formatConsoleArguments([error])).toBe(error.stack)
+  })
+
+  it("handles cyclic causes and does not mutate the original error", () => {
+    const error = Object.assign(new Error("original"), {
+      code: "UND_ERR_SOCKET",
+      cause: undefined as unknown,
+    })
+    error.cause = error
+    const stack = error.stack
+
+    const message = formatConsoleArguments([error])
+
+    expect(message.match(/UND_ERR_SOCKET/g)).toHaveLength(1)
+    expect(error.stack).toBe(stack)
+    expect(error.cause).toBe(error)
+  })
+
+  it("bounds traversal through a long cause chain", () => {
+    let cause: unknown = { code: "ECONNRESET" }
+    for (let index = 0; index < 20; index += 1) cause = { cause }
+    const error = new Error("original", { cause })
+
+    expect(formatConsoleArguments([error])).toBe(error.stack)
+  })
+
+  it("never evaluates cause or aggregate member getters", () => {
+    const getter = vi.fn(() => {
+      throw new Error("getter must not run")
+    })
+    const error = new Error("original")
+    Object.defineProperty(error, "cause", { get: getter })
+    Object.defineProperty(error, "code", { get: getter })
+    const members = [undefined]
+    Object.defineProperty(members, "0", { get: getter })
+    Object.defineProperty(error, "errors", { value: members })
+
+    expect(formatConsoleArguments([error])).toBe(error.stack)
+    expect(getter).not.toHaveBeenCalled()
+  })
+
+  it("contains proxy inspection failures", () => {
+    const { proxy, revoke } = Proxy.revocable({}, {})
+    revoke()
+    const error = new Error("original", { cause: proxy })
+    const members = Proxy.revocable([], {})
+    members.revoke()
+    Object.defineProperty(error, "errors", { value: members.proxy })
+
+    expect(formatConsoleArguments([error])).toBe(error.stack)
+  })
 })
 
 describe("buildDatadogSyslogMessage", () => {
@@ -164,6 +262,19 @@ describe("configureDatadogLogForwarding", () => {
     expect(String(send.mock.calls[0]?.[0])).toContain(
       '"dd.trace_id":"123456789"',
     )
+
+    console.error(
+      new TypeError("fetch failed", {
+        cause: { code: "ECONNRESET", message: "private cause payload" },
+      }),
+    )
+
+    expect(send).toHaveBeenCalledTimes(2)
+    const failure = readPayload(String(send.mock.calls[1]?.[0]))
+    expect(failure.message).toContain("[transport_codes=ECONNRESET]")
+    expect(failure.message).not.toContain("private cause payload")
+    expect(failure["dd.trace_id"]).toBe("123456789")
+    expect(failure["dd.span_id"]).toBe("987654321")
   })
 })
 
