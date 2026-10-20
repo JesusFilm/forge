@@ -496,6 +496,12 @@ export const devotionalInputPropsSchema = z.object({
           }),
         )
         .optional(),
+      /** Reflection: weighty phrases set on their own line, larger, in PT
+       *  Serif italic (owner, Paralytic 2026-10-20). `size` in Figma units,
+       *  default 86 (body 61). */
+      emphasis: z
+        .array(z.object({ phrase: z.string(), size: z.number().optional() }))
+        .optional(),
       /** Reflection: the credit's round portrait (source-portraits id). */
       portrait: z.string().optional(),
       label: z.string().optional(),

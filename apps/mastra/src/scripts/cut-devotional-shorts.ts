@@ -6,6 +6,7 @@
  *     [--only=language,history] [--stills] \
  *     [--film-turn=139.1-172.6] [--reflection=0-1] [--no-model]
  *     [--film-open="Is this worth celebrating?"] [--film-close="..."]
+ *     [--reflection-emphasis="on the surface;his sins were forgiven=104"]
  *     [--film-lead=62.98-65.23]  (the one shot under the opening question;
  *                                 the --film-verse window then starts as given)
  *     [--studio=<dir>]   (history only: a Shorts Studio plan + audio to
@@ -817,6 +818,27 @@ async function main() {
           })
           console.log(`  history question: "${question}"`)
         }
+      }
+      // Weighty phrases set larger on their own line (owner, Paralytic
+      // 2026-10-20): "on the surface;his sins were forgiven=104".
+      if (
+        short.kind === "reflection" &&
+        arg("reflection-emphasis") &&
+        m.shortFact
+      ) {
+        ;(m.shortFact as { emphasis?: unknown }).emphasis = arg(
+          "reflection-emphasis",
+        )!
+          .split(";")
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .map((x) => {
+            const [phrase, size] = x.split("=")
+            return {
+              phrase: phrase.trim(),
+              ...(size ? { size: Number(size) } : {}),
+            }
+          })
       }
       if (short.kind === "history" && arg("history-sub") && m.shortFact) {
         ;(m.shortFact as { closeSub?: string }).closeSub = arg("history-sub")

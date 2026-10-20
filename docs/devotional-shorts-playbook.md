@@ -361,6 +361,15 @@ each word fading in over 0.18 s as it is said, landing gold and cooling to
 the body colour over 0.42 s; no rise or blur: the kinetic rise read as
 jittery here). Sentences of four words or fewer: StampLine soft.
 
+Weighty phrases (owner, Paralytic 2026-10-20: "too uniform"): pick three or
+four per short with `--reflection-emphasis="on the surface;deeper than we
+asked;his sins were forgiven=108"`, not every sentence, the last one
+largest. Each sits on its own line in PT Serif italic (86, the last 108),
+lands gold and settles to a soft gold #e8cf9c. A sentence that would run
+past 1440 px lifts as a whole (never above 330 Figma units); its lines are
+balanced and a short word before the phrase never hangs alone. Not the
+intro's kinetic stack: the body stays Inter 61.
+
 Label: "From the Full Devotional:" on top (below).
 
 Credit: the devotional's commentary (the long form attributes the whole

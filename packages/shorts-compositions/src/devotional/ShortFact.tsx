@@ -110,7 +110,43 @@ const EASE_OUT = Easing.bezier(0.2, 0.7, 0.2, 1)
 
 type Word = { word: string; startSec: number; endSec: number }
 /** A word on the short's own clock (seconds from frame 0). */
-type TimedWord = Word & { card: number }
+type TimedWord = Word & {
+  card: number
+  /** Reflection emphasis: the word belongs to a weighty phrase set on its
+   *  own line at this size (Figma units). */
+  big?: number
+}
+
+/** Letters only, lower case: how emphasis phrases meet spoken words. */
+const bare = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "")
+
+/** Marks the spoken words of each emphasis phrase (owner, Paralytic
+ *  2026-10-20: weighty words larger, especially the last ones). A phrase
+ *  must sit inside one sentence; the first match from the start wins. */
+export function markEmphasis(
+  words: TimedWord[],
+  emphasis: ReadonlyArray<{ phrase: string; size?: number }> | undefined,
+): TimedWord[] {
+  if (!emphasis?.length) return words
+  const out = words.map((w) => ({ ...w }))
+  const keys = out.map((w) => bare(w.word))
+  for (const e of emphasis) {
+    const want = e.phrase.split(/\s+/).map(bare).filter(Boolean)
+    if (!want.length) continue
+    for (let i = 0; i + want.length <= out.length; i++) {
+      const hit = want.every(
+        (k, j) => keys[i + j] === k && out[i + j].card === out[i].card,
+      )
+      if (!hit || out[i].big) continue
+      for (let j = 0; j < want.length; j++)
+        out[i + j].big = e.size ?? EMPHASIS_SIZE
+      break
+    }
+  }
+  return out
+}
+/** Body 61, a weighty phrase a size and a half up (Figma units). */
+const EMPHASIS_SIZE = 86
 
 function wordsOnClock(
   cards: ReadonlyArray<DevotionalCard>,
@@ -141,10 +177,13 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
     Math.round((props.outroHoldSec ?? 1.5) * fps),
     0,
   )
-  const words = wordsOnClock(
-    props.cards,
-    frames.map((x) => x.from),
-    fps,
+  const words = markEmphasis(
+    wordsOnClock(
+      props.cards,
+      frames.map((x) => x.from),
+      fps,
+    ),
+    fact?.layout === "reflection" ? fact.emphasis : undefined,
   )
   const t = frame / fps
   const total = durationInFrames / fps
@@ -894,6 +933,50 @@ function KineticText({
 /** As in the long form (DevotionalVideo WordReveal): a spoken word lands in
  *  the accent and cools to the body colour over this long. */
 const ACCENT_SETTLE_SEC = 0.42
+/** The reflection's text ends above this (Figma units; 1440 of 1920). */
+const REFLECTION_BOTTOM = 1200
+/** A lifted sentence never rises above this (just under the label). */
+const REFLECTION_LIFT_MIN_TOP = 330
+
+/** Lines a run of words takes when wrapped greedily at `cap` characters. */
+function wrappedLines(words: ReadonlyArray<string>, cap: number): number {
+  let lines = 0
+  let used = 0
+  for (const w of words) {
+    const n = [...w].length
+    if (used === 0) {
+      lines++
+      used = n
+    } else if (used + 1 + n <= cap) used += 1 + n
+    else {
+      lines++
+      used = n
+    }
+  }
+  return lines
+}
+
+/** Estimated height (Figma units) of one reveal sentence: body lines at 89
+ *  (Inter 61 holds about 18 characters in the 640 column), each large
+ *  phrase on its own lines (PT Serif italic, about 0.45 em a character).
+ *  Errs tall. */
+function sentenceHeight(sentence: ReadonlyArray<TimedWord>): number {
+  let h = 0
+  for (let i = 0; i < sentence.length; ) {
+    const big = sentence[i].big
+    const run: string[] = []
+    while (i < sentence.length && sentence[i].big === big)
+      run.push(sentence[i++].word)
+    h += big
+      ? big * 1.12 * wrappedLines(run, Math.floor(SAFE_COLUMN / (big * 0.45)))
+      : 89 * wrappedLines(run, 18)
+  }
+  return h
+}
+
+/** Where a weighty reflection phrase settles: a soft gold, so it keeps its
+ *  weight after the voice moves on. */
+const EMPHASIS_SETTLED = "#e8cf9c"
 
 function RevealText({
   f,
@@ -942,8 +1025,21 @@ function RevealText({
     [1, 0],
     clamp,
   )
+  // A sentence carrying a large phrase can run past the bottom UI zone (RU
+  // Paralytic: six lines plus «его грехи прощены»). Lift that sentence just
+  // enough to end above it; the credit is gone by then.
+  const lift = Math.min(
+    REFLECTION_TOP - REFLECTION_LIFT_MIN_TOP,
+    Math.max(0, REFLECTION_TOP + sentenceHeight(sentence) - REFLECTION_BOTTOM),
+  )
   return (
-    <div style={{ ...box, opacity: out }}>
+    <div
+      style={{
+        ...box,
+        opacity: out,
+        ...(lift > 0 ? { transform: `translateY(${-f(lift)}px)` } : {}),
+      }}
+    >
       <p
         style={{
           margin: 0,
@@ -953,29 +1049,66 @@ function RevealText({
           color: "#eae6df",
           textAlign: "center",
           textShadow: `0 ${f(2)}px ${f(18)}px rgba(0,0,0,0.5)`,
+          // Even lines, so no word hangs alone over a large phrase («что»,
+          // "is" on Paralytic, 2026-10-20).
+          ...(lift > 0 || sentence.some((w) => w.big)
+            ? { textWrap: "balance" as const }
+            : {}),
         }}
       >
         {sentence.map((w, i) => {
+          const warmOf = (x: TimedWord) =>
+            Math.min(
+              interpolate(
+                t,
+                [x.startSec - 0.06, x.startSec + 0.06],
+                [0, 1],
+                clamp,
+              ),
+              interpolate(
+                t,
+                [x.startSec + 0.06, x.startSec + 0.06 + ACCENT_SETTLE_SEC],
+                [1, 0],
+                clamp,
+              ),
+            )
           const opacity = interpolate(
             t,
             [w.startSec - 0.06, w.startSec + 0.12],
             [0, 1],
             clamp,
           )
-          const warm = Math.min(
-            interpolate(
-              t,
-              [w.startSec - 0.06, w.startSec + 0.06],
-              [0, 1],
-              clamp,
-            ),
-            interpolate(
-              t,
-              [w.startSec + 0.06, w.startSec + 0.06 + ACCENT_SETTLE_SEC],
-              [1, 0],
-              clamp,
-            ),
-          )
+          const prevBig = i > 0 ? sentence[i - 1].big : undefined
+          const nextBig = sentence[i + 1]?.big
+          if (w.big) {
+            // A weighty phrase: its own line, PT Serif italic a size and a
+            // half up, landing gold and settling to a soft gold, not white.
+            const first = !prevBig
+            const last = !nextBig
+            return (
+              <span key={i}>
+                {first ? <br /> : null}
+                <span
+                  style={{
+                    opacity,
+                    fontFamily: PT_SERIF,
+                    fontStyle: "italic",
+                    fontSize: f(w.big),
+                    lineHeight: `${f(w.big * 1.12)}px`,
+                    color: interpolateColors(
+                      warmOf(w),
+                      [0, 1],
+                      [EMPHASIS_SETTLED, GOLD],
+                    ),
+                  }}
+                >
+                  {w.word}
+                </span>
+                {last ? i < sentence.length - 1 ? <br /> : null : " "}
+              </span>
+            )
+          }
+          const warm = warmOf(w)
           return (
             <span key={i}>
               <span
@@ -986,7 +1119,15 @@ function RevealText({
               >
                 {w.word}
               </span>
-              {i < sentence.length - 1 ? wordGap(w.word) : ""}
+              {i < sentence.length - 1
+                ? // A short word just before a large phrase keeps company
+                  // with the word before it, never a line of its own («что»).
+                  !sentence[i + 1].big &&
+                  sentence[i + 2]?.big &&
+                  [...sentence[i + 1].word].length <= 4
+                  ? "\u00a0"
+                  : wordGap(w.word)
+                : ""}
             </span>
           )
         })}
