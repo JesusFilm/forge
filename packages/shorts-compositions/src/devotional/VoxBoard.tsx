@@ -249,6 +249,7 @@ export function Photo({
   ratio = 0.62,
   caption,
   focusX = 50,
+  clean = false,
 }: {
   f: (n: number) => number
   file: string
@@ -256,6 +257,10 @@ export function Photo({
   ratio?: number
   caption?: string
   focusX?: number
+  /** A clear print: lighter, shadows lifted, no coarse halftone (owner,
+   *  Paralytic 2026-10-20: the dots read as spots on a face, and the dark
+   *  stills were unreadable). */
+  clean?: boolean
 }) {
   return (
     <div
@@ -281,7 +286,9 @@ export function Photo({
             height: "100%",
             objectFit: "cover",
             objectPosition: `${focusX}% 50%`,
-            filter: "grayscale(1) sepia(0.55) contrast(1.25) brightness(0.95)",
+            filter: clean
+              ? "grayscale(0.85) sepia(0.35) brightness(1.35) contrast(0.95) saturate(0.9)"
+              : "grayscale(1) sepia(0.55) contrast(1.25) brightness(0.95)",
           }}
         />
         {/* Halftone dots over the print. */}
@@ -292,7 +299,7 @@ export function Photo({
             backgroundImage: `radial-gradient(rgba(40,25,10,0.55) 32%, transparent 36%)`,
             backgroundSize: `${f(7)}px ${f(7)}px`,
             mixBlendMode: "multiply",
-            opacity: 0.45,
+            opacity: clean ? 0 : 0.45,
           }}
         />
       </div>
@@ -443,6 +450,7 @@ export type BoardClip = {
 }
 type BoardPhoto = {
   kind: "photo"
+  clean?: boolean
   id: string
   x: number
   y: number
@@ -526,6 +534,44 @@ type BoardStamp = {
   on?: string | number
   text: string
 }
+/** A printed form with fields filled in by hand as the voice reaches them
+ *  (the case file's charge sheet): a title, then label / value rows, a value
+ *  optionally ringed in red. */
+type BoardForm = {
+  kind: "form"
+  id: string
+  x: number
+  y: number
+  w: number
+  rot?: number
+  on?: string | number
+  title: string
+  subtitle?: string
+  rows: {
+    label: string
+    value: string
+    on: string | number
+    color?: "ink" | "red"
+    ring?: boolean
+  }[]
+}
+/** An index card: a red rule on top, a typed heading, ruled lines and a
+ *  handwritten line on them. */
+type BoardCard = {
+  kind: "card"
+  id: string
+  x: number
+  y: number
+  w: number
+  rot?: number
+  on?: string | number
+  heading: string
+  hand: string
+  handOn?: string | number
+  ring?: string
+  ringOn?: string
+  source?: string
+}
 /** A red thread pinned between evidence (canvas units), drawn when `on`
  *  is said (the case file, owner, Paralytic 2026-10-20). */
 export type BoardThread = {
@@ -540,6 +586,8 @@ export type BoardItem =
   | BoardMap
   | BoardFlow
   | BoardStamp
+  | BoardForm
+  | BoardCard
 
 export type BoardSpec = {
   /** Canvas size in frame units. */
@@ -547,7 +595,13 @@ export type BoardSpec = {
   height: number
   /** `cork` (default) or `desk`: dark wood, everything taped down (the
    *  case file, owner, Paralytic 2026-10-20). */
-  surface?: "cork" | "desk"
+  surface?: "cork" | "desk" | "slate"
+  /** A torch: a circle of light on the shot's centre, the rest in shadow;
+   *  it opens out on a wide shot (owner, Paralytic 2026-10-20). */
+  spotlight?: boolean
+  /** Where on the frame the camera puts its target (frame units, default
+   *  438); left of centre leaves room before the phone's right rail. */
+  focusX?: number
   threads?: BoardThread[]
   items: BoardItem[]
   /** Camera: centre (canvas units) and zoom, from the word `on`. */
@@ -675,6 +729,232 @@ function HandLabel({
       }}
     >
       {text}
+    </div>
+  )
+}
+
+/** The charge sheet: printed title and labels, values written in by hand
+ *  when their words are said, a red ring round the ones that matter. */
+function FormSheet({
+  f,
+  t,
+  fm,
+  words,
+}: {
+  f: (n: number) => number
+  t: number
+  fm: BoardForm
+  words: ReadonlyArray<TimedWord>
+}) {
+  const pad = 40
+  const inner = fm.w - pad * 2
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: f(fm.w),
+        background: `radial-gradient(120% 90% at 40% 30%, #efe7d4 0%, #e3d8bd 75%, #d8caa8 100%)`,
+        padding: `${f(30)}px ${f(pad)}px ${f(26)}px`,
+        boxShadow: `0 ${f(12)}px ${f(24)}px rgba(0,0,0,0.5)`,
+      }}
+    >
+      <div
+        style={{
+          textAlign: "center",
+          fontFamily: SERIF,
+          fontWeight: 700,
+          fontSize: f(40),
+          letterSpacing: f(7),
+          textTransform: "uppercase",
+          color: INK,
+        }}
+      >
+        {fm.title}
+      </div>
+      {fm.subtitle ? (
+        <div
+          style={{
+            textAlign: "center",
+            fontFamily: SANS,
+            fontWeight: 500,
+            fontSize: f(16),
+            letterSpacing: f(3),
+            textTransform: "uppercase",
+            color: "#7a6a55",
+            paddingTop: f(4),
+          }}
+        >
+          {fm.subtitle}
+        </div>
+      ) : null}
+      <div
+        style={{
+          margin: `${f(14)}px 0 ${f(6)}px`,
+          borderTop: `${f(2)}px solid ${INK}`,
+          borderBottom: `${f(1)}px solid ${INK}`,
+          height: f(5),
+          opacity: 0.7,
+        }}
+      />
+      {fm.rows.map((r, i) => {
+        const start = at(words, r.on, Infinity)
+        const size = 52
+        const textW = Math.min(inner, r.value.length * size * 0.42)
+        const ringP = prog(t, start + Math.max(0.3, r.value.length / 22), 0.7)
+        return (
+          <div key={i} style={{ position: "relative", height: f(104) }}>
+            <div
+              style={{
+                paddingTop: f(10),
+                fontFamily: SANS,
+                fontWeight: 600,
+                fontSize: f(16),
+                letterSpacing: f(3),
+                textTransform: "uppercase",
+                color: "#7a6a55",
+              }}
+            >
+              {r.label}
+            </div>
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: f(92),
+                borderTop: `${f(2)}px dotted rgba(29,23,18,0.35)`,
+              }}
+            />
+            <div style={{ position: "absolute", left: f(8), top: f(28) }}>
+              <Written
+                t={t}
+                start={start}
+                text={r.value}
+                style={{
+                  fontFamily: HAND,
+                  fontWeight: 700,
+                  fontSize: f(size),
+                  lineHeight: 1.1,
+                  color: r.color === "red" ? RED : INK,
+                }}
+              />
+            </div>
+            {r.ring ? (
+              <svg
+                width={f(inner)}
+                height={f(124)}
+                viewBox={`0 0 ${inner} 124`}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  overflow: "visible",
+                }}
+              >
+                <Draw
+                  d={handEllipse(8 + textW / 2, 60, textW / 2 + 26, 36, i + 3)}
+                  p={ringP}
+                  color={RED}
+                  width={4.5}
+                />
+              </svg>
+            ) : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+/** An index card: red rule on top, a typed heading, blue ruled lines with
+ *  a handwritten line on them, a word of it banded in red. */
+function IndexCard({
+  f,
+  t,
+  c,
+  words,
+  a,
+}: {
+  f: (n: number) => number
+  t: number
+  c: BoardCard
+  words: ReadonlyArray<TimedWord>
+  a: number
+}) {
+  const handAt = at(words, c.handOn, a + 0.6)
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: f(c.w),
+        background: "#fbf8f0",
+        padding: `${f(26)}px ${f(34)}px ${f(24)}px`,
+        boxShadow: `0 ${f(10)}px ${f(20)}px rgba(0,0,0,0.45)`,
+        backgroundImage: `linear-gradient(#d24b3c, #d24b3c), repeating-linear-gradient(transparent 0, transparent ${f(55)}px, rgba(70,110,170,0.32) ${f(55)}px, rgba(70,110,170,0.32) ${f(57)}px)`,
+        backgroundSize: `100% ${f(3)}px, 100% 100%`,
+        backgroundPosition: `0 ${f(84)}px, 0 ${f(86)}px`,
+        backgroundRepeat: "no-repeat, repeat",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: SERIF,
+          fontWeight: 700,
+          fontSize: f(40),
+          lineHeight: 1.1,
+          color: INK,
+          height: f(64),
+        }}
+      >
+        {c.heading}
+      </div>
+      <div
+        style={{
+          fontFamily: HAND,
+          fontWeight: 700,
+          fontSize: f(46),
+          lineHeight: `${f(57)}px`,
+          color: INK,
+          paddingTop: f(6),
+          whiteSpace: "normal",
+        }}
+      >
+        {/* Word by word, so a wrapped line never shows half a word. */}
+        {c.hand.split(" ").map((w, i, all) => {
+          const k = prog(t, handAt + i * 0.14, 0.3)
+          const ringed =
+            c.ring && w.toLowerCase().includes(c.ring.toLowerCase())
+          return (
+            <span key={i} style={{ opacity: k }}>
+              {ringed ? (
+                <Band
+                  p={prog(t, at(words, c.ringOn ?? c.ring, handAt + 1), 0.4)}
+                  color={RED}
+                >
+                  {w}
+                </Band>
+              ) : (
+                w
+              )}
+              {i < all.length - 1 ? " " : ""}
+            </span>
+          )
+        })}
+      </div>
+      {c.source ? (
+        <div
+          style={{
+            fontFamily: SERIF,
+            fontStyle: "italic",
+            fontSize: f(18),
+            color: "rgba(29,23,18,0.6)",
+            paddingTop: f(10),
+            textAlign: "right",
+          }}
+        >
+          {c.source}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -1075,7 +1355,7 @@ export function VoxBoard({
   }
   // A slow push while a shot holds.
   z *= 1 + 0.025 * Math.min(1, Math.max(0, t - cam.at) / 6)
-  const fx = 438
+  const fx = spec.focusX ?? 438
   const fy = 760
   return (
     <div
@@ -1097,7 +1377,26 @@ export function VoxBoard({
           transform: `translate(${f(fx - x * z).toFixed(2)}px, ${f(fy - y * z).toFixed(2)}px) scale(${z.toFixed(4)})`,
         }}
       >
-        {spec.surface === "desk" ? (
+        {spec.surface === "slate" ? (
+          <>
+            {/* A slate blackboard: green-black, chalk dust wiped in arcs. */}
+            <div
+              style={{
+                position: "absolute",
+                inset: -f(1400),
+                background: `radial-gradient(ellipse at 50% 45%, #344039 0%, #27302b 50%, #181d1a 100%)`,
+              }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                inset: -f(1400),
+                backgroundImage: `radial-gradient(ellipse 60% 18% at 30% 22%, rgba(230,235,225,0.07), transparent 70%), radial-gradient(ellipse 50% 14% at 70% 64%, rgba(230,235,225,0.06), transparent 70%), radial-gradient(ellipse 40% 12% at 40% 86%, rgba(230,235,225,0.05), transparent 70%), radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1.4px)`,
+                backgroundSize: `100% 100%, 100% 100%, 100% 100%, ${f(7)}px ${f(7)}px`,
+              }}
+            />
+          </>
+        ) : spec.surface === "desk" ? (
           <>
             {/* A dark walnut desk under a lamp: grain, then a warm pool. */}
             <div
@@ -1161,7 +1460,12 @@ export function VoxBoard({
                 width={it.w}
                 {...(it.caption ? { caption: it.caption } : {})}
                 {...(it.focusX != null ? { focusX: it.focusX } : {})}
+                {...(it.clean ? { clean: true } : {})}
               />
+            ) : it.kind === "form" ? (
+              <FormSheet f={f} t={t} fm={it} words={words} />
+            ) : it.kind === "card" ? (
+              <IndexCard f={f} t={t} c={it} words={words} a={a} />
             ) : it.kind === "map" ? (
               <MapSheet f={f} t={t} m={it} words={words} />
             ) : it.kind === "flow" ? (
@@ -1292,6 +1596,18 @@ export function VoxBoard({
           </svg>
         ) : null}
       </div>
+      {spec.spotlight ? (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            // The torch opens out as the camera pulls back past zoom 0.9.
+            opacity: interpolate(z, [0.55, 0.95], [0, 1], clamp),
+            background: `radial-gradient(circle ${f(470)}px at ${f(fx)}px ${f(fy)}px, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.55) 82%, rgba(0,0,0,0.78) 100%)`,
+          }}
+        />
+      ) : null}
       {outAt != null ? (
         <div
           style={{
