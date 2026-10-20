@@ -375,7 +375,8 @@ function ThumbnailCard({
   const t = useTranslations("WatchHome")
   const videoLabels = useTranslations("VideoLabels")
   const imageUrl = item.imageUrl ?? item.video?.images?.[0]?.url
-  const title = item.titleOverride ?? item.video?.title ?? ""
+  // Truthiness, not `??`: a blank override must not hide the video's title.
+  const title = item.titleOverride?.trim() || item.video?.title?.trim() || ""
 
   return (
     <div
@@ -388,7 +389,8 @@ function ThumbnailCard({
           onClick()
         }
       }}
-      aria-label={t("showVideo", { title })}
+      // A card with no title data still gets a name instead of "Show ".
+      aria-label={t("showVideo", { title: title || videoLabels("shortFilm") })}
       className={cn(
         "group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg",
         VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
@@ -402,7 +404,8 @@ function ThumbnailCard({
           width={200}
           height={240}
           src={imageUrl}
-          alt={title}
+          // Decorative: the card's own label already names the video.
+          alt=""
           className="absolute top-0 h-[150px] w-full overflow-hidden object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
         />
       )}
@@ -429,7 +432,9 @@ function ThumbnailCard({
         <VideoThumbnailEyebrow>
           {videoLabels("shortFilm")}
         </VideoThumbnailEyebrow>
-        <VideoThumbnailTitle lines={3}>{title}</VideoThumbnailTitle>
+        {title ? (
+          <VideoThumbnailTitle lines={3}>{title}</VideoThumbnailTitle>
+        ) : null}
       </div>
     </div>
   )

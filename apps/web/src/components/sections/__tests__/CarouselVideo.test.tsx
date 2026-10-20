@@ -173,6 +173,36 @@ describe("CarouselVideo", () => {
     )
   })
 
+  // feat-763: Admin rows with no title rendered "Show " and an empty heading.
+  it("names an untitled card and skips its empty heading", async () => {
+    const data = {
+      ...baseFragment,
+      items: [
+        { ...baseFragment.items[0], titleOverride: " " },
+        {
+          ...baseFragment.items[0],
+          streamingUrl: "https://example.com/two.m3u8",
+          titleOverride: "",
+          video: { title: "From the video" },
+        },
+      ],
+    } as Parameters<typeof CarouselVideo>[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    const cards = [
+      ...container.querySelectorAll('[role="button"][aria-label^="Show"]'),
+    ]
+    expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual([
+      "Show Short Film",
+      "Show From the video",
+    ])
+    expect(cards[0]?.querySelector("h3")).toBeNull()
+    expect(cards[1]?.querySelector("h3")?.textContent).toBe("From the video")
+  })
+
   it("omits the copy block when no carousel text is authored", async () => {
     await act(async () => {
       root.render(
