@@ -593,7 +593,15 @@ function WatchHomeTvOverlay({
   return (
     <div
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 pb-4 sm:pb-8 compact-landscape:pb-4",
+        // In flow at the bottom of the hero frame (which is a bottom-aligned
+        // flex column) rather than absolutely positioned: with enlarged text
+        // the copy outgrows the frame, and the frame now grows with it instead
+        // of the title climbing above the page under the header. The top
+        // padding clears the floating header, whose row grows past 52px with
+        // large text; on phones it is in rem so it also covers search wrapping
+        // onto a second header row (104px at default text, 208px at 200%). At
+        // default text the copy is shorter than the frame, so it never moves.
+        "relative z-10 flex items-end justify-between gap-4 pb-4 sm:pb-8 compact-landscape:pb-4 pt-[calc(env(safe-area-inset-top,0px)+6.5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3rem+max(52px,2.75rem))] compact-landscape:pt-[calc(env(safe-area-inset-top,0px)+0.5rem+max(52px,2.75rem))]",
         WATCH_PAGE_RAIL_PADDING_CLASSES,
       )}
       data-testid="watch-home-tv-overlay"
@@ -1263,7 +1271,10 @@ export function WatchHomeTvCarousel({
           } as CSSProperties
         }
         className={cn(
-          "relative mx-auto w-full max-w-[1920px] bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          // `min-h-min` lets the frame grow past its fitted height only when
+          // the overlay copy needs more room (large text); otherwise the
+          // height below is used as before.
+          "relative mx-auto flex min-h-min w-full max-w-[1920px] flex-col justify-end bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isMuted && "cursor-pointer",
           isMuted
             ? // Short enough for the categories rail to sit fully inside the
