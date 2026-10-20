@@ -466,7 +466,7 @@ export function WhatsNewFeatureVote({
             floating beside the eyebrow. */}
         <div className="flex flex-wrap items-center justify-between gap-x-8 gap-y-6">
           <div className="max-w-2xl">
-            <p className="text-xs font-semibold tracking-[0.3em] text-[#131111]/55 uppercase sm:text-sm">
+            <p className="text-xs font-semibold tracking-[0.3em] text-[#131111]/65 uppercase sm:text-sm">
               {WHATS_NEW_VOTES.eyebrow}
             </p>
             <h2
@@ -497,7 +497,10 @@ export function WhatsNewFeatureVote({
         <ul
           ref={scroller}
           tabIndex={0}
-          role="group"
+          // role="list" (not "group"): "group" replaced the list role, so the
+          // cards stopped being list items. Explicit because Safari drops the
+          // implicit role from list-style:none lists.
+          role="list"
           aria-label={WHATS_NEW_VOTES.carouselLabel}
           data-testid="whats-new-vote-carousel"
           className="mt-10 -mr-5 flex snap-x snap-mandatory gap-6 overflow-x-auto pr-5 pb-2 [scrollbar-width:none] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131111] md:-mr-16 md:pr-16 xl:-mr-[max(6rem,calc((100vw-1920px)/2+6rem))] xl:pr-24 [&::-webkit-scrollbar]:hidden"
@@ -582,7 +585,7 @@ export function WhatsNewFeatureVote({
                 <p
                   data-testid="whats-new-vote-count"
                   data-feature={feature.id}
-                  className="relative mt-5 text-xs font-semibold tracking-[0.18em] text-[#131111]/50 uppercase tabular-nums"
+                  className="relative mt-5 text-xs font-semibold tracking-[0.18em] text-[#131111]/65 uppercase tabular-nums"
                 >
                   {counts == null
                     ? "\u00A0"

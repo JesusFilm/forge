@@ -439,6 +439,24 @@ describe("WhatsNewFeatureVote", () => {
     expect(q("whats-new-vote-put-back")).toBeNull()
   })
 
+  it("exposes the vote cards as a labelled list of list items", () => {
+    render()
+    const carousel = q("whats-new-vote-carousel")!
+    const cards = [
+      ...document.querySelectorAll('[data-testid="whats-new-vote-card"]'),
+    ]
+
+    // A "group" role here replaced the list role and orphaned every <li>.
+    expect(carousel.tagName).toBe("UL")
+    expect(carousel.getAttribute("role")).toBe("list")
+    expect(carousel.getAttribute("aria-label")).toBeTruthy()
+    expect(cards.length).toBeGreaterThan(0)
+    for (const card of cards) {
+      expect(card.tagName).toBe("LI")
+      expect(card.parentElement).toBe(carousel)
+    }
+  })
+
   it("stands the pile under the cards, at pick-up size", () => {
     // Both are the point of the layout: the pile feeds the row above it, and
     // these are the only draggable objects on the page — at small type they
