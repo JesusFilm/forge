@@ -5220,6 +5220,55 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(setOpen).toHaveBeenCalledWith(false)
   })
 
+  it("keeps keyboard focus within the instant shell and closes it from its own button", () => {
+    const setOpen = vi.fn()
+    const rects = vi
+      .spyOn(HTMLElement.prototype, "getClientRects")
+      .mockReturnValue([new DOMRect(0, 0, 44, 44)] as unknown as DOMRectList)
+
+    act(() => {
+      root.render(
+        <SearchOverlayInstantShell
+          open
+          closing={false}
+          query=""
+          setOpen={setOpen}
+          setQuery={vi.fn()}
+          onSubmit={vi.fn()}
+          headerTopClass={FLOATING_HEADER_TOP_CLASS}
+          logoSlotClass="w-12"
+          headerLanguageControlVisible
+        />,
+      )
+    })
+
+    const input = document.querySelector(
+      'input[aria-label="Search videos by keyword"]',
+    ) as HTMLInputElement
+    const close = document.querySelector(
+      '[data-testid="search-overlay-instant-close"]',
+    ) as HTMLButtonElement
+    expect(close.getAttribute("aria-label")).toBe("Close search")
+    expect(close.closest('[aria-hidden="true"]')).toBeNull()
+
+    const tab = (target: HTMLElement, shiftKey = false) =>
+      act(() => {
+        target.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Tab", shiftKey, bubbles: true }),
+        )
+      })
+
+    act(() => close.focus())
+    tab(close)
+    expect(document.activeElement).toBe(input)
+    tab(input, true)
+    expect(document.activeElement).toBe(close)
+
+    act(() => close.click())
+    expect(setOpen).toHaveBeenCalledWith(false)
+    rects.mockRestore()
+  })
+
   it("renders the search input shell immediately while the full controller loads", async () => {
     type LanguageOptionsResponse = Awaited<
       ReturnType<typeof getSearchLanguageOptions>
@@ -5275,7 +5324,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayFieldShell?.className).toContain(
       FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
     )
-    expect(overlayFieldShell?.className).not.toContain("col-span-2")
+    expect(overlayFieldShell?.className).toContain("col-span-2")
     expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain("translate-y-0")
     expect(close?.closest('[role="dialog"]')).toBeNull()
@@ -5283,8 +5332,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       document.querySelector('[data-testid="floating-header-search-close"]'),
     ).not.toBeNull()
     expect(
-      document.querySelector('[data-testid="search-overlay-instant-close"]'),
-    ).toBeNull()
+      instantShell?.querySelector(
+        '[data-testid="search-overlay-instant-close"]',
+      ),
+    ).not.toBeNull()
     expect(mockedGetSearchLanguageOptions).toHaveBeenCalledTimes(1)
 
     await act(async () => {
@@ -5657,7 +5708,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayFieldShell?.className).toContain(
       FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
     )
-    expect(overlayFieldShell?.className).not.toContain("col-span-2")
+    expect(overlayFieldShell?.className).toContain("col-span-2")
     expect(logo?.className).toContain(FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS)
     expect(languageButton?.hasAttribute("inert")).toBe(true)
     expect(headerTrailingControls?.className).toContain(

@@ -1072,9 +1072,9 @@ export function FloatingSearchProvider({
           <div
             className={`${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${
               modalChromeHidden
-                ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
-                    headerLanguageControlVisible ? "" : "col-span-2"
-                  }`
+                ? // The language control is hidden while search is open, so
+                  // the phone field row takes its column too.
+                  `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} col-span-2`
                 : ""
             }`}
           >

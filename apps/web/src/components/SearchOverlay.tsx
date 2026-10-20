@@ -91,6 +91,12 @@ const SEARCH_SUGGESTIONS_VIEWPORT_PADDING = 16
 const SEARCH_SUGGESTION_DESCRIPTION_LENGTH = 96
 const SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE = 18
 const MEANINGFUL_SEARCH_CHARACTER = /[\p{L}\p{N}]/u
+// The language row ("Search in [language] for …") keeps one truncated line
+// where it fits. Phones get two lines so the language pill never runs past
+// the row or into the submit glyph; the 36 px line leaves room for the
+// pill's focus ring, and two lines stay above the results (`top-56`).
+const LANGUAGE_CONTEXT_TEXT_CLASS =
+  "truncate max-[479px]:line-clamp-2 max-[479px]:leading-9 max-[479px]:break-words max-[479px]:whitespace-normal"
 
 type SuggestionListPosition = {
   height: number
@@ -996,7 +1002,7 @@ export function SearchOverlay() {
   ) =>
     hasUnsubmittedSearchIntent ? (
       <>
-        <span className="min-w-0 flex-1 truncate">
+        <span className={`min-w-0 flex-1 ${LANGUAGE_CONTEXT_TEXT_CLASS}`}>
           {splitSearchLanguageTemplate(
             t.raw("searchSuggestionWithLanguage") as string,
             ["{language}", "{suggestion}"],
@@ -1027,7 +1033,9 @@ export function SearchOverlay() {
         <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
       </>
     ) : (
-      <span className="min-w-0 flex-1 truncate text-base sm:text-sm">
+      <span
+        className={`min-w-0 flex-1 text-base sm:text-sm ${LANGUAGE_CONTEXT_TEXT_CLASS}`}
+      >
         {splitSearchLanguageTemplate(languageContextMessage, [
           "{language}",
         ]).map((segment, index) =>
@@ -1083,9 +1091,10 @@ export function SearchOverlay() {
           ref={fieldShellRef}
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
-          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
-            headerLanguageSwitcherVisible ? "" : "col-span-2"
-          }`}
+          // Spans the phone language column: the header language control is
+          // hidden while search is open, and 320 px phones need that width
+          // for the placeholder and the language row.
+          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} col-span-2`}
         >
           <FloatingSearchFieldInput
             ref={inputRef}
@@ -1155,7 +1164,7 @@ export function SearchOverlay() {
           className={FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS}
         >
           <div
-            className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
+            className={`hidden md:block ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
               headerLanguageSwitcherVisible && headerLanguageCode
                 ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
                 : ""
@@ -1416,7 +1425,7 @@ export function SearchOverlay() {
             >
               <span className="flex min-w-0 items-center gap-2.5">
                 <ListVideo aria-hidden className="size-5 shrink-0" />
-                <span className="truncate text-base font-semibold">
+                <span className="line-clamp-2 text-base font-semibold break-words">
                   {t("allVideosOnSinglePage")}
                 </span>
               </span>

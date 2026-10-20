@@ -3,7 +3,7 @@ id: "feat-651"
 title: "Watch search modal focus containment"
 owner: "codex"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 2
 depends_on: []
@@ -37,3 +37,22 @@ closes the modal.
 - `pnpm --filter @forge/web typecheck`
 - Focused ESLint and Prettier for changed files.
 - Manual desktop NVDA/VoiceOver and 320px viewport smoke before merge.
+
+## Resolution
+
+2026-10-20: main merged into the branch (no rebase). Checked in a real
+browser (headless Chromium, local fixture with the real header and
+overlay, search responses replayed from production):
+
+- Opening with Enter on the header search button moves focus to the
+  input, including the first lazy open.
+- Tab and Shift+Tab stay inside the dialog in the browse, suggestions,
+  results, fallback-results and error states (8–25 presses each).
+- Escape closes the nested search-language picker first and returns focus
+  to its trigger; a second Escape closes search.
+- Closing returns focus to the header search button.
+- The instant shell shown before the overlay code loads now has its own
+  close button and keeps Tab between its two controls, because the header
+  is inert while search is open.
+
+Not run: NVDA/VoiceOver, real devices.
