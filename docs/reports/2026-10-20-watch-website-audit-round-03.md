@@ -73,6 +73,8 @@ criteria named were checked against the W3C WCAG 2.2 Recommendation text.
 ## New follow-ups
 
 - feat-762 (P2): hero preview pause control and reduced-motion start (SC 2.2.2).
+  The ticket file ships with its implementation, PR #2829, not with this
+  report, so the two PRs do not add the same file.
 - feat-763 (P3): What's new list semantics and contrast, empty/slug card
   names, redundant card alts.
 
