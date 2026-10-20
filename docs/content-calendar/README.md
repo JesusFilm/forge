@@ -11,7 +11,7 @@ tile. Lyuba uses it for planning.
 
 ## Who writes the calendar
 
-One writer only (from 2026-10-10): the **"Calendar" session** (local_32447311-7285-4bcd-9696-e4a683c4d597, Analytics group) (the session
+One writer only (from 2026-10-10): the **"Calendar" session** (local_44bbf027-2d85-47da-a007-99399f6735f4, Channel Management group; replaced the old-account session on 2026-10-20) (the session
 that built this page) owns the `posts` collection. Other sessions do not write rows.
 When Publishing (or any session) publishes or schedules a post, it sends that session
 a short message with: story, kind/cut, platforms, status, date and time, title, links
