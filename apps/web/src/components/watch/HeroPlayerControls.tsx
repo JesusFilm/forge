@@ -163,10 +163,11 @@ export function HeroPlayerControls({
   // to <body>; neither shortcut listener sees keys from there, so a second F
   // (or K/M) would go dead. The shortcut arms this latch (a timestamp, so a
   // refused fullscreen request cannot leave it armed forever) and the effect
-  // below hands focus to the click surface, which lives outside the portal.
-  // Trade-off: the click surface is aria-hidden, so a screen reader will not
-  // announce this focus, but it is the only node that is inside the wrapper
-  // (so the listeners hear it) and outside the portal (so it survives).
+  // below hands focus to the re-mounted fullscreen button, so a screen reader
+  // announces "Exit fullscreen" / "Enter fullscreen" and both listeners
+  // (wrapper and overlayAnchor) still hear keys. If that button cannot take
+  // focus, it falls back to the click surface, which lives outside the
+  // portal (aria-hidden, so that fallback focus is not announced).
   const clickSurfaceRef = useRef<HTMLButtonElement | null>(null)
   const refocusAfterFullscreenAtRef = useRef<number | null>(null)
   useEffect(() => {
@@ -175,8 +176,18 @@ export function HeroPlayerControls({
     if (armedAt == null || Date.now() - armedAt > 2000) return
     const active = document.activeElement
     if (active != null && active !== document.body) return
+    const fullscreenButton = [wrapperRef.current, overlayAnchor]
+      .map((root) =>
+        root?.querySelector<HTMLElement>(
+          '[data-testid="hero-chrome-fullscreen"]',
+        ),
+      )
+      .find((button) => button != null)
+    fullscreenButton?.focus({ preventScroll: true })
+    if (fullscreenButton != null && document.activeElement === fullscreenButton)
+      return
     clickSurfaceRef.current?.focus({ preventScroll: true })
-  }, [isFullscreen])
+  }, [isFullscreen, overlayAnchor, wrapperRef])
   const [chromeVisibility, setChromeVisibility] =
     useState<ChromeVisibility>("dim")
   const [hoveringControls, setHoveringControls] = useState(false)

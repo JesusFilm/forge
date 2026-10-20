@@ -36,7 +36,7 @@ type MuxVideoCapturedProps = Record<string, unknown> & {
   onError?: (event: Event & { detail?: { code?: string } }) => void
 }
 
-const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
+const { muxVideoMock, mockPlayerRef, muxAttach } = vi.hoisted(() => {
   type MockPlayer = {
     muted: boolean
     currentTime: number
@@ -54,6 +54,9 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
 
   // Singleton ref proxy — tests reset its fields in `beforeEach`.
   const mockPlayerRef: { current: MockPlayer | null } = { current: null }
+  // `deferred` models production's dynamic Mux chunk: the backend renders but
+  // exposes no player handle until a later render attaches it.
+  const muxAttach = { deferred: false }
   function makePlayer(): MockPlayer {
     return {
       muted: true,
@@ -75,12 +78,12 @@ const { muxVideoMock, mockPlayerRef } = vi.hoisted(() => {
     const { ref } = props
     mockPlayerRef.current ??= makePlayer()
     useImperativeHandle(ref as React.RefObject<unknown>, () => {
-      return mockPlayerRef.current
+      return muxAttach.deferred ? null : mockPlayerRef.current
     })
     return null
   })
 
-  return { muxVideoMock, mockPlayerRef }
+  return { muxVideoMock, mockPlayerRef, muxAttach }
 })
 
 const { writeWatchVolumePreferenceMock } = vi.hoisted(() => ({
@@ -263,6 +266,7 @@ beforeEach(() => {
   muxVideoMock.mockClear()
   writeWatchVolumePreferenceMock.mockClear()
   mockPlayerRef.current = null
+  muxAttach.deferred = false
   mockRouterPush.mockClear()
   mockSearchParams.current = new URLSearchParams()
   container = document.createElement("div")
@@ -2222,6 +2226,66 @@ describe("HeroPlayer — iOS-safe click sequence (AE1)", () => {
     expect(mockPlayerRef.current?.currentTime).toBe(12)
     expect(mockPlayerRef.current?.muted).toBe(false)
     expect(mockPlayerRef.current?.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("starts sound playback from Enter on Watch now when the player attaches after the key press", async () => {
+    // Production regression (2026-10-20, /watch/jesus.html): Enter's keydown
+    // activated the player, so its click no longer queued the sound intent
+    // and a keyboard user got a silent preview with no chrome.
+    muxAttach.deferred = true
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    pill.focus()
+
+    await act(async () => {
+      pill.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+      // A browser activates a focused button with a click after Enter.
+      pill.click()
+    })
+    const wrapper = container.querySelector(
+      '[data-testid="hero-player-wrapper"]',
+    ) as HTMLElement
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("false")
+
+    muxAttach.deferred = false
+    await act(async () => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+
+    expect(mockPlayerRef.current?.muted).toBe(false)
+    expect(mockPlayerRef.current?.play).toHaveBeenCalled()
+    expect(wrapper.getAttribute("data-chrome-revealed")).toBe("true")
+    // The pill unmounted; keyboard focus moves to play/pause, not <body>.
+    expect(document.activeElement?.getAttribute("data-testid")).toBe(
+      "hero-chrome-play",
+    )
+  })
+
+  it("leaves focus alone when a pointer click on Watch now reveals the chrome", async () => {
+    act(() => {
+      root.render(<HeroPlayer block={makeBlock()} />)
+    })
+    const pill = container.querySelector(
+      '[data-testid="hero-player-unmute-pill"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      pill.dispatchEvent(new Event("pointerdown", { bubbles: true }))
+      pill.click()
+    })
+    expect(
+      container
+        .querySelector('[data-testid="hero-player-wrapper"]')
+        ?.getAttribute("data-chrome-revealed"),
+    ).toBe("true")
+    expect(document.activeElement?.getAttribute("data-testid")).not.toBe(
+      "hero-chrome-play",
+    )
   })
 
   it("primes the player on pointerdown before the sound-intent click", async () => {

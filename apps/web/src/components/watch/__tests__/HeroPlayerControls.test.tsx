@@ -1663,9 +1663,11 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
     })
 
     // The portal target swapped, so the focused node was replaced; focus must
-    // land on a node that survives, and the next key must still be handled.
+    // land on the re-mounted, named fullscreen button (not the aria-hidden
+    // click surface), and the next key must still be handled.
     const active = document.activeElement as HTMLElement
-    expect(active.getAttribute("data-testid")).toBe("hero-player-click-surface")
+    expect(active.getAttribute("data-testid")).toBe("hero-chrome-fullscreen")
+    expect(active.closest('[aria-hidden="true"]')).toBeNull()
     press(active, "m")
     expect(player.muted).toBe(true)
     // Fullscreen is now active, so a second F must take the exit branch.
@@ -1690,6 +1692,9 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
     })
     expect(document.activeElement?.getAttribute("data-testid")).not.toBe(
       "hero-player-click-surface",
+    )
+    expect(document.activeElement?.getAttribute("data-testid")).not.toBe(
+      "hero-chrome-fullscreen",
     )
   })
 
