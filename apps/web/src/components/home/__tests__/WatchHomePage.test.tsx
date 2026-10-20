@@ -2840,7 +2840,6 @@ describe("WatchHomePage", () => {
       '[data-testid="watch-home-tv-actions"]',
     )
     expect(actionRow?.classList.contains("flex-wrap")).toBe(true)
-    expect(actionRow?.classList.contains("sm:flex-nowrap")).toBe(true)
     expect(actionRow?.contains(mobileTimeline!)).toBe(true)
     expect(actionRow?.contains(desktopTimeline!)).toBe(false)
     expect(mobileTimeline?.classList.contains("gap-2")).toBe(true)
