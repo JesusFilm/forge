@@ -28,6 +28,7 @@
 import { smartCropClipPath } from "../services/devotional/clip-smart-crop"
 import { spawn } from "node:child_process"
 import {
+  copyFile,
   mkdir,
   mkdtemp,
   readdir,
@@ -646,6 +647,16 @@ async function main() {
         ;(m.shortFact as { voxHistory?: unknown }).voxHistory = JSON.parse(
           arg("history-vox")!,
         )
+        // `--history-photo=<path>`: the still the charge sheet pins in as
+        // its `accused.photoFile` (style "casefile"), copied into the stage.
+        const photo = (
+          m.shortFact as {
+            voxHistory?: { casefile?: { accused?: { photoFile?: string } } }
+          }
+        ).voxHistory?.casefile?.accused?.photoFile
+        if (photo && arg("history-photo")) {
+          await copyFile(arg("history-photo")!, path.join(stage, photo))
+        }
       }
       // A film short plays the film's own sound; `--music-film-verse` adds the
       // bed under its closing card only (owner, 2026-10-08: the Facebook

@@ -27,6 +27,7 @@ import {
   VOX_ORANGE,
 } from "./VoxHistory"
 import { type NotebookSpec, VoxNotebook } from "./VoxNotebook"
+import { type CaseFileSpec, VoxCaseFile } from "./VoxCaseFile"
 import {
   VoxCaption,
   VoxHalftone,
@@ -232,9 +233,12 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
   const vox = Boolean(fact?.vox || voxHistory)
   // The board and the notebook draw their own world (owner, 2026-10-13):
   // no film under them, no dark pool.
+  // The charge sheet sits over the film the same way (owner, 2026-10-20).
+  const caseFile = voxHistory?.style === "casefile"
   const filmNotes =
-    voxHistory?.style === "notebook" &&
-    (voxHistory.notebook as NotebookSpec | undefined)?.theme === "film"
+    caseFile ||
+    (voxHistory?.style === "notebook" &&
+      (voxHistory.notebook as NotebookSpec | undefined)?.theme === "film")
   const drawn =
     voxHistory?.style === "board" ||
     (voxHistory?.style === "notebook" && !filmNotes)
@@ -410,7 +414,17 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               }
             />
           </div>
-          {filmNotes ? (
+          {caseFile ? (
+            <VoxCaseFile
+              f={f}
+              t={t}
+              words={words}
+              spec={voxHistory.casefile as CaseFileSpec}
+              {...(fact?.closeCard && words.length
+                ? { outAt: words[words.length - 1].endSec + 0.5 }
+                : {})}
+            />
+          ) : filmNotes ? (
             <VoxNotebook
               f={f}
               t={t}
@@ -424,7 +438,9 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
             f={f}
             t={t}
             tokens={captionTokens(words)}
-            {...(voxHistory.style === "notebook" ? { top: 1170 } : {})}
+            {...(voxHistory.style === "notebook" || caseFile
+              ? { top: 1170 }
+              : {})}
           />
         </>
       ) : language && fact?.vox ? (

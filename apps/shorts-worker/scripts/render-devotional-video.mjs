@@ -476,6 +476,8 @@ async function main() {
     for (const it of vh?.board?.items ?? []) await stage(it.file)
     for (const pg of vh?.notebook?.pages ?? [])
       for (const ph of pg.photos ?? []) await stage(ph.file)
+    // The charge sheet's accused photo (VoxCaseFile.tsx).
+    await stage(vh?.casefile?.accused?.photoFile)
     for (const c of manifest.cards) {
       await stage(c.audioFile)
       await stage(c.videoFile)
