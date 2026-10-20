@@ -365,7 +365,7 @@ function Clipping({
         style={{
           position: "absolute",
           inset: 0,
-          WebkitMaskImage: `url(${c.rough ? PAPER_ROUGH_MASK : PAPER_CLIP_MASK})`,
+          WebkitMaskImage: `url(${c.rough || c.aged ? PAPER_ROUGH_MASK : PAPER_CLIP_MASK})`,
           WebkitMaskSize: "100% 100%",
           backgroundImage: c.aged
             ? "radial-gradient(120% 90% at 40% 30%, #efe7d4 0%, #e3d8bd 75%, #d8caa8 100%)"
@@ -493,6 +493,10 @@ type BoardNote = {
   rot?: number
   on?: string | number
   text: string
+  /** A square sticky note, the text at the top (owner, Paralytic 2026-10-20). */
+  square?: boolean
+  /** A red handwritten word signed at the foot ("Correct"), when `on` is said. */
+  sign?: { text: string; on: string | number }
 }
 /** The map sheet (1000 x 760 inside, scaled to `w`): the village, Jesus at
  *  its edge, a red fence, the ten beyond it, and the distance the law set.
@@ -1595,6 +1599,48 @@ export function VoxBoard({
                     }}
                   >
                     {it.reference}
+                  </div>
+                ) : null}
+              </div>
+            ) : it.kind === "note" && it.square ? (
+              <div
+                style={{
+                  position: "relative",
+                  width: f(it.w),
+                  height: f(it.w),
+                  boxSizing: "border-box",
+                  // A sticky note: the glued top a shade darker, a soft lift
+                  // at the bottom corner.
+                  background:
+                    "linear-gradient(#f0d65e 0%, #f6e27a 12%, #f8e888 100%)",
+                  padding: `${f(34)}px ${f(32)}px`,
+                  boxShadow: `0 ${f(14)}px ${f(18)}px -${f(6)}px rgba(0,0,0,0.5)`,
+                  borderBottomRightRadius: f(18),
+                  fontFamily: HAND,
+                  fontWeight: 700,
+                  fontSize: f(52),
+                  lineHeight: 1.12,
+                  color: INK,
+                }}
+              >
+                <Written t={t} start={a + 0.2} text={it.text} />
+                {it.sign ? (
+                  <div
+                    style={{
+                      position: "absolute",
+                      right: f(36),
+                      bottom: f(30),
+                      fontSize: f(56),
+                      color: RED,
+                      transform: "rotate(-6deg)",
+                    }}
+                  >
+                    <Written
+                      t={t}
+                      start={at(words, it.sign.on, Infinity)}
+                      text={it.sign.text}
+                      cps={14}
+                    />
                   </div>
                 ) : null}
               </div>
