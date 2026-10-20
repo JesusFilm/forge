@@ -462,7 +462,7 @@ type VerseBodyProps = {
   verse: Verse
   stop: ChapterPosition
   size: number
-  fontFamily: string
+  fontFamily: string | undefined
   lineSpacing: number
   verseNumbers: boolean
   textDirection: TextDirection

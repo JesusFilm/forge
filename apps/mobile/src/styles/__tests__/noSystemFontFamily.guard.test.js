@@ -1,16 +1,16 @@
 // Plain JS (like the other guard suites): the RN tsconfig has no Node types,
-// and this guard needs fs and path to scan source files.
+// and this guard needs fs, path, and the TypeScript compiler.
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global describe, expect, it, require */
 const fs = require("fs")
 const path = require("path")
+const ts = require("typescript")
 
 // Guard: on Android, React Native draws a named family in Regular or Bold
-// only, so weight 500 or 600 with `fontFamily: "System"` draws Regular. With
-// no family, iOS draws the same system font and Android keeps the weight.
+// only, so weight 500 or 600 with the family "System" draws Regular. With no
+// family, iOS draws the same system font and Android keeps the weight.
 const MOBILE_ROOT = path.join(__dirname, "..", "..", "..")
 const ROOTS = ["app", "src"]
-const SYSTEM_FAMILY = /fontFamily:\s*["']System["']/
 
 function sourceFiles(dir) {
   const files = []
@@ -21,6 +21,25 @@ function sourceFiles(dir) {
     else if (/\.tsx?$/.test(entry.name)) files.push(full)
   }
   return files
+}
+
+/** Every string value "System" in the source, as 1-based line numbers. The
+ *  parser, not a regex, so a comment that names the family cannot trip it. */
+function systemFamilyLines(fileName, text) {
+  const source = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest)
+  const lines = []
+  const visit = (node) => {
+    if (
+      (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) &&
+      node.text === "System"
+    ) {
+      const start = node.getStart(source)
+      lines.push(source.getLineAndCharacterOfPosition(start).line + 1)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  return lines
 }
 
 describe("the system font family", () => {
@@ -38,10 +57,27 @@ describe("the system font family", () => {
     )
   })
 
-  it('is never named: no style sets fontFamily "System"', () => {
-    const offenders = files
-      .filter((file) => SYSTEM_FAMILY.test(fs.readFileSync(file, "utf8")))
-      .map((file) => path.relative(MOBILE_ROOT, file))
+  it("positive control: finds every way to name the family, and no comment", () => {
+    const sample = [
+      'const a = { fontFamily: "System" }',
+      "const b = { fontFamily: 'System' }",
+      "const c = {",
+      "  fontFamily:",
+      '    "System",',
+      "}",
+      'function d() { return "System" }',
+      "const e = `System`",
+      '// a comment may name "System"',
+    ].join("\n")
+    expect(systemFamilyLines("sample.tsx", sample)).toEqual([1, 2, 5, 7, 8])
+  })
+
+  it('is never named: no source holds the string "System"', () => {
+    const offenders = files.flatMap((file) =>
+      systemFamilyLines(file, fs.readFileSync(file, "utf8")).map(
+        (line) => `${path.relative(MOBILE_ROOT, file)}:${line}`,
+      ),
+    )
     expect(offenders).toEqual([])
   })
 })

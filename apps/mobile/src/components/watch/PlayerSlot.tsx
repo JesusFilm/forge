@@ -23,6 +23,7 @@ import {
   type ProgressFeed,
   type ProgressHold,
 } from "../../lib/miniPlayer/playbackRequest"
+import type { SlotPage } from "../../lib/miniPlayer/presentation"
 import type { VideoPlayerCast } from "./VideoPlayer"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -77,6 +78,9 @@ type PlayerSlotProps = {
   /** Filled by the host with the root adapter's progress facade, so the
    *  screen's cast recorder can write through it (KTD6). */
   progressFeedRef?: { current: ProgressFeed | null } | null
+  /** The page that mounts this slot. A screen pushed over it covers the slot
+   *  on every route but this page's own. */
+  page: SlotPage
 }
 
 export function PlayerSlot({
@@ -95,6 +99,7 @@ export function PlayerSlot({
   castActive = false,
   cast = null,
   progressFeedRef = null,
+  page,
 }: PlayerSlotProps) {
   const tCommon = useT("Common")
   const store = getPlaybackRequestStore()
@@ -122,9 +127,11 @@ export function PlayerSlot({
   }
   const requestRef = useRef(request)
   requestRef.current = request
+  const pageRef = useRef(page)
+  pageRef.current = page
 
   useEffect(() => {
-    const id = store.attachSlot(requestRef.current)
+    const id = store.attachSlot(requestRef.current, pageRef.current)
     slotIdRef.current = id
     return () => {
       slotIdRef.current = null
@@ -215,19 +222,20 @@ export function PlayerSlot({
 
   // A screen pushed over this one keeps it mounted, so the slot never detaches
   // and the host would draw over that screen. A pop blurs this screen too, but
-  // its `beforeRemove` comes first, and a screen that is leaving is not under.
+  // its `beforeRemove` comes first, and a leaving screen publishes no more.
   const leavingRef = useRef(false)
   useEffect(() => {
     const publish = () => {
       const id = slotIdRef.current
-      if (id == null) return
+      if (id == null || leavingRef.current) return
       const focused = navigation.isFocused?.() ?? true
-      store.setSlotUnderScreen(id, !leavingRef.current && !focused)
+      store.setSlotUnderScreen(id, !focused)
     }
     const unsubscribes = [
+      // A covered page that leaves keeps its cover, so its detach decides the
+      // window, and the full view never grows back first.
       navigation.addListener?.("beforeRemove", () => {
         leavingRef.current = true
-        publish()
       }),
       navigation.addListener?.("focus", publish),
       navigation.addListener?.("blur", publish),

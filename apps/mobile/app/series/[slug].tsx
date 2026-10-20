@@ -565,6 +565,7 @@ export default function SeriesScreen() {
           {/* No `session`: a trailer never originates a mini-player session,
               and it yields the root player to one that is already live (AE14). */}
           <PlayerSlot
+            page="series"
             streamingUrl={trailerHls}
             posterUrl={displayPoster}
             fullscreen={isFullscreen}

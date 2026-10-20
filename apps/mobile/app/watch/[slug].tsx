@@ -804,6 +804,7 @@ export default function WatchVideoPage() {
             redirect, an Up Next replace, no variant in this language): dropping
             it hands the player to the route beneath and reads as a back press. */}
         <PlayerSlot
+          page="watch"
           // The cast pin (KTD4), not the live chain: a dub chosen mid-session
           // reaches the player only when the session releases it.
           streamingUrl={effectivePlayerSource}

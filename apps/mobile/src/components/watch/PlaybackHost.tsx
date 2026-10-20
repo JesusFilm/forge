@@ -928,10 +928,10 @@ function ActivePlaybackHost({
   // the same key, and cleared whenever playback runs again — a viewer who seeks
   // back from the end and plays on is watching, not finished.
   const endedRef = useRef(false)
-  // Keyed on the slug-stable videoKey above: a reset on the seed path's
-  // videoId flip would wipe the started fact with no playing-change edge left
-  // to re-latch it — play, pause, back then owes no window.
-  useEffect(() => {
+  // Keyed on the slug, not the videoId the seed path flips mid-playback. A
+  // layout effect declared before the cover's, so a cover that starts as the
+  // video changes reads this video's facts, not the last one's.
+  useLayoutEffect(() => {
     startedRef.current = false
     endedRef.current = false
   }, [videoKey])
@@ -1011,6 +1011,7 @@ function ActivePlaybackHost({
     segments,
     snapshot.underScreen ?? false,
     snapshot.cover != null ? (snapshot.coverSource ?? null) : null,
+    snapshot.slotPage ?? null,
   )
   const coverSlotId = coverSource != null ? snapshot.slotId : null
   // Read at the start only: a reader opened over a screen cover stays a screen

@@ -1224,28 +1224,36 @@ describe("a screen over the slot's screen", () => {
 
   // A tap on the window pushes a second watch screen for the same video. That
   // screen adopts the session, so the end of the old cover must not clear it.
-  it("keeps the session the cover started when a newer slot for the same video takes the player", () => {
-    const { store, sessionStore } = makeStores({
-      started: true,
-      position: 42,
-      duration: 600,
-    })
-    const endings: MiniPlayerEndEvent[] = []
-    sessionStore.onEnd((event) => endings.push(event))
-    const lower = store.attachSlot(makeRequest())
-    store.coverSlot(lower, "screen")
-    expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
+  // The production first render names the video by slug alone: the record
+  // lands a commit later. The tolerant predicate still reads one video.
+  it.each([
+    ["a resolved id", SESSION_A],
+    ["the slug alone", { ...SESSION_A, videoId: null }],
+  ])(
+    "keeps the session the cover started when a newer slot for the same video takes the player (%s)",
+    (_label, upperSession) => {
+      const { store, sessionStore } = makeStores({
+        started: true,
+        position: 42,
+        duration: 600,
+      })
+      const endings: MiniPlayerEndEvent[] = []
+      sessionStore.onEnd((event) => endings.push(event))
+      const lower = store.attachSlot(makeRequest())
+      store.coverSlot(lower, "screen")
+      expect(sessionStore.getSnapshot().session?.videoId).toBe("video-a")
 
-    const upper = store.attachSlot(makeRequest())
-    store.uncoverSlot(lower)
+      const upper = store.attachSlot(makeRequest({ session: upperSession }))
+      store.uncoverSlot(lower)
 
-    expect(store.getSnapshot().slotId).toBe(upper)
-    expect(sessionStore.getSnapshot().session).toMatchObject({
-      videoId: "video-a",
-      positionSeconds: 42,
-    })
-    expect(endings).toHaveLength(0)
-  })
+      expect(store.getSnapshot().slotId).toBe(upper)
+      expect(sessionStore.getSnapshot().session).toMatchObject({
+        videoId: "video-a",
+        positionSeconds: 42,
+      })
+      expect(endings).toHaveLength(0)
+    },
+  )
 })
 
 // feat-553 R10: the host publishes the resting window so the reader's verse

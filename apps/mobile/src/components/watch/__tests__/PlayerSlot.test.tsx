@@ -119,6 +119,7 @@ function slot(
 ): ReactElement {
   return (
     <PlayerSlot
+      page="watch"
       streamingUrl={URL_A}
       posterUrl={POSTER}
       autostart
@@ -305,6 +306,7 @@ describe("PlayerSlot", () => {
     // paints over this screen — and its unmount reads as a back press.
     const renderer = await render(
       <PlayerSlot
+        page="watch"
         streamingUrl={null}
         posterUrl={POSTER}
         autostart
@@ -634,6 +636,25 @@ describe("PlayerSlot under another screen", () => {
     await emit("blur", false)
 
     expect(requestStore.getSnapshot().underScreen).toBe(false)
+  })
+
+  // dismissTo("/(tabs)") from Downloads removes the covered page with it. The
+  // page keeps its cover until it unmounts, so its detach decides the window.
+  it("keeps a covered page under its screen while it leaves", async () => {
+    await render(slot())
+    await emit("blur", false)
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+
+    await emit("beforeRemove", false)
+    await emit("focus", true)
+
+    expect(requestStore.getSnapshot().underScreen).toBe(true)
+  })
+
+  it("names the page that mounts it", async () => {
+    await render(slot())
+
+    expect(requestStore.getSnapshot().slotPage).toBe("watch")
   })
 
   it("publishes a screen that mounts without focus as under one", async () => {

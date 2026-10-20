@@ -237,6 +237,7 @@ import {
   type PlaybackRequest,
   type PlaybackSessionDescriptor,
 } from "../../../lib/miniPlayer/playbackRequest"
+import type { SlotPage } from "../../../lib/miniPlayer/presentation"
 import {
   getMiniPlayerStore,
   type MiniPlayerEndEvent,
@@ -339,8 +340,9 @@ let mounted: TestInstance | null = null
 function attachSlot(
   overrides: Partial<PlaybackRequest> = {},
   rect: typeof RECT | null = RECT,
+  page: SlotPage | null = null,
 ) {
-  const id = requestStore.attachSlot(makeRequest(overrides))
+  const id = requestStore.attachSlot(makeRequest(overrides), page)
   if (rect != null) requestStore.setSlotRect(id, rect)
   return id
 }
@@ -4015,6 +4017,7 @@ function Scene() {
   return (
     <>
       <PlayerSlot
+        page="watch"
         streamingUrl={URL_A}
         posterUrl={POSTER}
         autostart
@@ -5392,10 +5395,17 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       await setRoute(renderer, WATCH_ROUTE)
     }
 
+    const SESSION_B: PlaybackSessionDescriptor = {
+      ...SESSION_A,
+      videoId: "video-b",
+      videoSlug: "video-b-slug",
+      title: "Video B",
+    }
+
     async function playing() {
       jest.useFakeTimers()
       mockSegments = WATCH_ROUTE
-      const id = attachSlot({ posterUrl: POSTER })
+      const id = attachSlot({ posterUrl: POSTER }, RECT, "watch")
       const renderer = await renderHost()
       await startPlayback()
       video.__player.currentTime = 42
@@ -5475,7 +5485,11 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
     it("pauses a series trailer under a pushed screen", async () => {
       jest.useFakeTimers()
       mockSegments = ["series", "[slug]"]
-      const id = attachSlot({ session: null, streamingUrl: URL_B })
+      const id = attachSlot(
+        { session: null, streamingUrl: URL_B },
+        RECT,
+        "series",
+      )
       const renderer = await renderHost()
       await startPlayback()
 
@@ -5539,10 +5553,14 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       // The new screen's first stream is another url of the same video.
       let upper = 0
       await act(async () => {
-        upper = attachSlot({
-          posterUrl: POSTER,
-          streamingUrl: `${URL_A}?redundant_streams=true`,
-        })
+        upper = attachSlot(
+          {
+            posterUrl: POSTER,
+            streamingUrl: `${URL_A}?redundant_streams=true`,
+          },
+          RECT,
+          "watch",
+        )
       })
       await advance(EXPAND_DURATION_MS + 300)
 
@@ -5570,6 +5588,113 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(frameVisual(renderer)).toEqual(
         cornerBox(appLayout(), DEFAULT_CORNER),
       )
+    })
+
+    // A push or lapse-reminder tap opens a series with no trailer, so no newer
+    // slot takes the player: the watch slot is the one under the series page.
+    it("floats a playing video under a series page that mounts no slot", async () => {
+      const { renderer, id } = await playing()
+
+      await pushOver(renderer, id, ["series", "[slug]"])
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: id,
+        cover: "admitted",
+        coverSource: "screen",
+      })
+      await advance(SHRINK_DURATION_MS + 300)
+      expect(hasWindowChrome(renderer)).toBe(true)
+      expect(hasFullViewChrome(renderer)).toBe(false)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // A screen opened from the page's own sheet closes back onto that sheet.
+    // The page is in view under it, though its screen still has no focus.
+    it("ends the cover when the pushed screen closes back onto the page's sheet", async () => {
+      const { renderer, id } = await playing()
+      await pushOver(renderer, id, ["watch", "download"])
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      await setRoute(renderer, DOWNLOADS_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("admitted")
+
+      await setRoute(renderer, ["watch", "download"])
+      await advance(EXPAND_DURATION_MS + 300)
+
+      expect(requestStore.getSnapshot().cover).toBeNull()
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasFullViewChrome(renderer)).toBe(true)
+      expect(video.__player.playing).toBe(true)
+    })
+
+    // Watch A never plays, a screen opens over it, watch B opens and plays,
+    // then back from B: A's cover starts in the commit that changes the video.
+    it("refuses the cover for a video that never played, after another one played", async () => {
+      jest.useFakeTimers()
+      mockSegments = WATCH_ROUTE
+      const a = attachSlot({ posterUrl: POSTER }, RECT, "watch")
+      const renderer = await renderHost()
+      // A's autostart asks, and never lands.
+      video.__player.play.mockImplementation(() => {})
+      await pushOver(renderer, a, DOWNLOADS_ROUTE)
+      expect(requestStore.getSnapshot().cover).toBe("refused")
+      let b = 0
+      await act(async () => {
+        mockSegments = WATCH_ROUTE
+        renderer.update(<PlaybackHost />)
+        b = attachSlot(
+          {
+            streamingUrl: URL_B,
+            progressVideoId: "video-b",
+            session: SESSION_B,
+          },
+          RECT,
+          "watch",
+        )
+      })
+      await act(async () => {
+        video.__settleReplace()
+      })
+      await act(async () => {
+        video.__player.playing = true
+        video.__player.__emit("playingChange", { isPlaying: true })
+      })
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: b,
+        cover: null,
+      })
+
+      await act(async () => {
+        mockSegments = DOWNLOADS_ROUTE
+        renderer.update(<PlaybackHost />)
+        requestStore.detachSlot(b)
+      })
+
+      expect(requestStore.getSnapshot()).toMatchObject({
+        slotId: a,
+        cover: "refused",
+      })
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(hasWindowChrome(renderer)).toBe(false)
+    })
+
+    it("closes the window over a screen cover with no report, and the return shows the page paused", async () => {
+      const { renderer, id } = await playing()
+      const ends = trackEnds()
+      await pushOver(renderer, id, DOWNLOADS_ROUTE)
+      await advance(SHRINK_DURATION_MS + 300)
+
+      await windowAction(renderer, "dismiss")
+      expect(video.__player.playing).toBe(false)
+      await advance(EXIT_DURATION_MS + 1000)
+      expect(sessionStore.getSnapshot().session).toBeNull()
+      expect(ends.events).toHaveLength(0)
+
+      await popBackTo(renderer, id)
+
+      expect(frameStyle(renderer)).toMatchObject({ left: RECT.x, top: RECT.y })
+      expect(labelled(renderer, "Play")).toBe(true)
+      expect(video.__player.currentTime).toBe(42)
+      expect(viewLife.unmounts).toBe(0)
     })
 
     it("stays a screen cover under a reader opened over that screen", async () => {

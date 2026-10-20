@@ -1,7 +1,7 @@
 import {
   READER_COVER_ROUTE_PATTERNS,
   READER_ROUTE_PATTERNS,
-  SLOT_SCREEN_ROUTE_PATTERNS,
+  SLOT_PAGE_ROUTE_PATTERNS,
   TAB_ROOT_ROUTE_PATTERNS,
   canOriginateRoutePattern,
   expandAction,
@@ -13,7 +13,7 @@ import {
   slotCoverSource,
   type MiniPlayerPresentation,
 } from "../presentation"
-import { routePattern } from "../suppression"
+import { IN_APP_SHEET_ROUTE_PATTERNS, routePattern } from "../suppression"
 import { createMiniPlayerStore } from "../store"
 import { TAB_GROUP_SEGMENT, TAB_ROUTE_NAMES } from "../../tabBar"
 
@@ -386,52 +386,98 @@ describe("the reader cover (KTD10)", () => {
 // 2026-10-20: a screen pushed over the watch or series page keeps that page
 // mounted, so its slot stays attached. Any route but the page's own covers it.
 describe("slotCoverSource", () => {
-  const SLOT_SCREENS = [
-    "watch/[slug]",
-    "watch/language",
-    "watch/subtitle",
-    "watch/download",
-    "series/[slug]",
-    "series/language",
-    "series/subtitle",
-    "series/download",
-  ]
+  const PAGES = {
+    watch: [
+      "watch/[slug]",
+      "watch/language",
+      "watch/subtitle",
+      "watch/download",
+    ],
+    series: [
+      "series/[slug]",
+      "series/language",
+      "series/subtitle",
+      "series/download",
+    ],
+  }
 
-  it.each(ROUTE_TABLE)(
-    "%s: the reader, another screen, or the slot's own page",
-    (_pattern, segments) => {
-      const pattern = routePattern(segments)
-      const under = READER_COVER_ROUTE_PATTERNS.some((p) => p === pattern)
-        ? "reader"
-        : SLOT_SCREENS.includes(pattern)
-          ? null
-          : "screen"
-      expect(slotCoverSource(segments, true)).toBe(under)
-      // On top, only the reader's routes cover, as before.
-      expect(slotCoverSource(segments, false)).toBe(
-        under === "reader" ? "reader" : null,
+  describe.each(["watch", "series", null] as const)("a %s slot", (page) => {
+    const own = page == null ? [...PAGES.watch, ...PAGES.series] : PAGES[page]
+    it.each(ROUTE_TABLE)(
+      "%s: the reader, another screen, or the slot's own page",
+      (_pattern, segments) => {
+        const pattern = routePattern(segments)
+        const under = READER_COVER_ROUTE_PATTERNS.some((p) => p === pattern)
+          ? "reader"
+          : own.includes(pattern)
+            ? null
+            : "screen"
+        expect(slotCoverSource(segments, true, null, page)).toBe(under)
+        // On top, only the reader's routes cover, as before.
+        expect(slotCoverSource(segments, false, null, page)).toBe(
+          under === "reader" ? "reader" : null,
+        )
+      },
+    )
+  })
+
+  // A push or lapse-reminder tap opens a series with no trailer, which mounts
+  // no slot of its own: the watch slot under it is the one the host draws.
+  it("covers a watch slot under a series page, and a series slot under a watch page", () => {
+    expect(slotCoverSource(["series", "[slug]"], true, null, "watch")).toBe(
+      "screen",
+    )
+    expect(slotCoverSource(["watch", "[slug]"], true, null, "series")).toBe(
+      "screen",
+    )
+  })
+
+  it("lists each page with the sheets of its own group, all in-app sheets", () => {
+    expect(SLOT_PAGE_ROUTE_PATTERNS).toEqual(PAGES)
+    // A new sheet in one table and not the other would cover its own page.
+    for (const [group, routes] of Object.entries(PAGES)) {
+      const sheets = IN_APP_SHEET_ROUTE_PATTERNS.filter((p) =>
+        p.startsWith(`${group}/`),
       )
-    },
-  )
-
-  it("lists the watch and series pages with the sheets of their own groups", () => {
-    expect([...SLOT_SCREEN_ROUTE_PATTERNS]).toEqual(SLOT_SCREENS)
+      expect(routes.slice(1).sort()).toEqual([...sheets].sort())
+    }
   })
 
   // A tap on the window pushes a watch route over the screen cover. The cover
   // holds until the slot's own screen has focus again; a reader's does not.
   it("holds a live screen cover over a watch route while the slot stays under", () => {
-    expect(slotCoverSource(["watch", "[slug]"], true, "screen")).toBe("screen")
-    expect(slotCoverSource(["watch", "[slug]"], false, "screen")).toBeNull()
-    expect(slotCoverSource(["watch", "[slug]"], true, "reader")).toBeNull()
-    expect(slotCoverSource(["reader"], true, "screen")).toBe("reader")
+    expect(slotCoverSource(["watch", "[slug]"], true, "screen", "watch")).toBe(
+      "screen",
+    )
+    expect(
+      slotCoverSource(["watch", "[slug]"], false, "screen", "watch"),
+    ).toBeNull()
+    expect(
+      slotCoverSource(["watch", "[slug]"], true, "reader", "watch"),
+    ).toBeNull()
+    expect(slotCoverSource(["reader"], true, "screen", "watch")).toBe("reader")
+  })
+
+  // A screen pushed over an open sheet closes back onto that sheet: the page is
+  // in view under it again, though the slot's screen still has no focus.
+  it("ends a live screen cover over the page's own sheet", () => {
+    for (const sheet of ["language", "subtitle", "download"]) {
+      expect(slotCoverSource(["watch", sheet], true, "screen", "watch")).toBe(
+        null,
+      )
+      expect(
+        slotCoverSource(["series", sheet], true, "screen", "series"),
+      ).toBeNull()
+    }
   })
 
   // The slot's focus changes a commit before the segments do, so on the push
   // the old route is still the slot's own page: nothing covers yet.
   it("waits for the new route while the segments still name the page", () => {
-    expect(slotCoverSource(["watch", "[slug]"], true)).toBeNull()
-    expect(slotCoverSource(["experience", "[slug]"], true)).toBe("screen")
+    expect(slotCoverSource(["watch", "[slug]"], true, null, "watch")).toBeNull()
+    expect(slotCoverSource(["experience", "[slug]"], true, null, "watch")).toBe(
+      "screen",
+    )
   })
 })
 

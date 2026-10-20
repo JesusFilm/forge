@@ -118,20 +118,30 @@ export function isReaderCovering(segments: readonly string[]): boolean {
   return READER_COVER_ROUTES.has(routePattern(segments))
 }
 
-/** The two screens that mount a `PlayerSlot`, with their own groups' sheets
- *  (`app/watch/_layout.tsx`, `app/series/_layout.tsx`): there the slot's
- *  screen is the page in view, or the page under its sheet. */
-export const SLOT_SCREEN_ROUTE_PATTERNS = [
-  ...FULL_SCREEN_ROUTE_PATTERNS,
-  "series/[slug]",
-  "series/language",
-  "series/subtitle",
-  "series/download",
-] as const
+/** The two pages that mount a `PlayerSlot`, each with its own group's sheets
+ *  (`app/watch/_layout.tsx`, `app/series/_layout.tsx`). The first entry is
+ *  the page; on the others the page is under its sheet. */
+export const SLOT_PAGE_ROUTE_PATTERNS = {
+  watch: FULL_SCREEN_ROUTE_PATTERNS,
+  series: [
+    "series/[slug]",
+    "series/language",
+    "series/subtitle",
+    "series/download",
+  ],
+} as const
 
-const SLOT_SCREEN_ROUTES: ReadonlySet<string> = new Set(
-  SLOT_SCREEN_ROUTE_PATTERNS,
-)
+export type SlotPage = keyof typeof SLOT_PAGE_ROUTE_PATTERNS
+
+const SLOT_PAGE_ROUTES: Record<SlotPage, ReadonlySet<string>> = {
+  watch: new Set(SLOT_PAGE_ROUTE_PATTERNS.watch),
+  series: new Set(SLOT_PAGE_ROUTE_PATTERNS.series),
+}
+// A slot that named no page: either page's routes may be its own.
+const ANY_SLOT_PAGE_ROUTES: ReadonlySet<string> = new Set([
+  ...SLOT_PAGE_ROUTE_PATTERNS.watch,
+  ...SLOT_PAGE_ROUTE_PATTERNS.series,
+])
 
 /** What covers the current slot. A screen pushed over the slot's screen keeps
  *  it mounted, so the host would draw the full view over that screen. A pop
@@ -141,13 +151,18 @@ export function slotCoverSource(
   underScreen: boolean,
   /** The source of the current slot's live cover, or null. */
   liveCover: CoverSource | null = null,
+  /** The page that mounts the slot. Only its own routes leave it in view. */
+  page: SlotPage | null = null,
 ): CoverSource | null {
   if (isReaderCovering(segments)) return "reader"
   if (!underScreen) return null
-  // Held until the slot's own screen has focus again: a tap on the window
-  // pushes a watch route, and the newer slot attaches a commit later.
-  if (liveCover === "screen") return "screen"
-  return SLOT_SCREEN_ROUTES.has(routePattern(segments)) ? null : "screen"
+  const pattern = routePattern(segments)
+  const ownRoutes = page == null ? ANY_SLOT_PAGE_ROUTES : SLOT_PAGE_ROUTES[page]
+  if (!ownRoutes.has(pattern)) return "screen"
+  // A tap on the window pushes a watch page, and its slot attaches a commit
+  // later, so a live cover holds there. Over the page's own sheet it ends.
+  const onPage = pattern === "watch/[slug]" || pattern === "series/[slug]"
+  return liveCover === "screen" && onPage ? "screen" : null
 }
 
 /** Where the reader runs: the Bible tab, the pushed route, or one of the

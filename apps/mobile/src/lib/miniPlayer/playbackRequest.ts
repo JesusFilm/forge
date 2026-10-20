@@ -21,7 +21,7 @@ import {
   sameSessionContent,
   type MiniPlayerStore,
 } from "./store"
-import { canOriginateRoutePattern } from "./presentation"
+import { canOriginateRoutePattern, type SlotPage } from "./presentation"
 import { extractMuxPlaybackId } from "../muxThumbnail"
 import type { VideoPlayerCast } from "../../components/watch/VideoPlayer"
 import type {
@@ -138,6 +138,9 @@ export type PlaybackRequestSnapshot = {
   /** Another screen sits over the current slot's screen, which stays mounted.
    *  The slot publishes it; the host decides whether that screen covers. */
   underScreen?: boolean
+  /** The page that mounts the current slot, so only its own routes keep it
+   *  in view. Null when the slot named none. */
+  slotPage?: SlotPage | null
   /** feat-553 R10: the resting window frame, for a surface that must keep its
    *  own content clear of it. The host publishes it; null when no window rests. */
   windowFrame?: PlaybackRect | null
@@ -318,6 +321,7 @@ type Slot = {
   request: PlaybackRequest
   rect: PlaybackRect | null
   underScreen: boolean
+  page: SlotPage | null
 }
 
 export function createPlaybackRequestStore(deps: {
@@ -353,6 +357,7 @@ export function createPlaybackRequestStore(deps: {
     cover: null,
     coverSource: null,
     underScreen: false,
+    slotPage: null,
     windowFrame: null,
   }
   let reconciling = false
@@ -411,6 +416,7 @@ export function createPlaybackRequestStore(deps: {
               : "refused",
         coverSource: slotCover?.source ?? null,
         underScreen: slot.underScreen,
+        slotPage: slot.page,
         windowFrame,
       }
     }
@@ -423,6 +429,7 @@ export function createPlaybackRequestStore(deps: {
       cover: null,
       coverSource: null,
       underScreen: false,
+      slotPage: null,
       windowFrame,
     }
   }
@@ -518,9 +525,9 @@ export function createPlaybackRequestStore(deps: {
     },
 
     /** Mount a surface that wants the player. The newest one wins. */
-    attachSlot(request: PlaybackRequest): number {
+    attachSlot(request: PlaybackRequest, page: SlotPage | null = null): number {
       const id = nextSlotId++
-      slots.set(id, { request, rect: null, underScreen: false })
+      slots.set(id, { request, rect: null, underScreen: false, page })
       commit()
       return id
     },
