@@ -8,6 +8,16 @@ Writes src/fonts/montserrat-{latin,cyrillic,rest}.woff2 and prints the exact
 only accepts literal options. The three sets are disjoint apart from combining
 marks, and together cover every code point of the source font, so no glyph is
 lost: a page downloads only the files whose characters it renders.
+
+Every subset carries every combining mark the font has. The browser shapes a
+base letter and its marks with one font, and a font only "has" the code points
+in its unicode-range. If a mark lived only in another subset, a cluster such as
+M + U+0327 (Marshallese), decomposed Vietnamese, or Bulgarian о + U+0300 would
+match no subset and render whole in a system font.
+
+The name table is kept in full: it carries the SIL Open Font License notice
+(name IDs 13 and 14) that the OFL requires with every copy, and the designer
+credits.
 """
 
 import subprocess
@@ -41,7 +51,7 @@ CYRILLIC = (
     | span(0xA640, 0xA69F)
     | span(0xFE2E, 0xFE2F)
 )
-COMBINING = span(0x0300, 0x036F)
+COMBINING = span(0x0300, 0x036F) | span(0x1DC0, 0x1DFF)
 
 
 def ranges(codepoints):
@@ -62,9 +72,10 @@ def ranges(codepoints):
 
 def main():
     cmap = set(TTFont(SOURCE).getBestCmap())
-    latin = cmap & LATIN
-    cyrillic = (cmap & CYRILLIC) - latin
-    rest = (cmap - latin - cyrillic) | (cmap & COMBINING)
+    marks = cmap & COMBINING
+    latin = (cmap & LATIN) | marks
+    cyrillic = ((cmap & CYRILLIC) - latin) | marks
+    rest = (cmap - latin - cyrillic) | marks
     assert latin | cyrillic | rest == cmap
     OUT.mkdir(exist_ok=True)
     for name, codepoints in (("latin", latin), ("cyrillic", cyrillic), ("rest", rest)):
@@ -75,6 +86,7 @@ def main():
                 str(SOURCE),
                 f"--unicodes={ranges(codepoints)}",
                 "--layout-features=*",
+                "--name-IDs=*",
                 "--flavor=woff2",
                 f"--output-file={target}",
             ],

@@ -1,10 +1,12 @@
 import localFont from "next/font/local"
 
 // Montserrat, split into three unicode-range subset families so a page
-// downloads only the scripts it renders. Latin pages fetch the ~59 KB latin
-// file instead of the ~206 KB full face; Cyrillic text adds ~47 KB, and any
+// downloads only the scripts it renders. Latin pages fetch the ~66 KB latin
+// file instead of the ~206 KB full face; Cyrillic text adds ~55 KB, and any
 // other code point the font covers (Latin Extended, Vietnamese, IPA, symbols)
-// adds ~135 KB. Only the latin file is preloaded. Regenerate the files and
+// adds ~136 KB. Every file also carries every combining mark, so a letter and
+// its marks always come from one font (see the script). Only the latin file
+// is preloaded. Regenerate the files and
 // the ranges below with `python3 scripts/subset-watch-font.py`; next/font
 // only accepts literal options, so the ranges cannot be imported.
 //
@@ -25,7 +27,7 @@ const montserratLatin = localFont({
     {
       prop: "unicode-range",
       value:
-        "U+0000, U+000D, U+0020-007E, U+00A0-00AC, U+00AE-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2007-200B, U+2010, U+2012-2015, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2032-2033, U+2039-203A, U+2044, U+2052, U+20AC, U+2122, U+2190-2195, U+2212, U+2215, U+2248",
+        "U+0000, U+000D, U+0020-007E, U+00A0-00AC, U+00AE-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0300-0304, U+0306-030D, U+030F-0313, U+0315, U+031B, U+0320, U+0323-0329, U+032D-0332, U+0334-0338, U+034F, U+0358, U+035C-035D, U+035F, U+0361-0362, U+1DC4-1DCA, U+2007-200B, U+2010, U+2012-2015, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2032-2033, U+2039-203A, U+2044, U+2052, U+20AC, U+2122, U+2190-2195, U+2212, U+2215, U+2248",
     },
   ],
   variable: "--font-montserrat-latin",
@@ -52,7 +54,7 @@ const montserratCyrillic = localFont({
     {
       prop: "unicode-range",
       value:
-        "U+0301, U+0400-045F, U+0462-0463, U+046A-046B, U+0472-0475, U+048A-04FF, U+0510-0513, U+051A-051D, U+0524-0529, U+052E-052F, U+20B4, U+2116",
+        "U+0300-0304, U+0306-030D, U+030F-0313, U+0315, U+031B, U+0320, U+0323-0329, U+032D-0332, U+0334-0338, U+034F, U+0358, U+035C-035D, U+035F, U+0361-0362, U+0400-045F, U+0462-0463, U+046A-046B, U+0472-0475, U+048A-04FF, U+0510-0513, U+051A-051D, U+0524-0529, U+052E-052F, U+1DC4-1DCA, U+20B4, U+2116",
     },
   ],
   variable: "--font-montserrat-cyrillic",
