@@ -48,9 +48,7 @@ describe.each([
 
     expect(container.querySelectorAll("main")).toHaveLength(1)
     const alert = container.querySelector('[role="alert"]')
-    expect(alert?.textContent).toBe(
-      "Failed to load experience: Something went wrong.",
-    )
+    expect(alert?.textContent).toBe("Something went wrong.")
     expect(container.querySelector("main")?.contains(alert)).toBe(true)
   })
 
