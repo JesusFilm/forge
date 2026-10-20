@@ -1426,6 +1426,8 @@ function CloseCard({
             fontWeight: 600,
             fontSize: f(size),
             lineHeight: 1.22,
+            // A "\n" is the writer's line break ("Blasphemy.\nUnless…").
+            whiteSpace: "pre-line",
             letterSpacing: f(1.5),
             textTransform: "uppercase",
             textAlign: "center",

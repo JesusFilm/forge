@@ -250,6 +250,7 @@ export function Photo({
   caption,
   focusX = 50,
   clean = false,
+  tape = true,
 }: {
   f: (n: number) => number
   file: string
@@ -261,6 +262,8 @@ export function Photo({
    *  Paralytic 2026-10-20: the dots read as spots on a face, and the dark
    *  stills were unreadable). */
   clean?: boolean
+  /** The strip of tape on top; off when a pin holds the photo. */
+  tape?: boolean
 }) {
   return (
     <div
@@ -317,19 +320,21 @@ export function Photo({
           {caption}
         </div>
       ) : null}
-      <div
-        style={{
-          position: "absolute",
-          top: -f(18),
-          left: "50%",
-          width: f(140),
-          height: f(36),
-          marginLeft: -f(70),
-          background: "rgba(232,220,190,0.78)",
-          transform: "rotate(-3deg)",
-          boxShadow: `0 ${f(1)}px ${f(3)}px rgba(0,0,0,0.15)`,
-        }}
-      />
+      {tape ? (
+        <div
+          style={{
+            position: "absolute",
+            top: -f(18),
+            left: "50%",
+            width: f(140),
+            height: f(36),
+            marginLeft: -f(70),
+            background: "rgba(232,220,190,0.78)",
+            transform: "rotate(-3deg)",
+            boxShadow: `0 ${f(1)}px ${f(3)}px rgba(0,0,0,0.15)`,
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -455,6 +460,7 @@ export type BoardClip = {
 type BoardPhoto = {
   kind: "photo"
   clean?: boolean
+  tape?: boolean
   id: string
   x: number
   y: number
@@ -537,6 +543,8 @@ type BoardStamp = {
   rot?: number
   on?: string | number
   text: string
+  /** A round seal, solid red with white letters, instead of the frame. */
+  round?: boolean
 }
 /** A printed form with fields filled in by hand as the voice reaches them
  *  (the case file's charge sheet): a title, then label / value rows, a value
@@ -582,6 +590,9 @@ export type BoardThread = {
   on: string | number
   points: [number, number][]
 }
+/** A push pin stuck in an item (canvas units), there once `on` is said or
+ *  from the start; with `pins` set, threads draw no pins of their own. */
+export type BoardPin = { x: number; y: number; on?: string | number }
 export type BoardItem =
   | BoardClip
   | BoardPhoto
@@ -607,6 +618,7 @@ export type BoardSpec = {
    *  438); left of centre leaves room before the phone's right rail. */
   focusX?: number
   threads?: BoardThread[]
+  pins?: BoardPin[]
   items: BoardItem[]
   /** Camera: centre (canvas units) and zoom, from the word `on`. */
   shots: { on: string | number; x: number; y: number; zoom: number }[]
@@ -739,6 +751,33 @@ function HandLabel({
 
 /** The charge sheet: printed title and labels, values written in by hand
  *  when their words are said, a red ring round the ones that matter. */
+/** A push pin: a soft shadow down-right, a domed red head lit from the top
+ *  left, a glint (owner, Paralytic 2026-10-20: bigger and more real). The
+ *  head's gradient is the board's `#pinHead`. */
+function PushPin({ x, y, opacity }: { x: number; y: number; opacity: number }) {
+  return (
+    <g opacity={opacity}>
+      <ellipse cx={x + 7} cy={y + 9} rx={17} ry={13} fill="rgba(0,0,0,0.45)" />
+      <circle cx={x} cy={y} r={17} fill="url(#pinHead)" />
+      <circle
+        cx={x}
+        cy={y}
+        r={17}
+        fill="none"
+        stroke="rgba(60,8,4,0.55)"
+        strokeWidth={1.5}
+      />
+      <ellipse
+        cx={x - 6}
+        cy={y - 7}
+        rx={5}
+        ry={3.5}
+        fill="rgba(255,255,255,0.7)"
+      />
+    </g>
+  )
+}
+
 function FormSheet({
   f,
   t,
@@ -1472,6 +1511,7 @@ export function VoxBoard({
                 {...(it.caption ? { caption: it.caption } : {})}
                 {...(it.focusX != null ? { focusX: it.focusX } : {})}
                 {...(it.clean ? { clean: true } : {})}
+                {...(it.tape === false ? { tape: false } : {})}
               />
             ) : it.kind === "form" ? (
               <FormSheet f={f} t={t} fm={it} words={words} />
@@ -1481,6 +1521,28 @@ export function VoxBoard({
               <MapSheet f={f} t={t} m={it} words={words} />
             ) : it.kind === "flow" ? (
               <FlowSheet f={f} t={t} fl={it} words={words} />
+            ) : it.kind === "stamp" && it.round ? (
+              <div
+                style={{
+                  width: f(it.w),
+                  height: f(it.w),
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle at 40% 35%, #d9473a 0%, ${RED} 60%, #9e2c20 100%)`,
+                  boxShadow: `0 ${f(6)}px ${f(14)}px rgba(0,0,0,0.45), inset 0 0 0 ${f(7)}px rgba(255,255,255,0.0), inset 0 0 0 ${f(10)}px rgba(255,245,235,0.85), inset 0 0 0 ${f(14)}px ${RED}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: SANS,
+                  fontWeight: 800,
+                  fontSize: f(it.w / Math.max(5, it.text.length * 0.72)),
+                  letterSpacing: f(3),
+                  textTransform: "uppercase",
+                  color: "#fff6ec",
+                  transform: `scale(${(1 + 0.5 * (1 - prog(t, a, 0.22))).toFixed(4)})`,
+                }}
+              >
+                {it.text}
+              </div>
             ) : it.kind === "stamp" ? (
               <div
                 style={{
@@ -1596,38 +1658,25 @@ export function VoxBoard({
               return (
                 <g key={i}>
                   <Draw d={d} p={k} color="#b3261e" width={3.5} />
-                  {th.points.map(([px, py], j) => (
-                    // A push pin: a soft shadow down-right, a domed red
-                    // head lit from the top left, a glint (owner, Paralytic
-                    // 2026-10-20: bigger and more real).
-                    <g key={j} opacity={Math.min(1, k * 2)}>
-                      <ellipse
-                        cx={px + 7}
-                        cy={py + 9}
-                        rx={17}
-                        ry={13}
-                        fill="rgba(0,0,0,0.45)"
-                      />
-                      <circle cx={px} cy={py} r={17} fill="url(#pinHead)" />
-                      <circle
-                        cx={px}
-                        cy={py}
-                        r={17}
-                        fill="none"
-                        stroke="rgba(60,8,4,0.55)"
-                        strokeWidth={1.5}
-                      />
-                      <ellipse
-                        cx={px - 6}
-                        cy={py - 7}
-                        rx={5}
-                        ry={3.5}
-                        fill="rgba(255,255,255,0.7)"
-                      />
-                    </g>
-                  ))}
+                  {spec.pins
+                    ? null
+                    : th.points.map(([px, py], j) => (
+                        <PushPin
+                          key={j}
+                          x={px}
+                          y={py}
+                          opacity={Math.min(1, k * 2)}
+                        />
+                      ))}
                 </g>
               )
+            })}
+            {(spec.pins ?? []).map((pn, i) => {
+              const k =
+                pn.on == null ? 1 : prog(t, at(words, pn.on, Infinity), 0.3)
+              return k > 0 ? (
+                <PushPin key={`p${i}`} x={pn.x} y={pn.y} opacity={k} />
+              ) : null
             })}
           </svg>
         ) : null}
