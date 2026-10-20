@@ -4,7 +4,7 @@ A month view of every post on YouTube (English and Russian channels), Facebook
 and Instagram, published and scheduled, with a thumbnail, time and title on each
 tile. Lyuba uses it for planning.
 
-- Live page: https://claude.ai/artifact/86K6PKnMHbezT87VTdbt9J (private to Lyuba)
+- Live page: https://claude.ai/artifact/BUdriP79dkGFDPR89MY1dt (private to Lyuba)
 - Page source: `docs/content-calendar/index.html` (it only renders; the data is not in it)
 - Data: the artifact's database, collection `posts`, one document per post
 - Thumbnails: the artifact's asset store; local copies in `~/Desktop/Social Media/Calendar/thumbs/`
@@ -33,7 +33,7 @@ ffmpeg -loglevel error -y -ss 4 -i "<story>/shorts/<kind>.mp4" -frames:v 1 -vf s
 
 Copy it into your scratchpad (uploads must come from the working directory or
 the scratchpad), then upload with the Artifact tool:
-`{ url: "https://claude.ai/artifact/86K6PKnMHbezT87VTdbt9J", asset: true, file_path: "<scratchpad>/<name>.jpg" }`.
+`{ url: "https://claude.ai/artifact/BUdriP79dkGFDPR89MY1dt", asset: true, file_path: "<scratchpad>/<name>.jpg" }`.
 The result gives `/_blob/<id>`; that string is the row's `thumb`.
 Thumbnails are vertical for everything except YouTube long forms (Shorts and all
 Facebook / Instagram posts: 270x480 frame); long forms use the 16:9 cover.

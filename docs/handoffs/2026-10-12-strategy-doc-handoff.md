@@ -11,10 +11,10 @@ Write the document itself in English unless she asks otherwise.
 | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | Running analytics findings (most important)            | `~/Desktop/Social Media/Analytics/log.md`                                                                     |
 | First 28-day report (Russian)                          | `~/Desktop/Social Media/Analytics/2026-10-07-report-28d.md`                                                   |
-| Team YouTube dashboard                                 | https://claude.ai/artifact/T3QFpYWsVKKk1Px4k1QhNS (also `Analytics/Daily Bible Pause YouTube dashboard.html`) |
+| Team YouTube dashboard                                 | https://claude.ai/artifact/1TqhY4HP4zw8WEP6xqz3VX (also `Analytics/Daily Bible Pause YouTube dashboard.html`) |
 | How analytics is read, which videos had ads            | `docs/handoffs/2026-10-07-analytics-handoff.md` (devo-lab worktree)                                           |
 | Per-story publishing logs                              | `~/Desktop/Social Media/<Story>/README.txt` (Prodigal, Martha, Bartimaeus, …)                                 |
-| Content calendar (what went out when)                  | https://claude.ai/artifact/86K6PKnMHbezT87VTdbt9J                                                             |
+| Content calendar (what went out when)                  | https://claude.ai/artifact/BUdriP79dkGFDPR89MY1dt                                                             |
 | How a devotional is made (pipeline, voices, languages) | `docs/handoffs/` in the devo-lab worktree; Spanish and Russian voices exist                                   |
 
 ## Where things stand (Oct 12, 2026)

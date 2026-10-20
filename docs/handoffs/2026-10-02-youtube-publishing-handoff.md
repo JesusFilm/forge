@@ -137,5 +137,5 @@ Reel, step by step (ask on the first run where marked):
 
 After every publish or schedule, send the "Calendar" session (local_32447311-7285-4bcd-9696-e4a683c4d597, Analytics group) a short message
 (story, kind/cut, platforms, status, date/time, title, links, file path); it updates
-https://claude.ai/artifact/86K6PKnMHbezT87VTdbt9J. Do not write calendar rows yourself.
+https://claude.ai/artifact/BUdriP79dkGFDPR89MY1dt. Do not write calendar rows yourself.
 See `docs/content-calendar/README.md`.

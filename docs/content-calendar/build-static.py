@@ -49,7 +49,7 @@ def main(posts_dir, blobmap_path, dashboard, out):
     )
     page = page[:start] + loader + page[end:]
     # Analytics button opens the dashboard copied next to this page.
-    page = page.replace("https://claude.ai/artifact/T3QFpYWsVKKk1Px4k1QhNS", "dashboard.html")
+    page = page.replace("https://claude.ai/artifact/1TqhY4HP4zw8WEP6xqz3VX", "dashboard.html")
     page = page.replace('href="dashboard.html"\n      target="_blank"', 'href="dashboard.html"\n      target="_self"')
     html = (
         '<!doctype html><html lang="en"><head><meta charset="utf-8">'
