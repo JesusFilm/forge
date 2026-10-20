@@ -48,6 +48,21 @@ Let keyboard and screen-reader users reach Watch navigation and page content wit
 - Web typecheck and lint.
 - Production build for the touched frontend scope.
 
+## Browser check (2026-10-20)
+
+Headless Chromium on a local `next dev` build of `/watch/whats-new`
+(real page content; no Admin needed), compared with production:
+
+| Check                                        | Production                                 | This branch                                                                    |
+| -------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------ |
+| DOM order                                    | `main`, then the header (after the footer) | skip link, header, `#watch-main-content`, `main`                               |
+| First Tab stop                               | feedback launcher                          | "Skip to main content", 203x52 px, drawn above the header                      |
+| Enter on the skip link                       | —                                          | focus on `#watch-main-content`, no page-sized ring                             |
+| Header covering focus, 45 Tab + 20 Shift+Tab | —                                          | 0% at 320, 390 and 1280 (was up to 87% on Shift+Tab before the scroll padding) |
+
+The home footer move is covered by unit tests only: the local env has no
+Admin data, so the home page renders its degraded state.
+
 ## ID note
 
 Opened as feat-631, but main already uses feat-631 for the TV development
