@@ -636,7 +636,9 @@ export function DownloadModal({
               </span>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-3">
+            {/* Wraps so that on 320-360px phones the two buttons stack
+                instead of widening the dialog past the screen. */}
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
               <Button
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}
@@ -776,7 +778,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
             </a>
             .
           </p>
-          <div className="flex shrink-0 items-center justify-end gap-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
             <button
               type="button"
               onClick={onCancel}
