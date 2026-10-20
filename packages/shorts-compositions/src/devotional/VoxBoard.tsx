@@ -1334,7 +1334,14 @@ export function VoxBoard({
 }) {
   // Camera: hold each shot, glide to the next in 0.9s starting a beat early.
   const shots = spec.shots
-    .map((s) => ({ ...s, at: at(words, s.on, 0) }))
+    // `on: "end"`: just after the voice stops (the closing pull-back).
+    .map((s) => ({
+      ...s,
+      at:
+        s.on === "end"
+          ? (words.at(-1)?.endSec ?? 0) + 0.35
+          : at(words, s.on, 0),
+    }))
     .sort((a, b) => a.at - b.at)
   let cam = shots[0]!
   let x = cam.x

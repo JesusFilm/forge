@@ -188,6 +188,12 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
   )
   const t = frame / fps
   const total = durationInFrames / fps
+  // The closing turn: half a second after the voice, plus any held beat
+  // (owner, Paralytic 2026-10-20: pull back to the whole board first).
+  const closeAt =
+    (words.length ? words[words.length - 1].endSec : 0) +
+    0.5 +
+    (fact?.closeDelaySec ?? 0)
   // Soft in from black, out to black over the last 0.6s.
   const blackout = interpolate(
     frame,
@@ -251,9 +257,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           t={t}
           words={words}
           spec={voxHistory.board as BoardSpec}
-          {...(fact?.closeCard && words.length
-            ? { outAt: words[words.length - 1].endSec + 0.5 }
-            : {})}
+          {...(fact?.closeCard && words.length ? { outAt: closeAt } : {})}
         />
       ) : drawn && voxHistory?.style === "notebook" ? (
         <VoxNotebook
@@ -423,9 +427,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               t={t}
               words={words}
               spec={voxHistory.casefile as CaseFileSpec}
-              {...(fact?.closeCard && words.length
-                ? { outAt: words[words.length - 1].endSec + 0.5 }
-                : {})}
+              {...(fact?.closeCard && words.length ? { outAt: closeAt } : {})}
             />
           ) : filmNotes ? (
             <VoxNotebook
@@ -496,8 +498,9 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         <CloseCard
           f={f}
           t={t}
-          at={words[words.length - 1].endSec + 0.5}
+          at={closeAt}
           text={fact.closeCard}
+          {...(fact.closeSize ? { size: fact.closeSize } : {})}
           {...(fact.closeSub ? { sub: fact.closeSub } : {})}
         />
       ) : null}
@@ -1381,12 +1384,15 @@ function CloseCard({
   at,
   text,
   sub,
+  size = 36,
 }: {
   f: (n: number) => number
   t: number
   at: number
   text: string
   sub?: string
+  /** Figma units (default 36); the column widens with it. */
+  size?: number
 }) {
   if (t < at - 0.05) return null
   const dim = interpolate(t, [at - 0.05, at + 0.4], [0, 1], clamp)
@@ -1405,7 +1411,7 @@ function CloseCard({
           position: "absolute",
           top: f(675),
           left: "50%",
-          width: f(492),
+          width: f(Math.min(640, (492 * size) / 36)),
           transform: "translateX(-50%)",
           display: "flex",
           flexDirection: "column",
@@ -1418,7 +1424,7 @@ function CloseCard({
             margin: 0,
             fontFamily: SANS,
             fontWeight: 600,
-            fontSize: f(36),
+            fontSize: f(size),
             lineHeight: 1.22,
             letterSpacing: f(1.5),
             textTransform: "uppercase",

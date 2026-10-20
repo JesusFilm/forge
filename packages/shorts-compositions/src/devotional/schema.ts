@@ -515,6 +515,10 @@ export const devotionalInputPropsSchema = z.object({
       /** History: a silent turn stamped once the voice ends ("And this is
        *  the son who got the party."), with `closeSub` under it. */
       closeCard: z.string().optional(),
+      /** History: extra seconds between the voice's end and the closing
+       *  turn (a board pulls back first), and the turn's size (default 36). */
+      closeDelaySec: z.number().optional(),
+      closeSize: z.number().optional(),
       /** Language: the verse's address ("Luke 15:32"). */
       reference: z.string().optional(),
       /** Language: the Vox-style explainer instead of the plain verse

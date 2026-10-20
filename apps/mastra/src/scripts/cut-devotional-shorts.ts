@@ -859,7 +859,16 @@ async function main() {
         // to read it (owner, 2026-10-02).
         ;(m.shortFact as { closeCard?: string }).closeCard =
           arg("history-close")
-        m.outroHoldSec = 3.8
+        // `--history-close-delay=2.4`: hold that long after the voice before
+        // the turn (a board pulls back first); `--history-close-size=52`.
+        const delay = Number(arg("history-close-delay") ?? 0)
+        if (delay > 0)
+          (m.shortFact as { closeDelaySec?: number }).closeDelaySec = delay
+        if (arg("history-close-size"))
+          (m.shortFact as { closeSize?: number }).closeSize = Number(
+            arg("history-close-size"),
+          )
+        m.outroHoldSec = 3.8 + delay
       }
       if (short.kind === "history" && m.shortFact) {
         // Teaser-style kinetic captions: the model picks each line's hero and
