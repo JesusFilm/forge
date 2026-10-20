@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 19, 2026)
 
-- **Total tickets:** 860
-- **Complete:** 640
+- **Total tickets:** 861
+- **Complete:** 641
 - **Cancelled:** 41
 - **In progress:** 70
 - **Not started:** 52
@@ -805,6 +805,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | —     | 2    | —   | not-started |
 | [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | —     | 10   | —   | complete    |
 | [feat-698](platform/feat-698-watch-chapter-progress-indicator.md)                      | Watch chapter thumbnail progress indicator                                         | vlad       | P2       | —     | 1    | —   | complete    |
+| [feat-768](platform/feat-768-watch-related-questions-server-markdown.md)               | Render Related Questions Markdown on the server                                    | vlad       | P2       | —     | 1    | —   | complete    |
 
 ### Topic Experiences
 
