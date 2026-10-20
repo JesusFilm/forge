@@ -1,3 +1,4 @@
+import { cache } from "react"
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { NextIntlClientProvider } from "next-intl"
@@ -16,6 +17,11 @@ import {
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
   loadClientMessages,
 } from "@/i18n/client-messages"
+
+// Share the inventory between metadata and the page during one server render.
+// React resets this memoization for later requests; persistent cache tags and
+// revalidation still belong to the resolver.
+const getInventoryForRender = cache(resolveWatchLanguageInventory)
 
 export const revalidate = 3600
 export const dynamic = "force-static"
@@ -44,7 +50,7 @@ export async function generateMetadata({
   if (!(await isAdmittedWatchInventoryLanguageSlug(languageSlug))) notFound()
 
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
-  const inventory = await resolveWatchLanguageInventory(locale, languageSlug)
+  const inventory = await getInventoryForRender(locale, languageSlug)
   const t = await getTranslations({ locale, namespace: "LanguageInventory" })
   const languageDisplayName =
     inventory.languageNativeName?.trim() || inventory.languageName
@@ -88,7 +94,7 @@ export default async function LanguageVideosPage({ params }: PageProps) {
   const { locale } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
   const [inventory, messages] = await Promise.all([
-    resolveWatchLanguageInventory(locale, languageSlug),
+    getInventoryForRender(locale, languageSlug),
     loadClientMessages(locale, LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES),
   ])
 

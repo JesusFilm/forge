@@ -94,3 +94,19 @@ uses `feat-745` for the editorial A/B feasibility assessment. Earlier incident
 reports and implementation comments use the investigation's former ID; this
 file is its current tracking ticket. IDs through `feat-749` were already
 allocated in the shared working copy at the time of correction.
+
+## Bounded repair candidate — 2026-10-20
+
+`docs/plans/2026-10-20-watch-inventory-request-dedup.md` records a slow retained
+inventory trace and a confirmed duplicate resolver call from metadata and page
+rendering. The server route now shares one React request cache. A real Next
+production-runtime probe copying that route fails on the baseline (two calls)
+and passes with the repair (one), preserving controlled page content, RSC
+prefetch, route-cache hits, language isolation and per-request cache lifetime.
+The existing 130 focused tests, Web typecheck and scoped lint pass.
+
+This is an operation-count reduction, not established incident recovery.
+Eight alternating local timing pairs overlap, and the fixture substitutes data
+and view dependencies. Persistent cache policy, deployment configuration and
+the production app remain unchanged. Keep this ticket in progress; owner review,
+normal authorized rollout and representative production acceptance are pending.
