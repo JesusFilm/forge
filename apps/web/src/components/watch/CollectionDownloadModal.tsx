@@ -882,9 +882,11 @@ export function CollectionDownloadModal({
                 </p>
               ) : null}
 
+              {/* Wraps so that on 320-360px phones "Download again" and
+                  Close stack instead of widening the dialog past the screen. */}
               <div
                 data-testid="watch-collection-download-actions"
-                className="flex items-center justify-end gap-3 pt-5"
+                className="flex flex-wrap items-center justify-end gap-3 pt-5"
               >
                 {showDownloadAgain ? (
                   <>
