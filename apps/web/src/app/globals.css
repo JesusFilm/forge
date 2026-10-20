@@ -181,6 +181,10 @@
   html {
     @apply font-sans;
     overflow-x: hidden;
+    /* Keyboard focus and in-page jumps stop above the fixed feedback
+       launcher (bottom-left, ~3.1rem tall) instead of under it: at 320px a
+       Tab-scrolled footer link was 12-28% covered. */
+    scroll-padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
   }
 }
 

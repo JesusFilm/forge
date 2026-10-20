@@ -1391,11 +1391,26 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     expect(searchButton?.className).not.toContain("md:right-52")
     expect(searchButton?.className).toContain("hover:bg-white")
     expect(searchButton?.className).toContain("hover:text-stone-950")
-    const searchLabels = searchButton?.querySelectorAll("span")
-    expect(searchLabels?.[0]?.textContent).toBe("Search videos")
-    expect(searchLabels?.[0]?.className).toContain("md:hidden")
-    expect(searchLabels?.[1]?.textContent).toBe("Search or browse topics…")
-    expect(searchLabels?.[1]?.className).toContain("hidden md:inline")
+    // Phones: the full label where it fits, the short one where it would
+    // clip ("Search vi…" at 320px), decided by the label slot's own width.
+    const mobileLabel = searchButton?.querySelector(
+      '[data-testid="floating-search-mobile-label"]',
+    )
+    expect(mobileLabel?.className).toContain("@container")
+    expect(mobileLabel?.className).toContain("md:hidden")
+    const mobileLabels = mobileLabel?.querySelectorAll("span")
+    expect(mobileLabels?.[0]?.textContent).toBe("Search")
+    expect(mobileLabels?.[0]?.className).toContain("@min-[7.5rem]:hidden")
+    expect(mobileLabels?.[1]?.textContent).toBe("Search videos")
+    expect(mobileLabels?.[1]?.className).toContain(
+      "hidden @min-[7.5rem]:inline",
+    )
+    const desktopLabel = Array.from(
+      searchButton?.querySelectorAll(":scope > span") ?? [],
+    ).at(-1)
+    expect(desktopLabel?.textContent).toBe("Search or browse topics…")
+    expect(desktopLabel?.className).toContain("hidden md:inline")
+    expect(searchButton?.className).toContain("max-sm:px-4")
     expect(
       searchButton?.querySelector('[data-testid="floating-search-icon"]'),
     ).not.toBeNull()

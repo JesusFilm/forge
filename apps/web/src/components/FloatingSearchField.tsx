@@ -46,6 +46,7 @@ export function useFloatingSearchInputAutofocus(
 export function FloatingSearchFieldButton({
   display,
   mobileDisplay,
+  mobileShortDisplay,
   isPlaceholder,
   className,
   iconTestId = "floating-search-icon",
@@ -53,6 +54,8 @@ export function FloatingSearchFieldButton({
 }: {
   display: string
   mobileDisplay?: string
+  /** Shown on phones only when `mobileDisplay` cannot fit the pill. */
+  mobileShortDisplay?: string
   isPlaceholder: boolean
   className?: string
   iconTestId?: string
@@ -65,14 +68,34 @@ export function FloatingSearchFieldButton({
     <button
       type="button"
       {...props}
-      className={`${FIELD_BASE_CLASS} ${FIELD_GLASS_CLASS} ${className ?? ""}`}
+      // Phones get back the room `px-6` spends: beside the home wordmark the
+      // pill had 50px for its label at 320px wide.
+      className={`${FIELD_BASE_CLASS} ${FIELD_GLASS_CLASS} max-sm:gap-2 max-sm:px-4 ${className ?? ""}`}
     >
       <Search
         aria-hidden
         data-testid={iconTestId}
         className="h-6 w-6 shrink-0 text-white/85 transition-colors duration-300 group-hover:text-stone-950"
       />
-      {mobileDisplay ? (
+      {mobileDisplay && mobileShortDisplay ? (
+        <>
+          {/* The label slot is the container, so the full label shows
+              wherever it fits and the short one replaces a clipped
+              "Search vi…" everywhere else. */}
+          <span
+            data-testid="floating-search-mobile-label"
+            className="@container flex min-w-0 flex-1 md:hidden"
+          >
+            <span className={`${textClassName} @min-[7.5rem]:hidden`}>
+              {mobileShortDisplay}
+            </span>
+            <span className={`${textClassName} hidden @min-[7.5rem]:inline`}>
+              {mobileDisplay}
+            </span>
+          </span>
+          <span className={`${textClassName} hidden md:inline`}>{display}</span>
+        </>
+      ) : mobileDisplay ? (
         <>
           <span className={`${textClassName} md:hidden`}>{mobileDisplay}</span>
           <span className={`${textClassName} hidden md:inline`}>{display}</span>
