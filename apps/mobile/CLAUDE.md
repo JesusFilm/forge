@@ -1084,7 +1084,9 @@ sheet closes.
 
 **The Bible reader routes change how the window starts and where it rests,
 and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
-routes, every rule in this section is unchanged.
+routes, the window's start and rest rules are unchanged. A screen pushed over
+a watch or series page also covers the slot, by the same admission (see the
+next section).
 
 - **A reader route covers the watch slot and keeps it attached.**
   `isReaderCovering(segments)` in `presentation.ts` names `reader` and the
