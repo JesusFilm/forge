@@ -365,6 +365,10 @@ describe("SeriesPageClient — shared content surface", () => {
     for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
       expect(content?.className).toContain(className)
     }
+    // A quarter of a 768px rail is too narrow for the language picker.
+    expect(content?.className).toContain("md:grid-cols-3")
+    expect(content?.className).toContain("lg:grid-cols-4")
+    expect(content?.className).not.toContain("md:grid-cols-4")
   })
 
   it("activates a routed subtitle on the playable series trailer", () => {
@@ -537,10 +541,18 @@ describe("SeriesPageClient — responsive hero overlay", () => {
     expect(overlay?.className).toContain("pb-5")
     expect(overlay?.className).toContain("max-[360px]:pb-2")
     expect(contentRow?.className).toContain("flex-col")
-    expect(contentRow?.className).toContain("md:flex-row")
+    // Side by side only where the title keeps room: desktop, and a phone
+    // held sideways (whose short hero cannot fit the stacked band).
+    expect(contentRow?.className).toContain("lg:flex-row")
+    expect(contentRow?.className).not.toContain("md:flex-row")
+    expect(contentRow?.className).toContain("compact-landscape:flex-row")
+    expect(
+      container.querySelector('[data-testid="series-page-title"]')?.className,
+    ).toContain("compact-landscape:text-2xl")
     expect(actions?.className).toContain("w-full")
     expect(actions?.className).toContain("flex-wrap")
-    expect(actions?.className).toContain("md:w-auto")
+    expect(actions?.className).toContain("lg:w-auto")
+    expect(actions?.className).toContain("compact-landscape:w-auto")
     expect(
       container.querySelector('[data-testid="series-page-download-button"]')
         ?.className,
