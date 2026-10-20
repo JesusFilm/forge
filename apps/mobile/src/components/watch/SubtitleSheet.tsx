@@ -136,7 +136,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
   toggleRow: {
@@ -148,6 +147,5 @@ const styles = StyleSheet.create({
   toggleLabel: {
     color: TEXT_PRIMARY,
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

@@ -462,7 +462,7 @@ type VerseBodyProps = {
   verse: Verse
   stop: ChapterPosition
   size: number
-  fontFamily: string
+  fontFamily: string | undefined
   lineSpacing: number
   verseNumbers: boolean
   textDirection: TextDirection
@@ -616,7 +616,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 26,
     fontStyle: "italic",
-    fontFamily: "System",
     textAlign: "center",
     paddingHorizontal: 24,
   },

@@ -257,7 +257,6 @@ const styles = StyleSheet.create({
   },
   descriptionText: {
     color: TEXT_BODY,
-    fontFamily: "System",
     lineHeight: 22,
   },
   readMoreButton: {

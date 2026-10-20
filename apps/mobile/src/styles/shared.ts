@@ -57,44 +57,37 @@ export const text = StyleSheet.create({
   sectionHeading: {
     fontWeight: "700",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   sectionHeadingPadded: {
     fontWeight: "700",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: SECTION_HEADING_MARGIN_BOTTOM,
   },
   sectionSubtitle: {
     fontWeight: "400",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   errorTitle: {
     color: TEXT_PRIMARY,
     fontSize: 22,
     fontWeight: "bold",
-    fontFamily: "System",
     marginBottom: 8,
   },
   errorMessage: {
     color: TEXT_SECONDARY,
     fontSize: 15,
-    fontFamily: "System",
     textAlign: "center",
   },
   accentLinkText: {
     fontWeight: "600",
     // ACCENT_ON_DARK, not ACCENT: link text needs >= 4.5:1 on the dark bg (AA).
     color: ACCENT_ON_DARK,
-    fontFamily: "System",
   },
   // Uppercase section eyebrow; padding/margins stay local to each consumer.
   eyebrow: {
     fontWeight: "600",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 1,
   },
@@ -124,7 +117,6 @@ export const card = StyleSheet.create({
   },
   badgeText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
   },
 })
@@ -140,7 +132,6 @@ export const button = StyleSheet.create({
   },
   accentText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 16,
     fontWeight: "600",
   },

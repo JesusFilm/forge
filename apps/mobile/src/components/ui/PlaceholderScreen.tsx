@@ -24,6 +24,5 @@ const styles = StyleSheet.create({
   subtitle: {
     color: TEXT_SECONDARY,
     fontSize: 15,
-    fontFamily: "System",
   },
 })

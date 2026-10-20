@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   note: {
-    fontFamily: "System",
     fontSize: 14,
     lineHeight: 20,
   },
@@ -216,7 +215,6 @@ const styles = StyleSheet.create({
   },
   filterLabel: {
     flex: 1,
-    fontFamily: "System",
     fontSize: 16,
   },
 })

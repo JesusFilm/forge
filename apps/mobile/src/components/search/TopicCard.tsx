@@ -111,7 +111,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "700",
     textShadowColor: "rgba(0, 0, 0, 0.35)",
     textShadowOffset: { width: 0, height: 1 },

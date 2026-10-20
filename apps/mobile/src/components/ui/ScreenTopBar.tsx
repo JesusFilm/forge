@@ -218,7 +218,6 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   spacer: {

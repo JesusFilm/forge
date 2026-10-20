@@ -85,7 +85,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 
 - Follow Expo Router file-based routing conventions.
 - Use `@forge/admin-graphql` for all GraphQL operations — never define queries in `@forge/admin-graphql` package itself.
-- System font (`fontFamily: 'System'`) for platform-native typography (SF Pro iOS, Roboto Android).
+- Leave `fontFamily` unset for platform-native typography (SF Pro on iOS, Roboto on Android). Never name the family `"System"`, in a style or as a value a function returns (the reader's `readingFontFamily` returns `undefined` for its sans face): on Android, React Native draws a named family in Regular or Bold only, so weight 500 and 600 draw Regular (`ReactFontManager.getTypeface`). With no family, iOS draws the same system font, and Android keeps the numeric weight. `src/styles/__tests__/noSystemFontFamily.guard.test.js` enforces this with the TypeScript parser, so a comment can name the family.
 - `hexToRgba(color, 0)` for gradient stops — never `"transparent"`.
 - Validate all CMS-sourced URLs via `validateUrl.ts` before use.
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
@@ -1084,7 +1084,9 @@ sheet closes.
 
 **The Bible reader routes change how the window starts and where it rests,
 and only on those routes (feat-553 KTD10, KTD11).** Outside the reader
-routes, every rule in this section is unchanged.
+routes, the window's start and rest rules are unchanged. A screen pushed over
+a watch or series page also covers the slot, by the same admission (see the
+next section).
 
 - **A reader route covers the watch slot and keeps it attached.**
   `isReaderCovering(segments)` in `presentation.ts` names `reader` and the
@@ -1112,6 +1114,34 @@ routes, every rule in this section is unchanged.
     layout, the corner order mirrors. A new window starts at the bottom left
     (the app) and at the top left on a phone reader, bottom left on an iPad.
     The corner frames and the snap stay physical.
+
+**Any other screen pushed over a watch or series page covers its slot too
+(2026-10-20).** A pushed screen keeps the page mounted, so the slot never
+detaches. Before this fix, the host drew the full view over the new screen: a
+deep link to Downloads, or a push tap to an experience.
+
+- **The slot tells the host, from its own navigation.** `PlayerSlot` publishes
+  `underScreen` when its screen loses focus. A pop also blurs the screen, but
+  its `beforeRemove` comes first, so a pop never sets the flag. A leaving
+  screen publishes nothing more, so a covered page that a `dismissTo` removes
+  keeps its cover until it unmounts, and its detach decides the window.
+- **The slot names its page.** Each caller passes `page="watch"` or
+  `page="series"`, and `attachSlot` stores it. Only that page's own routes
+  (`SLOT_PAGE_ROUTE_PATTERNS`) leave the slot in view. A series with no
+  trailer mounts no slot, so a push tap to it must cover the watch slot below.
+- **`slotCoverSource` in `presentation.ts` decides.** It starts a `screen`
+  cover on every route except the page and its own sheets. On the page route
+  it holds a live cover until the page has focus again, because the segments
+  change a commit after the focus does. On the page's own sheet the cover ends.
+- **The started fact resets in a layout effect.** It is declared before the
+  cover's layout effect. A cover that starts in the commit that changes the
+  video must not read the last video's "started" fact.
+- **The admission and the return are the reader's.** A started video floats
+  and keeps playing. Any other video hides and pauses.
+- **Two things differ from the reader.** The window keeps the app's corner
+  layout. A tap on it pushes a watch screen, because a pop closes only one
+  route of several. That screen adopts the session: `uncoverSlot` clears it
+  only when the covered slot is current again.
 
 **Picture-in-picture: one props object, one latch, chrome-only suppression.**
 Every video view that can enter the OS window spreads

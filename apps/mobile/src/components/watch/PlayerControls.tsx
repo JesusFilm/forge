@@ -912,7 +912,6 @@ const styles = StyleSheet.create({
   },
   timeText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   iconRow: {
     flexDirection: "row",

@@ -236,7 +236,6 @@ const styles = StyleSheet.create({
   rowLabel: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     marginRight: 12,
   },
   socialRow: {
@@ -250,7 +249,6 @@ const styles = StyleSheet.create({
   },
   version: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
 })

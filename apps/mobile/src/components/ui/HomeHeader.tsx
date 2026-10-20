@@ -147,7 +147,6 @@ const styles = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontSize: 17,
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   slot: {

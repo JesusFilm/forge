@@ -99,7 +99,6 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 14,
     lineHeight: 20,
-    fontFamily: "System",
     textAlign: "center",
   },
 })

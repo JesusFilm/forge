@@ -89,6 +89,7 @@ import {
   sameRect,
   sameStreamSource,
   sourceForRequest,
+  type CoverSource,
   type LoadedSource,
   type PlaybackRect,
   type PlaybackRequest,
@@ -98,9 +99,10 @@ import { pictureInPictureViewProps } from "../../lib/miniPlayer/pictureInPicture
 import {
   EXPLORE_TAB_ROUTE_PATTERN,
   expandAction,
-  isReaderCovering,
+  isFullScreenRoute,
   miniPlayerPresentation,
   readerRouteKind,
+  slotCoverSource,
   type ExpandAction,
 } from "../../lib/miniPlayer/presentation"
 import {
@@ -882,7 +884,7 @@ function ActivePlaybackHost({
   const hasSession = session != null
   const pipHeld = sessionSnapshot.pipHold
 
-  // ── The reader cover (feat-553 KTD10) ─────────────────────────────────────
+  // ── The cover: the reader, or another screen (feat-553 KTD10) ────────────
 
   // The store's answer for the CURRENT slot is the one predicate every layer
   // reads: this frame, the slot's poster, and the screen's back button. An
@@ -893,8 +895,11 @@ function ActivePlaybackHost({
   // kept rect, so the chrome (a Replay poster, a cast state) stays mounted.
   const coverHides = cover != null && !coverFloats
   const rect = coverFloats ? null : snapshot.rect
-  const coverFloatsRef = useRef(coverFloats)
-  coverFloatsRef.current = coverFloats
+  // What covers the floating window, for the tap and the close.
+  const floatingCoverRef = useRef<CoverSource | null>(null)
+  floatingCoverRef.current = coverFloats
+    ? (snapshot.coverSource ?? "reader")
+    : null
 
   // A refused cover turns autostart off for this video, so no veil arms and
   // no audio starts under the reader (AE13). Per video: another one starts
@@ -923,10 +928,10 @@ function ActivePlaybackHost({
   // the same key, and cleared whenever playback runs again — a viewer who seeks
   // back from the end and plays on is watching, not finished.
   const endedRef = useRef(false)
-  // Keyed on the slug-stable videoKey above: a reset on the seed path's
-  // videoId flip would wipe the started fact with no playing-change edge left
-  // to re-latch it — play, pause, back then owes no window.
-  useEffect(() => {
+  // Keyed on the slug, not the videoId the seed path flips mid-playback. A
+  // layout effect declared before the cover's, so a cover that starts as the
+  // video changes reads this video's facts, not the last one's.
+  useLayoutEffect(() => {
     startedRef.current = false
     endedRef.current = false
   }, [videoKey])
@@ -1002,10 +1007,21 @@ function ActivePlaybackHost({
   // KTD10: one layout effect per covered slot. It runs admission through the
   // store (the same step a detach takes), and its cleanup is the return. A new
   // slot under the reader (a deep link) is a new cover and a new decision.
-  const coverSlotId = isReaderCovering(segments) ? snapshot.slotId : null
+  const coverSource = slotCoverSource(
+    segments,
+    snapshot.underScreen ?? false,
+    snapshot.cover != null ? (snapshot.coverSource ?? null) : null,
+    snapshot.slotPage ?? null,
+  )
+  const coverSlotId = coverSource != null ? snapshot.slotId : null
+  // Read at the start only: a reader opened over a screen cover stays a screen
+  // cover, and a new source for the same slot is not a new admission.
+  const coverSourceRef = useRef(coverSource)
+  coverSourceRef.current = coverSource
   useLayoutEffect(() => {
-    if (coverSlotId == null) return
-    const admitted = store.coverSlot(coverSlotId)
+    const source = coverSourceRef.current
+    if (coverSlotId == null || source == null) return
+    const admitted = store.coverSlot(coverSlotId, source)
     if (admitted === false) {
       // Refused: the video waits on the watch screen. A cast keeps playing on
       // the receiver, so only local playback pauses.
@@ -1142,19 +1158,22 @@ function ActivePlaybackHost({
 
   // ── The reader corners (feat-553 KTD11) ───────────────────────────────────
 
-  // A covered slot means the pushed reader, whatever the route says during the
-  // one commit before the cover starts or ends. A sheet sits over whichever
-  // reader opened it, so it keeps the last reader's layout.
+  // A reader cover means the pushed reader, whatever the route says during the
+  // one commit before the cover starts or ends. A screen cover, or a screen
+  // over the reader, keeps the app's layout. A sheet keeps the last reader's.
   const routeReader = readerRouteKind(segments)
   const lastReaderRef = useRef<"tab" | "pushed">("pushed")
   if (routeReader === "tab" || routeReader === "pushed")
     lastReaderRef.current = routeReader
-  const readerHost: "tab" | "pushed" | null =
-    cover != null
-      ? "pushed"
-      : routeReader === "sheet"
-        ? lastReaderRef.current
-        : routeReader
+  const readerCovers =
+    cover != null &&
+    snapshot.coverSource !== "screen" &&
+    (routeReader != null || isFullScreenRoute(segments))
+  const readerHost: "tab" | "pushed" | null = readerCovers
+    ? "pushed"
+    : routeReader === "sheet"
+      ? lastReaderRef.current
+      : routeReader
   const tablet = isTabletLayout(screenWidth, screenHeight)
   const readerLayout: ReaderLayout = tablet ? "tablet" : "phone"
   const publishedBand = useSyncExternalStore(
@@ -1247,9 +1266,9 @@ function ActivePlaybackHost({
   // so the glide follows the occupied corner's own frame.
   const restingTargetRef = useRef<MiniPlayerFrame | null>(null)
   const restingDragRef = useRef<{ x: number; y: number } | null>(null)
-  // Whether the last run of the effect below saw the window float over the
-  // reader. Only that window grows back without a session (KTD10).
-  const floatedOverReaderRef = useRef(false)
+  // Whether the last run of the effect below saw the window float over a
+  // cover. Only that window grows back without a session (KTD10).
+  const floatedOverCoverRef = useRef(false)
   // Whether that run saw the window rest on a reader route. Only then does a
   // grow start at the last rest; other routes grow from the live corner.
   const restedOnReaderRef = useRef(false)
@@ -1275,8 +1294,8 @@ function ActivePlaybackHost({
     const inFlight = motionRef.current
     shrinkAnimRef.current?.stop()
     shrinkAnimRef.current = null
-    const floatedOverReader = floatedOverReaderRef.current
-    floatedOverReaderRef.current = coverFloats
+    const floatedOverCover = floatedOverCoverRef.current
+    floatedOverCoverRef.current = coverFloats
     const restedOnReader = restedOnReaderRef.current
     restedOnReaderRef.current = rect == null && onReaderRouteRef.current
     const clearMotion = () => {
@@ -1356,12 +1375,12 @@ function ActivePlaybackHost({
       // grows from the corner it occupied back into the player rect — the
       // shrink in reverse, never a blink into place.
       const restingFrame = restingTargetRef.current
-      // The reader's return clears its session in this same commit, so a
-      // window that floated over the reader counts too (KTD10).
+      // A cover's return clears its session in this same commit, so a
+      // window that floated over a cover counts too (KTD10).
       const grow =
         lastRectRef.current == null &&
         !coverHides &&
-        (hasSession || floatedOverReader)
+        (hasSession || floatedOverCover)
       lastRectRef.current = rect
       setVanishedOntoExplore(false)
       drag.setValue({ x: 0, y: 0 })
@@ -1661,10 +1680,10 @@ function ActivePlaybackHost({
   }, [player])
 
   const handleDismiss = useCallback(() => {
-    // KTD10: a window closed over the reader stops the video and ends its
+    // KTD10: a window closed over a cover stops the video and ends its
     // session with no report, so the quality session, the recommendation
     // episode and the settings survive for the return (AE14).
-    if (coverFloatsRef.current) {
+    if (floatingCoverRef.current != null) {
       try {
         player.pause()
       } catch {
@@ -1702,7 +1721,7 @@ function ActivePlaybackHost({
     onExpand(
       current,
       expandAction({
-        covered: coverFloatsRef.current,
+        cover: floatingCoverRef.current,
         descriptor: requestRef.current.session,
         session: current,
         segments: segmentsRef.current,

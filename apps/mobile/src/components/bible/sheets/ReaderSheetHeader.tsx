@@ -83,12 +83,10 @@ const styles = StyleSheet.create({
     marginLeft: -6,
   },
   backLabel: {
-    fontFamily: "System",
     fontSize: 16,
   },
   title: {
     flex: 1,
-    fontFamily: "System",
     fontSize: 18,
     fontWeight: "600",
   },

@@ -272,7 +272,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "600",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     marginRight: 12,
   },
   chevron: {
@@ -281,7 +280,6 @@ const styles = StyleSheet.create({
   },
   answerText: {
     color: TEXT_BODY,
-    fontFamily: "System",
     paddingBottom: 16,
     paddingLeft: 0,
   },
@@ -290,7 +288,6 @@ const styles = StyleSheet.create({
   },
   fallbackBody: {
     color: TEXT_BODY,
-    fontFamily: "System",
     marginBottom: 12,
   },
   fallbackButtonRow: {
@@ -315,7 +312,6 @@ const styles = StyleSheet.create({
   },
   fallbackButtonText: {
     color: BG_COLOR,
-    fontFamily: "System",
     fontWeight: "600",
     fontSize: 14,
   },
