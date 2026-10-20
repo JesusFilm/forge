@@ -138,6 +138,7 @@
     "versesAriaValue": "Ayat {first} sampai {last} dari {total}, {chapter}",
     "demoVerse": "Geser ke atas untuk ayat berikutnya",
     "demoChapter": "Geser ke kiri untuk pasal berikutnya",
+    "demoChapterRtl": "Geser ke kanan untuk pasal berikutnya",
     "demoSkip": "Ketuk untuk melewati",
     "demoSkipAriaLabel": "Lewati demonstrasi geser",
     "selectVerseAriaHint": "Ketuk dua kali untuk memilih ayat ini",
@@ -773,5 +774,8 @@
     "send": "Kirim",
     "sending": "Mengirim…",
     "sendAriaLabel": "Kirim masukan"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasi ini menggunakan jaringan lokal Anda untuk menemukan perangkat yang dapat menerima transmisi, sehingga Anda dapat memutar video di TV Anda."
   }
 }

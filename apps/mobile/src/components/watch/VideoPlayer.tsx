@@ -15,8 +15,10 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { appDirection } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { datadogLog, reportDatadogAction } from "../../lib/datadog"
 import { extractMuxPlaybackId } from "../../lib/muxThumbnail"
@@ -28,7 +30,6 @@ import {
   seekDeltaForTap,
   seekSideForTap,
   singleTapAction,
-  type SeekSide,
 } from "../../lib/tapSeek"
 import { useControlsVisibility } from "../../hooks/useControlsVisibility"
 import { useEndedPosterFade } from "../../hooks/useEndedPosterFade"
@@ -56,6 +57,7 @@ import {
 } from "./PlayerControls"
 import { PlayerLoadingVeil } from "./PlayerLoadingVeil"
 import { PlayerSettingsSheet } from "./PlayerSettingsSheet"
+import { SeekFlashPill, type SeekFlashPillHandle } from "./SeekFlashPill"
 import { SubtitleOverlay } from "./SubtitleOverlay"
 
 // Caption distance above the bottom edge (px). In fullscreen with the chrome up
@@ -282,6 +284,9 @@ export function VideoPlayer({
   })
 
   const controls = useControlsVisibility(player)
+  // Glass draws nothing inside a fading layer, so on the glass path the
+  // controls layer does not fade; PlayerControls fades its parts (KTD6).
+  const glass = canUseLiquidGlass()
 
   // Settings sheet (U4): component state, never a route — a routed form sheet
   // cannot present over the fullscreen player (KTD5). On Android the floating
@@ -292,17 +297,12 @@ export function VideoPlayer({
   // One expression for both chrome render gates below, so they can't drift.
   const chromeMounted = controls.mounted && !awaitingAutostart
 
-  // Tap disambiguation (U4): single tap toggles chrome (revealed on press-in
-  // so it never lags, KTD3); second tap within DOUBLE_TAP_MS seeks the tapped
-  // half ±10s with a brief indicator, independent of chrome visibility.
+  // Tap disambiguation (U4): a single tap toggles the chrome when DOUBLE_TAP_MS
+  // passes with no second tap. A second tap seeks ±10 s on the tapped half and
+  // shows the pill. The chrome stays as it was (owner, 2026-10-16; was KTD3).
   const tapWidthRef = useRef(0)
-  const wasVisibleRef = useRef(true)
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [seekFlash, setSeekFlash] = useState<{
-    side: SeekSide
-    delta: number
-  } | null>(null)
+  const seekFlashRef = useRef<SeekFlashPillHandle>(null)
   // A monotonically-bumped signal so PlayerControls can reflect a double-tap
   // seek in its time label/scrubber immediately — even while paused, when its
   // own 500ms poll is idle.
@@ -667,14 +667,7 @@ export function VideoPlayer({
   useEffect(() => {
     return () => {
       if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current)
-      if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
     }
-  }, [])
-
-  const showSeekFlash = useCallback((side: SeekSide, delta: number) => {
-    setSeekFlash({ side, delta })
-    if (flashTimerRef.current) clearTimeout(flashTimerRef.current)
-    flashTimerRef.current = setTimeout(() => setSeekFlash(null), 600)
   }, [])
 
   const doSideSeek = useCallback(
@@ -699,27 +692,20 @@ export function VideoPlayer({
         seekNonceRef.current += 1
         setSeekSignal({ time: target, n: seekNonceRef.current })
         const side = seekSideForTap(locationX, tapWidthRef.current)
-        if (side) showSeekFlash(side, delta)
+        if (side) seekFlashRef.current?.show(side, delta)
         return
       }
       const target = applySkip(player.currentTime, delta, player.duration)
       if (target == null) return
+      controls.noteSeek()
       player.currentTime = target
       seekNonceRef.current += 1
       setSeekSignal({ time: target, n: seekNonceRef.current })
       const side = seekSideForTap(locationX, tapWidthRef.current)
-      if (side) showSeekFlash(side, delta)
+      if (side) seekFlashRef.current?.show(side, delta)
     },
-    [player, showSeekFlash, castTarget],
+    [player, castTarget, controls],
   )
-
-  const handleTapPressIn = useCallback(() => {
-    // Read ground-truth visibility (the ref), NOT controls.controlsVisible —
-    // the render state lags by one fade, so mid-auto-hide it still reads true
-    // and the pending single-tap would hide the chrome this press just revealed.
-    wasVisibleRef.current = controls.isVisibleNow()
-    controls.revealIfHidden()
-  }, [controls])
 
   const handleTapPress = useCallback(
     (e: GestureResponderEvent) => {
@@ -734,16 +720,19 @@ export function VideoPlayer({
         doSideSeek(locationX)
         return
       }
-      const wasVisible = wasVisibleRef.current
+      // The store, not the render state, which lags one fade. Read it here,
+      // not on press-in: a TalkBack activation calls onPress with no press-in.
+      const wasVisible = controls.isVisibleNow()
       singleTapTimerRef.current = setTimeout(() => {
         singleTapTimerRef.current = null
-        // Single tap resolved: hide only if chrome was already up; if it was
-        // hidden it was just revealed on press-in, so leave it visible (R3).
-        // Skipped while the veil is up: the chrome is unmounted, so this would
-        // hide something invisible and playback would then start with no
-        // controls until the viewer taps again.
+        if (singleTapAction(wasVisible) === "reveal") {
+          controls.revealIfHidden()
+          return
+        }
+        // No hide while the veil is up: the chrome is unmounted, so playback
+        // would then start with no controls until the viewer taps again.
         if (awaitingAutostart) return
-        if (singleTapAction(wasVisible) === "hide") controls.hide()
+        controls.hide()
       }, DOUBLE_TAP_MS)
     },
     [awaitingAutostart, controls, doSideSeek],
@@ -766,7 +755,7 @@ export function VideoPlayer({
   return (
     // absoluteFill, not a sized box: the host's frame owns the geometry (KTD17)
     // and paints the letterbox black behind the video view this chrome covers.
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={styles.root} pointerEvents="box-none">
       {/* R7: the phone shows the poster while the TV plays — the paused
           local frame would read as a broken player. Ended reuses the layer so
           the replay state never sits on a black last frame. */}
@@ -798,42 +787,27 @@ export function VideoPlayer({
         onLayout={(e: LayoutChangeEvent) => {
           tapWidthRef.current = e.nativeEvent.layout.width
         }}
-        onPressIn={handleTapPressIn}
         onPress={handleTapPress}
         accessibilityRole="button"
         accessibilityLabel={t("toggleControlsAriaLabel")}
         {...{ "dd-action-name": "player-toggle-controls" }}
       />
 
-      {seekFlash != null && (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.seekFlash,
-            seekFlash.side === "left"
-              ? styles.seekFlashLeft
-              : styles.seekFlashRight,
-          ]}
-        >
-          <Ionicons
-            name={seekFlash.delta < 0 ? "play-back" : "play-forward"}
-            size={22}
-            color={TEXT_ON_OVERLAY}
-          />
-          <Text style={styles.seekFlashText}>
-            {t("seekSeconds", { seconds: Math.abs(seekFlash.delta) })}
-          </Text>
-        </View>
-      )}
+      <SeekFlashPill ref={seekFlashRef} fullscreen={fullscreen} />
 
       {/* R14: the route buttons stay reachable while the veil suppresses the
           chrome — a viewer may cast before local playback ever starts. */}
       {awaitingAutostart && (
-        <View style={styles.veilRouteRow} pointerEvents="box-none">
-          <RouteButtons
-            externalPlaybackActive={airPlayActive}
-            castUi={castUi}
-          />
+        <View
+          style={[StyleSheet.absoluteFill, { direction: appDirection() }]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.veilRouteRow} pointerEvents="box-none">
+            <RouteButtons
+              externalPlaybackActive={airPlayActive}
+              castUi={castUi}
+            />
+          </View>
         </View>
       )}
 
@@ -894,7 +868,10 @@ export function VideoPlayer({
           must stay visible). */}
       {chromeMounted && (
         <Animated.View
-          style={[StyleSheet.absoluteFill, { opacity: controls.opacityAnim }]}
+          style={[
+            StyleSheet.absoluteFill,
+            !glass && { opacity: controls.opacityAnim },
+          ]}
           pointerEvents="box-none"
         >
           <PlayerControls
@@ -909,29 +886,48 @@ export function VideoPlayer({
             onOpenSettings={() => setSettingsOpen(true)}
             onRecover={handleRecover}
             isOnline={isOnline}
+            fade={glass ? controls.opacityAnim : undefined}
+            visibleStore={glass ? controls.visibleStore : undefined}
           />
         </Animated.View>
       )}
 
-      {settingsOpen && (
-        <PlayerSettingsSheet
-          onClose={() => setSettingsOpen(false)}
-          onReportProblem={handleReportProblem}
-          castActive={castRemoteActive}
-          streamingUrl={streamingUrl}
-        />
-      )}
+      {/* The sheets are not playback controls, so they mirror with the app
+          (feat-695 R11). A Modal takes its layout direction from this parent. */}
+      <View
+        style={[styles.sheetHost, { direction: appDirection() }]}
+        pointerEvents="box-none"
+      >
+        {settingsOpen && (
+          <PlayerSettingsSheet
+            onClose={() => setSettingsOpen(false)}
+            onReportProblem={handleReportProblem}
+            castActive={castRemoteActive}
+            streamingUrl={streamingUrl}
+          />
+        )}
 
-      {/* Mounted only once the settings sheet is gone (the effect above);
-          Back inside it is the form's own step change, never a way back here. */}
-      {openFeedback != null && (
-        <FeedbackModal context={openFeedback} onClose={handleFeedbackClose} />
-      )}
+        {/* Mounted only once the settings sheet is gone (the effect above);
+            Back inside it is the form's own step change, never a way back here. */}
+        {openFeedback != null && (
+          <FeedbackModal context={openFeedback} onClose={handleFeedbackClose} />
+        )}
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  // Playback does not mirror (feat-695 R12): the seek flash shows on the side
+  // that the viewer tapped, which is a physical x.
+  root: {
+    ...StyleSheet.absoluteFill,
+    direction: "ltr",
+  },
+  // No size: a Modal draws over the whole screen in its own window.
+  sheetHost: {
+    position: "absolute",
+  },
   chromeScrim: {
     position: "absolute",
     left: 0,
@@ -961,32 +957,7 @@ const styles = StyleSheet.create({
   },
   externalRouteText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontSize: 13,
     fontWeight: "600",
-  },
-  seekFlash: {
-    position: "absolute",
-    top: "50%",
-    marginTop: -28,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    backgroundColor: hexToRgba(BLACK, 0.55),
-  },
-  seekFlashLeft: {
-    left: "14%",
-  },
-  seekFlashRight: {
-    right: "14%",
-  },
-  seekFlashText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontSize: 13,
-    fontWeight: "600",
-    marginTop: 2,
   },
 })

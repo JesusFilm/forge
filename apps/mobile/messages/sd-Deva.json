@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} मां आयतूं {first} खां {last} ताईं, {chapter}",
     "demoVerse": "ईंदड़ आयत लाइ मथे स्वाइप करियो",
     "demoChapter": "ईंदड़ बाब लाइ खाबे पासे स्वाइप करियो",
+    "demoChapterRtl": "ईंदड़ बाब लाइ साॼे पासे स्वाइप करियो",
     "demoSkip": "छॾण लाइ टैप करियो",
     "demoSkipAriaLabel": "स्वाइप जो डेमो छॾियो",
     "selectVerseAriaHint": "हीअ आयत चूंडण लाइ ॿ भेरा टैप करियो",
@@ -773,5 +774,8 @@
     "send": "मोकिलियो",
     "sending": "मोकिलिजी रहियो आहे…",
     "sendAriaLabel": "राइ मोकिलियो"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ऐप कास्ट डिवाइसिज़ ॻोलण लाइ तव्हांजो मक़ामी नेटवर्क इस्तेमाल करे थो, त जीअं तव्हां पंहिंजे टीवी ते वीडियोज़ हलाए सघो।"
   }
 }

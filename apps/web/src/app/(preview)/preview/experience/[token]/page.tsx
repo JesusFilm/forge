@@ -10,7 +10,10 @@ import {
   loadClientMessages,
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
 } from "@/i18n/client-messages"
-import { getExperiencePreview } from "@/lib/experience-preview"
+import {
+  getExperiencePreview,
+  getExperiencePreviewLayout,
+} from "@/lib/experience-preview"
 import {
   DEFAULT_LOCALE,
   publicWatchAudioLanguageSlugForLocale,
@@ -50,7 +53,13 @@ function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
 }
 
-function DraftPreviewBanner({ locale }: { locale: string }) {
+function DraftPreviewBanner({
+  locale,
+  homepageLayout,
+}: {
+  locale: string
+  homepageLayout: boolean
+}) {
   return (
     <aside
       role="status"
@@ -60,6 +69,12 @@ function DraftPreviewBanner({ locale }: { locale: string }) {
       <span>Draft preview</span>
       <span aria-hidden="true">•</span>
       <span>{locale}</span>
+      {homepageLayout ? (
+        <>
+          <span aria-hidden="true">•</span>
+          <span>Homepage layout, not the live homepage</span>
+        </>
+      ) : null}
       <span aria-hidden="true">•</span>
       <span>Not live</span>
     </aside>
@@ -97,8 +112,15 @@ export default async function ExperiencePreviewPage({
   params,
 }: ExperiencePreviewPageProps) {
   const { token } = await params
-  const preview = await getExperiencePreview(token)
+  // Parallel, so the layout probe adds no round trip to the preview render.
+  const [preview, homepageLayout] = await Promise.all([
+    getExperiencePreview(token),
+    getExperiencePreviewLayout(token),
+  ])
   if (!preview) notFound()
+  // Rendering context, not assignment: a homepage duplicate renders as the
+  // Watch home while `isHomepage` (live assignment) stays false.
+  const rendersAsHomepage = preview.isHomepage || homepageLayout
 
   const locale = boundedUiLocale(preview.locale)
   const languageSlug =
@@ -117,7 +139,7 @@ export default async function ExperiencePreviewPage({
     <OrdinaryExperiencePreview blocks={blocks} languageSlug={languageSlug} />
   )
 
-  if (preview.isHomepage) {
+  if (rendersAsHomepage) {
     const home = await resolveWatchHomePreview(
       locale,
       languageSlug,
@@ -128,6 +150,7 @@ export default async function ExperiencePreviewPage({
         <WatchHomeExperiencePage
           heroModel={home.data}
           blocks={blocks}
+          locale={locale}
           languageSlug={languageSlug}
           dynamicCollectionCacheScope="preview"
         />
@@ -138,7 +161,10 @@ export default async function ExperiencePreviewPage({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <div lang={locale} dir={textDirectionForLocale(locale)}>
-        <DraftPreviewBanner locale={preview.locale} />
+        <DraftPreviewBanner
+          locale={preview.locale}
+          homepageLayout={homepageLayout && !preview.isHomepage}
+        />
         {content}
       </div>
     </NextIntlClientProvider>

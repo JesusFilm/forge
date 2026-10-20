@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const {
   getExperiencePreviewMock,
+  getExperiencePreviewLayoutMock,
   loadClientMessagesMock,
   notFoundMock,
   resolveWatchHomePreviewMock,
@@ -11,6 +12,7 @@ const {
   watchHomeExperiencePageMock,
 } = vi.hoisted(() => ({
   getExperiencePreviewMock: vi.fn(),
+  getExperiencePreviewLayoutMock: vi.fn(),
   loadClientMessagesMock: vi.fn(),
   notFoundMock: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND")
@@ -30,6 +32,7 @@ vi.mock("next-intl", () => ({
 }))
 vi.mock("@/lib/experience-preview", () => ({
   getExperiencePreview: getExperiencePreviewMock,
+  getExperiencePreviewLayout: getExperiencePreviewLayoutMock,
 }))
 vi.mock("@/i18n/client-messages", () => ({
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES: ["WatchHome"],
@@ -80,6 +83,7 @@ const draft = {
 
 beforeEach(() => {
   getExperiencePreviewMock.mockReset()
+  getExperiencePreviewLayoutMock.mockReset().mockResolvedValue(false)
   loadClientMessagesMock.mockReset()
   resolveWatchHomePreviewMock.mockReset()
   sectionRendererMock.mockClear()
@@ -97,6 +101,35 @@ describe("Experience draft preview page", () => {
     expect(metadata.robots).toMatchObject({ index: false, follow: false })
     expect(metadata.alternates).toBeUndefined()
     expect(metadata.openGraph).toBeUndefined()
+  })
+
+  it("starts the preview and homepage-layout reads in parallel", async () => {
+    let resolvePreview!: (value: typeof draft) => void
+    let resolveLayout!: (value: boolean) => void
+    getExperiencePreviewMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePreview = resolve
+      }),
+    )
+    getExperiencePreviewLayoutMock.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLayout = resolve
+      }),
+    )
+
+    const render = ExperiencePreviewPage({
+      params: Promise.resolve({ token: "parallel-token" }),
+    })
+    await vi.waitFor(() => {
+      expect(getExperiencePreviewMock).toHaveBeenCalledWith("parallel-token")
+      expect(getExperiencePreviewLayoutMock).toHaveBeenCalledWith(
+        "parallel-token",
+      )
+    })
+
+    resolvePreview(draft)
+    resolveLayout(false)
+    await expect(render).resolves.toBeDefined()
   })
 
   it("renders staged blocks with persistent draft context", async () => {
@@ -147,9 +180,57 @@ describe("Experience draft preview page", () => {
     expect(home.props).toEqual({
       heroModel,
       blocks: draft.blocks,
+      locale: "ru",
       languageSlug: "russian",
       dynamicCollectionCacheScope: "preview",
     })
+  })
+
+  it("renders an unassigned homepage copy with the homepage renderer and says so", async () => {
+    getExperiencePreviewMock.mockResolvedValue({ ...draft, isHomepage: false })
+    getExperiencePreviewLayoutMock.mockResolvedValue(true)
+    const heroModel = {
+      heroSlides: [],
+      sections: [],
+      carousel: { pools: [] },
+      missingData: [],
+    }
+    resolveWatchHomePreviewMock.mockResolvedValue({
+      data: heroModel,
+      error: null,
+    })
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "copy-token" }),
+    })
+    const [bannerElement, home] = page.props.children.props.children
+    const banner = bannerElement.type(bannerElement.props)
+
+    expect(getExperiencePreviewLayoutMock).toHaveBeenCalledWith("copy-token")
+    expect(home.type).toBe(watchHomeExperiencePageMock)
+    expect(home.props.locale).toBe("ru")
+    expect(home.props.languageSlug).toBe("russian")
+    expect(home.props.dynamicCollectionCacheScope).toBe("preview")
+    const bannerText = JSON.stringify(banner.props.children)
+    expect(bannerText).toContain("Homepage layout, not the live homepage")
+    expect(bannerText).toContain("Not live")
+  })
+
+  it("keeps the ordinary renderer when the draft has no homepage context", async () => {
+    getExperiencePreviewMock.mockResolvedValue(draft)
+    getExperiencePreviewLayoutMock.mockResolvedValue(false)
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "capability-token" }),
+    })
+    const [bannerElement, content] = page.props.children.props.children
+    const banner = bannerElement.type(bannerElement.props)
+
+    expect(resolveWatchHomePreviewMock).not.toHaveBeenCalled()
+    expect(content.type).not.toBe(watchHomeExperiencePageMock)
+    expect(JSON.stringify(banner.props.children)).not.toContain(
+      "Homepage layout",
+    )
   })
 
   it("forwards resolved card titles to the section renderer", async () => {

@@ -22,6 +22,7 @@ import {
   toNativeSearchResults,
 } from "../src/components/search/nativeSearchResults"
 import { searchResultPath } from "../src/components/search/searchResultPath"
+import { rememberPlaybackEntry } from "../src/lib/recommendations/playbackEntry"
 import { VoiceSearchButton } from "../src/components/search/VoiceSearchButton"
 import { WATCH_THEME } from "../src/components/watch/watchDetailTheme"
 import { SearchBrowse } from "../src/components/search/SearchBrowse"
@@ -300,7 +301,10 @@ function SearchBodyNativeTvos({
   const handleSelectItem = useCallback(
     (event: SelectItemEvent) => {
       const match = findResultById(results, event.nativeEvent.id)
-      if (match != null) router.push(searchResultPath(match))
+      if (match != null) {
+        rememberPlaybackEntry(match.slug, { source: "search" })
+        router.push(searchResultPath(match))
+      }
     },
     [results, router],
   )

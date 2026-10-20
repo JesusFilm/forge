@@ -31,11 +31,10 @@ const compatibleControl = {
 }
 
 describe("recommendation serving manifest", () => {
-  it("requires the environment ceiling, healthy retention, active signer, shared control, and exact manifest", async () => {
+  it("requires the environment ceiling, active signer, shared control, and exact manifest", async () => {
     for (const [overrides, reason] of [
       [{ environmentEnabled: false }, "environment_disabled"],
       [{ hasActiveSigner: false }, "keyring_unavailable"],
-      [{ retentionHealthy: false }, "retention_overdue"],
     ] as const) {
       const prisma = buildPrisma(compatibleControl)
       await expect(
@@ -43,7 +42,6 @@ describe("recommendation serving manifest", () => {
           prisma: prisma as never,
           environmentEnabled: overrides.environmentEnabled ?? true,
           hasActiveSigner: overrides.hasActiveSigner ?? true,
-          retentionHealthy: overrides.retentionHealthy ?? true,
         }),
       ).resolves.toMatchObject({ canIssue: false, reason })
     }
@@ -56,7 +54,6 @@ describe("recommendation serving manifest", () => {
         }) as never,
         environmentEnabled: true,
         hasActiveSigner: true,
-        retentionHealthy: true,
       }),
     ).resolves.toMatchObject({
       canIssue: false,
@@ -67,7 +64,6 @@ describe("recommendation serving manifest", () => {
         prisma: buildPrisma(null) as never,
         environmentEnabled: true,
         hasActiveSigner: true,
-        retentionHealthy: true,
       }),
     ).resolves.toMatchObject({
       canIssue: false,
@@ -86,7 +82,6 @@ describe("recommendation serving manifest", () => {
         prisma: prisma as never,
         environmentEnabled: true,
         hasActiveSigner: true,
-        retentionHealthy: true,
       }),
     ).resolves.toMatchObject({
       canIssue: true,
@@ -133,7 +128,6 @@ describe("recommendation serving manifest", () => {
         prisma: buildPrisma(platformControl) as never,
         environmentEnabled: true,
         hasActiveSigner: true,
-        retentionHealthy: true,
       }),
     ).resolves.toMatchObject({
       canIssue: true,
@@ -156,7 +150,6 @@ describe("recommendation serving manifest", () => {
         }) as never,
         environmentEnabled: true,
         hasActiveSigner: true,
-        retentionHealthy: true,
       }),
     ).resolves.toMatchObject({
       canIssue: false,
@@ -174,7 +167,6 @@ describe("recommendation serving manifest", () => {
         }) as never,
         environmentEnabled: true,
         hasActiveSigner: true,
-        retentionHealthy: true,
       }),
     ).resolves.toMatchObject({
       canIssue: false,

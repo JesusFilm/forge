@@ -11,6 +11,7 @@ export interface StudioMuxPort {
     uploadId: string,
   ): Promise<{ id: string; status: string; asset_id?: string }>
   failed(id: string, uploadId: string): Promise<unknown>
+  assetFailed(id: string, assetId: string): Promise<unknown>
   created(id: string, dispatchId: string, assetId: string): Promise<unknown>
   observe(assetId: string, intentId: string): Promise<{ status: string }>
   ready(id: string, evidence: unknown): Promise<unknown>
@@ -38,6 +39,7 @@ export async function runStudioMuxCandidate(
     if (observed.status === "ready") {
       await port.ready(job.id, observed)
       await port.stage(attemptId)
-    }
+    } else if (observed.status === "errored")
+      await port.assetFailed(job.id, job.assetId)
   } else if (job.state === "READY") await port.stage(attemptId)
 }

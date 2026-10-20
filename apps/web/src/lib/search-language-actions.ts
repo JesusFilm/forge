@@ -1,6 +1,7 @@
 "use server"
 
 import { headers } from "next/headers"
+import { getLocale } from "next-intl/server"
 import { adminGraphql } from "@forge/admin-graphql"
 
 import client from "@/lib/admin-client"
@@ -76,6 +77,7 @@ let pendingSearchLanguageMetadata: Promise<SearchLanguageMetadata> | null = null
 export async function getSearchLanguageOptions(
   input: {
     availableLanguageFacets?: Record<string, number>
+    uiLocale?: string
   } = {},
 ): Promise<
   | {
@@ -100,9 +102,19 @@ export async function getSearchLanguageOptions(
     }
 > {
   const requestHeaders = await readRequestHeaders()
+  let uiLocale = input.uiLocale ?? "en"
+  if (input.uiLocale == null) {
+    try {
+      uiLocale = await getLocale()
+    } catch {
+      // Server callers outside a next-intl request context retain English.
+    }
+  }
   const countryCode = readCountryCode(requestHeaders)
   const acceptLanguage = requestHeaders?.get("accept-language") ?? null
-  const countryName = countryCode ? countryNameFromCode(countryCode) : null
+  const countryName = countryCode
+    ? countryNameFromCode(countryCode, uiLocale)
+    : null
 
   try {
     const metadata = await fetchCachedSearchLanguageMetadata()
@@ -117,7 +129,10 @@ export async function getSearchLanguageOptions(
     return {
       ok: true,
       options: result.options,
-      countrySuggestion: result.countrySuggestion,
+      countrySuggestion:
+        result.countrySuggestion && countryName
+          ? { ...result.countrySuggestion, countryName }
+          : result.countrySuggestion,
       recommendedLanguage: recommendedLanguageOption({
         options: result.options,
         acceptLanguage,
@@ -271,10 +286,14 @@ function normalizeCountryCode(value: string | null): string | null {
   return normalized && /^[A-Z]{2}$/.test(normalized) ? normalized : null
 }
 
-function countryNameFromCode(countryCode: string): string | null {
+function countryNameFromCode(
+  countryCode: string,
+  locale: string,
+): string | null {
   try {
     return (
-      new Intl.DisplayNames(["en"], { type: "region" }).of(countryCode) ?? null
+      new Intl.DisplayNames([locale], { type: "region" }).of(countryCode) ??
+      null
     )
   } catch {
     return null

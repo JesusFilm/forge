@@ -1,6 +1,7 @@
 import type { ComponentType } from "react"
 import type { NativeSyntheticEvent, ViewProps } from "react-native"
 import { requireNativeView } from "expo"
+import type { PlaybackObservation } from "../../src/lib/recommendations/playbackRecorder"
 
 export type NativeAndroidPlayerOption = {
   id: string
@@ -28,6 +29,8 @@ type PlayNextEvent = NativeSyntheticEvent<{ slug: string }>
 
 export type NativeAndroidPlayerViewProps = ViewProps & {
   sourceUrl: string
+  sourceGeneration?: number
+  onPlaybackState?: (event: NativeSyntheticEvent<PlaybackObservation>) => void
   storyboardUrl?: string
   title?: string
   subtitle?: string

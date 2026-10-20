@@ -35,7 +35,7 @@ type ReaderGlassButtonProps = {
 }
 
 // The app's glass button in the reader's scheme (KTD12, R8, R36). Keep it out
-// of any layer whose opacity animates: GlassView draws nothing there.
+// of any layer whose opacity animates: GlassView draws only on some reveals there.
 export function ReaderGlassButton({
   tokens,
   accessibilityLabel,
@@ -61,10 +61,9 @@ export function ReaderGlassButton({
       {({ pressed }) => (
         <ReaderGlassSurface
           tokens={tokens}
-          style={[
-            shape === "pill" ? styles.pill : styles.circle,
-            pressed && styles.pressed,
-          ]}
+          style={shape === "pill" ? styles.pill : styles.circle}
+          interactive={!disabled}
+          pressed={pressed}
         >
           {/* Dim the content, not the glass: GlassView ignores opacity. */}
           <View style={[styles.content, disabled && styles.disabled]}>
@@ -79,6 +78,10 @@ export function ReaderGlassButton({
 type ReaderGlassSurfaceProps = {
   tokens: ReaderTokens
   style: StyleProp<ViewStyle>
+  /** Liquid Glass only: Apple's own press response. Set it on a button. */
+  interactive?: boolean
+  /** Without Liquid Glass: a Pressable's pressed state scales the surface. */
+  pressed?: boolean
   children: ReactNode
 }
 
@@ -87,11 +90,16 @@ type ReaderGlassSurfaceProps = {
 export function ReaderGlassSurface({
   tokens,
   style,
+  interactive,
+  pressed = false,
   children,
 }: ReaderGlassSurfaceProps) {
+  const pressedStyle = pressed ? styles.pressed : null
   if (Platform.OS !== "ios") {
     return (
-      <View style={[style, { backgroundColor: tokens.buttonSurface }]}>
+      <View
+        style={[style, pressedStyle, { backgroundColor: tokens.buttonSurface }]}
+      >
         {children}
       </View>
     )
@@ -103,6 +111,7 @@ export function ReaderGlassSurface({
         style={style}
         glassEffectStyle="regular"
         colorScheme={tokens.scheme}
+        isInteractive={interactive}
       >
         {children}
       </GlassView>
@@ -110,7 +119,7 @@ export function ReaderGlassSurface({
   }
   return (
     <PlatformBlur
-      style={[style, { backgroundColor: tokens.buttonSurface }]}
+      style={[style, pressedStyle, { backgroundColor: tokens.buttonSurface }]}
       intensity={60}
       tint={tokens.scheme}
       androidDim={tokens.buttonSurface}

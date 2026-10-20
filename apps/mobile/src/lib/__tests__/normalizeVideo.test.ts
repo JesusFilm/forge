@@ -470,6 +470,46 @@ describe("normalizeVideo", () => {
     expect(result.variants.every((v) => v.published)).toBe(true)
   })
 
+  // Production shape: jesus/kenga-2 is published and playable with
+  // `language: null`. Web's isPlayableLanguageVariant needs a language slug.
+  function withLanguagelessDubs(
+    raw: ReturnType<typeof makeRawVideo>,
+    keepNamed: boolean,
+  ): ReturnType<typeof makeRawVideo> {
+    const { variants } = raw as unknown as {
+      variants: Record<string, unknown>[]
+    }
+    const languageless = [
+      { language: null, slug: "jesus/kenga-2", documentId: "dub-k" },
+      {
+        language: { coreId: null, bcp47: null, slug: null, name: null },
+        slug: "jesus/saho-ethiopia",
+        documentId: "dub-s",
+      },
+    ].map((dub) => ({
+      ...dub,
+      published: true,
+      hls: "https://stream.mux.com/nolang.m3u8",
+      duration: 700,
+      muxVideo: { playbackId: "nolang" },
+    }))
+    return {
+      ...raw,
+      variants: [...languageless, ...(keepNamed ? variants : [])],
+    } as typeof raw
+  }
+
+  it("hides a playable dub that has no language slug, as web does", () => {
+    const result = norm(withLanguagelessDubs(makeRawVideo(), true))!
+    expect(result.variants.map((v) => v.documentId)).toEqual(["dub-1", "dub-2"])
+  })
+
+  it("still plays a video whose only dubs have no language slug", () => {
+    const result = norm(withLanguagelessDubs(makeRawVideo(), false))!
+    expect(result.variants).toHaveLength(0)
+    expect(result.streamingUrl).toBe("https://stream.mux.com/nolang.m3u8")
+  })
+
   it("projects each dub language's ISO 639-3 code as admin sends it (U6)", () => {
     const result = norm(makeRawVideo())!
     expect(result.variants.map((v) => v.languageIso3)).toEqual(["eng", "spa"])

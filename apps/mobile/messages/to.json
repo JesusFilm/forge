@@ -138,6 +138,7 @@
     "versesAriaValue": "Veesi {first} ki he {last} ʻo e {total}, {chapter}",
     "demoVerse": "Tekeʻi ki ʻolunga ki he veesi hoko",
     "demoChapter": "Tekeʻi ki he toʻohema ki he vahe hoko",
+    "demoChapterRtl": "Tekeʻi ki he toʻomataʻu ki he vahe hoko",
     "demoSkip": "Tāʻi ke laka atu",
     "demoSkipAriaLabel": "Laka atu ʻi he fakahinohino ʻo e tekeʻi",
     "selectVerseAriaHint": "Tāʻi tuʻo ua ke fili ʻa e veesi ni",
@@ -773,5 +774,8 @@
     "send": "Fekau",
     "sending": "Lolotonga fekau…",
     "sendAriaLabel": "Fekau ʻa e fakakaukau"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ʻOku ngāueʻaki ʻe he polokalama hoʻo netiueki fakalotofale ke kumi ʻa e ngaahi meʻangāue fakaʻaliʻali ki he TV, koeʻuhí ke ke lava ʻo tā ʻa e ngaahi vitio ʻi hoʻo TV."
   }
 }

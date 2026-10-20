@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
 import { useUiTag } from "../../hooks/useUiTag"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import {
@@ -209,7 +210,11 @@ export function MyWatchHeader() {
               {t("signInSubtitle")}
             </Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={TEXT_SECONDARY} />
+          <Ionicons
+            name={directionalIcon("chevron-forward")}
+            size={20}
+            color={TEXT_SECONDARY}
+          />
         </Pressable>
         {signInPhase === "error" ? (
           <NoticeCard
@@ -270,7 +275,7 @@ export function MyWatchHeader() {
             </Text>
             <View style={styles.chevronSlot}>
               <Ionicons
-                name="chevron-forward"
+                name={directionalIcon("chevron-forward")}
                 size={CHEVRON_SIZE}
                 color={TEXT_SECONDARY}
               />
@@ -346,13 +351,11 @@ const styles = StyleSheet.create({
   },
   avatarInitial: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   name: {
     flexShrink: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
   },
   noticeCard: {
@@ -367,7 +370,6 @@ const styles = StyleSheet.create({
   noticeText: {
     flex: 1,
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   noticeTextError: {
     color: TEXT_PRIMARY,
@@ -387,11 +389,9 @@ const styles = StyleSheet.create({
   },
   signInTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   signInSubtitle: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 2,
   },
   // Title only. The same dim on the subtitle gives about 2.6:1 on

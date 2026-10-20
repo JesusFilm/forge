@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículos {first} a {last} de {total}, {chapter}",
     "demoVerse": "Deslize para cima para ver o próximo versículo",
     "demoChapter": "Deslize para a esquerda para ver o próximo capítulo",
+    "demoChapterRtl": "Deslize para a direita para ver o próximo capítulo",
     "demoSkip": "Toque para pular",
     "demoSkipAriaLabel": "Pular a demonstração de deslizar",
     "selectVerseAriaHint": "Toque duas vezes para selecionar este versículo",
@@ -773,5 +774,8 @@
     "send": "Enviar",
     "sending": "Enviando…",
     "sendAriaLabel": "Enviar feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "O app usa sua rede local para encontrar dispositivos de transmissão, de modo que você possa reproduzir vídeos na sua TV."
   }
 }

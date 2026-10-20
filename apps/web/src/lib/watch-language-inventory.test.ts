@@ -223,6 +223,77 @@ describe("resolveWatchLanguageSwitcherOptions", () => {
     }
   })
 
+  it("declares nativeNameLang only for a proven own-language entry (FGE-50)", async () => {
+    queryMock.mockResolvedValue({
+      data: {
+        languages: [
+          {
+            slug: "russian",
+            bcp47: "ru",
+            name: { de: "Russisch", en: "Russian", ru: "Русский" },
+          },
+          // Label via the legacy `native` key: shown, never declared.
+          {
+            slug: "french",
+            bcp47: "fr",
+            name: { en: "French", native: "Français" },
+          },
+          { slug: "english", bcp47: "en", name: { en: "English" } },
+        ],
+      },
+    })
+
+    const options = await resolveWatchLanguageSwitcherOptions("english")
+    const bySlug = new Map(options.map((option) => [option.slug, option]))
+
+    expect(bySlug.get("russian")).toMatchObject({
+      nativeName: "Русский",
+      nativeNameLang: "ru",
+    })
+    expect(bySlug.get("french")?.nativeName).toBe("Français")
+    expect(bySlug.get("french")).not.toHaveProperty("nativeNameLang")
+    expect(bySlug.get("english")).not.toHaveProperty("nativeNameLang")
+  })
+
+  it("drops a native name written in a different script than the language (N23)", async () => {
+    queryMock.mockResolvedValue({
+      data: {
+        languages: [
+          { slug: "english", bcp47: "en", name: { en: "English" } },
+          {
+            slug: "tajik",
+            bcp47: "tg",
+            name: { en: "Tajik", tg: "تاجيكي" },
+          },
+          {
+            slug: "malay",
+            bcp47: "ms",
+            name: { en: "Malay", native: "بهاس ملايو" },
+          },
+          {
+            slug: "somali",
+            bcp47: "so",
+            name: { en: "Somali", so: "Soomaali" },
+          },
+          {
+            slug: "arabic-modern-standard",
+            bcp47: "ar",
+            name: { en: "Arabic", ar: "العربية" },
+          },
+        ],
+      },
+    })
+
+    const options = await resolveWatchLanguageSwitcherOptions("english")
+    const bySlug = new Map(options.map((option) => [option.slug, option]))
+
+    expect(bySlug.get("tajik")?.nativeName).toBeNull()
+    expect(bySlug.get("tajik")).not.toHaveProperty("nativeNameLang")
+    expect(bySlug.get("malay")?.nativeName).toBeNull()
+    expect(bySlug.get("somali")?.nativeName).toBe("Soomaali")
+    expect(bySlug.get("arabic-modern-standard")?.nativeName).toBe("العربية")
+  })
+
   it("degrades to the current language when Admin is unreachable", async () => {
     // The /whats-new page is otherwise data-free and statically rendered.
     // A throwing switcher fetch must not take the whole page down with it.

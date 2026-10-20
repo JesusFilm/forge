@@ -19,11 +19,11 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -31,8 +31,16 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Resolve tested PR baseline
+        id: pr-baseline
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/resolve-pr-baseline.mjs >> "$GITHUB_OUTPUT"
       - name: Validate commit messages
-        run: pnpm exec commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }}
+        env:
+          COMMIT_BASE: ${{ steps.pr-baseline.outputs.commit_base }}
+          PR_HEAD: ${{ steps.pr-baseline.outputs.head }}
+        run: pnpm exec commitlint --from "$COMMIT_BASE" --to "$PR_HEAD"
 
   affected:
     runs-on: ubuntu-latest
@@ -41,11 +49,11 @@ jobs:
       portal_allowlist: ${{ steps.affected.outputs.portal_allowlist }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -94,8 +102,8 @@ jobs:
     needs: affected
     if: needs.affected.outputs.portal_allowlist == 'true'
     steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -112,9 +120,9 @@ jobs:
     if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/admin-graphql')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -152,9 +160,9 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -172,7 +180,20 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
-        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
+        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts src/services/watch-seo-manifest.db.test.ts
+      - name: Create isolated Watch audience database
+        env:
+          PGPASSWORD: postgres
+        run: psql --host localhost --username postgres --dbname postgres --command 'CREATE DATABASE forge_watch_audience_test;'
+      - name: Apply migrations to isolated Watch audience database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise film finder SQL against isolated PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+          WATCH_FILM_FINDER_DB_TEST: "1"
+        run: pnpm --filter @forge/admin test -- src/services/watch-film-finder.service.db.test.ts --no-file-parallelism
       - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -282,6 +303,30 @@ jobs:
           REDIS_HOST: 127.0.0.1
           REDIS_PORT: "6379"
         run: pnpm --filter @forge/admin test -- src/services/recommendations/admission.redis.db.test.ts
+      - name: Create owned precomputed recommendation fixtures
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_precomputed_control_test'
+          psql -h 127.0.0.1 -U postgres -d forge_precomputed_control_test -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION vector; CREATE EXTENSION pg_trgm'
+      - name: Exercise precomputed generation, measurement, and retention against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/forge_precomputed_control_test
+          RECOMMENDATION_DB_TEST: "1"
+          RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: "1"
+          RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: "1"
+          PRECOMPUTED_STORAGE_LOAD_TEST: "1"
+          # Synthetic local-fixture values; never deployed credentials.
+          MASTRA_RECOMMENDATION_INGEST_API_KEYS: preview-test-key
+          WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: "1"
+          WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: turnstile-test-fixture.local
+          WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: precomputed-ci-fixture-human-proof-secret
+        run: |
+          pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed src/app/api/internal/mastra/precomputed-recommendations/route.test.ts --no-file-parallelism --maxWorkers=1
+          pnpm --filter @forge/admin test:precomputed-integration
+          env -u RECOMMENDATION_PRECOMPUTED_TEST_ENABLED -u RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED \
+            pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed/public-control.db.test.ts \
+            -t 'ordinary editorial|observed public result'
 
   web-redis-integration:
     runs-on: ubuntu-latest
@@ -299,9 +344,9 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -313,7 +358,11 @@ jobs:
         env:
           RECOMMENDATION_REDIS_TEST: "1"
           REDIS_URL: redis://127.0.0.1:6379
-        run: pnpm --filter @forge/web test -- src/lib/recommendation-mutation-admission.redis.db.test.ts
+        run: >-
+          pnpm --filter @forge/web exec vitest run
+          src/lib/recommendation-mutation-admission.redis.db.test.ts
+          src/app/api/internal/recommendations/precomputed-measurement/route.redis.db.test.ts
+          --no-file-parallelism
 
   auth-postgres-integration:
     runs-on: ubuntu-latest
@@ -333,9 +382,9 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -377,9 +426,9 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -415,9 +464,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -432,7 +481,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -449,9 +498,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -471,21 +520,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Test roadmap ID check
-        run: node --test scripts/check-new-roadmap-ids.test.mjs
+        run: node --test scripts/check-new-roadmap-ids.test.mjs scripts/resolve-pr-baseline.test.mjs
+      - name: Resolve tested PR baseline
+        id: pr-baseline
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/resolve-pr-baseline.mjs >> "$GITHUB_OUTPUT"
       - name: Check newly introduced roadmap IDs
         env:
-          ROADMAP_ID_BASE: ${{ github.event.pull_request.base.sha }}
+          ROADMAP_ID_BASE: ${{ steps.pr-baseline.outputs.target }}
         run: node scripts/check-new-roadmap-ids.mjs
 
   dev-port-contract:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Validate resolved devcontainer Compose contract
         run: >-
           docker compose -f .devcontainer/docker-compose.yml config --format json |
@@ -495,7 +549,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       # Always reports a status so it can be required without path-filtered
@@ -518,9 +572,9 @@ jobs:
         service: ${{ fromJson(needs.affected.outputs.services) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -548,9 +602,9 @@ jobs:
         service: ${{ fromJson(needs.affected.outputs.services) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -600,9 +654,9 @@ jobs:
     if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/mobile')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -636,9 +690,9 @@ jobs:
         service: ${{ fromJson(needs.affected.outputs.services) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:

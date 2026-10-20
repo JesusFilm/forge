@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { renderToStaticMarkup } from "react-dom/server"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
+
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: vi.fn(async () => false),
+}))
 
 const {
   resolveWatchHomeMock,
@@ -61,6 +66,7 @@ const heroModel = {
 }
 
 beforeEach(() => {
+  vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
   resolveWatchHomeMock.mockReset()
   resolveWatchPageMock.mockReset()
   watchHomeExperiencePageMock.mockClear()
@@ -75,6 +81,19 @@ beforeEach(() => {
 })
 
 describe("Watch root homepage", () => {
+  it("passes the explicit audience rollout to the common homepage frame", async () => {
+    vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+    renderToStaticMarkup(
+      await HomePage({
+        params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+      }),
+    )
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ audienceEnabled: true }),
+      undefined,
+    )
+  })
+
   it("uses the fixed seeker-focused page and social metadata", async () => {
     const metadata = await generateMetadata({
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
@@ -125,6 +144,7 @@ describe("Watch root homepage", () => {
     const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
+      audienceEnabled: false,
       heroModel,
       blocks,
       locale: "en",
@@ -142,6 +162,7 @@ describe("Watch root homepage", () => {
     const home = element.props.children.props.children.props.children[1]
     expect(home.type).toBe(watchHomeExperiencePageMock)
     expect(home.props).toEqual({
+      audienceEnabled: false,
       heroModel,
       blocks: [],
       locale: "en",

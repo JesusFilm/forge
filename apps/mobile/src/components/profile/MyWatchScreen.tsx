@@ -6,13 +6,16 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useTypography } from "../../hooks/useTypography"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
-import { TEXT_SECONDARY } from "../../lib/color"
+import { TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
 import { buildMyWatchRail, type MyWatchRailTile } from "../../lib/myWatchRail"
 import { useTabBarClearance } from "../../lib/tabBar"
 import { HORIZONTAL_PADDING, feedback, layout, text } from "../../styles/shared"
 import { LibraryEmptyState } from "../library/LibraryEmptyState"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
 import { ScreenTopBar, type ScreenTopBarAction } from "../ui/ScreenTopBar"
 import { DownloadRail } from "./DownloadRail"
 import { MyWatchHeader } from "./MyWatchHeader"
@@ -34,6 +37,7 @@ export function MyWatchScreen() {
   const tabBarClearance = useTabBarClearance()
   const insets = useSafeAreaInsets()
   const { offlineRecords, isReady } = useDownloads()
+  const glass = canUseLiquidGlass()
 
   const tiles = useMemo(
     () => buildMyWatchRail(offlineRecords),
@@ -109,18 +113,30 @@ export function MyWatchScreen() {
                   accessibilityLabel={t("seeAllDownloadsAriaLabel")}
                   {...{ "dd-action-name": "my-watch-see-all-downloads" }}
                   style={({ pressed }) => [
-                    styles.seeAll,
-                    pressed && feedback.pressed,
+                    glass ? styles.seeAllGlassTarget : styles.seeAll,
+                    pressed && !glass && feedback.pressed,
                   ]}
                 >
-                  <Text style={[styles.seeAllText, typography.bodySmall]}>
-                    {t("seeAll")}
-                  </Text>
-                  <Ionicons
-                    name="chevron-forward"
-                    size={16}
-                    color={TEXT_SECONDARY}
-                  />
+                  <GlassSurface
+                    style={glass ? styles.seeAllPill : styles.seeAllRow}
+                    fallback={BARE_LINK}
+                    interactive
+                  >
+                    <Text
+                      style={[
+                        styles.seeAllText,
+                        glass && styles.seeAllTextGlass,
+                        typography.bodySmall,
+                      ]}
+                    >
+                      {t("seeAll")}
+                    </Text>
+                    <Ionicons
+                      name={directionalIcon("chevron-forward")}
+                      size={16}
+                      color={glass ? TEXT_PRIMARY : TEXT_SECONDARY}
+                    />
+                  </GlassSurface>
                 </Pressable>
               </View>
               <DownloadRail tiles={tiles} onPressTile={openTile} />
@@ -133,6 +149,9 @@ export function MyWatchScreen() {
     </View>
   )
 }
+
+// Without Liquid Glass the link stays bare text, as before.
+const BARE_LINK: GlassFallback = { kind: "fill", style: null }
 
 const styles = StyleSheet.create({
   content: {
@@ -157,10 +176,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 2,
   },
+  seeAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  // The pill's edge, not the chevron, sits on the content edge.
+  seeAllGlassTarget: {
+    minHeight: 44,
+    justifyContent: "center",
+  },
+  seeAllPill: {
+    minHeight: 32,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
   seeAllText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "600",
+  },
+  seeAllTextGlass: {
+    color: TEXT_PRIMARY,
   },
   // The page has no other content, so the message centres in what is left.
   empty: {

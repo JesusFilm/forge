@@ -170,6 +170,8 @@ type EditorLocaleValues = {
   ogImageUrl: string
   pathSegment: string
   isHomepage: boolean
+  /** Homepage rendering context without live assignment; absent = false. */
+  homepageLayout?: boolean
   blocksJson: string
 }
 
@@ -1602,6 +1604,8 @@ export function ExperienceEditor({
     ogImageUrl: string
     pathSegment: string
     isHomepage: boolean
+    /** Homepage rendering context without live assignment; absent = false. */
+    homepageLayout?: boolean
     isTemplate: boolean
     blocksJson: string
   }
@@ -1702,6 +1706,12 @@ export function ExperienceEditor({
   )
   const [ogImageUrl, setOgImageUrl] = useState(initialValues.ogImageUrl)
   const [isHomepage, setIsHomepage] = useState(initialValues.isHomepage)
+  const [homepageLayout, setHomepageLayout] = useState(
+    initialValues.homepageLayout === true,
+  )
+  // Homepage-only blocks follow the rendering context, so a homepage duplicate
+  // edits like a homepage without being the live homepage (isHomepage).
+  const homepageContext = isHomepage || homepageLayout
   const isTemplate = initialValues.isTemplate
   const [mediaLibrary, setMediaLibrary] = useState(initialMediaLibrary)
   const [mediaLibraryLoaded, setMediaLibraryLoaded] = useState(
@@ -2149,9 +2159,9 @@ export function ExperienceEditor({
       )
     }
 
-    if (block.key === "watchHomeHero") return isHomepage
+    if (block.key === "watchHomeHero") return homepageContext
     if (block.key === "watchHomeCategoryRail") {
-      return isHomepage && !parsedBlocks.some(isWatchHomeCategoryRailBlock)
+      return homepageContext && !parsedBlocks.some(isWatchHomeCategoryRailBlock)
     }
     if (block.key === "homepageRecommendations") {
       return !parsedBlocks.some(
@@ -2159,7 +2169,7 @@ export function ExperienceEditor({
       )
     }
     if (block.key === "dynamicMediaCollection") {
-      return isHomepage && !parsedBlocks.some(isDynamicCollectionBlock)
+      return homepageContext && !parsedBlocks.some(isDynamicCollectionBlock)
     }
 
     return isTemplate || block.category !== "Route"
@@ -3407,7 +3417,7 @@ export function ExperienceEditor({
     const nextBlockSummary = summarizeBlock(nextBlock, index, videoLibrary)
     let insertionIndex = index
     if (template === "dynamicMediaCollection") {
-      if (!isHomepage || nextBlocks.some(isDynamicCollectionBlock)) {
+      if (!homepageContext || nextBlocks.some(isDynamicCollectionBlock)) {
         pushToast(
           "The homepage can contain one infinite collection feed.",
           "error",
@@ -3417,7 +3427,7 @@ export function ExperienceEditor({
       nextBlocks.push(nextBlock)
       insertionIndex = nextBlocks.length - 1
     } else if (template === "watchHomeCategoryRail") {
-      if (!isHomepage || nextBlocks.some(isWatchHomeCategoryRailBlock)) {
+      if (!homepageContext || nextBlocks.some(isWatchHomeCategoryRailBlock)) {
         pushToast("The Watch homepage can contain one category rail.", "error")
         return
       }
@@ -11121,6 +11131,7 @@ export function ExperienceEditor({
           setOgImageUrl(result.values.ogImageUrl)
           setPathSegment(result.values.pathSegment)
           setIsHomepage(result.values.isHomepage)
+          setHomepageLayout(result.values.homepageLayout === true)
           try {
             const blocks = JSON.parse(result.values.blocksJson)
             const nextBlocks = Array.isArray(blocks)
@@ -11196,6 +11207,14 @@ export function ExperienceEditor({
               Add block
             </button>
             <div className="flex items-center gap-1.5">
+              {homepageLayout && !isHomepage ? (
+                <span
+                  className="hidden px-2 text-[11px] text-[var(--color-text-muted)] md:inline"
+                  title="Previews and edits with the Watch homepage layout. It cannot publish until it is assigned as the homepage."
+                >
+                  Homepage layout · not the live homepage
+                </span>
+              ) : null}
               {hasActiveDraft ? (
                 <span
                   className="hidden px-2 text-[11px] text-[var(--color-text-muted)] md:inline"

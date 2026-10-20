@@ -18,6 +18,20 @@ import { useT } from "../../i18n/useT"
 import { BLACK, SURFACE_COLOR, TEXT_PRIMARY, hexToRgba } from "../../lib/color"
 import { KEEP_WATCHING_OFFER_DURATION_MS } from "../../lib/explore/watchIntent"
 import { feedback } from "../../styles/shared"
+import { GlassSurface, type GlassFallback } from "../ui/GlassSurface"
+
+// The card's look where Liquid Glass is unavailable.
+const CARD_FALLBACK: GlassFallback = {
+  kind: "fill",
+  style: {
+    backgroundColor: SURFACE_COLOR,
+    shadowColor: BLACK,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+}
 
 /** h:mm:ss from an hour and m:ss below it, the shape AE6 names ("1:10:00"). */
 export function formatOfferPosition(seconds: number): string {
@@ -102,15 +116,17 @@ export function KeepWatchingOffer({
       style={[styles.card, { bottom: insets.bottom + 16 }]}
       accessibilityLiveRegion="polite"
     >
-      <Pressable
-        onPress={() => onChoose(resumeAtSeconds)}
-        style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={resumeLabel}
-        {...{ "dd-action-name": "keep-watching-offer-resume" }}
-      >
-        <Text style={styles.label}>{resumeLabel}</Text>
-      </Pressable>
+      <GlassSurface style={styles.panel} fallback={CARD_FALLBACK}>
+        <Pressable
+          onPress={() => onChoose(resumeAtSeconds)}
+          style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={resumeLabel}
+          {...{ "dd-action-name": "keep-watching-offer-resume" }}
+        >
+          <Text style={styles.label}>{resumeLabel}</Text>
+        </Pressable>
+      </GlassSurface>
     </View>
   )
 }
@@ -147,17 +163,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
+  },
+  panel: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
     padding: 8,
     borderRadius: 14,
-    backgroundColor: SURFACE_COLOR,
-    shadowColor: BLACK,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   // Neither choice is styled as the default: the default is to keep watching
   // from the tap point, which needs no tap.
@@ -172,7 +184,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },

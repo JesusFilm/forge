@@ -8,6 +8,7 @@ let Stack: typeof import("expo-router").Stack
 let useRouter: typeof import("expo-router").useRouter
 let StatusBar: typeof import("expo-status-bar").StatusBar
 let Ionicons: typeof import("@expo/vector-icons/Ionicons").default
+let directionalIcon: typeof import("../src/i18n/layoutRtl").directionalIcon
 let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
 let SafeAreaProvider: typeof import("react-native-safe-area-context").SafeAreaProvider
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
@@ -15,6 +16,7 @@ let ACCENT: string
 let BG_COLOR: string
 let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
 let READER_SHEET_SCREEN_OPTIONS: typeof import("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
+let formSheetOptions: typeof import("../src/lib/sheetOptions").formSheetOptions
 let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
 let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
 let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
@@ -57,6 +59,12 @@ let getSplashSession:
   | undefined
 let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
 let useT: typeof import("../src/i18n/useT").useT
+// Defaults, because a failed direction start must not reach the Startup Error
+// panel: the app then renders in the direction it has (feat-695 U2).
+let useDirectionReloadPending: typeof import("../src/i18n/layoutDirection").useDirectionReloadPending =
+  () => false
+let directionReloadKind: typeof import("../src/i18n/layoutDirection").directionReloadKind =
+  () => null
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -68,6 +76,7 @@ try {
   useRouter = router.useRouter
   StatusBar = require("expo-status-bar").StatusBar
   Ionicons = require("@expo/vector-icons/Ionicons").default
+  directionalIcon = require("../src/i18n/layoutRtl").directionalIcon
   ApolloProvider = require("@apollo/client/react").ApolloProvider
   SafeAreaProvider = require("react-native-safe-area-context").SafeAreaProvider
   getApolloClient = require("../src/lib/apolloClient").getApolloClient
@@ -78,6 +87,7 @@ try {
     require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
   READER_SHEET_SCREEN_OPTIONS =
     require("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
+  formSheetOptions = require("../src/lib/sheetOptions").formSheetOptions
   ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
   ExperienceSelectionProvider =
     require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
@@ -126,10 +136,22 @@ try {
   // the layout returns a bare view and the host does not mount at all.
   nativeSplash.preventNativeSplashAutoHide()
   getSplashSession?.().start()
+  // feat-705 KTD3: iOS draws its own sheets, alerts and keyboard dark, from
+  // the first frame. The reader still follows the phone (usePhoneColorScheme).
+  require("../src/lib/appearance/darkInterfaceStyle").applyDarkInterfaceStyle()
   // KTD3: module scope, so the first frame and the first request use the
   // phone's language. A failed phone read keeps English and does not throw.
   const localeStore = require("../src/i18n/localeStore")
   localeStore.startLocaleSync()
+  // feat-695 KTD3: right after the UI Locale resolves, before the first render.
+  try {
+    const layoutDirection = require("../src/i18n/layoutDirection")
+    layoutDirection.startLayoutDirection()
+    useDirectionReloadPending = layoutDirection.useDirectionReloadPending
+    directionReloadKind = layoutDirection.directionReloadKind
+  } catch (error: unknown) {
+    reportDatadogError?.(error, { "layout_direction.fault": "start_failed" })
+  }
   useLocaleResolutionLog =
     require("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
   useT = require("../src/i18n/useT").useT
@@ -279,7 +301,11 @@ function HeaderBackButton() {
       {...{ "dd-action-name": "header-back" }}
       hitSlop={12}
     >
-      <Ionicons name="chevron-back" size={28} color={ACCENT} />
+      <Ionicons
+        name={directionalIcon("chevron-back")}
+        size={28}
+        color={ACCENT}
+      />
     </Pressable>
   )
 }
@@ -287,13 +313,11 @@ function HeaderBackButton() {
 // One FULL detent, unlike the watch/series list sheets: the feedback form is
 // taller, it hosts a keyboard, and its two steps differ in height — a single
 // detent cannot resize between them or hide the message field behind the keys.
-const FEEDBACK_SHEET_OPTIONS = {
-  headerShown: false,
-  presentation: "formSheet" as const,
-  sheetInitialDetentIndex: 0,
-  sheetGrabberVisible: true,
-  sheetCornerRadius: 16,
-  sheetAllowedDetents: [1],
+function feedbackSheetOptions() {
+  return {
+    ...formSheetOptions(),
+    sheetAllowedDetents: [1],
+  }
 }
 
 export default function RootLayout() {
@@ -338,6 +362,17 @@ export default function RootLayout() {
     )
   }
 
+  // feat-695 KTD3: a runtime that reloads for direction mounts no provider, so
+  // the downloader, reminders, sign-in refresh, and Datadog never start in it.
+  // The native splash stays up, because nothing here hides it.
+  const directionReloadPending = useDirectionReloadPending()
+  if (directionReloadPending) {
+    return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
+  }
+  return <AppRoot />
+}
+
+function AppRoot() {
   const clientRef = useRef(getApolloClient())
 
   // Lock the whole app to portrait; only the fullscreen video player rotates
@@ -384,7 +419,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (!hydrated || jsTtiEmittedRef.current) return
     jsTtiEmittedRef.current = true
-    addDatadogTiming("js_tti")
+    // feat-695 U2: a runtime after a direction reload gets its own name, so
+    // cold-start numbers do not mix the two cases.
+    addDatadogTiming(
+      directionReloadKind() == null ? "js_tti" : "js_tti_direction_reload",
+    )
   }, [hydrated])
 
   // After hydration, so MobileDatadogProvider has mounted; the SDK buffers
@@ -480,7 +519,7 @@ export default function RootLayout() {
                                   IN_APP_SHEET_ROUTE_PATTERNS. */}
                               <Stack.Screen
                                 name="feedback"
-                                options={FEEDBACK_SHEET_OPTIONS}
+                                options={feedbackSheetOptions()}
                               />
                               {/* Both player stacks confine the back-swipe to the
                                 left edge: iOS 26 defaults it to full-width,

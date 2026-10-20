@@ -48,6 +48,12 @@ vi.mock("@/lib/dynamic-collection-cache-signature", () => ({
   createInitialDynamicCollectionFeedCacheSignatures: createCacheSignatures,
 }))
 
+vi.mock("@/components/home/WatchHomeRoleBand", () => ({
+  WatchHomeRoleBand: () => (
+    <section data-testid="watch-home-audience-frame-mock" />
+  ),
+}))
+
 vi.mock("@/components/home/WatchHomeFooter", () => ({
   WatchHomeFooter: () => <footer data-testid="watch-home-footer" />,
 }))
@@ -212,6 +218,38 @@ afterEach(async () => {
 })
 
 describe("WatchHomeExperiencePage", () => {
+  it("keeps the audience frame off by default and adds it beside the unchanged authored content", async () => {
+    const blocks = [makePageHeadingBlock("Fixture heading", "fixture-heading")]
+    await act(async () =>
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(
+      container.querySelector('[data-testid="watch-home-audience-frame-mock"]'),
+    ).toBeNull()
+    const heading = container.querySelector("h1")
+    await act(async () =>
+      root.render(
+        <WatchHomeExperiencePage
+          heroModel={heroModel}
+          blocks={blocks}
+          languageSlug="spanish"
+          audienceEnabled
+        />,
+      ),
+    )
+    expect(
+      container.querySelector('[data-testid="watch-home-audience-frame-mock"]'),
+    ).not.toBeNull()
+    expect(container.querySelector("h1")).toBe(heading)
+    expect(container.querySelector("h1")?.textContent).toBe("Fixture heading")
+  })
+
   it("transports actual origin catalogs from the rendered model for leading and authored heroes", async () => {
     const actual = await vi.importActual<
       typeof import("@/lib/watch-surface-manifest.server")

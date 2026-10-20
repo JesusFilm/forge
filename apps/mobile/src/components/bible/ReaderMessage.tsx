@@ -68,13 +68,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     lineHeight: 26,
     fontWeight: "600",
-    fontFamily: "System",
     textAlign: "center",
   },
   body: {
     fontSize: 15,
     lineHeight: 22,
-    fontFamily: "System",
     textAlign: "center",
   },
   actions: {
@@ -96,6 +94,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

@@ -16,6 +16,11 @@ import { purgeExpiredCowatchRefreshMetadata } from "./cowatch/refresh-retention"
 import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
+import { purgeExpiredPrecomputedVisitRoots } from "./precomputed/visit-retention"
+import {
+  purgeExpiredPrecomputedGenerations,
+  purgeRetiredGaCaptureArtifacts,
+} from "./precomputed/generation-retention"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
@@ -29,7 +34,9 @@ const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
 // An admitted phase may still exhaust the deadline; that remains a failure.
 const RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS = 750
 const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
-const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 5
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 25
+const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS = 5
+const RECOMMENDATION_RETENTION_POST_STANDALONE_RESERVE_MS = 3_000
 class RetentionPhaseBusy extends RecommendationConflictError {}
 class RetentionBudgetYield extends Error {}
 
@@ -298,6 +305,56 @@ export async function purgeExpiredRecommendationRequests(
       }),
     )
     const requestIds = roots.map((root) => root.id)
+    // Private Watch test visits are independent roots: empty deliveries have
+    // no recommendation_request to carry them through ordinary request purge.
+    const precomputedPurge = await phase(async (tx) => {
+      const result = await purgeExpiredPrecomputedVisitRoots(
+        tx,
+        now,
+        batchSize,
+        requestIds,
+      )
+      rowCounts.expiredPrecomputedVisits = result.visitsDeleted
+      rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
+      rowCounts.expiredPrecomputedControlEvents = result.controlEventsDeleted
+      rowCounts.expiredPrecomputedBaselineVisits = result.baselineVisitsDeleted
+      rowCounts.expiredPrecomputedBaselineRuns = result.baselineRunsDeleted
+      rowCounts.expiredPrecomputedLaunchCapacityReceipts =
+        result.launchCapacityReceiptsDeleted
+      return result
+    })
+    // One generation at a time; a large terminal graph enters the non-servable
+    // retiring state and drains bounded child pages on subsequent passes.
+    const precomputedGenerationPurge = await phase(async (tx) => {
+      const result = await purgeExpiredPrecomputedGenerations(tx, now, 1)
+      rowCounts.expiredPrecomputedGenerations = result.generationsDeleted
+      rowCounts.abandonedPrecomputedGenerations = result.generationsAbandoned
+      rowCounts.retiringPrecomputedGenerations = result.generationsRetiring
+      rowCounts.precomputedGenerationFinalSources = result.finalSourcesDeleted
+      rowCounts.precomputedGenerationBuildSources = result.buildSourcesDeleted
+      rowCounts.precomputedGenerationChoices =
+        result.provisionalChoicesDeleted + result.provisionalChoicesPruned
+      rowCounts.precomputedGenerationModelCalls = result.modelCallsDeleted
+      rowCounts.precomputedGenerationHistoryCalls = result.historyCallsDeleted
+      rowCounts.precomputedGenerationCheckpointsCleared =
+        result.checkpointsCleared
+      rowCounts.precomputedGenerationProofsExpired = result.proofsDeleted
+      return result
+    })
+    // Object-store cleanup is post-commit and retryable. An S3 outage must
+    // never stall the ordinary request/visit retention phases below.
+    try {
+      const gaCapturePurge = await purgeRetiredGaCaptureArtifacts(
+        prisma,
+        now,
+        Math.min(batchSize, 10),
+      )
+      rowCounts.expiredPrecomputedGaCaptureArtifacts = gaCapturePurge.deleted
+      rowCounts.deferredPrecomputedGaCaptureCleanup = 0
+    } catch {
+      rowCounts.expiredPrecomputedGaCaptureArtifacts = 0
+      rowCounts.deferredPrecomputedGaCaptureCleanup = 1
+    }
     await phase(async (tx) => {
       const removed = await purgeExpiredCompositionEvidence(tx, now)
       rowCounts.expiredCompositionObservations = removed.observations
@@ -338,8 +395,8 @@ export async function purgeExpiredRecommendationRequests(
     )
     const directActionIds = directActions.map((action) => action.id)
     // Preserve per-episode dependency admission and atomic deletion, but cap
-    // this pre-root phase independently so a playback backlog cannot consume
-    // the whole run before expired requests are reached.
+    // this pre-root phase independently. Process the original five-episode
+    // floor, then reserve time for requests/tail before admitting more work.
     const standaloneEpisodePageSize = Math.min(
       batchSize,
       RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE,
@@ -356,7 +413,15 @@ export async function purgeExpiredRecommendationRequests(
     rowCounts.expiredStandalonePlaybackFacts = 0
     rowCounts.expiredStandaloneOutcomes = 0
     rowCounts.expiredStandaloneEpisodes = 0
+    let standaloneEpisodesProcessed = 0
     for (const episodeId of standaloneEpisodeIds) {
+      if (
+        standaloneEpisodesProcessed >=
+          RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS &&
+        deadline - Date.now() <=
+          RECOMMENDATION_RETENTION_POST_STANDALONE_RESERVE_MS
+      )
+        break
       await phase(async (tx) => {
         await lockRetentionRoots(tx, { episodeIds: [episodeId] })
         const current = await tx.recommendationPlaybackEpisode.findFirst({
@@ -374,6 +439,7 @@ export async function purgeExpiredRecommendationRequests(
           })
         ).count
       })
+      standaloneEpisodesProcessed += 1
     }
     await phase(async (tx) => {
       const actions = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
@@ -410,6 +476,14 @@ export async function purgeExpiredRecommendationRequests(
         })
         const currentIds = current.map(({ id }) => id)
         if (currentIds.length === 0) return
+        const unarchivedLinks =
+          await tx.recommendationPrecomputedVisitRequest.count({
+            where: { requestId: { in: currentIds } },
+          })
+        if (unarchivedLinks > 0)
+          throw new RecommendationConflictError(
+            "Expired request still has unarchived private visit evidence",
+          )
         const children = await countRequestChildren(tx, currentIds)
         await tx.recommendationContentAction.deleteMany({
           where: { requestId: { in: currentIds }, expiresAt: { lte: now } },
@@ -957,6 +1031,10 @@ export async function purgeExpiredRecommendationRequests(
     )
     const [
       oldestExpiredRoot,
+      oldestExpiredPrecomputedVisit,
+      oldestExpiredPrecomputedBaselineVisit,
+      oldestExpiredPrecomputedExperiment,
+      oldestExpiredPrecomputedBaselineRun,
       oldestExpiredWatchExposure,
       oldestExpiredAction,
       oldestExpiredDecision,
@@ -982,6 +1060,30 @@ export async function purgeExpiredRecommendationRequests(
       Promise.all([
         tx.recommendationRequest.findFirst({
           where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedVisit.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedBaselineVisit.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedExperiment.findFirst({
+          where: { expiresAt: { lte: now }, visits: { none: {} } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedBaselineRun.findFirst({
+          where: {
+            expiresAt: { lte: now },
+            enabled: false,
+            visits: { none: {} },
+          },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
@@ -1097,6 +1199,10 @@ export async function purgeExpiredRecommendationRequests(
     )
     const oldestExpiredAt = earliestDate([
       oldestExpiredRoot?.expiresAt,
+      oldestExpiredPrecomputedVisit?.expiresAt,
+      oldestExpiredPrecomputedBaselineVisit?.expiresAt,
+      oldestExpiredPrecomputedExperiment?.expiresAt,
+      oldestExpiredPrecomputedBaselineRun?.expiresAt,
       oldestExpiredWatchExposure?.expiresAt,
       oldestExpiredAction?.expiresAt,
       oldestExpiredDecision?.expiresAt,
@@ -1136,8 +1242,17 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredProfileInterest != null ||
       oldestExpiredProfileProjectionGeneration != null ||
       requestIds.length === batchSize ||
+      precomputedPurge.visitPageFull ||
+      precomputedPurge.experimentPageFull ||
+      precomputedPurge.controlEventPageFull ||
+      precomputedPurge.launchCapacityReceiptPageFull ||
+      precomputedPurge.baselineVisitPageFull ||
+      precomputedPurge.baselineFinalizationPageFull ||
+      precomputedPurge.baselineRunPageFull ||
+      precomputedGenerationPurge.pageFull ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
+      standaloneEpisodesProcessed < standaloneEpisodeIds.length ||
       standaloneEpisodeIds.length === standaloneEpisodePageSize ||
       expiredProjectionRunPage === batchSize ||
       expiredContributionPage === batchSize ||
@@ -1296,6 +1411,20 @@ export async function readRecommendationRetentionHealth(
       LEAST(
         (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_baseline_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_baseline_run
+          WHERE expires_at <= ${propagationCutoff} AND enabled = false
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_precomputed_baseline_visit AS visit
+              WHERE visit.run_id = recommendation_precomputed_baseline_run.id
+            )),
+        (SELECT min(expires_at) FROM recommendation_precomputed_experiment AS experiment
+          WHERE expires_at <= ${propagationCutoff}
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_precomputed_visit AS visit
+              WHERE visit.experiment_id = experiment.id
+            )),
         (SELECT min(expires_at) FROM recommendation_content_action WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_eligibility_decision WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_control_evaluation WHERE expires_at <= ${propagationCutoff}),

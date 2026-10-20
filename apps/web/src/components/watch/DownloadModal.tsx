@@ -93,9 +93,13 @@ export function DownloadModal({
 }: DownloadModalProps) {
   const t = useTranslations("DownloadModal")
   const fileSizeLabel = t("fileSizeLabel")
-  const termsAgreementLabel = `${t("termsAgreementPrefix")}${t(
-    "termsOfUse",
-  )}${t("termsAgreementSuffix")}`
+  // One full sentence per locale, so translators can put the verb and the
+  // linked phrase where their grammar needs them (verb-final languages lost
+  // the verb when this was a prefix + link + suffix concatenation). The
+  // checkbox's accessible name is the same sentence with the tag stripped.
+  const termsAgreementLabel = t.markup("termsAgreement", {
+    link: (chunks) => chunks,
+  })
   // Localized label for a quality tier. `bucketDownloads` carries an English
   // `label` for back-compat, but the rendered text is resolved here so it
   // translates.
@@ -583,7 +587,11 @@ export function DownloadModal({
             data-testid="watch-download-modal-confirmation-row"
             className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
           >
-            <label className="flex cursor-pointer items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
+            {/* Not a <label>: the sentence contains the Terms button, and an
+                interactive control must not be nested inside a label. The
+                checkbox carries the sentence as its accessible name, and a
+                click on the sentence's plain text still toggles it. */}
+            <div className="flex items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
               <span className="relative mt-0.5 inline-flex shrink-0 items-center justify-center">
                 <input
                   type="checkbox"
@@ -601,22 +609,32 @@ export function DownloadModal({
                   className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100"
                 />
               </span>
-              <span>
-                {t("termsAgreementPrefix")}
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.preventDefault()
-                    setTermsOpen(true)
-                  }}
-                  data-testid="watch-download-modal-tos-trigger"
-                  className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
-                >
-                  {t("termsOfUse")}
-                </button>
-                {t("termsAgreementSuffix")}
+              {/* Mouse convenience only; keyboard and assistive-technology
+                  users operate the checkbox itself. */}
+              <span
+                data-testid="watch-download-modal-tos-label"
+                className={selected == null ? undefined : "cursor-pointer"}
+                onClick={(event) => {
+                  // Clicks on the Terms button target the button, not this span.
+                  if (event.target !== event.currentTarget || selected == null)
+                    return
+                  setTosAgreed((agreed) => !agreed)
+                }}
+              >
+                {t.rich("termsAgreement", {
+                  link: (chunks) => (
+                    <button
+                      type="button"
+                      onClick={() => setTermsOpen(true)}
+                      data-testid="watch-download-modal-tos-trigger"
+                      className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
+                    >
+                      {chunks}
+                    </button>
+                  ),
+                })}
               </span>
-            </label>
+            </div>
 
             <div className="flex shrink-0 items-center justify-end gap-3">
               <Button

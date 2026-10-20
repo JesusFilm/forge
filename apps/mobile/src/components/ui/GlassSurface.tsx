@@ -1,0 +1,129 @@
+import type { ReactNode } from "react"
+import {
+  Animated,
+  View,
+  type ColorValue,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
+import { GlassView } from "expo-glass-effect"
+
+import { useReduceMotion } from "../../hooks/useReduceMotion"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
+import { feedback } from "../../styles/shared"
+import { PlatformBlur, type PlatformBlurProps } from "./PlatformBlur"
+
+/** The element's look without Liquid Glass. */
+export type GlassFallback =
+  /** `PlatformBlur` with these props: a blur on iOS, `androidDim` on Android. */
+  | ({ kind: "blur" } & Omit<PlatformBlurProps, "style" | "children">)
+  /** A plain view with this extra style, such as a fill and a shadow. */
+  | { kind: "fill"; style: StyleProp<ViewStyle> }
+
+export type GlassSurfaceProps = {
+  /** Size, shape and inner layout, on both paths. Keep fills in `fallback`:
+   *  a fill on the glass covers it. */
+  style?: StyleProp<ViewStyle>
+  fallback: GlassFallback
+  /** Glass only: false dissolves the material to the `'none'` style. */
+  visible?: boolean
+  /** Glass only: the dissolve times in seconds. */
+  dissolveSeconds?: { in: number; out: number }
+  /** Glass only. */
+  tintColor?: ColorValue
+  /** On glass it fades one view around the children. In the fallback it fades
+   *  the whole surface, so do not also fade an ancestor there. */
+  fade?: Animated.WithAnimatedValue<number>
+  /** Glass only: Apple's own press response. Set it on a button, not on a
+   *  panel or a label. It reacts only to a touch on the glass itself. */
+  interactive?: boolean
+  /** Fallback only: a Pressable's pressed state dims the surface. */
+  pressed?: boolean
+  children?: ReactNode
+}
+
+// KTD5: the player glyphs fade out over 150 ms and back in over 100 ms.
+const DEFAULT_DISSOLVE_SECONDS = { in: 0.1, out: 0.15 }
+
+/**
+ * One glass surface for every floating control (KTD2). On iOS 26 it draws
+ * Liquid Glass; elsewhere it draws the caller's current look. Keep it out of
+ * any layer whose opacity animates: GlassView draws only on some reveals there.
+ */
+export function GlassSurface(props: GlassSurfaceProps) {
+  return canUseLiquidGlass() ? (
+    <LiquidGlassSurface {...props} />
+  ) : (
+    <FallbackSurface {...props} />
+  )
+}
+
+function LiquidGlassSurface({
+  style,
+  visible = true,
+  dissolveSeconds = DEFAULT_DISSOLVE_SECONDS,
+  tintColor,
+  fade,
+  interactive,
+  children,
+}: GlassSurfaceProps) {
+  const reduceMotion = useReduceMotion()
+  return (
+    // isInteractive flashed white on remount on 0.1.9. On 57.0.4 the owner saw
+    // no flash (iPhone 15 Pro, 2026-10-19), but a native tab switch may not remount.
+    <GlassView
+      isInteractive={interactive}
+      style={style}
+      glassEffectStyle={{
+        style: visible ? "regular" : "none",
+        animate: !reduceMotion,
+        animationDuration: visible ? dissolveSeconds.in : dissolveSeconds.out,
+      }}
+      colorScheme="dark"
+      tintColor={tintColor}
+    >
+      {fade == null ? (
+        children
+      ) : (
+        <Animated.View style={{ opacity: fade }}>{children}</Animated.View>
+      )}
+    </GlassView>
+  )
+}
+
+function FallbackSurface({
+  style,
+  fallback,
+  fade,
+  pressed = false,
+  children,
+}: GlassSurfaceProps) {
+  const fadeStyle = fade == null ? null : { opacity: fade }
+  const pressedStyle = pressed ? feedback.pressed : null
+
+  if (fallback.kind === "fill") {
+    const Fill = fade == null ? View : Animated.View
+    return (
+      <Fill style={[style, fallback.style, fadeStyle, pressedStyle]}>
+        {children}
+      </Fill>
+    )
+  }
+
+  const blur = (
+    <PlatformBlur
+      style={[style, pressedStyle]}
+      intensity={fallback.intensity}
+      tint={fallback.tint}
+      androidDim={fallback.androidDim}
+    >
+      {children}
+    </PlatformBlur>
+  )
+  // PlatformBlur cannot take an animated style, so the fade wraps it.
+  return fadeStyle == null ? (
+    blur
+  ) : (
+    <Animated.View style={fadeStyle}>{blur}</Animated.View>
+  )
+}

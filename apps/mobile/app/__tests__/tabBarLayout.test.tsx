@@ -55,6 +55,8 @@ const mockTriggers: Array<Record<string, unknown>> = []
 const mockMounts = { tabs: 0, nativeTabs: 0 }
 // jest-expo sets __DEV__, so the real gate is always open here.
 const mockExploreAvailable = { current: true }
+// KTD1. Off by default, so every other case shows today's bar.
+const mockGlass = { current: false }
 const mockGetLocales = jest.fn()
 
 jest.mock("expo-router", () => ({
@@ -110,6 +112,9 @@ jest.mock("react-native-safe-area-context", () => ({
 }))
 jest.mock("../../src/lib/explore/availability", () => ({
   isExploreAvailable: () => mockExploreAvailable.current,
+}))
+jest.mock("../../src/lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGlass.current,
 }))
 jest.mock("expo-localization", () => ({
   getLocales: () => mockGetLocales(),
@@ -172,6 +177,7 @@ afterEach(() => {
   mockMounts.tabs = 0
   mockMounts.nativeTabs = 0
   mockExploreAvailable.current = true
+  mockGlass.current = false
   resetTabBarHidden()
 })
 afterAll(() => resetLocaleStoreForTests())
@@ -351,6 +357,30 @@ describe("iOS — the native bar", () => {
     setPlatform("ios")
     await renderIos()
     expect(trigger("explore").hidden).toBe(false)
+  })
+
+  // feat-705 R20: the separate glass search circle at the end of the bar.
+  it("makes Search the system search tab on Liquid Glass, and keeps its label", async () => {
+    setPlatform("ios")
+    mockGlass.current = true
+    await renderIos()
+    expect(trigger("watch").role).toBe("search")
+    expect(triggerParts(trigger("watch"))).toEqual({
+      sf: "magnifyingglass",
+      label: "Buscar",
+    })
+    const others = mockTriggers.filter((t) => t.name !== "watch")
+    expect(others).toHaveLength(TAB_ROUTE_NAMES.length - 1)
+    others.forEach((t) => expect(t.role).toBeUndefined())
+  })
+
+  // R22: before iOS 26 the Search tab stays a labelled tab in the bar.
+  it("gives no trigger a role without Liquid Glass", async () => {
+    setPlatform("ios")
+    await renderIos()
+    expect(mockTriggers).toHaveLength(TAB_ROUTE_NAMES.length)
+    mockTriggers.forEach((t) => expect(t.role).toBeUndefined())
+    expect(triggerParts(trigger("watch")).label).toBe("Buscar")
   })
 
   it("keeps the app's ground below iOS 26, where the props still land", async () => {

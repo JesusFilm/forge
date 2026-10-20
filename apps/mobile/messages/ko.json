@@ -138,6 +138,7 @@
     "versesAriaValue": "전체 {total}절 중 {first}절부터 {last}절까지, {chapter}",
     "demoVerse": "위로 스와이프하면 다음 절로 넘어갑니다",
     "demoChapter": "왼쪽으로 스와이프하면 다음 장으로 넘어갑니다",
+    "demoChapterRtl": "오른쪽으로 스와이프하면 다음 장으로 넘어갑니다",
     "demoSkip": "탭하여 건너뛰기",
     "demoSkipAriaLabel": "스와이프 안내 건너뛰기",
     "selectVerseAriaHint": "이 절을 선택하려면 두 번 탭하세요",
@@ -773,5 +774,8 @@
     "send": "보내기",
     "sending": "보내는 중…",
     "sendAriaLabel": "의견 보내기"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "앱에서 로컬 네트워크를 사용해 전송 가능한 기기를 찾아 TV에서 동영상을 재생할 수 있게 합니다."
   }
 }

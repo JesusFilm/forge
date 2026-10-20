@@ -192,12 +192,7 @@ export function SearchableListSheet<T>({
         >
           <View style={styles.nameColumn}>
             <Text
-              style={[
-                styles.listRowText,
-                typography.body,
-                primaryText,
-                primaryDirection.style,
-              ]}
+              style={[typography.body, primaryText, primaryDirection.style]}
               numberOfLines={1}
               accessibilityLanguage={primaryDirection.accessibilityLanguage}
             >
@@ -276,7 +271,12 @@ export function SearchableListSheet<T>({
           color={colors.secondaryText}
         />
         <TextInput
-          style={[styles.searchInput, typography.body, primaryText]}
+          style={[
+            styles.searchInput,
+            typography.body,
+            primaryText,
+            direction.ui,
+          ]}
           placeholder={searchPlaceholder}
           placeholderTextColor={colors.secondaryText}
           value={query}
@@ -334,7 +334,6 @@ export function SearchableListSheet<T>({
               <View style={styles.nameColumn}>
                 <Text
                   style={[
-                    styles.listRowText,
                     typography.body,
                     styles.listRowTextActive,
                     primaryText,
@@ -414,9 +413,7 @@ export function SearchableListSheet<T>({
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptySearch}>
-              <Text
-                style={[styles.emptySearchText, typography.body, secondaryText]}
-              >
+              <Text style={[typography.body, secondaryText]}>
                 {emptySearchMessage}
               </Text>
             </View>
@@ -446,14 +443,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: "System",
     padding: 0,
   },
   currentSection: {
     marginBottom: 12,
   },
   currentLabel: {
-    fontFamily: "System",
     marginBottom: 6,
   },
   listRow: {
@@ -476,21 +471,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  listRowText: {
-    fontFamily: "System",
-  },
   listRowTextActive: {
     fontWeight: "600",
   },
   nativeText: {
-    fontFamily: "System",
     marginTop: 2,
   },
   emptySearch: {
     alignItems: "center",
     paddingVertical: 24,
-  },
-  emptySearchText: {
-    fontFamily: "System",
   },
 })

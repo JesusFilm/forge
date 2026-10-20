@@ -197,7 +197,6 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontFamily: "System",
     fontWeight: "700",
     fontSize: 14,
     // Paired with SEARCH_CARD_TEXT_HEIGHT — raising this without raising that

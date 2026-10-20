@@ -77,6 +77,7 @@ function makeFakePlayer(opts?: { status?: string; playThrows?: boolean }) {
 }
 
 type Result = { hasStarted: boolean; awaitingAutostart: boolean }
+const renderers = new Set<TestInstance>()
 
 /** Renders the hook and exposes its latest return value. */
 function renderHook(
@@ -106,6 +107,7 @@ function renderHook(
       (<Harness {...initial} />) as unknown as React.ReactElement,
     )
   })
+  renderers.add(renderer)
   return {
     latest: () => seen[seen.length - 1],
     rerender: (next: { sourceUrl: string | null; isPlaying: boolean }) =>
@@ -126,6 +128,10 @@ describe("useAutostartPlayback", () => {
   })
 
   afterEach(() => {
+    act(() => {
+      for (const renderer of renderers) renderer.unmount()
+    })
+    renderers.clear()
     ;(AppState as { currentState: string }).currentState = realAppState
     jest.useRealTimers()
   })

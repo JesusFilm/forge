@@ -60,6 +60,7 @@ export function WhatsNewLanguageSwitcher({
         slug: language.slug,
         name: language.languageName,
         nativeName: language.nativeName,
+        nativeNameLang: language.nativeNameLang,
         bcp47: language.bcp47,
       })),
     [languages],

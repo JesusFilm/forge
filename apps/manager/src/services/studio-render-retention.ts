@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto"
+import { z } from "zod"
 import type {
   StudioDocument,
   StudioAssetReference,
@@ -6,6 +7,7 @@ import type {
 import {
   STUDIO_RENDER_PROFILE,
   studioCodecProofSchema,
+  studioRenderOutputPartSchema,
 } from "@forge/studio-contracts/render"
 import { studioCatalogRenderManifestSchema } from "@forge/studio-contracts/catalog"
 import {
@@ -16,6 +18,46 @@ import {
   StudioRenderRetentionError,
   StudioRenderRunError,
 } from "./studio-render-runner"
+
+/** Normal immutable assets provide durable staging; no process-local upload state. */
+export async function retainStudioRenderOutputPart(
+  call: StudioBrokerClient,
+  snapshot: { inputHash: string },
+  assignment: { attemptId: string; leaseId: string },
+  rawPart: z.infer<typeof studioRenderOutputPartSchema>,
+  output: Buffer,
+  signal: AbortSignal,
+) {
+  const part = studioRenderOutputPartSchema.parse(rawPart)
+  if (output.length !== part.byteSize)
+    throw new StudioRenderRunError("Output part size changed")
+  signal.throwIfAborted()
+  const remaining = part.retentionDeadlineMs - Date.now()
+  if (remaining <= 0 || remaining > STUDIO_RENDER_PROFILE.retentionTransferMs)
+    throw new StudioRenderRunError("Output part deadline refused")
+  const transferSignal = AbortSignal.any([
+    signal,
+    AbortSignal.timeout(remaining),
+  ])
+  return createStudioAssetBroker(call, transferSignal).register(
+    `${assignment.attemptId}-part-${part.index}.bin`,
+    "application/octet-stream",
+    "archive",
+    output,
+    [],
+    {
+      attemptId: assignment.attemptId,
+      leaseId: assignment.leaseId,
+      profileId: STUDIO_RENDER_PROFILE.id,
+      inputHash: snapshot.inputHash,
+      outputDigest: part.outputDigest,
+      outputBytes: part.totalBytes,
+      partIndex: part.index,
+      partCount: part.count,
+      retentionDeadlineMs: part.retentionDeadlineMs,
+    },
+  )
+}
 
 /** Trusted broker only: runtime authentication precedes this shared retention
  * path. Registration is content-idempotent and bound to the exact issued lease. */
