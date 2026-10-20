@@ -1160,10 +1160,12 @@ export function FloatingSearchProvider({
           aria-hidden={modalChromeHidden || undefined}
           id={WATCH_MAIN_CONTENT_ID}
           tabIndex={-1}
+          // The skip-link target spans the whole page, so it takes focus
+          // without drawing a page-sized focus ring.
           className={
             modalChromeHidden
-              ? "blur-[12px] transition-[filter] duration-200"
-              : "transition-[filter] duration-200"
+              ? "blur-[12px] transition-[filter] duration-200 outline-none"
+              : "transition-[filter] duration-200 outline-none"
           }
         >
           {children}
