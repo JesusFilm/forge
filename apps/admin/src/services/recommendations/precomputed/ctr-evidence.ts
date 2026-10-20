@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client"
+import { visitEngagementSql } from "./engagement-evidence"
 
 export type RawCtrVisit = {
   visit_id: string
@@ -16,6 +17,16 @@ export type RawCtrVisit = {
   private_recovery_attempt: boolean
   unlinked_delivered: boolean
   unversioned: boolean
+  qualified_playbacks: bigint
+  active_playback_milliseconds: bigint
+  claimed_playbacks: bigint
+  observed_playbacks: bigint
+  complete_playbacks: bigint
+  partial_playbacks: bigint
+  missing_outcome_playbacks: bigint
+  missing_coverage_playbacks: bigint
+  pending_playbacks: bigint
+  invalid_playbacks: bigint
 }
 
 /** The same attribution query feeds raw reports and the one-way archive. A
@@ -27,7 +38,7 @@ export function rawCtrVisitSql(where: Prisma.Sql, asOf: Date): Prisma.Sql {
       v.arm::text AS arm, v.eligibility, v.qualification,
       v.exclusion_reason, v.delivery_result,
       counts.accepted_selections, counts.qualified_impressions,
-      counts.matched_selections,
+      counts.matched_selections, engagement.*,
       (v.delivery_result = 'fallback' OR (
         v.arm = 'challenger' AND EXISTS (
           SELECT 1 FROM recommendation_precomputed_visit_request fallback_link
@@ -65,12 +76,25 @@ export function rawCtrVisitSql(where: Prisma.Sql, asOf: Date): Prisma.Sql {
         )
       WHERE link.visit_id = v.id
     ) counts ON true
+    LEFT JOIN LATERAL (${visitEngagementSql(asOf)}) engagement ON true
     WHERE ${where}
   `
 }
 
 export const ctrTotalFields = [
   "eligibleVisits",
+  "engagementMeasuredVisits",
+  "engagedVisits",
+  "activePlaybackMilliseconds",
+  "claimedPlaybacks",
+  "observedPlaybacks",
+  "completePlaybacks",
+  "partialPlaybacks",
+  "missingOutcomePlaybacks",
+  "missingCoveragePlaybacks",
+  "pendingPlaybacks",
+  "invalidPlaybacks",
+
   "clickedVisits",
   "acceptedSelections",
   "qualifiedImpressions",
@@ -112,6 +136,18 @@ export function addCtrVisit(totals: CtrTotals, row: RawCtrVisit): void {
     return
   }
   totals.eligibleVisits += 1n
+  totals.engagementMeasuredVisits += 1n
+  if (row.qualified_playbacks > 0n) totals.engagedVisits += 1n
+  totals.activePlaybackMilliseconds += row.active_playback_milliseconds
+  totals.claimedPlaybacks += row.claimed_playbacks
+  totals.observedPlaybacks += row.observed_playbacks
+  totals.completePlaybacks += row.complete_playbacks
+  totals.partialPlaybacks += row.partial_playbacks
+  totals.missingOutcomePlaybacks += row.missing_outcome_playbacks
+  totals.missingCoveragePlaybacks += row.missing_coverage_playbacks
+  totals.pendingPlaybacks += row.pending_playbacks
+  totals.invalidPlaybacks += row.invalid_playbacks
+
   if (row.accepted_selections > 0n) totals.clickedVisits += 1n
   totals.acceptedSelections += row.accepted_selections
   totals.qualifiedImpressions += row.qualified_impressions
@@ -160,6 +196,7 @@ export async function archivePrecomputedCtrVisits(
       arm: "control" | "challenger"
       visits: bigint
       clicks: bigint
+      engaged: bigint
     }
   >()
   for (const row of rows) {
@@ -185,6 +222,7 @@ export async function archivePrecomputedCtrVisits(
         arm,
         visits: 0n,
         clicks: 0n,
+        engaged: 0n,
       }
       clusters.set(key, cluster)
     }
@@ -192,16 +230,18 @@ export async function archivePrecomputedCtrVisits(
       throw new Error("precomputed_ctr_archive_cluster_arm_conflict")
     cluster.visits += 1n
     if (row.accepted_selections > 0n) cluster.clicks += 1n
+    if (row.qualified_playbacks > 0n) cluster.engaged += 1n
   }
   for (const cluster of clusters.values()) {
     const changed = await tx.$executeRaw(Prisma.sql`
       INSERT INTO recommendation_precomputed_ctr_cluster
-        (experiment_id, browser_unit_digest, arm, eligible_visits, clicked_visits)
+        (experiment_id, browser_unit_digest, arm, eligible_visits, clicked_visits, engaged_visits)
       VALUES (${cluster.experimentId}, ${cluster.digest}, ${cluster.arm}::"RecommendationExperimentArm",
-        ${cluster.visits}, ${cluster.clicks})
+        ${cluster.visits}, ${cluster.clicks}, ${cluster.engaged})
       ON CONFLICT (experiment_id, browser_unit_digest) DO UPDATE SET
         eligible_visits = recommendation_precomputed_ctr_cluster.eligible_visits + EXCLUDED.eligible_visits,
-        clicked_visits = recommendation_precomputed_ctr_cluster.clicked_visits + EXCLUDED.clicked_visits
+        clicked_visits = recommendation_precomputed_ctr_cluster.clicked_visits + EXCLUDED.clicked_visits,
+        engaged_visits = recommendation_precomputed_ctr_cluster.engaged_visits + EXCLUDED.engaged_visits
       WHERE recommendation_precomputed_ctr_cluster.arm = EXCLUDED.arm
     `)
     if (changed !== 1)

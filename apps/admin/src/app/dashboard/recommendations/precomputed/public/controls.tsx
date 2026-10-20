@@ -1,6 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { EngagementComparison } from "../engagement-comparison"
 import { PageSection, StatusPill } from "@/components/admin-ui"
 import type { PrecomputedCtrReport } from "@/services/recommendations/precomputed/ctr-report"
 import type { loadPrecomputedPublicReadiness } from "@/services/recommendations/precomputed/public-readiness"
@@ -623,7 +624,7 @@ export function PublicPrecomputedControls({
                   <th>Experiment</th>
                   <th>Generation</th>
                   <th>Window</th>
-                  <th>Latest result</th>
+                  <th>Latest CTR result</th>
                   <th>Manual action</th>
                 </tr>
               </thead>
@@ -662,7 +663,7 @@ export function PublicPrecomputedControls({
                         {result ? (
                           <details>
                             <summary className="cursor-pointer underline">
-                              Review click rates and delivery health
+                              Review clicks, engagement and delivery health
                             </summary>
                             <p>
                               Control: {result.byArm.control.clickedVisits}/
@@ -671,17 +672,7 @@ export function PublicPrecomputedControls({
                               {result.byArm.challenger.clickedVisits}/
                               {result.byArm.challenger.eligibleVisits}.
                             </p>
-                            <p>
-                              Visit CTR: control{" "}
-                              {result.byArm.control.visitCtr == null
-                                ? "—"
-                                : `${(100 * result.byArm.control.visitCtr).toFixed(2)}%`}
-                              ; challenger{" "}
-                              {result.byArm.challenger.visitCtr == null
-                                ? "—"
-                                : `${(100 * result.byArm.challenger.visitCtr).toFixed(2)}%`}
-                              .
-                            </p>
+                            <EngagementComparison report={result} />
                             <p>
                               Basis: {result.evidenceBasis ?? "unverified"}.
                             </p>

@@ -147,13 +147,11 @@ function tCritical(degreesOfFreedom: number): number {
   return 12.706204736
 }
 
-export function evaluatePrecomputedCtr(
-  settings: CtrPolicySettings,
-  evidence: CtrEvaluationEvidence,
-): CtrEvaluation {
-  validateCtrPolicySettings(settings)
-  const control = armUncertainty(evidence.byArm.control)
-  const challenger = armUncertainty(evidence.byArm.challenger)
+export function comparePrecomputedVisitRates(
+  byArm: CtrEvaluationEvidence["byArm"],
+) {
+  const control = armUncertainty(byArm.control)
+  const challenger = armUncertainty(byArm.challenger)
   const difference =
     control.ctr == null || challenger.ctr == null
       ? null
@@ -168,8 +166,8 @@ export function evaluatePrecomputedCtr(
       ? null
       : Math.floor(
           Math.min(
-            evidence.byArm.control.browsers,
-            evidence.byArm.challenger.browsers,
+            byArm.control.browsers,
+            byArm.challenger.browsers,
             control.effective,
             challenger.effective,
           ),
@@ -191,6 +189,35 @@ export function evaluatePrecomputedCtr(
     difference == null || !usableError
       ? null
       : difference + criticalValue * standardError
+  return {
+    control,
+    challenger,
+    difference,
+    standardError,
+    conservativeDegreesOfFreedom,
+    criticalValue,
+    usableError,
+    lowerBound,
+    upperBound,
+  }
+}
+
+export function evaluatePrecomputedCtr(
+  settings: CtrPolicySettings,
+  evidence: CtrEvaluationEvidence,
+): CtrEvaluation {
+  validateCtrPolicySettings(settings)
+  const {
+    control,
+    challenger,
+    difference,
+    standardError,
+    conservativeDegreesOfFreedom,
+    criticalValue,
+    usableError,
+    lowerBound,
+    upperBound,
+  } = comparePrecomputedVisitRates(evidence.byArm)
   const reasons: string[] = []
   if (!control.coherent || !challenger.coherent)
     reasons.push("incoherent_cluster_moments")
