@@ -185,6 +185,5 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

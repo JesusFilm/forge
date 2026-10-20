@@ -910,7 +910,6 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textAlign: "center",
   },
   header: {
@@ -919,7 +918,6 @@ const styles = StyleSheet.create({
   videoTitle: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 8,
   },
   metaRow: {
@@ -942,7 +940,6 @@ const styles = StyleSheet.create({
   },
   metaPillText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   dropdownSection: {
     marginBottom: 24,
@@ -981,19 +978,16 @@ const styles = StyleSheet.create({
   },
   modeLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   modeLabelSelected: {
     fontWeight: "600",
   },
   sheetNote: {
     color: TEXT_BODY,
-    fontFamily: "System",
     marginBottom: 16,
   },
   dropdownSectionLabel: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginBottom: 12,
   },
   dropdownPanelScroll: {
@@ -1016,7 +1010,6 @@ const styles = StyleSheet.create({
   dropdownValue: {
     color: TEXT_PRIMARY,
     fontWeight: "600",
-    fontFamily: "System",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -1027,7 +1020,6 @@ const styles = StyleSheet.create({
   },
   dropdownTrailing: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   dropdownPanel: {
     backgroundColor: "rgba(255, 255, 255, 0.04)",
@@ -1050,7 +1042,6 @@ const styles = StyleSheet.create({
   },
   dropdownOptionLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -1060,7 +1051,6 @@ const styles = StyleSheet.create({
   },
   dropdownOptionTrailing: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   dropdownOptionLabelDisabled: {
     color: TEXT_SECONDARY,
@@ -1069,7 +1059,6 @@ const styles = StyleSheet.create({
   dropdownOptionNote: {
     color: TEXT_SECONDARY,
     opacity: 0.75,
-    fontFamily: "System",
     fontStyle: "italic",
   },
   touRow: {
@@ -1093,12 +1082,10 @@ const styles = StyleSheet.create({
   },
   touText: {
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   touLink: {
     color: ACCENT,
     fontWeight: "600",
-    fontFamily: "System",
     textDecorationLine: "underline",
   },
   downloadButton: {
@@ -1118,7 +1105,6 @@ const styles = StyleSheet.create({
   downloadButtonText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
   modalOverlay: {
     flex: 1,
@@ -1136,7 +1122,6 @@ const styles = StyleSheet.create({
   termsTitle: {
     color: TEXT_PRIMARY,
     fontWeight: "700",
-    fontFamily: "System",
     marginBottom: 16,
   },
   termsScroll: {
@@ -1145,7 +1130,6 @@ const styles = StyleSheet.create({
   termsText: {
     writingDirection: "ltr",
     color: TEXT_BODY,
-    fontFamily: "System",
   },
   termsParagraphGap: {
     marginTop: 16,
@@ -1168,7 +1152,6 @@ const styles = StyleSheet.create({
   termsCancelText: {
     color: TEXT_SECONDARY,
     fontWeight: "600",
-    fontFamily: "System",
   },
   termsAcceptButton: {
     backgroundColor: ACCENT,
@@ -1181,6 +1164,5 @@ const styles = StyleSheet.create({
   termsAcceptText: {
     color: "#ffffff",
     fontWeight: "600",
-    fontFamily: "System",
   },
 })

@@ -641,7 +641,6 @@ const styles = StyleSheet.create({
   },
   selectPillText: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   textPill: {
@@ -650,19 +649,16 @@ const styles = StyleSheet.create({
   },
   textPillLabel: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   selectionCount: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   hint: {
     marginTop: 10,
     alignSelf: "center",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     backgroundColor: SURFACE_COLOR,
     paddingHorizontal: 13,
     paddingVertical: 6,

@@ -221,7 +221,6 @@ const styles = StyleSheet.create({
   message: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
 })
 

@@ -355,7 +355,6 @@ const styles = StyleSheet.create({
   // Fixed-width digits, so the pill does not change width as the time runs.
   pillText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
     fontVariant: ["tabular-nums"],
   },

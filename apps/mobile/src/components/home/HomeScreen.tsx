@@ -793,7 +793,6 @@ const styles = StyleSheet.create({
   ctaText: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
   muteButton: {
     width: HERO_CTA_HEIGHT,
@@ -819,7 +818,6 @@ const styles = StyleSheet.create({
   loadingText: {
     color: TEXT_SECONDARY,
     fontSize: 17,
-    fontFamily: "System",
     marginTop: 12,
   },
   errorMessageSpacing: {
@@ -837,11 +835,9 @@ const styles = StyleSheet.create({
     color: TEXT_ON_OVERLAY,
     fontSize: 17,
     fontWeight: "600",
-    fontFamily: "System",
   },
   emptyText: {
     color: TEXT_SECONDARY,
     fontSize: 17,
-    fontFamily: "System",
   },
 })

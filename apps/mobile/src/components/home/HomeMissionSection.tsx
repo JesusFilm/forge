@@ -225,14 +225,12 @@ const styles = StyleSheet.create({
   },
   cardEyebrow: {
     color: hexToRgba("#fee2e2", 0.75),
-    fontFamily: "System",
     fontWeight: "600",
     letterSpacing: 2,
     marginBottom: 4,
   },
   cardTitle: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   railContent: {

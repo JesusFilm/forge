@@ -184,7 +184,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },

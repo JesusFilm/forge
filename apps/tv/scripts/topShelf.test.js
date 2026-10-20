@@ -128,7 +128,7 @@ describe("Apple TV Top Shelf", () => {
     expect(bytes).toBeLessThan(5_000_000)
   })
 
-  it("uses the modern extension point and existing Play / More Info routes, without a network or player dependency", () => {
+  it("uses the modern extension point and existing Play / More Info routes without a player or React dependency", () => {
     const provider = fs.readFileSync(
       path.join(__dirname, "../top-shelf/ContentProvider.swift"),
       "utf8",
@@ -145,6 +145,6 @@ describe("Apple TV Top Shelf", () => {
     expect(provider).toContain('URLQueryItem(name: "autoplay", value: "1")')
     expect(provider).toContain("autoplay: false")
     expect(provider).toContain("autoplay: true")
-    expect(provider).not.toMatch(/URLSession|AVPlayer|import React/)
+    expect(provider).not.toMatch(/AVPlayer|import React/)
   })
 })

@@ -804,6 +804,7 @@ export default function WatchVideoPage() {
             redirect, an Up Next replace, no variant in this language): dropping
             it hands the player to the route beneath and reads as a back press. */}
         <PlayerSlot
+          page="watch"
           // The cast pin (KTD4), not the live chain: a dub chosen mid-session
           // reaches the player only when the session releases it.
           streamingUrl={effectivePlayerSource}
@@ -1144,7 +1145,6 @@ const styles = StyleSheet.create({
   retryLink: {
     // ACCENT_ON_DARK, not ACCENT: 15px link text needs >= 4.5:1 on the dark bg.
     color: ACCENT_ON_DARK,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,

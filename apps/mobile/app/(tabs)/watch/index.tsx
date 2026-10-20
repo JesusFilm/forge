@@ -938,7 +938,6 @@ const styles = StyleSheet.create({
     paddingRight: 44,
     paddingVertical: 12,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
   },
   inputWrapper: {
@@ -960,7 +959,6 @@ const styles = StyleSheet.create({
   },
   noResultsTitle: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "600",
     fontSize: 18,
     textAlign: "center",
@@ -968,19 +966,16 @@ const styles = StyleSheet.create({
   },
   noResultsBody: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontSize: 14,
     textAlign: "center",
   },
   errorText: {
     color: "#ef4444",
-    fontFamily: "System",
     fontSize: 14,
     textAlign: "center",
   },
   retryLink: {
     color: ACCENT,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     marginTop: 12,
@@ -1004,7 +999,6 @@ const styles = StyleSheet.create({
   },
   loadMoreButton: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
     backgroundColor: "rgba(255,255,255,0.1)",

@@ -32,6 +32,42 @@ export const PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY =
   "public-watch-verified-human-v1"
 export const PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY =
   "public-watch-turnstile-verified-browser-v1"
+export const PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY =
+  "public-watch-browser-filtered-v1"
+export type PrecomputedPublicAuthority =
+  | "isolated_fixture"
+  | "live_verified"
+  | "public_browser"
+
+// Reporting defaults, not a measured baseline or a launch qualification.
+export const PUBLIC_BROWSER_CTR_SETTINGS: CtrPolicySettings = {
+  baselineHumanVisitCtr: 0,
+  minimumDetectableAbsoluteUplift: 0.02,
+  minimumPracticalAbsoluteUplift: 0.01,
+  plannedPower: 0.8,
+  minimumEligibleVisitsPerArm: 1_000,
+  minimumIndependentBrowsersPerArm: 1_000,
+  minimumDurationHours: 672,
+  lateEventCutoffHours: 24,
+  maximumActualFallbackRate: 0.05,
+  maximumUnlinkedDeliveryRate: 0.01,
+}
+
+function eligibilityPolicy(authority: PrecomputedPublicAuthority): string {
+  return authority === "public_browser"
+    ? PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+    : authority === "live_verified"
+      ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+      : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+}
+
+function policyAuthority(authority: PrecomputedPublicAuthority): string {
+  return authority === "public_browser"
+    ? "public_observed"
+    : authority === "live_verified"
+      ? "prelaunch_agreed"
+      : "fixture_only"
+}
 const EXPERIMENT_RETENTION_MS = 365 * 86_400_000
 const BROWSER_COOKIE_LIFETIME_MS = 180 * 86_400_000
 const HEX_DIGEST = /^[a-f0-9]{64}$/
@@ -93,7 +129,7 @@ export type PrecomputedPublicControl = {
   sourceSetDigest: string | null
   startsAt: string | null
   endsAt: string | null
-  authority: "isolated_fixture" | "live_verified" | null
+  authority: PrecomputedPublicAuthority | null
   reportRevision: number | null
   reportEvidenceDigest: string | null
   retainedExperimentId: string | null
@@ -129,6 +165,9 @@ export async function loadPrecomputedPublicControl(
     experiment?.state === "public_ready" &&
     experiment.generation.status === "complete" &&
     experiment.generation.sourceSetDigest === experiment.sourceSetDigest &&
+    ["isolated_fixture", "live_verified", "public_browser"].includes(
+      row?.authority ?? "",
+    ) &&
     (row?.authority !== "isolated_fixture" ||
       (env.NODE_ENV === "test" &&
         env.RECOMMENDATION_DB_TEST === "1" &&
@@ -172,7 +211,7 @@ export async function preparePrecomputedPublicExperiment(
     expectedControlRoutingDigest: string
     expectedSourceSetDigest: string
     policySettings: CtrPolicySettings
-    authority: "isolated_fixture" | "live_verified"
+    authority: PrecomputedPublicAuthority
     policyAgreement?: LivePolicyAgreement
     operator: Principal | null
   },
@@ -265,13 +304,12 @@ export async function preparePrecomputedPublicExperiment(
         throw new PrecomputedPublicControlError("readiness_unavailable", [
           "live_evidence_changed",
         ])
-      const eligibilityPolicy =
-        input.authority === "live_verified"
-          ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
-          : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+      const frozenEligibilityPolicy = eligibilityPolicy(input.authority)
       const evidenceDigest = live
         ? liveEvidenceDigest(live.snapshot)
-        : "fixture"
+        : input.authority === "public_browser"
+          ? "public_observed"
+          : "fixture"
       const configurationDigest = digest([
         "precomputed-public-configuration-v1",
         input.id,
@@ -282,7 +320,7 @@ export async function preparePrecomputedPublicExperiment(
         routing.routingDigest,
         challenger.id,
         PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
-        eligibilityPolicy,
+        frozenEligibilityPolicy,
         PRECOMPUTED_VISIT_DELIVERY_POLICY,
         precomputedCtrPolicyDigest(input.policySettings),
         evidenceDigest,
@@ -299,7 +337,7 @@ export async function preparePrecomputedPublicExperiment(
           controlRoutingDigest: routing.routingDigest,
           sourceSetDigest: generation.sourceSetDigest,
           assignmentPolicyVersion: PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
-          eligibilityPolicyVersion: eligibilityPolicy,
+          eligibilityPolicyVersion: frozenEligibilityPolicy,
           deliveryPolicyVersion: PRECOMPUTED_VISIT_DELIVERY_POLICY,
           configurationDigest,
           liveEvidence: live
@@ -319,7 +357,7 @@ export async function preparePrecomputedPublicExperiment(
           settings: input.policySettings,
           lateEventCutoffHours: input.policySettings.lateEventCutoffHours,
           settingsDigest: precomputedCtrPolicyDigest(input.policySettings),
-          authority: live ? "prelaunch_agreed" : "fixture_only",
+          authority: policyAuthority(input.authority),
         },
       })
       return prepared
@@ -331,6 +369,80 @@ export async function preparePrecomputedPublicExperiment(
   )
 }
 
+/** Start an ordinary browser test of an existing saved generation. The caller
+ * retains experimentId across retries so a lost acknowledgement is reconcilable. */
+export async function startSavedPrecomputedPublicExperiment(
+  prisma: PrismaClient,
+  input: {
+    experimentId: string
+    generationId: string
+    expectedControlVersion: number
+    operator: Principal | null
+  },
+): Promise<PrecomputedPublicControl> {
+  if (!hasPermission(input.operator, "operate:recommendation-experiments"))
+    throw new ForbiddenError()
+  if (
+    !input.operator?.id ||
+    !ID.test(input.experimentId) ||
+    !ID.test(input.generationId) ||
+    !Number.isSafeInteger(input.expectedControlVersion) ||
+    input.expectedControlVersion < 1
+  )
+    throw new PrecomputedPublicControlError("invalid_input")
+  const control = await loadPrecomputedPublicControl(prisma)
+  if (
+    control.mode === "ab" &&
+    control.authority === "public_browser" &&
+    control.experimentId === input.experimentId &&
+    control.generationId === input.generationId &&
+    control.version === input.expectedControlVersion + 1
+  )
+    return control
+  if (control.version !== input.expectedControlVersion)
+    throw new PrecomputedPublicControlError("stale_control")
+  if (control.mode !== "incumbent" || control.pendingManualReview)
+    throw new PrecomputedPublicControlError("incompatible_target")
+  let prepared = await prisma.recommendationPrecomputedExperiment.findUnique({
+    where: { id: input.experimentId },
+  })
+  if (!prepared) {
+    const [generation, routing] = await Promise.all([
+      prisma.recommendationPrecomputedGeneration.findUnique({
+        where: { id: input.generationId },
+      }),
+      readControlRouting(prisma),
+    ])
+    if (generation?.status !== "complete" || !routing)
+      throw new PrecomputedPublicControlError("incompatible_target")
+    const startsAt = new Date()
+    prepared = await preparePrecomputedPublicExperiment(prisma, {
+      id: input.experimentId,
+      generationId: generation.id,
+      startsAt,
+      endsAt: oneUtcCalendarMonthAfter(startsAt),
+      expectedControlRoutingDigest: routing.routingDigest,
+      expectedSourceSetDigest: generation.sourceSetDigest,
+      policySettings: PUBLIC_BROWSER_CTR_SETTINGS,
+      authority: "public_browser",
+      operator: input.operator,
+    })
+  }
+  if (
+    prepared.generationId !== input.generationId ||
+    prepared.eligibilityPolicyVersion !==
+      PRECOMPUTED_PUBLIC_BROWSER_ELIGIBILITY_POLICY
+  )
+    throw new PrecomputedPublicControlError("incompatible_target")
+  return startPrecomputedPublicExperiment(prisma, {
+    experimentId: prepared.id,
+    expectedConfigurationDigest: prepared.configurationDigest,
+    expectedControlVersion: input.expectedControlVersion,
+    authority: "public_browser",
+    operator: input.operator,
+  })
+}
+
 /** The first public selection is an explicit compare-and-swap against fresh
  * evidence. Neither a build nor a CTR report can call this operator action. */
 export async function startPrecomputedPublicExperiment(
@@ -339,7 +451,7 @@ export async function startPrecomputedPublicExperiment(
     experimentId: string
     expectedConfigurationDigest: string
     expectedControlVersion: number
-    authority: "isolated_fixture" | "live_verified"
+    authority: PrecomputedPublicAuthority
     operator: Principal | null
     now?: Date
   },
@@ -459,18 +571,17 @@ export async function startPrecomputedPublicExperiment(
         frozen?.state !== "public_ready" ||
         frozen.configurationDigest !== input.expectedConfigurationDigest ||
         frozen.generation.status !== "complete" ||
-        (frozen.generation.protocolVersion !== 2 &&
+        (input.authority !== "public_browser" &&
+          frozen.generation.protocolVersion !== 2 &&
           !(await hasQualifiedGaCapture(tx, frozen.generation))) ||
         frozen.generation.sourceSetDigest !== frozen.sourceSetDigest ||
-        (frozen.generation.capacityPreflight as { status?: string } | null)
-          ?.status !== "passed" ||
+        (input.authority !== "public_browser" &&
+          (frozen.generation.capacityPreflight as { status?: string } | null)
+            ?.status !== "passed") ||
         routing?.routingDigest !== frozen.controlRoutingDigest ||
         routing.manifest.id !== frozen.controlManifestId ||
         routing.manifestDigest !== frozen.controlManifestDigest ||
-        policy?.authority !==
-          (input.authority === "live_verified"
-            ? "prelaunch_agreed"
-            : "fixture_only") ||
+        policy?.authority !== policyAuthority(input.authority) ||
         policy.method !== PRECOMPUTED_CTR_METHOD ||
         policy.version !== PRECOMPUTED_CTR_METHOD ||
         policy.settingsDigest !==
@@ -478,9 +589,7 @@ export async function startPrecomputedPublicExperiment(
         visits !== 0 ||
         reports !== 0 ||
         frozen.eligibilityPolicyVersion !==
-          (input.authority === "live_verified"
-            ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
-            : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY) ||
+          eligibilityPolicy(input.authority) ||
         now < frozen.startsAt ||
         now >= frozen.endsAt
       )
@@ -614,7 +723,8 @@ export async function promotePrecomputedPublicExperiment(
       throw new PrecomputedPublicControlError("incompatible_target")
     if (
       pointer.authority !== "isolated_fixture" &&
-      pointer.authority !== "live_verified"
+      pointer.authority !== "live_verified" &&
+      pointer.authority !== "public_browser"
     )
       throw new PrecomputedPublicControlError("readiness_unavailable")
     if (pointer.authority === "isolated_fixture")
@@ -674,7 +784,9 @@ export async function promotePrecomputedPublicExperiment(
       report.evidenceBasis !==
         (pointer.authority === "live_verified"
           ? "live_verified"
-          : "isolated_fixture") ||
+          : pointer.authority === "public_browser"
+            ? "public_observed"
+            : "isolated_fixture") ||
       (pointer.authority === "live_verified" &&
         (!liveCalibration ||
           report.finalCalibration?.receiptDigest !==

@@ -44,6 +44,13 @@ data class PlaybackPositionEvent(
 ) : Record
 
 data class NativeSelectionEvent(@Field val id: String?) : Record
+data class PlaybackStateEvent(
+  @Field val sourceGeneration: Int,
+  @Field val state: String,
+  @Field val positionSeconds: Double,
+  @Field val durationSeconds: Double?,
+  @Field val seeking: Boolean
+) : Record
 data class NativeMenuEvent(@Field val section: String?) : Record
 data class NativeErrorEvent(@Field val message: String) : Record
 data class NativePlayNextEvent(@Field val slug: String) : Record
@@ -58,6 +65,8 @@ class NativeAndroidPlayerView(
   internal val onEnded by EventDispatcher<Unit>()
   internal val onPlayNext by EventDispatcher<NativePlayNextEvent>()
   internal val onPlaybackPosition by EventDispatcher<PlaybackPositionEvent>()
+  internal val onPlaybackState by EventDispatcher<PlaybackStateEvent>()
+  var sourceGeneration = 0
   internal val onError by EventDispatcher<NativeErrorEvent>()
   internal val onAudioChange by EventDispatcher<NativeSelectionEvent>()
   internal val onSubtitleChange by EventDispatcher<NativeSelectionEvent>()
@@ -160,6 +169,7 @@ class NativeAndroidPlayerView(
     override fun run() {
       if (released) return
       updateCaption()
+      emitPlaybackState()
       handler.postDelayed(this, if (foreground && player.isPlaying) 100 else 500)
     }
   }
@@ -786,6 +796,7 @@ class NativeAndroidPlayerView(
   }
 
   override fun onPlaybackStateChanged(playbackState: Int) {
+    emitPlaybackState()
     if (playbackState == Player.STATE_READY) {
       sourceStartPositionMs?.let { target ->
         sourceStartPositionMs = null
@@ -821,6 +832,7 @@ class NativeAndroidPlayerView(
   }
 
   override fun onEvents(player: Player, events: Player.Events) {
+    emitPlaybackState()
     if (
       events.contains(Player.EVENT_PLAYBACK_STATE_CHANGED) ||
       events.contains(Player.EVENT_PLAY_WHEN_READY_CHANGED) ||
@@ -859,6 +871,20 @@ class NativeAndroidPlayerView(
     playerView.player = null
     mediaSession.release()
     player.release()
+  }
+
+  private fun emitPlaybackState() {
+    if (released || sourceUrl != loadedSourceUrl) return
+    val state = when {
+      hasPlaybackError -> "error"
+      player.playbackState == Player.STATE_ENDED -> "ended"
+      seeking || player.playbackState == Player.STATE_BUFFERING -> "buffering"
+      foreground && player.isPlaying -> "playing"
+      else -> "paused"
+    }
+    onPlaybackState(PlaybackStateEvent(sourceGeneration, state,
+      player.currentPosition.coerceAtLeast(0L) / 1000.0,
+      player.duration.takeIf { it > 0L }?.div(1000.0), seeking))
   }
 
   private fun showAudioDialog() {

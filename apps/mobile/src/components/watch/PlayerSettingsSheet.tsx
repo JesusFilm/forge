@@ -350,7 +350,6 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: "center",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
     fontWeight: "600",
   },
@@ -364,7 +363,6 @@ const styles = StyleSheet.create({
   rowTitle: {
     flex: 1,
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontSize: 15,
   },
   // A rule above it: this row leaves the sheet, the settings rows do not.
@@ -380,7 +378,6 @@ const styles = StyleSheet.create({
   },
   rowValueText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontSize: 14,
   },
   checkSlot: {

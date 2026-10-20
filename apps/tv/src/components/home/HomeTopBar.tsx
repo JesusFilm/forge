@@ -6,7 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native"
 import type { View as ViewType } from "react-native"
 
-import { scale } from "../../lib/scale"
+import { readableFontSize, scale } from "../../lib/scale"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { useFocusVisual } from "../focus/useFocusVisual"
@@ -354,14 +354,14 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontFamily: "System",
-    fontSize: Math.round(scale(23)),
+    fontSize: readableFontSize(23),
     fontWeight: "600",
   },
 
   // ── Clock ──
   clock: {
     fontFamily: "System",
-    fontSize: Math.round(scale(22)),
+    fontSize: readableFontSize(22),
     fontWeight: "600",
     color: "rgba(255,255,255,0.6)",
     fontVariant: ["tabular-nums"],

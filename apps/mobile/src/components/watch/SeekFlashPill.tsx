@@ -169,7 +169,6 @@ const styles = StyleSheet.create({
   },
   text: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontSize: 13,
     fontWeight: "600",
     marginTop: 2,

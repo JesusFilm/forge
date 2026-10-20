@@ -120,13 +120,11 @@ const styles = StyleSheet.create({
   },
   title: {
     color: TEXT_PRIMARY,
-    fontFamily: "System",
     fontWeight: "700",
     textAlign: "center",
   },
   body: {
     color: TEXT_BODY,
-    fontFamily: "System",
     textAlign: "center",
   },
   retry: {
@@ -141,7 +139,6 @@ const styles = StyleSheet.create({
   },
   retryText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   failedLayer: {
@@ -161,7 +158,6 @@ const styles = StyleSheet.create({
   },
   failedText: {
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
     textAlign: "center",
   },
 })

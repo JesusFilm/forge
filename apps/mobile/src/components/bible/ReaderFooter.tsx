@@ -117,7 +117,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     lineHeight: 18,
-    fontFamily: "System",
     flexShrink: 1,
   },
   counter: {
@@ -145,6 +144,5 @@ const styles = StyleSheet.create({
   credit: {
     fontSize: 12,
     lineHeight: 16,
-    fontFamily: "System",
   },
 })

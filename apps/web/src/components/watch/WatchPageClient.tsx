@@ -195,6 +195,7 @@ type WatchPageClientProps = {
    * Bible passage translation selection is resolved by Admin before render.
    */
   locale?: string
+  audienceEnabled?: boolean
   hideBibleQuotes?: boolean
   questionPanelEnabled?: boolean
   initialTranscript?: InitialSubtitleTranscript
@@ -278,6 +279,7 @@ export function WatchPageClient({
   subtitleLanguageSlug = null,
   collectionSlug = null,
   locale,
+  audienceEnabled = false,
   hideBibleQuotes = false,
   questionPanelEnabled = false,
   initialTranscript = null,
@@ -877,6 +879,7 @@ export function WatchPageClient({
         </p>
       ) : null}
       <WatchSectionRenderer
+        audienceEnabled={audienceEnabled}
         blocks={mergedBlocks}
         surfaceManifests={surfaceManifests}
         downloadButtonLabel={downloadButtonLabel}

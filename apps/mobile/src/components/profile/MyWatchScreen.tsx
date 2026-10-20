@@ -196,7 +196,6 @@ const styles = StyleSheet.create({
   },
   seeAllText: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     fontWeight: "600",
   },
   seeAllTextGlass: {

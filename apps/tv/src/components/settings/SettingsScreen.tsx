@@ -18,6 +18,7 @@ import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { scale } from "../../lib/scale"
+import { ANIMATION_SETTINGS_ENABLED } from "../../lib/logoAnimations"
 import { useShowcasePrefs } from "../../lib/showcaseMode/useShowcasePrefs"
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
@@ -34,6 +35,11 @@ import {
   loadContinueWatching,
   type ContinueWatchingEntry,
 } from "../../lib/watchEvents/continueWatching"
+import {
+  recommendationsEnabled,
+  readPersonalizationChoice,
+  changePersonalization,
+} from "../../lib/recommendations/client"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -41,6 +47,41 @@ const ICON_SIZE = Math.round(scale(26))
 
 export function SettingsScreen() {
   const router = useRouter()
+  const [personalized, setPersonalized] = useState(true)
+  const [recommendationsReady, setRecommendationsReady] = useState(false)
+  const [recommendationsBusy, setRecommendationsBusy] = useState(false)
+  const [recommendationsError, setRecommendationsError] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    if (recommendationsEnabled())
+      void readPersonalizationChoice()
+        .then((choice) => {
+          if (!cancelled) {
+            setPersonalized(choice !== false)
+            setRecommendationsReady(true)
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setRecommendationsError(true)
+        })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  const updateRecommendations = async (
+    action: "grant" | "withdraw" | "reset",
+  ) => {
+    if (recommendationsBusy) return
+    setRecommendationsBusy(true)
+    setRecommendationsError(false)
+    try {
+      setPersonalized(await changePersonalization(action))
+    } catch {
+      setRecommendationsError(true)
+    } finally {
+      setRecommendationsBusy(false)
+    }
+  }
   const pathname = usePathname()
   const leaveSettings = useCallback(() => router.dismissTo("/"), [router])
   useFocusEffect(
@@ -110,6 +151,50 @@ export function SettingsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
+      {recommendationsEnabled() ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Recommendations</Text>
+          <SettingsRow
+            testID="settings-personalized-recommendations"
+            icon="sparkles-outline"
+            label="Personalized recommendations"
+            checked={personalized}
+            disabled={!recommendationsReady || recommendationsBusy}
+            onPress={() => {
+              void updateRecommendations(personalized ? "withdraw" : "grant")
+            }}
+            onFocusNode={captureFocusedNode}
+          />
+          <SettingsRow
+            testID="settings-reset-recommendations"
+            icon="refresh-outline"
+            label="Reset recommendations"
+            disabled={!recommendationsReady || recommendationsBusy}
+            onPress={() => {
+              void updateRecommendations("reset")
+            }}
+            onFocusNode={captureFocusedNode}
+          />
+          {recommendationsError ? (
+            <Text style={styles.sectionNote}>
+              Could not update recommendations. Please try again.
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
+      {Platform.OS === "android" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Google TV Home</Text>
+          <SettingsRow
+            testID="settings-google-tv-home-row"
+            icon="tv-outline"
+            label="Content on Google TV Home"
+            onPress={() => router.push("/google-tv-home")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      )}
 
       <SettingsRow
         testID="settings-back-home"
@@ -118,16 +203,18 @@ export function SettingsScreen() {
         onPress={leaveSettings}
         onFocusNode={captureFocusedNode}
       />
-      <View style={styles.section}>
-        <Text style={styles.sectionHeading}>Watch animations</Text>
-        <SettingsRow
-          testID="settings-animations"
-          icon="sparkles-outline"
-          label="Animations"
-          onPress={() => router.push("/settings/animations")}
-          onFocusNode={captureFocusedNode}
-        />
-      </View>
+      {ANIMATION_SETTINGS_ENABLED && (
+        <View style={styles.section}>
+          <Text style={styles.sectionHeading}>Watch animations</Text>
+          <SettingsRow
+            testID="settings-animations"
+            icon="sparkles-outline"
+            label="Animations"
+            onPress={() => router.push("/settings/animations")}
+            onFocusNode={captureFocusedNode}
+          />
+        </View>
+      )}
 
       {topShelfPreviewEnabled(
         process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED,
@@ -267,8 +354,20 @@ export function SettingsScreen() {
 }
 
 function BetaTopShelfPreviewSync() {
-  const { model } = useWatchHome()
+  const { topShelfPreviewRevision, setTopShelfPreviewMessage } =
+    useWatchPreferences()
+  const { model, refreshing, error } = useWatchHome({
+    refreshOnForeground: true,
+    refreshKey: topShelfPreviewRevision,
+  })
   const [entries, setEntries] = useState<ContinueWatchingEntry[]>([])
+  useEffect(() => {
+    if (refreshing) setTopShelfPreviewMessage("Preparing Top Shelf content…")
+    else if (error)
+      setTopShelfPreviewMessage(
+        "Could not update Top Shelf (home content). Try again.",
+      )
+  }, [refreshing, error, setTopShelfPreviewMessage])
   useEffect(() => {
     let cancelled = false
     void loadContinueWatching().then((value) => {
@@ -278,7 +377,7 @@ function BetaTopShelfPreviewSync() {
       cancelled = true
     }
   }, [])
-  useTopShelfSync(model, entries, true, true)
+  useTopShelfSync(model, entries, !refreshing && !error, true)
   return null
 }
 

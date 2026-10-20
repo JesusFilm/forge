@@ -30,7 +30,10 @@ describe("beta Top Shelf settings", () => {
     expect(source).toContain("setTopShelfPreviewStyle(option.value)")
     expect(source).toContain('pathname === "/settings" && topShelfPreviewStyle')
     expect(source).toContain("<BetaTopShelfPreviewSync />")
-    expect(source).toContain("useTopShelfSync(model, entries, true, true)")
+    expect(source).toContain("refreshKey: topShelfPreviewRevision")
+    expect(source).toContain(
+      "useTopShelfSync(model, entries, !refreshing && !error, true)",
+    )
     expect(source).toContain("accessibilityRole={")
     expect(source).toContain('useFocusVisual("option"')
   })
