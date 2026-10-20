@@ -9,6 +9,10 @@ import {
   rawCtrVisitSql,
   type CtrTotals,
 } from "./ctr-evidence"
+import {
+  buildEngagementReport,
+  type PrecomputedEngagementReport,
+} from "./engagement-report"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
 import { reconcileFinalCalibrationLoss } from "./final-calibration"
 import { loadPrecomputedFinalCalibration } from "./final-calibration-receipt"
@@ -38,10 +42,14 @@ type MomentRow = {
   sum_visits_squared: string
   sum_clicks_squared: string
   sum_visits_clicks: string
+  engaged_visits: string
+  sum_engaged_squared: string
+  sum_visits_engaged: string
 }
 
 export type PrecomputedCtrReport = {
   schemaVersion: 1
+  engagement?: PrecomputedEngagementReport
   evidenceBasis?:
     | "private_unverified"
     | "public_observed"
@@ -279,29 +287,44 @@ async function readEvidence(
       WITH active AS (${active}), cluster_parts AS (
         SELECT arm, browser_unit_digest,
           count(*)::numeric AS n,
-          count(*) FILTER (WHERE accepted_selections > 0)::numeric AS c
+          count(*) FILTER (WHERE accepted_selections > 0)::numeric AS c,
+          count(*) FILTER (WHERE qualified_playbacks > 0)::numeric AS g
         FROM active WHERE eligibility = 'eligible'
         GROUP BY arm, browser_unit_digest
         UNION ALL
         SELECT arm::text, browser_unit_digest,
-          eligible_visits::numeric, clicked_visits::numeric
+          eligible_visits::numeric, clicked_visits::numeric, engaged_visits::numeric
         FROM recommendation_precomputed_ctr_cluster
         WHERE experiment_id = ${experimentId}
       ), combined AS (
-        SELECT arm, browser_unit_digest, sum(n) AS n, sum(c) AS c
+        SELECT arm, browser_unit_digest, sum(n) AS n, sum(c) AS c, sum(g) AS g
         FROM cluster_parts GROUP BY arm, browser_unit_digest
       )
       SELECT arm, count(*)::text AS browsers,
         sum(n)::text AS eligible_visits, sum(c)::text AS clicked_visits,
         sum(n*n)::text AS sum_visits_squared,
         sum(c*c)::text AS sum_clicks_squared,
-        sum(n*c)::text AS sum_visits_clicks
+        sum(n*c)::text AS sum_visits_clicks,
+        sum(g)::text AS engaged_visits, sum(g*g)::text AS sum_engaged_squared,
+        sum(n*g)::text AS sum_visits_engaged
       FROM combined GROUP BY arm
     `),
     tx.$queryRaw<TotalsRow[]>(Prisma.sql`
       WITH active AS (${active})
       SELECT CASE WHEN eligibility = 'eligible' THEN arm::text ELSE 'excluded' END AS arm,
         count(*) FILTER (WHERE eligibility = 'eligible') AS "eligibleVisits",
+        count(*) FILTER (WHERE eligibility = 'eligible') AS "engagementMeasuredVisits",
+        count(*) FILTER (WHERE eligibility = 'eligible' AND qualified_playbacks > 0) AS "engagedVisits",
+        coalesce(sum(active_playback_milliseconds) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "activePlaybackMilliseconds",
+        coalesce(sum(claimed_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "claimedPlaybacks",
+        coalesce(sum(observed_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "observedPlaybacks",
+        coalesce(sum(complete_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "completePlaybacks",
+        coalesce(sum(partial_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "partialPlaybacks",
+        coalesce(sum(missing_outcome_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "missingOutcomePlaybacks",
+        coalesce(sum(missing_coverage_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "missingCoveragePlaybacks",
+        coalesce(sum(pending_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "pendingPlaybacks",
+        coalesce(sum(invalid_playbacks) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "invalidPlaybacks",
+
         count(*) FILTER (WHERE eligibility = 'eligible' AND accepted_selections > 0) AS "clickedVisits",
         coalesce(sum(accepted_selections) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "acceptedSelections",
         coalesce(sum(qualified_impressions) FILTER (WHERE eligibility = 'eligible'), 0)::bigint AS "qualifiedImpressions",
@@ -339,6 +362,10 @@ async function readEvidence(
     for (const field of ctrTotalFields) totals[row.arm][field] += row[field]
   }
   const moments = { control: blankMoments(), challenger: blankMoments() }
+  const engagementMoments = {
+    control: blankMoments(),
+    challenger: blankMoments(),
+  }
   for (const row of momentRows) {
     if (row.arm !== "control" && row.arm !== "challenger")
       throw new Error("precomputed_ctr_invalid_arm")
@@ -352,15 +379,22 @@ async function readEvidence(
       actualFallbackVisits: safe(totals[row.arm].actualFallbackVisits),
       unlinkedDeliveredVisits: safe(totals[row.arm].unlinkedDeliveredVisits),
     }
+    engagementMoments[row.arm] = {
+      ...moments[row.arm],
+      clickedVisits: safe(row.engaged_visits),
+      sumClicksSquared: safe(row.sum_engaged_squared),
+      sumVisitsClicks: safe(row.sum_visits_engaged),
+    }
   }
   for (const arm of ["control", "challenger"] as const) {
     if (
       moments[arm].eligibleVisits !== safe(totals[arm].eligibleVisits) ||
-      moments[arm].clickedVisits !== safe(totals[arm].clickedVisits)
+      moments[arm].clickedVisits !== safe(totals[arm].clickedVisits) ||
+      engagementMoments[arm].clickedVisits !== safe(totals[arm].engagedVisits)
     )
       throw new Error("precomputed_ctr_cluster_totals_mismatch")
   }
-  return { totals, moments }
+  return { totals, moments, engagementMoments }
 }
 
 function armReport(
@@ -489,7 +523,7 @@ async function evaluatePrecomputedCtrReport(
           status: "available",
           report: latest.result as unknown as PrecomputedCtrReport,
         } as const
-      const { totals, moments } = await readEvidence(
+      const { totals, moments, engagementMoments } = await readEvidence(
         tx,
         input.experimentId,
         asOf,
@@ -729,6 +763,7 @@ async function evaluatePrecomputedCtrReport(
           endsAt: experiment.endsAt.toISOString(),
           finalAt: finalAt.toISOString(),
         },
+        engagement: buildEngagementReport(totals, engagementMoments),
         byArm: {
           control: armReport(
             totals.control,
