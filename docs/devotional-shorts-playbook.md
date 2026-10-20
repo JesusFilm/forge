@@ -165,7 +165,7 @@ it is fully playing (within 8 dB of its typical loud level), spread across it
 so they never sound the same: reflection at its start, history at 1/3,
 language at 2/3 of the room left, the short staying inside the stretch when it
 fits (`musicStartSec`, `MUSIC_START_SHARE`). The intro keeps
-its own bed (Prodigal: ney). Film-verse: the film's sound only.
+the long form's bed too (owner, Paralytic 2026-10-20: the music matches the long devotional; the Prodigal ney is no longer the intro default). Film-verse: the film's sound only.
 
 **Audio ends.** Never fade a voice or the film on its last words. The film
 short's sound runs to the last half second; clips are trimmed through the
@@ -179,7 +179,7 @@ The long form's montage opening in 9:16: same shots (one per line), same
 voice, the approved kinetic "stack" captions (hero Literata caps, accent gold
 italic, plain Inter caps), the Jesus Film mark animating at the top, a calm
 centred CTA as the last line ("Watch the full devotional on our YouTube
-channel."), and the story's eastern bed. The silent CTA cuts the long form's
+channel."), and the long form's own bed (owner, 2026-10-20). The silent CTA cuts the long form's
 take in the real pause before "Let's watch." (the longest silence in the 1.6 s
 before the line's word time, 0.15 s in, 60 ms fade): word times can run 0.3 s
 late, and cutting by them left "Let's" audible (`ctaCutSec`).
