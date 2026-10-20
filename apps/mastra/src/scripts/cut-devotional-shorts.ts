@@ -917,6 +917,44 @@ async function main() {
           await symlink(path.resolve(from, f), dest)
         }
       }
+      // `--voice-speed=1.25`: the narration played faster, pitch kept
+      // (owner, Paralytic 2026-10-20: the investigation wants pace). Each
+      // card's take is re-encoded with atempo and every time on it scaled,
+      // so words, captions and camera beats stay on the voice. Not for the
+      // film short, whose sound is the film's.
+      const speed = Number(arg("voice-speed") ?? 1)
+      if (speed !== 1 && !short.film) {
+        const scale = (n: unknown) =>
+          typeof n === "number" ? Number((n / speed).toFixed(4)) : n
+        for (const c of m.cards) {
+          if (typeof c.audioFile !== "string") continue
+          const dest = path.join(stage, c.audioFile)
+          const fast = path.join(stage, `fast-${path.basename(c.audioFile)}`)
+          await run("ffmpeg", [
+            "-y",
+            "-i",
+            dest,
+            "-af",
+            `atempo=${speed}`,
+            "-b:a",
+            "192k",
+            fast,
+          ])
+          await rm(dest, { force: true })
+          await rename(fast, dest)
+          c.durationSec = scale(c.durationSec) as number | undefined
+          const ws = c.words as
+            | { startSec: number; endSec: number }[]
+            | undefined
+          if (ws)
+            c.words = ws.map((w) => ({
+              ...w,
+              startSec: scale(w.startSec) as number,
+              endSec: scale(w.endSec) as number,
+            }))
+        }
+        short.durationSec /= speed
+      }
       const manifestPath = path.join(stage, "manifest.json")
       await writeFile(manifestPath, JSON.stringify(m, null, 2) + "\n")
       // --stage-out=<dir>: keep the short's staged manifest and files (the

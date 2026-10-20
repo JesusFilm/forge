@@ -362,7 +362,9 @@ function Clipping({
           inset: 0,
           WebkitMaskImage: `url(${c.rough ? PAPER_ROUGH_MASK : PAPER_CLIP_MASK})`,
           WebkitMaskSize: "100% 100%",
-          backgroundImage: `url(${c.rough ? PAPER_ROUGH_JPG : PAPER_CLIP_JPG})`,
+          backgroundImage: c.aged
+            ? "radial-gradient(120% 90% at 40% 30%, #efe7d4 0%, #e3d8bd 75%, #d8caa8 100%)"
+            : `url(${c.rough ? PAPER_ROUGH_JPG : PAPER_CLIP_JPG})`,
           backgroundSize: "100% 100%",
         }}
       />
@@ -447,6 +449,8 @@ export type BoardClip = {
   markOn?: string
   source?: string
   rough?: boolean
+  /** The charge sheet's warm aged paper instead of the newsprint scan. */
+  aged?: boolean
 }
 type BoardPhoto = {
   kind: "photo"
@@ -887,7 +891,7 @@ function IndexCard({
       style={{
         position: "relative",
         width: f(c.w),
-        background: "#fbf8f0",
+        background: "#f3ead4",
         padding: `${f(26)}px ${f(34)}px ${f(24)}px`,
         boxShadow: `0 ${f(10)}px ${f(20)}px rgba(0,0,0,0.45)`,
         backgroundImage: `linear-gradient(#d24b3c, #d24b3c), repeating-linear-gradient(transparent 0, transparent ${f(55)}px, rgba(70,110,170,0.32) ${f(55)}px, rgba(70,110,170,0.32) ${f(57)}px)`,
@@ -1569,6 +1573,13 @@ export function VoxBoard({
               overflow: "visible",
             }}
           >
+            <defs>
+              <radialGradient id="pinHead" cx="35%" cy="30%" r="75%">
+                <stop offset="0%" stopColor="#ff7a66" />
+                <stop offset="45%" stopColor="#d2321f" />
+                <stop offset="100%" stopColor="#7c140b" />
+              </radialGradient>
+            </defs>
             {spec.threads.map((th, i) => {
               const k = prog(t, at(words, th.on, Infinity), 0.8)
               if (k <= 0) return null
@@ -1579,16 +1590,34 @@ export function VoxBoard({
                 <g key={i}>
                   <Draw d={d} p={k} color="#b3261e" width={3.5} />
                   {th.points.map(([px, py], j) => (
-                    <circle
-                      key={j}
-                      cx={px}
-                      cy={py}
-                      r={9}
-                      fill="#c8412f"
-                      stroke="rgba(0,0,0,0.35)"
-                      strokeWidth={2}
-                      opacity={Math.min(1, k * 2)}
-                    />
+                    // A push pin: a soft shadow down-right, a domed red
+                    // head lit from the top left, a glint (owner, Paralytic
+                    // 2026-10-20: bigger and more real).
+                    <g key={j} opacity={Math.min(1, k * 2)}>
+                      <ellipse
+                        cx={px + 7}
+                        cy={py + 9}
+                        rx={17}
+                        ry={13}
+                        fill="rgba(0,0,0,0.45)"
+                      />
+                      <circle cx={px} cy={py} r={17} fill="url(#pinHead)" />
+                      <circle
+                        cx={px}
+                        cy={py}
+                        r={17}
+                        fill="none"
+                        stroke="rgba(60,8,4,0.55)"
+                        strokeWidth={1.5}
+                      />
+                      <ellipse
+                        cx={px - 6}
+                        cy={py - 7}
+                        rx={5}
+                        ry={3.5}
+                        fill="rgba(255,255,255,0.7)"
+                      />
+                    </g>
                   ))}
                 </g>
               )
