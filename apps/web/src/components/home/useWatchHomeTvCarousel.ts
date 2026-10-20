@@ -300,6 +300,11 @@ export function useWatchHomeTvCarousel(
   const [autoplayRefusedSlideId, setAutoplayRefusedSlideId] = useState<
     string | null
   >(null)
+  // Held by the viewer: the hero's pause control, or a reduced-motion
+  // preference. Unlike `isMediaPaused` it outlives the turn, so a paused hero
+  // neither plays nor advances until the viewer asks it to.
+  const [isUserPaused, setIsUserPaused] = useState(false)
+  const isUserPausedRef = useRef(false)
   const isMutedRef = useRef(isMuted)
   // Read inside `handleCanPlay`, which must stay a stable callback, so the
   // poster-hold arm/skip decision cannot depend on render state.
@@ -424,7 +429,7 @@ export function useWatchHomeTvCarousel(
   // separate for the ring: only buffering is a stall worth explaining.
   const isMediaHeld =
     Boolean(activeSlide?.src) && isMediaPaused && !isAutoplayRefused
-  const isTurnHeld = isBuffering || isMediaHeld
+  const isTurnHeld = isBuffering || isMediaHeld || isUserPaused
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
   // from.
@@ -453,7 +458,8 @@ export function useWatchHomeTvCarousel(
         displaySlides.findIndex((slide) => slide.id === activeSlide.id),
       )
     : 0
-  const playbackBlocked = autoAdvancePaused || options.playbackHeld === true
+  const playbackBlocked =
+    autoAdvancePaused || options.playbackHeld === true || isUserPaused
   const playbackBlockedRef = useRef(playbackBlocked)
   const randomSourceRef = useRef(options.randomSource ?? Math.random)
   const randomStartAppliedRef = useRef(false)
@@ -642,7 +648,11 @@ export function useWatchHomeTvCarousel(
             // A detached or not-yet-seekable element throws here; the replay
             // below is still worth attempting.
           }
-          requestPlayback(video)
+          if (playbackBlockedRef.current) {
+            deferredPlayTurnRef.current = turnTokenRef.current
+          } else {
+            requestPlayback(video)
+          }
         }
       }
     },
@@ -676,6 +686,48 @@ export function useWatchHomeTvCarousel(
   useEffect(() => {
     advanceRef.current = advance
   }, [advance])
+
+  // Pausing holds the media AND the turn; resuming hands a held-back turn
+  // start to the deferred-play effect, or plays the element this paused.
+  const toggleUserPaused = useCallback(() => {
+    const video = videoRef.current
+    if (!isUserPausedRef.current) {
+      isUserPausedRef.current = true
+      playbackBlockedRef.current = true
+      setIsUserPaused(true)
+      if (video && !video.paused) video.pause()
+      return
+    }
+    isUserPausedRef.current = false
+    setIsUserPaused(false)
+    if (!video || !mediaReadyRef.current) return
+    if (deferredPlayTurnRef.current != null) return
+    if (video.paused) requestPlayback(video)
+  }, [requestPlayback])
+
+  // A reduced-motion preference starts the hero paused on its poster; the
+  // viewer can still press play. Only a switch TO reduce pauses later -- a
+  // switch away never starts motion the viewer did not ask for.
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return undefined
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const holdForReducedMotion = () => {
+      if (isUserPausedRef.current) return
+      isUserPausedRef.current = true
+      playbackBlockedRef.current = true
+      setIsUserPaused(true)
+      const video = videoRef.current
+      if (video && !video.paused) video.pause()
+    }
+    if (query.matches) holdForReducedMotion()
+    const onChange = (event: MediaQueryListEvent) => {
+      if (event.matches) holdForReducedMotion()
+    }
+    query.addEventListener?.("change", onChange)
+    return () => {
+      query.removeEventListener?.("change", onChange)
+    }
+  }, [])
 
   const toggleMuted = useCallback(() => {
     setIsMuted((current) => {
@@ -1016,7 +1068,9 @@ export function useWatchHomeTvCarousel(
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
     // behaviour the pause gate exists to stop.
-    if (!isBuffering || isMediaHeld || autoAdvancePaused) return undefined
+    if (!isBuffering || isMediaHeld || isUserPaused || autoAdvancePaused) {
+      return undefined
+    }
 
     const armedForTurn = turnTokenRef.current
     mediaWaitTimeoutRef.current = window.setTimeout(() => {
@@ -1036,6 +1090,7 @@ export function useWatchHomeTvCarousel(
     clearMediaWaitTimeout,
     isBuffering,
     isMediaHeld,
+    isUserPaused,
   ])
 
   useEffect(() => {
@@ -1103,6 +1158,7 @@ export function useWatchHomeTvCarousel(
       isBuffering,
       isTurnHeld,
       isMuted,
+      isUserPaused,
       leavingSlide,
       mediaReady,
       playbackTimeSeconds:
@@ -1110,6 +1166,7 @@ export function useWatchHomeTvCarousel(
       selectSlide,
       slides: displaySlides,
       toggleMuted,
+      toggleUserPaused,
       videoRef,
     }),
     [
@@ -1130,11 +1187,13 @@ export function useWatchHomeTvCarousel(
       isBuffering,
       isTurnHeld,
       isMuted,
+      isUserPaused,
       leavingSlide,
       mediaReady,
       playbackTime,
       selectSlide,
       toggleMuted,
+      toggleUserPaused,
     ],
   )
 }

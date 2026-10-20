@@ -1501,6 +1501,107 @@ describe("WatchHomePage", () => {
       })
     })
 
+    function pauseToggles() {
+      return Array.from(
+        container.querySelectorAll(
+          '[data-testid="watch-home-hero-pause-toggle"]',
+        ),
+      ) as HTMLButtonElement[]
+    }
+
+    // feat-762: moving content that starts on its own needs a way to stop it.
+    it("pauses the preview and its turn from the current circle, and resumes on demand", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        const play = video.play as unknown as ReturnType<typeof vi.fn>
+        expect(play).toHaveBeenCalledTimes(1)
+        Object.defineProperty(video, "paused", {
+          configurable: true,
+          value: false,
+        })
+        const pause = vi.fn()
+        video.pause = pause
+
+        // Desktop and phone layouts each render the current circle.
+        expect(pauseToggles().map((b) => b.getAttribute("aria-label"))).toEqual(
+          ["Pause", "Pause"],
+        )
+        await act(async () => {
+          pauseToggles()[0]!.click()
+        })
+        expect(pause).toHaveBeenCalledTimes(1)
+        expect(pauseToggles().map((b) => b.getAttribute("aria-label"))).toEqual(
+          ["Play", "Play"],
+        )
+
+        // Well past the backstop and the dead-stream ceiling.
+        await act(async () => {
+          vi.advanceTimersByTime(60_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        Object.defineProperty(video, "paused", {
+          configurable: true,
+          value: true,
+        })
+        play.mockClear()
+        await act(async () => {
+          pauseToggles()[1]!.click()
+        })
+        expect(play).toHaveBeenCalledTimes(1)
+        expect(pauseToggles()[0]!.getAttribute("aria-label")).toBe("Pause")
+
+        await act(async () => {
+          vi.advanceTimersByTime(20_000)
+        })
+        expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("starts paused on the poster under prefers-reduced-motion", async () => {
+      const originalMatchMedia = window.matchMedia
+      window.matchMedia = ((query: string) => ({
+        matches: query === "(prefers-reduced-motion: reduce)",
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+        onchange: null,
+      })) as unknown as typeof window.matchMedia
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+        const play = video.play as unknown as ReturnType<typeof vi.fn>
+
+        await act(async () => {
+          vi.advanceTimersByTime(60_000)
+        })
+        expect(play).not.toHaveBeenCalled()
+        expect(carouselLabel()).toBe(openingTitle)
+        expect(pauseToggles()[0]!.getAttribute("aria-label")).toBe("Play")
+
+        // The preference is a default, not a lock: Play still plays.
+        await act(async () => {
+          pauseToggles()[0]!.click()
+        })
+        expect(play).toHaveBeenCalledTimes(1)
+        expect(pauseToggles()[0]!.getAttribute("aria-label")).toBe("Pause")
+      } finally {
+        vi.useRealTimers()
+        window.matchMedia = originalMatchMedia
+      }
+    })
+
     it("holds a paused slide's turn instead of spending it", async () => {
       vi.useFakeTimers()
       try {
@@ -2897,7 +2998,7 @@ describe("WatchHomePage", () => {
       const currentCircle = timeline.querySelector('[data-offset="0"]')
       expect(
         currentCircle?.querySelector("button")?.getAttribute("aria-label"),
-      ).toBe("Queued One")
+      ).toBe("Pause")
       expect(
         currentCircle
           ?.querySelector('[aria-current="true"] [role="img"]')
@@ -2934,9 +3035,10 @@ describe("WatchHomePage", () => {
     })
 
     expect(document.activeElement).toBe(queuedTwoButton)
-    expect(queuedTwoButton.getAttribute("aria-label")).toBe("Queued Two")
+    // The current circle is the hero's pause control.
+    expect(queuedTwoButton.getAttribute("aria-label")).toBe("Pause")
     expect(queuedTwoButton.getAttribute("aria-current")).toBe("true")
-    expect(queuedTwoButton.getAttribute("aria-disabled")).toBe("true")
+    expect(queuedTwoButton.hasAttribute("aria-disabled")).toBe(false)
     expect(queuedTwoButton.disabled).toBe(false)
 
     const carousel = container.querySelector(
@@ -3151,7 +3253,12 @@ describe("WatchHomePage", () => {
     const currentButton = container.querySelector(
       '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
     ) as HTMLButtonElement
-    expect(currentButton.getAttribute("aria-label")).toBe("Queued Three")
+    expect(currentButton.getAttribute("aria-label")).toBe("Pause")
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Three")
     expect(document.activeElement).toBe(currentButton)
 
     await act(async () => {
@@ -3169,8 +3276,13 @@ describe("WatchHomePage", () => {
       '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
     ) as HTMLButtonElement
     expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
-      "Queued Five",
+      "Pause",
     )
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Five")
     expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
   })
 
@@ -3485,15 +3597,12 @@ describe("WatchHomePage", () => {
         )
       expect(circleLabels(desktopTimeline!)).toEqual([
         "Show Queued 6",
-        "Queued 7",
+        "Pause",
         "Show Queued 9",
         "Show Queued 10",
         "Show Queued 8",
       ])
-      expect(circleLabels(mobileTimeline!)).toEqual([
-        "Queued 7",
-        "Show Queued 9",
-      ])
+      expect(circleLabels(mobileTimeline!)).toEqual(["Pause", "Show Queued 9"])
     } finally {
       vi.useRealTimers()
     }
