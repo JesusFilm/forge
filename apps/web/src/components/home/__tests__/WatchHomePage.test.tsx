@@ -481,6 +481,56 @@ describe("WatchHomePage", () => {
     expect(lastMuxVideoHlsConfig()).toEqual(WATCH_HOME_INTRO_HLS_CONFIG)
   })
 
+  it("holds the intro player until the page has loaded, keeping the poster", async () => {
+    const readyState = vi
+      .spyOn(document, "readyState", "get")
+      .mockReturnValue("loading")
+    try {
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({
+                    subtitleVttSrc: "https://cdn.example/jesus.vtt",
+                    subtitleLanguageBcp47: "en",
+                  }),
+                  eyebrow: "Featured",
+                },
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+      expect(
+        container.querySelector(
+          '[data-testid="watch-home-tv-visual-layer"] [role="img"][data-priority="true"]',
+        ),
+      ).not.toBeNull()
+
+      readyState.mockReturnValue("complete")
+      await act(async () => {
+        window.dispatchEvent(new Event("load"))
+      })
+
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      )
+      expect(video).not.toBeNull()
+      // The subtitle track still reaches a player that mounted late.
+      expect(
+        video?.querySelector("track[data-subtitle-track]")?.getAttribute("src"),
+      ).toBe("https://cdn.example/jesus.vtt")
+    } finally {
+      readyState.mockRestore()
+    }
+  })
+
   it("caps the requested rendition on a Mux hero stream", async () => {
     await act(async () => {
       root.render(
