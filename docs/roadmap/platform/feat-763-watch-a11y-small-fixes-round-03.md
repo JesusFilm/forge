@@ -3,8 +3,8 @@ id: "feat-763"
 title: "Small Watch accessibility fixes from the round-03 audit"
 owner: "vlad"
 priority: "P3"
-status: "not-started"
-start_date: "2026-10-21"
+status: "in-progress"
+start_date: "2026-10-20"
 duration: 2
 depends_on: []
 blocks: []
@@ -71,3 +71,14 @@ issues. Open PRs do not cover them:
 
 - axe on `/watch/whats-new`, `/watch`, `/watch/spanish-latin-american.html` and `/watch/jesus.html` shows no `listitem`, `empty-heading` or `image-redundant-alt`.
 - Unit tests per component. Contrast values re-measured in a real browser.
+
+## Progress
+
+- 2026-10-20 (round 08): items 1, 3 (chapter carousel) and 4 are fixed in
+  PR #2839. Production `/watch/whats-new` axe before: 14 `color-contrast`
+  and 11 `listitem`; local after: 0 and 0 (390 and 1280 px). Item 4 also
+  covered the FAQ eyebrow (`#131111`/55, 4.09:1).
+- Still open: item 2 (empty or slug-named home cards: renderer decision plus
+  Admin content fix) and the home-card redundant alts on `/watch`, which come
+  from a different component than the chapter carousel. Keep this ticket
+  in progress until those land.
