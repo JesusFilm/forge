@@ -82,3 +82,13 @@ issues. Open PRs do not cover them:
   Admin content fix) and the home-card redundant alts on `/watch`, which come
   from a different component than the chapter carousel. Keep this ticket
   in progress until those land.
+- 2026-10-20 (round 10): the renderer half of item 2 and the home-card
+  alts are fixed in PR #2839. `CarouselVideo` names an untitled card
+  "Show Short Film" (existing `VideoLabels.shortFilm` key) and skips the
+  empty heading. A blank `titleOverride` now falls back to the video
+  title. `WatchHomeCard` images use `alt=""` when the visible title names
+  the link, and keep `imageAlt` on an untitled card. Slug-like titles are
+  not rewritten: they are Admin data, and the renderer cannot safely tell
+  a slug from a real title. Not checked against real Admin data. Still
+  open: report the empty and slug titles on
+  `/watch/spanish-latin-american.html` to the content owners.
