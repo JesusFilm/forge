@@ -6,6 +6,8 @@
  *     [--only=language,history] [--stills] \
  *     [--film-turn=139.1-172.6] [--reflection=0-1] [--no-model]
  *     [--film-open="Is this worth celebrating?"] [--film-close="..."]
+ *     [--film-lead=62.98-65.23]  (the one shot under the opening question;
+ *                                 the --film-verse window then starts as given)
  *     [--studio=<dir>]   (history only: a Shorts Studio plan + audio to
  *                         upload instead of a render; see studio-export.ts)
  *
@@ -503,6 +505,14 @@ async function main() {
   const overrides: CutdownOverrides = {
     ...(turn ? { filmTurn: { fromSec: turn.a, toSec: turn.b } } : {}),
     ...(verse ? { filmVerse: { fromSec: verse.a, toSec: verse.b } } : {}),
+    ...(range("film-lead")
+      ? {
+          filmVerseLead: {
+            fromSec: range("film-lead")!.a,
+            toSec: range("film-lead")!.b,
+          },
+        }
+      : {}),
     ...(refl ? { reflection: { from: refl.a, to: refl.b } } : {}),
     // Hook-first is the default; --history-no-hook keeps the lead-in.
     ...(process.argv.includes("--history-no-hook")

@@ -1797,6 +1797,12 @@ function ShortQuestionCards({
             alignItems: "center",
             // Room under the turn for the paper strips.
             ...(sub && subStrips ? { paddingBottom: f(420) } : {}),
+            // The closing turn centres between the series mark and the
+            // bottom UI zone (430 to 1430 of 1920), so a long turn plus its
+            // small line never runs under the platform's caption.
+            ...(align === "left" && !(sub && subStrips)
+              ? { paddingTop: f(358), paddingBottom: f(408) }
+              : {}),
           }}
         >
           <div style={{ width: f(STAMP_LINE_WIDTH) }}>
@@ -1884,6 +1890,10 @@ function ShortQuestionCards({
                 f={f}
                 sharp={false}
                 align={align}
+                // The closing turn: the film shows through (owner, Paralytic
+                // 2026-10-20). A size up was tried: the turn ran to eight
+                // lines and its small line fell into the bottom UI zone.
+                {...(align === "left" ? { alpha: 0.9 } : {})}
               />
             )}
             {sub && subStrips ? null : sub ? (

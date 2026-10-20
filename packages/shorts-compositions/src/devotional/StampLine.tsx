@@ -38,6 +38,8 @@ export function StampLine({
   f,
   sharp = false,
   align = "center",
+  size = 76,
+  alpha = 1,
 }: {
   text: string
   t: number
@@ -45,6 +47,11 @@ export function StampLine({
   /** The film short's closing turn sits flush left (owner, Paralytic
    *  2026-10-20); the spread then grows from the left edge. */
   align?: "center" | "left"
+  /** Largest size in Figma units; a long word still shrinks the line. */
+  size?: number
+  /** Opacity once landed: the film shows through the closing turn (owner,
+   *  Paralytic 2026-10-20: 90%). */
+  alpha?: number
   /** A harder hit (owner, 2026-10-02, the film short's opening question):
    *  lands in ~0.35s from a larger size and overshoots slightly before it
    *  settles, instead of easing in over 0.8s. */
@@ -67,13 +74,15 @@ export function StampLine({
           margin: 0,
           fontFamily: SANS,
           fontWeight: 600,
-          fontSize: f(stampLineSize(text)),
+          fontSize: f(stampLineSize(text, size)),
           lineHeight: 1.2,
           textAlign: align,
           textTransform: "uppercase",
           letterSpacing: f(3.2),
           color: "#ffffff",
-          opacity: p,
+          opacity: p * alpha,
+          // A "\n" in the text is a line break the writer chose.
+          whiteSpace: "pre-line",
           transform: `scale(${scale.toFixed(4)})`,
           transformOrigin: align === "left" ? "left center" : undefined,
           filter:
@@ -96,7 +105,7 @@ export function StampLine({
         margin: 0,
         fontFamily: SANS,
         fontWeight: 600,
-        fontSize: f(stampLineSize(text)),
+        fontSize: f(stampLineSize(text, size)),
         lineHeight: 1.2,
         textAlign: align,
         textTransform: "uppercase",
@@ -106,7 +115,8 @@ export function StampLine({
         // changes where the line breaks.
         letterSpacing: f(3.2),
         color: "#ffffff",
-        opacity: p,
+        opacity: p * alpha,
+        whiteSpace: "pre-line",
         transform: `scale(${(0.96 + 0.04 * p + 0.1 * (1 - p)).toFixed(4)}, ${(0.96 + 0.04 * p).toFixed(4)})`,
         transformOrigin: align === "left" ? "left center" : undefined,
         filter: p < 0.99 ? `blur(${(f(7) * (1 - p)).toFixed(2)}px)` : undefined,

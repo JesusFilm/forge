@@ -186,6 +186,10 @@ export type CutdownOverrides = {
   /** film-verse: the scene window on the film card (s), chosen by hand when
    *  the short should stop before the quoted verse (owner, 2026-10-08). */
   filmVerse?: { fromSec: number; toSec: number }
+  /** film-verse: the footage under the opening question, chosen by hand
+   *  (owner, Paralytic 2026-10-20: one shot, not a flicker of several). The
+   *  window then starts exactly at `filmVerse.fromSec`, unwidened. */
+  filmVerseLead?: { fromSec: number; toSec: number }
   /** History opens on the paragraph's first short line ("Feeding pigs.")
    *  instead of its lead-in: the owner's pick (2026-10-02), so the DEFAULT.
    *  `false` keeps the lead-in. */
@@ -557,9 +561,10 @@ export function planCutdown(
         win = {
           // Widen into the quiet before, never later than the window's own
           // start (that cut into its first line).
-          fromSec: cards.open
-            ? Math.min(w.fromSec, Math.max(prevEnd + 0.3, w.fromSec - 2.4))
-            : w.fromSec,
+          fromSec:
+            cards.open && !overrides.filmVerseLead
+              ? Math.min(w.fromSec, Math.max(prevEnd + 0.3, w.fromSec - 2.4))
+              : w.fromSec,
           toSec: hasClose(cards)
             ? Math.min(
                 nextStart - SHORT_OUTRO_SEC - CARD_TAIL_SEC - 0.3,
@@ -585,22 +590,27 @@ export function planCutdown(
           const subs = film.subtitles ?? []
           const first = subs.find((x) => x.startSec >= win.fromSec)
           const quiet = first ? first.startSec - win.fromSec : 0
-          const lead = cards.open
-            ? Math.max(
-                0,
-                OPEN_CARD_NEEDS_SEC + (cards.openExtraSec ?? 0) - quiet,
-              )
-            : 0
+          const pickedLead = cards.open ? overrides.filmVerseLead : undefined
+          const lead = pickedLead
+            ? pickedLead.toSec - pickedLead.fromSec
+            : cards.open
+              ? Math.max(
+                  0,
+                  OPEN_CARD_NEEDS_SEC + (cards.openExtraSec ?? 0) - quiet,
+                )
+              : 0
           if (lead > 0 && made.film) {
             // Footage with the film's sound first; the muted lead only when
             // the scene has no other quiet (better than a held frame).
             const preroll =
+              pickedLead ??
               quietStretchBefore(
                 subs,
                 win.fromSec,
                 lead,
                 film.mutedLeadSec ?? 0,
-              ) ?? quietStretchBefore(subs, win.fromSec, lead)
+              ) ??
+              quietStretchBefore(subs, win.fromSec, lead)
             made.film = {
               ...made.film,
               leadSec: Number(lead.toFixed(2)),
