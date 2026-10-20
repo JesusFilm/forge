@@ -127,7 +127,11 @@ export const WATCH_HOME_INTRO_MAX_RESOLUTION: MuxMaxResolution = "480p"
  * rather than a shared import: the two surfaces have different dwell
  * profiles and should be able to move independently. The buffer values match
  * because the reasoning does. The hero also measures bandwidth before picking
- * its first rendition (`lib/hls-start-level.ts`); this intro does not yet.
+ * its first rendition (`lib/hls-start-level.ts`); this intro does not. With
+ * only a 480p and a 270p rung that test was a trade, not a win, when measured
+ * on 2026-10-20: at 1.0 Mbps it let the intro start (270p, ~12 s) where the
+ * fixed 480p start had not within 15 s, but at 1.6 Mbps it cost ~2 s of first
+ * frame and on broadband ~0.2 s. Revisit it as a product decision.
  *
  * `maxBufferSize` is the binding lever — hls.js computes read-ahead as
  * `min(max(8 * maxBufferSize / levelBitrate, maxBufferLength), maxMaxBufferLength)`,
@@ -245,6 +249,44 @@ function PrimaryAction({
   )
 }
 
+/**
+ * True once the window `load` event has fired. Starts false on the server and
+ * on the client's first render, so the intro `<mux-video>` is never in the
+ * server HTML and hydration matches.
+ *
+ * Why the intro waits for `load`: mounting the player starts hls.js, which
+ * fetches the master and rendition playlists and sets up media buffering
+ * while the page's scripts, font and images are still arriving. On a
+ * throttled phone (390x844, 4x CPU, 150 ms RTT, 1.6 Mbps) the intro's first
+ * segment already started only after `load`, so holding the player back
+ * costs it nothing: first frame was 8.6-10.1 s held vs 10.0-10.3 s not held,
+ * while `load` came about 240 ms sooner (5,169-5,178 vs 5,409-5,417 ms) and
+ * LCP about 250 ms sooner. At 1.0 Mbps `load` came about 370 ms sooner; on
+ * broadband first frame was unchanged (2.55-2.94 s vs 2.61-2.74 s). Measured
+ * 2026-10-20, four interleaved cold runs per variant on a real-component
+ * fixture with public Mux streams. The poster layer underneath is
+ * unaffected, so the hero never blanks while it waits. The watch-page
+ * `HeroPlayer` follows the same rule for its preview.
+ *
+ * Only the passive intro waits. A viewer who presses Play or unmutes before
+ * `load` mounts the player at once (`viewerRequestedMedia`): a slow image
+ * further down the page must not hold back playback they asked for.
+ */
+function useWindowLoaded() {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    if (loaded) return
+    const markLoaded = () => setLoaded(true)
+    if (document.readyState === "complete") {
+      markLoaded()
+      return
+    }
+    window.addEventListener("load", markLoaded, { once: true })
+    return () => window.removeEventListener("load", markLoaded)
+  }, [loaded])
+  return loaded
+}
+
 function WatchHomeTvMedia({
   activeSlide,
   isMuted,
@@ -261,6 +303,7 @@ function WatchHomeTvMedia({
   onTimeUpdate,
   onWaiting,
   videoRef,
+  viewerRequestedMedia,
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
@@ -278,6 +321,8 @@ function WatchHomeTvMedia({
   onTimeUpdate: () => void
   onWaiting: () => void
   videoRef: MutableRefObject<HTMLVideoElement | null>
+  /** Play or unmute pressed before `load`: mount without waiting for it. */
+  viewerRequestedMedia: boolean
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
   const subtitleVttSrc = isMuted ? (activeSlide.subtitleVttSrc ?? null) : null
@@ -285,8 +330,11 @@ function WatchHomeTvMedia({
     ? (activeSlide.subtitleLanguageBcp47 ?? null)
     : null
 
+  const pageLoaded = useWindowLoaded()
+  const mediaAllowed = pageLoaded || viewerRequestedMedia
   useWatchHomeMutedSubtitles({
     activeSlideId: activeSlide.id,
+    mediaMounted: mediaAllowed && Boolean(activeSlide.src),
     onCueTextChange: onSubtitleCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
@@ -302,16 +350,17 @@ function WatchHomeTvMedia({
   )
   // One seam covers both slide builders. Memoized so the mounted element is
   // never handed a fresh string: a `src` swap reloads HLS from zero while the
-  // advance clock keeps counting.
+  // advance clock keeps counting. Null until the page's `load` event or the
+  // viewer's own Play/unmute: see `useWindowLoaded`.
   const previewSrc = useMemo(
     () =>
-      activeSlide.src
+      mediaAllowed && activeSlide.src
         ? applyMuxMaxResolution(
             activeSlide.src,
             WATCH_HOME_INTRO_MAX_RESOLUTION,
           )
         : null,
-    [activeSlide.src],
+    [activeSlide.src, mediaAllowed],
   )
   return (
     <div
@@ -421,12 +470,15 @@ function WatchHomeTvMedia({
 
 function useWatchHomeMutedSubtitles({
   activeSlideId,
+  mediaMounted,
   onCueTextChange,
   subtitleLanguageBcp47,
   subtitleVttSrc,
   videoRef,
 }: {
   activeSlideId: string
+  /** The player mounts after `load`; re-run then so the track reaches it. */
+  mediaMounted: boolean
   onCueTextChange: (cueText: string | null) => void
   subtitleLanguageBcp47: string | null
   subtitleVttSrc: string | null
@@ -494,6 +546,7 @@ function useWatchHomeMutedSubtitles({
     }
   }, [
     activeSlideId,
+    mediaMounted,
     onCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
@@ -1212,6 +1265,17 @@ export function WatchHomeTvCarousel({
     player,
     videoRef,
   })
+  // Latched by an explicit Play or unmute, so the player mounts before `load`
+  // for a viewer who asked for it (see `useWindowLoaded`).
+  const [viewerRequestedMedia, setViewerRequestedMedia] = useState(false)
+  const handleToggleUserPaused = useCallback(() => {
+    if (isUserPaused) setViewerRequestedMedia(true)
+    toggleUserPaused()
+  }, [isUserPaused, toggleUserPaused])
+  const handleToggleMuted = useCallback(() => {
+    if (isMuted) setViewerRequestedMedia(true)
+    toggleMuted()
+  }, [isMuted, toggleMuted])
   const handlePlayerReady = useCallback((next: MuxPlayerRef | null) => {
     setPlayer((current) => (current === next ? current : next))
   }, [])
@@ -1229,9 +1293,9 @@ export function WatchHomeTvCarousel({
       ) {
         return
       }
-      toggleMuted()
+      handleToggleMuted()
     },
-    [isMuted, toggleMuted],
+    [handleToggleMuted, isMuted],
   )
   // Chrome visibility is shell-level state that survives client-side
   // navigation, so arriving from a watch page whose player hid the header has
@@ -1302,6 +1366,7 @@ export function WatchHomeTvCarousel({
           onTimeUpdate={handleTimeUpdate}
           onWaiting={handleWaiting}
           videoRef={videoRef}
+          viewerRequestedMedia={viewerRequestedMedia}
           wrapperRef={wrapperRef}
         />
         <WatchHomeTvOverlay
@@ -1314,8 +1379,8 @@ export function WatchHomeTvCarousel({
           isUserPaused={isUserPaused}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
-          onToggleMuted={toggleMuted}
-          onToggleUserPaused={toggleUserPaused}
+          onToggleMuted={handleToggleMuted}
+          onToggleUserPaused={handleToggleUserPaused}
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
