@@ -618,6 +618,8 @@ export type BoardSpec = {
   /** A torch: a circle of light on the shot's centre, the rest in shadow;
    *  it opens out on a wide shot (owner, Paralytic 2026-10-20). */
   spotlight?: boolean
+  /** The camera overshoots each move slightly and settles back. */
+  bounce?: boolean
   /** Where on the frame the camera puts its target (frame units, default
    *  438); left of centre leaves room before the phone's right rail. */
   focusX?: number
@@ -1396,14 +1398,19 @@ export function VoxBoard({
     const trip = Math.min(1.5, 0.9 + Math.hypot(s.x - x, s.y - y) / 3500)
     const p = prog(t, s.at - 0.3, trip, Easing.bezier(0.45, 0, 0.2, 1))
     if (p <= 0) break
+    // `bounce`: the torch overshoots its mark a little and settles back
+    // (owner, Paralytic 2026-10-20: livelier); the zoom stays smooth.
+    const pm = spec.bounce
+      ? prog(t, s.at - 0.3, trip * 1.15, Easing.bezier(0.42, 0, 0.3, 1.22))
+      : p
     // A wide move dips the zoom a little mid-way, like a hand-held pan.
     const dip =
       1 -
       0.12 *
         Math.sin(Math.PI * p) *
         Math.min(1, Math.hypot(s.x - x, s.y - y) / 700)
-    x = x + (s.x - x) * p
-    y = y + (s.y - y) * p
+    x = x + (s.x - x) * pm
+    y = y + (s.y - y) * pm
     z = (z + (s.zoom - z) * p) * dip
     cam = s
   }
@@ -1623,7 +1630,25 @@ export function VoxBoard({
                   color: INK,
                 }}
               >
-                <Written t={t} start={a + 0.2} text={it.text} />
+                {/* Written line by line, as a hand would (owner, 2026-10-20). */}
+                {it.text.split("\n").map((line, i, all) => {
+                  const before = all
+                    .slice(0, i)
+                    .reduce(
+                      (n, l) => n + Math.max(0.3, l.length / 16) + 0.12,
+                      0,
+                    )
+                  return (
+                    <div key={i}>
+                      <Written
+                        t={t}
+                        start={a + 0.3 + before}
+                        text={line}
+                        cps={16}
+                      />
+                    </div>
+                  )
+                })}
                 {it.sign ? (
                   <div
                     style={{

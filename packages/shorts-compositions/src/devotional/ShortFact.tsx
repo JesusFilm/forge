@@ -18,7 +18,14 @@ import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { KineticCaption } from "./KineticCaption"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { StampLine } from "./StampLine"
-import { type BoardSpec, VoxBoard } from "./VoxBoard"
+import {
+  type BoardSpec,
+  Draw,
+  HAND,
+  handEllipse,
+  VoxBoard,
+  Written,
+} from "./VoxBoard"
 import { type ExplainerSpec, VoxExplainer } from "./VoxExplainer"
 import {
   type VoxHistorySpec,
@@ -501,6 +508,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           at={closeAt}
           text={fact.closeCard}
           {...(fact.closeSize ? { size: fact.closeSize } : {})}
+          {...(fact.closeHand ? { hand: true } : {})}
           {...(fact.closeSub ? { sub: fact.closeSub } : {})}
         />
       ) : null}
@@ -1385,6 +1393,7 @@ function CloseCard({
   text,
   sub,
   size = 36,
+  hand = false,
 }: {
   f: (n: number) => number
   t: number
@@ -1393,13 +1402,23 @@ function CloseCard({
   sub?: string
   /** Figma units (default 36); the column widens with it. */
   size?: number
+  /** The first line handwritten in red and ringed, as on the charge sheet,
+   *  and the small line underlined by hand (owner, Paralytic 2026-10-20). */
+  hand?: boolean
 }) {
   if (t < at - 0.05) return null
   const dim = interpolate(t, [at - 0.05, at + 0.4], [0, 1], clamp)
   const ease = (a: number, b: number) =>
     interpolate(t - at, [a, b], [0, 1], { ...clamp, easing: EASE_OUT })
-  const textIn = ease(0, 0.6)
-  const subIn = ease(0.7, 1.4)
+  const [head, ...restLines] = hand ? text.split("\n") : [text]
+  const headSec = hand ? Math.max(0.5, (head ?? "").length / 12) : 0
+  const textIn = ease(
+    hand ? headSec + 0.25 : 0,
+    (hand ? headSec + 0.25 : 0) + 0.6,
+  )
+  const subIn = ease(hand ? headSec + 1.0 : 0.7, hand ? headSec + 1.7 : 1.4)
+  const headSize = size * 1.9
+  const headW = (head ?? "").length * headSize * 0.42
   // Figma 428-2762 (owner, 2026-10-05): the question in Inter SemiBold 36
   // caps, 492 wide, centred at 675, alone: the credit and the Figma's
   // "Watch the Full Devotional" line were taken off (owner, same day).
@@ -1419,6 +1438,48 @@ function CloseCard({
           gap: f(37),
         }}
       >
+        {hand ? (
+          <div style={{ position: "relative", marginBottom: -f(10) }}>
+            <Written
+              t={t}
+              start={at}
+              text={head ?? ""}
+              cps={12}
+              style={{
+                fontFamily: HAND,
+                fontWeight: 700,
+                fontSize: f(headSize),
+                lineHeight: 1.05,
+                color: "#e0533f",
+                textShadow: `0 ${f(2)}px ${f(12)}px rgba(0,0,0,0.5)`,
+              }}
+            />
+            <svg
+              width={f(headW + 80)}
+              height={f(headSize * 1.5)}
+              viewBox={`0 0 ${headW + 80} ${headSize * 1.5}`}
+              style={{
+                position: "absolute",
+                left: -f(40),
+                top: -f(headSize * 0.2),
+                overflow: "visible",
+              }}
+            >
+              <Draw
+                d={handEllipse(
+                  (headW + 80) / 2,
+                  headSize * 0.72,
+                  headW / 2 + 34,
+                  headSize * 0.52,
+                  4,
+                )}
+                p={interpolate(t - at, [headSec, headSec + 0.7], [0, 1], clamp)}
+                color="#e0533f"
+                width={6}
+              />
+            </svg>
+          </div>
+        ) : null}
         <p
           style={{
             margin: 0,
@@ -1437,7 +1498,7 @@ function CloseCard({
             textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
           }}
         >
-          {text}
+          {hand ? restLines.join("\n") : text}
         </p>
         {sub ? (
           <p
@@ -1454,7 +1515,47 @@ function CloseCard({
               textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
             }}
           >
-            {sub}
+            {hand ? (
+              // Underlined by hand, a little crooked, once the line is in.
+              <span style={{ position: "relative", display: "inline-block" }}>
+                {sub}
+                <svg
+                  viewBox="0 0 100 10"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: "absolute",
+                    left: "-2%",
+                    width: "104%",
+                    bottom: -f(8),
+                    height: f(14),
+                    overflow: "visible",
+                    // Drawn left to right: a one-piece line revealed, since
+                    // a dash trick breaks under a non-scaling stroke.
+                    clipPath: `inset(-50% ${(
+                      100 -
+                      100 *
+                        interpolate(
+                          t - at,
+                          [headSec + 1.8, headSec + 2.5],
+                          [0, 1],
+                          clamp,
+                        )
+                    ).toFixed(2)}% -50% 0)`,
+                  }}
+                >
+                  <path
+                    d="M0,6 C18,3.5 32,8 50,5.5 S82,3 100,6.5"
+                    fill="none"
+                    stroke="#e0533f"
+                    strokeWidth={f(4)}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+              </span>
+            ) : (
+              sub
+            )}
           </p>
         ) : null}
       </div>

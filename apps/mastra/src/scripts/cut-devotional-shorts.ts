@@ -868,7 +868,11 @@ async function main() {
           (m.shortFact as { closeSize?: number }).closeSize = Number(
             arg("history-close-size"),
           )
-        m.outroHoldSec = 3.8 + delay
+        // `--history-close-hand`: the first line written in red by hand and
+        // ringed, the small line underlined; the outro holds for the writing.
+        const hand = process.argv.includes("--history-close-hand")
+        if (hand) (m.shortFact as { closeHand?: boolean }).closeHand = true
+        m.outroHoldSec = 3.8 + delay + (hand ? 1.8 : 0)
       }
       if (short.kind === "history" && m.shortFact) {
         // Teaser-style kinetic captions: the model picks each line's hero and

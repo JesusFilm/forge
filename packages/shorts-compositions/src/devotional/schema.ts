@@ -519,6 +519,8 @@ export const devotionalInputPropsSchema = z.object({
        *  turn (a board pulls back first), and the turn's size (default 36). */
       closeDelaySec: z.number().optional(),
       closeSize: z.number().optional(),
+      /** The turn's first line handwritten and ringed, the sub underlined. */
+      closeHand: z.boolean().optional(),
       /** Language: the verse's address ("Luke 15:32"). */
       reference: z.string().optional(),
       /** Language: the Vox-style explainer instead of the plain verse
