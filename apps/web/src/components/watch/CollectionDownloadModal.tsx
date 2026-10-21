@@ -76,6 +76,12 @@ const COLLECTION_THUMBNAIL_STACK_CLASSES = [
   "top-6 w-[6.625rem] border border-black/70 brightness-[0.64] saturate-[0.55] min-[500px]:w-[9.5rem] min-[900px]:top-[2.1875rem] min-[900px]:w-[13.25rem]",
   "top-5 w-[6.25rem] border border-black/60 brightness-[0.42] saturate-[0.3] min-[500px]:w-36 min-[900px]:top-[1.875rem] min-[900px]:w-[12.5rem]",
 ] as const
+// At 200% text one label can be wider than a phone's dialog column, so each
+// footer button may shrink and wrap its label instead of overflowing.
+// `min-h-8` keeps the ghost Close at its default 2rem height when `h-auto`
+// lifts the fixed one.
+const COLLECTION_ACTION_BUTTON_CLASS =
+  "h-auto min-h-8 max-w-full shrink text-center whitespace-normal"
 const COLLECTION_DECORATIVE_STACK_CLASSES = [
   "top-4 w-[5.875rem] bg-gradient-to-b from-stone-700/60 to-stone-900/90 min-[500px]:w-[8.5rem] min-[900px]:top-[1.5625rem] min-[900px]:w-[11.75rem]",
   "top-3 w-[5.5rem] bg-gradient-to-b from-stone-800/70 to-stone-950 min-[500px]:w-32 min-[900px]:top-5 min-[900px]:w-44",
@@ -621,7 +627,7 @@ export function CollectionDownloadModal({
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent
         data-testid="watch-collection-download-modal"
-        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(94vw,960px)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[960px]`}
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(94vw,960px)] grid-cols-[minmax(0,1fr)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[960px]`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
@@ -639,7 +645,7 @@ export function CollectionDownloadModal({
         >
           <div
             data-testid="watch-collection-download-header"
-            className="grid gap-x-8 gap-y-6 min-[900px]:grid-cols-[minmax(0,1fr)_26rem] min-[900px]:items-center"
+            className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6 min-[900px]:grid-cols-[minmax(0,1fr)_26rem] min-[900px]:items-center"
           >
             <div className="min-w-0">
               <p
@@ -665,7 +671,7 @@ export function CollectionDownloadModal({
                 aria-label={t("availableCount", {
                   count: options.candidates.length,
                 })}
-                className="flex w-fit shrink-0 items-center justify-self-center gap-3 min-[500px]:gap-5 min-[900px]:justify-self-end min-[900px]:gap-6"
+                className="flex w-fit max-w-full shrink-0 flex-wrap items-center justify-center justify-self-center gap-3 min-[500px]:gap-5 min-[900px]:justify-self-end min-[900px]:gap-6"
               >
                 <div
                   data-testid="watch-collection-download-thumbnail-stack"
@@ -891,6 +897,7 @@ export function CollectionDownloadModal({
                 {showDownloadAgain ? (
                   <>
                     <Button
+                      className={COLLECTION_ACTION_BUTTON_CLASS}
                       variant="ghost"
                       data-testid="watch-collection-download-start"
                       onClick={() => void startDownload(false)}
@@ -899,6 +906,7 @@ export function CollectionDownloadModal({
                       {t("downloadAgain")}
                     </Button>
                     <Button
+                      className={COLLECTION_ACTION_BUTTON_CLASS}
                       variant="pill"
                       data-testid="watch-collection-download-close"
                       onClick={close}
@@ -908,6 +916,7 @@ export function CollectionDownloadModal({
                   </>
                 ) : !busy ? (
                   <Button
+                    className={COLLECTION_ACTION_BUTTON_CLASS}
                     variant="ghost"
                     data-testid="watch-collection-download-close"
                     onClick={close}
@@ -917,6 +926,7 @@ export function CollectionDownloadModal({
                 ) : null}
                 {busy && !showDownloadAgain ? (
                   <Button
+                    className={COLLECTION_ACTION_BUTTON_CLASS}
                     variant="pill"
                     data-testid="watch-collection-download-cancel"
                     onClick={cancelDownload}
@@ -926,6 +936,7 @@ export function CollectionDownloadModal({
                   </Button>
                 ) : !showDownloadAgain ? (
                   <Button
+                    className={COLLECTION_ACTION_BUTTON_CLASS}
                     variant="pill"
                     data-testid="watch-collection-download-start"
                     disabled={

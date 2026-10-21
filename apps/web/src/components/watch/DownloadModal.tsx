@@ -774,7 +774,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
               href={TERMS_OF_USE_CANONICAL_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="cursor-pointer text-stone-200 underline decoration-stone-500 underline-offset-2 hover:text-white hover:decoration-white"
+              className="cursor-pointer [overflow-wrap:anywhere] text-stone-200 underline decoration-stone-500 underline-offset-2 hover:text-white hover:decoration-white"
             >
               {TERMS_OF_USE_CANONICAL_URL}
             </a>
