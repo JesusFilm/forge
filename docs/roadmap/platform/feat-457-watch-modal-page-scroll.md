@@ -80,3 +80,12 @@ edge.
 - `pnpm --filter @forge/web lint`
 - Browser smoke the collection download, single-video download, share, and
   terms dialogs at short landscape and narrow portrait viewport sizes.
+
+## Follow-up: close button clearance (PR 2836, not yet accepted)
+
+The fixed close button of the film and collection download dialogs can sit above
+scrolled controls when large text widens the close target. PR 2836 keeps both
+dialogs at most the viewport width minus `10rem` from `sm` up, so the close
+button never covers the dialog. The film confirmation row and header wrap, and
+the collection header splits by its own container width. This ticket stays
+complete. Do not close PR 2836 work until an independent reviewer accepts it.
