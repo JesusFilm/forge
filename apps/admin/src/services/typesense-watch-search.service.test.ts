@@ -3750,8 +3750,9 @@ describe("TypesenseWatchSearchService", () => {
     })
   })
 
-  // feat-760 production shape (2026-10-21, "is god real"): the winning
-  // transcript chunk was only caption cues, and the card showed them verbatim.
+  // feat-760: the production chunk for "is god real" (2026-10-21) was ~170
+  // characters of caption cues before "Where is your faith?...", and the card
+  // showed the cues verbatim. This pins the extreme where no word is left.
   it("falls back to the description when the winning transcript chunk is only caption cues", async () => {
     const subtitleDocument: TypesenseWatchCatalogDocument = {
       ...catalogDocument,

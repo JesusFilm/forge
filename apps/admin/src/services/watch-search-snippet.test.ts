@@ -2,8 +2,15 @@ import { describe, expect, it } from "vitest"
 import { displayTranscriptSnippet } from "./watch-search-snippet"
 
 describe("displayTranscriptSnippet", () => {
+  it("keeps the speech after the cues in the production snippet", () => {
+    // The full card snippet production returned on 2026-10-21 for "is god
+    // real" (StoryClubs: Jesus Calms the Storm, English and Arabic results).
+    const production =
+      "[MUSIC] [MUSIC] [INAUDIBLE] [INAUDIBLE] [MUSIC] >> [INAUDIBLE] >> [INAUDIBLE] >> [INAUDIBLE] [MUSIC] >> [INAUDIBLE] >> [INAUDIBLE] >> [INAUDIBLE] [MUSIC] >> Where is your faith?..."
+    expect(displayTranscriptSnippet(production)).toBe("Where is your faith?...")
+  })
+
   it.each([
-    // Production chunk text seen on Watch Search, 2026-10-21 ("is god real").
     "[MUSIC] [MUSIC] [INAUDIBLE] [INAUDIBLE] [MUSIC] >> [INAUDIBLE] >> [INAUDIBLE]",
     ">> [APPLAUSE] (soft music) ...",
     "   ",
