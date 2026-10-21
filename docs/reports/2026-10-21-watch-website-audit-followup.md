@@ -2,9 +2,10 @@
 
 Date: 2026-10-21 (UTC). This is the second pass on the public Watch site
 (`apps/web`, `https://www.jesusfilm.org/watch`). It started at 00:49:39Z and
-ran eight sequential rounds. This report was written in round 08, which
-ended at about 08:2xZ (exact end time is in the external round-08 receipt).
-Real elapsed time was about 7.5 hours, not 8. Every round used one
+ran eight sequential rounds. Round 08 started at 06:59Z and this report was
+committed at 07:29Z, about 6 h 39 min after the start. That is the real
+wall time, not eight hours. Per-round start and end times are in the
+orchestration records; token use was not measured here. Every round used one
 Claude Opus 5.5 worker on the NZ Team subscription. The US Team profile was
 not signed in, so nothing rotated. No API charges, no fallback model, no
 auth changes. The root thread only orchestrated.
@@ -39,8 +40,8 @@ Nothing was merged or deployed. Every fix below is in an open PR.
 - All 26 code PRs merge together. The combined build passed 5,622 web tests
   on Node 24 and Node 26.
 - Still open: Safari, real phones, screen readers and signed-in pages were
-  never tested. Search embedding timeouts recur (61 in 24 h); tuning is an
-  owner decision.
+  never tested. Search timeouts recur: about 1 in 10 searches hit the
+  deadline in 24 h (if spans are unsampled). Tuning is an owner decision.
 
 ## What this pass did
 
@@ -135,11 +136,19 @@ Combined browser checks on the integration build (BUILD_ID
 
 ## Search reliability
 
-Datadog (read-only, round 07): in 24 h, 61 `query_embedding_timeout`, 13
-`watch_search_deadline_exceeded` and 10 `semantic_degraded` warnings on
-`forge-admin`. No request count was pulled, so there is no rate. Changing
-the time budgets is an owner decision; the engineering step is to pull the
-request count and a few traces first.
+Datadog, read-only, `service:forge-admin`, the 24 h before 2026-10-21
+07:30Z:
+
+- Warnings: 61 `query_embedding_timeout`, 13
+  `watch_search_deadline_exceeded`, 10 `semantic_degraded`.
+- APM spans in the same window: 136 `graphql.query.WatchSearch` (p95 about
+  2.0 s) and 294 `graphql.query.WatchSearchSuggestions` (p95 about 1.8 s).
+- So roughly 1 in 10 searches hit the deadline, **if** spans are not
+  sampled. Sampling was not checked, and embedding timeouts may also come
+  from suggestions or prewarm, so this is not a firm rate.
+
+Changing the time budgets is an owner decision. The engineering next step
+is to confirm span sampling and split the timeouts by caller.
 
 ## Personas and journeys
 
