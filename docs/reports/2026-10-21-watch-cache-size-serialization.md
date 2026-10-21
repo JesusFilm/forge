@@ -253,3 +253,14 @@ Durable upgrade guidance is recorded in
 The dependency patch, cache semantics and payload contents are unchanged from the
 narrow candidate. The investigation remains in progress for normal PR review,
 rollout and the sustained production acceptance gates.
+
+## Deployment preparation — 2026-10-21
+
+The owner authorized deployment through the normal PR-to-main flow. Initial CI
+passed application builds, including Web, but CodeQL flagged the diagnostic
+HTML script regex for missing end tags with whitespace or attributes. The
+measurement helper now accepts those end-tag forms; three additional cases
+cover whitespace, attributes and mixed case. All four measurement tests and
+scoped lint pass. This changes diagnostic byte accounting only; the framework
+cache patch and runtime behavior are unchanged. The original measured Next
+output used ordinary end tags, so its recorded field sizes remain applicable.

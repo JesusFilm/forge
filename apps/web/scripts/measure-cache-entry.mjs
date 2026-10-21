@@ -37,7 +37,7 @@ export function measureCacheEntry(stored) {
   let embeddedRscScriptBytes = 0
   let embeddedRscScriptCount = 0
   for (const match of value.html.matchAll(
-    /<script\b[^>]*>[\s\S]*?<\/script>/gi,
+    /<script\b[^>]*>[\s\S]*?<\/script\b[^>]*>/gi,
   )) {
     if (!match[0].includes("self.__next_f.push(")) continue
     embeddedRscScriptBytes += bytes(match[0])

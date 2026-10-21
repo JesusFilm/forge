@@ -43,3 +43,24 @@ it("accounts for stored byte sizes without emitting cached content", () => {
   assert.equal(JSON.stringify(result).includes(secret), false)
   assert.throws(() => measureCacheEntry('{"value":{"kind":"FETCH"}}'))
 })
+
+it.each(["</script >", '</script foo="bar">', "</SCRIPT\t>"])(
+  "counts embedded stream scripts ending with %s",
+  (endTag) => {
+    const script = `<script>self.__next_f.push([1,"x"])${endTag}`
+    const result = measureCacheEntry(
+      JSON.stringify({
+        value: { kind: "APP_PAGE", html: `<p>before</p>${script}` },
+      }),
+    )
+    assert.equal(result.htmlBreakdown.embeddedRscScriptCount, 1)
+    assert.equal(
+      result.htmlBreakdown.embeddedRscScriptBytes,
+      Buffer.byteLength(script),
+    )
+    assert.equal(
+      result.htmlBreakdown.remainingHtmlBytes,
+      Buffer.byteLength("<p>before</p>"),
+    )
+  },
+)
