@@ -212,3 +212,37 @@ export function languageBadgeCodeFor({
 
   return code
 }
+
+/**
+ * The `srclang` for a subtitle `<track>`: the language's full BCP 47 tag in
+ * canonical form, so script and region survive (`zh-Hans` vs `zh-Hant`,
+ * `pt-BR` vs `pt-PT`, `sr-Latn`). The chrome's compact code drops them, which
+ * gave sibling languages the same `srclang` and left assistive tech and the
+ * native track menu unable to tell them apart.
+ *
+ * A tag `Intl` cannot canonicalize (empty, malformed, unknown private use)
+ * falls back to the lowercase primary code from `languageCodeFor`, and `null`
+ * means the track omits `srclang`.
+ */
+export function subtitleTrackLanguageTag(
+  source: LanguageCodeSource,
+): string | null {
+  const { bcp47, slug } = source
+  const tag = bcp47?.trim() || (slug ? slugToBcp47Tag(slug) : null)
+  if (tag) {
+    // `Intl` rejects RFC 5646 extended language subtags (`ar-arz`); their
+    // preferred form is the extlang alone (`arz`), which keeps the dialect.
+    const extlang = tag.match(/^[A-Za-z]{2,3}-([A-Za-z]{3})(?=-|$)/)?.[1]
+    for (const candidate of extlang
+      ? [tag, tag.slice(tag.indexOf("-") + 1)]
+      : [tag]) {
+      try {
+        const [canonical] = Intl.getCanonicalLocales(candidate)
+        if (canonical) return canonical
+      } catch {
+        // Not a well-formed tag; try the next form, then the primary code.
+      }
+    }
+  }
+  return languageCodeFor(source)?.toLowerCase() ?? null
+}

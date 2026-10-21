@@ -344,6 +344,7 @@ export function HeroPlayer({
   playableLanguageCount,
   hasSubtitleOptions = false,
   subtitleLanguageCode,
+  subtitleLanguageTag,
   darkenOverlay = false,
   overlay,
   subtitleVttSrc,
@@ -361,6 +362,8 @@ export function HeroPlayer({
   playableLanguageCount?: number
   hasSubtitleOptions?: boolean
   subtitleLanguageCode?: string | null
+  /** Full BCP 47 `srclang` for the subtitle track; see `subtitleTrackLanguageTag`. */
+  subtitleLanguageTag?: string | null
   darkenOverlay?: boolean
   overlay?: ReactNode
   subtitleVttSrc?: string | null
@@ -472,8 +475,11 @@ export function HeroPlayer({
         trackEl.setAttribute("data-subtitle-track", "true")
         // Declare the language for assistive tech and the native track
         // menu. The label stays the forge sentinel (see subtitle-track.ts).
-        if (subtitleLanguageCode) {
-          trackEl.srclang = subtitleLanguageCode.toLowerCase()
+        // Use the full tag so script and region survive (zh-Hans/zh-Hant).
+        const srclang =
+          subtitleLanguageTag ?? subtitleLanguageCode?.toLowerCase() ?? null
+        if (srclang) {
+          trackEl.srclang = srclang
         }
         video.appendChild(trackEl)
         trackEl.track.mode = "showing"
@@ -490,7 +496,7 @@ export function HeroPlayer({
     return () => {
       tracks.removeEventListener("addtrack", onAddTrack)
     }
-  }, [subtitleVttSrc, subtitleLanguageCode, player])
+  }, [subtitleVttSrc, subtitleLanguageCode, subtitleLanguageTag, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)

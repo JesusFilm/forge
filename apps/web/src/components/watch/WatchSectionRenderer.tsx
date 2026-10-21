@@ -53,6 +53,7 @@ export function WatchSectionRenderer({
   locale,
   hasSubtitleOptions = false,
   subtitleLanguageCode,
+  subtitleLanguageTag,
   shareHref,
   subtitleVttSrc,
   hideBibleQuotes = false,
@@ -75,6 +76,7 @@ export function WatchSectionRenderer({
   locale?: string
   hasSubtitleOptions?: boolean
   subtitleLanguageCode?: string | null
+  subtitleLanguageTag?: string | null
   shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes?: boolean
@@ -129,6 +131,7 @@ export function WatchSectionRenderer({
             locale={locale}
             hasSubtitleOptions={hasSubtitleOptions}
             subtitleLanguageCode={subtitleLanguageCode}
+            subtitleLanguageTag={subtitleLanguageTag}
             shareHref={shareHref}
             subtitleVttSrc={subtitleVttSrc}
             hideBibleQuotes={hideBibleQuotes}
@@ -181,6 +184,7 @@ export function WatchSectionRenderer({
                     locale={locale}
                     hasSubtitleOptions={hasSubtitleOptions}
                     subtitleLanguageCode={subtitleLanguageCode}
+                    subtitleLanguageTag={subtitleLanguageTag}
                     shareHref={shareHref}
                     hideBibleQuotes={hideBibleQuotes}
                     pendingChapter={pendingChapter}
@@ -215,6 +219,7 @@ function WatchBlockEntry({
   locale,
   hasSubtitleOptions,
   subtitleLanguageCode,
+  subtitleLanguageTag,
   shareHref,
   subtitleVttSrc,
   hideBibleQuotes,
@@ -239,6 +244,7 @@ function WatchBlockEntry({
   locale?: string
   hasSubtitleOptions: boolean
   subtitleLanguageCode?: string | null
+  subtitleLanguageTag?: string | null
   shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
@@ -288,6 +294,7 @@ function WatchBlockEntry({
         locale={locale}
         hasSubtitleOptions={hasSubtitleOptions}
         subtitleLanguageCode={subtitleLanguageCode}
+        subtitleLanguageTag={subtitleLanguageTag}
         shareHref={shareHref}
         subtitleVttSrc={subtitleVttSrc}
         hideBibleQuotes={hideBibleQuotes}
@@ -332,6 +339,7 @@ function SyntheticBlock({
   locale,
   hasSubtitleOptions,
   subtitleLanguageCode,
+  subtitleLanguageTag,
   shareHref,
   subtitleVttSrc,
   hideBibleQuotes,
@@ -354,6 +362,7 @@ function SyntheticBlock({
   locale?: string
   hasSubtitleOptions: boolean
   subtitleLanguageCode?: string | null
+  subtitleLanguageTag?: string | null
   shareHref?: string
   subtitleVttSrc?: string | null
   hideBibleQuotes: boolean
@@ -391,6 +400,7 @@ function SyntheticBlock({
           playableLanguageCount={playableLanguageCount}
           hasSubtitleOptions={hasSubtitleOptions}
           subtitleLanguageCode={subtitleLanguageCode}
+          subtitleLanguageTag={subtitleLanguageTag}
           subtitleVttSrc={subtitleVttSrc}
           optimisticVisual={optimisticVisual}
           coverBlackoutKey={coverBlackoutKey}

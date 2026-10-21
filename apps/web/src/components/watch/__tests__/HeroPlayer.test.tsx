@@ -2778,6 +2778,29 @@ describe("HeroPlayer — injected subtitle track language", () => {
       expect(track?.getAttribute("label")).toBe(FORGE_SUBTITLE_TRACK_LABEL)
     },
   )
+
+  it.each([
+    { code: "ZH", tag: "zh-Hant", expectedSrclang: "zh-Hant" },
+    { code: "PT", tag: "pt-BR", expectedSrclang: "pt-BR" },
+    { code: "SR", tag: null, expectedSrclang: "sr" },
+  ])(
+    "prefers the full tag $tag over the chrome code $code for srclang",
+    async ({ code, tag, expectedSrclang }) => {
+      const video = makeVideoPlayer()
+      mockPlayerRef.current = video as unknown as typeof mockPlayerRef.current
+
+      await revealChrome(makeBlock(), {
+        subtitleVttSrc: "https://cdn.example/subtitles/x.vtt",
+        subtitleLanguageCode: code,
+        subtitleLanguageTag: tag,
+        hasSubtitleOptions: true,
+      })
+
+      const track = video.querySelector("track[data-subtitle-track]")
+      expect(track?.getAttribute("srclang")).toBe(expectedSrclang)
+      expect(track?.getAttribute("label")).toBe(FORGE_SUBTITLE_TRACK_LABEL)
+    },
+  )
 })
 
 describe("HeroPlayer — chrome button interactions", () => {
