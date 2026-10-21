@@ -726,7 +726,12 @@ describe("CollectionDownloadModal", () => {
     expect(modal?.className).toContain("bg-transparent")
     expect(modal?.className).toContain("rounded-none")
     expect(modal?.className).not.toContain("bg-stone-950")
-    expect(modal?.className).toContain("sm:max-w-[960px]")
+    // Wide enough for the form, never wide enough to slide under the fixed
+    // close button: see watch-modal-presentation.ts.
+    expect(modal?.className).toContain(
+      "sm:max-w-[min(960px,calc(100vw-10rem))]",
+    )
+    expect(modal?.className).not.toContain("sm:max-w-[960px]")
   })
 
   it("scrolls at the viewport edge instead of inside the modal", async () => {

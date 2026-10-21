@@ -525,7 +525,22 @@ describe("DownloadModal — Terms of Use agreement", () => {
     )
     expect(row?.textContent).toContain("I agree to the Terms of Use")
     expect(row?.className).toContain("rounded-2xl")
-    expect(row?.className).toContain("sm:flex-row")
+    // The row wraps so Terms and the buttons stack when large text or a narrow
+    // dialog leaves no room to sit side by side (the old `sm:flex-row` forced
+    // them beside each other and pushed Download past the dialog's edge).
+    expect(row?.className).toContain("flex-wrap")
+    expect(row?.className).not.toContain("sm:flex-row")
+    const actions = confirm.parentElement
+    expect(actions?.className).toContain("flex-wrap")
+    expect(actions?.className).toContain("max-w-full")
+    expect(actions?.className).toContain("ml-auto")
+    expect(row?.firstElementChild?.className).toContain("flex-1")
+    expect(row?.firstElementChild?.className).toContain(
+      "min-w-[min(100%,12rem)]",
+    )
+    expect($('[data-testid="watch-download-modal"]')?.className).toContain(
+      "sm:max-w-[min(608px,calc(100vw-10rem))]",
+    )
     expect(row?.contains(confirm)).toBe(true)
   })
 

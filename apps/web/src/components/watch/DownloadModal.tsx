@@ -45,6 +45,7 @@ import {
 } from "@/components/watch/download-options"
 import {
   WATCH_MODAL_ACTION_WRAP_CLASS,
+  WATCH_MODAL_FILM_WIDTH_CLASS,
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
@@ -382,7 +383,7 @@ export function DownloadModal({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           data-testid="watch-download-modal"
-          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} ${WATCH_MODAL_FILM_WIDTH_CLASS} grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0`}
           overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
           viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
           showCloseButton={false}
@@ -448,7 +449,7 @@ export function DownloadModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} ${WATCH_MODAL_FILM_WIDTH_CLASS} grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
@@ -607,13 +608,13 @@ export function DownloadModal({
 
           <div
             data-testid="watch-download-modal-confirmation-row"
-            className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
           >
             {/* Not a <label>: the sentence contains the Terms button, and an
                 interactive control must not be nested inside a label. The
                 checkbox carries the sentence as its accessible name, and a
                 click on the sentence's plain text still toggles it. */}
-            <div className="flex items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
+            <div className="flex min-w-[min(100%,12rem)] flex-1 items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
               <span className="relative mt-0.5 inline-flex shrink-0 items-center justify-center">
                 <input
                   type="checkbox"
@@ -659,11 +660,14 @@ export function DownloadModal({
               </span>
             </div>
 
-            {/* Wraps so that on 320-360px phones the two buttons stack
-                instead of widening the dialog past the screen. At 200% text
-                one button is wider than the dialog, so each label wraps too
-                (with the content's `minmax(0,1fr)` column). */}
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
+            {/* The row wraps: when the Terms sentence and both buttons do not
+                fit side by side (a narrow dialog or large text), the buttons
+                drop below the sentence instead of widening the dialog past
+                the screen. The group wraps too, so on 320-360px phones the
+                two buttons stack. At 200% text one button is wider than the
+                dialog, so each label wraps as well (with the content's
+                `minmax(0,1fr)` column). */}
+            <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-3">
               <Button
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}

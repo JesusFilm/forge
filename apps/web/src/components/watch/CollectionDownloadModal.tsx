@@ -38,6 +38,7 @@ import { TierListbox } from "@/components/watch/TierListbox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import {
   WATCH_MODAL_ACTION_WRAP_CLASS,
+  WATCH_MODAL_COLLECTION_WIDTH_CLASS,
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
@@ -665,7 +666,7 @@ export function CollectionDownloadModal({
       <DialogContent
         finalFocus={returnFocusRef ? false : undefined}
         data-testid="watch-collection-download-modal"
-        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(94vw,960px)] grid-cols-[minmax(0,1fr)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[960px]`}
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} ${WATCH_MODAL_COLLECTION_WIDTH_CLASS} grid-cols-[minmax(0,1fr)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
