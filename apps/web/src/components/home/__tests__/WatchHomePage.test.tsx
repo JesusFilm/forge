@@ -2739,6 +2739,66 @@ describe("WatchHomePage", () => {
     })
   })
 
+  it("paints the first slide's poster without the enter fade, then crossfades later slides", async () => {
+    // The first poster is the LCP image. Fading it in from opacity 0 let a
+    // slow phone paint it on the invisible frame, so Chrome dropped it and
+    // took LCP from the next slide seconds later.
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            carousel: {
+              pools: [
+                {
+                  id: "pool-a",
+                  collectionIds: ["pool-a"],
+                  videos: [
+                    makeCarouselSlide(),
+                    makeCarouselSlide({
+                      id: "queued-2",
+                      title: "Queued Two",
+                      href: "/queued-two.html/english.html",
+                      thumbnailUrl: "https://cdn.example/queued-two-thumb.jpg",
+                      src: "https://stream.example/queued-two.m3u8",
+                    }),
+                  ],
+                },
+              ],
+            },
+          })}
+        />,
+      )
+    })
+    const visualLayers = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(
+          '[data-testid="watch-home-tv-visual-layer"]',
+        ),
+      )
+
+    expect(visualLayers()).toHaveLength(1)
+    expect(visualLayers()[0]!.className).not.toContain("watch-home-media-enter")
+
+    const select = async (label: string) => {
+      const button = container.querySelector(
+        `button[aria-label="${label}"]`,
+      ) as HTMLButtonElement
+      await act(async () => {
+        button.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+      })
+    }
+
+    await select("Show Queued Two")
+    const [leaving, entering] = visualLayers()
+    expect(leaving!.className).toContain("watch-home-media-exit")
+    expect(entering!.className).toContain("watch-home-media-enter")
+
+    // Returning to the first slide is a transition too, so it crossfades.
+    await select("Show Queued One")
+    expect(visualLayers().at(-1)!.className).toContain("watch-home-media-enter")
+  })
+
   it("advances between pooled library videos with no branded slide in the sequence", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
