@@ -36,6 +36,8 @@ export type StreamTransition = {
   /** Merged data for the OPEN view, applied before anything else. */
   openViewUpdate: MuxViewIdentity | null
   beforeLoad: BeforeLoadAction
+  /** A stream loads. Every load supersedes the settle of an earlier one. */
+  loads: boolean
   /** The settle phase opens a new view, if the swap is still the latest. */
   newViewAtSettle: boolean
   /** What the player holds afterwards: the `current` of the next call. */
@@ -125,6 +127,7 @@ export function planStreamTransition(
     return {
       openViewUpdate,
       beforeLoad: "none",
+      loads: false,
       newViewAtSettle: false,
       loaded,
     }
@@ -142,6 +145,7 @@ export function planStreamTransition(
   return {
     openViewUpdate,
     beforeLoad,
+    loads: true,
     // A fresh attach opens its first view at the first play request.
     newViewAtSettle: beforeLoad === "stage",
     loaded,

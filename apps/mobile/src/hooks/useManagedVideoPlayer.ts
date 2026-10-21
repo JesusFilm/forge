@@ -36,6 +36,12 @@ import {
 } from "../lib/videoQoe"
 import type { RecommendationPlaybackRecorder } from "../lib/recommendations/playbackRecorder"
 import { createPlaybackRecorderForMedia } from "../lib/recommendations/playbackRecorderClient"
+import {
+  createMuxMonitorSession,
+  type MonitorSession,
+  type MuxDataOption,
+  type MuxMonitorFacade,
+} from "../lib/muxData/monitorSession"
 
 // Playhead watchdog (R39): poll currentTime while the player reports playing and
 // is NOT buffering; if it stays frozen this long, emit one stall. 3s (not sub-1s)
@@ -91,6 +97,8 @@ function startHoldClock(ref: { current: HoldClock | null }): void {
   if (clock != null && clock.active && clock.startedAt == null)
     clock.startedAt = Date.now()
 }
+
+const NO_MUX_SETTLE = () => {}
 
 /** The host's answer for a swap it classified: seek first, and whether the
  *  content (and so the QoE session) is the same. False is no claim. */
@@ -163,6 +171,12 @@ export function useManagedVideoPlayer(
      * navigates, and the recorder only ever learns the Admin id otherwise.
      */
     mediaSlug?: string | null
+    /**
+     * Mux Data for this request (KTD4). Absent: the stream is not monitored,
+     * as for the series trailer. The gate in `muxData/config.ts` decides
+     * whether any monitor exists at all.
+     */
+    muxData?: MuxDataOption | null
   },
 ) {
   const ownsSession = options?.ownsSession === true
@@ -406,6 +420,50 @@ export function useManagedVideoPlayer(
     flush: (trigger) => recorderRef.current?.flush(trigger),
   }).current
 
+  // Ref-mirrored, like the other listener-read options: the swap effect and
+  // the reload facade read the request that is current when they run.
+  const muxDataRef = useRef(options?.muxData ?? null)
+  muxDataRef.current = options?.muxData ?? null
+  const muxSessionRef = useRef<MonitorSession | null>(null)
+  // Created in the effect, so StrictMode's setup, cleanup, setup cycle leaves
+  // one live monitor. The mount attach covers a non-null creation source.
+  useEffect(() => {
+    const session = createMuxMonitorSession(player)
+    muxSessionRef.current = session
+    session?.setPlayerSize(muxDataRef.current?.playerSize ?? null)
+    session?.onStream(loadedUrlRef.current, muxDataRef.current)
+    return () => {
+      session?.release()
+      if (muxSessionRef.current === session) muxSessionRef.current = null
+    }
+  }, [player])
+
+  // A late id or title for the open view. The predicate decides whether it
+  // is the same video, so a new video's data waits for its own view.
+  const muxIdentity = options?.muxData?.identity ?? null
+  const muxSurface = options?.muxData?.surface ?? null
+  const muxVideoId = muxIdentity?.videoId ?? null
+  const muxVideoSlug = muxIdentity?.videoSlug ?? null
+  const muxTitle = muxIdentity?.title ?? null
+  useEffect(() => {
+    muxSessionRef.current?.onStream(null, muxDataRef.current)
+  }, [muxSurface, muxVideoId, muxVideoSlug, muxTitle])
+
+  const muxWidth = options?.muxData?.playerSize?.width ?? null
+  const muxHeight = options?.muxData?.playerSize?.height ?? null
+  useEffect(() => {
+    if (muxWidth == null || muxHeight == null) return
+    muxSessionRef.current?.setPlayerSize({ width: muxWidth, height: muxHeight })
+  }, [muxWidth, muxHeight])
+
+  // KTD16: ref-stable, like progressFeed. The error reload runs outside this
+  // hook, so the facade reads the current session at call time.
+  const muxMonitor = useRef<MuxMonitorFacade>({
+    beginReload: (url) =>
+      muxSessionRef.current?.onStream(url, muxDataRef.current, true) ??
+      NO_MUX_SETTLE,
+  }).current
+
   useEffect(() => {
     if (!sourceUrl || sourceUrl === loadedUrlRef.current) return
 
@@ -427,6 +485,11 @@ export function useManagedVideoPlayer(
       preservesPositionRef.current?.(previousUrl, sourceUrl) ?? false
     const positionPreserved = constraintSwap || hostClaim !== false
     const sameContent = constraintSwap || hostClaim === "same-content"
+    // KTD4/KTD5: attach, detach, or stage BEFORE the load starts, for every
+    // swap; the new view opens at the settle, and only for the latest swap.
+    const settleMuxView =
+      muxSessionRef.current?.onStream(sourceUrl, muxDataRef.current) ??
+      NO_MUX_SETTLE
     loadedUrlRef.current = sourceUrl
     if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.
@@ -472,6 +535,7 @@ export function useManagedVideoPlayer(
       .replaceAsync(sourceUrl)
       .then(() => {
         onSourceAppliedRef.current?.(sourceUrl)
+        settleMuxView()
         resume()
       })
       .catch(() => {
@@ -479,6 +543,7 @@ export function useManagedVideoPlayer(
         try {
           player.replace(sourceUrl, true)
           onSourceAppliedRef.current?.(sourceUrl)
+          settleMuxView()
           resume()
         } catch {
           datadogLog.error("video.swap_failed", { content_id: nextId })
@@ -834,5 +899,5 @@ export function useManagedVideoPlayer(
     return () => emitQoeSummary("abandoned")
   }, [emitQoeSummary])
 
-  return { player, isPlaying, progressFeed, getHealthyPosition }
+  return { player, isPlaying, progressFeed, getHealthyPosition, muxMonitor }
 }

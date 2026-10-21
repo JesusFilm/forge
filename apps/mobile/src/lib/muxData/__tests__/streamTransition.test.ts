@@ -48,10 +48,11 @@ describe("planStreamTransition: first stream", () => {
     expect(result.loaded).toEqual({ url: ENGLISH, identity: id() })
   })
 
-  it("does nothing for an unmonitored first URL", () => {
+  it("does nothing for an unmonitored first URL, though it loads", () => {
     const result = plan(null, { url: TRAILER, identity: null })
     expect(result.beforeLoad).toBe("none")
     expect(result.newViewAtSettle).toBe(false)
+    expect(result.loads).toBe(true)
   })
 
   it("does nothing when no URL arrives", () => {
@@ -69,6 +70,7 @@ describe("planStreamTransition: the same stream", () => {
     expect(result).toEqual({
       openViewUpdate: null,
       beforeLoad: "none",
+      loads: false,
       newViewAtSettle: false,
       loaded: { url: ENGLISH_VARIANT, identity: id() },
     })
@@ -122,6 +124,7 @@ describe("planStreamTransition: the same stream", () => {
     expect(result).toEqual({
       openViewUpdate: null,
       beforeLoad: "none",
+      loads: false,
       newViewAtSettle: false,
       loaded: current,
     })
