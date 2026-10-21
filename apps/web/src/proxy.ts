@@ -603,8 +603,10 @@ function logImplicitEnglishEpisodeRejected(
  * set it: the `[htmlLang]` `loading.tsx` streams a Suspense shell, which
  * flushes HTTP 200 before the sentinel's `notFound()` runs (feat-757).
  *
- * Pass `verified: false` when the miss was decided without a route manifest.
- * Admin may simply have been unreachable, so the URL can still be valid; that
+ * Pass `verified: false` when the miss was decided without a complete route
+ * manifest (see `canManifestProveMiss`). Admin may simply have been
+ * unreachable, or an older manifest may lack the index that would admit the
+ * URL, so the URL can still be valid; that
  * response stays the old non-cached, noindex 200 instead of telling crawlers
  * the page is gone.
  */
@@ -651,6 +653,22 @@ function buildUnavailableLanguageNotFound(
     // Only reached when the manifest proves the language gap, so the 404 is
     // verified. Same streaming reason as buildNotFound.
     404,
+  )
+}
+
+/**
+ * True only when the manifest can prove a miss: it exists AND carries every
+ * per-route language index the admission checks read. Admin always emits
+ * these today, but an older-shaped manifest (deploy skew) makes those checks
+ * fail closed, which is not proof the URL is gone, so its misses stay the
+ * unverified 200 like a missing manifest (feat-757).
+ */
+function canManifestProveMiss(manifest: WatchRouteManifest | null): boolean {
+  return (
+    manifest != null &&
+    manifest.audioLanguageIndexesByContent !== undefined &&
+    manifest.audioLanguageIndexesByEpisode !== undefined &&
+    manifest.nestedContainerAudioLanguageIndexesByParent !== undefined
   )
 }
 
@@ -930,11 +948,15 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") {
-    return buildNotFound(request, undefined, { verified: manifest != null })
+    return buildNotFound(request, undefined, {
+      verified: canManifestProveMiss(manifest),
+    })
   }
   const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
-    return buildNotFound(request, rewrite, { verified: manifest != null })
+    return buildNotFound(request, rewrite, {
+      verified: canManifestProveMiss(manifest),
+    })
   }
   if (admission.kind === "known-content-language-gap") {
     return buildUnavailableLanguageNotFound(request, rewrite)

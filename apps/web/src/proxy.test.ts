@@ -56,6 +56,9 @@ const TEST_MANIFEST: WatchRouteManifest = {
       "wedding-in-cana": [2],
     },
   },
+  // Admin always emits this index (empty when nothing nests). Without it the
+  // proxy treats the manifest as older-shaped and its misses as unverified.
+  nestedContainerAudioLanguageIndexesByParent: {},
 }
 
 let resetManifestSource: (() => void) | null = null
@@ -655,7 +658,9 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/good-friday-live.html/chinese-simplified.html"),
     )
 
-    expectNotFoundRewrite(inconclusive, "/zh-Hans/zh-Hans/404")
+    // An older manifest cannot prove the miss, so it stays the unverified 200
+    // (feat-757).
+    expectNotFoundRewrite(inconclusive, "/zh-Hans/zh-Hans/404", 200)
   })
 
   it("admits canonical and explicit English parent routes through an English nested collection", async () => {
@@ -1302,7 +1307,33 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
     )
 
-    expectNotFoundRewrite(response)
+    // Still not rendered, but this valid implicit-English episode must not be
+    // reported as gone: the older manifest proves nothing about it (feat-757).
+    expectNotFoundRewrite(response, "/en/en/404", 200)
+  })
+
+  it("answers 404 only when a complete manifest proves the episode miss", async () => {
+    // Every index is present and this child is not a Lumo episode, so the
+    // manifest proves the miss.
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/not-a-lumo-episode.html"),
+    )
+
+    expectNotFoundRewrite(response, "/en/en/404", 404)
+  })
+
+  it("keeps a miss unverified when the manifest predates the nested-collection index", async () => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      nestedContainerAudioLanguageIndexesByParent: undefined,
+    }))
+
+    const response = await proxy(
+      makeRequest("/lumo-the-gospel-of-john.html/not-a-lumo-episode.html"),
+    )
+
+    expectNotFoundRewrite(response, "/en/en/404", 200)
   })
 
   it("fails closed when the exact episode lacks English", async () => {
