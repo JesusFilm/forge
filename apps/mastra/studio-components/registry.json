@@ -1045,6 +1045,102 @@
       }
     },
     {
+      "versionId": "verse-callout-ref-en-v1",
+      "purpose": "The verse card of layout B (owner's Figma, 2026-10-21): the reference in gold caps (Inter caps 24) above, the verse in Literata Light Italic at `opacity` 0.9, the highlight phrase white with the gold rule as in verse-callout-en-v1. `top` is the reference row's top (296). Inner quotes in the verse text must be single (‘ ’): the card adds the outer “ ”, and BSB's own double quotes come out doubled. Needs the inter600caps font pack. Render-tested in layout-b-credit-test-20261021.",
+      "language": "english",
+      "built": "dist/verse-callout-ref-en.tsx",
+      "source": "src/verse-callout-ref.tsx",
+      "example": {
+        "reference": "LUKE 5:21",
+        "opacity": 0.9,
+        "text": "But the scribes and Pharisees began thinking to themselves, ‘Who is this man who speaks blasphemy? Who can forgive sins but God alone?’",
+        "highlight": "blasphemy",
+        "top": 296,
+        "width": 860,
+        "maxHeight": 420,
+        "maxFontSize": 56,
+        "litAtSec": 1.2,
+        "fadeOutSec": 0.5
+      },
+      "registration": {
+        "versionId": "verse-callout-ref-en-v1",
+        "category": "text",
+        "name": "Verse card with reference (light italic)",
+        "code": {
+          "assetId": "61e8c8b6-f07f-422f-8488-dd40e0f6767e",
+          "versionId": "cmvi1vkvx62jgl10soqgj01rh",
+          "digest": "689eadef9360f98795d276571fdc35ec5d8545df43149f4b5a76cbccd256e054"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "reference": {
+            "type": "text",
+            "maxLength": 40
+          },
+          "opacity": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "maxHeight": {
+            "type": "number",
+            "min": 60,
+            "max": 1200
+          },
+          "maxFontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "litAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 60
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
       "versionId": "verse-callout-en-v1",
       "purpose": "The verse the reflection is talking about (VerseCalloutOverlay.tsx): light Literata italic in curly quotes; `highlight` (one phrase of the text, at most 24 characters, or \"\") turns white with a gold rule drawn under it at litAtSec, then breathes. Shrinks from maxFontSize to fit maxHeight. 9:16: top 430 (owner moved it down from 300, 2026-10-16), width 860, maxHeight 420, maxFontSize 56; put the reflection sentence at top 1140 while it is up.",
       "language": "en",
@@ -2038,6 +2134,94 @@
             "type": "number",
             "min": 30,
             "max": 200
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
+      "versionId": "source-mark-compact-v1",
+      "purpose": "The compact 9:16 source credit UNDER the reflection sentence (owner's Figma 'B · compact credit under the card', 2026-10-21; supersedes source-mark-v1 above the sentence). A gold line (ruleWidth, 3 px) draws left to right, then the emblem (book / scroll / Ryle portrait), then the tracked label (Inter caps 16), then the source in Literata 32 comes down from above; about 1.5 s from startSec. `top` is the line's y: 1217 puts the block's end at about 1440, above the feed buttons. Put the sentence (reveal-sans-en-v1, align center) so its bottom sits about 42 px above the line. Needs font packs literata400 + inter600caps. Render-tested in layout-b-credit-test-20261021.",
+      "language": "any",
+      "built": "dist/source-mark-compact.tsx",
+      "source": "src/source-mark-compact.tsx",
+      "example": {
+        "kind": "history",
+        "label": "HISTORICAL CONTEXT",
+        "source": "Smith's Bible Dictionary · Alfred Edersheim (1883)",
+        "top": 1217,
+        "ruleWidth": 326,
+        "emblemSize": 40,
+        "startSec": 0.8,
+        "fadeOutSec": 0.4
+      },
+      "registration": {
+        "versionId": "source-mark-compact-v1",
+        "category": "text",
+        "name": "Source credit, compact (line, emblem, label, source)",
+        "code": {
+          "assetId": "9f657f74-2ac5-4e95-ad86-f6386357a3ae",
+          "versionId": "cmvi1vkan62jcl10sfk19y8j6",
+          "digest": "7c172526d54fe4b5f0babe0aaa4fb2b6edc27068572ebd0c2c339ae965d62782"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "kind": {
+            "type": "enum",
+            "values": [
+              "history",
+              "language",
+              "commentary"
+            ]
+          },
+          "label": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "source": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "ruleWidth": {
+            "type": "number",
+            "min": 40,
+            "max": 900
+          },
+          "emblemSize": {
+            "type": "number",
+            "min": 20,
+            "max": 200
+          },
+          "startSec": {
+            "type": "number",
+            "min": 0,
+            "max": 30
           },
           "fadeOutSec": {
             "type": "number",

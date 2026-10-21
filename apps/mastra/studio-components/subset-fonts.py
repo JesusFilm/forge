@@ -81,3 +81,9 @@ if __name__ == "__main__":
     make("literata_italic_var.ttf", {"wght": 500, "opsz": 36}, CYR + ASCII + TYPO, "literata500i-cyrillic.woff2")
     INTER_CYR = os.path.join(HERE, "..", "..", "..", "packages", "shorts-compositions", "fonts", "inter-cyrillic.woff2")
     make(INTER_CYR, {"wght": 600}, CYR[:33] + " ", "inter600caps-cyrillic.woff2")
+    # The reflection line in Inter 400 (reveal-sans-en, 2026-10-21; the file
+    # was first cut with layout_features ["kern"] only and is kept as is).
+    INTER_LAT = os.path.join(HERE, "..", "..", "..", "packages", "shorts-compositions", "fonts", "inter-latin.woff2")
+    make(INTER_LAT, {"wght": 400}, ASCII + TYPO + "".join(chr(c) for c in range(0xC0, 0x100)), "inter400-latin.woff2")
+    # The verse card in Literata Light Italic (owner's Figma B, 2026-10-21).
+    make("literata_italic_var.ttf", {"wght": 300, "opsz": 36}, ASCII + TYPO, "literata300i-latin.woff2")

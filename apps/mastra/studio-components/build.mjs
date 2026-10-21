@@ -63,6 +63,7 @@ const COMPONENTS = {
   "takeaway": null,
   "pray-block": null,
   "source-mark": null,
+  "source-mark-compact": null,
 }
 
 mkdirSync(path.join(here, "dist"), { recursive: true })
@@ -101,6 +102,11 @@ const VARIANTS = {
   "reveal-sans-en": {
     src: "reveal-sans",
     font: "inter400-latin.woff2",
+    uploaded: null,
+  },
+  "verse-callout-ref-en": {
+    src: "verse-callout-ref",
+    font: "literata300i-latin.woff2",
     uploaded: null,
   },
   "verse-callout-en": {

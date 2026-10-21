@@ -94,3 +94,13 @@ must be registered as presets by a person in Studio (it cannot be done by an
 agent): ElevenLabs voice ids female-d `98ujrzs7rxAMEsaC4EpW`, male-e
 `xLeLcqgjUx3wQJFSESKj` (English); Tatyana Voloshina `nkvv6waLzFah2jTNUZGT`,
 Ivo `hD8aK7CmEPgH3mbFO08e` (Russian).
+
+## Layout B for the reflection (owner, 2026-10-21)
+
+Figma: Daily Bible Pause, Grid page, section "Paralytic · vertical: credit + verse card + line together" (node 614:2). When a verse card and a source credit are on screen together:
+
+- verse card on top: `verse-callout-ref-en-v1`, top 296, reference in gold caps, opacity 0.9, Literata Light Italic;
+- the sentence in the middle: `reveal-sans-en-v1`, align center, its bottom about 42 px above the line (top = 1175 minus half its height; 58 px Inter runs about 85 px a line);
+- under it `source-mark-compact-v1`, top 1217: the gold line draws left to right, then the emblem, the label, and the source name from above.
+
+Reference project: `paralytic-devotional-vertical-en-20261021` (rev 10). The generator still lays out the older A arrangement (credit above the sentence); switch it before the next build.
