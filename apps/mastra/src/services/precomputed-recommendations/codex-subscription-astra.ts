@@ -7,6 +7,10 @@ import { StringDecoder } from "node:string_decoder"
 import { z } from "zod"
 
 import { PRECOMPUTED_MODEL_ID, type ModelUsage } from "./astra-provider"
+import {
+  subscriptionModelIdSchema,
+  type SubscriptionModelId,
+} from "./subscription-model"
 
 const MAX_PROMPT_BYTES = 2_000_000
 const MAX_EVENT_BYTES = 512_000
@@ -109,6 +113,7 @@ export class CodexSubscriptionAstraError extends Error {
 }
 
 type Options = {
+  modelId?: SubscriptionModelId
   /** Absolute path to the locally installed Codex CLI. Never used by server routes. */
   codexExecutable: string
   /** Non-secret account binding supplied by the initiating local operator. */
@@ -143,7 +148,10 @@ type AttestedIdentity = Omit<
   observedAt: string
 }
 
-async function requireIdentity(options: Options): Promise<AttestedIdentity> {
+async function requireIdentity(
+  options: Options,
+  modelId: SubscriptionModelId,
+): Promise<AttestedIdentity> {
   let identity: CodexOperatorIdentitySnapshot
   try {
     identity = await options.readOperatorIdentity()
@@ -165,7 +173,7 @@ async function requireIdentity(options: Options): Promise<AttestedIdentity> {
     accountRef: identity.accountRef,
     authMethod: "chatgpt",
     execution: "manual_local_operator",
-    modelId: PRECOMPUTED_MODEL_ID,
+    modelId,
     observedAt: identity.observedAt,
   }
 }
@@ -396,6 +404,7 @@ async function prepareCodex(
 }
 
 async function runCodex(input: {
+  modelId: SubscriptionModelId
   executable: string
   directory: string
   schemaPath: string
@@ -412,7 +421,7 @@ async function runCodex(input: {
     "--sandbox",
     "read-only",
     "--model",
-    PRECOMPUTED_MODEL_ID,
+    input.modelId,
     "--json",
     "--output-schema",
     schemaPath,
@@ -531,6 +540,9 @@ async function runCodex(input: {
 export function createCodexSubscriptionAstraModel(
   options: Options,
 ): CodexSubscriptionAstraModel {
+  const modelId = options.modelId ?? PRECOMPUTED_MODEL_ID
+  if (!subscriptionModelIdSchema.safeParse(modelId).success)
+    throw new CodexSubscriptionAstraError("operator_only")
   const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
   if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
     throw new CodexSubscriptionAstraError("operator_only")
@@ -607,7 +619,7 @@ export function createCodexSubscriptionAstraModel(
         )
           throw new CodexSubscriptionAstraError("input_invalid")
         const { observedAt: identityObservedAt, ...identity } =
-          await requireIdentity(options)
+          await requireIdentity(options, modelId)
         const allowance = await requireAllowance(
           options.readAllowance,
           identity.accountRef,
@@ -703,6 +715,7 @@ export function createCodexSubscriptionAstraModel(
           let response: { output: string; usage: ModelUsage }
           try {
             const invocation = runCodex({
+              modelId,
               executable: options.codexExecutable,
               ...prepared,
               prompt,
@@ -722,7 +735,7 @@ export function createCodexSubscriptionAstraModel(
             })
           }
           try {
-            await requireIdentity(options)
+            await requireIdentity(options, modelId)
           } catch (error) {
             provenance = undefined
             throw new CodexSubscriptionAstraError(

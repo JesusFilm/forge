@@ -137,6 +137,7 @@ export async function purgeExpiredPrecomputedGenerations(
   const [diagnostic] = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     SELECT g.id FROM recommendation_precomputed_generation g
     WHERE g.status IN ('failed', 'cancelled')
+      AND NOT g.rollback_retention_hold
       AND (
         EXISTS (SELECT 1 FROM recommendation_precomputed_build_choice c
                 WHERE c.generation_id = g.id)

@@ -1,3 +1,4 @@
+import { subscriptionModelIdSchema } from "../services/precomputed-recommendations/subscription-model"
 import { execFile } from "node:child_process"
 import { readFile, stat } from "node:fs/promises"
 import { isAbsolute } from "node:path"
@@ -26,9 +27,10 @@ const runFile = promisify(execFile)
 const id = z.string().trim().min(1).max(191)
 const digest = z.string().regex(/^[a-f0-9]{64}$/u)
 const localPath = z.string().min(1).refine(isAbsolute)
-const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
+const baseInputSchema = z
   .object({
     invocation: z.enum(["start", "resume"]),
+    modelId: subscriptionModelIdSchema.optional(),
     generationId: id,
     generationInputDigest: digest,
     attemptId: z.uuid(),
@@ -42,8 +44,6 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
         candidatePoolDigest: digest,
       })
       .strict(),
-    destination: gaImportDestinationSchema,
-    originGenerationId: id,
     profileReplacement: z
       .object({
         videoId: id,
@@ -85,6 +85,22 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
     ]),
   })
   .strict()
+const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
+  .union([
+    baseInputSchema
+      .extend({
+        destination: gaImportDestinationSchema,
+        originGenerationId: id,
+      })
+      .strict(),
+    baseInputSchema
+      .extend({
+        analyticsPolicy: z.literal("disabled_by_operator_v1"),
+        modelId: z.literal("gpt-6.1-sol"),
+        recovery: z.never().optional(),
+      })
+      .strict(),
+  ])
   .refine(
     (value) =>
       !value.profileReplacement ||
@@ -129,6 +145,11 @@ const configSchema = z
   .refine(
     (value) => !value.frozenCatalog || value.input.invocation === "resume",
   )
+  .refine(
+    (value) =>
+      value.input.analyticsPolicy !== "disabled_by_operator_v1" ||
+      (value.minimumRemainingPercent ?? 25) === 25,
+  )
 
 export function parseManualCatalogCommand(raw: unknown, args: string[]) {
   if (
@@ -165,10 +186,12 @@ async function main(args: string[]) {
     throw new Error("manual_config_invalid")
   const account = createLocalCodexAccountReader({
     codexExecutable: config.codexExecutable,
+    modelId: config.input.modelId,
     minimumRemainingPercent: config.minimumRemainingPercent,
   })
   const model = createCodexSubscriptionAstraModel({
     codexExecutable: config.codexExecutable,
+    modelId: config.input.modelId,
     initiatingAccountRef: config.input.initiatingAccountRef,
     readOperatorIdentity: account.readOperatorIdentity,
     readAllowance: account.readAllowance,
@@ -180,8 +203,26 @@ async function main(args: string[]) {
   const catalog = config.frozenCatalog
     ? await loadFrozenCatalog({ ...config.frozenCatalog, scope: config.input })
     : admin.catalog
-  const importClient = createGaCaptureImportClient(admin.ingest)
-  const transport = createAdminGaCaptureTransport()
+  // Intentionally do not construct GA/import/auth capabilities in content-only mode.
+  const historyPorts =
+    config.input.analyticsPolicy === "disabled_by_operator_v1"
+      ? {}
+      : (() => {
+          const importClient = createGaCaptureImportClient(admin.ingest)
+          const transport = createAdminGaCaptureTransport()
+          return {
+            importClient,
+            loadImport: (
+              destination: import("../services/precomputed-recommendations/ga-capture-import-client").GaImportDestination,
+            ) =>
+              loadImportedGaWatchHistory({
+                destination,
+                client: importClient,
+                transport,
+                directory: config.stagingDirectory,
+              }),
+          }
+        })()
   const controller = new AbortController()
   const pause = () => controller.abort()
   process.on("SIGINT", pause)
@@ -195,14 +236,7 @@ async function main(args: string[]) {
       readAttestation: account.readAttestation,
       profilePersistence: createContentProfilePersistence(admin.ingest),
       edgePersistence: createEdgeBatchPersistence(admin.ingest),
-      importClient,
-      loadImport: (destination) =>
-        loadImportedGaWatchHistory({
-          destination,
-          client: importClient,
-          transport,
-          directory: config.stagingDirectory,
-        }),
+      ...historyPorts,
       async measureCapacity(probe) {
         const { stdout } = await runFile(
           config.capacityProbe.executable,

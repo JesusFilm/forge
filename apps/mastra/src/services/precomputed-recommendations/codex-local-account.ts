@@ -6,6 +6,10 @@ import { isAbsolute, join } from "node:path"
 import { StringDecoder } from "node:string_decoder"
 
 import { PRECOMPUTED_MODEL_ID } from "./astra-provider"
+import {
+  subscriptionModelIdSchema,
+  type SubscriptionModelId,
+} from "./subscription-model"
 import type {
   CodexAllowanceSnapshot,
   CodexOperatorIdentitySnapshot,
@@ -40,7 +44,7 @@ export class CodexLocalAccountError extends Error {
 export type CodexAccountAttestation = {
   identity: CodexOperatorIdentitySnapshot
   allowance: CodexAllowanceSnapshot
-  modelId: typeof PRECOMPUTED_MODEL_ID
+  modelId: SubscriptionModelId
   plan: "pro" | "plus"
   admission: "admitted" | "insufficient"
 }
@@ -363,6 +367,7 @@ function decode(
 }
 
 export function createLocalCodexAccountReader(options: {
+  modelId?: SubscriptionModelId
   codexExecutable: string
   timeoutMs?: number
   minimumRemainingPercent?: 0 | 25
@@ -371,6 +376,9 @@ export function createLocalCodexAccountReader(options: {
   readOperatorIdentity: () => Promise<CodexOperatorIdentitySnapshot>
   readAllowance: () => Promise<CodexAllowanceSnapshot>
 } {
+  const modelId = options.modelId ?? PRECOMPUTED_MODEL_ID
+  if (!subscriptionModelIdSchema.safeParse(modelId).success)
+    throw new CodexLocalAccountError("operator_only")
   const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
   if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
     throw new CodexLocalAccountError("operator_only")
@@ -388,13 +396,14 @@ export function createLocalCodexAccountReader(options: {
     throw new CodexLocalAccountError("operator_only")
   const readAttestation = async () => {
     const result = await readRpc(options.codexExecutable, timeoutMs)
-    return decode(
+    const resultAttestation = decode(
       result.before,
       result.rateLimits,
       result.after,
       result.rateLimitsAfter,
       minimumRemainingPercent,
     )
+    return { ...resultAttestation, modelId }
   }
   // Each callback performs a fresh backend read, including the model adapter's
   // post-call identity check. No app-server auth snapshot survives a call.

@@ -6,12 +6,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 19, 2026)
 
-- **Total tickets:** 860
+- **Total tickets:** 862
 - **Complete:** 640
 - **Cancelled:** 41
-- **In progress:** 70
+- **In progress:** 71
 - **Not started:** 52
-- **Blocked:** 57
+- **Blocked:** 58
 - **Overdue and open:** 0
 
 ## Feature Index
@@ -190,6 +190,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-710](content-discovery/feat-710-full-library-video-recommendations.md)                                   | Full-library directional video recommendations                                                  | nisal      | P1       | —          | 3    | —          | complete    |
 | [feat-733](content-discovery/feat-733-shared-reading-video-recommendations.md)                                 | Share complete-library recommendation readings across sources                                   | nisal      | P1       | 2026-10-19 | 3    | 2026-10-21 | in-progress |
 | [feat-736](content-discovery/feat-736-shared-reading-private-import-review.md)                                 | Import shared-reading results for private Admin review                                          | nisal      | P1       | 2026-10-19 | 2    | 2026-10-20 | complete    |
+| [feat-739](content-discovery/feat-739-sol-subscription-profile-generation.md)                                  | Run catalog profile recommendations with Sol subscription                                       | nisal      | P1       | 2026-10-19 | 2    | 2026-10-20 | in-progress |
+| [feat-740](content-discovery/feat-740-sol-content-only-experiment-readiness.md)                                | Qualify Sol content-only recommendation experiments                                             | nisal      | P1       | 2026-10-21 | 2    | 2026-10-22 | blocked     |
 | [feat-720](content-discovery/feat-720-disable-unused-typesense-highlights.md)                                  | Disable unused Typesense search highlights                                                      | vlad       | P1       | —          | 1    | —          | complete    |
 | [feat-043](content-discovery/feat-043-visual-shot-detection-fusion.md)                                         | Video Vectorization — Visual Shot Detection Fusion                                              | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | —          | 45   | —          | cancelled   |

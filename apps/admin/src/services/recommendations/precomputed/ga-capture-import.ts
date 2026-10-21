@@ -1,3 +1,4 @@
+import { subscriptionModelIdSchema } from "./subscription-model"
 import { createHash, randomUUID } from "node:crypto"
 import { statfs } from "node:fs/promises"
 import { tmpdir } from "node:os"
@@ -190,7 +191,7 @@ function requireDestination(generation: Generation, inputDigest: string) {
     generation.protocolVersion !== 4 ||
     generation.inputMode !== "historical_analytics" ||
     generation.executionBackend !== "codex_chatgpt_subscription" ||
-    generation.modelId !== "gpt-6-astra" ||
+    !subscriptionModelIdSchema.safeParse(generation.modelId).success ||
     generation.status !== "incomplete" ||
     !generation.manifestCommittedAt
   )

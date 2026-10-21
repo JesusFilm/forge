@@ -8,6 +8,10 @@ import {
   CANDIDATE_RETRIEVAL_REVISION,
 } from "./candidate-retrieval"
 import { PRECOMPUTED_MODEL_ID } from "./astra-provider"
+import {
+  subscriptionModelIdSchema,
+  type SubscriptionModelId,
+} from "./subscription-model"
 import type { CodexAccountAttestation } from "./codex-local-account"
 import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import {
@@ -93,14 +97,13 @@ type ImportedHistory = Awaited<ReturnType<typeof loadImportedGaWatchHistory>>
 
 export type ManualSubscriptionCatalogInput = {
   invocation: "start" | "resume"
+  modelId?: SubscriptionModelId
   generationId: string
   generationInputDigest: string
   attemptId: string
   inputCutoff: string
   initiatingAccountRef: string
   reviewed: ReviewedCatalog
-  destination: GaImportDestination
-  originGenerationId: string
   work:
     | { mode: "full" }
     | {
@@ -113,7 +116,20 @@ export type ManualSubscriptionCatalogInput = {
     replacementCallId: string
     oldProcessExitedAttested: true
   }
-}
+} & (
+  | {
+      analyticsPolicy?: undefined
+      destination: GaImportDestination
+      originGenerationId: string
+    }
+  | {
+      analyticsPolicy: "disabled_by_operator_v1"
+      modelId: "gpt-6.1-sol"
+      destination?: never
+      originGenerationId?: never
+      recovery?: never
+    }
+)
 
 export type ManualSubscriptionCatalogPorts = {
   catalog: SourceCatalog
@@ -267,6 +283,8 @@ const HEARTBEAT_MS = 5 * 60_000
 const hex = /^[a-f0-9]{64}$/u
 
 export function manualGenerationInputDigest(input: {
+  modelId?: SubscriptionModelId
+  analyticsPolicy?: "disabled_by_operator_v1"
   inputCutoff: string
   videos: readonly Video[]
   selectedCorpusDigest: string
@@ -276,15 +294,21 @@ export function manualGenerationInputDigest(input: {
     version: "manual_subscription_catalog_v1",
     protocolVersion: 4,
     cutoff: input.inputCutoff,
-    inputMode: "historical_analytics",
+    inputMode: input.analyticsPolicy ? "content_only" : "historical_analytics",
     inputSnapshotMode: "observed_fenced",
-    importPolicy: "ga_capture_import_v1",
-    modelId: PRECOMPUTED_MODEL_ID,
+    importPolicy: input.analyticsPolicy ?? "ga_capture_import_v1",
+    modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
     backend: "codex_chatgpt_subscription",
-    promptVersion: BUILD_PROMPT_VERSION,
-    profilePromptVersion: PROFILE_PROMPT_VERSION,
+    promptVersion: input.analyticsPolicy
+      ? "subscription-profile-edge-content-only-v1"
+      : BUILD_PROMPT_VERSION,
+    profilePromptVersion: input.analyticsPolicy
+      ? "complete-profile-v7-priority-anchors"
+      : PROFILE_PROMPT_VERSION,
     profileSchemaVersion: PROFILE_SCHEMA_VERSION,
-    edgePromptVersion: EDGE_PROMPT_VERSION,
+    edgePromptVersion: input.analyticsPolicy
+      ? "shared-edge-content-only-v1"
+      : EDGE_PROMPT_VERSION,
     edgeSchemaVersion: EDGE_SCHEMA_VERSION,
     videos: input.videos,
     sourceSetDigest: digest(input.videos.map((video) => video.id)),
@@ -455,7 +479,7 @@ type ActiveSource = {
   startRank: number
   sourceProfile: ReadyEdgeProfile
   targetsByVideoId: Map<string, { video: Video; profile: ReadyEdgeProfile }>
-  snapshot: HistoricalSnapshot
+  snapshot?: HistoricalSnapshot
   historicalSourceVideoIds?: string[]
   finalized: boolean
 }
@@ -609,11 +633,43 @@ async function sourceProgress(
 /** Explicit invocation only. Every external capability is injected by the local CLI. */
 export async function runManualSubscriptionCatalog(
   input: ManualSubscriptionCatalogInput,
-  ports: ManualSubscriptionCatalogPorts,
+  ports: Omit<ManualSubscriptionCatalogPorts, "importClient" | "loadImport"> &
+    Partial<
+      Pick<ManualSubscriptionCatalogPorts, "importClient" | "loadImport">
+    >,
   options: ManualSubscriptionCatalogOptions = {},
 ): Promise<ManualSubscriptionCatalogResult> {
+  if (
+    !subscriptionModelIdSchema.safeParse(input.modelId ?? PRECOMPUTED_MODEL_ID)
+      .success
+  )
+    throw new ManualSubscriptionCatalogError("input_invalid")
+  const contentOnly = input.analyticsPolicy === "disabled_by_operator_v1"
+  const historicalInput = contentOnly ? null : input
+  if (
+    (input.analyticsPolicy !== undefined && !contentOnly) ||
+    (contentOnly &&
+      (input.modelId !== "gpt-6.1-sol" ||
+        input.destination !== undefined ||
+        input.originGenerationId !== undefined ||
+        input.recovery !== undefined)) ||
+    (!contentOnly && !input.destination)
+  )
+    throw new ManualSubscriptionCatalogError("input_invalid")
+  const buildPromptVersion = contentOnly
+    ? "subscription-profile-edge-content-only-v1"
+    : BUILD_PROMPT_VERSION
+  const profilePromptVersion = contentOnly
+    ? "complete-profile-v7-priority-anchors"
+    : PROFILE_PROMPT_VERSION
+  const edgePromptVersion = contentOnly
+    ? "shared-edge-content-only-v1"
+    : EDGE_PROMPT_VERSION
   const minimumRemainingPercent = options.minimumRemainingPercent ?? 25
-  if (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25)
+  if (
+    (minimumRemainingPercent !== 0 && minimumRemainingPercent !== 25) ||
+    (contentOnly && minimumRemainingPercent !== 25)
+  )
     throw new ManualSubscriptionCatalogError("input_invalid")
   const concurrency = options.concurrency ?? 1
   if (
@@ -625,18 +681,22 @@ export async function runManualSubscriptionCatalog(
     throw new ManualSubscriptionCatalogError("input_invalid")
   if (
     !id.safeParse(input.generationId).success ||
-    !id.safeParse(input.originGenerationId).success ||
-    input.generationId === input.originGenerationId ||
     !z.uuid().safeParse(input.attemptId).success ||
     !z.string().datetime().safeParse(input.inputCutoff).success ||
     !hex.test(input.generationInputDigest) ||
-    input.destination.generationId !== input.generationId ||
-    input.destination.generationInputDigest !== input.generationInputDigest ||
-    input.destination.inputCutoff !== input.inputCutoff ||
-    input.destination.sourceSetDigest !== input.reviewed.sourceSetDigest ||
-    input.destination.selectedCorpusDigest !==
-      input.reviewed.selectedCorpusDigest ||
-    input.destination.candidatePoolDigest !== input.reviewed.candidatePoolDigest
+    (historicalInput !== null &&
+      (!id.safeParse(historicalInput.originGenerationId).success ||
+        input.generationId === historicalInput.originGenerationId ||
+        historicalInput.destination.generationId !== input.generationId ||
+        historicalInput.destination.generationInputDigest !==
+          input.generationInputDigest ||
+        historicalInput.destination.inputCutoff !== input.inputCutoff ||
+        historicalInput.destination.sourceSetDigest !==
+          input.reviewed.sourceSetDigest ||
+        historicalInput.destination.selectedCorpusDigest !==
+          input.reviewed.selectedCorpusDigest ||
+        historicalInput.destination.candidatePoolDigest !==
+          input.reviewed.candidatePoolDigest))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
   if (
@@ -678,6 +738,8 @@ export async function runManualSubscriptionCatalog(
   )
   if (
     manualGenerationInputDigest({
+      modelId: input.modelId,
+      analyticsPolicy: input.analyticsPolicy,
       inputCutoff: input.inputCutoff,
       videos: frozen.videos,
       selectedCorpusDigest: frozen.retrieval.selectedCorpusDigest,
@@ -685,6 +747,8 @@ export async function runManualSubscriptionCatalog(
     }) !== input.generationInputDigest
   )
     throw new ManualSubscriptionCatalogError("catalog_mismatch")
+  if (!contentOnly && (!ports.importClient || !ports.loadImport))
+    throw new ManualSubscriptionCatalogError("input_invalid")
   const byId = new Map(frozen.videos.map((video) => [video.id, video]))
   const work =
     input.work.mode === "full"
@@ -731,9 +795,9 @@ export async function runManualSubscriptionCatalog(
       video: target,
       chunks: selected.chunks,
       maxPartBytes: MAX_PROFILE_PART_BYTES,
-      modelId: PRECOMPUTED_MODEL_ID,
+      modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
       backend: "codex_chatgpt_subscription",
-      promptVersion: PROFILE_PROMPT_VERSION,
+      promptVersion: profilePromptVersion,
       schemaVersion: PROFILE_SCHEMA_VERSION,
     })
     if (
@@ -808,7 +872,7 @@ export async function runManualSubscriptionCatalog(
   const attestation = await ports.readAttestation()
   if (
     attestation.admission !== "admitted" ||
-    attestation.modelId !== PRECOMPUTED_MODEL_ID ||
+    attestation.modelId !== (input.modelId ?? PRECOMPUTED_MODEL_ID) ||
     attestation.identity.accountRef !== input.initiatingAccountRef ||
     attestation.allowance.accountRef !== input.initiatingAccountRef ||
     attestation.allowance.billingBasis !== "included_subscription" ||
@@ -835,7 +899,7 @@ export async function runManualSubscriptionCatalog(
     backend: "codex_chatgpt_subscription" as const,
     billingBasis: "included_subscription" as const,
     authMethod: "chatgpt" as const,
-    modelId: PRECOMPUTED_MODEL_ID,
+    modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
     identityObservedAt: attestation.identity.observedAt,
     allowanceObservedAt: attestation.allowance.observedAt,
     weeklyRemainingPercent: attestation.allowance.weeklyRemainingPercent,
@@ -851,54 +915,61 @@ export async function runManualSubscriptionCatalog(
     generationId: input.generationId,
     generationInputDigest: input.generationInputDigest,
   }
-  const importState =
-    input.invocation === "resume"
-      ? await ports.importClient.status({ destination: input.destination })
-      : await ports.importClient.probeOrigin({
-          originGenerationId: input.originGenerationId,
-        })
-  if (
-    input.invocation === "resume" &&
-    (!("state" in importState) ||
-      (importState.state !== "bound" &&
-        importState.state !== "absent" &&
-        importState.state !== "prepared") ||
-      (importState.state === "prepared" &&
-        importState.preparedDigest !==
-          gaImportPreparedDigest(input.destination)))
-  )
-    throw new ManualSubscriptionCatalogError("import_unavailable")
-  const originProof =
-    "origin" in importState
-      ? importState
-      : importState.state === "absent" || importState.state === "prepared"
-        ? await ports.importClient.probeOrigin({
-            originGenerationId: input.originGenerationId,
+  const originProof = await (async () => {
+    if (!historicalInput) return null
+    const importState =
+      input.invocation === "resume"
+        ? await ports.importClient!.status({
+            destination: historicalInput.destination,
           })
-        : null
-  if (originProof) {
-    const origin = originProof.origin
-    const destination = input.destination
+        : await ports.importClient!.probeOrigin({
+            originGenerationId: historicalInput.originGenerationId,
+          })
     if (
-      origin.generationId !== input.originGenerationId ||
-      origin.sourceSetDigest !== destination.sourceSetDigest ||
-      origin.inputCutoff !== destination.inputCutoff ||
-      origin.selectedCorpusDigest !== destination.selectedCorpusDigest ||
-      origin.routeMappingDigest !== destination.routeMappingDigest ||
-      origin.sourcePatternTableDigest !==
-        destination.sourcePatternTableDigest ||
-      origin.querySpecDigest !== destination.querySpecDigest ||
-      origin.propertyId !== destination.propertyId ||
-      origin.propertyTimeZone !== destination.propertyTimeZone ||
-      origin.requestedStart !== destination.requestedStart ||
-      origin.requestedEnd !== destination.requestedEnd ||
-      origin.usableStart !== destination.usableStart ||
-      origin.usableEnd !== destination.usableEnd ||
-      origin.requestedCoverageDigest !== destination.requestedCoverageDigest ||
-      origin.usableCoverageDigest !== destination.usableCoverageDigest
+      input.invocation === "resume" &&
+      (!("state" in importState) ||
+        (importState.state !== "bound" &&
+          importState.state !== "absent" &&
+          importState.state !== "prepared") ||
+        (importState.state === "prepared" &&
+          importState.preparedDigest !==
+            gaImportPreparedDigest(historicalInput.destination)))
     )
       throw new ManualSubscriptionCatalogError("import_unavailable")
-  }
+    const proof =
+      "origin" in importState
+        ? importState
+        : importState.state === "absent" || importState.state === "prepared"
+          ? await ports.importClient!.probeOrigin({
+              originGenerationId: historicalInput.originGenerationId,
+            })
+          : null
+    if (proof) {
+      const origin = proof.origin
+      const destination = historicalInput.destination
+      if (
+        origin.generationId !== historicalInput.originGenerationId ||
+        origin.sourceSetDigest !== destination.sourceSetDigest ||
+        origin.inputCutoff !== destination.inputCutoff ||
+        origin.selectedCorpusDigest !== destination.selectedCorpusDigest ||
+        origin.routeMappingDigest !== destination.routeMappingDigest ||
+        origin.sourcePatternTableDigest !==
+          destination.sourcePatternTableDigest ||
+        origin.querySpecDigest !== destination.querySpecDigest ||
+        origin.propertyId !== destination.propertyId ||
+        origin.propertyTimeZone !== destination.propertyTimeZone ||
+        origin.requestedStart !== destination.requestedStart ||
+        origin.requestedEnd !== destination.requestedEnd ||
+        origin.usableStart !== destination.usableStart ||
+        origin.usableEnd !== destination.usableEnd ||
+        origin.requestedCoverageDigest !==
+          destination.requestedCoverageDigest ||
+        origin.usableCoverageDigest !== destination.usableCoverageDigest
+      )
+        throw new ManualSubscriptionCatalogError("import_unavailable")
+    }
+    return proof
+  })()
   let attempted = false
   let imported: ImportedHistory | undefined
   let completedSourceCount = 0
@@ -1042,9 +1113,9 @@ export async function runManualSubscriptionCatalog(
         action: "start",
         protocolVersion: 4,
         generationId: input.generationId,
-        modelId: PRECOMPUTED_MODEL_ID,
-        promptVersion: BUILD_PROMPT_VERSION,
-        inputMode: "historical_analytics",
+        modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
+        promptVersion: buildPromptVersion,
+        inputMode: contentOnly ? "content_only" : "historical_analytics",
         inputSnapshotMode: "observed_fenced",
         inputDigest: input.generationInputDigest,
         sourceSetDigest: input.reviewed.sourceSetDigest,
@@ -1078,31 +1149,33 @@ export async function runManualSubscriptionCatalog(
         throw new ManualSubscriptionCatalogError("admin_unavailable")
     }
     await refreshCapacity(true)
-    if (originProof) {
-      await ports.importClient.prepare({
-        destination: input.destination,
-        attemptId: input.attemptId,
+    if (historicalInput) {
+      if (originProof) {
+        await ports.importClient!.prepare({
+          destination: historicalInput.destination,
+          attemptId: input.attemptId,
+        })
+        const bound = await ports.importClient!.copyBind({
+          destination: historicalInput.destination,
+          attemptId: input.attemptId,
+          origin: originProof.origin,
+          originProofDigest: originProof.originProofDigest,
+        })
+        if (bound.state !== "bound")
+          throw new ManualSubscriptionCatalogError("import_unavailable")
+      }
+      imported = await ports.loadImport!(historicalInput.destination)
+      const boundStatus = await ports.importClient!.status({
+        destination: historicalInput.destination,
       })
-      const bound = await ports.importClient.copyBind({
-        destination: input.destination,
-        attemptId: input.attemptId,
-        origin: originProof.origin,
-        originProofDigest: originProof.originProofDigest,
-      })
-      if (bound.state !== "bound")
+      if (
+        boundStatus.state !== "bound" ||
+        boundStatus.importBinding.bindingDigest !==
+          imported.importBinding.bindingDigest ||
+        boundStatus.qualificationDigest !== imported.qualificationDigest
+      )
         throw new ManualSubscriptionCatalogError("import_unavailable")
     }
-    imported = await ports.loadImport(input.destination)
-    const boundStatus = await ports.importClient.status({
-      destination: input.destination,
-    })
-    if (
-      boundStatus.state !== "bound" ||
-      boundStatus.importBinding.bindingDigest !==
-        imported.importBinding.bindingDigest ||
-      boundStatus.qualificationDigest !== imported.qualificationDigest
-    )
-      throw new ManualSubscriptionCatalogError("import_unavailable")
     if (input.generationId === RECOVERY_GENERATION_ID && !input.recovery) {
       const recoveryStatus = await ports.edgePersistence.status({
         action: "edge_batch_status",
@@ -1171,9 +1244,9 @@ export async function runManualSubscriptionCatalog(
         inputCutoff: input.inputCutoff,
         video,
         catalog: frozen.catalog,
-        modelId: PRECOMPUTED_MODEL_ID,
+        modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
         backend: "codex_chatgpt_subscription",
-        promptVersion: PROFILE_PROMPT_VERSION,
+        promptVersion: profilePromptVersion,
         schemaVersion: PROFILE_SCHEMA_VERSION,
         maxPartBytes: MAX_PROFILE_PART_BYTES,
         model: admittedModel,
@@ -1210,8 +1283,8 @@ export async function runManualSubscriptionCatalog(
         if (!byId.has(sourceVideoId))
           throw new ManualSubscriptionCatalogError("import_unavailable")
         const snapshot = await readHistoricalSnapshot({
-          reader: importedHistory.reader,
-          definition: importedHistory.definition,
+          reader: importedHistory!.reader,
+          definition: importedHistory!.definition,
           catalog: frozen.videos,
           routeCatalog: frozen.videos,
           sourceVideoId,
@@ -1224,9 +1297,9 @@ export async function runManualSubscriptionCatalog(
         if (
           provenance.captureMode !== "imported_capture_derived_v1" ||
           provenance.importBindingDigest !==
-            importedHistory.importBinding.bindingDigest ||
+            importedHistory!.importBinding.bindingDigest ||
           provenance.artifactSha256 !==
-            importedHistory.importBinding.copy.artifactSha256 ||
+            importedHistory!.importBinding.copy.artifactSha256 ||
           !provenance.derivedSubsetDigest ||
           provenance.queryExecutionCount !== 0 ||
           !provenance.navigationCoverage
@@ -1242,8 +1315,7 @@ export async function runManualSubscriptionCatalog(
         const orderedCandidateIds = frozen.retrieval.candidateIdsBySource.get(
           source.id,
         )!
-        const snapshot = await snapshotFor(source.id)
-        const provenance = snapshot.provenance
+        const snapshot = contentOnly ? undefined : await snapshotFor(source.id)
         const claimed = await send(claimReply, {
           action: "claim",
           ...scope,
@@ -1272,107 +1344,129 @@ export async function runManualSubscriptionCatalog(
           throw new ManualSubscriptionCatalogError("admin_unavailable")
         activeLeases.set(source.id, claimed.leaseToken)
         lastHeartbeatAt.set(source.id, 0)
-        const history = {
-          evidenceKind: "referrer_navigation_v1",
-          sourceResource: "properties/320198532",
-          queryId: importedHistory.definition.queryId,
-          rangeStart: importedHistory.definition.rangeStart,
-          rangeEnd: importedHistory.definition.rangeEnd,
-          resultDigest: provenance.resultDigest,
-          rowCount: provenance.rowCount,
-          mappedRows: provenance.mappedRows,
-          unmappedRows: provenance.unmappedRows,
-          pageCount: provenance.pageCount,
-          queryExecutionCount: 0,
-          navigationCoverage: provenance.navigationCoverage,
-          qualificationDigest: importedHistory.qualificationDigest,
-          captureMode: "imported_capture_derived_v1",
-          importBindingDigest: importedHistory.importBinding.bindingDigest,
-          artifactSha256: importedHistory.importBinding.copy.artifactSha256,
-          derivedSubsetDigest: provenance.derivedSubsetDigest,
-          pageCountKind: "virtual_validation",
-          status: "complete",
-        }
-        const historySummary = {
-          resultDigest: history.resultDigest,
-          rowCount: history.rowCount,
-          mappedRows: history.mappedRows,
-          unmappedRows: history.unmappedRows,
-          pageCount: history.pageCount,
-          queryExecutionCount: history.queryExecutionCount,
-          navigationCoverage: history.navigationCoverage,
-          captureMode: history.captureMode,
-          importBindingDigest: history.importBindingDigest,
-          artifactSha256: history.artifactSha256,
-          derivedSubsetDigest: history.derivedSubsetDigest,
-          pageCountKind: history.pageCountKind,
-        }
         let checkpointRevision = claimed.checkpointRevision
         let appliedCandidateIndex: number | undefined
-        if (claimed.checkpoint === null) {
-          if (checkpointRevision !== 0 || claimed.historicalProvenance !== null)
+        if (contentOnly) {
+          if (claimed.historicalProvenance !== null)
             throw new ManualSubscriptionCatalogError("source_failed")
-          const checkpoint = await send(checkpointReply, {
-            action: "checkpoint",
-            ...scope,
-            attemptId: input.attemptId,
-            sourceVideoId: source.id,
-            leaseToken: claimed.leaseToken,
-            expectedRevision: checkpointRevision,
-            checkpointId: randomUUID(),
-            checkpoint: {
-              stage: "subscription_imported_history_ready",
-              cursor: {},
-              historySummary,
-            },
-          })
-          if (
-            checkpoint.generationId !== input.generationId ||
-            checkpoint.checkpointRevision !== checkpointRevision + 1
-          )
-            throw new ManualSubscriptionCatalogError("admin_unavailable")
-          checkpointRevision = checkpoint.checkpointRevision
-        } else {
-          const applied = appliedEdgeCheckpoint.safeParse(claimed.checkpoint)
-          if (applied.success) {
+          if (claimed.checkpoint === null) {
+            if (checkpointRevision !== 0)
+              throw new ManualSubscriptionCatalogError("source_failed")
+          } else {
+            const applied = appliedEdgeCheckpoint.safeParse(claimed.checkpoint)
             if (
-              checkpointRevision < 2 ||
-              claimed.historicalProvenance === null ||
+              !applied.success ||
+              checkpointRevision < 1 ||
               applied.data.cursor.candidateIndex > orderedCandidateIds.length
             )
               throw new ManualSubscriptionCatalogError("source_failed")
             appliedCandidateIndex = applied.data.cursor.candidateIndex
-          } else {
-            const previous = z
-              .object({
-                stage: z.literal("subscription_imported_history_ready"),
-                cursor: z.object({}).strict(),
-                historySummary: z.unknown(),
-              })
-              .strict()
-              .safeParse(claimed.checkpoint)
+          }
+        } else {
+          const provenance = snapshot!.provenance
+          const history = {
+            evidenceKind: "referrer_navigation_v1",
+            sourceResource: "properties/320198532",
+            queryId: importedHistory!.definition.queryId,
+            rangeStart: importedHistory!.definition.rangeStart,
+            rangeEnd: importedHistory!.definition.rangeEnd,
+            resultDigest: provenance.resultDigest,
+            rowCount: provenance.rowCount,
+            mappedRows: provenance.mappedRows,
+            unmappedRows: provenance.unmappedRows,
+            pageCount: provenance.pageCount,
+            queryExecutionCount: 0,
+            navigationCoverage: provenance.navigationCoverage,
+            qualificationDigest: importedHistory!.qualificationDigest,
+            captureMode: "imported_capture_derived_v1",
+            importBindingDigest: importedHistory!.importBinding.bindingDigest,
+            artifactSha256: importedHistory!.importBinding.copy.artifactSha256,
+            derivedSubsetDigest: provenance.derivedSubsetDigest,
+            pageCountKind: "virtual_validation",
+            status: "complete",
+          }
+          const historySummary = {
+            resultDigest: history.resultDigest,
+            rowCount: history.rowCount,
+            mappedRows: history.mappedRows,
+            unmappedRows: history.unmappedRows,
+            pageCount: history.pageCount,
+            queryExecutionCount: history.queryExecutionCount,
+            navigationCoverage: history.navigationCoverage,
+            captureMode: history.captureMode,
+            importBindingDigest: history.importBindingDigest,
+            artifactSha256: history.artifactSha256,
+            derivedSubsetDigest: history.derivedSubsetDigest,
+            pageCountKind: history.pageCountKind,
+          }
+          if (claimed.checkpoint === null) {
             if (
-              checkpointRevision < 1 ||
-              !previous.success ||
-              !sameCanonicalJson(previous.data.historySummary, historySummary)
+              checkpointRevision !== 0 ||
+              claimed.historicalProvenance !== null
             )
               throw new ManualSubscriptionCatalogError("source_failed")
+            const checkpoint = await send(checkpointReply, {
+              action: "checkpoint",
+              ...scope,
+              attemptId: input.attemptId,
+              sourceVideoId: source.id,
+              leaseToken: claimed.leaseToken,
+              expectedRevision: checkpointRevision,
+              checkpointId: randomUUID(),
+              checkpoint: {
+                stage: "subscription_imported_history_ready",
+                cursor: {},
+                historySummary,
+              },
+            })
+            if (
+              checkpoint.generationId !== input.generationId ||
+              checkpoint.checkpointRevision !== checkpointRevision + 1
+            )
+              throw new ManualSubscriptionCatalogError("admin_unavailable")
+            checkpointRevision = checkpoint.checkpointRevision
+          } else {
+            const applied = appliedEdgeCheckpoint.safeParse(claimed.checkpoint)
+            if (applied.success) {
+              if (
+                checkpointRevision < 2 ||
+                claimed.historicalProvenance === null ||
+                applied.data.cursor.candidateIndex > orderedCandidateIds.length
+              )
+                throw new ManualSubscriptionCatalogError("source_failed")
+              appliedCandidateIndex = applied.data.cursor.candidateIndex
+            } else {
+              const previous = z
+                .object({
+                  stage: z.literal("subscription_imported_history_ready"),
+                  cursor: z.object({}).strict(),
+                  historySummary: z.unknown(),
+                })
+                .strict()
+                .safeParse(claimed.checkpoint)
+              if (
+                checkpointRevision < 1 ||
+                !previous.success ||
+                !sameCanonicalJson(previous.data.historySummary, historySummary)
+              )
+                throw new ManualSubscriptionCatalogError("source_failed")
+            }
           }
-        }
-        if (claimed.historicalProvenance !== null) {
-          if (!sameCanonicalJson(claimed.historicalProvenance, history))
-            throw new ManualSubscriptionCatalogError("source_failed")
-        } else {
-          const savedHistory = await send(scopeReply, {
-            action: "source_history",
-            ...scope,
-            attemptId: input.attemptId,
-            sourceVideoId: source.id,
-            leaseToken: claimed.leaseToken,
-            history,
-          })
-          if (savedHistory.generationId !== input.generationId)
-            throw new ManualSubscriptionCatalogError("admin_unavailable")
+          if (claimed.historicalProvenance !== null) {
+            if (!sameCanonicalJson(claimed.historicalProvenance, history))
+              throw new ManualSubscriptionCatalogError("source_failed")
+          } else {
+            const savedHistory = await send(scopeReply, {
+              action: "source_history",
+              ...scope,
+              attemptId: input.attemptId,
+              sourceVideoId: source.id,
+              leaseToken: claimed.leaseToken,
+              history,
+            })
+            if (savedHistory.generationId !== input.generationId)
+              throw new ManualSubscriptionCatalogError("admin_unavailable")
+          }
         }
         const targetsByVideoId = new Map<
           string,
@@ -1426,7 +1520,7 @@ export async function runManualSubscriptionCatalog(
         )
         .map((source) => source.source.id)
         .sort()
-      for (const source of active) {
+      for (const source of contentOnly ? [] : active) {
         source.historicalSourceVideoIds ??=
           source.orderedCandidateIds.length === 0
             ? [source.source.id]
@@ -1490,10 +1584,12 @@ export async function runManualSubscriptionCatalog(
             inputCutoff: input.inputCutoff,
             selectedCorpusDigest: input.reviewed.selectedCorpusDigest,
             candidatePoolDigest: input.reviewed.candidatePoolDigest,
-            captureRefDigest: importedHistory.importBinding.bindingDigest,
-            modelId: PRECOMPUTED_MODEL_ID,
+            captureRefDigest: contentOnly
+              ? null
+              : importedHistory!.importBinding.bindingDigest,
+            modelId: input.modelId ?? PRECOMPUTED_MODEL_ID,
             backend: "codex_chatgpt_subscription",
-            promptVersion: EDGE_PROMPT_VERSION,
+            promptVersion: edgePromptVersion,
             schemaVersion: EDGE_SCHEMA_VERSION,
             members,
             catalog: frozen.catalog,

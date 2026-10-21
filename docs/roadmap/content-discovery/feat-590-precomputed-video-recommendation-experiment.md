@@ -18,6 +18,14 @@ tags:
 
 ## Problem
 
+October 19 supersession: new catalog generation uses the existing profile/candidate
+architecture with exact `gpt-6.1-sol`, intentionally without Google Analytics
+input. See `feat-739` and `docs/plans/2026-10-19-sol-profile-generation.md`.
+The stopped Astra runs and their known/unknown usage remain preserved; older
+resume instructions below do not authorize restarting them. Private completion
+is separate from Sol/content-only experiment readiness (`feat-740`) and public
+activation. Product analytics and experiment measurement remain in place.
+
 October 15: the owner authorized using all remaining included subscription
 allowance. Add an explicit zero-reserve local option while preserving the 25%
 default, exhaustion checks and unchanged generation inputs. Resume from the
