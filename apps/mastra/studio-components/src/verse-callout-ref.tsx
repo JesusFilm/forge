@@ -110,6 +110,11 @@ export default function VerseCalloutRef(props: Props) {
   const [open, close] = cyrillic ? ["«", "»"] : ["“", "”"]
   const size = fitSize(`${open}${text}${close}`, props.width, props.maxHeight, props.maxFontSize)
   const u = size / 56
+  // The lit phrase turns gold with its rule, at the verse's weight (owner,
+  // 2026-10-21; the long form does the same since 2026-10-19).
+  // White to GOLD (242,196,107); Studio components cannot import
+  // interpolateColors, so mix by hand.
+  const litColor = `rgb(${Math.round(255 - 13 * lit)},${Math.round(255 - 59 * lit)},${Math.round(255 - 148 * lit)})`
   // What follows the lit phrase up to the next space ("forgiven.’") stays
   // glued to it, and the verse's last word keeps the closing quote, so a
   // quote mark never wraps onto a line of its own (owner, 2026-10-21).
@@ -166,7 +171,7 @@ export default function VerseCalloutRef(props: Props) {
             {/* The lit phrase keeps the punctuation after it (and the closing
                 quote when it ends the verse) on its line. */}
             <span style={{ whiteSpace: "nowrap" }}>
-              <span style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap", color: "#ffffff" }}>
+              <span style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap", color: litColor }}>
                 {word}
                 <span
                   style={{

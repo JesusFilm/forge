@@ -99,9 +99,9 @@ Ivo `hD8aK7CmEPgH3mbFO08e` (Russian).
 
 Figma: Daily Bible Pause, Grid page, section "Paralytic · vertical: credit + verse card + line together" (node 614:2). When a verse card and a source credit are on screen together:
 
-- verse card on top: `verse-callout-ref-en-v2`, top 296, width 760, reference in gold caps, opacity 0.9, Literata Light Italic; only for the sentences that talk about the verse (`calloutSentences`), and the sentence starts at least 60 px under it;
+- verse card on top: `verse-callout-ref-en-v3` (the lit word in gold), top 296, width 760, reference in gold caps, opacity 0.9, Literata Light Italic; only for the sentences that talk about the verse (`calloutSentences`), and the sentence starts at least 60 px under it;
 - the sentence: `reveal-sans-en-v1`, align center, low on the screen like the Figma: its bottom at 1348 when there is no credit, or 44 px above the credit's line; 58 px Inter runs about 85 px a line;
 - under it `source-mark-compact-v2`, emblemSize 55, top = 1440 minus the block height (237 for a two-line source, 197 for one): the gold line draws left to right, then the emblem, the label, and the source name from above;
 - behind the whole reflection: `backdrop-blur-v3` 8 px, scrim 0.46 (the long form's portrait reflection blur), instead of `film-look-v1`.
 
-Reference project: `paralytic-devotional-vertical-en-20261021` (rev 11). The generator still lays out the older A arrangement (credit above the sentence); switch it before the next build.
+Reference project: `paralytic-devotional-vertical-en-20261021` (rev 12). The generator still lays out the older A arrangement (credit above the sentence); switch it before the next build.

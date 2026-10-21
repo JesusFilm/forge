@@ -1045,8 +1045,104 @@
       }
     },
     {
+      "versionId": "verse-callout-ref-en-v3",
+      "purpose": "Layout B verse card, as v2 plus: the lit phrase turns gold (#f2c46b) as its rule draws, like the long form since 2026-10-19 (owner, 2026-10-21). Width 760, only for the sentences that talk about the verse, sentence at least 60 px under it.",
+      "language": "english",
+      "built": "dist/verse-callout-ref-en.tsx",
+      "source": "src/verse-callout-ref.tsx",
+      "example": {
+        "reference": "LUKE 5:21",
+        "opacity": 0.9,
+        "text": "But the scribes and Pharisees began thinking to themselves, ‘Who is this man who speaks blasphemy? Who can forgive sins but God alone?’",
+        "highlight": "blasphemy",
+        "top": 296,
+        "width": 760,
+        "maxHeight": 420,
+        "maxFontSize": 56,
+        "litAtSec": 1.2,
+        "fadeOutSec": 0.5
+      },
+      "registration": {
+        "versionId": "verse-callout-ref-en-v3",
+        "category": "text",
+        "name": "Verse card with reference (gold lit word)",
+        "code": {
+          "assetId": "1b324390-ebdd-43c3-b6c1-5e06a63d921d",
+          "versionId": "cmvi3guez6ni0l10sddjsjm8r",
+          "digest": "4981ba938d79ee6cba77cca3d144c9d14ded3594d78b5f20413a4e4e255b2dc5"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "reference": {
+            "type": "text",
+            "maxLength": 40
+          },
+          "opacity": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "maxHeight": {
+            "type": "number",
+            "min": 60,
+            "max": 1200
+          },
+          "maxFontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "litAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 60
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
       "versionId": "verse-callout-ref-en-v2",
-      "purpose": "Layout B verse card, as v1 plus: the lit phrase keeps the punctuation after it, and the verse's last word keeps the closing quote, so no quote mark wraps onto its own line (owner, 2026-10-21). Width 760 (owner asked for a narrower card). Show it only for the sentences that talk about the verse (calloutSentences rule, 2026-10-21), and keep the sentence's top at least 60 px under the card's bottom (296 + 65 + lines x size x 1.25). Render-tested in layout-b2-credit-test-20261021.",
+      "purpose": "Superseded by verse-callout-ref-en-v3 (lit word gold). Layout B verse card, as v1 plus: the lit phrase keeps the punctuation after it, and the verse's last word keeps the closing quote, so no quote mark wraps onto its own line (owner, 2026-10-21). Width 760 (owner asked for a narrower card). Show it only for the sentences that talk about the verse (calloutSentences rule, 2026-10-21), and keep the sentence's top at least 60 px under the card's bottom (296 + 65 + lines x size x 1.25). Render-tested in layout-b2-credit-test-20261021.",
       "language": "english",
       "built": "dist/verse-callout-ref-en.tsx",
       "source": "src/verse-callout-ref.tsx",
