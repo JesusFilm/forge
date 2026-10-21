@@ -251,7 +251,7 @@ describe("persistent native project wiring", () => {
     expect(project.writeSync()).toBe(once)
   })
 
-  it("generates separate extension plists, copies Swift source and leaves app transport config unchanged", () => {
+  it("generates ARM64 extension plists, copies Swift source and leaves app transport config unchanged", () => {
     process.env.TV_TOP_SHELF_FEED_URL = "http://127.0.0.1:8098/top-shelf"
     process.env.TV_TOP_SHELF_FEED_LOCAL_QA = "1"
     const directory = fs.mkdtempSync(
@@ -262,6 +262,15 @@ describe("persistent native project wiring", () => {
     const ios = path.join(root, "ios")
     const source = path.join(root, "top-shelf")
     fs.mkdirSync(source, { recursive: true })
+    const extensionTemplate = {
+      ...plist.parse(
+        fs.readFileSync(
+          path.join(__dirname, "../top-shelf/Info.plist"),
+          "utf8",
+        ),
+      ),
+      ...template,
+    }
     const fixtureFiles = [
       "ContentProvider.swift",
       "TopShelfFeed.swift",
@@ -275,7 +284,9 @@ describe("persistent native project wiring", () => {
     for (const file of fixtureFiles)
       fs.writeFileSync(
         path.join(source, file),
-        file === "Info.plist" ? plist.build(template) : `fixture-${file}`,
+        file === "Info.plist"
+          ? plist.build(extensionTemplate)
+          : `fixture-${file}`,
       )
     const config = plugin(JSON.parse(JSON.stringify(appConfig)))
     const project = projectFixture()
@@ -290,6 +301,8 @@ describe("persistent native project wiring", () => {
     const release = plist.parse(
       fs.readFileSync(path.join(destination, "Info.plist"), "utf8"),
     )
+    expect(debug.UIRequiredDeviceCapabilities).toEqual(["arm64"])
+    expect(release.UIRequiredDeviceCapabilities).toEqual(["arm64"])
     expect(debug.ForgeTopShelfFeedURL).toBe(process.env.TV_TOP_SHELF_FEED_URL)
     expect(debug.ForgeTopShelfAllowLocalFeed).toBe(true)
     expect(release).not.toHaveProperty("ForgeTopShelfFeedURL")
