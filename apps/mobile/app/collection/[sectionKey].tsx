@@ -13,7 +13,10 @@ import { Image } from "expo-image"
 import { VideoView } from "expo-video"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
+import {
+  useExperienceContext,
+  useSectionByKey,
+} from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
 import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
@@ -171,15 +174,31 @@ function CollectionPlayerContent({
   }, [currentIndex, items])
 
   const activeVideoId = items[currentIndex]?.videoId ?? null
-  const { player, isPlaying } = useManagedVideoPlayer(
+  // R15: the record title the provider loads, never the item's titleOverride.
+  const { getVideoTitle } = useExperienceContext()
+  const { player, isPlaying, muxMonitor } = useManagedVideoPlayer(
     activeStreamingUrl,
     undefined,
     {
       // KTD5 opt-in: identity re-keys with the active pager item, flushing
       // the departing episode inside the adapter.
       progress: activeVideoId ? { videoId: activeVideoId } : null,
+      muxData: activeVideoId
+        ? {
+            surface: "experience",
+            identity: {
+              videoId: activeVideoId,
+              videoSlug: null,
+              title: getVideoTitle(activeVideoId),
+            },
+          }
+        : null,
     },
   )
+
+  useEffect(() => {
+    muxMonitor.setPlayerSize({ width: screenWidth, height: playerHeight })
+  }, [muxMonitor, screenWidth, playerHeight])
 
   // Autostarts behind a poster + spinner, the same as every other player
   // surface. Opening this screen IS the viewer asking to watch, so it must not

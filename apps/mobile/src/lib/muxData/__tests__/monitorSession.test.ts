@@ -154,6 +154,15 @@ describe("monitor session: attach (KTD4)", () => {
     expect(calls).toEqual([])
   })
 
+  it("attaches a later stream before its load once the id was read", async () => {
+    const { session: s, calls } = session()
+    s.onStream(TRAILER, null)
+    await flush()
+    s.onStream(EPISODE, watch({ videoId: "doc-3", videoSlug: "episode-1" }))
+    // Synchronous: the caller starts the load right after this returns.
+    expect(ops(calls)).toEqual(["attach"])
+  })
+
   it("passes the latest player size into the attach", async () => {
     const { session: s, calls } = session()
     s.setPlayerSize({ width: 390, height: 219 })

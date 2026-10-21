@@ -88,6 +88,14 @@ export function createMonitorSession(
   // Adapter swaps and error reloads; the hook's isSwappingRef stays the QoE's.
   let latestLoad = 0
   let released = false
+  // Read at creation, so an attach after the first stream (an episode after
+  // the trailer) finds the id and lands before its load (KTD4).
+  const viewerIdRead = deps.getViewerId().then((id) => {
+    viewerId = id
+  })
+  viewerIdRead.catch(() => {
+    // The store resolves from memory after a fault; this is a backstop.
+  })
 
   const monitored = (stream: LoadedStream | null): stream is LoadedStream =>
     stream != null &&
@@ -124,19 +132,15 @@ export function createMonitorSession(
   function attach(): void {
     attachGeneration += 1
     const generation = attachGeneration
-    // Known after the first wait, so a later attach lands before the load.
     if (viewerId != null) {
       bind()
       return
     }
-    deps.getViewerId().then(
-      (id) => {
-        viewerId = id
+    viewerIdRead.then(
+      () => {
         if (generation === attachGeneration) bind()
       },
-      () => {
-        // The store resolves from memory after a fault; this is a backstop.
-      },
+      () => {},
     )
   }
 
