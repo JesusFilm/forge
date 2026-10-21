@@ -59,10 +59,11 @@ ask first.
 
 ## Known limits (2026-10-21)
 
-- Background blur: the blur element only darkens the footage now; Studio no
-  longer blurs video under a component.
-- Slowed footage longer than a few seconds fails to render, so backdrops play
-  at normal speed.
+- Background blur works with `backdrop-blur-v4`. v3 drew its grain with
+  mix-blend-mode overlay, which switched the blur off (blur-grain-test-20261021).
+- Slowed footage now renders (10 s at 0.7x, slow-video-test-20261021), but the
+  builder still lays backdrops at normal speed; a long reflection made of many
+  slowed pieces is not tested yet.
 - Word times for a film scene come from `cues.json`. A scene that is not
   there yet needs its cue file made (`make-film-cues.py`, which runs on a
   computer with the film and whisper).

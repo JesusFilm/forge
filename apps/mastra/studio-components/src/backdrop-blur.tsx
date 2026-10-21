@@ -42,14 +42,16 @@ export default function BackdropBlur(props: Props) {
       />
       {props.grain > 0 ? (
         // Grain without SVG (a feTurbulence filter made the Studio render
-        // fail, 2026-10-16): two fine offset dot patterns, overlay-blended,
-        // shifted a step every frame so the dither does not sit still.
+        // fail, 2026-10-16): two fine offset dot patterns shifted a step
+        // every frame so the dither does not sit still. No mix-blend-mode:
+        // an overlay-blended sibling switched the backdrop blur off entirely
+        // (render test blur-grain-test-20261021), so the dots are plain and
+        // fainter instead.
         <div
           style={{
             position: "absolute",
             inset: 0,
-            opacity: props.grain * 0.5,
-            mixBlendMode: "overlay",
+            opacity: props.grain * 0.22,
             backgroundImage:
               "radial-gradient(rgba(255,255,255,0.5) 0.6px, transparent 1px), radial-gradient(rgba(0,0,0,0.6) 0.6px, transparent 1px)",
             backgroundSize: "3px 3px, 4px 4px",
