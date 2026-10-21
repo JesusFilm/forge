@@ -373,17 +373,22 @@
     border-radius: 4px;
     border: 1.5px dashed var(--flame);
   }
+  /* Scheduled = uploaded and waiting: bright white dashes + a clock, not a warning colour. */
+  .tile.scheduled .pic::after {
+    border-color: #fff;
+  }
   .tile.scheduled .pic::before {
     content: "";
     position: absolute;
     z-index: 1;
     top: 3px;
     right: 3px;
-    width: 9px;
-    height: 9px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
-    background: var(--flame);
-    box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.55)
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.2'/%3E%3Cpath d='M8 4.6V8l2.3 1.5'/%3E%3C/svg%3E")
+      center / 11px no-repeat;
   }
   .tile.planned .pic {
     background: repeating-linear-gradient(
