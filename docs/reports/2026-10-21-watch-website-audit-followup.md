@@ -2,8 +2,9 @@
 
 Date: 2026-10-21 (UTC). This is the second pass on the public Watch site
 (`apps/web`, `https://www.jesusfilm.org/watch`). The shift started at
-00:49:39Z. It ran nine sequential rounds; round 09 (final review) started
-at 07:34:54Z. This version was last updated at 07:55Z (`date -u`, at commit).
+00:49:39Z. It ran ten sequential rounds; round 10 (final bounded fixes)
+started at 08:05:07Z. This version was last updated at 08:20Z (`date -u`,
+at commit).
 The root thread records its own finish time separately. Every round used one
 Claude Opus 5.5 worker on the NZ Team subscription route with extra usage
 off. No billing receipts were checked, so this report makes no cost claim.
@@ -37,27 +38,28 @@ Nothing was merged or deployed. Every fix below is in an open PR.
   subtitle language tags (#2852).
 - Rounds 08 and 09 found three dialogs that cut off content at 200% text
   on phones: the film download dialog, the collection download dialog and
-  the Terms dialog. All three are fixed in #2836 (head `6187d1ecf`).
+  the Terms dialog. All three are fixed in #2836.
+- Round 10 fixed focus in the same two dialogs (#2836 `27288977a`): Escape
+  or Close on the collection download dialog now returns to its Download
+  button instead of `<body>`, and the Terms dialog now takes focus when it
+  opens and returns it to the Terms link when it closes.
 - The 26 code PRs build and test together locally. On the exact final
-  integration ref (`980803d4b`): `next build` passed and the full web suite
-  had 5,622 pass, 13 skipped, 0 fail (Node 24.19).
+  integration ref (`cb9b5beba`, local only): `next build` passed and the
+  full web suite had 5,625 pass, 13 skipped, 0 fail (Node 24.19).
 - Still open: Safari, real phones, screen readers and signed-in pages were
   never tested. Search timeouts recur (counts below); there is no reliable
   rate yet.
 
 ## PR snapshot
 
-Fresh `gh pr view` of all 34 linked PRs, 2026-10-21 07:54:14–07:54:39Z
-(`round-09/data/pr-snapshot-2.jsonl` in the audit data folder). "skip" means skipped
-or neutral.
+`gh pr view` of all 34 linked PRs, 2026-10-21 08:19:48–08:20:13Z (audit data folder
+`round10/data/pr-snapshot-2.jsonl`). Each row is that snapshot, taken just
+before this commit, not a live status. "skip" means skipped or neutral.
 
-- 32 of 34: `MERGEABLE`/`CLEAN`, 0 failing and 0 running checks. That
-  includes the two drafts and #2855 at its previous head `dbd60ac18`.
-- #2836: new head `6187d1ecf` pushed at 07:51Z; 0 failing, 73 checks
-  still running at the snapshot.
+- #2855 is shown at its head before this commit (`deef10568`). The commit
+  that adds this text has a new head and restarts its own CI; see the PR.
+- #2836 moved to `27288977a` at 08:14Z, so its checks were still running.
 - #2626: `CONFLICTING`/`DIRTY` (superseded).
-- #2855: the commit that adds this text restarts its own CI; see the PR
-  for its current state.
 - No PR has an approving or change-request review.
 
 | PR    | Group                       | Head                                                        | State                  | CI                                  |
@@ -72,7 +74,7 @@ or neutral.
 | #2833 | first-pass new code         | `d6bfe45e8`                                                 | MERGEABLE/CLEAN        | 19 pass, 9 skip, 0 fail             |
 | #2834 | first-pass new code         | `1b96e764e`                                                 | MERGEABLE/CLEAN        | 19 pass, 10 skip, 0 fail            |
 | #2835 | first-pass new code         | `a9bf67e9e`                                                 | MERGEABLE/CLEAN        | 19 pass, 9 skip, 0 fail             |
-| #2836 | first-pass new code         | `6187d1ecf`                                                 | MERGEABLE/BLOCKED      | 27 pass, 3 skip, 0 fail, 73 running |
+| #2836 | first-pass new code         | `27288977a`                                                 | MERGEABLE/BLOCKED      | 62 pass, 1 skip, 0 fail, 38 running |
 | #2837 | first-pass new code         | `9e1644615`                                                 | MERGEABLE/CLEAN        | 19 pass, 7 skip, 0 fail             |
 | #2838 | first-pass new code         | `ac9f1304e`                                                 | MERGEABLE/CLEAN        | 18 pass, 8 skip, 0 fail             |
 | #2839 | first-pass new code         | `5ebf36986`                                                 | MERGEABLE/CLEAN        | 18 pass, 8 skip, 0 fail             |
@@ -94,7 +96,7 @@ or neutral.
 | #2851 | follow-up new code          | `8dc83660b`                                                 | MERGEABLE/CLEAN        | 18 pass, 8 skip, 0 fail             |
 | #2852 | follow-up new code          | `73357426f` (on `fix/qa-player-keyboard-and-srclang`)       | MERGEABLE/CLEAN        | 13 pass, 10 skip, 0 fail            |
 | #2853 | follow-up new code          | `dcec964e7`                                                 | MERGEABLE/CLEAN        | 19 pass, 9 skip, 0 fail             |
-| #2855 | follow-up docs              | `dbd60ac18`                                                 | MERGEABLE/CLEAN        | 14 pass, 10 skip, 0 fail            |
+| #2855 | follow-up docs              | `deef10568` (before this commit)                            | MERGEABLE/CLEAN        | 14 pass, 12 skip, 0 fail            |
 | #2626 | superseded (by #2829)       | `362bcfa9f`                                                 | CONFLICTING/DIRTY      | 19 pass, 7 skip, 0 fail             |
 
 ## What this pass did
@@ -159,7 +161,7 @@ combined savings across single PRs.
   and within 0.5 px at 32 px in Firefox. The real app showed no overflow in
   70 page/width rows. The OFL notice is kept in each subset.
 
-## Round 08 and 09 checks
+## Round 08 to 10 checks
 
 Round 08 read the round-07 diffs (not the round summary):
 
@@ -191,9 +193,20 @@ content, `next start`, Node 24.19):
   screen. Fixed in #2836 `6187d1ecf`: 0 elements off screen at 320, 390 and
   1280 px, 100% and 200% text; button heights at 100% unchanged. Tab stays
   inside the collection dialog with every focused control on screen.
-- **Round 09 finding, not fixed:** Escape on the collection download dialog
-  leaves focus on `<body>` (100% and 200% text). The fix was CSS-only, so
-  this is likely older behavior; it was not confirmed on `main`.
+- **Round 09 finding, fixed in round 10:** Escape on the collection download
+  dialog left focus on `<body>`. Cause (in code that predates #2836): the
+  series page disables its Download button while the session check runs,
+  so the browser drops focus to `<body>` and Base UI later restores focus
+  there. The Terms dialog had a second problem: it sits outside the parent
+  dialog and never moved focus, so opening it left focus behind its overlay
+  and closing it dropped focus to `<body>`. Fix in #2836 `27288977a`: each
+  dialog returns focus to its own trigger, unless the user already moved
+  focus somewhere else. Before (`980803d4b`) and after (`cb9b5beba`) on real
+  builds, 390 px at 100% and 200%: collection Escape, Close, and Escape
+  after reopening went from `<body>` to the Download button; Terms opens
+  on its Close button, Tab stays inside, and Escape or Close returns to
+  the Terms link; parent Escape still returns to the film Download button.
+  Unit tests fail when either the return or the no-steal guard is removed.
 - **Test artifact, not a bug:** with zero delay between automated Tab
   presses, focus could slip past the dialog's focus guard. With an 80 ms gap
   it always wraps.
@@ -211,7 +224,14 @@ content, `next start`, Node 24.19):
   12 px below the fixed header band (pill bottom 188 px, band 176 px at
   390). Content just below the band, such as the error heading, sits under
   it. This is a header-band issue, not an error-page bug, so it is not in
-  #2849. Which PR or `main` causes the wrap was not checked.
+  #2849. Round 10 traced the cause to #2835: its large-text rule moves the
+  search field to a second row of a header grid that is still 52 px tall,
+  and the logo row is 88 px at 200%. The backdrop (4.75rem) and hover band
+  (5.5rem) are separate elements that cannot see the header's container
+  query. Measured on `cb9b5beba`: search bottom 180/188 px vs backdrop
+  152 px at 320/390 + 200%; fine at 768 and 1280; no sideways scroll. Not
+  fixed: no small CSS-only fix keeps the bands in sync, so it stays in
+  feat-781 with these numbers.
 
 ## Search reliability
 
@@ -308,9 +328,8 @@ header chain is #2637 → #2830 → #2835 only.
 Fixable now (tracked in feat-781):
 
 - Late page-level 404 still returns 200 (feat-757).
-- Header search row at 320–390 px + 200% text ends below the fixed header
-  band and covers content under it.
-- Collection download dialog: Escape leaves focus on `<body>`.
+- Header search row at 320–390 px + 200% text ends below the header
+  backdrop and covers content under it (caused by #2835's second row).
 - #2853: a random hero after hydration fades in from black (same on `main`).
 - #2849: two P3s (retry flag after in-place failure; `tabindex=-1` left on
   `main`).
@@ -338,7 +357,8 @@ Needs a decision:
 
 - Rounds 03, 05, 06 and 07 each ran one or more git commands outside the
   disk guard. Round 05 made an unpushed commit with `--no-verify` and undid
-  it. Round 09 ran one `git switch` outside the guard (07:46Z). All of
+  it. Round 09 ran one `git switch` outside the guard (07:46Z). Round 10
+  guarded every git write, build and full suite. All of
   these broke the rules for this run and are recorded, not hidden.
 - Round 06's first integration build was polluted by Tailwind scanning a
   parked build; those numbers were thrown away and re-measured.

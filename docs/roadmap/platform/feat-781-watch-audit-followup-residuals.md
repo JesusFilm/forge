@@ -36,13 +36,14 @@ real browser or device that the audit could not use.
    with 200% text the search row wraps to a second line that ends 12 px
    below the fixed header band (pill bottom 188 px, band 176 px at
    390 px), so it covers content under the band, such as the error
-   heading. Not checked which open PR or `main` causes the wrap.
+   heading. Round 10: caused by #2835, whose large-text rule puts the
+   search field on a second row of a 52 px header grid (logo row 88 px at
+   200%). Search bottom 180/188 px vs backdrop 152 px at 320/390 + 200%.
+   The backdrop and hover band cannot see the header's container query.
 5. `apps/admin/src/services/watch-search-snippet.ts` (added by #2851): cue
    cleanup misses non-English and markup cues.
-6. `apps/web/src/components/watch/CollectionDownloadModal.tsx` and
-   `SeriesPageClient.tsx`: Escape on the collection download dialog leaves
-   focus on `<body>` at 100% and 200% text. Likely older than #2836
-   (CSS-only), not confirmed on `main`.
+6. Done in #2836 `27288977a` (round 10): collection download dialog and
+   Terms dialog focus return.
 
 ## Grep These
 
@@ -58,8 +59,8 @@ real browser or device that the audit could not use.
   temporary `tabindex="-1"` from `main` after focus moves.
 - Keep the wrapped header search row inside the fixed header band (or
   size the band from the real row height) at 320–390 px with 200% text.
-- Return focus to the series "Download collection" button when the
-  collection download dialog closes, with a behavior test.
+- (Done in #2836) Return focus to the series "Download collection" button
+  when the collection download dialog closes.
 - Extend cue cleanup to `[MÚSICA]`, `>>JESUS:` and `<i>[music]</i>` only with
   a closed list and tests that keep real text, as #2851 does.
 - When a WebKit build, a real phone or a screen reader becomes available,
