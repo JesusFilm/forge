@@ -40,6 +40,9 @@ real browser or device that the audit could not use.
    search field on a second row of a 52 px header grid (logo row 88 px at
    200%). Search bottom 180/188 px vs backdrop 152 px at 320/390 + 200%.
    The backdrop and hover band cannot see the header's container query.
+   Round 11: #2835 is a draft until this is fixed (blocker and numbers in
+   its PR body). Verify 320/390/768/1280 × 100/200%: no overlap with
+   content, header actions visible, 320 keyboard focus, no new CLS.
 5. `apps/admin/src/services/watch-search-snippet.ts` (added by #2851): cue
    cleanup misses non-English and markup cues.
 6. Done in #2836 `27288977a` (round 10): collection download dialog and
