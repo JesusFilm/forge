@@ -36,6 +36,7 @@ import {
 } from "../lib/videoQoe"
 import type { RecommendationPlaybackRecorder } from "../lib/recommendations/playbackRecorder"
 import { createPlaybackRecorderForMedia } from "../lib/recommendations/playbackRecorderClient"
+import type { MuxPlayerSize } from "../lib/muxData/monitor"
 import {
   createMuxMonitorSession,
   type MonitorSession,
@@ -425,12 +426,14 @@ export function useManagedVideoPlayer(
   const muxDataRef = useRef(options?.muxData ?? null)
   muxDataRef.current = options?.muxData ?? null
   const muxSessionRef = useRef<MonitorSession | null>(null)
+  // Kept here, so a session created later still starts with the last size.
+  const muxPlayerSizeRef = useRef<MuxPlayerSize | null>(null)
   // Created in the effect, so StrictMode's setup, cleanup, setup cycle leaves
   // one live monitor. The mount attach covers a non-null creation source.
   useEffect(() => {
     const session = createMuxMonitorSession(player)
     muxSessionRef.current = session
-    session?.setPlayerSize(muxDataRef.current?.playerSize ?? null)
+    session?.setPlayerSize(muxPlayerSizeRef.current)
     session?.onStream(loadedUrlRef.current, muxDataRef.current)
     return () => {
       session?.release()
@@ -449,19 +452,16 @@ export function useManagedVideoPlayer(
     muxSessionRef.current?.onStream(null, muxDataRef.current)
   }, [muxSurface, muxVideoId, muxVideoSlug, muxTitle])
 
-  const muxWidth = options?.muxData?.playerSize?.width ?? null
-  const muxHeight = options?.muxData?.playerSize?.height ?? null
-  useEffect(() => {
-    if (muxWidth == null || muxHeight == null) return
-    muxSessionRef.current?.setPlayerSize({ width: muxWidth, height: muxHeight })
-  }, [muxWidth, muxHeight])
-
-  // KTD16: ref-stable, like progressFeed. The error reload runs outside this
-  // hook, so the facade reads the current session at call time.
+  // KTD16: ref-stable, like progressFeed. Its callers run outside this hook's
+  // render inputs, so it reads the current session at call time.
   const muxMonitor = useRef<MuxMonitorFacade>({
     beginReload: (url) =>
       muxSessionRef.current?.onStream(url, muxDataRef.current, true) ??
       NO_MUX_SETTLE,
+    setPlayerSize: (size) => {
+      muxPlayerSizeRef.current = size
+      muxSessionRef.current?.setPlayerSize(size)
+    },
   }).current
 
   useEffect(() => {

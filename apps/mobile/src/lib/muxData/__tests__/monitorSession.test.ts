@@ -70,12 +70,10 @@ function deferred<T>() {
 
 function watch(
   identity: Partial<MuxDataOption["identity"]> = {},
-  playerSize: MuxDataOption["playerSize"] = null,
 ): MuxDataOption {
   return {
     surface: "watch",
     identity: { videoId: null, videoSlug: "jesus", title: null, ...identity },
-    playerSize,
   }
 }
 

@@ -202,12 +202,10 @@ async function settleReplace(reason?: unknown) {
 
 function watch(
   identity: Partial<MuxDataOption["identity"]> = {},
-  playerSize: MuxDataOption["playerSize"] = null,
 ): MuxDataOption {
   return {
     surface: "watch",
     identity: { videoId: null, videoSlug: "jesus", title: null, ...identity },
-    playerSize,
   }
 }
 
@@ -342,19 +340,28 @@ describe("useManagedVideoPlayer muxData: view boundaries (KTD5)", () => {
     expect(monitors[0].startView).not.toHaveBeenCalled()
   })
 
-  it("forwards a size change and starts no view", async () => {
-    const renderer = await mount(
-      ENGLISH,
-      watch({}, { width: 390, height: 219 }),
-    )
-    expect(attaches[0].size).toEqual({ width: 390, height: 219 })
-    await rerender(renderer, ENGLISH, watch({}, { width: 160, height: 90 }))
+  it("forwards a size change through the facade and starts no view", async () => {
+    await mount(ENGLISH, watch())
+    await act(async () => {
+      latest?.muxMonitor.setPlayerSize({ width: 160, height: 90 })
+    })
     expect(monitors[0].setPlayerSize).toHaveBeenCalledWith({
       width: 160,
       height: 90,
     })
     expect(monitors[0].startView).not.toHaveBeenCalled()
     expect(monitors[0].stage).not.toHaveBeenCalled()
+  })
+
+  // The host learns its frame size after it calls the hook, so a size can
+  // arrive before the monitor exists.
+  it("attaches with a size that arrived before the stream", async () => {
+    const renderer = await mount(null, watch())
+    await act(async () => {
+      latest?.muxMonitor.setPlayerSize({ width: 390, height: 219 })
+    })
+    await rerender(renderer, ENGLISH, watch())
+    expect(attaches[0].size).toEqual({ width: 390, height: 219 })
   })
 
   it("detaches before the trailer loads and attaches before the episode loads", async () => {
@@ -495,12 +502,15 @@ describe("useManagedVideoPlayer muxData: playback safety (R27, R29)", () => {
         release: thrower,
       }),
     })
-    const renderer = await mount(ENGLISH, watch({}, { width: 1, height: 1 }))
-    await act(async () => player.play())
+    const renderer = await mount(ENGLISH, watch())
+    await act(async () => {
+      latest?.muxMonitor.setPlayerSize({ width: 2, height: 2 })
+      player.play()
+    })
     await rerender(
       renderer,
       SPANISH,
-      watch({ videoId: "doc-1", title: "Jesus" }, { width: 2, height: 2 }),
+      watch({ videoId: "doc-1", title: "Jesus" }),
     )
     await settleReplace()
     expect(thrower).toHaveBeenCalled()

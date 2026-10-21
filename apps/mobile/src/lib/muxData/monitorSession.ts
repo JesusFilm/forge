@@ -26,13 +26,16 @@ import {
 export type MuxDataOption = {
   surface: MuxViewSurface
   identity: MuxViewIdentity
-  playerSize?: MuxPlayerSize | null
 }
 
-/** KTD16: the hook's stable facade. Call `beginReload` before an error
- *  reload's load starts, and the returned settle once it is set. */
+/** KTD16: the hook's stable facade, for callers outside its render inputs. */
 export type MuxMonitorFacade = {
+  /** Call before an error reload's load starts; run the returned settle once
+   *  the source is set. */
   beginReload: (url: string) => () => void
+  /** The size of the frame the video settles in, from the caller's layout
+   *  (KTD1). The host knows it only after it calls the hook. */
+  setPlayerSize: (size: MuxPlayerSize) => void
 }
 
 export type MonitorSession = {
