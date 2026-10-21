@@ -16,7 +16,6 @@ const CUE_WORDS = [
   "applause",
   "blank_audio",
   "cheering",
-  "foreign",
   "inaudible",
   "laughing",
   "laughs",
@@ -28,11 +27,28 @@ const CUE_WORDS = [
   "singing",
 ] as const
 
-// A bracketed or parenthesised cue: the cue word with up to three short
-// qualifiers around it, e.g. `[MUSIC PLAYING]`, `(intense music)`,
-// `[SOFT MUSIC]`. Anything longer is treated as real text.
+// Describes how a cue continues, as in `[MUSIC PLAYING]`. Closed so a cue
+// word followed by real words, like `(music of the angels)`, stays text.
+const CUE_TRAILERS = [
+  "continues",
+  "ends",
+  "fades",
+  "playing",
+  "plays",
+  "stops",
+  "swells",
+] as const
+
+// A leading qualifier such as `soft`, `upbeat` or `crowd`. Articles,
+// prepositions and possessives start a phrase, not a cue.
+const CUE_QUALIFIER = String.raw`(?!(?:a|an|and|her|his|in|its|my|of|our|the|their|to|your)\s)[\p{L}'-]+`
+
+// A bracketed or parenthesised cue: up to three qualifiers, the cue word and
+// at most one trailer, e.g. `[MUSIC PLAYING]`, `(intense music)`,
+// `[SOFT MUSIC]`. `foreign` counts only alone (`[Foreign]`), because
+// `(a foreign land)` is real text. Anything else is treated as real text.
 const CAPTION_CUE = new RegExp(
-  String.raw`[\[(]\s*(?:[\p{L}'-]+\s+){0,3}(?:${CUE_WORDS.join("|")})(?:\s+[\p{L}'-]+){0,3}\s*[\])]`,
+  String.raw`[\[(]\s*(?:(?:${CUE_QUALIFIER}\s+){0,3}(?:${CUE_WORDS.join("|")})(?:\s+(?:${CUE_TRAILERS.join("|")}))?|foreign)\s*[\])]`,
   "giu",
 )
 const SPEAKER_CHANGE = /(?:^|\s)>>+(?=\s|$)/gu

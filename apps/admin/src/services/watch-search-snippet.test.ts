@@ -32,6 +32,8 @@ describe("displayTranscriptSnippet", () => {
       "Who is it that you say you are? Who are those",
     ],
     [">> Who are you? >> I am the light.", "Who are you? I am the light."],
+    ["[SOFT MUSIC] He went up the mountain", "He went up the mountain"],
+    ["[Foreign] He went up the mountain", "He went up the mountain"],
   ])("strips caption cues around speech: %s", (snippet, expected) => {
     expect(displayTranscriptSnippet(snippet)).toBe(expected)
   })
@@ -41,6 +43,10 @@ describe("displayTranscriptSnippet", () => {
     'Jesus said, "Come and see." [Luke 5]',
     "يسوع هو الطريق والحق والحياة",
     "耶稣是谁？",
+    // A cue word inside real words is text, not a cue.
+    "(a foreign land) He went",
+    "(music of the angels) and they sang",
+    "(the singing) of the crowd",
   ])("keeps editorial brackets and non-Latin text unchanged: %s", (snippet) => {
     expect(displayTranscriptSnippet(snippet)).toBe(snippet)
   })
