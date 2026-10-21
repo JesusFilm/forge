@@ -213,6 +213,18 @@ export function languageBadgeCodeFor({
   return code
 }
 
+/** Primary subtags with registered extlangs in the IANA subtag registry. */
+const EXTLANG_PREFIXES: ReadonlySet<string> = new Set([
+  "ar",
+  "kok",
+  "lv",
+  "ms",
+  "sgn",
+  "sw",
+  "uz",
+  "zh",
+])
+
 /**
  * The `srclang` for a subtitle `<track>`: the language's full BCP 47 tag in
  * canonical form, so script and region survive (`zh-Hans` vs `zh-Hant`,
@@ -232,8 +244,14 @@ export function subtitleTrackLanguageTag(
   if (tag) {
     // `Intl` rejects RFC 5646 extended language subtags (`ar-arz`); their
     // preferred form is the extlang alone (`arz`), which keeps the dialect.
-    const extlang = tag.match(/^[A-Za-z]{2,3}-([A-Za-z]{3})(?=-|$)/)?.[1]
-    for (const candidate of extlang
+    // Only the registered extlang prefixes qualify: Admin also carries
+    // look-alike tags such as `rmy-kal` and `en-nai`, whose second subtag
+    // would canonicalize to an unrelated language (`kl`, Greenlandic).
+    const [, prefix, extlang] =
+      tag.match(/^([A-Za-z]{2,3})-([A-Za-z]{3})(?=-|$)/) ?? []
+    const isExtlang =
+      prefix != null && EXTLANG_PREFIXES.has(prefix.toLowerCase())
+    for (const candidate of extlang && isExtlang
       ? [tag, tag.slice(tag.indexOf("-") + 1)]
       : [tag]) {
       try {

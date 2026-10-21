@@ -132,6 +132,22 @@ describe("subtitleTrackLanguageTag", () => {
     ).toBe("arz")
   })
 
+  it.each([
+    // Not extlangs: the second subtag canonicalizes to an unrelated language
+    // (`kal` is Greenlandic, `nai` a language family), so keep the primary.
+    [{ bcp47: "rmy-kal", slug: "romani-kalderash-western" }, "rmy"],
+    [{ bcp47: "en-nai", slug: "english-north-american-indigenous" }, "en"],
+    [{ bcp47: "th-nod", slug: "thai-northern" }, "th"],
+    // Registered extlang prefixes keep the dialect.
+    [{ bcp47: "ms-abs", slug: "malay-ambonese" }, "abs"],
+    [{ bcp47: "sw-swc", slug: "swahili-congo" }, "sw-CD"],
+  ])(
+    "only treats registered extlang prefixes as extlangs (%o)",
+    (source, expected) => {
+      expect(subtitleTrackLanguageTag(source)).toBe(expected)
+    },
+  )
+
   it("gives every mapped Watch language a well-formed srclang", () => {
     for (const [slug, bcp47] of Object.entries(LANGUAGE_BCP47_MAP)) {
       const srclang = subtitleTrackLanguageTag({ bcp47, slug })
