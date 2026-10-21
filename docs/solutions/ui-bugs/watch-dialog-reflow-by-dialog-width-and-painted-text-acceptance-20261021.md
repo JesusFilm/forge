@@ -54,7 +54,7 @@ Check the text that the browser paints, not the classes. The spec
 viewport and root font size:
 
 - It reads the `Range` client rects of the selected text and compares them with
-  every ancestor that hides overflow. It also checks `text-overflow: ellipsis`
+  each ancestor that hides overflow, from the text up to its select button. It also checks `text-overflow: ellipsis`
   against `scrollWidth`, and finds words that split across lines.
 - It selects the long option labels with real pointer clicks. A click fails when
   another element receives it, so a popup with no room fails the test.
@@ -69,23 +69,38 @@ queries still read 16px, so it is not browser zoom.
 
 ## Spec reliability
 
-- The hero Download button is server-rendered. An Enter key before hydration can
-  be lost and no dialog opens. In a probe of 20 loads at 736x480, 8 buttons had
-  no React props at the `load` event, yet Enter still opened the dialog in all
-  20, so the loss is rare and the mechanism is not proven. Press again until the
-  dialog is open, with a bounded budget. Keep the retry on the opening step only.
-- The quality tiers come from a server action that reads production Admin. That
-  lookup fails now and then. Press the dialog's own "try again" control once,
-  record the press as a test annotation, and fail with an upstream message if it
-  fails twice. More retries add load to a service that is already failing.
-- Do not run the full matrix twice in a row against production content. Each
-  case makes three lookups, so one run makes about 54. After a rest of about ten
-  minutes, a first run passed 18 of 18, and a second run that started at once
-  failed 16 of 18 on the lookup, even after the one retry. Ten minutes later one
-  lookup succeeded again. The cause is probably a limit on the Admin side. It
-  was not confirmed, because the web server hides the error text. Wait about ten
-  minutes between full runs, run a short sample, or replace the lookup with a
-  fixture in a follow-up.
+The spec is a MANUAL check. It skips unless `WATCH_COLLECTION_DOWNLOAD_TEST_LIVE=1`
+and `WATCH_COLLECTION_DOWNLOAD_TEST_BASE_URL` are set, and it always skips when
+`CI` is set. There is no default address. No GitHub workflow runs the web
+Playwright suite at this time, so the guard only stops the default
+`playwright test` discovery from picking up a live-content case.
+
+- The hero Download button is server-rendered. In some runs the first Enter did
+  not open the dialog. In a probe of 20 loads at 736x480, 8 buttons had no React
+  props at the `load` event, yet Enter still opened the dialog in all 20. The
+  mechanism is not proven; a hydration race is only a hypothesis. The spec
+  presses Enter again until the dialog is open. The 15 s value is an outer retry
+  budget, not a hard limit on each locator action.
+- The quality tiers come from a server action that reads production Admin. In
+  some runs the lookup failed. The spec waits for usable options after EACH
+  language selection, before it measures that language. It presses the dialog's
+  "try again" control once for each lookup and records the press as a test
+  annotation. A second failure ends the test with a neutral message. The cause is
+  unknown, because the server action hides the error. The retry extends the
+  whole remaining test timeout only when it runs.
+- One full run against production content made 322 failed lookups, and a
+  second full run that started at once failed 16 of 18 cases. A rate limit at
+  Admin is suspected. It is not confirmed. The observation does not give a safe
+  run cadence.
+- Do not repeat the full 18-case matrix against production content as a
+  readiness gate. Run only the cases that you need with `--grep`.
+- Before this spec joins routine or CI runs, add a deterministic local Admin
+  fixture or mock. Keep the real component, geometry and click assertions when
+  you add it.
+- Evidence limits: earlier spec revisions passed full 18-case runs. The final
+  committed revision had the 4 representative cases run (4 of 4 on the fixed
+  build, 4 of 4 failures on the previous build) before the opt-in guard and the
+  per-language wait were added. Those two changes were checked only offline.
 
 ## Related
 

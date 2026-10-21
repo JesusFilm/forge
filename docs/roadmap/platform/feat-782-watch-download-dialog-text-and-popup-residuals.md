@@ -2,7 +2,7 @@
 id: "feat-782"
 title: "Watch download dialog text budget and quality popup placement"
 owner: "vlad"
-priority: "P3"
+priority: "P2"
 status: "not-started"
 start_date: "2026-10-22"
 duration: 2
@@ -22,15 +22,19 @@ tags:
 
 The independent acceptance of PR 2836 (feat-457) found three small problems in
 the Watch download dialogs. None of them blocks that PR. All three are text and
-popup behavior at small sizes or large text.
+popup behavior at small sizes or large text. Each one has P3 defect severity.
+The roadmap viewer supports only P0, P1 and P2, so the ticket uses P2, the
+lowest scheduling priority.
 
 1. **Narrow text budget at 320px with 200% text.** In the collection dialog,
    the selected language name splits inside a word ("Portuguese," and
    "Standard"). The name area is about 143px wide. The dialog viewport padding
    (`p-4`, rem-based), the content padding and the select padding use most of
    the width. All text is painted and nothing is clipped, but the result is
-   hard to read. The earlier fix in PR 2836 replaced truncation with wrapping,
-   so this is a result of that fix and not a change from `main`.
+   hard to read. PR 2836 replaced truncation with wrapping earlier in the
+   branch, and the wrapping existed at `37e3f7069`. The latest fix inherited it.
+   No test showed that the text was the same at the published head or at
+   `main`.
 2. **The quality popup opens only downward.** `TierListbox` places the list at
    the bottom of its trigger. It does not flip above the trigger and does not
    limit its height to the viewport. On a 480px tall viewport with the trigger
@@ -52,9 +56,11 @@ popup behavior at small sizes or large text.
    the popup position from the trigger bottom.
 4. `apps/web/src/components/watch/LanguageCombobox.tsx` - the
    `language-combobox-trigger-native` element and its font size classes.
-5. `apps/web/e2e/watch-collection-download-fields.spec.ts` - the browser
-   regression spec. It allows broken words below 640px on purpose. Tighten that
-   rule when item 1 is fixed.
+5. `apps/web/e2e/watch-collection-download-fields.spec.ts` - the manual
+   browser regression spec. It allows broken words below 640px on purpose.
+   Tighten that rule when item 1 is fixed. It reads live Admin content and runs
+   only with an explicit opt-in. Add a deterministic Admin fixture before it
+   joins routine or CI runs.
 6. `todos/025-pending-p3-download-modal-migrate-to-tier-listbox.md` - the film
    quality picker migration. Item 2 shares the `TierListbox` code that this
    todo moves the film dialog onto.
@@ -90,8 +96,9 @@ popup behavior at small sizes or large text.
 ## Verification
 
 - `pnpm --filter @forge/web exec vitest run src/components/watch`
-- `watch-collection-download-fields.spec.ts` against a production build:
-  320x844 at 32px root font shows no broken word in the selected language name.
+- `watch-collection-download-fields.spec.ts` (manual opt-in, see the spec
+  header) against a production build: 320x844 at 32px root font shows no broken
+  word in the selected language name. Run only the cases that you need.
 - Browser, 640x480 at 32px root font, trigger low on the page: the quality list
   opens inside the viewport and every tier is reachable by pointer and keyboard.
 - Browser, 32px root font: the native-language line is larger than 11px.
