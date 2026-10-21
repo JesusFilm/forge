@@ -37,6 +37,7 @@ import {
 import { TierListbox } from "@/components/watch/TierListbox"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import {
+  WATCH_MODAL_ACTION_WRAP_CLASS,
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
@@ -87,9 +88,11 @@ const COLLECTION_THUMBNAIL_STACK_CLASSES = [
 // At 200% text one label can be wider than a phone's dialog column, so each
 // footer button may shrink and wrap its label instead of overflowing.
 // `min-h-8` keeps the ghost Close at its default 2rem height when `h-auto`
-// lifts the fixed one.
-const COLLECTION_ACTION_BUTTON_CLASS =
-  "h-auto min-h-8 max-w-full shrink text-center whitespace-normal"
+// lifts the fixed one. The pill's side padding is capped by the viewport
+// width: at 200% text its fixed `1.25rem` would take half of a 320 px
+// dialog's content column.
+const COLLECTION_ACTION_BUTTON_CLASS = `h-auto min-h-8 ${WATCH_MODAL_ACTION_WRAP_CLASS}`
+const COLLECTION_PILL_ACTION_BUTTON_CLASS = `${COLLECTION_ACTION_BUTTON_CLASS} px-[min(1.25rem,6.25vw)]`
 const COLLECTION_DECORATIVE_STACK_CLASSES = [
   "top-4 w-[5.875rem] bg-gradient-to-b from-stone-700/60 to-stone-900/90 min-[500px]:w-[8.5rem] min-[900px]:top-[1.5625rem] min-[900px]:w-[11.75rem]",
   "top-3 w-[5.5rem] bg-gradient-to-b from-stone-800/70 to-stone-950 min-[500px]:w-32 min-[900px]:top-5 min-[900px]:w-44",
@@ -941,7 +944,7 @@ export function CollectionDownloadModal({
                       {t("downloadAgain")}
                     </Button>
                     <Button
-                      className={COLLECTION_ACTION_BUTTON_CLASS}
+                      className={COLLECTION_PILL_ACTION_BUTTON_CLASS}
                       variant="pill"
                       data-testid="watch-collection-download-close"
                       onClick={close}
@@ -961,7 +964,7 @@ export function CollectionDownloadModal({
                 ) : null}
                 {busy && !showDownloadAgain ? (
                   <Button
-                    className={COLLECTION_ACTION_BUTTON_CLASS}
+                    className={COLLECTION_PILL_ACTION_BUTTON_CLASS}
                     variant="pill"
                     data-testid="watch-collection-download-cancel"
                     onClick={cancelDownload}
@@ -971,7 +974,7 @@ export function CollectionDownloadModal({
                   </Button>
                 ) : !showDownloadAgain ? (
                   <Button
-                    className={COLLECTION_ACTION_BUTTON_CLASS}
+                    className={COLLECTION_PILL_ACTION_BUTTON_CLASS}
                     variant="pill"
                     data-testid="watch-collection-download-start"
                     disabled={

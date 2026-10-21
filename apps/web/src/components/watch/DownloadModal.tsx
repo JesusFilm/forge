@@ -44,6 +44,7 @@ import {
   type WatchDownloadOption,
 } from "@/components/watch/download-options"
 import {
+  WATCH_MODAL_ACTION_WRAP_CLASS,
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
@@ -664,7 +665,10 @@ export function DownloadModal({
                 disabled={!canDownload}
                 aria-label={t("download")}
                 data-testid="watch-download-modal-confirm"
-                className="max-w-full shrink px-7 py-4 text-center text-base sm:text-sm whitespace-normal"
+                className={cn(
+                  WATCH_MODAL_ACTION_WRAP_CLASS,
+                  "px-[min(1.75rem,8.75vw)] py-4 text-base sm:text-sm",
+                )}
               >
                 <DownloadIcon size={16} />
                 <span>{authChecking ? t("checking") : t("download")}</span>
@@ -687,6 +691,37 @@ export function DownloadModal({
   )
 }
 
+const TERMS_FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+// Wraps Tab/Shift+Tab at the first/last control of the Terms layer, and pulls
+// focus back in when it is somewhere else (for example on <body> after a click
+// on non-focusable text).
+function keepTabFocusInside(event: KeyboardEvent, section: HTMLElement | null) {
+  if (section === null) return
+  const focusable = Array.from(
+    section.querySelectorAll<HTMLElement>(TERMS_FOCUSABLE_SELECTOR),
+  )
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (first === undefined || last === undefined) {
+    event.preventDefault()
+    section.focus()
+    return
+  }
+  const active = document.activeElement
+  if (!section.contains(active)) {
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  } else if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 type TermsOfUseDialogProps = {
   open: boolean
   onCancel: () => void
@@ -705,14 +740,24 @@ function TermsOfUseDialog({
   const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   // This layer is portaled outside the parent dialog, so nothing else moves
-  // focus into it or back out. Focus its Close button on open; on close,
-  // return to the link that opened it unless the user moved focus elsewhere.
+  // focus into it, back out, or keeps the page behind it from being tabbed
+  // into. Focus its Close button on open and make everything else on the page
+  // inert while it is open; on close, return to the link that opened it
+  // unless the user moved focus elsewhere.
   useEffect(() => {
     if (!open) return
     const section = sectionRef.current
+    const overlay = section?.parentElement
     const returnFocusTarget = returnFocusRef?.current
+    const inertedSiblings: Element[] = []
+    for (const sibling of Array.from(document.body.children)) {
+      if (sibling === overlay || sibling.hasAttribute("inert")) continue
+      sibling.setAttribute("inert", "")
+      inertedSiblings.push(sibling)
+    }
     closeButtonRef.current?.focus()
     return () => {
+      for (const sibling of inertedSiblings) sibling.removeAttribute("inert")
       const active = document.activeElement
       if (
         active === null ||
@@ -732,7 +777,9 @@ function TermsOfUseDialog({
         event.preventDefault()
         event.stopPropagation()
         onCancel()
+        return
       }
+      if (event.key === "Tab") keepTabFocusInside(event, sectionRef.current)
     }
 
     document.addEventListener("keydown", handleKeyDown, true)
@@ -767,16 +814,17 @@ function TermsOfUseDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="watch-download-modal-terms-title"
+        tabIndex={-1}
         data-testid="watch-download-modal-terms-dialog"
-        className="m-auto flex w-full shrink-0 flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
+        className="m-auto flex w-full shrink-0 flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 outline-none sm:max-w-2xl"
         onClick={stopNestedDialogEvent}
         onPointerDown={stopNestedDialogEvent}
       >
-        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+        <div className="flex items-start justify-between gap-3 px-[min(2rem,10vw)] pt-8 pb-4">
           <h2
             id="watch-download-modal-terms-title"
             data-testid="watch-download-modal-terms-title"
-            className="text-2xl font-bold text-stone-50 sm:text-3xl"
+            className="min-w-0 text-2xl font-bold [overflow-wrap:anywhere] text-stone-50 sm:text-3xl"
           >
             {t("termsOfUse")}
           </h2>
@@ -794,7 +842,7 @@ function TermsOfUseDialog({
 
         <div
           data-testid="watch-download-modal-terms-body"
-          className="space-y-4 pr-6 pb-6 pl-8 text-base sm:text-sm leading-relaxed text-stone-200"
+          className="space-y-4 pr-[min(1.5rem,7.5vw)] pb-6 pl-[min(2rem,10vw)] text-base sm:text-sm leading-relaxed [overflow-wrap:anywhere] text-stone-200"
         >
           {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
@@ -803,7 +851,7 @@ function TermsOfUseDialog({
 
         <div
           data-testid="watch-download-modal-terms-footer"
-          className="flex flex-col gap-4 border-t border-stone-700/50 px-8 py-5 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-4 border-t border-stone-700/50 px-[min(2rem,10vw)] py-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <p
             data-testid="watch-download-modal-terms-canonical-notice"
@@ -826,7 +874,7 @@ function TermsOfUseDialog({
               type="button"
               onClick={onCancel}
               data-testid="watch-download-modal-terms-cancel"
-              className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-base sm:text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
+              className="max-w-full cursor-pointer rounded-full bg-stone-700/60 px-[min(1.25rem,6.25vw)] py-2.5 text-base sm:text-sm font-medium [overflow-wrap:anywhere] text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
             >
               {t("cancel")}
             </button>
@@ -834,6 +882,10 @@ function TermsOfUseDialog({
               variant="pill"
               onClick={onAccept}
               data-testid="watch-download-modal-terms-accept"
+              className={cn(
+                WATCH_MODAL_ACTION_WRAP_CLASS,
+                "px-[min(1.25rem,6.25vw)]",
+              )}
             >
               {t("accept")}
             </Button>

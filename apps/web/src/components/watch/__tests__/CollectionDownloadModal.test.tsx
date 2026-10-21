@@ -294,6 +294,49 @@ describe("CollectionDownloadModal", () => {
     expect(Array.from(actions?.children ?? [])).toEqual([downloadAgain, close])
   })
 
+  it("lets the pill actions wrap their label and icon inside the pill at 200% text", async () => {
+    runCollectionDownloadQueueMock.mockImplementationOnce(
+      async ({ items }) => ({
+        active: null,
+        authRequired: false,
+        canceled: false,
+        completed: items,
+        deliveryMode: "directory",
+        failed: [],
+        total: items.length,
+      }),
+    )
+    renderModal()
+    await flush()
+
+    // A label (or a single word of it) wider than the dialog's content column
+    // must wrap or break inside the button instead of painting past the pill.
+    // The layout itself is checked in the browser at 320 px / 200% text.
+    const start = container.querySelector(
+      '[data-testid="watch-collection-download-start"]',
+    ) as HTMLButtonElement
+    for (const token of [
+      "flex-wrap",
+      "whitespace-normal",
+      "[overflow-wrap:anywhere]",
+      "max-w-full",
+      "px-[min(1.25rem,6.25vw)]",
+    ]) {
+      expect(start.className).toContain(token)
+    }
+    expect(start.className).not.toContain("whitespace-nowrap")
+
+    await act(async () => {
+      start.click()
+    })
+    const close = container.querySelector(
+      '[data-testid="watch-collection-download-close"]',
+    ) as HTMLButtonElement
+    expect(close.className).toContain("bg-white")
+    expect(close.className).toContain("[overflow-wrap:anywhere]")
+    expect(close.className).toContain("px-[min(1.25rem,6.25vw)]")
+  })
+
   it("labels native browser handoff without claiming files finished", async () => {
     runCollectionDownloadQueueMock.mockImplementationOnce(
       async ({ items }) => ({

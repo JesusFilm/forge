@@ -809,6 +809,180 @@ describe("DownloadModal — Terms of Use agreement", () => {
     elsewhere.remove()
   })
 
+  describe("keyboard focus containment", () => {
+    function openTerms() {
+      act(() => {
+        root.render(
+          <TestDownloadModal
+            open
+            downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+            onClose={vi.fn()}
+          />,
+        )
+      })
+      act(() => {
+        ;(
+          $(
+            '[data-testid="watch-download-modal-tos-trigger"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+    }
+
+    function pressTab(shiftKey = false) {
+      const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: "Tab",
+        shiftKey,
+      })
+      const target = document.activeElement ?? document.body
+      act(() => {
+        target.dispatchEvent(event)
+      })
+      return event
+    }
+
+    it("wraps Tab and Shift+Tab at the ends of Terms instead of leaving it", () => {
+      openTerms()
+      const close = $('[data-testid="watch-download-modal-terms-close"]')
+      const accept = $('[data-testid="watch-download-modal-terms-accept"]')
+      const cancel = $('[data-testid="watch-download-modal-terms-cancel"]')
+      const canonical = $(
+        '[data-testid="watch-download-modal-terms-canonical-notice"] a',
+      )
+      expect(document.activeElement).toBe(close)
+
+      // Shift+Tab from the first control wraps to the last, Accept.
+      expect(pressTab(true).defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(accept)
+
+      // Tab from the last control wraps to the first, Close.
+      expect(pressTab().defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(close)
+
+      // Interior steps are left to the browser's natural tab order.
+      for (const element of [canonical, cancel]) {
+        element?.focus()
+        expect(pressTab().defaultPrevented).toBe(false)
+        expect(pressTab(true).defaultPrevented).toBe(false)
+      }
+    })
+
+    it("pulls focus back into Terms when it is on the page behind it", () => {
+      openTerms()
+      const close = $('[data-testid="watch-download-modal-terms-close"]')
+      const accept = $('[data-testid="watch-download-modal-terms-accept"]')
+
+      ;(document.activeElement as HTMLElement).blur()
+      expect(document.activeElement).toBe(document.body)
+      expect(pressTab().defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(close)
+      ;(document.activeElement as HTMLElement).blur()
+      expect(pressTab(true).defaultPrevented).toBe(true)
+      expect(document.activeElement).toBe(accept)
+    })
+
+    it("does not trap Tab once Terms is closed", () => {
+      openTerms()
+      act(() => {
+        ;(
+          $(
+            '[data-testid="watch-download-modal-terms-cancel"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      expect(pressTab().defaultPrevented).toBe(false)
+      expect(pressTab(true).defaultPrevented).toBe(false)
+    })
+
+    it("makes the page behind Terms inert and restores it on close", () => {
+      const page = document.createElement("div")
+      const alreadyInert = document.createElement("div")
+      alreadyInert.setAttribute("inert", "")
+      document.body.append(page, alreadyInert)
+
+      openTerms()
+      const overlay = $('[data-testid="watch-download-modal-terms-overlay"]')
+      expect(page.hasAttribute("inert")).toBe(true)
+      // The outer download modal is part of the page behind Terms.
+      const outerModal = $('[data-testid="watch-download-modal"]')
+      expect(outerModal?.closest("[inert]")).not.toBeNull()
+      expect(overlay?.hasAttribute("inert")).toBe(false)
+      expect(overlay?.closest("[inert]")).toBeNull()
+
+      act(() => {
+        ;(
+          $(
+            '[data-testid="watch-download-modal-terms-close"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      expect(page.hasAttribute("inert")).toBe(false)
+      expect(
+        $('[data-testid="watch-download-modal"]')?.closest("[inert]"),
+      ).toBe(null)
+      // Elements that were inert before Terms opened stay inert.
+      expect(alreadyInert.hasAttribute("inert")).toBe(true)
+    })
+
+    it("returns focus to the Terms link once the page is no longer inert", () => {
+      openTerms()
+      const trigger = $('[data-testid="watch-download-modal-tos-trigger"]')
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+        )
+      })
+      expect(trigger?.closest("[inert]")).toBeNull()
+      expect(document.activeElement).toBe(trigger)
+    })
+  })
+
+  it("lets the footer actions wrap inside their pills at 200% text", () => {
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-tos-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    // A label (or a single word of it) wider than the dialog's content column
+    // must wrap or break inside the button instead of painting past the pill.
+    // The layout itself is checked in the browser at 320 px / 200% text.
+    for (const testId of [
+      "watch-download-modal-confirm",
+      "watch-download-modal-terms-accept",
+    ]) {
+      const className = $(`[data-testid="${testId}"]`)?.className ?? ""
+      for (const token of [
+        "flex-wrap",
+        "whitespace-normal",
+        "[overflow-wrap:anywhere]",
+        "max-w-full",
+      ]) {
+        expect(className, `${testId} ${token}`).toContain(token)
+      }
+      expect(className, testId).not.toContain("whitespace-nowrap")
+    }
+    expect(
+      $('[data-testid="watch-download-modal-terms-cancel"]')?.className,
+    ).toContain("[overflow-wrap:anywhere]")
+    expect(
+      $('[data-testid="watch-download-modal-terms-body"]')?.className,
+    ).toContain("[overflow-wrap:anywhere]")
+  })
+
   it("Accept checks the agreement and enables Download", () => {
     act(() => {
       root.render(
