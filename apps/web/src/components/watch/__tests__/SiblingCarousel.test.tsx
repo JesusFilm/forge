@@ -1548,7 +1548,7 @@ describe("SiblingCarousel — edge cases", () => {
     })
   }
 
-  it("prefers a stored handoff and drops a stale in-memory one", () => {
+  it("reads a later stored handoff after an earlier one fell back to memory", () => {
     const restore = blockSessionStorage("quota")
     writeWatchChapterCarouselPreserveState({
       languageSlug: "english",
@@ -1556,12 +1556,64 @@ describe("SiblingCarousel — edge cases", () => {
       targetVideoDocumentId: "stale",
     })
     restore()
-    window.sessionStorage.setItem(
-      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
-      JSON.stringify({ targetVideoDocumentId: "fresh" }),
-    )
+    writeWatchChapterCarouselPreserveState({
+      languageSlug: "english",
+      sourceVideoDocumentId: "child-1",
+      targetVideoDocumentId: "fresh",
+    })
     expect(consumeWatchChapterCarouselPreserveState()).toContain("fresh")
     expect(consumeWatchChapterCarouselPreserveState()).toBeNull()
+  })
+
+  it("hands over the fresh in-memory handoff when a full store still holds a stale one", () => {
+    // Readable but full: the earlier handoff is still stored, and writing
+    // the new one throws. The stale stored entry must not win, or the rail
+    // jumps because it targets a different video.
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({ targetVideoDocumentId: "stale" }),
+    )
+    const storage = window.sessionStorage
+    const setItem = vi.spyOn(storage, "setItem").mockImplementation(() => {
+      throw new DOMException("Quota exceeded", "QuotaExceededError")
+    })
+    try {
+      writeWatchChapterCarouselPreserveState({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "fresh",
+      })
+      expect(consumeWatchChapterCarouselPreserveState()).toContain("fresh")
+      expect(consumeWatchChapterCarouselPreserveState()).toBeNull()
+      expect(storage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)).toBeNull()
+    } finally {
+      setItem.mockRestore()
+    }
+  })
+
+  it("still prefers the fresh in-memory handoff when the stale one cannot be removed", () => {
+    window.sessionStorage.setItem(
+      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
+      JSON.stringify({ targetVideoDocumentId: "stale" }),
+    )
+    const storage = window.sessionStorage
+    const fail = () => {
+      throw new DOMException("Storage failed", "QuotaExceededError")
+    }
+    const setItem = vi.spyOn(storage, "setItem").mockImplementation(fail)
+    const removeItem = vi.spyOn(storage, "removeItem").mockImplementation(fail)
+    try {
+      writeWatchChapterCarouselPreserveState({
+        languageSlug: "english",
+        sourceVideoDocumentId: "child-1",
+        targetVideoDocumentId: "fresh",
+      })
+      expect(consumeWatchChapterCarouselPreserveState()).toContain("fresh")
+    } finally {
+      setItem.mockRestore()
+      removeItem.mockRestore()
+      storage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+    }
   })
 
   it("renders a non-clickable card (no <Link>/href) when languageSlug is empty", () => {

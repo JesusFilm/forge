@@ -34,7 +34,10 @@ export const WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY =
  * Same-tab handoff for when tab storage is blocked or full. Chapter
  * navigation is a client-side push in one JS realm, so the target page's
  * carousel can still read it; a reload or new tab starts clean, which is
- * what sessionStorage would do for a new tab anyway.
+ * what sessionStorage would do for a new tab anyway. Only the writer below
+ * sets it, and a successful stored write clears it, so when it is set it is
+ * always the latest handoff. Written only from a click handler, so the
+ * server never holds one.
  */
 let memoryCarouselPreserveState: string | null = null
 
@@ -50,29 +53,41 @@ export function writeWatchChapterCarouselPreserveState(
   try {
     window.sessionStorage.setItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY, raw)
     memoryCarouselPreserveState = null
+    return
   } catch {
     memoryCarouselPreserveState = raw
+  }
+  // A full store can still be readable. Drop any older stored handoff so it
+  // cannot be read in place of this one.
+  try {
+    window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+  } catch {
+    // Blocked storage holds nothing to drop.
   }
 }
 
 /**
- * Reads and clears the handoff. Runs inside a render-time state initializer,
- * so a SecurityError from a blocked `window.sessionStorage` getter would take
- * down the whole film page through the route error boundary.
+ * Reads and clears the handoff, once. Runs inside a render-time state
+ * initializer, so a SecurityError from a blocked `window.sessionStorage`
+ * getter would take down the whole film page through the route error
+ * boundary. The in-memory handoff wins because it is newer than anything
+ * stored; the stored copy is still cleared so it is never read later.
  */
 export function consumeWatchChapterCarouselPreserveState(): string | null {
   const memory = memoryCarouselPreserveState
   memoryCarouselPreserveState = null
+  let stored: string | null = null
   try {
-    const raw = window.sessionStorage.getItem(
-      WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY,
-    )
-    if (raw) {
-      window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
-      return raw
-    }
+    stored = window.sessionStorage.getItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
   } catch {
-    // Fall through to the in-memory handoff.
+    // Blocked storage: only the in-memory handoff can exist.
   }
-  return memory
+  if (stored != null) {
+    try {
+      window.sessionStorage.removeItem(WATCH_CHAPTER_CAROUSEL_PRESERVE_KEY)
+    } catch {
+      // Best-effort; the carousel still validates the target before use.
+    }
+  }
+  return memory ?? (stored || null)
 }
