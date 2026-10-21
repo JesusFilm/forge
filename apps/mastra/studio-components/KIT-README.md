@@ -59,7 +59,7 @@ ask first.
 
 ## Known limits (2026-10-21)
 
-- Background blur works with `backdrop-blur-v4`. v3 drew its grain with
+- Background blur works with `backdrop-blur-v5`. v3 drew its grain with
   mix-blend-mode overlay, which switched the blur off (blur-grain-test-20261021).
 - Slowed footage now renders (10 s at 0.7x, slow-video-test-20261021), but the
   builder still lays backdrops at normal speed; a long reflection made of many

@@ -26,9 +26,13 @@ export default function BackdropBlur(props: Props) {
     extrapolateRight: "clamp",
     easing: Easing.inOut(Easing.cubic),
   })
+  // A zero fade means none, so pieces laid back to back (verse, PRAY step,
+  // question) join without a sharp frame between them. v4 floored a zero fade
+  // to 0.01 s, which still started every piece at opacity 0.
+  const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
   const fade =
-    interpolate(t, [0, Math.max(0.01, props.fadeInSec)], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) *
-    interpolate(t, [end - Math.max(0.01, props.fadeOutSec), end], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" })
+    (props.fadeInSec > 0 ? interpolate(t, [0, props.fadeInSec], [0, 1], clamp) : 1) *
+    (props.fadeOutSec > 0 ? interpolate(t, [end - props.fadeOutSec, end], [1, 0], clamp) : 1)
   return (
     <div style={{ position: "absolute", inset: 0, opacity: fade, pointerEvents: "none" }}>
       <div

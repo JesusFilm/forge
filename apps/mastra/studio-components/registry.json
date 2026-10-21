@@ -1672,7 +1672,7 @@
     },
     {
       "versionId": "backdrop-blur-v4",
-      "purpose": "Blurs and darkens the picture under it, easing fromPx -> toPx over rampSec, with a scrim and fine grain (the closing cards). Put it on the look track over the slow film. Owner levels 9:16: verse 8->25 px over 1.6 s, scrim 0.46; PRAY step 25->44 over the step; question+prayer 44->72 over 2.2 s, scrim 0.36; grain 0.5. v3 (2026-10-16): grain is a CSS dot pattern, and a zero fadeOutSec is guarded. v1/v2 failed every render that set fadeOutSec 0 (interpolate needs a strictly increasing range); do not use them. v4 (2026-10-21): the grain no longer uses mix-blend-mode overlay, which switched the blur off in Studio (blur-grain-test-20261021); use v4, not v3.",
+      "purpose": "Blurs and darkens the picture under it, easing fromPx -> toPx over rampSec, with a scrim and fine grain (the closing cards). Put it on the look track over the slow film. Owner levels 9:16: verse 8->25 px over 1.6 s, scrim 0.46; PRAY step 25->44 over the step; question+prayer 44->72 over 2.2 s, scrim 0.36; grain 0.5. v3 (2026-10-16): grain is a CSS dot pattern, and a zero fadeOutSec is guarded. v1/v2 failed every render that set fadeOutSec 0 (interpolate needs a strictly increasing range); do not use them. v4 (2026-10-21): the grain no longer uses mix-blend-mode overlay, which switched the blur off in Studio (blur-grain-test-20261021); use v4, not v3. Superseded by backdrop-blur-v5: a zero fade still started each piece at opacity 0.",
       "language": "any",
       "built": "dist/backdrop-blur.tsx",
       "source": "src/backdrop-blur.tsx",
@@ -1740,6 +1740,78 @@
         },
         "category": "video",
         "name": "Backdrop blur (grain without blend)"
+      }
+    },
+    {
+      "versionId": "backdrop-blur-v5",
+      "purpose": "Blurs and darkens the picture under it, easing fromPx -> toPx over rampSec, with a scrim and fine grain (the closing cards). Put it on the look track over the slow film. Owner levels 9:16: verse 8->25 px over 1.6 s, scrim 0.46; PRAY step 25->44 over the step; question+prayer 44->72 over 2.2 s, scrim 0.36; grain 0.5. v3 (2026-10-16): grain is a CSS dot pattern, and a zero fadeOutSec is guarded. v1/v2 failed every render that set fadeOutSec 0 (interpolate needs a strictly increasing range); do not use them. v4 (2026-10-21): the grain has no mix-blend-mode (overlay switched the blur off). v5 (2026-10-21): fadeInSec/fadeOutSec 0 mean no fade, so back-to-back pieces join with no sharp frame; lay them end to end with fades 0 except the first fade-in.",
+      "language": "any",
+      "built": "dist/backdrop-blur.tsx",
+      "source": "src/backdrop-blur.tsx",
+      "registration": {
+        "versionId": "backdrop-blur-v5",
+        "code": {
+          "assetId": "1d22a34b-3c14-48b3-8071-941a9c523a58",
+          "versionId": "cmvii7ul7bv60l10skl4tnldt",
+          "digest": "f235a795bb57576f2c4fef2226c9a769afd9c7d2f2d0ba347db5e708f64426db"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "fromPx": {
+            "type": "number",
+            "min": 0,
+            "max": 120
+          },
+          "toPx": {
+            "type": "number",
+            "min": 0,
+            "max": 120
+          },
+          "rampSec": {
+            "type": "number",
+            "min": 0,
+            "max": 10
+          },
+          "scrim": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "grain": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "fadeInSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        },
+        "category": "video",
+        "name": "Backdrop blur (seamless joins)"
       }
     },
     {

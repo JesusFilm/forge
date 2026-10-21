@@ -162,7 +162,7 @@ def main():
     lang = spec["lang"]
     L = LOCALE[lang]
     reg = {c["versionId"]: c["registration"] for c in json.load(open(os.path.join(HERE, "registry.json")))["components"]}
-    used = PACKS[lang] + ["backdrop-blur-v4", "takeaway-v1", "closing-verse-v1", "pray-block-v2",
+    used = PACKS[lang] + ["backdrop-blur-v5", "takeaway-v1", "closing-verse-v1", "pray-block-v2",
             L["caption"], "dbp-mark-v1", "film-look-v1", "step-line-v1",
             f"scripture-scroll-{lang}-v1", L["reveal"], L["callout"], L["credit"]]
     missing = [u for u in used if u not in reg]
@@ -325,10 +325,13 @@ def main():
                   "emblemSize": 76, "fadeOutSec": 0.4})
 
     # The closing cards (owner, 2026-10-16).
-    def blur(id, start, dur, a, b, ramp, scrim, grain):
-        comp(id, "look", start, dur, "backdrop-blur-v4",
+    # The blur pieces sit back to back from REFLECT to the last frame, so only
+    # the first one fades in and none fades out (a fade at a join shows one
+    # sharp frame of film).
+    def blur(id, start, dur, a, b, ramp, scrim, grain, fade_in=0):
+        comp(id, "look", start, dur, "backdrop-blur-v5",
              {"fromPx": a, "toPx": b, "rampSec": ramp, "scrim": scrim, "grain": grain,
-              "fadeInSec": 0.3, "fadeOutSec": 0.05})
+              "fadeInSec": fade_in, "fadeOutSec": 0})
 
     closing_start = t
     dur = f(spec["takeawaySec"]) if "takeawaySec" in spec else f(spoken_sec(spec["takeaway"], L["wps"], 1.0))
@@ -353,14 +356,16 @@ def main():
     t += s
     q_dur = f(spec["prayerAtSec"]) if "prayerAtSec" in spec else f(spoken_sec(spec["question"], L["wps"], 1.5))
     total = f(spec["prayBlockSec"]) if "prayBlockSec" in spec else q_dur + f(spoken_sec(spec["prayer"], L["wps"], 2.0))
-    blur("blur-pray", t, total, 44, 72, 2.2, 0.36, 0.5)
+    end_mark = f(4)
+    # The blur stays under the closing logo (it used to stop with the prayer
+    # and leave four seconds of bare film).
+    blur("blur-pray", t, total + end_mark, 44, 72, 2.2, 0.36, 0.5)
     comp("pray-block", "cards", t, total, "pray-block-v2",
          {"askLabel": L["ask"], "question": spec["question"], "prayLabel": L["talk"], "prayer": spec["prayer"],
           "questionAtSec": spec.get("questionAtSec", 0), "prayerAtSec": round(q_dur / FPS, 2), "left": 130,
           "top": 560, "width": 760, "fontSize": 56, "fadeOutSec": 0.8})
     say("pray-block", spec["question"] + " " + spec["prayer"], "depth")
     t += total
-    end_mark = f(4)
     comp("dbp-mark-end", "brand", t, end_mark, "dbp-mark-v1", {"top": 230, "opacity": 0.85, "fadeInSec": 0.6, "fadeOutSec": 0.6})
     t += end_mark
 
@@ -381,7 +386,7 @@ def main():
     # The long form's portrait reflection blur (8 px, scrim 0.46). NOTE: on
     # 2026-10-21 Studio's backdrop-filter stopped reaching the video (render
     # and editor): only the scrim shows until that is fixed on Studio's side.
-    blur("blur-reflection", refl_start, closing_start - refl_start, 8, 8, 0.1, 0.46, 0)
+    blur("blur-reflection", refl_start, closing_start - refl_start, 8, 8, 0.1, 0.46, 0, fade_in=0.3)
     for pack in PACKS[lang]:
         comp(pack, "fonts", 0, t, pack, {})
     # The music bed, as the local render plays it: under the opening, silent

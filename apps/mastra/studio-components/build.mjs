@@ -58,7 +58,7 @@ const COMPONENTS = {
     "80fc723a7c4256006c9c901e29eb9744eeaef3a3c2031b6e699bb568b3c2b747",
   "brand-mark": null,
   "step-line": null,
-  "backdrop-blur": null, // uploaded as backdrop-blur-v4 (v1 SVG grain failed; v3 grain blend cancelled the blur)
+  "backdrop-blur": null, // uploaded as backdrop-blur-v5 (v1 SVG grain failed; v3 grain blend cancelled the blur; v4 faded in at every join)
   "closing-verse": null,
   "takeaway": null,
   "pray-block": null,
