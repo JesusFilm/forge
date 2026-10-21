@@ -3,7 +3,7 @@ id: "feat-457"
 title: "Watch modal page-level scrolling"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-04"
 duration: 1
 depends_on: []
@@ -87,5 +87,7 @@ The fixed close button of the film and collection download dialogs can sit above
 scrolled controls when large text widens the close target. PR 2836 keeps both
 dialogs at most the viewport width minus `10rem` from `sm` up, so the close
 button never covers the dialog. The film confirmation row and header wrap, and
-the collection header splits by its own container width. This ticket stays
-complete. Do not close PR 2836 work until an independent reviewer accepts it.
+the collection header splits by its own container width. The collection
+Language and Video quality fields also stack until the dialog's own content box
+holds two readable columns. The ticket is in progress again for this follow-up.
+Set it to complete only after an independent reviewer accepts PR 2836.
