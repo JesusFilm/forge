@@ -57,6 +57,7 @@ W, H = 1080, 1920
 LOCALE = {
     "en": {
         "caption": "Caption-orange",
+        "reveal": "reveal-sans-en-v1",
         "steps": "WATCH,REFLECT,PRAY",
         "say": ["Let's watch.", "Let's look more closely at what this story means.", "Let's pray."],
         "ask": "FIRST, ASK YOURSELF",
@@ -65,6 +66,7 @@ LOCALE = {
     },
     "ru": {
         "caption": "kinetic-ru-v1",
+        "reveal": "reveal-serif-ru-v2",
         "steps": "ИСТОРИЯ,РАЗМЫШЛЕНИЕ,МОЛИТВА",
         "say": ["Давай посмотрим.", "Давай подумаем над этой историей.", "Давай помолимся."],
         "ask": "СНАЧАЛА СПРОСИ СЕБЯ",
@@ -101,7 +103,7 @@ def main():
     reg = {c["versionId"]: c["registration"] for c in json.load(open(os.path.join(HERE, "registry.json")))["components"]}
     used = PACKS[lang] + ["source-mark-v1", "backdrop-blur-v3", "takeaway-v1", "closing-verse-v1", "pray-block-v1",
             L["caption"], "dbp-mark-v1", "film-look-v1", "step-line-v1",
-            f"scripture-scroll-{lang}-v1", f"reveal-serif-{lang}-v2", f"verse-callout-{lang}-v1"]
+            f"scripture-scroll-{lang}-v1", L["reveal"], f"verse-callout-{lang}-v1"]
     missing = [u for u in used if u not in reg]
     if missing:
         sys.exit(f"not in registry.json: {missing}")
@@ -132,10 +134,17 @@ def main():
                                      "align": "center", "shadow": True, "shadowBlur": 16, "shadowOffset": 2,
                                      "entrance": "fade", "exit": "fade", "entranceFrames": 12, "exitFrames": 12}})
 
-    def reveal(id, start, dur, body, top=960, size=60, highlight=""):
-        comp(id, "cards", start, dur, f"reveal-serif-{lang}-v2",
-             {"text": body, "wordTimes": "", "highlight": highlight, "fontSize": size, "top": top,
-              "width": 760, "color": "#f4efe8", "fadeOutSec": 0.3})
+    # The reflection body stays on Inter (owner rule, DevotionalVideo SANS):
+    # Inter 400 58, left aligned in 9:16, LUMO colours. Russian has no
+    # Cyrillic Inter build yet and keeps the Literata one.
+    def reveal(id, start, dur, body, top=960, size=58, highlight=""):
+        if L["reveal"].startswith("reveal-sans"):
+            props = {"text": body, "wordTimes": "", "highlight": highlight, "fontSize": size, "top": top,
+                     "width": 760, "align": "left", "color": "#eae6df", "accentColor": "#e6a35c", "fadeOutSec": 0.3}
+        else:
+            props = {"text": body, "wordTimes": "", "highlight": highlight, "fontSize": 60, "top": top,
+                     "width": 760, "color": "#f4efe8", "fadeOutSec": 0.3}
+        comp(id, "cards", start, dur, L["reveal"], props)
 
     def steps(id, start, step):
         dur = f(2.8)

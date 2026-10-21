@@ -98,6 +98,11 @@ const VARIANTS = {
     font: "literata400-cyrillic.woff2",
     uploaded: "83db64eda0373e0fbf92e84006743bbfb928fe5cf2ab64b8593f8c9e696dd249",
   },
+  "reveal-sans-en": {
+    src: "reveal-sans",
+    font: "inter400-latin.woff2",
+    uploaded: null,
+  },
   "verse-callout-en": {
     src: "verse-callout",
     font: "literata400i-latin.woff2",

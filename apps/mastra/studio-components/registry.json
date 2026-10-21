@@ -420,8 +420,102 @@
       }
     },
     {
+      "versionId": "reveal-sans-en-v1",
+      "purpose": "The long form's reflection sentence as DevotionalVideo draws it (reflection-focus + WordReveal): Inter 400, line height 1.46, each word fades in as it is spoken, lands in accentColor and settles to color over 0.42 s; highlight (a phrase of the text, or \"\") keeps accentColor. LUMO / clean style: color #eae6df, accentColor #e6a35c; the graded style uses #ece9e4 / #f2c46b. 9:16: fontSize 58, width 760, align left (the vertical cut does not centre its reflection); top is the block's vertical centre (960, 1040 under a source mark, 1140 under a verse callout). wordTimes = each word's start (s) from the item start; empty spreads the words evenly. Latin only: no Cyrillic Inter build yet (RU still uses reveal-serif-ru-v2).",
+      "language": "english",
+      "built": "dist/reveal-sans-en.tsx",
+      "source": "src/reveal-sans.tsx",
+      "example": {
+        "text": "Either He has just claimed what belongs to God alone, or God is standing in the room.",
+        "wordTimes": "",
+        "highlight": "God is standing in the room",
+        "fontSize": 58,
+        "top": 960,
+        "width": 760,
+        "align": "left",
+        "color": "#eae6df",
+        "accentColor": "#e6a35c",
+        "fadeOutSec": 0.3
+      },
+      "registration": {
+        "versionId": "reveal-sans-en-v1",
+        "code": {
+          "assetId": "72221f68-2950-464c-b975-aadabef6c413",
+          "versionId": "cmvi1cd9n5vr4l10scdt6b75x",
+          "digest": "e060e484d87f377a0f7a4ee19405e152736253f1ac779472c4ce52d338bfafd6"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "wordTimes": {
+            "type": "text",
+            "maxLength": 1200
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "fontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "align": {
+            "type": "enum",
+            "values": [
+              "left",
+              "center"
+            ]
+          },
+          "color": {
+            "type": "color"
+          },
+          "accentColor": {
+            "type": "color"
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        },
+        "category": "text",
+        "name": "Reflection line (Inter, word by word)"
+      }
+    },
+    {
       "versionId": "reveal-serif-en-v2",
-      "purpose": "The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016). Registered as -v2: the -v1 names were first registered (component-test-reveal-serif-20261016) with an earlier upload without the even-spread fallback, and Studio refuses to bind one name to other code.",
+      "purpose": "Superseded for the reflection sentence by reveal-sans-en-v1 (2026-10-21): the owner's rule is that the reflection body stays on Inter (DevotionalVideo SANS); this Literata build was a mistake carried over from the Widow vertical. The long form's reflection sentence: Literata serif, each word fades in as it is spoken, lands gold and cools to `color`; `highlight` (a phrase of the text, or \"\") stays gold. wordTimes = each word's start (s) from the item start; empty spreads the words evenly over the item. `top` is the text block's vertical centre in px; width 760 keeps it in the safe zone. Tested by render 2026-10-16 (component-test-reveal-serif-20261016). Registered as -v2: the -v1 names were first registered (component-test-reveal-serif-20261016) with an earlier upload without the even-spread fallback, and Studio refuses to bind one name to other code.",
       "language": "english",
       "built": "dist/reveal-serif-en.tsx",
       "source": "src/reveal-serif.tsx",
