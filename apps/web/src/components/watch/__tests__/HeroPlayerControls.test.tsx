@@ -94,18 +94,22 @@ function renderControlsFixture(player: MuxPlayerRef = makePlayer()) {
     value: player,
   })
 
-  act(() => {
-    root.render(
-      <HeroPlayerControls
-        player={playerRef.current}
-        playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
-        wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
-        overlayAnchor={overlayAnchor}
-      />,
-    )
-  })
+  const render = (playbackLoading = false) => {
+    act(() => {
+      root.render(
+        <HeroPlayerControls
+          player={playerRef.current}
+          playerRef={playerRef as React.RefObject<MuxPlayerRef | null>}
+          wrapperRef={wrapperRef as React.RefObject<HTMLDivElement | null>}
+          overlayAnchor={overlayAnchor}
+          playbackLoading={playbackLoading}
+        />,
+      )
+    })
+  }
+  render()
 
-  return { overlayAnchor, player, playerRef, wrapperEl }
+  return { overlayAnchor, player, playerRef, wrapperEl, render }
 }
 
 function setFullscreenElement(el: Element | null) {
@@ -1283,6 +1287,64 @@ describe("HeroPlayerControls — chrome layout", () => {
 })
 
 describe("HeroPlayerControls — visibility callback", () => {
+  it.each([false, true])(
+    "keeps buffering perceptible without losing idle, touch, or focus behavior (paused=%s)",
+    async (paused) => {
+      vi.useFakeTimers()
+      try {
+        const { overlayAnchor, wrapperEl, render } = renderControlsFixture(
+          makePlayer({ paused }),
+        )
+        const chrome = overlayAnchor.querySelector(
+          '[data-testid="hero-player-custom-chrome"]',
+        ) as HTMLElement
+        const playButton = overlayAnchor.querySelector(
+          '[data-testid="hero-chrome-play"]',
+        ) as HTMLButtonElement
+
+        await act(async () => vi.advanceTimersByTime(5_001))
+        expect(chrome.classList.contains("opacity-0")).toBe(true)
+
+        render(true)
+        expect(
+          chrome.querySelector('[data-testid="hero-chrome-loading"]'),
+        ).not.toBeNull()
+        expect(chrome.classList.contains("opacity-0")).toBe(false)
+        await act(async () => vi.advanceTimersByTime(10_000))
+        expect(chrome.getAttribute("data-visible")).toBe("true")
+
+        render(false)
+        expect(
+          chrome.querySelector('[data-testid="hero-chrome-loading"]'),
+        ).toBeNull()
+        expect(chrome.classList.contains("opacity-0")).toBe(true)
+
+        act(() =>
+          wrapperEl.dispatchEvent(new Event("touchstart", { bubbles: true })),
+        )
+        expect(chrome.getAttribute("data-visible")).toBe("true")
+        render(true)
+        await act(async () => vi.advanceTimersByTime(4_001))
+        expect(chrome.classList.contains("opacity-0")).toBe(false)
+        render(false)
+        expect(chrome.classList.contains("opacity-0")).toBe(true)
+
+        act(() => playButton.focus())
+        render(true)
+        await act(async () => vi.advanceTimersByTime(10_000))
+        render(false)
+        expect(chrome.getAttribute("data-visible")).toBe("true")
+        const outside = document.createElement("button")
+        document.body.appendChild(outside)
+        act(() => outside.focus())
+        await act(async () => vi.advanceTimersByTime(4_001))
+        expect(chrome.getAttribute("data-visible")).toBe("false")
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+
   it("keeps the chrome visible while keyboard focus remains inside", async () => {
     vi.useFakeTimers()
     const onVisibilityChange = vi.fn()
