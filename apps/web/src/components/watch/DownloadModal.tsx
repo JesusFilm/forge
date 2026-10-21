@@ -326,10 +326,13 @@ export function DownloadModal({
 
   const modalHeader = (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-6">
+      {/* The row wraps: at large text the fixed-width poster leaves the title
+          column too narrow, so the title drops below the poster instead of
+          running past the dialog edge. */}
+      <div className="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-start sm:gap-6">
         <div
           data-testid="watch-download-modal-poster"
-          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56"
+          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56 sm:max-w-full"
         >
           {posterUrl ? (
             <Image
@@ -351,7 +354,7 @@ export function DownloadModal({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-w-[min(100%,12rem)] flex-1 flex-col gap-3">
           <span
             data-testid="watch-download-modal-eyebrow"
             className={WATCH_SECTION_EYEBROW_CLASS}

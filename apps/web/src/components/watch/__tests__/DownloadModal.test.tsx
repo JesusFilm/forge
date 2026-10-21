@@ -223,6 +223,15 @@ describe("DownloadModal — header metadata", () => {
     )
     expect(poster?.dataset.fill).toBe("true")
     expect(poster?.dataset.sizes).toBe("(min-width: 640px) 224px, 100vw")
+    // At large text the fixed-width poster leaves the title column too narrow;
+    // the header row wraps so the title drops below instead of overflowing.
+    const posterBox = $('[data-testid="watch-download-modal-poster"]')
+    expect(posterBox?.parentElement?.className).toContain("sm:flex-wrap")
+    expect(posterBox?.className).toContain("sm:max-w-full")
+    expect(
+      $('[data-testid="watch-download-modal-eyebrow"]')?.parentElement
+        ?.className,
+    ).toContain("min-w-[min(100%,12rem)]")
     expect($('[data-testid="watch-download-modal-eyebrow"]')?.className).toBe(
       WATCH_SECTION_EYEBROW_CLASS,
     )
