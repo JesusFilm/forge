@@ -102,9 +102,10 @@ async function openCollectionDownload(page: Page, rootFont: number) {
   await page.keyboard.press("Enter")
   const modal = page.getByTestId("watch-collection-download-modal")
   await expect(modal.getByTestId("language-combobox-trigger")).toBeVisible()
+  // The quality tiers arrive with the collection options from Admin.
   await expect(
     modal.getByTestId("watch-collection-download-quality"),
-  ).toBeEnabled()
+  ).toBeEnabled({ timeout: 15_000 })
   return modal
 }
 
@@ -169,21 +170,28 @@ for (const viewport of viewports) {
       expect(sideways).toBe(0)
 
       // The quality list opens below its trigger and does not flip, so put
-      // the trigger at the top first, as a user scrolls to it. The last option
-      // is chosen with the keyboard, which works at any height; the first
-      // option takes a real pointer click.
-      await quality.evaluate((element) =>
-        element.scrollIntoView({ block: "start" }),
-      )
+      // the trigger near the top first, as a user scrolls to it. A trigger
+      // that is even a fraction of a pixel out of view makes Playwright
+      // scroll it back to the middle. The last option is chosen with the
+      // keyboard, which works at any height; the first option takes a real
+      // pointer click.
+      const openQuality = async () => {
+        await quality.evaluate((element) => {
+          element.scrollIntoView({ block: "start" })
+          const viewport = element.closest('[data-slot="dialog-viewport"]')
+          if (viewport) viewport.scrollTop -= 8
+        })
+        await quality.click()
+      }
       const list = page.getByTestId("watch-collection-download-quality-list")
       const options = list.getByRole("option")
-      await quality.click()
+      await openQuality()
       const lastLabel = (await options.last().textContent())?.trim() ?? ""
       await page.keyboard.press("End")
       await page.keyboard.press("Enter")
       await expect(list).toBeHidden()
       await expect(quality).toHaveText(lastLabel)
-      await quality.click()
+      await openQuality()
       const firstLabel = (await options.first().textContent())?.trim() ?? ""
       await options.first().click()
       await expect(list).toBeHidden()
