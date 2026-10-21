@@ -98,15 +98,62 @@ async function openCollectionDownload(page: Page, rootFont: number) {
   }, rootFont)
   // Keyboard activation: at some sizes the hero button never holds still
   // long enough for a pointer click, which is a page matter, not the dialog.
-  await page.getByTestId("series-page-download-button").focus()
-  await page.keyboard.press("Enter")
+  // The button is server-rendered, so an Enter that lands before hydration
+  // can be lost and no dialog opens. Press again until the dialog is open.
+  // The retry covers only this opening step. A dialog that never opens, or
+  // one that opens broken, still fails the assertions that follow.
+  const download = page.getByTestId("series-page-download-button")
   const modal = page.getByTestId("watch-collection-download-modal")
-  await expect(modal.getByTestId("language-combobox-trigger")).toBeVisible()
-  // The quality tiers arrive with the collection options from Admin.
-  await expect(
-    modal.getByTestId("watch-collection-download-quality"),
-  ).toBeEnabled({ timeout: 15_000 })
+  const languageTrigger = modal.getByTestId("language-combobox-trigger")
+  await expect(async () => {
+    if (await languageTrigger.isVisible()) return
+    await download.focus()
+    await page.keyboard.press("Enter")
+    await expect(languageTrigger).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 15_000, intervals: [0] })
+  await waitForCollectionOptions(modal)
   return modal
+}
+
+// The quality tiers arrive with the collection options from live Admin
+// content, and that lookup sometimes fails on its own. The dialog then shows
+// its own "try again" control. Press it once, as a user would, and record the
+// press as a test annotation so an unreliable upstream stays visible in the
+// report. More presses would only add load on a service that is already
+// failing: a second failure ends the test with an upstream message, not a
+// layout message.
+const lookupBudgetMs = 17_000
+async function waitForCollectionOptions(modal: Locator) {
+  const quality = modal.getByTestId("watch-collection-download-quality")
+  const retry = modal.getByTestId("watch-collection-download-load-retry")
+  for (let retried = false; ; retried = true) {
+    let outcome: "ready" | "failed" | "loading" = "loading"
+    // One lookup may use all of the 15 s outbound budget of the Admin client
+    // (src/lib/admin-client.ts) before the dialog reports the failure.
+    const deadline = Date.now() + lookupBudgetMs
+    while (outcome === "loading" && Date.now() < deadline) {
+      if (await quality.isEnabled()) outcome = "ready"
+      else if (await retry.isVisible()) outcome = "failed"
+      else await modal.page().waitForTimeout(250)
+    }
+    if (outcome === "ready") return
+    if (outcome === "failed" && !retried) {
+      // The retry may use another full lookup budget. Grant it only here, so
+      // a layout failure still ends the test at the normal limit.
+      test.setTimeout(test.info().timeout + lookupBudgetMs)
+      test.info().annotations.push({
+        type: "collection-lookup-retry",
+        description: "try again pressed after a failed Admin lookup",
+      })
+      await retry.click()
+      continue
+    }
+    throw new Error(
+      outcome === "failed"
+        ? "The collection download lookup failed twice. This is an Admin or network failure, not a layout result."
+        : "The collection download lookup did not finish in time. This is an Admin or network failure, not a layout result.",
+    )
+  }
 }
 
 for (const viewport of viewports) {
@@ -183,6 +230,8 @@ for (const viewport of viewports) {
         })
         await quality.click()
       }
+      // A language change reloads the options, so wait for them again.
+      await waitForCollectionOptions(modal)
       const list = page.getByTestId("watch-collection-download-quality-list")
       const options = list.getByRole("option")
       await openQuality()
