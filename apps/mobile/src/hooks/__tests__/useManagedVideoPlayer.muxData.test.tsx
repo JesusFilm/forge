@@ -81,7 +81,10 @@ jest.mock("../../lib/watchProgress/syncClient", () => ({
 }))
 // The spike's backend does not exist yet; this seam is where it connects.
 jest.mock("../../lib/muxData/monitor", () => ({
-  resolveMuxMonitorBackend: () => mockBackend,
+  resolveMuxMonitorBackend: () => {
+    if (mockBackendThrows) throw new Error("native module fault")
+    return mockBackend
+  },
 }))
 jest.mock("../../lib/muxData/viewerId", () => ({
   getMuxViewerIdStore: () => ({ get: () => mockViewerId }),
@@ -147,6 +150,7 @@ function makeBackend(
 }
 
 let mockBackend: MuxMonitorBackend = makeBackend()
+let mockBackendThrows = false
 
 type HookResult = ReturnType<typeof useManagedVideoPlayer>
 let latest: HookResult | null = null
@@ -223,6 +227,7 @@ function deferred<T>() {
 
 beforeEach(() => {
   strict = true
+  mockBackendThrows = false
   video.__reset()
   monitors.length = 0
   attaches.length = 0
@@ -487,6 +492,16 @@ describe("useManagedVideoPlayer muxData: playback safety (R27, R29)", () => {
     const withoutMonitor = await swapSequence()
     expect(withMonitor.length).toBeGreaterThan(0)
     expect(withMonitor).toEqual(withoutMonitor)
+  })
+
+  it("keeps playing when the backend throws while the session is created", async () => {
+    mockBackendThrows = true
+    const renderer = await mount(ENGLISH, watch())
+    await act(async () => player.play())
+    await rerender(renderer, SPANISH, watch({ videoId: "doc-1" }))
+    await settleReplace()
+    expect(player.replaceAsync).toHaveBeenCalledWith(SPANISH)
+    expect(player.playing).toBe(true)
   })
 
   it("keeps playing when every monitor call throws (AE9)", async () => {

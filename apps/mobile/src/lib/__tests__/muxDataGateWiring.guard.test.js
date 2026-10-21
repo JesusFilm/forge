@@ -142,3 +142,41 @@ describe("the Mux Data gate is the only reader (KTD3)", () => {
     expect(pattern.test(`${NAME}_OTHER`)).toBe(false)
   })
 })
+
+// KTD8: the viewer id read starts at launch, so the first attach waits on one
+// promise and lands before play(). The hook suites mock the store, so only
+// this pin fails when the launch call is deleted or moved into a component.
+const LAYOUT = "app/_layout.tsx"
+const LAUNCH_READ =
+  /require\(\s*["']\.\.\/src\/lib\/muxData\/viewerId["']\s*\)\.startMuxViewerIdRead\(\)/
+
+/** True when the read runs inside the module-scope `try {` block. */
+function startsViewerIdReadAtLaunch(source) {
+  const code = stripComments(source)
+  const head = /^try\s*\{/m.exec(code)
+  if (head == null) return false
+  const block = bracedGroup(code.slice(head.index), head[0])
+  return block != null && LAUNCH_READ.test(block)
+}
+
+describe("the Mux viewer id launch read (KTD8)", () => {
+  it("starts in the module-scope guarded block of app/_layout.tsx", () => {
+    const full = path.join(MOBILE, LAYOUT)
+    expect(startsViewerIdReadAtLaunch(fs.readFileSync(full, "utf8"))).toBe(true)
+  })
+
+  it("rejects a moved or commented-out read (positive control)", () => {
+    const call = 'require("../src/lib/muxData/viewerId").startMuxViewerIdRead()'
+    expect(startsViewerIdReadAtLaunch(`try {\n  ${call}\n} catch {}`)).toBe(
+      true,
+    )
+    expect(startsViewerIdReadAtLaunch(`try {\n  // ${call}\n} catch {}`)).toBe(
+      false,
+    )
+    expect(
+      startsViewerIdReadAtLaunch(
+        `try {\n  x()\n} catch {}\nfunction Root() {\n  ${call}\n}`,
+      ),
+    ).toBe(false)
+  })
+})

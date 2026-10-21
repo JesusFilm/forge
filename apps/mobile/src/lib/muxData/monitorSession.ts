@@ -1,7 +1,5 @@
 import type { VideoPlayer } from "expo-video"
 
-import { OFFLINE_ROOT } from "../offlineFileSystem"
-import { validateLocalMediaUrl } from "../validateLocalMediaUrl"
 import { resolveMuxDataConfig, type MuxDataConfig } from "./config"
 import {
   resolveMuxMonitorBackend,
@@ -17,6 +15,7 @@ import {
 } from "./streamTransition"
 import {
   buildMuxViewData,
+  isRemoteUrl,
   type MuxViewData,
   type MuxViewIdentity,
   type MuxViewSurface,
@@ -71,7 +70,7 @@ export type MonitorSessionDeps = {
   config: MuxDataConfig
   backend: MuxMonitorBackend
   getViewerId: () => Promise<string>
-  /** `validateLocalMediaUrl(url, OFFLINE_ROOT)`, injected to keep this pure. */
+  /** True for a download, or any other source that is not a stream. */
   isLocal: (url: string) => boolean
 }
 
@@ -101,6 +100,10 @@ export function createMonitorSession(
   let attachGeneration = 0
   // Adapter swaps and error reloads; the hook's isSwappingRef stays the QoE's.
   let latestLoad = 0
+  // Between a stage and its settle the open view still plays the previous
+  // stream on Android and JS, so a late id waits for the new view (KTD5).
+  let settlePending = false
+  let lateIdentityForStaged = false
   let released = false
   // Read at creation, so an attach after the first stream (an episode after
   // the trailer) finds the id and lands before its load (KTD4).
@@ -166,48 +169,73 @@ export function createMonitorSession(
     if (current != null) safely(() => current.release())
   }
 
-  return {
-    onStream(url, option, errorReload = false) {
-      if (released) return NO_SETTLE
-      if (option != null) surface = option.surface
-      const openUrl = loaded?.url ?? null
-      const transition = planStreamTransition({
-        current: loaded,
-        next: { url, identity: option?.identity ?? null, errorReload },
-        downloadedPlaysMonitored: deps.backend.downloadedPlaysMonitored,
-        isLocal: deps.isLocal,
-      })
+  function planAndApply(
+    url: string | null,
+    option: MuxDataOption | null,
+    errorReload: boolean,
+  ): () => void {
+    if (option != null) surface = option.surface
+    const openUrl = loaded?.url ?? null
+    const transition = planStreamTransition({
+      current: loaded,
+      next: { url, identity: option?.identity ?? null, errorReload },
+      downloadedPlaysMonitored: deps.backend.downloadedPlaysMonitored,
+      isLocal: deps.isLocal,
+    })
 
-      const open = monitor
-      if (open != null && openUrl != null && transition.openViewUpdate) {
+    const open = monitor
+    if (open != null && openUrl != null && transition.openViewUpdate) {
+      if (settlePending) lateIdentityForStaged = true
+      else {
         const data = dataFor({
           url: openUrl,
           identity: transition.openViewUpdate,
         })
         if (data != null) safely(() => open.updateView(data))
       }
+    }
 
-      loaded = transition.loaded
-      if (transition.beforeLoad === "attach") attach()
-      else if (transition.beforeLoad === "detach") detach()
-      else if (transition.beforeLoad === "stage") {
-        const current = monitor
-        const data = loaded == null ? null : dataFor(loaded)
-        if (current != null && data != null) safely(() => current.stage(data))
-      }
+    loaded = transition.loaded
+    if (transition.beforeLoad === "attach") attach()
+    else if (transition.beforeLoad === "detach") detach()
+    else if (transition.beforeLoad === "stage") {
+      const current = monitor
+      const data = loaded == null ? null : dataFor(loaded)
+      if (current != null && data != null) safely(() => current.stage(data))
+    }
 
-      if (!transition.loads) return NO_SETTLE
-      latestLoad += 1
-      const token = latestLoad
-      return () => {
-        if (released) return
-        if (
-          settleAction(transition, { token, latestToken: latestLoad }) ===
-          "none"
-        )
-          return
-        const current = monitor
-        if (current != null) safely(() => current.startView())
+    if (!transition.loads) return NO_SETTLE
+    latestLoad += 1
+    const token = latestLoad
+    settlePending = transition.newViewAtSettle
+    lateIdentityForStaged = false
+    return () => {
+      if (released) return
+      if (
+        settleAction(transition, { token, latestToken: latestLoad }) === "none"
+      )
+        return
+      settlePending = false
+      const current = monitor
+      if (current == null) return
+      safely(() => current.startView())
+      if (!lateIdentityForStaged) return
+      lateIdentityForStaged = false
+      const data = loaded == null ? null : dataFor(loaded)
+      if (data != null) safely(() => current.updateView(data))
+    }
+  }
+
+  return {
+    onStream(url, option, errorReload = false) {
+      if (released) return NO_SETTLE
+      // A planning fault must not reach the caller, which loads the stream
+      // right after this returns (R27).
+      try {
+        const settle = planAndApply(url, option, errorReload)
+        return () => safely(settle)
+      } catch {
+        return NO_SETTLE
       }
     },
 
@@ -246,6 +274,6 @@ export function createMuxMonitorSession(
     config,
     backend,
     getViewerId: () => viewerIds.getMuxViewerIdStore().get(),
-    isLocal: (url) => validateLocalMediaUrl(url, OFFLINE_ROOT),
+    isLocal: (url) => !isRemoteUrl(url),
   })
 }

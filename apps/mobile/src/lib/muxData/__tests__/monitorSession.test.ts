@@ -1,10 +1,25 @@
 jest.mock("../../../env", () => ({ env: {} }))
+jest.mock("../monitor", () => ({
+  resolveMuxMonitorBackend: () => mockResolvedBackend,
+}))
+jest.mock("../viewerId", () => ({
+  getMuxViewerIdStore: () => ({ get: () => Promise.resolve("viewer-1") }),
+}))
 
 import type { VideoPlayer } from "expo-video"
 
+import { env } from "../../../env"
 import type { MuxMonitor, MuxMonitorBackend } from "../monitor"
-import { createMonitorSession, type MuxDataOption } from "../monitorSession"
+import {
+  createMonitorSession,
+  createMuxMonitorSession,
+  type MuxDataOption,
+} from "../monitorSession"
 import type { MuxViewData } from "../viewData"
+
+// The shipped state: no backend until the device spike connects one.
+let mockResolvedBackend: MuxMonitorBackend | null = null
+const mockEnv = env as { EXPO_PUBLIC_MUX_DATA_ENV_KEY?: string }
 
 const OFFLINE_ROOT = "file:///data/Documents/offline-downloads"
 const ENGLISH = "https://stream.mux.com/englishAsset.m3u8"
@@ -221,6 +236,42 @@ describe("monitor session: view boundaries (KTD5)", () => {
     })
   })
 
+  // A seed-path open: B's record lands while its replaceAsync is in flight.
+  // Until the settle, the open view on Android and JS is still A's (KTD5).
+  it("sends a late id inside a swap window to the new view, not the open one", async () => {
+    const { session: s, calls } = await attached()
+    const settle = s.onStream(EPISODE, watch({ videoSlug: "episode-1" }))
+    s.onStream(
+      null,
+      watch({ videoId: "doc-3", videoSlug: "episode-1", title: "Episode" }),
+    )
+    expect(ops(calls)).toEqual(["stage"])
+
+    settle()
+
+    expect(ops(calls)).toEqual(["stage", "startView", "updateView"])
+    expect(calls[2]).toMatchObject({
+      data: {
+        video_id: "doc-3",
+        video_title: "Episode",
+        custom_2: "episode-1",
+        video_source_url: EPISODE,
+      },
+    })
+  })
+
+  it("sends a late title inside a dub swap window to the new view", async () => {
+    const { session: s, calls } = await attached()
+    const settle = s.onStream(SPANISH, watch({ videoId: "doc-1" }))
+    s.onStream(null, watch({ videoId: "doc-1", title: "Jesus" }))
+    settle()
+
+    expect(ops(calls)).toEqual(["stage", "startView", "updateView"])
+    expect(calls[2]).toMatchObject({
+      data: { video_title: "Jesus", video_source_url: SPANISH },
+    })
+  })
+
   it("changes the size without a new view", async () => {
     const { session: s, calls } = await attached()
     s.setPlayerSize({ width: 160, height: 90 })
@@ -363,5 +414,62 @@ describe("monitor session: release and faults (R27, AE9)", () => {
     expect(() => idFault.session.onStream(ENGLISH, watch())).not.toThrow()
     await flush()
     expect(idFault.calls).toEqual([])
+  })
+
+  it("contains a fault in its own planning, so a swap still loads", () => {
+    const created = createMonitorSession(player, {
+      config: {
+        envKey: "k0abc123",
+        playerNames: {
+          watch: "forge-mobile-watch",
+          experience: "forge-mobile-experience",
+          explore: "forge-mobile-explore",
+        },
+      },
+      // Downloads off, so the planner must call the classifier.
+      backend: fakeBackend({ downloadedPlaysMonitored: false }).backend,
+      getViewerId: () => Promise.resolve(VIEWER),
+      isLocal: () => {
+        throw new Error("classifier fault")
+      },
+    })
+    let settle: () => void = () => {}
+    expect(() => {
+      settle = created.onStream(ENGLISH, watch())
+    }).not.toThrow()
+    expect(() => settle()).not.toThrow()
+  })
+})
+
+describe("createMuxMonitorSession (KTD3)", () => {
+  afterEach(() => {
+    mockResolvedBackend = null
+    delete mockEnv.EXPO_PUBLIC_MUX_DATA_ENV_KEY
+  })
+
+  // A valid key ships before any backend: nothing may reach Mux then.
+  it("creates no session for a valid key while no backend exists", () => {
+    mockEnv.EXPO_PUBLIC_MUX_DATA_ENV_KEY = "k0abc123"
+    expect(createMuxMonitorSession(player)).toBeNull()
+  })
+
+  it("creates no session without a key, even with a backend", () => {
+    mockResolvedBackend = fakeBackend().backend
+    expect(createMuxMonitorSession(player)).toBeNull()
+  })
+
+  // R20 fails closed: a file URL outside the offline root is still local.
+  it("treats any URL that is not http(s) as a download", async () => {
+    mockEnv.EXPO_PUBLIC_MUX_DATA_ENV_KEY = "k0abc123"
+    const fake = fakeBackend({ downloadedPlaysMonitored: false })
+    mockResolvedBackend = fake.backend
+    const created = createMuxMonitorSession(player)
+    created?.onStream("file:///private/var/tmp/clip.mp4", watch())
+    await flush()
+    expect(fake.calls).toEqual([])
+
+    created?.onStream(ENGLISH, watch())
+    await flush()
+    expect(ops(fake.calls)).toEqual(["attach"])
   })
 })

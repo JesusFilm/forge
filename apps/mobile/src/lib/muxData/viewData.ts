@@ -41,6 +41,12 @@ export type MuxViewDataInput = {
 
 const REMOTE_URL = /^https?:\/\//i
 
+/** Only an http(s) URL counts as streamed, so a new local source fails
+ *  closed: it is treated as a download and never sent (R20). */
+export function isRemoteUrl(url: string): boolean {
+  return REMOTE_URL.test(url)
+}
+
 function known(value: string | null): value is string {
   return value != null && value !== ""
 }
@@ -62,7 +68,6 @@ export function buildMuxViewData(input: MuxViewDataInput): MuxViewData {
   if (known(identity.videoId)) data.video_id = identity.videoId
   if (known(identity.title)) data.video_title = identity.title
   // R20: a local path names the iOS container, so only a remote URL is sent.
-  if (!downloaded && REMOTE_URL.test(streamUrl))
-    data.video_source_url = streamUrl
+  if (!downloaded && isRemoteUrl(streamUrl)) data.video_source_url = streamUrl
   return data
 }

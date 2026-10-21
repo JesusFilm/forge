@@ -40,6 +40,7 @@ function createStore(
   options: {
     storage?: Map<string, string>
     failRead?: boolean
+    failWrite?: boolean
     /** The read waits for this before it answers. */
     holdRead?: Promise<void>
     /** Each store mints its own ids, so a restart cannot match by chance. */
@@ -60,6 +61,7 @@ function createStore(
     },
     setItem: async (key, value) => {
       writes.push(value)
+      if (options.failWrite) throw new Error("storage full")
       storage.set(key, value)
     },
     mintViewerId: () => {
@@ -142,6 +144,25 @@ describe("createMuxViewerIdStore (R22, KTD8)", () => {
     expect(writes).toEqual(["viewer-1"])
     expect(minted).toEqual(["viewer-1"])
     expect(reads).toHaveLength(3)
+  })
+  // A write fault must not stop the attach: memory holds the id for this launch.
+  it("returns the minted id when the write fails, and mints no second id", async () => {
+    const { store, minted } = createStore({ failWrite: true })
+    const first = await store.get()
+    expect(first).toBe("viewer-1")
+    expect(await store.get()).toBe(first)
+    expect(minted).toEqual(["viewer-1"])
+  })
+
+  // A failed read cannot tell an empty slot from a stored id it missed.
+  it("returns the stored id once a failed read heals, and writes nothing", async () => {
+    const storage = new Map([[STORAGE_KEY, "stored-id"]])
+    const { store, writes, healRead } = createStore({ storage, failRead: true })
+    await store.get()
+    healRead()
+    expect(await store.get()).toBe("stored-id")
+    expect(writes).toEqual([])
+    expect(storage.get(STORAGE_KEY)).toBe("stored-id")
   })
 })
 

@@ -430,7 +430,12 @@ export function useManagedVideoPlayer(
   // Created in the effect, so StrictMode's setup, cleanup, setup cycle leaves
   // one live monitor. The mount attach covers a non-null creation source.
   useEffect(() => {
-    const session = createMuxMonitorSession(player)
+    let session: MonitorSession | null = null
+    try {
+      session = createMuxMonitorSession(player)
+    } catch {
+      // A backend that cannot load leaves this player unmonitored (R27).
+    }
     muxSessionRef.current = session
     session?.setPlayerSize(muxPlayerSizeRef.current)
     session?.onStream(loadedUrlRef.current, muxDataRef.current)
