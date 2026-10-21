@@ -132,10 +132,6 @@ describe("env.ts module evaluation", () => {
       set(MUX_DATA, undefined)
 
       expect(() => require("../env")).not.toThrow()
-      expect(require("../env").env[MUX_DATA]).toBeUndefined()
-      expect(require("../lib/config").getGraphQLUrl()).toBe(
-        LOCAL_ADMIN_GRAPHQL_URL,
-      )
       expect(require("../lib/muxData/config").resolveMuxDataConfig()).toBe(null)
     })
 

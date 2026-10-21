@@ -16,6 +16,8 @@ import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { experienceMuxData } from "../../src/lib/muxData/monitorSession"
+import { PLAYER_HEIGHT_RATIO } from "../../src/lib/playerLayout"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
 import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 
@@ -133,7 +135,7 @@ function VideoDetailContent({
   // which is often empty or out of date.
   const { getVideoTitle } = useExperienceContext()
   const { width: screenWidth } = useWindowDimensions()
-  const playerHeight = Math.round(screenWidth * (9 / 16))
+  const playerHeight = Math.round(screenWidth * PLAYER_HEIGHT_RATIO)
 
   // Shared lifecycle adapter (todo 016). Deliberate convergence: foreground now
   // resumes only if playback was active at background — the old inline handler
@@ -144,16 +146,7 @@ function VideoDetailContent({
     {
       // KTD5 opt-in: this SDUI block carries the admin video id.
       progress: blockVideoId ? { videoId: blockVideoId } : null,
-      muxData: blockVideoId
-        ? {
-            surface: "experience",
-            identity: {
-              videoId: blockVideoId,
-              videoSlug: null,
-              title: getVideoTitle(blockVideoId),
-            },
-          }
-        : null,
+      muxData: experienceMuxData(blockVideoId ?? null, getVideoTitle),
     },
   )
 

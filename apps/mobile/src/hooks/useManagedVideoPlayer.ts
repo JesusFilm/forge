@@ -38,6 +38,7 @@ import type { RecommendationPlaybackRecorder } from "../lib/recommendations/play
 import { createPlaybackRecorderForMedia } from "../lib/recommendations/playbackRecorderClient"
 import type { MuxPlayerSize } from "../lib/muxData/monitor"
 import {
+  NO_SETTLE,
   createMuxMonitorSession,
   type MonitorSession,
   type MuxDataOption,
@@ -98,8 +99,6 @@ function startHoldClock(ref: { current: HoldClock | null }): void {
   if (clock != null && clock.active && clock.startedAt == null)
     clock.startedAt = Date.now()
 }
-
-const NO_MUX_SETTLE = () => {}
 
 /** The host's answer for a swap it classified: seek first, and whether the
  *  content (and so the QoE session) is the same. False is no claim. */
@@ -457,7 +456,7 @@ export function useManagedVideoPlayer(
   const muxMonitor = useRef<MuxMonitorFacade>({
     beginReload: (url) =>
       muxSessionRef.current?.onStream(url, muxDataRef.current, true) ??
-      NO_MUX_SETTLE,
+      NO_SETTLE,
     setPlayerSize: (size) => {
       muxPlayerSizeRef.current = size
       muxSessionRef.current?.setPlayerSize(size)
@@ -489,7 +488,7 @@ export function useManagedVideoPlayer(
     // swap; the new view opens at the settle, and only for the latest swap.
     const settleMuxView =
       muxSessionRef.current?.onStream(sourceUrl, muxDataRef.current) ??
-      NO_MUX_SETTLE
+      NO_SETTLE
     loadedUrlRef.current = sourceUrl
     if (sameAsset && !constraintSwap) {
       // Same asset behind a new string: the player already holds it.

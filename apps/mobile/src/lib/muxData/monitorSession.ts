@@ -10,6 +10,7 @@ import {
   type MuxPlayerSize,
 } from "./monitor"
 import {
+  isMonitoredStream,
   planStreamTransition,
   settleAction,
   type LoadedStream,
@@ -26,6 +27,19 @@ import {
 export type MuxDataOption = {
   surface: MuxViewSurface
   identity: MuxViewIdentity
+}
+
+/** An Experience route's option: the block's video id, no slug, and the
+ *  record title from the provider, never the block's stored title (R15). */
+export function experienceMuxData(
+  videoId: string | null,
+  getVideoTitle: (videoId: string) => string | null,
+): MuxDataOption | null {
+  if (videoId == null) return null
+  return {
+    surface: "experience",
+    identity: { videoId, videoSlug: null, title: getVideoTitle(videoId) },
+  }
 }
 
 /** KTD16: the hook's stable facade, for callers outside its render inputs. */
@@ -61,7 +75,7 @@ export type MonitorSessionDeps = {
   isLocal: (url: string) => boolean
 }
 
-const NO_SETTLE = () => {}
+export const NO_SETTLE = () => {}
 
 /** A JS try/catch is the only guard between a monitor fault and playback
  *  (R27). The plan sends no warning: a fault never touches playback. */
@@ -90,17 +104,21 @@ export function createMonitorSession(
   let released = false
   // Read at creation, so an attach after the first stream (an episode after
   // the trailer) finds the id and lands before its load (KTD4).
-  const viewerIdRead = deps.getViewerId().then((id) => {
-    viewerId = id
-  })
-  viewerIdRead.catch(() => {
-    // The store resolves from memory after a fault; this is a backstop.
-  })
+  const viewerIdRead = deps.getViewerId().then(
+    (id) => {
+      viewerId = id
+    },
+    () => {
+      // The store resolves from memory after a fault; this is a backstop.
+    },
+  )
 
   const monitored = (stream: LoadedStream | null): stream is LoadedStream =>
-    stream != null &&
-    stream.identity != null &&
-    (deps.backend.downloadedPlaysMonitored || !deps.isLocal(stream.url))
+    isMonitoredStream(
+      stream,
+      deps.backend.downloadedPlaysMonitored,
+      deps.isLocal,
+    )
 
   function dataFor(stream: LoadedStream): MuxViewData | null {
     if (stream.identity == null || viewerId == null) return null
@@ -136,12 +154,9 @@ export function createMonitorSession(
       bind()
       return
     }
-    viewerIdRead.then(
-      () => {
-        if (generation === attachGeneration) bind()
-      },
-      () => {},
-    )
+    void viewerIdRead.then(() => {
+      if (generation === attachGeneration) bind()
+    })
   }
 
   function detach(): void {
@@ -223,8 +238,8 @@ export function createMuxMonitorSession(
   if (config == null) return null
   const backend = resolveMuxMonitorBackend()
   if (backend == null) return null
-  // Loaded only behind the gate, so a build without a key never loads the
-  // store and its storage module.
+  // Lazy: the player hook's import graph must not load the native storage
+  // module, which the player suites do not mock.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const viewerIds = require("./viewerId") as typeof import("./viewerId")
   return createMonitorSession(player, {

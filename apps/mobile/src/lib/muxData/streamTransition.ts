@@ -44,6 +44,20 @@ export type StreamTransition = {
   loaded: LoadedStream | null
 }
 
+/** A stream reaches Mux only with a `muxData` option, and a download only
+ *  when the backend can keep its local path out of every field (R20). */
+export function isMonitoredStream(
+  stream: LoadedStream | null,
+  downloadedPlaysMonitored: boolean,
+  isLocal: (url: string) => boolean,
+): stream is LoadedStream {
+  return (
+    stream != null &&
+    stream.identity != null &&
+    (downloadedPlaysMonitored || !isLocal(stream.url))
+  )
+}
+
 /** Mirrors the adapter's admission: one asset under one constraint is the
  *  stream the player already holds, so nothing reloads. */
 function loadsNewStream(
@@ -96,9 +110,7 @@ export function planStreamTransition(
 ): StreamTransition {
   const { current, next } = input
   const monitored = (stream: LoadedStream | null) =>
-    stream != null &&
-    stream.identity != null &&
-    (input.downloadedPlaysMonitored || !input.isLocal(stream.url))
+    isMonitoredStream(stream, input.downloadedPlaysMonitored, input.isLocal)
   const wasMonitored = monitored(current)
 
   const open = current?.identity ?? null

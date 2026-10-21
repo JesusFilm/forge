@@ -134,7 +134,7 @@ export async function recoverPlayback(
     try {
       settleObserver()
     } catch {
-      // Same as above.
+      // Recovery does not depend on the observer.
     }
   }
 

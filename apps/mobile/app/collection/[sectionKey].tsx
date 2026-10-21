@@ -18,6 +18,7 @@ import {
   useSectionByKey,
 } from "../../src/contexts/ExperienceProvider"
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { experienceMuxData } from "../../src/lib/muxData/monitorSession"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
 import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
 import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
@@ -183,16 +184,7 @@ function CollectionPlayerContent({
       // KTD5 opt-in: identity re-keys with the active pager item, flushing
       // the departing episode inside the adapter.
       progress: activeVideoId ? { videoId: activeVideoId } : null,
-      muxData: activeVideoId
-        ? {
-            surface: "experience",
-            identity: {
-              videoId: activeVideoId,
-              videoSlug: null,
-              title: getVideoTitle(activeVideoId),
-            },
-          }
-        : null,
+      muxData: experienceMuxData(activeVideoId, getVideoTitle),
     },
   )
 
