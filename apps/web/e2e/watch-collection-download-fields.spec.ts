@@ -1,16 +1,35 @@
 import { expect, test, type Locator, type Page } from "@playwright/test"
 
 // Layout regression for the collection download fields (PR 2836, feat-457).
-// Run against an existing production or dev server; this spec never starts a
-// server or seeds content. jsdom has no layout, so the class tests cannot see
-// a select that is too narrow to show its value. This spec measures the real
-// boxes and the painted text instead.
+// jsdom has no layout, so the class tests cannot see a select that is too
+// narrow to show its value. This spec measures the real boxes and the painted
+// text instead.
+//
+// MANUAL CHECK. The collection options come from live Admin content, so the
+// spec is not deterministic and each case makes live lookups. It never starts
+// a server or seeds content. It skips unless all of these conditions are true:
+//   - WATCH_COLLECTION_DOWNLOAD_TEST_LIVE=1 is set (the explicit opt-in).
+//   - WATCH_COLLECTION_DOWNLOAD_TEST_BASE_URL names an existing server that
+//     serves the content. There is no default address.
+//   - CI is not set.
+// Run a few cases with --grep. Do not repeat the full 18-case matrix against
+// production content as a readiness gate: one run made 322 failed lookups.
+// A deterministic local Admin fixture is required before this spec joins the
+// routine or CI web e2e runs.
+const liveBaseURL = process.env.WATCH_COLLECTION_DOWNLOAD_TEST_BASE_URL
+const skipReason = process.env.CI
+  ? "Manual live-content check. It does not run in CI."
+  : process.env.WATCH_COLLECTION_DOWNLOAD_TEST_LIVE !== "1"
+    ? "Manual live-content check. Set WATCH_COLLECTION_DOWNLOAD_TEST_LIVE=1 to run it."
+    : !liveBaseURL
+      ? "Manual live-content check. Set WATCH_COLLECTION_DOWNLOAD_TEST_BASE_URL to an existing server."
+      : null
+// The file-level skip applies before any test fixture or page.goto runs.
+test.skip(skipReason !== null, skipReason ?? "")
 const path =
   process.env.WATCH_COLLECTION_DOWNLOAD_TEST_PATH ??
   "/watch/lumo-the-gospel-of-john.html/english.html"
-if (process.env.WATCH_COLLECTION_DOWNLOAD_TEST_BASE_URL) {
-  test.use({ baseURL: process.env.WATCH_COLLECTION_DOWNLOAD_TEST_BASE_URL })
-}
+if (liveBaseURL) test.use({ baseURL: liveBaseURL })
 
 const viewports = [
   { width: 320, height: 844 },
@@ -98,10 +117,12 @@ async function openCollectionDownload(page: Page, rootFont: number) {
   }, rootFont)
   // Keyboard activation: at some sizes the hero button never holds still
   // long enough for a pointer click, which is a page matter, not the dialog.
-  // The button is server-rendered, so an Enter that lands before hydration
-  // can be lost and no dialog opens. Press again until the dialog is open.
-  // The retry covers only this opening step. A dialog that never opens, or
-  // one that opens broken, still fails the assertions that follow.
+  // The button is server-rendered. In some runs the first Enter did not open
+  // the dialog. The cause is not proven; an Enter before hydration is only a
+  // hypothesis. Press again until the dialog is open. The 15 s value is an
+  // outer retry budget, not a hard limit on each locator action. The retry
+  // covers only this opening step. A dialog that never opens, or one that
+  // opens broken, still fails the assertions that follow.
   const download = page.getByTestId("series-page-download-button")
   const modal = page.getByTestId("watch-collection-download-modal")
   const languageTrigger = modal.getByTestId("language-combobox-trigger")
@@ -116,12 +137,12 @@ async function openCollectionDownload(page: Page, rootFont: number) {
 }
 
 // The quality tiers arrive with the collection options from live Admin
-// content, and that lookup sometimes fails on its own. The dialog then shows
-// its own "try again" control. Press it once, as a user would, and record the
-// press as a test annotation so an unreliable upstream stays visible in the
-// report. More presses would only add load on a service that is already
-// failing: a second failure ends the test with an upstream message, not a
-// layout message.
+// content. In some runs the lookup failed and the dialog showed its own "try
+// again" control. The cause is not known: the server action hides it. Press
+// the control once for each lookup, as a user would, and record the press as a
+// test annotation so the failure stays visible in the report. More presses add
+// load: a second failure ends the test with a neutral message that gives no
+// cause.
 const lookupBudgetMs = 17_000
 async function waitForCollectionOptions(modal: Locator) {
   const quality = modal.getByTestId("watch-collection-download-quality")
@@ -138,20 +159,21 @@ async function waitForCollectionOptions(modal: Locator) {
     }
     if (outcome === "ready") return
     if (outcome === "failed" && !retried) {
-      // The retry may use another full lookup budget. Grant it only here, so
-      // a layout failure still ends the test at the normal limit.
+      // The retry may use another full lookup budget. The extension applies
+      // to the whole remaining test, not to a separate lookup timer, and only
+      // when a lookup retry happens.
       test.setTimeout(test.info().timeout + lookupBudgetMs)
       test.info().annotations.push({
         type: "collection-lookup-retry",
-        description: "try again pressed after a failed Admin lookup",
+        description: "try again pressed after the dialog showed a lookup error",
       })
       await retry.click()
       continue
     }
     throw new Error(
       outcome === "failed"
-        ? "The collection download lookup failed twice. This is an Admin or network failure, not a layout result."
-        : "The collection download lookup did not finish in time. This is an Admin or network failure, not a layout result.",
+        ? "The collection options did not become usable after one retry; the dialog still shows its lookup error. The cause is unknown: inspect the application, server and network evidence."
+        : "The collection options did not become usable within the wait budget. The cause is unknown: inspect the application, server and network evidence.",
     )
   }
 }
@@ -175,6 +197,12 @@ for (const viewport of viewports) {
         await popover.getByRole("option", { name: language }).first().click()
         await expect(popover).toBeHidden()
         await expect(trigger).toContainText(language)
+        // A language change reloads the options. While they load or fail, the
+        // quality field is disabled and shows a short placeholder that can
+        // pass the geometry checks. Wait for usable options for THIS language
+        // before each measurement, so a failed lookup cannot be hidden by the
+        // next language.
+        await waitForCollectionOptions(modal)
 
         const texts = [
           ...(await trigger.locator(".truncate").all()),
@@ -230,8 +258,6 @@ for (const viewport of viewports) {
         })
         await quality.click()
       }
-      // A language change reloads the options, so wait for them again.
-      await waitForCollectionOptions(modal)
       const list = page.getByTestId("watch-collection-download-quality-list")
       const options = list.getByRole("option")
       await openQuality()
