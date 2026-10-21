@@ -75,9 +75,88 @@ const levelToStatus = {
 let configured = false
 let structuredSocket: Socket | null = null
 
+const MAX_TRANSPORT_CAUSE_NODES = 8
+const TRANSPORT_ERROR_CODES = new Set([
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "EAI_AGAIN",
+  "ENOTFOUND",
+  "ETIMEDOUT",
+  "EHOSTUNREACH",
+  "ENETUNREACH",
+  "EPIPE",
+  "UND_ERR_SOCKET",
+  "UND_ERR_CONNECT_TIMEOUT",
+  "UND_ERR_HEADERS_TIMEOUT",
+  "UND_ERR_BODY_TIMEOUT",
+  "UND_ERR_CLOSED",
+  "UND_ERR_DESTROYED",
+  "CERT_HAS_EXPIRED",
+  "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+  "DEPTH_ZERO_SELF_SIGNED_CERT",
+  "ERR_TLS_CERT_ALTNAME_INVALID",
+])
+
+function ownDataValue(value: object, key: string): unknown {
+  try {
+    return Object.getOwnPropertyDescriptor(value, key)?.value
+  } catch {
+    // A diagnostic must not evaluate getters or fail on a hostile proxy.
+    return undefined
+  }
+}
+
+function transportCauseCodes(error: Error): string[] {
+  const pending: unknown[] = [error]
+  const seen = new Set<object>()
+  const codes = new Set<string>()
+  for (
+    let visited = 0;
+    pending.length > 0 && visited < MAX_TRANSPORT_CAUSE_NODES;
+    visited += 1
+  ) {
+    const value = pending.shift()
+    if (!value || typeof value !== "object" || seen.has(value)) continue
+    seen.add(value)
+    const code = ownDataValue(value, "code")
+    if (typeof code === "string" && TRANSPORT_ERROR_CODES.has(code)) {
+      codes.add(code)
+    }
+    const cause = ownDataValue(value, "cause")
+    if (cause && typeof cause === "object") pending.push(cause)
+    const members = ownDataValue(value, "errors")
+    try {
+      if (!Array.isArray(members)) continue
+      const length = ownDataValue(members, "length")
+      if (typeof length !== "number") continue
+      for (
+        let index = 0;
+        index < Math.min(length, MAX_TRANSPORT_CAUSE_NODES);
+        index += 1
+      ) {
+        pending.push(ownDataValue(members, String(index)))
+      }
+    } catch {
+      // Array.isArray can throw for a revoked proxy; ignore that branch.
+    }
+  }
+  return [...codes]
+}
+
 function inspectArgument(value: unknown): string {
   if (typeof value === "string") return value
-  if (value instanceof Error) return value.stack ?? value.message
+  if (value instanceof Error) {
+    const stack = value.stack ?? value.message
+    const codes = transportCauseCodes(value)
+    if (codes.length === 0) return stack
+    // Keep the code before stack frames so the syslog byte limit preserves it.
+    // Never serialize the cause itself: it can carry URLs, headers or bodies.
+    const firstBreak = stack.indexOf("\n")
+    const suffix = ` [transport_codes=${codes.join(",")}]`
+    return firstBreak < 0
+      ? stack + suffix
+      : stack.slice(0, firstBreak) + suffix + stack.slice(firstBreak)
+  }
 
   return util.inspect(value, {
     breakLength: Number.POSITIVE_INFINITY,
