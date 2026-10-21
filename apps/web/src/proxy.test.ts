@@ -109,8 +109,12 @@ function rewritePath(response: Response): string | null {
 function expectNotFoundRewrite(
   response: Response,
   expectedInternalPathname = "/en/en/404",
+  // 404 when the miss is verified. 200 only when the route manifest was
+  // unavailable, because Admin being unreachable does not prove the URL is
+  // gone (feat-757).
+  expectedStatus: 200 | 404 = 404,
 ): void {
-  expect(response.status).toBe(200)
+  expect(response.status).toBe(expectedStatus)
   expect(rewritePath(response)).toBe(expectedInternalPathname)
   // CSP is deliberately NOT set here — next.config.mjs `headers()` owns it for
   // every route. Middleware headers overwrite config ones, so a static value
@@ -127,7 +131,7 @@ function expectUnavailableLanguageRewrite(
   expectedPublicPathname: string,
   expectedInternalPathname: string,
 ): void {
-  expect(response.status).toBe(200)
+  expect(response.status).toBe(404)
   expect(rewritePath(response)).toBe(expectedInternalPathname)
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
@@ -736,7 +740,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => null)
 
     const response = await proxy(makeRequest("/jesus.html"))
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/en/en/404", 200)
   })
 
   it("rewrites one-segment public language homes with locale/htmlLang matching the slug", async () => {
@@ -1284,7 +1288,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       makeRequest("/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html"),
     )
 
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/en/en/404", 200)
   })
 
   it("fails closed when an older manifest cannot prove exact episode English", async () => {
@@ -1858,7 +1862,7 @@ describe("two-segment language disambiguation consults the live route manifest (
       makeRequest(`/jesus.html/${NEW_LANGUAGE}.html`),
     )
 
-    expectNotFoundRewrite(response)
+    expectNotFoundRewrite(response, "/en/en/404", 200)
     expect(
       warn.mock.calls.some(([line]) =>
         String(line).includes(

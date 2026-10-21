@@ -494,6 +494,7 @@ function rewriteToInternal(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
   manifest: WatchRouteManifest | null = null,
+  status?: 404,
 ): NextResponse {
   const url = request.nextUrl.clone()
   // HTTPS reverse proxies (including Tailscale Serve) can leave Next's dev
@@ -526,6 +527,7 @@ function rewriteToInternal(
   return applyWatchSecurityHeaders(
     NextResponse.rewrite(url, {
       request: { headers: requestHeaders },
+      ...(status ? { status } : {}),
     }),
   )
 }
@@ -596,37 +598,60 @@ function logImplicitEnglishEpisodeRejected(
   })
 }
 
+/**
+ * `status: 404` is set on the rewrite itself because the sentinel page cannot
+ * set it: the `[htmlLang]` `loading.tsx` streams a Suspense shell, which
+ * flushes HTTP 200 before the sentinel's `notFound()` runs (feat-757).
+ *
+ * Pass `verified: false` when the miss was decided without a route manifest.
+ * Admin may simply have been unreachable, so the URL can still be valid; that
+ * response stays the old non-cached, noindex 200 instead of telling crawlers
+ * the page is gone.
+ */
 function buildNotFound(
   request: ProxyRequest,
   identity?: Pick<
     Extract<RewriteDecision, { kind: "rewrite" }>,
     "locale" | "htmlLang"
   >,
+  { verified = true }: { verified?: boolean } = {},
 ): NextResponse {
   const locale = identity?.locale ?? DEFAULT_LOCALE
-  return rewriteToInternal(request, {
-    kind: "rewrite",
-    locale,
-    // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
-    // so its document is in the CHROME language. Carrying the raw content tag
-    // would declare English recovery copy as Aari — the FGE-170
-    // mis-declaration pointed the other way.
-    htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
-    pathname: "/404",
-  })
+  return rewriteToInternal(
+    request,
+    {
+      kind: "rewrite",
+      locale,
+      // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
+      // so its document is in the CHROME language. Carrying the raw content tag
+      // would declare English recovery copy as Aari — the FGE-170
+      // mis-declaration pointed the other way.
+      htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
+      pathname: "/404",
+    },
+    null,
+    verified ? 404 : undefined,
+  )
 }
 
 function buildUnavailableLanguageNotFound(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
 ): NextResponse {
-  return rewriteToInternal(request, {
-    ...decision,
-    // Same reason as buildNotFound: the unavailable-language sentinel renders
-    // chrome-language copy, so it must not declare the content language.
-    htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
-    internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
-  })
+  return rewriteToInternal(
+    request,
+    {
+      ...decision,
+      // Same reason as buildNotFound: the unavailable-language sentinel renders
+      // chrome-language copy, so it must not declare the content language.
+      htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
+      internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+    },
+    null,
+    // Only reached when the manifest proves the language gap, so the 404 is
+    // verified. Same streaming reason as buildNotFound.
+    404,
+  )
 }
 
 async function classifyManifestAdmission(
@@ -904,10 +929,12 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const manifest = await getWatchRouteManifest()
   const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
-  if (rewrite.kind === "not-found") return buildNotFound(request)
+  if (rewrite.kind === "not-found") {
+    return buildNotFound(request, undefined, { verified: manifest != null })
+  }
   const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
-    return buildNotFound(request, rewrite)
+    return buildNotFound(request, rewrite, { verified: manifest != null })
   }
   if (admission.kind === "known-content-language-gap") {
     return buildUnavailableLanguageNotFound(request, rewrite)
