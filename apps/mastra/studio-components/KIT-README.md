@@ -47,10 +47,15 @@ fonts and the music beds ("DBP music bed").
 
 ## Voices
 
-The series voices are Studio presets (asset role `voice`): Eng_female_riah
-(female-d), Ryan Opfer Audiobook (male-e), Tatyana Voloshina, Ivo. Put their
-speech templates in the script's `voices` to have the items voiced;
-`shorts.narrationQuote` is free, `shorts.narrate` costs money, so ask first.
+Use only approved voice presets (asset role `voice`). A person adds a voice
+in the Shorts editor ("Import a known preset" with the ElevenLabs voice id);
+an agent never creates one by uploading an asset (the shorts-creator skill's
+rule). Series voices to import: female-d `98ujrzs7rxAMEsaC4EpW`, male-e
+`xLeLcqgjUx3wQJFSESKj`, Tatyana `nkvv6waLzFah2jTNUZGT`, Ivo
+`hD8aK7CmEPgH3mbFO08e`. Four presets with these names were uploaded by an
+agent on 2026-10-21 by mistake; do not rely on them until the Studio owner
+confirms. `shorts.narrationQuote` is free, `shorts.narrate` costs money, so
+ask first.
 
 ## Known limits (2026-10-21)
 
