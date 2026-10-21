@@ -362,7 +362,7 @@ export function DownloadModal({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           data-testid="watch-download-modal"
-          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
           overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
           viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
           showCloseButton={false}
@@ -427,7 +427,7 @@ export function DownloadModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
@@ -637,12 +637,14 @@ export function DownloadModal({
             </div>
 
             {/* Wraps so that on 320-360px phones the two buttons stack
-                instead of widening the dialog past the screen. */}
+                instead of widening the dialog past the screen. At 200% text
+                one button is wider than the dialog, so each label wraps too
+                (with the content's `minmax(0,1fr)` column). */}
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
               <Button
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}
-                className="cursor-pointer rounded-full px-5 py-3.5 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+                className="h-auto max-w-full shrink cursor-pointer rounded-full px-5 py-3.5 text-center text-base sm:text-sm font-bold tracking-wider whitespace-normal text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
               >
                 {t("close")}
               </Button>
@@ -652,7 +654,7 @@ export function DownloadModal({
                 disabled={!canDownload}
                 aria-label={t("download")}
                 data-testid="watch-download-modal-confirm"
-                className="px-7 py-4 text-base sm:text-sm"
+                className="max-w-full shrink px-7 py-4 text-center text-base sm:text-sm whitespace-normal"
               >
                 <DownloadIcon size={16} />
                 <span>{authChecking ? t("checking") : t("download")}</span>
