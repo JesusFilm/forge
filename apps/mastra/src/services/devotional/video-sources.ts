@@ -285,6 +285,34 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-5-catch.ru.vtt" },
     },
   },
+  {
+    // The rich fool sits early in the Luke 12 segment: 12:13 ("Someone in the
+    // crowd said to him") starts at 118.95 after "what you should say" ends at
+    // 116.45, and "not rich toward God" ends at 204.0; 12:22 ("Then Jesus said
+    // to his disciples") only starts at 206.9. A ~4 s wordless beat follows
+    // "demanded from you" (whisper per speech burst, 2026-10-21).
+    key: "lumo-luke-12-fool",
+    index: 1009,
+    mediaComponentId: "6_GOLuke2613",
+    title: "The Rich Fool",
+    film: "lumo",
+    passage: { reference: "Luke 12:13-21", osisRef: "Luke.12.13-Luke.12.21" },
+    window: { startSec: 118.6, lengthSec: 86.6 },
+    // The Russian dub starts «Кто-то в толпе» at 119.6 and ends «богатство
+    // для Бога» at 202.55; «Затем Иисус» only starts at 206.4.
+    windowByLang: { ru: { startSec: 119.2, lengthSec: 84.4 } },
+    // ~86.6s ×1.05 → ~82.5s on screen, plus a breath.
+    maxVideoCardSec: 85,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-12-fool.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-12-fool.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))

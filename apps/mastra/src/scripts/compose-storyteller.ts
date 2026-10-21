@@ -192,6 +192,27 @@ const STORIES: Record<
     ],
     out: "Great Catch",
   },
+  "lumo-luke-12-fool": {
+    // No setting: the card starts on 12:13; the warnings before it (12:1-12)
+    // are in the same segment but outside the card, so the viewer never sees
+    // them (the Lepers rule, owner 2026-10-12).
+    terms: [
+      "Barn",
+      "Garner",
+      "Grain",
+      "Harvest",
+      "Inheritance",
+      "Heir",
+      "Birthright",
+      "Covetousness",
+      "Mammon",
+      "THE THREE PARABLES OF WARNING: TO THE INDIVIDUAL, TO THE NATION, AND TO THE THEOCRACY - THE FOOLISH RICH MAN - THE BARREN FIG-TREE - THE GREAT SUPPER.",
+    ],
+    // The man who says "I have found rest, and now will eat continually of my
+    // goods", and knows not what time shall come upon him.
+    ancient: ["Sir.11.18-Sir.11.19"],
+    out: "Rich Fool",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the
