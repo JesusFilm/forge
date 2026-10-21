@@ -1,0 +1,246 @@
+{
+ "projectId": "paralytic-devotional-vertical-en-kit-test-20261021",
+ "title": "The Paralytic Lowered Through the Roof (vertical, built from the kit)",
+ "lang": "en",
+ "source": {
+  "videoId": "cmp78p2fl0dy6qm01pn69l7f4",
+  "dubId": "979b9bef-900f-41f5-81c3-213ae10f5052",
+  "editionId": "cmp71zuan0784o001bt6c7h1x",
+  "language": "english",
+  "subtitle": null,
+  "preview": {
+   "assetId": "9f298958-c115-476f-b6da-bd8491540b60",
+   "versionId": "cmvhzxfpb5i2ql10sp0fxc6nv",
+   "digest": "406731db4155a7e626e9209da69fbd77232386762b52b91c079dd171d29b67ef"
+  },
+  "export": {
+   "assetId": "9f298958-c115-476f-b6da-bd8491540b60",
+   "versionId": "cmvhzxfpb5i2ql10sp0fxc6nv",
+   "digest": "406731db4155a7e626e9209da69fbd77232386762b52b91c079dd171d29b67ef"
+  }
+ },
+ "opening": [
+  {
+   "text": "We are often sure we know exactly what to ask God for.",
+   "hero": "exactly",
+   "accents": "what to ask God",
+   "side": "left",
+   "shotSec": 240,
+   "durSec": 4.36
+  },
+  {
+   "text": "A paralyzed man's friends want him healed so badly they open the roof right above Jesus.",
+   "hero": "open the roof",
+   "accents": "healed so badly",
+   "side": "left",
+   "shotSec": 250,
+   "durSec": 5.88
+  },
+  {
+   "text": "Jesus answers with words nobody asked for.",
+   "hero": "nobody asked for",
+   "accents": "words",
+   "side": "right",
+   "shotSec": 276,
+   "durSec": 3.64
+  },
+  {
+   "text": "In this devotional, we look at why those few words could get Him killed.",
+   "hero": "get Him killed",
+   "accents": "few words",
+   "side": "right",
+   "shotSec": 290,
+   "durSec": 5.54
+  }
+ ],
+ "stepSec": [
+  2.6,
+  3.62,
+  2.66
+ ],
+ "film": {
+  "startSec": 191.6,
+  "endSec": 363.3,
+  "speed": 1.05,
+  "cues": "lumo-luke-5-paralytic.en",
+  "heading": "Luke 5:17-26"
+ },
+ "sourceEndSec": 369.9,
+ "backdrops": [
+  191.6,
+  279.33,
+  314.84,
+  352.85,
+  191.6,
+  215.9
+ ],
+ "reflection": [
+  {
+   "text": "The friends wanted a cure.",
+   "durSec": 2.53
+  },
+  {
+   "text": "The first words Jesus speaks to this man are about his sins.",
+   "durSec": 4,
+   "callout": {
+    "text": "When Jesus saw their faith, He said, ‘Friend, your sins are forgiven.’",
+    "highlight": "your sins are forgiven",
+    "reference": "LUKE 5:20"
+   }
+  },
+  {
+   "text": "Nobody in that house asked for forgiveness.",
+   "durSec": 2.84,
+   "callout": {
+    "text": "When Jesus saw their faith, He said, ‘Friend, your sins are forgiven.’",
+    "highlight": "your sins are forgiven",
+    "reference": "LUKE 5:20"
+   }
+  },
+  {
+   "text": "And to the teachers of the law sitting there, those words were the most dangerous thing said all day.",
+   "durSec": 5.08
+  },
+  {
+   "text": "In verse twenty-one they think one word: blasphemy.",
+   "durSec": 4.33,
+   "voice": "depth",
+   "callout": {
+    "text": "But the scribes and Pharisees began thinking to themselves, ‘Who is this man who speaks blasphemy? Who can forgive sins but God alone?’",
+    "highlight": "blasphemy",
+    "reference": "LUKE 5:21"
+   },
+   "credit": "HISTORICAL CONTEXT\nSmith's Bible Dictionary · Alfred Edersheim (1883)"
+  },
+  {
+   "text": "To us it sounds like a harsh complaint.",
+   "durSec": 2.9,
+   "voice": "depth",
+   "callout": {
+    "text": "But the scribes and Pharisees began thinking to themselves, ‘Who is this man who speaks blasphemy? Who can forgive sins but God alone?’",
+    "highlight": "blasphemy",
+    "reference": "LUKE 5:21"
+   }
+  },
+  {
+   "text": "To them it was a serious charge that could cost a man his life.",
+   "durSec": 4.64,
+   "voice": "depth",
+   "callout": {
+    "text": "But the scribes and Pharisees began thinking to themselves, ‘Who is this man who speaks blasphemy? Who can forgive sins but God alone?’",
+    "highlight": "blasphemy",
+    "reference": "LUKE 5:21"
+   }
+  },
+  {
+   "text": "Under the law of Moses, blasphemy was punished by stoning, and the Law itself tells of a man who was stoned for cursing God.",
+   "durSec": 8.64,
+   "voice": "depth"
+  },
+  {
+   "text": "Among the Jews it was a sin against God, much like treason against a state today: a man taking for himself what belongs to the throne.",
+   "durSec": 9.22,
+   "voice": "depth"
+  },
+  {
+   "text": "And forgiving sins belonged to God alone.",
+   "durSec": 3.26,
+   "voice": "depth"
+  },
+  {
+   "text": "So when they ask, who can forgive sins but God alone, they are right.",
+   "durSec": 4.66,
+   "voice": "depth"
+  },
+  {
+   "text": "That leaves two ways to see the man in front of them.",
+   "durSec": 3.25
+  },
+  {
+   "text": "Either He has just claimed what belongs to God alone, or God is standing in the room.",
+   "durSec": 6.18,
+   "highlight": "God is standing in the room"
+  },
+  {
+   "text": "Jesus does not take His words back.",
+   "durSec": 2.5
+  },
+  {
+   "text": "He tells the man to get up and walk, so they may know that the Son of Man has authority on earth to forgive sins.",
+   "durSec": 6.44
+  },
+  {
+   "text": "Now look at how He treats the man himself.",
+   "durSec": 2.52,
+   "credit": "COMMENTARY\nJ. C. Ryle (1816–1900)"
+  },
+  {
+   "text": "He speaks to him twice, and both times kindly.",
+   "durSec": 3.42
+  },
+  {
+   "text": "First: Friend, your sins are forgiven.",
+   "durSec": 3.42
+  },
+  {
+   "text": "Then: Get up, take your mat and go home.",
+   "durSec": 3.36
+  },
+  {
+   "text": "First his soul is healed, then his body, and he goes home praising God.",
+   "durSec": 4.72,
+   "highlight": "First his soul is healed, then his body"
+  },
+  {
+   "text": "That kindness was not a mood of one afternoon.",
+   "durSec": 3.08
+  },
+  {
+   "text": "It does not change and it does not run out, like a deep well no one has ever found the bottom of.",
+   "durSec": 5.6,
+   "highlight": "a deep well"
+  },
+  {
+   "text": "He was carried in for his legs, and he walked out forgiven as well: healed first where no one could see, then where everyone could.",
+   "durSec": 8.04
+  },
+  {
+   "text": "We come to God the same way, with what is on the surface.",
+   "durSec": 3.66
+  },
+  {
+   "text": "The pain, the fear, the thing we most want fixed.",
+   "durSec": 3.76
+  },
+  {
+   "text": "He may begin somewhere deeper than we asked.",
+   "durSec": 2.5,
+   "highlight": "He may begin somewhere deeper than we asked"
+  },
+  {
+   "text": "And He does not forget what we came for.",
+   "durSec": 2.36
+  },
+  {
+   "text": "Everyone in that house says, We have seen remarkable things today.",
+   "durSec": 4.2
+  },
+  {
+   "text": "But the most remarkable thing was said before anyone saw anything: one man was told his sins were forgiven.",
+   "durSec": 6.56
+  }
+ ],
+ "takeaway": "His friends asked for his body to be healed. Jesus gave more: He healed his soul.",
+ "takeawaySec": 6.05,
+ "verse": {
+  "text": "Bless the LORD, O my soul, and do not forget all His kind deeds— He who forgives all your iniquities and heals all your diseases.",
+  "ref": "PSALM 103:2-3 · BSB",
+  "durSec": 12.45
+ },
+ "question": "If God answered not your request first, but what hurts deeper, where would He begin with you?",
+ "prayer": "Tell God what you are asking Him for. Then ask Him to show you what He sees as most important in your life right now, and to help you trust Him with it.",
+ "questionAtSec": 2.53,
+ "prayerAtSec": 11.21,
+ "prayBlockSec": 42.86,
+ "music": "10-qanun-strings"
+}

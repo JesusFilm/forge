@@ -1,0 +1,135 @@
+{
+ "note": "The Daily Bible Pause music beds in Studio (search assets for 'DBP music bed'), with their lengths so a long video can repeat a bed. Never use the previous devotional's bed. inMs/outMs: where the bed's sound starts and where its fade-out begins (the local render's trims: -50 dB peak head, -36 dB RMS tail); repeats are laid end to end between them. loopInMs: where a REPEAT starts (past the bed's soft intro, level within 8 dB of its median), so end-to-end repeats do not dip loopOutMs: where a repeat ends (before the fade, same 8 dB rule).",
+ "beds": {
+  "01-duduk-warm": {
+   "assetId": "c4b85e9f-bed6-4681-97aa-67f9e72bcb76",
+   "versionId": "cmvi13bo25tfyl10s53m6cv24",
+   "digest": "75db26fe05d686b30ae44c5fdebc5bf8cfb3b3858dfe71eda0bb0f6bfe361d6f",
+   "sec": 75.05,
+   "inMs": 591,
+   "outMs": 68926,
+   "loopInMs": 5500,
+   "loopOutMs": 66600
+  },
+  "02-duduk-guitar": {
+   "assetId": "377e971d-6c08-4f2c-8573-5cdd9377914e",
+   "versionId": "cmvi13brm5tg9l10ssqrldurm",
+   "digest": "c07dd7f3121a51a69b59dce330081dee58a9b78ca368dabbf8c43c6a1d1c0515",
+   "sec": 75.05,
+   "inMs": 792,
+   "outMs": 69371,
+   "loopInMs": 3600,
+   "loopOutMs": 63400
+  },
+  "03-duduk-oud": {
+   "assetId": "a0c128a0-54b9-45c9-b539-0f3c421cf29b",
+   "versionId": "cmvi13bkd5tfol10s6idl7hv3",
+   "digest": "081a752ac59a8af05450ad999f4284dd4569f951cbcbb70f9a79dc4f1ed28e7a",
+   "sec": 75.05,
+   "inMs": 922,
+   "outMs": 68057,
+   "loopInMs": 5400,
+   "loopOutMs": 64400
+  },
+  "04-duduk-east": {
+   "assetId": "2a43b897-6bd6-4d27-9b28-ff9de941e9e5",
+   "versionId": "cmvi13bah5tf8l10s8whnl2ir",
+   "digest": "6e1760d207fb879307a071c05e9e46ed18ba94638ff3dc4b883018c9d8edff8c",
+   "sec": 30.041,
+   "inMs": 78,
+   "outMs": 28759,
+   "loopInMs": 600,
+   "loopOutMs": 26600
+  },
+  "05-ney": {
+   "assetId": "6be08c4c-c7e1-4571-9260-b8e24bd4477b",
+   "versionId": "cmvi13bcf5tfcl10sxkxvpqlt",
+   "digest": "6cab6ab862ea9118a5bbd97c1aba585cc94b7237f5b99255f72992b12466569b",
+   "sec": 30.041,
+   "inMs": 320,
+   "outMs": 28366,
+   "loopInMs": 1200,
+   "loopOutMs": 27200
+  },
+  "06-guitar-duduk": {
+   "assetId": "af453f0a-2cfd-4ab2-8624-00fd6615b097",
+   "versionId": "cmvi13b8b5tf6l10sr9tvur3r",
+   "digest": "c8f3cb5b133d7f87318bb4d1baadb336dd0935bdeee9a6914e8958e985383dd0",
+   "sec": 29.989,
+   "inMs": 534,
+   "outMs": 24925,
+   "loopInMs": 3000,
+   "loopOutMs": 23600
+  },
+  "07-tense-duduk-pulse": {
+   "assetId": "5eb6a6a9-96c4-47ab-9506-c9abfa396e54",
+   "versionId": "cmvi13bof5tg0l10s618ed6t1",
+   "digest": "55f5b99169f76abbc693f4ce32c04ab9092ae5e4826f0a0275c419f148445431",
+   "sec": 75.05,
+   "inMs": 584,
+   "outMs": 68229,
+   "loopInMs": 6300,
+   "loopOutMs": 66500
+  },
+  "08-tense-strings-rising": {
+   "assetId": "ebb4c82b-3584-4bdd-b564-b3322b350510",
+   "versionId": "cmvi13bh15tfkl10sl9v2pqmv",
+   "digest": "b96285d2d326c109fc48f524543635c52f92c73814f8ef89191ec232e73d93b3",
+   "sec": 75.076,
+   "inMs": 762,
+   "outMs": 68430,
+   "loopInMs": 12600,
+   "loopOutMs": 65300
+  },
+  "09-tense-oud-drone": {
+   "assetId": "6cde7df6-d100-4b5e-84dc-accd66b12832",
+   "versionId": "cmvi13bev5tfgl10s38kqkphy",
+   "digest": "baf3f804313012ea3be5d9540abcb43342b21173668a631d6e6c84609cbfb175",
+   "sec": 75.05,
+   "inMs": 895,
+   "outMs": 68649,
+   "loopInMs": 4100,
+   "loopOutMs": 67600
+  },
+  "10-qanun-strings": {
+   "assetId": "f13803ed-0352-4f80-82df-aac1792a6916",
+   "versionId": "cmvi127ht5sgul10s1xpbijle",
+   "digest": "004774b0552d9174ed0c24cbfc0628b244cd059da1cd5a35be320c2a1923c20c",
+   "sec": 90.044,
+   "inMs": 950,
+   "outMs": 80863,
+   "loopInMs": 4500,
+   "loopOutMs": 74200
+  },
+  "11-santur-pad": {
+   "assetId": "245dc3a4-8921-44f7-a602-360b4d43bd2e",
+   "versionId": "cmvi13bnq5tful10snkn8ewhj",
+   "digest": "221d67df1cc6fff03aaf306f9979df1699c025a802255ea30011f568e1f3480d",
+   "sec": 90.044,
+   "inMs": 1280,
+   "outMs": 82234,
+   "loopInMs": 4200,
+   "loopOutMs": 80600
+  },
+  "12-oud-solo": {
+   "assetId": "4fcbc3f6-d384-4db0-a31b-14b6335ce993",
+   "versionId": "cmvi13bp45tg4l10szofep6v0",
+   "digest": "9cf9d27637a6b14767e47197cdf43c571d6b861bb5a8c8e28a7b51abfd874895",
+   "sec": 89.992,
+   "inMs": 7520,
+   "outMs": 84035,
+   "loopInMs": 7500,
+   "loopOutMs": 83800
+  },
+  "13-ney-cello": {
+   "assetId": "75f4de22-f74e-41ff-bb5e-0221f43aa0c1",
+   "versionId": "cmvi13bsn5tgdl10sv0qnmub1",
+   "digest": "d987a0d4d6b1119d447555f8379b2bc000c0dde30c3534765f04d21f6cca563c",
+   "sec": 90.044,
+   "inMs": 2031,
+   "outMs": 82754,
+   "loopInMs": 6100,
+   "loopOutMs": 76600
+  }
+ }
+}
