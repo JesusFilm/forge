@@ -213,6 +213,26 @@ const STORIES: Record<
     ancient: ["Sir.11.18-Sir.11.19"],
     out: "Rich Fool",
   },
+  "lumo-luke-8-woman": {
+    // No setting: the card starts on 8:40, the first words of the segment;
+    // Jairus and his dying daughter are inside the card, so the viewer sees
+    // why Jesus is in a hurry. The raising itself (8:49-56) is outside it.
+    terms: [
+      "Jairus",
+      "Issue, Running",
+      "Flux, Bloody",
+      "Hem",
+      "Hem Of Garment",
+      "Fringe",
+      "Garment",
+      "Uncleanness",
+      "Purification",
+      "Physician",
+      "Synagogue",
+      "THE HEALING OF THE WOMAN - CHRIST'S PERSONAL APPEARANCE - THE RAISING OF JAIRUS' DAUGHTER",
+    ],
+    out: "Bleeding Woman",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the

@@ -313,6 +313,36 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-12-fool.ru.vtt" },
     },
   },
+  {
+    // The woman who touched his cloak sits inside the Jairus story at the
+    // start of the Luke 8:40-9:17 segment. The card starts on 8:40 ("Now when
+    // Jesus returned", speech from 3.3) so the viewer sees why Jesus is in a
+    // hurry: Jairus's daughter is dying. It ends after "Go in peace" (8:48,
+    // ends ~90.0); the messenger from Jairus's house (8:49) starts at 93.8
+    // (whisper per speech burst, 2026-10-21).
+    key: "lumo-luke-8-woman",
+    index: 1010,
+    mediaComponentId: "6_GOLuke2609",
+    title: "The Woman Who Touched His Cloak",
+    film: "lumo",
+    passage: { reference: "Luke 8:40-48", osisRef: "Luke.8.40-Luke.8.48" },
+    window: { startSec: 2.6, lengthSec: 89.0 },
+    // The Russian dub starts «Когда Иисус» at 3.15 and ends «Иди с миром» at
+    // 91.3; «Иисус ещё не договорил» starts at 91.9. The cue tool placed the
+    // last cue at 91.2; it was set by hand from a word-level pass (89.95).
+    windowByLang: { ru: { startSec: 2.7, lengthSec: 88.9 } },
+    // ~89s ×1.05 → ~85s on screen, plus a breath.
+    maxVideoCardSec: 87,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-8-woman.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-8-woman.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))
