@@ -9,6 +9,7 @@ import {
 import fs from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import { parseEnv } from "node:util"
 import {
   AUDIENCE,
   issueLink,
@@ -87,6 +88,10 @@ test("updates only the two TV simulator settings and removes duplicate definitio
   assert.match(updated, /EXPO_PUBLIC_GRAPHQL_URL=http:\/\/local\/graphql/)
   assert.equal(updated.match(/EXPO_PUBLIC_TV_FEEDBACK_URL=/g).length, 1)
   assert.match(updated, /EXPO_PUBLIC_TV_FEEDBACK_SIMULATOR_ENABLED=true/)
+  assert.equal(
+    parseEnv(updated).EXPO_PUBLIC_TV_FEEDBACK_URL,
+    "https://example.invalid/tv/simulator#token=fixture",
+  )
 })
 test("private output is mode 0600 and does not follow symlinks", () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "tv-issuer-test-"))

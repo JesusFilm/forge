@@ -65,7 +65,8 @@ export function issueLink(
 
 export function updateTvEnvironment(contents, url) {
   const updates = new Map([
-    ["EXPO_PUBLIC_TV_FEEDBACK_URL", url],
+    // dotenv treats an unquoted # as a comment, including URL fragments.
+    ["EXPO_PUBLIC_TV_FEEDBACK_URL", JSON.stringify(url)],
     ["EXPO_PUBLIC_TV_FEEDBACK_SIMULATOR_ENABLED", "true"],
   ])
   const lines = contents.split(/\r?\n/).filter((line) => {
