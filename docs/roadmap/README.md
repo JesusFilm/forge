@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 19, 2026)
 
-- **Total tickets:** 860
-- **Complete:** 640
+- **Total tickets:** 861
+- **Complete:** 641
 - **Cancelled:** 41
 - **In progress:** 70
 - **Not started:** 52
@@ -796,6 +796,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-613](platform/feat-613-push-campaign-mcp-drafts.md)                              | Agents draft push campaigns through the admin MCP, and a person publishes          | urim       | P2       | —     | 7    | —   | complete    |
 | [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | —     | 2    | —   | complete    |
 | [feat-648](platform/feat-648-watch-variant-language-badges.md)                         | Distinguish Watch player language variants in chrome                               | codex      | P2       | —     | 1    | —   | complete    |
+| [feat-658](platform/feat-658-watch-navigation-accessibility.md)                        | Restore Watch navigation contrast and touch target sizes                           | vlad       | P2       | —     | 1    | —   | complete    |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —     | 2    | —   | not-started |
 | [feat-667](platform/feat-667-retire-watch-beta-signup.md)                              | Retire Watch beta program signup                                                   | vlad       | P2       | —     | 1    | —   | complete    |
 | [feat-668](platform/feat-668-retire-mobile-tv-beta-signup.md)                          | Retire mobile and TV beta program signup                                           | vlad       | P2       | —     | 1    | —   | not-started |

@@ -2045,7 +2045,7 @@ describe("HeroPlayer — initial mount", () => {
     const pillClass = pill?.getAttribute("class") ?? ""
     const pillClassTokens = pillClass.split(/\s+/)
     expect(pillClassTokens).toContain("cursor-pointer")
-    expect(pillClassTokens).toContain("bg-brand-red")
+    expect(pillClassTokens).toContain("bg-[#d33a43]")
     expect(pillClassTokens).toContain("px-5")
     expect(pillClassTokens).toContain("focus-visible:outline-2")
     expect(pillClassTokens).toContain("focus-visible:ring-2")
