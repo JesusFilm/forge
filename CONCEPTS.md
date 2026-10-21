@@ -788,6 +788,30 @@ none of them represents a viewer waiting on a stream that was already running.
 A session identifies its content by playback id rather than title, because the
 payload is constrained to non-sensitive, low-cardinality values.
 
+### Downloaded Play
+
+A play of a Dub from a file that the viewer downloaded to the phone. The phone
+can be online or offline: after a download, the app plays the file for every
+later play of that Dub, also when a network connection exists. The mobile code
+labels these sessions `offline` (the `playback_source` value), but a Downloaded
+Play is not the same as an offline play.
+
+### Mux Data View
+
+One quality session that Mux Data records for one stream on one player. The
+view continues while the same video moves between the watch page, the mini
+player, PiP, fullscreen, and the background. A new stream starts a new view: a
+new Video, a Dub change, a quality change, or a reload after an error. The app
+does not monitor a Downloaded Play, so a download that replaces the stream ends
+the view and starts none. The view also ends when the viewer closes the player.
+A Chromecast session only pauses the view: the phone's player pauses during the
+cast, and the app does not measure the receiver.
+
+A Mux Data View is not a play count. GA4 gives the official play counts, and
+Mux counts views only to calculate quality rates such as the rebuffer
+percentage. Its boundaries also differ from Video Playback QoE, where a quality
+change or a download swap keeps the session.
+
 ### Search Language
 
 The language semantic search uses to interpret and match a query. Search Language is separate from UI locale, public Watch route language, and audio-language selection: changing it affects search results but does not change the viewer's website language, URL language segment, or selected Dub.
