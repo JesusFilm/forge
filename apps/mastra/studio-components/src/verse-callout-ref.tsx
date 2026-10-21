@@ -57,6 +57,19 @@ function standalone(v: string) {
   return out
 }
 
+function glued(body: string, close: string) {
+  const k = body.trimEnd().lastIndexOf(" ")
+  return (
+    <>
+      {body.slice(0, k + 1)}
+      <span style={{ whiteSpace: "nowrap" }}>
+        {body.trimEnd().slice(k + 1)}
+        {close}
+      </span>
+    </>
+  )
+}
+
 type Props = {
   reference: string
   opacity: number
@@ -97,6 +110,12 @@ export default function VerseCalloutRef(props: Props) {
   const [open, close] = cyrillic ? ["«", "»"] : ["“", "”"]
   const size = fitSize(`${open}${text}${close}`, props.width, props.maxHeight, props.maxFontSize)
   const u = size / 56
+  // What follows the lit phrase up to the next space ("forgiven.’") stays
+  // glued to it, and the verse's last word keeps the closing quote, so a
+  // quote mark never wraps onto a line of its own (owner, 2026-10-21).
+  const after = at >= 0 ? text.slice(at + word.length) : ""
+  const stick = (after.match(/^\S*/) ?? [""])[0]
+  const tail = after.slice(stick.length)
 
   return (
     <div
@@ -144,29 +163,34 @@ export default function VerseCalloutRef(props: Props) {
         {at >= 0 ? (
           <>
             {text.slice(0, at)}
-            <span style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap", color: "#ffffff" }}>
-              {word}
-              <span
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: -4 * u,
-                  top: "100%",
-                  marginTop: -4 * u,
-                  height: 5 * u,
-                  background: GOLD,
-                  transformOrigin: "left center",
-                  transform: `rotate(-0.8deg) scaleX(${lit.toFixed(4)})`,
-                  boxShadow: `0 0 ${(6 + 12 * glow) * u}px rgba(242,196,107,${(0.2 + 0.45 * glow).toFixed(3)})`,
-                }}
-              />
+            {/* The lit phrase keeps the punctuation after it (and the closing
+                quote when it ends the verse) on its line. */}
+            <span style={{ whiteSpace: "nowrap" }}>
+              <span style={{ position: "relative", display: "inline-block", whiteSpace: "nowrap", color: "#ffffff" }}>
+                {word}
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: -4 * u,
+                    top: "100%",
+                    marginTop: -4 * u,
+                    height: 5 * u,
+                    background: GOLD,
+                    transformOrigin: "left center",
+                    transform: `rotate(-0.8deg) scaleX(${lit.toFixed(4)})`,
+                    boxShadow: `0 0 ${(6 + 12 * glow) * u}px rgba(242,196,107,${(0.2 + 0.45 * glow).toFixed(3)})`,
+                  }}
+                />
+              </span>
+              {stick}
+              {tail.trim() ? null : close}
             </span>
-            {text.slice(at + word.length)}
+            {tail.trim() ? glued(tail, close) : null}
           </>
         ) : (
-          text
+          glued(text, close)
         )}
-        {close}
       </p>
     </div>
   )

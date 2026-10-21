@@ -1045,8 +1045,104 @@
       }
     },
     {
+      "versionId": "verse-callout-ref-en-v2",
+      "purpose": "Layout B verse card, as v1 plus: the lit phrase keeps the punctuation after it, and the verse's last word keeps the closing quote, so no quote mark wraps onto its own line (owner, 2026-10-21). Width 760 (owner asked for a narrower card). Show it only for the sentences that talk about the verse (calloutSentences rule, 2026-10-21), and keep the sentence's top at least 60 px under the card's bottom (296 + 65 + lines x size x 1.25). Render-tested in layout-b2-credit-test-20261021.",
+      "language": "english",
+      "built": "dist/verse-callout-ref-en.tsx",
+      "source": "src/verse-callout-ref.tsx",
+      "example": {
+        "reference": "LUKE 5:21",
+        "opacity": 0.9,
+        "text": "But the scribes and Pharisees began thinking to themselves, ‘Who is this man who speaks blasphemy? Who can forgive sins but God alone?’",
+        "highlight": "blasphemy",
+        "top": 296,
+        "width": 760,
+        "maxHeight": 420,
+        "maxFontSize": 56,
+        "litAtSec": 1.2,
+        "fadeOutSec": 0.5
+      },
+      "registration": {
+        "versionId": "verse-callout-ref-en-v2",
+        "category": "text",
+        "name": "Verse card with reference (light italic)",
+        "code": {
+          "assetId": "6d1e77e0-61ed-4e33-aa62-f97bc1e0b22e",
+          "versionId": "cmvi2t77d6enbl10s0lw0oh64",
+          "digest": "676e2ed47164edffa52fcc098198f600130205fa2bc18b6fe78edc83956660d9"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "reference": {
+            "type": "text",
+            "maxLength": 40
+          },
+          "opacity": {
+            "type": "number",
+            "min": 0,
+            "max": 1
+          },
+          "text": {
+            "type": "text",
+            "maxLength": 600
+          },
+          "highlight": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "width": {
+            "type": "number",
+            "min": 300,
+            "max": 1080
+          },
+          "maxHeight": {
+            "type": "number",
+            "min": 60,
+            "max": 1200
+          },
+          "maxFontSize": {
+            "type": "number",
+            "min": 24,
+            "max": 120
+          },
+          "litAtSec": {
+            "type": "number",
+            "min": 0,
+            "max": 60
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
       "versionId": "verse-callout-ref-en-v1",
-      "purpose": "The verse card of layout B (owner's Figma, 2026-10-21): the reference in gold caps (Inter caps 24) above, the verse in Literata Light Italic at `opacity` 0.9, the highlight phrase white with the gold rule as in verse-callout-en-v1. `top` is the reference row's top (296). Inner quotes in the verse text must be single (‘ ’): the card adds the outer “ ”, and BSB's own double quotes come out doubled. Needs the inter600caps font pack. Render-tested in layout-b-credit-test-20261021.",
+      "purpose": "Superseded by verse-callout-ref-en-v2 (closing quote could wrap alone). The verse card of layout B (owner's Figma, 2026-10-21): the reference in gold caps (Inter caps 24) above, the verse in Literata Light Italic at `opacity` 0.9, the highlight phrase white with the gold rule as in verse-callout-en-v1. `top` is the reference row's top (296). Inner quotes in the verse text must be single (‘ ’): the card adds the outer “ ”, and BSB's own double quotes come out doubled. Needs the inter600caps font pack. Render-tested in layout-b-credit-test-20261021.",
       "language": "english",
       "built": "dist/verse-callout-ref-en.tsx",
       "source": "src/verse-callout-ref.tsx",
@@ -2144,8 +2240,96 @@
       }
     },
     {
+      "versionId": "source-mark-compact-v2",
+      "purpose": "Layout B credit, owner's revision 2026-10-21: emblemSize 55 (book about 74 x 55) with 16 px under it, then the label (16) and the source (Literata 32). Block height: 237 px for a two-line source, 197 for one line; set `top` = 1440 minus that so the block ends above the feed buttons, and the sentence's bottom 44 px above `top`. Animation as v1: line left to right, emblem, label, source from above. Render-tested in layout-b2-credit-test-20261021.",
+      "language": "any",
+      "built": "dist/source-mark-compact.tsx",
+      "source": "src/source-mark-compact.tsx",
+      "example": {
+        "kind": "history",
+        "label": "HISTORICAL CONTEXT",
+        "source": "Smith's Bible Dictionary · Alfred Edersheim (1883)",
+        "top": 1203,
+        "ruleWidth": 326,
+        "emblemSize": 55,
+        "startSec": 0.8,
+        "fadeOutSec": 0.4
+      },
+      "registration": {
+        "versionId": "source-mark-compact-v2",
+        "category": "text",
+        "name": "Source credit, compact (line, emblem, label, source)",
+        "code": {
+          "assetId": "0d4b23d7-92c8-4336-9a44-bd0f4b0fc1a4",
+          "versionId": "cmvi2t6ks6emzl10stn1n90j1",
+          "digest": "9ac5911638aa07f1620c71cc01da806b5dff3adb09d81a1359b93da74aafa570"
+        },
+        "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+        "dependencies": [
+          {
+            "name": "react",
+            "version": "19.2.4"
+          },
+          {
+            "name": "remotion",
+            "version": "4.0.475"
+          }
+        ],
+        "width": 1080,
+        "height": 1920,
+        "duration": {
+          "minFrames": 1,
+          "maxFrames": 2592000
+        },
+        "assets": [],
+        "controls": {
+          "kind": {
+            "type": "enum",
+            "values": [
+              "history",
+              "language",
+              "commentary"
+            ]
+          },
+          "label": {
+            "type": "text",
+            "maxLength": 60
+          },
+          "source": {
+            "type": "text",
+            "maxLength": 120
+          },
+          "top": {
+            "type": "number",
+            "min": 0,
+            "max": 1920
+          },
+          "ruleWidth": {
+            "type": "number",
+            "min": 40,
+            "max": 900
+          },
+          "emblemSize": {
+            "type": "number",
+            "min": 20,
+            "max": 200
+          },
+          "startSec": {
+            "type": "number",
+            "min": 0,
+            "max": 30
+          },
+          "fadeOutSec": {
+            "type": "number",
+            "min": 0,
+            "max": 3
+          }
+        }
+      }
+    },
+    {
       "versionId": "source-mark-compact-v1",
-      "purpose": "The compact 9:16 source credit UNDER the reflection sentence (owner's Figma 'B · compact credit under the card', 2026-10-21; supersedes source-mark-v1 above the sentence). A gold line (ruleWidth, 3 px) draws left to right, then the emblem (book / scroll / Ryle portrait), then the tracked label (Inter caps 16), then the source in Literata 32 comes down from above; about 1.5 s from startSec. `top` is the line's y: 1217 puts the block's end at about 1440, above the feed buttons. Put the sentence (reveal-sans-en-v1, align center) so its bottom sits about 42 px above the line. Needs font packs literata400 + inter600caps. Render-tested in layout-b-credit-test-20261021.",
+      "purpose": "Superseded by source-mark-compact-v2 (emblem gap). The compact 9:16 source credit UNDER the reflection sentence (owner's Figma 'B · compact credit under the card', 2026-10-21; supersedes source-mark-v1 above the sentence). A gold line (ruleWidth, 3 px) draws left to right, then the emblem (book / scroll / Ryle portrait), then the tracked label (Inter caps 16), then the source in Literata 32 comes down from above; about 1.5 s from startSec. `top` is the line's y: 1217 puts the block's end at about 1440, above the feed buttons. Put the sentence (reveal-sans-en-v1, align center) so its bottom sits about 42 px above the line. Needs font packs literata400 + inter600caps. Render-tested in layout-b-credit-test-20261021.",
       "language": "any",
       "built": "dist/source-mark-compact.tsx",
       "source": "src/source-mark-compact.tsx",

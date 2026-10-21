@@ -6,7 +6,8 @@ import { useCurrentFrame, useVideoConfig, interpolate, Easing } from "remotion"
 // the emblem, the tracked label and the source in Literata, centred. Owner's
 // animation order: the line draws left to right, then the emblem appears,
 // then the label, then the source name comes in from above. `top` is the
-// line's y. Emblems as in source-mark-v1: an open book for history (a page
+// line's y. The owner's revision (same day) made the emblem larger (emblemSize
+// 55) with 16 px under it. Emblems as in source-mark-v1: an open book for history (a page
 // turns), a scroll for the original language, J. C. Ryle's engraving for
 // commentary. Fonts come from the font-pack items (font-literata400-*,
 // font-inter600caps-*).
@@ -146,7 +147,7 @@ export default function SourceMarkCompact(props: Props) {
         style={{
           width: props.kind === "commentary" ? e : e * 1.36,
           height: e,
-          marginBottom: 11,
+          marginBottom: 16,
           opacity: book * 0.85,
           transform: `translateY(${(-6 * (1 - book)).toFixed(2)}px)`,
         }}
