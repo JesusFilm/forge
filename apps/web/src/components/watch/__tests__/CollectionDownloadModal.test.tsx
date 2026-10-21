@@ -66,10 +66,12 @@ vi.mock("@/components/watch/WatchModalViewportCloseButton", () => ({
   WatchModalViewportCloseButton: ({
     open,
     renderInline,
+    inFlowBelowSm,
     testId,
   }: {
     open: boolean
     renderInline?: boolean
+    inFlowBelowSm?: boolean
     testId: string
   }) =>
     open ? (
@@ -77,6 +79,7 @@ vi.mock("@/components/watch/WatchModalViewportCloseButton", () => ({
         type="button"
         data-testid={testId}
         data-render-inline={String(renderInline)}
+        data-in-flow-below-sm={String(inFlowBelowSm)}
       />
     ) : null,
 }))
@@ -868,6 +871,36 @@ describe("CollectionDownloadModal", () => {
     expect(totalSize?.className).toContain("tracking-[0.08em]")
     expect(totalSize?.className).toContain("mt-0.5")
     expect(totalSize?.className).toContain("text-red-100/70")
+  })
+
+  it("keeps the select fields in a shrinkable column with an in-flow close below sm", async () => {
+    renderModal()
+    await flush()
+
+    // Class-token pins; jsdom has no layout. The geometry (field boxes inside
+    // the dialog, selected language readable, no close-button overlap) is
+    // checked in the browser at 320 px / 200% text.
+    const fields = container.querySelector(
+      '[data-testid="watch-collection-download-fields"]',
+    )
+    expect(fields?.className).toContain("grid-cols-[minmax(0,1fr)]")
+    for (const column of Array.from(fields?.children ?? [])) {
+      expect(column.className).toContain("min-w-0")
+    }
+
+    const language = container.querySelector(
+      '[data-testid="language-combobox-trigger"]',
+    )
+    expect(language?.className).toContain("h-auto")
+    expect(language?.className).toContain(
+      "@max-[14rem]:[&_[data-testid=language-combobox-option-code]]:hidden",
+    )
+
+    const close = container.querySelector(
+      '[data-testid="watch-collection-download-modal-close"]',
+    )
+    expect(close?.getAttribute("data-render-inline")).toBe("true")
+    expect(close?.getAttribute("data-in-flow-below-sm")).toBe("true")
   })
 
   it("strengthens the form hierarchy without changing action shapes", async () => {

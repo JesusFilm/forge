@@ -675,11 +675,12 @@ export function CollectionDownloadModal({
           onClose={close}
           testId="watch-collection-download-modal-close"
           renderInline
+          inFlowBelowSm
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
         <div
           data-testid="watch-collection-download-modal-content"
-          className="flex flex-col gap-8 p-6 sm:p-9"
+          className="flex flex-col gap-8 p-[min(1.5rem,7.5vw)] sm:p-9"
         >
           <div
             data-testid="watch-collection-download-header"
@@ -801,9 +802,14 @@ export function CollectionDownloadModal({
             <>
               <div
                 data-testid="watch-collection-download-fields"
-                className="grid gap-5 sm:grid-cols-2"
+                className="grid grid-cols-[minmax(0,1fr)] gap-5 sm:grid-cols-2"
               >
-                <div className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
+                {/* `@container` + `min-w-0`: the select triggers fit their
+                    column instead of widening it. In a column narrower than
+                    14rem (320 px at 200% text) the decorative code marker
+                    goes away and the language name wraps instead of
+                    truncating to its first letter. */}
+                <div className="@container flex min-w-0 flex-col gap-2.5 text-base sm:text-sm font-semibold">
                   <span>{t("languageLabel")}</span>
                   <LanguageCombobox
                     options={languages}
@@ -811,10 +817,10 @@ export function CollectionDownloadModal({
                     disabled={busy}
                     onChange={setLanguageSlug}
                     compact
-                    triggerClassName="border-white/15 bg-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:ring-amber-400"
+                    triggerClassName="h-auto min-h-14 gap-[min(0.625rem,3vw)] px-[min(1rem,5vw)] @max-[14rem]:[&_[data-testid=language-combobox-option-code]]:hidden @max-[14rem]:[&_.truncate]:whitespace-normal @max-[14rem]:[&_.truncate]:[overflow-wrap:anywhere] border-white/15 bg-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:ring-amber-400"
                   />
                 </div>
-                <div className="flex flex-col gap-2.5 text-base sm:text-sm font-semibold">
+                <div className="flex min-w-0 flex-col gap-2.5 text-base sm:text-sm font-semibold">
                   <span id={qualityLabelId}>{t("qualityLabel")}</span>
                   <TierListbox
                     tiers={options?.commonTiers ?? []}
@@ -825,7 +831,7 @@ export function CollectionDownloadModal({
                     disabled={busy || !effectiveTier}
                     labelledBy={qualityLabelId}
                     testIdPrefix="watch-collection-download-quality"
-                    triggerClassName="h-14 rounded-xl border-white/15 bg-stone-900 px-4 py-0 text-base sm:text-sm text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:border-amber-400/70 focus-visible:ring-amber-400"
+                    triggerClassName="min-h-14 rounded-xl border-white/15 bg-stone-900 px-[min(1rem,5vw)] py-2 text-base sm:text-sm text-stone-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-white/25 hover:bg-stone-800 focus-visible:border-amber-400/70 focus-visible:ring-amber-400"
                   />
                 </div>
               </div>

@@ -181,6 +181,16 @@ export function DownloadModal({
     setDropdownOpen(false)
   }, [dropdownOpen])
 
+  // The size list is a body portal above the Terms layer. Unmount it at once
+  // (no close animation) so it does not paint over the Terms text and its
+  // Escape listener does not take the first Escape from Terms.
+  const openTerms = useCallback(() => {
+    setDropdownOpen(false)
+    setDropdownMounted(false)
+    setDropdownRect(null)
+    setTermsOpen(true)
+  }, [])
+
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (!next) {
@@ -382,6 +392,7 @@ export function DownloadModal({
             onClose={() => handleOpenChange(false)}
             testId="watch-download-modal-close"
             renderInline
+            inFlowBelowSm
           />
           <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
@@ -447,6 +458,7 @@ export function DownloadModal({
           onClose={() => handleOpenChange(false)}
           testId="watch-download-modal-close"
           renderInline
+          inFlowBelowSm
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
@@ -636,7 +648,7 @@ export function DownloadModal({
                     <button
                       ref={termsTriggerRef}
                       type="button"
-                      onClick={() => setTermsOpen(true)}
+                      onClick={openTerms}
                       data-testid="watch-download-modal-tos-trigger"
                       className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
                     >

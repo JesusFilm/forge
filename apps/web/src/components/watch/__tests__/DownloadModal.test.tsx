@@ -937,6 +937,60 @@ describe("DownloadModal — Terms of Use agreement", () => {
       expect(trigger?.closest("[inert]")).toBeNull()
       expect(document.activeElement).toBe(trigger)
     })
+
+    it("drops the open size list when Terms opens, so one Escape closes Terms alone", () => {
+      const onClose = vi.fn()
+      act(() => {
+        root.render(
+          <TestDownloadModal
+            open
+            downloads={[
+              makeDownload({ documentId: "fhd", quality: "fhd" }),
+              makeDownload({ documentId: "hd", quality: "hd" }),
+            ]}
+            onClose={onClose}
+          />,
+        )
+      })
+      act(() => {
+        ;(
+          $(
+            '[data-testid="watch-download-modal-size-trigger"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      expect($('[data-testid="watch-download-modal-size-list"]')).not.toBeNull()
+
+      // Keyboard path: focus the Terms link and press Enter (a click on a
+      // button). The list is a body portal; it must not outlive this click.
+      const trigger = $(
+        '[data-testid="watch-download-modal-tos-trigger"]',
+      ) as HTMLButtonElement
+      trigger.focus()
+      act(() => {
+        trigger.click()
+      })
+      expect(
+        $('[data-testid="watch-download-modal-terms-dialog"]'),
+      ).not.toBeNull()
+      // Unmounted at once: no closing animation window that could paint it
+      // over the Terms text.
+      expect($('[data-testid="watch-download-modal-size-list"]')).toBeNull()
+
+      act(() => {
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            bubbles: true,
+            cancelable: true,
+            key: "Escape",
+          }),
+        )
+      })
+      expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+      expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
+      expect(onClose).not.toHaveBeenCalled()
+      expect(document.activeElement).toBe(trigger)
+    })
   })
 
   it("lets the footer actions wrap inside their pills at 200% text", () => {
@@ -1346,8 +1400,11 @@ describe("DownloadModal — account-authenticated downloads", () => {
     const close = $(
       '[data-testid="watch-download-modal-close"]',
     ) as HTMLButtonElement
-    expect(close.style.top).toContain("safe-area-inset-top")
-    expect(close.style.right).toContain("safe-area-inset-right")
+    // From sm up it floats at the safe-area top right; below sm it is a row of
+    // the dialog so it cannot sit over the scrolled form.
+    expect(close.className).toContain("safe-area-inset-top")
+    expect(close.className).toContain("safe-area-inset-right")
+    expect(close.className).toContain("max-sm:relative")
     expect($('[data-testid="watch-download-modal-mobile-close"]')).toBeNull()
 
     await act(async () => {
@@ -1460,8 +1517,11 @@ describe("DownloadModal — empty + lifecycle", () => {
     ) as HTMLButtonElement
     expect(close).not.toBeNull()
     expect(close.className).not.toContain("hidden")
-    expect(close.style.top).toContain("safe-area-inset-top")
-    expect(close.style.right).toContain("safe-area-inset-right")
+    // From sm up it floats at the safe-area top right; below sm it is a row of
+    // the dialog so it cannot sit over the scrolled form.
+    expect(close.className).toContain("safe-area-inset-top")
+    expect(close.className).toContain("safe-area-inset-right")
+    expect(close.className).toContain("max-sm:relative")
     expect($("[data-testid='watch-download-modal-mobile-close']")).toBeNull()
 
     act(() => close.click())
