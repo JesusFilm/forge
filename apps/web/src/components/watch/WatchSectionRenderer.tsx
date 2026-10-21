@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense } from "react"
+import { Suspense, useSyncExternalStore } from "react"
 import dynamic from "next/dynamic"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -169,7 +169,7 @@ export function WatchSectionRenderer({
               {bodyBlocks.map((block, index) => (
                 <Suspense
                   key={blockKey(block, index + topBlocks.length)}
-                  fallback={null}
+                  fallback={<BodyBlockStreamingFallback />}
                 >
                   <WatchBlockEntry
                     block={block}
@@ -500,6 +500,33 @@ function SyntheticBlock({
 }
 
 function noop() {}
+
+// Body blocks stream from the server as separate Suspense segments, and React
+// can reveal the hero a frame or more before them (feat-776). With an empty
+// fallback, the small blocks rendered inline after them (recommendation slot,
+// transcript, footer) painted directly under the hero and were pushed off
+// screen when the blocks landed. While streaming, each pending block reserves
+// a full viewport so later content stays below the fold until it is in its
+// final place. A fallback first rendered on the client stays empty, as before.
+function BodyBlockStreamingFallback() {
+  const streaming = useSyncExternalStore(
+    subscribeNever,
+    () => false,
+    () => true,
+  )
+  if (!streaming) return null
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="watch-body-block-streaming-reserve"
+      className="min-h-screen"
+    />
+  )
+}
+
+function subscribeNever(_onStoreChange: () => void): () => void {
+  return () => {}
+}
 
 function blockKey(block: MergedWatchBlock, index: number): string {
   if (isWatchBlock(block)) return `${block.kind}-${index}`

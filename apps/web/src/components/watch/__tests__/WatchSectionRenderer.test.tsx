@@ -11,7 +11,8 @@
  *   switch — verified by asserting the mock is only called for Strapi blocks.
  */
 
-import { act } from "react"
+import { act, use } from "react"
+import { renderToString } from "react-dom/server"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -727,5 +728,96 @@ describe("audience integration", () => {
     expect(audienceFrameMock.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({ languageSlug: "spanish" }),
     )
+  })
+})
+
+// feat-776: body blocks stream as separate Suspense segments, and React can
+// reveal the hero before them. Content after a pending block must not paint
+// under the hero, or it jumps off screen when the block lands.
+describe("WatchSectionRenderer — streaming body fallback", () => {
+  const neverSettles = new Promise<never>(() => {})
+
+  function streamingBlocks(): MergedWatchBlock[] {
+    const video = makeVideo()
+    const variant = makeVariant()
+    return [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+      buildSemanticRecommendationsBlock(video),
+    ]
+  }
+
+  function suspendWatchBody() {
+    const original = watchBodyMock.getMockImplementation()
+    watchBodyMock.mockImplementation(() => use(neverSettles))
+    return () => {
+      if (original) watchBodyMock.mockImplementation(original)
+    }
+  }
+
+  it("reserves a viewport ahead of later blocks while a server-rendered block is pending", () => {
+    const restore = suspendWatchBody()
+    try {
+      const host = document.createElement("div")
+      host.innerHTML = renderToString(
+        <WatchSectionRenderer
+          blocks={streamingBlocks()}
+          languageSlug="english"
+        />,
+      )
+      const reserve = host.querySelector(
+        '[data-testid="watch-body-block-streaming-reserve"]',
+      )
+      const slot = host.querySelector(
+        '[data-block-type="SemanticRecommendations"]',
+      )
+      expect(reserve).not.toBeNull()
+      expect(reserve?.getAttribute("aria-hidden")).toBe("true")
+      expect(slot).not.toBeNull()
+      expect(
+        reserve!.compareDocumentPosition(slot!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+    } finally {
+      restore()
+    }
+  })
+
+  it("emits no reserve when every body block renders on the server", () => {
+    const host = document.createElement("div")
+    host.innerHTML = renderToString(
+      <WatchSectionRenderer
+        blocks={streamingBlocks()}
+        languageSlug="english"
+      />,
+    )
+    expect(host.querySelector('[data-block-type="WatchBody"]')).not.toBeNull()
+    expect(
+      host.querySelector('[data-testid="watch-body-block-streaming-reserve"]'),
+    ).toBeNull()
+  })
+
+  it("keeps a block that suspends after hydration collapsed, as before", async () => {
+    const restore = suspendWatchBody()
+    try {
+      await act(async () => {
+        root.render(
+          <WatchSectionRenderer
+            blocks={streamingBlocks()}
+            languageSlug="english"
+          />,
+        )
+      })
+      expect(
+        container.querySelector(
+          '[data-testid="watch-body-block-streaming-reserve"]',
+        ),
+      ).toBeNull()
+      expect(
+        container.querySelector('[data-block-type="SemanticRecommendations"]'),
+      ).not.toBeNull()
+    } finally {
+      restore()
+    }
   })
 })
