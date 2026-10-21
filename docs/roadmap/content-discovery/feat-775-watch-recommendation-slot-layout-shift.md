@@ -3,7 +3,7 @@ id: "feat-775"
 title: "Reserve the Watch recommendation slot's layout while it loads"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-21"
 duration: 1
 depends_on: []
@@ -29,7 +29,7 @@ views had CLS above 0.1 (above the "good" threshold; 0.1 to 0.25 needs
 improvement, above 0.25 is poor). The loading placeholder was the most common
 largest-shift target (775 views). Correlation only: it does not show that this
 slot caused all of those views, and the field records point at a second,
-separate mechanism (see feat-776).
+separate mechanism (see feat-776, fixed separately in #2846).
 
 ## Entry Points — Read These First
 
@@ -76,3 +76,15 @@ separate mechanism (see feat-776).
   fixture-fulfilled delivery, at 320, 390, 768 and 1280 px, for full, partial,
   empty and failed deliveries. Full deliveries hold their height exactly.
 - Throttled mobile page-load runs show no FCP, LCP or load regression.
+
+## Open Decision (2026-10-21 review)
+
+Not merge-ready. The full-size reservation removes the shift for full
+deliveries but makes the accepted empty, unavailable and failed outcomes worse
+when they land with the slot on screen (390 px: 0.195 to 0.687; 768: 0.148 to
+0.596; 1280: 0.108 to 0.350), moving them from "needs improvement" to "poor".
+The scroll compensation for a reader already past the slot keeps content
+visually still but Chromium still scores the frame (0.924), and a programmatic
+`scrollTo` can cut off a touch fling. HTTP 200 delivery rates do not show how
+often deliveries are empty or partial, so the trade cannot be settled from
+current data. Options and evidence are in the PR description.
