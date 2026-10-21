@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { act } from "react"
+import { act, useRef, useState } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -1457,5 +1457,109 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-progress"]',
       )?.textContent,
     ).toContain("3 of 3")
+  })
+
+  describe("focus return", () => {
+    // Mirrors SeriesPageClient: the owner disables its trigger while the
+    // session check runs, then mounts the dialog and unmounts it on close.
+    function FocusOwner() {
+      const [open, setOpen] = useState(false)
+      const [pending, setPending] = useState(false)
+      const triggerRef = useRef<HTMLButtonElement>(null)
+      return (
+        <>
+          <button
+            ref={triggerRef}
+            type="button"
+            data-testid="owner-trigger"
+            disabled={pending}
+            onClick={() => setPending(true)}
+          />
+          <button
+            type="button"
+            data-testid="owner-open"
+            onClick={() => {
+              setPending(false)
+              setOpen(true)
+            }}
+          />
+          <button type="button" data-testid="owner-elsewhere" />
+          {open ? (
+            <CollectionDownloadModal
+              open
+              collectionSlug="lumo-luke"
+              collectionTitle="LUMO Luke"
+              episodes={episodes}
+              languages={[{ slug: "english", name: "English", bcp47: "en" }]}
+              currentLanguageSlug="english"
+              accountGateEnabled={false}
+              onClose={() => setOpen(false)}
+              returnFocusRef={triggerRef}
+            />
+          ) : null}
+        </>
+      )
+    }
+
+    const byTestId = (id: string) =>
+      document.querySelector(`[data-testid="${id}"]`) as HTMLButtonElement
+
+    async function settle() {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      })
+    }
+
+    async function openFromTrigger() {
+      act(() => {
+        root.render(<FocusOwner />)
+      })
+      const trigger = byTestId("owner-trigger")
+      trigger.focus()
+      // A browser drops focus to <body> when the focused trigger becomes
+      // disabled; jsdom does not (and ignores blur() on a disabled button),
+      // so do it by hand before the click disables it.
+      trigger.blur()
+      act(() => trigger.click())
+      expect(trigger.disabled).toBe(true)
+      expect(document.activeElement).toBe(document.body)
+      act(() => byTestId("owner-open").click())
+      await settle()
+      return trigger
+    }
+
+    // Escape is checked in a real browser (round 10): Base UI's dismiss
+    // listener does not close the dialog under jsdom.
+    it("returns focus to the trigger on every close, including a reopen", async () => {
+      const trigger = await openFromTrigger()
+      act(() => byTestId("watch-collection-download-close").click())
+      await settle()
+
+      expect(
+        document.querySelector(
+          '[data-testid="watch-collection-download-modal"]',
+        ),
+      ).toBeNull()
+      expect(document.activeElement).toBe(trigger)
+
+      trigger.blur()
+      act(() => trigger.click())
+      act(() => byTestId("owner-open").click())
+      await settle()
+      act(() => byTestId("watch-collection-download-close").click())
+      await settle()
+
+      expect(document.activeElement).toBe(trigger)
+    })
+
+    it("leaves focus where the user moved it outside the dialog", async () => {
+      await openFromTrigger()
+      const elsewhere = byTestId("owner-elsewhere")
+      elsewhere.focus()
+      act(() => byTestId("watch-collection-download-close").click())
+      await settle()
+
+      expect(document.activeElement).toBe(elsewhere)
+    })
   })
 })

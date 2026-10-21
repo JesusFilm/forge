@@ -1,6 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
@@ -124,6 +132,7 @@ export function DownloadModal({
   )
   const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
+  const termsTriggerRef = useRef<HTMLButtonElement>(null)
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -624,6 +633,7 @@ export function DownloadModal({
                 {t.rich("termsAgreement", {
                   link: (chunks) => (
                     <button
+                      ref={termsTriggerRef}
                       type="button"
                       onClick={() => setTermsOpen(true)}
                       data-testid="watch-download-modal-tos-trigger"
@@ -666,6 +676,7 @@ export function DownloadModal({
 
       <TermsOfUseDialog
         open={termsOpen}
+        returnFocusRef={termsTriggerRef}
         onCancel={() => setTermsOpen(false)}
         onAccept={() => {
           setTosAgreed(true)
@@ -680,10 +691,38 @@ type TermsOfUseDialogProps = {
   open: boolean
   onCancel: () => void
   onAccept: () => void
+  returnFocusRef?: RefObject<HTMLElement | null>
 }
 
-function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
+function TermsOfUseDialog({
+  open,
+  onCancel,
+  onAccept,
+  returnFocusRef,
+}: TermsOfUseDialogProps) {
   const t = useTranslations("DownloadModal")
+  const sectionRef = useRef<HTMLElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  // This layer is portaled outside the parent dialog, so nothing else moves
+  // focus into it or back out. Focus its Close button on open; on close,
+  // return to the link that opened it unless the user moved focus elsewhere.
+  useEffect(() => {
+    if (!open) return
+    const section = sectionRef.current
+    const returnFocusTarget = returnFocusRef?.current
+    closeButtonRef.current?.focus()
+    return () => {
+      const active = document.activeElement
+      if (
+        active === null ||
+        active === document.body ||
+        section?.contains(active)
+      ) {
+        returnFocusTarget?.focus()
+      }
+    }
+  }, [open, returnFocusRef])
 
   useEffect(() => {
     if (!open) return
@@ -724,6 +763,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
       }}
     >
       <section
+        ref={sectionRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="watch-download-modal-terms-title"
@@ -741,6 +781,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
             {t("termsOfUse")}
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onCancel}
             aria-label={t("closeTermsOfUse")}

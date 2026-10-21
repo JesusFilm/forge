@@ -758,17 +758,55 @@ describe("DownloadModal — Terms of Use agreement", () => {
         ) as HTMLButtonElement
       ).click()
     })
+    expect(document.activeElement).toBe(
+      $('[data-testid="watch-download-modal-terms-close"]'),
+    )
     act(() => {
       dismiss()
     })
 
     expect($('[data-testid="watch-download-modal-terms-dialog"]')).toBeNull()
+    expect(document.activeElement).toBe(
+      $('[data-testid="watch-download-modal-tos-trigger"]'),
+    )
     expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
     expect(onClose).not.toHaveBeenCalled()
     expect(
       ($('[data-testid="watch-download-modal-tos"]') as HTMLInputElement)
         .checked,
     ).toBe(false)
+  })
+
+  it("leaves focus alone when the user moved it before Terms closes", () => {
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[makeDownload({ documentId: "dl-1", quality: "fhd" })]}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-tos-trigger"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    const elsewhere = document.createElement("button")
+    document.body.appendChild(elsewhere)
+    elsewhere.focus()
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-download-modal-terms-cancel"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+
+    expect(document.activeElement).toBe(elsewhere)
+    elsewhere.remove()
   })
 
   it("Accept checks the agreement and enables Download", () => {

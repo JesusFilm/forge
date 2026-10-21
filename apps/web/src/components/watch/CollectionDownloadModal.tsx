@@ -1,6 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { Download, LoaderCircle, LogIn, Square } from "lucide-react"
 import Image from "next/image"
 import { useLocale, useTranslations } from "next-intl"
@@ -203,6 +211,12 @@ export type CollectionDownloadModalProps = {
   accountGateEnabled: boolean
   authRequiredLoginUrl?: string | null
   onClose: () => void
+  /**
+   * The control that opened the dialog. Its owner disables it while the
+   * session check runs, so Base UI records `<body>` as the element to return
+   * to; the dialog returns focus here instead.
+   */
+  returnFocusRef?: RefObject<HTMLElement | null>
 }
 
 export function CollectionDownloadModal({
@@ -215,6 +229,7 @@ export function CollectionDownloadModal({
   accountGateEnabled,
   authRequiredLoginUrl = null,
   onClose,
+  returnFocusRef,
 }: CollectionDownloadModalProps) {
   const t = useTranslations("CollectionDownloadModal")
   const inventoryT = useTranslations("LanguageInventory")
@@ -406,6 +421,25 @@ export function CollectionDownloadModal({
     setError(null)
     onClose()
   }, [onClose, starting])
+
+  // Return focus to the trigger on Escape or Close, but never pull it back
+  // from somewhere the user deliberately moved it outside the dialog. Base
+  // UI's own return is turned off below: it would aim at `<body>`.
+  useEffect(() => {
+    if (!open) return
+    const returnFocusTarget = returnFocusRef?.current
+    return () => {
+      const active = document.activeElement
+      if (
+        active instanceof HTMLElement &&
+        active !== document.body &&
+        !active.closest('[data-testid="watch-collection-download-modal"]')
+      ) {
+        return
+      }
+      returnFocusTarget?.focus()
+    }
+  }, [open, returnFocusRef])
 
   const cancelDownload = useCallback(() => {
     startVersionRef.current += 1
@@ -626,6 +660,7 @@ export function CollectionDownloadModal({
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent
+        finalFocus={returnFocusRef ? false : undefined}
         data-testid="watch-collection-download-modal"
         className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(94vw,960px)] grid-cols-[minmax(0,1fr)] rounded-none border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[960px]`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
