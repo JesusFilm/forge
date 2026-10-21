@@ -84,7 +84,9 @@ export default function PrayBlock(props: Props) {
           width: fs * 1.1,
           height: Math.max(2, fs * 0.05),
           background: GOLD,
-          margin: `${fs * 0.7}px 0 ${fs * 0.55}px`,
+          // More air between the question and the prayer (owner, 2026-10-21;
+          // v1 had 0.7 / 0.55).
+          margin: `${fs * 1.3}px 0 ${fs * 0.9}px`,
           transformOrigin: "left center",
           transform: `scaleX(${interpolate(t, [props.prayerAtSec - 0.3, props.prayerAtSec + 0.3], [0, 1], clamp)})`,
         }}

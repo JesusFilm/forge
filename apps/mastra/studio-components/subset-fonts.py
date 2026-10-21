@@ -87,3 +87,9 @@ if __name__ == "__main__":
     make(INTER_LAT, {"wght": 400}, ASCII + TYPO + "".join(chr(c) for c in range(0xC0, 0x100)), "inter400-latin.woff2")
     # The verse card in Literata Light Italic (owner's Figma B, 2026-10-21).
     make("literata_italic_var.ttf", {"wght": 300, "opsz": 36}, ASCII + TYPO, "literata300i-latin.woff2")
+    # Cyrillic + Latin builds for the integrated runtime (no size limit,
+    # build-integrated.mjs, 2026-10-21): the Inter reflection line and the
+    # light italic verse card.
+    INTER_CYR400 = os.path.join(HERE, "..", "..", "..", "packages", "shorts-compositions", "fonts", "inter-cyrillic.woff2")
+    make(INTER_CYR400, {"wght": 400}, CYR + "Ёё«»—–…", "inter400-cyrillic.woff2")
+    make("literata_italic_var.ttf", {"wght": 300, "opsz": 36}, CYR + ASCII + TYPO, "literata300i-cyrillic.woff2")

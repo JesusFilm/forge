@@ -53,6 +53,9 @@ const FACE = {
   ss300i: ["DBP Source Serif", "300", "italic", null, "sourceserif300i-latin.woff2"],
   interLat: ["DBP Inter Caps", "600", "normal", LATIN, "inter-600-caps.woff2"],
   interCyr: ["DBP Inter Caps", "600", "normal", CYRILLIC, "inter600caps-cyrillic.woff2"],
+  // The reflection line's body face (reveal-sans), Latin from __FONT__ and
+  // Cyrillic from this range (2026-10-21).
+  inter400Cyr: ["DBP Inter", "400", "normal", CYRILLIC, "inter400-cyrillic.woff2"],
 }
 
 /** Registers the faces a component names, once per page, before it renders. */
@@ -110,6 +113,10 @@ const BUILDS = {
   takeaway: ["takeaway", null, ["lit500", "lit500i"]],
   "pray-block": ["pray-block", null, ["lit400", "lit400i", "interLat", "interCyr"]],
   "source-mark": ["source-mark", null, ["lit400", "interLat", "interCyr"]],
+  // Layout B and the Inter reflection line (owner, 2026-10-21).
+  "reveal-sans": ["reveal-sans", "inter400-latin.woff2", ["inter400Cyr"]],
+  "verse-callout-ref": ["verse-callout-ref", "literata300i-cyrillic.woff2", ["interLat", "interCyr"]],
+  "source-mark-compact": ["source-mark-compact", null, ["lit400", "interLat", "interCyr"]],
 }
 
 for (const [name, [src, single, faces]] of Object.entries(BUILDS)) {
