@@ -19,6 +19,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import type { Mark } from "@/lib/annotations"
 import { createClientId } from "@/lib/clientId"
 import { IMAGE_MAX_BYTES, type TvContext } from "@/lib/contracts"
+import { localAnnotationEvidence } from "@/lib/localAnnotationEvidence"
 import { savePhotoDraft, takePhotoDraft } from "@/lib/photoDraft"
 import { TurnstileGate } from "./TurnstileGate"
 
@@ -130,11 +131,17 @@ export function PhotoFeedbackFlow({
   advancedHref,
   previewStage,
   grantRequired = false,
+  localMode,
+  simulatorMode = false,
+  onDone,
 }: {
   tvContext: TvContext
   advancedHref: string
   previewStage?: PreviewStage
   grantRequired?: boolean
+  localMode?: { linearEnabled: boolean }
+  simulatorMode?: boolean
+  onDone?: () => void
 }) {
   const [language, setLanguage] = useState<Language>("en")
   const [step, setStep] = useState(0)
@@ -148,6 +155,10 @@ export function PhotoFeedbackFlow({
   const [error, setError] = useState("")
   const [receipt, setReceipt] = useState("")
   const [delivery, setDelivery] = useState("processing")
+  const [issueUrl, setIssueUrl] = useState<string | undefined>()
+  const [issueIdentifier, setIssueIdentifier] = useState<string | undefined>()
+  const local = Boolean(localMode)
+  const apiBase = local ? "/api/feedback/local" : "/api/feedback"
   const cameraInput = useRef<HTMLInputElement>(null)
   const photoInput = useRef<HTMLInputElement>(null)
   const urls = useRef(new Set<string>())
@@ -156,7 +167,9 @@ export function PhotoFeedbackFlow({
   const t = words[language]
   const version = versions[versionIndex]
   const challenge =
-    !grantRequired && Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
+    !local &&
+    !grantRequired &&
+    Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY)
   const preview = previewStage !== undefined
   const onToken = useCallback((value: string) => setToken(value), [])
 
@@ -190,7 +203,7 @@ export function PhotoFeedbackFlow({
         for (const url of known) URL.revokeObjectURL(url)
       }
     }
-    const draft = takePhotoDraft()
+    const draft = local ? null : takePhotoDraft()
     if (draft) {
       const url = URL.createObjectURL(draft.file)
       urls.current.add(url)
@@ -203,17 +216,23 @@ export function PhotoFeedbackFlow({
     return () => {
       for (const url of known) URL.revokeObjectURL(url)
     }
-  }, [previewStage])
+  }, [previewStage, local])
   useEffect(() => {
     if (!receipt || preview) return
     const poll = async () => {
       try {
-        const result = await api<{ status: string }>("/api/feedback/status", {
+        const result = await api<{
+          status: string
+          issueUrl?: string
+          issueIdentifier?: string
+        }>(`${apiBase}/status`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ receipt }),
         })
         setDelivery(result.status)
+        setIssueUrl(result.issueUrl)
+        setIssueIdentifier(result.issueIdentifier)
       } catch {
         /* receipt stays visible during a temporary status failure */
       }
@@ -221,7 +240,7 @@ export function PhotoFeedbackFlow({
     void poll()
     const timer = window.setInterval(() => void poll(), 7000)
     return () => window.clearInterval(timer)
-  }, [receipt, preview])
+  }, [receipt, preview, apiBase])
 
   const choosePhoto = (file?: File) => {
     if (!file) return
@@ -247,7 +266,7 @@ export function PhotoFeedbackFlow({
   const saveDrawing = async (file: File, marks: Mark[]) => {
     if (file.size > IMAGE_MAX_BYTES) throw new Error("file_too_large")
     if (upload.current) {
-      await api(`/api/feedback/uploads/${upload.current.id}`, {
+      await api(`${apiBase}/uploads/${upload.current.id}`, {
         method: "DELETE",
       })
       upload.current = null
@@ -267,21 +286,18 @@ export function PhotoFeedbackFlow({
     const existing = upload.current
     if (existing?.file === file && existing.ready) return existing.id
     if (!existing || existing.file !== file) {
-      const reserved = await api<{ uploadId: string }>(
-        "/api/feedback/uploads",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: file.name,
-            type: file.type,
-            size: file.size,
-          }),
-        },
-      )
+      const reserved = await api<{ uploadId: string }>(`${apiBase}/uploads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: file.name,
+          type: file.type,
+          size: file.size,
+        }),
+      })
       upload.current = { file, id: reserved.uploadId, ready: false }
       try {
-        await api(`/api/feedback/uploads/${reserved.uploadId}`, {
+        await api(`${apiBase}/uploads/${reserved.uploadId}`, {
           method: "PUT",
           headers: { "Content-Type": file.type },
           body: file,
@@ -293,10 +309,9 @@ export function PhotoFeedbackFlow({
     }
     const id = upload.current!.id
     for (let attempt = 0; attempt < 60; attempt++) {
-      const result = await api<{ status: string }>(
-        `/api/feedback/uploads/${id}`,
-        { method: "GET" },
-      )
+      const result = await api<{ status: string }>(`${apiBase}/uploads/${id}`, {
+        method: "GET",
+      })
       if (result.status === "ready") {
         upload.current!.ready = true
         return id
@@ -331,15 +346,15 @@ export function PhotoFeedbackFlow({
     setError("")
     setBusy("preparing")
     try {
-      await api("/api/feedback/session", {
+      await api(`${apiBase}/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ turnstileToken: token }),
       })
       const uploadId = await prepareUpload(version.file)
       setBusy("sending")
-      const result = await api<{ receipt: string }>(
-        "/api/feedback/submissions",
+      const result = await api<{ receipt: string; status?: string }>(
+        `${apiBase}/submissions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -353,11 +368,12 @@ export function PhotoFeedbackFlow({
             idempotencyKey: submissionKey.current,
             turnstileToken: token,
             website: "",
+            ...(local ? localAnnotationEvidence(version.marks) : {}),
           }),
         },
       )
       setReceipt(result.receipt)
-      setDelivery("delivered")
+      setDelivery(local ? "local_saved" : "delivered")
       setStep(3)
     } catch {
       setError(t.failed)
@@ -374,10 +390,48 @@ export function PhotoFeedbackFlow({
     setNote("")
     setReceipt("")
     setDelivery("processing")
+    setIssueUrl(undefined)
+    setIssueIdentifier(undefined)
     setStep(0)
     setError("")
     upload.current = null
     submissionKey.current = createClientId()
+    onDone?.()
+  }
+  const forwardToLinear = async () => {
+    if (
+      !local ||
+      !localMode?.linearEnabled ||
+      busy ||
+      delivery !== "local_saved"
+    )
+      return
+    setBusy("sending")
+    setError("")
+    try {
+      const result = await api<{
+        status: string
+        issueUrl?: string
+        issueIdentifier?: string
+      }>(`${apiBase}/linear`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receipt }),
+      })
+      setDelivery(result.status)
+      setIssueUrl(result.issueUrl)
+      setIssueIdentifier(result.issueIdentifier)
+    } catch {
+      // A lost response may follow a successful create. The server never creates
+      // a second issue for this report; status polling reconciles the receipt.
+      setError(
+        language === "th"
+          ? "ตรวจสอบสถานะการส่งไม่ได้ รายงานยังอยู่บน Mac"
+          : "Could not confirm delivery. Your report is still saved on this Mac.",
+      )
+    } finally {
+      setBusy(null)
+    }
   }
   const advanced = () => {
     if (source && version)
@@ -404,7 +458,7 @@ export function PhotoFeedbackFlow({
             <small>WATCH BETA</small>
           </div>
         </div>
-        {step < 3 ? (
+        {step < 3 && !local && !simulatorMode ? (
           <Link
             href={advancedHref}
             onClick={advanced}
@@ -414,12 +468,31 @@ export function PhotoFeedbackFlow({
           </Link>
         ) : null}
       </header>
+      {local ? (
+        <p className="photo-local-banner" role="note">
+          {language === "th"
+            ? "ทดสอบบน Simulator — บันทึกรายงานไว้บน Mac ก่อน ส่งให้ Linear เมื่อคุณเลือกเท่านั้น"
+            : "Simulator test — reports stay on this Mac unless you choose Send to Linear."}
+        </p>
+      ) : null}
+      {simulatorMode ? (
+        <p className="photo-local-banner" role="note">
+          Simulator test — submitted reports and photos go to TV Beta Feedback
+          in Linear.
+        </p>
+      ) : null}
       {step === 3 ? (
         <section className="photo-receipt">
           <div className="photo-receipt-check">
             <Check size={58} strokeWidth={4} />
           </div>
-          <h1>{t.received}</h1>
+          <h1>
+            {local
+              ? language === "th"
+                ? "บันทึกบน Mac แล้ว"
+                : "Saved on this Mac"
+              : t.received}
+          </h1>
           <p>{t.thanks}</p>
           <div className="photo-receipt-card">
             <div className="photo-receipt-status">
@@ -429,13 +502,29 @@ export function PhotoFeedbackFlow({
               <div>
                 <strong>{t.saved}</strong>
                 <p aria-live="polite">
-                  {delivery === "delivered"
-                    ? t.delivered
-                    : delivery === "needs_attention"
-                      ? t.attention
-                      : process.env.NODE_ENV === "development"
-                        ? t.testing
-                        : t.queued}
+                  {local
+                    ? delivery === "delivered"
+                      ? language === "th"
+                        ? "Linear ยืนยันรายงานและรูปที่เลือกแล้ว"
+                        : "Linear confirmed the issue and selected photo."
+                      : delivery === "needs_attention"
+                        ? language === "th"
+                          ? "การส่งต้องตรวจสอบ ไม่ส่งซ้ำอัตโนมัติ รายงานและรูปยังอยู่บน Mac"
+                          : "Delivery needs review. No automatic retry. Your report and photo remain on this Mac."
+                        : delivery === "sending"
+                          ? language === "th"
+                            ? "กำลังส่งให้ Linear…"
+                            : "Sending to Linear…"
+                          : language === "th"
+                            ? "รูปและข้อความอยู่บน Mac เท่านั้น ยังไม่ส่งให้ทีม"
+                            : "Photo and note saved locally. Nothing has been sent to the team."
+                    : delivery === "delivered"
+                      ? t.delivered
+                      : delivery === "needs_attention"
+                        ? t.attention
+                        : process.env.NODE_ENV === "development"
+                          ? t.testing
+                          : t.queued}
                 </p>
               </div>
             </div>
@@ -450,7 +539,47 @@ export function PhotoFeedbackFlow({
               />
             ) : null}
           </div>
-          <button type="button" className="photo-primary" onClick={done}>
+          {local && issueUrl ? (
+            <p>
+              <a href={issueUrl} target="_blank" rel="noopener noreferrer">
+                {issueIdentifier ?? "View Linear issue"}
+              </a>
+            </p>
+          ) : null}
+          {localMode?.linearEnabled && delivery === "local_saved" ? (
+            <>
+              <p>
+                {language === "th"
+                  ? "ส่งข้อความ บริบท TV และรูปที่เลือกให้โปรเจกต์ TV Beta Feedback ใน Linear"
+                  : "Share this note, TV context and selected photo with the TV Beta Feedback project in Linear."}
+              </p>
+              <button
+                type="button"
+                className="photo-primary"
+                disabled={Boolean(busy)}
+                onClick={() => void forwardToLinear()}
+              >
+                {busy
+                  ? language === "th"
+                    ? "กำลังส่ง…"
+                    : "Sending…"
+                  : language === "th"
+                    ? "ส่งให้ Linear"
+                    : "Send to Linear"}
+              </button>
+            </>
+          ) : null}
+          {error ? (
+            <p className="photo-error" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className="photo-primary"
+            disabled={Boolean(busy)}
+            onClick={done}
+          >
             {t.done}
           </button>
         </section>
@@ -601,8 +730,16 @@ export function PhotoFeedbackFlow({
                 maxLength={2000}
                 placeholder={t.placeholder}
               />
-              <p className="photo-privacy">{t.privacy}</p>
-              {!grantRequired ? <TurnstileGate onToken={onToken} /> : null}
+              <p className="photo-privacy">
+                {local
+                  ? language === "th"
+                    ? "รูปและข้อความจะถูกบันทึกบน Mac ไม่ส่งให้ Linear จนกว่าคุณจะเลือก"
+                    : "Your photo and note will be saved on this Mac. Sending to Linear is a separate choice."
+                  : t.privacy}
+              </p>
+              {!local && !grantRequired ? (
+                <TurnstileGate onToken={onToken} />
+              ) : null}
               <button
                 type="button"
                 className="photo-primary"
@@ -618,7 +755,11 @@ export function PhotoFeedbackFlow({
                   ? t.preparing
                   : busy === "sending"
                     ? t.sending
-                    : t.sendAction}
+                    : local
+                      ? language === "th"
+                        ? "บันทึกบน Mac"
+                        : "Save on this Mac"
+                      : t.sendAction}
               </button>
             </section>
           ) : null}

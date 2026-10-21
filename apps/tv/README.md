@@ -8,6 +8,9 @@ Development instructions: [CLAUDE.md](CLAUDE.md). Repeatable checks and evidence
 [development harness](harnesses/development/HARNESS.md). Device distribution:
 [DISTRIBUTION.md](DISTRIBUTION.md).
 
+For simulator feedback QR, the local receiving server, and optional Linear key
+setup, follow [Local feedback testing](../tv-feedback/LOCAL-FEEDBACK.md).
+
 ## Quick choices
 
 | I want to…                                   | Change                                           | Where                                                          |

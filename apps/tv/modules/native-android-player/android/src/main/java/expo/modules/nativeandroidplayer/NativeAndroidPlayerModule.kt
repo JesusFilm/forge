@@ -202,6 +202,8 @@ class NativeAndroidPlayerModule : Module() {
       Prop("feedbackVisible") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackVisible = value ?: false }
       Prop("feedbackRows") { view: NativeAndroidPlayerView, value: List<String>? -> view.feedbackRows = value ?: emptyList() }
       Prop("feedbackReference") { view: NativeAndroidPlayerView, value: String? -> view.feedbackReference = value }
+      Prop("feedbackSimulator") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackSimulator = value ?: false }
+      Prop("feedbackHostedSimulator") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackHostedSimulator = value ?: false }
       Prop("feedbackLoading") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackLoading = value ?: false }
       Prop("feedbackError") { view: NativeAndroidPlayerView, value: Boolean? -> view.feedbackError = value ?: false }
       Prop("upNextSlug") { view: NativeAndroidPlayerView, value: String? ->
