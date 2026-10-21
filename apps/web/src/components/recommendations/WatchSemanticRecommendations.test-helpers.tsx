@@ -155,6 +155,10 @@ class TestIntersectionObserver implements IntersectionObserver {
   }
 }
 
+export function observedElements() {
+  return [...observed]
+}
+
 export function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
