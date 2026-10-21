@@ -7,7 +7,7 @@ export const RECOMMENDATION_CONSENT_COOKIE =
   "forge_recommendation_consent" as const
 // Client code must import these from `recommendation-consent-events.ts`;
 // importing this module from a client component ships the Node crypto
-// polyfill to the browser (feat-755).
+// polyfill to the browser (feat-779).
 export {
   RECOMMENDATION_CONSENT_CHANGED_EVENT,
   RECOMMENDATION_CONSENT_CHANNEL,

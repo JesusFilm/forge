@@ -5,7 +5,7 @@
  * Turbopack does not fail the build: it substitutes crypto-browserify and its
  * stream/buffer shims. One such edge — three event-name constants imported
  * from the server-side consent cookie module — shipped a ~450 KB (decoded)
- * chunk to every Watch route through the locale layout (feat-755). Nothing
+ * chunk to every Watch route through the locale layout (feat-779). Nothing
  * breaks and no test notices; the page is only heavier.
  *
  * This walks the static import closure of every client module under `src`
@@ -108,7 +108,7 @@ describe("client module graph", () => {
     expect(findCryptoPaths()).toEqual([])
   })
 
-  it("would see the original feat-755 leak", () => {
+  it("would see the original feat-779 leak", () => {
     // Anti-vacuous companion: the server consent module the leak came through
     // still imports node:crypto, and the walker recognises that import.
     const consent = readFileSync(

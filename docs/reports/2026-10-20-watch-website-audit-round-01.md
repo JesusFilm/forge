@@ -4,7 +4,10 @@ Date: 2026-10-20 (UTC). Scope: the public Watch site (`apps/web`), audited
 read-only against production `https://www.jesusfilm.org/watch` and a local
 `next build` + `next start` of the same commit. This round covered the
 template inventory, a performance baseline, and one measured repair
-(feat-755). Later rounds cover personas, accessibility, design and mobile.
+(feat-779). Later rounds cover personas, accessibility, design and mobile.
+
+Roadmap ID note (2026-10-21): this repair was first filed as `feat-755`. `main`
+later assigned `feat-755` to a TV ticket, so this ticket is now `feat-779`.
 
 The root marketing site (`https://www.jesusfilm.org/` outside `/watch`) is not
 built from this repository and was not audited.
@@ -47,7 +50,7 @@ already characterised in feat-515; it is not a blank page.
 
 ## Findings, ranked
 
-1. **Node crypto polyfill on every Watch route (fixed, feat-755).** A
+1. **Node crypto polyfill on every Watch route (fixed, feat-779).** A
    461,268-byte chunk (`crypto-browserify`, `stream`, `buffer`, `pbkdf2`,
    `secp256k1`; 91 KB brotli locally, 135 KB as served) loaded on home, film,
    series, inventory, languages, history, what's-new and 404. Cause: three
@@ -78,7 +81,7 @@ already characterised in feat-515; it is not a blank page.
    manifest; a 113 KB micromark chunk ships on home. Needs attribution before
    any change.
 
-## feat-755 measurement
+## feat-779 measurement
 
 Method: `next build` of the same commit before and after the change, served
 by `next start` on loopback with `.env.ci` (no Admin data, so content routes
