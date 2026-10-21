@@ -14,8 +14,13 @@ import type { ElevenVoiceSettings, SpokenWord } from "./elevenlabs-voiceover"
 
 export const CONTINUOUS_MODEL = "eleven_v4"
 
-/** Bumped whenever the settings below change, so an old take is not replayed. */
-const VERSION = "c1"
+/** `DEVO_V4_SPEED` overrides the reading speed (ElevenLabs caps it at 1.2);
+ *  the owner asked for a slightly quicker read on The Rich Fool (2026-10-21). */
+const READ_SPEED = Math.min(1.2, Number(process.env.DEVO_V4_SPEED) || 1.15)
+
+/** Bumped whenever the settings below change, so an old take is not replayed.
+ *  A non-default speed is part of it, so a faster take never reuses a slower one. */
+const VERSION = READ_SPEED === 1.15 ? "c1" : `c1-s${READ_SPEED}`
 
 /** Calm, natural v4 delivery (no whisper, no big emotion), a touch quick. */
 const READ: ElevenVoiceSettings = {
@@ -23,7 +28,7 @@ const READ: ElevenVoiceSettings = {
   similarity_boost: 0.85,
   style: 0.35,
   use_speaker_boost: true,
-  speed: 1.15,
+  speed: READ_SPEED,
 }
 
 /** The close (takeaway, verse, question and prayer) stays unhurried. */
