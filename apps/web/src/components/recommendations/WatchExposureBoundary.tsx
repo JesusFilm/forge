@@ -14,6 +14,7 @@ import { recommendationFetchWithRetry } from "@/lib/recommendation-browser"
 import { waitForRecommendationActivation } from "@/lib/recommendation-activation"
 import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 import { watchPath } from "@/lib/watch-paths"
+import { randomUuid } from "@/lib/random-uuid"
 
 type Surface = {
   surface: "watch-home" | "watch-search" | "watch-video" | "watch-series"
@@ -95,7 +96,7 @@ function ExposureWindow({
   const rendered = useRef(new Set<string>())
   const pending = useRef<Array<Record<string, unknown>>>([])
   const flushTimer = useRef<number | null>(null)
-  const [windowId, setWindowId] = useState(() => crypto.randomUUID())
+  const [windowId, setWindowId] = useState(() => randomUuid())
   const { surface, block, presentation, placement } = config
   const descriptor =
     manifest &&
@@ -117,7 +118,7 @@ function ExposureWindow({
       typeof document !== "undefined" &&
       document.readyState === "complete" &&
       !(document as Document & { prerendering?: boolean }).prerendering,
-    attemptId: crypto.randomUUID(),
+    attemptId: randomUuid(),
     receipt: null as null | {
       windowId: string
       items: Array<{ position: number; itemPath: string }>
@@ -217,7 +218,7 @@ function ExposureWindow({
     ) => {
       const state = lifecycle.current
       const fact: Fact = {
-        eventId: crypto.randomUUID(),
+        eventId: randomUuid(),
         windowId,
         surface,
         block,
@@ -469,9 +470,9 @@ function ExposureWindow({
       flush()
       lifecycle.current.receipt = null
       lifecycle.current.waiting = !!descriptor
-      lifecycle.current.attemptId = crypto.randomUUID()
+      lifecycle.current.attemptId = randomUuid()
       rendered.current.clear()
-      setWindowId(crypto.randomUUID())
+      setWindowId(randomUuid())
     }
     window.addEventListener("pageshow", restore)
     const hide = () => {
