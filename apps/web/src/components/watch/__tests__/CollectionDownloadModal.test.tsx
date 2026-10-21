@@ -796,8 +796,13 @@ describe("CollectionDownloadModal", () => {
     )
     expect(header?.contains(summary)).toBe(true)
     expect(header?.className).toContain("gap-x-8")
+    // The column split reads the dialog's own width, not the viewport's: the
+    // dialog stays clear of the fixed close button, so it is narrower than the
+    // viewport and a viewport breakpoint would split before the columns fit.
+    expect(header?.parentElement?.className).toContain("@container")
+    expect(header?.className).not.toContain("min-[900px]:grid-cols")
     expect(header?.className).toContain(
-      "min-[900px]:grid-cols-[minmax(0,1fr)_26rem]",
+      "@min-[44rem]:grid-cols-[minmax(0,1fr)_26rem]",
     )
     const description = container.querySelector(
       '[data-testid="watch-collection-download-description"]',
@@ -818,7 +823,7 @@ describe("CollectionDownloadModal", () => {
     expect(summary?.className).not.toContain("bg-")
     expect(summary?.className).not.toContain("flex-col")
     expect(summary?.className).toContain("justify-self-center")
-    expect(summary?.className).toContain("min-[900px]:justify-self-end")
+    expect(summary?.className).toContain("@min-[44rem]:justify-self-end")
     const thumbnailStack = summary?.querySelector(
       '[data-testid="watch-collection-download-thumbnail-stack"]',
     )

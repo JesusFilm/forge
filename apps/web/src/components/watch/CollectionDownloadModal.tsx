@@ -681,11 +681,15 @@ export function CollectionDownloadModal({
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
         <div
           data-testid="watch-collection-download-modal-content"
-          className="flex flex-col gap-8 p-[min(1.5rem,7.5vw)] sm:p-9"
+          className="@container flex flex-col gap-8 p-[min(1.5rem,7.5vw)] sm:p-9"
         >
+          {/* Two columns once the dialog's own content box holds the 26rem
+              summary column beside the text. The dialog is narrower than the
+              viewport (it keeps clear of the fixed close button), so a
+              viewport breakpoint would split too early and overflow. */}
           <div
             data-testid="watch-collection-download-header"
-            className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6 min-[900px]:grid-cols-[minmax(0,1fr)_26rem] min-[900px]:items-center"
+            className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-6 @min-[44rem]:grid-cols-[minmax(0,1fr)_26rem] @min-[44rem]:items-center"
           >
             <div className="min-w-0">
               <p
@@ -711,7 +715,7 @@ export function CollectionDownloadModal({
                 aria-label={t("availableCount", {
                   count: options.candidates.length,
                 })}
-                className="flex w-fit max-w-full shrink-0 flex-wrap items-center justify-center justify-self-center gap-3 min-[500px]:gap-5 min-[900px]:justify-self-end min-[900px]:gap-6"
+                className="flex w-fit max-w-full shrink-0 flex-wrap items-center justify-center justify-self-center gap-3 min-[500px]:gap-5 @min-[44rem]:justify-self-end min-[900px]:gap-6"
               >
                 <div
                   data-testid="watch-collection-download-thumbnail-stack"
