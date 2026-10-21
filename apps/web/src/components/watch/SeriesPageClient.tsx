@@ -29,7 +29,11 @@ import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProv
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { resolveEpisodeImageUrl } from "@/lib/episode-image"
-import { languageBadgeCodeFor, languageCodeFor } from "@/lib/language-code"
+import {
+  languageBadgeCodeFor,
+  languageCodeFor,
+  subtitleTrackLanguageTag,
+} from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
@@ -227,6 +231,9 @@ export function SeriesPageClient({
       : null
   const subtitleLanguageCode = selectedSubtitle
     ? languageCodeFor(selectedSubtitle.language)
+    : null
+  const subtitleLanguageTag = selectedSubtitle
+    ? subtitleTrackLanguageTag(selectedSubtitle.language)
     : null
   const handleSubtitleChange = useCallback(
     (enabled: boolean, languageSlug: string | null) => {
@@ -443,6 +450,7 @@ export function SeriesPageClient({
         playableLanguageCount={variantsForLanguagePicker.length}
         hasSubtitleOptions={subtitles.length > 0}
         subtitleLanguageCode={subtitleLanguageCode}
+        subtitleLanguageTag={subtitleLanguageTag}
         subtitleVttSrc={subtitleVttSrc}
         audioLanguageCountLabel={audioLanguageCountLabel}
         subtitleLanguageCountLabel={subtitleLanguageCountLabel}
