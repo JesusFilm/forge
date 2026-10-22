@@ -57,4 +57,8 @@ Keep this ticket in progress until live rotation and retirement are recorded.
 ## Delivery
 
 Preparation: [Forge PR #2862](https://github.com/JesusFilm/forge/pull/2862).
-Live receiver cutover, deployment verification and retirement remain open.
+Five restricted service logins completed live cutover and retirement on 2026-10-23
+NZDT. Fresh portal sign-in, replacement grants, retrieval, usage and the agreed
+15-minute observation passed. The owner-password cutover remains in progress;
+its reference graph, password-independent recovery route and maintenance-window
+procedure are documented in `apps/rag/docs/ops/credential-cutover.md`.
