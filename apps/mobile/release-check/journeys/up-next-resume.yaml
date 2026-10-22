@@ -1,0 +1,88 @@
+# Play part of a video, check the Up Next row, and open the next video from
+# it. The "Resume at" offer needs a signed-in viewer (not-tested.json).
+appId: org.jesusfilm.forgewatch
+name: up-next-resume
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+- scrollUntilVisible:
+    element:
+      text: "Play .+"
+    direction: DOWN
+    timeout: 20000
+    label: Scroll to the Up Next row
+- assertVisible:
+    text: Up Next
+    label: The Up Next heading shows
+- assertVisible:
+    text: "[0-9]+ sibling videos?"
+    label: The Up Next row lists the other videos
+- tapOn:
+    text: "Play .+"
+    label: Open the first Up Next video
+- extendedWaitUntil:
+    notVisible:
+      text: The Birth of Jesus
+    timeout: 20000
+    label: The first video's title is gone
+- assertVisible:
+    id: screen-watch
+    label: The watch page shows the next video
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The next video plays
+# The mini player names the video that plays, so it proves the swap.
+- tapOn:
+    text: Go back
+    label: Shrink the player
+- extendedWaitUntil:
+    visible:
+      text: "Mini player, .+, playing"
+    timeout: 20000
+    label: The mini player plays a video
+- assertNotVisible:
+    text: "Mini player, The Birth of Jesus, .+"
+    label: The mini player does not play the first video
+# iOS can drop the window's buttons from the accessibility tree, so the
+# journey taps the close button's place in the window's top corner.
+- tapOn:
+    id: mini-player-window
+    point: 93%,12%
+    label: Close the mini player
+- extendedWaitUntil:
+    notVisible:
+      id: mini-player-window
+    timeout: 10000
+    label: The mini player closes

@@ -70,7 +70,23 @@ describe("check-lists on the committed lists", () => {
     const output = JSON.parse(result.stdout)
     expect(output).toMatchObject({ mode: "check-lists", passed: true })
     expect(output.findings).toEqual([])
-    expect(output.counts.notTested).toBe(4)
+    expect(output.counts.notTested).toBe(
+      readJson(path.join(CONFIG_DIR, "not-tested.json")).entries.length,
+    )
+  })
+
+  it("keeps the four Not-Tested entries that R23 requires", () => {
+    const targets = readJson(
+      path.join(CONFIG_DIR, "not-tested.json"),
+    ).entries.map((entry) => entry.target)
+    expect(targets).toEqual(
+      expect.arrayContaining([
+        "sign-in",
+        "account",
+        "my-watch-signed-in",
+        "for-you-shelf",
+      ]),
+    )
   })
 })
 
@@ -92,7 +108,9 @@ describe("journey links", () => {
 
 describe("screen names", () => {
   it("fails a Not-Tested entry for a screen that no longer exists", () => {
+    let index = null
     const findings = findingsWith((lists) => {
+      index = lists.notTested.entries.length
       lists.notTested.entries.push({
         kind: "screen",
         target: "watch-quality",
@@ -101,7 +119,7 @@ describe("screen names", () => {
       })
     })
     expect(findings).toEqual([
-      "entries[4] names screen watch-quality, which does not exist",
+      `entries[${index}] names screen watch-quality, which does not exist`,
     ])
   })
 
