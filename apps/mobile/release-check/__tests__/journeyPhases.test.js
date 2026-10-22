@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global AbortController, afterAll, describe, expect, it, require */
+/* global AbortController, afterAll, describe, expect, it, require, setTimeout */
 // The probing and journeys phases (KTD5, KTD6): the settings probe runs first
 // on each device, and a failed probe stops the run before any other journey
 // starts. Devices and Maestro are fakes; the journeys are the real files.
@@ -103,6 +103,31 @@ function fakeHandle(ref, events) {
     prepareApp: ok,
     probe: ok,
     ensureResponsive: async () => ({ answered: true, restarted: false }),
+  }
+}
+
+// A host gate with room for two devices at a time: a device waits at the
+// gate until another one leaves it.
+function twoSlotGate() {
+  const held = new Set()
+  const waiting = []
+  return {
+    held,
+    admit: (device) =>
+      new Promise((resolve) => {
+        const tryAdmit = () => {
+          if (held.size >= 2) return false
+          held.add(device.id)
+          resolve({ admitted: true, stopReason: null })
+          return true
+        }
+        if (!tryAdmit()) waiting.push(tryAdmit)
+      }),
+    release: (device) => {
+      held.delete(device.id)
+      const index = waiting.findIndex((tryAdmit) => tryAdmit())
+      if (index !== -1) waiting.splice(index, 1)
+    },
   }
 }
 
@@ -229,6 +254,8 @@ describe("a passing run", () => {
     expect(ios).toEqual([
       "boot iphone-se",
       "shutdown iphone-se",
+      "boot iphone-se",
+      "shutdown iphone-se",
       "boot iphone-17-pro-max",
       "shutdown iphone-17-pro-max",
       "boot ipad-pro-13",
@@ -242,5 +269,31 @@ describe("a passing run", () => {
       setting: "EXPO_PUBLIC_EXPLORE_ENABLED",
     })
     expectValidAttempts(result.attempts)
+  })
+})
+
+describe("a host with room for two devices", () => {
+  it("ends the probing phase with all three lanes probed, because each probed device leaves the gate", async () => {
+    const { phases, ctx, calls } = setUp({})
+    const gate = twoSlotGate()
+    ctx.admit = gate.admit
+    ctx.release = gate.release
+    let settled = false
+    const probing = phases.probing(ctx).finally(() => {
+      settled = true
+    })
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    expect(settled).toBe(true)
+    expect((await probing).passed).toBe(true)
+    expect(calls.map((call) => call.deviceRef).sort()).toEqual([
+      "android-phone",
+      "android-tablet",
+      "iphone-se",
+    ])
+    expect(gate.held.size).toBe(0)
+    const result = await phases.journeys(ctx)
+    expect(result.attempts.filter((a) => a.status === "passed")).toHaveLength(
+      10,
+    )
   })
 })

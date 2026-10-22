@@ -71,10 +71,8 @@ function relativeTo(runDir, file) {
   return file ? path.relative(runDir, file).split(path.sep).join("/") : null
 }
 
-/**
- * The phases for `createDeps().phases`. A test injects the device, Maestro,
- * and evidence layers through `options`.
- */
+// The phases for `createDeps().phases`. A test injects the device, Maestro,
+// and evidence layers through `options`.
 function createJourneyPhases(options = {}) {
   const journeysDir = options.journeysDir ?? JOURNEYS_DIR
   const configDir = options.configDir ?? CONFIG_DIR
@@ -106,7 +104,7 @@ function createJourneyPhases(options = {}) {
       plan: planJourneys(journeys, screensConfig, ctx.settings),
       lanes: lanesOf(ctx.selection.devices).map((lane) => ({
         ...lane,
-        entries: [],
+        probed: [],
       })),
       attempts: [],
       restarts: [],
@@ -462,8 +460,9 @@ function createJourneyPhases(options = {}) {
     return result
   }
 
-  function markNotRun(run, ctx, device, error) {
-    for (const journeyId of [PROBE_ID, ...queueFor(run, ctx, device)]) {
+  function markNotRun(run, ctx, device, error, withProbe = true) {
+    const journeys = queueFor(run, ctx, device)
+    for (const journeyId of withProbe ? [PROBE_ID, ...journeys] : journeys) {
       run.attempts.push(notRunRecord(journeyId, device.id, error))
     }
   }
@@ -480,12 +479,17 @@ function createJourneyPhases(options = {}) {
         deviceId: entry.device.id,
       })
     }
-    entry.probed = !result.probeFailed && !result.stopped && !result.deviceLost
-    return result
+    return {
+      ...result,
+      passed: !result.probeFailed && !result.stopped && !result.deviceLost,
+    }
   }
 
   // ── Phases ─────────────────────────────────────────────────────────
 
+  // Each lane probes its first device, then stops it and leaves the gate. A
+  // probed device that waited for the other lanes held memory and load that
+  // a lane still waiting at the gate needed, and the phase could not end.
   async function probing(ctx) {
     const run = startRun(ctx)
     await Promise.all(
@@ -493,8 +497,8 @@ function createJourneyPhases(options = {}) {
         const device = lane.devices[0]
         if (ctx.signal.aborted) return
         const entry = await startDevice(run, ctx, device)
-        lane.entries[0] = entry
         if (!entry.started) {
+          lane.probed[0] = false
           if (entry.admitted) {
             markNotRun(
               run,
@@ -505,7 +509,8 @@ function createJourneyPhases(options = {}) {
           }
           return
         }
-        await probeDevice(run, ctx, entry)
+        lane.probed[0] = (await probeDevice(run, ctx, entry)).passed
+        await stopDevice(ctx, entry)
       }),
     )
     return {
@@ -516,68 +521,54 @@ function createJourneyPhases(options = {}) {
 
   async function runLane(run, ctx, lane) {
     for (const [index, device] of lane.devices.entries()) {
-      let entry = lane.entries[index]
+      const probedEarlier = lane.probed[index]
+      if (probedEarlier === false) continue
+      const withProbe = probedEarlier !== true
       if (ctx.signal.aborted) {
-        if (!entry)
+        markNotRun(
+          run,
+          ctx,
+          device,
+          "The run stopped before this device started.",
+          withProbe,
+        )
+        continue
+      }
+      const entry = await startDevice(run, ctx, device)
+      if (!entry.started) {
+        const why = entry.admitted
+          ? `The device did not start: ${entry.error}`
+          : "The run stopped before this device started."
+        markNotRun(run, ctx, device, why, withProbe)
+        continue
+      }
+      if (withProbe) {
+        const probe = await probeDevice(run, ctx, entry)
+        if (probe.probeFailed) {
+          ctx.stop("probe_failed", entry.device.id)
           markNotRun(
             run,
             ctx,
             device,
-            "The run stopped before this device started.",
+            "The settings probe failed on this device, so this journey did not run.",
+            false,
           )
-        continue
-      }
-      if (!entry) {
-        entry = await startDevice(run, ctx, device)
-        lane.entries[index] = entry
-        if (!entry.started) {
-          if (entry.admitted) {
-            markNotRun(
-              run,
-              ctx,
-              device,
-              `The device did not start: ${entry.error}`,
-            )
-          } else {
-            markNotRun(
-              run,
-              ctx,
-              device,
-              "The run stopped before this device started.",
-            )
-          }
+          await stopDevice(ctx, entry)
           continue
         }
-        const probe = await probeDevice(run, ctx, entry)
-        if (probe.probeFailed) {
-          ctx.stop("probe_failed", entry.device.id)
-          for (const journeyId of queueFor(run, ctx, device)) {
-            run.attempts.push(
-              notRunRecord(
-                journeyId,
-                device.id,
-                "The settings probe failed on this device, so this journey did not run.",
-              ),
-            )
-          }
+        if (!probe.passed) {
+          markNotRun(
+            run,
+            ctx,
+            device,
+            "The run stopped before this journey.",
+            false,
+          )
           await stopDevice(ctx, entry)
           continue
         }
       }
-      if (!entry.started) continue
-      if (entry.probed) {
-        await runDeviceQueue(run, ctx, entry, queueFor(run, ctx, device))
-      } else if (!ctx.signal.aborted) {
-        for (const journeyId of queueFor(run, ctx, device)) {
-          run.attempts.push(
-            notRunRecord(
-              journeyId,
-              device.id,
-              "The settings probe did not pass on this device, so this journey did not run.",
-            ),
-          )
-        }
-      }
+      await runDeviceQueue(run, ctx, entry, queueFor(run, ctx, device))
       await stopDevice(ctx, entry)
     }
   }

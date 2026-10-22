@@ -41,11 +41,9 @@ function notRunRecord(journey, deviceId, error, attempt = 1) {
   })
 }
 
-/**
- * Runs one journey on one device. `runAttempt(n, { afterRestart })` resolves
- * `{ stopped }` or `{ passed, record, deviceAnswered, retryAfterMs }`;
- * `recover(reason)` restarts a device that does not answer, within its budget.
- */
+// Runs one journey on one device. `runAttempt(n, { afterRestart })` resolves
+// `{ stopped }` or `{ passed, record, deviceAnswered, retryAfterMs }`;
+// `recover(reason)` restarts a device that does not answer, within its budget.
 async function runJourney(input) {
   const { journey, deviceId } = input
   const records = []
@@ -107,10 +105,8 @@ async function runJourney(input) {
   return finish("new")
 }
 
-/**
- * Runs a device's queue in order. A lost device, a stop, or a failed settings
- * probe ends the queue, and each journey left in it gets a "not run" attempt.
- */
+// Runs a device's queue in order. A lost device, a stop, or a failed settings
+// probe ends the queue, and each journey left in it gets a "not run" attempt.
 async function runQueue({ deviceId, journeys, runOne, probeId }) {
   const attempts = []
   for (const [index, journey] of journeys.entries()) {

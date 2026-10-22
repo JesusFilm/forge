@@ -86,10 +86,8 @@ function junitFailure(outputDir) {
   return match ? decodeXml(match[1]).trim() || null : null
 }
 
-/**
- * The attempt's steps as Maestro ran them: the failed command, the step
- * times, the failure screenshot (absolute), and the visible targets reached.
- */
+// The attempt's steps as Maestro ran them: the failed command, the step
+// times, the failure screenshot (absolute), and the visible targets reached.
 function readAttemptOutput(outputDir) {
   const file = commandsFile(outputDir)
   let commands = []
@@ -138,11 +136,9 @@ function screensReachedFrom(reached, handEntries) {
   return [...screens].sort()
 }
 
-/**
- * The labels of the top-level steps that did not run, in flow order (R37).
- * Maestro writes one depth-0 entry for each top-level step that started, after
- * its own two set-up entries, so the count of those entries finds the step.
- */
+// The labels of the top-level steps that did not run, in flow order (R37).
+// Maestro writes one depth-0 entry for each top-level step that started, after
+// its own two set-up entries, so the count of those entries finds the step.
 function notRunLabels(flow, commands) {
   const failedAt = commands.findIndex((command) => command.status === "FAILED")
   const upTo = failedAt < 0 ? commands : commands.slice(0, failedAt + 1)

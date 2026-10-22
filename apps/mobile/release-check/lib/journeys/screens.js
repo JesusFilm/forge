@@ -135,10 +135,8 @@ function notTestedOn(notTested, screen, platform) {
   )
 }
 
-/**
- * The static check: each screen that a platform shows needs a journey on that
- * platform, or a Not-Tested entry. A hidden screen is a skipped platform.
- */
+// The static check: each screen that a platform shows needs a journey on that
+// platform, or a Not-Tested entry. A hidden screen is a skipped platform.
 function screenCoverage({
   inventory,
   screensConfig,

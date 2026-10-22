@@ -55,8 +55,12 @@ name: settings-probe
 - assertNotVisible:
     text: Recommended for You
     label: No For You shelf after two scrolls
+# On the Android tablet, a tap during the scroll's coast did not open the tab.
+- waitForAnimationToEnd:
+    label: Wait for Home to stop moving
 - tapOn:
     text: My Watch
+    retryTapIfNoChange: true
     label: Open My Watch
 - assertVisible:
     id: screen-tab-profile

@@ -262,10 +262,8 @@ const DEVICE_CLASS_ORDER = [
   "app_unresponsive",
 ]
 
-/**
- * One class for a failed attempt, from the most direct evidence to the least:
- * the device, the app's own exit records, the server, then Maestro.
- */
+// One class for a failed attempt, from the most direct evidence to the least:
+// the device, the app's own exit records, the server, then Maestro.
 function classifyFailure(input) {
   const output = input.output ?? {}
   const failed = output.failed ?? null

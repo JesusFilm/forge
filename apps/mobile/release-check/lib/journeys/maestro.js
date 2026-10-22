@@ -51,10 +51,8 @@ function maestroBinary(env) {
   throw new MaestroMissingError()
 }
 
-/**
- * The arguments of one attempt. `deviceRef` is the simulator UDID or the
- * emulator serial; `variables` become `-e KEY=VALUE`.
- */
+// The arguments of one attempt. `deviceRef` is the simulator UDID or the
+// emulator serial; `variables` become `-e KEY=VALUE`.
 function maestroArgs({ platform, deviceRef, flowFile, outputDir, variables }) {
   const args = ["test", "--device", deviceRef]
   if (platform === "ios") {

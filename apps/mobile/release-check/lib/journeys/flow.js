@@ -298,10 +298,8 @@ function readSteps(list, depth, conditional, out) {
   })
 }
 
-/**
- * Reads one journey: its header (`appId`, `name`, `tags`) and every step,
- * nested steps included. Throws FlowError on a line it cannot read.
- */
+// Reads one journey: its header (`appId`, `name`, `tags`) and every step,
+// nested steps included. Throws FlowError on a line it cannot read.
 function parseFlow(source) {
   const lines = source.split(/\r?\n/)
   const separator = lines.findIndex((line) => line.trim() === "---")

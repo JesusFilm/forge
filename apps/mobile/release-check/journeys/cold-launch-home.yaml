@@ -24,6 +24,13 @@ name: cold-launch-home
 - assertVisible:
     id: home-hero-chrome
     label: The hero controls show
+# A tablet's hero fills the first screen, so the journey scrolls to a shelf.
+- scrollUntilVisible:
+    element:
+      text: "[0-9]+ items? in .+"
+    direction: DOWN
+    timeout: 30000
+    label: Scroll to a shelf with cards
 - assertVisible:
     text: "[0-9]+ items? in .+"
     label: A shelf with cards shows
