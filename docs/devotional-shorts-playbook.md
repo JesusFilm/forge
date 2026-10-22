@@ -279,6 +279,31 @@ his heart.", not "They came for his legs. He started with his heart.": the
 owner could not tell who "he" was). On-screen text credit is the film's
 translation (LUMO reads NIV).
 
+**Contrast cards (the default look for both cards from Great Catch,
+2026-10-22; owner: "everything else is great", write it down for other shorts
+of this format).** Write the question and the turn as lines split by `|`
+with the key words marked, and the composition sets them in mixed sizes
+(`ContrastQuestion` in `DevotionalVideo.tsx`):
+
+- `*word*`: large PT Serif italic (150, or 128 when a card has three or more;
+  shrinks for a long word). The LAST run of large lines is gold `#F2C46B`,
+  earlier large lines white.
+- `_word_`: a small PT Serif italic joining word ("or", «или»), 46, 85%.
+- anything else: Inter 600 caps 52, tracked 3.2, the plain lead-in.
+- Lines gather out of a blur one after another, the large words on a beat of
+  their own; the closing turn runs at 0.6 of the question's pace (owner: a bit
+  quicker). The question is centred, the turn flush left with its small line.
+- Cyrillic lowercase has no tall letters, so a large word without ascenders
+  (or descenders) gets its empty band trimmed: without it the RU gaps looked
+  uneven.
+- Two key words that belong together are both large ("_другие_|_планы._").
+
+Great Catch, as made: `--film-open="Is this|*fear*|_or_|*faith?*"`
+`--film-close="He asked Jesus|*to leave.*|Jesus had other|*plans.*"`, RU
+`Это|*страх*|_или_|*вера?*` and `Он просил Иисуса|*уйти.*|У Иисуса были|*другие*|*планы.*`.
+The weighed words must carry the idea; pick them from the options the owner
+chose. A contrast card reads slower, so add `--film-open-extra=1.2`.
+
 ### 6.3 history
 
 Content: the credited history paragraph alone (one thought, about 12 to 20 s;

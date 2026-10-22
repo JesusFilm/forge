@@ -1744,6 +1744,199 @@ const TYPE_CHARS_PER_SEC = 28
 /** The film's level under the film short's question cards (about -10 dB). */
 const SHORT_CARD_FILM_LEVEL = 0.32
 
+/** A "contrast" card: lines split by "|"; "*word*" is a large serif italic
+ *  word (the last one gold), "_word_" a small italic joining word, anything
+ *  else Inter caps ("Is this|*fear*|_or_|*faith?*"). */
+function isContrastQuestion(text: string): boolean {
+  return text.includes("|") && /\*[^*]+\*/.test(text)
+}
+
+/**
+ * The film short's opening question set as a choice between two words
+ * (owner, Great Catch 2026-10-22: "Is this fear or faith?", highlight fear
+ * and faith). The weighed words are large PT Serif italic, the last one in
+ * gold; the lead-in is the stamp's Inter caps and the joining word a small
+ * italic. Each line gathers out of a blur in turn, gently (~0.6s, eased),
+ * so the eye lands on the first word, then the second.
+ */
+function ContrastQuestion({
+  text,
+  fromSec,
+  toSec,
+  t,
+  f,
+  align = "center",
+  sub,
+  subSize = 32,
+  pace = 1,
+}: {
+  text: string
+  fromSec: number
+  toSec: number | null
+  t: number
+  f: (n: number) => number
+  /** The closing turn sits flush left (owner, Paralytic 2026-10-20). */
+  align?: "center" | "left"
+  /** The closing turn's small line ("The full story is on our channel."). */
+  sub?: string
+  subSize?: number
+  /** Scales the time between lines and each line's arrival (the closing
+   *  turn runs quicker: owner, Great Catch 2026-10-22). */
+  pace?: number
+}) {
+  if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
+  const lines = text.split("|").map((l) => l.trim())
+  const isBig = lines.map((l) => /^\*.+\*$/.test(l))
+  // The last run of large words is gold ("*other*|*plans.*" both).
+  const lastBig = isBig.lastIndexOf(true)
+  let goldFrom = lastBig
+  while (goldFrom > 0 && isBig[goldFrom - 1]) goldFrom--
+  const bigCount = isBig.filter(Boolean).length
+  const fade =
+    toSec == null
+      ? 1
+      : interpolate(t, [toSec - 0.3, toSec], [1, 0], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+  const dim = interpolate(t, [fromSec - 0.05, fromSec + 0.4], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  })
+  // When each line starts: the weighed words get a beat of their own.
+  let at = 0
+  const starts = lines.map((l, i) => {
+    const s = at
+    at += (/^\*.+\*$/.test(l) ? 0.45 : i === 0 ? 0.4 : 0.3) * pace
+    return s
+  })
+  const subAt = at + 0.4 * pace
+  return (
+    <AbsoluteFill style={{ opacity: fade, pointerEvents: "none" }}>
+      <AbsoluteFill style={{ background: `rgba(0,0,0,${0.4 * dim})` }} />
+      <AbsoluteFill
+        style={{
+          justifyContent: "center",
+          alignItems: "center",
+          // Clear of the series mark and the bottom UI zone, as the stamped
+          // closing turn (430 to 1430 of 1920).
+          ...(align === "left"
+            ? { paddingTop: f(358), paddingBottom: f(408) }
+            : {}),
+        }}
+      >
+        <div
+          style={{
+            width: f(STAMP_LINE_WIDTH),
+            display: "flex",
+            flexDirection: "column",
+            alignItems: align === "left" ? "flex-start" : "center",
+          }}
+        >
+          {lines.map((line, i) => {
+            const big = /^\*.+\*$/.test(line)
+            const small = /^_.+_$/.test(line)
+            const word = big || small ? line.slice(1, -1) : line
+            const k = interpolate(
+              t - fromSec,
+              [starts[i]!, starts[i]! + 0.6 * Math.max(0.75, pace)],
+              [0, 1],
+              {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+                easing: Easing.bezier(0.16, 1, 0.3, 1),
+              },
+            )
+            const style: CSSProperties = big
+              ? {
+                  fontFamily: `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`,
+                  fontStyle: "italic",
+                  fontWeight: 700,
+                  fontSize: f(
+                    Math.min(
+                      bigCount > 2 ? 128 : 150,
+                      Math.floor(560 / (0.5 * [...word].length)),
+                    ),
+                  ),
+                  lineHeight: 1.0,
+                  // A word with no tall letters (most Cyrillic lowercase:
+                  // «страх», «планы.») leaves an empty band above it, and
+                  // one with no descenders an empty band below, so the gaps
+                  // looked uneven in RU (owner, 2026-10-22). Trim them.
+                  marginTop: /[A-ZА-ЯЁbdfhkltбдфйё0-9]/.test(word)
+                    ? 0
+                    : "-0.2em",
+                  marginBottom: /[gjpqyрудфцщз]/.test(word) ? 0 : "-0.12em",
+                  color: i >= goldFrom ? "#F2C46B" : "#ffffff",
+                }
+              : !small
+                ? {
+                    fontFamily: `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`,
+                    fontWeight: 600,
+                    fontSize: f(52),
+                    lineHeight: 1.3,
+                    letterSpacing: f(3.2),
+                    textTransform: "uppercase",
+                    color: "#ffffff",
+                    margin: `${f(i === 0 ? 0 : 8)}px 0 ${f(10)}px`,
+                  }
+                : {
+                    fontFamily: `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`,
+                    fontStyle: "italic",
+                    fontSize: f(46),
+                    lineHeight: 1.2,
+                    color: "rgba(255,255,255,0.85)",
+                    margin: `${f(4)}px 0`,
+                  }
+            return (
+              <p
+                key={i}
+                style={{
+                  margin: 0,
+                  textAlign: align,
+                  ...style,
+                  opacity: k,
+                  filter:
+                    k < 0.99
+                      ? `blur(${(f(14) * (1 - k)).toFixed(2)}px)`
+                      : undefined,
+                  transform: `scale(${(1.06 - 0.06 * k).toFixed(4)})`,
+                  transformOrigin: align === "left" ? "left center" : undefined,
+                  textShadow: `0 ${f(2)}px ${f(22)}px rgba(0,0,0,0.6)`,
+                }}
+              >
+                {word}
+              </p>
+            )
+          })}
+          {sub ? (
+            <p
+              style={{
+                margin: `${f(28)}px 0 0`,
+                fontFamily: `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`,
+                fontStyle: "italic",
+                fontSize: f(subSize),
+                lineHeight: `${f(subSize * 1.5)}px`,
+                textAlign: align,
+                color: "rgba(255,255,255,0.92)",
+                opacity:
+                  0.85 *
+                  interpolate(t - fromSec, [subAt, subAt + 0.8], [0, 1], {
+                    extrapolateLeft: "clamp",
+                    extrapolateRight: "clamp",
+                  }),
+                textShadow: `0 ${f(2)}px ${f(14)}px rgba(0,0,0,0.55)`,
+              }}
+            >
+              {sub}
+            </p>
+          ) : null}
+        </div>
+      </AbsoluteFill>
+    </AbsoluteFill>
+  )
+}
+
 /**
  * The film short's silent question cards (owner, 2026-10-02): a question
  * before the scene speaks ("Is this worth celebrating?") and a turn after it
@@ -1942,6 +2135,14 @@ function ShortQuestionCards({
           t={t}
           f={f}
         />
+      ) : cards.open && isContrastQuestion(cards.open.text) ? (
+        <ContrastQuestion
+          text={cards.open.text}
+          fromSec={cards.open.fromSec}
+          toSec={cards.open.toSec}
+          t={t}
+          f={f}
+        />
       ) : cards.open ? (
         card(
           cards.open.text,
@@ -1956,20 +2157,32 @@ function ShortQuestionCards({
           cards.open.blur ?? false,
         )
       ) : null}
-      {cards.close
-        ? card(
-            cards.close.text,
-            cards.close.fromSec,
-            null,
-            "close",
-            false,
-            cards.close.sub,
-            cards.close.subSize,
-            cards.close.subStrips ?? false,
-            false,
-            "left",
-          )
-        : null}
+      {cards.close && isContrastQuestion(cards.close.text) ? (
+        <ContrastQuestion
+          text={cards.close.text}
+          fromSec={cards.close.fromSec}
+          toSec={null}
+          t={t}
+          f={f}
+          align="left"
+          pace={0.6}
+          {...(cards.close.sub ? { sub: cards.close.sub } : {})}
+          {...(cards.close.subSize ? { subSize: cards.close.subSize } : {})}
+        />
+      ) : cards.close ? (
+        card(
+          cards.close.text,
+          cards.close.fromSec,
+          null,
+          "close",
+          false,
+          cards.close.sub,
+          cards.close.subSize,
+          cards.close.subStrips ?? false,
+          false,
+          "left",
+        )
+      ) : null}
       {cards.close?.sub && cards.close.subStrips ? (
         // The small line on the opener's paper strips, typed a beat after
         // the turn lands (owner, 2026-10-08).
