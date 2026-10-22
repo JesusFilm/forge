@@ -701,7 +701,7 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
             type: "setup_failed",
             problems: result.problems.map((item) => item.code),
           })
-          requestStop("runner_error", "setup failed")
+          requestStop("setup_failed")
         }
       })
     }

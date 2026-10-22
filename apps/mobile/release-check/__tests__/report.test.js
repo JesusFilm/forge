@@ -104,6 +104,7 @@ describe("fixture summaries", () => {
     "stop-probe-failed": ["fail", "probe_failed", "release"],
     "stop-runner-error": ["fail", "runner_error", "release"],
     "stop-runner-killed": ["fail", "runner_killed", "release"],
+    "stop-setup-failed": ["fail", "setup_failed", "release"],
     "stop-timeout": ["fail", "timeout", "release"],
     "stop-upstream-unavailable": ["fail", "upstream_unavailable", "release"],
   }

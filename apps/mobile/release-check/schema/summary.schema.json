@@ -47,7 +47,8 @@
         "build_check_failed",
         "probe_failed",
         "runner_error",
-        "runner_killed"
+        "runner_killed",
+        "setup_failed"
       ]
     },
     "completedPhases": {

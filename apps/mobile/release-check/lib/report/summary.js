@@ -53,6 +53,8 @@ const STOP_REASON_TEXT = Object.freeze({
   runner_error: "An error in the runner stopped the run.",
   runner_killed:
     "The runner process stopped before its end steps. The recover step wrote this report.",
+  setup_failed:
+    "Setup could not install a tool or create a test device, so no build ran.",
 })
 
 const CLASS_TEXT = Object.freeze({

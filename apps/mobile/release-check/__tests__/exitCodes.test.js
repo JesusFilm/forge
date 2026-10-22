@@ -413,7 +413,7 @@ const FAILURES = [
         }),
       },
     },
-    stopReason: "runner_error",
+    stopReason: "setup_failed",
   },
   {
     name: "an unavailable upstream",
