@@ -1,0 +1,29 @@
+# Cold launch until Home content shows (R19 starter journey). Home rotates by
+# date, so the journey checks structure, not which videos show (KTD12).
+appId: org.jesusfilm.forgewatch
+name: cold-launch-home
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- assertVisible:
+    id: home-body-live
+    label: The Home body comes from the live Experience
+- assertNotVisible:
+    id: home-body-fallback
+    label: The Home body is not the frozen fallback
+- assertVisible:
+    id: home-logo
+    label: The Home logo shows
+- assertVisible:
+    id: home-hero-chrome
+    label: The hero controls show
+- assertVisible:
+    text: "[0-9]+ items? in .+"
+    label: A shelf with cards shows

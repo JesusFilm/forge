@@ -49,6 +49,8 @@ async function main() {
     recover: withDeps("recoverCommand"),
     "check-lists": (command) =>
       require("./lib/lists.js").checkListsCommand(command),
+    "check-screens": (command) =>
+      require("./lib/journeys/screens.js").checkScreensCommand(command),
     "check-build": (command) =>
       require("./lib/testBuild/artifactCheck.js").checkBuildCommand(command),
     "check-log": (command) =>

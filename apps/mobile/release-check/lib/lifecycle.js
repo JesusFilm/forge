@@ -255,8 +255,10 @@ function createDeps(overrides = {}) {
         require("./testBuild/artifactCheck").checkArtifact(file, options),
     },
     phases: {
-      probing: notBuilt("probing"),
-      journeys: notBuilt("journeys"),
+      ...require("./journeys/phases").createJourneyPhases({
+        journeysDir: overrides.journeysDir ?? JOURNEYS_DIR,
+        configDir,
+      }),
       speed: notBuilt("speed"),
     },
     logCheck: (logPath, options) =>

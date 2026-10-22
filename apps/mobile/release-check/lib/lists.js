@@ -11,6 +11,7 @@ const path = require("node:path")
 const { parse, print } = require("graphql")
 
 const { EXIT, FAILURE_CLASSES } = require("./contract")
+const { journeyRuleProblems, parseFlow } = require("./journeys/flow")
 
 const RELEASE_CHECK_DIR = path.resolve(__dirname, "..")
 const MOBILE_DIR = path.resolve(RELEASE_CHECK_DIR, "..")
@@ -713,15 +714,24 @@ function journeyLinks(source) {
 function checkJourneys(files, display) {
   const findings = []
   for (const file of files) {
-    for (const { line, link } of journeyLinks(fs.readFileSync(file, "utf8"))) {
+    const source = fs.readFileSync(file, "utf8")
+    const finding = (message) =>
+      findings.push({ list: "journeys", file: display(file), message })
+    for (const { line, link } of journeyLinks(source)) {
       if (link !== null && link.startsWith(JOURNEY_SCHEME)) continue
       const opened = link === null ? "a link it does not name" : `\`${link}\``
-      findings.push({
-        list: "journeys",
-        file: display(file),
-        message: `line ${line} opens ${opened}; a journey opens only ${JOURNEY_SCHEME} links`,
-      })
+      finding(
+        `line ${line} opens ${opened}; a journey opens only ${JOURNEY_SCHEME} links`,
+      )
     }
+    let flow
+    try {
+      flow = parseFlow(source)
+    } catch (error) {
+      finding(`cannot read the journey: ${error.message}`)
+      continue
+    }
+    for (const message of journeyRuleProblems(flow)) finding(message)
   }
   return findings
 }
