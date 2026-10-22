@@ -93,8 +93,10 @@ post was removed or cancelled.
 The list icon in the calendar header opens "All content": one row per story (numbered in
 release order, newest on top) with its thumbnail, title, passage and "done of total"
 (orange until every piece is scheduled or published, then green). Opening a story shows a
-table: pieces down (Long form, intro, clip, insight, refl., verse, post), channels across
-(YouTube EN, YouTube RU, Facebook + Instagram). It is built from the `posts` rows; an
+table laid out as Lyuba sketched it (Oct 22): rows Long / Short / Post, columns EN and RU
+(Meta reels are the EN cuts, so they sit in EN with small platform icons). Long forms show a
+16:9 thumbnail with title and status, Shorts a row of vertical tiles labelled by type, posts a
+square image with the format. It is built from the `posts` rows; an
 orange dot marks a row still `planned`, with its due date (or "was due").
 
 Clicking a pending cell shows where the work stopped. That comes from the collection

@@ -591,7 +591,7 @@
   }
   .stable {
     display: grid;
-    grid-template-columns: 92px repeat(3, minmax(0, 1fr));
+    grid-template-columns: 64px repeat(2, minmax(0, 1fr));
     gap: 1px;
     background: var(--line);
     border-top: 1px solid var(--line);
@@ -600,76 +600,162 @@
     background: var(--ground);
   }
   .th {
-    padding: 8px 10px;
-    display: flex;
-    gap: 4px;
-    align-items: center;
-  }
-  .th svg {
-    width: 18px;
-    height: 18px;
+    padding: 8px 12px;
   }
   .th .t {
-    font: 700 9px/1 var(--sans);
+    font: 700 10px/1 var(--sans);
     color: #fff;
     border-radius: 3px;
-    padding: 2px 3px;
+    padding: 2px 4px;
     background: #5a4a42;
   }
   .th .t.ru {
     background: var(--flame);
   }
   .rh {
-    padding: 9px 10px;
+    padding: 14px 12px;
     font: 500 12px var(--sans);
     color: var(--soft);
   }
   .c {
-    padding: 8px 10px;
+    padding: 12px;
     display: grid;
-    gap: 4px;
-    align-content: center;
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
+    gap: 10px;
+    align-content: start;
     min-width: 0;
   }
-  .c.none {
+  .c .none {
     color: #4a3a33;
   }
-  button.c {
+  .lt,
+  .pt,
+  .vt {
     appearance: none;
     border: 0;
+    background: none;
+    padding: 4px;
+    margin: -4px;
+    border-radius: 6px;
     color: inherit;
     font: inherit;
-    font-size: 12px;
     text-align: left;
+    text-decoration: none;
+    min-width: 0;
+  }
+  a.lt:hover,
+  a.pt:hover,
+  a.vt:hover,
+  button.pend:hover,
+  button.sel {
+    background: var(--hover);
     cursor: pointer;
   }
-  button.c:hover,
-  button.c.sel {
-    background: var(--hover);
+  .lt,
+  .pt {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .lpic,
+  .ppic,
+  .vpic {
+    position: relative;
+    flex: none;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #2a201c;
+  }
+  .lpic {
+    width: 128px;
+    aspect-ratio: 16 / 9;
+  }
+  .ppic {
+    width: 64px;
+    aspect-ratio: 1;
+  }
+  .vpic {
+    width: 52px;
+    aspect-ratio: 9 / 16;
+  }
+  .lpic img,
+  .ppic img,
+  .vpic img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .ph {
+    background: repeating-linear-gradient(
+      135deg,
+      #1f1714 0 5px,
+      #261c18 5px 10px
+    );
+    outline: 1.5px dashed var(--muted);
+    outline-offset: -1.5px;
+  }
+  .ph img {
+    opacity: 0.25;
+  }
+  .ltx {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+  }
+  .ltt {
+    font-family: var(--serif);
+    font-size: 13px;
+    line-height: 1.3;
+    color: var(--ink);
+  }
+  .vts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 10px;
+  }
+  .vt {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    width: 64px;
+  }
+  .vl {
+    font: 500 10px/1.2 var(--sans);
+    color: var(--soft);
+  }
+  .vt .ln {
+    font-size: 10px;
+    gap: 3px;
+  }
+  .vt .ln svg {
+    width: 9px;
+    height: 9px;
+  }
+  .vt .dot {
+    width: 5px;
+    height: 5px;
+  }
+  .pi {
+    display: flex;
+    gap: 2px;
+  }
+  .pi svg {
+    width: 10px;
+    height: 10px;
   }
   .ln {
     display: flex;
     align-items: center;
     gap: 6px;
+    font-size: 12px;
     color: var(--soft);
-    text-decoration: none;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  a.ln:hover {
-    color: var(--ink);
+    font-variant-numeric: tabular-nums;
   }
   .ln svg {
     width: 12px;
     height: 12px;
     flex: none;
-  }
-  .ln small {
-    color: var(--muted);
-    font-size: 11px;
   }
   .dot {
     width: 7px;
@@ -727,12 +813,20 @@
       width: 80px;
     }
     .stable {
-      grid-template-columns: 64px repeat(3, minmax(0, 1fr));
+      grid-template-columns: 48px repeat(2, minmax(0, 1fr));
     }
     .c,
     .rh,
     .th {
       padding-inline: 6px;
+    }
+    .lt,
+    .pt {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .lpic {
+      width: 100%;
     }
   }
 
@@ -1403,19 +1497,19 @@
     { k: "refl.", l: "refl." },
     { k: "verse", l: "verse" },
     { k: "teaser", l: "teaser" },
+    { k: "full", l: "full" },
     { k: "post", l: "post" },
     { k: "other", l: "other" },
   ]
+  // Two columns as in Lyuba's sketch (Oct 22): EN (YouTube EN + the Meta reels, which are the EN cuts) and RU.
   const COLS = [
-    { k: "en", lane: "yt-en", plats: ["yt-en"] },
-    { k: "ru", lane: "yt-ru", plats: ["yt-ru"] },
-    { k: "meta", lane: "meta", plats: ["fb", "ig"] },
+    { k: "en", plats: ["yt-en", "fb", "ig"] },
+    { k: "ru", plats: ["yt-ru"] },
   ]
   function pieceOf(p) {
     if (p.kind === "post" || /^post/.test(String(p.cut || ""))) return "post"
     if (isLong(p)) return "long"
     const c = cutLabel(p)
-    if (c === "full") return "long"
     return PIECES.some((x) => x.k === c) ? c : "other"
   }
   const isDone = (p) => p.status === "published" || p.status === "scheduled"
@@ -1479,90 +1573,185 @@
     '<svg viewBox="0 0 16 16" fill="none" stroke="#74c98c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>'
   const CLOCK =
     '<svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.3 1.5"/></svg>'
-  function lineHtml(p, col) {
-    const sub =
-      pieceOf(p) === "post"
-        ? " <small>" +
-          esc(String(p.cut || "").replace(/^post-/, "")) +
-          "</small>"
-        : /lumo/i.test(p.id) && pieceOf(p) === "long"
-          ? " <small>LUMO</small>"
-          : ""
-    if (p.status === "planned") {
-      const late = p.date < todayKey
+  // Status line under a piece: ✓ date (posted), clock date+time (scheduled), orange dot + due (not made).
+  function statusHtml(rows, compact) {
+    const pend = rows.filter((p) => !isDone(p))
+    if (pend.length) {
+      const due = pend.map((p) => p.date).sort()[0]
+      const late = due < todayKey
       return (
         '<span class="ln' +
         (late ? " late" : "") +
         '"><i class="dot"></i>' +
-        (late ? "was due " : "due ") +
-        fmtDay(p.date) +
-        sub +
+        (compact ? "" : late ? "was due " : "due ") +
+        fmtDay(due) +
         "</span>"
       )
     }
-    const url = col.plats.map((k) => urlFor(p, k)).find(Boolean) || ""
-    const inner =
-      (isFuture(p) ? CLOCK : CHECK) +
-      fmtDay(p.date) +
-      (isFuture(p) && p.time ? ", " + esc(p.time) : "") +
-      sub
+    const last = rows
+      .map((p) => p.date)
+      .sort()
+      .pop()
+    const fut = rows.some(isFuture)
+    const t = fut ? (rows.find(isFuture) || {}).time : ""
+    return (
+      '<span class="ln">' +
+      (fut ? CLOCK : CHECK) +
+      fmtDay(last) +
+      (t && !compact ? ", " + esc(t) : "") +
+      "</span>"
+    )
+  }
+  const platIcons = (rows) =>
+    '<span class="pi">' +
+    ["yt-en", "yt-ru", "fb", "ig"]
+      .filter((k) => rows.some((p) => (p.platforms || []).includes(k)))
+      .map((k) => ICON[k.startsWith("yt") ? "yt" : k])
+      .join("") +
+    "</span>"
+  const firstUrl = (rows, c) =>
+    rows.flatMap((p) => c.plats.map((k) => urlFor(p, k))).find(Boolean) || ""
+  // One piece = a tile: done ones open the post, pending ones open "where we stopped".
+  function pieceTile(s, pc, c, rows, cls, body) {
+    const key = s.slug + "|" + pc + "|" + c.k
+    const done = rows.every(isDone)
+    const url = done ? firstUrl(rows, c) : ""
+    const inner = body + statusHtml(rows, cls === "vt")
+    if (!done)
+      return (
+        '<button type="button" class="' +
+        cls +
+        " pend" +
+        (openCell === key ? " sel" : "") +
+        '" data-cell="' +
+        esc(key) +
+        '">' +
+        inner +
+        "</button>"
+      )
     return url
-      ? '<a class="ln" href="' +
+      ? '<a class="' +
+          cls +
+          '" href="' +
           esc(url) +
           '" target="_blank" rel="noopener">' +
           inner +
           "</a>"
-      : '<span class="ln">' + inner + "</span>"
+      : '<div class="' + cls + '">' + inner + "</div>"
   }
-  function colHead(c) {
-    if (c.k === "meta") return ICON.fb + ICON.ig
+  const picHtml = (rows, cls) => {
+    const th = (rows.find((p) => p.thumb) || {}).thumb
     return (
-      ICON.yt +
-      '<span class="t' +
-      (c.k === "ru" ? " ru" : "") +
+      '<span class="' +
+      cls +
+      (rows.every(isDone) ? "" : " ph") +
       '">' +
-      c.k.toUpperCase() +
+      (th ? '<img src="' + esc(th) + '" alt="" loading="lazy">' : "") +
       "</span>"
     )
   }
-  // A todo applies to a cell when its piece matches and its lang is the cell's (meta = en) or "both".
-  function todosFor(s, pc, ck) {
-    const lang = ck === "ru" ? "ru" : "en"
-    return s.todo.filter(
-      (t) =>
-        (t.piece || "") === pc &&
-        (!t.lang || t.lang === "both" || t.lang === lang),
-    )
-  }
   function storyTable(s) {
-    const used = PIECES.filter((pc) =>
-      COLS.some((c) => s.cells[pc.k + "|" + c.k]),
+    const cellRows = (pk, c) =>
+      (s.cells[pk + "|" + c.k] || []).sort((a, b) =>
+        a.date.localeCompare(b.date),
+      )
+    const shortKeys = PIECES.map((x) => x.k).filter(
+      (k) => k !== "long" && k !== "post",
     )
+    const groups = [
+      {
+        label: "Long",
+        cell: (c) =>
+          // Each long form of this language (classic and LUMO cuts) is its own card.
+          cellRows("long", c)
+            .filter((p) => (p.platforms || []).some((k) => k.startsWith("yt")))
+            .map((p) =>
+              pieceTile(
+                s,
+                "long",
+                c,
+                [p],
+                "lt",
+                picHtml([p], "lpic") +
+                  '<span class="ltx"><span class="ltt">' +
+                  esc(
+                    (p.title || s.title).split("|")[0].trim() +
+                      (/lumo/i.test(p.id) ? " · LUMO" : ""),
+                  ) +
+                  "</span>",
+              ),
+            )
+            .map((t) => t.replace(/(<\/(a|button|div)>)$/, "</span>$1"))
+            .join(""),
+      },
+      {
+        label: "Short",
+        cell: (c) =>
+          '<div class="vts">' +
+          shortKeys
+            .filter((k) => s.cells[k + "|" + c.k])
+            .map((k) => {
+              const rows = cellRows(k, c)
+              return pieceTile(
+                s,
+                k,
+                c,
+                rows,
+                "vt",
+                picHtml(rows, "vpic") +
+                  '<span class="vl">' +
+                  esc((PIECES.find((x) => x.k === k) || {}).l) +
+                  "</span>" +
+                  platIcons(rows),
+              )
+            })
+            .join("") +
+          "</div>",
+      },
+      {
+        label: "Post",
+        cell: (c) =>
+          cellRows("post", c)
+            .map((p) =>
+              pieceTile(
+                s,
+                "post",
+                c,
+                [p],
+                "pt",
+                picHtml([p], "ppic") +
+                  '<span class="ltx"><span class="ltt">' +
+                  esc(
+                    String(p.cut || "post").replace(/^post-/, "") +
+                      (p.title ? ": " + p.title.replace(/^.*?post: /, "") : ""),
+                  ) +
+                  "</span>",
+              ),
+            )
+            .map((t) => t.replace(/(<\/(a|button|div)>)$/, "</span>$1"))
+            .join(""),
+      },
+    ]
     let h =
       '<div class="stable"><div class="th"></div>' +
-      COLS.map((c) => '<div class="th">' + colHead(c) + "</div>").join("")
-    for (const pc of used) {
-      h += '<div class="rh">' + pc.l + "</div>"
-      for (const c of COLS) {
-        const key = pc.k + "|" + c.k
-        const rows = (s.cells[key] || []).sort((a, b) =>
-          a.date.localeCompare(b.date),
+      COLS.map(
+        (c) =>
+          '<div class="th"><span class="t' +
+          (c.k === "ru" ? " ru" : "") +
+          '">' +
+          c.k.toUpperCase() +
+          "</span></div>",
+      ).join("")
+    for (const g of groups) {
+      const cells = COLS.map((c) => g.cell(c))
+      if (!cells.some((x) => /class="(lt|vt|pt)/.test(x))) continue
+      h += '<div class="rh">' + g.label + "</div>"
+      h += cells
+        .map(
+          (x) =>
+            '<div class="c">' + (x || '<span class="none">·</span>') + "</div>",
         )
-        if (!rows.length) {
-          h += '<div class="c none">·</div>'
-          continue
-        }
-        const lines = rows.map((p) => lineHtml(p, c)).join("")
-        h += rows.every(isDone)
-          ? '<div class="c">' + lines + "</div>"
-          : '<button type="button" class="c' +
-            (openCell === s.slug + "|" + key ? " sel" : "") +
-            '" data-cell="' +
-            esc(s.slug + "|" + key) +
-            '">' +
-            lines +
-            "</button>"
-      }
+        .join("")
     }
     h += "</div>"
     if (openCell && openCell.startsWith(s.slug + "|")) {
@@ -1571,14 +1760,18 @@
     }
     return h
   }
+  // A todo applies to a piece when its piece matches and its lang is the column's or "both".
+  function todosFor(s, pc, ck) {
+    return s.todo.filter(
+      (t) =>
+        (t.piece || "") === pc &&
+        (!t.lang || t.lang === "both" || t.lang === ck),
+    )
+  }
   function detailHtml(s, pk, ck) {
     const rows = (s.cells[pk + "|" + ck] || []).filter((p) => !isDone(p))
     const due = rows.map((p) => p.date).sort()[0]
-    const col = {
-      en: "YouTube EN",
-      ru: "YouTube RU",
-      meta: "Facebook + Instagram",
-    }[ck]
+    const col = ck === "ru" ? "RU" : "EN"
     const name = (PIECES.find((x) => x.k === pk) || {}).l || pk
     const late = due && due < todayKey
     const items = todosFor(s, pk, ck)
@@ -1675,7 +1868,7 @@
       renderContent()
       return
     }
-    const c = e.target.closest("button.c")
+    const c = e.target.closest("button.pend")
     if (c) {
       openCell = openCell === c.dataset.cell ? null : c.dataset.cell
       renderContent()
