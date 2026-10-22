@@ -27,12 +27,12 @@ tags:
     text: "Search for videos about any topic.*"
     label: Open the search field
 - inputText:
-    text: creation
+    text: easter
     label: Type the search word
 # A result card reads "<title>, <length>", so the typed word cannot match it.
 - extendedWaitUntil:
     visible:
-      text: "Creation, .+"
+      text: "Easter, .+"
     timeout: 20000
     label: The results show
 # On Android the result list takes the first tap to close the keyboard
@@ -44,7 +44,7 @@ tags:
       - hideKeyboard
     label: Close the keyboard on Android
 - tapOn:
-    text: "Creation, .+"
+    text: "Easter, .+"
     label: Open the first video result
 - extendedWaitUntil:
     visible:
