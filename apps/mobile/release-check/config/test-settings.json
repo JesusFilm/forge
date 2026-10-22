@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "productionCheckedAt": null,
+  "ports": {
+    "device": 38211,
+    "hostIos": 38211,
+    "hostAndroidPhone": 38212,
+    "hostAndroidTablet": 38213
+  },
+  "copiedFromProduction": {
+    "EXPO_PUBLIC_AUTH_BASE_URL": null,
+    "EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED": null,
+    "EXPO_PUBLIC_EXPLORE_ENABLED": null,
+    "EXPO_PUBLIC_FORGE_CACHE_PERSIST": null,
+    "EXPO_PUBLIC_SIGN_IN_ENABLED": null
+  },
+  "testValue": {
+    "EXPO_PUBLIC_ADMIN_GRAPHQL_URL": "http://localhost:38211/api/graphql",
+    "EXPO_PUBLIC_RECOMMENDATIONS_ENABLED": "false"
+  },
+  "mustBeUnset": [
+    "EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN",
+    "EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN",
+    "EXPO_PUBLIC_DATADOG_APPLICATION_ID",
+    "EXPO_PUBLIC_DATADOG_CLIENT_TOKEN",
+    "EXPO_PUBLIC_DATADOG_ENV",
+    "EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE",
+    "EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE",
+    "EXPO_PUBLIC_DATADOG_SITE",
+    "EXPO_PUBLIC_DATADOG_VERSION",
+    "EXPO_PUBLIC_UI_PSEUDO_LOCALE",
+    "EXPO_PUBLIC_USE_RN_FETCH"
+  ],
+  "muxDataEnvKeyDigests": []
+}

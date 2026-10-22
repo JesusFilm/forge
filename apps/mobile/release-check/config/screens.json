@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "hand": [
+    {
+      "id": "bible-translation-download-prompt",
+      "kind": "alert",
+      "match": "Then the whole translation reads with no connection.",
+      "platforms": ["ios", "android"],
+      "source": "apps/mobile/src/lib/bible/sheets/downloadPrompt.ts"
+    },
+    {
+      "id": "bible-partial-translation-switch",
+      "kind": "alert",
+      "match": "is a partial Bible. If you switch, the reader goes to its start",
+      "platforms": ["ios", "android"],
+      "source": "apps/mobile/app/reader-translation.tsx"
+    }
+  ],
+  "reach": [
+    {
+      "screen": "tab-explore",
+      "platform": "ios",
+      "hiddenUnless": {
+        "key": "EXPO_PUBLIC_EXPLORE_ENABLED",
+        "values": ["1", "true"]
+      },
+      "reason": "A release bundle shows Explore only when the gate is 1 or true."
+    },
+    {
+      "screen": "tab-explore",
+      "platform": "android",
+      "hiddenUnless": {
+        "key": "EXPO_PUBLIC_EXPLORE_ENABLED",
+        "values": ["1", "true"]
+      },
+      "reason": "A release bundle shows Explore only when the gate is 1 or true."
+    },
+    {
+      "screen": "tab-explore",
+      "platform": "android",
+      "hiddenUnless": {
+        "key": "EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED",
+        "values": ["1", "true"]
+      },
+      "reason": "A release Android bundle also needs the Android gate at 1 or true."
+    },
+    {
+      "screen": "library-delete-action-sheet",
+      "platform": "android",
+      "hidden": true,
+      "reason": "Only iOS 26 shows the native delete action sheet. Android shows the delete confirm card."
+    },
+    {
+      "screen": "library-delete-confirm",
+      "platform": "ios",
+      "hidden": true,
+      "reason": "Every test simulator runs iOS 26, which shows the native delete action sheet in place of this card."
+    }
+  ]
+}

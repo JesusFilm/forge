@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "namePrefix": "Forge RC",
+  "devices": [
+    {
+      "id": "iphone-se",
+      "platform": "ios",
+      "name": "Forge RC iPhone SE",
+      "deviceType": null,
+      "runtime": null,
+      "lane": "ios"
+    },
+    {
+      "id": "iphone-17-pro-max",
+      "platform": "ios",
+      "name": "Forge RC iPhone 17 Pro Max",
+      "deviceType": null,
+      "runtime": null,
+      "lane": "ios"
+    },
+    {
+      "id": "ipad-pro-13",
+      "platform": "ios",
+      "name": "Forge RC iPad Pro 13",
+      "deviceType": null,
+      "runtime": null,
+      "lane": "ios"
+    },
+    {
+      "id": "android-phone",
+      "platform": "android",
+      "avd": "forge_rc_phone",
+      "profile": "pixel_7",
+      "image": null,
+      "lane": "androidPhone"
+    },
+    {
+      "id": "android-tablet",
+      "platform": "android",
+      "avd": "forge_rc_tablet",
+      "profile": "pixel_tablet",
+      "image": null,
+      "lane": "androidTablet"
+    }
+  ],
+  "pins": { "locale": "en_US", "timezone": null, "memoryMb": 4096 }
+}

@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "kind": "step",
+      "target": "sign-in",
+      "platforms": ["ios", "android"],
+      "reason": "Production leaves sign-in off, and a sign-in writes to production auth."
+    },
+    {
+      "kind": "screen",
+      "target": "account",
+      "platforms": ["ios", "android"],
+      "reason": "Only a signed-in viewer can open the Account screen, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "my-watch-signed-in",
+      "platforms": ["ios", "android"],
+      "reason": "Signed-in My Watch needs a sign-in, and journeys test a signed-out viewer."
+    },
+    {
+      "kind": "step",
+      "target": "for-you-shelf",
+      "platforms": ["ios", "android"],
+      "reason": "Recommendations are off in the test build, because they cannot work without writes."
+    }
+  ]
+}

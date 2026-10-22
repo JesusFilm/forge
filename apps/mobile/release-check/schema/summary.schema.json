@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Mobile release check summary",
+  "description": "The summary.json of one release check run. A release result is scope release with result pass, never an exit code alone.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "scope",
+    "result",
+    "stopReason",
+    "commit",
+    "startedAt",
+    "endedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "enum": [1] },
+    "runId": { "type": "string", "minLength": 1 },
+    "scope": { "enum": ["release", "partial"] },
+    "result": { "enum": ["pass", "fail"] },
+    "stopReason": {
+      "enum": [
+        null,
+        "completed",
+        "aborted",
+        "timeout",
+        "upstream_unavailable",
+        "host_overload",
+        "build_failed",
+        "build_check_failed",
+        "probe_failed",
+        "runner_error",
+        "runner_killed"
+      ]
+    },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "startedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    },
+    "endedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"
+    }
+  }
+}
