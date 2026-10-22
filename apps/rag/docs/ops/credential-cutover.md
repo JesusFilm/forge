@@ -135,6 +135,68 @@ Do not create another superuser for rollback without reviewing its custody,
 expiry and removal. If recovery access or the deployment window is unavailable,
 leave the owner unchanged and record the blocker rather than partially rotating.
 
+## October 2026 owner cutover execution
+
+The five restricted service logins completed rotation on 2026-10-23 NZDT.
+Their prior roles retain grants but have NOLOGIN and cleared passwords. Fresh
+old-credential connections failed; replacement grant, portal, retrieval and
+usage checks passed after the owner-confirmed 15-minute observation period.
+
+The remaining owner credential has one Railway source:
+`@forge/rag-postgres.POSTGRES_PASSWORD`. Unrendered-reference inspection proved
+that `PGPASSWORD`, `DATABASE_URL` and `DATABASE_PUBLIC_URL` derive from it, and
+`@forge/rag.DATABASE_URL` references the database service's `DATABASE_URL`.
+Preserve these references. The operator copy is Doppler
+`forge-rag/prd:FORGE_RAG_POSTGRESQL_DB_URL`.
+
+A read-only Railway SSH check proved password-independent local Unix-socket
+access as `postgres` inside the database container. Use that existing recovery
+route; do not create an additional superuser or restart the database. Temporary
+SSH registrations and key files must be removed and absence checked afterward.
+
+### Coordinated window
+
+The preceding RAG build took approximately 35 minutes. Changing the owner
+password before merge can interrupt fresh owner connections until the replacement
+application starts. Existing pooled connections are not a continuity guarantee.
+Before this cutover, agree a maintenance window allowing up to 45 minutes of
+RAG retrieval interruption; build or verification failure can extend recovery.
+Portal and consumer roles are independent but must still be checked afterward.
+
+1. Require this PR's checks to pass and recheck deployment/main freshness. Confirm
+   the exact source/reference graph above and equality of the operator copy.
+2. Acquire the existing Forge production-write lock to exclude acquisition and
+   ingestion apply jobs for the whole cutover. Check active owner sessions using
+   metadata only and retain a known authenticated recovery session.
+3. Save a newly generated owner password and old recovery URL in approved vault
+   staging entries, never local files. Preserve verified URL endpoints/options.
+4. In the agreed window, change `postgres` through the existing authenticated
+   database connection with statement/error logging suppressed for that session.
+   Verify fresh authentication with the replacement before closing recovery access.
+5. Update only the Railway source password using secret-safe input and
+   `--skip-deploys`, then the canonical Doppler owner URL. Read back rendered
+   values and prove reference propagation; keep all references intact. Confirm
+   no database restart or deployment was triggered by the variable operation.
+6. Merge this PR through normal PR-to-main. Follow the actual main commit and
+   Railway autodeploy through migrations, grants, startup and health. A source
+   variable update alone is not evidence that either runtime has reloaded it.
+7. Inspect RAG's running owner URL against saved configuration, test fresh owner
+   authentication and maintenance connection identity, authenticated retrieval,
+   usage and portal. Verify the old owner password rejects fresh connections.
+8. Observe for 15 minutes after checks pass. Attribute remaining pre-cutover
+   owner sessions; terminate only superseded service/operator sessions. Do not
+   terminate unrelated sessions or the only recovery connection blindly.
+9. Remove obsolete staging/recovery vault copies, release the write lock and
+   record database, vault, runtime, deployment and retirement evidence in the
+   incident tracker. Keep feat-783 in progress until these gates pass.
+
+If mutation, configuration propagation or deployment fails, retain the recovery
+session and vault entries. Restore the old database password and matching source
+and vault values only as an explicit rollback of this cutover, verify the still
+running old deployment, then use a reviewed follow-up/revert PR for any needed
+application deployment. Do not manually redeploy production. Local socket access
+is the independent recovery path if network password authentication fails.
+
 ## Other credentials and evidence
 
 GitHub repository admission token, GitHub OAuth client secret and embedding
