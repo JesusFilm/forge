@@ -21,6 +21,8 @@ const SAMPLES = 3
 const FLOWS_DIR = path.join(JOURNEYS_DIR, "_speed")
 const COLD_LAUNCH_FLOW = "speed-cold-launch.yaml"
 const FIRST_FRAME_FLOW = "speed-first-frame.yaml"
+const FIRST_FRAME_ANDROID_FLOW = "speed-first-frame-android.yaml"
+const WATCH_LINK = "forgemobile://watch/the-birth-of-jesus"
 const MAIN_ACTIVITY = `${APP_ID}/.MainActivity`
 // Each time runs from the start of the first step to the end of the second.
 // The labels are the ones in the two speed flows.
@@ -46,6 +48,8 @@ const AM_START_TIMEOUT_MS = 60_000
 const SIMCTL_TIMEOUT_MS = 60_000
 const MEMORY_TIMEOUT_MS = 15_000
 const MEMORY_POLL_MS = 2000
+// Maestro took 4.7 to 6.4 s to start on Android (measured 2026-10-23).
+const LINK_LEAD_MS = 15_000
 const KB_PER_MB = 1024
 
 // ── Pure helpers ─────────────────────────────────────────────────────
@@ -123,6 +127,21 @@ function firstFrameSpan(commands) {
   return frame.timestamp + frame.ms - (tap.timestamp + tap.ms)
 }
 
+// The Android first frame runs from the moment the runner sent the link. A
+// wait that started after the link would give a time that is too high.
+function linkFirstFrame(commands, sentAt) {
+  const wait = completedStep(commands, SPANS.firstFrameMs[1])
+  if (!wait) return { ms: null, error: null }
+  if (wait.timestamp >= sentAt) {
+    return {
+      ms: null,
+      error:
+        "Maestro started its wait after the link, so the time is not exact",
+    }
+  }
+  return { ms: wait.timestamp + wait.ms - sentAt, error: null }
+}
+
 function flowProblem(result, output) {
   if (result.timedOut) {
     return `Maestro did not end within ${FLOW_LIMIT_MS / 1000} s`
@@ -172,6 +191,8 @@ function createSpeedPhase(options = {}) {
   const runChild = options.runChild ?? runProc
   const maestro = options.runMaestro ?? runMaestro
   const pollMs = options.memoryPollMs ?? MEMORY_POLL_MS
+  const linkLeadMs = options.linkLeadMs ?? LINK_LEAD_MS
+  const now = options.now ?? Date.now
 
   function toolEnv(ctx) {
     return inventoryLib.toolEnv(ctx.env)
@@ -304,7 +325,36 @@ function createSpeedPhase(options = {}) {
     }
   }
 
-  async function runFlow(ctx, device, handle, n, file) {
+  // Maestro's Android openLink waits for the screen to settle, so the runner
+  // sends the link itself, after Maestro has started to wait.
+  async function sendWatchLink(ctx, handle) {
+    await abortableSleep(linkLeadMs, ctx.signal)
+    const at = now()
+    const result = await adb(
+      ctx,
+      handle,
+      [
+        "shell",
+        "am",
+        "start",
+        "-a",
+        "android.intent.action.VIEW",
+        "-d",
+        WATCH_LINK,
+        APP_ID,
+      ],
+      AM_START_TIMEOUT_MS,
+    )
+    const outcome = inventoryLib.toolOutcome(
+      result,
+      "am start (watch link)",
+      AM_START_TIMEOUT_MS,
+    )
+    return outcome.ok ? { at, error: null } : { at: null, error: outcome.error }
+  }
+
+  // `during` runs while Maestro runs, and its result comes back as `during`.
+  async function runFlow(ctx, device, handle, n, file, during = null) {
     const outputDir = path.join(
       ctx.runDir,
       "speed",
@@ -315,7 +365,7 @@ function createSpeedPhase(options = {}) {
     fs.rmSync(outputDir, { recursive: true, force: true })
     fs.mkdirSync(outputDir, { recursive: true })
     const stopMemory = watchMemory(ctx, device, handle)
-    const result = await maestro({
+    const running = maestro({
       platform: device.platform,
       deviceRef: device.platform === "ios" ? handle.udid : handle.serial,
       flowFile: path.join(ctx.runDir, "speed", "flows", file),
@@ -324,10 +374,24 @@ function createSpeedPhase(options = {}) {
       timeoutMs: FLOW_LIMIT_MS,
       signal: ctx.signal,
     })
-    const peakKb = await stopMemory()
+    // Maestro and the memory watch must end even when `during` throws.
+    let extra = null
+    let result
+    let peakKb
+    try {
+      extra = during ? await during() : null
+    } finally {
+      result = await running
+      peakKb = await stopMemory()
+    }
     const output = readAttemptOutput(outputDir)
     pruneDeviceLogs(outputDir)
-    return { output, peakKb, problem: flowProblem(result, output) }
+    return {
+      output,
+      peakKb,
+      problem: flowProblem(result, output),
+      during: extra,
+    }
   }
 
   async function measureSample(ctx, device, handle, n, notePeak) {
@@ -373,6 +437,26 @@ function createSpeedPhase(options = {}) {
     }
     if (sample.homeContentMs === null) {
       fail("firstFrameMs", "not measured, because Home content did not show")
+      return done()
+    }
+    if (device.platform === "android") {
+      const frame = await runFlow(
+        ctx,
+        device,
+        handle,
+        n,
+        FIRST_FRAME_ANDROID_FLOW,
+        () => sendWatchLink(ctx, handle),
+      )
+      notePeak(frame.peakKb)
+      if (ctx.signal.aborted) return done()
+      if (frame.during.error) {
+        fail("firstFrameMs", frame.during.error)
+        return done()
+      }
+      const timed = linkFirstFrame(frame.output.commands, frame.during.at)
+      sample.firstFrameMs = timed.ms
+      if (timed.ms === null) fail("firstFrameMs", timed.error ?? frame.problem)
       return done()
     }
     const frame = await runFlow(ctx, device, handle, n, FIRST_FRAME_FLOW)
@@ -464,7 +548,11 @@ function createSpeedPhase(options = {}) {
   function copyFlows(ctx) {
     const to = path.join(ctx.runDir, "speed", "flows")
     fs.mkdirSync(to, { recursive: true })
-    for (const file of [COLD_LAUNCH_FLOW, FIRST_FRAME_FLOW]) {
+    for (const file of [
+      COLD_LAUNCH_FLOW,
+      FIRST_FRAME_FLOW,
+      FIRST_FRAME_ANDROID_FLOW,
+    ]) {
       fs.copyFileSync(path.join(flowsDir, file), path.join(to, file))
     }
   }
@@ -501,13 +589,16 @@ function createSpeedPhase(options = {}) {
 
 module.exports = {
   COLD_LAUNCH_FLOW,
+  FIRST_FRAME_ANDROID_FLOW,
   FIRST_FRAME_FLOW,
   FLOWS_DIR,
   MAIN_ACTIVITY,
   SAMPLES,
   SPANS,
+  WATCH_LINK,
   createSpeedPhase,
   firstFrameSpan,
+  linkFirstFrame,
   parseMeminfoRssKb,
   parseTotalTime,
   simulatorAppRssKb,

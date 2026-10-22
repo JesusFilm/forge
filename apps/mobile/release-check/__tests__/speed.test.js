@@ -17,6 +17,7 @@ const { createReadOnlyServer } = require("../lib/server/server")
 const {
   createSpeedPhase,
   firstFrameSpan,
+  linkFirstFrame,
   parseTotalTime,
   simulatorAppRssKb,
   timingStats,
@@ -29,6 +30,8 @@ const GB = 1024 ** 3
 const DEVICES = readJson(path.join(CONFIG_DIR, "devices.json"))
 const SETTINGS = readJson(path.join(CONFIG_DIR, "test-settings.json"))
 const OK = { ok: true, class: null, step: null, error: null, stdout: "" }
+// The fake clock time at which the runner sends the Android watch link.
+const LINK_SENT_AT = 8000
 
 const tempDirs = []
 const cleanups = []
@@ -85,11 +88,12 @@ function meminfoOutput(rssKb) {
 
 // Answers `am start -W` and `dumpsys meminfo` from queues; every other
 // child (simctl uninstall, ps) succeeds with no output.
-function fakeChildren({ amStart = [], meminfo = [] } = {}) {
+function fakeChildren({ amStart = [], meminfo = [], order = [] } = {}) {
   const calls = []
   async function run(command, args) {
     calls.push([command, ...args])
     const text = args.join(" ")
+    if (text.includes("android.intent.action.VIEW")) order.push("link")
     if (text.includes("am start -W")) return amStart.shift()
     if (text.includes("dumpsys meminfo")) {
       return childResult(meminfoOutput(meminfo.shift() ?? 0))
@@ -116,17 +120,21 @@ function stepsOf(flow) {
       step("Home content shows", 2000, 1500),
     ]
   }
+  if (flow === "speed-first-frame-android") {
+    return [step("The first video frame shows", LINK_SENT_AT - 1000, 3000)]
+  }
   return [
     step("Open the birth of Jesus video", 9000, 200),
     step("The first video frame shows", 9200, 1800),
   ]
 }
 
-function fakeMaestro({ onFlow = async () => {} } = {}) {
+function fakeMaestro({ onFlow = async () => {}, order = [] } = {}) {
   const calls = []
   async function run(options) {
     const flow = path.basename(options.flowFile, ".yaml")
     calls.push({ flow, deviceRef: options.deviceRef })
+    order.push(`maestro ${flow}`)
     await onFlow(flow)
     const dir = path.join(options.outputDir, "debug", flow)
     fs.mkdirSync(dir, { recursive: true })
@@ -413,6 +421,17 @@ describe("the speed numbers (KTD19)", () => {
     expect(firstFrameSpan(commands)).toBe(2100)
   })
 
+  it("does not time an Android first frame whose wait started after the link", () => {
+    const late = [
+      step("The first video frame shows", LINK_SENT_AT + 500, 1500),
+    ].map(readCommand)
+    expect(linkFirstFrame(late, LINK_SENT_AT)).toEqual({
+      ms: null,
+      error:
+        "Maestro started its wait after the link, so the time is not exact",
+    })
+  })
+
   it("reads the resident memory of the app on this device's simulator only", () => {
     const sims = "/Users/u/Library/Developer/CoreSimulator/Devices"
     const ps = [
@@ -442,6 +461,8 @@ describe("the speed phase", () => {
       runChild: children.run,
       runMaestro: fakeMaestro().run,
       memoryPollMs: 5,
+      now: () => LINK_SENT_AT,
+      linkLeadMs: 0,
     })
     const result = await phase({
       signal: new AbortController().signal,
@@ -477,6 +498,69 @@ describe("the speed phase", () => {
   })
 })
 
+describe("the Android first frame", () => {
+  it("sends the watch link itself after Maestro starts to wait, and times the frame from the link", async () => {
+    const order = []
+    const children = fakeChildren({
+      amStart: [2100, 2000, 2050].map((ms) => childResult(amStartOutput(ms))),
+      order,
+    })
+    const phase = createSpeedPhase({
+      createEmulator: fakeEmulator,
+      runChild: children.run,
+      runMaestro: fakeMaestro({ order }).run,
+      memoryPollMs: 5,
+      now: () => LINK_SENT_AT,
+      linkLeadMs: 0,
+    })
+    const result = await phase({
+      signal: new AbortController().signal,
+      runDir: tempDir(),
+      env: { PATH: process.env.PATH, HOME: process.env.HOME },
+      selection: { devices: [deviceOf("android-phone")] },
+      settings: SETTINGS,
+      devicesConfig: DEVICES,
+      artifacts: { android: "/builds/android/app-release.apk" },
+      server: { setLaneDevice: () => {} },
+      gate: { admit: async () => ({ admitted: true }), release: () => {} },
+      event: () => {},
+    })
+    // The fake wait starts 1 s before the link and ends 3 s after its start.
+    expect(result.devices[0].firstFrameMs).toEqual({
+      median: 2000,
+      min: 2000,
+      max: 2000,
+      samples: [2000, 2000, 2000],
+    })
+    const links = children.calls.filter((call) =>
+      call.includes("android.intent.action.VIEW"),
+    )
+    expect(links).toHaveLength(3)
+    expect(links[0].slice(1)).toEqual([
+      "-s",
+      "emulator-5640",
+      "shell",
+      "am",
+      "start",
+      "-a",
+      "android.intent.action.VIEW",
+      "-d",
+      "forgemobile://watch/the-birth-of-jesus",
+      "org.jesusfilm.forgewatch",
+    ])
+    expect(
+      order.filter((entry) => entry !== "maestro speed-cold-launch"),
+    ).toEqual([
+      "maestro speed-first-frame-android",
+      "link",
+      "maestro speed-first-frame-android",
+      "link",
+      "maestro speed-first-frame-android",
+      "link",
+    ])
+  })
+})
+
 describe("the speed pass in a run", () => {
   it("reports two samples and names the failed launch, and the run result stays the same (R31)", async () => {
     const children = fakeChildren({
@@ -494,6 +578,8 @@ describe("the speed pass in a run", () => {
       runChild: children.run,
       runMaestro: fakeMaestro().run,
       memoryPollMs: 5,
+      now: () => LINK_SENT_AT,
+      linkLeadMs: 0,
     })
     const args = ["run", "--yes", "--device", "android-phone"]
     const withSpeed = tempDir()

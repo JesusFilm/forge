@@ -1,5 +1,5 @@
-# The speed pass first video frame (KTD19, R21). It runs after the cold launch
-# flow, so the app is on Home. The watch page starts the video by itself.
+# The iOS speed pass first video frame (KTD19, R21). It runs after the cold
+# launch flow, so the app is on Home. The watch page starts the video itself.
 appId: org.jesusfilm.forgewatch
 name: speed-first-frame
 ---
