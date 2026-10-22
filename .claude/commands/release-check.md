@@ -44,3 +44,4 @@ For any other value, show this list and stop. Pass no other flag to the runner.
 - Every failure fails the run: a new failure, a flaky journey, a known bug, a screen list gap, a failed check, and an early stop. The report labels each one.
 - The runner needs Maestro 2.11.0. When `plan` names `MAESTRO_VERSION`, the person installs that version, or sets `MAESTRO_BIN` to a 2.11.0 binary, and runs the command again.
 - A run uses a lot of memory and CPU. When `plan` names `HOST_CAPACITY`, other work on the Mac must finish first.
+- The runner boots simulators and emulators, binds local ports 38211-38213, and writes under `~/Library/Caches/forge-release-check`. When your shell runs commands in a sandbox, run the runner's commands outside it.
