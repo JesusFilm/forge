@@ -55,6 +55,9 @@ async function main() {
       require("./lib/testBuild/artifactCheck.js").checkBuildCommand(command),
     "check-log": (command) =>
       require("./lib/server/logCheck.js").checkLogCommand(command),
+    session: (command) => require("./lib/session.js").sessionCommand(command),
+    "record-search": (command) =>
+      require("./lib/server/record.js").recordSearchCommand(command),
   }
 
   const command = contract.parseArgs(process.argv.slice(2))

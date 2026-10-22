@@ -1,0 +1,63 @@
+# Search for a fixed word and open a video result (R19 starter journey). A run
+# answers each search from config/search-answers.json, which record-search
+# writes from local admin, so the first result is the same on every Mac (R21).
+# The `search` tag makes record-search run this journey (KTD10).
+appId: org.jesusfilm.forgewatch
+name: search-open-result
+tags:
+  - search
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Search
+    label: Open the Search tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows
+- tapOn:
+    text: "Search for videos about any topic.*"
+    label: Open the search field
+- inputText:
+    text: creation
+    label: Type the search word
+# A result card reads "<title>, <length>", so the typed word cannot match it.
+- extendedWaitUntil:
+    visible:
+      text: "Creation, .+"
+    timeout: 20000
+    label: The results show
+- tapOn:
+    text: "Creation, .+"
+    label: Open the first video result
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- tapOn:
+    text: Go back
+    label: Leave the watch page
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows again
+# On iOS 26 the Search tab replaces the tab bar with a Home button (README 2).
+- tapOn:
+    text: Home
+    label: Leave the Search tab by its Home button
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows again
