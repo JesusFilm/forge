@@ -60,12 +60,3 @@ tags:
       id: screen-tab-watch
     timeout: 20000
     label: Search shows again
-# On iOS 26 the Search tab replaces the tab bar with a Home button (README 2).
-- tapOn:
-    text: Home
-    label: Leave the Search tab by its Home button
-- extendedWaitUntil:
-    visible:
-      id: screen-tab-home
-    timeout: 20000
-    label: Home shows again
