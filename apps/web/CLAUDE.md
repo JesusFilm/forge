@@ -230,6 +230,22 @@ or before broadening production traffic; it ties together local checks, Railway
 config verification, URL parity, revalidation, Datadog evidence, source maps,
 and gated third-party smokes.
 
+### Recovering a deployment skipped by CI
+
+Railway's Wait for CI can leave a main commit's Web deployment `SKIPPED` after
+a workflow fails. A successful GitHub retry does not prove that Web deployed:
+check Railway's deployment status and commit SHA, then smoke the public site.
+On 2026-10-19, #2779's Admin services deployed while Web remained on #2778
+after the known filtered-HNSW fixture failure tracked in
+`docs/roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md`.
+
+If the skipped deployment cannot resume, recover through a reviewed PR to main
+that matches Web's watch patterns. Preserve feature flags and normal release
+ordering; verify the resulting deployment includes the missed commit before
+advancing dependent releases. Do not use a local `railway up` or a manual
+production redeploy to bypass the PR-to-main flow. A flag-gated route's 404
+cannot distinguish an older build from a newer build with the flag off.
+
 ## Feature flags
 
 LaunchDarkly server-side feature flag evaluation is available through
