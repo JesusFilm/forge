@@ -57,6 +57,36 @@ agent on 2026-10-21 by mistake; do not rely on them until the Studio owner
 confirms. `shorts.narrationQuote` is free, `shorts.narrate` costs money, so
 ask first.
 
+## Changing or adding an element
+
+Each rule below cost a day once (2026-10-16 to 10-21). Read them before you
+touch a component.
+
+1. **A changed component gets a new name.** Studio binds a component name
+   (`versionId`, e.g. `backdrop-blur-v4`) to its first full registration in
+   any project: code, controls, `category` and `name`. Anything different
+   under the same name fails with a bare "Studio command rejected". Upload the
+   new code, register it as the next number (`-v5`), add it to
+   `registry.json`, and re-send the exact registration block every time.
+2. **Stay inside the runtime.** At most 32768 bytes per component. Imports:
+   `react`, and from `remotion` only `AbsoluteFill`, `useCurrentFrame`,
+   `useVideoConfig`, `interpolate`, `spring`, `Sequence`, `Easing` (no
+   `interpolateColors`: mix colours by hand). Fonts come from the font-pack
+   components on the `fonts` track, not embedded in each component.
+3. **No mix-blend-mode next to a backdrop-filter.** A blended sibling layer
+   switches the blur off; the render shows only the dark scrim.
+4. **Fades: never a zero-length range, and zero means none.** An
+   `interpolate` over `[end - 0, end]` crashes the render ("Render execution
+   failed"). A fade floored to a tiny value still starts at opacity 0, so
+   pieces laid back to back show one sharp frame at each join. Treat a fade of
+   0 as no fade, and fade in only the first piece of a chain.
+5. **Cover the whole screen to the last frame.** A look layer (blur, scrim)
+   that ends before the video leaves bare film under the closing logo.
+6. **Test before you hand over.** Make a tiny project (one video item plus the
+   element, about 10 s) and render it. Look at frames at every join and at the
+   end, not only the middle. If a project is rejected, register components one
+   by one to find the culprit; one identical retry sometimes passes.
+
 ## Known limits (2026-10-21)
 
 - Background blur works with `backdrop-blur-v5`. v3 drew its grain with
