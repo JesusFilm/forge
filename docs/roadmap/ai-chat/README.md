@@ -11,11 +11,11 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (October 5, 2026)
+## Status (October 23, 2026)
 
-- **Total tickets:** 67
+- **Total tickets:** 68
 - ✅ **Complete:** 58
-- 🟡 **In progress:** 1
+- 🟡 **In progress:** 2
 - 🔵 **Not started:** 8
 - 🔴 **Blocked:** 0
 
@@ -90,3 +90,4 @@ from the main DS Year 1 roadmap.
 | [feat-464](feat-464-retire-ai-chat-memory-override.md)                        | Retire the AI-chat memory override                                           | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2203](https://github.com/JesusFilm/forge/pull/2203)                                                        |
 | [feat-601](feat-601-apologist-chat-comparison.md)                             | Temporary Apologist comparison in Forge Chat                                 | jian wei | P2       | 2026-09-24 | 3    | ✅ complete    | [#2548](https://github.com/JesusFilm/forge/pull/2548), [#2577](https://github.com/JesusFilm/forge/pull/2577) |
 | [feat-602](feat-602-remove-apologist-comparison.md)                           | Remove temporary Apologist comparison before public Chat release             | jian wei | P1       | 2026-10-02 | 1    | 🔵 not-started | —                                                                                                            |
+| [feat-756](feat-756-langfuse-v4-compatibility.md)                             | Langfuse v4 compatibility                                                    | jaco     | P1       | 2026-10-23 | 1    | 🟡 in-progress | —                                                                                                            |

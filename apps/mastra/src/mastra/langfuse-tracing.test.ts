@@ -363,7 +363,12 @@ describe("buildSeekerTracingCallOptions", () => {
       promptSource: "langfuse",
       promptLabel: "production",
       promptVersion: 3,
-      langfuse: { prompt: { name: "seeker-system", version: 3 } },
+      langfuse: {
+        prompt: { name: "seeker-system", version: 3 },
+        promptSource: "langfuse",
+        promptName: "seeker-system",
+        promptLabel: "production",
+      },
     })
   })
 
@@ -375,8 +380,11 @@ describe("buildSeekerTracingCallOptions", () => {
       thread: "thread-2",
     })
     expect(tracingOptions.metadata).not.toHaveProperty("promptVersion")
-    expect(tracingOptions.metadata).not.toHaveProperty("langfuse")
+    expect(tracingOptions.metadata).not.toHaveProperty("langfuse.prompt")
     expect(tracingOptions.metadata.promptSource).toBe("fallback")
+    expect(tracingOptions.metadata.langfuse).toMatchObject({
+      promptSource: "fallback",
+    })
   })
 
   it("marks stale serves and never links a version-less langfuse serve", () => {
@@ -391,7 +399,7 @@ describe("buildSeekerTracingCallOptions", () => {
     })
     expect(tracingOptions.metadata.promptStale).toBe(true)
     expect(tracingOptions.metadata).not.toHaveProperty("promptVersion")
-    expect(tracingOptions.metadata).not.toHaveProperty("langfuse")
+    expect(tracingOptions.metadata).not.toHaveProperty("langfuse.prompt")
   })
 
   it("stamps the click-source under sendOrigin when supplied (KTD11)", () => {
