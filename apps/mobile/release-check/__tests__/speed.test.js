@@ -16,10 +16,12 @@ const { CONFIG_DIR, REPO_ROOT, readJson } = require("../lib/lists")
 const { createReadOnlyServer } = require("../lib/server/server")
 const {
   createSpeedPhase,
+  firstFrameSpan,
   parseTotalTime,
   simulatorAppRssKb,
   timingStats,
 } = require("../lib/speed")
+const { readCommand } = require("../lib/journeys/results")
 const { GET_VIDEO_BY_SLUG } = require("../../src/lib/queries")
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567"
@@ -97,10 +99,10 @@ function fakeChildren({ amStart = [], meminfo = [] } = {}) {
   return { calls, run }
 }
 
-function step(label, timestamp, duration) {
+function step(label, timestamp, duration, status = "COMPLETED", depth = 0) {
   return {
     command: { assertConditionCommand: { label } },
-    metadata: { status: "COMPLETED", timestamp, duration, depth: 0 },
+    metadata: { status, timestamp, duration, depth },
   }
 }
 
@@ -392,6 +394,23 @@ describe("the speed numbers (KTD19)", () => {
       max: 2400,
       samples: [2100, 2400, 2000],
     })
+  })
+
+  it("times the first frame from the end of the tap when iOS asks to open the link", () => {
+    const commands = [
+      step("Open the birth of Jesus video", 9000, 200),
+      step("The first video frame shows", 9200, 20000, "WARNED"),
+      step("Answer the open prompt when it shows", 29200, 2800),
+      step("Confirm the open prompt", 29300, 600, "COMPLETED", 1),
+      step(
+        "The first video frame shows after the prompt",
+        29900,
+        2100,
+        "COMPLETED",
+        1,
+      ),
+    ].map(readCommand)
+    expect(firstFrameSpan(commands)).toBe(2100)
   })
 
   it("reads the resident memory of the app on this device's simulator only", () => {

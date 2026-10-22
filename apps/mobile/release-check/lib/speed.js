@@ -32,6 +32,10 @@ const SPANS = Object.freeze({
     "The first video frame shows",
   ],
 })
+const OPEN_PROMPT_STEPS = Object.freeze([
+  "Confirm the open prompt",
+  "The first video frame shows after the prompt",
+])
 const MEASURE_NAMES = Object.freeze({
   coldLaunchMs: "cold launch",
   homeContentMs: "Home content",
@@ -91,19 +95,32 @@ function simulatorAppRssKb(psText, udid, appFolder) {
   return peak
 }
 
+function completedStep(commands, label) {
+  return commands.find(
+    (command) =>
+      command.label === label &&
+      command.status === "COMPLETED" &&
+      Number.isFinite(command.timestamp),
+  )
+}
+
 /** The ms from the start of step `from` to the end of step `to`, or null. */
 function stepSpan(commands, from, to) {
-  const completed = (label) =>
-    commands.find(
-      (command) =>
-        command.label === label &&
-        command.status === "COMPLETED" &&
-        Number.isFinite(command.timestamp),
-    )
-  const start = completed(from)
-  const end = completed(to)
+  const start = completedStep(commands, from)
+  const end = completedStep(commands, to)
   if (!start || !end) return null
   return end.timestamp + end.ms - start.timestamp
+}
+
+// After an iOS open prompt, the app gets the link only when the tap ends, so
+// the time starts there and not at the link.
+function firstFrameSpan(commands) {
+  const direct = stepSpan(commands, ...SPANS.firstFrameMs)
+  if (direct !== null) return direct
+  const tap = completedStep(commands, OPEN_PROMPT_STEPS[0])
+  const frame = completedStep(commands, OPEN_PROMPT_STEPS[1])
+  if (!tap || !frame) return null
+  return frame.timestamp + frame.ms - (tap.timestamp + tap.ms)
 }
 
 function flowProblem(result, output) {
@@ -361,7 +378,7 @@ function createSpeedPhase(options = {}) {
     const frame = await runFlow(ctx, device, handle, n, FIRST_FRAME_FLOW)
     notePeak(frame.peakKb)
     if (ctx.signal.aborted) return done()
-    sample.firstFrameMs = stepSpan(frame.output.commands, ...SPANS.firstFrameMs)
+    sample.firstFrameMs = firstFrameSpan(frame.output.commands)
     if (sample.firstFrameMs === null) fail("firstFrameMs", frame.problem)
     return done()
   }
@@ -490,6 +507,7 @@ module.exports = {
   SAMPLES,
   SPANS,
   createSpeedPhase,
+  firstFrameSpan,
   parseMeminfoRssKb,
   parseTotalTime,
   simulatorAppRssKb,
