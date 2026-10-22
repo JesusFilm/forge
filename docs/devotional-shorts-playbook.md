@@ -9,6 +9,27 @@ This is the reference for every future devotional. Code: feat-573
 `StampLine.tsx`, `ScrollingScripture.tsx`, `DevotionalVideo.tsx`).
 Reference set: `~/Desktop/Social Media/Prodigal/shorts/`.
 
+## 0. How many shorts (owner, 2026-10-22)
+
+At most **4 Shorts per story; 3 is fine.** Better three good ones with real views
+and replies than five weak ones.
+
+- **intro** and **film-verse** (clip) are always made.
+- **insight** (history or language), **verse** and **reflection** are added only
+  when this story has a strong one.
+
+Right after Lyuba approves the long form, the story session sends her a table
+before cutting anything:
+
+| Format         | Script / idea of the short             | What Lyuba needs to do   |
+| -------------- | -------------------------------------- | ------------------------ |
+| intro          | ...                                    | approve the opening line |
+| film-verse     | verses, opening question, closing turn | nothing / pick the turn  |
+| insight (word) | the one fact, in two lines             | pick between two topics  |
+
+Make only the rows she approves, then tell the Calendar session which planned
+Short rows to drop. Community posts are separate and do not count.
+
 ## 1. What a short is for
 
 A short is not a summary. In 15 to 35 seconds it should stop a viewer, let
