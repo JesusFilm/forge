@@ -124,6 +124,13 @@ Lyuba has to decide something, remove it once she has.
 
 Write it with ArtifactData `set` (first time) or `update` with `if_version`.
 
+## Facebook slot
+
+At most one Facebook post a day (from 2026-10-19). Which Short gets it (Lyuba,
+2026-10-22): an **insight** Short (animated history or language explainer) first; on a
+day without an insight, the intro on long-form days, otherwise the strongest Short. Insight
+Shorts always go to Instagram as well.
+
 ## Reflection / verse rotation
 
 From 2026-10-22 a story gets either a reflection Short or a verse Short, not both,
