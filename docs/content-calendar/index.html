@@ -589,12 +589,23 @@
   .story.open .chev {
     transform: rotate(180deg);
   }
+  .sbody {
+    display: grid;
+    gap: 12px;
+    padding: 4px 14px 14px;
+    align-items: start;
+  }
+  .sbody.with-note {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
   .stable {
     display: grid;
     grid-template-columns: 64px repeat(2, minmax(0, 1fr));
     gap: 1px;
     background: var(--line);
-    border-top: 1px solid var(--line);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
   }
   .stable > * {
     background: var(--ground);
@@ -769,7 +780,9 @@
   }
   .detail {
     padding: 14px 16px 16px;
-    border-top: 1px solid var(--line);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--ground);
     display: grid;
     gap: 10px;
     font-size: 13px;
@@ -789,9 +802,10 @@
   .todo-item {
     display: grid;
     gap: 6px;
-    background: #241a17;
-    border-radius: 8px;
-    padding: 10px 12px;
+  }
+  .todo-item + .todo-item {
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
   }
   .todo-item b {
     font-weight: 600;
@@ -811,6 +825,9 @@
   @media (max-width: 860px) {
     .sthumb {
       width: 80px;
+    }
+    .sbody.with-note {
+      grid-template-columns: minmax(0, 1fr);
     }
     .stable {
       grid-template-columns: 48px repeat(2, minmax(0, 1fr));
@@ -1722,8 +1739,9 @@
                 picHtml([p], "ppic") +
                   '<span class="ltx"><span class="ltt">' +
                   esc(
-                    String(p.cut || "post").replace(/^post-/, "") +
-                      (p.title ? ": " + p.title.replace(/^.*?post: /, "") : ""),
+                    "Community " +
+                      (String(p.cut || "post").replace(/^post-?/, "") ||
+                        "post"),
                   ) +
                   "</span>",
               ),
@@ -1754,11 +1772,14 @@
         .join("")
     }
     h += "</div>"
+    // The note on an open piece sits to the right of the table, in a box of the same frame.
     if (openCell && openCell.startsWith(s.slug + "|")) {
       const [, pk, ck] = openCell.split("|")
-      h += detailHtml(s, pk, ck)
+      return (
+        '<div class="sbody with-note">' + h + detailHtml(s, pk, ck) + "</div>"
+      )
     }
-    return h
+    return '<div class="sbody">' + h + "</div>"
   }
   // A todo applies to a piece when its piece matches and its lang is the column's or "both".
   function todosFor(s, pc, ck) {
