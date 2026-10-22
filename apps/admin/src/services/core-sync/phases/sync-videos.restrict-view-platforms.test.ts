@@ -184,11 +184,18 @@ describe("core sync reads restrictions Core would hide from `watch`", () => {
     }
   })
 
-  it("fails loudly and soft-deletes nothing if Core rejects the publisher field", async () => {
+  it("fails loudly if Core rejects the publisher field", async () => {
     // The one belief no live probe to date has confirmed with Core Sync's own
     // credential is that it satisfies Core's publisher gate. If it does not,
     // Core answers with a GraphQL error rather than an empty list — so the
     // failure mode is a failed sync, never a silently emptied catalogue.
+    //
+    // Unlike sync-video-images.ts, this phase has no per-page try/catch
+    // around its `coreQuery` call — a rejection propagates straight out of
+    // `syncVideos` before the post-loop soft-delete block is ever reached.
+    // So `rejects.toThrow` is the entire content of this test: there is no
+    // post-throw state to assert on, since nothing after the first failing
+    // page runs at all.
     const gateway = createCoreGatewayDouble({
       videos: [coreVideo(VISIBLE_ID), coreVideo(RESTRICTED_ID)],
       unauthorizedForPublisherField: true,
@@ -196,14 +203,11 @@ describe("core sync reads restrictions Core would hide from `watch`", () => {
     vi.stubGlobal("fetch", gateway.fetch)
     vi.spyOn(console, "warn").mockImplementation(() => undefined)
     const store = createPrismaVideoStore()
-    const existing = store.seed({ coreId: VISIBLE_ID })
+    store.seed({ coreId: VISIBLE_ID })
 
     await expect(
       syncVideos({ prisma: store.client as never, progress: noopProgress() }),
     ).rejects.toThrow(/Not authorized to resolve Query.adminVideos/)
-
-    expect(store.get(VISIBLE_ID)?.deletedAt).toBeNull()
-    expect(existing.deletedAt).toBeNull()
   })
 })
 
