@@ -190,6 +190,12 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
       props.cards,
       frames.map((x) => x.from),
       fps,
+    ).map((w) =>
+      // Stress marks guide the voice («Того́»), never the screen (Great
+      // Catch RU, 2026-10-22).
+      w.word.includes("\u0301")
+        ? { ...w, word: w.word.replace(/\u0301/g, "") }
+        : w,
     ),
     fact?.layout === "reflection" ? fact.emphasis : undefined,
   )

@@ -516,6 +516,14 @@ async function main() {
         }
       : {}),
     ...(refl ? { reflection: { from: refl.a, to: refl.b } } : {}),
+    // `--reflection-cards=4,8,18,19`: a montage of long-form cards, in order.
+    ...(arg("reflection-cards")
+      ? {
+          reflectionCards: arg("reflection-cards")!
+            .split(",")
+            .map((x) => Number(x.trim())),
+        }
+      : {}),
     // Hook-first is the default; --history-no-hook keeps the lead-in.
     ...(process.argv.includes("--history-no-hook")
       ? { historyHook: false }

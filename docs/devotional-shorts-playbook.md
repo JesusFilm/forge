@@ -416,6 +416,12 @@ past 1440 px lifts as a whole (never above 330 Figma units); its lines are
 balanced and a short word before the phrase never hangs alone. Not the
 intro's kinetic stack: the body stays Inter 61.
 
+Montage (owner, Great Catch 2026-10-22): the short may glue sentences from
+different parts of the reflection (and the conclusion) into one story, in
+any order that keeps the thought true: `--reflection-cards=4,8,18,19,20,21,39,40`
+(long-form card indices; wins over `--reflection`). Do not reuse the intro's
+line. Each joined pair must still say what the long form says.
+
 Label: "From the Full Devotional:" on top (below).
 
 Credit: the devotional's commentary (the long form attributes the whole

@@ -157,6 +157,10 @@ export type CutdownPlan = { shorts: ShortPlan[]; skipped: SkippedShort[] }
 export type CutdownOverrides = {
   /** Reflection run, as paragraph indices (inclusive). */
   reflection?: { from: number; to: number }
+  /** The reflection short as a montage of chosen long-form cards, in this
+   *  order (owner, Great Catch 2026-10-22: "glue several pieces into a
+   *  story, without bending the thought"). Wins over `reflection`. */
+  reflectionCards?: number[]
   /** The turn of the scene, seconds into the long-form clip. */
   filmTurn?: { fromSec: number; toSec: number; why?: string }
   /** Film-verse short: a silent question before the scene speaks and a
@@ -747,7 +751,15 @@ export function planCutdown(
       if (runs[0]) run = runs[0]
       why = "the first stretch of reflection that stands alone"
     }
-    if (!run) {
+    if (overrides.reflectionCards?.length) {
+      const c = overrides.reflectionCards
+      shorts.push({
+        kind: "reflection",
+        cards: c,
+        durationSec: sum(c.map((i) => secs[i] ?? 0)),
+        why: `montage of cards ${c.join(",")}`,
+      })
+    } else if (!run) {
       skipped.push({ kind: "reflection", reason: "no reflection run fits" })
     } else {
       const c = runCards(run.from, run.to)
