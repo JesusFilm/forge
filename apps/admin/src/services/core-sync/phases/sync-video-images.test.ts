@@ -17,7 +17,7 @@ describe("syncVideoImages", () => {
   it("syncs image rows from the nested Video.images field", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
-        videos: [
+        adminVideos: [
           {
             id: "video-core-1",
             images: [
@@ -64,6 +64,13 @@ describe("syncVideoImages", () => {
 
     expect(stats.errors).toBe(0)
     expect(stats.updated).toBe(1)
+    // The publisher field applies no implicit published filter (unlike the
+    // public `videos` field this phase used to read), so this clause is now
+    // the only thing keeping the phase to published videos.
+    expect(mockedCoreQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ where: { published: true } }),
+    )
     expect(tx.videoImage.upsert).toHaveBeenCalledWith({
       where: { coreId: "image-1" },
       create: {
@@ -109,7 +116,7 @@ describe("syncVideoImages", () => {
     // first-image-only behavior.
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
-        videos: [
+        adminVideos: [
           {
             id: "video-core-1",
             images: [
@@ -174,7 +181,7 @@ describe("syncVideoImages", () => {
   })
 
   it("forwards incremental updatedAt watermarks and skips full soft-delete", async () => {
-    mockedCoreQuery.mockResolvedValueOnce({ data: { videos: [] } })
+    mockedCoreQuery.mockResolvedValueOnce({ data: { adminVideos: [] } })
     const prisma = {
       video: { findMany: vi.fn().mockResolvedValue([]) },
       videoImage: {
@@ -191,7 +198,10 @@ describe("syncVideoImages", () => {
     expect(mockedCoreQuery).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({
-        where: { updatedAt: { gte: "2026-05-07T00:00:00.000Z" } },
+        where: {
+          published: true,
+          updatedAt: { gte: "2026-05-07T00:00:00.000Z" },
+        },
       }),
     )
     expect(prisma.videoImage.updateMany).not.toHaveBeenCalled()
@@ -200,7 +210,7 @@ describe("syncVideoImages", () => {
   it("warns (without failing the phase) when an image's parent video is not in admin", async () => {
     mockedCoreQuery.mockResolvedValueOnce({
       data: {
-        videos: [
+        adminVideos: [
           {
             id: "7_KnowGodBP",
             images: [

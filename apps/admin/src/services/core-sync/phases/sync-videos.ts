@@ -30,9 +30,24 @@ const BIBLE_BOOKS_QUERY = `
   }
 `
 
+// Reads Core's PUBLISHER root field, not the public `videos` field.
+//
+// `videos` applies `filter.NOT = { restrictViewPlatforms: { has: clientName } }`
+// keyed on the caller's own `x-graphql-client-name`. Core Sync identifies as
+// `watch`, so the public field hides exactly the Watch-restricted videos this
+// sync exists to observe — Forge never learns a video is restricted and
+// jesusfilm.org/watch keeps serving it (JesusFilm/forge#2324). `adminVideos`
+// takes the same `VideosFilter` input and returns the same `Video` type, but
+// is gated on the caller being a publisher instead of filtering by client
+// name, so it returns restricted videos WITH their restriction state.
+//
+// The `x-graphql-client-name: watch` header in `core-client.ts` deliberately
+// stays: Core's downloads resolver keys off it, and the publisher field
+// applies no restriction filter, so the header is inert here. Pinned by
+// sync-videos.core-auth.test.ts and sync-videos.restrict-view-platforms.test.ts.
 const VIDEOS_QUERY = `
-  query Videos($offset: Int!, $limit: Int!, $where: VideosFilter) {
-    videos(
+  query AdminVideos($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    adminVideos(
       offset: $offset
       limit: $limit
       where: $where
@@ -69,18 +84,11 @@ const VIDEOS_QUERY = `
       children { id }
       locked
       noIndex
+      restrictViewPlatforms
       updatedAt
     }
   }
 `
-// Never select Core's publisher-gated Video fields here
-// (`restrictViewPlatforms`, `restrictDownloadPlatforms` —
-// `t.withAuth({ isPublisher: true })` in api-media). The sync runs without a
-// publisher credential, so Core rejects the whole page with "Not authorized
-// to resolve Video.<field>" and the videos phase fails every run. Core already
-// drops watch-restricted videos, children, and parents for our
-// `x-graphql-client-name: watch` header. Pinned by
-// sync-videos.core-auth.test.ts.
 
 type CoreVideo = {
   id: string
@@ -131,6 +139,7 @@ type CoreVideo = {
   children: Array<{ id: string }>
   locked: boolean
   noIndex: boolean
+  restrictViewPlatforms: string[]
   updatedAt: string
 }
 
@@ -315,16 +324,18 @@ export async function syncVideos({
   }> = []
 
   while (true) {
-    const result = await coreQuery<{ videos: CoreVideo[] }>(VIDEOS_QUERY, {
+    const result = await coreQuery<{ adminVideos: CoreVideo[] }>(VIDEOS_QUERY, {
       offset,
       limit: PAGE_SIZE,
       where: {
+        // `adminVideos` applies no implicit published filter, so this
+        // clause is what keeps the catalogue phase to published videos.
         published: true,
         ...(since ? { updatedAt: { gte: since } } : {}),
       },
     })
 
-    const rawVideos = result.data?.videos ?? []
+    const rawVideos = result.data?.adminVideos ?? []
     if (offset === 0) {
       firstPageCount = rawVideos.length
     }
@@ -406,9 +417,7 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
-                  // restrictViewPlatforms is deliberately omitted (see
-                  // VIDEOS_QUERY): create takes the schema default `[]`,
-                  // update leaves the stored value untouched.
+                  restrictViewPlatforms: video.restrictViewPlatforms,
                   aiMetadata: false,
                   source: "CORE",
                   primaryLanguageId,
@@ -425,6 +434,7 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
+                  restrictViewPlatforms: video.restrictViewPlatforms,
                   primaryLanguageId,
                   originId,
                   updatedAt: new Date(video.updatedAt),
