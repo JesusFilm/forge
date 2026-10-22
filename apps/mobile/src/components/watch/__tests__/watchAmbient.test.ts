@@ -82,7 +82,9 @@ describe("WatchAmbient", () => {
     expect(SOURCE).toContain(
       'blurRadius={Platform.OS === "ios" ? IOS_AMBIENT_BLUR : undefined}',
     )
-    expect(SOURCE).toContain(": androidWashStyle(width, height)")
+    expect(SOURCE).toContain(
+      ": stretchedDecodeStyle(width, height, ANDROID_WASH_SHRINK)",
+    )
   })
 
   it("cross-fades the POSTER natively rather than with Animated", () => {

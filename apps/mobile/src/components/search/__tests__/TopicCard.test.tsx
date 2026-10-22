@@ -1,10 +1,10 @@
 // A topic card shows its label in the UI language but always searches with its
 // English term (U7, U10). The fixture `ru` catalog replaces the label only.
 import { act } from "react"
-import { Platform } from "react-native"
+import { Platform, StyleSheet } from "react-native"
 
-// The mock logs the props of each render, so a case can read the blur that
-// would reach the native view.
+// The mock logs the props of each render, so a case can read the blur and the
+// box that would reach the native view.
 const mockImageProps: Record<string, unknown>[] = []
 jest.mock("expo-image", () => ({
   Image: (props: Record<string, unknown>) => {
@@ -71,6 +71,16 @@ import { TopicCard } from "../TopicCard"
 const parables = BROWSE_TOPICS.find((topic) => topic.searchTerm === "parables")
 if (!parables) throw new Error("the parables topic is missing")
 
+type Box = {
+  position?: string
+  top?: number
+  left?: number
+  width?: number
+  height?: number
+  opacity?: number
+  transform?: { scale?: number }[]
+}
+
 let renderer: TestInstance | null = null
 const onSelect = jest.fn()
 
@@ -134,22 +144,59 @@ describe("TopicCard", () => {
 
   // feat-784: on Android, expo-image blurs with RenderScript, and the six cards
   // blur at the same time, which can crash the app. iOS keeps its blur.
-  it.each([
-    ["android", undefined],
-    ["ios", 12],
-  ] as const)(
-    "on %s, sends blurRadius %s with the thumbnail",
-    async (os, blurRadius) => {
-      setPlatform(os)
-      const thumbnailUrl = "https://example.com/parables.jpg"
-      const card = await render(thumbnailUrl)
+  describe("the thumbnail", () => {
+    const thumbnailUrl = "https://example.com/parables.jpg"
+    const CARD_WIDTH = 160
+    const CARD_HEIGHT = CARD_WIDTH / 1.05
 
-      // Anti-vacuous: the thumbnail still renders, so the blur was not dropped
-      // with the image. The label still renders over it.
+    async function renderThumbnail(os: "ios" | "android") {
+      setPlatform(os)
+      const card = await render(thumbnailUrl)
+      // Anti-vacuous: the thumbnail still renders, and the label over it.
       const image = mockImageProps.at(-1)
       expect(image?.source).toBe(thumbnailUrl)
-      expect(image?.blurRadius).toBe(blurRadius)
       expect(hasText(card, "Parables")).toBe(true)
-    },
-  )
+      return {
+        image: image!,
+        box: StyleSheet.flatten(image!.style as never) as Box,
+        cardStyle: StyleSheet.flatten(
+          (card.toJSON() as { props: { style: unknown } }).props.style as never,
+        ) as { overflow?: string; borderRadius?: number },
+      }
+    }
+
+    it("on Android, sends no blurRadius and stretches a small decode instead", async () => {
+      const { image, box, cardStyle } = await renderThumbnail("android")
+      expect(image.blurRadius).toBeUndefined()
+
+      // Glide decodes to the view's size, so the box sets the bitmap size.
+      const scale = box.transform?.[0]?.scale ?? 1
+      expect(box).toMatchObject({
+        position: "absolute",
+        width: expect.any(Number),
+        height: expect.any(Number),
+        opacity: 0.3,
+      })
+      expect(box.width).toBeCloseTo(CARD_WIDTH / 15)
+      expect(box.height).toBeCloseTo(CARD_HEIGHT / 15)
+      expect(box.left! + box.width! / 2).toBeCloseTo(CARD_WIDTH / 2)
+      expect(box.top! + box.height! / 2).toBeCloseTo(CARD_HEIGHT / 2)
+      // In a fit on device screenshots, 15 to 17 screen px per bitmap pixel
+      // matched the old Android blur (radius 4, Glide sampling 4).
+      expect(scale).toBeGreaterThanOrEqual(15)
+      expect(scale).toBeLessThanOrEqual(17)
+      expect(box.width! * scale).toBeGreaterThan(CARD_WIDTH)
+      expect(box.height! * scale).toBeGreaterThan(CARD_HEIGHT)
+      // The stretched view is larger than the card, so the card must clip it
+      // to its round corners.
+      expect(cardStyle.overflow).toBe("hidden")
+      expect(cardStyle.borderRadius).toBeGreaterThan(0)
+    })
+
+    it("on iOS, keeps the blur and the full-card thumbnail", async () => {
+      const { image, box } = await renderThumbnail("ios")
+      expect(image.blurRadius).toBe(12)
+      expect(box).toEqual({ ...StyleSheet.absoluteFill, opacity: 0.3 })
+    })
+  })
 })

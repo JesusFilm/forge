@@ -106,8 +106,11 @@ describe("WatchAmbient poster blur", () => {
       width: expect.any(Number),
       height: expect.any(Number),
     })
-    expect(box.width!).toBeLessThanOrEqual(frame.width / 40)
-    expect(box.height!).toBeLessThanOrEqual(frame.height / 40)
+    expect(box.width).toBeCloseTo(frame.width / 64)
+    expect(box.height).toBeCloseTo(frame.height / 64)
+    // Each bitmap pixel spans `scale` screen pixels. Below about 70 px the wash
+    // showed soft vertical streaks under the player.
+    expect(scale).toBeGreaterThanOrEqual(70)
     expect(box.width! * scale).toBeGreaterThan(frame.width)
     expect(box.height! * scale).toBeGreaterThan(frame.height)
     // The scale grows from the box center, so the box sits at the frame center.
