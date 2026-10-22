@@ -391,6 +391,36 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain("Exposure rows are scoped")
   })
 
+  it.each(["24h", "7d", "29d"])(
+    "labels the shorter anonymous history honestly for %s",
+    async (window) => {
+      requireSessionMock.mockResolvedValue({ id: "admin-1", role: "ADMIN" })
+      loadOverviewMock.mockResolvedValue({
+        ...overview,
+        window: { ...overview.window, preset: window },
+      })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({
+          searchParams: Promise.resolve({ window }),
+        }),
+      )
+      expect(html).toContain(
+        "New anonymous Watch exposure facts expire after 14 days",
+      )
+      if (window === "29d") {
+        expect(html).toContain("Partial anonymous history")
+        expect(html).toContain("cannot describe the complete 29-day window")
+        expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "29d" })
+        expect(loadTracePageMock).toHaveBeenCalledWith(
+          {},
+          expect.objectContaining({ window: "29d" }),
+        )
+      } else {
+        expect(html).not.toContain("Partial anonymous history")
+      }
+    },
+  )
+
   it.each([
     {
       exposure: "watch-home:hero:hero-card",
