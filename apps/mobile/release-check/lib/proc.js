@@ -46,6 +46,7 @@ function run(command, args, options) {
     env,
     timeoutMs,
     logFile,
+    signal,
     tailBytes = DEFAULT_TAIL_BYTES,
   } = options ?? {}
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
@@ -54,8 +55,24 @@ function run(command, args, options) {
   if (!env) return Promise.reject(new Error("run() needs an explicit env"))
 
   const started = Date.now()
+  if (signal?.aborted) {
+    return Promise.resolve({
+      code: null,
+      signal: null,
+      timedOut: false,
+      stopped: true,
+      stdout: "",
+      stderr: "",
+      durationMs: 0,
+      error: null,
+    })
+  }
   const log = logFile ? fs.createWriteStream(logFile, { flags: "a" }) : null
   return new Promise((resolve) => {
+    let entry = null
+    let stdout = ""
+    let stderr = ""
+    let settled = false
     let child
     try {
       child = spawn(command, args, {
@@ -69,15 +86,12 @@ function run(command, args, options) {
       resolve(result(null, null, error))
       return
     }
-    const entry = { child, reason: null, killTimer: null }
-    let stdout = ""
-    let stderr = ""
-    let settled = false
+    entry = { child, reason: null, killTimer: null }
 
-    function result(code, signal, error) {
+    function result(code, exitSignal, error) {
       return {
         code,
-        signal,
+        signal: exitSignal,
         timedOut: entry?.reason === "timeout",
         stopped: entry?.reason === "stopped",
         stdout,
@@ -87,18 +101,22 @@ function run(command, args, options) {
       }
     }
 
-    function settle(code, signal, error) {
+    const onAbort = () => stopChild(entry, "stopped")
+
+    function settle(code, exitSignal, error) {
       if (settled) return
       settled = true
       clearTimeout(deadline)
       clearTimeout(entry.killTimer)
+      signal?.removeEventListener("abort", onAbort)
       active.delete(entry)
       log?.end()
-      resolve(result(code, signal, error))
+      resolve(result(code, exitSignal, error))
     }
 
     active.add(entry)
     const deadline = setTimeout(() => stopChild(entry, "timeout"), timeoutMs)
+    signal?.addEventListener("abort", onAbort, { once: true })
     child.stdout.setEncoding("utf8")
     child.stderr.setEncoding("utf8")
     child.stdout.on("data", (chunk) => {

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global afterAll, describe, expect, it, require, setTimeout */
+/* global AbortController, afterAll, describe, expect, it, require, setTimeout */
 // Every child of the runner (simctl, adb, builds, Maestro) goes through run().
 // A hung `simctl listapps` held a device for 20 hours in the U1 spike.
 const fs = require("node:fs")
@@ -117,10 +117,46 @@ describe("run", () => {
     expect(result.error).toMatch(/ENOENT/)
   })
 
+  it("reports a spawn that throws at once, without a throw", async () => {
+    const result = await run("/bin/echo", ["x"], {
+      timeoutMs: 5000,
+      env: { PATH: "/usr/bin:/bin" },
+      cwd: 42,
+    })
+    expect(result.code).toBeNull()
+    expect(result.error).toMatch(/cwd/)
+  })
+
   it("requires a deadline", async () => {
     await expect(
       run("/bin/true", [], { env: { PATH: "/usr/bin:/bin" } }),
     ).rejects.toThrow(/timeoutMs/)
+  })
+})
+
+describe("abort signal", () => {
+  it("stops one child when its signal aborts", async () => {
+    const controller = new AbortController()
+    const pending = run("/bin/sleep", ["30"], {
+      timeoutMs: 60000,
+      env: { PATH: "/usr/bin:/bin" },
+      signal: controller.signal,
+    })
+    controller.abort()
+    const result = await pending
+    expect(result).toMatchObject({ stopped: true, timedOut: false })
+  })
+
+  it("does not start a child when the signal has already aborted", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const result = await run("/bin/sleep", ["30"], {
+      timeoutMs: 60000,
+      env: { PATH: "/usr/bin:/bin" },
+      signal: controller.signal,
+    })
+    expect(result).toMatchObject({ code: null, stopped: true })
+    expect(activeChildCount()).toBe(0)
   })
 })
 
