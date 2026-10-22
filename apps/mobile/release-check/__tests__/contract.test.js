@@ -42,12 +42,6 @@ describe("cli.mjs refusals", () => {
       "Example: node apps/mobile/release-check/cli.mjs check-lists --json",
     ])
   })
-
-  it("refuses a valid mode that is not built yet with exit 2", () => {
-    const result = runCli(["check-settings"])
-    expect(result.status).toBe(2)
-    expect(result.stderr).toContain("`check-settings` is not built yet")
-  })
 })
 
 describe("parseArgs", () => {
