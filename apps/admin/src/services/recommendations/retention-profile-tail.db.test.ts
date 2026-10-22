@@ -4,7 +4,11 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { nominations } from "./composition/test-helpers"
-import { purgeExpiredRecommendationRequests } from "./retention.service"
+import {
+  purgeExpiredRecommendationRequests,
+  readRecommendationRetentionHealth,
+  WATCH_EXPOSURE_RETENTION_PAGE_SIZE,
+} from "./retention.service"
 
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex")
@@ -29,12 +33,148 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
     afterAll(async () => db?.$disconnect())
 
+    it("rolls back a genuine exposure timeout and keeps the durable attempt failed", async () => {
+      const now = new Date()
+      const id = randomUUID()
+      await db.watchSurfaceExposure.create({
+        data: {
+          id,
+          eventId: randomUUID(),
+          windowId: randomUUID(),
+          surface: "watch",
+          block: "fixture",
+          presentation: "rail",
+          placement: "related",
+          policyVersion: "watch-exposure-v2",
+          position: 0,
+          itemPath: `/watch/${id}.html`,
+          kind: "served",
+          occurredAt: now,
+          expiresAt: new Date(now.getTime() - 60_000),
+        },
+      })
+      const before = await db.recommendationRetentionRun.findFirst({
+        where: { status: "SUCCEEDED" },
+        orderBy: { completedAt: "desc" },
+      })
+      await db.$executeRawUnsafe(`
+        CREATE FUNCTION owned_retention_slow_exposure() RETURNS trigger
+        LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(6); RETURN OLD; END $$
+      `)
+      await db.$executeRawUnsafe(`
+        CREATE TRIGGER owned_retention_slow_exposure
+        BEFORE DELETE ON watch_surface_exposure
+        FOR EACH ROW EXECUTE FUNCTION owned_retention_slow_exposure()
+      `)
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(db, now),
+        ).rejects.toThrow(/transaction|deadline|timeout/i)
+        expect(await db.watchSurfaceExposure.count({ where: { id } })).toBe(1)
+        expect(
+          await db.recommendationRetentionRun.findFirstOrThrow({
+            orderBy: { startedAt: "desc" },
+          }),
+        ).toMatchObject({ status: "FAILED", rootsDeleted: 0 })
+        const after = await db.recommendationRetentionRun.findFirst({
+          where: { status: "SUCCEEDED" },
+          orderBy: { completedAt: "desc" },
+        })
+        expect(after?.completedAt ?? null).toEqual(before?.completedAt ?? null)
+      } finally {
+        await db.$executeRawUnsafe(
+          "DROP TRIGGER IF EXISTS owned_retention_slow_exposure ON watch_surface_exposure",
+        )
+        await db.$executeRawUnsafe(
+          "DROP FUNCTION IF EXISTS owned_retention_slow_exposure()",
+        )
+        await db.watchSurfaceExposure.deleteMany({ where: { id } })
+      }
+    })
+
+    it("drains flat exposure pages independently while preserving unexpired facts and truthful ledgers", async () => {
+      const now = new Date()
+      const expiredAt = new Date(now.getTime() - 25 * 60 * 60_000)
+      const futureExpiry = new Date(now.getTime() + 29 * 86_400_000)
+      const windowId = randomUUID()
+      const ids = Array.from(
+        { length: WATCH_EXPOSURE_RETENTION_PAGE_SIZE + 3 },
+        () => randomUUID(),
+      )
+      await db.watchSurfaceExposure.createMany({
+        data: ids.map((id, index) => ({
+          id,
+          eventId: randomUUID(),
+          windowId,
+          surface: "watch",
+          block: "fixture",
+          presentation: "rail",
+          placement: "related",
+          policyVersion: "watch-exposure-v2",
+          position: index % 7,
+          itemPath: `/watch/${id}.html`,
+          kind: index % 2 === 0 ? "served" : "rendered",
+          occurredAt: new Date(now.getTime() - 29 * 86_400_000),
+          expiresAt:
+            index <= WATCH_EXPOSURE_RETENTION_PAGE_SIZE
+              ? expiredAt
+              : futureExpiry,
+        })),
+      })
+      try {
+        expect(await readRecommendationRetentionHealth(db, now)).toMatchObject({
+          healthy: false,
+          reason: "retention_overdue",
+          oldestOverdueAt: expiredAt,
+        })
+        const first = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(first).toMatchObject({
+          status: "succeeded",
+          rootsDeleted: 0,
+          rowCounts: {
+            expiredWatchSurfaceExposures: WATCH_EXPOSURE_RETENTION_PAGE_SIZE,
+          },
+          batchLimitReached: true,
+          overdueAfterRun: true,
+        })
+        expect(
+          await db.recommendationRetentionRun.findUniqueOrThrow({
+            where: { id: first.runId },
+          }),
+        ).toMatchObject({
+          status: "SUCCEEDED",
+          rootsDeleted: 0,
+          rowCounts: first.rowCounts,
+        })
+        const second = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(second).toMatchObject({
+          status: "succeeded",
+          rowCounts: { expiredWatchSurfaceExposures: 1 },
+          batchLimitReached: false,
+          overdueAfterRun: false,
+        })
+        expect(await readRecommendationRetentionHealth(db, now)).toMatchObject({
+          healthy: true,
+          oldestOverdueAt: null,
+        })
+        expect(
+          await db.watchSurfaceExposure.findMany({
+            where: { id: { in: ids } },
+            select: { expiresAt: true },
+          }),
+        ).toEqual([{ expiresAt: futureExpiry }, { expiresAt: futureExpiry }])
+      } finally {
+        await db.watchSurfaceExposure.deleteMany({ where: { windowId } })
+      }
+    })
+
     it("continues bounded projection-run expiry after request roots drain", async () => {
       const now = new Date()
       const expiredAt = new Date(now.getTime() - 60_000)
       const createdAt = new Date(now.getTime() - 120_000)
       const manifestId = randomUUID()
       const requestId = randomUUID()
+      const exposureWindowId = randomUUID()
       const runIds = Array.from({ length: 250 }, () => randomUUID())
       await db.recommendationStrategyManifest.create({
         data: {
@@ -97,11 +237,37 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             createdAt,
           })),
         })
+        await db.watchSurfaceExposure.createMany({
+          data: Array.from(
+            { length: WATCH_EXPOSURE_RETENTION_PAGE_SIZE },
+            () => {
+              const id = randomUUID()
+              return {
+                id,
+                eventId: randomUUID(),
+                windowId: exposureWindowId,
+                surface: "watch",
+                block: "fixture",
+                presentation: "rail",
+                placement: "related",
+                policyVersion: "watch-exposure-v2",
+                position: 0,
+                itemPath: `/watch/${id}.html`,
+                kind: "served",
+                occurredAt: createdAt,
+                expiresAt: expiredAt,
+              }
+            },
+          ),
+        })
 
         const first = await purgeExpiredRecommendationRequests(db, now, 100)
         expect(first.status).toBe("succeeded")
         expect(first.rootsDeleted).toBe(1)
         expect(first.rowCounts.items).toBe(1)
+        expect(first.rowCounts.expiredWatchSurfaceExposures).toBe(
+          WATCH_EXPOSURE_RETENTION_PAGE_SIZE,
+        )
         expect(first.rowCounts.expiredProfileProjectionRuns).toBe(100)
         expect(first.batchLimitReached).toBe(true)
         expect(
@@ -127,6 +293,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           }),
         ).toBe(0)
       } finally {
+        await db.watchSurfaceExposure.deleteMany({
+          where: { windowId: exposureWindowId },
+        })
         await db.recommendationProfileProjectionRun.deleteMany({
           where: { id: { in: runIds } },
         })

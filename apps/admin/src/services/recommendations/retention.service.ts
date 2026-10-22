@@ -25,6 +25,10 @@ import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
 export const RECOMMENDATION_RETENTION_BATCH_SIZE = 100
+// Exposures are independent, flat rows with no request/episode descendants.
+// Keep their page bounded separately so one daily exposure cohort does not
+// require one complete multi-phase retention attempt per 100 card facts.
+export const WATCH_EXPOSURE_RETENTION_PAGE_SIZE = 1_000
 export const RECOMMENDATION_RETENTION_MAX_BATCH_SIZE = 5_000
 export const RECOMMENDATION_RETENTION_RUN_DAYS = 90
 export const RECOMMENDATION_RETENTION_HEALTH_HOURS = 36
@@ -372,19 +376,19 @@ export async function purgeExpiredRecommendationRequests(
       rowCounts.expiredCowatchRefreshAttempts = removed.attempts
       rowCounts.expiredCowatchRefreshGrants = removed.grants
     })
-    const expiredWatchExposures = await phase((tx) =>
-      tx.watchSurfaceExposure.findMany({
+    const expiredWatchExposurePageSize = await phase(async (tx) => {
+      const exposures = await tx.watchSurfaceExposure.findMany({
         where: { expiresAt: { lte: now } },
         orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
-        take: batchSize,
+        take: WATCH_EXPOSURE_RETENTION_PAGE_SIZE,
         select: { id: true },
-      }),
-    )
-    await countPhase("expiredWatchSurfaceExposures", (tx) =>
-      tx.watchSurfaceExposure.deleteMany({
-        where: { id: { in: expiredWatchExposures.map(({ id }) => id) } },
-      }),
-    )
+      })
+      const deleted = await tx.watchSurfaceExposure.deleteMany({
+        where: { id: { in: exposures.map(({ id }) => id) } },
+      })
+      rowCounts.expiredWatchSurfaceExposures = deleted.count
+      return exposures.length
+    })
     const directActions = await phase((tx) =>
       tx.recommendationContentAction.findMany({
         where: { requestId: null, expiresAt: { lte: now } },
@@ -1250,7 +1254,7 @@ export async function purgeExpiredRecommendationRequests(
       precomputedPurge.baselineFinalizationPageFull ||
       precomputedPurge.baselineRunPageFull ||
       precomputedGenerationPurge.pageFull ||
-      expiredWatchExposures.length === batchSize ||
+      expiredWatchExposurePageSize === WATCH_EXPOSURE_RETENTION_PAGE_SIZE ||
       directActionIds.length === batchSize ||
       standaloneEpisodesProcessed < standaloneEpisodeIds.length ||
       standaloneEpisodeIds.length === standaloneEpisodePageSize ||
@@ -1411,6 +1415,7 @@ export async function readRecommendationRetentionHealth(
       LEAST(
         (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM watch_surface_exposure WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_visit WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_baseline_visit WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_baseline_run
