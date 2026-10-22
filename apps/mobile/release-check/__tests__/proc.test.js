@@ -108,6 +108,33 @@ describe("run", () => {
     expect(result.stdout.endsWith("line-1999\n")).toBe(true)
   })
 
+  it("finishes the log file before it resolves", async () => {
+    const logFile = path.join(tempDir(), "flush.log")
+    for (let round = 0; round < 5; round++) {
+      fs.rmSync(logFile, { force: true })
+      await run(
+        "/bin/sh",
+        ["-c", "i=0; while [ $i -lt 3000 ]; do echo $i; i=$((i+1)); done"],
+        {
+          timeoutMs: 5000,
+          env: { PATH: "/usr/bin:/bin" },
+          logFile,
+        },
+      )
+      expect(fs.readFileSync(logFile, "utf8").split("\n")).toHaveLength(3001)
+    }
+  })
+
+  it("reports a log file that cannot open, without a crash or a hang", async () => {
+    const result = await run("/bin/echo", ["hi"], {
+      timeoutMs: 5000,
+      env: { PATH: "/usr/bin:/bin" },
+      logFile: path.join(tempDir(), "no-such-dir", "child.log"),
+    })
+    expect(result.code).toBe(0)
+    expect(result.logError).toMatch(/ENOENT/)
+  })
+
   it("reports a command that cannot start, without a throw", async () => {
     const result = await run("/no/such/command", [], {
       timeoutMs: 5000,

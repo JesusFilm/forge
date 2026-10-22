@@ -37,7 +37,7 @@ function appendTail(tail, chunk, limit) {
 }
 
 // Resolves { code, signal, timedOut, stopped, stdout, stderr, durationMs,
-// error }, and never rejects for a child failure.
+// error, logError }, and never rejects for a child failure.
 function run(command, args, options) {
   const {
     cwd,
@@ -63,14 +63,26 @@ function run(command, args, options) {
       stderr: "",
       durationMs: 0,
       error: null,
+      logError: null,
     })
   }
   const log = logFile ? fs.createWriteStream(logFile, { flags: "a" }) : null
+  let logError = null
+  // A log that cannot open must not crash the runner before its end path runs.
+  log?.on("error", (error) => {
+    logError = String(error.message ?? error)
+  })
   return new Promise((resolve) => {
     let entry = null
     let stdout = ""
     let stderr = ""
     let settled = false
+    // A caller may read the log at once, so resolve only after it is flushed.
+    function finish(outcome) {
+      const done = () => resolve({ ...outcome, logError })
+      if (!log || log.destroyed) done()
+      else log.end(done)
+    }
     let child
     try {
       child = spawn(command, args, {
@@ -80,8 +92,7 @@ function run(command, args, options) {
         stdio: ["ignore", "pipe", "pipe"],
       })
     } catch (error) {
-      log?.end()
-      resolve(result(null, null, error))
+      finish(result(null, null, error))
       return
     }
     entry = { child, reason: null, killTimer: null }
@@ -108,8 +119,7 @@ function run(command, args, options) {
       clearTimeout(entry.killTimer)
       signal?.removeEventListener("abort", onAbort)
       active.delete(entry)
-      log?.end()
-      resolve(result(code, exitSignal, error))
+      finish(result(code, exitSignal, error))
     }
 
     active.add(entry)
