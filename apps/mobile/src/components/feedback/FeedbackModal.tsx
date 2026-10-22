@@ -69,12 +69,15 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
       // a submission is in flight.
       onRequestClose={close}
     >
-      <View testID="screen-feedback-modal" style={styles.overlay}>
+      <View style={styles.overlay}>
         <Animated.View
           pointerEvents="none"
           style={[styles.scrim, { opacity: progress }]}
         />
+        {/* The root testID sits on the full-screen backdrop: inside a Modal,
+            the iOS UI test tree drops a plain view's id but keeps a button's. */}
         <Pressable
+          testID="screen-feedback-modal"
           style={styles.backdrop}
           onPress={close}
           accessibilityRole="button"

@@ -461,12 +461,23 @@ function checkScreens(
     ...inventory.routes.map((route) => route.id),
     ...inventory.sheets,
   ])
+  const sheets = new Set(inventory.sheets)
   const handIds = new Set()
   for (const [index, entry] of (screensConfig.hand ?? []).entries()) {
     const label = `hand[${index}]`
+    // A sheet with no view, such as a native action sheet, has no testID, so
+    // `generated: true` gives that sheet a text match instead.
+    const textForSheet = entry?.generated === true
     if (!isNonEmptyString(entry?.id)) {
       problems.push(`${label} needs an id`)
-    } else if (generated.has(entry.id) || handIds.has(entry.id)) {
+    } else if (textForSheet && !sheets.has(entry.id)) {
+      problems.push(
+        `${label} sets generated: true, but ${entry.id} is not a sheet in NonRouteSheetId`,
+      )
+    } else if (
+      handIds.has(entry.id) ||
+      (!textForSheet && generated.has(entry.id))
+    ) {
       problems.push(`${label} id ${entry.id} is already a screen id`)
     } else {
       handIds.add(entry.id)

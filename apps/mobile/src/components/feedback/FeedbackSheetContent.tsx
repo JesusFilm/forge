@@ -497,6 +497,7 @@ export function FeedbackSheetContent({
       </View>
 
       <Pressable
+        testID="feedback-send"
         onPress={handleSend}
         disabled={dismissLocked}
         style={({ pressed }) => [

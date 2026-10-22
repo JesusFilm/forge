@@ -56,6 +56,7 @@ function configCopy(edit = () => {}) {
   const lists = {
     settings: read("test-settings.json"),
     notTested: read("not-tested.json"),
+    screens: read("screens.json"),
   }
   edit(lists)
   fs.writeFileSync(
@@ -65,6 +66,10 @@ function configCopy(edit = () => {}) {
   fs.writeFileSync(
     path.join(dir, "not-tested.json"),
     JSON.stringify(lists.notTested),
+  )
+  fs.writeFileSync(
+    path.join(dir, "screens.json"),
+    JSON.stringify(lists.screens),
   )
   return dir
 }
@@ -226,6 +231,51 @@ describe("a screen that the settings hide (AE13)", () => {
       {},
     )
     expect(plan[0].platforms).toEqual(["android"])
+  })
+})
+
+describe("a text match for a generated sheet", () => {
+  const actionSheet = {
+    id: "library-delete-action-sheet",
+    generated: true,
+    kind: "actionSheet",
+    match: "Delete 1 video.",
+    platforms: ["ios"],
+    source: "apps/mobile/src/lib/library/deleteActionSheet.ts",
+  }
+  const configDir = configCopy(({ screens }) => {
+    screens.hand = [
+      ...screens.hand.filter((entry) => entry.id !== actionSheet.id),
+      actionSheet,
+    ]
+  })
+  const textJourney = [
+    "appId: org.jesusfilm.forgewatch",
+    "---",
+    "- assertVisible:",
+    "    text: Delete 1 video.",
+    "    label: The delete action sheet shows",
+  ].join("\n")
+
+  it("counts a journey that asserts the sheet's text, on the sheet's platform", () => {
+    const result = runCheckScreens({
+      configDir,
+      journeysDir: journeysWith({ "delete-sheet.yaml": textJourney }),
+    })
+    expect(result.journeys).toEqual([
+      { id: "delete-sheet", platforms: ["ios"] },
+    ])
+    expect(gapsFor(result, actionSheet.id)).toEqual([])
+  })
+
+  it("counts an iOS gap when no journey asserts the text", () => {
+    const result = runCheckScreens({
+      configDir,
+      journeysDir: journeysWith({}),
+    })
+    expect(gapsFor(result, actionSheet.id)).toEqual([
+      { screen: actionSheet.id, platform: "ios" },
+    ])
   })
 })
 

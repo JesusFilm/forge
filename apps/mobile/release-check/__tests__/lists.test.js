@@ -141,6 +141,44 @@ describe("screen names", () => {
     ])
   })
 
+  // A native action sheet has no view for a testID, so a journey asserts its
+  // text. Only a NonRouteSheetId sheet can take that text match.
+  describe("a text match for a generated sheet", () => {
+    const actionSheet = {
+      id: "library-delete-action-sheet",
+      generated: true,
+      kind: "actionSheet",
+      match: "Delete 1 video.",
+      platforms: ["ios"],
+      source: "apps/mobile/src/lib/library/deleteActionSheet.ts",
+    }
+    const findingsFor = (entry) =>
+      findingsWith((lists) => {
+        lists.screens.hand = [entry]
+      })
+
+    it("accepts generated: true on a NonRouteSheetId sheet", () => {
+      expect(findingsFor(actionSheet)).toEqual([])
+    })
+
+    it("fails a generated sheet id without generated: true", () => {
+      const entry = { ...actionSheet }
+      delete entry.generated
+      expect(findingsFor(entry)).toEqual([
+        "hand[0] id library-delete-action-sheet is already a screen id",
+      ])
+    })
+
+    it.each(["downloads", "library-delete-sheet"])(
+      "fails generated: true on %s, which is not a NonRouteSheetId sheet",
+      (id) => {
+        expect(findingsFor({ ...actionSheet, id })).toEqual([
+          `hand[0] sets generated: true, but ${id} is not a sheet in NonRouteSheetId`,
+        ])
+      },
+    )
+  })
+
   it.each([
     ["(tabs)/index.tsx", "tab-home"],
     ["(tabs)/watch/index.tsx", "tab-watch"],

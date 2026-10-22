@@ -4,16 +4,24 @@
     {
       "id": "bible-translation-download-prompt",
       "kind": "alert",
-      "match": "Then the whole translation reads with no connection.",
+      "match": ".*Then the whole translation reads with no connection.",
       "platforms": ["ios", "android"],
       "source": "apps/mobile/src/lib/bible/sheets/downloadPrompt.ts"
     },
     {
       "id": "bible-partial-translation-switch",
       "kind": "alert",
-      "match": "is a partial Bible. If you switch, the reader goes to its start",
+      "match": ".*is a partial Bible. If you switch, the reader goes to its start.*",
       "platforms": ["ios", "android"],
       "source": "apps/mobile/app/reader-translation.tsx"
+    },
+    {
+      "id": "library-delete-action-sheet",
+      "generated": true,
+      "kind": "actionSheet",
+      "match": "Delete 1 video?",
+      "platforms": ["ios"],
+      "source": "apps/mobile/src/lib/library/deleteActionSheet.ts"
     }
   ],
   "reach": [
