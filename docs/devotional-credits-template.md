@@ -62,3 +62,18 @@ RU: Весь фильм LUMO «Евангелие от Луки» на русс�
 - The film page must match the footage:
   - JESUS film (1979): `watch/jesus.html/<language>.html`, line "Watch the full JESUS film:" / «Весь фильм «Иисус» на русском:»
   - LUMO Matthew: `watch/lumo-the-gospel-of-matthew.html/<language>.html`
+
+## Parallel passages line (YouTube long form, from 2026-10-22)
+
+Lyuba's decision via Analytics, 2026-10-22. When the same story is told in
+another Gospel, add one short line under the main description text (after the
+📖 passage line). It helps passage searches ("matthew 20", "mark 10"). Only
+passages that tell the SAME event; no thematic links, no long lists (YouTube's
+misleading-metadata policy). BSB versification; Russian book names in RU.
+Skip it when the story is in one Gospel only (Prodigal, Widow of Nain,
+Zacchaeus, Persistent Widow, Rich Fool, Ten Lepers, Good Samaritan, Martha).
+
+```
+EN: Also in Matthew 20:29–34 and Mark 10:46–52.
+RU: Эта история есть также у Матфея (20:29–34) и Марка (10:46–52).
+```
