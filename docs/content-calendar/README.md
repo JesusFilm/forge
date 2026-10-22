@@ -107,6 +107,7 @@ Lyuba has to decide something, remove it once she has.
 
 ```json
 {
+  "name": "Persistent Widow", // optional; the working name shown in the list (default: `story`)
   "passage": "Luke 5:1–11", // optional; used until a long form with a title exists
   "todo": [
     {

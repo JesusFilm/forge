@@ -1649,7 +1649,9 @@
         ...st,
         first: longs.map((p) => p.date).sort()[0],
         thumb: lead.thumb || "",
-        title: titled ? titled.title.split("|")[0].trim() : st.name,
+        // The working name leads (what the sessions call the story); the YouTube title goes in the subline.
+        title: (stories[st.slug] || {}).name || st.name,
+        ytTitle: titled ? titled.title.split("|")[0].trim() : "",
         passage:
           (titled || anyTitled)?.title.split("|").slice(1).join("|").trim() ||
           (stories[st.slug] || {}).passage ||
@@ -1939,6 +1941,7 @@
       '</span><span class="stext"><span class="stitle">' +
       esc(s.title) +
       '</span><span class="ssub">' +
+      (s.ytTitle && s.ytTitle !== s.title ? esc(s.ytTitle) + " · " : "") +
       (s.passage ? esc(s.passage) + " · " : "") +
       '<b class="' +
       (s.done === s.total ? "ok" : "todo") +
