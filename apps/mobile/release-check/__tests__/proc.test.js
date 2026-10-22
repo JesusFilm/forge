@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global AbortController, afterAll, describe, expect, it, require, setTimeout */
+/* global AbortController, afterAll, describe, expect, it, jest, require, setTimeout */
 // Every child of the runner (simctl, adb, builds, Maestro) goes through run().
 // A hung `simctl listapps` held a device for 20 hours in the U1 spike.
 const fs = require("node:fs")
@@ -7,6 +7,10 @@ const os = require("node:os")
 const path = require("node:path")
 
 const { activeChildCount, run, stopAll } = require("../lib/proc")
+
+// These tests start real shells; on a Mac at load 86, one passed the 5 s
+// default limit. The checks do not change, only the time each may take.
+jest.setTimeout(20000)
 
 const tempDirs = []
 afterAll(() => {
