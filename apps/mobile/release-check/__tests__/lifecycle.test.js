@@ -24,6 +24,7 @@ const {
 const { lockPath } = require("../lib/lock")
 const { readJson } = require("../lib/lists")
 const { planCommand } = require("../lib/plan")
+const { buildSummary } = require("../lib/report/summary")
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567"
 const GB = 1024 ** 3
@@ -343,6 +344,248 @@ describe("a phase time limit", () => {
       completedPhases: ["building", "checking", "probing"],
     })
     expect(phaseSignal.aborted).toBe(true)
+  })
+})
+
+const PROBE_FINDING = {
+  code: "SETTINGS_PROBE_FAILED",
+  message:
+    "The settings probe failed on iphone-17-pro-max at Home body is live.",
+  setting: null,
+  file: "apps/mobile/release-check/journeys/settings-probe.yaml",
+  deviceId: "iphone-17-pro-max",
+}
+
+function failedProbe(deviceId) {
+  return attempt("settings-probe", deviceId, {
+    status: "failed",
+    label: "new",
+    class: "selector_not_found",
+    failedStep: "Home body is live",
+    error: "Element not found: home-body-live",
+  })
+}
+
+function serverWith(stats) {
+  return {
+    bind: async () => {},
+    startAnswering: () => {},
+    setLaneDevice: () => {},
+    setSpeedMode: () => {},
+    stats,
+    close: async () => {},
+  }
+}
+
+describe("the probing phase's attempts", () => {
+  it("reach summary.json when a probe fails, with the probe's failure", async () => {
+    const home = tempHome()
+    const finding = { ...PROBE_FINDING, deviceId: "iphone-se" }
+    const { deps } = stubDeps(home, {
+      phases: {
+        probing: async () => ({
+          passed: false,
+          findings: [finding],
+          attempts: [failedProbe("iphone-se")],
+        }),
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary.stopReason).toBe("probe_failed")
+    expect(summary.journeys).toEqual([
+      {
+        journey: "settings-probe",
+        deviceId: "iphone-se",
+        label: "new",
+        attempts: [failedProbe("iphone-se")],
+      },
+    ])
+    expect(summary.checks.settingsProbe).toEqual({
+      passed: false,
+      findings: [finding],
+    })
+  })
+
+  it("reach summary.json when the run stops during probing", async () => {
+    const home = tempHome()
+    const notRun = attempt("settings-probe", "android-phone", {
+      status: "not_run",
+      label: "not_run",
+      error: "The run stopped before this journey.",
+    })
+    const stub = stubDeps(home, {
+      phases: {
+        probing: async (ctx) => {
+          stub.signals.emit("SIGTERM")
+          await untilAborted(ctx.signal)
+          return { passed: true, findings: [], attempts: [notRun] }
+        },
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), stub.deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary).toMatchObject({
+      stopReason: "aborted",
+      completedPhases: ["building", "checking"],
+    })
+    expect(summary.journeys.map((entry) => entry.attempts)).toEqual([[notRun]])
+  })
+
+  it("come first, once, when the journeys phase repeats them", async () => {
+    const home = tempHome()
+    const probe = attempt("settings-probe", "iphone-se")
+    const journey = attempt("cold-launch-home", "iphone-se")
+    const inputs = []
+    const { deps } = stubDeps(home, {
+      phases: {
+        probing: async () => ({
+          passed: true,
+          findings: [],
+          attempts: [probe],
+        }),
+        journeys: async () => ({
+          attempts: [journey, { ...probe }],
+          screens: { gaps: [], notReached: [], skippedPlatforms: [] },
+        }),
+      },
+      report: {
+        buildSummary: (input) => {
+          inputs.push(input)
+          return buildSummary(input)
+        },
+      },
+    })
+    await runCommand(parseArgs(["run", "--yes"]), deps)
+    expect(inputs.map((input) => input.attempts)).toEqual([[probe, journey]])
+  })
+})
+
+describe("a settings probe inside the journeys phase", () => {
+  it("fails checks.settingsProbe with that device's finding", async () => {
+    const home = tempHome()
+    const { deps } = stubDeps(home, {
+      phases: {
+        journeys: async (ctx) => {
+          ctx.stop("probe_failed", "iphone-17-pro-max")
+          return {
+            attempts: [failedProbe("iphone-17-pro-max")],
+            stopReason: "probe_failed",
+            settingsProbe: { passed: false, findings: [PROBE_FINDING] },
+          }
+        },
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary.stopReason).toBe("probe_failed")
+    expect(summary.checks.settingsProbe).toEqual({
+      passed: false,
+      findings: [PROBE_FINDING],
+    })
+  })
+})
+
+describe("admin rate-limit refusals in the speed pass (R36)", () => {
+  // Every clock read moves one second, so each phase has its own window.
+  function steppedClock() {
+    let ms = Date.parse("2026-10-22T03:00:00.000Z")
+    return () => (ms += 1000)
+  }
+
+  function journeyRefusal(ts) {
+    return {
+      ts,
+      field: "video",
+      deviceId: "iphone-se",
+      journey: "cold-launch-home",
+      attempt: 1,
+    }
+  }
+
+  it("adds the log check's refusals from the speed window", async () => {
+    const home = tempHome()
+    const now = steppedClock()
+    const times = {}
+    const { deps } = stubDeps(home, {
+      now,
+      phases: {
+        journeys: async (ctx) => {
+          times.journey = new Date(now()).toISOString()
+          return {
+            ...passingJourneys(ctx),
+            rateLimitRefusals: [journeyRefusal(times.journey)],
+          }
+        },
+        speed: async () => {
+          times.speed = new Date(now()).toISOString()
+          return { devices: [] }
+        },
+      },
+      logCheck: () => ({
+        passed: true,
+        findings: [],
+        perDevice: {},
+        routes: {},
+        rateLimitRefusals: [
+          { ts: times.journey, field: "video", deviceId: "iphone-se" },
+          { ts: times.speed, field: "videos", deviceId: "android-phone" },
+        ],
+      }),
+    })
+    await runCommand(parseArgs(["run", "--yes"]), deps)
+    expect(onlySummary(home).server.rateLimitRefusals).toEqual([
+      { ...journeyRefusal(times.journey), causedFailure: null },
+      {
+        ts: times.speed,
+        field: "videos",
+        deviceId: "android-phone",
+        journey: null,
+        attempt: null,
+        causedFailure: null,
+      },
+    ])
+  })
+
+  it("takes them from the server when the run stops before the log check", async () => {
+    const home = tempHome()
+    const now = steppedClock()
+    const times = {}
+    const stub = stubDeps(home, {
+      now,
+      server: {
+        create: () =>
+          serverWith(() => ({
+            routes: {},
+            rateLimitRefusals: [
+              { ts: times.journey, field: "video", deviceId: "iphone-se" },
+              { ts: times.speed, field: "videos", deviceId: "ipad-pro-13" },
+            ],
+          })),
+      },
+      phases: {
+        journeys: async (ctx) => {
+          times.journey = new Date(now()).toISOString()
+          return {
+            ...passingJourneys(ctx),
+            rateLimitRefusals: [journeyRefusal(times.journey)],
+          }
+        },
+        speed: async (ctx) => {
+          times.speed = new Date(now()).toISOString()
+          stub.signals.emit("SIGTERM")
+          await untilAborted(ctx.signal)
+          return { devices: [] }
+        },
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), stub.deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary.completedPhases).not.toContain("logcheck")
+    expect(summary.server.rateLimitRefusals.map((item) => item.ts)).toEqual([
+      times.journey,
+      times.speed,
+    ])
   })
 })
 

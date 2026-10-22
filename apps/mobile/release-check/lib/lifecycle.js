@@ -394,6 +394,25 @@ function finding(code, message) {
   return { code, message, setting: null, file: null, deviceId: null }
 }
 
+// The journeys phase lists the probe attempts again, because both phases
+// share one list. One journey, device, and attempt number keeps its first record.
+function mergeAttempts(first, later) {
+  const key = (item) =>
+    JSON.stringify([item?.journey, item?.deviceId, item?.attempt])
+  const seen = new Set(first.map(key))
+  return [...first, ...later.filter((item) => !seen.has(key(item)))]
+}
+
+function unattributedRefusal(item) {
+  return {
+    ts: item.ts,
+    field: item.field,
+    deviceId: item.deviceId ?? null,
+    journey: null,
+    attempt: null,
+  }
+}
+
 function iosArtifactIn(buildDir) {
   const dir = path.join(buildDir, "ios")
   if (!fs.existsSync(dir)) return null
@@ -488,6 +507,7 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     journeyRefusals: null,
     logRefusals: null,
     speed: null,
+    speedWindow: null,
     artifacts: {},
     serverClosed: false,
   }
@@ -739,6 +759,7 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     if (!state.stopReason) server.startAnswering()
     await phase("probing", async (signal) => {
       const result = await deps.phases.probing(phaseContext(signal))
+      state.attempts = result.attempts ?? []
       state.checks.settingsProbe = {
         passed: result.passed === true,
         findings: result.findings ?? [],
@@ -747,7 +768,21 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     })
     await phase("journeys", async (signal) => {
       const result = await deps.phases.journeys(phaseContext(signal))
-      state.attempts = result.attempts ?? []
+      state.attempts = mergeAttempts(state.attempts, result.attempts ?? [])
+      // The later iOS devices run their probe in this phase (U7).
+      if (result.settingsProbe) {
+        const earlier = state.checks.settingsProbe ?? {
+          passed: true,
+          findings: [],
+        }
+        state.checks.settingsProbe = {
+          passed: earlier.passed && result.settingsProbe.passed === true,
+          findings: [
+            ...earlier.findings,
+            ...(result.settingsProbe.findings ?? []),
+          ],
+        }
+      }
       state.restarts = result.restarts ?? []
       state.staleKnownBugs = result.staleKnownBugs ?? []
       state.proposedActions = result.proposedActions ?? []
@@ -759,11 +794,13 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     })
     if (!flags["skip-speed-pass"]) {
       await phase("speed", async (signal) => {
+        state.speedWindow = { startMs: deps.now(), endMs: Infinity }
         server.setSpeedMode(true)
         try {
           state.speed = await deps.phases.speed(phaseContext(signal))
         } finally {
           server.setSpeedMode(false)
+          state.speedWindow.endMs = deps.now()
         }
       })
     }
@@ -812,15 +849,24 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
         if (!item.ok) recorder.event({ type: "device_not_stopped", ...item })
       }
     })
-    const refusals =
-      state.journeyRefusals ??
-      (state.logRefusals ?? stats.rateLimitRefusals ?? []).map((item) => ({
-        ts: item.ts,
-        field: item.field,
-        deviceId: item.deviceId ?? null,
-        journey: null,
-        attempt: null,
-      }))
+    // The journeys phase reads the server log before the speed pass starts,
+    // so the speed pass's refusals come from the whole log, by time (R36).
+    const logged = state.logRefusals ?? stats.rateLimitRefusals ?? []
+    const speedWindow = state.speedWindow
+    const inSpeedPass = (item) => {
+      const ms = Date.parse(item.ts)
+      return (
+        speedWindow !== null &&
+        ms >= speedWindow.startMs &&
+        ms <= speedWindow.endMs
+      )
+    }
+    const refusals = state.journeyRefusals
+      ? [
+          ...state.journeyRefusals,
+          ...logged.filter(inSpeedPass).map(unattributedRefusal),
+        ]
+      : logged.map(unattributedRefusal)
     const fullIdentity = {
       ...identity,
       endedAt: new Date(deps.now()).toISOString(),
