@@ -36,10 +36,8 @@ function appendTail(tail, chunk, limit) {
   return next.length > limit ? next.slice(next.length - limit) : next
 }
 
-/**
- * Runs `command` and resolves with `{ code, signal, timedOut, stopped,
- * stdout, stderr, durationMs, error }`. It never rejects for a child failure.
- */
+// Resolves { code, signal, timedOut, stopped, stdout, stderr, durationMs,
+// error }, and never rejects for a child failure.
 function run(command, args, options) {
   const {
     cwd,
