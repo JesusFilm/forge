@@ -6,7 +6,7 @@ on their own Mac. The runner builds the app from the current commit, runs fixed
 Maestro journeys on five runner-owned test devices behind a local read-only
 server, and writes one local report. The plan is
 `docs/plans/2026-10-21-1206-feat-mobile-release-check-runner-plan.md`, and the
-ticket is `docs/roadmap/platform/feat-775-mobile-release-check-runner.md`.
+ticket is `docs/roadmap/platform/feat-783-mobile-release-check-runner.md`.
 
 The runner gives no release decision. The mobile owner reads the report,
 decides the release, and tells the QA engineers.
