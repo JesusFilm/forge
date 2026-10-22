@@ -3,7 +3,7 @@ id: "feat-784"
 title: "Android app crash in expo-image's RenderScript blur"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-23"
 duration: 2
 depends_on: []
@@ -64,3 +64,17 @@ Likely mechanism (not verified): `RSBlur.blur` calls `RenderScript.releaseAllCon
 - On an Android emulator, open the Search tab from cleared app data at least 40 times with no crash. At the measured rate of about 1 in 12, 40 clean opens without the fix have a chance of about 4%. The main proof is structural: with no `blurRadius`, expo-image adds no `BlurTransformation`, so the RSBlur path cannot run.
 - Screenshot the Android topic cards before and after the change, and record the label contrast.
 - After the fix is on `main`, a release check run shows no `feat-784` Known-Bug match, and the summary proposes to remove the entries.
+
+## Results (2026-10-22)
+
+The release check runner ran a probe on the `android-phone` emulator: launch, open the Search tab, and hold 8 s while the six topic thumbnails decode. The runner clears the app data before each try.
+
+| Build                                  | Tries | Crashes |
+| -------------------------------------- | ----- | ------- |
+| Release check branch, no fix           | 20    | 0       |
+| With the fix (first round, no blur)    | 40    | 0       |
+| With the fix (final, stretched decode) | 5     | 0       |
+
+- The probe did not reproduce the crash without the fix. At about 1 crash in 12 opens, 20 clean tries happen by chance about 18% of the time. So the main proof is structural: with no `blurRadius`, `ExpoImageModule.kt` keeps the prop null, `ExpoImageViewWrapper.kt` adds no `BlurTransformation`, and `RSBlur.blur` cannot run.
+- The first round showed sharp topic thumbnails and soft vertical streaks in the ambient wash. The final round uses `stretchedDecodeStyle` (`src/lib/stretchedDecode.ts`): the topic cards use a shrink of 15, and the wash uses 64. On device screenshots, the topic cards match the old blurred look (mean luma gradient 1.097 against 1.133 with the old blur), the corners stay clipped, and the wash shows no streaks and no seam.
+- Follow-up on the feat-783 branch: remove the five `feat-784` Known-Bug entries in `apps/mobile/release-check/config/known-bugs.json` after this fix is on `main`.
