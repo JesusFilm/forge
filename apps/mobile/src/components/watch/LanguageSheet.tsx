@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 
 import { SearchableListSheet } from "../sheets/SearchableListSheet"
+import { SheetTitleRow } from "../sheets/SheetTitleRow"
 import { useUiTag } from "../../hooks/useUiTag"
 import { useT } from "../../i18n/useT"
 import type { WatchVariant } from "../../lib/normalizeVideo"
@@ -60,6 +61,8 @@ export function LanguageSheetContent({
     [downloadedDubDocumentId, t],
   )
 
+  const title = <SheetTitleRow title={t("languagesTitle")} />
+
   return (
     <SearchableListSheet
       rows={variants}
@@ -76,6 +79,7 @@ export function LanguageSheetContent({
       searchPlaceholder={t("searchLanguagesPlaceholder")}
       searchAccessibilityLabel={t("searchLanguagesAriaLabel")}
       emptySearchMessage={t("noLanguagesFound")}
+      headerTop={title}
       actionName="watch-language-sheet"
     />
   )
