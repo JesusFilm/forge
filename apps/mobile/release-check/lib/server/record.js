@@ -583,6 +583,13 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
       documentDigest: currentWatchSearchDigest(deps.mobileDir),
     })
   }
+  // The record folder must explain the outcome without the stdout JSON.
+  for (const problem of problems) run.log(`problem: ${problem}`)
+  run.log(
+    problems.length === 0
+      ? `wrote ${answers.length} answers to ${file} (${checks.checked} results checked)`
+      : `wrote nothing, because of ${problems.length} problem(s)`,
+  )
   deps.out(
     JSON.stringify(
       {

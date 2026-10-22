@@ -505,5 +505,13 @@ describe("record-search", () => {
       'VIDEO result gone-video of the search "creation": videoBySlug returned null on production',
     ])
     expect(fs.readFileSync(harness.answersFile, "utf8")).toBe(before)
+    // The record folder alone explains the refusal (2026-10-22 run 2).
+    const recordLog = fs.readFileSync(
+      path.join(printed.recordDir, "record.log"),
+      "utf8",
+    )
+    expect(recordLog).toMatch(
+      /problem: VIDEO result gone-video of the search "creation": videoBySlug returned null on production\n.*wrote nothing, because of 1 problem\(s\)\n$/,
+    )
   })
 })
