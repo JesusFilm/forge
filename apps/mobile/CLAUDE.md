@@ -1723,7 +1723,7 @@ design record is
   it moves the fingerprint runtime version on Android and iOS. An
   `eas update` published before that build reaches no installed app.
 - **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
-  tripwire.** It pins `expo` 57.0.30, `expo-notifications` 57.0.23,
+  tripwire.** It pins `expo` 57.0.31, `expo-notifications` 57.0.23,
   `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
   Expo's `isFCMIntent` gate, which is why removing the key makes the listener
   ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
@@ -1746,6 +1746,13 @@ design record is
     check. The prebuilt library's `.pom` and its Kotlin sources did not change.
     On 2026-10-16 `expo` moved to 57.0.30 by the same check: only
     `build.gradle`'s `version` and `versionName` lines differed.
+    On 2026-10-23 `expo` moved to 57.0.31 by the same check.
+  - **`expo-notifications` is held at 57.0.23 (2026-10-23).** 57.0.24 is the
+    PR #47615 change: a listener reports a handled tap, and the manager then
+    clears the pending tap queue. So it needs the cold-tap pass first.
+    `package.json` pins the exact version and lists the package in
+    `expo.install.exclude`, so `expo install --check` stays green. feat-785
+    holds the pass and removes the exclusion.
 - **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
   Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
   player keeps the process alive, and `am kill` then does nothing. Check that
