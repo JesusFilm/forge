@@ -114,6 +114,42 @@
       "target": "explore-2x-hold",
       "platforms": ["ios", "android"],
       "reason": "Maestro cannot run an assertion while a press is held, and the 2x cue is hidden from the accessibility tree. The explore-feed journey holds a side and checks only that the clip still shows after the hold."
+    },
+    {
+      "kind": "step",
+      "target": "more-links",
+      "platforms": ["ios", "android"],
+      "reason": "The More rows Contact Jesus Film Project, About Jesus Film, Newsletter, Give, Privacy Policy, Terms of Use, and Legal Statement open jesusfilm.org pages in the browser, and those pages send production web analytics. The more-and-feedback journey asserts that they show and never taps them (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "more-social-links",
+      "platforms": ["ios", "android"],
+      "reason": "The X, Facebook, Instagram, and YouTube buttons on the More screen open social web pages in the browser. The more-and-feedback journey asserts that they show and never taps them (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "bible-verse-share-target",
+      "platforms": ["ios", "android"],
+      "reason": "The bible-verse-select journey opens the system share sheet and cancels it. A share to a target sends the verse text out of the device."
+    },
+    {
+      "kind": "step",
+      "target": "raw-export-save",
+      "platforms": ["ios", "android"],
+      "reason": "The downloads-library journeys open the export folder picker and cancel it, so no export starts. A save copies the whole video file into a device folder outside the app, which the runner's app reset does not clear."
+    },
+    {
+      "kind": "step",
+      "target": "bible-translation-download-start",
+      "platforms": ["ios", "android"],
+      "reason": "The bible-translation-download journey opens the download prompt and cancels it. A download fetches the whole translation from bible.helloao.org, and the runner clears the app data before each journey, so each run would fetch it again."
+    },
+    {
+      "kind": "step",
+      "target": "home-tab-retap-scroll-to-top",
+      "platforms": ["ios", "android"],
+      "reason": "The plan's tabs-navigation step expects a second Home tap to scroll Home to the top, but the app has no such behavior: no tab screen handles a second tap, and on the iPhone SE simulator (2026-10-23) Home stayed scrolled. The journey taps Home again and checks only that Home still shows."
     }
   ]
 }

@@ -1,0 +1,189 @@
+# Check the More links without a tap (they send web analytics; KTD12). Send
+# the feedback form (AE2): the server answers it locally, and the log check
+# proves that nothing was forwarded. Then open and close the feedback door.
+appId: org.jesusfilm.forgewatch
+name: more-and-feedback
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: My Watch
+    label: Open My Watch
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-profile
+    timeout: 20000
+    label: My Watch shows
+- tapOn:
+    text: More
+    label: Open More
+- extendedWaitUntil:
+    visible:
+      id: screen-more
+    timeout: 20000
+    label: More shows
+- assertVisible:
+    text: Send Feedback
+    label: The Send Feedback row shows
+- assertVisible:
+    text: Contact Jesus Film Project
+    label: The contact link shows
+- assertVisible:
+    text: About Jesus Film
+    label: The About Jesus Film link shows
+- assertVisible:
+    text: Newsletter
+    label: The newsletter link shows
+- assertVisible:
+    text: Give
+    label: The Give link shows
+- scrollUntilVisible:
+    element:
+      text: Legal Statement
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the legal links
+- assertVisible:
+    text: YouTube
+    label: The social links show
+- assertVisible:
+    text: Privacy Policy
+    label: The privacy policy link shows
+- assertVisible:
+    text: Terms of Use
+    label: The terms of use link shows
+- scrollUntilVisible:
+    element:
+      text: Send Feedback
+    direction: UP
+    timeout: 10000
+    label: Scroll back to Send Feedback
+- tapOn:
+    text: Send Feedback
+    label: Open the feedback form
+- extendedWaitUntil:
+    visible:
+      id: screen-feedback
+    timeout: 20000
+    label: The feedback form shows
+- tapOn:
+    text: Something's broken
+    label: Pick the kind of feedback
+# iOS reads the field's label and its placeholder as one text.
+- tapOn:
+    text: "Your message.*"
+    label: Open the message field
+- inputText:
+    text: Release check test. Please ignore this message.
+    label: Type the message
+# The keyboard covers the send button. A tap on plain text in the form
+# closes the keyboard.
+- tapOn:
+    text: "[0-9]+ of 1000 characters"
+    label: Close the keyboard
+# On an iPad the form is a short sheet, and Maestro counts the send button as
+# visible below the sheet's edge, where a tap closes the sheet. So the
+# journey scrolls the form itself first.
+- swipe:
+    from:
+      id: screen-feedback
+    direction: UP
+    label: Scroll the form up
+- scrollUntilVisible:
+    element:
+      id: feedback-send
+    direction: DOWN
+    timeout: 10000
+    label: Scroll to the send button
+# The success panel shows for only 1.5 seconds, so the tap does not wait for
+# the screen to settle.
+- tapOn:
+    id: feedback-send
+    waitToSettleTimeoutMs: 100
+    label: Send the feedback
+# The success panel is one button that carries the form's root testID and the
+# label "Close". iOS hides the panel's text inside that button.
+- extendedWaitUntil:
+    visible:
+      id: screen-feedback
+      text: Close
+    timeout: 5000
+    label: The feedback form shows its success panel
+- extendedWaitUntil:
+    notVisible:
+      id: screen-feedback
+    timeout: 10000
+    label: The feedback form closes by itself
+- assertVisible:
+    id: screen-more
+    label: More shows after the feedback form
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+# The controls hide 3 seconds after a tap while the video plays, and the
+# pause button sits at the player's center. So the journey waits until the
+# controls hide, then taps the center twice: once to show them, once to pause.
+- extendedWaitUntil:
+    notVisible:
+      text: Pause
+    timeout: 10000
+    label: The player controls hide
+- tapOn:
+    text: Toggle player controls
+    repeat: 2
+    delay: 1000
+    label: Show the controls and pause the video
+- tapOn:
+    text: Video settings
+    label: Open the player settings
+- extendedWaitUntil:
+    visible:
+      id: screen-player-settings
+    timeout: 10000
+    label: The player settings show
+- tapOn:
+    text: Report a problem with this video
+    label: Open the player's feedback form
+- extendedWaitUntil:
+    visible:
+      id: screen-feedback-modal
+    timeout: 10000
+    label: The player's feedback form shows
+- assertVisible:
+    text: "About: .+"
+    label: The form names the video
+- tapOn:
+    text: Close
+    label: Close the player's feedback form
+- extendedWaitUntil:
+    notVisible:
+      id: screen-feedback-modal
+    timeout: 10000
+    label: The player's feedback form closes

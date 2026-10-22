@@ -1,0 +1,110 @@
+# Open every tab that the test settings show, tap Home again, and use the
+# Android back button on Android. The runner sets EXPLORE_TAB to "shown" or
+# "hidden" from the test settings (KTD11).
+appId: org.jesusfilm.forgewatch
+name: tabs-navigation
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- assertVisible:
+    id: home-body-live
+    label: The Home body comes from the live Experience
+- runFlow:
+    when:
+      true: ${EXPLORE_TAB == "shown"}
+    commands:
+      - tapOn:
+          text: Explore
+          label: Open the Explore tab
+      - extendedWaitUntil:
+          visible:
+            id: screen-tab-explore
+          timeout: 20000
+          label: The Explore tab shows
+    label: Open the Explore tab where the settings show it
+- tapOn:
+    text: Bible
+    label: Open the Bible tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-bible
+    timeout: 20000
+    label: The Bible tab shows
+- tapOn:
+    text: My Watch
+    label: Open the My Watch tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-profile
+    timeout: 20000
+    label: My Watch shows
+- tapOn:
+    text: Home
+    label: Open the Home tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows again
+- scroll:
+    label: Scroll Home down
+# The app has no scroll to the top on a second Home tap (not-tested.json), so
+# the journey checks only that Home stays.
+- waitForAnimationToEnd:
+    label: Wait for Home to stop moving
+- tapOn:
+    text: Home
+    label: Tap Home again
+- assertVisible:
+    id: screen-tab-home
+    label: Home still shows after the second tap
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - tapOn:
+          text: Bible
+          label: Open the Bible tab on Android
+      - extendedWaitUntil:
+          visible:
+            id: screen-tab-bible
+          timeout: 20000
+          label: The Bible tab shows on Android
+      - pressKey:
+          key: back
+          label: Press the Android back button
+      - extendedWaitUntil:
+          visible:
+            id: screen-tab-home
+          timeout: 20000
+          label: The back button goes to Home
+      - assertNotVisible:
+          id: screen-tab-bible
+          label: The Bible tab is no longer on screen
+    label: Use the Android back button
+# Search comes last: on iOS 26 the Search tab replaces the tab bar with a Home
+# button (README section 2), and on Android the Search tab can crash
+# (feat-784, known-bugs.json).
+- tapOn:
+    text: Search
+    label: Open the Search tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows
+- tapOn:
+    text: Home
+    label: Leave the Search tab by its Home button
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows after Search

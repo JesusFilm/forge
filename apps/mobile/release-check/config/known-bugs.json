@@ -28,6 +28,13 @@
       "step": "Search shows",
       "check": "app_crashed",
       "ticket": "feat-784"
+    },
+    {
+      "journey": "tabs-navigation",
+      "devices": ["android-phone", "android-tablet"],
+      "step": "Search shows",
+      "check": "app_crashed",
+      "ticket": "feat-784"
     }
   ]
 }
