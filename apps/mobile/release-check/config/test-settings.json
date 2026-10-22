@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "productionCheckedAt": null,
+  "productionCheckedAt": "2026-10-22",
   "ports": {
     "device": 38211,
     "hostIos": 38211,
@@ -10,7 +10,7 @@
   "copiedFromProduction": {
     "EXPO_PUBLIC_AUTH_BASE_URL": null,
     "EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED": null,
-    "EXPO_PUBLIC_EXPLORE_ENABLED": null,
+    "EXPO_PUBLIC_EXPLORE_ENABLED": "1",
     "EXPO_PUBLIC_FORGE_CACHE_PERSIST": null,
     "EXPO_PUBLIC_SIGN_IN_ENABLED": null
   },
@@ -29,7 +29,8 @@
     "EXPO_PUBLIC_DATADOG_SITE",
     "EXPO_PUBLIC_DATADOG_VERSION",
     "EXPO_PUBLIC_UI_PSEUDO_LOCALE",
-    "EXPO_PUBLIC_USE_RN_FETCH"
+    "EXPO_PUBLIC_USE_RN_FETCH",
+    "EXPO_PUBLIC_WEB_BASE_URL"
   ],
   "muxDataEnvKeyDigests": []
 }

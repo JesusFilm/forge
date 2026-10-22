@@ -16,6 +16,15 @@ const CLEAR_FLOW = "clear-system-alert"
 
 const DEVICES = readJson(path.join(CONFIG_DIR, "devices.json"))
 const SETTINGS = readJson(path.join(CONFIG_DIR, "test-settings.json"))
+// Pinned so that production values in the committed list do not change what
+// these tests expect: Explore stays hidden on both platforms here.
+const EXPLORE_HIDDEN_SETTINGS = {
+  ...SETTINGS,
+  copiedFromProduction: {
+    ...SETTINGS.copiedFromProduction,
+    EXPO_PUBLIC_EXPLORE_ENABLED: null,
+  },
+}
 const SCHEMA = readJson(
   path.join(__dirname, "..", "schema", "summary.schema.json"),
 )
@@ -188,7 +197,7 @@ function setUp(failures, options = {}) {
       platforms: ["ios", "android"],
       scope: "partial",
     },
-    settings: SETTINGS,
+    settings: EXPLORE_HIDDEN_SETTINGS,
     devicesConfig: DEVICES,
     artifacts: {
       ios: "/builds/ios/forgewatch.app",

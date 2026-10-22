@@ -109,8 +109,8 @@ async function startUpstream() {
   return { received, url: `http://127.0.0.1:${port}/api/graphql` }
 }
 
-/** A config folder with the committed lists and the given lane ports. */
-function configWithPorts(ports = {}) {
+/** A config folder with the committed lists, lane ports, and copied values. */
+function configWithPorts(ports = {}, copied = {}) {
   const dir = tempDir("release-check-session-config-")
   for (const name of fs.readdirSync(CONFIG_DIR)) {
     fs.copyFileSync(path.join(CONFIG_DIR, name), path.join(dir, name))
@@ -118,6 +118,10 @@ function configWithPorts(ports = {}) {
   const file = path.join(dir, "test-settings.json")
   const settings = readJson(file)
   settings.ports = { ...settings.ports, ...ports }
+  settings.copiedFromProduction = {
+    ...settings.copiedFromProduction,
+    ...copied,
+  }
   fs.writeFileSync(file, JSON.stringify(settings))
   return dir
 }
@@ -346,7 +350,8 @@ describe("session try", () => {
     )
     const children = []
     const events = []
-    const { deps, out } = baseDeps(home, CONFIG_DIR, {
+    const configDir = configWithPorts({}, { EXPO_PUBLIC_EXPLORE_ENABLED: null })
+    const { deps, out } = baseDeps(home, configDir, {
       isAlive: (pid) => pid === 4242,
       processStart: async () => "Thu Oct 22 16:00:00 2026",
       createSimulator: fakeSimulator(events),
