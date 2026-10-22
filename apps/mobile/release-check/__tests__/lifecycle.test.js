@@ -589,6 +589,137 @@ describe("admin rate-limit refusals in the speed pass (R36)", () => {
   })
 })
 
+describe("proposed list changes (KTD16)", () => {
+  async function proposedActions(journeys) {
+    const home = tempHome()
+    const { deps } = stubDeps(home, { phases: { journeys } })
+    await runCommand(parseArgs(["run", "--yes"]), deps)
+    return onlySummary(home).proposedActions
+  }
+
+  const NO_GAPS = { gaps: [], notReached: [], skippedPlatforms: [] }
+
+  it("proposes a Known-Bug entry for each journey on a device labelled new", async () => {
+    const newFailure = {
+      status: "failed",
+      label: "new",
+      class: "app_crashed",
+      failedStep: "The video plays",
+      error: "The app crashed.",
+    }
+    const flaky = { label: "flaky" }
+    const known = { label: "known", knownBugTicket: "FORGE-1" }
+    const actions = await proposedActions(async () => ({
+      attempts: [
+        attempt("open-video-play", "ipad-pro-13", { ...newFailure, ...known }),
+        attempt("open-video-play", "ipad-pro-13", {
+          ...newFailure,
+          ...known,
+          attempt: 2,
+        }),
+        attempt("open-video-play", "iphone-se", newFailure),
+        attempt("open-video-play", "iphone-se", { ...newFailure, attempt: 2 }),
+        attempt("open-video-play", "android-phone", {
+          ...newFailure,
+          ...flaky,
+        }),
+        attempt("open-video-play", "android-phone", { attempt: 2, ...flaky }),
+        attempt("cold-launch-home", "iphone-se"),
+      ],
+      screens: NO_GAPS,
+    }))
+    expect(actions).toEqual([
+      {
+        type: "add_known_bug",
+        reason: expect.any(String),
+        journey: "open-video-play",
+        devices: ["iphone-se"],
+        step: "The video plays",
+        check: "app_crashed",
+        ticket: null,
+      },
+    ])
+  })
+
+  it("proposes the removal of each stale Known-Bug entry", async () => {
+    const stale = {
+      journey: "cold-launch-home",
+      devices: ["iphone-se", "android-phone"],
+      step: "Home content shows",
+      check: "assertion_failed",
+      ticket: "FORGE-2050",
+    }
+    const actions = await proposedActions(async (ctx) => ({
+      ...passingJourneys(ctx),
+      staleKnownBugs: [stale],
+    }))
+    expect(actions).toEqual([
+      { type: "remove_known_bug", reason: expect.any(String), ...stale },
+    ])
+  })
+
+  it("proposes one saved search answer for each search that had none", async () => {
+    const peace = { query: "peace", limit: 20, offset: 0, language: "english" }
+    const line = (deviceId, route, search) =>
+      JSON.stringify({
+        ts: "2026-10-22T03:00:00.000Z",
+        port: 38211,
+        lane: "ios",
+        deviceId,
+        method: "POST",
+        path: "/api/graphql",
+        route,
+        opType: "query",
+        opName: "WatchSearch",
+        status: 200,
+        rateLimit: null,
+        search,
+      })
+    const actions = await proposedActions(async (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.runDir, "server-log.jsonl"),
+        [
+          line("iphone-se", "missing-search-answer", peace),
+          line("android-phone", "missing-search-answer", { ...peace }),
+          line("iphone-se", "saved-answer", { ...peace, query: "jesus" }),
+          line("iphone-se", "missing-search-answer", { ...peace, offset: 20 }),
+        ].join("\n"),
+      )
+      return passingJourneys(ctx)
+    })
+    expect(actions).toEqual([
+      {
+        type: "record_search_answer",
+        reason: expect.any(String),
+        search: peace,
+      },
+      {
+        type: "record_search_answer",
+        reason: expect.any(String),
+        search: { ...peace, offset: 20 },
+      },
+    ])
+  })
+
+  it("proposes a journey for each screen gap", async () => {
+    const gaps = [
+      { screen: "tab-explore", platform: "ios" },
+      { screen: "reader-settings", platform: "android" },
+    ]
+    const actions = await proposedActions(async (ctx) => ({
+      ...passingJourneys(ctx),
+      screens: { ...NO_GAPS, gaps },
+    }))
+    expect(actions).toEqual(
+      gaps.map((gap) => ({
+        type: "write_journey",
+        reason: expect.any(String),
+        ...gap,
+      })),
+    )
+  })
+})
+
 describe("a stale lock", () => {
   it("shows as stale in plan and does not block the next run", async () => {
     const home = tempHome()

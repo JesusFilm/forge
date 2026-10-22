@@ -516,6 +516,7 @@ function createJourneyPhases(options = {}) {
     return {
       passed: run.probeFailures.length === 0,
       findings: [...run.probeFailures],
+      attempts: [...run.attempts],
     }
   }
 

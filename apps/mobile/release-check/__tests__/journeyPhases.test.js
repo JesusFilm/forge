@@ -210,6 +210,23 @@ describe("a failed settings probe", () => {
     ])
   })
 
+  it("returns the probe attempts with its result, so the report keeps them", async () => {
+    const { phases, ctx } = setUp({
+      "android-phone settings-probe": "Home shows",
+    })
+    const result = await phases.probing(ctx)
+    expectValidAttempts(result.attempts)
+    const rows = result.attempts
+      .map((a) => [a.deviceId, a.journey, a.attempt, a.status, a.failedStep])
+      .sort((a, b) => `${a[0]} ${a[2]}`.localeCompare(`${b[0]} ${b[2]}`))
+    expect(rows).toEqual([
+      ["android-phone", PROBE_ID, 1, "failed", "Home shows"],
+      ["android-phone", PROBE_ID, 2, "failed", "Home shows"],
+      ["android-tablet", PROBE_ID, 1, "passed", null],
+      ["iphone-se", PROBE_ID, 1, "passed", null],
+    ])
+  })
+
   it("on a later iOS device stops the run before that lane's other journeys start", async () => {
     const { phases, ctx, calls, stops, lanes } = setUp({
       "iphone-17-pro-max settings-probe": "The sign-in card is disabled",
