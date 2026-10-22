@@ -187,10 +187,8 @@ function fakeHandle(device) {
   }
 }
 
-/**
- * The record mode with fake devices and Maestro. Each Maestro attempt sends
- * the searches that `appSearches` names to the lane port, as the app would.
- */
+// Record mode with fake devices and Maestro. Each attempt sends the
+// `appSearches` to the lane port, as the app would.
 async function recordHarness({ local, production, appSearches, adminUrl }) {
   const home = tempDir("release-check-record-")
   const configDir = tempDir("release-check-record-config-")

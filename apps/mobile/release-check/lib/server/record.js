@@ -147,11 +147,8 @@ function failedSearchBody(reason) {
   }
 }
 
-/**
- * The server's search hook in record mode. It sends the app's own search to
- * the local admin, answers the app with that answer, and keeps the first
- * answer for each search input as a saved-answer entry.
- */
+// The server's search hook in record mode: the app's own search goes to local
+// admin, the app gets that answer, and the first answer per input is kept.
 function createSearchRecorder({ adminUrl, post = postJson, now = Date.now }) {
   const target = localAdminUrl(adminUrl)
   const entries = new Map()
@@ -270,11 +267,9 @@ function refusalOf(check, reason) {
   }
 }
 
-/**
- * Checks each VIDEO result with `videoBySlug` and each EXPERIENCE result with
- * `experienceBySlug` in the answer's language, through the read-only server,
- * so each read takes the normal path to production.
- */
+// VIDEO results by `videoBySlug`, EXPERIENCE results by `experienceBySlug` in
+// the answer's language. The reads go through the read-only server, so each
+// takes the normal paced path to production.
 async function checkResults(
   entries,
   {

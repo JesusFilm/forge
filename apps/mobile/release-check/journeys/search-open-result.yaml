@@ -1,7 +1,6 @@
-# Search for a fixed word and open a video result (R19 starter journey). A run
-# answers each search from config/search-answers.json, which record-search
-# writes from local admin, so the first result is the same on every Mac (R21).
-# The `search` tag makes record-search run this journey (KTD10).
+# Search for a fixed word and open a video result (R19 starter journey). Runs
+# answer from config/search-answers.json, so the first result is the same on
+# every Mac (R21). The `search` tag makes record-search run it (KTD10).
 appId: org.jesusfilm.forgewatch
 name: search-open-result
 tags:

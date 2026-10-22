@@ -64,10 +64,8 @@ function untilAborted(signal) {
   })
 }
 
-/**
- * The run's layers (lifecycle createDeps) plus the device, Maestro, and
- * process layers of a session. A test replaces any of them.
- */
+// The run's layers (lifecycle createDeps) plus the session's device, Maestro,
+// and process layers, so a test can replace any of them.
 function createSessionDeps(overrides = {}) {
   const lifecycle = require("./lifecycle")
   return {
@@ -90,10 +88,8 @@ function createSessionDeps(overrides = {}) {
 
 // ── Devices and builds (shared with record-search) ──────────────────
 
-/**
- * A device id from devices.json, or a `Forge RC` simulator name or a
- * `forge_rc_` AVD name from that list. Anything else is refused (R7).
- */
+// A devices.json id, or a `Forge RC` simulator or `forge_rc_` AVD name from
+// that list. Anything else is refused, so a session never uses another's (R7).
 function resolveRunnerDevice(input, devicesConfig) {
   const devices = devicesConfig.devices
   const ids = devices.map((device) => device.id).join(", ")
@@ -150,11 +146,8 @@ async function buildFindings(deps, file) {
   }
 }
 
-/**
- * The checked test build of HEAD for each platform: the build in
- * `<home>/builds/<commit>` when it passes the build check, else a new build,
- * which needs clean build inputs (R8).
- */
+// The checked build of HEAD for each platform: `<home>/builds/<commit>` when it
+// passes the build check, else a new build, which needs clean inputs (R8).
 async function checkedBuild(deps, { platforms, signal }) {
   const commit = await deps.git.head()
   const buildDir = path.join(deps.home, "builds", commit)
@@ -292,10 +285,8 @@ async function appEvidence(deps, device, handle, window, answered) {
   })
 }
 
-/**
- * One journey attempt on a booted device: reset the app, run one `maestro
- * test` with the runner's settings, and read the steps from commands.json.
- */
+// One attempt as a run makes it (U7): reset the app, run one `maestro test`
+// with the runner's settings, and read the steps from commands.json.
 async function runJourneyOnce(
   deps,
   { device, handle, flowFile, outputDir, artifacts, serverLog, signal },
@@ -402,11 +393,8 @@ function refuse(deps, message) {
 
 // ── session up ──────────────────────────────────────────────────────
 
-/**
- * The detached session process. It takes the lock, finds or makes the checked
- * build, starts the server on the device's lane, boots the device, installs
- * the app, and then holds all of it until SIGTERM (`session down`).
- */
+// The detached session process: it must outlive `session up`, so it holds the
+// lock, the build, the server, and the device until SIGTERM (`session down`).
 async function serveSession({ sessionDir, deviceId }, deps) {
   const sessionId = path.basename(sessionDir)
   const device = deps.config.devices.devices.find(
