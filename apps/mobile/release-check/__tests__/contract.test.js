@@ -7,6 +7,7 @@ const path = require("node:path")
 
 const { parseArgs, validateAgainstSchema } = require("../lib/contract")
 const { readJson } = require("../lib/lists")
+const { buildSummary } = require("../lib/report/summary")
 
 const CLI = path.join(__dirname, "..", "cli.mjs")
 const SUMMARY_SCHEMA = readJson(
@@ -97,18 +98,11 @@ describe("parseArgs", () => {
 })
 
 describe("summary.schema.json", () => {
-  const minimal = {
-    schemaVersion: 1,
-    runId: "2026-10-22T09-00-00Z-a1b2",
-    scope: "release",
-    result: "pass",
-    stopReason: "completed",
-    commit: "2bcf98e19a1b2c3d4e5f60718293a4b5c6d7e8f9",
-    startedAt: "2026-10-22T09:00:00.000Z",
-    endedAt: "2026-10-22T10:30:00.000Z",
-  }
+  const minimal = buildSummary(
+    readJson(path.join(__dirname, "fixtures", "summaries", "pass.json")),
+  )
 
-  it("accepts a minimal valid summary", () => {
+  it("accepts a valid summary", () => {
     expect(validateAgainstSchema(SUMMARY_SCHEMA, minimal)).toEqual([])
   })
 
@@ -124,5 +118,58 @@ describe("summary.schema.json", () => {
     expect(() =>
       validateAgainstSchema({ type: "object", oneOf: [] }, minimal),
     ).toThrow("summary schema keyword `oneOf` is not supported")
+  })
+})
+
+describe("validateAgainstSchema with $ref", () => {
+  const schema = {
+    type: "object",
+    $defs: {
+      finding: {
+        required: ["code"],
+        properties: { code: { type: "string" } },
+        additionalProperties: false,
+      },
+    },
+    properties: {
+      build: { type: ["object", "null"], $ref: "#/$defs/finding" },
+      log: {
+        type: "array",
+        items: { type: "object", $ref: "#/$defs/finding" },
+      },
+    },
+  }
+
+  it("checks a value against the $defs entry that $ref names", () => {
+    expect(
+      validateAgainstSchema(schema, {
+        build: { code: "BUILD" },
+        log: [{ code: "LOG" }],
+      }),
+    ).toEqual([])
+    expect(
+      validateAgainstSchema(schema, {
+        build: {},
+        log: [{ code: 1, extra: true }],
+      }),
+    ).toEqual([
+      "summary.build.code is required",
+      "summary.log[0].code must be string",
+      "summary.log[0].extra is not allowed",
+    ])
+  })
+
+  it("lets the use site allow null for a $defs object", () => {
+    expect(validateAgainstSchema(schema, { build: null, log: [] })).toEqual([])
+    expect(validateAgainstSchema(schema, { build: "x", log: [null] })).toEqual([
+      "summary.build must be object or null",
+      "summary.log[0] must be object",
+    ])
+  })
+
+  it("throws on a $ref that names no $defs entry", () => {
+    expect(() =>
+      validateAgainstSchema({ $ref: "#/$defs/missing" }, {}),
+    ).toThrow("summary schema $ref `#/$defs/missing` names no $defs entry")
   })
 })

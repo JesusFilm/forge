@@ -241,8 +241,9 @@ function formatRefusal(parsed) {
 
 // A validator for the JSON Schema keywords that schema/summary.schema.json
 // uses. An unknown keyword throws, so a schema edit cannot pass by omission.
-const ANNOTATIONS = new Set(["$schema", "$id", "title", "description"])
+const ANNOTATIONS = new Set(["$schema", "$id", "title", "description", "$defs"])
 const KEYWORDS = new Set([
+  "$ref",
   "type",
   "enum",
   "required",
@@ -265,11 +266,24 @@ function matchesType(input, type) {
   return actual === type || (type === "number" && actual === "integer")
 }
 
-function validateNode(schema, input, where, errors) {
+const LOCAL_REF = /^#\/\$defs\/([^/]+)$/
+
+function resolveRef(root, ref) {
+  const name = ref.match(LOCAL_REF)?.[1]
+  if (name === undefined || !Object.hasOwn(root.$defs ?? {}, name)) {
+    throw new Error(`summary schema $ref \`${ref}\` names no $defs entry`)
+  }
+  return root.$defs[name]
+}
+
+function validateNode(schema, input, where, errors, root) {
   for (const keyword of Object.keys(schema)) {
     if (!KEYWORDS.has(keyword) && !ANNOTATIONS.has(keyword)) {
       throw new Error(`summary schema keyword \`${keyword}\` is not supported`)
     }
+  }
+  if (schema.$ref !== undefined) {
+    validateNode(resolveRef(root, schema.$ref), input, where, errors, root)
   }
   if (schema.type !== undefined) {
     const types = Array.isArray(schema.type) ? schema.type : [schema.type]
@@ -291,7 +305,7 @@ function validateNode(schema, input, where, errors) {
   }
   if (Array.isArray(input) && schema.items) {
     input.forEach((item, index) =>
-      validateNode(schema.items, item, `${where}[${index}]`, errors),
+      validateNode(schema.items, item, `${where}[${index}]`, errors, root),
     )
   }
   if (typeOf(input) === "object") {
@@ -301,7 +315,7 @@ function validateNode(schema, input, where, errors) {
     const properties = schema.properties ?? {}
     for (const [key, item] of Object.entries(input)) {
       if (Object.hasOwn(properties, key)) {
-        validateNode(properties[key], item, `${where}.${key}`, errors)
+        validateNode(properties[key], item, `${where}.${key}`, errors, root)
       } else if (schema.additionalProperties === false) {
         errors.push(`${where}.${key} is not allowed`)
       } else if (typeof schema.additionalProperties === "object") {
@@ -310,6 +324,7 @@ function validateNode(schema, input, where, errors) {
           item,
           `${where}.${key}`,
           errors,
+          root,
         )
       }
     }
@@ -318,7 +333,7 @@ function validateNode(schema, input, where, errors) {
 
 function validateAgainstSchema(schema, input) {
   const errors = []
-  validateNode(schema, input, "summary", errors)
+  validateNode(schema, input, "summary", errors, schema)
   return errors
 }
 
