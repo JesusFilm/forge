@@ -61,7 +61,10 @@ const MODES = Object.freeze({
   "check-build": { positionals: ["<app>"], example: "check-build <app>" },
   "check-log": { positionals: ["<log>"], example: "check-log <log>" },
   "check-settings": { example: "check-settings" },
-  "record-search": { example: "record-search" },
+  "record-search": {
+    flags: { "--admin-url": value("<url>") },
+    example: "record-search --admin-url http://localhost:3003/api/graphql",
+  },
   session: {
     subcommands: {
       up: {

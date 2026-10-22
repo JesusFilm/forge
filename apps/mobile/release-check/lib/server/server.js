@@ -88,6 +88,8 @@ function createReadOnlyServer({
   upstreamUrl = DEFAULT_UPSTREAM_URL,
   operations,
   searchAnswers,
+  // record-search (KTD10) answers each search itself; a run never sets it.
+  answerSearchRequest = null,
   adminSchemaSdl,
   logPath,
   onUpstreamUnavailable,
@@ -177,7 +179,9 @@ function createReadOnlyServer({
       return { ...parsed, ...(await forwardOnce(classified, arrivedAt)) }
     }
     if (classified.action === "search") {
-      const found = await answerSearch(classified, searchAnswers, schema)
+      const found = answerSearchRequest
+        ? await answerSearchRequest(classified)
+        : await answerSearch(classified, searchAnswers, schema)
       if (found.route !== "blocked") {
         return {
           ...parsed,
