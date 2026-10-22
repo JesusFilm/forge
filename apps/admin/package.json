@@ -35,6 +35,7 @@
     "watch-exposure:index:online": "tsx src/scripts/watch-exposure-online-index.ts",
     "pull:mapping": "tsx src/scripts/pull-mapping-from-prod.ts",
     "cleanup:legacy-openai-embeddings": "tsx src/scripts/cleanup-legacy-openai-embeddings.ts",
+    "watch-search:transcript-reconciliation": "tsx src/scripts/watch-search-transcript-reconciliation.ts",
     "run-embeds": "tsx src/scripts/run-embeds.ts",
     "cowatch:shadow:rebuild": "tsx src/scripts/rebuild-recommendation-cowatch-shadow.ts",
     "cowatch:shadow:evaluate": "tsx src/scripts/run-recommendation-cowatch-shadow-evaluation.ts",

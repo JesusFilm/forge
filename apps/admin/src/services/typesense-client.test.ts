@@ -318,6 +318,67 @@ describe("TypesenseClient", () => {
     ).resolves.toBeUndefined()
   })
 
+  it("exports documents as JSONL rows and applies filter/field query params", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(
+        new Response(
+          [
+            JSON.stringify({ id: "chunk-1" }),
+            JSON.stringify({ id: "chunk-2" }),
+          ].join("\n"),
+        ),
+      )
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(
+      client.exportDocuments<{ id: string }>("chunks", {
+        filterBy: "documentKind:=transcript",
+        includeFields: "id",
+      }),
+    ).resolves.toEqual([{ id: "chunk-1" }, { id: "chunk-2" }])
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8108/collections/chunks/documents/export?filter_by=documentKind%3A%3Dtranscript&include_fields=id",
+      expect.anything(),
+    )
+  })
+
+  it("exports an empty collection as an empty array without query params", async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(""))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(client.exportDocuments("chunks")).resolves.toEqual([])
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8108/collections/chunks/documents/export",
+      expect.anything(),
+    )
+  })
+
+  it("rejects an export response containing an invalid JSON line", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response("not json"))
+    const client = new TypesenseClient({
+      host: "http://localhost:8108",
+      apiKey: "test-key",
+      fetch: fetchMock,
+    })
+
+    await expect(client.exportDocuments("chunks")).rejects.toEqual(
+      expect.any(TypesenseImportResponseError),
+    )
+  })
+
   it("surfaces a failed multi-search result", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

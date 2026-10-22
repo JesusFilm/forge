@@ -320,6 +320,44 @@ export class TypesenseClient {
     if (failures.length > 0) throw new TypesenseImportError(failures)
   }
 
+  async exportDocuments<T extends object>(
+    collection: string,
+    options: {
+      filterBy?: string
+      includeFields?: string
+      excludeFields?: string
+    } = {},
+  ): Promise<T[]> {
+    const params = new URLSearchParams()
+    if (options.filterBy) params.set("filter_by", options.filterBy)
+    if (options.includeFields) {
+      params.set("include_fields", options.includeFields)
+    }
+    if (options.excludeFields) {
+      params.set("exclude_fields", options.excludeFields)
+    }
+    const query = params.toString()
+    const responseText = await this.request<string>(
+      `/collections/${encodeURIComponent(collection)}/documents/export${
+        query ? `?${query}` : ""
+      }`,
+      {},
+      { responseType: "text" },
+    )
+    return responseText
+      .split("\n")
+      .filter(Boolean)
+      .map((line, index) => {
+        try {
+          return JSON.parse(line) as T
+        } catch (error) {
+          throw new TypesenseImportResponseError(
+            `Typesense export response line ${index + 1} is invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+          )
+        }
+      })
+  }
+
   getDocument<T extends object>(
     collection: string,
     id: string,

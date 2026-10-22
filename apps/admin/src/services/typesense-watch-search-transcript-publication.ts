@@ -196,7 +196,7 @@ function stableJson(value: unknown): unknown {
   return value
 }
 
-function sha256(value: unknown): string {
+export function sha256(value: unknown): string {
   return createHash("sha256")
     .update(JSON.stringify(stableJson(value)))
     .digest("hex")
@@ -259,7 +259,7 @@ function normalizeTypesenseFloat(value: number): number {
   return normalized
 }
 
-function normalizeTranscriptDocument(
+export function normalizeTranscriptDocument(
   document: TypesenseWatchTranscriptDocument,
 ): TypesenseWatchTranscriptDocument {
   return {
@@ -290,7 +290,7 @@ function exactIdFilter(ids: readonly string[]): string {
   return `id:=[${ids.map((id) => `\`${id.replaceAll("`", "\\`")}\``).join(",")}]`
 }
 
-async function mapWithConcurrency<Value, Result>(
+export async function mapWithConcurrency<Value, Result>(
   values: readonly Value[],
   concurrency: number,
   mapper: (value: Value, index: number) => Promise<Result>,
@@ -1044,7 +1044,7 @@ async function releaseTranscriptPublicationBatch(
 }
 
 export async function loadCurrentWatchSearchTranscriptProjection(
-  prisma: PrismaClient,
+  prisma: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">,
 ): Promise<ProjectionState> {
   const row = await prisma.watchSearchCurrentTranscriptProjection.findUnique({
     where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },

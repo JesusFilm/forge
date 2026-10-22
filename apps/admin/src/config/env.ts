@@ -164,6 +164,15 @@ export function resolveWatchSearchTranscriptPublicationEnabled(
   )
 }
 
+export function resolveWatchSearchTranscriptReconciliationEnabled(
+  value: unknown = env.WATCH_SEARCH_TRANSCRIPT_RECONCILIATION_ENABLED,
+): boolean {
+  return runtimeWatchSearchFlag(
+    value,
+    watchSearchTranscriptPublicationEnabledEnvSchema,
+  )
+}
+
 export function resolveWatchCatalogPublicationEnabled(
   value: unknown = env.WATCH_CATALOG_PUBLICATION_ENABLED,
 ): boolean {
@@ -451,6 +460,11 @@ export const env = createEnv({
     WATCH_SEARCH_CANDIDATE_COMPARISON_ENABLED:
       watchSearchCandidateComparisonEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED:
+      watchSearchTranscriptPublicationEnabledEnvSchema,
+    // Independent default-off gate for the bootstrap/backfill reconciliation
+    // audit's mutating (`--execute`) path. Dry-run reporting never requires
+    // this flag; see typesense-watch-search-transcript-reconciliation.ts.
+    WATCH_SEARCH_TRANSCRIPT_RECONCILIATION_ENABLED:
       watchSearchTranscriptPublicationEnabledEnvSchema,
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION:
       watchSearchTranscriptProjectionRevisionEnvSchema,
@@ -1051,6 +1065,9 @@ export const env = createEnv({
       "false",
     WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED: emptyToUndefined(
       process.env.WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED,
+    ),
+    WATCH_SEARCH_TRANSCRIPT_RECONCILIATION_ENABLED: emptyToUndefined(
+      process.env.WATCH_SEARCH_TRANSCRIPT_RECONCILIATION_ENABLED,
     ),
     WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION: emptyToUndefined(
       process.env.WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION,
