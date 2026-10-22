@@ -14,7 +14,7 @@ tags:
 
 ## Problem
 
-The Android app can crash when the Search tab opens. The release check (feat-783) found it on 2026-10-22 at 19:46:39Z, on the `android-phone` emulator (API 35), in the `search-open-result` journey at the step "Search shows". It crashed in 1 of 5 Search-tab opens. Each open starts from cleared app data, so each one decodes the images again.
+The Android app can crash when the Search tab opens. The release check (feat-783) found it on 2026-10-22 at 19:46:39Z, on the `android-phone` emulator (API 35), in the `search-open-result` journey at the step "Search shows". On 2026-10-22 the release check counted 1 crash in 12 Search-tab opens on `android-phone`, 0 in 2 on `android-tablet`, and 0 in 14 on the iOS devices. Each open starts from cleared app data, so each one decodes the images again.
 
 The crash is a native `SIGTRAP` on a Glide thread (`glide-source-th`), so no JavaScript error handler sees it:
 
@@ -61,6 +61,6 @@ Likely mechanism (not verified): `RSBlur.blur` calls `RenderScript.releaseAllCon
 ## Verification
 
 - `pnpm --filter @forge/mobile test` passes, with the new guard falsified once.
-- On an Android emulator, open the Search tab from cleared app data at least 20 times with no crash. With the 1-in-5 rate, 20 clean opens without the fix have a chance of about 1%.
+- On an Android emulator, open the Search tab from cleared app data at least 40 times with no crash. At the measured rate of about 1 in 12, 40 clean opens without the fix have a chance of about 4%. The main proof is structural: with no `blurRadius`, expo-image adds no `BlurTransformation`, so the RSBlur path cannot run.
 - Screenshot the Android topic cards before and after the change, and record the label contrast.
 - After the fix is on `main`, a release check run shows no `feat-784` Known-Bug match, and the summary proposes to remove the entries.
