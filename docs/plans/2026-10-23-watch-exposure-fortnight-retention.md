@@ -30,6 +30,15 @@ uses at most 100 exposure rows in a shared five-second run. Do not treat the
 coming expiry wave as already cleared or infer sustained throughput from a
 different mixed workload.
 
+The [bounded local PostgreSQL 18 fixture](../validation/recommendation-exposure-20261023/retention-capacity.json)
+used 500,000 exposure rows and seven production indexes. Ten actual-service
+attempts each deleted 1,000 expired rows, with a 602.5 ms median; all ten
+continued because backlog remained. This supports an independent 1,000-row
+exposure page under the unchanged five-second deadline. It does not prove
+production throughput with loaded request roots, a clean daily cycle or any
+filesystem recovery. Genuine timeout rollback and durable failure reporting
+have separate native regressions.
+
 ## Staged implementation
 
 1. **Policy and contracts.** Add an exposure-only 14-day constant and use it
