@@ -487,14 +487,75 @@
   /* Content view: every story, newest first. A row = number, 16:9 thumbnail, title, passage · done count.
      Opening a row shows a table: pieces down, channels across; an orange dot marks a piece not uploaded yet. */
   .tocal,
+  .sortbtn,
   body.listview .tolist,
   body.listview .nav,
   body.listview #weeks,
   body.listview #agenda {
     display: none !important;
   }
-  body.listview .tocal {
+  body.listview .tocal,
+  body.listview .sortbtn {
     display: inline-grid !important;
+  }
+  .sortbtn.flip svg {
+    transform: scaleY(-1);
+  }
+  /* "Coming up": a pile of cards, so it reads as several stories folded into one. */
+  .story.stack {
+    box-shadow:
+      0 5px 0 -1px #241a17,
+      0 10px 0 -2px #1e1613;
+    margin-bottom: 10px;
+  }
+  .sthumb.pile {
+    position: relative;
+    background: none;
+    overflow: visible;
+  }
+  .sthumb.pile img,
+  .sthumb.pile i {
+    position: absolute;
+    width: 84%;
+    height: 84%;
+    border-radius: 4px;
+    object-fit: cover;
+    background: repeating-linear-gradient(
+      135deg,
+      #1f1714 0 5px,
+      #261c18 5px 10px
+    );
+    outline: 1px solid var(--ground);
+  }
+  .sthumb.pile > :nth-child(1) {
+    left: 0;
+    top: 0;
+    z-index: 3;
+  }
+  .sthumb.pile > :nth-child(2) {
+    left: 8%;
+    top: 8%;
+    z-index: 2;
+    opacity: 0.7;
+  }
+  .sthumb.pile > :nth-child(3) {
+    left: 16%;
+    top: 16%;
+    z-index: 1;
+    opacity: 0.45;
+  }
+  .stack .ssub {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stack-in {
+    display: grid;
+    gap: 8px;
+    padding: 0 10px 10px;
+  }
+  .stack-in .story {
+    background: var(--ground);
   }
   .content {
     display: none;
@@ -586,7 +647,7 @@
     transition: transform 0.15s ease;
     flex: none;
   }
-  .story.open .chev {
+  .story.open > .srow .chev {
     transform: rotate(180deg);
   }
   .sbody {
@@ -951,6 +1012,23 @@
         stroke-linecap="round"
       >
         <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />
+      </svg>
+    </button>
+    <button
+      class="ghost sortbtn"
+      id="sortBtn"
+      title="Newest first"
+      aria-label="Change order"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" />
       </svg>
     </button>
     <button
@@ -1839,49 +1917,100 @@
   }
   const CHEV =
     '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+  // Newest first by default; the arrows button flips to oldest first. Stories whose long form is not
+  // uploaded yet fold into one "Coming up" stack, so the latest released story stays near the top.
+  let oldestFirst = store("dbp-oldest-first") === true
+  let stackOpen = false
+  function storyHtml(s) {
+    const open = openStory === s.slug
+    return (
+      '<section class="story' +
+      (open ? " open" : "") +
+      '"><button type="button" class="srow" data-story="' +
+      esc(s.slug) +
+      '" aria-expanded="' +
+      open +
+      '"><span class="num">' +
+      s.n +
+      '</span><span class="sthumb">' +
+      (s.thumb
+        ? '<img src="' + esc(s.thumb) + '" alt="" loading="lazy">'
+        : "") +
+      '</span><span class="stext"><span class="stitle">' +
+      esc(s.title) +
+      '</span><span class="ssub">' +
+      (s.passage ? esc(s.passage) + " · " : "") +
+      '<b class="' +
+      (s.done === s.total ? "ok" : "todo") +
+      '">' +
+      s.done +
+      " of " +
+      s.total +
+      "</b>" +
+      (s.todo.length ? " · " + s.todo.length + " to decide" : "") +
+      "</span></span>" +
+      CHEV +
+      "</button>" +
+      (open ? storyTable(s) : "") +
+      "</section>"
+    )
+  }
   function renderContent() {
-    const list = buildContent()
+    const list = buildContent() // newest first
+    const isOut = (s) => s.rows.some((p) => p.kind === "long" && isDone(p))
+    const coming = list.filter((s) => !isOut(s))
+    const out = list.filter(isOut)
+    if (oldestFirst) {
+      coming.reverse()
+      out.reverse()
+    }
+    const sb = document.getElementById("sortBtn")
+    sb.title = oldestFirst ? "Oldest first" : "Newest first"
+    sb.classList.toggle("flip", oldestFirst)
+    const todoN = coming.reduce((n, s) => n + s.todo.length, 0)
+    const stack = coming.length
+      ? '<section class="story stack' +
+        (stackOpen ? " open" : "") +
+        '"><button type="button" class="srow" data-stack="1" aria-expanded="' +
+        stackOpen +
+        '"><span class="num"></span><span class="sthumb pile">' +
+        coming
+          .slice(0, 3)
+          .map((s) =>
+            s.thumb ? '<img src="' + esc(s.thumb) + '" alt="">' : "<i></i>",
+          )
+          .join("") +
+        '</span><span class="stext"><span class="stitle">Coming up</span><span class="ssub">' +
+        coming.length +
+        " stories · " +
+        esc(coming.map((s) => s.title).join(", ")) +
+        (todoN ? " · " + todoN + " to decide" : "") +
+        "</span></span>" +
+        CHEV +
+        "</button>" +
+        (stackOpen
+          ? '<div class="stack-in">' + coming.map(storyHtml).join("") + "</div>"
+          : "") +
+        "</section>"
+      : ""
     document.getElementById("content").innerHTML = list.length
-      ? list
-          .map((s) => {
-            const open = openStory === s.slug
-            return (
-              '<section class="story' +
-              (open ? " open" : "") +
-              '"><button type="button" class="srow" data-story="' +
-              esc(s.slug) +
-              '" aria-expanded="' +
-              open +
-              '"><span class="num">' +
-              s.n +
-              '</span><span class="sthumb">' +
-              (s.thumb
-                ? '<img src="' + esc(s.thumb) + '" alt="" loading="lazy">'
-                : "") +
-              '</span><span class="stext"><span class="stitle">' +
-              esc(s.title) +
-              '</span><span class="ssub">' +
-              (s.passage ? esc(s.passage) + " · " : "") +
-              '<b class="' +
-              (s.done === s.total ? "ok" : "todo") +
-              '">' +
-              s.done +
-              " of " +
-              s.total +
-              "</b>" +
-              (s.todo.length ? " · " + s.todo.length + " to decide" : "") +
-              "</span></span>" +
-              CHEV +
-              "</button>" +
-              (open ? storyTable(s) : "") +
-              "</section>"
-            )
-          })
-          .join("")
+      ? oldestFirst
+        ? out.map(storyHtml).join("") + stack
+        : stack + out.map(storyHtml).join("")
       : '<div class="empty">No stories yet.</div>'
+  }
+  document.getElementById("sortBtn").onclick = () => {
+    oldestFirst = !oldestFirst
+    store("dbp-oldest-first", oldestFirst)
+    renderContent()
   }
   document.getElementById("content").addEventListener("click", (e) => {
     const r = e.target.closest(".srow")
+    if (r && r.dataset.stack) {
+      stackOpen = !stackOpen
+      renderContent()
+      return
+    }
     if (r) {
       openStory = openStory === r.dataset.story ? null : r.dataset.story
       openCell = null
