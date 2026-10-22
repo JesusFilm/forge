@@ -29,10 +29,11 @@ tags:
 - inputText:
     text: easter
     label: Type the search word
-# A result card reads "<title>, <length>", so the typed word cannot match it.
+# A video card reads "<title>, <length>". The first result, "Easter", is a
+# collection whose card reads "Easter, <count> episodes", so match the video.
 - extendedWaitUntil:
     visible:
-      text: "Easter, .+"
+      text: "Easter Explained, ([0-9]+:)?[0-9]+:[0-9]{2}"
     timeout: 20000
     label: The results show
 # On Android the result list takes the first tap to close the keyboard
@@ -44,8 +45,8 @@ tags:
       - hideKeyboard
     label: Close the keyboard on Android
 - tapOn:
-    text: "Easter, .+"
-    label: Open the first video result
+    text: "Easter Explained, ([0-9]+:)?[0-9]+:[0-9]{2}"
+    label: Open the Easter Explained video
 - extendedWaitUntil:
     visible:
       id: screen-watch
