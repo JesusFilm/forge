@@ -12,6 +12,7 @@ const {
   androidExitClasses,
   classifyFailure,
   iosCrashReports,
+  readServerLog,
   serverSignals,
 } = require("../lib/journeys/classify")
 const { readAttemptOutput } = require("../lib/journeys/results")
@@ -160,6 +161,64 @@ describe("server log lines in the attempt window", () => {
     expect(classifyOutput(dir, { server: blocked }).class).toBe(
       "request_blocked",
     )
+  })
+})
+
+describe("blocked requests", () => {
+  // The real attempt and server log lines of `search-open-result` on
+  // android-phone, record 2026-10-22T08-08-58Z-b8e9.
+  const dir = path.join(FIXTURES, "blocked-write-android")
+  const lines = readServerLog(path.join(dir, "server-log.jsonl"))
+  const window = {
+    deviceId: "android-phone",
+    startMs: Date.parse("2026-10-22T08:11:36.000Z"),
+    endMs: Date.parse("2026-10-22T08:12:23.137Z"),
+  }
+  const videoRead = lines.find((line) => line.opName === "GetVideoBySlug")
+  // SYNTHETIC: the real GetVideoBySlug line as the server would log it if it
+  // blocked that query, and a body that did not parse (`blocked("parse-error")`).
+  const blockedQuery = {
+    ...videoRead,
+    route: "blocked",
+    reason: "field-unlisted Query.videoBySlug",
+  }
+  const unparsed = {
+    ...videoRead,
+    route: "blocked",
+    opType: null,
+    opName: null,
+    rootFields: {},
+    reason: "parse-error",
+  }
+
+  it("does not give request_blocked for the app's blocked RecordWatchSearchEvent write", () => {
+    const write = lines.find(
+      (line) => line.deviceId === "android-phone" && line.route === "blocked",
+    )
+    expect(write.opName).toBe("RecordWatchSearchEvent")
+    expect(Date.parse(write.ts)).toBeGreaterThan(window.startMs)
+    const server = serverSignals(lines, window)
+    expect(server.blocked).toBe(false)
+    expect(classifyOutput(dir, { server })).toEqual({
+      class: "assertion_failed",
+      error: "Assertion is false: id: screen-watch is visible",
+    })
+  })
+
+  it.each([
+    ["a blocked query", blockedQuery],
+    ["a request that did not parse", unparsed],
+  ])("gives request_blocked for %s in the window", (_name, line) => {
+    const server = serverSignals([...lines, line], window)
+    expect(classifyOutput(dir, { server }).class).toBe("request_blocked")
+  })
+
+  it("ignores a blocked query from another device or outside the window", () => {
+    const other = { ...blockedQuery, deviceId: "iphone-se", lane: "ios" }
+    const late = { ...blockedQuery, ts: "2026-10-22T08:12:40.000Z" }
+    const server = serverSignals([...lines, other, late], window)
+    expect(server.blocked).toBe(false)
+    expect(classifyOutput(dir, { server }).class).toBe("assertion_failed")
   })
 })
 

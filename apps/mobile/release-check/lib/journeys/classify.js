@@ -80,7 +80,13 @@ function serverSignals(lines, { deviceId, startMs, endMs }) {
     missingSearchAnswer: mine.some(
       (line) => line.route === "missing-search-answer",
     ),
-    blocked: mine.some((line) => line.route === "blocked"),
+    // The server blocks every write by design (R13, R15), so only a blocked
+    // read, or a request that did not parse, can cause a failure.
+    blocked: mine.some(
+      (line) =>
+        line.route === "blocked" &&
+        (line.opType === "query" || line.opType == null),
+    ),
   }
 }
 
