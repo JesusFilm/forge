@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { View } from "react-native"
 import { useLocalSearchParams, useRouter } from "expo-router"
 
 import { BibleReader } from "../src/components/bible/BibleReader"
@@ -16,14 +17,18 @@ export default function ReaderRoute() {
   // R10: the verse stays clear of the mini player that floats over it.
   const floatingObstacles = useFloatingObstacles()
 
+  // The reader's own root keeps its `bible-reader` testID, so the screen's
+  // root testID needs a view of its own.
   return (
-    <BibleReader
-      host="pushed"
-      source={source}
-      startRef={startRef}
-      onBack={() => router.back()}
-      floatingObstacles={floatingObstacles}
-      {...callbacks}
-    />
+    <View testID="screen-reader" style={{ flex: 1 }}>
+      <BibleReader
+        host="pushed"
+        source={source}
+        startRef={startRef}
+        onBack={() => router.back()}
+        floatingObstacles={floatingObstacles}
+        {...callbacks}
+      />
+    </View>
   )
 }

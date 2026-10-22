@@ -70,6 +70,8 @@ export type FeedbackSheetContentProps = {
   /** R19: true while a submission is in flight, so the host can refuse its own
    *  backdrop, gesture and Android back dismissals. */
   onDismissLockedChange?: (locked: boolean) => void
+  /** The More door's root testID (`screen-feedback`), on every step's root. */
+  testID?: string
 }
 
 /** Two-step feedback form (KTD4): one body serves both doors — no Modal, no
@@ -79,6 +81,7 @@ export function FeedbackSheetContent({
   context,
   onClose,
   onDismissLockedChange,
+  testID,
 }: FeedbackSheetContentProps) {
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
@@ -205,6 +208,7 @@ export function FeedbackSheetContent({
   if (state.phase === "success") {
     return (
       <Pressable
+        testID={testID}
         style={styles.successPanel}
         onPress={onClose}
         accessibilityRole="button"
@@ -221,7 +225,7 @@ export function FeedbackSheetContent({
 
   const showBack = state.phase === "compose" || state.phase === "sending"
   const shell = (children: ReactNode) => (
-    <View style={styles.root}>
+    <View testID={testID} style={styles.root}>
       <View style={styles.header}>
         {showBack ? (
           <Pressable

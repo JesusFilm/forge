@@ -324,6 +324,54 @@ describe("useWatchHome — the model and the insert index land in one state writ
   })
 })
 
+// ── feat-775 KTD5: the body source the release check's probe reads ─────────
+
+describe("useWatchHome — bodySource follows the body that painted", () => {
+  let sources: (string | null)[] = []
+
+  function SourceProbe(): null {
+    sources.push(useWatchHome().bodySource)
+    return null
+  }
+
+  async function renderSourceProbe(): Promise<TestInstance> {
+    sources = []
+    let renderer: TestInstance | undefined
+    await act(() => {
+      renderer = TestRenderer.create(createElement(SourceProbe))
+    })
+    await step()
+    return renderer as TestInstance
+  }
+
+  function answerHomepage(homepageExperience: unknown) {
+    mockGetApolloClient.mockReturnValue({
+      query: jest.fn((args: { query: unknown }) =>
+        args.query === videosDocument
+          ? Promise.resolve({ data: { watchHomeVideos: [video] } })
+          : Promise.resolve({ data: { watchSetting: { homepageExperience } } }),
+      ),
+    })
+  }
+
+  it("is experience when the Experience yields shelves", async () => {
+    answerHomepage({ blocks })
+    const renderer = await renderSourceProbe()
+
+    expect(sources[0]).toBeNull()
+    expect(sources[sources.length - 1]).toBe("experience")
+    await unmount(renderer)
+  })
+
+  it("is config when no homepage Experience is published", async () => {
+    answerHomepage(null)
+    const renderer = await renderSourceProbe()
+
+    expect(sources[sources.length - 1]).toBe("config")
+    await unmount(renderer)
+  })
+})
+
 // ── U6. Home in the UI locale, and a live language change (KTD10, KTD16) ────
 
 const settingDocument = GET_WATCH_SETTING as unknown

@@ -22,6 +22,7 @@ export type SeriesLanguageSheetProps = {
   activeLanguageSlug: string
   onLanguageChange: (slug: string) => void
   onClose: () => void
+  testID?: string
 }
 
 export function SeriesLanguageSheet({
@@ -29,6 +30,7 @@ export function SeriesLanguageSheet({
   activeLanguageSlug,
   onLanguageChange,
   onClose,
+  testID,
 }: SeriesLanguageSheetProps) {
   const t = useT("Series")
   const handleSelect = useCallback(
@@ -42,6 +44,7 @@ export function SeriesLanguageSheet({
 
   return (
     <SearchableListSheet
+      testID={testID}
       rows={languages}
       activeId={activeLanguageSlug}
       getSelectionId={getSlug}

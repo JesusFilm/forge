@@ -76,6 +76,8 @@ type LastGoodExperience = {
 type WatchHomeBody = {
   model: WatchHomeModel | null
   recommendationsInsertIndex: number | null
+  /** True when `model.sections` came from the Experience, not the config. */
+  usedExperience: boolean
   /** The locale epoch the body was built in (KTD16). A body from an older
    *  epoch never renders, not even for the frame before the clear lands. */
   epoch: number
@@ -84,8 +86,12 @@ type WatchHomeBody = {
 const EMPTY_BODY: WatchHomeBody = {
   model: null,
   recommendationsInsertIndex: null,
+  usedExperience: false,
   epoch: 0,
 }
+
+/** The `body_source` vocabulary of `logWatchHomeFallback`. */
+export type WatchHomeBodySource = "experience" | "config"
 
 export type WatchHomeState = {
   model: WatchHomeModel | null
@@ -95,6 +101,8 @@ export type WatchHomeState = {
    * fell back to the config model.
    */
   recommendationsInsertIndex: number | null
+  /** Where the painted body's shelves came from; null while no model paints. */
+  bodySource: WatchHomeBodySource | null
   /** No model painted yet (neither network nor snapshot) — the spinner gate. */
   loading: boolean
   refreshing: boolean
@@ -397,6 +405,7 @@ export function useWatchHome(): WatchHomeState {
         setBody({
           model: nextModel,
           recommendationsInsertIndex,
+          usedExperience,
           epoch: epochAtStart,
         })
       }
@@ -516,6 +525,7 @@ export function useWatchHome(): WatchHomeState {
         setBody({
           model: snapshotModel,
           recommendationsInsertIndex,
+          usedExperience,
           epoch: getLocaleEpoch(),
         })
         if (!homeReadySnapshotEmittedRef.current) {
@@ -544,11 +554,14 @@ export function useWatchHome(): WatchHomeState {
   // The render the epoch change causes comes before the clear effect, so the
   // old body is hidden here too; that frame shows the loading state instead.
   const oldBody = body.model != null && body.epoch !== epoch
+  const shown = oldBody ? null : body.model
   return {
-    model: oldBody ? null : body.model,
+    model: shown,
     recommendationsInsertIndex: oldBody
       ? null
       : body.recommendationsInsertIndex,
+    bodySource:
+      shown == null ? null : body.usedExperience ? "experience" : "config",
     loading: loading || oldBody,
     refreshing,
     error,

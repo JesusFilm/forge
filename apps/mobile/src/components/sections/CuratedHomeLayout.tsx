@@ -33,11 +33,13 @@ type Props = {
   // Use on routes that supply their own native navigation header (e.g.
   // experience/[slug]) to avoid doubled safe-area offsets.
   hideHeader?: boolean
+  /** The route's root testID (`screen-experience`). */
+  testID?: string
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function CuratedHomeLayout({ hideHeader = false }: Props) {
+export function CuratedHomeLayout({ hideHeader = false, testID }: Props) {
   const { experience } = useExperienceContext()
   const t = useT("Sections")
   const { width: screenWidth } = useWindowDimensions()
@@ -160,7 +162,7 @@ export function CuratedHomeLayout({ hideHeader = false }: Props) {
   )
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID={testID} style={layout.screenContainer}>
       {heroSection != null && (
         <View style={[styles.heroLayer, { height: heroHeight }]}>
           <VideoHeroRenderer

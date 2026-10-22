@@ -238,7 +238,7 @@ export function PlayerSettingsSheet({
       supportedOrientations={["portrait", "landscape"]}
       onRequestClose={close}
     >
-      <View style={styles.overlay}>
+      <View testID="screen-player-settings" style={styles.overlay}>
         <Animated.View
           pointerEvents="none"
           style={[styles.scrim, { opacity: progress }]}

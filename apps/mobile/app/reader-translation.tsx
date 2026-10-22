@@ -79,20 +79,24 @@ export default function ReaderTranslationRoute() {
 
   let body
   if (state.status === "ready") {
+    // The picker's own root keeps its testID, so the screen's root testID
+    // needs a view of its own, with the picker's flex.
     body = (
-      <TranslationPicker
-        tokens={tokens}
-        background={background}
-        catalog={state.catalog}
-        activeId={request.translationId}
-        viewerLanguages={viewerLanguages}
-        offline={request.offline}
-        downloads={services.downloads}
-        onPick={onPick}
-        confirmPick={confirmPick}
-        onPressDownload={openTranslationDownload}
-        onClose={close}
-      />
+      <View testID="screen-reader-translation" style={{ flex: 1 }}>
+        <TranslationPicker
+          tokens={tokens}
+          background={background}
+          catalog={state.catalog}
+          activeId={request.translationId}
+          viewerLanguages={viewerLanguages}
+          offline={request.offline}
+          downloads={services.downloads}
+          onPick={onPick}
+          confirmPick={confirmPick}
+          onPressDownload={openTranslationDownload}
+          onClose={close}
+        />
+      </View>
     )
   } else if (state.status === "failed") {
     body = (

@@ -609,6 +609,8 @@ export type DownloadSheetProps = {
     mode: DownloadMode,
     subtitleSlug: string | null,
   ) => void
+  /** The sheet route's root testID (`screen-watch-download`). */
+  testID?: string
 }
 
 export function DownloadSheetContent({
@@ -622,6 +624,7 @@ export function DownloadSheetContent({
   offlineCopySubtitleSlug = undefined,
   initialMode = "offline",
   onStartDownload,
+  testID,
 }: DownloadSheetProps) {
   const insets = useSafeAreaInsets()
   const typography = useTypography()
@@ -742,7 +745,7 @@ export function DownloadSheetContent({
 
   if (downloads.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View testID={testID} style={styles.emptyContainer}>
         <Ionicons
           name="cloud-download-outline"
           size={48}
@@ -758,6 +761,7 @@ export function DownloadSheetContent({
   return (
     <>
       <ScrollView
+        testID={testID}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + 24 },

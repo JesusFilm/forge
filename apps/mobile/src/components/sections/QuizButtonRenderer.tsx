@@ -71,51 +71,58 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
       onRequestClose={onClose}
     >
       <StatusBar barStyle="light-content" />
-      <GlassSurface style={styles.modalWindow} fallback={WINDOW_FALLBACK}>
-        <Pressable
-          style={[
-            styles.closeButton,
-            { top: Platform.OS === "android" ? insets.top : insets.top + 8 },
-          ]}
-          onPress={onClose}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel={tCommon("closeAriaLabel")}
-          {...{ "dd-action-name": "section-quiz-close" }}
-        >
-          <GlassSurface
-            style={styles.closeCircle}
-            fallback={CLOSE_FALLBACK}
-            interactive
+      {/* GlassSurface takes no testID, so this view carries the root testID
+          with the window's own flex. */}
+      <View testID="screen-sdui-quiz" style={styles.modalWindow}>
+        <GlassSurface style={styles.modalWindow} fallback={WINDOW_FALLBACK}>
+          <Pressable
+            style={[
+              styles.closeButton,
+              { top: Platform.OS === "android" ? insets.top : insets.top + 8 },
+            ]}
+            onPress={onClose}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={tCommon("closeAriaLabel")}
+            {...{ "dd-action-name": "section-quiz-close" }}
           >
-            <Text style={styles.closeIcon}>{"\u2715"}</Text>
-          </GlassSurface>
-        </Pressable>
+            <GlassSurface
+              style={styles.closeCircle}
+              fallback={CLOSE_FALLBACK}
+              interactive
+            >
+              <Text style={styles.closeIcon}>{"\u2715"}</Text>
+            </GlassSurface>
+          </Pressable>
 
-        {state === "loading" && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#ffffff" />
-          </View>
-        )}
+          {state === "loading" && (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#ffffff" />
+            </View>
+          )}
 
-        <WebView
-          source={{ uri: url }}
-          originWhitelist={["https://*"]}
-          onShouldStartLoadWithRequest={handleNavigationRequest}
-          style={[styles.webView, state === "loading" && styles.webViewHidden]}
-          javaScriptEnabled
-          domStorageEnabled
-          allowFileAccess={false}
-          allowFileAccessFromFileURLs={false}
-          allowUniversalAccessFromFileURLs={false}
-          javaScriptCanOpenWindowsAutomatically={false}
-          mixedContentMode="never"
-          thirdPartyCookiesEnabled={false}
-          mediaPlaybackRequiresUserAction
-          onLoadEnd={handleLoadEnd}
-          onError={handleError}
-        />
-      </GlassSurface>
+          <WebView
+            source={{ uri: url }}
+            originWhitelist={["https://*"]}
+            onShouldStartLoadWithRequest={handleNavigationRequest}
+            style={[
+              styles.webView,
+              state === "loading" && styles.webViewHidden,
+            ]}
+            javaScriptEnabled
+            domStorageEnabled
+            allowFileAccess={false}
+            allowFileAccessFromFileURLs={false}
+            allowUniversalAccessFromFileURLs={false}
+            javaScriptCanOpenWindowsAutomatically={false}
+            mixedContentMode="never"
+            thirdPartyCookiesEnabled={false}
+            mediaPlaybackRequiresUserAction
+            onLoadEnd={handleLoadEnd}
+            onError={handleError}
+          />
+        </GlassSurface>
+      </View>
     </Modal>
   )
 }

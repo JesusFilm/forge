@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { View } from "react-native"
 import { useRouter } from "expo-router"
 
 import { BibleReader } from "../../src/components/bible/BibleReader"
@@ -13,11 +14,15 @@ export default function BibleTabScreen() {
   // R10: the verse stays clear of the mini player that floats over it.
   const floatingObstacles = useFloatingObstacles()
 
+  // The reader's own root keeps its `bible-reader` testID, so the screen's
+  // root testID needs a view of its own.
   return (
-    <BibleReader
-      host="tab"
-      floatingObstacles={floatingObstacles}
-      {...callbacks}
-    />
+    <View testID="screen-tab-bible" style={{ flex: 1 }}>
+      <BibleReader
+        host="tab"
+        floatingObstacles={floatingObstacles}
+        {...callbacks}
+      />
+    </View>
   )
 }

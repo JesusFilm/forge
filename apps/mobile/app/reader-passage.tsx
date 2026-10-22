@@ -51,26 +51,30 @@ export default function ReaderPassageRoute() {
       {state.status === "loading" ? (
         <View style={{ flex: 1, backgroundColor: background }} />
       ) : (
-        <PassagePicker
-          tokens={tokens}
-          background={background}
-          translation={translation}
-          standIn={standInTranslation}
-          bookNames={bookNames}
-          // With no known translation the picker shows BSB's numbers.
-          current={pickerCurrent({
-            translation,
-            ref: request.ref,
-            shownRef: request.translationRef,
-            standIn,
-            shown,
-          })}
-          onPick={(ref) => {
-            services.positionStore.moveTo(ref)
-            router.back()
-          }}
-          onClose={() => router.back()}
-        />
+        // The picker's own root keeps its testID; this view has no style, so
+        // it takes the picker's size and moves nothing.
+        <View testID="screen-reader-passage">
+          <PassagePicker
+            tokens={tokens}
+            background={background}
+            translation={translation}
+            standIn={standInTranslation}
+            bookNames={bookNames}
+            // With no known translation the picker shows BSB's numbers.
+            current={pickerCurrent({
+              translation,
+              ref: request.ref,
+              shownRef: request.translationRef,
+              standIn,
+              shown,
+            })}
+            onPick={(ref) => {
+              services.positionStore.moveTo(ref)
+              router.back()
+            }}
+            onClose={() => router.back()}
+          />
+        </View>
       )}
     </>
   )

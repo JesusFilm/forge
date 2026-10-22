@@ -69,7 +69,7 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
       // a submission is in flight.
       onRequestClose={close}
     >
-      <View style={styles.overlay}>
+      <View testID="screen-feedback-modal" style={styles.overlay}>
         <Animated.View
           pointerEvents="none"
           style={[styles.scrim, { opacity: progress }]}

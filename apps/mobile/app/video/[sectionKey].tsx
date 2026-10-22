@@ -148,6 +148,7 @@ function VideoDetailContent({
 
   return (
     <ScrollView
+      testID="screen-video"
       style={layout.screenContainer}
       contentContainerStyle={{ paddingBottom: 48 }}
       showsVerticalScrollIndicator={false}
