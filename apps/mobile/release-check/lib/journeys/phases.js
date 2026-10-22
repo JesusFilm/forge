@@ -44,7 +44,9 @@ const APP_ID = "org.jesusfilm.forgewatch"
 const ATTEMPT_LIMIT_MS = 10 * 60_000
 const SIMCTL_TIMEOUT_MS = 60_000
 const ADB_TIMEOUT_MS = 20_000
+const CLEAR_ALERT_LIMIT_MS = 60_000
 const PROBE_FILE = "apps/mobile/release-check/journeys/settings-probe.yaml"
+const CLEAR_ALERT_FLOW = path.join("_shared", "clear-system-alert.yaml")
 
 function copyJourneys(from, to) {
   fs.mkdirSync(to, { recursive: true })
@@ -69,6 +71,10 @@ function lanesOf(devices) {
 
 function relativeTo(runDir, file) {
   return file ? path.relative(runDir, file).split(path.sep).join("/") : null
+}
+
+function attemptDir(ctx, journeyId, deviceId, n) {
+  return path.join(ctx.runDir, "attempts", journeyId, deviceId, String(n))
 }
 
 // The phases for `createDeps().phases`. A test injects the device, Maestro,
@@ -97,6 +103,7 @@ function createJourneyPhases(options = {}) {
     const inventory = screenInventory(screensConfig, mobileDir)
     const run = {
       flows,
+      clearAlertFlow: path.join(snapshot, CLEAR_ALERT_FLOW),
       screensConfig,
       inventory,
       knownBugs: read("knownBugs").entries ?? [],
@@ -245,10 +252,36 @@ function createJourneyPhases(options = {}) {
     return installed
   }
 
+  // iOS 26 can leave the "Open in" link prompt up across the app reinstall,
+  // and it then fails the next journey's first step.
+  async function clearIosAlert(run, ctx, entry, outputDir) {
+    if (!fs.existsSync(run.clearAlertFlow)) {
+      ctx.event({
+        type: "system_alert_clear_skipped",
+        deviceId: entry.device.id,
+        file: relativeTo(ctx.runDir, run.clearAlertFlow),
+      })
+      return
+    }
+    await maestro({
+      platform: "ios",
+      deviceRef: entry.handle.udid,
+      flowFile: run.clearAlertFlow,
+      outputDir,
+      sourceEnv: ctx.env,
+      timeoutMs: CLEAR_ALERT_LIMIT_MS,
+      signal: ctx.signal,
+    })
+    pruneDeviceLogs(outputDir)
+  }
+
   // KTD14: after each failed attempt, force-stop the app and clear dialogs.
-  async function cleanUp(ctx, entry) {
+  async function cleanUp(run, ctx, entry, outputDir) {
     await entry.handle.terminate(APP_ID)
-    if (entry.device.platform !== "android") return
+    if (entry.device.platform !== "android") {
+      await clearIosAlert(run, ctx, entry, outputDir)
+      return
+    }
     await runChild(
       inventoryLib.toolPaths(toolEnv(ctx)).adb,
       [
@@ -288,13 +321,7 @@ function createJourneyPhases(options = {}) {
   async function runAttempt(run, ctx, entry, journeyId, n) {
     const { device, handle } = entry
     const journey = run.flows.get(journeyId)
-    const outputDir = path.join(
-      ctx.runDir,
-      "attempts",
-      journeyId,
-      device.id,
-      String(n),
-    )
+    const outputDir = attemptDir(ctx, journeyId, device.id, n)
     fs.rmSync(outputDir, { recursive: true, force: true })
     fs.mkdirSync(outputDir, { recursive: true })
     const base = { journey: journeyId, deviceId: device.id, attempt: n }
@@ -445,13 +472,22 @@ function createJourneyPhases(options = {}) {
             stopped: true,
           }
         }
+        let attempt = 0
+        const cleanUpDir = () =>
+          path.join(
+            attemptDir(ctx, journeyId, entry.device.id, attempt),
+            "clear-system-alert",
+          )
         return runJourney({
           journey: journeyId,
           deviceId: entry.device.id,
           knownBugs: run.knownBugs,
-          runAttempt: (n) => runAttempt(run, ctx, entry, journeyId, n),
+          runAttempt: (n) => {
+            attempt = n
+            return runAttempt(run, ctx, entry, journeyId, n)
+          },
           recover: (reason) => recover(run, ctx, entry, reason),
-          cleanUp: () => cleanUp(ctx, entry),
+          cleanUp: () => cleanUp(run, ctx, entry, cleanUpDir()),
           wait: (ms) => sleep(ms, ctx.signal),
         })
       },

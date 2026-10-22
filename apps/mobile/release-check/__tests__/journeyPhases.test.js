@@ -10,7 +10,9 @@ const path = require("node:path")
 const { validateAgainstSchema } = require("../lib/contract")
 const { parseFlow } = require("../lib/journeys/flow")
 const { PROBE_ID, createJourneyPhases } = require("../lib/journeys/phases")
-const { CONFIG_DIR, readJson } = require("../lib/lists")
+const { CONFIG_DIR, JOURNEYS_DIR, readJson } = require("../lib/lists")
+
+const CLEAR_FLOW = "clear-system-alert"
 
 const DEVICES = readJson(path.join(CONFIG_DIR, "devices.json"))
 const SETTINGS = readJson(path.join(CONFIG_DIR, "test-settings.json"))
@@ -38,13 +40,24 @@ function step(type, label, status, error, screen) {
   }
 }
 
+// The step that fails, from a label (every attempt) or { step, times }.
+function failingStep(rule) {
+  if (typeof rule === "string") return rule
+  if (!rule || rule.times <= 0) return null
+  rule.times -= 1
+  return rule.step
+}
+
 // Writes the commands.json that Maestro would write, and fails `failStep`.
-function fakeMaestro(calls, failures) {
-  return async ({ deviceRef, flowFile, outputDir }) => {
+function fakeMaestro(calls, failures, sequence) {
+  return async ({ deviceRef, flowFile, outputDir, timeoutMs, signal }) => {
     const journey = path.basename(flowFile, ".yaml")
-    calls.push({ deviceRef, journey })
+    const call = { deviceRef, journey, flowFile, outputDir, timeoutMs }
+    // Not enumerable: a failure message cannot print an AbortSignal.
+    calls.push(Object.defineProperty(call, "signal", { value: signal }))
+    sequence.push(`maestro ${deviceRef} ${journey}`)
     const flow = parseFlow(fs.readFileSync(flowFile, "utf8"))
-    const failStep = failures[`${deviceRef} ${journey}`] ?? null
+    const failStep = failingStep(failures[`${deviceRef} ${journey}`])
     const commands = [step("defineVariablesCommand", undefined, "COMPLETED")]
     for (const top of flow.topLevel) {
       if (top.label === failStep) {
@@ -84,7 +97,7 @@ function fakeMaestro(calls, failures) {
   }
 }
 
-function fakeHandle(ref, events) {
+function fakeHandle(ref, events, sequence) {
   const ok = async () => ({ ok: true })
   return {
     udid: ref,
@@ -99,7 +112,10 @@ function fakeHandle(ref, events) {
       return { ok: true }
     },
     install: ok,
-    terminate: ok,
+    terminate: async () => {
+      sequence.push(`terminate ${ref}`)
+      return { ok: true }
+    },
     prepareApp: ok,
     probe: ok,
     ensureResponsive: async () => ({ answered: true, restarted: false }),
@@ -131,25 +147,34 @@ function twoSlotGate() {
   }
 }
 
-function setUp(failures) {
+// `options.udid` maps a device id to its simulator UDID (default: the id).
+function setUp(failures, options = {}) {
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-phases-"))
   tempDirs.push(runDir)
   const calls = []
   const events = []
+  const sequence = []
+  const children = []
+  const recorded = []
   const stops = []
   const lanes = []
   const abort = new AbortController()
+  const udid = options.udid ?? ((id) => id)
   const phases = createJourneyPhases({
-    runMaestro: fakeMaestro(calls, failures),
-    runChild: async () => ({ code: 0, stdout: "", stderr: "" }),
+    ...(options.journeysDir ? { journeysDir: options.journeysDir } : {}),
+    runMaestro: fakeMaestro(calls, failures, sequence),
+    runChild: async (command, args) => {
+      children.push({ command, args })
+      return { code: 0, stdout: "", stderr: "" }
+    },
     listInventory: async () => ({
       owned: DEVICES.devices.map((device) => ({
         id: device.id,
-        udid: device.id,
+        udid: udid(device.id),
       })),
     }),
-    createSimulator: (device) => fakeHandle(device.udid, events),
-    createEmulator: (device) => fakeHandle(device.id, events),
+    createSimulator: (device) => fakeHandle(device.udid, events, sequence),
+    createEmulator: (device) => fakeHandle(device.id, events, sequence),
     appEvidence: async () => [],
   })
   const ctx = {
@@ -176,9 +201,19 @@ function setUp(failures) {
       stops.push(reason)
       abort.abort()
     },
-    event: () => {},
+    event: (fields) => recorded.push(fields),
   }
-  return { phases, ctx, calls, events, stops, lanes }
+  return {
+    phases,
+    ctx,
+    calls,
+    events,
+    sequence,
+    children,
+    recorded,
+    stops,
+    lanes,
+  }
 }
 
 function expectValidAttempts(attempts) {
@@ -242,7 +277,8 @@ describe("a failed settings probe", () => {
         (call) =>
           call.deviceRef !== "iphone-se" &&
           call.deviceRef.startsWith("i") &&
-          call.journey !== PROBE_ID,
+          call.journey !== PROBE_ID &&
+          call.journey !== CLEAR_FLOW,
       ),
     ).toEqual([])
     expect(lanes).not.toContain("ipad-pro-13")
@@ -312,5 +348,120 @@ describe("a host with room for two devices", () => {
     expect(result.attempts.filter((a) => a.status === "passed")).toHaveLength(
       10,
     )
+  })
+})
+
+// KTD14: an iOS link prompt that a failed attempt leaves open stays up across
+// the app reinstall, so the clean-up closes it with its own Maestro flow.
+describe("the clean-up after a failed attempt", () => {
+  const clearCalls = (calls) => calls.filter((c) => c.journey === CLEAR_FLOW)
+
+  async function runBoth(phases, ctx) {
+    await phases.probing(ctx)
+    return phases.journeys(ctx)
+  }
+
+  it("on iOS runs the clear-alert flow once on the simulator's UDID, after the app stops, and the flow does not start the app", async () => {
+    const { phases, ctx, calls, sequence } = setUp(
+      { "udid-iphone-se cold-launch-home": { step: "Home shows", times: 1 } },
+      { udid: (id) => `udid-${id}` },
+    )
+    const result = await runBoth(phases, ctx)
+    const attemptDir = path.join(
+      ctx.runDir,
+      "attempts",
+      "cold-launch-home",
+      "iphone-se",
+      "1",
+    )
+    const clears = clearCalls(calls)
+    expect(clears).toEqual([
+      expect.objectContaining({
+        deviceRef: "udid-iphone-se",
+        flowFile: path.join(
+          ctx.runDir,
+          "journeys",
+          "_shared",
+          "clear-system-alert.yaml",
+        ),
+      }),
+    ])
+    expect(clears[0].signal).toBe(ctx.signal)
+    expect(clears[0].timeoutMs).toBeLessThanOrEqual(60_000)
+    expect(clears[0].outputDir.startsWith(attemptDir + path.sep)).toBe(true)
+    const at = sequence.indexOf("maestro udid-iphone-se clear-system-alert")
+    expect(sequence[at - 1]).toBe("terminate udid-iphone-se")
+    const flow = parseFlow(fs.readFileSync(clears[0].flowFile, "utf8"))
+    const commands = flow.steps.map((s) => s.command)
+    expect(commands).not.toContain("launchApp")
+    expect(commands).not.toContain("openLink")
+    expect(flow.steps).toContainEqual(
+      expect.objectContaining({
+        command: "tapOn",
+        label: expect.any(String),
+        args: expect.objectContaining({ text: "Cancel", optional: true }),
+      }),
+    )
+    const journey = result.attempts.filter(
+      (a) => a.deviceId === "iphone-se" && a.journey === "cold-launch-home",
+    )
+    expect(journey.map((a) => [a.attempt, a.status, a.label])).toEqual([
+      [1, "failed", "flaky"],
+      [2, "passed", "flaky"],
+    ])
+  })
+
+  it("on Android does not run the flow, and still closes the system dialogs", async () => {
+    const { phases, ctx, calls, children } = setUp({
+      "android-phone cold-launch-home": "Home shows",
+    })
+    await runBoth(phases, ctx)
+    expect(clearCalls(calls)).toEqual([])
+    const closes = children.filter((child) =>
+      child.args.includes("android.intent.action.CLOSE_SYSTEM_DIALOGS"),
+    )
+    expect(closes.map((child) => child.args.slice(0, 2))).toEqual([
+      ["-s", "android-phone"],
+      ["-s", "android-phone"],
+    ])
+  })
+
+  it("does not run after a passing iOS attempt", async () => {
+    const { phases, ctx, calls } = setUp({})
+    await runBoth(phases, ctx)
+    expect(calls.filter((c) => /^i(phone|pad)/.test(c.deviceRef))).toHaveLength(
+      6,
+    )
+    expect(clearCalls(calls)).toEqual([])
+  })
+
+  it("skips the flow with an event when the run's journeys do not have it", async () => {
+    const journeysDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "release-check-old-journeys-"),
+    )
+    tempDirs.push(journeysDir)
+    for (const name of ["settings-probe.yaml", "cold-launch-home.yaml"]) {
+      fs.copyFileSync(
+        path.join(JOURNEYS_DIR, name),
+        path.join(journeysDir, name),
+      )
+    }
+    const { phases, ctx, calls, recorded } = setUp(
+      { "iphone-se cold-launch-home": "Home shows" },
+      { journeysDir },
+    )
+    const result = await runBoth(phases, ctx)
+    expect(clearCalls(calls)).toEqual([])
+    const skipped = recorded.filter(
+      (event) => event.type === "system_alert_clear_skipped",
+    )
+    expect(skipped).toEqual([
+      expect.objectContaining({ deviceId: "iphone-se" }),
+      expect.objectContaining({ deviceId: "iphone-se" }),
+    ])
+    const journey = result.attempts.filter(
+      (a) => a.deviceId === "iphone-se" && a.journey === "cold-launch-home",
+    )
+    expect(journey.map((a) => a.status)).toEqual(["failed", "failed"])
   })
 })
