@@ -44,19 +44,29 @@ name: experience-deep-link
     element:
       id: sdui-media-collection
     direction: DOWN
+    visibilityPercentage: 50
     timeout: 30000
     label: Scroll to the media collection
-- assertVisible:
-    text: "[0-9]+ media items?"
+- scrollUntilVisible:
+    element:
+      text: "[0-9]+ media items?"
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 20000
     label: The media collection lists its items
 - scrollUntilVisible:
     element:
       id: sdui-video-carousel
     direction: DOWN
+    visibilityPercentage: 50
     timeout: 30000
     label: Scroll to a video carousel
-- assertVisible:
-    text: "[0-9]+ video items?"
+- scrollUntilVisible:
+    element:
+      text: "[0-9]+ video items?"
+    direction: DOWN
+    visibilityPercentage: 50
+    timeout: 20000
     label: The video carousel lists its videos
 # The Easter Explained section holds the text, dates, questions, Bible quotes,
 # and quiz blocks, which show on its video page.

@@ -69,12 +69,17 @@ name: collection-autoplay
             - tapOn:
                 text: Video
                 point: 50%,10%
+                waitToSettleTimeoutMs: 500
                 label: Show the native player controls
           label: Show the controls when they are hidden
+      # On an iPad the controls can hide before Maestro finds the button.
+      # Then the video plays to its end, which takes about 6 minutes.
       - tapOn:
           text: go forward 10 seconds
           repeat: 28
           delay: 150
+          waitToSettleTimeoutMs: 500
+          optional: true
           label: Skip forward 280 seconds
     label: Skip near the end on iOS
 - runFlow:
@@ -89,12 +94,16 @@ name: collection-autoplay
             - tapOn:
                 text: Show player controls
                 point: 50%,10%
+                waitToSettleTimeoutMs: 500
                 label: Show the native player controls
           label: Show the controls when they are hidden
+      # As on an iPad, the tablet's controls can hide before the button shows.
       - tapOn:
           text: Fast forward 15 seconds
           repeat: 18
           delay: 150
+          waitToSettleTimeoutMs: 500
+          optional: true
           label: Skip forward 270 seconds
     label: Skip near the end on Android
 - extendedWaitUntil:

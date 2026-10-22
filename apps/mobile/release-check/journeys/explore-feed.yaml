@@ -16,16 +16,16 @@ name: explore-feed
 - tapOn:
     text: Explore
     label: Open the Explore tab
-- extendedWaitUntil:
-    visible:
-      id: screen-tab-explore
-    timeout: 20000
-    label: Explore shows
+# The loading veil hides the tab's root from iOS until the first clip loads,
+# and a slow production answer can hold the veil for over 20 s.
 - extendedWaitUntil:
     visible:
       id: explore-clip-surface
     timeout: 60000
     label: The first clip shows
+- assertVisible:
+    id: screen-tab-explore
+    label: Explore shows
 - extendedWaitUntil:
     notVisible:
       id: explore-clip-veil
