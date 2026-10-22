@@ -19,7 +19,7 @@
 // Read-only, unauthenticated probes against the production Core gateway, using
 // the known-restricted video from #2324, recorded during an earlier attempt at
 // this fix (PR #2332, not merged — see
-// docs/solutions/architecture-patterns/self-defeating-identity-filter-observer-client-20260916.md
+// docs/solutions/architecture-patterns/self-defeating-identity-filter-observer-client-20261022.md
 // for the full writeup). Every rule below is what those probes actually
 // returned.
 //

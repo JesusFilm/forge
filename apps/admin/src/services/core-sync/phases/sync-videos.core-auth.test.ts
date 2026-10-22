@@ -22,7 +22,7 @@ import { syncVideos } from "./sync-videos"
 //
 // Whether `CORE_API_TOKEN` actually carries publisher authorization in
 // production is a live-gateway question this suite cannot answer — see
-// `docs/solutions/architecture-patterns/self-defeating-identity-filter-observer-client-20260916.md`
+// `docs/solutions/architecture-patterns/self-defeating-identity-filter-observer-client-20261022.md`
 // for the dated probe transcript and the required post-deploy confirmation
 // step. What this suite CAN pin is the shape of both outcomes: authorized,
 // the phase succeeds and writes the restriction; unauthorized, it fails
