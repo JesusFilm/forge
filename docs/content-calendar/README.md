@@ -88,6 +88,39 @@ A `scheduled` row turns into a posted tile by itself once its date and time pass
 so there is no need to flip the status afterwards. Delete a row only if the
 post was removed or cancelled.
 
+## Content view and open decisions (`stories`)
+
+The list icon in the calendar header opens "All content": one row per story (numbered in
+release order, newest on top) with its thumbnail, title, passage and "done of total"
+(orange until every piece is scheduled or published, then green). Opening a story shows a
+table: pieces down (Long form, intro, clip, insight, refl., verse, post), channels across
+(YouTube EN, YouTube RU, Facebook + Instagram). It is built from the `posts` rows; an
+orange dot marks a row still `planned`, with its due date (or "was due").
+
+Clicking a pending cell shows where the work stopped. That comes from the collection
+`stories`, one document per story, id = slug of `story` (`great-catch`, `rich-fool`,
+`peters-denial`). **Each story session writes its own story document** (the only exception
+to the single-writer rule, and only for this collection). Keep it current: add an item when
+Lyuba has to decide something, remove it once she has.
+
+```json
+{
+  "passage": "Luke 5:1–11", // optional; used until a long form with a title exists
+  "todo": [
+    {
+      "piece": "insight", // long | intro | clip | insight | refl. | verse | post
+      "lang": "both", // en | ru | both (Meta counts as en)
+      "stage": "Choose the topic", // short: what is waiting on Lyuba
+      "text": "Three topics for the insight Short.", // optional detail
+      "options": ["Deep water", "Go away from me", "Nets that tear"], // optional: the actual choices
+      "link": "https://www.figma.com/design/..." // optional: Figma cover, Claude Doc script, Studio project
+    }
+  ]
+}
+```
+
+Write it with ArtifactData `set` (first time) or `update` with `if_version`.
+
 ## Static copy for Netlify
 
 `build-static.py` freezes a snapshot (posts embedded, thumbnails copied, the analytics

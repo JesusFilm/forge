@@ -123,63 +123,6 @@
     margin: 0 6px;
   }
 
-  /* Filters: icons only. Click one lane to see only it; click again to see all. */
-  .fchip {
-    appearance: none;
-    border: 0;
-    background: transparent;
-    border-radius: 8px;
-    width: 34px;
-    height: 34px;
-    display: inline-grid;
-    place-items: center;
-    cursor: pointer;
-    position: relative;
-  }
-  .fchip:hover,
-  .fchip[aria-pressed="true"] {
-    background: var(--hover);
-  }
-  .fchip svg {
-    width: 20px;
-    height: 20px;
-  }
-  .filters.picked .fchip[aria-pressed="false"] {
-    opacity: 0.3;
-  }
-  .fchip[aria-pressed="true"]::after {
-    content: "";
-    position: absolute;
-    bottom: 2px;
-    left: 50%;
-    width: 4px;
-    height: 4px;
-    margin-left: -2px;
-    border-radius: 50%;
-    background: var(--ink);
-  }
-  .fchip .pair {
-    display: flex;
-    gap: 2px;
-  }
-  .fchip .pair svg {
-    width: 16px;
-    height: 16px;
-  }
-  .tag {
-    position: absolute;
-    right: 2px;
-    bottom: 5px;
-    font: 700 7px/1 var(--sans);
-    color: #fff;
-    border-radius: 2px;
-    padding: 1px 2px;
-    background: #5a4a42;
-  }
-  .tag.ru {
-    background: var(--flame);
-  }
-
   /* Weeks */
   .weeks {
     display: grid;
@@ -541,6 +484,258 @@
     text-align: center;
   }
 
+  /* Content view: every story, newest first. A row = number, 16:9 thumbnail, title, passage · done count.
+     Opening a row shows a table: pieces down, channels across; an orange dot marks a piece not uploaded yet. */
+  .tocal,
+  body.listview .tolist,
+  body.listview .nav,
+  body.listview #weeks,
+  body.listview #agenda {
+    display: none !important;
+  }
+  body.listview .tocal {
+    display: inline-grid !important;
+  }
+  .content {
+    display: none;
+    gap: 8px;
+    max-width: 980px;
+    width: 100%;
+    margin: 0 auto;
+  }
+  body.listview .content {
+    display: grid;
+  }
+  .story {
+    background: #1b1311;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .srow {
+    appearance: none;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    cursor: pointer;
+    text-align: left;
+  }
+  .srow:hover {
+    background: var(--hover);
+  }
+  .num {
+    font: 500 13px/1 var(--sans);
+    color: var(--muted);
+    width: 22px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  .sthumb {
+    width: 112px;
+    aspect-ratio: 16 / 9;
+    border-radius: 4px;
+    overflow: hidden;
+    background: repeating-linear-gradient(
+      135deg,
+      #1f1714 0 5px,
+      #261c18 5px 10px
+    );
+    flex: none;
+  }
+  .sthumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .stext {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    flex: 1;
+  }
+  .stitle {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 1.25;
+  }
+  .ssub {
+    font-size: 12px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .ssub .ok {
+    color: #74c98c;
+    font-weight: 600;
+  }
+  .ssub .todo {
+    color: var(--flame);
+    font-weight: 600;
+  }
+  .chev {
+    width: 18px;
+    height: 18px;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+    flex: none;
+  }
+  .story.open .chev {
+    transform: rotate(180deg);
+  }
+  .stable {
+    display: grid;
+    grid-template-columns: 92px repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border-top: 1px solid var(--line);
+  }
+  .stable > * {
+    background: var(--ground);
+  }
+  .th {
+    padding: 8px 10px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .th svg {
+    width: 18px;
+    height: 18px;
+  }
+  .th .t {
+    font: 700 9px/1 var(--sans);
+    color: #fff;
+    border-radius: 3px;
+    padding: 2px 3px;
+    background: #5a4a42;
+  }
+  .th .t.ru {
+    background: var(--flame);
+  }
+  .rh {
+    padding: 9px 10px;
+    font: 500 12px var(--sans);
+    color: var(--soft);
+  }
+  .c {
+    padding: 8px 10px;
+    display: grid;
+    gap: 4px;
+    align-content: center;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    min-width: 0;
+  }
+  .c.none {
+    color: #4a3a33;
+  }
+  button.c {
+    appearance: none;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  button.c:hover,
+  button.c.sel {
+    background: var(--hover);
+  }
+  .ln {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--soft);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  a.ln:hover {
+    color: var(--ink);
+  }
+  .ln svg {
+    width: 12px;
+    height: 12px;
+    flex: none;
+  }
+  .ln small {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--flame);
+    flex: none;
+  }
+  .ln.late {
+    color: var(--flame);
+  }
+  .detail {
+    padding: 14px 16px 16px;
+    border-top: 1px solid var(--line);
+    display: grid;
+    gap: 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--soft);
+  }
+  .detail h4 {
+    margin: 0;
+    font: 600 11px var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .detail h4 .late {
+    color: var(--flame);
+  }
+  .todo-item {
+    display: grid;
+    gap: 6px;
+    background: #241a17;
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .todo-item b {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .todo-item p {
+    margin: 0;
+    white-space: pre-wrap;
+  }
+  .todo-item ol {
+    margin: 0;
+    padding-left: 20px;
+  }
+  .todo-item a {
+    color: var(--gold);
+  }
+  @media (max-width: 860px) {
+    .sthumb {
+      width: 80px;
+    }
+    .stable {
+      grid-template-columns: 64px repeat(3, minmax(0, 1fr));
+    }
+    .c,
+    .rh,
+    .th {
+      padding-inline: 6px;
+    }
+  }
+
   /* Phone: one day per block, the three lanes stacked inside it. */
   .agenda {
     display: none;
@@ -631,13 +826,39 @@
       <button class="ghost" id="next" aria-label="Next week">›</button>
     </div>
     <div class="spacer"></div>
-    <div
-      class="filters"
-      id="filters"
-      role="group"
-      aria-label="Show only one channel"
-    ></div>
-    <span class="divider" aria-hidden="true"></span>
+    <button
+      class="ghost tolist"
+      id="toList"
+      title="All content"
+      aria-label="All content"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />
+      </svg>
+    </button>
+    <button
+      class="ghost tocal"
+      id="toCal"
+      title="Calendar"
+      aria-label="Calendar"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </svg>
+    </button>
     <a
       class="ghost"
       href="https://claude.ai/artifact/1TqhY4HP4zw8WEP6xqz3VX"
@@ -657,6 +878,7 @@
   </header>
   <div class="weeks" id="weeks"></div>
   <div class="agenda" id="agenda"></div>
+  <div class="content" id="content"></div>
   <div class="status" id="status"></div>
 </div>
 <div id="tip" hidden></div>
@@ -706,7 +928,7 @@
   }
   let posts = []
   let items = []
-  let only = store("dbp-cal-lane") || null
+  const only = null // lane filters were removed (Oct 22): the three lanes are always shown
   const now = new Date()
   let week = null // first Monday shown; set below once weekStart exists
   const pad = (n) => String(n).padStart(2, "0")
@@ -914,6 +1136,7 @@
     return s
   }
   function render() {
+    if (view === "list") return renderContent()
     const days = [...Array(7)].map((_, i) => {
       const d = new Date(week)
       d.setDate(week.getDate() + i)
@@ -1010,39 +1233,6 @@
       : '<div class="empty">Nothing this week yet.</div>'
   }
 
-  function renderFilters() {
-    const box = document.getElementById("filters")
-    box.classList.toggle("picked", !!only)
-    box.innerHTML = LANES.map(
-      (l) =>
-        '<button class="fchip" data-k="' +
-        l.key +
-        '" aria-pressed="' +
-        (only === l.key) +
-        '" title="Show only ' +
-        l.label +
-        '" aria-label="Show only ' +
-        l.label +
-        '">' +
-        (l.key === "meta"
-          ? '<span class="pair">' + ICON.fb + ICON.ig + "</span>"
-          : ICON.yt +
-            '<span class="tag' +
-            (l.key === "yt-ru" ? " ru" : "") +
-            '">' +
-            (l.key === "yt-ru" ? "RU" : "EN") +
-            "</span>") +
-        "</button>",
-    ).join("")
-  }
-  document.getElementById("filters").addEventListener("click", (e) => {
-    const b = e.target.closest(".fchip")
-    if (!b) return
-    only = only === b.dataset.k ? null : b.dataset.k
-    store("dbp-cal-lane", only)
-    renderFilters()
-    render()
-  })
   const step = (n) => {
     week.setDate(week.getDate() + 7 * n)
     render()
@@ -1056,6 +1246,7 @@
   // Arrow keys and a horizontal swipe also move a week.
   addEventListener("keydown", (e) => {
     if (!document.getElementById("ov").hidden) return
+    if (view === "list") return
     if (e.key === "ArrowLeft") step(-1)
     if (e.key === "ArrowRight") step(1)
   })
@@ -1191,9 +1382,320 @@
   })
   addEventListener("scroll", hideTip, { passive: true })
 
+  // ---- Content view: every story with all its pieces ----
+  // Open decisions live in the `stories` collection, one doc per story (id = slug of `story`), written by
+  // that story's session: { todo: [{ piece, lang, stage, text, options, link }] }. See README.
+  let view = "cal"
+  let stories = {}
+  let openStory = store("dbp-open-story") || null
+  let openCell = null
+  const slug = (s) =>
+    String(s || "")
+      .toLowerCase()
+      .replace(/['’]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+  const PIECES = [
+    { k: "long", l: "Long form" },
+    { k: "intro", l: "intro" },
+    { k: "clip", l: "clip" },
+    { k: "insight", l: "insight" },
+    { k: "refl.", l: "refl." },
+    { k: "verse", l: "verse" },
+    { k: "teaser", l: "teaser" },
+    { k: "post", l: "post" },
+    { k: "other", l: "other" },
+  ]
+  const COLS = [
+    { k: "en", lane: "yt-en", plats: ["yt-en"] },
+    { k: "ru", lane: "yt-ru", plats: ["yt-ru"] },
+    { k: "meta", lane: "meta", plats: ["fb", "ig"] },
+  ]
+  function pieceOf(p) {
+    if (p.kind === "post" || /^post/.test(String(p.cut || ""))) return "post"
+    if (isLong(p)) return "long"
+    const c = cutLabel(p)
+    if (c === "full") return "long"
+    return PIECES.some((x) => x.k === c) ? c : "other"
+  }
+  const isDone = (p) => p.status === "published" || p.status === "scheduled"
+  const fmtDay = (d) => {
+    const x = new Date(d + "T12:00")
+    return MONTHS[x.getMonth()].slice(0, 3) + " " + x.getDate()
+  }
+  function buildContent() {
+    const by = new Map()
+    for (const p of posts) {
+      if (!p.story || p.campaign) continue
+      const s = slug(p.story)
+      if (!by.has(s)) by.set(s, { slug: s, name: p.story, rows: [] })
+      by.get(s).rows.push(p)
+    }
+    const list = []
+    for (const st of by.values()) {
+      const longs = st.rows.filter((p) => p.kind === "long")
+      if (!longs.length) continue
+      const yt = (p) => (p.platforms || []).includes("yt-en")
+      const lead =
+        longs.find((p) => yt(p) && p.thumb) ||
+        longs.find((p) => p.thumb) ||
+        longs[0]
+      const titled =
+        longs.find((p) => yt(p) && /\|/.test(p.title || "")) ||
+        longs.find((p) => /\|/.test(p.title || ""))
+      // No long-form title yet: borrow the passage from any titled Short of the story.
+      const anyTitled =
+        st.rows.find((p) => yt(p) && /\|/.test(p.title || "")) ||
+        st.rows.find((p) => /\|/.test(p.title || ""))
+      const cells = {}
+      for (const p of st.rows) {
+        const pc = pieceOf(p)
+        for (const c of COLS) {
+          if (!(p.platforms || []).some((k) => c.plats.includes(k))) continue
+          ;(cells[pc + "|" + c.k] = cells[pc + "|" + c.k] || []).push(p)
+        }
+      }
+      const keys = Object.keys(cells)
+      list.push({
+        ...st,
+        first: longs.map((p) => p.date).sort()[0],
+        thumb: lead.thumb || "",
+        title: titled ? titled.title.split("|")[0].trim() : st.name,
+        passage:
+          (titled || anyTitled)?.title.split("|").slice(1).join("|").trim() ||
+          (stories[st.slug] || {}).passage ||
+          "",
+        cells,
+        total: keys.length,
+        done: keys.filter((k) => cells[k].every(isDone)).length,
+        todo: (stories[st.slug] || {}).todo || [],
+      })
+    }
+    list.sort((a, b) => a.first.localeCompare(b.first))
+    list.forEach((s, i) => (s.n = i + 1))
+    return list.reverse()
+  }
+  const CHECK =
+    '<svg viewBox="0 0 16 16" fill="none" stroke="#74c98c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg>'
+  const CLOCK =
+    '<svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.3 1.5"/></svg>'
+  function lineHtml(p, col) {
+    const sub =
+      pieceOf(p) === "post"
+        ? " <small>" +
+          esc(String(p.cut || "").replace(/^post-/, "")) +
+          "</small>"
+        : /lumo/i.test(p.id) && pieceOf(p) === "long"
+          ? " <small>LUMO</small>"
+          : ""
+    if (p.status === "planned") {
+      const late = p.date < todayKey
+      return (
+        '<span class="ln' +
+        (late ? " late" : "") +
+        '"><i class="dot"></i>' +
+        (late ? "was due " : "due ") +
+        fmtDay(p.date) +
+        sub +
+        "</span>"
+      )
+    }
+    const url = col.plats.map((k) => urlFor(p, k)).find(Boolean) || ""
+    const inner =
+      (isFuture(p) ? CLOCK : CHECK) +
+      fmtDay(p.date) +
+      (isFuture(p) && p.time ? ", " + esc(p.time) : "") +
+      sub
+    return url
+      ? '<a class="ln" href="' +
+          esc(url) +
+          '" target="_blank" rel="noopener">' +
+          inner +
+          "</a>"
+      : '<span class="ln">' + inner + "</span>"
+  }
+  function colHead(c) {
+    if (c.k === "meta") return ICON.fb + ICON.ig
+    return (
+      ICON.yt +
+      '<span class="t' +
+      (c.k === "ru" ? " ru" : "") +
+      '">' +
+      c.k.toUpperCase() +
+      "</span>"
+    )
+  }
+  // A todo applies to a cell when its piece matches and its lang is the cell's (meta = en) or "both".
+  function todosFor(s, pc, ck) {
+    const lang = ck === "ru" ? "ru" : "en"
+    return s.todo.filter(
+      (t) =>
+        (t.piece || "") === pc &&
+        (!t.lang || t.lang === "both" || t.lang === lang),
+    )
+  }
+  function storyTable(s) {
+    const used = PIECES.filter((pc) =>
+      COLS.some((c) => s.cells[pc.k + "|" + c.k]),
+    )
+    let h =
+      '<div class="stable"><div class="th"></div>' +
+      COLS.map((c) => '<div class="th">' + colHead(c) + "</div>").join("")
+    for (const pc of used) {
+      h += '<div class="rh">' + pc.l + "</div>"
+      for (const c of COLS) {
+        const key = pc.k + "|" + c.k
+        const rows = (s.cells[key] || []).sort((a, b) =>
+          a.date.localeCompare(b.date),
+        )
+        if (!rows.length) {
+          h += '<div class="c none">·</div>'
+          continue
+        }
+        const lines = rows.map((p) => lineHtml(p, c)).join("")
+        h += rows.every(isDone)
+          ? '<div class="c">' + lines + "</div>"
+          : '<button type="button" class="c' +
+            (openCell === s.slug + "|" + key ? " sel" : "") +
+            '" data-cell="' +
+            esc(s.slug + "|" + key) +
+            '">' +
+            lines +
+            "</button>"
+      }
+    }
+    h += "</div>"
+    if (openCell && openCell.startsWith(s.slug + "|")) {
+      const [, pk, ck] = openCell.split("|")
+      h += detailHtml(s, pk, ck)
+    }
+    return h
+  }
+  function detailHtml(s, pk, ck) {
+    const rows = (s.cells[pk + "|" + ck] || []).filter((p) => !isDone(p))
+    const due = rows.map((p) => p.date).sort()[0]
+    const col = {
+      en: "YouTube EN",
+      ru: "YouTube RU",
+      meta: "Facebook + Instagram",
+    }[ck]
+    const name = (PIECES.find((x) => x.k === pk) || {}).l || pk
+    const late = due && due < todayKey
+    const items = todosFor(s, pk, ck)
+    return (
+      '<div class="detail"><h4>' +
+      esc(name) +
+      " · " +
+      col +
+      (due
+        ? ' · <span class="' +
+          (late ? "late" : "") +
+          '">' +
+          (late ? "was due " : "due ") +
+          fmtDay(due) +
+          "</span>"
+        : "") +
+      "</h4>" +
+      (items.length
+        ? items
+            .map(
+              (t) =>
+                '<div class="todo-item"><b>' +
+                esc(t.stage || "Waiting") +
+                "</b>" +
+                (t.text ? "<p>" + esc(t.text) + "</p>" : "") +
+                (t.options && t.options.length
+                  ? "<ol>" +
+                    t.options.map((o) => "<li>" + esc(o) + "</li>").join("") +
+                    "</ol>"
+                  : "") +
+                (t.link
+                  ? '<a href="' +
+                    esc(t.link) +
+                    '" target="_blank" rel="noopener">' +
+                    (/figma\.com/.test(t.link) ? "Open in Figma ↗" : "Open ↗") +
+                    "</a>"
+                  : "") +
+                "</div>",
+            )
+            .join("")
+        : "<p>Not made yet. The story session has not noted where it stopped.</p>") +
+      "</div>"
+    )
+  }
+  const CHEV =
+    '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
+  function renderContent() {
+    const list = buildContent()
+    document.getElementById("content").innerHTML = list.length
+      ? list
+          .map((s) => {
+            const open = openStory === s.slug
+            return (
+              '<section class="story' +
+              (open ? " open" : "") +
+              '"><button type="button" class="srow" data-story="' +
+              esc(s.slug) +
+              '" aria-expanded="' +
+              open +
+              '"><span class="num">' +
+              s.n +
+              '</span><span class="sthumb">' +
+              (s.thumb
+                ? '<img src="' + esc(s.thumb) + '" alt="" loading="lazy">'
+                : "") +
+              '</span><span class="stext"><span class="stitle">' +
+              esc(s.title) +
+              '</span><span class="ssub">' +
+              (s.passage ? esc(s.passage) + " · " : "") +
+              '<b class="' +
+              (s.done === s.total ? "ok" : "todo") +
+              '">' +
+              s.done +
+              " of " +
+              s.total +
+              "</b>" +
+              (s.todo.length ? " · " + s.todo.length + " to decide" : "") +
+              "</span></span>" +
+              CHEV +
+              "</button>" +
+              (open ? storyTable(s) : "") +
+              "</section>"
+            )
+          })
+          .join("")
+      : '<div class="empty">No stories yet.</div>'
+  }
+  document.getElementById("content").addEventListener("click", (e) => {
+    const r = e.target.closest(".srow")
+    if (r) {
+      openStory = openStory === r.dataset.story ? null : r.dataset.story
+      openCell = null
+      store("dbp-open-story", openStory)
+      renderContent()
+      return
+    }
+    const c = e.target.closest("button.c")
+    if (c) {
+      openCell = openCell === c.dataset.cell ? null : c.dataset.cell
+      renderContent()
+    }
+  })
+  function setView(v) {
+    view = v
+    document.body.classList.toggle("listview", v === "list")
+    store("dbp-view", v)
+    hideTip()
+    if (v === "list") {
+      document.getElementById("month").textContent = "All content"
+      renderContent()
+    } else render()
+  }
+  document.getElementById("toList").onclick = () => setView("list")
+  document.getElementById("toCal").onclick = () => setView("cal")
+
   week = weekStart(now)
-  renderFilters()
-  render()
+  setView(store("dbp-view") === "list" ? "list" : "cal")
   document.getElementById("status").textContent = "Loading posts…"
   ;(async () => {
     const db = await window.claude?.use?.("db")
@@ -1202,6 +1704,13 @@
       status.textContent = "Open this page in Claude to see the posts."
       return
     }
+    db.collection("stories").onSnapshot(
+      (snap) => {
+        stories = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))
+        if (view === "list") renderContent()
+      },
+      () => {},
+    )
     db.collection("posts").onSnapshot(
       (snap) => {
         posts = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
