@@ -6,6 +6,8 @@ The owner selected a 14-day policy for **new anonymous Watch exposure rows only*
 
 The cleanup page is independently capped at 1,000 expired exposures inside the existing five-second retention deadline. A local PostgreSQL 18 fixture with 500,000 indexed exposure rows measured a 602.5 ms median for ten 1,000-row pages. This is a bounded capacity test, not proof of production throughput. Normal cleanup preserves its durable failure and continuation accounting; no historical expiry backfill or manual purge was performed.
 
+All seven measured exposure indexes had recorded scans, ranging from 163 for the cohort index to more than 11 million for the event key. Size and cumulative scan counts alone do not establish a safe index to drop, so this rollout removes none. If live rows and free space do not stabilize after the old cohort drains, expiry partitioning is a separate option for physical file reclamation; its uniqueness and query contracts require a migration design. A volume increase remains an owner-approved financial bridge if fresh headroom evidence requires it.
+
 At 22:56:09 UTC, direct PGDATA measurement showed 11,001,843,712 bytes available out of 48,891,670,528 bytes. The first old exposure expiries begin October 27, and the October 22 baseline counted 2,303,163 rows due October 27–31. Neither the new expiry nor ordinary `DELETE` has yet produced measured physical filesystem recovery. Deleted rows can initially leave reusable PostgreSQL pages inside allocated relation files. A later volume decision must use fresh provider inventory and direct free-space readings.
 
 ## Release and acceptance checkpoint
