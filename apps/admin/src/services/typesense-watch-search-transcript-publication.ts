@@ -622,6 +622,123 @@ async function loadPublicationLeaseContention(
   }
 }
 
+/**
+ * An oldest-pending publication event older than this is a stuck-work alert
+ * condition, not merely slow: it signals the worker is not draining the
+ * outbox rather than normal end-to-end publication latency.
+ */
+export const WATCH_SEARCH_TRANSCRIPT_PUBLICATION_STALE_MS = 15 * 60_000
+
+type PublicationHealthReader = Pick<
+  PrismaClient,
+  | "watchSearchCurrentTranscriptProjection"
+  | "watchSearchCurrentTranscriptPublicationEvent"
+>
+
+export type WatchSearchTranscriptPublicationDeadLetter = {
+  transcriptId: string
+  videoId: string
+  videoEditionId: string
+  language: string
+  workKind: "PUBLICATION" | "LIFECYCLE"
+  attemptCount: number
+  lastErrorCode: string | null
+  deadLetteredAt: Date | null
+}
+
+export type WatchSearchTranscriptPublicationHealth = {
+  projection: {
+    transcriptCollection: string | null
+    contentEmbeddingContractId: string | null
+    transcriptChunkingVersion: string | null
+    projectionRevision: string
+    updatedAt: Date
+  } | null
+  pendingCount: number
+  claimedCount: number
+  deadLetterCount: number
+  oldestPendingCreatedAt: Date | null
+  oldestPendingAgeMs: number | null
+  stale: boolean
+  recentDeadLetters: WatchSearchTranscriptPublicationDeadLetter[]
+}
+
+/**
+ * Durable, privacy-safe evidence that an accepted canonical transcript
+ * replacement did (or did not yet) reach Typesense. Reads only identity,
+ * counts, and already-redacted error-class codes from the outbox and
+ * projection tables — never vectors, transcript text, or raw error messages.
+ */
+export async function loadWatchSearchTranscriptPublicationHealth(
+  prisma: PublicationHealthReader,
+  now: Date = new Date(),
+): Promise<WatchSearchTranscriptPublicationHealth> {
+  const [
+    projection,
+    pendingCount,
+    claimedCount,
+    deadLetterCount,
+    oldestPending,
+    recentDeadLetters,
+  ] = await Promise.all([
+    prisma.watchSearchCurrentTranscriptProjection.findUnique({
+      where: { id: WATCH_SEARCH_CURRENT_TRANSCRIPT_PROJECTION_ID },
+    }),
+    prisma.watchSearchCurrentTranscriptPublicationEvent.count({
+      where: { status: "PENDING" },
+    }),
+    prisma.watchSearchCurrentTranscriptPublicationEvent.count({
+      where: { status: "CLAIMED" },
+    }),
+    prisma.watchSearchCurrentTranscriptPublicationEvent.count({
+      where: { status: "DEAD_LETTER" },
+    }),
+    prisma.watchSearchCurrentTranscriptPublicationEvent.findFirst({
+      where: { status: { in: ["PENDING", "CLAIMED"] } },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
+    prisma.watchSearchCurrentTranscriptPublicationEvent.findMany({
+      where: { status: "DEAD_LETTER" },
+      orderBy: { deadLetteredAt: "desc" },
+      take: 20,
+      select: {
+        transcriptId: true,
+        videoId: true,
+        videoEditionId: true,
+        language: true,
+        workKind: true,
+        attemptCount: true,
+        lastErrorCode: true,
+        deadLetteredAt: true,
+      },
+    }),
+  ])
+  const oldestPendingAgeMs = oldestPending
+    ? Math.max(0, now.getTime() - oldestPending.createdAt.getTime())
+    : null
+  return {
+    projection: projection
+      ? {
+          transcriptCollection: projection.transcriptCollection,
+          contentEmbeddingContractId: projection.contentEmbeddingContractId,
+          transcriptChunkingVersion: projection.transcriptChunkingVersion,
+          projectionRevision: projection.projectionRevision.toString(),
+          updatedAt: projection.updatedAt,
+        }
+      : null,
+    pendingCount,
+    claimedCount,
+    deadLetterCount,
+    oldestPendingCreatedAt: oldestPending?.createdAt ?? null,
+    oldestPendingAgeMs,
+    stale:
+      oldestPendingAgeMs != null &&
+      oldestPendingAgeMs > WATCH_SEARCH_TRANSCRIPT_PUBLICATION_STALE_MS,
+    recentDeadLetters,
+  }
+}
+
 async function loadCanonicalTranscriptSnapshot(
   prisma: CanonicalTranscriptSnapshotReader,
   batch: ClaimedPublicationBatch,

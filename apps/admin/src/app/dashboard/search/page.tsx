@@ -95,6 +95,12 @@ export default async function SearchPage({
                 Compare versions
               </Link>
             ) : null}
+            <Link
+              href={"/dashboard/search/transcript-publication" as Route}
+              className="rounded-sm border border-[var(--color-hairline)] px-3 py-2 font-mono text-[11px] uppercase text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-raised)]"
+            >
+              Publication health
+            </Link>
             <div className="inline-flex rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface)] p-1">
               {WINDOW_OPTIONS.map((option) => (
                 <Link

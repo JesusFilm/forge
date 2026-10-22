@@ -329,3 +329,164 @@ describe("ensureWatchSearchTranscriptPublicationWorkerStarted", () => {
     )
   })
 })
+
+describe("loadWatchSearchTranscriptPublicationHealth", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function fakePrisma(overrides: {
+    projection?: unknown
+    pendingCount?: number
+    claimedCount?: number
+    deadLetterCount?: number
+    oldestPending?: { createdAt: Date } | null
+    recentDeadLetters?: unknown[]
+  }) {
+    const counts = [
+      overrides.pendingCount ?? 0,
+      overrides.claimedCount ?? 0,
+      overrides.deadLetterCount ?? 0,
+    ]
+    let countCallIndex = 0
+    return {
+      watchSearchCurrentTranscriptProjection: {
+        findUnique: vi.fn(async () => overrides.projection ?? null),
+      },
+      watchSearchCurrentTranscriptPublicationEvent: {
+        count: vi.fn(async () => counts[countCallIndex++] ?? 0),
+        findFirst: vi.fn(async () => overrides.oldestPending ?? null),
+        findMany: vi.fn(async () => overrides.recentDeadLetters ?? []),
+      },
+    }
+  }
+
+  it("reports a healthy empty outbox with no stored projection", async () => {
+    const { loadWatchSearchTranscriptPublicationHealth } =
+      await import("./typesense-watch-search-transcript-publication")
+    const prisma = fakePrisma({})
+
+    await expect(
+      loadWatchSearchTranscriptPublicationHealth(
+        prisma as never,
+        new Date("2026-10-22T00:00:00.000Z"),
+      ),
+    ).resolves.toEqual({
+      projection: null,
+      pendingCount: 0,
+      claimedCount: 0,
+      deadLetterCount: 0,
+      oldestPendingCreatedAt: null,
+      oldestPendingAgeMs: null,
+      stale: false,
+      recentDeadLetters: [],
+    })
+  })
+
+  it("surfaces the stored projection with the revision rendered as a string", async () => {
+    const { loadWatchSearchTranscriptPublicationHealth } =
+      await import("./typesense-watch-search-transcript-publication")
+    const updatedAt = new Date("2026-10-20T00:00:00.000Z")
+    const prisma = fakePrisma({
+      projection: {
+        transcriptCollection: "watch_search_transcripts_active",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        projectionRevision: 42n,
+        updatedAt,
+      },
+    })
+
+    const result = await loadWatchSearchTranscriptPublicationHealth(
+      prisma as never,
+      new Date("2026-10-22T00:00:00.000Z"),
+    )
+
+    expect(result.projection).toEqual({
+      transcriptCollection: "watch_search_transcripts_active",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
+      projectionRevision: "42",
+      updatedAt,
+    })
+  })
+
+  it("flags stale work once the oldest pending event exceeds the alert threshold", async () => {
+    const { loadWatchSearchTranscriptPublicationHealth } =
+      await import("./typesense-watch-search-transcript-publication")
+    const now = new Date("2026-10-22T00:20:00.000Z")
+    const oldestCreatedAt = new Date("2026-10-22T00:00:00.000Z") // exactly 20 minutes old
+    const prisma = fakePrisma({
+      pendingCount: 3,
+      oldestPending: { createdAt: oldestCreatedAt },
+    })
+
+    const result = await loadWatchSearchTranscriptPublicationHealth(
+      prisma as never,
+      now,
+    )
+
+    expect(result.oldestPendingCreatedAt).toEqual(oldestCreatedAt)
+    expect(result.oldestPendingAgeMs).toBe(20 * 60_000)
+    expect(result.stale).toBe(true)
+  })
+
+  it("does not flag work within the alert threshold as stale", async () => {
+    const { loadWatchSearchTranscriptPublicationHealth } =
+      await import("./typesense-watch-search-transcript-publication")
+    const now = new Date("2026-10-22T00:05:00.000Z")
+    const oldestCreatedAt = new Date("2026-10-22T00:00:00.000Z") // 5 minutes old
+    const prisma = fakePrisma({
+      pendingCount: 1,
+      oldestPending: { createdAt: oldestCreatedAt },
+    })
+
+    const result = await loadWatchSearchTranscriptPublicationHealth(
+      prisma as never,
+      now,
+    )
+
+    expect(result.oldestPendingAgeMs).toBe(5 * 60_000)
+    expect(result.stale).toBe(false)
+  })
+
+  it("surfaces only identity, counts, and redacted error-class codes for dead letters", async () => {
+    const { loadWatchSearchTranscriptPublicationHealth } =
+      await import("./typesense-watch-search-transcript-publication")
+    const deadLetteredAt = new Date("2026-10-21T12:00:00.000Z")
+    const prisma = fakePrisma({
+      deadLetterCount: 1,
+      recentDeadLetters: [
+        {
+          transcriptId: "transcript-1",
+          videoId: "video-1",
+          videoEditionId: "edition-1",
+          language: "en",
+          workKind: "PUBLICATION",
+          attemptCount: 8,
+          lastErrorCode: "WatchSearchTranscriptPublicationError",
+          deadLetteredAt,
+        },
+      ],
+    })
+
+    const result = await loadWatchSearchTranscriptPublicationHealth(
+      prisma as never,
+      new Date("2026-10-22T00:00:00.000Z"),
+    )
+
+    expect(result.deadLetterCount).toBe(1)
+    expect(result.recentDeadLetters).toEqual([
+      {
+        transcriptId: "transcript-1",
+        videoId: "video-1",
+        videoEditionId: "edition-1",
+        language: "en",
+        workKind: "PUBLICATION",
+        attemptCount: 8,
+        lastErrorCode: "WatchSearchTranscriptPublicationError",
+        deadLetteredAt,
+      },
+    ])
+  })
+})
