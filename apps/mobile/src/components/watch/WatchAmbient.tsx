@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import {
   Animated,
   Easing,
+  type ImageStyle,
   Platform,
   StyleSheet,
   View,
@@ -21,9 +22,12 @@ const AMBIENT_FADE_MS = 600
 const AMBIENT_MAX_OPACITY = 0.45
 // How far the wash bleeds below the player before dissolving into BG_COLOR.
 const AMBIENT_BLEED = 160
-// expo-image halves the iOS value internally; keep the ~3x iOS:Android ratio
-// the TopicCard precedent uses rather than equalising the numbers.
-const AMBIENT_BLUR = Platform.OS === "ios" ? 50 : 16
+// iOS only. On Android, expo-image blurs with RenderScript, and two blurs at
+// the same time can crash the app (feat-784). A poster swap can start a second.
+const IOS_AMBIENT_BLUR = 50
+// Android instead decodes the poster into a box this many times smaller, and
+// the scale stretches it back. The stretched bitmap gives the soft wash.
+const ANDROID_WASH_SHRINK = 48
 
 // THE KNOB: 0 hands the wash fully over to black during playback, 1 disables
 // the behaviour. Why black rather than BG_COLOR, and why at all: see
@@ -114,9 +118,13 @@ export function WatchAmbient({ posterUrl, topInset }: WatchAmbientProps) {
             // the value never changes and cannot blank the view mid-cross-fade.
             recyclingKey="watch-ambient"
             source={posterUrl}
-            style={[StyleSheet.absoluteFill, styles.art]}
+            style={
+              Platform.OS === "ios"
+                ? [StyleSheet.absoluteFill, styles.art]
+                : androidWashStyle(width, height)
+            }
             contentFit="cover"
-            blurRadius={AMBIENT_BLUR}
+            blurRadius={Platform.OS === "ios" ? IOS_AMBIENT_BLUR : undefined}
             cachePolicy="memory-disk"
             transition={AMBIENT_FADE_MS}
           />
@@ -149,6 +157,21 @@ export function WatchAmbient({ posterUrl, topInset }: WatchAmbientProps) {
       </Animated.View>
     </View>
   )
+}
+
+// Glide decodes to the view's size, so a 1080 px wide screen gets a bitmap of
+// about 22 px. The 1.1 overscan covers the rounding of the box to whole pixels.
+function androidWashStyle(width: number, height: number): ImageStyle {
+  const boxWidth = width / ANDROID_WASH_SHRINK
+  const boxHeight = height / ANDROID_WASH_SHRINK
+  return {
+    position: "absolute",
+    left: (width - boxWidth) / 2,
+    top: (height - boxHeight) / 2,
+    width: boxWidth,
+    height: boxHeight,
+    transform: [{ scale: ANDROID_WASH_SHRINK * 1.1 }],
+  }
 }
 
 const styles = StyleSheet.create({

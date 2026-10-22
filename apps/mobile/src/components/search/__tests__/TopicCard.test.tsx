@@ -1,8 +1,17 @@
 // A topic card shows its label in the UI language but always searches with its
 // English term (U7, U10). The fixture `ru` catalog replaces the label only.
 import { act } from "react"
+import { Platform } from "react-native"
 
-jest.mock("expo-image", () => ({ Image: () => null }))
+// The mock logs the props of each render, so a case can read the blur that
+// would reach the native view.
+const mockImageProps: Record<string, unknown>[] = []
+jest.mock("expo-image", () => ({
+  Image: (props: Record<string, unknown>) => {
+    mockImageProps.push(props)
+    return null
+  },
+}))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
@@ -65,16 +74,27 @@ if (!parables) throw new Error("the parables topic is missing")
 let renderer: TestInstance | null = null
 const onSelect = jest.fn()
 
-async function render(): Promise<TestInstance> {
+async function render(thumbnailUrl?: string): Promise<TestInstance> {
   await act(async () => {
     renderer = TestRenderer.create(
-      <TopicCard topic={parables!} onSelect={onSelect} cardWidth={160} />,
+      <TopicCard
+        topic={parables!}
+        onSelect={onSelect}
+        thumbnailUrl={thumbnailUrl}
+        cardWidth={160}
+      />,
     )
   })
   return renderer!
 }
 
+const platformOsDescriptor = Object.getOwnPropertyDescriptor(Platform, "OS")!
+function setPlatform(os: "ios" | "android") {
+  Object.defineProperty(Platform, "OS", { value: os, configurable: true })
+}
+
 beforeEach(() => {
+  mockImageProps.length = 0
   onSelect.mockReset()
   resetLocaleStoreForTests()
   mockGetLocales.mockReset()
@@ -84,6 +104,7 @@ beforeEach(() => {
 afterEach(() => {
   act(() => renderer?.unmount())
   renderer = null
+  Object.defineProperty(Platform, "OS", platformOsDescriptor)
 })
 afterAll(() => resetLocaleStoreForTests())
 
@@ -110,4 +131,25 @@ describe("TopicCard", () => {
     expect(tapActionName(russian)).toBe(englishName)
     expect(englishName).toBe("browse-topic")
   })
+
+  // feat-784: on Android, expo-image blurs with RenderScript, and the six cards
+  // blur at the same time, which can crash the app. iOS keeps its blur.
+  it.each([
+    ["android", undefined],
+    ["ios", 12],
+  ] as const)(
+    "on %s, sends blurRadius %s with the thumbnail",
+    async (os, blurRadius) => {
+      setPlatform(os)
+      const thumbnailUrl = "https://example.com/parables.jpg"
+      const card = await render(thumbnailUrl)
+
+      // Anti-vacuous: the thumbnail still renders, so the blur was not dropped
+      // with the image. The label still renders over it.
+      const image = mockImageProps.at(-1)
+      expect(image?.source).toBe(thumbnailUrl)
+      expect(image?.blurRadius).toBe(blurRadius)
+      expect(hasText(card, "Parables")).toBe(true)
+    },
+  )
 })

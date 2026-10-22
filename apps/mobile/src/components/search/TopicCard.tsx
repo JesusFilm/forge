@@ -16,9 +16,9 @@ const SCRIM_COLORS = [
   hexToRgba("#000000", 0.65),
 ] as const
 
-// expo-image's blurRadius isn't calibrated equally across platforms — the same
-// value blurs noticeably harder on Android than iOS — so bump iOS to match.
-const THUMBNAIL_BLUR_RADIUS = Platform.OS === "ios" ? 12 : 4
+// iOS only. On Android, expo-image blurs with RenderScript, and the six cards
+// blur at the same time, which can crash the app (feat-784).
+const IOS_THUMBNAIL_BLUR_RADIUS = 12
 
 export interface TopicCardProps {
   topic: BrowseTopic
@@ -66,7 +66,9 @@ export function TopicCard({
           source={thumbnailUrl}
           style={[StyleSheet.absoluteFill, styles.thumbnail]}
           contentFit="cover"
-          blurRadius={THUMBNAIL_BLUR_RADIUS}
+          blurRadius={
+            Platform.OS === "ios" ? IOS_THUMBNAIL_BLUR_RADIUS : undefined
+          }
           transition={400}
           cachePolicy="memory-disk"
           recyclingKey={topic.searchTerm}

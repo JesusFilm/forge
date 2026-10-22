@@ -75,13 +75,14 @@ describe("WatchAmbient", () => {
     expect(SOURCE).toMatch(/opacity: AMBIENT_MAX_OPACITY/)
   })
 
-  it("blurs the art, and keeps iOS well above Android", () => {
-    // expo-image halves the iOS value internally, so equal numbers render as
-    // a much weaker blur on iOS. Equalising them is the tempting wrong fix.
-    expect(SOURCE).toContain("blurRadius={AMBIENT_BLUR}")
-    const ios = Number(SOURCE.match(/"ios" \? ([0-9]+)/)![1])
-    const android = Number(SOURCE.match(/"ios" \? [0-9]+ : ([0-9]+)/)![1])
-    expect(ios).toBeGreaterThan(android)
+  it("blurs the art on iOS only, and softens it on Android without a blur", () => {
+    // feat-784: an Android blur runs on RenderScript, and two at the same time
+    // can crash the app. watchAmbientBlur.test.tsx renders both platforms, and
+    // src/components/__tests__/noAndroidBlurRadius.guard.test.js scans all sites.
+    expect(SOURCE).toContain(
+      'blurRadius={Platform.OS === "ios" ? IOS_AMBIENT_BLUR : undefined}',
+    )
+    expect(SOURCE).toContain(": androidWashStyle(width, height)")
   })
 
   it("cross-fades the POSTER natively rather than with Animated", () => {
