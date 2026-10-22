@@ -3,7 +3,7 @@ id: "feat-756"
 title: "Verify Langfuse v4 ingestion and lifecycle compatibility"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-23"
 duration: 1
 depends_on: []
@@ -12,6 +12,23 @@ tags:
   - "ai-chat"
   - "observability"
 ---
+
+## Resolution
+
+**Prepared:** October 23, 2026 in [PR #2863](https://github.com/JesusFilm/forge/pull/2863)
+(`fix(mastra): verify Langfuse v4 observation compatibility`). Unmerged and
+undeployed; this status covers the code/audit scope, not operational rollout.
+
+The existing SDK already meets the v4 minimum. This change makes ingestion
+selection explicit, exposes Seeker-turn provenance as filterable observation
+metadata, and adds eight real-export regression cases. Independent review found
+no blocking defects; its documentation correction and additional test cases were
+incorporated. The full Mastra suite passed 3,879 tests before the six additional
+wire cases; all eight final wire cases, typecheck, lint and formatting pass.
+
+Durable evidence and the required operator checks are in
+`docs/reports/2026-10-23-langfuse-v4-readiness.md`. Account-side migration and
+synthetic live verification require a separately authorized rollout.
 
 ## Problem
 
