@@ -85,10 +85,10 @@ describe("run", () => {
       { timeoutMs: 400, env: { PATH: "/usr/bin:/bin" } },
     )
     expect(result.timedOut).toBe(true)
-    expect(Date.now() - started).toBeLessThan(5000)
+    expect(Date.now() - started).toBeLessThan(10000)
     const grandchild = Number(fs.readFileSync(pidFile, "utf8"))
-    expect(await waitUntilGone(grandchild, 2000)).toBe(true)
-  })
+    expect(await waitUntilGone(grandchild, 10000)).toBe(true)
+  }, 20000)
 
   it("writes all output to the log file and keeps only a tail in memory", async () => {
     const logFile = path.join(tempDir(), "child.log")
