@@ -1,0 +1,13 @@
+# The speed pass first video frame (KTD19, R21). It runs after the cold launch
+# flow, so the app is on Home. The watch page starts the video by itself.
+appId: org.jesusfilm.forgewatch
+name: speed-first-frame
+---
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The first video frame shows

@@ -65,15 +65,6 @@ function sha256(text) {
 
 // ── Dependencies ─────────────────────────────────────────────────────
 
-function notBuilt(phase) {
-  return async () => {
-    throw new LifecycleError(
-      "phase_not_built",
-      `the ${phase} phase is not built yet`,
-    )
-  }
-}
-
 function askLine(question) {
   const prompt = readline.createInterface({
     input: process.stdin,
@@ -259,7 +250,7 @@ function createDeps(overrides = {}) {
         journeysDir: overrides.journeysDir ?? JOURNEYS_DIR,
         configDir,
       }),
-      speed: notBuilt("speed"),
+      speed: require("./speed").createSpeedPhase(),
     },
     logCheck: (logPath, options) =>
       require("./server/logCheck").checkLog(logPath, options),
