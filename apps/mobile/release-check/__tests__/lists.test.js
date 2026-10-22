@@ -259,6 +259,37 @@ describe("writes on read", () => {
   })
 })
 
+describe("Mux Data key digests", () => {
+  const digest = "0".repeat(64)
+
+  it("accepts a digest with the key's length", () => {
+    expect(
+      findingsWith((lists) =>
+        lists.testSettings.muxDataEnvKeyDigests.push({
+          sha256: digest,
+          length: 26,
+        }),
+      ),
+    ).toEqual([])
+  })
+
+  // The build check hashes windows of the key's length, so a digest alone
+  // cannot match anything.
+  it.each([
+    ["a bare digest", digest],
+    ["a digest without its length", { sha256: digest }],
+    ["a length that is not a whole number", { sha256: digest, length: 2.5 }],
+  ])("fails %s", (_label, entry) => {
+    expect(
+      findingsWith((lists) =>
+        lists.testSettings.muxDataEnvKeyDigests.push(entry),
+      ),
+    ).toEqual([
+      "muxDataEnvKeyDigests must list { sha256, length } entries: a SHA-256 hex digest and the key's length",
+    ])
+  })
+})
+
 describe("devices", () => {
   it("fails a simulator name without the Forge RC prefix", () => {
     const findings = findingsWith((lists) => {

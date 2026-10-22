@@ -108,6 +108,16 @@ function classifyEnvKeys(keys, settings) {
   return { unclassified, repeated }
 }
 
+// The build check hashes every window of `length` bytes in the bundle (KTD5).
+function isMuxKeyDigest(entry) {
+  return (
+    isObject(entry) &&
+    SHA256_HEX.test(entry.sha256 ?? "") &&
+    Number.isInteger(entry.length) &&
+    entry.length > 0
+  )
+}
+
 function checkTestSettings(settings, envKeys) {
   const problems = []
   if (settings.schemaVersion !== 1) problems.push("schemaVersion must be 1")
@@ -145,9 +155,11 @@ function checkTestSettings(settings, envKeys) {
   }
   if (
     !Array.isArray(settings.muxDataEnvKeyDigests) ||
-    !settings.muxDataEnvKeyDigests.every((digest) => SHA256_HEX.test(digest))
+    !settings.muxDataEnvKeyDigests.every(isMuxKeyDigest)
   ) {
-    problems.push("muxDataEnvKeyDigests must list SHA-256 hex digests")
+    problems.push(
+      "muxDataEnvKeyDigests must list { sha256, length } entries: a SHA-256 hex digest and the key's length",
+    )
   }
   const { unclassified, repeated } = classifyEnvKeys(envKeys, settings)
   for (const key of unclassified) {
