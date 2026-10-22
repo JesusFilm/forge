@@ -1,5 +1,5 @@
 ---
-id: "feat-756"
+id: "feat-757"
 title: "Verify Langfuse v4 ingestion and lifecycle compatibility"
 owner: "jaco"
 priority: "P1"
