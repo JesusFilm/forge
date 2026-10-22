@@ -44,9 +44,9 @@ describe("cli.mjs refusals", () => {
   })
 
   it("refuses a valid mode that is not built yet with exit 2", () => {
-    const result = runCli(["run", "--yes", "--platform", "ios"])
+    const result = runCli(["check-screens", "--json"])
     expect(result.status).toBe(2)
-    expect(result.stderr).toContain("`run` is not built yet")
+    expect(result.stderr).toContain("`check-screens` is not built yet")
   })
 })
 

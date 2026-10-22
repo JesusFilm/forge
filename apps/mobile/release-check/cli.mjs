@@ -24,7 +24,7 @@ function preflightRefusal() {
   return null
 }
 
-function main() {
+async function main() {
   const preflight = preflightRefusal()
   if (preflight) {
     console.error(`release-check refused: ${preflight}`)
@@ -32,11 +32,27 @@ function main() {
   }
   const require = createRequire(import.meta.url)
   const contract = require("./lib/contract.js")
+  const lifecycle = () => require("./lib/lifecycle.js")
+  const withDeps = (name) => (command) => {
+    const modes = lifecycle()
+    return modes[name](command, modes.createDeps())
+  }
 
   // A later unit adds its mode here; the parser reads only contract.MODES.
   const handlers = {
+    plan: (command) =>
+      require("./lib/plan.js").planCommand(command, lifecycle().createDeps()),
+    setup: withDeps("setupMode"),
+    run: withDeps("runCommand"),
+    status: withDeps("statusCommand"),
+    stop: withDeps("stopCommand"),
+    recover: withDeps("recoverCommand"),
     "check-lists": (command) =>
       require("./lib/lists.js").checkListsCommand(command),
+    "check-build": (command) =>
+      require("./lib/testBuild/artifactCheck.js").checkBuildCommand(command),
+    "check-log": (command) =>
+      require("./lib/server/logCheck.js").checkLogCommand(command),
   }
 
   const command = contract.parseArgs(process.argv.slice(2))
@@ -56,7 +72,7 @@ function main() {
 }
 
 try {
-  process.exitCode = main()
+  process.exitCode = await main()
 } catch (error) {
   console.error(`release-check failed: ${error.stack ?? error.message}`)
   process.exitCode = 1

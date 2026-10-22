@@ -46,10 +46,14 @@ const MODES = Object.freeze({
       "--platform": value("<ios|android>", { oneOf: ["ios", "android"] }),
       "--skip-speed-pass": BOOLEAN,
       "--reuse-build": BOOLEAN,
+      // `run --detach` passes its run id to the child it starts.
+      "--run-id": value("<id>", {
+        pattern: /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{4}$/,
+      }),
     },
     example: "run --yes --expect-commit <sha> --detach",
   },
-  status: { example: "status" },
+  status: { flags: JSON_FLAG, example: "status --json" },
   stop: { example: "stop" },
   recover: { example: "recover" },
   "check-lists": { flags: JSON_FLAG, example: "check-lists --json" },
