@@ -190,6 +190,14 @@ export const HomeCard = memo(function HomeCard({
             : t("opensVideoAriaHint")
           : undefined
       }
+      // The release check opens a card by its kind, because titles rotate.
+      testID={
+        interactive
+          ? isSeries
+            ? "home-card-series"
+            : "home-card-video"
+          : undefined
+      }
     >
       {imageUrl != null && (
         <Image
