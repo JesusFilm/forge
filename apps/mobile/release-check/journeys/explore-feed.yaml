@@ -1,0 +1,113 @@
+# Swipe five Explore clips, open a description, hold a side for 2x, and open a
+# clip's full video (R19). Explore shuffles, so the journey checks structure
+# (KTD12). It runs only where the test settings show Explore (screens.json).
+appId: org.jesusfilm.forgewatch
+name: explore-feed
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Explore
+    label: Open the Explore tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-explore
+    timeout: 20000
+    label: Explore shows
+- extendedWaitUntil:
+    visible:
+      id: explore-clip-surface
+    timeout: 60000
+    label: The first clip shows
+- extendedWaitUntil:
+    notVisible:
+      id: explore-clip-veil
+    timeout: 30000
+    label: The first clip plays
+# The clip surface reads the clip's title, so a new title proves each move.
+- repeat:
+    times: 5
+    commands:
+      - copyTextFrom:
+          id: explore-clip-surface
+          label: Read the clip title
+      - swipe:
+          start: 50%,75%
+          end: 50%,25%
+          label: Swipe up to the next clip
+      - extendedWaitUntil:
+          notVisible:
+            text: ${maestro.copiedText}
+          timeout: 15000
+          label: The next clip replaces the clip
+      - extendedWaitUntil:
+          notVisible:
+            id: explore-clip-veil
+          timeout: 30000
+          label: The next clip plays
+    label: Swipe through five clips
+# Only a description that runs past two lines opens, and Explore shuffles, so
+# the journey moves on until a clip has one.
+- repeat:
+    while:
+      notVisible:
+        id: clip-description-text
+        enabled: true
+    times: 5
+    commands:
+      - swipe:
+          start: 50%,75%
+          end: 50%,25%
+          label: Swipe up to the next clip
+      - extendedWaitUntil:
+          notVisible:
+            id: explore-clip-veil
+          timeout: 30000
+          label: The next clip plays
+    label: Find a clip with a long description
+- tapOn:
+    id: clip-description-text
+    label: Open the clip description
+- extendedWaitUntil:
+    visible:
+      id: clip-description-open-text
+    timeout: 5000
+    label: The full description shows
+# A long description runs past its scroll box, so the tap goes near the top.
+- tapOn:
+    id: clip-description-open-text
+    point: 50%,3%
+    label: Close the clip description
+- extendedWaitUntil:
+    visible:
+      id: clip-description-text
+    timeout: 5000
+    label: The short description shows again
+# Maestro cannot assert during a press, so the hold is a crash check only
+# (not-tested.json).
+- longPressOn:
+    id: explore-clip-fast-end
+    label: Hold the right side for 2x
+- assertVisible:
+    id: explore-clip-surface
+    label: The clip shows after the hold
+- tapOn:
+    id: clip-rail-keep-watching
+    label: Open the clip's full video
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The full video plays

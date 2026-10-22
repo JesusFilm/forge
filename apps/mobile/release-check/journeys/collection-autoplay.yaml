@@ -1,0 +1,132 @@
+# Open a video collection from the Easter Experience and check that it moves
+# on to the next video by itself, then open an Experience video page. Only the
+# "Did Jesus Defeat Death?" carousel has playable videos, so it is named (R21).
+appId: org.jesusfilm.forgewatch
+name: collection-autoplay
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://experience/easter
+    label: Open the Easter Experience
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-experience
+    timeout: 30000
+    label: The Experience page shows
+- scrollUntilVisible:
+    element:
+      text: 'Play How Did Jesus Die\?'
+    direction: DOWN
+    centerElement: true
+    timeout: 60000
+    label: Scroll to the documentary carousel
+- tapOn:
+    text: 'Play How Did Jesus Die\?'
+    label: Open the collection at its first video
+- extendedWaitUntil:
+    visible:
+      id: screen-collection
+    timeout: 30000
+    label: The collection page shows
+- assertVisible:
+    text: 'Now playing: How Did Jesus Die\?'
+    label: The first video is the current one
+- extendedWaitUntil:
+    notVisible:
+      text: Loading video
+    timeout: 60000
+    label: The first video plays
+# The 5:42 video moves the collection on when it ends. A skip past the end
+# pauses iOS 1 s short, so the journey skips about 280 s. A tap on the
+# video's center hits the pause button, so the journey taps its top edge.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: go forward 10 seconds
+          commands:
+            - tapOn:
+                text: Video
+                point: 50%,10%
+                label: Show the native player controls
+          label: Show the controls when they are hidden
+      - tapOn:
+          text: go forward 10 seconds
+          repeat: 28
+          delay: 150
+          label: Skip forward 280 seconds
+    label: Skip near the end on iOS
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: Fast forward 15 seconds
+          commands:
+            - tapOn:
+                text: Show player controls
+                point: 50%,10%
+                label: Show the native player controls
+          label: Show the controls when they are hidden
+      - tapOn:
+          text: Fast forward 15 seconds
+          repeat: 18
+          delay: 150
+          label: Skip forward 270 seconds
+    label: Skip near the end on Android
+- extendedWaitUntil:
+    visible:
+      text: 'Now playing: What Happened Next\?'
+    timeout: 420000
+    label: The collection moves on to the next video
+- tapOn:
+    text: Go back
+    label: Leave the collection page
+- extendedWaitUntil:
+    visible:
+      id: screen-experience
+    timeout: 20000
+    label: The Experience page shows again
+- scrollUntilVisible:
+    element:
+      id: sdui-video-card
+    direction: UP
+    centerElement: true
+    timeout: 60000
+    label: Scroll to a video card
+- tapOn:
+    id: sdui-video-card
+    label: Open the Experience video page
+- extendedWaitUntil:
+    visible:
+      id: screen-video
+    timeout: 30000
+    label: The Experience video page shows
+- extendedWaitUntil:
+    notVisible:
+      text: Loading video
+    timeout: 60000
+    label: The Experience video plays

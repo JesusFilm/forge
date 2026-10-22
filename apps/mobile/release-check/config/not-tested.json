@@ -84,6 +84,36 @@
       "target": "share-target",
       "platforms": ["ios", "android"],
       "reason": "The share-video journey opens the system share sheet and cancels it. A share to a target sends the video link out of the device."
+    },
+    {
+      "kind": "screen",
+      "target": "sdui-quiz",
+      "platforms": ["ios", "android"],
+      "reason": "The quiz sheet is a web view of a third-party production page (your.nextstep.is). The page records visit and answer events on load, so the experience-deep-link journey asserts the \"Open faith quiz\" button and never opens it (KTD12)."
+    },
+    {
+      "kind": "step",
+      "target": "experience-partner-links",
+      "platforms": ["ios", "android"],
+      "reason": "The Easter Explained video page has partner links (\"Ask yours\" in the related questions and \"Join Our Bible Study\" on the last Bible quote card) that open partner web pages in the browser. The experience-deep-link journey asserts that they show and never taps them (KTD12). iOS reads the quotes carousel as one element, so only Android asserts the Bible study link."
+    },
+    {
+      "kind": "step",
+      "target": "search-experience-result",
+      "platforms": ["ios", "android"],
+      "reason": "Admin's watchSearch returns only video results: WatchSearchService.search in apps/admin/src/services/watch-search.service.ts calls only searchVideos. So no search result can open an Experience. The search-series-result journey opens a series result, and experience-deep-link covers the Experience page."
+    },
+    {
+      "kind": "step",
+      "target": "series-download-start",
+      "platforms": ["ios", "android"],
+      "reason": "The series-download journey opens the series download sheet and closes it without a download, because a series download fetches every episode. The watch-download journey proves that a download starts and finishes."
+    },
+    {
+      "kind": "step",
+      "target": "explore-2x-hold",
+      "platforms": ["ios", "android"],
+      "reason": "Maestro cannot run an assertion while a press is held, and the 2x cue is hidden from the accessibility tree. The explore-feed journey holds a side and checks only that the clip still shows after the hold."
     }
   ]
 }

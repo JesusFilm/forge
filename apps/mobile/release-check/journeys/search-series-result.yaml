@@ -1,0 +1,77 @@
+# Search for a series by name and open it. Admin search returns no Experience
+# result (not-tested.json). Runs answer from config/search-answers.json, and
+# the `search` tag makes record-search run this journey (KTD10).
+appId: org.jesusfilm.forgewatch
+name: search-series-result
+tags:
+  - search
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- tapOn:
+    text: Search
+    label: Open the Search tab
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows
+- tapOn:
+    text: "Search for videos about any topic.*"
+    label: Open the search field
+- inputText:
+    text: washi gospel
+    label: Type the series name
+# A series result reads "<title>, <count> episodes".
+- extendedWaitUntil:
+    visible:
+      text: "Washi Gospel, [0-9]+ episodes"
+    timeout: 20000
+    label: The series result shows
+# On Android the result list takes the first tap to close the keyboard
+# (keyboardShouldPersistTaps "never"), so the tap would not open the series.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard:
+          label: Close the keyboard
+    label: Close the keyboard on Android
+- tapOn:
+    text: "Washi Gospel, [0-9]+ episodes"
+    label: Open the series result
+- extendedWaitUntil:
+    visible:
+      id: screen-series
+    timeout: 30000
+    label: The series page shows
+- scrollUntilVisible:
+    element:
+      id: series-episode-card
+    direction: DOWN
+    timeout: 30000
+    label: The series page lists its episodes
+- tapOn:
+    text: Go back
+    label: Leave the series page
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-watch
+    timeout: 20000
+    label: Search shows again
+# On iOS 26 the Search tab replaces the tab bar with a Home button (README 2).
+- tapOn:
+    text: Home
+    label: Leave the Search tab by its Home button
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 20000
+    label: Home shows again
