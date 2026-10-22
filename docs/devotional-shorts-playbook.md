@@ -30,6 +30,11 @@ before cutting anything:
 Make only the rows she approves, then tell the Calendar session which planned
 Short rows to drop. Community posts are separate and do not count.
 
+**Reflection or verse, not both** (Lyuba, 2026-10-22): the two are near
+duplicates (a piece of the reflection with the verse at the end), so a story
+gets one of them, alternating story to story. The Calendar session keeps the
+rotation in `docs/content-calendar/README.md` ("Reflection / verse rotation").
+
 ## 1. What a short is for
 
 A short is not a summary. In 15 to 35 seconds it should stop a viewer, let

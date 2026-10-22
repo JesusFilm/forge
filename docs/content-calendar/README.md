@@ -124,6 +124,23 @@ Lyuba has to decide something, remove it once she has.
 
 Write it with ArtifactData `set` (first time) or `update` with `if_version`.
 
+## Reflection / verse rotation
+
+From 2026-10-22 a story gets either a reflection Short or a verse Short, not both,
+alternating (see the shorts playbook, section 0). The calendar plans only that one row.
+
+| Story             | Gets                                     |
+| ----------------- | ---------------------------------------- |
+| Great Catch       | reflection (decided before the rotation) |
+| Rich Fool         | reflection (decided before the rotation) |
+| Bleeding Woman    | verse                                    |
+| Jairus's Daughter | reflection                               |
+| Peter's Denial    | verse                                    |
+| Centurion         | reflection                               |
+| Lost Sheep        | verse                                    |
+
+Add the next stories here when they are planned, continuing the alternation.
+
 ## Static copy for Netlify
 
 `build-static.py` freezes a snapshot (posts embedded, thumbnails copied, the analytics
