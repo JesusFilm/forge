@@ -253,7 +253,7 @@ describe("known bugs", () => {
     const withoutTicket = { ...entry }
     delete withoutTicket.ticket
     expect(
-      findingsWith((lists) => lists.knownBugs.entries.push(withoutTicket)),
+      findingsWith((lists) => (lists.knownBugs.entries = [withoutTicket])),
     ).toEqual(["entries[0] needs a ticket"])
   })
 
@@ -265,8 +265,8 @@ describe("known bugs", () => {
     ],
   ])("fails an entry with %j", (change, message) => {
     expect(
-      findingsWith((lists) =>
-        lists.knownBugs.entries.push({ ...entry, ...change }),
+      findingsWith(
+        (lists) => (lists.knownBugs.entries = [{ ...entry, ...change }]),
       ),
     ).toEqual([message])
   })
