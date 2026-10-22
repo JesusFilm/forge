@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
+  WATCH_EXPOSURE_RETENTION_PAGE_SIZE,
 } from "./retention.service"
 
 type RetentionHealthSnapshot = Array<{
@@ -732,9 +733,11 @@ describe("recommendation retention service", () => {
         { id: "request-1" },
       ])
     } else if (selection === "watch exposures") {
-      transaction.watchSurfaceExposure.findMany.mockResolvedValue([
-        { id: "exposure-1" },
-      ])
+      transaction.watchSurfaceExposure.findMany.mockResolvedValue(
+        Array.from({ length: WATCH_EXPOSURE_RETENTION_PAGE_SIZE }, (_, i) => ({
+          id: `exposure-${i}`,
+        })),
+      )
     } else if (selection === "direct actions") {
       transaction.recommendationContentAction.findMany.mockResolvedValue([
         { id: "action-1" },
@@ -1054,6 +1057,9 @@ describe("recommendation retention service", () => {
       | undefined
     expect(healthQuery?.strings.join("?")).toContain(
       "recommendation_playback_episode WHERE request_id IS NULL",
+    )
+    expect(healthQuery?.strings.join("?")).toContain(
+      "watch_surface_exposure WHERE expires_at <=",
     )
 
     prisma.$queryRaw.mockResolvedValueOnce([
