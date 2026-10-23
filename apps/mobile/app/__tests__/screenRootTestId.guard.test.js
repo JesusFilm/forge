@@ -11,7 +11,7 @@ const {
   screenInventory,
 } = require("../../release-check/lib/lists")
 
-// Guard (feat-785 U11, KTD11): a release check journey covers a screen only
+// Guard (feat-786 U11, KTD11): a release check journey covers a screen only
 // by asserting its root `testID="screen-<id>"`. The route file holds the
 // literal; when its root view is in a component, it passes the testID prop.
 const MOBILE_ROOT = path.join(__dirname, "..", "..")

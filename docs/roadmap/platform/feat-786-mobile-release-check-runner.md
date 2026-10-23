@@ -1,5 +1,5 @@
 ---
-id: "feat-785"
+id: "feat-786"
 title: "Mobile release check runner on five local test devices"
 owner: "urim"
 priority: "P2"
