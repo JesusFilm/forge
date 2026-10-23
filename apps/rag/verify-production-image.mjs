@@ -41,8 +41,8 @@ const env = {
   RAG_PORTAL_GITHUB_TOKEN: "synthetic-github-token",
   RAG_PORTAL_CLIENT_ID: "synthetic-client",
   RAG_PORTAL_CLIENT_SECRET: "synthetic-secret",
-  RAG_PORTAL_CALLBACK_URL: "http://127.0.0.1:4124/portal/callback",
-  RAG_PORTAL_ORIGIN: "http://127.0.0.1:4124",
+  RAG_PORTAL_CALLBACK_URL: "https://rag.example/portal/callback",
+  RAG_PORTAL_ORIGIN: "https://rag.example",
 }
 const preDeploy = config.match(/^preDeployCommand = "([^"]+)"$/m)?.[1]
 assert.ok(preDeploy)
