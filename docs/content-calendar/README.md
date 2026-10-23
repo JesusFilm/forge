@@ -124,6 +124,29 @@ Lyuba has to decide something, remove it once she has.
 
 Write it with ArtifactData `set` (first time) or `update` with `if_version`.
 
+Extra todo fields (Oct 23):
+
+- `"video": "/_blob/<id>"`: a preview Lyuba can watch on the page. Shows a player plus
+  **Approve** / **Needs changes**. Upload with the Artifact tool
+  (`{ url: <calendar>, asset: true, file_path }`, read the artifact once first). Shorts go
+  up as they are; a long form goes up as a light preview made in your scratchpad, e.g.
+  `ffmpeg -i in.mp4 -vf scale=-2:480 -c:v libx264 -b:v 300k -c:a aac -b:a 48k prev.mp4`
+  (must stay under 20 MB), then delete the local preview. Nothing is copied into
+  `~/Desktop`. After approval, delete the asset (Artifact `delete` with `path` = asset id)
+  so the store stays small.
+- `"approve": true`: Approve / Needs changes buttons without a video.
+
+### Lyuba's answers (`requests`)
+
+Every pick, note, Approve or Needs changes on the page becomes a doc in `requests`:
+`{ key: "<slug>|<piece>|<en|ru>|<todo index or note>", slug, story, piece, lang, stage,
+kind: choice|reply|approve|changes, choice, text, video, at, status: "new" }`.
+The page shows each under its note as "waiting to be passed on" until the Calendar session
+hands it to the story session (SendMessage to "🚧 <Story>") and sets `status: "delivered"`.
+The story session then acts and removes or updates the todo item; it may set
+`status: "done"`. Lyuba triggers delivery by saying "проверь заметки" to the Calendar
+session; the morning "План на день" task also passes on anything still `new`.
+
 ## Facebook slot
 
 At most one Facebook post a day (from 2026-10-19). Which Short gets it (Lyuba,
