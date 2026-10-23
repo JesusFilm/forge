@@ -1,4 +1,4 @@
-// feat-786 KTD5: the release check's settings probe tells a live Home body
+// feat-787 KTD5: the release check's settings probe tells a live Home body
 // from the frozen fallback by this testID. useWatchHome's suite pins the
 // ladder that sets `bodySource`.
 
