@@ -101,3 +101,7 @@ keys, anonymous/invalid-cookie gates and a read-only admin API lookup. Productio
 is dashboard canonical: source merge alone does not establish a deployment;
 separate owner approval and exact live verification remain required. No role,
 identity, proxy, schema or provider behavior changes.
+
+## Admin web and worker controlled images
+
+Replace the two source-bound managed builds with pinned Node Docker and pre-install CA filtering. Retain existing Next/Workflow builds, worker authority unsets, tracing/version settings, Redis/GraphQL readiness and migrations. Preserve PostgreSQL18 native backup tools using checksum-pinned18.6 client-only build; no database server version changes. Existing Datadog sourcemap upload moves before migrations in pre-deploy so the upload key stays outside Docker build layers. Preserve browser-visible RUM build configuration. Actual-image CI uses isolated disposable PostgreSQL/Redis for migrations, native schema dump/list and actual web/worker startup/access denials; no real provider, publication or push action. Stage dashboard binding remains separate.
