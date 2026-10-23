@@ -39,6 +39,8 @@ retrieval source, fixture assertion or scan setting was changed for Studio.
 Railway skipped Manager's deployment after the failed main check, requiring a
 fresh normal PR/main delivery after the relevant checks pass.
 
+October 23 recurrence during #2876 CI: [run 39901723572, job 120245057538](https://github.com/JesusFilm/forge/actions/runs/39901723572/job/120245057538) failed `delivery-retriever.db.test.ts:1899` with ANN zero against the six-card minimum; the exact diagnostic found 96 chunks and 12 eligible videos. Settings included pgvector 0.8.7, strict iterative scan, 20,000 scan tuples and `ef_search=40`. A bounded unchanged-head retry passed. No retrieval behavior or assertion changed, and that pass is not a fix or evidence of a production retrieval defect. This ticket remains in progress.
+
 ## Entry Points — Read These First
 
 1. `apps/admin/src/services/recommendations/delivery-retriever.db.test.ts` — `fills a six-card slate through HNSW despite nearer incompatible vectors`, `installIndexedContractSkew`, and its failure diagnostic.
