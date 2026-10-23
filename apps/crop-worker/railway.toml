@@ -20,6 +20,9 @@ watchPatterns = [
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",
   "/turbo.json",
+  "/.nvmrc",
+  "/nixpacks.toml",
+  "/scripts/install-security-node.sh",
 ]
 
 [deploy]
