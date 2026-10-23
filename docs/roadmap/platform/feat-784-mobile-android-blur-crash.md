@@ -29,7 +29,7 @@ libRS_internal.so android::renderscript::ObjectBase::~ObjectBase()
 
 On Android, `expo-image` 57.0.5 turns the `blurRadius` prop into `BlurTransformation(min(radius, 25), 4)` from `jp.wasabeef:glide-transformations:4.3.0` (`ExpoImageViewWrapper.kt`). That transformation blurs with RenderScript. The six browse topic cards on the Search tab each set `blurRadius`, so up to six blurs run at the same time on Glide's decode threads.
 
-Likely mechanism (not verified): `RSBlur.blur` calls `RenderScript.releaseAllContexts()` after each blur. That call destroys every RenderScript context in the process, including the contexts that other threads still use. The crash has not been checked on a physical phone yet.
+Mechanism (confirmed by a `javap` reading of `glide-transformations` 4.3.0 on 2026-10-23): `RSBlur.blur` calls `RenderScript.releaseAllContexts()` after each blur. That call destroys every RenderScript context in the process, including the contexts that other threads still use. The crash has not been checked on a physical phone yet. See `docs/solutions/runtime-errors/expo-image-android-blur-renderscript-crash.md`.
 
 ## Entry Points — Read These First
 
