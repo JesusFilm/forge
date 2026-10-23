@@ -23,7 +23,6 @@ const XML_ENTITIES = Object.freeze({
   "&amp;": "&",
 })
 
-/** The `commands.json` of the one flow in an attempt's debug folder, or null. */
 function commandsFile(outputDir) {
   const debugDir = path.join(outputDir, DEBUG_DIR)
   if (!fs.existsSync(debugDir)) return null
@@ -45,7 +44,6 @@ function visibleTarget(command) {
   return screen || text ? { screen, text } : null
 }
 
-/** One entry of `commands.json` in the runner's shape. */
 function readCommand(entry) {
   const type = Object.keys(entry?.command ?? {})[0] ?? "unknown"
   const body = entry?.command?.[type] ?? {}
@@ -73,7 +71,6 @@ function decodeXml(text) {
   )
 }
 
-/** The first `<failure>` text of the JUnit file, or null. */
 function junitFailure(outputDir) {
   const file = path.join(outputDir, JUNIT_FILE)
   if (!fs.existsSync(file)) return null
@@ -83,8 +80,6 @@ function junitFailure(outputDir) {
   return match ? decodeXml(match[1]).trim() || null : null
 }
 
-// The attempt's steps as Maestro ran them: the failed command, the step
-// times, the failure screenshot (absolute), and the visible targets reached.
 function readAttemptOutput(outputDir) {
   const file = commandsFile(outputDir)
   let commands = []
@@ -120,7 +115,6 @@ function readAttemptOutput(outputDir) {
   }
 }
 
-/** The screen ids that completed assertions reached, hand-list texts included. */
 function screensReachedFrom(reached, handEntries) {
   const screens = new Set()
   for (const target of reached) {

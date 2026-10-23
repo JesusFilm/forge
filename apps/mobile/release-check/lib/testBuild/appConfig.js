@@ -65,7 +65,6 @@ function appConfigSource() {
   ].join("\n")
 }
 
-/** Sets the React Native Firebase off switch in the worktree's firebase.json. */
 function deactivateFirebaseJson(mobileDir) {
   const file = path.join(mobileDir, "firebase.json")
   if (!fs.existsSync(file)) return false

@@ -50,7 +50,6 @@ class SettingsCheckRefusal extends Error {}
 
 class EnvListFormatError extends Error {}
 
-/** The child env: the parent's PATH and HOME, and EXPO_TOKEN when it is set. */
 function easEnv(parentEnv) {
   const env = {
     PATH: parentEnv.PATH ?? "/usr/bin:/bin",

@@ -23,7 +23,6 @@ const { PLATFORMS, assertedScreens, parseFlow } = require("./flow")
 // The app has 25 route screens (2026-10-22).
 const MIN_ROUTE_SCREENS = 20
 
-/** The value that a test build gets for `key`, or null when it is unset. */
 function settingValue(settings, key) {
   if (Object.hasOwn(settings?.testValue ?? {}, key)) {
     return settings.testValue[key]
@@ -34,7 +33,6 @@ function settingValue(settings, key) {
   return null
 }
 
-/** The first reach rule that hides `screen` on `platform`, or null. */
 function hidingRule(screensConfig, settings, screen, platform) {
   for (const rule of screensConfig?.reach ?? []) {
     if (rule?.screen !== screen || rule.platform !== platform) continue
@@ -52,7 +50,6 @@ function handEntries(screensConfig) {
   return Array.isArray(screensConfig?.hand) ? screensConfig.hand : []
 }
 
-/** The platforms on which a viewer can see `screen` under the settings. */
 function shownPlatforms(screensConfig, settings, screen) {
   const hand = handEntries(screensConfig).find((entry) => entry.id === screen)
   const base = hand ? hand.platforms : PLATFORMS
@@ -61,7 +58,6 @@ function shownPlatforms(screensConfig, settings, screen) {
   )
 }
 
-/** Screen ids that one journey asserts, with hand-list texts turned into ids. */
 function journeyScreens(flow, screensConfig) {
   const asserted = assertedScreens(flow)
   const fromText = handEntries(screensConfig)
@@ -70,8 +66,6 @@ function journeyScreens(flow, screensConfig) {
   return [...new Set([...asserted.screens, ...fromText])].sort()
 }
 
-// A journey runs on each platform that shows every screen it asserts. A
-// `platform:` tag narrows that set further (KTD11, AE13).
 function journeyPlatforms(flow, screens, screensConfig, settings) {
   return PLATFORMS.filter((platform) => {
     if (
@@ -86,7 +80,6 @@ function journeyPlatforms(flow, screens, screensConfig, settings) {
   })
 }
 
-/** Reads every top-level journey file. Throws on a file it cannot read. */
 function readJourneys(journeysDir = JOURNEYS_DIR) {
   if (!fs.existsSync(journeysDir)) return []
   return fs
@@ -108,7 +101,6 @@ function readJourneys(journeysDir = JOURNEYS_DIR) {
     })
 }
 
-/** Each journey with the screens it asserts and the platforms it runs on. */
 function planJourneys(journeys, screensConfig, settings) {
   return journeys.map((journey) => {
     const screens = journeyScreens(journey.flow, screensConfig)
@@ -135,8 +127,6 @@ function notTestedOn(notTested, screen, platform) {
   )
 }
 
-// The static check: each screen that a platform shows needs a journey on that
-// platform, or a Not-Tested entry. A hidden screen is a skipped platform.
 function screenCoverage({
   inventory,
   screensConfig,
@@ -169,8 +159,6 @@ function screenCoverage({
   return { gaps, skippedPlatforms }
 }
 
-// A screen that a device's journeys assert, and that no attempt on that
-// device reached, is "not reached" there (KTD11).
 function notReachedScreens(attempts, plan) {
   const byDevice = new Map()
   for (const attempt of attempts) {
@@ -234,7 +222,6 @@ function loadScreenInputs(options = {}) {
   return { screensConfig, settings, notTested, inventory, journeys }
 }
 
-/** The whole static check, as `check-screens` runs it. */
 function runCheckScreens(options = {}) {
   const inputs = loadScreenInputs(options)
   const plan = planJourneys(

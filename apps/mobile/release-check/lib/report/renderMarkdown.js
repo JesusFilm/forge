@@ -117,7 +117,6 @@ function speedLines(speed) {
   ]
 }
 
-/** summary.md, from a checked summary.json only. */
 function renderMarkdown(summary) {
   const headline = headlineOf(summary)
   const { checks, server } = summary

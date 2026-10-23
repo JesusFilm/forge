@@ -83,8 +83,6 @@ function attemptDir(ctx, journeyId, deviceId, n) {
   return path.join(ctx.runDir, "attempts", journeyId, deviceId, String(n))
 }
 
-// The phases for `createDeps().phases`. A test injects the device, Maestro,
-// and evidence layers through `options`.
 function createJourneyPhases(options = {}) {
   const journeysDir = options.journeysDir ?? JOURNEYS_DIR
   const configDir = options.configDir ?? CONFIG_DIR
@@ -194,8 +192,6 @@ function createJourneyPhases(options = {}) {
     )
   }
 
-  // ── One device ─────────────────────────────────────────────────────
-
   async function startDevice(run, ctx, device) {
     const admitted = await ctx.admit(device)
     if (!admitted.admitted) return { device, started: false, admitted: false }
@@ -231,8 +227,6 @@ function createJourneyPhases(options = {}) {
     ctx.release(entry.device)
   }
 
-  // iOS: a fresh install for each attempt. Android: U5's prepareApp clears the
-  // app and fixes the notification denial (README section 2).
   async function resetApp(ctx, entry) {
     const { device, handle } = entry
     if (device.platform === "android") return handle.prepareApp(APP_ID)
@@ -281,7 +275,6 @@ function createJourneyPhases(options = {}) {
     pruneDeviceLogs(outputDir)
   }
 
-  // KTD14: after each failed attempt, force-stop the app and clear dialogs.
   async function cleanUp(run, ctx, entry, outputDir) {
     await entry.handle.terminate(APP_ID)
     if (entry.device.platform !== "android") {
@@ -514,8 +507,6 @@ function createJourneyPhases(options = {}) {
     }
   }
 
-  // ── Phases ─────────────────────────────────────────────────────────
-
   // Each lane probes its first device, then stops it and leaves the gate. A
   // probed device that waited for the other lanes held memory and load that
   // a lane still waiting at the gate needed, and the phase could not end.
@@ -585,7 +576,6 @@ function createJourneyPhases(options = {}) {
     }
   }
 
-  // Each admin rate-limit refusal names the attempt whose window holds it.
   function rateLimitRefusals(run, ctx) {
     return classify
       .readServerLog(path.join(ctx.runDir, SERVER_LOG))

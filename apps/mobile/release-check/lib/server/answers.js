@@ -17,7 +17,6 @@ function nullable(input) {
   return input === undefined ? null : input
 }
 
-/** The four key values of the one watchSearch field, or nulls. */
 function searchInputOf(classified) {
   const field = classified.fieldNodes.find(
     (item) => item.coordinate === SEARCH_FIELD,
@@ -132,7 +131,6 @@ function reuseKey(request) {
   })
 }
 
-/** Only an answer with data and no errors may stand in for a later read. */
 function isReusable(status, parsed) {
   return (
     status === 200 &&

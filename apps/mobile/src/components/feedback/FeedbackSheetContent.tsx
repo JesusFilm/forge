@@ -70,7 +70,6 @@ export type FeedbackSheetContentProps = {
   /** R19: true while a submission is in flight, so the host can refuse its own
    *  backdrop, gesture and Android back dismissals. */
   onDismissLockedChange?: (locked: boolean) => void
-  /** The More door's root testID (`screen-feedback`), on every step's root. */
   testID?: string
 }
 

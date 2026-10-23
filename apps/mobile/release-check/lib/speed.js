@@ -1,9 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global AbortController, AbortSignal, module, require */
-// The speed pass (U9, KTD19, R10, R31). It runs after the journeys, one
-// device at a time, with three cold launches on fresh installs. The numbers
-// are information only, so no failure here may change the run result.
 
 const fs = require("node:fs")
 const path = require("node:path")
@@ -51,8 +48,6 @@ const MEMORY_POLL_MS = 2000
 // Maestro took 4.7 to 6.4 s to start on Android (measured 2026-10-23).
 const LINK_LEAD_MS = 15_000
 const KB_PER_MB = 1024
-
-// ── Pure helpers ─────────────────────────────────────────────────────
 
 /** The `TotalTime` line of `am start -W` output in ms, or null. */
 function parseTotalTime(text) {
@@ -108,7 +103,6 @@ function completedStep(commands, label) {
   )
 }
 
-/** The ms from the start of step `from` to the end of step `to`, or null. */
 function stepSpan(commands, from, to) {
   const start = completedStep(commands, from)
   const end = completedStep(commands, to)
@@ -158,7 +152,6 @@ function flowProblem(result, output) {
   return "the step did not complete"
 }
 
-/** One device's entry for `summary.speed.devices` (U8 schema). */
 function deviceEntry(deviceId, samples, peakKb, failures) {
   return {
     deviceId,
@@ -170,9 +163,6 @@ function deviceEntry(deviceId, samples, peakKb, failures) {
   }
 }
 
-// ── The phase ────────────────────────────────────────────────────────
-
-/** The `speed` phase for `createDeps().phases`; tests inject the layers. */
 function createSpeedPhase(options = {}) {
   const flowsDir = options.flowsDir ?? FLOWS_DIR
   const runChild = options.runChild ?? runProc
@@ -224,8 +214,6 @@ function createSpeedPhase(options = {}) {
     )
   }
 
-  // Android: U5's prepareApp clears the app and fixes the notification
-  // denial (README section 2). iOS: uninstall and install again.
   async function freshInstall(ctx, device, handle) {
     if (device.platform === "android") return handle.prepareApp(APP_ID)
     await handle.terminate(APP_ID)
@@ -293,7 +281,6 @@ function createSpeedPhase(options = {}) {
       : null
   }
 
-  // Samples the app's memory until the returned stop function runs.
   function watchMemory(ctx, device, handle) {
     const stopper = new AbortController()
     const signal = AbortSignal.any([ctx.signal, stopper.signal])
@@ -361,7 +348,6 @@ function createSpeedPhase(options = {}) {
       timeoutMs: FLOW_LIMIT_MS,
       signal: ctx.signal,
     })
-    // Maestro and the memory watch must end even when `during` throws.
     let extra = null
     let result
     let peakKb
@@ -531,7 +517,6 @@ function createSpeedPhase(options = {}) {
     }
   }
 
-  // The run reads its own copy of the flows, as the journeys do (R20).
   function copyFlows(ctx) {
     const to = path.join(ctx.runDir, "speed", "flows")
     fs.mkdirSync(to, { recursive: true })

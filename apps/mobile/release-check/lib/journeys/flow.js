@@ -247,7 +247,6 @@ function selectorOf(value) {
   return isMap(value) ? value : null
 }
 
-// The screen or hand-list text that one step asserts as visible.
 function assertedTarget(command, args) {
   let selector = null
   if (command === "assertVisible") selector = selectorOf(args)
@@ -301,8 +300,6 @@ function readSteps(list, depth, conditional, out) {
   })
 }
 
-// Reads one journey: its header (`appId`, `name`, `tags`) and every step,
-// nested steps included. Throws FlowError on a line it cannot read.
 function parseFlow(source) {
   const lines = source.split(/\r?\n/)
   const separator = lines.findIndex((line) => line.trim() === "---")
@@ -328,7 +325,6 @@ function parseFlow(source) {
   }
 }
 
-/** The screen ids and hand-list texts that a journey always asserts. */
 function assertedScreens(flow) {
   const screens = new Set()
   const texts = new Set()
@@ -341,7 +337,6 @@ function assertedScreens(flow) {
   return { screens: [...screens], texts: [...texts] }
 }
 
-/** The KTD12 and README section 2 rules for one journey, as messages. */
 function journeyRuleProblems(flow) {
   const problems = []
   for (const step of flow.steps) {

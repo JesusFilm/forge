@@ -79,8 +79,6 @@ export default function ReaderTranslationRoute() {
 
   let body
   if (state.status === "ready") {
-    // The picker's own root keeps its testID, so the screen's root testID
-    // needs a view of its own, with the picker's flex.
     body = (
       <View testID="screen-reader-translation" style={{ flex: 1 }}>
         <TranslationPicker

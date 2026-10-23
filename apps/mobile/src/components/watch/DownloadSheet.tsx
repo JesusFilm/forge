@@ -609,7 +609,6 @@ export type DownloadSheetProps = {
     mode: DownloadMode,
     subtitleSlug: string | null,
   ) => void
-  /** The sheet route's root testID (`screen-watch-download`). */
   testID?: string
 }
 

@@ -35,7 +35,6 @@ class TestBuildError extends Error {
   }
 }
 
-/** The EXPO_PUBLIC_* values of a test build, from config/test-settings.json. */
 function settingValues(settings) {
   const values = {}
   for (const [key, value] of Object.entries(

@@ -1,9 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global Buffer, module, require */
-// The build check (KTD5, R17): reads a built `.app` or `.apk` and returns one
-// finding per broken test setting. A finding names the setting and never
-// carries the value it found.
 
 const crypto = require("node:crypto")
 const fs = require("node:fs")
@@ -191,7 +188,6 @@ function parseXmlTree(text) {
   return roots
 }
 
-/** The merged AndroidManifest.xml of an APK, as parsed by parseXmlTree. */
 function androidManifestFindings(roots) {
   const manifest = roots.find((node) => node.name === "manifest")
   const application = manifest?.children.find(
@@ -296,7 +292,6 @@ function versionParts(name) {
   return name.split(/[.-]/).map((part) => Number.parseInt(part, 10) || 0)
 }
 
-/** `aapt2` from the newest build-tools folder of the Android SDK. */
 function newestAapt2(env = process.env) {
   const sdk =
     env.ANDROID_HOME ||
@@ -370,7 +365,6 @@ async function checkAndroidApk(apkPath, settings, env) {
   return findings
 }
 
-/** Checks one built `.app` folder or `.apk` file against the test settings. */
 async function checkArtifact(appPath, { settings, env = process.env } = {}) {
   const stat = fs.existsSync(appPath) ? fs.statSync(appPath) : null
   if (stat?.isDirectory() && appPath.endsWith(".app")) {

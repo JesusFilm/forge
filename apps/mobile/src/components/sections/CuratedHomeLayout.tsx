@@ -33,7 +33,6 @@ type Props = {
   // Use on routes that supply their own native navigation header (e.g.
   // experience/[slug]) to avoid doubled safe-area offsets.
   hideHeader?: boolean
-  /** The route's root testID (`screen-experience`). */
   testID?: string
 }
 

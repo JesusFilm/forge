@@ -60,7 +60,6 @@ const LIST_END_GAP = 24
 export type LibraryDownloadsProps = {
   /** A series slug to open and scroll to once, from `/downloads?series=`. */
   focusSeriesSlug?: string
-  /** The route's root testID (`screen-downloads`). */
   testID?: string
 }
 

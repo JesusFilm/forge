@@ -33,7 +33,6 @@ function isPlainObject(input) {
   return typeof input === "object" && input !== null && !Array.isArray(input)
 }
 
-/** Every root field coordinate of the one operation, or null when unsure. */
 function rootCoordinates(query) {
   let document
   try {
@@ -162,7 +161,6 @@ function checkForwarded(entry, where, setsOf) {
   return findings
 }
 
-/** Checks the text of one server log against the read-only list (R18). */
 function checkLogText(text, { operations, expectedDevices }) {
   const findings = []
   const perDevice = {}

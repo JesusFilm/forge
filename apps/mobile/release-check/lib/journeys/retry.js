@@ -20,7 +20,6 @@ const NOT_RUN_REASON = Object.freeze({
   deviceNotStarted: "The run stopped before this device started.",
 })
 
-/** An attempt in the U8 `$defs.attempt` shape, with no label yet. */
 function attemptRecord(fields) {
   return {
     journey: fields.journey,
@@ -117,8 +116,6 @@ async function runJourney(input) {
   return finish("new")
 }
 
-// Runs a device's queue in order. A lost device, a stop, or a failed settings
-// probe ends the queue, and each journey left in it gets a "not run" attempt.
 async function runQueue({ deviceId, journeys, runOne, probeId }) {
   const attempts = []
   for (const [index, journey] of journeys.entries()) {

@@ -1,9 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global AbortController, module, require */
-// The one-device authoring session (KTD18) and the device steps that
-// record-search shares. `session up` starts a detached session process that
-// holds the lock, the read-only server, and the device until `session down`.
 
 const fs = require("node:fs")
 const path = require("node:path")
@@ -56,8 +53,6 @@ function untilAborted(signal) {
   })
 }
 
-// The run's layers (lifecycle createDeps) plus the session's device, Maestro,
-// and process layers, so a test can replace any of them.
 function createSessionDeps(overrides = {}) {
   const lifecycle = require("./lifecycle")
   return {
@@ -77,8 +72,6 @@ function createSessionDeps(overrides = {}) {
     ...lifecycle.createDeps(overrides),
   }
 }
-
-// ── Devices and builds (shared with record-search) ──────────────────
 
 // A devices.json id, or a `Forge RC` simulator or `forge_rc_` AVD name from
 // that list. Anything else is refused, so a session never uses another's (R7).
@@ -109,7 +102,6 @@ function resolveRunnerDevice(input, devicesConfig) {
   }
 }
 
-/** The host port of a lane (KTD6), from test-settings.json. */
 function lanePort(settings, lane) {
   return settings.ports[inventoryLib.LANE_PORT_NAMES[lane]]
 }
@@ -220,8 +212,6 @@ async function openDevice(deps, device, { udid = null, logFile } = {}) {
   )
 }
 
-// The same reset as a run's attempt: a fresh install on iOS, and on Android
-// U5's prepareApp, which keeps the notification denial (README section 2).
 async function resetApp(deps, device, handle, artifacts, signal) {
   if (device.platform === "android") return handle.prepareApp(APP_ID)
   await handle.terminate(APP_ID)
@@ -243,7 +233,6 @@ async function resetApp(deps, device, handle, artifacts, signal) {
   return handle.install(artifacts.ios)
 }
 
-/** The `-e` variables that a run gives each journey (U7 phases). */
 function journeyVariables(deps, platform) {
   const screensConfig = readJson(path.join(deps.configDir, LIST_FILES.screens))
   const explore = shownPlatforms(
@@ -272,8 +261,6 @@ async function appEvidence(deps, device, handle, window, answered) {
   })
 }
 
-// One attempt as a run makes it (U7): reset the app, run one `maestro test`
-// with the runner's settings, and read the steps from commands.json.
 async function runJourneyOnce(
   deps,
   { device, handle, flowFile, outputDir, artifacts, serverLog, signal },
@@ -351,8 +338,6 @@ async function runJourneyOnce(
   }
 }
 
-// ── The session record ──────────────────────────────────────────────
-
 function sessionFile(home) {
   return path.join(home, SESSION_FILE)
 }
@@ -372,8 +357,6 @@ function appendSessionLog(sessionDir, now, text) {
     `${new Date(now()).toISOString()} ${text}\n`,
   )
 }
-
-// ── session up ──────────────────────────────────────────────────────
 
 // The detached session process: it must outlive `session up`, so it holds the
 // lock, the build, the server, and the device until SIGTERM (`session down`).
@@ -574,8 +557,6 @@ async function upSession(command, deps) {
   }
 }
 
-// ── session try ─────────────────────────────────────────────────────
-
 /** A top-level journey id, or a .yaml path inside the journeys folder. */
 function resolveJourney(input, journeysDir) {
   const root = path.resolve(journeysDir)
@@ -678,8 +659,6 @@ async function trySession(command, deps) {
   return attempt.passed ? EXIT.passed : EXIT.failed
 }
 
-// ── session down ────────────────────────────────────────────────────
-
 async function waitUntil(deps, check, limitMs) {
   const end = deps.now() + limitMs
   while (deps.now() < end) {
@@ -689,8 +668,6 @@ async function waitUntil(deps, check, limitMs) {
   return check()
 }
 
-// A session process that died left its device and its lock; down stops the
-// one and removes the other only while the lock is still that session's.
 async function cleanUpDeadSession(deps, record) {
   const notes = []
   if (record.state === "ended" || record.state === "failed") return notes
@@ -774,7 +751,6 @@ async function downSession(command, deps) {
     : EXIT.failed
 }
 
-/** The mode handler for `session up|try|down` (KTD18). */
 async function sessionCommand(command, deps = createSessionDeps()) {
   if (command.subcommand === "up") return upSession(command, deps)
   if (command.subcommand === "try") return trySession(command, deps)

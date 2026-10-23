@@ -32,7 +32,6 @@ class MaestroMissingError extends Error {
   }
 }
 
-/** MAESTRO_BIN when set, else `maestro` on the PATH of `env`. */
 function maestroBinary(env) {
   if (env.MAESTRO_BIN) return env.MAESTRO_BIN
   const file = resolveOnPath("maestro", env.PATH)
@@ -40,8 +39,6 @@ function maestroBinary(env) {
   throw new MaestroMissingError()
 }
 
-// The arguments of one attempt. `deviceRef` is the simulator UDID or the
-// emulator serial; `variables` become `-e KEY=VALUE`.
 function maestroArgs({ platform, deviceRef, flowFile, outputDir, variables }) {
   const args = ["test", "--device", deviceRef]
   if (platform === "ios") {
@@ -64,7 +61,6 @@ function maestroArgs({ platform, deviceRef, flowFile, outputDir, variables }) {
   return args
 }
 
-/** The child environment: the device tool environment plus Maestro's switches. */
 function maestroEnv(sourceEnv) {
   return toolEnv(sourceEnv, { ...MAESTRO_ENV })
 }

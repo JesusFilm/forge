@@ -432,7 +432,6 @@ function detailsSection(summary) {
   ].join("\n")
 }
 
-/** The whole report page, from a checked summary.json only. */
 function renderHtml(summary) {
   const body = [
     header(summary),

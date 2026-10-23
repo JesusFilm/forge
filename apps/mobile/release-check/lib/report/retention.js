@@ -32,8 +32,6 @@ function newestFirst(a, b) {
   return a.runId < b.runId ? 1 : -1
 }
 
-// Keeps the `keep` newest reported runs under `<home>/runs/`, by the startedAt
-// of each summary.json, and names the newest in `<home>/latest.json`.
 function applyRetention(home, keep = DEFAULT_KEEP) {
   const runsDir = path.join(home, RUNS_DIR)
   const entries = fs.existsSync(runsDir)

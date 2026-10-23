@@ -137,7 +137,6 @@ function createSimulator(device, options = {}) {
   return handle
 }
 
-/** Creates the simulator with its pinned device type and runtime (setup). */
 async function createSimulatorDevice(device, options = {}) {
   const runChild = options.runChild ?? run
   const env = options.env ?? toolEnv()

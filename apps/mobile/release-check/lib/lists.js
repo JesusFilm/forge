@@ -1,9 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global module, require */
-// The committed lists of the release check and the checks that keep them
-// complete (KTD3, KTD8, KTD10, KTD11, KTD12). `check-lists` runs every check
-// here; the jest guards run the same functions against the app's own source.
 
 const crypto = require("node:crypto")
 const fs = require("node:fs")
@@ -77,8 +74,6 @@ function sha256(text) {
   return crypto.createHash("sha256").update(text).digest("hex")
 }
 
-// ── Test settings (KTD3) ────────────────────────────────────────────
-
 function envKeysFromSource(source) {
   return [...new Set(source.match(/\bEXPO_PUBLIC_[A-Z0-9_]+\b/g) ?? [])]
 }
@@ -98,7 +93,6 @@ function settingClasses(settings) {
   }
 }
 
-/** Every key needs exactly one class: a key in none has no decision. */
 function classifyEnvKeys(keys, settings) {
   const classes = settingClasses(settings)
   const classesOf = (key) =>
@@ -111,7 +105,6 @@ function classifyEnvKeys(keys, settings) {
   return { unclassified, repeated }
 }
 
-// The build check hashes every window of `length` bytes in the bundle (KTD5).
 function isMuxKeyDigest(entry) {
   return (
     isObject(entry) &&
@@ -174,8 +167,6 @@ function checkTestSettings(settings, envKeys) {
   return problems
 }
 
-// ── Operations (KTD8) ───────────────────────────────────────────────
-
 function collectRootFields(selectionSet, fragments, rootType, out, seen) {
   for (const selection of selectionSet.selections) {
     if (selection.kind === "Field") {
@@ -193,7 +184,6 @@ function collectRootFields(selectionSet, fragments, rootType, out, seen) {
   }
 }
 
-/** The `Type.field` of every root field, including one inside a fragment. */
 function rootFieldCoordinates(document) {
   const fragments = new Map(
     document.definitions
@@ -271,9 +261,6 @@ function checkOperations(operations, repoRoot = REPO_ROOT) {
   return problems
 }
 
-// ── Saved search answers (KTD10) ────────────────────────────────────
-
-/** The WatchSearch text as `src/lib/queries.ts` writes it, without TypeScript. */
 function watchSearchDocumentText(queriesSource) {
   const match = queriesSource.match(
     /export const WATCH_SEARCH = adminGraphql\(\s*`([^`]*)`/,
@@ -311,8 +298,6 @@ function checkSearchAnswers(answers, readDigest) {
   }
   return problems
 }
-
-// ── Screens (KTD11) ─────────────────────────────────────────────────
 
 function sourceFiles(dir, matches) {
   if (!fs.existsSync(dir)) return []
@@ -521,7 +506,6 @@ function checkScreens(
     } else if (!isObject(rule)) {
       problems.push(`${label} needs hiddenUnless or hidden: true`)
     } else {
-      // A misspelled key would hide the screen on every run.
       if (!settingKeys.has(rule.key)) {
         problems.push(`${label} key ${rule.key} is not in test-settings.json`)
       }
@@ -559,8 +543,6 @@ function checkNotTested(notTested, screenIds) {
   return problems
 }
 
-// ── Known bugs (R28) ────────────────────────────────────────────────
-
 function checkKnownBugs(knownBugs, deviceIds) {
   const problems = []
   if (knownBugs.schemaVersion !== 1) problems.push("schemaVersion must be 1")
@@ -575,7 +557,6 @@ function checkKnownBugs(knownBugs, deviceIds) {
     if (!isNonEmptyString(entry?.ticket)) {
       problems.push(`${label} needs a ticket`)
     }
-    // R28: an entry matches a step label, never a step index.
     if (!isNonEmptyString(entry?.step)) {
       problems.push(`${label} needs the failing step's label`)
     }
@@ -598,8 +579,6 @@ function checkKnownBugs(knownBugs, deviceIds) {
   })
   return problems
 }
-
-// ── Devices ─────────────────────────────────────────────────────────
 
 function checkDevices(devices) {
   const problems = []
@@ -658,8 +637,6 @@ function checkDevices(devices) {
   }
   return problems
 }
-
-// ── Journeys (KTD12) ────────────────────────────────────────────────
 
 function journeyFiles(journeysDir = JOURNEYS_DIR) {
   return sourceFiles(journeysDir, (name) => /\.ya?ml$/.test(name)).sort()
@@ -748,8 +725,6 @@ function checkJourneys(files, display) {
   }
   return findings
 }
-
-// ── check-lists ─────────────────────────────────────────────────────
 
 function runCheckLists(options = {}) {
   const repoRoot = options.repoRoot ?? REPO_ROOT

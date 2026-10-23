@@ -44,7 +44,6 @@ function packageFolder(sdkRoot, imagePackage) {
   return `${sdkRoot}/${imagePackage.split(";").join("/")}`
 }
 
-/** The config.ini keys that setup pins on each runner AVD (KTD15). */
 function avdPinValues(pins) {
   return {
     "hw.ramSize": String(pins.memoryMb),
@@ -81,7 +80,6 @@ function avdMismatches(settings, device, pins) {
   return { fixed, pins: pinKeys }
 }
 
-/** Writes the pin keys into config.ini and keeps every other line. */
 function applyAvdPins(configFile, pins) {
   const values = avdPinValues(pins)
   const written = new Set()

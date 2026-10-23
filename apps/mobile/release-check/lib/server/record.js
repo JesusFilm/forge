@@ -62,7 +62,6 @@ class RecordRefusal extends Error {
   }
 }
 
-/** The admin URL when its host is localhost or 127.0.0.1; else it throws. */
 function localAdminUrl(input) {
   let url
   try {
@@ -156,8 +155,6 @@ function failedSearchBody(reason) {
   }
 }
 
-// The server's search hook in record mode: the app's own search goes to local
-// admin, the app gets that answer, and the first answer per input is kept.
 function createSearchRecorder({ adminUrl, post = postJson, now = Date.now }) {
   const target = localAdminUrl(adminUrl)
   const entries = new Map()
@@ -221,7 +218,6 @@ function createSearchRecorder({ adminUrl, post = postJson, now = Date.now }) {
   }
 }
 
-/** The answer's language slug to Admin's tag, from the generated table. */
 function adminLocales(mobileDir = MOBILE_DIR) {
   const source = fs.readFileSync(path.join(mobileDir, LANGUAGE_TABLE), "utf8")
   const table = new Map()
@@ -233,7 +229,6 @@ function adminLocales(mobileDir = MOBILE_DIR) {
   return table
 }
 
-/** One check for each distinct result, with the searches that hold it. */
 function plannedChecks(entries, locales) {
   const checks = new Map()
   for (const entry of entries) {
@@ -336,7 +331,6 @@ async function checkResults(
   return { checked, refusals }
 }
 
-/** Replaces the whole answers file, formatted by the repo's prettier. */
 async function writeSearchAnswers(file, { answers, documentDigest }) {
   const prettier = require("prettier")
   const text = JSON.stringify({ schemaVersion: 1, documentDigest, answers })
@@ -348,8 +342,6 @@ async function writeSearchAnswers(file, { answers, documentDigest }) {
   return file
 }
 
-// ── record-search ───────────────────────────────────────────────────
-
 function createRecordDeps(overrides = {}) {
   return {
     post: postJson,
@@ -358,7 +350,6 @@ function createRecordDeps(overrides = {}) {
   }
 }
 
-/** The top-level journeys tagged `search`, each with its platforms. */
 function searchJourneys(deps) {
   const journeys = readJourneys(deps.journeysDir).filter((journey) =>
     journey.flow.tags.includes(SEARCH_TAG),
@@ -444,7 +435,6 @@ async function recordOnDevice(deps, run, device) {
   }
 }
 
-/** The mode handler for `record-search` (KTD10). */
 async function recordSearchCommand(command, deps = createRecordDeps()) {
   let adminUrl
   try {

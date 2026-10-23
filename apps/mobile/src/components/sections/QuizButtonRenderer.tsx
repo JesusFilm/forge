@@ -71,8 +71,6 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
       onRequestClose={onClose}
     >
       <StatusBar barStyle="light-content" />
-      {/* GlassSurface takes no testID, so this view carries the root testID
-          with the window's own flex. */}
       <View testID="screen-sdui-quiz" style={styles.modalWindow}>
         <GlassSurface style={styles.modalWindow} fallback={WINDOW_FALLBACK}>
           <Pressable

@@ -39,8 +39,6 @@ function inWindow(ms, window) {
   )
 }
 
-// ── Server log ───────────────────────────────────────────────────────
-
 /** Every readable line of `server-log.jsonl`; a line it cannot read is skipped. */
 function readServerLog(logPath) {
   if (!fs.existsSync(logPath)) return []
@@ -56,7 +54,6 @@ function readServerLog(logPath) {
   return lines
 }
 
-/** The U3 answer codes that one device met inside the attempt window. */
 function serverSignals(lines, { deviceId, startMs, endMs }) {
   const window = { startMs, endMs }
   const mine = lines.filter(
@@ -70,8 +67,6 @@ function serverSignals(lines, { deviceId, startMs, endMs }) {
     .map((line) => line.rateLimit?.retryAfterMs)
     .filter(Number.isFinite)
   const upstreamError = mine.some((line) => line.route === "upstream-error")
-  // An upstream error has no Retry-After, so it waits as long as a refusal
-  // without one.
   let retryAfterMs = upstreamError ? DEFAULT_RETRY_AFTER_MS : null
   if (refusals.length > 0) {
     retryAfterMs =
@@ -93,8 +88,6 @@ function serverSignals(lines, { deviceId, startMs, endMs }) {
     ),
   }
 }
-
-// ── iOS crash reports ────────────────────────────────────────────────
 
 /** `2026-10-22 13:13:13.1512 +1300`, the .ips time format, in ms. */
 function reportTimeMs(text) {
@@ -131,7 +124,6 @@ function iosReportMatches(text, { udid, bundleId, startMs, endMs }) {
   })
 }
 
-/** The crash reports of this app on this simulator inside the window. */
 function iosCrashReports({ udid, bundleId, startMs, endMs, reportsDir }) {
   const dir = reportsDir ?? REPORTS_DIR
   let names
@@ -159,8 +151,6 @@ function iosCrashReports({ udid, bundleId, startMs, endMs, reportsDir }) {
       }),
     )
 }
-
-// ── Android records ──────────────────────────────────────────────────
 
 // `logcat -b events -v epoch`: `1792637920.943  577  595 I am_crash: [pid,
 // uid,process,...]` and `am_anr: [user,pid,package,...]`; both name the app
@@ -214,7 +204,6 @@ async function adbText(options, args) {
   return result.code === 0 ? result.stdout : ""
 }
 
-/** The crash, ANR, and memory kill classes that one emulator recorded. */
 async function androidEvidence(options) {
   const window = {
     appId: options.appId,
@@ -243,8 +232,6 @@ async function androidEvidence(options) {
     ]),
   ]
 }
-
-// ── The class ────────────────────────────────────────────────────────
 
 function lastLine(text) {
   return (
@@ -278,8 +265,6 @@ const UPSTREAM_ERROR_EXPLAINS = new Set([
   "selector_not_found",
 ])
 
-// One class for a failed attempt, from the most direct evidence to the least:
-// the device, the app's own exit records, the server, then Maestro.
 function classifyFailure(input) {
   const output = input.output ?? {}
   const failed = output.failed ?? null

@@ -89,7 +89,6 @@ function createPacer(clock) {
   }
 
   return {
-    /** Waits until every root field fits, or refuses past MAX_HOLD_MS. */
     async admit(rootFields, arrivedAt) {
       const deadline = arrivedAt + MAX_HOLD_MS
       for (;;) {

@@ -777,8 +777,6 @@ export function VideoPlayer({
         </Animated.View>
       )}
 
-      {/* The release check times the first frame to this view (KTD19). It
-          has no fill and takes no touch, so nothing on screen changes. */}
       {hasStarted && (
         <View
           testID="player-first-frame"

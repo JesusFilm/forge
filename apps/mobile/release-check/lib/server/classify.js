@@ -14,7 +14,6 @@ const ROOT_TYPES = Object.freeze({
   subscription: "Subscription",
 })
 
-// The class of every root field, and the operation type, decide the action.
 const ACTIONS = Object.freeze({
   readOnly: { action: "forward", opType: "query" },
   savedAnswer: { action: "search", opType: "query" },

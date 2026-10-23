@@ -272,7 +272,6 @@ function createReadOnlyServer({
   }
 
   return {
-    /** Holds every lane port on 127.0.0.1 and ::1, or refuses with PortTakenError. */
     async bind() {
       log.open()
       try {
@@ -322,7 +321,6 @@ function createReadOnlyServer({
         ...forwarder.stats(),
       }
     },
-    /** Stops the ports, then waits for the requests in progress to log. */
     async close() {
       await Promise.all(servers.splice(0).map(closeServer))
       await Promise.all([...handling])

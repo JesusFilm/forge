@@ -17,8 +17,6 @@ export default function ReaderRoute() {
   // R10: the verse stays clear of the mini player that floats over it.
   const floatingObstacles = useFloatingObstacles()
 
-  // The reader's own root keeps its `bible-reader` testID, so the screen's
-  // root testID needs a view of its own.
   return (
     <View testID="screen-reader" style={{ flex: 1 }}>
       <BibleReader

@@ -51,8 +51,6 @@ export default function ReaderPassageRoute() {
       {state.status === "loading" ? (
         <View style={{ flex: 1, backgroundColor: background }} />
       ) : (
-        // The picker's own root keeps its testID; this view has no style, so
-        // it takes the picker's size and moves nothing.
         <View testID="screen-reader-passage">
           <PassagePicker
             tokens={tokens}

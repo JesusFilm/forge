@@ -91,7 +91,6 @@ export type SearchableListSheetProps<T> = {
   // The RUM prefix for the row and clear-search taps. The row label carries
   // translated text, so Datadog must not name the tap from it (KTD15).
   actionName?: string
-  // The sheet route's root testID (`screen-<id>`), from its adapter.
   testID?: string
 }
 

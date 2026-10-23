@@ -156,7 +156,6 @@ function sameLock(a, b) {
   )
 }
 
-/** Removes the lock only while it is still this holder's lock. */
 function releaseLock(home, lock) {
   const file = lockPath(home)
   let current

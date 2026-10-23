@@ -39,7 +39,6 @@ function listText(items) {
   return items.length === 0 ? "none" : items.join(", ")
 }
 
-/** Journey ids: the top-level `*.yaml` files of the journeys folder. */
 function journeyIdsIn(journeysDir) {
   if (!fs.existsSync(journeysDir)) return []
   return fs
@@ -49,7 +48,6 @@ function journeyIdsIn(journeysDir) {
     .sort()
 }
 
-/** The devices and journeys a run covers, and its scope (KTD13). */
 function resolveSelection({ flags = {}, devices, journeyIds }) {
   const refusals = []
   let chosen = devices
@@ -143,7 +141,6 @@ function nearestExistingDir(dir) {
   return current
 }
 
-/** Free bytes for this user on the volume that holds `dir` (or its parent). */
 function diskFree(dir) {
   const existing = nearestExistingDir(dir)
   const stat = fs.statfsSync(existing)
@@ -360,7 +357,6 @@ function hostText(host) {
   return `${reading}.${startLoad} Lanes that can start now: ${listText(capacity.lanes)}.`
 }
 
-/** The consent text for a person (R2). */
 function formatPlan(pre) {
   const lines = [`Release check plan for commit ${pre.commit}.`, ""]
   lines.push(
@@ -417,7 +413,6 @@ function formatPlan(pre) {
   return lines.join("\n")
 }
 
-/** The `plan --json` shape: the facts, the run command, the refusals, and the text. */
 function planJson(pre) {
   return {
     mode: "plan",

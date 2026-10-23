@@ -76,7 +76,6 @@ type LastGoodExperience = {
 type WatchHomeBody = {
   model: WatchHomeModel | null
   recommendationsInsertIndex: number | null
-  /** True when `model.sections` came from the Experience, not the config. */
   usedExperience: boolean
   /** The locale epoch the body was built in (KTD16). A body from an older
    *  epoch never renders, not even for the frame before the clear lands. */

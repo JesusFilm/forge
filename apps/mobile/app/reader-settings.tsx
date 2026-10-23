@@ -38,8 +38,6 @@ export default function ReaderSettingsRoute() {
       <Stack.Screen
         options={{ contentStyle: { backgroundColor: background } }}
       />
-      {/* The sheet's own root keeps its testID; this view has no style, so it
-          takes the sheet's size and moves nothing. */}
       <View testID="screen-reader-settings">
         <ReaderSettingsSheet
           tokens={tokens}

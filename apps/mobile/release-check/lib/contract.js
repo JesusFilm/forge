@@ -1,8 +1,5 @@
 "use strict"
 /* global module */
-// The command-line contract of the release check (KTD13): the modes, their
-// flags, the exit codes, the refusal text, and the summary schema check. The
-// parser reads MODES only, so a later unit adds a mode or a flag as data.
 
 const COMMAND = "node apps/mobile/release-check/cli.mjs"
 
@@ -47,7 +44,6 @@ const MODES = Object.freeze({
       "--platform": value("<ios|android>", { oneOf: ["ios", "android"] }),
       "--skip-speed-pass": BOOLEAN,
       "--reuse-build": BOOLEAN,
-      // `run --detach` passes its run id to the child it starts.
       "--run-id": value("<id>", {
         pattern: /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z-[0-9a-f]{4}$/,
       }),
@@ -114,8 +110,6 @@ function editDistance(a, b) {
   return row[b.length]
 }
 
-// A typo of one or two letters gets that mode as its example; anything
-// further from every mode gets the plan example.
 function nearestName(input, names, fallback) {
   let best = fallback
   let bestDistance = 3
@@ -252,8 +246,6 @@ function refuseMode(deps, message) {
   return EXIT.refused
 }
 
-// A validator for the JSON Schema keywords that schema/summary.schema.json
-// uses. An unknown keyword throws, so a schema edit cannot pass by omission.
 const ANNOTATIONS = new Set(["$schema", "$id", "title", "description", "$defs"])
 const KEYWORDS = new Set([
   "$ref",

@@ -1,9 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global AbortController, AbortSignal, clearTimeout, module, require, setTimeout */
-// The run lifecycle (U6, KTD13, R38): the run, status, stop, recover, and
-// setup modes. Every run that passed its refusal checks ends through one end
-// path: stop the children, the server, and the owned devices, then report.
 
 const childProcess = require("node:child_process")
 const crypto = require("node:crypto")
@@ -39,7 +36,6 @@ const { ANDROID_ARTIFACT } = require("./testBuild/buildAndroid")
 
 const CLI_PATH = path.resolve(__dirname, "..", "cli.mjs")
 const MINUTE = 60_000
-// One place for every time limit (KTD13). A limit ends the run as `timeout`.
 const TIME_LIMITS = Object.freeze({
   setup: 90 * MINUTE,
   building: 45 * MINUTE,
@@ -66,8 +62,6 @@ class LifecycleError extends Error {
   }
 }
 
-// ── Dependencies ─────────────────────────────────────────────────────
-
 function askLine(question) {
   const prompt = readline.createInterface({
     input: process.stdin,
@@ -81,7 +75,6 @@ function askLine(question) {
   })
 }
 
-/** Starts `command` in its own session with its output in `logFile`. */
 function spawnDetached(command, args, { cwd, env, logFile }) {
   const fd = fs.openSync(logFile, "a")
   try {
@@ -273,8 +266,6 @@ function createDeps(overrides = {}) {
   return deps
 }
 
-// ── Refusals ─────────────────────────────────────────────────────────
-
 function printRefusals(deps, refusals) {
   deps.err(
     [
@@ -320,9 +311,6 @@ function lockHeldRefusal(lock) {
   }
 }
 
-// ── run ──────────────────────────────────────────────────────────────
-
-/** The child's command line: the same run, with consent and the run id. */
 function childArgs(flags, { runId, commit }) {
   const args = ["run", "--yes", "--expect-commit", commit, "--run-id", runId]
   if (flags["allow-setup"]) args.push("--allow-setup")
@@ -351,7 +339,6 @@ function launchDetached(deps, flags, pre) {
   return EXIT.passed
 }
 
-/** The mode handler for `run`: refusal checks, consent, then the run. */
 async function runCommand(command, deps) {
   const flags = command.flags
   const childRunId = flags["run-id"] ?? null
@@ -484,7 +471,6 @@ function artifactPath(buildDir, platform) {
   return fs.existsSync(apk) ? apk : null
 }
 
-// Keeps the build of this commit and the newest other one, by folder time.
 function pruneBuilds(home, keepCommit, now) {
   const buildsDir = path.join(home, "builds")
   if (!fs.existsSync(buildsDir)) return
@@ -540,8 +526,6 @@ function devicePins(devicesConfig, devices, observed = {}) {
   )
 }
 
-// The started part of a run (KTD13): it takes the lock and the ports, and
-// from the bind on, every exit goes through `endRun` (R38).
 async function executeRun(deps, { flags, pre, runId, childRunId }) {
   const { commit, selection } = pre
   const startedMs = deps.now()
@@ -658,8 +642,6 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     )
   }
 
-  // Each phase runs under the run signal and its own time limit. After a
-  // stop, it gets a short grace to record what it has, then the end path runs.
   async function phase(name, body) {
     if (state.stopReason) return
     recorder.phase(name)
@@ -826,7 +808,6 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     await phase("journeys", async (signal) => {
       const result = await deps.phases.journeys(phaseContext(signal))
       state.attempts = mergeAttempts(state.attempts, result.attempts ?? [])
-      // The later iOS devices run their probe in this phase (U7).
       if (result.settingsProbe) {
         const earlier = state.checks.settingsProbe ?? {
           passed: true,
@@ -889,8 +870,6 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     }
   }
 
-  // R38: the same end for a normal end, an error, a signal, a time limit,
-  // and every stop reason.
   async function endRun() {
     clearTimeout(runTimer)
     requestStop("completed")
@@ -1018,8 +997,6 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
   return endRun()
 }
 
-// ── status, stop, recover, setup ────────────────────────────────────
-
 function existing(file) {
   return fs.existsSync(file) ? file : null
 }
@@ -1082,7 +1059,6 @@ function statusText(lock, run) {
   return lines.join("\n")
 }
 
-/** The mode handler for `status [--json]`; it only reads. */
 async function statusCommand(command, deps) {
   const lock = await deps.lock.inspect()
   const runDir = runFolder.newestRunDir(deps.home)
@@ -1099,7 +1075,6 @@ async function statusCommand(command, deps) {
   return EXIT.passed
 }
 
-/** The mode handler for `stop`: SIGTERM to the verified runner, then wait. */
 async function stopCommand(command, deps) {
   const lock = await deps.lock.inspect()
   if (lock.state === "free") {
@@ -1144,7 +1119,6 @@ async function stopCommand(command, deps) {
   return EXIT.passed
 }
 
-/** The mode handler for `recover`: reports an orphan run as `runner_killed`. */
 async function recoverCommand(command, deps) {
   const taken = await deps.lock.acquire({ mode: "recover", pid: deps.pid })
   if (!taken.ok) {
@@ -1214,7 +1188,6 @@ async function recoverCommand(command, deps) {
   }
 }
 
-/** The mode handler for `setup [--check]`; only a setup that writes takes the lock. */
 async function setupMode(command, deps) {
   if (command.flags.check) return deps.setupCommand(command)
   const taken = await deps.lock.acquire({ mode: "setup", pid: deps.pid })

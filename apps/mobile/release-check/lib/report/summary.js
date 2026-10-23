@@ -90,7 +90,6 @@ function scrubText(text) {
   return text.replace(HOME_FOLDER, "~").replace(DATADOG_CLIENT_TOKEN, REDACTED)
 }
 
-/** A copy of `value` with no home folder path and no Datadog client token. */
 function scrub(value) {
   if (typeof value === "string") return scrubText(value)
   if (Array.isArray(value)) return value.map(scrub)
@@ -115,8 +114,6 @@ function isFirstTryPass(attempt) {
   )
 }
 
-// R26: "pass" only when the scope is not empty, every attempt is a first-try
-// pass, the screen list has no gap, every check passed, and the run completed.
 function decideResult(input) {
   const attempts = Array.isArray(input?.attempts) ? input.attempts : []
   const checks = input?.checks ?? {}
@@ -208,8 +205,6 @@ function withCausedFailures(refusals, attempts) {
   }))
 }
 
-// Builds and checks summary.json from what the run collected. It throws a
-// SummaryError when the result does not match the schema.
 function buildSummary(input) {
   if (input?.attempts !== undefined && !Array.isArray(input.attempts)) {
     throw new SummaryError(["the attempts input must be a list"])
@@ -268,7 +263,6 @@ function buildSummary(input) {
   return summary
 }
 
-/** Writes `file` through a temporary file in the same folder and a rename. */
 function writeFileAtomic(file, text) {
   const temp = path.join(
     path.dirname(file),
@@ -289,7 +283,6 @@ function writeFileAtomic(file, text) {
   }
 }
 
-/** Writes `<runDir>/summary.json` with an atomic rename (KTD16). */
 function writeSummary(runDir, summary) {
   const clean = scrub(summary)
   assertValid(clean)
@@ -306,7 +299,6 @@ function readSummary(runDir) {
   return summary
 }
 
-/** Reads only `<runDir>/summary.json` and writes report.html and summary.md. */
 function renderReport(runDir) {
   const summary = readSummary(runDir)
   // Required here, because both renderers require this module.
@@ -317,9 +309,6 @@ function renderReport(runDir) {
   return { summary: SUMMARY_FILE, report: REPORT_FILE, markdown: MARKDOWN_FILE }
 }
 
-// ── Words that both renderers share ─────────────────────────────────
-
-/** The headline and the lines under it. A partial run is never a release result. */
 function headlineOf(summary) {
   if (summary.scope === "partial") {
     return {
@@ -401,7 +390,6 @@ function encodeSegment(segment) {
   )
 }
 
-/** A link to a run-folder file that works from any copy of the folder. */
 function relativeHref(relativePath) {
   return relativePath.split("/").map(encodeSegment).join("/")
 }

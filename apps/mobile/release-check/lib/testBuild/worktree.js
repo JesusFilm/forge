@@ -81,7 +81,6 @@ function parsePorcelainZ(output) {
   return [...new Set(paths)].sort()
 }
 
-/** R8: the changed or new files in the build inputs, repo-relative. */
 async function dirtyBuildInputs({ repoRoot, env = process.env }) {
   const output = await git(
     [
@@ -135,7 +134,6 @@ async function registeredWorktrees({ repoRoot, env }) {
     .map((dir) => fs.realpathSync(dir))
 }
 
-// No hook of the developer's runs in the runner worktree.
 const NO_HOOKS = ["-c", "core.hooksPath=/dev/null"]
 
 // Creates or resets the runner worktree at `commit`, then removes every
@@ -186,8 +184,6 @@ function stepFailure(steps, name, error) {
   return name
 }
 
-// The two platforms build at the same time; a failure on one stops the other
-// through its abort signal.
 async function buildTestApps({
   repoRoot,
   commit,

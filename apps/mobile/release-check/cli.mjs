@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// The mobile release check (KTD13): node apps/mobile/release-check/cli.mjs <mode>.
 // Not a package.json script, because the scripts block is a fingerprint input.
 // Built-ins only until the preflight passes, so a bad setup gets a plain refusal.
 
@@ -38,7 +37,6 @@ async function main() {
     return modes[name](command, modes.createDeps())
   }
 
-  // A later unit adds its mode here; the parser reads only contract.MODES.
   const handlers = {
     plan: (command) =>
       require("./lib/plan.js").planCommand(command, lifecycle().createDeps()),

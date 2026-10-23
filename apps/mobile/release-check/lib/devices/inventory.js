@@ -22,7 +22,6 @@ const LIST_TAIL_BYTES = 16 * 1024 * 1024
 const STOP_TIMEOUT_MS = 60000
 const GONE_WAIT_MS = 30000
 const GONE_POLL_MS = 1000
-// KTD14: a device restart is the one retry, and each device gets two per run.
 const RESTARTS_PER_RUN = 2
 const LANE_PORT_NAMES = Object.freeze({
   ios: "hostIos",
@@ -51,7 +50,6 @@ function loadDeviceConfig(file = DEVICES_FILE) {
   return readJson(file)
 }
 
-/** The device port and the host port of each lane (KTD6), from test-settings.json. */
 function loadPorts(file = TEST_SETTINGS_FILE) {
   const ports = readJson(file).ports
   return {
@@ -107,7 +105,6 @@ function resolveOnPath(name, pathValue) {
   return null
 }
 
-/** The only environment that device tools get: a fixed PATH plus named keys. */
 function toolEnv(source = process.env, overrides = {}) {
   const env = { PATH: "/usr/bin:/bin:/usr/sbin:/sbin", LANG: "en_US.UTF-8" }
   for (const key of PASSED_ENV_KEYS) {
@@ -126,7 +123,6 @@ function lastLine(text) {
   return lines.at(-1) ?? ""
 }
 
-/** A deadline is `device_unresponsive` (README, "What the runner must do"). */
 function toolOutcome(result, step, timeoutMs) {
   if (result.timedOut) {
     return {
@@ -185,8 +181,6 @@ async function ensureResponsive(handle) {
     error: restart.ok ? null : restart.error,
   }
 }
-
-// ── Listing ──────────────────────────────────────────────────────────
 
 function parseSimulators(json, config) {
   const prefix = simulatorPrefix(config)
@@ -261,7 +255,6 @@ function listAvdNames(avdHome) {
     .sort()
 }
 
-/** Reads `-avd <name>` and the console port from each emulator process. */
 function parseEmulatorProcesses(psText) {
   const processes = []
   for (const line of String(psText).split("\n")) {
@@ -386,7 +379,6 @@ async function listInventory(options = {}) {
       foreignAvds.push(entry)
     }
   }
-  // A physical phone or a remote device is never the runner's.
   const otherAdb = adbDevices
     .filter((device) => !device.serial.startsWith("emulator-"))
     .filter((device) => !claimedSerials.has(device.serial))
@@ -411,7 +403,6 @@ async function listInventory(options = {}) {
   }
 }
 
-/** The devices that the end path stops: owned and running, nothing else. */
 function stopList(inventory) {
   return inventory.owned.filter((device) => device.running)
 }

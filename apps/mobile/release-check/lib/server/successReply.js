@@ -13,7 +13,6 @@ function buildAdminSchema(adminSchemaSdl) {
   return buildSchema(adminSchemaSdl)
 }
 
-/** The JSON result of `document` with `rootValue` as the root object. */
 async function executeWithRoot(schema, classified, rootValue) {
   const { document, request } = classified
   const errors = validate(schema, document)

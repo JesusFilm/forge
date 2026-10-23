@@ -140,7 +140,6 @@ function run(command, args, options) {
   })
 }
 
-/** Stops every running child, for the end path of a run (R38). */
 async function stopAll() {
   const entries = [...active]
   const closed = entries.map(

@@ -107,8 +107,6 @@ export function DeleteConfirmSheet({
           {...{ "dd-action-name": "library-delete-dismiss" }}
         />
       </Animated.View>
-      {/* The card is the sheet, so it carries the root testID; the scrim is
-          only its backdrop. */}
       <Animated.View
         testID="screen-library-delete-confirm"
         pointerEvents={visible ? "auto" : "none"}

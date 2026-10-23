@@ -647,7 +647,6 @@ function formatSetup(result) {
   return lines.join("\n")
 }
 
-/** The mode handler for `setup [--check]`. */
 async function setupCommand(command, options = {}) {
   const out = options.out ?? console.log
   const result = await runSetup({

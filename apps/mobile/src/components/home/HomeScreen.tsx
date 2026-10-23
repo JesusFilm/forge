@@ -102,7 +102,6 @@ const HERO_SWIPE_COMMIT_PX = 40
 // ── Component ───────────────────────────────────────────────────────────────
 
 type HomeScreenProps = {
-  /** The route's root testID (`screen-tab-home`), on the content view. */
   testID?: string
 }
 
@@ -606,7 +605,6 @@ export function HomeScreen({ testID }: HomeScreenProps) {
       <HomeLogo topInset={insets.top} hidden={logoHidden} />
 
       <FlashList
-        // The release check's settings probe reads the body's source (KTD5).
         testID={
           bodySource === "experience" ? "home-body-live" : "home-body-fallback"
         }
