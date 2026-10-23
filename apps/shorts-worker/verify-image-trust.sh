@@ -19,11 +19,11 @@ console.log('PASS: actual image Node rejects both affected chains and accepts va
 
 const browser = await createDefaultRenderEngine().openBrowser()
 try {
-  for (const host of [...affected, 'example.com']) {
+  for (const host of [...affected, 'www.google.com']) {
     const page = await browser.newPage({ context: 'image-trust', logLevel: 'error', indent: false, pageIndex: 0, onLog: () => {} })
     try {
-      const navigate = () => page.goto({ url: `https://${host}/`, timeout: 10000 })
-      if (host === 'example.com') assert.equal((await navigate())?.status(), 200)
+      const navigate = () => page.goto({ url: `https://${host}/${host === 'www.google.com' ? 'generate_204' : ''}`, timeout: 10000 })
+      if (host === 'www.google.com') assert.equal((await navigate())?.status(), 204)
       else await assert.rejects(navigate(), /net::ERR_CERT_/)
     } finally {
       await page.close()
