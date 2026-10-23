@@ -40,6 +40,22 @@ export async function prepareStudioRenderInput(
       }),
     )
     .parse(await call("preview-sources", { projectId, document }))
+  // Metadata is immutable or resolved for this preparation's source snapshot.
+  // Repeated clips must still validate their own ranges, but need not make the
+  // same metadata round trips for each occurrence. Never cache transfer grants
+  // or share this cache across preparations/projects.
+  const metadata = new Map<string, Promise<unknown>>()
+  const readMetadata: StudioBrokerClient = (action, input) => {
+    signal.throwIfAborted()
+    if (action !== "asset" && action !== "source") return call(action, input)
+    const identity = JSON.stringify([action, input])
+    let pending = metadata.get(identity)
+    if (!pending) {
+      pending = call(action, input)
+      metadata.set(identity, pending)
+    }
+    return pending
+  }
   const assets = createStudioAssetBroker(call, signal)
   const files: {
     name: string
@@ -108,7 +124,7 @@ export async function prepareStudioRenderInput(
         "Render requires retained export bytes covering the complete source range",
       )
     const retained = await readRetainedStudioSource(
-      call,
+      readMetadata,
       { ...assets, read },
       snapshot,
       entry,
@@ -161,7 +177,7 @@ export async function prepareStudioRenderInput(
   for (const item of document.items) {
     if (item.kind !== "image" && item.kind !== "audio") continue
     const asset = studioAssetVersionSchema.parse(
-      await call("asset", item.asset),
+      await readMetadata("asset", item.asset),
     )
     const allowed =
       item.kind === "image"
