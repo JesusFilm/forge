@@ -50,8 +50,12 @@ Mac, and it never restarts the adb server or CoreSimulatorService.
 ## Run a release check
 
 The easy way is the repo Claude command `/release-check`. It shows the consent
-text, asks for a yes, starts the run, waits for the report, and summarizes it.
-Without Claude, use the same steps from the repo root:
+text, asks for a yes, starts the run, waits until the run ends, and summarizes
+`summary.json`. It also has `status`, `stop`, `recover`, and `setup` forms, and
+it asks for a yes before each command that changes something.
+`__tests__/releaseCheckCommand.guard.test.js` fails when the command names a
+mode, a flag, or a JSON field that the runner does not have. Without Claude,
+use the same steps from the repo root:
 
 1. `node apps/mobile/release-check/cli.mjs plan` shows the commit, any
    uncommitted build inputs, the devices, the other devices that run, the setup
@@ -64,10 +68,17 @@ Without Claude, use the same steps from the repo root:
    `node apps/mobile/release-check/cli.mjs run --yes --expect-commit <sha> --detach`.
    With `--detach` it returns at once and prints the run folder.
 3. `node apps/mobile/release-check/cli.mjs status` shows the phase and, when
-   the run ends, the paths of `report.html` and `summary.md`.
+   the run ends, the paths of `report.html` and `summary.md`. `status --json`
+   gives the same facts as JSON: `lock.state`, `run.phase`, `run.pidState`,
+   `run.result`, `run.stopReason`, `run.summaryMd`, and `run.refusals`.
 4. To stop a run, use `node apps/mobile/release-check/cli.mjs stop`. The run
    then ends the same way as every other run: it stops its server and its own
-   devices, and it writes the report.
+   devices, and it writes the report. When `summary.md` does not appear in
+   time, `stop` exits with 1; follow the run with `status`.
+5. When a runner stops with no report (for example, the Mac restarts), `status`
+   shows a stale lock. `node apps/mobile/release-check/cli.mjs recover` stops
+   the runner's own devices and writes the report with stop reason
+   `runner_killed`.
 
 A full release check takes about 2.5 to 3 hours, because only one iOS
 simulator runs at a time. A partial check uses `--journey <ids>`,
