@@ -26,12 +26,13 @@ const BLUR_TOKEN = /\bblurRadius\b/g
 const IOS_ONLY_SITE =
   /\bblurRadius=\{\s*Platform\.OS\s*===\s*["']ios["']\s*\?\s*([A-Za-z_$][\w$]*)\s*:\s*undefined\s*\}/g
 
-// A comment that names the prop is documentation, not a site. Only a whole
-// comment line is stripped, so a trailing `//` cannot hide code before it.
+// A comment that names the prop is documentation, not a site. Whole `//` lines
+// go first; a block comment counts only where it opens a line or a JSX `{`, so
+// a `/*` inside a string or a trailing comment cannot hide a site.
 function stripComments(source) {
   return source
-    .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/^[ \t]*\/\/[^\n]*$/gm, "")
+    .replace(/(^|\{)[ \t]*\/\*[\s\S]*?\*\//gm, "$1")
 }
 
 /** Every `blurRadius` in the code, and the iOS-only constants among them. */
@@ -47,11 +48,13 @@ function blurSites(source) {
 function androidBlurProblem(relativeFile, source) {
   const { total, iosOnly } = blurSites(source)
   if (total === 0) return null
-  if (iosOnly.length < total) return "a blurRadius value can reach Android"
+  if (iosOnly.length < total) {
+    return 'a blurRadius value can reach Android, where it can crash the app (feat-784). Give it on iOS only, as `blurRadius={Platform.OS === "ios" ? NAME : undefined}`, and use stretchedDecodeStyle (src/lib/stretchedDecode.ts) for a soft image on Android.'
+  }
   const allowed = ALLOWED[relativeFile] || []
   const unlisted = iosOnly.filter((name) => !allowed.includes(name))
   if (unlisted.length > 0)
-    return `not on the allow list: ${unlisted.join(", ")}`
+    return `not on the allow list: ${unlisted.join(", ")}. Add an iOS-only site to ALLOWED only after review; Android uses stretchedDecodeStyle (feat-784).`
   return null
 }
 
@@ -95,23 +98,37 @@ describe("no expo-image blurRadius reaches Android (feat-784)", () => {
       `<Image blurRadius={Platform.OS === "ios" ? IOS_AMBIENT_BLUR : undefined} />
 <Image blurRadius={8} />`,
     ],
+    // A `/*` that does not open a comment must not hide the site after it.
+    [
+      "a site after a `/*` inside a string",
+      `<WebView originWhitelist={["https://*"]} />
+<Image blurRadius={4} />
+{/* x */}`,
+    ],
+    [
+      "a site after a `/*` inside a line comment",
+      `// see /* below
+<Image blurRadius={4} />
+/* end */`,
+    ],
   ])("flags %s (positive control)", (_label, source) => {
-    expect(androidBlurProblem(WATCH_AMBIENT, source)).toBe(
-      "a blurRadius value can reach Android",
-    )
+    const problem = androidBlurProblem(WATCH_AMBIENT, source)
+    expect(problem).toMatch(/^a blurRadius value can reach Android, /)
+    // The message names the fix, so a reader does not just extend ALLOWED.
+    expect(problem).toContain("stretchedDecodeStyle")
   })
 
   it("flags an iOS-only site that is not on the allow list (positive control)", () => {
     const source = `<Image blurRadius={Platform.OS === "ios" ? IOS_BLUR : undefined} />`
-    expect(androidBlurProblem(WATCH_AMBIENT, source)).toBe(
-      "not on the allow list: IOS_BLUR",
+    expect(androidBlurProblem(WATCH_AMBIENT, source)).toMatch(
+      /^not on the allow list: IOS_BLUR\. /,
     )
     expect(
       androidBlurProblem(
         path.join("src", "components", "home", "HomeCard.tsx"),
         `<Image blurRadius={Platform.OS === "ios" ? IOS_AMBIENT_BLUR : undefined} />`,
       ),
-    ).toBe("not on the allow list: IOS_AMBIENT_BLUR")
+    ).toMatch(/^not on the allow list: IOS_AMBIENT_BLUR\. /)
   })
 
   it.each([

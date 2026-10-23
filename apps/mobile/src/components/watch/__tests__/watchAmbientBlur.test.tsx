@@ -95,6 +95,10 @@ describe("WatchAmbient poster blur", () => {
 
     expect(image.source).toBe(POSTER)
     expect(image.blurRadius).toBeUndefined()
+    // Glide decodes at the small box size only with these two props
+    // (createDownsampleStrategy in expo-image 57.0.5 ExpoImageViewWrapper.kt).
+    expect(image.contentFit).toBe("cover")
+    expect(image.allowDownscaling).not.toBe(false)
 
     // Glide decodes to the view's size, so the box sets the bitmap size. The
     // box must be small, and its scale must cover the frame with no seam.
@@ -116,6 +120,16 @@ describe("WatchAmbient poster blur", () => {
     // The scale grows from the box center, so the box sits at the frame center.
     expect(box.left! + box.width! / 2).toBeCloseTo(frame.width / 2)
     expect(box.top! + box.height! / 2).toBeCloseTo(frame.height / 2)
+    // The stretched view is larger than the frame, so the wash root must clip it.
+    const clips = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.needsOffscreenAlphaCompositing === true,
+    )
+    expect(clips).toHaveLength(1)
+    expect(StyleSheet.flatten(clips[0]!.props.style as never)).toMatchObject({
+      overflow: "hidden",
+    })
   })
 
   it("keeps the iOS blur and full-frame art unchanged", async () => {

@@ -168,6 +168,10 @@ describe("TopicCard", () => {
     it("on Android, sends no blurRadius and stretches a small decode instead", async () => {
       const { image, box, cardStyle } = await renderThumbnail("android")
       expect(image.blurRadius).toBeUndefined()
+      // Glide decodes at the small box size only with these two props
+      // (createDownsampleStrategy in expo-image 57.0.5 ExpoImageViewWrapper.kt).
+      expect(image.contentFit).toBe("cover")
+      expect(image.allowDownscaling).not.toBe(false)
 
       // Glide decodes to the view's size, so the box sets the bitmap size.
       const scale = box.transform?.[0]?.scale ?? 1
