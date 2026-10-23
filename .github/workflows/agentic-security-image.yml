@@ -1,0 +1,39 @@
+name: Agentic production image
+on:
+  pull_request:
+    paths:
+      - "apps/agentic/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/agentic-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".dockerignore"
+  push:
+    branches: [stage]
+    paths:
+      - "apps/agentic/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/agentic-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".dockerignore"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build the production image without secrets or external build requests
+        run: docker build -f apps/agentic/Dockerfile -t agentic-security-ci .
+      - name: Verify patched runtime and independent CA contexts
+        run: docker run --rm --entrypoint sh agentic-security-ci verify-image-trust.sh
+      - name: Verify production entrypoint and read-only operator boundaries without external networking
+        run: >-
+          docker run --rm --network none
+          -e AGENTIC_IMAGE_FIXTURE=isolated
+          --entrypoint node agentic-security-ci verify-production-image.mjs

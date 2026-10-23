@@ -18,3 +18,8 @@ apps/cms/.strapi-updater.json
 # Env and logs (never in image)
 .env
 *.log
+
+# Exclude nested secrets and generated Agentic output from source builds.
+**/.env
+**/.env.*
+**/.mastra
