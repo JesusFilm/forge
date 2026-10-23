@@ -14,6 +14,7 @@ import {
 const ENDPOINT = "EXPO_PUBLIC_ADMIN_GRAPHQL_URL"
 const OVERRIDE = "EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN"
 const SIGN_IN = "EXPO_PUBLIC_SIGN_IN_ENABLED"
+const MUX_DATA = "EXPO_PUBLIC_MUX_DATA_ENV_KEY"
 
 function set(name: string, value: string | undefined): void {
   if (value === undefined) delete process.env[name]
@@ -25,6 +26,7 @@ describe("env.ts module evaluation", () => {
     [ENDPOINT]: process.env[ENDPOINT],
     [OVERRIDE]: process.env[OVERRIDE],
     [SIGN_IN]: process.env[SIGN_IN],
+    [MUX_DATA]: process.env[MUX_DATA],
     CI: process.env.CI,
     EAS_BUILD: process.env.EAS_BUILD,
   }
@@ -113,6 +115,40 @@ describe("env.ts module evaluation", () => {
 
       expect(() => require("../env")).not.toThrow()
       expect(require("../env").env[SIGN_IN]).toBe("True")
+    })
+  })
+
+  // The shape rule lives in muxData/config.ts. A strict schema here would stop
+  // startup on a bad key instead of turning Mux off (KTD3, R25).
+  describe(`${MUX_DATA} (KTD3)`, () => {
+    beforeEach(() => {
+      set("CI", undefined)
+      set("EAS_BUILD", undefined)
+      set(ENDPOINT, undefined)
+      set(OVERRIDE, undefined)
+    })
+
+    it("loads with the value unset, and the gate stays off", () => {
+      set(MUX_DATA, undefined)
+
+      expect(() => require("../env")).not.toThrow()
+      expect(require("../lib/muxData/config").resolveMuxDataConfig()).toBe(null)
+    })
+
+    it("exposes the value from process.env to the gate", () => {
+      set(MUX_DATA, "k0abc123")
+
+      expect(require("../env").env[MUX_DATA]).toBe("k0abc123")
+      expect(
+        require("../lib/muxData/config").resolveMuxDataConfig()?.envKey,
+      ).toBe("k0abc123")
+    })
+
+    it("loads a malformed value without an error", () => {
+      set(MUX_DATA, "Not A Key")
+
+      expect(() => require("../env")).not.toThrow()
+      expect(require("../lib/muxData/config").resolveMuxDataConfig()).toBe(null)
     })
   })
 
