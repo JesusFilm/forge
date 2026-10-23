@@ -9,16 +9,19 @@ import {
 import { TypesenseClient } from "./typesense-client"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import {
+  bootstrapLiveWatchCatalog,
+  applyLiveWatchCatalogChanges,
+  LiveWatchSchemaExpansionError,
+  cleanupRetiredLiveWatchCatalogs,
+  refreshLiveWatchCurations,
+} from "./watch-catalog-live-index"
+import { retireTypesenseWatchSearchCandidate } from "./typesense-watch-catalog-builder"
+import {
   candidateWatchSearchIndexContractRevision,
   candidateWatchSearchRankingRevision,
 } from "./typesense-watch-search-candidate-identity"
 import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "./typesense-watch-search-current-transcript-projection"
 import { withTypesenseWatchSearchIndexLock } from "./typesense-watch-search-publication-lock"
-import { buildTypesenseWatchCandidateProjectionSnapshot } from "./typesense-watch-search-indexer"
-import {
-  publishTypesenseWatchSearchCandidate,
-  retireTypesenseWatchSearchCandidate,
-} from "./typesense-watch-catalog-builder"
 import {
   WATCH_CATALOG_PUBLICATION_ID,
   requestWatchCatalogPublication,
@@ -32,9 +35,33 @@ import {
 
 const POLL_MS = 30_000
 const RECONCILE_MS = 24 * 60 * 60 * 1000
-const RETAIN_INACTIVE_GENERATIONS = 1
-const RETIRE_DRAIN_MS = 5 * 60 * 1000
-const GENERATION_PREFIX = "core-catalog-"
+const RETIRE_DRAIN_MS = 5 * 60_000
+
+async function hasRetirableCatalog(
+  prisma: PrismaClient,
+  retiredLive: unknown,
+): Promise<boolean> {
+  if (
+    Array.isArray(retiredLive) &&
+    retiredLive.some(
+      (entry) =>
+        entry &&
+        typeof entry === "object" &&
+        "after" in entry &&
+        typeof entry.after === "string" &&
+        new Date(entry.after).getTime() <= Date.now(),
+    )
+  )
+    return true
+  return !!(await prisma.watchSearchCandidateGeneration.findFirst({
+    where: {
+      id: { startsWith: "core-catalog-" },
+      state: { not: "RETIRED" },
+      updatedAt: { lt: new Date(Date.now() - RETIRE_DRAIN_MS) },
+    },
+    select: { id: true },
+  }))
+}
 
 async function strictWebRevalidation(input: RevalidateWebhookInput) {
   const outcome = await emitRevalidateWebhook(input)
@@ -74,7 +101,13 @@ export async function publishPendingWatchCatalog(
   let pending = initial
   if (
     pending.searchVersion >= pending.requestedVersion &&
-    pending.webVersion >= pending.requestedVersion
+    pending.webVersion >= pending.requestedVersion &&
+    !pending.liveUpdating &&
+    !pending.liveCurationInFlight &&
+    !(await prisma.watchCatalogDirtyVideo.findFirst({
+      select: { videoId: true },
+    })) &&
+    !(await hasRetirableCatalog(prisma, pending.retiredLive))
   )
     return
   // A restarted phase must retain its run's lock even after a long outage.
@@ -108,7 +141,14 @@ export async function publishPendingWatchCatalog(
     version = pending.requestedVersion
     if (
       pending.retryAt > new Date() ||
-      (pending.searchVersion >= version && pending.webVersion >= version)
+      (pending.searchVersion >= version &&
+        pending.webVersion >= version &&
+        !pending.liveUpdating &&
+        !pending.liveCurationInFlight &&
+        !(await prisma.watchCatalogDirtyVideo.findFirst({
+          select: { videoId: true },
+        })) &&
+        !(await hasRetirableCatalog(prisma, pending.retiredLive)))
     )
       return
     const activePhase = await prisma.coreSyncPhaseExecution.findFirst({
@@ -134,7 +174,15 @@ export async function publishPendingWatchCatalog(
 
     let searchError: unknown
     try {
-      if (pending.searchVersion < version) {
+      if (
+        pending.searchVersion < version ||
+        pending.liveUpdating ||
+        pending.liveCurationInFlight ||
+        (await prisma.watchCatalogDirtyVideo.findFirst({
+          select: { videoId: true },
+        })) ||
+        (await hasRetirableCatalog(prisma, pending.retiredLive))
+      ) {
         await withTypesenseWatchSearchIndexLock(async () => {
           if (!env.TYPESENSE_HOST || !env.TYPESENSE_OPERATOR_API_KEY)
             throw new Error(
@@ -150,54 +198,6 @@ export async function publishPendingWatchCatalog(
               prisma,
               typesense,
             )
-          const cleanupObsoleteCatalogs = async (
-            buildingGenerationId?: string,
-          ) => {
-            // Cleanup cannot turn a successful publication into a failed delivery.
-            // Active-reference guards also apply to manual retirement commands.
-            try {
-              const active =
-                await prisma.watchCatalogPublication.findUniqueOrThrow({
-                  where: { id: pending.id },
-                })
-              const old = await prisma.watchSearchCandidateGeneration.findMany({
-                where: {
-                  id: {
-                    startsWith: GENERATION_PREFIX,
-                    notIn: [
-                      active.generationId ?? "",
-                      buildingGenerationId ?? "",
-                    ],
-                  },
-                  state: { not: "RETIRED" },
-                },
-                orderBy: { createdAt: "desc" },
-                skip: RETAIN_INACTIVE_GENERATIONS,
-              })
-              for (const generation of old) {
-                if (
-                  generation.updatedAt.getTime() >
-                  Date.now() - RETIRE_DRAIN_MS
-                )
-                  continue
-                await retireTypesenseWatchSearchCandidate({
-                  generationId: generation.id,
-                  typesense,
-                  generations,
-                  assertDrained: async () => {
-                    await assertLock()
-                  },
-                })
-              }
-            } catch (error) {
-              console.warn(
-                JSON.stringify({
-                  event: "watch_catalog.cleanup_failed",
-                  error: error instanceof Error ? error.name : "UnknownError",
-                }),
-              )
-            }
-          }
           const transcript =
             await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
               prisma,
@@ -218,112 +218,122 @@ export async function publishPendingWatchCatalog(
             throw new Error(
               "Automatic catalog publication requires a qualified Candidate baseline",
             )
-          const snapshot =
-            await buildTypesenseWatchCandidateProjectionSnapshot(prisma)
-          if (snapshot.counts.catalog === 0)
-            throw new Error("Refusing an empty Watch catalog publication")
-          const previous = pending.generationId
-            ? await generations.getGeneration(pending.generationId)
-            : null
-          const transcriptUnchanged =
-            previous?.state === "READY" &&
-            previous.transcriptCollection === transcript.transcriptCollection &&
-            previous.contentEmbeddingContractId ===
-              transcript.contentEmbeddingContractId &&
-            previous.transcriptChunkingVersion ===
-              transcript.transcriptChunkingVersion &&
-            previous.transcriptProjectionRevision ===
-              transcript.projectionRevision
-          const unchanged =
-            transcriptUnchanged &&
-            pending.sourceDigest === snapshot.digests.combined &&
-            pending.baseGenerationId === base.generationId &&
-            pending.rankingRevision === candidateWatchSearchRankingRevision()
-          if (unchanged && pending.generationId) {
-            // Even no-op publications recheck readiness and exact transcript identity.
-            await generations.resolveGeneration({
-              generationId: pending.generationId,
-              indexContractRevision: base.indexContractRevision!,
-              transcriptCollection: transcript.transcriptCollection,
-              contentEmbeddingContractId: transcript.contentEmbeddingContractId,
-              transcriptChunkingVersion: transcript.transcriptChunkingVersion,
-              transcriptProjectionRevision: transcript.projectionRevision,
-            })
-            await prisma.watchCatalogPublication.update({
-              where: { id: pending.id },
-              data: { searchVersion: version, lastPublishedAt: new Date() },
-            })
-          } else {
-            const identity = [
-              version,
-              base.generationId,
-              snapshot.digests.combined,
-              transcript.transcriptCollection,
-              transcript.contentEmbeddingContractId,
-              transcript.transcriptChunkingVersion,
-              String(transcript.projectionRevision),
-            ]
-            const generationId = `${GENERATION_PREFIX}${createHash("sha256").update(JSON.stringify(identity)).digest("hex").slice(0, 32)}`
-            await cleanupObsoleteCatalogs(generationId)
-            await publishTypesenseWatchSearchCandidate({
+          // Fence private probes until content, curations, and the final
+          // publication identity have all been acknowledged, even when this
+          // request has no dirty video rows.
+          await prisma.watchCatalogPublication.update({
+            where: { id: pending.id },
+            data: { liveUpdating: true },
+          })
+          const livePrefix = `core-live-${createHash("sha256")
+            .update(`${base.generationId}:${base.indexContractRevision}`)
+            .digest("hex")
+            .slice(0, 8)}-`
+          let liveId = `${livePrefix}${randomUUID().replaceAll("-", "").slice(0, 16)}`
+          if (
+            pending.liveCollectionId &&
+            pending.baseGenerationId === base.generationId
+          )
+            liveId = pending.liveCollectionId
+          else if (pending.buildingLiveCollectionId?.startsWith(livePrefix))
+            liveId = pending.buildingLiveCollectionId
+          if (
+            pending.liveCollectionId !== liveId ||
+            pending.baseGenerationId !== base.generationId
+          ) {
+            await bootstrapLiveWatchCatalog({
               prisma,
               typesense,
-              generations,
-              generationId,
-              indexContractRevision:
-                candidateWatchSearchIndexContractRevision(),
-              sourceEpoch: `core-publication:${version}`,
-              transcript: {
-                collection: transcript.transcriptCollection,
-                contentEmbeddingContractId:
-                  transcript.contentEmbeddingContractId,
-                chunkingVersion: transcript.transcriptChunkingVersion,
-                projectionRevision: transcript.projectionRevision,
-              },
-              loadSnapshot: async () => snapshot,
-              publishEvaluation: false,
-              batchSize: 250,
-              failpoint: async () => {
-                await assertLock()
-              },
+              liveId,
+              assertLock,
             })
-            await assertLock()
-            // The shared publication lock excludes simultaneous operator pins.
-            const serving = await generations.getPointer("SERVING")
-            if (serving.generationId !== base.generationId)
-              throw new Error(
-                "Search baseline changed during catalog publication",
-              )
-            await prisma.$transaction(async (tx) => {
-              // Start the reader drain clock when a generation stops serving.
-              if (pending.generationId && pending.generationId !== generationId)
-                await tx.watchSearchCandidateGeneration.update({
-                  where: { id: pending.generationId },
-                  data: { updatedAt: new Date() },
-                })
-              await tx.watchCatalogPublication.update({
-                where: { id: pending.id },
-                data: {
-                  generationId,
-                  baseGenerationId: base.generationId,
-                  rankingRevision: candidateWatchSearchRankingRevision(),
-                  sourceDigest: snapshot.digests.combined,
-                  searchVersion: version,
-                  lastPublishedAt: new Date(),
+          }
+          let changed: number
+          try {
+            changed = await applyLiveWatchCatalogChanges({
+              prisma,
+              typesense,
+              liveId,
+              assertLock,
+            })
+          } catch (error) {
+            if (!(error instanceof LiveWatchSchemaExpansionError)) throw error
+            const expandedId =
+              pending.buildingLiveCollectionId?.startsWith(livePrefix) &&
+              pending.buildingLiveCollectionId !== liveId
+                ? pending.buildingLiveCollectionId
+                : `${livePrefix}${randomUUID().replaceAll("-", "").slice(0, 16)}`
+            await bootstrapLiveWatchCatalog({
+              prisma,
+              typesense,
+              liveId: expandedId,
+              assertLock,
+            })
+            liveId = expandedId
+            changed = await applyLiveWatchCatalogChanges({
+              prisma,
+              typesense,
+              liveId,
+              assertLock,
+            })
+          }
+          await refreshLiveWatchCurations({ prisma, typesense, liveId })
+          await assertLock()
+          const serving = await generations.getPointer("SERVING")
+          if (serving.generationId !== base.generationId)
+            throw new Error(
+              "Search baseline changed during catalog publication",
+            )
+          await prisma.watchCatalogPublication.update({
+            where: { id: pending.id },
+            data: {
+              baseGenerationId: base.generationId,
+              rankingRevision: candidateWatchSearchRankingRevision(),
+              searchVersion: version,
+              lastPublishedAt: new Date(),
+              liveUpdating: false,
+            },
+          })
+          console.log(
+            JSON.stringify({
+              event: "watch_catalog.incremental_published",
+              version,
+              liveId,
+              changed,
+            }),
+          )
+          // Retire only automatically owned content copies after a reader
+          // drain. Candidate pointer and lease guards remain authoritative.
+          try {
+            await cleanupRetiredLiveWatchCatalogs({
+              prisma,
+              typesense,
+              assertLock,
+            })
+            const obsolete =
+              await prisma.watchSearchCandidateGeneration.findMany({
+                where: {
+                  id: { startsWith: "core-catalog-" },
+                  state: { not: "RETIRED" },
+                  updatedAt: { lt: new Date(Date.now() - RETIRE_DRAIN_MS) },
                 },
+                select: { id: true },
               })
-            })
-            console.log(
+            for (const generation of obsolete)
+              await retireTypesenseWatchSearchCandidate({
+                generationId: generation.id,
+                typesense,
+                generations,
+                assertDrained: assertLock,
+              })
+          } catch (error) {
+            console.warn(
               JSON.stringify({
-                event: "watch_catalog.published",
-                version,
-                generationId,
-                baseGenerationId: base.generationId,
-                counts: snapshot.counts,
+                event: "watch_catalog.cleanup_failed",
+                error: error instanceof Error ? error.message : "UnknownError",
               }),
             )
           }
-          await cleanupObsoleteCatalogs()
         })
       }
     } catch (error) {

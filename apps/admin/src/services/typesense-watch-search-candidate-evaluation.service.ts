@@ -8,6 +8,7 @@ import { env, resolveWatchCatalogPublicationEnabled } from "@/config/env"
 import { prisma } from "@/db/client"
 
 import { TypesenseClient } from "./typesense-client"
+import { withTypesenseWatchSearchIndexLock } from "./typesense-watch-search-publication-lock"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { TypesenseWatchSearchCandidateGenerationService } from "./typesense-watch-search-candidate-generation"
 import {
@@ -63,6 +64,10 @@ export class CandidateSearchEvaluationError extends Error {
 
 export type CandidateSearchEvaluationDeps = {
   source: CandidateSearchEvaluationSource
+  searchLive?(input: WatchSearchInput): Promise<{
+    response: WatchSearchResponse
+    revision: string
+  } | null>
   resolveCurrentProfile(): Promise<TypesenseWatchSearchProfile>
   resolveCandidateProfile(
     currentProfile: TypesenseWatchSearchProfile,
@@ -290,6 +295,8 @@ export class TypesenseWatchSearchCandidateEvaluationService {
     response: WatchSearchResponse
     revision: string
   }> {
+    const live = await this.deps.searchLive?.(input)
+    if (live) return live
     const evaluationId = randomUUID()
     let current: TypesenseWatchSearchProfile
     let candidate: TypesenseWatchSearchProfile
@@ -375,6 +382,73 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
 
   return new TypesenseWatchSearchCandidateEvaluationService({
     source,
+    searchLive: async (input) => {
+      if (source !== "SERVING" || !resolveWatchCatalogPublicationEnabled())
+        return null
+      const pending = await prisma.watchCatalogPublication.findUnique({
+        where: { id: WATCH_CATALOG_PUBLICATION_ID },
+        select: { liveCollectionId: true },
+      })
+      if (!pending?.liveCollectionId) return null
+      try {
+        return await withTypesenseWatchSearchIndexLock(async () => {
+          const publication = await prisma.watchCatalogPublication.findUnique({
+            where: { id: WATCH_CATALOG_PUBLICATION_ID },
+          })
+          if (
+            !publication?.liveCollectionId ||
+            publication.liveUpdating ||
+            publication.liveCurationInFlight
+          )
+            throw new CandidateSearchEvaluationError("profile_unavailable")
+          const current = await freezeCurrentWatchSearchProfile(typesense)
+          const transcript =
+            await resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+              prisma,
+              currentProfile: current,
+            })
+          const base = await resolveServingCandidateWatchSearchProfile({
+            generations,
+            currentProfile: current,
+            indexContractRevision: candidateWatchSearchIndexContractRevision(),
+            rankingRevision: candidateWatchSearchRankingRevision(),
+            transcriptProjection: transcript,
+            qrelsRevision: env.WATCH_SEARCH_SERVING_QRELS_REVISION ?? null,
+          })
+          const live = await resolvePublishedWatchCatalog({
+            prisma,
+            base,
+            generations,
+            rankingRevision: candidateWatchSearchRankingRevision(),
+          })
+          if (live.generationId !== publication.liveCollectionId)
+            throw new CandidateSearchEvaluationError("profile_unavailable")
+          const result = await new TypesenseWatchSearchService(
+            prisma,
+            typesense,
+            {
+              profile: live,
+            },
+          ).searchWithDiagnostics(input)
+          assertCandidateDiagnostics(
+            live,
+            result.diagnostics,
+            candidateWatchSearchRankingRevision(),
+          )
+          return {
+            response: result.response,
+            revision: candidateSearchEvaluationRevision({
+              profile: live,
+              currentProfile: current,
+              rankingRevision: candidateWatchSearchRankingRevision(),
+            }),
+          }
+        })
+      } catch (error) {
+        if (error instanceof CandidateSearchEvaluationError) throw error
+        throw new CandidateSearchEvaluationError("profile_unavailable")
+      }
+    },
     resolveCurrentProfile: () => freezeCurrentWatchSearchProfile(typesense),
     resolveCandidateProfile: async (currentProfile) => {
       const profile =
@@ -411,14 +485,23 @@ export function createTypesenseWatchSearchCandidateEvaluationService(
       ) {
         throw new CandidateSearchEvaluationError("profile_unavailable")
       }
-      return source === "SERVING" && resolveWatchCatalogPublicationEnabled()
-        ? resolvePublishedWatchCatalog({
-            prisma,
-            base: profile,
-            generations,
-            rankingRevision: candidateWatchSearchRankingRevision(),
-          })
-        : profile
+      if (source === "SERVING" && resolveWatchCatalogPublicationEnabled()) {
+        const publication = await prisma.watchCatalogPublication.findUnique({
+          where: { id: WATCH_CATALOG_PUBLICATION_ID },
+          select: { liveCollectionId: true },
+        })
+        // The private evaluation lease is tied to a registered immutable
+        // Candidate. It cannot safely claim a mutable live content catalog.
+        if (publication?.liveCollectionId)
+          throw new CandidateSearchEvaluationError("profile_unavailable")
+        return resolvePublishedWatchCatalog({
+          prisma,
+          base: profile,
+          generations,
+          rankingRevision: candidateWatchSearchRankingRevision(),
+        })
+      }
+      return profile
     },
     createSearch: (profile) =>
       new TypesenseWatchSearchService(prisma, typesense, { profile }),
