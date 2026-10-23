@@ -204,8 +204,9 @@ repair one only through the authoring session, never with `maestro` itself:
 1. `node apps/mobile/release-check/cli.mjs session up --device iphone-se`
    boots one runner device, installs the test build of the current commit, and
    starts the read-only server.
-2. `node apps/mobile/release-check/cli.mjs session try <journey>` runs the
-   journey there and prints each step, and the screenshot of a failure.
+2. `node apps/mobile/release-check/cli.mjs session try <journey>` checks every
+   journey file with the journey rules of `check-lists`. When all pass, it runs
+   the journey there and prints each step, and the screenshot of a failure.
 3. `node apps/mobile/release-check/cli.mjs session down` runs the log check and
    stops the device and the server.
 
@@ -217,6 +218,12 @@ Each journey follows these rules, and `check-lists` checks most of them:
   `clearState`. The runner clears the app before each journey.
 - `openLink` takes only `forgemobile://` links. On iOS 26, follow it with an
   optional `tapOn: "Open"`.
+- Never use `runScript` or `evalScript`. In `${...}`, use only variable names,
+  `maestro.copiedText`, quoted text, and `==`, `!=`, `&&`, `||`. Maestro runs
+  this JavaScript on the Mac, where it can reach production admin without the
+  read-only server.
+- Put text with a backslash in single quotes. In double quotes, YAML reads a
+  backslash as an escape, and the rules cannot read escapes.
 - Assert each screen you cover by its root test ID `screen-<screen id>`, in a
   step that does not depend on a condition.
 - Never tap a control that opens a web page. Check that it shows, and add a
@@ -260,8 +267,9 @@ The runner home is `~/Library/Caches/forge-release-check`, or
 - `sessions/` and `records/`: the authoring sessions and the search records.
 - `lock.json`: the lock while a run, a session, a record, or setup is active.
   `status` shows a stale lock, and `recover` cleans up after a runner that was
-  killed. A run refuses while a stale lock of a run or a session remains: run
-  `recover` after a run, or `session down` after a session.
+  killed. A run and `session up` refuse while a stale lock of a run or a
+  session remains: run `recover` after a run, or `session down` after a
+  session.
 
 ## Verified facts
 

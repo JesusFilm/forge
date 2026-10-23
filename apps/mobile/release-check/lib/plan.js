@@ -501,4 +501,6 @@ module.exports = {
   journeyIdsIn,
   planCommand,
   preflightAdmin,
+  staleLockCleanup,
+  staleLockRefusal,
 }

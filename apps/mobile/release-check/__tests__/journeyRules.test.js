@@ -84,6 +84,93 @@ describe("check-lists journey rules", () => {
     ])
   })
 
+  describe("host-side JavaScript", () => {
+    const RISK =
+      "host-side JavaScript can reach production admin without the read-only server"
+    // The steps start on line 7.
+    const journey = (...steps) =>
+      [...LAUNCH, "    label: Launch", ...steps].join("\n")
+
+    it("rejects runScript and evalScript as steps", () => {
+      const messages = journeyFindings(
+        journeysWith({
+          "eval.yaml": journey("- evalScript: ${EXPLORE_TAB}"),
+          "script.yaml": journey("- runScript: probe.js"),
+        }),
+      )
+      expect(messages).toEqual([
+        `line 7 runs evalScript; ${RISK}`,
+        `line 7 runs runScript; ${RISK}`,
+      ])
+    })
+
+    it("rejects them nested, in a flow map, and in a header hook", () => {
+      const messages = journeyFindings(
+        journeysWith({
+          "flow-map.yaml": journey("- { runScript: probe.js }"),
+          "hook.yaml": [
+            "appId: org.jesusfilm.forgewatch",
+            "onFlowStart:",
+            "  - runScript: probe.js",
+            ...LAUNCH.slice(1),
+            "    label: Launch",
+          ].join("\n"),
+          "nested.yaml": journey(
+            "- runFlow:",
+            "    when:",
+            "      platform: ios",
+            "    commands:",
+            "      - retry:",
+            "          maxRetries: 1",
+            "          commands:",
+            "            - evalScript: ${EXPLORE_TAB}",
+          ),
+        }),
+      )
+      expect(messages).toEqual([
+        `line 7 runs runScript; ${RISK}`,
+        `line 3 runs runScript; ${RISK}`,
+        `line 14 runs evalScript; ${RISK}`,
+      ])
+    })
+
+    it("rejects `${}` that calls, reads a member, assigns, or hides in an escape", () => {
+      const messages = journeyFindings(
+        journeysWith({
+          "a-call.yaml": journey(
+            "- inputText: ${http.post('https://admin.jesusfilm.org/api/graphql')}",
+          ),
+          "b-member.yaml": journey("- assertTrue: ${output.x}"),
+          "c-assign.yaml": journey('- assertTrue: ${EXPLORE_TAB = "shown"}'),
+          "d-open.yaml": journey("- inputText: ${http.post("),
+          "e-escape.yaml": journey('- inputText: "\\x24{http.post()}"'),
+        }),
+      )
+      expect(messages).toEqual([
+        expect.stringMatching(
+          /^line 7 runs `\$\{http\.post\('https:\/\/admin\.jesusfilm\.org\/api\/graphql'\)\}`; .*host-side JavaScript/,
+        ),
+        expect.stringMatching(/^line 7 runs `\$\{output\.x\}`; /),
+        expect.stringMatching(/^line 7 runs `\$\{EXPLORE_TAB = "shown"\}`; /),
+        expect.stringMatching(/^line 7 opens `\$\{` with no `\}`/),
+        expect.stringMatching(/^line 7 has a backslash after a double quote/),
+      ])
+    })
+
+    it("accepts names, `maestro.copiedText`, and comparisons with quoted text", () => {
+      const messages = journeyFindings(
+        journeysWith({
+          "names.yaml": journey(
+            "- inputText: ${EXPLORE_TAB}",
+            "- assertVisible: ${maestro.copiedText}",
+            "- assertTrue: ${EXPLORE_TAB == \"shown\" || EXPLORE_TAB !== 'hidden'}",
+          ),
+        }),
+      )
+      expect(messages).toEqual([])
+    })
+  })
+
   it("names a journey it cannot read", () => {
     const messages = journeyFindings(
       journeysWith({

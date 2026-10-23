@@ -10,6 +10,14 @@ const SCREEN_ID = /^screen-(.+)$/
 // Each of these runs a nested `commands` list. Only `runFlow` and `repeat`
 // can skip it, by `when` or `while`.
 const NESTED_COMMANDS = ["runFlow", "repeat", "retry"]
+const HOST_SCRIPT_RISK =
+  "host-side JavaScript can reach production admin without the read-only server"
+const HOST_SCRIPT_COMMAND = /\b(runScript|evalScript)\b/gi
+const NAME = "[A-Za-z_][A-Za-z0-9_]*"
+const OPERAND = `(?:maestro\\.copiedText|${NAME}|"[^"\\\\]*"|'[^'\\\\]*')`
+const SAFE_EXPRESSION = new RegExp(
+  `^\\s*${OPERAND}(?:\\s*(?:[=!]==?|&&|\\|\\|)\\s*${OPERAND})*\\s*$`,
+)
 
 class FlowError extends Error {
   constructor(line, message) {
@@ -322,6 +330,7 @@ function parseFlow(source) {
     ),
     steps,
     topLevel: steps.filter((step) => step.depth === 0),
+    sourceLines: lines,
   }
 }
 
@@ -335,6 +344,42 @@ function assertedScreens(flow) {
     if (step.asserts.text) texts.add(step.asserts.text)
   }
   return { screens: [...screens], texts: [...texts] }
+}
+
+// The raw lines, not the steps: the parser reads a YAML subset, so a flow
+// map, an anchor, or a `#` can hide a command from it.
+function hostScriptProblems(lines) {
+  const problems = []
+  lines.forEach((text, index) => {
+    const line = index + 1
+    for (const match of text.matchAll(HOST_SCRIPT_COMMAND)) {
+      problems.push(`line ${line} runs ${match[1]}; ${HOST_SCRIPT_RISK}`)
+    }
+    const quote = text.indexOf('"')
+    if (quote >= 0 && text.includes("\\", quote)) {
+      problems.push(
+        `line ${line} has a backslash after a double quote; YAML reads it as an escape, which can hide \`\${\` or a command name, so use single quotes`,
+      )
+    }
+    let start = text.indexOf("${")
+    while (start >= 0) {
+      const end = text.indexOf("}", start + 2)
+      if (end < 0) {
+        problems.push(
+          `line ${line} opens \`\${\` with no \`}\` on the same line, so the rules cannot check its JavaScript`,
+        )
+        break
+      }
+      const expression = text.slice(start + 2, end)
+      if (!SAFE_EXPRESSION.test(expression)) {
+        problems.push(
+          `line ${line} runs \`\${${expression}}\`; \`\${}\` takes only names, \`maestro.copiedText\`, quoted text, ==, !=, && and ||, because ${HOST_SCRIPT_RISK}`,
+        )
+      }
+      start = text.indexOf("${", end + 1)
+    }
+  })
+  return problems
 }
 
 function journeyRuleProblems(flow) {
@@ -359,7 +404,7 @@ function journeyRuleProblems(flow) {
       )
     }
   }
-  return problems
+  return [...problems, ...hostScriptProblems(flow.sourceLines)]
 }
 
 module.exports = {

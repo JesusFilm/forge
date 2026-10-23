@@ -213,6 +213,45 @@ describe("session up", () => {
     expect(fs.existsSync(path.join(home, "sessions"))).toBe(false)
   })
 
+  it.each([
+    { mode: "run", cleanup: "recover" },
+    { mode: "session", cleanup: "session down" },
+  ])(
+    "refuses a stale $mode lock and names `$cleanup`, so it keeps the lock that recover reads",
+    async ({ mode, cleanup }) => {
+      const home = tempDir("release-check-session-")
+      const dead = {
+        pid: endedPid(),
+        processStart: "Thu Oct 22 01:00:00 2026",
+        mode,
+        runId: `2026-10-22T01-00-00Z-${mode}`,
+      }
+      fs.writeFileSync(lockPath(home), JSON.stringify(dead))
+      const spawned = []
+      const { deps, err } = baseDeps(home, CONFIG_DIR, {
+        spawnDetached: (...args) => {
+          spawned.push(args)
+          return { pid: process.pid }
+        },
+        isAlive: () => false,
+      })
+
+      const code = await sessionCommand(
+        parseArgs(["session", "up", "--device", "iphone-se"]),
+        deps,
+      )
+
+      expect(code).toBe(2)
+      expect(err.join("\n")).toContain("- STALE_RUN_LOCK: ")
+      expect(err.join("\n")).toContain(
+        `Run \`node apps/mobile/release-check/cli.mjs ${cleanup}\` first.`,
+      )
+      expect(spawned).toEqual([])
+      expect(readJson(lockPath(home))).toEqual(dead)
+      expect(fs.existsSync(path.join(home, "sessions"))).toBe(false)
+    },
+  )
+
   it("accepts a runner device id, its Forge RC name, and its forge_rc_ AVD", () => {
     expect(resolveRunnerDevice("iphone-se", DEVICES).device.id).toBe(
       "iphone-se",
@@ -588,6 +627,61 @@ describe("session try", () => {
     expect(
       fs.readFileSync(path.join(sessionDir, "session.log"), "utf8"),
     ).toMatch(/try settings-probe passed/)
+  })
+
+  it("refuses a journey that check-lists refuses, before it touches the device or Maestro", async () => {
+    const home = tempDir("release-check-session-")
+    const sessionDir = path.join(home, "sessions", "s7")
+    fs.mkdirSync(sessionDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(home, SESSION_FILE),
+      JSON.stringify({
+        sessionId: "s7",
+        sessionDir,
+        pid: 4242,
+        processStart: "Thu Oct 22 16:00:00 2026",
+        state: "ready",
+        deviceId: "iphone-se",
+        udid: UDID,
+        artifact: makeIosBuild(home),
+        logPath: path.join(sessionDir, "server-log.jsonl"),
+      }),
+    )
+    const journeysDir = tempDir("release-check-session-journeys-")
+    const file = path.join(journeysDir, "probe.yaml")
+    fs.writeFileSync(
+      file,
+      [
+        "appId: org.jesusfilm.forgewatch",
+        "---",
+        "- launchApp:",
+        "    permissions:",
+        "      notifications: deny",
+        "- runScript: probe.js",
+      ].join("\n"),
+    )
+    const touched = []
+    const { deps, err, out } = baseDeps(home, CONFIG_DIR, {
+      journeysDir,
+      isAlive: (pid) => pid === 4242,
+      processStart: async () => "Thu Oct 22 16:00:00 2026",
+      createSimulator: () => touched.push("device"),
+      runChild: async () => touched.push("child"),
+      runMaestro: async () => touched.push("maestro"),
+    })
+
+    const code = await sessionCommand(
+      parseArgs(["session", "try", "probe"]),
+      deps,
+    )
+
+    expect(code).toBe(2)
+    expect(err.join("\n")).toContain(
+      `- ${file}: line 6 runs runScript; host-side JavaScript can reach production admin without the read-only server`,
+    )
+    expect(touched).toEqual([])
+    expect(out).toEqual([])
+    expect(fs.existsSync(path.join(sessionDir, "tries"))).toBe(false)
   })
 })
 

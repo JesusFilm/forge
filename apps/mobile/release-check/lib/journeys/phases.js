@@ -54,6 +54,13 @@ const CLEAR_ALERT_LIMIT_MS = 60_000
 const PROBE_FILE = "apps/mobile/release-check/journeys/settings-probe.yaml"
 const CLEAR_ALERT_FLOW = path.join("_shared", "clear-system-alert.yaml")
 
+class JourneyPhaseError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = "JourneyPhaseError"
+  }
+}
+
 function copyJourneys(from, to) {
   fs.mkdirSync(to, { recursive: true })
   for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
@@ -100,7 +107,9 @@ function createJourneyPhases(options = {}) {
     const journeys = readJourneys(snapshot)
     const flows = new Map(journeys.map((journey) => [journey.id, journey]))
     if (!flows.has(PROBE_ID)) {
-      throw new Error(`the ${PROBE_ID} journey is missing from ${journeysDir}`)
+      throw new JourneyPhaseError(
+        `the ${PROBE_ID} journey is missing from ${journeysDir}`,
+      )
     }
     const read = (name) => readJson(path.join(configDir, LIST_FILES[name]))
     const screensConfig = read("screens")
@@ -636,4 +645,10 @@ function createJourneyPhases(options = {}) {
   return { probing, journeys }
 }
 
-module.exports = { APP_ID, ATTEMPT_LIMIT_MS, PROBE_ID, createJourneyPhases }
+module.exports = {
+  APP_ID,
+  ATTEMPT_LIMIT_MS,
+  JourneyPhaseError,
+  PROBE_ID,
+  createJourneyPhases,
+}

@@ -9,7 +9,11 @@ const path = require("node:path")
 
 const { validateAgainstSchema } = require("../lib/contract")
 const { parseFlow } = require("../lib/journeys/flow")
-const { PROBE_ID, createJourneyPhases } = require("../lib/journeys/phases")
+const {
+  JourneyPhaseError,
+  PROBE_ID,
+  createJourneyPhases,
+} = require("../lib/journeys/phases")
 const { CONFIG_DIR, JOURNEYS_DIR, readJson } = require("../lib/lists")
 
 const CLEAR_FLOW = "clear-system-alert"
@@ -233,6 +237,29 @@ function expectValidAttempts(attempts) {
     expect(validateAgainstSchema(ATTEMPT_SCHEMA, attempt)).toEqual([])
   }
 }
+
+describe("a run without the settings probe", () => {
+  it("throws a JourneyPhaseError that names the journeys folder", async () => {
+    const journeysDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "release-check-no-probe-"),
+    )
+    tempDirs.push(journeysDir)
+    fs.copyFileSync(
+      path.join(JOURNEYS_DIR, "cold-launch-home.yaml"),
+      path.join(journeysDir, "cold-launch-home.yaml"),
+    )
+    const { phases, ctx, calls } = setUp({}, { journeysDir })
+
+    const error = await phases.probing(ctx).catch((caught) => caught)
+
+    expect(error).toBeInstanceOf(JourneyPhaseError)
+    expect(error.name).toBe("JourneyPhaseError")
+    expect(error.message).toBe(
+      `the ${PROBE_ID} journey is missing from ${journeysDir}`,
+    )
+    expect(calls).toEqual([])
+  })
+})
 
 describe("a failed settings probe", () => {
   it("fails the probing phase, and no journey other than the probe starts", async () => {

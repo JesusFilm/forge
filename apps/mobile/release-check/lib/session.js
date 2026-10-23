@@ -18,9 +18,12 @@ const {
   ADMIN_SCHEMA_PATH,
   JOURNEYS_DIR,
   LIST_FILES,
+  checkJourneys,
+  journeyFiles,
   readJson,
 } = require("./lists")
 const lockLib = require("./lock")
+const { staleLockCleanup, staleLockRefusal } = require("./plan")
 const runFolder = require("./runFolder")
 
 const SESSION_FILE = "session.json"
@@ -507,6 +510,14 @@ async function upSession(command, deps) {
       `another release check holds the lock (${lockLib.holderText(lock.lock, { withRun: false })})`,
     )
   }
+  // The serve process would take over this lock, and `recover` reads it.
+  if (staleLockCleanup(lock)) {
+    const refusal = staleLockRefusal(lock)
+    deps.err(
+      `release-check refused: the session did not start.\n- ${refusal.code}: ${refusal.message}`,
+    )
+    return EXIT.refused
+  }
   const sessionId = runFolder.newRunId(new Date(deps.now()), deps.randomHex())
   const sessionDir = path.join(deps.home, SESSIONS_DIR, sessionId)
   fs.mkdirSync(sessionDir, { recursive: true })
@@ -611,6 +622,17 @@ async function trySession(command, deps) {
   const { record } = live
   const journey = resolveJourney(command.positionals[0], deps.journeysDir)
   if (journey.refusal) return refuseMode(deps, journey.refusal)
+  // Every file, as check-lists checks: a journey can run another by runFlow.
+  const problems = checkJourneys(journeyFiles(deps.journeysDir), (file) => file)
+  if (problems.length > 0) {
+    return refuseMode(
+      deps,
+      [
+        "the journey rules of `check-lists` refuse these journeys, so no journey runs:",
+        ...problems.map((problem) => `- ${problem.file}: ${problem.message}`),
+      ].join("\n"),
+    )
+  }
   const device = deps.config.devices.devices.find(
     (entry) => entry.id === record.deviceId,
   )
