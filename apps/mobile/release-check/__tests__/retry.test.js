@@ -142,6 +142,20 @@ describe("rate limits", () => {
     expect(calls.waits).toEqual([60_000])
     expect(result.label).toBe("flaky")
   })
+
+  it("waits before the one retry of an upstream_error too, but not of an assertion_failed", async () => {
+    const upstream = failed({ attempt: 1, class: "upstream_error" })
+    upstream.retryAfterMs = 60_000
+    const waited = await journeyRun([upstream, passed(2)])
+    expect(waited.calls.waits).toEqual([60_000])
+    expect(waited.result.label).toBe("flaky")
+
+    const assertion = failed({ attempt: 1, failedStep: "Video A shows" })
+    assertion.retryAfterMs = 60_000
+    const direct = await journeyRun([assertion, passed(2)])
+    expect(direct.calls.waits).toEqual([])
+    expect(direct.result.label).toBe("flaky")
+  })
 })
 
 describe("device restarts (AE6)", () => {

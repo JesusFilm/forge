@@ -65,6 +65,8 @@ const CLASS_TEXT = Object.freeze({
   device_unresponsive: "The device stopped answering the device tools.",
   driver_failed: "Maestro failed.",
   rate_limited: "Production admin refused a request because of its rate limit.",
+  upstream_error:
+    "Production admin did not give a usable answer to a read during the attempt.",
   request_blocked: "The read-only server blocked a request from the app.",
   missing_search_answer: "A search had no saved answer.",
   memory_pressure_kill: "The system stopped the app because memory was low.",

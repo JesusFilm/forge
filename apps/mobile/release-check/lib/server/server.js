@@ -268,6 +268,7 @@ function createReadOnlyServer({
         ? {
             forwardedBody: outcome.forwardedBody,
             forwardedSha256: sha256(outcome.forwardedBody),
+            heldMs: outcome.heldMs,
           }
         : {}),
       status: outcome.status,

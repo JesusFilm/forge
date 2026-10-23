@@ -17,7 +17,11 @@ const {
 } = require("graphql")
 
 const { PortTakenError, createReadOnlyServer } = require("../lib/server/server")
-const { parseRetryAfter } = require("../lib/server/forward")
+const {
+  createForwarder,
+  createPacer,
+  parseRetryAfter,
+} = require("../lib/server/forward")
 const { checkLog } = require("../lib/server/logCheck")
 const { CONFIG_DIR, REPO_ROOT, readJson } = require("../lib/lists")
 
@@ -457,6 +461,40 @@ describe("answer reuse (R35)", () => {
     await post(port, read)
     expect(upstream.received).toHaveLength(2)
   })
+
+  it("sends a repeat that waited 11 s behind a failed first read upstream", async () => {
+    const clock = fakeClock()
+    const upstream = await startUpstream(clock)
+    let release
+    const gate = new Promise((resolve) => (release = resolve))
+    upstream.respond = async (_body, count) => {
+      if (count > 1) return { body: { data: { videoBySlug: { id: "v1" } } } }
+      await gate
+      return { status: 503, body: {} }
+    }
+    const { lines, port } = await startServer(upstream, { clock })
+
+    const first = post(port, read)
+    while (upstream.received.length === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    const repeat = post(port, read)
+    // The repeat arrives at the same fake time; admin answers 11 s later.
+    await new Promise((resolve) => setTimeout(resolve, 200))
+    clock.advance(11_000)
+    release()
+    const answers = await Promise.all([first, repeat])
+
+    expect(answers.map((answer) => answer.status)).toEqual([502, 200])
+    expect(answers[1].json).toEqual({ data: { videoBySlug: { id: "v1" } } })
+    expect(upstream.received).toHaveLength(2)
+    expect(
+      lines().map((line) => [line.route, line.status, line.heldMs]),
+    ).toEqual([
+      ["upstream-error", 502, 0],
+      ["forwarded", 200, 11_000],
+    ])
+  })
 })
 
 describe("admin's rate limit (KTD8)", () => {
@@ -559,6 +597,58 @@ describe("admin's rate limit (KTD8)", () => {
       "forwarded",
     ])
   })
+
+  it("admits a late read that fits at once, and still refuses a hold past its deadline", async () => {
+    const clock = fakeClock()
+    const start = clock.now()
+    // Arrived 11 s ago, and the field has room now: no hold, so no refusal.
+    const late = await createPacer(clock).admit(
+      { "Query.video": 1 },
+      start - 11_000,
+    )
+    expect(late).toEqual({ ok: true })
+
+    const full = createPacer(clock)
+    await full.admit({ "Query.video": 60 }, start)
+    clock.advance(30_000)
+    // Also 11 s late, but the field has no room until 60 s: a hold, refused.
+    const held = await full.admit({ "Query.video": 1 }, start + 19_000)
+    expect(held).toEqual({ ok: false, field: "video" })
+  })
+
+  it("logs heldMs on forwarded and upstream-error lines only, and check-log passes", async () => {
+    const clock = fakeClock()
+    const upstream = await startUpstream(clock)
+    upstream.respond = (_body, count) =>
+      count === 3 ? { status: 503, body: {} } : { body: { data: {} } }
+    const { lines, logPath, port, server } = await startServer(upstream, {
+      clock,
+    })
+    server.setLaneDevice("ios", "iphone-se")
+    const ids = (prefix, count) =>
+      Array.from({ length: count }, (_, i) => `${prefix}${i}`)
+
+    await post(port, thumbnails(ids("a", 50)))
+    clock.advance(55_000)
+    // 50 + 20 nodes pass the limit of 60 until the first 50 leave at 60 s.
+    await post(port, thumbnails(ids("b", 20)))
+    await post(port, bodyOf(GET_VIDEO_BY_SLUG, { slug: "jesus" }))
+    await post(port, thumbnails(ids("b", 20)))
+    await server.close()
+
+    expect(lines().map((line) => [line.route, line.heldMs, line.ms])).toEqual([
+      ["forwarded", 0, 0],
+      ["forwarded", 5_000, 5_000],
+      ["upstream-error", 0, 0],
+      ["reused", undefined, 0],
+    ])
+    const result = checkLog(logPath, {
+      operations,
+      expectedDevices: ["iphone-se"],
+    })
+    expect(result.findings).toEqual([])
+    expect(result.passed).toBe(true)
+  })
 })
 
 describe("upstream failures", () => {
@@ -585,6 +675,62 @@ describe("upstream failures", () => {
       raisedAfter.push(raised)
     }
     expect(raisedAfter).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1])
+  })
+
+  function videoRead(count) {
+    return {
+      rootFields: { "Query.video": count },
+      request: { query: "query { video { id } }", variables: {} },
+    }
+  }
+
+  it("names a time-out with its limit, and keeps network for a lost connection", async () => {
+    const upstream = await startUpstream()
+    const now = Date.parse("2026-10-23T00:00:30.000Z")
+    const forwarder = createForwarder({
+      upstreamUrl: upstream.url,
+      clock: { now: () => now, sleep: async () => {} },
+    })
+    // Held 10 s, the longest hold, so 4 s of the 14 s answer budget is left.
+    upstream.respond = () => new Promise(() => {})
+    const late = await forwarder.forward(videoRead(1), now - 10_000)
+    expect(late).toMatchObject({
+      route: "upstream-error",
+      status: 502,
+      reason: "timeout after 4000 ms",
+      heldMs: 10_000,
+    })
+    expect(JSON.parse(late.text).errors[0].message).toContain(
+      "(timeout after 4000 ms)",
+    )
+
+    upstream.respond = () => ({ destroy: true })
+    const lost = await forwarder.forward(videoRead(1), now)
+    expect(lost).toMatchObject({
+      route: "upstream-error",
+      status: 502,
+      reason: "network",
+      heldMs: 0,
+    })
+  }, 15_000)
+
+  it("gives heldMs as the time from arrival until the pacer lets the read go", async () => {
+    const clock = fakeClock()
+    const upstream = await startUpstream(clock)
+    upstream.respond = () => ({ body: { data: {} } })
+    const forwarder = createForwarder({ upstreamUrl: upstream.url, clock })
+    const start = clock.now()
+
+    const first = await forwarder.forward(videoRead(50), start)
+    clock.advance(55_000)
+    // 50 + 20 nodes pass the limit of 60 until the first 50 leave at 60 s.
+    const second = await forwarder.forward(videoRead(20), start + 55_000)
+
+    expect(first).toMatchObject({ route: "forwarded", heldMs: 0 })
+    expect(second).toMatchObject({ route: "forwarded", heldMs: 5_000 })
+    expect(upstream.received.map((item) => item.at - start)).toEqual([
+      0, 60_000,
+    ])
   })
 })
 

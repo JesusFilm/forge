@@ -103,7 +103,11 @@ function createPacer(clock) {
             slowest = coordinate
           }
         }
-        if (ready > deadline) return { ok: false, field: fieldName(slowest) }
+        // A read that waited behind an identical one can arrive here late;
+        // only a hold that it still needs can pass its deadline.
+        if (ready > now && ready > deadline) {
+          return { ok: false, field: fieldName(slowest) }
+        }
         if (ready <= now) {
           for (const [coordinate, count] of Object.entries(rootFields)) {
             sent.get(coordinate).push({ at: now, count })
@@ -158,8 +162,8 @@ function postUpstream(upstreamUrl, body, timeoutMs) {
       },
     )
     const timer = setTimeout(() => {
+      finish({ timedOut: true })
       request.destroy()
-      finish({ error: new Error(`no answer in ${timeoutMs} ms`) })
     }, timeoutMs)
     request.on("error", (error) => finish({ error }))
     request.end(body)
@@ -208,11 +212,12 @@ function createForwarder({ upstreamUrl, clock, onUpstreamUnavailable }) {
           reason: `hold-over-${MAX_HOLD_MS}ms ${admitted.field}`,
         }
       }
+      const heldMs = clock.now() - arrivedAt
       const { query, variables, operationName } = classified.request
       const forwardedBody = JSON.stringify({ query, variables, operationName })
       const timeoutMs = Math.max(
         MIN_UPSTREAM_TIMEOUT_MS,
-        ANSWER_BUDGET_MS - (clock.now() - arrivedAt),
+        ANSWER_BUDGET_MS - heldMs,
       )
       const answer = await postUpstream(upstreamUrl, forwardedBody, timeoutMs)
       const failed = (reason) => {
@@ -226,8 +231,10 @@ function createForwarder({ upstreamUrl, clock, onUpstreamUnavailable }) {
           forwardedBody,
           rateLimit: null,
           reason,
+          heldMs,
         }
       }
+      if (answer.timedOut) return failed(`timeout after ${timeoutMs} ms`)
       if (answer.error) return failed("network")
       if (answer.status >= 500) return failed(`status ${answer.status}`)
       let parsed
@@ -254,6 +261,7 @@ function createForwarder({ upstreamUrl, clock, onUpstreamUnavailable }) {
         forwardedBody,
         rateLimit,
         reason: null,
+        heldMs,
       }
     },
     stats: () => ({ failuresInARow, upstreamUnavailable: unavailable }),

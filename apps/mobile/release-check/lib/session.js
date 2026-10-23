@@ -148,7 +148,9 @@ async function buildFindings(deps, file) {
 
 // The checked build of HEAD for each platform: `<home>/builds/<commit>` when it
 // passes the build check, else a new build, which needs clean inputs (R8).
+// Every caller holds the lock, so no run or other session uses a pruned build.
 async function checkedBuild(deps, { platforms, signal }) {
+  const { pruneBuilds } = require("./lifecycle")
   const commit = await deps.git.head()
   const buildDir = path.join(deps.home, "builds", commit)
   const artifacts = {}
@@ -161,7 +163,10 @@ async function checkedBuild(deps, { platforms, signal }) {
       missing.push(platform)
     }
   }
-  if (missing.length === 0) return { commit, buildDir, artifacts, built: [] }
+  if (missing.length === 0) {
+    pruneBuilds(deps.home, commit, deps.now())
+    return { commit, buildDir, artifacts, built: [] }
+  }
   const dirty = await deps.git.dirty()
   if (dirty.length > 0) {
     const shown = dirty.slice(0, 10).join(", ")
@@ -198,6 +203,7 @@ async function checkedBuild(deps, { platforms, signal }) {
     }
     artifacts[platform] = file
   }
+  pruneBuilds(deps.home, commit, deps.now())
   return { commit, buildDir, artifacts, built: missing }
 }
 

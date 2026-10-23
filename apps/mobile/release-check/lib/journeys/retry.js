@@ -9,6 +9,8 @@ const { matchKnownBug } = require("./knownBugs")
 
 const MAX_ATTEMPTS = 2
 const PASSING_LABELS = Object.freeze(["pass", "flaky"])
+// Classes whose cause is production admin, so the retry waits for it first.
+const WAIT_CLASSES = Object.freeze(["rate_limited", "upstream_error"])
 
 /** An attempt in the U8 `$defs.attempt` shape, with no label yet. */
 function attemptRecord(fields) {
@@ -100,7 +102,9 @@ async function runJourney(input) {
       return finish("known")
     }
     if (n === MAX_ATTEMPTS) return finish("new")
-    if (record.class === "rate_limited") await input.wait(outcome.retryAfterMs)
+    if (WAIT_CLASSES.includes(record.class)) {
+      await input.wait(outcome.retryAfterMs)
+    }
   }
   return finish("new")
 }

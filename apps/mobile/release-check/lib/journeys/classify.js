@@ -69,14 +69,18 @@ function serverSignals(lines, { deviceId, startMs, endMs }) {
   const waits = refusals
     .map((line) => line.rateLimit?.retryAfterMs)
     .filter(Number.isFinite)
+  const upstreamError = mine.some((line) => line.route === "upstream-error")
+  // An upstream error has no Retry-After, so it waits as long as a refusal
+  // without one.
+  let retryAfterMs = upstreamError ? DEFAULT_RETRY_AFTER_MS : null
+  if (refusals.length > 0) {
+    retryAfterMs =
+      waits.length > 0 ? Math.max(...waits) : DEFAULT_RETRY_AFTER_MS
+  }
   return {
     rateLimited: refusals.length > 0,
-    retryAfterMs:
-      refusals.length === 0
-        ? null
-        : waits.length > 0
-          ? Math.max(...waits)
-          : DEFAULT_RETRY_AFTER_MS,
+    retryAfterMs,
+    upstreamError,
     missingSearchAnswer: mine.some(
       (line) => line.route === "missing-search-answer",
     ),
@@ -267,6 +271,12 @@ const DEVICE_CLASS_ORDER = [
   "app_crashed",
   "app_unresponsive",
 ]
+// A false check or a missing control can come from a read that admin did not
+// answer; a crash or a driver failure cannot.
+const UPSTREAM_ERROR_EXPLAINS = new Set([
+  "assertion_failed",
+  "selector_not_found",
+])
 
 // One class for a failed attempt, from the most direct evidence to the least:
 // the device, the app's own exit records, the server, then Maestro.
@@ -297,7 +307,13 @@ function classifyFailure(input) {
       error: `The attempt did not end within ${Math.round(input.timeoutMs / 1000)} s while the device still answered.`,
     }
   }
-  if (failed) return { class: commandClass(failed), error: maestroText }
+  if (failed) {
+    const cls = commandClass(failed)
+    if (server.upstreamError && UPSTREAM_ERROR_EXPLAINS.has(cls)) {
+      return { class: "upstream_error", error: maestroText }
+    }
+    return { class: cls, error: maestroText }
+  }
   return {
     class: "driver_failed",
     error:

@@ -1257,6 +1257,7 @@ module.exports = {
   childArgs,
   createDeps,
   executeRun,
+  pruneBuilds,
   recoverCommand,
   runCommand,
   setupMode,

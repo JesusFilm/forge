@@ -222,6 +222,120 @@ describe("blocked requests", () => {
   })
 })
 
+describe("upstream errors", () => {
+  // The real attempt and server log lines of `collection-autoplay` attempt 1
+  // on android-phone, run 2026-10-22T23-44-38Z-d2d1. The window runs from its
+  // first step to its attempt event.
+  const dir = path.join(FIXTURES, "upstream-error-android")
+  const lines = readServerLog(path.join(dir, "server-log.jsonl"))
+  const window = {
+    deviceId: "android-phone",
+    startMs: Date.parse("2026-10-23T00:00:25.869Z"),
+    endMs: Date.parse("2026-10-23T00:01:01.698Z"),
+  }
+  const upstreamLine = lines.find((line) => line.route === "upstream-error")
+  const ASSERTION = "Assertion is false: id: screen-experience is visible"
+
+  it("gives upstream_error, and assertion_failed when only the upstream-error line is gone", () => {
+    expect(upstreamLine).toMatchObject({
+      opName: "GetExperienceBySlug",
+      status: 502,
+    })
+    const withLine = serverSignals(lines, window)
+    const withoutLine = serverSignals(
+      lines.filter((line) => line !== upstreamLine),
+      window,
+    )
+    expect(classifyOutput(dir, { server: withLine })).toEqual({
+      class: "upstream_error",
+      error: ASSERTION,
+    })
+    expect(classifyOutput(dir, { server: withoutLine })).toEqual({
+      class: "assertion_failed",
+      error: ASSERTION,
+    })
+  })
+
+  it("ignores an upstream-error line from another device or outside the window", () => {
+    const other = { ...upstreamLine, deviceId: "android-tablet" }
+    const late = { ...upstreamLine, ts: "2026-10-23T00:01:07.000Z" }
+    const rest = lines.filter((line) => line !== upstreamLine)
+    const server = serverSignals([...rest, other, late], window)
+    expect(server.upstreamError).toBe(false)
+    expect(classifyOutput(dir, { server }).class).toBe("assertion_failed")
+  })
+
+  it("replaces only assertion_failed and selector_not_found", () => {
+    const server = serverSignals(
+      [logLine({ route: "upstream-error", status: 502, reason: "network" })],
+      WINDOW,
+    )
+    const classOf = (output, maestro = {}) =>
+      classifyFailure({
+        deviceProblem: null,
+        appEvidence: [],
+        server,
+        maestro: {
+          code: 1,
+          timedOut: false,
+          stdout: "",
+          stderr: "",
+          ...maestro,
+        },
+        output,
+        timeoutMs: 600_000,
+      }).class
+    const real = (name) => readAttemptOutput(path.join(FIXTURES, name))
+    // SYNTHETIC: failed steps whose messages match commandClass's crash and
+    // driver patterns; no real fixture has one.
+    const crash = {
+      failed: {
+        type: "tapOnElement",
+        label: "Tap play",
+        error: "App crashed while executing flow",
+      },
+    }
+    const driver = {
+      failed: {
+        type: "assertConditionCommand",
+        label: "Home shows",
+        error: "UNAVAILABLE: io exception",
+      },
+    }
+    expect(classOf(real("assertion-ios"))).toBe("upstream_error")
+    expect(classOf(real("selector-android"))).toBe("upstream_error")
+    expect(classOf(crash)).toBe("app_crashed")
+    expect(classOf(driver)).toBe("driver_failed")
+    expect(classOf(real("assertion-ios"), { code: null, timedOut: true })).toBe(
+      "app_unresponsive",
+    )
+  })
+
+  it("gives rate_limited, with its Retry-After, when a refusal is in the same window", () => {
+    const server = serverSignals(
+      [
+        logLine({ route: "upstream-error", status: 502, reason: "network" }),
+        logLine({ rateLimit: { field: "video", retryAfterMs: 30_000 } }),
+      ],
+      WINDOW,
+    )
+    expect(server.retryAfterMs).toBe(30_000)
+    expect(
+      classifyOutput(path.join(FIXTURES, "assertion-ios"), { server }).class,
+    ).toBe("rate_limited")
+  })
+
+  it("waits 60 seconds before the retry of an upstream error, and not at all with no server signal", () => {
+    expect(serverSignals(lines, window).retryAfterMs).toBe(60_000)
+    expect(
+      serverSignals(
+        lines.filter((line) => line !== upstreamLine),
+        window,
+      ).retryAfterMs,
+    ).toBe(null)
+  })
+})
+
 describe("crash records of the runner's own devices", () => {
   it("reads app_crashed from a real am_crash event and exit record", () => {
     const crashAt = Date.parse("2026-10-22T02:58:40.944Z")

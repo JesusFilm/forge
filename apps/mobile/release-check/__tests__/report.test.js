@@ -384,6 +384,23 @@ describe("report.html", () => {
     expect(known).toContain("FORGE-2101")
   })
 
+  it("shows an upstream_error failure with its class and the words for it", () => {
+    const input = fixture("labels")
+    input.attempts[7].class = "upstream_error"
+    input.attempts[8].class = "upstream_error"
+    const { files } = render(input)
+    const article = articleOf(
+      files["report.html"],
+      "open-video-play",
+      "iphone-se",
+    )
+    expect(article).toContain("<code>upstream_error</code>")
+    expect(article).toContain(
+      "Production admin did not give a usable answer to a read during the attempt.",
+    )
+    expect(files["summary.md"]).toContain("`upstream_error`")
+  })
+
   it("shows the speed numbers as information only (R31)", () => {
     const html = render(fixture("pass")).files["report.html"]
     const speed = html.slice(html.indexOf('id="speed"'))

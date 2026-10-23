@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global afterAll, afterEach, describe, expect, it, require */
+/* global AbortController, afterAll, afterEach, describe, expect, it, require */
 // The one-device authoring session (KTD18, R7): the device name rule, the
 // detached session process, one Maestro attempt per `session try`, and the
 // log check that `session down` runs. No test touches a real device.
@@ -24,6 +24,7 @@ const { postJson } = require("../lib/server/record")
 const { createReadOnlyServer } = require("../lib/server/server")
 const {
   SESSION_FILE,
+  checkedBuild,
   createSessionDeps,
   resolveRunnerDevice,
   serveSession,
@@ -325,6 +326,74 @@ describe("session up", () => {
     expect(fs.existsSync(lockPath(home))).toBe(false)
     expect(fs.existsSync(path.join(home, SESSION_FILE))).toBe(false)
     expect(upstream.received).toHaveLength(1)
+  })
+})
+
+describe("build folders", () => {
+  const OLDER = "1111111111111111111111111111111111111111"
+  const OLD = "2222222222222222222222222222222222222222"
+  const NEWEST = "3333333333333333333333333333333333333333"
+
+  // Three builds of other commits, the newest last, as a day of sessions leaves.
+  function otherBuilds(home) {
+    for (const [index, commit] of [OLDER, OLD, NEWEST].entries()) {
+      const dir = path.join(home, "builds", commit, "ios", "forgewatch.app")
+      fs.mkdirSync(dir, { recursive: true })
+      const time = new Date(Date.parse("2026-10-22T09:00:00Z") + index * 3600e3)
+      fs.utimesSync(path.join(home, "builds", commit), time, time)
+    }
+  }
+
+  function buildsIn(home) {
+    return fs.readdirSync(path.join(home, "builds")).sort()
+  }
+
+  it.each([
+    ["finds a checked build of HEAD", true],
+    ["makes a new build of HEAD", false],
+  ])(
+    "keeps the build of HEAD and the newest other one when it %s",
+    async (_name, existing) => {
+      const home = tempDir("release-check-session-")
+      otherBuilds(home)
+      if (existing) makeIosBuild(home)
+      const { deps } = baseDeps(home, CONFIG_DIR, {
+        build: {
+          checkArtifact: async () => ({ findings: [] }),
+          buildTestApps: async ({ buildDir }) => {
+            const app = path.join(buildDir, "ios", "forgewatch.app")
+            fs.mkdirSync(app, { recursive: true })
+            return { ok: true, platforms: { ios: { artifact: app } } }
+          },
+        },
+      })
+
+      const build = await checkedBuild(deps, {
+        platforms: ["ios"],
+        signal: new AbortController().signal,
+      })
+
+      expect(build.built).toEqual(existing ? [] : ["ios"])
+      expect(buildsIn(home)).toEqual([COMMIT, NEWEST].sort())
+    },
+  )
+
+  it("removes no build while a run holds the lock", async () => {
+    const home = tempDir("release-check-session-")
+    otherBuilds(home)
+    makeIosBuild(home)
+    fs.writeFileSync(
+      lockPath(home),
+      `${JSON.stringify({ pid: process.pid, processStart: await processStart(process.pid), mode: "run", runId: "r1" })}\n`,
+    )
+    const sessionDir = path.join(home, "sessions", "s3")
+    fs.mkdirSync(sessionDir, { recursive: true })
+    const { deps } = baseDeps(home, CONFIG_DIR)
+
+    const code = await serveSession({ sessionDir, deviceId: "iphone-se" }, deps)
+
+    expect(code).toBe(2)
+    expect(buildsIn(home)).toEqual([OLDER, OLD, NEWEST, COMMIT].sort())
   })
 })
 

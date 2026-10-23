@@ -16,6 +16,7 @@ const FAILURE_CLASSES = Object.freeze([
   "device_unresponsive",
   "driver_failed",
   "rate_limited",
+  "upstream_error",
   "request_blocked",
   "missing_search_answer",
   "memory_pressure_kill",

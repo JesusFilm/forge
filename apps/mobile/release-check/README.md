@@ -120,6 +120,11 @@ form with a success reply, and blocks every other request. A repeated read gets
 the first answer again, and the server keeps each field under admin's limit of
 60 field nodes a minute.
 
+Each `forwarded` and `upstream-error` line in `server-log.jsonl` has `heldMs`,
+the part of `ms` before the request went to production. With no hold, it is
+only the time to read and check the request, less than 1 s. The reason
+`timeout after <N> ms` means that admin did not answer within N ms.
+
 Some reads do not go through the server: the signed-out auth session read at
 `auth.jesusfilm.org`, Bible text from `bible.helloao.org`, and images and video
 from Mux. A journey never taps a control that opens an external web page.
@@ -144,12 +149,16 @@ screen list gap, a failed check, and an early stop. Only `scope: "release"`
 with `result: "pass"` in `summary.json` is a passing release check.
 
 Each failure shows its class (for example `assertion_failed`,
-`selector_not_found`, `app_crashed`, `rate_limited`, or
+`selector_not_found`, `app_crashed`, `rate_limited`, `upstream_error`, or
 `missing_search_answer`), a screenshot, the step times, and the steps that did
-not run. The summary also proposes list changes: a Known-Bug entry for each new
-failure, the removal of each Known-Bug entry whose journey now passes, a search
-answer to record, and a journey to write for each screen gap. The runner never
-applies them; a person reviews them and commits the change.
+not run. A failure gets `upstream_error` in place of `assertion_failed` or
+`selector_not_found` when production admin gave no usable answer to a read from
+that device during the attempt. When the same attempt also has a rate-limit
+refusal, the class is `rate_limited`. The summary also proposes list changes: a
+Known-Bug entry for each new failure, the removal of each Known-Bug entry whose
+journey now passes, a search answer to record, and a journey to write for each
+screen gap. The runner never applies them; a person reviews them and commits
+the change.
 
 To share a report, zip its run folder (every link in it is relative) or paste
 `summary.md`.
