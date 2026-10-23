@@ -32,6 +32,10 @@ async function stepRunRecommendationRetention(input: {
   return runRecommendationRetentionJob(input)
 }
 
+// This workflow is an operator-requested single pass. A failed attempt keeps
+// its durable failure and partial committed counts; it must not retry itself.
+stepRunRecommendationRetention.maxRetries = 0
+
 export async function runRecommendationRetentionScheduler(
   input: {
     ledgerRunId?: string

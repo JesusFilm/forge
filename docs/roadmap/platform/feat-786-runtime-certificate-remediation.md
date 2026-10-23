@@ -1,0 +1,41 @@
+---
+id: "feat-786"
+title: "Patch Node runtimes and compromised certificate trust paths"
+owner: "tataihono"
+priority: "P0"
+status: "in-progress"
+start_date: "2026-10-23"
+duration: 1
+depends_on: []
+blocks: []
+tags:
+  - "infrastructure"
+  - "security"
+---
+
+## Problem
+
+Running Railway services retain Node 24.10.0, 24.15.0, and 24.21.0 despite newer build plans. Shorts Worker runs 22.22.3. The October 21 security release requires 22.23.4 or 24.22.1 and removal of the affected eMudhra/AAA certificate trust paths.
+
+## Entry Points — Read These First
+
+1. `.nvmrc` and `package.json`: shared Railpack and CI runtime selectors.
+2. `nixpacks.toml`: Auth and Crop Worker retain Nixpacks; keep FFmpeg and development build dependencies.
+3. `apps/shorts-worker/Dockerfile`: all build and serving stages share a digest-pinned Node base.
+4. `apps/analytics-watcher/Dockerfile`: Playwright contains an independently packaged Node executable.
+
+## Grep These
+
+`NODE_IMAGE`, `NIXPACKS`, `RAILPACK`, `sslcertificates`, `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE`.
+
+## What To Build
+
+Pin patched Node, refresh the Shorts image digest, explicitly install the patched Node distribution in Nixpacks, and remove affected OS roots in Docker/Nixpacks build and serving stores. Preserve Playwright, FFmpeg, production start commands and worker concurrency.
+
+## Constraints
+
+Production changes ship only through PR to main. Auth production dashboard start commands include migrations; staging has no Auth database and must retain its existing start behavior. Never disable TLS verification. A source pin or successful build is not runtime proof.
+
+## Verification
+
+Check formatting, shell syntax, checksum validation and image manifest pins before merging. After rollout, measure every active service replica and its executable, both affected certificate endpoints and a known-good control using each effective client/store. Verify auth sign-in and safe worker paths. Keep this ticket in progress until all application rows and custom trust-store overrides are reconciled in the external remediation tracker.

@@ -15,6 +15,7 @@ import {
   translationLanguageLabel,
   translationSearchValues,
   translationStatusLabel,
+  translationStatusParts,
   viewerLanguageCodes,
 } from "../translationList"
 import { getT } from "../../../../i18n/useT"
@@ -257,9 +258,12 @@ describe("row labels", () => {
     expect(translationLanguageLabel(bsb)).toBe("English")
   })
 
-  it("says whether the Bible is complete, and whether it is on the device", () => {
+  it("says whether the Bible is complete, and whether it is downloaded", () => {
     expect(translationStatusLabel(T, bsb, { kind: "bundled" })).toBe(
-      "Complete Bible, On this device",
+      "Complete Bible, Downloaded",
+    )
+    expect(translationStatusLabel(T, synodal, downloaded("rus_syn"))).toBe(
+      "Complete Bible, Downloaded",
     )
     expect(translationStatusLabel(T, synodal, NOT_DOWNLOADED)).toBe(
       "Complete Bible",
@@ -289,8 +293,24 @@ describe("row labels", () => {
     expect(isUpdateAvailable(synodal, downloaded("rus_syn"))).toBe(false)
     expect(isUpdateAvailable(bsb, { kind: "bundled" })).toBe(false)
     expect(translationStatusLabel(T, synodal, old)).toBe(
-      "Complete Bible, On this device, Update available",
+      "Complete Bible, Downloaded, Update available",
     )
+  })
+
+  it("draws only the download mark in bold", () => {
+    const old = downloaded("rus_syn", "0".repeat(64))
+    expect(translationStatusParts(T, synodal, old)).toEqual([
+      { text: "Complete Bible" },
+      { text: "Downloaded", strong: true },
+      { text: "Update available" },
+    ])
+    expect(translationStatusParts(T, bsb, { kind: "bundled" })).toEqual([
+      { text: "Complete Bible" },
+      { text: "Downloaded", strong: true },
+    ])
+    expect(translationStatusParts(T, synodal, NOT_DOWNLOADED)).toEqual([
+      { text: "Complete Bible" },
+    ])
   })
 })
 

@@ -475,6 +475,8 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 ## Common Pitfalls
 
 - Android VideoView z-order: renders on top of all RN Views. Place video BEHIND scroll content.
+- **Never send an expo-image `blurRadius` to Android (feat-784).** On Android, expo-image turns it into a RenderScript blur from `glide-transformations`, and its `RSBlur` calls `RenderScript.releaseAllContexts()` after each blur. Two blurs at the same time can then crash the app with a native `SIGTRAP` on a Glide thread, which no JavaScript handler sees. The six Search topic cards crashed 1 in 12 Search-tab opens on an API 35 emulator. Give the prop only on iOS (`blurRadius={Platform.OS === "ios" ? NAME : undefined}`); `src/components/__tests__/noAndroidBlurRadius.guard.test.js` keeps an allow list of the sites.
+  - For a soft image on Android, use `stretchedDecodeStyle` from `src/lib/stretchedDecode.ts`. Glide decodes a box `shrink` times smaller than the frame, and a scale stretches that bitmap back over the frame. Each bitmap pixel then spans at least `shrink` x 1.1 screen pixels on every screen, and a parent with `overflow: "hidden"` must clip the larger view. To look like a blur of sigma S px, give each bitmap pixel about 2S px. `TopicCard` uses 15 (16.5 px), which matches the old Android blur of radius 4 with Glide sampling 4 (S about 9 px, from a fit on device screenshots). `WatchAmbient` uses 64 (70.4 px), because at 48 (53 px) the wash showed soft vertical streaks under the player.
 - **The ambient wash hands over to BLACK while the video plays (`WatchAmbient`), for EVERY video, by decision — not by detection.** It is POSTER-derived, so once playback moves past that frame it no longer describes what is on screen, and on a video with baked-in letterbox bars it frames them. It cross-fades to pure black rather than simply away, because black is what those bars ARE — handing over to `BG_COLOR` would still leave them ~28 levels off their surround. Both layers ride ONE value (the black is `playFade` inverted), so they can never both be up or both be gone. The black holds solid to the player's bottom edge then dissolves into `BG_COLOR` across the bleed, with that midpoint DERIVED from `topInset + playerHeight` — ending an opaque band on the clipped edge is the seam this layer was already fixed for once. `PLAYING_OPACITY_MULTIPLIER` is the knob (0 = full handover, 1 = old behaviour); `PLAY_FADE_MS` is deliberately slow (3s) so it reads as the room settling rather than a glitch. The animated opacity MUST NOT land in the same style array as `styles.root` — it would win over `AMBIENT_MAX_OPACITY` and silently discard the contrast ceiling while that ceiling's own guard stays green. Play state arrives via the module-scope request store (`setPlaying` / `usePlaybackPlaying`), mirroring `loadFailed`, because the host is a `<Stack>` SIBLING and no context or prop path reaches the route's layers.
 - **Detecting baked-in letterbox bars on-device was investigated and REJECTED (2026-08-27) — do not re-litigate without new evidence.** Bars are in the PIXELS, not the container: `pilgrims-progress` is stored 1920x1080 on every rendition with 137 black rows top and bottom, so `VideoTrack.size` / `VideoThumbnail.width` / aspect metadata are all blind to it. Sampling frames DOES work (Mux `image.mux.com/<id>/thumbnail.png?time=&width=64`, requiring symmetry + steadiness across >=3 mid-timeline frames — a single middle frame false-positives on dark scenes, measured on `the-birth-of-jesus`), but the framing VARIES within one video (no bars t=3-20s on the same asset), only 1 in 11 videos is affected, and each cold bespoke Mux render costs ~0.93s TTFB. The unconditional fade above solves the same symptom with none of that. **Landmine if you retry:** feeding expo-video's `VideoThumbnail` into expo-image's `generateThumbhashAsync`/`generateBlurhashAsync` HANGS FOREVER on iOS — both internal `Either.get()` casts return nil, the generator never runs, and the promise never settles, so a prototype just looks like a slow network call. The only real JS-only pixel route is an offscreen `react-native-webview` canvas (already a shipped dependency; `image.mux.com` sends `access-control-allow-origin: *`).
 - **A group `opacity` over stacked children needs `needsOffscreenAlphaCompositing` on Android.** Android applies a ViewGroup's opacity to EACH CHILD unless the subtree is composited offscreen first, so an OPAQUE overlay stops covering what is beneath it — it blends over an already-dimmed sibling instead. `WatchAmbient` is the worked case: poster + gradient under `opacity: 0.45`, where the gradient's opaque tail could never reach `BG_COLOR`, so the wash ended in a hard seam at its clipped bottom edge instead of dissolving into the page. iOS composites correctly on its own and measured byte-identical either way, which is exactly why it shipped. Diagnose it by giving the overlay an unmistakable opaque colour and sampling pixels: leaking reads as the overlay PLUS a tint (`#8a177f`), correct reads as the overlay alone (`#810e7f` = 45% magenta over `BG_COLOR`). Suspect this whenever a fade looks right on iOS and terminates in a line on Android — `zIndex` does NOT fix it, because the defect is compositing, not draw order.
@@ -1345,6 +1347,21 @@ and `useExploreTakeover` hooks.
   `useFeedPlayers` writes `playbackRate` only while the player plays, just
   before `play()`, and on `playingChange(true)`: on iOS a rate write starts a
   paused player.
+- **A 2x hold shows only the video and the 2x cue (owner, 2026-10-22).** It
+  works as in Shorts and Reels. Captions and the band's black bars stay.
+  - `ClipOverlay`'s `fast` fades out the title, the description, the scrim,
+    the progress bar's track, and the rail. These parts take no touches
+    during the hold.
+  - Glass never fades through a parent. The rail and the scrub pill dissolve
+    through `GlassSurface`'s `visible` and `fade`.
+  - On iOS, `ExploreFeed` hides the tab bar through `setTabBarHidden`. Android
+    keeps its bar, because the bar takes layout space there.
+  - The hidden bar changes the bottom inset (95 to 46 on the iPhone 17 Pro Max
+    simulator). `useHeldClearance` in `ClipOverlay` keeps the last clearance,
+    so the video band does not move.
+  - The inset can change up to about 70 ms late, after a short hold even after
+    the release. So the hook holds its value until the inset has left it and
+    come back, or until `CLEARANCE_SETTLE_MS` ends (measured 2026-10-22).
 - **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
   See the Common Pitfalls entry on frames that miss their parent's bounds.
   `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
@@ -1732,13 +1749,13 @@ design record is
   it moves the fingerprint runtime version on Android and iOS. An
   `eas update` published before that build reaches no installed app.
 - **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
-  tripwire.** It pins `expo` 57.0.30, `expo-notifications` 57.0.23,
+  tripwire.** It pins `expo` 57.0.31, `expo-notifications` 57.0.23,
   `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
   Expo's `isFCMIntent` gate, which is why removing the key makes the listener
   ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
-  Expect the Expo SDK 58 upgrade to trip the version pins. Then re-read expo
-  PR #47615 (merged 2026-07-09): it drains the tap queue after a listener
-  handles a tap.
+  Every Expo upgrade trips the version pins. Re-read expo PR #47615 (merged
+  2026-07-09): it drains the tap queue after a listener handles a tap. It
+  shipped in the SDK 57 patch `expo-notifications` 57.0.24, not in SDK 58.
   - For a patch bump, diff the old and new packages' `android/` folders under
     `node_modules/.pnpm`. Bump the pins without a new device pass only when
     every fact passes and the diff changes nothing but the package's own
@@ -1755,6 +1772,13 @@ design record is
     check. The prebuilt library's `.pom` and its Kotlin sources did not change.
     On 2026-10-16 `expo` moved to 57.0.30 by the same check: only
     `build.gradle`'s `version` and `versionName` lines differed.
+    On 2026-10-23 `expo` moved to 57.0.31 by the same check.
+  - **`expo-notifications` is held at 57.0.23 (2026-10-23).** 57.0.24 is the
+    PR #47615 change: a listener reports a handled tap, and the manager then
+    clears the pending tap queue. So it needs the cold-tap pass first.
+    `package.json` pins the exact version and lists the package in
+    `expo.install.exclude`, so `expo install --check` stays green. feat-785
+    holds the pass and removes the exclusion.
 - **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
   Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
   player keeps the process alive, and `am kill` then does nothing. Check that
@@ -2151,9 +2175,10 @@ from there, so no two files can disagree about the bar's size.
   The Select row pins at the top of the list (`stickyHeaderIndices`). The
   app's only in-app privacy policy link (App Store 5.1.1(i)) is on the More
   screen (`app/more.tsx`).
-- **No screen hides the bar today.** A root route covers the bar, so the list
-  no longer hides it. `src/lib/tabBarVisibility.ts` and the `hidden` prop on
-  `NativeTabs` stay with no writer; a follow-up can remove them. If a tab
+- **Only an Explore 2x hold hides the bar (2026-10-22).** A root route
+  covers the bar, so the downloads list no longer hides it.
+  `src/lib/tabBarVisibility.ts` and the `hidden` prop on `NativeTabs` have one
+  writer: `ExploreFeed`, while a 2x hold runs. If another tab
   screen must hide the bar again, use that store: `NativeTabs` has no
   per-screen `tabBarStyle`, and a context cannot reach the layout, which is an
   ANCESTOR of the screen. Call `resetTabBarHidden()` on blur and on unmount, or
@@ -2481,7 +2506,7 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   - **The download button is on the translation sheet's Current card, not
     the top bar (owner, 2026-10-01).** It moved so long book names fit the
     top bar. There is one button, on the card only. Every row already says
-    "On this device". A button per row would add a second tap target to each
+    "Downloaded". A button per row would add a second tap target to each
     row. `TranslationDownloadButton` fills the Current row's
     `renderActiveAccessory` slot in `SearchableListSheet`, beside the row's
     accessible label, so VoiceOver reaches the button as its own element. A
@@ -2495,7 +2520,19 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     ("Translation: World English Bible, downloading, 40 percent. Change
     translation"). A finished download shows nothing in the pill: the owner
     tried a gray cloud-check there and dropped it the same day. The card in
-    the sheet still says "On this device".
+    the sheet still says "Downloaded".
+  - **A row's status shares one line (owner, 2026-10-21).** The language,
+    the books, and the download state show as one line, joined by " • ":
+    "English • Complete Bible • Downloaded". "Downloaded" is bold, and BSB says it too, because it reads
+    with no connection. `translationStatusParts` gives the parts, and
+    `SearchableListSheet`'s `getStatusParts` draws them. A screen reader
+    reads the parts with commas, not the language. A long line wraps to a
+    second line, so the state never truncates.
+  - **Only the Current card shows the credit (owner, 2026-10-22).** This
+    replaces R23's credit on every row. No license asks for a credit in a
+    list that shows no Bible text. The credit shows where the text shows:
+    the Current card, reader settings ("About the text"), and the quote
+    cards. `getActiveDetailLabel` on `SearchableListSheet` draws it.
   - **A running download shows a ring, not a percent (owner, 2026-09-28).**
     `ReaderProgressRing` matches the watch page's ring (26 pt, 2.5 pt line)
     on the card's button; the pill uses a 16 pt ring with no center.
@@ -2607,6 +2644,41 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     that fails ends the move, so a later load changes in place.
   - The first-run demo plays three cycles with a pause after each, then
     fades (`swipeDemoTimeline.ts`, one animated clock).
+- **The book list shows one testament at a time (owner, 2026-10-22).** A
+  control at the top of the book step switches between the Old Testament and
+  the New Testament, so a New Testament book is one tap away. The list opens
+  on the current book's testament (`initialTestament` in
+  `src/lib/bible/sheets/passageSteps.ts`). With no current book, a
+  translation with no Old Testament book opens on the New Testament. The
+  choice stays when "Books" returns from a chapter. The control is a radio
+  group, as in reader settings.
+- **Each picker step names its choice (owner, 2026-10-22).** The title is
+  "Choose a book", "Choose a chapter", or "Choose a verse".
+  - The chapter and verse steps show the reference so far ("Genesis",
+    "Genesis 1") on a smaller line under the title (`ReaderSheetHeader`'s
+    `subtitle`).
+  - The title and that line are centered on the sheet (`centerTitle`). Two
+    equal side slots hold the back and close buttons.
+  - A long title truncates at half the row. The back pill shrinks in its
+    slot, and its label truncates. So the two never overlap.
+  - The other reader sheets keep a left-aligned title.
+- **The reader sheets' header buttons are glass (owner, 2026-10-22).** The
+  back and close buttons in `ReaderSheetHeader` are `ReaderGlassButton`s. All
+  three reader sheets show them.
+- **The testament control is iOS's own `UISegmentedControl` (owner,
+  2026-10-22).** It comes from `@react-native-segmented-control/segmented-control`,
+  so iOS 26 draws its Liquid Glass and its touch response.
+  - Pass only `appearance` and a font size. A `tintColor` or a
+    `backgroundColor` replaces the system look.
+  - The font size is 15 pt, because the default 13 pt read small. Give no
+    color, so the label colors stay the system's.
+  - The font props take whole numbers only. They ignore `fontWeight`, and
+    they do not follow Dynamic Type.
+  - `canUseNativeSegmentedControl` in `src/lib/nativeSegmentedControl.ts`
+    checks that the binary has the view. Android, and a dev client built
+    before the module, get the JS control instead.
+  - The module is native, so it moved the fingerprint runtime version. A
+    native build must ship before any `eas update` reaches a tester.
 - **Book names follow the shown translation (owner, 2026-09-28).** A Korean
   reader sees 창세기 in the passage picker, not Genesis. The bundled catalog
   has no book names, so `src/lib/bible/repository/bookNames.ts` reads

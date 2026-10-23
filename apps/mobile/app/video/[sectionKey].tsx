@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useState } from "react"
 import {
   Platform,
   Pressable,
@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from "react-native"
 import { useLocalSearchParams, useNavigation } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -15,10 +16,15 @@ import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { experienceMuxData } from "../../src/lib/muxData/monitorSession"
+import { PLAYER_HEIGHT_RATIO } from "../../src/lib/playerLayout"
 import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
 import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 
-import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
+import {
+  useExperienceContext,
+  useSectionByKey,
+} from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
 import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
 import { ACCENT, BLACK, SURFACE_COLOR, TEXT_BODY } from "../../src/lib/color"
@@ -125,15 +131,29 @@ function VideoDetailContent({
 
   const [showFullDescription, setShowFullDescription] = useState(false)
 
+  // R15: the record title the provider loads, never the block's stored title,
+  // which is often empty or out of date.
+  const { getVideoTitle } = useExperienceContext()
+  const { width: screenWidth } = useWindowDimensions()
+  const playerHeight = Math.round(screenWidth * PLAYER_HEIGHT_RATIO)
+
   // Shared lifecycle adapter (todo 016). Deliberate convergence: foreground now
   // resumes only if playback was active at background — the old inline handler
   // called play() unconditionally, starting videos the user paused/never played.
-  const { player, isPlaying } = useManagedVideoPlayer(
+  const { player, isPlaying, muxMonitor } = useManagedVideoPlayer(
     hasValidStream ? streamingUrl : null,
     undefined,
-    // KTD5 opt-in: this SDUI block carries the admin video id.
-    { progress: blockVideoId ? { videoId: blockVideoId } : null },
+    {
+      // KTD5 opt-in: this SDUI block carries the admin video id.
+      progress: blockVideoId ? { videoId: blockVideoId } : null,
+      muxData: experienceMuxData(blockVideoId ?? null, getVideoTitle),
+    },
   )
+
+  // The player frame fills the screen width at 16:9 (KTD1).
+  useEffect(() => {
+    muxMonitor.setPlayerSize({ width: screenWidth, height: playerHeight })
+  }, [muxMonitor, screenWidth, playerHeight])
 
   // Autostarts behind a poster + spinner, the same as every other player
   // surface. Opening this screen IS the viewer asking to watch, so it must not
