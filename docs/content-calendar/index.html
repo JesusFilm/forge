@@ -719,13 +719,15 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 10px 10px 10px 16px;
+    padding: 8px 8px 0 18px;
     background: var(--ground);
-    border-bottom: 1px solid var(--line);
-    font-family: var(--serif);
-    font-size: 15px;
+    font: 600 11px var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
   .note-card .detail {
+    padding: 6px 18px 18px;
     border: 0;
     border-radius: 0;
   }
@@ -932,11 +934,11 @@
   }
   .todo-item {
     display: grid;
-    gap: 6px;
+    gap: 12px;
   }
   .todo-item + .todo-item {
     border-top: 1px solid var(--line);
-    padding-top: 10px;
+    padding-top: 16px;
   }
   .todo-item b {
     font-weight: 600;
@@ -951,8 +953,25 @@
     padding-left: 20px;
   }
   .opts {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     gap: 6px;
+  }
+  .q {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 19px;
+    line-height: 1.3;
+    color: var(--ink);
+  }
+  .qd {
+    margin: 0;
+    color: var(--muted);
+  }
+  .qlink {
+    font-size: 12px;
+    justify-self: start;
   }
   .opt,
   .send {
@@ -2054,11 +2073,13 @@
   }
   // A todo applies to a piece when its piece matches and its lang is the column's or "both".
   function todosFor(s, pc, ck) {
-    return s.todo.filter(
-      (t) =>
-        (t.piece || "") === pc &&
-        (!t.lang || t.lang === "both" || t.lang === ck),
-    )
+    return s.todo
+      .map((t, idx) => ({ ...t, idx }))
+      .filter(
+        (t) =>
+          (t.piece || "") === pc &&
+          (!t.lang || t.lang === "both" || t.lang === ck),
+      )
   }
   // Lyuba answers right here (Oct 23): pick an option, write a line, approve a preview. Each answer
   // is a doc in `requests`; the Calendar session (or the morning plan) hands it to the story session,
@@ -2094,9 +2115,7 @@
       '<textarea class="reply" rows="2" data-key="' +
       esc(key) +
       '" placeholder="' +
-      (approve
-        ? "What to change (optional for Approve)"
-        : "Write to the session") +
+      (approve ? "What to change" : "Comment") +
       '">' +
       esc(drafts[key] || "") +
       '</textarea><div class="btns">' +
@@ -2115,41 +2134,40 @@
       sentFor(key)
     )
   }
+  // Pop-up note, kept quiet (Lyuba, Oct 23): the question first and large, options on one line,
+  // one text box. No piece/language/date line.
   function detailHtml(s, pk, ck) {
-    const rows = (s.cells[pk + "|" + ck] || []).filter((p) => !isDone(p))
-    const due = rows.map((p) => p.date).sort()[0]
-    const col = ck === "ru" ? "RU" : "EN"
-    const name = (PIECES.find((x) => x.k === pk) || {}).l || pk
-    const late = due && due < todayKey
     const items = todosFor(s, pk, ck)
     const base = s.slug + "|" + pk + "|" + ck
+    if (!items.length)
+      return (
+        '<div class="detail"><div class="todo-item"><h3 class="q">Not made yet</h3>' +
+        '<p class="qd">The story session has not noted where it stopped.</p>' +
+        replyBox(base + "|note", false, false) +
+        "</div></div>"
+      )
     return (
-      '<div class="detail"><h4>' +
-      esc(name) +
-      " · " +
-      col +
-      (due
-        ? ' · <span class="' +
-          (late ? "late" : "") +
-          '">' +
-          (late ? "was due " : "due ") +
-          fmtDay(due) +
-          "</span>"
-        : "") +
-      "</h4>" +
+      '<div class="detail">' +
       items
-        .map((t, i) => {
-          const key = base + "|" + i
+        .map((t) => {
+          const key = base + "|" + t.idx
           const opts = t.options || []
           return (
-            '<div class="todo-item"><b>' +
+            '<div class="todo-item"><h3 class="q">' +
             esc(t.stage || "Waiting") +
-            "</b>" +
-            (t.text ? "<p>" + esc(t.text) + "</p>" : "") +
+            "</h3>" +
+            (t.text ? '<p class="qd">' + esc(t.text) + "</p>" : "") +
             (t.video
               ? '<video class="prev" controls preload="metadata" playsinline src="' +
                 esc(t.video) +
                 '"></video>'
+              : "") +
+            (t.link
+              ? '<a class="qlink" href="' +
+                esc(t.link) +
+                '" target="_blank" rel="noopener">' +
+                (/figma\.com/.test(t.link) ? "Open in Figma ↗" : "Open ↗") +
+                "</a>"
               : "") +
             (opts.length
               ? '<div class="opts">' +
@@ -2169,23 +2187,11 @@
                   .join("") +
                 "</div>"
               : "") +
-            (t.link
-              ? '<a href="' +
-                esc(t.link) +
-                '" target="_blank" rel="noopener">' +
-                (/figma\.com/.test(t.link) ? "Open in Figma ↗" : "Open ↗") +
-                "</a>"
-              : "") +
             replyBox(key, !!(t.approve || t.video), opts.length > 0) +
             "</div>"
           )
         })
         .join("") +
-      (items.length
-        ? ""
-        : '<div class="todo-item"><p>Not made yet. The story session has not noted where it stopped.</p>' +
-          replyBox(base + "|note", false, false) +
-          "</div>") +
       "</div>"
     )
   }

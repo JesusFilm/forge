@@ -113,9 +113,9 @@ Lyuba has to decide something, remove it once she has.
     {
       "piece": "insight", // long | intro | clip | insight | refl. | verse | post
       "lang": "both", // en | ru | both (Meta counts as en)
-      "stage": "Choose the topic", // short: what is waiting on Lyuba
+      "stage": "Purity-law countdown Short: build it?", // the question itself, shown large; write it so it reads on its own
       "text": "Three topics for the insight Short.", // optional detail
-      "options": ["Deep water", "Go away from me", "Nets that tear"], // optional: the actual choices
+      "options": ["Build it", "Change the idea", "Skip it"], // optional: 1-3 words each, they sit on one line as buttons
       "link": "https://www.figma.com/design/..." // optional: Figma cover, Claude Doc script, Studio project
     }
   ]
