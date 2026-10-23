@@ -77,3 +77,7 @@ Exact normal source7df038d image5860768a has the correct updated helper SHA256 `
 ## Roadmap browser verification follow-up
 
 The controlled UTC image exposes a pre-existing planned-calendar hydration mismatch for browsers east of UTC. Local midnight dates converted with `toISOString()` move the first planned week from April 28 to April 27 in Auckland; adding days across a DST transition also changes phase end labels. Treat these fixed calendar dates as UTC for construction, arithmetic and formatting. Keep the client-only Today indicator local and unchanged. A regression renders the actual timeline in UTC, Auckland and Los Angeles and compares both the first ISO date and full server markup; run it in the controlled image before the normal Next build. Verify the public dashboard hydrates without errors and record load timings after the normal release.
+
+## RAG controlled build
+
+Replace the bound RAG Railpack build with `apps/rag/Dockerfile`: pinned Node24.22.1, filtered OS bundle and directory before pnpm/Prisma downloads, frozen filtered workspace dependencies, generated Prisma client and the existing serving/pre-deploy commands. No corpus acquisition, indexing or provider requests are part of image acceptance. CI uses an isolated internal Docker network and disposable PostgreSQL to exercise migrations, portal role grants, the actual production command and anonymous access denials. Keep the audit open until the exact normally released image and its application transports are measured.
