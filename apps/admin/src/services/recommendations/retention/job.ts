@@ -106,6 +106,18 @@ export function nextRecommendationRetentionCatchUpRunAt(
   return new Date(now.getTime() + CATCH_UP_CONTINUATION_DELAY_MS)
 }
 
+export function recommendationRetentionNeedsContinuation(
+  result: RecommendationPurgeResult,
+): boolean {
+  if (result.status === "skipped") return true
+  return (
+    result.continuationRequired ??
+    result.batchLimitReached ??
+    result.overdueAfterRun ??
+    false
+  )
+}
+
 export async function runRecommendationRetentionJob(
   input: {
     ledgerRunId?: string
@@ -130,7 +142,8 @@ export async function runRecommendationRetentionJob(
             rootsDeleted: result.rootsDeleted,
             overdueAfterRun: result.overdueAfterRun,
             batchLimitReached: result.batchLimitReached,
-            continuationRequired: result.continuationRequired ?? false,
+            continuationRequired:
+              recommendationRetentionNeedsContinuation(result),
             profileVectorSweepSkipped:
               result.profileVectorSweepSkipped ?? false,
             purgeStatus: result.status,

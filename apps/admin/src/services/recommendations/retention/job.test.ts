@@ -49,6 +49,7 @@ import {
   ensureRecommendationRetentionSchedulerStarted,
   markRecommendationRetentionSchedulerRuntimeStarted,
   nextRecommendationRetentionCatchUpRunAt,
+  recommendationRetentionNeedsContinuation,
   recordRecommendationRetentionSchedulerHeartbeat,
   runRecommendationRetentionFromScheduler,
   runRecommendationRetentionJob,
@@ -86,6 +87,36 @@ beforeEach(() => {
 })
 
 describe("recommendation retention job", () => {
+  it("keeps a full successful manual batch marked for continuation", async () => {
+    const fullBatch = { ...purgeResult, batchLimitReached: true }
+    expect(recommendationRetentionNeedsContinuation(fullBatch)).toBe(true)
+    purgeExpiredRecommendationRequests.mockResolvedValueOnce(fullBatch)
+
+    await runRecommendationRetentionJob({ ledgerRunId: "ledger-1" })
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-1" },
+      data: expect.objectContaining({
+        details: expect.objectContaining({ continuationRequired: true }),
+      }),
+    })
+  })
+
+  it("requires review after a skipped or yielded operator pass", () => {
+    expect(
+      recommendationRetentionNeedsContinuation({
+        ...purgeResult,
+        status: "skipped",
+      }),
+    ).toBe(true)
+    expect(
+      recommendationRetentionNeedsContinuation({
+        ...purgeResult,
+        status: "yielded",
+        continuationRequired: true,
+      }),
+    ).toBe(true)
+  })
+
   it("runs exactly one deployed operator pass with a manual ledger", async () => {
     await expect(runManualRecommendationRetentionOnce()).resolves.toEqual({
       ledgerRunId: "ledger-1",
