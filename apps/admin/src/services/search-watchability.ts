@@ -29,12 +29,6 @@ export function notRestrictedFromWatchSql(alias: string): Prisma.Sql {
   return Prisma.sql`NOT ('watch' = ANY(${Prisma.raw(alias)}.restrict_view_platforms))`
 }
 
-export function watchVisibilityWhere(
-  user: Principal | null,
-): Prisma.VideoWhereInput {
-  return isEditorOrAdmin(user) ? {} : notRestrictedFromWatchWhere()
-}
-
 /**
  * Full video-row visibility gate for public (anonymous/VIEWER) reads: a
  * non-deleted video with at least one PUBLISHED, non-deleted locale, and not
