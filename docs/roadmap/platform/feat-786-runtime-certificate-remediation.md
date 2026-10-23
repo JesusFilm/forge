@@ -57,3 +57,12 @@ The actual image CI boots with different synthetic runtime keys and disposable
 SQLite under Docker `--network none`; health/operator reads and unauthorized,
 service-key and build-key denials must pass. No model/tool/workflow runs.
 Current stage replica/runtime/client checks remain required after normal release.
+
+### Private Studio controlled image
+
+D17 can reuse the controlled Agentic image with a separate Studio command that
+preserves its current backend target, base path and private-only networking.
+Actual-image CI checks runtime port, HTML metadata, shipped assets and gzip with
+no external network; synthetic operator authority must not appear in responses.
+Static SPA reads are not auth proof. Separate dashboard binding approval and
+current runtime/client/authorized Manager browser verification remain required.
