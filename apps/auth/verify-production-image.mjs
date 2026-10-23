@@ -58,9 +58,8 @@ try {
   const metadata = await discovery.json()
   assert.equal(metadata.issuer, "https://auth.example.invalid/api/auth")
   assert.equal(metadata.jwks_uri, "https://auth.example.invalid/api/auth/jwks")
-  const login = await request(
-    "/login?callbackURL=https%3A%2F%2Fwatch.jesusfilm.org%2F",
-  )
+  // Render the supported device continuation without issuing a device grant.
+  const login = await request("/login?user_code=000-000-0000")
   assert.equal(login.status, 200)
   const html = await login.text()
   const script = html.match(/src="([^" ]*\/_next\/static\/[^" ]+\.js)"/)?.[1]
