@@ -9,15 +9,16 @@
 // only (Core sync internals) and keeps its guard.
 //
 // Content-visibility contract (fix for #1831 — 2026-10-23): `getById`,
-// `getBySlug`, and `getWatchHomeVideos` have no dashboard caller (public-only
-// lookups), so they unconditionally require at least one PUBLISHED,
-// non-deleted locale — mirrors `videoParentsFilter`/`videoChildrenFilter`.
-// `list`/`countActive` ARE also called by the dashboard's video library
-// (which must keep showing DRAFT videos to editors), so they take a `user`
-// and apply the same status gate only for non-EDITOR/ADMIN callers via
-// `videoPublishStatusWhere`. This is a visibility filter, not an auth
-// gate — it narrows returned rows, it never throws/403s, so it does not
-// reintroduce the `hasPermission` guard the paragraph above forbids.
+// `getBySlug`, `getWatchHomeVideos`, and `getDubById` have no dashboard
+// caller (public-only lookups), so they unconditionally require at least one
+// PUBLISHED, non-deleted locale — mirrors
+// `videoParentsFilter`/`videoChildrenFilter`. `list`/`countActive` ARE also
+// called by the dashboard's video library (which must keep showing DRAFT
+// videos to editors), so they take a `user` and apply the same status gate
+// only for non-EDITOR/ADMIN callers via `videoPublishStatusWhere`. This is a
+// visibility filter, not an auth gate — it narrows returned rows, it never
+// throws/403s, so it does not reintroduce the `hasPermission` guard the
+// paragraph above forbids.
 
 import {
   Prisma,
@@ -1554,15 +1555,21 @@ export class VideoService {
   // downloads + subtitles instead of projecting every dub up front (mobile's
   // lean watch screen). PUBLIC — same posture as getById/getBySlug. Visibility
   // mirrors reaching the dub via `videoBySlug(slug){ dubs }`: the dub and its
-  // parent video must both be non-deleted (the `dubs` relation filters
-  // `deletedAt: null`; the video query gates `deletedAt: null`).
+  // parent video must both be non-deleted and the parent video must carry at
+  // least one PUBLISHED, non-deleted locale — a DRAFT video's dub id must not
+  // be independently fetchable (#1831 follow-up: `videoDub` is a root public
+  // query, not gated behind first resolving the parent video).
   async getDubById({ id, query }: { id: string; query: object }) {
     return this.prisma.videoDub.findFirst({
       ...query,
       where: {
         id,
         deletedAt: null,
-        video: { deletedAt: null, ...notRestrictedFromWatchWhere() },
+        video: {
+          deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          ...notRestrictedFromWatchWhere(),
+        },
       },
     })
   }

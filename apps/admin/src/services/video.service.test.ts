@@ -1897,14 +1897,16 @@ describe("VideoService", () => {
     })
 
     // NOTE: this asserts the WHERE-clause SHAPE the resolver hands Prisma — the
-    // dub itself and its parent video must both be non-deleted and not
-    // restricted from the "watch" platform, mirroring what `videoBySlug { dubs }`
-    // exposes. A mock cannot prove Prisma actually emits the parent-video
-    // relation filter in SQL (the mocked-vs-real-contract gap); that negative
-    // case (live dub under a soft-deleted video -> null) was verified
-    // empirically against a real DB during review. There is no real-DB
-    // integration harness in CI, so getBySlug/getById are gated the same way.
-    it("gates on the dub id AND both the dub and its parent video being non-deleted and unrestricted", async () => {
+    // dub itself and its parent video must both be non-deleted, the parent
+    // video must carry a PUBLISHED non-deleted locale, and the parent video
+    // must not be restricted from the "watch" platform, mirroring what
+    // `videoBySlug { dubs }` exposes. A mock cannot prove Prisma actually
+    // emits the parent-video relation filter in SQL (the mocked-vs-real-
+    // contract gap); that negative case (live dub under a soft-deleted or
+    // DRAFT-only video -> null) was verified empirically against a real DB
+    // during review. There is no real-DB integration harness in CI, so
+    // getBySlug/getById are gated the same way.
+    it("gates on the dub id AND both the dub and its parent video being non-deleted, published, and unrestricted", async () => {
       prisma.videoDub.findFirst.mockResolvedValueOnce(null)
 
       await service.getDubById({ id: "dub-1", query: {} })
@@ -1914,7 +1916,24 @@ describe("VideoService", () => {
       expect(where).toHaveProperty("deletedAt", null)
       expect(where.video).toEqual({
         deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
         NOT: { restrictViewPlatforms: { has: "watch" } },
+      })
+    })
+
+    // #1831 follow-up: a DRAFT video's dub must not be independently
+    // fetchable by id, even though `videoDub` is a root public query that
+    // doesn't require first resolving the parent video through
+    // `videoBySlug`/`video`.
+    it("excludes a dub whose parent video has no PUBLISHED locale", async () => {
+      prisma.videoDub.findFirst.mockResolvedValueOnce(null)
+
+      await service.getDubById({ id: "dub-1", query: {} })
+
+      expect(
+        prisma.videoDub.findFirst.mock.calls[0][0].where.video,
+      ).toHaveProperty("locales", {
+        some: { status: "PUBLISHED", deletedAt: null },
       })
     })
 
