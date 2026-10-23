@@ -3,15 +3,20 @@
 # the Railway dashboard and treat that dashboard config as canonical.
 
 [build]
-builder = "RAILPACK"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/mastra-gateway build && cp -r apps/mastra-gateway/.next/static apps/mastra-gateway/.next/standalone/apps/mastra-gateway/.next/static"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/mastra-gateway/Dockerfile"
 watchPatterns = [
-  "/.nvmrc",
-  "/railpack.json",
-  "/scripts/update-security-ca.sh","/apps/mastra-gateway/**", "/apps/auth/**"]
+  "/apps/mastra-gateway/**",
+  "/apps/auth/**",
+  "/scripts/update-security-ca.sh",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/patches/**",
+]
 
 [deploy]
-startCommand = "cd apps/mastra-gateway && pnpm exec prisma migrate deploy && HOSTNAME=0.0.0.0 node .next/standalone/apps/mastra-gateway/server.js"
+startCommand = "sh /app/apps/mastra-gateway/start-production.sh"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
