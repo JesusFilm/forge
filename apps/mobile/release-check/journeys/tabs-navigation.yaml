@@ -90,8 +90,7 @@ name: tabs-navigation
           label: The Bible tab is no longer on screen
     label: Use the Android back button
 # Search comes last: on iOS 26 the Search tab replaces the tab bar with a Home
-# button (README section 2), and on Android the Search tab can crash
-# (feat-784, known-bugs.json).
+# button (README section 2).
 - tapOn:
     text: Search
     label: Open the Search tab
