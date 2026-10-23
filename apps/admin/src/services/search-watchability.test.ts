@@ -6,6 +6,8 @@ import {
   notRestrictedFromWatchSql,
   notRestrictedFromWatchWhere,
   SearchWatchabilityService,
+  videoPublishStatusWhere,
+  videoVisibilityWhere,
   watchVisibilityWhere,
 } from "./search-watchability"
 
@@ -67,6 +69,54 @@ describe("watchVisibilityWhere", () => {
 
   it("ADMIN → no restriction (dashboard must show restricted videos)", () => {
     expect(watchVisibilityWhere(ADMIN)).toEqual({})
+  })
+})
+
+describe("videoVisibilityWhere", () => {
+  it("anonymous → requires a non-deleted, PUBLISHED, unrestricted video", () => {
+    expect(videoVisibilityWhere(null)).toEqual({
+      deletedAt: null,
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+
+  it("VIEWER → requires a non-deleted, PUBLISHED, unrestricted video", () => {
+    expect(videoVisibilityWhere(VIEWER)).toEqual({
+      deletedAt: null,
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+
+  it("EDITOR → only excludes soft-deleted rows", () => {
+    expect(videoVisibilityWhere(EDITOR)).toEqual({ deletedAt: null })
+  })
+
+  it("ADMIN → only excludes soft-deleted rows", () => {
+    expect(videoVisibilityWhere(ADMIN)).toEqual({ deletedAt: null })
+  })
+})
+
+describe("videoPublishStatusWhere", () => {
+  it("anonymous → requires at least one PUBLISHED, non-deleted locale", () => {
+    expect(videoPublishStatusWhere(null)).toEqual({
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+    })
+  })
+
+  it("VIEWER → requires at least one PUBLISHED, non-deleted locale", () => {
+    expect(videoPublishStatusWhere(VIEWER)).toEqual({
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+    })
+  })
+
+  it("EDITOR → no status filter (dashboard must show DRAFT videos)", () => {
+    expect(videoPublishStatusWhere(EDITOR)).toEqual({})
+  })
+
+  it("ADMIN → no status filter (dashboard must show DRAFT videos)", () => {
+    expect(videoPublishStatusWhere(ADMIN)).toEqual({})
   })
 })
 
