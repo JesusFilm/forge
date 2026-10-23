@@ -17,6 +17,35 @@ tags:
   - "operations"
 ---
 
+## October 23 daily automation verification
+
+The owner requested automatic daily deletion of rows whose stored expiry has
+passed. Main `64bb087209128e8cca6a8bbd79475aafff180a42` already implements this
+through the Admin worker's durable recommendation-retention scheduler: a daily
+10:30 UTC wake (23:30 NZDT), bounded passes and 60-second continuation when
+more expired work is reported. No duplicate scheduler or change to persisted
+expiry is needed. The operational details and live verification procedure are
+in `docs/operations/semantic-recommendation-tracer.md`.
+
+At October 23 06:36:15 UTC, a bounded read-only join of `workflow_run` to
+`workflow.workflow_runs` confirmed both the scheduler ledger and its actual
+persisted workflow runtime were `running`, without recorded errors. The next
+daily wake was October 23 10:30 UTC. This proves the stored runtime state,
+not an actively executing step or a future successful cycle. The storage-owner
+receipt is `outputs/heartbeats/20261023T0417-drain-audit/scheduler-runtime-sql.json`.
+The expired-row accumulation between daily wakes is compatible with the
+schedule; it does not by itself prove the preceding cycle stopped early.
+The parent verified 46 existing workflow/job tests covering daily scheduling,
+bounded continuation, yields, failures and singleton startup. The tests do not
+replace actual runtime and production deletion evidence.
+
+The separately authorized manual catch-up remains owned by the storage task.
+Manual deletion receipts give no credit toward the two ordinary loaded,
+failure-free daily cycles. October 22 still contains genuine failed attempts;
+its eventual recovery does not qualify it. Keep this ticket in progress until
+later ordinary cycles meet the existing throughput, complete-backlog, lock,
+watermark and capacity gates.
+
 ## October 6 eligibility-source unlink failure
 
 The first ordinary loaded cycle on the phase-admission release is **not
