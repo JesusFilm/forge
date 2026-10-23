@@ -105,3 +105,13 @@ identity, proxy, schema or provider behavior changes.
 ## Admin web and worker controlled images
 
 Replace the two source-bound managed builds with pinned Node Docker and pre-install CA filtering. Retain existing Next/Workflow builds, worker authority unsets, tracing/version settings, Redis/GraphQL readiness and migrations. Preserve PostgreSQL18 native backup tools using checksum-pinned18.6 client-only build; no database server version changes. Existing Datadog sourcemap upload moves before migrations in pre-deploy so the upload key stays outside Docker build layers. Preserve browser-visible RUM build configuration. Actual-image CI uses isolated disposable PostgreSQL/Redis for migrations, native schema dump/list and actual web/worker startup/access denials; no real provider, publication or push action. Stage dashboard binding remains separate.
+
+### Manager controlled image
+
+B05's image proposal filters trust before package downloads, retains standalone
+assets/workflow startup and all six workspace dependencies, and supplies native
+FFmpeg 7.1.5 TLS verification with MP3 audio cleanup support. Acceptance includes
+public direct/nested HLS trust and local generated media plus network-disabled
+production startup and access gates. Dashboard canonical production still needs
+separate binding approval and exact live verification; explicit Studio proof
+artifacts, identity, content and provider actions remain outside this change.
