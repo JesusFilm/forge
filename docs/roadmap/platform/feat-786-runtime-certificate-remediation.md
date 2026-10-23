@@ -81,3 +81,9 @@ The controlled UTC image exposes a pre-existing planned-calendar hydration misma
 ## RAG controlled build
 
 Replace the bound RAG Railpack build with `apps/rag/Dockerfile`: pinned Node24.22.1, filtered OS bundle and directory before pnpm/Prisma downloads, frozen filtered workspace dependencies, generated Prisma client and the existing serving/pre-deploy commands. No corpus acquisition, indexing or provider requests are part of image acceptance. CI uses an isolated internal Docker network and disposable PostgreSQL to exercise migrations, portal role grants, the actual production command and anonymous access denials. Keep the audit open until the exact normally released image and its application transports are measured.
+
+## Auth controlled image and stage prerequisite
+
+Build Auth and watch-url-policy from frozen filtered dependencies on pinned Node24.22.1, filtering OS trust before package and Prisma downloads. Preserve the Next standalone output and source-bound stage's no-migration command; Docker uses a direct Node command and HOSTNAME environment. Production's dashboard remains canonical until a separate reviewed binding decision. Actual image acceptance must cover native/OS/Firebase transport trust, disposable PostgreSQL migrations/seed and cold startup with an unavailable public issuer, readiness, discovery, anonymous sessions and frame denial headers.
+
+Stage currently has no DATABASE_URL and still serves an older image whose health route unconditionally returns ok. Current main readiness initializes Auth and requires a database; its stage release is failing health checks. Do not weaken readiness, copy production data/secrets or add stage startup migrations. Isolated stage database/identity provisioning or a supported retirement/restore remains an owner decision before stage can be accepted.
