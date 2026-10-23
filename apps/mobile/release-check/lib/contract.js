@@ -259,6 +259,13 @@ const KEYWORDS = new Set([
   "pattern",
 ])
 
+class SummarySchemaError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = "SummarySchemaError"
+  }
+}
+
 function typeOf(input) {
   if (input === null) return "null"
   if (Array.isArray(input)) return "array"
@@ -276,7 +283,9 @@ const LOCAL_REF = /^#\/\$defs\/([^/]+)$/
 function resolveRef(root, ref) {
   const name = ref.match(LOCAL_REF)?.[1]
   if (name === undefined || !Object.hasOwn(root.$defs ?? {}, name)) {
-    throw new Error(`summary schema $ref \`${ref}\` names no $defs entry`)
+    throw new SummarySchemaError(
+      `summary schema $ref \`${ref}\` names no $defs entry`,
+    )
   }
   return root.$defs[name]
 }
@@ -284,7 +293,9 @@ function resolveRef(root, ref) {
 function validateNode(schema, input, where, errors, root) {
   for (const keyword of Object.keys(schema)) {
     if (!KEYWORDS.has(keyword) && !ANNOTATIONS.has(keyword)) {
-      throw new Error(`summary schema keyword \`${keyword}\` is not supported`)
+      throw new SummarySchemaError(
+        `summary schema keyword \`${keyword}\` is not supported`,
+      )
     }
   }
   if (schema.$ref !== undefined) {
@@ -347,6 +358,7 @@ module.exports = {
   EXIT,
   FAILURE_CLASSES,
   MODES,
+  SummarySchemaError,
   formatRefusal,
   parseArgs,
   refuseMode,

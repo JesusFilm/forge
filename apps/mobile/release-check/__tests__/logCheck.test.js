@@ -185,6 +185,61 @@ describe("forwarded bytes", () => {
     ])
     expect(codes(result)).toEqual(["FORWARDED_NOT_READ_ONLY"])
   })
+
+  it.each([
+    [
+      "a fragment spread",
+      "query Q { ...F } fragment F on Query { myWatchProgress { id } }",
+    ],
+    [
+      "an inline fragment",
+      "query Q { ... on Query { myWatchProgress { id } } }",
+    ],
+  ])(
+    "fails on a field that is not on the read-only list behind %s",
+    (_label, query) => {
+      const result = check([line({ forwardedBody: JSON.stringify({ query }) })])
+      expect(codes(result)).toEqual(["FORWARDED_NOT_READ_ONLY"])
+      expect(result.findings[0].message).toContain("Query.myWatchProgress")
+    },
+  )
+
+  it("passes a read-only field behind a fragment spread", () => {
+    const query =
+      'query Q { ...F } fragment F on Query { videoBySlug(slug: "jesus") { id } }'
+    const result = check([line({ forwardedBody: JSON.stringify({ query }) })])
+    expect(result.findings).toEqual([])
+  })
+
+  it("fails on a forwarded line with no forwarded bytes", () => {
+    const result = check([
+      { ...line(), forwardedBody: undefined, forwardedSha256: undefined },
+    ])
+    expect(result.passed).toBe(false)
+    expect(codes(result)).toEqual(["FORWARDED_BODY_MISSING"])
+  })
+})
+
+describe("log lines", () => {
+  it.each([
+    ["text that is not JSON", "{ not json"],
+    ["a JSON array", "[]"],
+  ])("fails on a line of %s", (_label, text) => {
+    const result = checkLogText(`${JSON.stringify(line())}\n${text}\n`, {
+      operations,
+      expectedDevices: ["iphone-se"],
+    })
+    expect(result.passed).toBe(false)
+    expect(result.findings).toEqual([
+      {
+        code: "LOG_LINE_UNREADABLE",
+        message: "log line 2 is not one JSON object.",
+        setting: null,
+        file: null,
+        deviceId: null,
+      },
+    ])
+  })
 })
 
 describe("check-log <log>", () => {

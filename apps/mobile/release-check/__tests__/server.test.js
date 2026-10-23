@@ -22,6 +22,7 @@ const {
   createPacer,
   parseRetryAfter,
 } = require("../lib/server/forward")
+const { ServerLogError, createLog } = require("../lib/server/log")
 const { checkLog } = require("../lib/server/logCheck")
 const { CONFIG_DIR, REPO_ROOT, readJson } = require("../lib/lists")
 
@@ -757,5 +758,14 @@ describe("binding (KTD6)", () => {
     const probe = http.createServer()
     await expect(listenOn(probe, port, "127.0.0.1")).resolves.toBe(port)
     await closeOf(probe)()
+  })
+})
+
+describe("the server log", () => {
+  it("throws ServerLogError on a write before open", () => {
+    const logPath = path.join(os.tmpdir(), "release-check-unopened-log.jsonl")
+    const write = () => createLog(logPath).write({ route: "forwarded" })
+    expect(write).toThrow(ServerLogError)
+    expect(write).toThrow(`the server log ${logPath} is not open`)
   })
 })

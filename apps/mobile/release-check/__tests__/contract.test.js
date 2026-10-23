@@ -5,7 +5,11 @@
 const childProcess = require("node:child_process")
 const path = require("node:path")
 
-const { parseArgs, validateAgainstSchema } = require("../lib/contract")
+const {
+  SummarySchemaError,
+  parseArgs,
+  validateAgainstSchema,
+} = require("../lib/contract")
 const { readJson } = require("../lib/lists")
 const { buildSummary } = require("../lib/report/summary")
 
@@ -109,9 +113,10 @@ describe("summary.schema.json", () => {
   })
 
   it("throws on a schema keyword the validator does not check", () => {
-    expect(() =>
-      validateAgainstSchema({ type: "object", oneOf: [] }, minimal),
-    ).toThrow("summary schema keyword `oneOf` is not supported")
+    const validate = () =>
+      validateAgainstSchema({ type: "object", oneOf: [] }, minimal)
+    expect(validate).toThrow(SummarySchemaError)
+    expect(validate).toThrow("summary schema keyword `oneOf` is not supported")
   })
 })
 
@@ -162,8 +167,11 @@ describe("validateAgainstSchema with $ref", () => {
   })
 
   it("throws on a $ref that names no $defs entry", () => {
-    expect(() =>
-      validateAgainstSchema({ $ref: "#/$defs/missing" }, {}),
-    ).toThrow("summary schema $ref `#/$defs/missing` names no $defs entry")
+    const validate = () =>
+      validateAgainstSchema({ $ref: "#/$defs/missing" }, {})
+    expect(validate).toThrow(SummarySchemaError)
+    expect(validate).toThrow(
+      "summary schema $ref `#/$defs/missing` names no $defs entry",
+    )
   })
 })

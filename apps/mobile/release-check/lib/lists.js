@@ -58,6 +58,13 @@ const PORT_NAMES = [
 const ROUTE_EXTENSION = /\.(tsx|ts|jsx|js)$/
 const PLATFORM_SUFFIX = /\.(ios|android|native|web)$/
 
+class ListSourceError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = "ListSourceError"
+  }
+}
+
 function isNonEmptyString(input) {
   return typeof input === "string" && input.trim() !== ""
 }
@@ -178,7 +185,9 @@ function collectRootFields(selectionSet, fragments, rootType, out, seen) {
       if (seen.has(name)) continue
       seen.add(name)
       const fragment = fragments.get(name)
-      if (!fragment) throw new Error(`fragment ${name} is not in the document`)
+      if (!fragment) {
+        throw new ListSourceError(`fragment ${name} is not in the document`)
+      }
       collectRootFields(fragment.selectionSet, fragments, rootType, out, seen)
     }
   }
@@ -265,7 +274,9 @@ function watchSearchDocumentText(queriesSource) {
   const match = queriesSource.match(
     /export const WATCH_SEARCH = adminGraphql\(\s*`([^`]*)`/,
   )
-  if (!match) throw new Error("cannot find WATCH_SEARCH in src/lib/queries.ts")
+  if (!match) {
+    throw new ListSourceError("cannot find WATCH_SEARCH in src/lib/queries.ts")
+  }
   return match[1]
 }
 
@@ -355,7 +366,7 @@ function quotedStrings(text) {
 
 function sourceSection(source, startPattern, endPattern, label) {
   const start = source.search(startPattern)
-  if (start < 0) throw new Error(`cannot find ${label}`)
+  if (start < 0) throw new ListSourceError(`cannot find ${label}`)
   const rest = source.slice(start)
   const end = rest.search(endPattern)
   return end < 0 ? rest : rest.slice(0, end)
@@ -829,6 +840,7 @@ module.exports = {
   CONFIG_DIR,
   JOURNEYS_DIR,
   LIST_FILES,
+  ListSourceError,
   MOBILE_DIR,
   OPERATION_CLASSES,
   REPO_ROOT,

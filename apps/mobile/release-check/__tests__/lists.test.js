@@ -6,14 +6,16 @@ const childProcess = require("node:child_process")
 const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
-const { print } = require("graphql")
+const { parse, print } = require("graphql")
 
 const {
   CONFIG_DIR,
   LIST_FILES,
+  ListSourceError,
   MOBILE_DIR,
   documentDigest,
   readJson,
+  rootFieldCoordinates,
   routeScreenId,
   runCheckLists,
   screenInventory,
@@ -278,7 +280,6 @@ describe("saved search answers", () => {
       path.join(MOBILE_DIR, "src/lib/queries.ts"),
       "utf8",
     )
-    const { parse } = require("graphql")
     expect(print(parse(watchSearchDocumentText(source)))).toBe(
       print(WATCH_SEARCH),
     )
@@ -300,6 +301,29 @@ describe("saved search answers", () => {
     expect(findings).toEqual([
       "the WatchSearch document changed after these answers were recorded; run `record-search` again",
     ])
+  })
+})
+
+describe("app source the list check cannot read", () => {
+  it.each([
+    [
+      "a spread of a missing fragment",
+      () => rootFieldCoordinates(parse("query Q { ...Missing }")),
+      "fragment Missing is not in the document",
+    ],
+    [
+      "queries.ts without WATCH_SEARCH",
+      () => watchSearchDocumentText("export const OTHER = 1"),
+      "cannot find WATCH_SEARCH in src/lib/queries.ts",
+    ],
+    [
+      "a suppression file without the sheet routes",
+      () => sheetRoutePatterns("export const OTHER = 1"),
+      "cannot find IN_APP_SHEET_ROUTE_PATTERNS",
+    ],
+  ])("throws ListSourceError on %s", (_label, read, message) => {
+    expect(read).toThrow(ListSourceError)
+    expect(read).toThrow(message)
   })
 })
 

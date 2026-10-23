@@ -244,28 +244,29 @@ function unreadable(file, detail) {
   )
 }
 
-async function tool(command, args) {
-  return run(command, args, {
+async function tool(runChild, command, args) {
+  return runChild(command, args, {
     env: TOOL_ENV,
     timeoutMs: TOOL_TIMEOUT_MS,
     tailBytes: TOOL_OUTPUT_BYTES,
   })
 }
 
-async function readPlist(file) {
-  const result = await tool("/usr/bin/plutil", [
+async function readPlist(file, runChild) {
+  const result = await tool(runChild, "/usr/bin/plutil", [
     "-convert",
     "json",
     "-o",
     "-",
     file,
   ])
-  if (result.code !== 0)
-    throw new Error(result.stderr.trim() || "plutil failed")
+  if (result.code !== 0) {
+    throw new ArtifactCheckRefusal(result.stderr.trim() || "plutil failed")
+  }
   return JSON.parse(result.stdout)
 }
 
-async function checkIosApp(appDir, settings) {
+async function checkIosApp(appDir, settings, runChild) {
   const findings = []
   const plists = {}
   for (const [name, file] of [
@@ -273,7 +274,7 @@ async function checkIosApp(appDir, settings) {
     ["expo", "Expo.plist"],
   ]) {
     try {
-      plists[name] = await readPlist(path.join(appDir, file))
+      plists[name] = await readPlist(path.join(appDir, file), runChild)
     } catch (error) {
       findings.push(unreadable(file, error.message))
     }
@@ -321,10 +322,10 @@ function newestAapt2(env = process.env) {
   return path.join(toolsDir, versions[versions.length - 1], "aapt2")
 }
 
-async function checkAndroidApk(apkPath, settings, env) {
+async function checkAndroidApk(apkPath, settings, env, runChild) {
   const aapt2 = newestAapt2(env)
   const findings = []
-  const dump = await tool(aapt2, [
+  const dump = await tool(runChild, aapt2, [
     "dump",
     "xmltree",
     apkPath,
@@ -341,7 +342,7 @@ async function checkAndroidApk(apkPath, settings, env) {
   // proc.run decodes stdout as text, so the bundle goes through a file.
   const outDir = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-apk-"))
   try {
-    const unzip = await tool("/usr/bin/unzip", [
+    const unzip = await tool(runChild, "/usr/bin/unzip", [
       "-q",
       "-o",
       apkPath,
@@ -365,20 +366,23 @@ async function checkAndroidApk(apkPath, settings, env) {
   return findings
 }
 
-async function checkArtifact(appPath, { settings, env = process.env } = {}) {
+async function checkArtifact(
+  appPath,
+  { settings, env = process.env, runChild = run } = {},
+) {
   const stat = fs.existsSync(appPath) ? fs.statSync(appPath) : null
   if (stat?.isDirectory() && appPath.endsWith(".app")) {
     return {
       platform: "ios",
       artifact: appPath,
-      findings: await checkIosApp(appPath, settings),
+      findings: await checkIosApp(appPath, settings, runChild),
     }
   }
   if (stat?.isFile() && appPath.endsWith(".apk")) {
     return {
       platform: "android",
       artifact: appPath,
-      findings: await checkAndroidApk(appPath, settings, env),
+      findings: await checkAndroidApk(appPath, settings, env, runChild),
     }
   }
   throw new ArtifactCheckRefusal(

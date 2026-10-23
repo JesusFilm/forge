@@ -7,6 +7,13 @@
 const fs = require("node:fs")
 const path = require("node:path")
 
+class ServerLogError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = "ServerLogError"
+  }
+}
+
 function createLog(logPath) {
   let fd = null
   return {
@@ -16,7 +23,9 @@ function createLog(logPath) {
       fd = fs.openSync(logPath, "a")
     },
     write(entry) {
-      if (fd === null) throw new Error(`the server log ${logPath} is not open`)
+      if (fd === null) {
+        throw new ServerLogError(`the server log ${logPath} is not open`)
+      }
       fs.writeSync(fd, `${JSON.stringify(entry)}\n`)
     },
     close() {
@@ -27,4 +36,4 @@ function createLog(logPath) {
   }
 }
 
-module.exports = { createLog }
+module.exports = { ServerLogError, createLog }
