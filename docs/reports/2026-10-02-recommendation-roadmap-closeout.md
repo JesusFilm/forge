@@ -1,7 +1,7 @@
 # Recommendation roadmap closeout
 
 Owner authorization: October 2, 2026 (Pacific/Auckland). The reconciled scope is
-**12 complete, 25 cancelled and two open** across 39 ticket paths. The original
+**12 complete, 25 cancelled and three open** across 40 ticket paths. The October 23 addition is platform feat-756, the directly related fortnightly Watch exposure retention rollout; it does not replace feat-554. The original
 38-path scope still has only platform feat-554 open for retention repair and
 future daily-cycle evidence.
 The newly discovered intermittent HNSW CI failure is tracked separately in
@@ -110,6 +110,12 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 | [docs/roadmap/platform/feat-575-early-legacy-recommendation-retirement.md](../roadmap/platform/feat-575-early-legacy-recommendation-retirement.md)                                       | storage     | Complete before this closeout: authorized early legacy-detail retirement and physical disposal verified.                                                                                           | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
 | [docs/roadmap/platform/feat-591-cowatch-postgresql-regressions-ci.md](../roadmap/platform/feat-591-cowatch-postgresql-regressions-ci.md)                                                 | fixtures    | Complete: four existing native co-watch suites wired into PostgreSQL CI; the exact new CI steps passed.                                                                                            | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
 | [docs/roadmap/platform/feat-599-roadmap-cancelled-status.md](../roadmap/platform/feat-599-roadmap-cancelled-status.md)                                                                   | roadmap     | Complete: genuine cancelled terminal status, separate counts, overdue exclusion and conservative dependency handling.                                                                              | [2545](https://github.com/JesusFilm/forge/pull/2545). Fixture tests in three timezones, lint/typecheck/build and browser load comparison; final deployed receipt retained on #2541.                                                                        |
+
+The directly related October 23 addition brings the current inventory to 40 paths:
+
+| Ticket path                                                                                                                                | Owner   | Disposition and remaining work                                                                                                                                            | PR and evidence                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [docs/roadmap/platform/feat-756-watch-exposure-fortnight-retention.md](../roadmap/platform/feat-756-watch-exposure-fortnight-retention.md) | storage | Open, in-progress: new anonymous exposure expiry and reporting are deployed; the old stored-expiry cohort begins October 27 and still needs throughput/capacity evidence. | [October 23 rollout report](2026-10-23-watch-exposure-fortnight-rollout.md), PRs #2859–#2865 and #2876. No old-expiry backfill or physical recovery claimed. |
 
 ## Delivery, coverage, usage and lifecycle
 
@@ -523,6 +529,14 @@ and the final inventory/index update; the monitor ends only after that merges.
 The existing `co-watch-24-hour-production-check` retains its requested first
 comparison and subsequent weekly reports, with current lifecycle and unknown
 cause boundaries. No duplicate automation or production fault was introduced.
+
+### October 23 current checkpoint
+
+The earlier October 6 receipts above remain historical. The [October 23 rollout report](2026-10-23-watch-exposure-fortnight-rollout.md#october-23-release-and-cleanup-checkpoint) records actual convergence of both Admin roles on `64bb0872` after reviewed, green #2876; the already-running daily 10:30 UTC scheduler; and #2877's documentation/test verification. The daily process runs in production independently of the Codex read-only monitor.
+
+The authorized manual campaign's first 36 windows committed 8,509 request roots and recorded descendants across 250 successful attempts and six budget yields. Window 37 was interrupted, retains partial counts and RUNNING ledgers, and receives no completion credit or replay. Manual cleanup is paused for strict stored-expiry enforcement in both operator entry paths and fresh worker-memory/process/DB checks. No source-confirmed memory leak or provider-confirmed OOM cause is asserted. At 07:33:26 the 26-type expired total was 3,289 with zero more than 24 hours overdue; a separate profile-session-link sample reached its 1,001 cap. This is not a zero-backlog result.
+
+Feat-554 still requires two later ordinary loaded failure-free cycles; the October 22 failures and manual campaign earn zero credit. Feat-756 keeps the separate October 27 old-exposure expiry wave and capacity verification open. The October 23 HNSW assertion failed again during #2876 CI and passed an unchanged-head retry: feat-609 remains open, with no proven fix or production retrieval defect. The active plan remains active, the daily storage monitor remains active, and the expired temporary outage monitor remains paused. Delivery reliability, accepted coverage limitations and unmeasured usefulness remain separate.
 
 ## Dependencies, indexes and older PRs
 

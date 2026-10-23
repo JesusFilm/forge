@@ -84,3 +84,9 @@ the filesystem.
   pass with a distinct manual workflow ledger. Its production receipt must
   prove actual committed deletions and cannot count toward feat-554's
   ordinary-cycle acceptance. Pre-policy rows keep their persisted expiry.
+
+## October 23 checkpoint
+
+The [rollout report](../../reports/2026-10-23-watch-exposure-fortnight-rollout.md#october-23-release-and-cleanup-checkpoint) records actual Admin HTTP/worker convergence on `64bb0872`, the existing daily 10:30 UTC scheduler and manual cleanup receipts. The earlier #2865 deployment wait is resolved. No Watch exposure rows were expired or deleted in the manual campaign; the old cohort still begins expiring October 27 at 01:54:46.228 UTC. Keep this ticket in progress for observed exposure deletion throughput and capacity evidence.
+
+Manual cleanup is currently paused after an interrupted pass and discovery that the deployed manual path reaches age/status maintenance beyond the owner's stored-expiry-only scope. Its strict-mode repair and safe resumption remain separate from proof of the future exposure wave. No immediate filesystem recovery or feat-554 daily-cycle credit is claimed.

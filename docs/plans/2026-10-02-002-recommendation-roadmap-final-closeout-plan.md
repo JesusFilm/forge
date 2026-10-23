@@ -184,3 +184,17 @@ in-progress; no runtime fix or production retrieval defect is claimed. Parent
 reconciles the generated index and consolidated release record; the existing
 daily storage monitor retains feat-554's two later ordinary clean, loaded cycles.
 The expired temporary outage monitor stays paused.
+
+### October 23 continuation
+
+The current scope is 40 paths: 12 complete, 25 cancelled and three open after adding the directly related platform feat-756. The historical original-scope counts above remain dated. The current [rollout checkpoint](../reports/2026-10-23-watch-exposure-fortnight-rollout.md#october-23-release-and-cleanup-checkpoint) supersedes the earlier deployment wait: both Admin roles ran `64bb0872`, and #2877 verified the existing daily 10:30 UTC worker scheduler with 46 focused tests.
+
+Continue in this order:
+
+1. Repair both manual cleanup entry paths to enforce stored-expiry scope. Existing normal purge also includes age/status-based maintenance; argument validation alone does not enforce the owner's narrower manual authorization. Keep scheduled maintenance unchanged and require focused/native tests, exact-head independent review and green CI before the normal PR-to-main release.
+2. Verify the actual release. Preserve window 37's interrupted RUNNING ledgers and partial committed counts without replay or terminal rewriting. A distinct manual pass requires fresh health, identity, process/DB absence, memory and capacity gates plus separate durable-ledger reconciliation. Do not infer OOM causation or an unbounded leak from the current memory receipts.
+3. Resume only authorized stored-expired cleanup when safe, then reconcile all retained families and additional expiry categories, counters, watermark, locks, WAL and free bytes. Windows 01–36 deleted 8,509 request roots; the 07:33:26 read still found 3,289 expired rows across 26 types and a separately capped session-link backlog. No zero-backlog claim is justified.
+4. Keep feat-554 open for two later ordinary loaded failure-free daily cycles and feat-756 open for the October 27 historical exposure wave/capacity evidence. Manual work and budget yields do not manufacture daily-cycle credit. The existing daily monitor remains read-only and active.
+5. Keep feat-609 open: its October 23 native HNSW failure followed by an unchanged-head passing retry establishes no correction. Do not weaken its assertion or confuse it with the historical hosted-runner outage.
+
+Parent owns the current evidence PR #2868, consolidated record, review/merge and final inventory. The storage owner retains coordinated production operations and the manual-scope repair. No duplicate automation, direct deployment, manual restart, early Watch expiry or capacity purchase is authorized.
