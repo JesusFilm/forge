@@ -68,8 +68,14 @@
     gap: 6px;
     margin-left: auto;
   }
+  /* Same box for <a> and <button>: anchors default to content-box and grew wider and taller. */
   .actions .ghost {
     border: 1px solid var(--line);
+    box-sizing: border-box;
+    width: 36px;
+    height: 36px;
+    min-width: 0;
+    padding: 0;
   }
   .brand {
     display: flex;
@@ -171,14 +177,18 @@
     font-weight: 700;
   }
   .dh.today {
-    color: var(--gold);
-    box-shadow: inset 0 -2px 0 var(--gold);
+    color: var(--ink);
   }
   .tlab {
-    color: var(--gold);
-    font-weight: 700;
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--gold);
+    color: var(--ground);
+    font: 700 9px/1.2 var(--sans);
     letter-spacing: 0.08em;
-    margin-left: 4px;
+    vertical-align: 1px;
   }
   .lab {
     display: grid;
@@ -905,6 +915,78 @@
     margin: 0;
     padding-left: 20px;
   }
+  .opts {
+    display: grid;
+    gap: 6px;
+  }
+  .opt,
+  .send {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--soft);
+    font: 500 12px/1.35 var(--sans);
+    text-align: left;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .opt:hover,
+  .send:hover {
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+  .opt.on {
+    border-color: var(--gold);
+    color: var(--ink);
+    background: rgba(239, 208, 138, 0.08);
+  }
+  .reply {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font: 400 12px/1.4 var(--sans);
+  }
+  .reply:focus {
+    outline: none;
+    border-color: var(--muted);
+  }
+  .btns {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .send.ok {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .send:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .sent {
+    display: grid;
+    gap: 2px;
+    font-size: 12px;
+    color: var(--soft);
+    border-left: 2px solid var(--line);
+    padding-left: 8px;
+  }
+  .sent small {
+    color: var(--muted);
+    font-size: 11px;
+  }
+  video.prev {
+    width: 100%;
+    max-height: 420px;
+    border-radius: 6px;
+    background: #000;
+  }
   .todo-item a {
     color: var(--gold);
   }
@@ -955,11 +1037,12 @@
     padding: 10px 12px;
   }
   .aday h3.today {
-    color: var(--gold);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
   .aday.is-today {
-    outline: 1.5px solid var(--gold);
-    outline-offset: -1.5px;
     scroll-margin-top: 104px;
   }
   .arow {
@@ -1106,8 +1189,7 @@
       <a
         class="ghost"
         href="https://claude.ai/artifact/1TqhY4HP4zw8WEP6xqz3VX"
-        target="_blank"
-        rel="noopener"
+        target="_top"
         title="Analytics dashboard"
         aria-label="Analytics dashboard"
         ><svg
@@ -1939,6 +2021,61 @@
         (!t.lang || t.lang === "both" || t.lang === ck),
     )
   }
+  // Lyuba answers right here (Oct 23): pick an option, write a line, approve a preview. Each answer
+  // is a doc in `requests`; the Calendar session (or the morning plan) hands it to the story session,
+  // which then updates its todo. Drafts survive the live re-renders.
+  let dbRef = null
+  let requests = []
+  const drafts = {}
+  const picks = {}
+  function sentFor(key) {
+    return requests
+      .filter((r) => r.key === key)
+      .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+      .map(
+        (r) =>
+          '<div class="sent"><span>' +
+          esc(
+            ({ approve: "Approved", changes: "Changes" }[r.kind] || "You") +
+              (r.choice ? ": " + r.choice : "") +
+              (r.text ? (r.choice ? " · " : ": ") + r.text : ""),
+          ) +
+          "</span><small>" +
+          (r.status === "done"
+            ? "done"
+            : r.status === "delivered"
+              ? "passed to the session"
+              : "waiting to be passed on") +
+          "</small></div>",
+      )
+      .join("")
+  }
+  function replyBox(key, approve, hasOptions) {
+    return (
+      '<textarea class="reply" rows="2" data-key="' +
+      esc(key) +
+      '" placeholder="' +
+      (approve
+        ? "What to change (optional for Approve)"
+        : "Write to the session") +
+      '">' +
+      esc(drafts[key] || "") +
+      '</textarea><div class="btns">' +
+      (approve
+        ? '<button type="button" class="send ok" data-key="' +
+          esc(key) +
+          '" data-kind="approve">Approve</button><button type="button" class="send" data-key="' +
+          esc(key) +
+          '" data-kind="changes">Needs changes</button>'
+        : '<button type="button" class="send ok" data-key="' +
+          esc(key) +
+          '" data-kind="' +
+          (hasOptions ? "choice" : "reply") +
+          '">Send</button>') +
+      "</div>" +
+      sentFor(key)
+    )
+  }
   function detailHtml(s, pk, ck) {
     const rows = (s.cells[pk + "|" + ck] || []).filter((p) => !isDone(p))
     const due = rows.map((p) => p.date).sort()[0]
@@ -1946,6 +2083,7 @@
     const name = (PIECES.find((x) => x.k === pk) || {}).l || pk
     const late = due && due < todayKey
     const items = todosFor(s, pk, ck)
+    const base = s.slug + "|" + pk + "|" + ck
     return (
       '<div class="detail"><h4>' +
       esc(name) +
@@ -1960,32 +2098,91 @@
           "</span>"
         : "") +
       "</h4>" +
+      items
+        .map((t, i) => {
+          const key = base + "|" + i
+          const opts = t.options || []
+          return (
+            '<div class="todo-item"><b>' +
+            esc(t.stage || "Waiting") +
+            "</b>" +
+            (t.text ? "<p>" + esc(t.text) + "</p>" : "") +
+            (t.video
+              ? '<video class="prev" controls preload="metadata" playsinline src="' +
+                esc(t.video) +
+                '"></video>'
+              : "") +
+            (opts.length
+              ? '<div class="opts">' +
+                opts
+                  .map(
+                    (o, j) =>
+                      '<button type="button" class="opt' +
+                      (picks[key] === j ? " on" : "") +
+                      '" data-key="' +
+                      esc(key) +
+                      '" data-j="' +
+                      j +
+                      '">' +
+                      esc(o) +
+                      "</button>",
+                  )
+                  .join("") +
+                "</div>"
+              : "") +
+            (t.link
+              ? '<a href="' +
+                esc(t.link) +
+                '" target="_blank" rel="noopener">' +
+                (/figma\.com/.test(t.link) ? "Open in Figma ↗" : "Open ↗") +
+                "</a>"
+              : "") +
+            replyBox(key, !!(t.approve || t.video), opts.length > 0) +
+            "</div>"
+          )
+        })
+        .join("") +
       (items.length
-        ? items
-            .map(
-              (t) =>
-                '<div class="todo-item"><b>' +
-                esc(t.stage || "Waiting") +
-                "</b>" +
-                (t.text ? "<p>" + esc(t.text) + "</p>" : "") +
-                (t.options && t.options.length
-                  ? "<ol>" +
-                    t.options.map((o) => "<li>" + esc(o) + "</li>").join("") +
-                    "</ol>"
-                  : "") +
-                (t.link
-                  ? '<a href="' +
-                    esc(t.link) +
-                    '" target="_blank" rel="noopener">' +
-                    (/figma\.com/.test(t.link) ? "Open in Figma ↗" : "Open ↗") +
-                    "</a>"
-                  : "") +
-                "</div>",
-            )
-            .join("")
-        : "<p>Not made yet. The story session has not noted where it stopped.</p>") +
+        ? ""
+        : '<div class="todo-item"><p>Not made yet. The story session has not noted where it stopped.</p>' +
+          replyBox(base + "|note", false, false) +
+          "</div>") +
       "</div>"
     )
+  }
+  async function sendRequest(btn) {
+    const key = btn.dataset.key
+    const [slug, piece, lang, item] = key.split("|")
+    const s = buildContent().find((x) => x.slug === slug) || {}
+    const t = item === "note" ? {} : (s.todo || [])[+item] || {}
+    const j = picks[key]
+    const text = (drafts[key] || "").trim()
+    const choice = j != null && t.options ? t.options[j] : ""
+    if (btn.dataset.kind !== "approve" && !text && !choice) return
+    if (!dbRef) return
+    btn.disabled = true
+    try {
+      await dbRef.collection("requests").add({
+        key,
+        slug,
+        story: s.name || slug,
+        piece,
+        lang,
+        stage: t.stage || "",
+        kind: btn.dataset.kind,
+        choice,
+        text,
+        video: t.video || "",
+        at: new Date().toISOString(),
+        status: "new",
+      })
+      drafts[key] = ""
+      delete picks[key]
+      renderContent()
+    } catch (err) {
+      btn.disabled = false
+      btn.textContent = "Not sent, try again"
+    }
   }
   const CHEV =
     '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>'
@@ -2028,7 +2225,32 @@
       "</section>"
     )
   }
+  document.getElementById("content").addEventListener("input", (e) => {
+    if (e.target.classList.contains("reply"))
+      drafts[e.target.dataset.key] = e.target.value
+  })
   function renderContent() {
+    const act = document.activeElement
+    const focusKey =
+      act && act.classList && act.classList.contains("reply")
+        ? act.dataset.key
+        : null
+    const playing = [...document.querySelectorAll("video.prev")].some(
+      (v) => !v.paused,
+    )
+    if (playing) return // never cut a preview she is watching
+    renderContentNow()
+    if (focusKey) {
+      const el = document.querySelector(
+        '.reply[data-key="' + CSS.escape(focusKey) + '"]',
+      )
+      if (el) {
+        el.focus()
+        el.setSelectionRange(el.value.length, el.value.length)
+      }
+    }
+  }
+  function renderContentNow() {
     const list = buildContent() // newest first
     const isOut = (s) => s.rows.some((p) => p.kind === "long" && isDone(p))
     const coming = list.filter((s) => !isOut(s))
@@ -2091,6 +2313,18 @@
       renderContent()
       return
     }
+    const o = e.target.closest(".opt")
+    if (o) {
+      picks[o.dataset.key] =
+        picks[o.dataset.key] === +o.dataset.j ? undefined : +o.dataset.j
+      renderContent()
+      return
+    }
+    const b = e.target.closest(".send")
+    if (b) {
+      sendRequest(b)
+      return
+    }
     const c = e.target.closest("button.pend")
     if (c) {
       openCell = openCell === c.dataset.cell ? null : c.dataset.cell
@@ -2120,6 +2354,14 @@
       status.textContent = "Open this page in Claude to see the posts."
       return
     }
+    dbRef = db
+    db.collection("requests").onSnapshot(
+      (snap) => {
+        requests = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        if (view === "list") renderContent()
+      },
+      () => {},
+    )
     db.collection("stories").onSnapshot(
       (snap) => {
         stories = Object.fromEntries(snap.docs.map((d) => [d.id, d.data()]))
