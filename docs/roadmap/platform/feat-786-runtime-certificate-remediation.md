@@ -39,3 +39,7 @@ Production changes ship only through PR to main. Auth production dashboard start
 ## Verification
 
 Check formatting, shell syntax, checksum validation and image manifest pins before merging. After rollout, measure every active service replica and its executable, both affected certificate endpoints and a known-good control using each effective client/store. Verify auth sign-in and safe worker paths. Keep this ticket in progress until all application rows and custom trust-store overrides are reconciled in the external remediation tracker.
+
+## Railpack follow-up
+
+Live patched Railpack containers still carried ca-certificates 20250419 and the older OS bundle; Nixpacks hooks do not apply to Railpack. Root `railpack.json` refreshes the build dependency-install and runtime stores using `scripts/update-security-ca.sh`. A dedicated hashed directory prevents inherited PEM links from restoring removed roots. Service-local package engines pin 24.22.1 and make the release visible to existing app-specific watch patterns. Preserve dashboard build/start commands.

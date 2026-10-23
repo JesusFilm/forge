@@ -1,7 +1,10 @@
 [build]
 builder = "railpack"
 buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter roadmap build"
-watchPatterns = ["apps/roadmap/**", "docs/roadmap/**"]
+watchPatterns = [
+  "/.nvmrc",
+  "/railpack.json",
+  "/scripts/update-security-ca.sh","apps/roadmap/**", "docs/roadmap/**"]
 
 [deploy]
 startCommand = "cd apps/roadmap && npx next start -p ${PORT:-3100}"
