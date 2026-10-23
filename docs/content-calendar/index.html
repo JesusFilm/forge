@@ -691,8 +691,43 @@
     padding: 4px 14px 14px;
     align-items: start;
   }
-  .sbody.with-note {
-    grid-template-columns: minmax(0, 1fr) 300px;
+  #noteov {
+    position: fixed;
+    inset: 0;
+    z-index: 110;
+    background: rgba(8, 5, 4, 0.82);
+    display: grid;
+    place-items: center;
+    padding: 24px 16px;
+  }
+  #noteov[hidden] {
+    display: none;
+  }
+  .note-card {
+    width: min(520px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    background: var(--ground);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  .note-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 10px 10px 16px;
+    background: var(--ground);
+    border-bottom: 1px solid var(--line);
+    font-family: var(--serif);
+    font-size: 15px;
+  }
+  .note-card .detail {
+    border: 0;
+    border-radius: 0;
   }
   .stable {
     display: grid;
@@ -994,9 +1029,6 @@
     .sthumb {
       width: 80px;
     }
-    .sbody.with-note {
-      grid-template-columns: minmax(0, 1fr);
-    }
     .stable {
       grid-template-columns: 48px repeat(2, minmax(0, 1fr));
     }
@@ -1210,6 +1242,13 @@
 </div>
 <div id="tip" hidden></div>
 <div id="ov" hidden role="dialog" aria-modal="true" aria-label="Post"></div>
+<div
+  id="noteov"
+  hidden
+  role="dialog"
+  aria-modal="true"
+  aria-label="Where this piece stands"
+></div>
 
 <script>
   const ICON = {
@@ -2011,12 +2050,6 @@
     }
     h += "</div>"
     // The note on an open piece sits to the right of the table, in a box of the same frame.
-    if (openCell && openCell.startsWith(s.slug + "|")) {
-      const [, pk, ck] = openCell.split("|")
-      return (
-        '<div class="sbody with-note">' + h + detailHtml(s, pk, ck) + "</div>"
-      )
-    }
     return '<div class="sbody">' + h + "</div>"
   }
   // A todo applies to a piece when its piece matches and its lang is the column's or "both".
@@ -2231,10 +2264,12 @@
       "</section>"
     )
   }
-  document.getElementById("content").addEventListener("input", (e) => {
+  const onDraft = (e) => {
     if (e.target.classList.contains("reply"))
       drafts[e.target.dataset.key] = e.target.value
-  })
+  }
+  document.getElementById("content").addEventListener("input", onDraft)
+  document.getElementById("noteov").addEventListener("input", onDraft)
   function renderContent() {
     const act = document.activeElement
     const focusKey =
@@ -2299,13 +2334,37 @@
         ? out.map(storyHtml).join("") + stack
         : stack + out.map(storyHtml).join("")
       : '<div class="empty">No stories yet.</div>'
+    // The note on an open piece is a pop-up (Lyuba, Oct 23): no scrolling down to find it.
+    const nov = document.getElementById("noteov")
+    const s = openCell && list.find((x) => openCell.startsWith(x.slug + "|"))
+    if (s) {
+      const [, pk, ck] = openCell.split("|")
+      nov.innerHTML =
+        '<div class="note-card"><div class="note-head"><span>' +
+        esc(s.title) +
+        '</span><button type="button" class="ghost note-x" aria-label="Close">✕</button></div>' +
+        detailHtml(s, pk, ck) +
+        "</div>"
+      nov.hidden = false
+    } else {
+      nov.hidden = true
+      nov.innerHTML = ""
+    }
+  }
+  function closeNote() {
+    openCell = null
+    renderContent()
   }
   document.getElementById("sortBtn").onclick = () => {
     oldestFirst = !oldestFirst
     store("dbp-oldest-first", oldestFirst)
     renderContent()
   }
-  document.getElementById("content").addEventListener("click", (e) => {
+  const onContentClick = (e) => {
+    if (e.target.id === "noteov" || e.target.closest(".note-x")) {
+      closeNote()
+      return
+    }
     const r = e.target.closest(".srow")
     if (r && r.dataset.stack) {
       stackOpen = !stackOpen
@@ -2336,6 +2395,11 @@
       openCell = openCell === c.dataset.cell ? null : c.dataset.cell
       renderContent()
     }
+  }
+  document.getElementById("content").addEventListener("click", onContentClick)
+  document.getElementById("noteov").addEventListener("click", onContentClick)
+  addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && openCell) closeNote()
   })
   function setView(v) {
     view = v
