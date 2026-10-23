@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global afterAll, afterEach, describe, expect, it, require, setTimeout */
+/* global afterAll, afterEach, describe, expect, it, jest, require, setTimeout */
 // The read-only server against a fake upstream on 127.0.0.1 (KTD6, KTD8, KTD9,
 // KTD10, R12-R15, R35). No test sends a request to production.
 const crypto = require("node:crypto")
@@ -758,6 +758,39 @@ describe("binding (KTD6)", () => {
     const probe = http.createServer()
     await expect(listenOn(probe, port, "127.0.0.1")).resolves.toBe(port)
     await closeOf(probe)()
+  })
+})
+
+describe("handler failures", () => {
+  it("counts a request whose log write throws, and keeps answering the next one", async () => {
+    const upstream = await startUpstream()
+    const { server, port, lines } = await startServer(upstream)
+    const writeSync = fs.writeSync
+    // The full disk is the fault; the server code on the path is all real.
+    const full = jest.spyOn(fs, "writeSync").mockImplementation((...args) => {
+      if (String(args[1]).includes("slug-with-no-log-line")) {
+        throw Object.assign(new Error("ENOSPC: no space left on device"), {
+          code: "ENOSPC",
+        })
+      }
+      return writeSync(...args)
+    })
+    cleanups.push(() => full.mockRestore())
+
+    const lost = await post(
+      port,
+      bodyOf(GET_VIDEO_BY_SLUG, { slug: "slug-with-no-log-line" }),
+    )
+    const next = await post(port, bodyOf(GET_VIDEO_BY_SLUG, { slug: "next" }))
+    full.mockRestore()
+    await server.close()
+
+    expect(lost.json).toEqual({ data: { videoBySlug: { id: "v1" } } })
+    expect(next.json).toEqual({ data: { videoBySlug: { id: "v1" } } })
+    expect(server.stats().handlerFailures).toBe(1)
+    expect(
+      lines().map((line) => JSON.parse(line.forwardedBody).variables.slug),
+    ).toEqual(["next"])
   })
 })
 

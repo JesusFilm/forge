@@ -50,9 +50,10 @@ Mac, and it never restarts the adb server or CoreSimulatorService.
 ## Run a release check
 
 The easy way is the repo Claude command `/release-check`. It shows the consent
-text, asks for a yes, starts the run, waits until the run ends, and summarizes
-`summary.json`. It also has `status`, `stop`, `recover`, and `setup` forms, and
-it asks for a yes before each command that changes something.
+text, asks for a yes, starts the run, waits until the run ends (for 7 hours at
+most), and summarizes `summary.json`. It also has `status`, `stop`, `recover`,
+and `setup` forms, and it asks for a yes before each command that changes
+something.
 `__tests__/releaseCheckCommand.guard.test.js` fails when the command names a
 mode, a flag, or a JSON field that the runner does not have. Without Claude,
 use the same steps from the repo root:
@@ -78,7 +79,9 @@ use the same steps from the repo root:
 5. When a runner stops with no report (for example, the Mac restarts), `status`
    shows a stale lock. `node apps/mobile/release-check/cli.mjs recover` stops
    the runner's own devices and writes the report with stop reason
-   `runner_killed`.
+   `runner_killed`. For a stale `record-search` lock, it stops the runner's own
+   devices and removes the lock. For a stale `session` lock, it only removes
+   the lock; `session down` stops the session's device.
 
 A full release check takes about 2.5 to 3 hours, because only one iOS
 simulator runs at a time. A partial check uses `--journey <ids>`,
@@ -210,7 +213,9 @@ repair one only through the authoring session, never with `maestro` itself:
 3. `node apps/mobile/release-check/cli.mjs session down` runs the log check and
    stops the device and the server.
 
-Each journey follows these rules, and `check-lists` checks most of them:
+Each journey follows these rules. `check-lists` checks most of them, and `run`,
+`record-search`, and `session try` refuse a journey file that breaks one of
+those checks:
 
 - Give every step a `label`. A Known-Bug entry matches the label, not the step
   number.
@@ -267,9 +272,9 @@ The runner home is `~/Library/Caches/forge-release-check`, or
 - `sessions/` and `records/`: the authoring sessions and the search records.
 - `lock.json`: the lock while a run, a session, a record, or setup is active.
   `status` shows a stale lock, and `recover` cleans up after a runner that was
-  killed. A run and `session up` refuse while a stale lock of a run or a
-  session remains: run `recover` after a run, or `session down` after a
-  session.
+  killed. A run, `session up`, `setup`, and `record-search` refuse while a
+  stale lock of a run, a session, or a record remains: run `recover` after a
+  run or a record, or `session down` after a session.
 
 ## Verified facts
 

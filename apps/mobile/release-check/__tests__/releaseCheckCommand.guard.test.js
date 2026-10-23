@@ -2,6 +2,7 @@
 /* global afterAll, describe, expect, it, require */
 // The `/release-check` command is what a QA engineer's Claude follows. A mode,
 // flag, or field name that drifts from the runner breaks it with no other test.
+const { spawnSync } = require("node:child_process")
 const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
@@ -9,7 +10,10 @@ const path = require("node:path")
 const { MODES, parseArgs } = require("../lib/contract")
 const { createDeps, runCommand, statusCommand } = require("../lib/lifecycle")
 const { readJson } = require("../lib/lists")
+const lockLib = require("../lib/lock")
 const { planCommand } = require("../lib/plan")
+const { MARKDOWN_FILE } = require("../lib/report/summary")
+const runFolder = require("../lib/runFolder")
 
 const RELEASE_CHECK_DIR = path.join(__dirname, "..")
 const COMMAND_FILE = path.join(
@@ -279,11 +283,219 @@ describe("the /release-check command", () => {
   })
 
   it("compares status fields only with words that the runner writes", () => {
-    const source = ["lifecycle.js", "lock.js"]
+    const source = ["lifecycle.js", "lock.js", "modes.js"]
       .map((file) => fs.readFileSync(path.join(RELEASE_CHECK_DIR, "lib", file)))
       .join("\n")
     for (const value of STATUS_VALUES) {
       expect(source).toContain(`"${value}"`)
     }
+  })
+})
+
+const RUN_ID = "2026-10-24T01-00-00Z-1a2b"
+const NEWER_RUN_ID = "2026-10-24T02-00-00Z-3c4d"
+const RUNNER_PID = 4242
+const RUNNER_START = "Sat Oct 24 01:00:00 2026"
+
+// The shell keeps a single-quoted body as written, so the test runs the same
+// text. The argv order is part of the contract, so the match includes it.
+function waitLoop(text) {
+  const blocks = [...text.matchAll(/```sh\n([\s\S]*?)```/g)]
+  if (blocks.length !== 1) return { loop: null, body: null }
+  const loop = blocks[0][1]
+  if (!/^\s*start=\$\(date \+%s\)$/m.test(loop)) return { loop, body: null }
+  const body = loop.match(/node -e '([^']*)' "<runId>" "\$start"/)?.[1]
+  return { loop, body: body ?? null }
+}
+
+const { loop: WAIT_LOOP, body: WAIT_BODY } = waitLoop(COMMAND)
+
+function waitHome() {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-wait-"))
+  tempDirs.push(home)
+  return home
+}
+
+// The runner's own status.json writer, in the journeys phase.
+function recordRun(home, runId, fields = null) {
+  const runDir = runFolder.runDirOf(home, runId)
+  fs.mkdirSync(runDir, { recursive: true })
+  const recorder = runFolder.createRunRecorder(runDir, {
+    runId,
+    pid: RUNNER_PID,
+    startedAt: new Date().toISOString(),
+    now: Date.now,
+    heartbeatMs: 60_000,
+  })
+  recorder.write({})
+  recorder.phase("journeys")
+  if (fields) recorder.write(fields)
+  return runDir
+}
+
+function takeRunLock(home, runId) {
+  return lockLib.acquireLock(home, {
+    mode: "run",
+    runId,
+    pid: RUNNER_PID,
+    processStart: async () => RUNNER_START,
+  })
+}
+
+async function statusOutput(home, { alive }) {
+  const out = []
+  await statusCommand(parseArgs(["status", "--json"]), {
+    home,
+    now: Date.now,
+    isAlive: () => alive,
+    lock: {
+      inspect: () =>
+        lockLib.inspectLock(home, {
+          isAlive: () => alive,
+          processStart: async () => RUNNER_START,
+        }),
+    },
+    out: (text) => out.push(text),
+  })
+  return out.at(-1)
+}
+
+function waitExit(input, runId, waitedSec) {
+  const start = Math.floor(Date.now() / 1000) - waitedSec
+  const result = spawnSync(
+    process.execPath,
+    ["-e", WAIT_BODY, runId, String(start)],
+    { input, encoding: "utf8", timeout: 10_000 },
+  )
+  return result.status
+}
+
+// Each fixture makes at most one end condition true, and `run` pins it, so a
+// case can pass only through its own condition.
+const WAIT_CASES = [
+  {
+    name: "a run in the journeys phase keeps the wait going",
+    waited: 1000,
+    exit: 1,
+    run: { phase: "journeys", pidState: "running", summaryMd: null },
+    async build(home) {
+      recordRun(home, RUN_ID)
+      await takeRunLock(home, RUN_ID)
+      return { alive: true }
+    },
+  },
+  {
+    name: "summary.md ends the wait",
+    waited: 60,
+    exit: 0,
+    run: { phase: "journeys", pidState: "running" },
+    async build(home) {
+      const runDir = recordRun(home, RUN_ID)
+      fs.writeFileSync(path.join(runDir, MARKDOWN_FILE), "# Summary\n")
+      await takeRunLock(home, RUN_ID)
+      return { alive: true }
+    },
+  },
+  {
+    name: "phase ended ends the wait",
+    waited: 60,
+    exit: 0,
+    run: { phase: "ended", pidState: "running", summaryMd: null },
+    async build(home) {
+      recordRun(home, RUN_ID, { phase: "ended", exitCode: 1 })
+      await takeRunLock(home, RUN_ID)
+      return { alive: true }
+    },
+  },
+  {
+    name: "phase refused ends the wait",
+    waited: 60,
+    exit: 0,
+    run: { phase: "refused", pidState: "running", summaryMd: null },
+    async build(home) {
+      const deps = {
+        home,
+        pid: RUNNER_PID,
+        now: Date.now,
+        err: () => {},
+        stdin: { isTTY: false },
+      }
+      await runCommand(parseArgs(["run", "--run-id", RUN_ID]), deps)
+      return { alive: true }
+    },
+  },
+  {
+    name: "pidState ended ends the wait before phase ended",
+    waited: 60,
+    exit: 0,
+    run: { phase: "journeys", pidState: "ended", summaryMd: null },
+    async build(home) {
+      recordRun(home, RUN_ID)
+      await takeRunLock(home, RUN_ID)
+      return { alive: false }
+    },
+  },
+  {
+    name: "a newer run of another runId keeps the wait going",
+    waited: 60,
+    exit: 1,
+    run: { runId: NEWER_RUN_ID, phase: "ended", pidState: "ended" },
+    async build(home) {
+      recordRun(home, RUN_ID)
+      recordRun(home, NEWER_RUN_ID, { phase: "ended", exitCode: 1 })
+      return { alive: false }
+    },
+  },
+]
+
+describe("the /release-check wait loop", () => {
+  it("has one valid sh block with the node -e body and its runId and start argv", () => {
+    expect(WAIT_BODY).toEqual(expect.stringContaining("process.argv[1]"))
+    expect(WAIT_BODY).toEqual(expect.stringContaining("process.argv[2]"))
+    const syntax = spawnSync("sh", ["-n", "-c", WAIT_LOOP], {
+      encoding: "utf8",
+    })
+    expect(syntax.stderr).toBe("")
+    expect(syntax.status).toBe(0)
+  })
+
+  it.each(WAIT_CASES)("$name", async ({ build, run, waited, exit }) => {
+    const home = waitHome()
+    const { alive } = await build(home)
+    const output = await statusOutput(home, { alive })
+    expect(JSON.parse(output).run).toMatchObject(run)
+    expect(waitExit(output, RUN_ID, waited)).toBe(exit)
+  })
+
+  it("ends a run in the starting phase only after 900 s", async () => {
+    const { detached, status } = await runnerOutputs()
+    expect(status.run).toMatchObject({
+      runId: detached.runId,
+      phase: "starting",
+      pidState: null,
+      summaryMd: null,
+    })
+    const output = JSON.stringify(status)
+    expect(waitExit(output, detached.runId, 800)).toBe(1)
+    expect(waitExit(output, detached.runId, 1000)).toBe(0)
+  })
+
+  it("keeps the wait going when no run folder exists (run: null)", async () => {
+    const output = await statusOutput(waitHome(), { alive: false })
+    expect(JSON.parse(output).run).toBeNull()
+    expect(waitExit(output, RUN_ID, 1000)).toBe(1)
+  })
+
+  it("ends after 7 hours on a live run and on a failed status read, and not before", async () => {
+    const home = waitHome()
+    recordRun(home, RUN_ID)
+    await takeRunLock(home, RUN_ID)
+    const output = await statusOutput(home, { alive: true })
+    expect(JSON.parse(output).run).toMatchObject({ pidState: "running" })
+    const hours = (count) => Math.round(count * 3600)
+    expect(waitExit(output, RUN_ID, hours(6.9))).toBe(1)
+    expect(waitExit(output, RUN_ID, hours(7) + 60)).toBe(0)
+    expect(waitExit("", RUN_ID, hours(6.9))).toBe(1)
+    expect(waitExit("", RUN_ID, hours(7) + 60)).toBe(0)
   })
 })

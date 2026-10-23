@@ -28,7 +28,10 @@ For any other value, show this list and stop. Pass no other flag to the runner.
 2. **Run** (`run` or `run <journey ids>`):
    1. For a partial check, check each journey id against `^[a-z0-9-]+$`. If an id does not match, show it, and stop. Also stop when `apps/mobile/release-check/journeys/<id>.yaml` does not exist, because the runner finds an unknown id only after the yes.
    2. Do step 1.
-   3. If `refusals` is not empty, list each refusal with its `code` and `message`, and stop. Do not ask for a yes. A refusal that names a command (for example a Maestro install) tells the person what to do; the person runs it, then asks again.
+   3. If `refusals` is not empty, list each refusal with its `code` and `message`. Do not ask for a yes for the run. Then do the first item that applies:
+      - A `STALE_RUN_LOCK` refusal names `session down`: that command is for the person. Tell the person to run it, and stop.
+      - A `STALE_RUN_LOCK` refusal names `recover`: do step 6, which asks for its own yes. After step 6, if `recover` ran and did not refuse, do step 2.2 again. Do this one time only: if the new plan also has a `STALE_RUN_LOCK` refusal, stop.
+      - In all other cases, stop. A refusal that names a command (for example a Maestro install) tells the person what to do; the person runs it, then asks again.
    4. Make the command line: take `runCommand` exactly, add ` --journey <journey ids>` for a partial check, and add ` --detach`. Show this exact line.
    5. Ask: "Start the release check with this command? It takes <estimate> for a full check. (yes/no)". Use `estimate.text` for <estimate>. If the line has `--allow-setup`, also say that the run first downloads each item of `setup.downloads` (its `package`, about `approxMb` MB). Also say that it creates each device in `setup.createsDevices`. For a partial check, say that it is a partial check and not a release result. Accept only a clear yes. On any other answer, stop.
    6. Run that exact line. It prints `{ "runId", "runDir" }` and returns at once, because a full check takes about 2.5 to 3 hours. If it prints a refusal and exits with 2, show the refusal and stop.
@@ -38,16 +41,18 @@ For any other value, show this list and stop. Pass no other flag to the runner.
       start=$(date +%s)
       until [ -f "<runDir>/summary.md" ] ||
         node apps/mobile/release-check/cli.mjs status --json | node -e '
+          const waited = Date.now() / 1000 - Number(process.argv[2])
+          if (waited > 7 * 3600) process.exit(0)
           const run = JSON.parse(require("fs").readFileSync(0, "utf8")).run
-          const late = Date.now() / 1000 - Number(process.argv[2]) > 900
           const ended = run && run.runId === process.argv[1] &&
             (run.summaryMd || ["ended", "refused"].includes(run.phase) ||
-              run.pidState === "ended" || (run.phase === "starting" && late))
+              run.pidState === "ended" ||
+              (run.phase === "starting" && waited > 900))
           process.exit(ended ? 0 : 1)' "<runId>" "$start"
       do sleep 60; done
       ```
 
-      The loop ends when `summary.md` exists, or when `run.phase` is `ended` or `refused`. It also ends when `run.pidState` is `ended`, or when `run.phase` stays `starting` for 15 minutes.
+      The loop ends when `summary.md` exists, or when `run.phase` is `ended` or `refused`. It also ends when `run.pidState` is `ended`, or when `run.phase` stays `starting` for 15 minutes. After 7 hours, the loop ends in every case, also when `status --json` fails. The runner stops each run after 6 hours, so a longer wait shows a fault. Then do step 2.8.
 
    8. Run `node apps/mobile/release-check/cli.mjs status --json` one time. `run.runDir` is the run folder. Do the first item that applies:
       - `run.summaryMd` is not null: do step 2.9.
@@ -59,7 +64,8 @@ For any other value, show this list and stop. Pass no other flag to the runner.
       - `scope` and `result`. Only `scope` `release` with `result` `pass` is a passing release check. For `scope` `partial`, say that it is not a release result.
       - The `counts` for each label, and the `stopReason`.
       - Each item of `journeys` whose `label` is not `pass`: its `journey`, `deviceId`, and `label`. Add the `class` and `failedStep` of its last item in `attempts`.
-      - The build check, the log check, and the settings probe: `passed` in `checks.build`, `checks.log`, and `checks.settingsProbe`. A null check did not run. Then the screen list gaps in `checks.screens.gaps`.
+      - The build check, the log check, and the settings probe: `passed` in `checks.build`, `checks.log`, and `checks.settingsProbe`. A null check did not run. For each check with `passed` false, list each item of its `findings` with its `code` and `message`. Then the screen list gaps in `checks.screens.gaps`.
+      - The Not-Tested List, on one line: the count of items in `notTested`.
       - Each item of `staleKnownBugs`, with its `journey` and `ticket`.
       - Each item of `server.rateLimitRefusals`, with its `field`, `journey`, `deviceId`, and `causedFailure`.
       - Each item of `proposedActions`, with its `type` and `reason`, and its `journey` or `screen` when it has one. Give these only as proposals. The mobile owner decides each one and commits the list change.
@@ -72,7 +78,12 @@ For any other value, show this list and stop. Pass no other flag to the runner.
 
 5. **Setup.** Run `node apps/mobile/release-check/cli.mjs setup --check`, and show its text. Exit 1 means that setup must run or that a tool is missing. It is not a runner fault. If it names a problem with a command, show the command; the person runs it. If it would create test devices or download images, show what it would do and the download size. Ask for a yes for `node apps/mobile/release-check/cli.mjs setup`, and run it on a clear yes.
 
-6. **Recover.** Use this step when `status` shows a stale lock, or when step 2.8 finds a runner that stopped with no report. Run `node apps/mobile/release-check/cli.mjs status`, and show its text. Show the line `node apps/mobile/release-check/cli.mjs recover`. Ask: "Clean up after the stopped runner with this command? It stops the runner's own test devices and writes a report with stop reason `runner_killed`. (yes/no)". On a clear yes, run that line. If it refuses, show the refusal and stop. If its output names a `Summary:` path, do step 2.9 with that run folder. Otherwise show its text, and tell the person to read `runner.log` and `events.jsonl` in the run folder.
+6. **Recover.** Use this step when `status` shows a stale lock, when step 2.3 finds a `STALE_RUN_LOCK` refusal that names `recover`, or when step 2.8 finds a runner that stopped with no report. Run `node apps/mobile/release-check/cli.mjs status`, and show its text. Then run `node apps/mobile/release-check/cli.mjs status --json` one time, and read `lock.state` and `lock.mode`. If `lock.state` is not `stale`, `recover` has nothing to clean up: do not run it. Tell the person to read `runner.log` and `events.jsonl` in the run folder, and stop. Otherwise, show the line `node apps/mobile/release-check/cli.mjs recover`. Ask: "Clean up after the stopped runner with this command? <effect> (yes/no)". For <effect>, use the text for `lock.mode`:
+   - `run`: "It stops the runner's own test devices and writes a report with stop reason `runner_killed`."
+   - `record-search`: "It stops the runner's own test devices and removes the stale lock."
+   - Any other value: "It removes the stale lock. It does not stop a test device." For a `session` lock, also say that `session down` stops the session's test device, and that the person runs it.
+
+   On a clear yes, run that line. If it refuses, show the refusal and stop. If its output names a `Summary:` path, do step 2.9 with that run folder. Otherwise show its text, and tell the person to read `runner.log` and `events.jsonl` in the run folder.
 
 ## Notes
 
