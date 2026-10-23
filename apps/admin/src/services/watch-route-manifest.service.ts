@@ -535,6 +535,8 @@ export class WatchRouteManifestService {
         JOIN "experience" experience
           ON experience.id = locale."experience_id"
         WHERE experience."archived_at" IS NULL
+          AND experience."is_template" = FALSE
+          AND locale.status = 'published'::"LocaleStatus"
           AND locale.slug <> ''
       )
       SELECT "oldSlug", "currentSlug"

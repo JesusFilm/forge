@@ -233,6 +233,12 @@ describe("WatchRouteManifestService.generate", () => {
     expect(allSql).toContain(
       '"oldSlug" NOT IN (SELECT slug FROM live_video_slugs)',
     )
+    expect(allSql).toContain(
+      '"oldSlug" NOT IN (SELECT slug FROM live_experience_slugs)',
+    )
+    expect(allSql).toContain(
+      'experience."archived_at" IS NULL\n          AND experience."is_template" = FALSE\n          AND locale.status = \'published\'::"LocaleStatus"',
+    )
   })
 
   it("rejects malformed query rows instead of emitting a partial manifest", async () => {
