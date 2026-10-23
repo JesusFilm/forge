@@ -57,7 +57,9 @@ Without Claude, use the same steps from the repo root:
    uncommitted build inputs, the devices, the other devices that run, the setup
    downloads, disk, memory and load, the lock, a check that production admin
    answers, the estimate, and the exact run command. It changes nothing. When
-   it lists a refusal, fix that first.
+   it lists a refusal, fix that first. `plan --json` gives the same facts as
+   JSON, and its `text` field holds the text that `plan` prints, from the same
+   reading.
 2. Run the exact command that `plan` shows, for example
    `node apps/mobile/release-check/cli.mjs run --yes --expect-commit <sha> --detach`.
    With `--detach` it returns at once and prints the run folder.
@@ -74,9 +76,11 @@ simulator runs at a time. A partial check uses `--journey <ids>`,
 
 The runner needs a lot of memory and CPU. It starts a device only when free
 memory and the load average allow it, and `plan` refuses when the Mac cannot
-run one simulator and one emulator. When other work keeps the load high,
-finish that work first. When your shell runs commands in a sandbox, run the
-runner outside it: it boots devices, binds local ports, and writes under
+run one simulator and one emulator. `plan` shows the load with those two
+devices added, and the limit. `run` makes the same check when it starts, with
+a new reading. When other work keeps the load high, finish that work first.
+When your shell runs commands in a sandbox, run the runner outside it: it boots
+devices, binds local ports, and writes under
 `~/Library/Caches/forge-release-check`.
 
 ## What a run does

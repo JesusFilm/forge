@@ -21,7 +21,7 @@ For any other value, show this list and stop. Pass no other flag to the runner.
 
 ## Steps
 
-1. **Plan.** Run `node apps/mobile/release-check/cli.mjs plan`, and show its text to the person without changes. Then run `node apps/mobile/release-check/cli.mjs plan --json`, and read `refusals`, `runCommand`, `commit`, and `estimate`. For `plan`, stop here.
+1. **Plan.** Run `node apps/mobile/release-check/cli.mjs plan --json` one time. Show its `text` field to the person without changes. Then read `refusals`, `runCommand`, `commit`, and `estimate` from the same output. The text and these fields come from one reading of the Mac, so they agree. Do not run `plan` without `--json`. For `plan`, stop here.
 
 2. **Run** (`run` or `run <journey ids>`):
    1. Do step 1.

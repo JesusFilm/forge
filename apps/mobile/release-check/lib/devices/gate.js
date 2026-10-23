@@ -102,7 +102,8 @@ function describeWait(device, decision, waitedMs) {
 }
 
 // The plan floor is one device of each selected platform at the same time;
-// below it, `plan` refuses.
+// below it, `plan` refuses. `load` is the load that the floor check compared
+// with `loadLimit`, so `plan` can show the number that `run` refuses on.
 function planCapacity({ sample, devices, gate, now = 0 }) {
   const lanes = []
   for (const device of devices) {
@@ -115,31 +116,42 @@ function planCapacity({ sample, devices, gate, now = 0 }) {
   }
   const admitted = []
   let refusal = null
+  let floorDecision = null
   for (const device of [
     ...floor,
     ...lanes.filter((device) => !floor.includes(device)),
   ]) {
     const decision = decide({ candidate: device, sample, admitted, now, gate })
+    if (floor.includes(device)) floorDecision = decision
     if (!decision.ok) {
       if (floor.includes(device)) refusal = { device, decision }
       break
     }
     admitted.push({ ...device, admittedAt: now })
   }
+  const facts = {
+    lanes: admitted.map((device) => device.lane),
+    floorText: floorText(floor),
+    load: floorDecision?.load ?? null,
+    loadLimit: floorDecision?.loadLimit ?? null,
+  }
   if (refusal) {
     return {
       ok: false,
-      lanes: admitted.map((device) => device.lane),
+      ...facts,
       reason: refusal.decision.reason,
       message: describeFloor(refusal, floor, gate),
     }
   }
-  return {
-    ok: true,
-    lanes: admitted.map((device) => device.lane),
-    reason: null,
-    message: null,
-  }
+  return { ok: true, ...facts, reason: null, message: null }
+}
+
+function floorText(floor) {
+  return floor
+    .map((device) =>
+      device.platform === "ios" ? "one simulator" : "one emulator",
+    )
+    .join(" and ")
 }
 
 function describeFloor(refusal, floor, gate) {
@@ -147,11 +159,7 @@ function describeFloor(refusal, floor, gate) {
     (sum, device) => sum + estimateFor(device, gate).memoryMb,
     0,
   )
-  const what = floor
-    .map((device) =>
-      device.platform === "ios" ? "one simulator" : "one emulator",
-    )
-    .join(" and ")
+  const what = floorText(floor)
   if (refusal.decision.reason === "load") {
     return `The Mac's load average is too high to run ${what} at the same time: ${refusal.decision.load.toFixed(1)} with them, and the limit is ${refusal.decision.loadLimit.toFixed(1)}.`
   }

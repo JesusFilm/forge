@@ -247,7 +247,7 @@ async function gatherPreflight(deps, { flags = {}, forRun = false } = {}) {
   })
   const capacity =
     selection.devices.length === 0
-      ? { ok: true, lanes: [], reason: null, message: null }
+      ? { ok: true, lanes: [], load: null, reason: null, message: null }
       : deps.gate.planCapacity({
           sample,
           devices: selection.devices,
@@ -349,12 +349,16 @@ function lockText(lock) {
 }
 
 function hostText(host) {
-  const sample = host.sample
+  const { sample, capacity } = host
   const reading = sample
     ? `${sample.availableMb} MB free, load ${sample.load1} on ${sample.cores} cores`
     : "the Mac's memory and load could not be read"
-  if (!host.capacity.ok) return `${reading}. ${host.capacity.message}`
-  return `${reading}. Lanes that can start now: ${listText(host.capacity.lanes)}.`
+  if (!capacity.ok) return `${reading}. ${capacity.message}`
+  const startLoad =
+    typeof capacity.load === "number"
+      ? ` With ${capacity.floorText}, the load is ${capacity.load.toFixed(1)}, and the limit is ${capacity.loadLimit.toFixed(1)}.`
+      : ""
+  return `${reading}.${startLoad} Lanes that can start now: ${listText(capacity.lanes)}.`
 }
 
 /** The consent text for a person (R2). */
@@ -414,7 +418,7 @@ function formatPlan(pre) {
   return lines.join("\n")
 }
 
-/** The `plan --json` shape: the facts, the run command, and the refusals. */
+/** The `plan --json` shape: the facts, the run command, the refusals, and the text. */
 function planJson(pre) {
   return {
     mode: "plan",
@@ -440,6 +444,11 @@ function planJson(pre) {
       availableMb: pre.host.sample?.availableMb ?? null,
       load1: pre.host.sample?.load1 ?? null,
       cores: pre.host.sample?.cores ?? null,
+      startCheckLoad:
+        typeof pre.host.capacity.load === "number"
+          ? Number(pre.host.capacity.load.toFixed(2))
+          : null,
+      loadLimit: pre.host.capacity.loadLimit ?? null,
       lanes: pre.host.capacity.lanes,
       ok: pre.host.capacity.ok,
       message: pre.host.capacity.message,
@@ -456,6 +465,7 @@ function planJson(pre) {
     estimate: { minutes: pre.estimate.minutes, text: pre.estimate.text },
     runCommand: pre.runCommand,
     refusals: pre.refusals,
+    text: formatPlan(pre),
   }
 }
 
