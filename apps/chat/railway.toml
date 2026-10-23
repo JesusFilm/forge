@@ -8,7 +8,10 @@
 [build]
 builder = "railpack"
 buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter @forge/chat build"
-watchPatterns = ["apps/chat/**"]
+watchPatterns = [
+  "/.nvmrc",
+  "/railpack.json",
+  "/scripts/update-security-ca.sh","apps/chat/**"]
 
 [deploy]
 startCommand = "cd apps/chat && npx next start -p ${PORT:-3200}"
