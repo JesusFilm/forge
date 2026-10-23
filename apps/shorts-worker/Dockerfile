@@ -7,11 +7,11 @@
 #
 # Runtime libraries and Chromium are cached independently of app source.
 #
-# Digest pin: node:22-bookworm-slim multi-arch manifest list resolved
-# 2026-06-11 via the Docker Hub API. Node >= 22.18 is REQUIRED (default
+# Digest pin: node:22.23.4-bookworm-slim multi-arch manifest list resolved
+# 2026-10-23 via the Docker Hub API. Node >= 22.18 is REQUIRED (default
 # type stripping loads the source-shipped @forge/shorts-compositions and
 # @forge/devotional-workspace TS at runtime — see the runtime stage notes).
-ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0d39f7ade28e4eef7d2934522b752
+ARG NODE_IMAGE=node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
 # ---------------------------------------------------------------------------
 # runtime-base — Chromium/Remotion runtime libraries + ffmpeg + fonts.
@@ -19,7 +19,13 @@ ARG NODE_IMAGE=node:22-bookworm-slim@sha256:e21fc383b50d5347dc7a9f1cae45b8f4e2f0
 # final runtime stage. Package list per plan (Remotion linux-dependencies +
 # fallback glyph fonts).
 # ---------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS runtime-base
+FROM ${NODE_IMAGE} AS secure-node
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && sed -i -e 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' -e 's|^mozilla/Comodo_AAA_Services_root.crt|!&|' /etc/ca-certificates.conf \
+    && update-ca-certificates --fresh \
+    && rm -rf /var/lib/apt/lists/*
+
+FROM secure-node AS runtime-base
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       libnss3 \
@@ -62,7 +68,7 @@ RUN node --input-type=module -e "import('@remotion/renderer').then(({ ensureBrow
 # ---------------------------------------------------------------------------
 # build — workspace install + tsc build + baked Remotion bundle.
 # ---------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS build
+FROM secure-node AS build
 
 RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
 WORKDIR /app
@@ -96,7 +102,7 @@ RUN pnpm --filter @forge/shorts-worker build \
 # type-strip TS under node_modules. Workspace symlinks whose realpaths are
 # under /app/packages keep those schemas importable from compiled dist.
 # ---------------------------------------------------------------------------
-FROM ${NODE_IMAGE} AS prod-deps
+FROM secure-node AS prod-deps
 
 RUN corepack enable && corepack prepare pnpm@9.12.3 --activate
 WORKDIR /app
