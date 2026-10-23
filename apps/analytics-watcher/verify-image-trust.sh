@@ -2,6 +2,17 @@
 # CI-only public TLS controls. Never starts the watcher or reads credentials.
 set -eu
 cd /app/apps/analytics-watcher
+# Exercise regeneration as well as the freshly built directory. Neither the
+# packaged root nor its generated link may be restored.
+for certificate in emSign_ECC_Root_CA_-_G3 Comodo_AAA_Services_root; do
+  test ! -e "/usr/share/ca-certificates/mozilla/$certificate.crt"
+  test ! -e "/etc/ssl/certs/$certificate.pem"
+done
+update-ca-certificates --fresh >/dev/null
+openssl rehash /etc/ssl/certs
+for certificate in emSign_ECC_Root_CA_-_G3 Comodo_AAA_Services_root; do
+  test ! -e "/etc/ssl/certs/$certificate.pem"
+done
 node --input-type=module - <<'NODE'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
@@ -48,7 +59,7 @@ def check(item):
     return {'context': mode, 'host': host, 'passed': True}
 with concurrent.futures.ThreadPoolExecutor(max_workers=9) as pool:
     for result in pool.map(check, [(mode, host) for mode in ['bundle', 'default-directory', 'managed-default'] for host in hosts]):
-        print(json.dumps(result))
+        print(json.dumps(result), flush=True)
 assert os.environ.get('SSL_CERT_DIR') == '/usr/local/share/security-ca/certs'
 print('PASS: filtered bundle, inherited default directory and managed OpenSSL defaults')
 PYTHON
