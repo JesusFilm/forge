@@ -1,12 +1,17 @@
 // Sync phase: video-images
 // Depends on: videos
 //
-// Data source rationale: this phase walks Core's `videos(...) { images { ... } }`
-// nested field rather than the flat `videoImages(...)` list. The flat list is
-// a sparse subset (~270 records catalogue-wide) — most of Core's image data
-// only surfaces via the per-Video nested field. Using the nested path
-// matches watch-modern's behavior and recovers the marketing posters /
-// stills that admin's earlier flat-list sync missed.
+// Data source rationale: this phase's primary walk uses Core's
+// `videos(...) { images { ... } }` nested field rather than the flat
+// `videoImages(...)` list. The flat list is a sparse subset (~270 records
+// catalogue-wide) — most of Core's image data only surfaces via the
+// per-Video nested field. Using the nested path matches watch-modern's
+// behavior and recovers the marketing posters / stills that admin's
+// earlier flat-list sync missed. An incremental run also makes a
+// supplementary pass over the flat list (see
+// `syncVideoImagesByOwnUpdatedAt` below) filtered by the image's own
+// `updatedAt`, to self-heal images touched without their parent video
+// also being touched.
 
 import type { PrismaClient } from "@prisma/client"
 import type { SyncStats, ProgressReporter } from "../types"
@@ -54,6 +59,185 @@ type CoreVideoWithImages = {
   }>
 }
 
+// Supplementary incremental pass: Core also exposes a flat, top-level
+// `videoImages` list that can be filtered by the image's OWN `updatedAt`
+// (unlike the nested walk above, which can only filter by the parent
+// video's `updatedAt`). This catches the case where an image is touched
+// in Core without its parent video also being touched, which the nested
+// walk's incremental filter would otherwise miss until the next full sync.
+// The flat list itself is a sparse subset of the catalogue (most images
+// only surface via the nested path), so it stays a *supplementary*
+// self-heal pass, not a replacement for the nested walk.
+const VIDEO_IMAGES_BY_OWN_UPDATED_AT_QUERY = `
+  query VideoImagesByOwnUpdatedAt($offset: Int!, $limit: Int!, $where: VideoImagesFilter) {
+    videoImages(offset: $offset, limit: $limit, where: $where) {
+      id
+      updatedAt
+      videoId
+      aspectRatio
+      url
+      mobileCinematicHigh
+      mobileCinematicLow
+      mobileCinematicVeryLow
+      thumbnail
+      videoStill
+    }
+  }
+`
+
+type CoreFlatVideoImage = {
+  id: string
+  updatedAt: string
+  videoId: string | null
+  aspectRatio: string | null
+  url: string | null
+  mobileCinematicHigh: string | null
+  mobileCinematicLow: string | null
+  mobileCinematicVeryLow: string | null
+  thumbnail: string | null
+  videoStill: string | null
+}
+
+function videoImageUpsertArgs(
+  image: Pick<
+    CoreFlatVideoImage,
+    | "id"
+    | "url"
+    | "aspectRatio"
+    | "mobileCinematicHigh"
+    | "mobileCinematicLow"
+    | "mobileCinematicVeryLow"
+    | "thumbnail"
+    | "videoStill"
+  >,
+  videoId: string,
+) {
+  return {
+    where: { coreId: image.id },
+    create: {
+      coreId: image.id,
+      videoId,
+      url: image.url,
+      aspectRatio: image.aspectRatio,
+      mobileCinematicHigh: image.mobileCinematicHigh,
+      mobileCinematicLow: image.mobileCinematicLow,
+      mobileCinematicVeryLow: image.mobileCinematicVeryLow,
+      thumbnail: image.thumbnail,
+      videoStill: image.videoStill,
+      syncedAt: new Date(),
+    },
+    update: {
+      videoId,
+      url: image.url,
+      aspectRatio: image.aspectRatio,
+      mobileCinematicHigh: image.mobileCinematicHigh,
+      mobileCinematicLow: image.mobileCinematicLow,
+      mobileCinematicVeryLow: image.mobileCinematicVeryLow,
+      thumbnail: image.thumbnail,
+      videoStill: image.videoStill,
+      syncedAt: new Date(),
+      deletedAt: null,
+    },
+  }
+}
+
+async function syncVideoImagesByOwnUpdatedAt({
+  prisma,
+  videoMap,
+  stats,
+  since,
+}: {
+  prisma: PrismaClient
+  videoMap: Map<string, string>
+  stats: SyncStats
+  since: string
+}): Promise<void> {
+  let offset = 0
+
+  while (true) {
+    let rawImages: CoreFlatVideoImage[] = []
+    try {
+      const result = await coreQuery<{ videoImages: CoreFlatVideoImage[] }>(
+        VIDEO_IMAGES_BY_OWN_UPDATED_AT_QUERY,
+        {
+          offset,
+          limit: PAGE_SIZE,
+          where: { updatedAt: { gte: since } },
+        },
+      )
+      rawImages = result.data?.videoImages ?? []
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-image.own-updated-at.page.error",
+          offset,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+      offset += PAGE_SIZE
+      continue
+    }
+
+    if (rawImages.length === 0) break
+
+    const parsedImages = CoreVideoImageSchema.array().safeParse(rawImages)
+    if (!parsedImages.success) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-image.own-updated-at.parse-error",
+          offset,
+          issues: parsedImages.error.issues,
+        }),
+      )
+      if (rawImages.length < PAGE_SIZE) break
+      offset += PAGE_SIZE
+      continue
+    }
+
+    const images = parsedImages.data
+    try {
+      let skippedMissingVideo = 0
+      await prisma.$transaction(async (tx) => {
+        for (const image of images) {
+          if (!image.videoId) continue
+          const videoId = videoMap.get(image.videoId)
+          if (!videoId) {
+            skippedMissingVideo++
+            continue
+          }
+
+          await tx.videoImage.upsert(videoImageUpsertArgs(image, videoId))
+          stats.updated++
+        }
+      }, CORE_SYNC_TRANSACTION_OPTIONS)
+      if (skippedMissingVideo > 0) {
+        console.warn(
+          JSON.stringify({
+            event:
+              "core-sync.video-image.own-updated-at.skipped-missing-videos",
+            offset,
+            count: skippedMissingVideo,
+          }),
+        )
+      }
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-image.own-updated-at.error",
+          offset,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
+
+    if (rawImages.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+}
+
 export async function syncVideoImages({
   prisma,
   progress,
@@ -90,10 +274,10 @@ export async function syncVideoImages({
           offset,
           limit: PAGE_SIZE,
           // Filter by parent-video updatedAt. Edge: an image touched after
-          // its parent video was last touched won't be picked up by an
-          // incremental sync until the next full sync. Acceptable trade-off
-          // for the coverage win — full sync (no `since`) refreshes
-          // everything regardless.
+          // its parent video was last touched won't be picked up by this
+          // walk on an incremental sync — the `syncVideoImagesByOwnUpdatedAt`
+          // supplementary pass below self-heals that case, and a full sync
+          // (no `since`) refreshes everything regardless.
           where: since ? { updatedAt: { gte: since } } : undefined,
         },
       )
@@ -168,33 +352,7 @@ export async function syncVideoImages({
           }
           seenCoreIds.add(image.id)
 
-          await tx.videoImage.upsert({
-            where: { coreId: image.id },
-            create: {
-              coreId: image.id,
-              videoId,
-              url: image.url,
-              aspectRatio: image.aspectRatio,
-              mobileCinematicHigh: image.mobileCinematicHigh,
-              mobileCinematicLow: image.mobileCinematicLow,
-              mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-              thumbnail: image.thumbnail,
-              videoStill: image.videoStill,
-              syncedAt: new Date(),
-            },
-            update: {
-              videoId,
-              url: image.url,
-              aspectRatio: image.aspectRatio,
-              mobileCinematicHigh: image.mobileCinematicHigh,
-              mobileCinematicLow: image.mobileCinematicLow,
-              mobileCinematicVeryLow: image.mobileCinematicVeryLow,
-              thumbnail: image.thumbnail,
-              videoStill: image.videoStill,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
+          await tx.videoImage.upsert(videoImageUpsertArgs(image, videoId))
           updated++
         }
       }, CORE_SYNC_TRANSACTION_OPTIONS)
@@ -223,6 +381,15 @@ export async function syncVideoImages({
     progress.increment(rawVideos.length)
     if (rawVideos.length < PAGE_SIZE) break
     offset += PAGE_SIZE
+  }
+
+  // Self-heal pass: catches images touched in Core without their parent
+  // video also being touched, which the nested walk above cannot see on
+  // an incremental run. No-op on a full sync — the unfiltered nested walk
+  // above already covers every image regardless of which `updatedAt`
+  // changed.
+  if (since) {
+    await syncVideoImagesByOwnUpdatedAt({ prisma, videoMap, stats, since })
   }
 
   if (!since && firstPageWasEmpty) {

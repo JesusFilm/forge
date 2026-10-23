@@ -11,7 +11,11 @@ const mockedCoreQuery = vi.mocked(coreQuery)
 
 describe("syncVideoImages", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    // resetAllMocks (not clearAllMocks): clearAllMocks only wipes call
+    // history, not queued mockResolvedValueOnce implementations, so a test
+    // whose mocked call count doesn't match its actual call count would
+    // leak a queued response into the next test.
+    vi.resetAllMocks()
   })
 
   it("syncs image rows from the nested Video.images field", async () => {
@@ -175,6 +179,7 @@ describe("syncVideoImages", () => {
 
   it("forwards incremental updatedAt watermarks and skips full soft-delete", async () => {
     mockedCoreQuery.mockResolvedValueOnce({ data: { videos: [] } })
+    mockedCoreQuery.mockResolvedValueOnce({ data: { videoImages: [] } })
     const prisma = {
       video: { findMany: vi.fn().mockResolvedValue([]) },
       videoImage: {
@@ -194,6 +199,98 @@ describe("syncVideoImages", () => {
         where: { updatedAt: { gte: "2026-05-07T00:00:00.000Z" } },
       }),
     )
+    expect(prisma.videoImage.updateMany).not.toHaveBeenCalled()
+  })
+
+  it("self-heals an image touched without its parent video also being touched (own-updatedAt pass)", async () => {
+    // Simulates the FGE-77/#2122 gap: the nested walk (filtered by the
+    // PARENT video's updatedAt) sees nothing this run, but the image was
+    // touched in Core on its own. The supplementary flat `videoImages`
+    // query (filtered by the image's OWN updatedAt) must still pick it up.
+    mockedCoreQuery.mockResolvedValueOnce({ data: { videos: [] } })
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoImages: [
+          {
+            id: "image-touched-alone",
+            updatedAt: "2026-05-08T00:00:00.000Z",
+            videoId: "video-core-1",
+            aspectRatio: "16:9",
+            url: "https://example.com/updated.jpg",
+            mobileCinematicHigh: null,
+            mobileCinematicLow: null,
+            mobileCinematicVeryLow: null,
+            thumbnail: null,
+            videoStill: null,
+          },
+        ],
+      },
+    })
+
+    const tx = {
+      videoImage: {
+        upsert: vi.fn().mockResolvedValue({ id: "image-admin-1" }),
+      },
+    }
+    const prisma = {
+      video: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "video-admin-1", coreId: "video-core-1" }]),
+      },
+      $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
+        fn(tx),
+      ),
+      videoImage: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+
+    const stats = await syncVideoImages({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+      since: "2026-05-07T00:00:00.000Z",
+    })
+
+    expect(stats.errors).toBe(0)
+    expect(stats.updated).toBe(1)
+    expect(tx.videoImage.upsert).toHaveBeenCalledWith({
+      where: { coreId: "image-touched-alone" },
+      create: {
+        coreId: "image-touched-alone",
+        videoId: "video-admin-1",
+        url: "https://example.com/updated.jpg",
+        aspectRatio: "16:9",
+        mobileCinematicHigh: null,
+        mobileCinematicLow: null,
+        mobileCinematicVeryLow: null,
+        thumbnail: null,
+        videoStill: null,
+        syncedAt: expect.any(Date),
+      },
+      update: {
+        videoId: "video-admin-1",
+        url: "https://example.com/updated.jpg",
+        aspectRatio: "16:9",
+        mobileCinematicHigh: null,
+        mobileCinematicLow: null,
+        mobileCinematicVeryLow: null,
+        thumbnail: null,
+        videoStill: null,
+        syncedAt: expect.any(Date),
+        deletedAt: null,
+      },
+    })
+    // Second (own-updatedAt) query must filter by the image's own
+    // updatedAt, same `since` watermark, via the flat top-level query.
+    expect(mockedCoreQuery).toHaveBeenNthCalledWith(
+      2,
+      expect.any(String),
+      expect.objectContaining({
+        where: { updatedAt: { gte: "2026-05-07T00:00:00.000Z" } },
+      }),
+    )
+    // Incremental soft-delete must stay off regardless of this pass.
     expect(prisma.videoImage.updateMany).not.toHaveBeenCalled()
   })
 
@@ -220,6 +317,7 @@ describe("syncVideoImages", () => {
         ],
       },
     })
+    mockedCoreQuery.mockResolvedValueOnce({ data: { videoImages: [] } })
     const tx = { videoImage: { upsert: vi.fn() } }
     const prisma = {
       video: { findMany: vi.fn().mockResolvedValue([]) },
