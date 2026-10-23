@@ -115,3 +115,13 @@ public direct/nested HLS trust and local generated media plus network-disabled
 production startup and access gates. Dashboard canonical production still needs
 separate binding approval and exact live verification; explicit Studio proof
 artifacts, identity, content and provider actions remain outside this change.
+
+### Mastra controlled image
+
+B06's proposed Docker image filters package trust first and preserves Studio,
+PostgreSQL/DuckDB, all five workspace dependencies and the existing private-only
+network boundary. Actual-image CI uses isolated PostgreSQL for production boot,
+metadata/static reads, deterministic smoke and service/lane/default-off denials;
+no model or workflow execution. Dashboard binding and exact current-image
+verification remain separate owner decisions. Native framework routes retain
+existing gateway/network containment; the proposal adds no public exposure.
