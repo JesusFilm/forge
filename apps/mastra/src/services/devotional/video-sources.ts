@@ -343,6 +343,36 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-8-woman.ru.vtt" },
     },
   },
+  {
+    key: "lumo-luke-8-jairus",
+    index: 1011,
+    mediaComponentId: "6_GOLuke2609",
+    title: "Jairus's Daughter",
+    film: "lumo",
+    // The clip is 8:49-56 only: Jairus's plea (8:40-42) is the opening of the
+    // lumo-luke-8-woman clip, and the woman's healing sits between the two
+    // halves. The script links back to that episode instead of replaying it.
+    passage: { reference: "Luke 8:49-56", osisRef: "Luke.8.49-Luke.8.56" },
+    // EN «While Jesus was still speaking» starts at 93.75 ("Go in peace" ends
+    // the woman clip at 91.6); «what had happened» ends at 205.9 and the next
+    // line (9:1) starts at 215.0. 145.5-189.4 is the wordless raising scene.
+    window: { startSec: 93.4, lengthSec: 114.0 },
+    // RU «Иисус ещё не договорил» starts at 93.75 (the tail of «Иди с миром»
+    // ends at 91.95); «что произошло» ends at 206.3, 9:1 starts at 214.9.
+    // Cue 15 «Дитя, встань!» was set by hand (whisper missed both words).
+    windowByLang: { ru: { startSec: 93.3, lengthSec: 114.5 } },
+    // ~114s ×1.05 → ~109s on screen, plus a breath.
+    maxVideoCardSec: 111,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-8-jairus.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-8-jairus.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))

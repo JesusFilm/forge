@@ -233,6 +233,29 @@ const STORIES: Record<
     ],
     out: "Bleeding Woman",
   },
+  "lumo-luke-8-jairus": {
+    // Setting 8:40-42 although the card starts on 8:49: Jairus's plea and his
+    // dying twelve-year-old are the reason "while Jesus was still speaking"
+    // lands as it does, and the previous episode (lumo-luke-8-woman) showed
+    // them. The opening links back to that episode (owner, 2026-10-22); the
+    // writer treats the setting as background the viewer does not see here.
+    setting: { reference: "Luke 8:40-42", osis: ["Luke.8", 40, 42] },
+    terms: [
+      "Jairus",
+      "Synagogue",
+      "Mourning",
+      "Mourn",
+      "Lamentation",
+      "Minstrel",
+      "Flute",
+      "Pipe",
+      "Funeral",
+      "Burial",
+      "Daughter",
+      "THE HEALING OF THE WOMAN - CHRIST'S PERSONAL APPEARANCE - THE RAISING OF JAIRUS' DAUGHTER",
+    ],
+    out: "Jairus's Daughter",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the
