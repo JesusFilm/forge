@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { setTimeout, clearTimeout } from "node:timers"
@@ -11,7 +11,13 @@ const directory = mkdtempSync(join(tmpdir(), "agentic-image-"))
 const operator = "ci-runtime-operator-token"
 const service = "ci-runtime-service-token"
 const origin = "http://127.0.0.1:4123"
-const child = spawn(process.execPath, [".mastra/output/index.mjs"], {
+// Railway executes this override directly, so exercise the deployed command too.
+const config = readFileSync("railway.toml", "utf8")
+const startCommand = config.match(/^startCommand = "([^"]+)"$/m)?.[1]
+assert.ok(startCommand, "Railway startCommand must be present")
+const [executable, ...args] = startCommand.split(" ")
+assert.equal(executable, "node")
+const child = spawn(executable, args, {
   env: {
     PATH: process.env.PATH,
     HOME: directory,
@@ -78,7 +84,7 @@ try {
     assert.equal(typeof JSON.parse(response.text), "object")
   }
   console.log(
-    "PASS: actual production entrypoint, health, operator agent/tool/workflow reads and anonymous/service/wrong/build-key denials",
+    "PASS: Railway production start command, health, operator agent/tool/workflow reads and anonymous/service/wrong/build-key denials",
   )
   console.log(
     "PASS: disposable SQLite only; no model, Manager, workflow execution or external network",
