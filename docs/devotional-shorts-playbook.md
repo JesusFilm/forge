@@ -461,9 +461,8 @@ Content rules: build the caption on what THAT short shows; only the last line
 turns toward the full devotional, as a hint or a question, never an ad. Do
 not repeat a line the video already shows on screen. Credits name the film,
 the on-screen translation (LUMO narration is NIV; callout verses BSB), the
-source with its year (Easton 1897, Smith 1863, Abbott-Smith 1922, Ryle 1858)
-and what AI did (drafted, voiced, assembled; on-screen questions written with
-AI help and chosen by the team).
+source with its year (Easton 1897, Smith 1863, Abbott-Smith 1922, Ryle 1858).
+No AI disclaimer line (owner, 2026-10-23; see docs/devotional-credits-template.md).
 
 Long-form caption files carry one `PINNED COMMENT` line (owner,
 2026-10-14; format changed 2026-10-19). Shorts get no pinned comment (owner,
