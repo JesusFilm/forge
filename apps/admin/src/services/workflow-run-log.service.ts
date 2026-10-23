@@ -88,7 +88,7 @@ export async function createWorkflowRunLog(
 ) {
   return client.workflowRun.create({
     data: {
-      id: input.id,
+      ...(input.id ? { id: input.id } : {}),
       workflowKey: input.workflowKey,
       workflowName: input.workflowName,
       runtimeRunId: input.runtimeRunId,
