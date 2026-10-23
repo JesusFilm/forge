@@ -2184,10 +2184,21 @@ async function renderInStage(
           seg.audio.words ?? [],
         )
         const last = montageStarts?.[montageStarts.length - 1]
+        // The cap keeps a montage from running long, but it must never start
+        // the scene under the voice: a 26.8s opening was cut at 24s and the
+        // film's narrator spoke over "on the way. Let's watch." (Jairus,
+        // 2026-10-23). A long opening keeps its WATCH beat instead.
         if (last != null)
           hookLeadSec = options.introTeaser
             ? Math.min(cap, last + 0.1)
-            : Math.min(cap, Math.max(last + MONTAGE_WATCH_SEC, spokenSec + 0.4))
+            : Math.max(
+                Math.min(
+                  cap,
+                  Math.max(last + MONTAGE_WATCH_SEC, spokenSec + 0.4),
+                ),
+                last + MONTAGE_WATCH_SEC,
+                spokenSec + 0.4,
+              )
         else
           log(`⚠️  montage: no word times for the hook, cutting shots evenly`)
         if (options.introTeaser && options.introCtaText && last != null) {
