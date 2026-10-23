@@ -1040,7 +1040,7 @@
     color: var(--ink);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
   }
   .aday.is-today {
     scroll-margin-top: 104px;
@@ -1131,9 +1131,9 @@
       <h1 class="month" id="month"></h1>
     </div>
     <div class="nav">
-      <button class="ghost" id="prev" aria-label="Previous week">‹</button>
+      <button class="ghost" id="prev" aria-label="Previous">‹</button>
       <button class="ghost" id="todayBtn" aria-label="This week">•</button>
-      <button class="ghost" id="next" aria-label="Next week">›</button>
+      <button class="ghost" id="next" aria-label="Next">›</button>
     </div>
     <div class="actions">
       <button
@@ -1469,7 +1469,7 @@
       d.setDate(week.getDate() + i)
       return d
     })
-    const th = days[3]
+    const th = isPhone() ? day : days[3]
     document.getElementById("month").innerHTML =
       MONTHS[th.getMonth()] + " <span>" + th.getFullYear() + "</span>"
     const lanes = LANES.filter((l) => !only || l.key === only)
@@ -1523,10 +1523,8 @@
     html += "</section>"
     document.getElementById("weeks").innerHTML = html
 
-    // Phone: the same week as a list of days that have posts.
-    const keys = days
-      .map(ymd)
-      .filter((k) => k === todayKey || lanes.some((l) => idx[k + "|" + l.key]))
+    // Phone: one day at a time (Lyuba, Oct 23), today unless she paged away.
+    const keys = [ymd(day)]
     document.getElementById("agenda").innerHTML = keys.length
       ? keys
           .map((k) => {
@@ -1542,8 +1540,10 @@
               d.getDate() +
               (k === todayKey ? ' <span class="tlab">Today</span>' : "") +
               "</h3>" +
-              (k === todayKey && !lanes.some((l) => idx[k + "|" + l.key])
-                ? '<div class="empty">Nothing goes out today.</div>'
+              (!lanes.some((l) => idx[k + "|" + l.key])
+                ? '<div class="empty">Nothing goes out ' +
+                  (k === todayKey ? "today" : "this day") +
+                  ".</div>"
                 : "") +
               lanes
                 .filter((l) => idx[k + "|" + l.key])
@@ -1565,23 +1565,29 @@
           })
           .join("")
       : '<div class="empty">Nothing this week yet.</div>'
-    // Phone: open on today, not on Monday.
-    const td = document.getElementById("todayDay")
-    if (td && !scrolledToToday && posts.length && innerWidth <= 860) {
-      scrolledToToday = true
-      td.scrollIntoView({ block: "start" })
-    }
   }
-  let scrolledToToday = false
 
+  // Desktop pages weeks, the phone pages days; both stay in step.
+  const isPhone = () => matchMedia("(max-width: 860px)").matches
+  let day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const step = (n) => {
-    week.setDate(week.getDate() + 7 * n)
+    if (isPhone()) {
+      day.setDate(day.getDate() + n)
+      week = weekStart(day)
+    } else {
+      week.setDate(week.getDate() + 7 * n)
+      day = new Date(week)
+    }
     render()
+  }
+  const toToday = () => {
+    day = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    week = weekStart(day)
   }
   document.getElementById("prev").onclick = () => step(-1)
   document.getElementById("next").onclick = () => step(1)
   document.getElementById("todayBtn").onclick = () => {
-    week = weekStart(new Date())
+    toToday()
     render()
   }
   // Arrow keys and a horizontal swipe also move a week.
@@ -2339,7 +2345,10 @@
     if (v === "list") {
       document.getElementById("month").textContent = "All content"
       renderContent()
-    } else render()
+    } else {
+      toToday() // back from the list: always today
+      render()
+    }
   }
   document.getElementById("toList").onclick = () => setView("list")
   document.getElementById("toCal").onclick = () => setView("cal")
