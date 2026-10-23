@@ -99,4 +99,4 @@ async function buildIos({
   return { platform: "ios", ok: true, artifact, steps, failedStep: null }
 }
 
-module.exports = { buildIos, xcodebuildArgs }
+module.exports = { buildIos }

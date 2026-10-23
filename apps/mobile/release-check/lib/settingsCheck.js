@@ -8,7 +8,14 @@
 const path = require("node:path")
 
 const { EXIT } = require("./contract")
-const { CONFIG_DIR, MOBILE_DIR, classifyEnvKeys, readJson } = require("./lists")
+const {
+  CONFIG_DIR,
+  LIST_FILES,
+  MOBILE_DIR,
+  classifyEnvKeys,
+  isObject,
+  readJson,
+} = require("./lists")
 
 const SETTINGS_FILE = "apps/mobile/release-check/config/test-settings.json"
 const EAS_COMMAND = "npx"
@@ -42,10 +49,6 @@ const PUBLIC_KEY = /^EXPO_PUBLIC_/
 class SettingsCheckRefusal extends Error {}
 
 class EnvListFormatError extends Error {}
-
-function isPlainObject(input) {
-  return typeof input === "object" && input !== null && !Array.isArray(input)
-}
 
 /** The child env: the parent's PATH and HOME, and EXPO_TOKEN when it is set. */
 function easEnv(parentEnv) {
@@ -173,7 +176,7 @@ async function readProductionEnv(options) {
 
 function listProblem(settings) {
   const copied = settings?.copiedFromProduction
-  if (!isPlainObject(copied)) {
+  if (!isObject(copied)) {
     return "copiedFromProduction must map each key to a value or null"
   }
   const wrong = Object.keys(copied).find(
@@ -314,7 +317,7 @@ async function checkSettingsCommand(command, deps = {}) {
   const now = deps.now ?? (() => new Date())
   let settings = deps.settings
   try {
-    settings ??= readJson(path.join(CONFIG_DIR, "test-settings.json"))
+    settings ??= readJson(path.join(CONFIG_DIR, LIST_FILES.testSettings))
   } catch (error) {
     err(
       `release-check refused: cannot read ${SETTINGS_FILE}: ${error.message}.`,
@@ -349,12 +352,7 @@ async function checkSettingsCommand(command, deps = {}) {
 
 module.exports = {
   EAS_ARGS,
-  EAS_COMMAND,
-  EnvListFormatError,
-  SettingsCheckRefusal,
   checkSettingsCommand,
   compareWithProduction,
-  easEnv,
   parseEnvList,
-  readProductionEnv,
 }

@@ -6,7 +6,7 @@
 
 const { Kind, parse } = require("graphql")
 
-const { classifyCoordinate } = require("../lists")
+const { classifyCoordinate, isObject } = require("../lists")
 
 const ROOT_TYPES = Object.freeze({
   query: "Query",
@@ -27,10 +27,6 @@ class UnresolvableDocumentError extends Error {
     this.name = "UnresolvableDocumentError"
     this.reason = reason
   }
-}
-
-function isPlainObject(input) {
-  return typeof input === "object" && input !== null && !Array.isArray(input)
 }
 
 function collectRootFields(selectionSet, fragments, rootType, out, seen) {
@@ -84,7 +80,7 @@ function readRequest(raw) {
     return { error: "invalid-json" }
   }
   if (Array.isArray(body)) return { error: "batch" }
-  if (!isPlainObject(body) || typeof body.query !== "string") {
+  if (!isObject(body) || typeof body.query !== "string") {
     return { error: "no-query" }
   }
   return {

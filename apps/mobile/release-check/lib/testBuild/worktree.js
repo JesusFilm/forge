@@ -355,12 +355,8 @@ async function buildTestApps({
 
 module.exports = {
   BUILD_INPUTS,
-  DEFAULT_TIMEOUTS,
   buildTestApps,
   dirtyBuildInputs,
-  parsePorcelainZ,
-  prepareWorktree,
   resolveCommit,
   runnerHome,
-  worktreePath,
 }

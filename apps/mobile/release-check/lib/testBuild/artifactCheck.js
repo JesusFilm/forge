@@ -11,7 +11,7 @@ const os = require("node:os")
 const path = require("node:path")
 
 const { EXIT } = require("../contract")
-const { CONFIG_DIR, readJson } = require("../lists")
+const { CONFIG_DIR, LIST_FILES, readJson } = require("../lists")
 const { run } = require("../proc")
 
 const ADMIN_URL_KEY = "EXPO_PUBLIC_ADMIN_GRAPHQL_URL"
@@ -398,7 +398,7 @@ async function checkBuildCommand(command, options = {}) {
   const err = options.err ?? console.error
   const appPath = path.resolve(command.positionals[0])
   const settings =
-    options.settings ?? readJson(path.join(CONFIG_DIR, "test-settings.json"))
+    options.settings ?? readJson(path.join(CONFIG_DIR, LIST_FILES.testSettings))
   let result
   try {
     result = await checkArtifact(appPath, { settings, env: options.env })
@@ -425,7 +425,5 @@ module.exports = {
   checkArtifact,
   checkBuildCommand,
   iosPlistFindings,
-  muxKeyDigestsIn,
-  newestAapt2,
   parseXmlTree,
 }

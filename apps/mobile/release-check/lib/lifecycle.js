@@ -11,8 +11,16 @@ const fs = require("node:fs")
 const path = require("node:path")
 const readline = require("node:readline")
 
-const { EXIT } = require("./contract")
-const { CONFIG_DIR, JOURNEYS_DIR, REPO_ROOT, readJson } = require("./lists")
+const { EXIT, refuseMode } = require("./contract")
+const {
+  ADMIN_SCHEMA_PATH,
+  CONFIG_DIR,
+  JOURNEYS_DIR,
+  LIST_FILES,
+  REPO_ROOT,
+  readJson,
+  sha256,
+} = require("./lists")
 const lockLib = require("./lock")
 const plan = require("./plan")
 const proc = require("./proc")
@@ -27,6 +35,7 @@ const {
   writeSummary,
 } = require("./report/summary")
 const runFolder = require("./runFolder")
+const { ANDROID_ARTIFACT } = require("./testBuild/buildAndroid")
 
 const CLI_PATH = path.resolve(__dirname, "..", "cli.mjs")
 const MINUTE = 60_000
@@ -48,8 +57,6 @@ const POLL_MS = 1000
 const KEEP_BUILDS = 2
 const GIT_TIMEOUT_MS = 2 * MINUTE
 const GIT_OUTPUT_BYTES = 32 * 1024 * 1024
-const ADMIN_SCHEMA_PATH = "apps/admin/schema.graphql"
-const ANDROID_ARTIFACT = path.join("android", "app-release.apk")
 
 class LifecycleError extends Error {
   constructor(code, message) {
@@ -57,10 +64,6 @@ class LifecycleError extends Error {
     this.name = "LifecycleError"
     this.code = code
   }
-}
-
-function sha256(text) {
-  return crypto.createHash("sha256").update(text).digest("hex")
 }
 
 // ── Dependencies ─────────────────────────────────────────────────────
@@ -114,11 +117,11 @@ async function gitText(repoRoot, env, args) {
 function readConfig(configDir) {
   const read = (name) => readJson(path.join(configDir, name))
   return {
-    devices: read("devices.json"),
-    settings: read("test-settings.json"),
-    operations: read("operations.json"),
-    searchAnswers: read("search-answers.json"),
-    notTested: read("not-tested.json"),
+    devices: read(LIST_FILES.devices),
+    settings: read(LIST_FILES.testSettings),
+    operations: read(LIST_FILES.operations),
+    searchAnswers: read(LIST_FILES.searchAnswers),
+    notTested: read(LIST_FILES.notTested),
   }
 }
 
@@ -310,15 +313,10 @@ function refuse(deps, refusals, childRunId = null) {
   return EXIT.refused
 }
 
-function refuseMode(deps, message) {
-  deps.err(`release-check refused: ${message}.`)
-  return EXIT.refused
-}
-
 function lockHeldRefusal(lock) {
   return {
     code: "LOCK_HELD",
-    message: `Another release check holds the lock (mode ${lock.mode}, pid ${lock.pid}${lock.runId ? `, run ${lock.runId}` : ""}).`,
+    message: `Another release check holds the lock (${lockLib.holderText(lock)}).`,
   }
 }
 
@@ -1022,16 +1020,6 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
 
 // ── status, stop, recover, setup ────────────────────────────────────
 
-function lockSummary(lock) {
-  return {
-    state: lock.state,
-    reason: lock.reason,
-    mode: lock.lock?.mode ?? null,
-    pid: lock.lock?.pid ?? null,
-    runId: lock.lock?.runId ?? null,
-  }
-}
-
 function existing(file) {
   return fs.existsSync(file) ? file : null
 }
@@ -1068,9 +1056,7 @@ function describeRun(deps, runDir, lock) {
 
 function statusText(lock, run) {
   const lines = []
-  const holder = lock.lock
-    ? ` (mode ${lock.lock.mode}, pid ${lock.lock.pid}${lock.lock.runId ? `, run ${lock.lock.runId}` : ""})`
-    : ""
+  const holder = lock.lock ? ` (${lockLib.holderText(lock.lock)})` : ""
   lines.push(
     `Lock: ${lock.state}${holder}${lock.reason ? `, ${lock.reason}` : ""}.`,
   )
@@ -1104,19 +1090,13 @@ async function statusCommand(command, deps) {
   deps.out(
     command.flags.json
       ? JSON.stringify(
-          { mode: "status", lock: lockSummary(lock), run },
+          { mode: "status", lock: lockLib.summarizeLock(lock), run },
           null,
           2,
         )
       : statusText(lock, run),
   )
   return EXIT.passed
-}
-
-function delay(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
 }
 
 /** The mode handler for `stop`: SIGTERM to the verified runner, then wait. */
@@ -1152,7 +1132,7 @@ async function stopCommand(command, deps) {
   )
   const end = deps.now() + deps.stopWaitMs
   while (!fs.existsSync(markdown) && deps.now() < end) {
-    await delay(deps.pollMs)
+    await proc.sleep(deps.pollMs)
   }
   if (!fs.existsSync(markdown)) {
     deps.err(
@@ -1241,7 +1221,7 @@ async function setupMode(command, deps) {
   if (!taken.ok) {
     return refuseMode(
       deps,
-      `another release check holds the lock (mode ${taken.lock.mode}, pid ${taken.lock.pid})`,
+      `another release check holds the lock (${lockLib.holderText(taken.lock, { withRun: false })})`,
     )
   }
   try {
@@ -1252,11 +1232,10 @@ async function setupMode(command, deps) {
 }
 
 module.exports = {
-  LifecycleError,
   TIME_LIMITS,
+  artifactPath,
   childArgs,
   createDeps,
-  executeRun,
   pruneBuilds,
   recoverCommand,
   runCommand,

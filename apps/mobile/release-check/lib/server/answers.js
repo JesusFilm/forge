@@ -157,6 +157,7 @@ function createReuseStore() {
 }
 
 module.exports = {
+  SEARCH_FIELD,
   answerSearch,
   canonicalJson,
   createReuseStore,

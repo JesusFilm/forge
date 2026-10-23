@@ -136,7 +136,7 @@ function run(command, args, options) {
       stderr = appendTail(stderr, chunk, tailBytes)
     })
     child.on("error", (error) => settle(null, null, error))
-    child.on("close", (code, signal) => settle(code, signal, null))
+    child.on("close", (code, exitSignal) => settle(code, exitSignal, null))
   })
 }
 
@@ -154,4 +154,26 @@ function activeChildCount() {
   return active.size
 }
 
-module.exports = { activeChildCount, run, stopAll }
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+function abortableSleep(ms, signal) {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve()
+      return
+    }
+    const timer = setTimeout(done, ms)
+    function done() {
+      clearTimeout(timer)
+      signal?.removeEventListener("abort", done)
+      resolve()
+    }
+    signal?.addEventListener("abort", done, { once: true })
+  })
+}
+
+module.exports = { abortableSleep, activeChildCount, run, sleep, stopAll }

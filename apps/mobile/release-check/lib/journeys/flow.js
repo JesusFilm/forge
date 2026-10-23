@@ -261,6 +261,12 @@ function assertedTarget(command, args) {
   return screen || text ? { screen, text } : null
 }
 
+function stepLabel(args) {
+  return typeof args.label === "string" && args.label.trim() !== ""
+    ? args.label
+    : null
+}
+
 function readSteps(list, depth, conditional, out) {
   if (!Array.isArray(list)) {
     throw new FlowError(0, "the commands are not a list")
@@ -277,10 +283,7 @@ function readSteps(list, depth, conditional, out) {
     } else {
       throw new FlowError(line, "a step must name exactly one command")
     }
-    const label =
-      isMap(args) && typeof args.label === "string" && args.label.trim() !== ""
-        ? args.label
-        : null
+    const label = isMap(args) ? stepLabel(args) : null
     const step = {
       command,
       args,
@@ -365,9 +368,10 @@ function journeyRuleProblems(flow) {
 }
 
 module.exports = {
-  FlowError,
   PLATFORMS,
+  SCREEN_ID,
   assertedScreens,
   journeyRuleProblems,
   parseFlow,
+  stepLabel,
 }

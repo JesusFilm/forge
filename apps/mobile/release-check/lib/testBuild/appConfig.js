@@ -98,11 +98,8 @@ function writeTestAppConfig(mobileDir, { pluginSource = PLUGIN_SOURCE } = {}) {
 }
 
 module.exports = {
-  AppConfigError,
   GENERATED_DIR,
   PLUGIN_FILE,
-  PLUGIN_SOURCE,
-  deactivateFirebaseJson,
   testAppConfig,
   writeTestAppConfig,
 }

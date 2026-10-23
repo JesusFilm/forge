@@ -11,6 +11,14 @@ const MAX_ATTEMPTS = 2
 const PASSING_LABELS = Object.freeze(["pass", "flaky"])
 // Classes whose cause is production admin, so the retry waits for it first.
 const WAIT_CLASSES = Object.freeze(["rate_limited", "upstream_error"])
+const NOT_RUN_REASON = Object.freeze({
+  stopped: "The run stopped before this journey.",
+  deviceLost:
+    "The device stopped answering after its two restarts, so this journey did not run.",
+  probeFailed:
+    "The settings probe failed on this device, so this journey did not run.",
+  deviceNotStarted: "The run stopped before this device started.",
+})
 
 /** An attempt in the U8 `$defs.attempt` shape, with no label yet. */
 function attemptRecord(fields) {
@@ -119,13 +127,11 @@ async function runQueue({ deviceId, journeys, runOne, probeId }) {
     const probeFailed =
       journey === probeId && !PASSING_LABELS.includes(result.label)
     if (!result.deviceLost && !result.stopped && !probeFailed) continue
-    let why = "The run stopped before this journey."
+    let why = NOT_RUN_REASON.stopped
     if (result.deviceLost) {
-      why =
-        "The device stopped answering after its two restarts, so this journey did not run."
+      why = NOT_RUN_REASON.deviceLost
     } else if (probeFailed) {
-      why =
-        "The settings probe failed on this device, so this journey did not run."
+      why = NOT_RUN_REASON.probeFailed
     }
     for (const rest of journeys.slice(index + 1)) {
       attempts.push(notRunRecord(rest, deviceId, why))
@@ -142,7 +148,7 @@ async function runQueue({ deviceId, journeys, runOne, probeId }) {
 
 module.exports = {
   MAX_ATTEMPTS,
-  PASSING_LABELS,
+  NOT_RUN_REASON,
   attemptRecord,
   notRunRecord,
   runJourney,

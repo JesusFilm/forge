@@ -269,14 +269,10 @@ function createForwarder({ upstreamUrl, clock, onUpstreamUnavailable }) {
 }
 
 module.exports = {
-  ANSWER_BUDGET_MS,
-  FIELD_NODE_BUDGET,
-  MAX_HOLD_MS,
-  UNAVAILABLE_AFTER_FAILURES,
+  REFUSAL_MESSAGE,
   WINDOW_MS,
   createForwarder,
   createPacer,
-  localRefusal,
   parseRetryAfter,
   realClock,
   refusalOf,

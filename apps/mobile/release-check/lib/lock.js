@@ -59,6 +59,21 @@ function isLockRecord(value) {
   )
 }
 
+function holderText(lock, { withRun = true } = {}) {
+  const runText = withRun && lock.runId ? `, run ${lock.runId}` : ""
+  return `mode ${lock.mode}, pid ${lock.pid}${runText}`
+}
+
+function summarizeLock(inspected) {
+  return {
+    state: inspected.state,
+    reason: inspected.reason,
+    mode: inspected.lock?.mode ?? null,
+    pid: inspected.lock?.pid ?? null,
+    runId: inspected.lock?.runId ?? null,
+  }
+}
+
 /** `{ state: "free" | "held" | "stale", lock, reason, text }`, and no write. */
 async function inspectLock(home, options = {}) {
   let text
@@ -193,12 +208,12 @@ async function acquireLock(home, options) {
 }
 
 module.exports = {
-  LOCK_FILE,
-  LockError,
   acquireLock,
+  holderText,
   inspectLock,
   isAlive,
   lockPath,
   processStart,
   releaseLock,
+  summarizeLock,
 }

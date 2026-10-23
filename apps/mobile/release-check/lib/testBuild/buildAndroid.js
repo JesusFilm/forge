@@ -10,6 +10,7 @@ const path = require("node:path")
 const { runStep } = require("./env")
 
 const APK = "app/build/outputs/apk/release/app-release.apk"
+const ANDROID_ARTIFACT = path.join("android", "app-release.apk")
 
 const GRADLE_ARGS = Object.freeze([
   "--no-daemon",
@@ -50,7 +51,7 @@ async function buildAndroid({ mobileDir, env, buildDir, signal, timeouts }) {
     }
   }
   // The next prebuild deletes android/, so the run keeps its own copy.
-  const artifact = path.join(buildDir, "android", "app-release.apk")
+  const artifact = path.join(buildDir, ANDROID_ARTIFACT)
   fs.mkdirSync(path.dirname(artifact), { recursive: true })
   fs.copyFileSync(
     path.join(androidDir, APK),
@@ -60,4 +61,4 @@ async function buildAndroid({ mobileDir, env, buildDir, signal, timeouts }) {
   return { platform: "android", ok: true, artifact, steps, failedStep: null }
 }
 
-module.exports = { GRADLE_ARGS, buildAndroid }
+module.exports = { ANDROID_ARTIFACT, buildAndroid }

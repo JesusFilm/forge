@@ -10,18 +10,24 @@ const http = require("node:http")
 const https = require("node:https")
 const path = require("node:path")
 
-const { EXIT } = require("../contract")
+const { EXIT, refuseMode } = require("../contract")
 const { planJourneys, readJourneys } = require("../journeys/screens")
-const { MOBILE_DIR, currentWatchSearchDigest, readJson } = require("../lists")
-const { writeFileAtomic } = require("../report/summary")
+const {
+  ADMIN_SCHEMA_PATH,
+  MOBILE_DIR,
+  currentWatchSearchDigest,
+  readJson,
+} = require("../lists")
+const { holderText } = require("../lock")
+const { compareText, writeFileAtomic } = require("../report/summary")
 const runFolder = require("../runFolder")
 const session = require("../session")
-const { searchInputOf } = require("./answers")
+const { SEARCH_FIELD, searchInputOf } = require("./answers")
+const { REFUSAL_MESSAGE } = require("./forward")
 
 const DEFAULT_RECORD_ADMIN_URL = "http://localhost:3003/api/graphql"
 const ADMIN_URL_ENV = "FORGE_RELEASE_CHECK_RECORD_ADMIN_URL"
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"])
-const SEARCH_FIELD = "Query.watchSearch"
 const SEARCH_TAG = "search"
 const RECORDED_ROUTE = "recorded-search"
 const ANSWERS_FILE = "search-answers.json"
@@ -33,7 +39,6 @@ const POST_TIMEOUT_MS = 30_000
 // check waits and asks again; 12 tries cover more than one pacing minute.
 const CHECK_TRIES = 12
 const CHECK_RETRY_MS = 10_000
-const TOO_OFTEN = /You are trying to access '[A-Za-z0-9_]+' too often/
 const CHECKS = Object.freeze({
   VIDEO: {
     field: "videoBySlug",
@@ -131,6 +136,10 @@ function postJson(url, body, { timeoutMs = POST_TIMEOUT_MS } = {}) {
   })
 }
 
+function errorsOf(json) {
+  return Array.isArray(json?.errors) ? json.errors : []
+}
+
 function searchKey(input) {
   return JSON.stringify([
     input.query,
@@ -170,7 +179,7 @@ function createSearchRecorder({ adminUrl, post = postJson, now = Date.now }) {
       JSON.stringify({ query, variables, operationName }),
     )
     const body = answer.json
-    const errors = Array.isArray(body?.errors) ? body.errors : []
+    const errors = errorsOf(body)
     let reason = null
     if (answer.error) reason = `local admin did not answer: ${answer.error}`
     else if (answer.status !== 200) {
@@ -206,7 +215,7 @@ function createSearchRecorder({ adminUrl, post = postJson, now = Date.now }) {
     // gives the same order.
     entries: () =>
       [...entries.entries()]
-        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .sort(([a], [b]) => compareText(a, b))
         .map(([, entry]) => entry),
     failures: () => [...failures],
   }
@@ -253,8 +262,8 @@ function plannedChecks(entries, locales) {
 }
 
 function tooOften(answer) {
-  const errors = Array.isArray(answer.json?.errors) ? answer.json.errors : []
-  return errors.some((error) => TOO_OFTEN.test(String(error?.message)))
+  const errors = errorsOf(answer.json)
+  return errors.some((error) => REFUSAL_MESSAGE.test(String(error?.message)))
 }
 
 function refusalOf(check, reason) {
@@ -311,7 +320,7 @@ async function checkResults(
       answer = await post(serverUrl, body)
     }
     checked += 1
-    const errors = Array.isArray(answer.json?.errors) ? answer.json.errors : []
+    const errors = errorsOf(answer.json)
     if (answer.error || answer.status !== 200 || errors.length > 0) {
       const detail =
         answer.error ?? errors[0]?.message ?? `HTTP ${answer.status}`
@@ -435,11 +444,6 @@ async function recordOnDevice(deps, run, device) {
   }
 }
 
-function refuse(deps, message) {
-  deps.err(`release-check refused: ${message}.`)
-  return EXIT.refused
-}
-
 /** The mode handler for `record-search` (KTD10). */
 async function recordSearchCommand(command, deps = createRecordDeps()) {
   let adminUrl
@@ -451,11 +455,14 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
     )
   } catch (error) {
     if (!(error instanceof RecordRefusal)) throw error
-    return refuse(deps, error.message)
+    return refuseMode(deps, error.message)
   }
   const journeys = searchJourneys(deps)
   if (journeys.length === 0) {
-    return refuse(deps, `no top-level journey has the \`${SEARCH_TAG}\` tag`)
+    return refuseMode(
+      deps,
+      `no top-level journey has the \`${SEARCH_TAG}\` tag`,
+    )
   }
   const recordId = runFolder.newRunId(new Date(deps.now()), deps.randomHex())
   const taken = await deps.lock.acquire({
@@ -464,9 +471,9 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
     pid: deps.pid,
   })
   if (!taken.ok) {
-    return refuse(
+    return refuseMode(
       deps,
-      `another release check holds the lock (mode ${taken.lock.mode}, pid ${taken.lock.pid})`,
+      `another release check holds the lock (${holderText(taken.lock, { withRun: false })})`,
     )
   }
   const recordDir = path.join(deps.home, RECORDS_DIR, recordId)
@@ -517,10 +524,7 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
       operations: deps.config.operations,
       searchAnswers: { schemaVersion: 1, answers: [] },
       answerSearchRequest: recorder.answerSearchRequest,
-      adminSchemaSdl: await deps.git.show(
-        run.build.commit,
-        "apps/admin/schema.graphql",
-      ),
+      adminSchemaSdl: await deps.git.show(run.build.commit, ADMIN_SCHEMA_PATH),
       logPath: run.logPath,
       onUpstreamUnavailable: () => {
         run.log("5 forwarded reads in a row failed; the record stops")
@@ -608,18 +612,10 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
 }
 
 module.exports = {
-  ADMIN_URL_ENV,
-  DEFAULT_RECORD_ADMIN_URL,
-  RECORDED_ROUTE,
-  RecordRefusal,
-  SEARCH_TAG,
   adminLocales,
   checkResults,
   createRecordDeps,
-  createSearchRecorder,
   localAdminUrl,
-  plannedChecks,
   postJson,
   recordSearchCommand,
-  writeSearchAnswers,
 }

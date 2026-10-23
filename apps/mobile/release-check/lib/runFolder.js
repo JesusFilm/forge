@@ -167,13 +167,9 @@ function createRunRecorder(
 }
 
 module.exports = {
-  EVENTS_FILE,
   RUNNER_LOG,
-  RUN_FILE,
-  RUN_ID_PATTERN,
   SERVER_LOG,
   STATUS_FILE,
-  appendEvent,
   completedPhasesFrom,
   createRunRecorder,
   newRunId,

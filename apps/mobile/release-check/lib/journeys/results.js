@@ -8,9 +8,9 @@
 const fs = require("node:fs")
 const path = require("node:path")
 
+const { SCREEN_ID, stepLabel } = require("./flow")
 const { DEBUG_DIR, JUNIT_FILE } = require("./maestro")
 
-const SCREEN_ID = /^screen-(.+)$/
 const SETUP_COMMANDS = new Set([
   "defineVariablesCommand",
   "applyConfigurationCommand",
@@ -50,10 +50,7 @@ function readCommand(entry) {
   const type = Object.keys(entry?.command ?? {})[0] ?? "unknown"
   const body = entry?.command?.[type] ?? {}
   const meta = entry?.metadata ?? {}
-  const label =
-    typeof body.label === "string" && body.label.trim() !== ""
-      ? body.label
-      : null
+  const label = stepLabel(body)
   return {
     type,
     label,
@@ -166,7 +163,6 @@ function pruneDeviceLogs(outputDir) {
 }
 
 module.exports = {
-  commandsFile,
   junitFailure,
   notRunLabels,
   pruneDeviceLogs,

@@ -247,6 +247,11 @@ function formatRefusal(parsed) {
   return lines.join("\n")
 }
 
+function refuseMode(deps, message) {
+  deps.err(`release-check refused: ${message}.`)
+  return EXIT.refused
+}
+
 // A validator for the JSON Schema keywords that schema/summary.schema.json
 // uses. An unknown keyword throws, so a schema edit cannot pass by omission.
 const ANNOTATIONS = new Set(["$schema", "$id", "title", "description", "$defs"])
@@ -352,6 +357,6 @@ module.exports = {
   MODES,
   formatRefusal,
   parseArgs,
-  usageOf,
+  refuseMode,
   validateAgainstSchema,
 }

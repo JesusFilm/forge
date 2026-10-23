@@ -148,8 +148,8 @@ function screenCoverage({
   const gaps = []
   const skippedPlatforms = []
   for (const screen of [...inventory.ids].sort()) {
+    const hand = handEntries(screensConfig).find((e) => e.id === screen)
     for (const platform of platforms) {
-      const hand = handEntries(screensConfig).find((e) => e.id === screen)
       if (hand && !hand.platforms.includes(platform)) continue
       const rule = hidingRule(screensConfig, settings, screen, platform)
       if (rule) {
@@ -291,18 +291,11 @@ function checkScreensCommand(command, options = {}) {
 }
 
 module.exports = {
-  MIN_ROUTE_SCREENS,
-  ScreensRefusal,
   checkScreensCommand,
-  hidingRule,
-  journeyPlatforms,
-  journeyScreens,
-  loadScreenInputs,
   notReachedScreens,
   planJourneys,
   readJourneys,
   runCheckScreens,
   screenCoverage,
-  settingValue,
   shownPlatforms,
 }

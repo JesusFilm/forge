@@ -12,6 +12,7 @@ const { EXIT } = require("../contract")
 const { run } = require("../proc")
 const android = require("./android")
 const inventoryLib = require("./inventory")
+const { isExecutable, resolveOnPath } = inventoryLib
 const ios = require("./ios")
 
 const CHECK_TIMEOUT_MS = 30000
@@ -33,22 +34,6 @@ function quote(file) {
 
 function exists(file) {
   return fs.existsSync(file)
-}
-
-function isExecutable(file) {
-  try {
-    fs.accessSync(file, fs.constants.X_OK)
-    return fs.statSync(file).isFile()
-  } catch {
-    return false
-  }
-}
-
-function resolveOnPath(name, pathValue) {
-  for (const dir of String(pathValue ?? "").split(":")) {
-    if (dir && isExecutable(path.join(dir, name))) return path.join(dir, name)
-  }
-  return null
 }
 
 function packageRevision(folder) {
@@ -314,16 +299,15 @@ async function ensureAndroidImage(ctx) {
     installed: false,
   }
   ctx.downloads.push(download)
-  if (!exists(path.join(folder, "source.properties"))) {
-    if (ctx.check) {
-      if (
-        exists(path.join(ctx.paths.sdkRoot, "licenses/android-sdk-license"))
-      ) {
-        return "downloadable"
-      }
-      ctx.problems.push(licenseProblem(ctx))
-      return "blocked"
+  const present = exists(path.join(folder, "source.properties"))
+  if (!present && ctx.check) {
+    if (exists(path.join(ctx.paths.sdkRoot, "licenses/android-sdk-license"))) {
+      return "downloadable"
     }
+    ctx.problems.push(licenseProblem(ctx))
+    return "blocked"
+  }
+  if (!present) {
     const result = await ctx.runChild(
       ctx.paths.sdkmanager,
       ["--install", image],
@@ -675,8 +659,6 @@ async function setupCommand(command, options = {}) {
 }
 
 module.exports = {
-  formatSetup,
-  maestroInstallCommand,
   runSetup,
   setupCommand,
 }

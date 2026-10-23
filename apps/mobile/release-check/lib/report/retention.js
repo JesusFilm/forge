@@ -71,4 +71,4 @@ function applyRetention(home, keep = DEFAULT_KEEP) {
   }
 }
 
-module.exports = { DEFAULT_KEEP, LATEST_FILE, RUNS_DIR, applyRetention }
+module.exports = { DEFAULT_KEEP, RUNS_DIR, applyRetention }

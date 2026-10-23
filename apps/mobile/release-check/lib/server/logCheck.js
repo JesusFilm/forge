@@ -78,7 +78,16 @@ function rootCoordinates(query) {
   return { opType: operation.operation, coordinates: [...out].sort() }
 }
 
-function checkForwarded(entry, where, operations) {
+function operationSets(operations) {
+  let sets = null
+  return () =>
+    (sets ??= {
+      readOnly: new Set(operations.readOnly ?? []),
+      searches: new Set(operations.savedAnswer ?? []),
+    })
+}
+
+function checkForwarded(entry, where, setsOf) {
   const findings = []
   const deviceId = entry.deviceId ?? null
   const body = entry.forwardedBody
@@ -130,8 +139,7 @@ function checkForwarded(entry, where, operations) {
       ),
     )
   }
-  const readOnly = new Set(operations.readOnly ?? [])
-  const searches = new Set(operations.savedAnswer ?? [])
+  const { readOnly, searches } = setsOf()
   for (const coordinate of read.coordinates) {
     if (searches.has(coordinate)) {
       findings.push(
@@ -160,6 +168,7 @@ function checkLogText(text, { operations, expectedDevices }) {
   const perDevice = {}
   const routes = {}
   const rateLimitRefusals = []
+  const setsOf = operationSets(operations)
   text.split("\n").forEach((line, index) => {
     if (line.trim() === "") return
     const where = `log line ${index + 1}`
@@ -188,7 +197,7 @@ function checkLogText(text, { operations, expectedDevices }) {
     }
     // Any line with forwarded bytes went to admin, whatever its route says.
     if (route === "forwarded" || entry.forwardedBody !== undefined) {
-      findings.push(...checkForwarded(entry, where, operations))
+      findings.push(...checkForwarded(entry, where, setsOf))
     }
   })
   for (const deviceId of expectedDevices) {

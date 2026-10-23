@@ -4,13 +4,8 @@
 // The server log (`server-log.jsonl`): one JSON object per request. A
 // synchronous append keeps every line that was answered, even after a crash.
 
-const crypto = require("node:crypto")
 const fs = require("node:fs")
 const path = require("node:path")
-
-function sha256(text) {
-  return crypto.createHash("sha256").update(text, "utf8").digest("hex")
-}
 
 function createLog(logPath) {
   let fd = null
@@ -32,4 +27,4 @@ function createLog(logPath) {
   }
 }
 
-module.exports = { createLog, sha256 }
+module.exports = { createLog }

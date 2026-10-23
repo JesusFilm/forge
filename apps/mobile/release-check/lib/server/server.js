@@ -7,6 +7,7 @@
 
 const http = require("node:http")
 
+const { sha256 } = require("../lists")
 const {
   answerSearch,
   createReuseStore,
@@ -15,7 +16,7 @@ const {
 } = require("./answers")
 const { classifyRequest } = require("./classify")
 const { createForwarder, realClock } = require("./forward")
-const { createLog, sha256 } = require("./log")
+const { createLog } = require("./log")
 const { buildAdminSchema, successReply } = require("./successReply")
 
 const DEFAULT_UPSTREAM_URL = "https://admin.jesusfilm.org/api/graphql"
@@ -43,6 +44,10 @@ function blockedBody(message) {
     errors: [{ message, extensions: { code: "BLOCKED" } }],
     data: null,
   }
+}
+
+function blockedOutcome({ route = "blocked", status = 200, message, reason }) {
+  return { route, status, text: JSON.stringify(blockedBody(message)), reason }
 }
 
 function listen(server, port, host) {
@@ -160,14 +165,10 @@ function createReadOnlyServer({
 
   async function answer(raw, arrivedAt) {
     if (!answering) {
-      return {
-        route: "blocked",
-        status: 200,
-        text: JSON.stringify(
-          blockedBody("The read-only server has not started."),
-        ),
+      return blockedOutcome({
+        message: "The read-only server has not started.",
         reason: "not-started",
-      }
+      })
     }
     const classified = classifyRequest(raw, operations)
     const parsed = {
@@ -204,14 +205,10 @@ function createReadOnlyServer({
     }
     return {
       ...parsed,
-      route: "blocked",
-      status: 200,
-      text: JSON.stringify(
-        blockedBody(
-          `The read-only server blocked this request (${classified.reason}).`,
-        ),
-      ),
-      reason: classified.reason,
+      ...blockedOutcome({
+        message: `The read-only server blocked this request (${classified.reason}).`,
+        reason: classified.reason,
+      }),
     }
   }
 
@@ -231,26 +228,21 @@ function createReadOnlyServer({
     try {
       const raw = await readBody(request)
       if (request.method !== "POST" || path !== GRAPHQL_PATH) {
-        outcome = {
+        outcome = blockedOutcome({
           route: "non-graphql",
           status: 404,
-          text: JSON.stringify(
-            blockedBody("The read-only server answers only POST /api/graphql."),
-          ),
+          message: "The read-only server answers only POST /api/graphql.",
           reason: "not-graphql",
-        }
+        })
       } else {
         outcome = await answer(raw, arrivedAt)
       }
     } catch (error) {
-      outcome = {
-        route: "blocked",
+      outcome = blockedOutcome({
         status: 500,
-        text: JSON.stringify(
-          blockedBody("The read-only server failed on this request."),
-        ),
+        message: "The read-only server failed on this request.",
         reason: `server-error ${error.name}`,
-      }
+      })
     }
     response.writeHead(outcome.status, {
       "content-type": "application/json",

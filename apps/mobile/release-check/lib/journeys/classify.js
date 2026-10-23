@@ -323,15 +323,11 @@ function classifyFailure(input) {
 
 module.exports = {
   DEFAULT_RETRY_AFTER_MS,
-  REPORTS_DIR,
-  WINDOW_MARGIN_MS,
   androidEventClasses,
   androidEvidence,
   androidExitClasses,
   classifyFailure,
   iosCrashReports,
-  iosReportMatches,
   readServerLog,
-  reportTimeMs,
   serverSignals,
 }

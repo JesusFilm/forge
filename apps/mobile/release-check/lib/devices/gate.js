@@ -1,11 +1,11 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global clearTimeout, module, require, setTimeout */
+/* global module, require */
 // The host gate (R9, KTD6, AE8). Before each queued device starts, the gate
 // reads free memory and the load average, and it lets one device per lane
 // run. Five devices at once froze an emulator in the 2026-10-15 pass.
 
-const { run } = require("../proc")
+const { abortableSleep, run } = require("../proc")
 const { toolEnv } = require("./inventory")
 
 const SAMPLE_TIMEOUT_MS = 10000
@@ -169,22 +169,6 @@ function describeFloor(refusal, floor, gate) {
   return `The Mac has too little free memory to run ${what} at the same time: they need ${needMb} MB plus a ${gate.reserveMb} MB reserve.`
 }
 
-function abortableSleep(ms, signal) {
-  return new Promise((resolve) => {
-    if (signal?.aborted) {
-      resolve()
-      return
-    }
-    const timer = setTimeout(done, ms)
-    function done() {
-      clearTimeout(timer)
-      signal?.removeEventListener("abort", done)
-      resolve()
-    }
-    signal?.addEventListener("abort", done, { once: true })
-  })
-}
-
 // A wait has no limit while a runner device runs, because that device frees
 // its memory when it ends; with none running, a long wait is host_overload.
 function createGate(options) {
@@ -250,7 +234,6 @@ function createGate(options) {
 module.exports = {
   createGate,
   decide,
-  parseSysctl,
   parseVmStat,
   planCapacity,
   sampleHost,

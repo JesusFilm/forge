@@ -1,6 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global AbortController, AbortSignal, clearTimeout, module, require, setTimeout */
+/* global AbortController, AbortSignal, module, require */
 // The speed pass (U9, KTD19, R10, R31). It runs after the journeys, one
 // device at a time, with three cold launches on fresh installs. The numbers
 // are information only, so no failure here may change the run result.
@@ -15,7 +15,7 @@ const { APP_ID } = require("./journeys/phases")
 const { runMaestro } = require("./journeys/maestro")
 const { pruneDeviceLogs, readAttemptOutput } = require("./journeys/results")
 const { JOURNEYS_DIR } = require("./lists")
-const { run: runProc } = require("./proc")
+const { abortableSleep, run: runProc } = require("./proc")
 
 const SAMPLES = 3
 const FLOWS_DIR = path.join(JOURNEYS_DIR, "_speed")
@@ -168,19 +168,6 @@ function deviceEntry(deviceId, samples, peakKb, failures) {
     peakMemoryMb: peakKb === null ? null : Math.round(peakKb / KB_PER_MB),
     failures,
   }
-}
-
-function abortableSleep(ms, signal) {
-  return new Promise((resolve) => {
-    if (signal.aborted) return resolve()
-    const timer = setTimeout(done, ms)
-    function done() {
-      clearTimeout(timer)
-      signal.removeEventListener("abort", done)
-      resolve()
-    }
-    signal.addEventListener("abort", done, { once: true })
-  })
 }
 
 // ── The phase ────────────────────────────────────────────────────────
@@ -588,20 +575,10 @@ function createSpeedPhase(options = {}) {
 }
 
 module.exports = {
-  COLD_LAUNCH_FLOW,
-  FIRST_FRAME_ANDROID_FLOW,
-  FIRST_FRAME_FLOW,
-  FLOWS_DIR,
-  MAIN_ACTIVITY,
-  SAMPLES,
-  SPANS,
-  WATCH_LINK,
   createSpeedPhase,
   firstFrameSpan,
   linkFirstFrame,
-  parseMeminfoRssKb,
   parseTotalTime,
   simulatorAppRssKb,
-  stepSpan,
   timingStats,
 }

@@ -1,6 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global module, require, setTimeout */
+/* global module, require */
 // Lists every simulator and emulator on the Mac and marks the runner's own by
 // name (KTD15). The end path stops only owned devices, never another
 // session's (R7, AE7). The shared device helpers live here too.
@@ -9,7 +9,7 @@ const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
 
-const { run } = require("../proc")
+const { run, sleep: defaultSleep } = require("../proc")
 
 const CONFIG_DIR = path.resolve(__dirname, "../../config")
 const DEVICES_FILE = path.join(CONFIG_DIR, "devices.json")
@@ -89,6 +89,22 @@ function toolPaths(env) {
     avdmanager: path.join(sdkRoot, "cmdline-tools/latest/bin/avdmanager"),
     avdHome: env.ANDROID_AVD_HOME || path.join(userHome, "avd"),
   }
+}
+
+function isExecutable(file) {
+  try {
+    fs.accessSync(file, fs.constants.X_OK)
+    return fs.statSync(file).isFile()
+  } catch {
+    return false
+  }
+}
+
+function resolveOnPath(name, pathValue) {
+  for (const dir of String(pathValue ?? "").split(":")) {
+    if (dir && isExecutable(path.join(dir, name))) return path.join(dir, name)
+  }
+  return null
 }
 
 /** The only environment that device tools get: a fixed PATH plus named keys. */
@@ -413,12 +429,6 @@ async function waitUntil(check, limitMs, sleep) {
   return check()
 }
 
-function defaultSleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
-}
-
 function isAlive(pid) {
   try {
     process.kill(pid, 0)
@@ -479,23 +489,22 @@ async function stopOwnedDevices(inventory, options = {}) {
 }
 
 module.exports = {
-  DEVICES_FILE,
+  LANE_PORT_NAMES,
   LIST_TAIL_BYTES,
   RESTARTS_PER_RUN,
   XCRUN,
-  avdDirectory,
   avdPrefix,
   defaultSleep,
   ensureResponsive,
+  isExecutable,
   lastLine,
   listInventory,
   loadDeviceConfig,
   loadPorts,
   parseAdbDevices,
-  parseEmulatorProcesses,
   parseIni,
-  parseSimulators,
   readAvdConfig,
+  resolveOnPath,
   runningForeign,
   simulatorPrefix,
   stopList,

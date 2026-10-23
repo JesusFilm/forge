@@ -1,6 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global AbortController, module, require, setTimeout */
+/* global AbortController, module, require */
 // The one-device authoring session (KTD18) and the device steps that
 // record-search shares. `session up` starts a detached session process that
 // holds the lock, the read-only server, and the device until `session down`.
@@ -8,7 +8,7 @@
 const fs = require("node:fs")
 const path = require("node:path")
 
-const { EXIT } = require("./contract")
+const { EXIT, refuseMode } = require("./contract")
 const { createEmulator } = require("./devices/android")
 const inventoryLib = require("./devices/inventory")
 const { createSimulator } = require("./devices/ios")
@@ -17,7 +17,12 @@ const { runMaestro } = require("./journeys/maestro")
 const { APP_ID, ATTEMPT_LIMIT_MS } = require("./journeys/phases")
 const { pruneDeviceLogs, readAttemptOutput } = require("./journeys/results")
 const { shownPlatforms } = require("./journeys/screens")
-const { JOURNEYS_DIR, readJson } = require("./lists")
+const {
+  ADMIN_SCHEMA_PATH,
+  JOURNEYS_DIR,
+  LIST_FILES,
+  readJson,
+} = require("./lists")
 const lockLib = require("./lock")
 const runFolder = require("./runFolder")
 
@@ -26,8 +31,6 @@ const STATE_FILE = "state.json"
 const SESSION_LOG = "session.log"
 const PROCESS_LOG = "process.log"
 const SESSIONS_DIR = "sessions"
-const ADMIN_SCHEMA_PATH = "apps/admin/schema.graphql"
-const ANDROID_APK = path.join("android", "app-release.apk")
 const SIMCTL_TIMEOUT_MS = 60_000
 const MINUTE = 60_000
 // A new build can take 45 minutes and a boot 5 more (lifecycle TIME_LIMITS).
@@ -35,11 +38,6 @@ const UP_WAIT_MS = 120 * MINUTE
 const DOWN_WAIT_MS = 2 * MINUTE
 const LIVE_STATES = new Set(["starting", "ready", "stopping"])
 const STOP_SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"]
-const LANE_PORT_NAMES = Object.freeze({
-  ios: "hostIos",
-  androidPhone: "hostAndroidPhone",
-  androidTablet: "hostAndroidTablet",
-})
 const JOURNEY_ID = /^[a-z0-9][a-z0-9-]*$/
 
 class SessionError extends Error {
@@ -49,12 +47,6 @@ class SessionError extends Error {
     this.code = code
     this.refused = refused
   }
-}
-
-function defaultSleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms)
-  })
 }
 
 function untilAborted(signal) {
@@ -77,7 +69,7 @@ function createSessionDeps(overrides = {}) {
     runMaestro,
     processStart: (pid) => lockLib.processStart(pid),
     releaseLock: lockLib.releaseLock,
-    sleep: defaultSleep,
+    sleep: inventoryLib.defaultSleep,
     journeysDir: JOURNEYS_DIR,
     sessionEntry: __filename,
     upWaitMs: UP_WAIT_MS,
@@ -119,18 +111,7 @@ function resolveRunnerDevice(input, devicesConfig) {
 
 /** The host port of a lane (KTD6), from test-settings.json. */
 function lanePort(settings, lane) {
-  return settings.ports[LANE_PORT_NAMES[lane]]
-}
-
-function artifactIn(buildDir, platform) {
-  if (platform === "android") {
-    const apk = path.join(buildDir, ANDROID_APK)
-    return fs.existsSync(apk) ? apk : null
-  }
-  const dir = path.join(buildDir, "ios")
-  if (!fs.existsSync(dir)) return null
-  const apps = fs.readdirSync(dir).filter((name) => name.endsWith(".app"))
-  return apps.length === 1 ? path.join(dir, apps[0]) : null
+  return settings.ports[inventoryLib.LANE_PORT_NAMES[lane]]
 }
 
 async function buildFindings(deps, file) {
@@ -150,13 +131,13 @@ async function buildFindings(deps, file) {
 // passes the build check, else a new build, which needs clean inputs (R8).
 // Every caller holds the lock, so no run or other session uses a pruned build.
 async function checkedBuild(deps, { platforms, signal }) {
-  const { pruneBuilds } = require("./lifecycle")
+  const { artifactPath, pruneBuilds } = require("./lifecycle")
   const commit = await deps.git.head()
   const buildDir = path.join(deps.home, "builds", commit)
   const artifacts = {}
   const missing = []
   for (const platform of platforms) {
-    const file = artifactIn(buildDir, platform)
+    const file = artifactPath(buildDir, platform)
     if (file && (await buildFindings(deps, file)).length === 0) {
       artifacts[platform] = file
     } else {
@@ -264,7 +245,7 @@ async function resetApp(deps, device, handle, artifacts, signal) {
 
 /** The `-e` variables that a run gives each journey (U7 phases). */
 function journeyVariables(deps, platform) {
-  const screensConfig = readJson(path.join(deps.configDir, "screens.json"))
+  const screensConfig = readJson(path.join(deps.configDir, LIST_FILES.screens))
   const explore = shownPlatforms(
     screensConfig,
     deps.config.settings,
@@ -392,11 +373,6 @@ function appendSessionLog(sessionDir, now, text) {
   )
 }
 
-function refuse(deps, message) {
-  deps.err(`release-check refused: ${message}.`)
-  return EXIT.refused
-}
-
 // ── session up ──────────────────────────────────────────────────────
 
 // The detached session process: it must outlive `session up`, so it holds the
@@ -441,7 +417,7 @@ async function serveSession({ sessionDir, deviceId }, deps) {
       state: "failed",
       code: "LOCK_HELD",
       refused: true,
-      error: `another release check holds the lock (mode ${taken.lock.mode}, pid ${taken.lock.pid})`,
+      error: `another release check holds the lock (${lockLib.holderText(taken.lock, { withRun: false })})`,
     })
     return EXIT.refused
   }
@@ -532,19 +508,19 @@ async function upSession(command, deps) {
     command.flags.device,
     deps.config.devices,
   )
-  if (resolved.refusal) return refuse(deps, resolved.refusal.message)
+  if (resolved.refusal) return refuseMode(deps, resolved.refusal.message)
   const current = readSession(deps.home)
   if (current && LIVE_STATES.has(current.state)) {
-    return refuse(
+    return refuseMode(
       deps,
       `session ${current.sessionId} on ${current.deviceId} is ${current.state}; run \`session down\` first`,
     )
   }
   const lock = await deps.lock.inspect()
   if (lock.state === "held") {
-    return refuse(
+    return refuseMode(
       deps,
-      `another release check holds the lock (mode ${lock.lock.mode}, pid ${lock.lock.pid})`,
+      `another release check holds the lock (${lockLib.holderText(lock.lock, { withRun: false })})`,
     )
   }
   const sessionId = runFolder.newRunId(new Date(deps.now()), deps.randomHex())
@@ -649,10 +625,10 @@ async function liveSession(deps) {
 
 async function trySession(command, deps) {
   const live = await liveSession(deps)
-  if (live.refusal) return refuse(deps, live.refusal)
+  if (live.refusal) return refuseMode(deps, live.refusal)
   const { record } = live
   const journey = resolveJourney(command.positionals[0], deps.journeysDir)
-  if (journey.refusal) return refuse(deps, journey.refusal)
+  if (journey.refusal) return refuseMode(deps, journey.refusal)
   const device = deps.config.devices.devices.find(
     (entry) => entry.id === record.deviceId,
   )
@@ -743,7 +719,7 @@ async function cleanUpDeadSession(deps, record) {
 
 async function downSession(command, deps) {
   const record = readSession(deps.home)
-  if (!record) return refuse(deps, "no session is up")
+  if (!record) return refuseMode(deps, "no session is up")
   const stateFile = path.join(record.sessionDir, STATE_FILE)
   const notes = []
   let stopped = true
@@ -807,15 +783,10 @@ async function sessionCommand(command, deps = createSessionDeps()) {
 
 module.exports = {
   SESSION_FILE,
-  STATE_FILE,
-  SessionError,
   checkedBuild,
   createSessionDeps,
-  journeyVariables,
   lanePort,
   openDevice,
-  readSession,
-  resolveJourney,
   resolveRunnerDevice,
   runJourneyOnce,
   serveSession,

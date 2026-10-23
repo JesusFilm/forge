@@ -11,6 +11,7 @@ const path = require("node:path")
 const { parse, print } = require("graphql")
 
 const { EXIT, FAILURE_CLASSES } = require("./contract")
+const inventoryLib = require("./devices/inventory")
 const { journeyRuleProblems, parseFlow } = require("./journeys/flow")
 
 const RELEASE_CHECK_DIR = path.resolve(__dirname, "..")
@@ -18,6 +19,7 @@ const MOBILE_DIR = path.resolve(RELEASE_CHECK_DIR, "..")
 const REPO_ROOT = path.resolve(MOBILE_DIR, "../..")
 const CONFIG_DIR = path.join(RELEASE_CHECK_DIR, "config")
 const JOURNEYS_DIR = path.join(RELEASE_CHECK_DIR, "journeys")
+const ADMIN_SCHEMA_PATH = "apps/admin/schema.graphql"
 
 const LIST_FILES = Object.freeze({
   testSettings: "test-settings.json",
@@ -604,7 +606,7 @@ function checkDevices(devices) {
   if (devices.schemaVersion !== 1) problems.push("schemaVersion must be 1")
   const prefix = devices.namePrefix
   if (!isNonEmptyString(prefix)) return [...problems, "namePrefix is required"]
-  const avdPrefix = `${prefix.toLowerCase().replace(/\s+/g, "_")}_`
+  const avdPrefix = inventoryLib.avdPrefix(devices)
   if (!Array.isArray(devices.devices) || devices.devices.length === 0) {
     return [...problems, "devices must list the test devices"]
   }
@@ -848,8 +850,8 @@ function checkListsCommand(command, options = {}) {
 }
 
 module.exports = {
+  ADMIN_SCHEMA_PATH,
   CONFIG_DIR,
-  ENV_EXTRA_KEYS,
   JOURNEYS_DIR,
   LIST_FILES,
   MOBILE_DIR,
@@ -862,13 +864,13 @@ module.exports = {
   currentWatchSearchDigest,
   documentDigest,
   envKeysFromSource,
-  journeyLinks,
-  nonRouteSheetIds,
+  isObject,
   readJson,
   rootFieldCoordinates,
   routeScreenId,
   runCheckLists,
   screenInventory,
   sheetRoutePatterns,
+  sha256,
   watchSearchDocumentText,
 }

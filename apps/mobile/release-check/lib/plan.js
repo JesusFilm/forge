@@ -9,6 +9,7 @@ const fs = require("node:fs")
 const path = require("node:path")
 
 const { COMMAND, EXIT } = require("./contract")
+const { holderText, summarizeLock } = require("./lock")
 
 const GB = 1024 ** 3
 const DISK_FLOOR_BYTES = 20 * GB
@@ -277,7 +278,7 @@ async function gatherPreflight(deps, { flags = {}, forRun = false } = {}) {
     refusals.push(
       refusal(
         "LOCK_HELD",
-        `Another release check holds the lock (mode ${lock.lock.mode}, pid ${lock.lock.pid}${lock.lock.runId ? `, run ${lock.lock.runId}` : ""}). Wait for it to end, or run \`stop\`.`,
+        `Another release check holds the lock (${holderText(lock.lock)}). Wait for it to end, or run \`stop\`.`,
       ),
     )
   }
@@ -341,9 +342,7 @@ async function gatherPreflight(deps, { flags = {}, forRun = false } = {}) {
 
 function lockText(lock) {
   if (lock.state === "free") return "free"
-  const who = lock.lock
-    ? `mode ${lock.lock.mode}, pid ${lock.lock.pid}${lock.lock.runId ? `, run ${lock.lock.runId}` : ""}`
-    : "an unreadable lock file"
+  const who = lock.lock ? holderText(lock.lock) : "an unreadable lock file"
   if (lock.state === "held") return `held (${who})`
   return `stale (${who}; ${lock.reason}). The next run takes it over.`
 }
@@ -453,13 +452,7 @@ function planJson(pre) {
       ok: pre.host.capacity.ok,
       message: pre.host.capacity.message,
     },
-    lock: {
-      state: pre.lock.state,
-      reason: pre.lock.reason,
-      mode: pre.lock.lock?.mode ?? null,
-      pid: pre.lock.lock?.pid ?? null,
-      runId: pre.lock.lock?.runId ?? null,
-    },
+    lock: summarizeLock(pre.lock),
     admin: pre.admin,
     journeys: pre.selection.journeys.length,
     estimate: { minutes: pre.estimate.minutes, text: pre.estimate.text },
@@ -481,16 +474,10 @@ async function planCommand(command, deps) {
 }
 
 module.exports = {
-  ADMIN_PREFLIGHT_BODY,
-  DISK_FLOOR_BYTES,
-  ESTIMATE_MINUTES,
   diskFree,
-  estimateRun,
   formatPlan,
   gatherPreflight,
   journeyIdsIn,
   planCommand,
-  planJson,
   preflightAdmin,
-  resolveSelection,
 }

@@ -375,10 +375,7 @@ module.exports = {
   TIMEOUTS,
   applyAvdPins,
   avdMismatches,
-  avdPinValues,
   createAvd,
   createEmulator,
-  emulatorArgs,
   packageFolder,
-  sysdirOf,
 }

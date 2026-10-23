@@ -8,7 +8,7 @@
 const fs = require("node:fs")
 const path = require("node:path")
 
-const { toolEnv } = require("../devices/inventory")
+const { resolveOnPath, toolEnv } = require("../devices/inventory")
 const { run } = require("../proc")
 
 // The iOS lane runs one simulator at a time, so one runner port is enough.
@@ -32,22 +32,11 @@ class MaestroMissingError extends Error {
   }
 }
 
-function isExecutable(file) {
-  try {
-    fs.accessSync(file, fs.constants.X_OK)
-    return fs.statSync(file).isFile()
-  } catch {
-    return false
-  }
-}
-
 /** MAESTRO_BIN when set, else `maestro` on the PATH of `env`. */
 function maestroBinary(env) {
   if (env.MAESTRO_BIN) return env.MAESTRO_BIN
-  for (const dir of String(env.PATH ?? "").split(":")) {
-    const file = dir ? path.join(dir, "maestro") : null
-    if (file && isExecutable(file)) return file
-  }
+  const file = resolveOnPath("maestro", env.PATH)
+  if (file) return file
   throw new MaestroMissingError()
 }
 
@@ -96,11 +85,7 @@ module.exports = {
   DEBUG_DIR,
   IOS_DRIVER_HOST_PORT,
   JUNIT_FILE,
-  LOG_FILE,
-  MAESTRO_ENV,
-  MaestroMissingError,
   maestroArgs,
-  maestroBinary,
   maestroEnv,
   runMaestro,
 }

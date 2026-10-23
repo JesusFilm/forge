@@ -1,6 +1,6 @@
 "use strict"
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global clearTimeout, module, require, setTimeout */
+/* global module, require */
 // The `probing` and `journeys` phases of a run (U6 contract, KTD5, KTD6,
 // KTD11, KTD14). Each lane runs its devices in order through the host gate;
 // the settings probe runs first on each device and a failure stops the run.
@@ -19,7 +19,7 @@ const {
   readJson,
   screenInventory,
 } = require("../lists")
-const { run: runProc } = require("../proc")
+const { abortableSleep, run: runProc } = require("../proc")
 const { SERVER_LOG } = require("../runFolder")
 const classify = require("./classify")
 const { staleKnownBugs } = require("./knownBugs")
@@ -30,7 +30,13 @@ const {
   readAttemptOutput,
   screensReachedFrom,
 } = require("./results")
-const { attemptRecord, notRunRecord, runJourney, runQueue } = require("./retry")
+const {
+  NOT_RUN_REASON,
+  attemptRecord,
+  notRunRecord,
+  runJourney,
+  runQueue,
+} = require("./retry")
 const {
   notReachedScreens,
   planJourneys,
@@ -440,16 +446,7 @@ function createJourneyPhases(options = {}) {
 
   function sleep(ms, signal) {
     if (options.sleep) return options.sleep(ms, signal)
-    return new Promise((resolve) => {
-      if (signal.aborted) return resolve()
-      const timer = setTimeout(done, ms)
-      function done() {
-        clearTimeout(timer)
-        signal.removeEventListener("abort", done)
-        resolve()
-      }
-      signal.addEventListener("abort", done, { once: true })
-    })
+    return abortableSleep(ms, signal)
   }
 
   async function runDeviceQueue(run, ctx, entry, journeys) {
@@ -461,11 +458,7 @@ function createJourneyPhases(options = {}) {
         if (ctx.signal.aborted) {
           return {
             attempts: [
-              notRunRecord(
-                journeyId,
-                entry.device.id,
-                "The run stopped before this journey.",
-              ),
+              notRunRecord(journeyId, entry.device.id, NOT_RUN_REASON.stopped),
             ],
             label: "not_run",
             deviceLost: false,
@@ -562,20 +555,14 @@ function createJourneyPhases(options = {}) {
       if (probedEarlier === false) continue
       const withProbe = probedEarlier !== true
       if (ctx.signal.aborted) {
-        markNotRun(
-          run,
-          ctx,
-          device,
-          "The run stopped before this device started.",
-          withProbe,
-        )
+        markNotRun(run, ctx, device, NOT_RUN_REASON.deviceNotStarted, withProbe)
         continue
       }
       const entry = await startDevice(run, ctx, device)
       if (!entry.started) {
         const why = entry.admitted
           ? `The device did not start: ${entry.error}`
-          : "The run stopped before this device started."
+          : NOT_RUN_REASON.deviceNotStarted
         markNotRun(run, ctx, device, why, withProbe)
         continue
       }
@@ -583,24 +570,12 @@ function createJourneyPhases(options = {}) {
         const probe = await probeDevice(run, ctx, entry)
         if (probe.probeFailed) {
           ctx.stop("probe_failed", entry.device.id)
-          markNotRun(
-            run,
-            ctx,
-            device,
-            "The settings probe failed on this device, so this journey did not run.",
-            false,
-          )
+          markNotRun(run, ctx, device, NOT_RUN_REASON.probeFailed, false)
           await stopDevice(ctx, entry)
           continue
         }
         if (!probe.passed) {
-          markNotRun(
-            run,
-            ctx,
-            device,
-            "The run stopped before this journey.",
-            false,
-          )
+          markNotRun(run, ctx, device, NOT_RUN_REASON.stopped, false)
           await stopDevice(ctx, entry)
           continue
         }
