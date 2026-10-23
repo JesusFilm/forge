@@ -792,9 +792,9 @@ payload is constrained to non-sensitive, low-cardinality values.
 
 A play of a Dub from a file that the viewer downloaded to the phone. The phone
 can be online or offline: after a download, the app plays the file for every
-later play of that Dub, also when a network connection exists. The mobile code
-labels these sessions `offline` (the `playback_source` value), but a Downloaded
-Play is not the same as an offline play.
+later play of that Dub, also when a network connection exists. Playback
+telemetry calls these sessions offline plays, but a Downloaded Play is not the
+same as an offline play: the phone is often online.
 
 ### Mux Data View
 
