@@ -4,12 +4,19 @@ apt-get update
 apt-get install -y --no-install-recommends ca-certificates libnss3-tools
 sed -i -e 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' -e 's|^mozilla/Comodo_AAA_Services_root.crt|!&|' /etc/ca-certificates.conf
 update-ca-certificates --fresh
-# Remove the packaged copies too: regenerating the inherited directory must
-# never restore these excluded trust anchors from /usr/share.
-rm -f /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
-    /usr/share/ca-certificates/mozilla/Comodo_AAA_Services_root.crt \
-    /etc/ssl/certs/emSign_ECC_Root_CA_-_G3.pem \
-    /etc/ssl/certs/Comodo_AAA_Services_root.pem
+# The serving filesystem restored a removed inherited G3 file despite the
+# corrected helper and image source. Persist an inert replacement in the image
+# instead of relying on deletion of a lower-layer file. This grants no trust;
+# any restored hashed/named aliases can only resolve to non-certificate data.
+for certificate in emSign_ECC_Root_CA_-_G3 Comodo_AAA_Services_root; do
+  printf '%s\n' '# Distrusted certificate: intentionally no PEM certificate.' \
+    > "/usr/share/ca-certificates/mozilla/$certificate.crt"
+  if openssl x509 -in "/usr/share/ca-certificates/mozilla/$certificate.crt" -noout 2>/dev/null; then
+    echo 'Distrusted certificate marker unexpectedly parsed as X.509' >&2
+    exit 1
+  fi
+  rm -f "/etc/ssl/certs/$certificate.pem"
+done
 openssl rehash /etc/ssl/certs
 ca_directory=/usr/local/share/security-ca/certs
 mkdir -p "$ca_directory"

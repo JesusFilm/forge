@@ -2,17 +2,27 @@
 # CI-only public TLS controls. Never starts the watcher or reads credentials.
 set -eu
 cd /app/apps/analytics-watcher
-# Exercise regeneration as well as the freshly built directory. Neither the
-# packaged root nor its generated link may be restored.
-for certificate in emSign_ECC_Root_CA_-_G3 Comodo_AAA_Services_root; do
-  test ! -e "/usr/share/ca-certificates/mozilla/$certificate.crt"
-  test ! -e "/etc/ssl/certs/$certificate.pem"
-done
+# Exercise persisted inert replacements and directory regeneration. A named
+# alias may be absent or restored, but must never resolve to a certificate.
+assert_inert_roots() {
+  for certificate in emSign_ECC_Root_CA_-_G3 Comodo_AAA_Services_root; do
+    file="/usr/share/ca-certificates/mozilla/$certificate.crt"
+    test -f "$file"
+    grep -q 'intentionally no PEM certificate' "$file"
+    if openssl x509 -in "$file" -noout 2>/dev/null; then
+      echo 'Distrusted root replacement is an X.509 certificate' >&2
+      exit 1
+    fi
+    if openssl x509 -in "/etc/ssl/certs/$certificate.pem" -noout 2>/dev/null; then
+      echo 'A named alias restored a distrusted certificate' >&2
+      exit 1
+    fi
+  done
+}
+assert_inert_roots
 update-ca-certificates --fresh >/dev/null
 openssl rehash /etc/ssl/certs
-for certificate in emSign_ECC_Root_CA_-_G3 Comodo_AAA_Services_root; do
-  test ! -e "/etc/ssl/certs/$certificate.pem"
-done
+assert_inert_roots
 node --input-type=module - <<'NODE'
 import assert from 'node:assert/strict'
 import { chromium } from 'playwright'
