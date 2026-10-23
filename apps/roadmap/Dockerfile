@@ -15,7 +15,8 @@ RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filte
 COPY packages/watch-url-policy packages/watch-url-policy
 COPY apps/roadmap apps/roadmap
 COPY docs/roadmap docs/roadmap
-RUN pnpm --filter roadmap build
+RUN node --import tsx --test apps/roadmap/lib/planned-roadmap-calendar.test.ts \
+    && pnpm --filter roadmap build
 ENV NODE_ENV=production HOSTNAME=0.0.0.0 PORT=3100 ROADMAP_DIR=/app/docs/roadmap
 COPY apps/roadmap/verify-image-trust.sh /usr/local/bin/verify-roadmap-image-trust
 WORKDIR /app/apps/roadmap
