@@ -3,7 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "/apps/agentic/Dockerfile"
 
 [deploy]
-startCommand = "cd apps/agentic && node .mastra/output/index.mjs"
+startCommand = "node /app/apps/agentic/.mastra/output/index.mjs"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
