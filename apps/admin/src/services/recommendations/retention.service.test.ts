@@ -335,6 +335,69 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
 }
 
 describe("recommendation retention service", () => {
+  it("manual stored-expiry mode keeps age-only cleanup out of an expired-root pass", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+
+    await expect(
+      purgeExpiredRecommendationRequests(
+        prisma as never,
+        now,
+        2,
+        "stored-expiry-only",
+      ),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      rootsDeleted: 2,
+      rowCounts: { expiredContentActions: 1 },
+    })
+    expect(transaction.recommendationRequest.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["request-1", "request-2"] } },
+    })
+    const sql = [
+      ...transaction.$executeRaw.mock.calls,
+      ...transaction.$queryRaw.mock.calls,
+    ]
+      .map(([query]) => rawSqlText(query))
+      .join("\n")
+    expect(sql).not.toContain("recommendation_profile_vector_snapshot")
+    expect(sql).not.toContain("recommendation_precomputed_generation g")
+    expect(sql).not.toContain("recommendation_cowatch_refresh_attempt")
+    expect(transaction.recommendationProfile.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          erasureState: "PENDING",
+          expiresAt: { lte: now },
+        }),
+      }),
+    )
+    expect(transaction.recommendationProfile.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it("continues a strict manual pass when the guarded proof page is full", async () => {
+    const { prisma, transaction } = buildPrisma()
+    transaction.recommendationRequest.findMany.mockResolvedValueOnce([])
+    transaction.recommendationContentAction.findMany.mockResolvedValueOnce([])
+    transaction.$executeRaw.mockImplementation(async (query: unknown) =>
+      rawSqlText(query).includes(
+        "DELETE FROM recommendation_precomputed_generation_retention_proof",
+      )
+        ? 100
+        : 0,
+    )
+
+    await expect(
+      purgeExpiredRecommendationRequests(
+        prisma as never,
+        new Date("2026-09-17T00:00:00.000Z"),
+        2,
+        "stored-expiry-only",
+      ),
+    ).resolves.toMatchObject({
+      batchLimitReached: true,
+      rowCounts: { precomputedGenerationProofsExpired: 100 },
+    })
+  })
   it("unlinks push rows for an expired viewer before deleting the viewer", async () => {
     const { prisma, transaction } = buildPrisma()
     const digests = ["c".repeat(64), "d".repeat(64)]

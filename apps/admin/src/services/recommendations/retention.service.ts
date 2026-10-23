@@ -18,6 +18,8 @@ import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
 import { purgeExpiredPrecomputedVisitRoots } from "./precomputed/visit-retention"
 import {
+  PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE,
+  purgeExpiredPrecomputedGenerationProofs,
   purgeExpiredPrecomputedGenerations,
   purgeRetiredGaCaptureArtifacts,
 } from "./precomputed/generation-retention"
@@ -32,6 +34,7 @@ export const WATCH_EXPOSURE_RETENTION_PAGE_SIZE = 1_000
 export const RECOMMENDATION_RETENTION_MAX_BATCH_SIZE = 5_000
 export const RECOMMENDATION_RETENTION_RUN_DAYS = 90
 export const RECOMMENDATION_RETENTION_HEALTH_HOURS = 36
+export type RecommendationRetentionMode = "scheduled" | "stored-expiry-only"
 const RECOMMENDATION_PROFILE_AUDIT_DAYS = 365
 const RECOMMENDATION_RETENTION_LOCK_ID = 368_000_001
 const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
@@ -212,6 +215,7 @@ export async function purgeExpiredRecommendationRequests(
   prisma: PrismaClient,
   now: Date = new Date(),
   batchSize = RECOMMENDATION_RETENTION_BATCH_SIZE,
+  mode: RecommendationRetentionMode = "scheduled",
 ): Promise<RecommendationPurgeResult> {
   if (
     !Number.isInteger(batchSize) ||
@@ -317,6 +321,7 @@ export async function purgeExpiredRecommendationRequests(
         now,
         batchSize,
         requestIds,
+        mode === "stored-expiry-only",
       )
       rowCounts.expiredPrecomputedVisits = result.visitsDeleted
       rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
@@ -329,35 +334,54 @@ export async function purgeExpiredRecommendationRequests(
     })
     // One generation at a time; a large terminal graph enters the non-servable
     // retiring state and drains bounded child pages on subsequent passes.
-    const precomputedGenerationPurge = await phase(async (tx) => {
-      const result = await purgeExpiredPrecomputedGenerations(tx, now, 1)
-      rowCounts.expiredPrecomputedGenerations = result.generationsDeleted
-      rowCounts.abandonedPrecomputedGenerations = result.generationsAbandoned
-      rowCounts.retiringPrecomputedGenerations = result.generationsRetiring
-      rowCounts.precomputedGenerationFinalSources = result.finalSourcesDeleted
-      rowCounts.precomputedGenerationBuildSources = result.buildSourcesDeleted
-      rowCounts.precomputedGenerationChoices =
-        result.provisionalChoicesDeleted + result.provisionalChoicesPruned
-      rowCounts.precomputedGenerationModelCalls = result.modelCallsDeleted
-      rowCounts.precomputedGenerationHistoryCalls = result.historyCallsDeleted
-      rowCounts.precomputedGenerationCheckpointsCleared =
-        result.checkpointsCleared
-      rowCounts.precomputedGenerationProofsExpired = result.proofsDeleted
-      return result
-    })
+    const precomputedGenerationPurge =
+      mode === "stored-expiry-only"
+        ? await phase(async (tx) => {
+            const proofsDeleted = await purgeExpiredPrecomputedGenerationProofs(
+              tx,
+              now,
+            )
+            rowCounts.precomputedGenerationProofsExpired = proofsDeleted
+            return {
+              pageFull: proofsDeleted === PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE,
+            }
+          })
+        : await phase(async (tx) => {
+            const result = await purgeExpiredPrecomputedGenerations(tx, now, 1)
+            rowCounts.expiredPrecomputedGenerations = result.generationsDeleted
+            rowCounts.abandonedPrecomputedGenerations =
+              result.generationsAbandoned
+            rowCounts.retiringPrecomputedGenerations =
+              result.generationsRetiring
+            rowCounts.precomputedGenerationFinalSources =
+              result.finalSourcesDeleted
+            rowCounts.precomputedGenerationBuildSources =
+              result.buildSourcesDeleted
+            rowCounts.precomputedGenerationChoices =
+              result.provisionalChoicesDeleted + result.provisionalChoicesPruned
+            rowCounts.precomputedGenerationModelCalls = result.modelCallsDeleted
+            rowCounts.precomputedGenerationHistoryCalls =
+              result.historyCallsDeleted
+            rowCounts.precomputedGenerationCheckpointsCleared =
+              result.checkpointsCleared
+            rowCounts.precomputedGenerationProofsExpired = result.proofsDeleted
+            return result
+          })
     // Object-store cleanup is post-commit and retryable. An S3 outage must
     // never stall the ordinary request/visit retention phases below.
-    try {
-      const gaCapturePurge = await purgeRetiredGaCaptureArtifacts(
-        prisma,
-        now,
-        Math.min(batchSize, 10),
-      )
-      rowCounts.expiredPrecomputedGaCaptureArtifacts = gaCapturePurge.deleted
-      rowCounts.deferredPrecomputedGaCaptureCleanup = 0
-    } catch {
-      rowCounts.expiredPrecomputedGaCaptureArtifacts = 0
-      rowCounts.deferredPrecomputedGaCaptureCleanup = 1
+    if (mode === "scheduled") {
+      try {
+        const gaCapturePurge = await purgeRetiredGaCaptureArtifacts(
+          prisma,
+          now,
+          Math.min(batchSize, 10),
+        )
+        rowCounts.expiredPrecomputedGaCaptureArtifacts = gaCapturePurge.deleted
+        rowCounts.deferredPrecomputedGaCaptureCleanup = 0
+      } catch {
+        rowCounts.expiredPrecomputedGaCaptureArtifacts = 0
+        rowCounts.deferredPrecomputedGaCaptureCleanup = 1
+      }
     }
     await phase(async (tx) => {
       const removed = await purgeExpiredCompositionEvidence(tx, now)
@@ -371,11 +395,13 @@ export async function purgeExpiredRecommendationRequests(
     await phase(async (tx) => {
       rowCounts.expiredOwnerReleases = await purgeExpiredOwnerReleases(tx, now)
     })
-    await phase(async (tx) => {
-      const removed = await purgeExpiredCowatchRefreshMetadata(tx, now)
-      rowCounts.expiredCowatchRefreshAttempts = removed.attempts
-      rowCounts.expiredCowatchRefreshGrants = removed.grants
-    })
+    if (mode === "scheduled") {
+      await phase(async (tx) => {
+        const removed = await purgeExpiredCowatchRefreshMetadata(tx, now)
+        rowCounts.expiredCowatchRefreshAttempts = removed.attempts
+        rowCounts.expiredCowatchRefreshGrants = removed.grants
+      })
+    }
     const expiredWatchExposurePageSize = await phase(async (tx) => {
       const exposures = await tx.watchSurfaceExposure.findMany({
         where: { expiresAt: { lte: now } },
@@ -617,19 +643,21 @@ export async function purgeExpiredRecommendationRequests(
         : 0
       return rows.length
     })
-    await phase(async (tx) => {
-      // Publisher transactions hold this dedicated key in shared mode from
-      // before their profile row locks until commit. Do not block other
-      // retention phases when a publisher is active.
-      const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>(
-        Prisma.sql`SELECT pg_try_advisory_xact_lock(368000002) AS locked`,
-      )
-      if (!lock?.locked) {
-        profileVectorSweepSkipped = true
-        rowCounts.orphanProfileVectorSnapshots = 0
-        return
-      }
-      rowCounts.orphanProfileVectorSnapshots = await tx.$executeRaw(Prisma.sql`
+    if (mode === "scheduled")
+      await phase(async (tx) => {
+        // Publisher transactions hold this dedicated key in shared mode from
+        // before their profile row locks until commit. Do not block other
+        // retention phases when a publisher is active.
+        const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>(
+          Prisma.sql`SELECT pg_try_advisory_xact_lock(368000002) AS locked`,
+        )
+        if (!lock?.locked) {
+          profileVectorSweepSkipped = true
+          rowCounts.orphanProfileVectorSnapshots = 0
+          return
+        }
+        rowCounts.orphanProfileVectorSnapshots =
+          await tx.$executeRaw(Prisma.sql`
         DELETE FROM recommendation_profile_vector_snapshot snapshot
         WHERE snapshot.digest IN (
           SELECT candidate.digest
@@ -644,7 +672,7 @@ export async function purgeExpiredRecommendationRequests(
           FOR UPDATE SKIP LOCKED
         )
       `)
-    })
+      })
     const expiredGraphs = await phase((tx) =>
       tx.recommendationCowatchGeneration.findMany({
         where: { expiresAt: { lte: now } },
@@ -744,6 +772,9 @@ export async function purgeExpiredRecommendationRequests(
                 },
                 tokenDigest: null,
                 erasureState: RecommendationProfileErasureState.PENDING,
+                ...(mode === "stored-expiry-only"
+                  ? { expiresAt: { lte: now } }
+                  : {}),
                 ...(newlyExpiredProfileIds.length > 0
                   ? { id: { notIn: newlyExpiredProfileIds } }
                   : {}),
@@ -981,27 +1012,31 @@ export async function purgeExpiredRecommendationRequests(
         ).count
       })
     }
-    const retiredProfiles = await phase((tx) =>
-      tx.recommendationProfile.findMany({
-        where: {
-          state: {
-            in: [
-              RecommendationProfileState.TOMBSTONED,
-              RecommendationProfileState.EXPIRED,
-            ],
-          },
-          erasureState: RecommendationProfileErasureState.COMPLETED,
-          updatedAt: {
-            lte: new Date(
-              now.getTime() - RECOMMENDATION_PROFILE_AUDIT_DAYS * 86_400_000,
-            ),
-          },
-        },
-        orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
-        take: batchSize,
-        select: { id: true },
-      }),
-    )
+    const retiredProfiles =
+      mode === "stored-expiry-only"
+        ? []
+        : await phase((tx) =>
+            tx.recommendationProfile.findMany({
+              where: {
+                state: {
+                  in: [
+                    RecommendationProfileState.TOMBSTONED,
+                    RecommendationProfileState.EXPIRED,
+                  ],
+                },
+                erasureState: RecommendationProfileErasureState.COMPLETED,
+                updatedAt: {
+                  lte: new Date(
+                    now.getTime() -
+                      RECOMMENDATION_PROFILE_AUDIT_DAYS * 86_400_000,
+                  ),
+                },
+              },
+              orderBy: [{ updatedAt: "asc" }, { id: "asc" }],
+              take: batchSize,
+              select: { id: true },
+            }),
+          )
     rowCounts.retiredProfilesDeleted = 0
     for (const profile of retiredProfiles) {
       await phase(async (tx) => {

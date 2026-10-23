@@ -129,7 +129,23 @@ describe("recommendation retention job", () => {
       }),
     )
     expect(purgeExpiredRecommendationRequests).toHaveBeenCalledOnce()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "stored-expiry-only",
+    )
     expect(start).not.toHaveBeenCalled()
+  })
+
+  it("keeps the scheduled job on ordinary retention", async () => {
+    await runRecommendationRetentionJob()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "scheduled",
+    )
   })
 
   it("dispatches one manual pass with a distinct durable trigger", async () => {
