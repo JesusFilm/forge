@@ -12,8 +12,8 @@ COPY apps/agentic/package.json apps/agentic/package.json
 RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filter @forge/agentic...
 COPY apps/agentic apps/agentic
 # Public build-only placeholders; production always reads its own runtime config.
-# No model, Manager, or storage service can be contacted by this build step.
-RUN --network=none NODE_ENV=production CI=true \
+# Mastra also installs generated output dependencies; use filtered trust for those downloads.
+RUN NODE_ENV=production CI=true MASTRA_TELEMETRY_DISABLED=1 \
     AGENTIC_SERVICE_API_KEY=ci-build-service-token \
     AGENTIC_OPERATOR_API_KEY=ci-build-operator-token \
     AGENTIC_STORAGE_URL=file:/tmp/agentic-build.db \

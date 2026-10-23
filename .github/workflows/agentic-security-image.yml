@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Build the production image without secrets or external build requests
+      - name: Build the production image without secrets and with filtered package trust
         run: docker build -f apps/agentic/Dockerfile -t agentic-security-ci .
       - name: Verify patched runtime and independent CA contexts
         run: docker run --rm --entrypoint sh agentic-security-ci verify-image-trust.sh

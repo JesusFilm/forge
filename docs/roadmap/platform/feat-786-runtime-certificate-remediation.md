@@ -49,7 +49,8 @@ Live patched Railpack containers still carried ca-certificates 20250419 and the 
 `apps/agentic/Dockerfile` replaces the Nixpacks download step that precedes the
 application CA hook. The pinned Node24.22.1 base filters trust before package
 installation. Build-only placeholders are synthetic, Manager is loopback-only,
-and the compile step has no external network. Production reads runtime keys and
+and Mastra CLI telemetry is disabled. Generated output dependencies download with
+filtered trust; runtime acceptance has no external network. Production reads runtime keys and
 keeps its existing absolute LibSQL storage URL, start command and healthcheck.
 
 The actual image CI boots with different synthetic runtime keys and disposable
