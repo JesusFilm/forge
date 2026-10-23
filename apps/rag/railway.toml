@@ -6,6 +6,9 @@
 builder = "RAILPACK"
 buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/rag db:generate"
 watchPatterns = [
+  "/.nvmrc",
+  "/railpack.json",
+  "/scripts/update-security-ca.sh",
   "/apps/rag/**",
   "/packages/rag-contracts/**",
   "/package.json",

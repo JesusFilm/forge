@@ -104,7 +104,12 @@ jest.mock("../../../i18n/pluralData.generated", () =>
     ),
 )
 
-import { ClipOverlay, type ClipOverlayProps } from "../ClipOverlay"
+import {
+  CLEARANCE_SETTLE_MS,
+  ClipOverlay,
+  useHeldClearance,
+  type ClipOverlayProps,
+} from "../ClipOverlay"
 import { ExplorePager, type ExplorePagerHandle } from "../ExplorePager"
 import { GlassSurface } from "../../ui/GlassSurface"
 import { clipPosterUri } from "../../../hooks/useClipAutostart"
@@ -268,9 +273,17 @@ function childIds(node: JsonNode): unknown[] {
 /** The nearest host node above a node. */
 function hostAbove(node: RenderedNode): RenderedNode {
   let at = node.parent
-  while (at != null && typeof at.type !== "string") at = at.parent
+  while (at != null && (typeof at.type !== "string" || isFadeOnly(at))) {
+    at = at.parent
+  }
   if (at == null) throw new Error("no host node above")
   return at
+}
+
+/** GlassSurface's `fade` wrapper on glass: a view that sets only opacity. */
+function isFadeOnly(node: RenderedNode): boolean {
+  const keys = Object.keys(flatStyle(node.props.style))
+  return keys.length === 1 && keys[0] === "opacity"
 }
 
 /** The nearest GlassView host above a node. */
@@ -443,6 +456,32 @@ describe("ClipOverlay — clip information", () => {
       direction: "ltr",
     })
     expect(textsIn(jsonById(renderer, "clip-fast-cue"))).toEqual(["2×"])
+  })
+})
+
+describe("ClipOverlay — a 2x hold shows only the video and the cue", () => {
+  it("dissolves the rail's glass and stops every control taking touches", () => {
+    for (const glass of [true, false]) {
+      mockGlass.on = glass
+      const shown = render()
+      const held = render(props({ fast: true }))
+      for (const id of [
+        "clip-overlay-rail",
+        "clip-overlay-info",
+        "clip-progress-bar",
+      ]) {
+        expect(byTestId(shown, id)[0].props.pointerEvents).toBe("auto")
+        expect(byTestId(held, id)[0].props.pointerEvents).toBe("none")
+      }
+      const styles = (r: TestInstance) =>
+        r.root
+          .findAll((n) => n.type === "GlassView")
+          .map((n) => (n.props.glassEffectStyle as { style: string }).style)
+      expect(styles(shown)).toEqual(
+        glass ? ["regular", "regular", "regular"] : [],
+      )
+      expect(styles(held)).toEqual(glass ? ["none", "none", "none"] : [])
+    }
   })
 })
 
@@ -624,12 +663,13 @@ describe("ClipOverlay — glass on the controls (R4)", () => {
           glass,
           id,
           button: button.opacity,
-          circle: circle.opacity,
+          // The 2x-hold fade sets 1 when shown: no dimming either way.
+          circle: circle.opacity ?? 1,
         }).toEqual({
           glass,
           id,
           button: glass ? undefined : feedback.pressed.opacity,
-          circle: undefined,
+          circle: 1,
         })
         expect(circle.transform).toBeUndefined()
         if (glass) {
@@ -1385,5 +1425,81 @@ describe("ClipOverlay — in a right-to-left layout (feat-695 R11, KTD7)", () =>
     fireLayout(renderer, "clip-overlay-rail", { x: 8, width: 76 })
     expect(caption().insetSide).toBe("left")
     expect(caption().sideInset).toBe(8 + 76 + 8)
+  })
+})
+
+describe("useHeldClearance — the layout does not jump when a 2x hold ends", () => {
+  let seen: number[] = []
+  function Probe({ live, fast }: { live: number; fast: boolean }) {
+    seen.push(useHeldClearance(live, fast))
+    return null
+  }
+  let probe: TestInstance | null = null
+  const show = (live: number, fast: boolean) =>
+    act(() => {
+      if (probe == null) {
+        probe = TestRenderer.create(<Probe live={live} fast={fast} />)
+      } else probe.update(<Probe live={live} fast={fast} />)
+    })
+  const last = () => seen[seen.length - 1]
+
+  beforeEach(() => {
+    seen = []
+    jest.useFakeTimers()
+  })
+  afterEach(() => {
+    act(() => probe?.unmount())
+    probe = null
+    jest.useRealTimers()
+  })
+
+  // Measured on the iPhone 17 Pro Max simulator (2026-10-22): the inset is
+  // 46 while the bar is hidden, and stays 46 for ~70 ms after the release.
+  it("holds the shown value through the hold and until the bar is back", () => {
+    show(95, false)
+    show(95, true)
+    show(46, true)
+    expect(last()).toBe(95)
+    show(46, false)
+    expect(last()).toBe(95)
+    show(95, false)
+    expect(seen.every((value) => value === 95)).toBe(true)
+  })
+
+  it("follows a real inset change once the bar has had time to return", () => {
+    show(95, false)
+    show(95, true)
+    show(46, false)
+    expect(last()).toBe(95)
+    act(() => {
+      jest.advanceTimersByTime(CLEARANCE_SETTLE_MS)
+    })
+    expect(last()).toBe(46)
+  })
+
+  it("holds through a short hold whose inset drops only after the release", () => {
+    show(95, false)
+    show(95, true)
+    show(95, false)
+    show(46, false)
+    show(95, false)
+    expect(seen.every((value) => value === 95)).toBe(true)
+  })
+
+  it("ends the wait after CLEARANCE_SETTLE_MS when the inset never moves", () => {
+    show(95, false)
+    show(95, true)
+    show(95, false)
+    act(() => {
+      jest.advanceTimersByTime(CLEARANCE_SETTLE_MS)
+    })
+    show(60, false)
+    expect(last()).toBe(60)
+  })
+
+  it("follows the inset at once when no hold ran", () => {
+    show(95, false)
+    show(60, false)
+    expect(last()).toBe(60)
   })
 })

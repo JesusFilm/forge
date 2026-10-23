@@ -3171,7 +3171,11 @@ export async function searchResolvedTypesenseWatchSearch(
     }
     throw error
   }
-  return service.search(input, { ...options, requestStartedAtMs })
+  const response = await service.search(input, {
+    ...options,
+    requestStartedAtMs,
+  })
+  return { ...response, latencyMs: performance.now() - requestStartedAtMs }
 }
 
 export function createTypesenseWatchSearchService(

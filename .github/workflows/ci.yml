@@ -180,7 +180,7 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
-        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts src/services/watch-seo-manifest.db.test.ts
+        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/typesense-watch-search-transcript-compatibility.db.test.ts src/services/search-watchability.db.test.ts src/services/watch-seo-manifest.db.test.ts
       - name: Create isolated Watch audience database
         env:
           PGPASSWORD: postgres

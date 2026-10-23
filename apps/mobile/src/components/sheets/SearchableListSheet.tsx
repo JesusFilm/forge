@@ -1,4 +1,11 @@
-import { type ReactNode, useCallback, useMemo, useRef, useState } from "react"
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import {
   Pressable,
   StyleSheet,
@@ -18,6 +25,11 @@ import { useTextDirection } from "../../i18n/textDirection"
 import { useLocaleEpoch, useT, type UiT } from "../../i18n/useT"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { acceptSheetTap, assembleSheetList } from "../../lib/sheetListLogic"
+import {
+  STATUS_PART_SEPARATOR,
+  type StatusPart,
+  statusPartsLabel,
+} from "../../lib/sheetStatus"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
 
 /** The sheet's colors. The Bible reader passes its own theme (KTD12). */
@@ -53,8 +65,12 @@ export type SearchableListSheetProps<T> = {
   // A short state line under the labels (e.g. "Downloaded"); read out with the
   // row's name so a screen reader learns it too.
   getStatusLabel?: (item: T) => string | null | undefined
-  // A longer line (e.g. a copyright credit), up to two lines. Not read out.
-  getDetailLabel?: (item: T) => string | null | undefined
+  // Replaces getStatusLabel: the parts share the secondary label's line, split
+  // by " • ". A screen reader reads them, joined by commas.
+  getStatusParts?: (item: T) => readonly StatusPart[]
+  // A longer line on the "Current" row only (e.g. a copyright credit), up to
+  // two lines. Not read out.
+  getActiveDetailLabel?: (item: T) => string | null | undefined
   getSearchValues: (item: T) => (string | null | undefined)[]
   // Availability guard (e.g. a dub without `hls`): a false row silently ignores
   // taps. Defaults to always-selectable.
@@ -99,7 +115,8 @@ export function SearchableListSheet<T>({
   getPrimaryLang,
   getSecondaryLabel,
   getStatusLabel,
-  getDetailLabel,
+  getStatusParts,
+  getActiveDetailLabel,
   getSearchValues,
   isSelectable,
   onSelect,
@@ -160,6 +177,75 @@ export function SearchableListSheet<T>({
     [colors.text, colors.secondaryText],
   )
 
+  const statusOf = useCallback(
+    (item: T): string | null | undefined => {
+      if (!getStatusParts) return getStatusLabel?.(item)
+      const parts = getStatusParts(item)
+      return parts.length > 0 ? statusPartsLabel(parts) : null
+    },
+    [getStatusLabel, getStatusParts],
+  )
+
+  // The lines under the name. With status parts, the secondary label and the
+  // parts share one line.
+  const renderSubLines = useCallback(
+    (
+      secondary: string | null | undefined,
+      status: string | null | undefined,
+      parts: readonly StatusPart[] | undefined,
+    ) => {
+      if (parts) {
+        const segments = [...(secondary ? [{ text: secondary }] : []), ...parts]
+        return segments.length > 0 ? (
+          <Text
+            style={[
+              styles.nativeText,
+              typography.bodySmall,
+              secondaryText,
+              direction.ui,
+            ]}
+            numberOfLines={2}
+          >
+            {segments.map((segment, index) => (
+              <Fragment key={index}>
+                {index > 0 ? STATUS_PART_SEPARATOR : null}
+                <Text style={segment.strong ? styles.statusStrong : undefined}>
+                  {segment.text}
+                </Text>
+              </Fragment>
+            ))}
+          </Text>
+        ) : null
+      }
+      return (
+        <>
+          {secondary ? (
+            <Text
+              style={[styles.nativeText, typography.bodySmall, secondaryText]}
+              numberOfLines={1}
+            >
+              {secondary}
+            </Text>
+          ) : null}
+          {status ? (
+            <Text
+              style={[
+                styles.nativeText,
+                typography.bodySmall,
+                secondaryText,
+                direction.ui,
+              ]}
+              numberOfLines={1}
+            >
+              {status}
+            </Text>
+          ) : null}
+        </>
+      )
+    },
+    [typography, secondaryText, direction],
+  )
+
   const handleSelect = useCallback(
     (item: T) => {
       const now = Date.now()
@@ -174,8 +260,8 @@ export function SearchableListSheet<T>({
   const renderItem = useCallback(
     ({ item }: { item: T }) => {
       const secondary = getSecondaryLabel?.(item)
-      const status = getStatusLabel?.(item)
-      const detail = getDetailLabel?.(item)
+      const parts = getStatusParts?.(item)
+      const status = statusOf(item)
       const primaryDirection = direction.text(getPrimaryLang?.(item))
       return (
         <Pressable
@@ -198,35 +284,7 @@ export function SearchableListSheet<T>({
             >
               {getPrimaryLabel(item)}
             </Text>
-            {secondary ? (
-              <Text
-                style={[styles.nativeText, typography.bodySmall, secondaryText]}
-                numberOfLines={1}
-              >
-                {secondary}
-              </Text>
-            ) : null}
-            {status ? (
-              <Text
-                style={[
-                  styles.nativeText,
-                  typography.bodySmall,
-                  secondaryText,
-                  direction.ui,
-                ]}
-                numberOfLines={1}
-              >
-                {status}
-              </Text>
-            ) : null}
-            {detail ? (
-              <Text
-                style={[styles.nativeText, typography.bodySmall, secondaryText]}
-                numberOfLines={2}
-              >
-                {detail}
-              </Text>
-            ) : null}
+            {renderSubLines(secondary, status, parts)}
           </View>
         </Pressable>
       )
@@ -235,8 +293,9 @@ export function SearchableListSheet<T>({
       getPrimaryLabel,
       getPrimaryLang,
       getSecondaryLabel,
-      getStatusLabel,
-      getDetailLabel,
+      getStatusParts,
+      statusOf,
+      renderSubLines,
       handleSelect,
       typography,
       primaryText,
@@ -250,8 +309,9 @@ export function SearchableListSheet<T>({
   const keyExtractor = useCallback((item: T) => getKey(item), [getKey])
 
   const activeSecondary = active ? getSecondaryLabel?.(active) : null
-  const activeStatus = active ? getStatusLabel?.(active) : null
-  const activeDetail = active ? getDetailLabel?.(active) : null
+  const activeParts = active ? getStatusParts?.(active) : undefined
+  const activeStatus = active ? statusOf(active) : null
+  const activeDetail = active ? getActiveDetailLabel?.(active) : null
   const activeDirection = direction.text(
     active ? getPrimaryLang?.(active) : null,
   )
@@ -345,31 +405,7 @@ export function SearchableListSheet<T>({
                 >
                   {getPrimaryLabel(active)}
                 </Text>
-                {activeSecondary ? (
-                  <Text
-                    style={[
-                      styles.nativeText,
-                      typography.bodySmall,
-                      secondaryText,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {activeSecondary}
-                  </Text>
-                ) : null}
-                {activeStatus ? (
-                  <Text
-                    style={[
-                      styles.nativeText,
-                      typography.bodySmall,
-                      secondaryText,
-                      direction.ui,
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {activeStatus}
-                  </Text>
-                ) : null}
+                {renderSubLines(activeSecondary, activeStatus, activeParts)}
                 {activeDetail ? (
                   <Text
                     style={[
@@ -476,6 +512,9 @@ const styles = StyleSheet.create({
   },
   nativeText: {
     marginTop: 2,
+  },
+  statusStrong: {
+    fontWeight: "700",
   },
   emptySearch: {
     alignItems: "center",

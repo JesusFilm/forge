@@ -38,6 +38,8 @@ the filesystem.
    and `admin-ops/shared.ts` — exposure reporting and 29-day window semantics.
 5. `docs/analytics-and-recommendation-policy.md` — retention cleanup and
    serving operate concurrently.
+6. `docs/plans/2026-10-23-manual-recommendation-retention.md` — bounded
+   operator trigger for records whose stored expiry has passed.
 
 ## Grep These
 
@@ -78,3 +80,7 @@ the filesystem.
   allocation and PGDATA free bytes without exporting identifiers or payloads.
 - The rollout report distinguishes deleted rows, reusable PostgreSQL pages,
   physical relation recovery and filesystem availability.
+- An Admin-only, same-origin manual action queues one ordinary bounded purge
+  pass with a distinct manual workflow ledger. Its production receipt must
+  prove actual committed deletions and cannot count toward feat-554's
+  ordinary-cycle acceptance. Pre-policy rows keep their persisted expiry.
