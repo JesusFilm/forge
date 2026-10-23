@@ -12,6 +12,7 @@ import {
 import {
   purgeExpiredRecommendationRequests,
   RECOMMENDATION_RETENTION_HEALTH_HOURS,
+  type RecommendationRetentionMode,
   type RecommendationPurgeResult,
 } from "../retention.service"
 import { RecommendationInternalStateError } from "../errors"
@@ -121,11 +122,17 @@ export function recommendationRetentionNeedsContinuation(
 export async function runRecommendationRetentionJob(
   input: {
     ledgerRunId?: string
+    mode?: RecommendationRetentionMode
   } = {},
 ): Promise<RecommendationPurgeResult> {
   if (input.ledgerRunId) await markWorkflowRunStarted(input.ledgerRunId)
   try {
-    const result = await purgeExpiredRecommendationRequests(prisma)
+    const result = await purgeExpiredRecommendationRequests(
+      prisma,
+      new Date(),
+      undefined,
+      input.mode ?? "scheduled",
+    )
     if (input.ledgerRunId) {
       await prisma.workflowRun.update({
         where: { id: input.ledgerRunId },
@@ -273,7 +280,10 @@ export async function runManualRecommendationRetentionOnce() {
       "One bounded recommendation retention pass started by operator command.",
     details: { retention: "expired-records-only", batchesRequested: 1 },
   })
-  const result = await runRecommendationRetentionJob({ ledgerRunId: ledger.id })
+  const result = await runRecommendationRetentionJob({
+    ledgerRunId: ledger.id,
+    mode: "stored-expiry-only",
+  })
   return { ledgerRunId: ledger.id, result }
 }
 

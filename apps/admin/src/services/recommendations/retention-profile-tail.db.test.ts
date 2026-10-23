@@ -33,6 +33,256 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
     afterAll(async () => db?.$disconnect())
 
+    it("manual mode finalizes baseline reports only for elapsed stored expiry", async () => {
+      const now = new Date()
+      const untouchedId = randomUUID()
+      const expiringId = randomUUID()
+      const visitId = randomUUID()
+      const startsAt = new Date(now.getTime() - 40 * 86_400_000)
+      const endsAt = new Date(now.getTime() - 35 * 86_400_000)
+      const expiresAt = new Date(now.getTime() + 60 * 86_400_000)
+      await db.recommendationPrecomputedBaselineRun.createMany({
+        data: [
+          { id: untouchedId, enabled: true },
+          { id: expiringId, enabled: false },
+        ].map((run) => ({
+          ...run,
+          verificationAuthority: "isolated_fixture",
+          startsAt,
+          endsAt,
+          controlRoutingDigest: digest(run.id),
+          actorId: "owned-retention-test",
+          expiresAt,
+        })),
+      })
+      await db.recommendationPrecomputedBaselineVisit.create({
+        data: {
+          id: visitId,
+          runId: expiringId,
+          browserUnitDigest: digest(visitId),
+          sourceVideoId: "owned-fixture-video",
+          locale: "en",
+          audioLanguageSlug: "english",
+          deliveryResult: "unavailable",
+          createdAt: new Date(now.getTime() - 36 * 86_400_000),
+          expiresAt: new Date(now.getTime() - 60_000),
+        },
+      })
+      try {
+        const result = await purgeExpiredRecommendationRequests(
+          db,
+          now,
+          1,
+          "stored-expiry-only",
+        )
+        expect(result.status).toBe("succeeded")
+        expect(result.rowCounts.expiredPrecomputedBaselineVisits).toBe(1)
+        expect(
+          await db.recommendationPrecomputedBaselineRun.findUniqueOrThrow({
+            where: { id: untouchedId },
+            select: { enabled: true, finalReport: true },
+          }),
+        ).toEqual({ enabled: true, finalReport: null })
+        expect(
+          await db.recommendationPrecomputedBaselineRun.findUniqueOrThrow({
+            where: { id: expiringId },
+            select: { finalReport: true },
+          }),
+        ).toEqual({ finalReport: expect.objectContaining({ isFinal: true }) })
+        expect(
+          await db.recommendationPrecomputedBaselineVisit.count({
+            where: { id: visitId },
+          }),
+        ).toBe(0)
+      } finally {
+        await db.recommendationPrecomputedBaselineVisit.deleteMany({
+          where: { id: visitId },
+        })
+        await db.recommendationPrecomputedBaselineRun.deleteMany({
+          where: { id: { in: [untouchedId, expiringId] } },
+        })
+      }
+    })
+
+    it("manual mode removes only eligible expired generation proofs", async () => {
+      const now = new Date()
+      const [
+        eligibleId,
+        snapshotHeldId,
+        artifactHeldId,
+        importHeldId,
+        futureId,
+      ] = Array.from({ length: 5 }, () => randomUUID())
+      const allIds = [
+        eligibleId,
+        snapshotHeldId,
+        artifactHeldId,
+        importHeldId,
+        futureId,
+      ]
+      const snapshotSha256 = digest(randomUUID())
+      await db.recommendationPrecomputedGenerationRetentionProof.createMany({
+        data: allIds.map((generationId) => ({
+          generationId,
+          generationProtocolVersion: 1,
+          inputCutoff: now,
+          inputDigest: digest(generationId),
+          inputMode: "fixture",
+          state: "retired",
+          recordedAt: new Date(now.getTime() - 120_000),
+          expiresAt: new Date(
+            now.getTime() + (generationId === futureId ? 60_000 : -60_000),
+          ),
+          snapshotSha256:
+            generationId === snapshotHeldId ? snapshotSha256 : null,
+        })),
+      })
+      await db.recommendationPrecomputedGaCaptureArtifact.create({
+        data: {
+          generationId: artifactHeldId,
+          artifactSha256: snapshotSha256,
+          storageKey: "owned-test-artifact",
+          artifactBytes: 1n,
+        },
+      })
+      await db.recommendationPrecomputedGaCaptureImport.create({
+        data: {
+          destinationGenerationId: importHeldId,
+          destinationIdentity: {},
+          preparedDigest: digest(importHeldId),
+          originGenerationId: randomUUID(),
+          originIdentity: {},
+          originProofDigest: digest(randomUUID()),
+          copyRequestDigest: digest(randomUUID()),
+          copyAttemptId: randomUUID(),
+          artifactSha256: snapshotSha256,
+          artifactBytes: 13n,
+          storageKey: "owned-bound-test-artifact",
+          state: "bound",
+          stagingDeadlineAt: new Date(now.getTime() + 60_000),
+          confirmedAt: now,
+          boundAt: now,
+        },
+      })
+      try {
+        const result = await purgeExpiredRecommendationRequests(
+          db,
+          now,
+          1,
+          "stored-expiry-only",
+        )
+        expect(result.status).toBe("succeeded")
+        expect(result.rowCounts.precomputedGenerationProofsExpired).toBe(1)
+        expect(
+          await db.recommendationPrecomputedGenerationRetentionProof.findMany({
+            where: { generationId: { in: allIds } },
+            select: { generationId: true },
+          }),
+        ).toEqual(
+          expect.arrayContaining(
+            [snapshotHeldId, artifactHeldId, importHeldId, futureId].map(
+              (generationId) => ({ generationId }),
+            ),
+          ),
+        )
+        expect(
+          await db.recommendationPrecomputedGenerationRetentionProof.count({
+            where: { generationId: eligibleId },
+          }),
+        ).toBe(0)
+      } finally {
+        await db.recommendationPrecomputedGaCaptureImport.deleteMany({
+          where: { destinationGenerationId: importHeldId },
+        })
+        await db.recommendationPrecomputedGaCaptureArtifact.deleteMany({
+          where: { generationId: artifactHeldId },
+        })
+        await db.recommendationPrecomputedGenerationRetentionProof.deleteMany({
+          where: { generationId: { in: allIds } },
+        })
+      }
+    })
+
+    it("manual mode deletes stored-expired exposures but preserves age-only orphan vectors", async () => {
+      const now = new Date()
+      const expiredId = randomUUID()
+      const futureId = randomUUID()
+      const digestValue = digest(randomUUID())
+      const pendingProfileId = randomUUID()
+      await db.watchSurfaceExposure.createMany({
+        data: [expiredId, futureId].map((id, index) => ({
+          id,
+          eventId: randomUUID(),
+          windowId: randomUUID(),
+          surface: "watch",
+          block: "fixture",
+          presentation: "rail",
+          placement: "related",
+          policyVersion: "watch-exposure-v2",
+          position: index,
+          itemPath: `/watch/${id}.html`,
+          kind: "served",
+          occurredAt: new Date(now.getTime() - 30 * 86_400_000),
+          expiresAt: new Date(now.getTime() + (index ? 60_000 : -60_000)),
+        })),
+      })
+      await db.$executeRaw`
+        INSERT INTO recommendation_profile_vector_snapshot (digest, embedding, created_at)
+        VALUES (${digestValue}, ('[' || array_to_string(array_fill(0, ARRAY[1536]), ',') || ']')::vector,
+                ${new Date(now.getTime() - 48 * 3_600_000)})
+      `
+      await db.recommendationProfile.create({
+        data: {
+          id: pendingProfileId,
+          privacyGeneration: 1,
+          choice: "DURABLE_ALLOWED",
+          state: "TOMBSTONED",
+          tombstonedAt: new Date(now.getTime() - 48 * 3_600_000),
+          tombstoneReason: "delete",
+          erasureState: "PENDING",
+          erasureRequestedAt: new Date(now.getTime() - 48 * 3_600_000),
+          expiresAt: new Date(now.getTime() + 60_000),
+        },
+      })
+      try {
+        const result = await purgeExpiredRecommendationRequests(
+          db,
+          now,
+          1,
+          "stored-expiry-only",
+        )
+        expect(result.status).toBe("succeeded")
+        expect(result.rowCounts.expiredWatchSurfaceExposures).toBe(1)
+        expect(
+          await db.watchSurfaceExposure.count({
+            where: { id: { in: [expiredId, futureId] } },
+          }),
+        ).toBe(1)
+        expect(
+          await db.$queryRaw<Array<{ count: bigint }>>`
+            SELECT count(*) AS count FROM recommendation_profile_vector_snapshot
+            WHERE digest = ${digestValue}
+          `,
+        ).toEqual([{ count: 1n }])
+        expect(
+          await db.recommendationProfile.findUnique({
+            where: { id: pendingProfileId },
+            select: { erasureState: true },
+          }),
+        ).toEqual({ erasureState: "PENDING" })
+      } finally {
+        await db.watchSurfaceExposure.deleteMany({
+          where: { id: { in: [expiredId, futureId] } },
+        })
+        await db.$executeRaw`
+          DELETE FROM recommendation_profile_vector_snapshot WHERE digest = ${digestValue}
+        `
+        await db.recommendationProfile.deleteMany({
+          where: { id: pendingProfileId },
+        })
+      }
+    })
+
     it("rolls back a genuine exposure timeout and keeps the durable attempt failed", async () => {
       const now = new Date()
       const id = randomUUID()
