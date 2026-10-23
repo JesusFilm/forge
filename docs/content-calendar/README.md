@@ -126,15 +126,16 @@ Write it with ArtifactData `set` (first time) or `update` with `if_version`.
 
 Extra todo fields (Oct 23):
 
-- `"video": "/_blob/<id>"`: a preview Lyuba can watch on the page. Shows a player plus
-  **Approve** / **Needs changes**. Upload with the Artifact tool
+- `"video": "/_blob/<id>"`: a preview Lyuba can watch on the page. Shows a player and the
+  comment box; Lyuba writes "approve" or her changes and presses Send (no approve button,
+  on purpose: a stray click must not approve anything). Upload with the Artifact tool
   (`{ url: <calendar>, asset: true, file_path }`, read the artifact once first). Shorts go
   up as they are; a long form goes up as a light preview made in your scratchpad, e.g.
   `ffmpeg -i in.mp4 -vf scale=-2:480 -c:v libx264 -b:v 300k -c:a aac -b:a 48k prev.mp4`
   (must stay under 20 MB), then delete the local preview. Nothing is copied into
   `~/Desktop`. After approval, delete the asset (Artifact `delete` with `path` = asset id)
   so the store stays small.
-- `"approve": true`: Approve / Needs changes buttons without a video.
+- `"approve": true`: an approval question without a video (placeholder "Approve, or what to change").
 
 ### Lyuba's answers (`requests`)
 

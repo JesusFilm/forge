@@ -1014,6 +1014,7 @@
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    justify-content: flex-end;
   }
   .send.ok {
     border-color: var(--gold);
@@ -2110,27 +2111,21 @@
       )
       .join("")
   }
+  // One Send button on the right (Lyuba, Oct 23): no Approve / Needs changes buttons, she writes
+  // "approve" herself so nothing gets approved by a stray click.
   function replyBox(key, approve, hasOptions) {
     return (
       '<textarea class="reply" rows="2" data-key="' +
       esc(key) +
       '" placeholder="' +
-      (approve ? "What to change" : "Comment") +
+      (approve ? "Approve, or what to change" : "Comment") +
       '">' +
       esc(drafts[key] || "") +
-      '</textarea><div class="btns">' +
-      (approve
-        ? '<button type="button" class="send ok" data-key="' +
-          esc(key) +
-          '" data-kind="approve">Approve</button><button type="button" class="send" data-key="' +
-          esc(key) +
-          '" data-kind="changes">Needs changes</button>'
-        : '<button type="button" class="send ok" data-key="' +
-          esc(key) +
-          '" data-kind="' +
-          (hasOptions ? "choice" : "reply") +
-          '">Send</button>') +
-      "</div>" +
+      '</textarea><div class="btns"><button type="button" class="send ok" data-key="' +
+      esc(key) +
+      '" data-kind="' +
+      (hasOptions ? "choice" : "reply") +
+      '">Send</button></div>' +
       sentFor(key)
     )
   }
