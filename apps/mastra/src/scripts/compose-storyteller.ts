@@ -279,6 +279,25 @@ const STORIES: Record<
     ],
     out: "Bartimaeus",
   },
+  "jesus-45": {
+    // No setting: the card opens on Peter following Jesus into the courtyard,
+    // which is 22:54 itself; the arrest before it is not shown.
+    terms: [
+      "Peter",
+      "High priest",
+      "Caiaphas",
+      "Palace",
+      "Court",
+      "Porter",
+      "Fire",
+      "Galilean",
+      "Cock-crowing",
+      "Cock",
+      "Repentance",
+      "THURSDAY NIGHT - BEFORE ANNAS AND CAIAPHAS - PETER AND JESUS.",
+    ],
+    out: "Peter's Denial",
+  },
 }
 
 /** What the script needs from the clip, whichever film it comes from. */

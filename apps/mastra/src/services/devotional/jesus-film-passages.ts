@@ -393,6 +393,26 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     maxVideoCardSec: 64,
   }, // Parable of the Vineyard and the Tenants. Three beaten slaves, the son sent and killed, the owner's verdict (~81s). (subtitle-verified)
   {
+    index: 45,
+    osisRef: "Luke.22.54-Luke.22.62",
+    reference: "Luke 22:54-62",
+    mood: "lament",
+    themes: ["failure", "fear", "repentance", "grace", "restoration"],
+    // Subtitle- and frame-verified (Arclight EN + RU tracks, 2026-10-23). The
+    // chapter opens on the guards mocking Jesus (4.8-32.1s, Luke 22:63-65 in
+    // Luke's order); Peter walks into the courtyard at ~20.5s and watches from
+    // behind the crowd, so the card starts there (Luke 22:54 "followed at a
+    // distance") with the mocking lines still playing over him. First accuser
+    // 33.5s; "the Lord turned and looked" narration 56.9-132.4s; Peter walks
+    // out through the arch at ~134.5s, the end card is at 136s. The two silent
+    // stretches (41.4-60.1s, 76.4-102.3s: the fire burning down, the hour that
+    // passes) are cut by `removeInternalGaps`' default; revisit at the first
+    // render. The RU dub keeps the same clock (its track matches to 0.02s).
+    clipStartSec: 20.5,
+    clipLengthSec: 114.5,
+    maxVideoCardSec: 75,
+  }, // Peter Disowns Jesus. Peter follows into the courtyard → three accusers by the fire → "I don't know what you're talking about" → the Lord turns and looks → the rooster word remembered → Peter goes out (~134.5s). (subtitle-verified)
+  {
     index: 55,
     osisRef: "Luke.23.44-Luke.23.49",
     reference: "Luke 23:44-49",

@@ -26,7 +26,9 @@ const OSIS_TO_NUMBER: Record<string, number> = {
   Ps: 19,
   Prov: 20,
   Isa: 23,
+  Lam: 25,
   Gen: 1,
+  "2Tim": 55,
 }
 
 /** Standard Russian citation title per Gospel (falls back to the API name). */
@@ -49,7 +51,9 @@ const ENGLISH_NAME_TO_OSIS: Record<string, string> = {
   Psalms: "Ps",
   Proverbs: "Prov",
   Isaiah: "Isa",
+  Lamentations: "Lam",
   Genesis: "Gen",
+  "2Timothy": "2Tim",
 }
 
 export type SynodalPassage = {
@@ -96,7 +100,9 @@ export function parseReference(ref: string): ParsedRef | null {
       verseEnd: osis[4] ? Number(osis[4]) : verseStart,
     }
   }
-  const human = ref.trim().match(/^([1-3]?\s?[A-Za-z]+)\s+(\d+):(\d+)(?:-(\d+))?$/)
+  const human = ref
+    .trim()
+    .match(/^([1-3]?\s?[A-Za-z]+)\s+(\d+):(\d+)(?:-(\d+))?$/)
   if (human) {
     const name = human[1].replace(/\s+/g, "")
     const verseStart = Number(human[3])
