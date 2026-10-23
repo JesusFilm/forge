@@ -439,6 +439,7 @@ describe("permission matrix completeness", () => {
       // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
       // the allowedKeys list.
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "access:manager",
         "write:scene-embeddings",
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
