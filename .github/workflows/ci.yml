@@ -643,6 +643,11 @@ jobs:
           enable-cache: false
       - name: Test package
         run: pnpm --filter "${{ matrix.service }}" run --if-present test
+      - name: Verify Analytics Watcher image trust stores
+        if: matrix.service == '@forge/analytics-watcher'
+        run: |
+          docker build -f apps/analytics-watcher/Dockerfile -t analytics-watcher-security-ci .
+          docker run --rm --entrypoint sh analytics-watcher-security-ci apps/analytics-watcher/verify-image-trust.sh
       # Lines in the job summary, never a failure: the jest suites enforce.
       - name: Report mobile translation status
         if: ${{ !cancelled() && matrix.service == '@forge/mobile' }}
