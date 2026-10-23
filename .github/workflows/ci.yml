@@ -648,6 +648,11 @@ jobs:
         run: |
           docker build -f apps/analytics-watcher/Dockerfile -t analytics-watcher-security-ci .
           docker run --rm --entrypoint sh analytics-watcher-security-ci apps/analytics-watcher/verify-image-trust.sh
+      - name: Verify Crop Worker image trust and HTTP contracts
+        if: matrix.service == '@forge/crop-worker'
+        run: |
+          docker build -f apps/crop-worker/Dockerfile -t crop-worker-security-ci .
+          docker run --rm --entrypoint sh crop-worker-security-ci /usr/local/bin/verify-crop-image-trust
       # Lines in the job summary, never a failure: the jest suites enforce.
       - name: Report mobile translation status
         if: ${{ !cancelled() && matrix.service == '@forge/mobile' }}
