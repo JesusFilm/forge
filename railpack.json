@@ -2,6 +2,11 @@
   "$schema": "https://schema.railpack.com",
   "buildAptPackages": ["...", "ca-certificates"],
   "steps": {
+    "build": {
+      "variables": {
+        "SSL_CERT_DIR": "/usr/local/share/security-ca/certs"
+      }
+    },
     "install": {
       "commands": [
         {
