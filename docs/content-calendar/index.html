@@ -55,6 +55,21 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 12px 20px;
+    /* Stays on screen when the phone view scrolls to today. */
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: var(--ground);
+    padding-block: 8px;
+  }
+  /* Page buttons sit top right with a thin frame (Lyuba, Oct 23), same line as the table borders. */
+  .actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+  }
+  .actions .ghost {
+    border: 1px solid var(--line);
   }
   .brand {
     display: flex;
@@ -154,6 +169,16 @@
     border-radius: 999px;
     padding: 2px 7px;
     font-weight: 700;
+  }
+  .dh.today {
+    color: var(--gold);
+    box-shadow: inset 0 -2px 0 var(--gold);
+  }
+  .tlab {
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-left: 4px;
   }
   .lab {
     display: grid;
@@ -932,6 +957,11 @@
   .aday h3.today {
     color: var(--gold);
   }
+  .aday.is-today {
+    outline: 1.5px solid var(--gold);
+    outline-offset: -1.5px;
+    scroll-margin-top: 104px;
+  }
   .arow {
     display: grid;
     grid-template-columns: 52px 1fr;
@@ -942,6 +972,31 @@
     height: 24px;
   }
   @media (max-width: 860px) {
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px 10px;
+    }
+    .brand {
+      min-width: 0;
+      gap: 8px;
+    }
+    .month {
+      font-size: 22px;
+      white-space: nowrap;
+    }
+    .mark {
+      width: 26px;
+      height: 26px;
+    }
+    .actions {
+      gap: 4px;
+    }
+    .nav {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      justify-content: space-between;
+    }
     .weeks {
       display: none;
     }
@@ -997,73 +1052,74 @@
       <button class="ghost" id="todayBtn" aria-label="This week">•</button>
       <button class="ghost" id="next" aria-label="Next week">›</button>
     </div>
-    <div class="spacer"></div>
-    <button
-      class="ghost tolist"
-      id="toList"
-      title="All content"
-      aria-label="All content"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
+    <div class="actions">
+      <button
+        class="ghost tolist"
+        id="toList"
+        title="All content"
+        aria-label="All content"
       >
-        <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />
-      </svg>
-    </button>
-    <button
-      class="ghost sortbtn"
-      id="sortBtn"
-      title="Newest first"
-      aria-label="Change order"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />
+        </svg>
+      </button>
+      <button
+        class="ghost sortbtn"
+        id="sortBtn"
+        title="Newest first"
+        aria-label="Change order"
       >
-        <path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" />
-      </svg>
-    </button>
-    <button
-      class="ghost tocal"
-      id="toCal"
-      title="Calendar"
-      aria-label="Calendar"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4" />
+        </svg>
+      </button>
+      <button
+        class="ghost tocal"
+        id="toCal"
+        title="Calendar"
+        aria-label="Calendar"
       >
-        <rect x="3" y="5" width="18" height="16" rx="2" />
-        <path d="M3 10h18M8 3v4M16 3v4" />
-      </svg>
-    </button>
-    <a
-      class="ghost"
-      href="https://claude.ai/artifact/1TqhY4HP4zw8WEP6xqz3VX"
-      target="_blank"
-      rel="noopener"
-      title="Analytics dashboard"
-      aria-label="Analytics dashboard"
-      ><svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-      >
-        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg
-    ></a>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M3 10h18M8 3v4M16 3v4" />
+        </svg>
+      </button>
+      <a
+        class="ghost"
+        href="https://claude.ai/artifact/1TqhY4HP4zw8WEP6xqz3VX"
+        target="_blank"
+        rel="noopener"
+        title="Analytics dashboard"
+        aria-label="Analytics dashboard"
+        ><svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg
+      ></a>
+    </div>
   </header>
   <div class="weeks" id="weeks"></div>
   <div class="agenda" id="agenda"></div>
@@ -1355,6 +1411,7 @@
             d.getDate() +
             "</b>" +
             (d.getDate() === 1 ? " " + MONTHS[d.getMonth()].slice(0, 3) : "") +
+            (k === todayKey ? ' <span class="tlab">Today</span>' : "") +
             "</div>"
           )
         })
@@ -1387,19 +1444,25 @@
     // Phone: the same week as a list of days that have posts.
     const keys = days
       .map(ymd)
-      .filter((k) => lanes.some((l) => idx[k + "|" + l.key]))
+      .filter((k) => k === todayKey || lanes.some((l) => idx[k + "|" + l.key]))
     document.getElementById("agenda").innerHTML = keys.length
       ? keys
           .map((k) => {
             const d = new Date(k + "T12:00")
             return (
-              '<section class="aday"><h3 class="' +
+              '<section class="aday' +
+              (k === todayKey ? ' is-today" id="todayDay' : "") +
+              '"><h3 class="' +
               (k === todayKey ? "today" : "") +
               '">' +
               DOW[(d.getDay() + 6) % 7] +
               " " +
               d.getDate() +
+              (k === todayKey ? ' <span class="tlab">Today</span>' : "") +
               "</h3>" +
+              (k === todayKey && !lanes.some((l) => idx[k + "|" + l.key])
+                ? '<div class="empty">Nothing goes out today.</div>'
+                : "") +
               lanes
                 .filter((l) => idx[k + "|" + l.key])
                 .map(
@@ -1420,7 +1483,14 @@
           })
           .join("")
       : '<div class="empty">Nothing this week yet.</div>'
+    // Phone: open on today, not on Monday.
+    const td = document.getElementById("todayDay")
+    if (td && !scrolledToToday && posts.length && innerWidth <= 860) {
+      scrolledToToday = true
+      td.scrollIntoView({ block: "start" })
+    }
   }
+  let scrolledToToday = false
 
   const step = (n) => {
     week.setDate(week.getDate() + 7 * n)
