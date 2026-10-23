@@ -39,6 +39,14 @@ The parent verified 46 existing workflow/job tests covering daily scheduling,
 bounded continuation, yields, failures and singleton startup. The tests do not
 replace actual runtime and production deletion evidence.
 
+The strict manual cleanup repair in [#2878](https://github.com/JesusFilm/forge/pull/2878)
+merged as `85e97f521`. Both actual Admin roles ran that revision with correct
+runner roles, compact mode and health 200 at 09:03:53 UTC. At 09:12:17, the
+scheduler ledger and deployed durable runtime were again verified RUNNING
+without errors, with the next wake at 10:30 UTC. The [release receipt](../../reports/2026-10-23-watch-exposure-fortnight-rollout.md#strict-stored-expiry-release)
+preserves exact review, test, deployment, interrupted-window and scope evidence.
+The ordinary scheduler is unchanged; this is not a clean daily-cycle receipt.
+
 The separately authorized manual catch-up remains owned by the storage task.
 Manual deletion receipts give no credit toward the two ordinary loaded,
 failure-free daily cycles. October 22 still contains genuine failed attempts;
