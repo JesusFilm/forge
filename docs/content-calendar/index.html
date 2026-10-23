@@ -1353,6 +1353,7 @@
   function cutLabel(p) {
     const c = String(p.cut || parseId(p).cut).toLowerCase()
     if (/refl/.test(c)) return "refl."
+    if (/conclu/.test(c)) return "concl."
     if (/insight|history|language|vox|word/.test(c)) return "insight"
     // A piece of the film is a "clip"; a Bible verse card is a "verse".
     if (/film|clip|scene/.test(c) || /film-verse|clip/.test(String(p.id || "")))
@@ -1808,6 +1809,7 @@
     { k: "insight", l: "insight" },
     { k: "refl.", l: "refl." },
     { k: "verse", l: "verse" },
+    { k: "concl.", l: "concl." },
     { k: "teaser", l: "teaser" },
     { k: "full", l: "full" },
     { k: "post", l: "post" },
