@@ -744,6 +744,31 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     await server.close()
   }
 
+  function runLogCheck(expectedDevices) {
+    const result = deps.logCheck(logPath, {
+      operations: config.operations,
+      expectedDevices,
+    })
+    // A request whose handler failed can be missing from the log.
+    const failures = server.stats().handlerFailures ?? 0
+    const findings = [...result.findings]
+    if (failures > 0) {
+      findings.push(
+        finding(
+          "SERVER_HANDLER_FAILED",
+          `The read-only server could not complete ${failures} request${failures === 1 ? "" : "s"}, so the server log can be missing ${failures === 1 ? "it" : "them"}.`,
+        ),
+      )
+    }
+    state.checks.log = {
+      passed: result.passed && failures === 0,
+      findings,
+      perDevice: result.perDevice,
+      routes: result.routes,
+    }
+    state.logRefusals = result.rateLimitRefusals
+  }
+
   async function runPhases() {
     if (pre.setup.needed && flags["allow-setup"]) {
       await phase("setup", async () => {
@@ -843,17 +868,7 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     }
     await phase("logcheck", async () => {
       await closeServer()
-      const result = deps.logCheck(logPath, {
-        operations: config.operations,
-        expectedDevices: selection.devices.map((device) => device.id),
-      })
-      state.checks.log = {
-        passed: result.passed,
-        findings: result.findings,
-        perDevice: result.perDevice,
-        routes: result.routes,
-      }
-      state.logRefusals = result.rateLimitRefusals
+      runLogCheck(selection.devices.map((device) => device.id))
     })
   }
 
@@ -877,6 +892,21 @@ async function executeRun(deps, { flags, pre, runId, childRunId }) {
     log(`ending (${state.stopReason})`)
     await endStep("stop_children", () => deps.stopChildren())
     await endStep("close_server", closeServer)
+    // An early stop skips the logcheck phase, but the server can already have
+    // forwarded requests. Only a device that started must show traffic.
+    await endStep("log_check", () => {
+      if (state.checks.log !== null || !fs.existsSync(logPath)) return
+      const started = new Set(
+        state.attempts
+          .filter((item) => item?.status !== "not_run")
+          .map((item) => item?.deviceId),
+      )
+      runLogCheck(
+        selection.devices
+          .map((device) => device.id)
+          .filter((id) => started.has(id)),
+      )
+    })
     const stats = (await endStep("server_stats", () => server.stats())) ?? {}
     await endStep("stop_devices", async () => {
       const results = await deps.devices.stopOwned(await deps.devices.list())

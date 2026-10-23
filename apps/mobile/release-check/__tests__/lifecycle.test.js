@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global afterAll, describe, expect, it, require, setTimeout */
 // The run lifecycle (KTD13, R38): one end path for every started run, a
-// stale lock that the next run takes over, ports held at consent, a detached
-// child, phase time limits, and the status, stop, and recover modes.
+// refusal on the stale lock of a killed run, ports held at consent, a
+// detached child, phase time limits, and the status, stop, and recover modes.
 const childProcess = require("node:child_process")
+const crypto = require("node:crypto")
 const { EventEmitter } = require("node:events")
 const fs = require("node:fs")
 const net = require("node:net")
@@ -25,6 +26,7 @@ const { lockPath } = require("../lib/lock")
 const { readJson } = require("../lib/lists")
 const { planCommand } = require("../lib/plan")
 const { buildSummary } = require("../lib/report/summary")
+const { checkLog } = require("../lib/server/logCheck")
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567"
 const GB = 1024 ** 3
@@ -486,6 +488,133 @@ describe("a settings probe inside the journeys phase", () => {
   })
 })
 
+function forwardedLine(deviceId, query) {
+  const body = JSON.stringify({ query })
+  return JSON.stringify({
+    ts: "2026-10-22T03:00:00.000Z",
+    port: 38211,
+    lane: "ios",
+    deviceId,
+    method: "POST",
+    path: "/api/graphql",
+    route: "forwarded",
+    forwardedBody: body,
+    forwardedSha256: crypto.createHash("sha256").update(body).digest("hex"),
+    status: 200,
+  })
+}
+
+function appendServerLog(runDir, lines) {
+  fs.appendFileSync(
+    path.join(runDir, "server-log.jsonl"),
+    lines.map((line) => `${line}\n`).join(""),
+  )
+}
+
+describe("the log check after an early stop", () => {
+  it("runs after a probe_failed stop and reports a forwarded write", async () => {
+    const home = tempHome()
+    const { deps } = stubDeps(home, {
+      logCheck: checkLog,
+      phases: {
+        probing: async (ctx) => {
+          appendServerLog(ctx.runDir, [
+            forwardedLine("iphone-se", "mutation Probe { releaseCheckWrite }"),
+          ])
+          return {
+            passed: false,
+            findings: [],
+            attempts: [
+              failedProbe("iphone-se"),
+              attempt("settings-probe", "android-phone", {
+                status: "not_run",
+                label: "not_run",
+                error: "The run stopped before this journey.",
+              }),
+            ],
+          }
+        },
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary.stopReason).toBe("probe_failed")
+    expect(summary.completedPhases).not.toContain("logcheck")
+    expect(summary.checks.log).toMatchObject({
+      passed: false,
+      perDevice: { "iphone-se": 1 },
+    })
+    expect(summary.checks.log.findings.map((item) => item.code)).toEqual([
+      "FORWARDED_MUTATION",
+      "FORWARDED_NOT_READ_ONLY",
+    ])
+  })
+
+  it("runs after a timeout stop and expects traffic from each started device", async () => {
+    const home = tempHome()
+    const { deps } = stubDeps(home, {
+      logCheck: checkLog,
+      limits: { journeys: 100 },
+      phases: {
+        probing: async () => ({
+          passed: true,
+          findings: [],
+          attempts: [
+            attempt("settings-probe", "iphone-se"),
+            attempt("settings-probe", "ipad-pro-13"),
+          ],
+        }),
+        journeys: async (ctx) => {
+          appendServerLog(ctx.runDir, [
+            forwardedLine("iphone-se", "query Read { watchSetting { id } }"),
+          ])
+          await untilAborted(ctx.signal)
+          return { attempts: [] }
+        },
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary.stopReason).toBe("timeout")
+    expect(summary.checks.log).toMatchObject({
+      passed: false,
+      perDevice: { "iphone-se": 1 },
+      findings: [
+        expect.objectContaining({
+          code: "DEVICE_NO_TRAFFIC",
+          deviceId: "ipad-pro-13",
+        }),
+      ],
+    })
+    expect(summary.checks.log.findings).toHaveLength(1)
+  })
+
+  it("fails the log check when the server could not complete a request", async () => {
+    const home = tempHome()
+    const { deps } = stubDeps(home, {
+      server: {
+        create: () =>
+          serverWith(() => ({
+            routes: {},
+            rateLimitRefusals: [],
+            handlerFailures: 2,
+          })),
+      },
+    })
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(1)
+    const summary = onlySummary(home)
+    expect(summary).toMatchObject({ stopReason: "completed", result: "fail" })
+    expect(summary.completedPhases).toContain("logcheck")
+    expect(summary.checks.log.passed).toBe(false)
+    expect(summary.checks.log.findings).toEqual([
+      expect.objectContaining({
+        code: "SERVER_HANDLER_FAILED",
+        message: expect.stringContaining("2 requests"),
+      }),
+    ])
+  })
+})
+
 describe("admin rate-limit refusals in the speed pass (R36)", () => {
   // Every clock read moves one second, so each phase has its own window.
   function steppedClock() {
@@ -721,16 +850,21 @@ describe("proposed list changes (KTD16)", () => {
 })
 
 describe("a stale lock", () => {
-  it("shows as stale in plan and does not block the next run", async () => {
-    const home = tempHome()
+  function writeDeadLock(home, mode, runId) {
     const dead = {
       pid: endedPid(),
       processStart: "Thu Oct 22 01:00:00 2026",
-      mode: "run",
-      runId: "2026-10-22T01-00-00Z-dead",
+      mode,
+      runId,
     }
     fs.writeFileSync(lockPath(home), JSON.stringify(dead))
-    const { deps, out } = stubDeps(home)
+    return dead
+  }
+
+  it("of a killed run blocks the next run until recover removes it", async () => {
+    const home = tempHome()
+    const dead = writeDeadLock(home, "run", "2026-10-22T01-00-00Z-dead")
+    const { deps, out, err, calls } = stubDeps(home)
 
     expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
     const shown = JSON.parse(out.at(-1))
@@ -739,6 +873,33 @@ describe("a stale lock", () => {
       reason: "pid_ended",
       pid: dead.pid,
     })
+    expect(shown.refusals.map((item) => item.code)).toEqual(["STALE_RUN_LOCK"])
+    expect(shown.refusals[0].message).toContain(
+      "Run `node apps/mobile/release-check/cli.mjs recover` first.",
+    )
+
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(2)
+    expect(err.join("\n")).toContain("STALE_RUN_LOCK")
+    expect(calls.build).toEqual([])
+    expect(readJson(lockPath(home))).toEqual(dead)
+
+    expect(await recoverCommand(parseArgs(["recover"]), deps)).toBe(0)
+    expect(calls.stopOwned).toHaveLength(1)
+    expect(fs.existsSync(lockPath(home))).toBe(false)
+
+    expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(0)
+    expect(onlySummary(home).result).toBe("pass")
+    expect(fs.existsSync(lockPath(home))).toBe(false)
+  })
+
+  it("of another mode shows as stale in plan and does not block the next run", async () => {
+    const home = tempHome()
+    const dead = writeDeadLock(home, "setup", null)
+    const { deps, out } = stubDeps(home)
+
+    expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
+    const shown = JSON.parse(out.at(-1))
+    expect(shown.lock).toMatchObject({ state: "stale", pid: dead.pid })
     expect(shown.refusals).toEqual([])
     expect(shown.runCommand).toBe(
       `node apps/mobile/release-check/cli.mjs run --yes --expect-commit ${COMMIT}`,

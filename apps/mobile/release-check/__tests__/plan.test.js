@@ -2,6 +2,7 @@
 /* global afterAll, describe, expect, it, require */
 // `plan` and the run's start check apply one capacity rule (R2, KTD13), and
 // `plan --json` carries the text that `plan` prints, from the same reading.
+const childProcess = require("node:child_process")
 const fs = require("node:fs")
 const os = require("node:os")
 const path = require("node:path")
@@ -127,6 +128,68 @@ describe("the capacity check of plan and of the run's start", () => {
     expect(admitted.err).toEqual([])
     expect(admitted.spawned).toHaveLength(1)
   })
+})
+
+describe("a stale lock", () => {
+  const CALM_MAC = { availableMb: 40000, load1: 1, cores: 12 }
+
+  function writeDeadLock(home, mode) {
+    const dead = {
+      pid: childProcess.spawnSync("/usr/bin/true").pid,
+      processStart: "Thu Oct 22 01:00:00 2026",
+      mode,
+      runId: `2026-10-22T01-00-00Z-${mode}`,
+    }
+    fs.writeFileSync(path.join(home, "lock.json"), JSON.stringify(dead))
+    return dead
+  }
+
+  it.each([
+    { mode: "run", cleanup: "recover" },
+    { mode: "session", cleanup: "session down" },
+  ])(
+    "of a $mode refuses the run and names `$cleanup`",
+    async ({ mode, cleanup }) => {
+      const { deps, out, err, spawned } = stubDeps({ samples: [CALM_MAC] })
+      const dead = writeDeadLock(deps.home, mode)
+
+      expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
+      const plan = JSON.parse(out.at(-1))
+      expect(plan.refusals).toEqual([
+        {
+          code: "STALE_RUN_LOCK",
+          message: expect.stringContaining(
+            `Run \`node apps/mobile/release-check/cli.mjs ${cleanup}\` first.`,
+          ),
+        },
+      ])
+      expect(plan.text.split("\n")).toContain(
+        `Lock: stale (mode ${mode}, pid ${dead.pid}, run ${dead.runId}; pid_ended). A run refuses until \`${cleanup}\` removes it.`,
+      )
+
+      expect(await runCommand(RUN_START, deps)).toBe(2)
+      expect(err.join("\n")).toContain("- STALE_RUN_LOCK: ")
+      expect(spawned).toEqual([])
+      expect(readJson(path.join(deps.home, "lock.json"))).toEqual(dead)
+    },
+  )
+
+  it.each(["setup", "record-search"])(
+    "of a %s does not refuse the run",
+    async (mode) => {
+      const { deps, out, spawned } = stubDeps({ samples: [CALM_MAC] })
+      const dead = writeDeadLock(deps.home, mode)
+
+      expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
+      const plan = JSON.parse(out.at(-1))
+      expect(plan.refusals).toEqual([])
+      expect(plan.text.split("\n")).toContain(
+        `Lock: stale (mode ${mode}, pid ${dead.pid}, run ${dead.runId}; pid_ended). The next run takes it over.`,
+      )
+      expect(await runCommand(RUN_START, deps)).toBe(0)
+      expect(spawned).toHaveLength(1)
+    },
+  )
 })
 
 describe("plan --json", () => {

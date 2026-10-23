@@ -30,9 +30,30 @@ const NARROWING_FLAGS = Object.freeze([
   "reuse-build",
 ])
 const SETUP_DEVICE_ACTIONS = new Set(["missing", "unpinned"])
+// A killed run or session can leave its devices up. A run that takes over its
+// lock then fails on a busy device and removes the lock that `recover` reads.
+const STALE_LOCK_CLEANUP = new Map([
+  ["run", "recover"],
+  ["session", "session down"],
+])
 
 function refusal(code, message) {
   return { code, message }
+}
+
+function staleLockCleanup(lock) {
+  if (lock.state !== "stale") return null
+  return STALE_LOCK_CLEANUP.get(lock.lock?.mode) ?? null
+}
+
+function staleLockRefusal(lock) {
+  const who = holderText(lock.lock)
+  return refusal(
+    "STALE_RUN_LOCK",
+    lock.lock.mode === "run"
+      ? `A killed runner left a stale lock (${who}). Its devices can still run, and its run has no report. Run \`${COMMAND} recover\` first.`
+      : `An ended session left a stale lock (${who}), and its device can still run. Run \`${COMMAND} session down\` first. If the lock stays, run \`${COMMAND} recover\`.`,
+  )
 }
 
 function listText(items) {
@@ -279,6 +300,7 @@ async function gatherPreflight(deps, { flags = {}, forRun = false } = {}) {
       ),
     )
   }
+  if (staleLockCleanup(lock)) refusals.push(staleLockRefusal(lock))
   for (const item of setup.problems) {
     refusals.push(
       refusal(
@@ -341,6 +363,10 @@ function lockText(lock) {
   if (lock.state === "free") return "free"
   const who = lock.lock ? holderText(lock.lock) : "an unreadable lock file"
   if (lock.state === "held") return `held (${who})`
+  const cleanup = staleLockCleanup(lock)
+  if (cleanup) {
+    return `stale (${who}; ${lock.reason}). A run refuses until \`${cleanup}\` removes it.`
+  }
   return `stale (${who}; ${lock.reason}). The next run takes it over.`
 }
 

@@ -13,6 +13,8 @@ const { parseArgs } = require("../lib/contract")
 const { createDeps, runCommand } = require("../lib/lifecycle")
 const { processStart } = require("../lib/lock")
 const { readJson } = require("../lib/lists")
+const { SummaryError, buildSummary } = require("../lib/report/summary")
+const { readEvents } = require("../lib/runFolder")
 
 const COMMIT = "0123456789abcdef0123456789abcdef01234567"
 const GB = 1024 ** 3
@@ -199,7 +201,7 @@ function stubDeps(home, overrides = {}) {
   for (const [group, value] of Object.entries(groups)) {
     merged[group] = { ...value, ...overrides[group] }
   }
-  return { deps: createDeps(merged), calls, out, err }
+  return { deps: createDeps(merged), calls, out, err, server }
 }
 
 function runArgs(...extra) {
@@ -476,6 +478,115 @@ describe("exit 1", () => {
     expect(stub.calls.server).toContain("close")
     expect(stub.calls.stopOwned).toBe(1)
     expect(fs.existsSync(path.join(home, "lock.json"))).toBe(false)
+  })
+})
+
+class StubFailure extends Error {
+  constructor(step) {
+    super(`the stub ${step} failed`)
+    this.name = "StubFailure"
+  }
+}
+
+// R38: one failed end step must not skip the others. Each row breaks one step
+// and still counts its call, so the test can see that every step ran.
+const END_STEP_FAILURES = [
+  {
+    step: "stop_children",
+    breakStep: (stub) => {
+      stub.deps.stopChildren = async () => {
+        stub.calls.stopChildren += 1
+        throw new StubFailure("stop_children")
+      }
+    },
+    writesSummary: true,
+  },
+  {
+    step: "close_server",
+    breakStep: (stub) => {
+      stub.server.close = async () => {
+        stub.calls.server.push("close")
+        throw new StubFailure("close_server")
+      }
+    },
+    writesSummary: true,
+  },
+  {
+    step: "stop_devices",
+    breakStep: (stub) => {
+      stub.deps.devices.stopOwned = async () => {
+        stub.calls.stopOwned += 1
+        throw new StubFailure("stop_devices")
+      }
+    },
+    writesSummary: true,
+  },
+  {
+    step: "write_report",
+    breakStep: (stub) => {
+      stub.deps.report.writeSummary = () => {
+        throw new StubFailure("write_report")
+      }
+    },
+    writesSummary: false,
+  },
+]
+
+describe("a failed end step", () => {
+  it.each(END_STEP_FAILURES)(
+    "still runs the other end steps and releases the lock when $step fails",
+    async (row) => {
+      const home = tempHome()
+      const stub = stubDeps(home, {
+        phases: { probing: async () => ({ passed: false, findings: [] }) },
+      })
+      row.breakStep(stub)
+      expect(await runCommand(runArgs(), stub.deps)).toBe(1)
+
+      expect(stub.calls.stopChildren).toBe(1)
+      expect(stub.calls.server).toContain("close")
+      expect(stub.calls.stopOwned).toBe(1)
+      expect(fs.existsSync(path.join(home, "lock.json"))).toBe(false)
+      const runDir = onlyRunDir(home)
+      expect(readEvents(runDir)).toContainEqual(
+        expect.objectContaining({ type: "end_step_failed", step: row.step }),
+      )
+      expect(fs.existsSync(path.join(runDir, "summary.json"))).toBe(
+        row.writesSummary,
+      )
+      if (row.writesSummary) {
+        expect(summaryOf(home).stopReason).toBe("probe_failed")
+      }
+      expect(readJson(path.join(runDir, "status.json"))).toMatchObject({
+        phase: "ended",
+        exitCode: 1,
+      })
+    },
+  )
+
+  it("writes a runner_error summary when the first summary is not valid", async () => {
+    const home = tempHome()
+    const errors = ["/checks/log must be object"]
+    let builds = 0
+    const { deps } = stubDeps(home, {
+      report: {
+        buildSummary: (input) => {
+          builds += 1
+          if (builds === 1) throw new SummaryError(errors)
+          return buildSummary(input)
+        },
+      },
+    })
+    expect(await runCommand(runArgs(), deps)).toBe(1)
+    expect(builds).toBe(2)
+    expect(summaryOf(home)).toMatchObject({
+      stopReason: "runner_error",
+      result: "fail",
+      exitCode: 1,
+    })
+    expect(readEvents(onlyRunDir(home))).toContainEqual(
+      expect.objectContaining({ type: "summary_invalid", errors }),
+    )
   })
 })
 

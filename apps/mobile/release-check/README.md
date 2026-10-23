@@ -112,7 +112,9 @@ devices, binds local ports, and writes under
    fails the run when a device sent no traffic, or when a write, a search, or a
    field off the read-only list reached production.
 8. **End.** It stops its server and its own devices, and writes `summary.json`,
-   `report.html`, and `summary.md`.
+   `report.html`, and `summary.md`. After an early stop, it runs the log check
+   before it stops the devices. Only a device that started a journey must show
+   traffic.
 
 ### How production stays safe
 
@@ -247,7 +249,8 @@ The runner home is `~/Library/Caches/forge-release-check`, or
 - `sessions/` and `records/`: the authoring sessions and the search records.
 - `lock.json`: the lock while a run, a session, a record, or setup is active.
   `status` shows a stale lock, and `recover` cleans up after a runner that was
-  killed.
+  killed. A run refuses while a stale lock of a run or a session remains: run
+  `recover` after a run, or `session down` after a session.
 
 ## Verified facts
 
