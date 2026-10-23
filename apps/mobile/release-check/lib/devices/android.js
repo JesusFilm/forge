@@ -252,9 +252,13 @@ function createEmulator(device, options = {}) {
     // own the serial. The kill goes only when the serial runs our AVD.
     async shutdown() {
       if (emulator === null || emulator.exit !== null) {
+        const ownEnded = emulator !== null
         emulator = null
         const running = await avdOnSerial()
         if (running !== device.avd) {
+          // adb can list a crashed emulator for a moment, and boot() refuses
+          // a listed serial. The wait sends nothing to the serial.
+          if (ownEnded && running === null) await waitGone()
           return {
             ok: true,
             skipped: true,

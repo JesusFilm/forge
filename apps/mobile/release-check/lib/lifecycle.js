@@ -6,7 +6,7 @@ const fs = require("node:fs")
 const path = require("node:path")
 
 const { EXIT } = require("./contract")
-const { TIME_LIMITS, createDeps, spawnDetached } = require("./deps")
+const { createDeps, spawnDetached } = require("./deps")
 const { ADMIN_SCHEMA_PATH, sha256 } = require("./lists")
 const lockLib = require("./lock")
 const { recoverCommand, setupMode, stopCommand } = require("./modes")
@@ -723,11 +723,8 @@ async function statusCommand(command, deps) {
 }
 
 module.exports = {
-  TIME_LIMITS,
-  artifactPath,
   childArgs,
   createDeps,
-  pruneBuilds,
   recoverCommand,
   runCommand,
   setupMode,

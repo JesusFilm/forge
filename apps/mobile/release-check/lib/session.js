@@ -18,12 +18,12 @@ const {
   ADMIN_SCHEMA_PATH,
   JOURNEYS_DIR,
   LIST_FILES,
-  checkJourneys,
-  journeyFiles,
+  SKIPPED_FOLDERS,
+  journeyRulesRefusal,
   readJson,
 } = require("./lists")
 const lockLib = require("./lock")
-const { staleLockCleanup, staleLockRefusal } = require("./plan")
+const { refuseStaleLock } = require("./plan")
 const runFolder = require("./runFolder")
 
 const SESSION_FILE = "session.json"
@@ -33,7 +33,7 @@ const PROCESS_LOG = "process.log"
 const SESSIONS_DIR = "sessions"
 const SIMCTL_TIMEOUT_MS = 60_000
 const MINUTE = 60_000
-// A new build can take 45 minutes and a boot 5 more (lifecycle TIME_LIMITS).
+// A new build can take 45 minutes and a boot 5 more (deps.js TIME_LIMITS).
 const UP_WAIT_MS = 120 * MINUTE
 const DOWN_WAIT_MS = 2 * MINUTE
 const LIVE_STATES = new Set(["starting", "ready", "stopping"])
@@ -511,13 +511,8 @@ async function upSession(command, deps) {
     )
   }
   // The serve process would take over this lock, and `recover` reads it.
-  if (staleLockCleanup(lock)) {
-    const refusal = staleLockRefusal(lock)
-    deps.err(
-      `release-check refused: the session did not start.\n- ${refusal.code}: ${refusal.message}`,
-    )
-    return EXIT.refused
-  }
+  const stale = refuseStaleLock(deps, lock, "the session")
+  if (stale !== null) return stale
   const sessionId = runFolder.newRunId(new Date(deps.now()), deps.randomHex())
   const sessionDir = path.join(deps.home, SESSIONS_DIR, sessionId)
   fs.mkdirSync(sessionDir, { recursive: true })
@@ -581,6 +576,15 @@ function resolveJourney(input, journeysDir) {
       refusal: `\`${input}\` is not a journey id or a file inside ${root}`,
     }
   }
+  // The journey rules do not read these folders, so no journey runs there.
+  const skipped = relative
+    .split(path.sep)
+    .find((segment) => SKIPPED_FOLDERS.includes(segment))
+  if (skipped) {
+    return {
+      refusal: `the journey ${file} is in a \`${skipped}\` folder, which the journey rules do not check`,
+    }
+  }
   if (!/\.ya?ml$/.test(file) || !fs.existsSync(file)) {
     return { refusal: `the journey ${file} does not exist` }
   }
@@ -623,16 +627,8 @@ async function trySession(command, deps) {
   const journey = resolveJourney(command.positionals[0], deps.journeysDir)
   if (journey.refusal) return refuseMode(deps, journey.refusal)
   // Every file, as check-lists checks: a journey can run another by runFlow.
-  const problems = checkJourneys(journeyFiles(deps.journeysDir), (file) => file)
-  if (problems.length > 0) {
-    return refuseMode(
-      deps,
-      [
-        "the journey rules of `check-lists` refuse these journeys, so no journey runs:",
-        ...problems.map((problem) => `- ${problem.file}: ${problem.message}`),
-      ].join("\n"),
-    )
-  }
+  const rules = journeyRulesRefusal(deps.journeysDir)
+  if (rules) return refuseMode(deps, rules)
   const device = deps.config.devices.devices.find(
     (entry) => entry.id === record.deviceId,
   )

@@ -16,9 +16,11 @@ const {
   ADMIN_SCHEMA_PATH,
   MOBILE_DIR,
   currentWatchSearchDigest,
+  journeyRulesRefusal,
   readJson,
 } = require("../lists")
 const { holderText } = require("../lock")
+const { refuseStaleLock } = require("../plan")
 const { compareText, writeFileAtomic } = require("../report/summary")
 const runFolder = require("../runFolder")
 const session = require("../session")
@@ -450,6 +452,8 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
     if (!(error instanceof RecordRefusal)) throw error
     return refuseMode(deps, error.message)
   }
+  const rules = journeyRulesRefusal(deps.journeysDir)
+  if (rules) return refuseMode(deps, rules)
   const journeys = searchJourneys(deps)
   if (journeys.length === 0) {
     return refuseMode(
@@ -457,6 +461,9 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
       `no top-level journey has the \`${SEARCH_TAG}\` tag`,
     )
   }
+  // A take-over would remove the lock that `recover` reads.
+  const stale = refuseStaleLock(deps, await deps.lock.inspect(), "the record")
+  if (stale !== null) return stale
   const recordId = runFolder.newRunId(new Date(deps.now()), deps.randomHex())
   const taken = await deps.lock.acquire({
     mode: "record-search",

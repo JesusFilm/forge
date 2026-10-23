@@ -13,6 +13,7 @@ const NESTED_COMMANDS = ["runFlow", "repeat", "retry"]
 const HOST_SCRIPT_RISK =
   "host-side JavaScript can reach production admin without the read-only server"
 const HOST_SCRIPT_COMMAND = /\b(runScript|evalScript)\b/gi
+const RUN_FLOW = /\brunFlow\b/i
 const NAME = "[A-Za-z_][A-Za-z0-9_]*"
 const OPERAND = `(?:maestro\\.copiedText|${NAME}|"[^"\\\\]*"|'[^'\\\\]*')`
 const SAFE_EXPRESSION = new RegExp(
@@ -382,6 +383,40 @@ function hostScriptProblems(lines) {
   return problems
 }
 
+/** The file of each `runFlow` step, as written, with its line. */
+function runFlowFiles(flow) {
+  return flow.steps.flatMap((step) => {
+    if (step.command !== "runFlow") return []
+    if (typeof step.args === "string") {
+      return [{ line: step.line, file: step.args }]
+    }
+    if (isMap(step.args) && Object.hasOwn(step.args, "file")) {
+      return [{ line: step.line, file: String(step.args.file) }]
+    }
+    return []
+  })
+}
+
+// A flow map or a header hook can hide a runFlow file from the parser, so
+// each raw line that names runFlow must be a step that the parser read.
+function hiddenRunFlowProblems(flow) {
+  const stepLines = new Set(
+    flow.steps
+      .filter((step) => step.command === "runFlow")
+      .map((step) => step.line),
+  )
+  const problems = []
+  flow.sourceLines.forEach((text, index) => {
+    const line = index + 1
+    if (RUN_FLOW.test(text) && !stepLines.has(line)) {
+      problems.push(
+        `line ${line} names runFlow outside a \`- runFlow:\` step in the journey body, so the rules cannot check the file that it runs`,
+      )
+    }
+  })
+  return problems
+}
+
 function journeyRuleProblems(flow) {
   const problems = []
   for (const step of flow.steps) {
@@ -404,7 +439,11 @@ function journeyRuleProblems(flow) {
       )
     }
   }
-  return [...problems, ...hostScriptProblems(flow.sourceLines)]
+  return [
+    ...problems,
+    ...hostScriptProblems(flow.sourceLines),
+    ...hiddenRunFlowProblems(flow),
+  ]
 }
 
 module.exports = {
@@ -413,5 +452,6 @@ module.exports = {
   assertedScreens,
   journeyRuleProblems,
   parseFlow,
+  runFlowFiles,
   stepLabel,
 }

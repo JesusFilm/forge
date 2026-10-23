@@ -38,7 +38,7 @@ function readySetup() {
 
 // The real capacity check runs; only the Mac's readings are fake. Each host
 // read takes the next sample, and the last one repeats.
-function stubDeps({ androidLoad = 3, samples = [BUSY_MAC] } = {}) {
+function stubDeps({ androidLoad = 3, samples = [BUSY_MAC], journeysDir } = {}) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-plan-"))
   tempDirs.push(home)
   const out = []
@@ -58,6 +58,7 @@ function stubDeps({ androidLoad = 3, samples = [BUSY_MAC] } = {}) {
   }
   const deps = createDeps({
     home,
+    ...(journeysDir ? { journeysDir } : {}),
     config: { devices },
     env: { PATH: process.env.PATH, HOME: process.env.HOME },
     out: (text) => out.push(text),
@@ -147,6 +148,7 @@ describe("a stale lock", () => {
   it.each([
     { mode: "run", cleanup: "recover" },
     { mode: "session", cleanup: "session down" },
+    { mode: "record-search", cleanup: "recover" },
   ])(
     "of a $mode refuses the run and names `$cleanup`",
     async ({ mode, cleanup }) => {
@@ -174,22 +176,66 @@ describe("a stale lock", () => {
     },
   )
 
-  it.each(["setup", "record-search"])(
-    "of a %s does not refuse the run",
-    async (mode) => {
-      const { deps, out, spawned } = stubDeps({ samples: [CALM_MAC] })
-      const dead = writeDeadLock(deps.home, mode)
+  it.each(["setup"])("of a %s does not refuse the run", async (mode) => {
+    const { deps, out, spawned } = stubDeps({ samples: [CALM_MAC] })
+    const dead = writeDeadLock(deps.home, mode)
 
-      expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
-      const plan = JSON.parse(out.at(-1))
-      expect(plan.refusals).toEqual([])
-      expect(plan.text.split("\n")).toContain(
-        `Lock: stale (mode ${mode}, pid ${dead.pid}, run ${dead.runId}; pid_ended). The next run takes it over.`,
-      )
-      expect(await runCommand(RUN_START, deps)).toBe(0)
-      expect(spawned).toHaveLength(1)
-    },
-  )
+    expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
+    const plan = JSON.parse(out.at(-1))
+    expect(plan.refusals).toEqual([])
+    expect(plan.text.split("\n")).toContain(
+      `Lock: stale (mode ${mode}, pid ${dead.pid}, run ${dead.runId}; pid_ended). The next run takes it over.`,
+    )
+    expect(await runCommand(RUN_START, deps)).toBe(0)
+    expect(spawned).toHaveLength(1)
+  })
+})
+
+describe("a journey that breaks a journey rule", () => {
+  it("refuses the run in plan and in the run's start check, before any side effect", async () => {
+    const journeysDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "release-check-plan-journeys-"),
+    )
+    tempDirs.push(journeysDir)
+    const file = path.join(journeysDir, "cold-launch-home.yaml")
+    fs.writeFileSync(
+      file,
+      [
+        "appId: org.jesusfilm.forgewatch",
+        "---",
+        "- launchApp:",
+        "    permissions:",
+        "      notifications: deny",
+        "- runScript: post.js",
+      ].join("\n"),
+    )
+    const calm = { availableMb: 40000, load1: 1, cores: 12 }
+    const { deps, out, err, spawned } = stubDeps({
+      samples: [calm],
+      journeysDir,
+    })
+    const problem = `  - ${file}: line 6 runs runScript; host-side JavaScript can reach production admin without the read-only server`
+
+    expect(await planCommand(parseArgs(["plan", "--json"]), deps)).toBe(0)
+    const plan = JSON.parse(out.at(-1))
+    expect(plan.refusals).toEqual([
+      {
+        code: "JOURNEY_RULES",
+        message: [
+          "the journey rules of `check-lists` refuse these journeys, so no journey runs:",
+          problem,
+        ].join("\n"),
+      },
+    ])
+
+    expect(await runCommand(RUN_START, deps)).toBe(2)
+    expect(err.join("\n")).toContain(
+      "- JOURNEY_RULES: the journey rules of `check-lists`",
+    )
+    expect(err.join("\n")).toContain(problem)
+    expect(spawned).toEqual([])
+    expect(fs.existsSync(path.join(deps.home, "runs"))).toBe(false)
+  })
 })
 
 describe("plan --json", () => {

@@ -200,6 +200,7 @@ describe("android stop", () => {
       note: "emulator-5642 did not report its AVD name, so the runner did not stop it",
     })
     expect(kills(empty)).toEqual([])
+    expect(empty.calls.filter((call) => call[1] === "devices")).toEqual([])
   })
 
   it("stops its own AVD from a fresh handle when the serial reports that AVD", async () => {
@@ -239,6 +240,41 @@ describe("android stop", () => {
 
     expect(await tablet.shutdown()).toMatchObject({ ok: true, skipped: true })
     expect(kills(tools)).toEqual([])
+  })
+
+  it("restarts after its own emulator crashes, when adb lists the dead serial for a moment, with no kill (R11)", async () => {
+    const tools = fakeEmulatorTools({ answers: true, running: false })
+    let staleListings = 0
+    const listings = []
+    const runChild = async (command, args) => {
+      if (args[0] === "devices" && staleListings > 0) {
+        staleListings -= 1
+        listings.push("listed")
+        tools.calls.push([command, ...args])
+        return result({
+          stdout: "List of devices attached\nemulator-5642\toffline\n",
+        })
+      }
+      if (args[0] === "devices") listings.push(tools.state.running)
+      return tools.runChild(command, args)
+    }
+    const tablet = emulatorFor({ ...tools, runChild })
+    expect(await tablet.boot()).toMatchObject({ ok: true })
+
+    tools.state.exitEmulator()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    tools.state.running = false
+    staleListings = 2
+    listings.length = 0
+
+    expect(await tablet.restart()).toMatchObject({ ok: true })
+
+    expect(kills(tools)).toEqual([])
+    expect(listings.slice(0, 3)).toEqual(["listed", "listed", false])
+    expect(
+      tools.calls.filter((call) => call[0] === PATHS.emulator),
+    ).toHaveLength(2)
+    expect(tools.state.running).toBe(true)
   })
 })
 

@@ -9,7 +9,11 @@ const { parse, print } = require("graphql")
 
 const { EXIT, FAILURE_CLASSES } = require("./contract")
 const inventoryLib = require("./devices/inventory")
-const { journeyRuleProblems, parseFlow } = require("./journeys/flow")
+const {
+  journeyRuleProblems,
+  parseFlow,
+  runFlowFiles,
+} = require("./journeys/flow")
 
 const RELEASE_CHECK_DIR = path.resolve(__dirname, "..")
 const MOBILE_DIR = path.resolve(RELEASE_CHECK_DIR, "..")
@@ -57,6 +61,7 @@ const PORT_NAMES = [
 ]
 const ROUTE_EXTENSION = /\.(tsx|ts|jsx|js)$/
 const PLATFORM_SUFFIX = /\.(ios|android|native|web)$/
+const SKIPPED_FOLDERS = Object.freeze(["node_modules", "__tests__"])
 
 class ListSourceError extends Error {
   constructor(message) {
@@ -313,7 +318,7 @@ function checkSearchAnswers(answers, readDigest) {
 function sourceFiles(dir, matches) {
   if (!fs.existsSync(dir)) return []
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    if (entry.name === "node_modules" || entry.name === "__tests__") return []
+    if (SKIPPED_FOLDERS.includes(entry.name)) return []
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) return sourceFiles(full, matches)
     return matches(entry.name) ? [full] : []
@@ -714,6 +719,7 @@ function journeyLinks(source) {
 
 function checkJourneys(files, display) {
   const findings = []
+  const checked = new Set(files.map((file) => path.resolve(file)))
   for (const file of files) {
     const source = fs.readFileSync(file, "utf8")
     const finding = (message) =>
@@ -733,8 +739,25 @@ function checkJourneys(files, display) {
       continue
     }
     for (const message of journeyRuleProblems(flow)) finding(message)
+    // Maestro reads a runFlow file relative to the journey that names it.
+    for (const { line, file: target } of runFlowFiles(flow)) {
+      if (checked.has(path.resolve(path.dirname(file), target))) continue
+      finding(
+        `line ${line} runs \`${target}\` with runFlow, which is not a journey file that these rules check; use a .yaml file in the journeys folder, outside ${SKIPPED_FOLDERS.join(" and ")}`,
+      )
+    }
   }
   return findings
+}
+
+/** The refusal text for the journey rules of `check-lists`, or null. */
+function journeyRulesRefusal(journeysDir = JOURNEYS_DIR) {
+  const problems = checkJourneys(journeyFiles(journeysDir), (file) => file)
+  if (problems.length === 0) return null
+  return [
+    "the journey rules of `check-lists` refuse these journeys, so no journey runs:",
+    ...problems.map((problem) => `  - ${problem.file}: ${problem.message}`),
+  ].join("\n")
 }
 
 function runCheckLists(options = {}) {
@@ -844,6 +867,7 @@ module.exports = {
   MOBILE_DIR,
   OPERATION_CLASSES,
   REPO_ROOT,
+  SKIPPED_FOLDERS,
   appEnvKeys,
   checkJourneys,
   checkListsCommand,
@@ -854,6 +878,7 @@ module.exports = {
   envKeysFromSource,
   isObject,
   journeyFiles,
+  journeyRulesRefusal,
   readJson,
   rootFieldCoordinates,
   routeScreenId,

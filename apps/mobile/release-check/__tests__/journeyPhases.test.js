@@ -261,6 +261,59 @@ describe("a run without the settings probe", () => {
   })
 })
 
+describe("the run's copy of the journeys", () => {
+  function journeysWith(files) {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-copy-"))
+    tempDirs.push(dir)
+    for (const [name, source] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true })
+      fs.writeFileSync(path.join(dir, name), source)
+    }
+    return dir
+  }
+  const probe = fs.readFileSync(
+    path.join(JOURNEYS_DIR, `${PROBE_ID}.yaml`),
+    "utf8",
+  )
+
+  it("leaves out the folders that the journey rules do not read", async () => {
+    const journeysDir = journeysWith({
+      "_shared/helper.yaml": "appId: org.jesusfilm.forgewatch\n---\n",
+      "__tests__/helper.yaml": "- runScript: post.js\n",
+      "node_modules/x/flow.yaml": "- runScript: post.js\n",
+    })
+    const { phases, ctx } = setUp({}, { journeysDir })
+
+    const error = await phases.probing(ctx).catch((caught) => caught)
+
+    expect(error.message).toMatch(/journey is missing/)
+    const snapshot = path.join(ctx.runDir, "journeys")
+    expect(fs.readdirSync(snapshot).sort()).toEqual(["_shared"])
+    expect(fs.readdirSync(path.join(snapshot, "_shared"))).toEqual([
+      "helper.yaml",
+    ])
+  })
+
+  it("refuses to start when the copy breaks a journey rule", async () => {
+    const journeysDir = journeysWith({
+      [`${PROBE_ID}.yaml`]: `${probe.trimEnd()}\n- runScript: post.js\n`,
+    })
+    const { phases, ctx, calls, children } = setUp({}, { journeysDir })
+
+    const error = await phases.probing(ctx).catch((caught) => caught)
+
+    expect(error).toBeInstanceOf(JourneyPhaseError)
+    expect(error.message).toContain(
+      "the journey rules of `check-lists` refuse these journeys",
+    )
+    expect(error.message).toContain(
+      `${path.join(ctx.runDir, "journeys", `${PROBE_ID}.yaml`)}: line ${probe.trimEnd().split("\n").length + 1} runs runScript`,
+    )
+    expect(calls).toEqual([])
+    expect(children).toEqual([])
+  })
+})
+
 describe("a failed settings probe", () => {
   it("fails the probing phase, and no journey other than the probe starts", async () => {
     const { phases, ctx, calls } = setUp({

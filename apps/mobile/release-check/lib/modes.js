@@ -7,6 +7,7 @@ const path = require("node:path")
 
 const { EXIT, refuseMode } = require("./contract")
 const lockLib = require("./lock")
+const { refuseStaleLock } = require("./plan")
 const proc = require("./proc")
 const { DEFAULT_KEEP } = require("./report/retention")
 const { MARKDOWN_FILE, SUMMARY_FILE } = require("./report/summary")
@@ -66,6 +67,13 @@ async function recoverCommand(command, deps) {
   }
   try {
     const orphan = taken.replaced
+    if (orphan?.mode === "record-search") {
+      await deps.devices.stopOwned(await deps.devices.list())
+      deps.out(
+        `release-check recover: removed the stale record-search lock of pid ${orphan.pid} and stopped the runner's devices.`,
+      )
+      return EXIT.passed
+    }
     if (!orphan || orphan.mode !== "run" || !orphan.runId) {
       deps.out(
         orphan
@@ -127,6 +135,9 @@ async function recoverCommand(command, deps) {
 
 async function setupMode(command, deps) {
   if (command.flags.check) return deps.setupCommand(command)
+  // A take-over would remove the lock that `recover` reads.
+  const stale = refuseStaleLock(deps, await deps.lock.inspect(), "setup")
+  if (stale !== null) return stale
   const taken = await deps.lock.acquire({ mode: "setup", pid: deps.pid })
   if (!taken.ok) {
     return refuseMode(

@@ -23,6 +23,7 @@ function journeysWith(files) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-rules-"))
   tempDirs.push(dir)
   for (const [name, source] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true })
     fs.writeFileSync(path.join(dir, name), source)
   }
   return dir
@@ -168,6 +169,74 @@ describe("check-lists journey rules", () => {
         }),
       )
       expect(messages).toEqual([])
+    })
+  })
+
+  describe("runFlow files", () => {
+    const journey = (...steps) =>
+      [...LAUNCH, "    label: Launch", ...steps].join("\n")
+    const HELPER = [
+      "appId: org.jesusfilm.forgewatch",
+      "---",
+      "- tapOn:",
+      "    id: helper",
+      "    label: Tap the helper",
+    ].join("\n")
+    const outside = (line, target) =>
+      `line ${line} runs \`${target}\` with runFlow, which is not a journey file that these rules check; use a .yaml file in the journeys folder, outside node_modules and __tests__`
+
+    it("rejects a file outside the files that the rules check", () => {
+      const messages = journeyFindings(
+        journeysWith({
+          "a-absolute.yaml": journey("- runFlow: /tmp/x.yaml"),
+          "b-parent.yaml": journey(
+            "- runFlow:",
+            "    file: ../../e2e/helper.yaml",
+          ),
+          "c-tests.yaml": journey("- runFlow: __tests__/helper.yaml"),
+          "d-text.yaml": journey("- runFlow: notes.txt"),
+          "__tests__/helper.yaml": `${HELPER}\n- runScript: post.js`,
+          "notes.txt": "- runScript: post.js",
+        }),
+      )
+      expect(messages).toEqual([
+        outside(7, "/tmp/x.yaml"),
+        outside(7, "../../e2e/helper.yaml"),
+        outside(7, "__tests__/helper.yaml"),
+        outside(7, "notes.txt"),
+      ])
+    })
+
+    it("accepts a relative file that the rules check", () => {
+      const messages = journeyFindings(
+        journeysWith({
+          "flow.yaml": journey(
+            "- runFlow: _shared/helper.yaml",
+            "- runFlow:",
+            "    file: _shared/helper.yaml",
+          ),
+          "_shared/helper.yaml": HELPER,
+        }),
+      )
+      expect(messages).toEqual([])
+    })
+
+    it("rejects runFlow in a flow map and in a header hook", () => {
+      const hidden = (line) =>
+        `line ${line} names runFlow outside a \`- runFlow:\` step in the journey body, so the rules cannot check the file that it runs`
+      const messages = journeyFindings(
+        journeysWith({
+          "flow-map.yaml": journey("- { runFlow: /tmp/x.yaml }"),
+          "hook.yaml": [
+            "appId: org.jesusfilm.forgewatch",
+            "onFlowStart:",
+            "  - runFlow: /tmp/x.yaml",
+            ...LAUNCH.slice(1),
+            "    label: Launch",
+          ].join("\n"),
+        }),
+      )
+      expect(messages).toEqual([hidden(7), hidden(3)])
     })
   })
 

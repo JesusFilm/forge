@@ -18,6 +18,7 @@ const {
   createDeps,
   recoverCommand,
   runCommand,
+  setupMode,
   spawnDetached,
   statusCommand,
   stopCommand,
@@ -889,6 +890,52 @@ describe("a stale lock", () => {
 
     expect(await runCommand(parseArgs(["run", "--yes"]), deps)).toBe(0)
     expect(onlySummary(home).result).toBe("pass")
+    expect(fs.existsSync(lockPath(home))).toBe(false)
+  })
+
+  it("of a killed run makes setup refuse and keep it, so recover finds the orphan", async () => {
+    const home = tempHome()
+    const dead = writeDeadLock(home, "run", "2026-10-22T01-00-00Z-dead")
+    const setups = []
+    const { deps, out, err, calls } = stubDeps(home, {
+      setupCommand: async (command) => {
+        setups.push(command.flags)
+        return 0
+      },
+    })
+
+    expect(await setupMode(parseArgs(["setup"]), deps)).toBe(2)
+    expect(err.join("\n")).toContain(
+      "release-check refused: setup did not start.\n- STALE_RUN_LOCK: ",
+    )
+    expect(setups).toEqual([])
+    expect(readJson(lockPath(home))).toEqual(dead)
+
+    expect(await setupMode(parseArgs(["setup", "--check"]), deps)).toBe(0)
+    expect(setups).toEqual([{ check: true }])
+    expect(readJson(lockPath(home))).toEqual(dead)
+
+    expect(await recoverCommand(parseArgs(["recover"]), deps)).toBe(0)
+    expect(calls.stopOwned).toHaveLength(1)
+    expect(out.join("\n")).toContain(`Run ${dead.runId} left no run.json`)
+    expect(fs.existsSync(lockPath(home))).toBe(false)
+  })
+
+  it("of a killed record-search makes recover stop the runner's devices", async () => {
+    const home = tempHome()
+    const dead = writeDeadLock(
+      home,
+      "record-search",
+      "2026-10-22T01-00-00Z-rec",
+    )
+    const { deps, out, calls } = stubDeps(home)
+
+    expect(await recoverCommand(parseArgs(["recover"]), deps)).toBe(0)
+
+    expect(calls.stopOwned).toHaveLength(1)
+    expect(out).toEqual([
+      `release-check recover: removed the stale record-search lock of pid ${dead.pid} and stopped the runner's devices.`,
+    ])
     expect(fs.existsSync(lockPath(home))).toBe(false)
   })
 

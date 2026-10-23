@@ -216,6 +216,7 @@ describe("session up", () => {
   it.each([
     { mode: "run", cleanup: "recover" },
     { mode: "session", cleanup: "session down" },
+    { mode: "record-search", cleanup: "recover" },
   ])(
     "refuses a stale $mode lock and names `$cleanup`, so it keeps the lock that recover reads",
     async ({ mode, cleanup }) => {
@@ -682,6 +683,48 @@ describe("session try", () => {
     expect(touched).toEqual([])
     expect(out).toEqual([])
     expect(fs.existsSync(path.join(sessionDir, "tries"))).toBe(false)
+  })
+
+  it("refuses a journey file in a folder that the journey rules do not read", async () => {
+    const home = tempDir("release-check-session-")
+    const sessionDir = path.join(home, "sessions", "s8")
+    fs.mkdirSync(sessionDir, { recursive: true })
+    fs.writeFileSync(
+      path.join(home, SESSION_FILE),
+      JSON.stringify({
+        sessionId: "s8",
+        sessionDir,
+        pid: 4242,
+        processStart: "Thu Oct 22 16:00:00 2026",
+        state: "ready",
+        deviceId: "iphone-se",
+        udid: UDID,
+        artifact: makeIosBuild(home),
+        logPath: path.join(sessionDir, "server-log.jsonl"),
+      }),
+    )
+    const journeysDir = tempDir("release-check-session-journeys-")
+    const file = path.join(journeysDir, "__tests__", "helper.yaml")
+    fs.mkdirSync(path.dirname(file))
+    fs.writeFileSync(file, "- runScript: post.js\n")
+    const touched = []
+    const { deps, err, out } = baseDeps(home, CONFIG_DIR, {
+      journeysDir,
+      isAlive: (pid) => pid === 4242,
+      processStart: async () => "Thu Oct 22 16:00:00 2026",
+      createSimulator: () => touched.push("device"),
+      runChild: async () => touched.push("child"),
+      runMaestro: async () => touched.push("maestro"),
+    })
+
+    const code = await sessionCommand(parseArgs(["session", "try", file]), deps)
+
+    expect(code).toBe(2)
+    expect(err.join("\n")).toContain(
+      `the journey ${file} is in a \`__tests__\` folder, which the journey rules do not check`,
+    )
+    expect(touched).toEqual([])
+    expect(out).toEqual([])
   })
 })
 

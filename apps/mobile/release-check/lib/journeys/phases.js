@@ -16,6 +16,8 @@ const {
   JOURNEYS_DIR,
   LIST_FILES,
   MOBILE_DIR,
+  SKIPPED_FOLDERS,
+  journeyRulesRefusal,
   readJson,
   screenInventory,
 } = require("../lists")
@@ -61,10 +63,12 @@ class JourneyPhaseError extends Error {
   }
 }
 
+// The journey rules do not read these folders, so the run does not copy them.
 function copyJourneys(from, to) {
   fs.mkdirSync(to, { recursive: true })
   for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
     const source = path.join(from, entry.name)
+    if (SKIPPED_FOLDERS.includes(entry.name)) continue
     if (entry.isDirectory()) copyJourneys(source, path.join(to, entry.name))
     else if (/\.ya?ml$/.test(entry.name)) {
       fs.copyFileSync(source, path.join(to, entry.name))
@@ -104,6 +108,9 @@ function createJourneyPhases(options = {}) {
   function startRun(ctx) {
     const snapshot = path.join(ctx.runDir, "journeys")
     copyJourneys(journeysDir, snapshot)
+    // The checkout can change after the preflight check, so check the copy.
+    const rules = journeyRulesRefusal(snapshot)
+    if (rules) throw new JourneyPhaseError(rules)
     const journeys = readJourneys(snapshot)
     const flows = new Map(journeys.map((journey) => [journey.id, journey]))
     if (!flows.has(PROBE_ID)) {

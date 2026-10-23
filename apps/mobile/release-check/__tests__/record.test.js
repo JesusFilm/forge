@@ -11,8 +11,11 @@ const os = require("node:os")
 const path = require("node:path")
 const { print } = require("graphql")
 
+const { parseArgs } = require("../lib/contract")
+const { createDeps } = require("../lib/deps")
 const { CONFIG_DIR, MOBILE_DIR, REPO_ROOT, readJson } = require("../lib/lists")
 const { lockPath } = require("../lib/lock")
+const { recoverCommand } = require("../lib/modes")
 const {
   adminLocales,
   checkResults,
@@ -195,6 +198,7 @@ async function recordHarness({
   appSearches,
   adminUrl,
   createEmulator = fakeHandle,
+  extraJourneys = {},
 }) {
   const home = tempDir("release-check-record-")
   const configDir = tempDir("release-check-record-config-")
@@ -228,6 +232,9 @@ async function recordHarness({
       "",
     ].join("\n"),
   )
+  for (const [name, source] of Object.entries(extraJourneys)) {
+    fs.writeFileSync(path.join(journeysDir, name), source)
+  }
   fs.mkdirSync(path.join(home, "builds", COMMIT, "ios", "forgewatch.app"), {
     recursive: true,
   })
@@ -300,6 +307,7 @@ async function recordHarness({
     out,
     err,
     ran,
+    journeysDir,
     answersFile: path.join(configDir, "search-answers.json"),
     run: () => recordSearchCommand(command, deps),
   }
@@ -336,6 +344,85 @@ describe("the local admin URL", () => {
     expect(harness.ran).toEqual([])
     expect(fs.existsSync(lockPath(harness.home))).toBe(false)
     expect(fs.readFileSync(harness.answersFile, "utf8")).toBe(before)
+  })
+})
+
+describe("record-search refusals before the lock", () => {
+  it("refuses a journey that breaks a journey rule, before it takes the lock or sends a search", async () => {
+    const harness = await recordHarness({
+      local: await fakeLocalAdmin({}),
+      production: await fakeProduction(),
+      appSearches: ["creation"],
+      extraJourneys: {
+        "post.yaml": [
+          "appId: org.jesusfilm.forgewatch",
+          "---",
+          "- launchApp:",
+          "    permissions:",
+          "      notifications: deny",
+          "- runScript: post.js",
+        ].join("\n"),
+      },
+    })
+    const before = fs.readFileSync(harness.answersFile, "utf8")
+
+    const code = await harness.run()
+
+    expect(code).toBe(2)
+    const printed = harness.err.join("\n")
+    expect(printed).toContain(
+      "release-check refused: the journey rules of `check-lists` refuse these journeys, so no journey runs:",
+    )
+    expect(printed).toContain(
+      `  - ${path.join(harness.journeysDir, "post.yaml")}: line 6 runs runScript; host-side JavaScript can reach production admin without the read-only server`,
+    )
+    expect(harness.ran).toEqual([])
+    expect(fs.existsSync(lockPath(harness.home))).toBe(false)
+    expect(fs.existsSync(path.join(harness.home, "records"))).toBe(false)
+    expect(fs.readFileSync(harness.answersFile, "utf8")).toBe(before)
+  })
+
+  it("refuses a stale run lock, keeps it, and leaves the orphan for recover", async () => {
+    const harness = await recordHarness({
+      local: await fakeLocalAdmin({}),
+      production: await fakeProduction(),
+      appSearches: ["creation"],
+    })
+    const dead = {
+      pid: childProcess.spawnSync("/usr/bin/true").pid,
+      processStart: "Thu Oct 22 01:00:00 2026",
+      mode: "run",
+      runId: "2026-10-22T01-00-00Z-dead",
+    }
+    fs.writeFileSync(lockPath(harness.home), JSON.stringify(dead))
+
+    expect(await harness.run()).toBe(2)
+    expect(harness.err.join("\n")).toContain(
+      "release-check refused: the record did not start.\n- STALE_RUN_LOCK: ",
+    )
+    expect(harness.ran).toEqual([])
+    expect(readJson(lockPath(harness.home))).toEqual(dead)
+
+    const stopped = []
+    const out = []
+    const recoverDeps = createDeps({
+      home: harness.home,
+      out: (text) => out.push(text),
+      err: () => {},
+      devices: {
+        list: async () => ({ owned: [], foreign: [], missing: [], errors: [] }),
+        stopOwned: async (inventory) => {
+          stopped.push(inventory)
+          return []
+        },
+      },
+    })
+    expect(await recoverCommand(parseArgs(["recover"]), recoverDeps)).toBe(0)
+    expect(stopped).toHaveLength(1)
+    expect(out.join("\n")).toContain(
+      `stopped the runner's devices. Run ${dead.runId} left no run.json`,
+    )
+    expect(fs.existsSync(lockPath(harness.home))).toBe(false)
   })
 })
 

@@ -9,6 +9,7 @@ const fs = require("node:fs")
 const path = require("node:path")
 
 const { COMMAND, EXIT } = require("./contract")
+const { journeyRulesRefusal } = require("./lists")
 const { holderText, summarizeLock } = require("./lock")
 
 const GB = 1024 ** 3
@@ -30,11 +31,13 @@ const NARROWING_FLAGS = Object.freeze([
   "reuse-build",
 ])
 const SETUP_DEVICE_ACTIONS = new Set(["missing", "unpinned"])
-// A killed run or session can leave its devices up. A run that takes over its
-// lock then fails on a busy device and removes the lock that `recover` reads.
+// A killed run, session, or record can leave its devices up. A mode that takes
+// over its lock then fails on a busy device and removes the lock that
+// `recover` reads.
 const STALE_LOCK_CLEANUP = new Map([
   ["run", "recover"],
   ["session", "session down"],
+  ["record-search", "recover"],
 ])
 
 function refusal(code, message) {
@@ -48,12 +51,22 @@ function staleLockCleanup(lock) {
 
 function staleLockRefusal(lock) {
   const who = holderText(lock.lock)
-  return refusal(
-    "STALE_RUN_LOCK",
-    lock.lock.mode === "run"
-      ? `A killed runner left a stale lock (${who}). Its devices can still run, and its run has no report. Run \`${COMMAND} recover\` first.`
-      : `An ended session left a stale lock (${who}), and its device can still run. Run \`${COMMAND} session down\` first. If the lock stays, run \`${COMMAND} recover\`.`,
+  const messages = {
+    run: `A killed runner left a stale lock (${who}). Its devices can still run, and its run has no report. Run \`${COMMAND} recover\` first.`,
+    session: `An ended session left a stale lock (${who}), and its device can still run. Run \`${COMMAND} session down\` first. If the lock stays, run \`${COMMAND} recover\`.`,
+    "record-search": `A killed \`record-search\` left a stale lock (${who}), and its devices can still run. Run \`${COMMAND} recover\` first.`,
+  }
+  return refusal("STALE_RUN_LOCK", messages[lock.lock.mode])
+}
+
+/** Writes the stale-lock refusal of a mode and gives its exit code, or null. */
+function refuseStaleLock(deps, lock, what) {
+  if (!staleLockCleanup(lock)) return null
+  const item = staleLockRefusal(lock)
+  deps.err(
+    `release-check refused: ${what} did not start.\n- ${item.code}: ${item.message}`,
   )
+  return EXIT.refused
 }
 
 function listText(items) {
@@ -301,6 +314,8 @@ async function gatherPreflight(deps, { flags = {}, forRun = false } = {}) {
     )
   }
   if (staleLockCleanup(lock)) refusals.push(staleLockRefusal(lock))
+  const journeyRules = journeyRulesRefusal(deps.journeysDir)
+  if (journeyRules) refusals.push(refusal("JOURNEY_RULES", journeyRules))
   for (const item of setup.problems) {
     refusals.push(
       refusal(
@@ -501,6 +516,7 @@ module.exports = {
   journeyIdsIn,
   planCommand,
   preflightAdmin,
+  refuseStaleLock,
   staleLockCleanup,
   staleLockRefusal,
 }
