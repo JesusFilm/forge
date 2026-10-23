@@ -37,6 +37,7 @@ describe("syncVideos", () => {
             {
               id: "video-core-1",
               slug: "video",
+              previousSlugs: ["old-video-slug"],
               label: "episode",
               publishedAt: "2026-01-01T00:00:00.000Z",
               primaryLanguageId: "lang-es",
@@ -212,9 +213,11 @@ describe("syncVideos", () => {
           videoSource: "MUX",
           originId: "origin-1",
           primaryLanguageId: "language-es",
+          previousSlugs: ["old-video-slug"],
         }),
         update: expect.objectContaining({
           primaryLanguageId: "language-es",
+          previousSlugs: ["old-video-slug"],
         }),
       }),
     )

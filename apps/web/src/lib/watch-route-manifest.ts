@@ -15,6 +15,10 @@ export type WatchRouteManifest = {
     string,
     Record<string, number[]>
   >
+  // Former video slug (Core's Video.previousSlugs, forge#2856) -> current
+  // slug. Optional for backward-compatible reads of snapshots written before
+  // slug-alias redirects existed.
+  redirectSlugs?: Record<string, string>
 }
 
 export type WatchRouteManifestRoute =
@@ -48,6 +52,7 @@ type WatchRouteManifestIndex = {
   >
   hasContentAudioLanguageIndex: boolean
   hasEpisodeAudioLanguageIndex: boolean
+  redirectSlugs: ReadonlyMap<string, string>
 }
 
 export type WatchContentAudioLanguageProof =
@@ -109,6 +114,14 @@ function isAudioLanguageIndexesByContent(
   )
 }
 
+function isRedirectSlugs(value: unknown): value is Record<string, string> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  return Object.entries(value).every(
+    ([oldSlug, currentSlug]) =>
+      typeof oldSlug === "string" && typeof currentSlug === "string",
+  )
+}
+
 function isAudioLanguageIndexesByEpisode(
   value: unknown,
 ): value is Record<string, Record<string, number[]>> {
@@ -159,6 +172,12 @@ export function parseWatchRouteManifest(
   ) {
     return null
   }
+  if (
+    record.redirectSlugs !== undefined &&
+    !isRedirectSlugs(record.redirectSlugs)
+  ) {
+    return null
+  }
   return {
     version: record.version,
     generatedAt: record.generatedAt,
@@ -181,6 +200,7 @@ export function parseWatchRouteManifest(
             record.nestedContainerAudioLanguageIndexesByParent,
         }
       : {}),
+    ...(record.redirectSlugs ? { redirectSlugs: record.redirectSlugs } : {}),
   }
 }
 
@@ -262,6 +282,7 @@ function getManifestIndex(
     nestedContainerAudioLanguageSlugsByParent,
     hasContentAudioLanguageIndex: audioLanguageSlugsByContent.size > 0,
     hasEpisodeAudioLanguageIndex: audioLanguageSlugsByEpisode.size > 0,
+    redirectSlugs: new Map(Object.entries(manifest.redirectSlugs ?? {})),
   }
   indexCache.set(manifest, index)
   return index
@@ -446,6 +467,19 @@ export function isWatchParentAdmittedByNestedContainer(
     }
   }
   return false
+}
+
+/**
+ * Resolve a former video slug (Core `Video.previousSlugs`, forge#2856) to its
+ * current slug. Returns `null` when `slug` is not a known alias — including
+ * when it is itself a currently-live route, since the manifest's generator
+ * excludes aliases that collide with a live slug.
+ */
+export function resolveWatchRedirectSlug(
+  manifest: WatchRouteManifest,
+  slug: string,
+): string | null {
+  return getManifestIndex(manifest).redirectSlugs.get(slug) ?? null
 }
 
 export function clearWatchRouteManifestCache(): void {

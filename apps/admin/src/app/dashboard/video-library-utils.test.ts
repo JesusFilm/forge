@@ -33,6 +33,7 @@ const manifest: WatchRouteManifest = {
   },
   audioLanguageIndexesByEpisode: {},
   nestedContainerAudioLanguageIndexesByParent: {},
+  redirectSlugs: {},
 }
 
 describe("video-library-utils", () => {

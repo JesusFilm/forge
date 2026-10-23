@@ -1958,3 +1958,72 @@ describe("two-segment language disambiguation consults the live route manifest (
     expect(rewrite.search).toBe("?t=115&autoplay=1")
   })
 })
+
+describe("former video slug redirects (forge#2856, Core Video.previousSlugs)", () => {
+  // Core keeps every historical alias on the video itself, so even after two
+  // renames both former slugs map DIRECTLY to the current slug — no chains.
+  const MANIFEST_WITH_REDIRECTS: WatchRouteManifest = {
+    ...TEST_MANIFEST,
+    redirectSlugs: {
+      "old-jesus-slug": "jesus",
+      "oldest-jesus-slug": "jesus",
+    },
+  }
+
+  beforeEach(() => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(
+      async () => MANIFEST_WITH_REDIRECTS,
+    )
+  })
+
+  it("301 redirects a bare former slug to the current slug's canonical URL", async () => {
+    const response = await proxy(
+      makeRequest("/old-jesus-slug.html?utm_source=google"),
+    )
+
+    expect(response.status).toBe(301)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/jesus.html")
+    expect(location.search).toBe("?utm_source=google")
+    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
+    expect(rewritePath(response)).toBeNull()
+  })
+
+  it("301 redirects a former slug with an explicit language segment, keeping the language segment", async () => {
+    const response = await proxy(
+      makeRequest("/old-jesus-slug.html/english.html?ref=legacy"),
+    )
+
+    expect(response.status).toBe(301)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/jesus.html/english.html")
+    expect(location.search).toBe("?ref=legacy")
+  })
+
+  it("redirects a second former slug from an earlier rename directly to the current slug (no redirect chain)", async () => {
+    const response = await proxy(
+      makeRequest("/oldest-jesus-slug.html/spanish-latin-american.html"),
+    )
+
+    expect(response.status).toBe(301)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/jesus.html/spanish-latin-american.html")
+  })
+
+  it("still 404s a slug that is not a known alias", async () => {
+    const response = await proxy(
+      makeRequest("/totally-unrelated-unknown-slug.html"),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+
+  it("still 404s an unaliased slug with an explicit language segment", async () => {
+    const response = await proxy(
+      makeRequest("/totally-unrelated-unknown-slug.html/english.html"),
+    )
+
+    expectNotFoundRewrite(response)
+  })
+})

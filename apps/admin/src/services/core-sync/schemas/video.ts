@@ -4,6 +4,7 @@ import { CoreLocalizedValueSchema } from "./shared"
 export const CoreVideoSchema = z.object({
   id: z.string().min(1),
   slug: z.string().min(1),
+  previousSlugs: z.array(z.string()).default([]),
   label: z.string().nullable(),
   publishedAt: z.string().min(1).nullable(),
   primaryLanguageId: z.string().min(1).nullable(),

@@ -14,6 +14,10 @@ const ContentAudioLanguageRowSchema = z.object({
 const EpisodeAudioLanguageRowSchema = EpisodePairRowSchema.extend({
   audioLanguageSlug: z.string().min(1),
 })
+const RedirectSlugRowSchema = z.object({
+  oldSlug: z.string().min(1),
+  currentSlug: z.string().min(1),
+})
 const AudioLanguageIndexesByContentSchema = z.record(
   z.string().min(1),
   z.array(z.number().int().nonnegative()),
@@ -43,6 +47,10 @@ export const WatchRouteManifestSchema = z.object({
     // Omitted only by legacy snapshots. New snapshots always emit this field,
     // so web can distinguish a known-empty relation from a pre-feature one.
     AudioLanguageIndexesByEpisodeSchema.optional(),
+  // Former video slug (Core's Video.previousSlugs) -> current slug. Omitted
+  // only by legacy snapshots written before Watch slug-alias redirects
+  // (forge#2856) existed; new snapshots always emit this field.
+  redirectSlugs: z.record(z.string().min(1), z.string().min(1)).default({}),
 })
 
 export type WatchRouteManifest = z.infer<typeof WatchRouteManifestSchema>
@@ -57,6 +65,7 @@ export type WatchRouteManifestCounts = {
   contentAudioLanguagePairs: number
   episodeAudioLanguagePairs: number
   nestedContainerAudioLanguagePairs: number
+  redirectSlugs: number
 }
 
 type QueryablePrisma = Pick<PrismaClient, "$queryRaw">
@@ -78,6 +87,7 @@ export class WatchRouteManifestService {
       audioLanguageSlugsByContent,
       audioLanguageSlugsByEpisode,
       nestedContainerPairsByParent,
+      redirectSlugs,
     ] = await Promise.all([
       this.loadContentSlugs(),
       this.loadOneSegmentSlugs(),
@@ -87,6 +97,7 @@ export class WatchRouteManifestService {
       this.loadAudioLanguageSlugsByContent(),
       this.loadAudioLanguageSlugsByEpisode(),
       this.loadNestedContainerPairsByParent(),
+      this.loadRedirectSlugs(),
     ])
     const audioLanguageIndexesByContent = toAudioLanguageIndexMap(
       audioLanguageSlugsByContent,
@@ -113,6 +124,7 @@ export class WatchRouteManifestService {
       episodePairsByParent: episodePairs,
       homepageLocales,
       oneSegmentSlugs,
+      redirectSlugs,
     }
     const version = createHash("sha256")
       .update(JSON.stringify(contentForVersion))
@@ -129,6 +141,7 @@ export class WatchRouteManifestService {
       audioLanguageIndexesByContent,
       audioLanguageIndexesByEpisode,
       nestedContainerAudioLanguageIndexesByParent,
+      redirectSlugs,
     })
 
     const counts = summarizeWatchRouteManifest(manifest)
@@ -479,6 +492,48 @@ export class WatchRouteManifestService {
     `
     return groupEpisodePairs(EpisodePairRowSchema.array().parse(rows))
   }
+
+  /**
+   * Former-slug (Core `Video.previousSlugs`) -> current-slug redirect map
+   * (forge#2856). An alias is excluded when it collides with a slug that is
+   * CURRENTLY live (another video's slug, or a published Experience's
+   * one-segment slug) — a redirect must never shadow a real route. Core
+   * keeps every historical alias on the video, so each entry already points
+   * directly at the latest `slug`; no chain-resolution is needed here.
+   */
+  private async loadRedirectSlugs(): Promise<Record<string, string>> {
+    const rows = await this.prisma.$queryRaw<unknown[]>`
+      WITH alias_pairs AS (
+        SELECT DISTINCT alias AS "oldSlug", v.slug AS "currentSlug"
+        FROM "video" v
+        CROSS JOIN LATERAL unnest(v."previous_slugs") AS alias
+        WHERE v."deleted_at" IS NULL
+          AND v.slug <> ''
+          AND alias <> ''
+          AND alias <> v.slug
+      ),
+      live_video_slugs AS (
+        SELECT slug FROM "video" WHERE "deleted_at" IS NULL AND slug <> ''
+      ),
+      live_experience_slugs AS (
+        SELECT DISTINCT locale.slug
+        FROM "experience_locale" locale
+        JOIN "experience" experience
+          ON experience.id = locale."experience_id"
+        WHERE experience."archived_at" IS NULL
+          AND locale.slug <> ''
+      )
+      SELECT "oldSlug", "currentSlug"
+      FROM alias_pairs
+      WHERE "oldSlug" NOT IN (SELECT slug FROM live_video_slugs)
+        AND "oldSlug" NOT IN (SELECT slug FROM live_experience_slugs)
+      ORDER BY "oldSlug" ASC
+    `
+    const parsed = RedirectSlugRowSchema.array().parse(rows)
+    return Object.fromEntries(
+      parsed.map((row) => [row.oldSlug, row.currentSlug]),
+    )
+  }
 }
 
 function groupAudioLanguageRowsByContent(
@@ -608,6 +663,7 @@ export function summarizeWatchRouteManifest(
     | "episodePairsByParent"
     | "homepageLocales"
     | "oneSegmentSlugs"
+    | "redirectSlugs"
   >,
 ): WatchRouteManifestCounts {
   const parentEntries = Object.entries(manifest.episodePairsByParent)
@@ -653,5 +709,6 @@ export function summarizeWatchRouteManifest(
         ),
       0,
     ),
+    redirectSlugs: Object.keys(manifest.redirectSlugs ?? {}).length,
   }
 }
