@@ -228,6 +228,8 @@ describe("WatchRouteManifestService.generate", () => {
     expect(allSql).toContain('child.slug AS "childSlug"\n      FROM')
     expect(allSql).toContain("alias_pairs")
     expect(allSql).toContain('unnest(v."previous_slugs")')
+    expect(allSql).toContain("unambiguous_aliases")
+    expect(allSql).toContain('HAVING COUNT(DISTINCT "currentSlug") = 1')
     expect(allSql).toContain(
       '"oldSlug" NOT IN (SELECT slug FROM live_video_slugs)',
     )

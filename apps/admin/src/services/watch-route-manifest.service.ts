@@ -500,6 +500,14 @@ export class WatchRouteManifestService {
    * one-segment slug) — a redirect must never shadow a real route. Core
    * keeps every historical alias on the video, so each entry already points
    * directly at the latest `slug`; no chain-resolution is needed here.
+   *
+   * Nothing enforces alias uniqueness ACROSS videos (`previous_slugs` has no
+   * uniqueness constraint), so the same oldSlug can legitimately appear on
+   * two different videos' alias sets. `unambiguous_aliases` drops any
+   * oldSlug that maps to more than one distinct currentSlug instead of
+   * picking one nondeterministically — an ambiguous former slug falls
+   * through to the existing not-found path rather than risking a redirect
+   * to the wrong video.
    */
   private async loadRedirectSlugs(): Promise<Record<string, string>> {
     const rows = await this.prisma.$queryRaw<unknown[]>`
@@ -511,6 +519,12 @@ export class WatchRouteManifestService {
           AND v.slug <> ''
           AND alias <> ''
           AND alias <> v.slug
+      ),
+      unambiguous_aliases AS (
+        SELECT "oldSlug", MAX("currentSlug") AS "currentSlug"
+        FROM alias_pairs
+        GROUP BY "oldSlug"
+        HAVING COUNT(DISTINCT "currentSlug") = 1
       ),
       live_video_slugs AS (
         SELECT slug FROM "video" WHERE "deleted_at" IS NULL AND slug <> ''
@@ -524,7 +538,7 @@ export class WatchRouteManifestService {
           AND locale.slug <> ''
       )
       SELECT "oldSlug", "currentSlug"
-      FROM alias_pairs
+      FROM unambiguous_aliases
       WHERE "oldSlug" NOT IN (SELECT slug FROM live_video_slugs)
         AND "oldSlug" NOT IN (SELECT slug FROM live_experience_slugs)
       ORDER BY "oldSlug" ASC
