@@ -37,3 +37,8 @@ jobs:
           docker run --rm --network none
           -e AGENTIC_IMAGE_FIXTURE=isolated
           --entrypoint node agentic-security-ci verify-production-image.mjs
+      - name: Verify private Studio command and assets without external networking
+        run: >-
+          docker run --rm --network none
+          -e AGENTIC_STUDIO_IMAGE_FIXTURE=isolated
+          --entrypoint node agentic-security-ci verify-studio-image.mjs

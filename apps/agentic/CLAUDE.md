@@ -106,3 +106,17 @@ public domain serves Mastra Studio.
 false` used for public health.
 - Mastra custom routes registered by `registerApiRoute` are root paths and
   cannot start with `/api`.
+
+### Controlled private Studio image proposal
+
+`railway.studio.toml` proposes the existing controlled Agentic image with the
+separate `start-studio-production.sh` command. It retains the current dashboard
+backend host/protocol/API prefix and expands Railway's runtime port in an explicit
+shell script. CLI telemetry is disabled. The backend image's default command is
+unchanged and must not be used for Studio.
+
+Source merge does not replace dashboard configuration. Keep this service without
+public domains, preserve `MASTRA_STUDIO_BASE_PATH` and operator authority, and
+obtain the owner's binding decision after image CI. Static fixture checks cover
+base-path HTML/assets/gzip and absence of a synthetic operator key in responses;
+they do not establish real Manager-session or backend access.

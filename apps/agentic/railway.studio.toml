@@ -1,0 +1,16 @@
+# Proposal for the private Studio service only. Dashboard remains canonical
+# until an owner selects this image/binding; do not use the backend default CMD.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/agentic/Dockerfile"
+watchPatterns = [
+  "/apps/agentic/**",
+  "/scripts/update-security-ca.sh",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/.dockerignore",
+]
+
+[deploy]
+startCommand = "sh /app/apps/agentic/start-studio-production.sh"
