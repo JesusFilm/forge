@@ -860,7 +860,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     })
 
-    it("uses distinct compact internal IDs across issued, batch and single writes without changing attribution or expiry", async () => {
+    it("uses distinct compact internal IDs across issued, batch and single writes with exact fourteen-day expiry", async () => {
       await prisma.watchSurfaceExposure.deleteMany()
       const caller = {
         id: "forge-web",
@@ -963,7 +963,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(rows.every((row) => row.id.length === 25)).toBe(true)
       expect(
         rows.every(
-          (row) => row.expiresAt.getTime() === now.getTime() + 29 * 86_400_000,
+          (row) => row.expiresAt.getTime() === now.getTime() + 14 * 86_400_000,
         ),
       ).toBe(true)
       expect(
