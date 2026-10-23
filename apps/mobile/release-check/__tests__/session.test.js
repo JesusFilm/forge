@@ -397,6 +397,102 @@ describe("build folders", () => {
   })
 })
 
+describe("an Android session", () => {
+  const IN_USE =
+    "emulator-5642 is already in use, so the runner does not start forge_rc_tablet on it"
+
+  function fakeEmulator(events, { booted, stopped }) {
+    return (device) => ({
+      id: device.id,
+      platform: "android",
+      lane: device.lane,
+      serial: `emulator-${device.consolePort}`,
+      restarts: 0,
+      boot: async () => {
+        events.push("boot")
+        return booted
+      },
+      install: async () => ({ ok: true }),
+      shutdown: async () => {
+        events.push("shutdown")
+        return stopped
+      },
+    })
+  }
+
+  it("does not stop an emulator whose serial another session holds", async () => {
+    const home = tempDir("release-check-session-")
+    const apk = path.join(home, "builds", COMMIT, "android", "app-release.apk")
+    fs.mkdirSync(path.dirname(apk), { recursive: true })
+    fs.writeFileSync(apk, "apk")
+    const sessionDir = path.join(home, "sessions", "s5")
+    fs.mkdirSync(sessionDir, { recursive: true })
+    const events = []
+    const { deps } = baseDeps(home, CONFIG_DIR, {
+      createEmulator: fakeEmulator(events, {
+        booted: { ok: false, refused: true, class: null, error: IN_USE },
+        stopped: { ok: true },
+      }),
+      server: {
+        create: () => ({
+          bind: async () => {},
+          setLaneDevice: () => {},
+          startAnswering: () => {},
+          close: async () => {},
+        }),
+      },
+    })
+
+    const code = await serveSession(
+      { sessionDir, deviceId: "android-tablet" },
+      deps,
+    )
+
+    expect(code).toBe(1)
+    expect(events).toEqual(["boot"])
+    expect(readJson(path.join(sessionDir, "state.json"))).toMatchObject({
+      state: "failed",
+      code: "DEVICE_BOOT_FAILED",
+      error: IN_USE,
+    })
+    expect(fs.existsSync(lockPath(home))).toBe(false)
+  })
+
+  it("names the emulator that session down left running, instead of saying that it stopped it", async () => {
+    const home = tempDir("release-check-session-")
+    const sessionDir = path.join(home, "sessions", "s6")
+    fs.mkdirSync(sessionDir, { recursive: true })
+    const pid = endedPid()
+    const record = {
+      sessionId: "s6",
+      sessionDir,
+      pid,
+      processStart: "Thu Oct 22 16:00:00 2026",
+      state: "ready",
+      deviceId: "android-tablet",
+      udid: null,
+      serial: "emulator-5642",
+    }
+    fs.writeFileSync(path.join(home, SESSION_FILE), JSON.stringify(record))
+    const note =
+      "emulator-5642 runs Pixel_9a_API_35, not forge_rc_tablet, so the runner did not stop it"
+    const events = []
+    const { deps, out } = baseDeps(home, CONFIG_DIR, {
+      createEmulator: fakeEmulator(events, {
+        booted: { ok: true },
+        stopped: { ok: true, skipped: true, note },
+      }),
+    })
+
+    await sessionCommand(parseArgs(["session", "down"]), deps)
+
+    expect(events).toEqual(["shutdown"])
+    const { notes } = JSON.parse(out[0])
+    expect(notes).toContain(note)
+    expect(notes).not.toContain("stopped android-tablet")
+  })
+})
+
 describe("session try", () => {
   it("runs `settings-probe` with the session device id and the Maestro settings, and never --analyze", async () => {
     const home = tempDir("release-check-session-")

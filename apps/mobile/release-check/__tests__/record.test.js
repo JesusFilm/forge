@@ -189,7 +189,13 @@ function fakeHandle(device) {
 
 // Record mode with fake devices and Maestro. Each attempt sends the
 // `appSearches` to the lane port, as the app would.
-async function recordHarness({ local, production, appSearches, adminUrl }) {
+async function recordHarness({
+  local,
+  production,
+  appSearches,
+  adminUrl,
+  createEmulator = fakeHandle,
+}) {
   const home = tempDir("release-check-record-")
   const configDir = tempDir("release-check-record-config-")
   for (const name of fs.readdirSync(CONFIG_DIR)) {
@@ -262,7 +268,7 @@ async function recordHarness({ local, production, appSearches, adminUrl }) {
     },
     listInventory: async () => ({ owned: [{ id: "iphone-se", udid: UDID }] }),
     createSimulator: fakeHandle,
-    createEmulator: fakeHandle,
+    createEmulator,
     runChild: async () => ({ code: 0, stdout: "", stderr: "" }),
     runMaestro: async (options) => {
       ran.push({ platform: options.platform, deviceRef: options.deviceRef })
@@ -481,6 +487,36 @@ describe("record-search", () => {
     const written = readJson(second.answersFile)
     expect(written.answers.map((item) => item.input.query)).toEqual(["peace"])
     expect(prettierCheck(second.answersFile).status).toBe(0)
+  })
+
+  it("does not stop an emulator whose serial another session holds", async () => {
+    const stops = []
+    const inUse =
+      "emulator-5640 is already in use, so the runner does not start forge_rc_phone on it"
+    const harness = await recordHarness({
+      local: await fakeLocalAdmin({
+        creation: [{ type: "VIDEO", slug: "creation" }],
+      }),
+      production: await fakeProduction({ videos: { creation: { id: "v1" } } }),
+      appSearches: ["creation"],
+      createEmulator: (device) => ({
+        ...fakeHandle(device),
+        boot: async () => ({ ok: false, refused: true, error: inUse }),
+        shutdown: async () => {
+          stops.push(device.id)
+          return { ok: true }
+        },
+      }),
+    })
+
+    const code = await harness.run()
+
+    expect(code).toBe(1)
+    expect(harness.ran.map((item) => item.platform)).toEqual(["ios"])
+    expect(stops).toEqual([])
+    expect(JSON.parse(harness.out.at(-1)).problems).toContain(
+      `the device on android-phone: the device did not start: ${inUse}`,
+    )
   })
 
   it("writes nothing and names the result when a VIDEO result is null on production", async () => {

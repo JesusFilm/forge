@@ -160,6 +160,18 @@ function createEmulator(device, options = {}) {
     )
   }
 
+  // The console answers with the AVD name and then `OK`.
+  async function avdOnSerial() {
+    const outcome = await adb("adb emu avd name", ["emu", "avd", "name"])
+    if (!outcome.ok) return null
+    return (
+      String(outcome.stdout ?? "")
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .find((line) => line !== "" && line !== "OK") ?? null
+    )
+  }
+
   async function waitForBoot() {
     const end = now() + timeouts.boot
     while (now() < end) {
@@ -209,6 +221,7 @@ function createEmulator(device, options = {}) {
         return {
           ok: false,
           class: null,
+          refused: true,
           step: "emulator boot",
           error:
             inUse === null
@@ -235,7 +248,23 @@ function createEmulator(device, options = {}) {
       return handle.reverse()
     },
 
+    // When this handle has no live emulator process, another session can
+    // own the serial. The kill goes only when the serial runs our AVD.
     async shutdown() {
+      if (emulator === null || emulator.exit !== null) {
+        emulator = null
+        const running = await avdOnSerial()
+        if (running !== device.avd) {
+          return {
+            ok: true,
+            skipped: true,
+            note:
+              running === null
+                ? `${serial} did not report its AVD name, so the runner did not stop it`
+                : `${serial} runs ${running}, not ${device.avd}, so the runner did not stop it`,
+          }
+        }
+      }
       await adb("adb emu kill", ["emu", "kill"], timeouts.kill)
       if (emulator) {
         const ended = await boundedWait(emulator.done, timeouts.exit)

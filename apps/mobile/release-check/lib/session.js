@@ -412,6 +412,7 @@ async function serveSession({ sessionDir, deviceId }, deps) {
   for (const name of STOP_SIGNALS) deps.signals.on(name, onSignal)
   let server = null
   let handle = null
+  let booted = null
   let failure = null
   try {
     const build = await checkedBuild(deps, {
@@ -438,7 +439,7 @@ async function serveSession({ sessionDir, deviceId }, deps) {
     handle = await openDevice(deps, device, {
       logFile: path.join(sessionDir, `${device.id}-emulator.log`),
     })
-    const booted = await handle.boot()
+    booted = await handle.boot()
     if (!booted.ok) throw new SessionError("DEVICE_BOOT_FAILED", booted.error)
     const installed = await handle.install(build.artifacts[device.platform])
     if (!installed.ok) {
@@ -461,7 +462,7 @@ async function serveSession({ sessionDir, deviceId }, deps) {
   } finally {
     if (!failure) write({ state: "stopping" })
     if (server) await server.close().catch(() => {})
-    if (handle) {
+    if (handle && booted?.refused !== true) {
       const stopped = await handle.shutdown()
       if (!stopped.ok) log(`the device did not stop: ${stopped.error}`)
     }
@@ -678,9 +679,11 @@ async function cleanUpDeadSession(deps, record) {
     const handle = await openDevice(deps, device, { udid: record.udid })
     const stopped = await handle.shutdown()
     notes.push(
-      stopped.ok
-        ? `stopped ${device.id}`
-        : `${device.id} did not stop: ${stopped.error}`,
+      !stopped.ok
+        ? `${device.id} did not stop: ${stopped.error}`
+        : stopped.skipped
+          ? stopped.note
+          : `stopped ${device.id}`,
     )
   }
   if (record.processStart) {

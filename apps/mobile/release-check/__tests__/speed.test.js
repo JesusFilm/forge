@@ -496,6 +496,50 @@ describe("the speed phase", () => {
     })
     expect(released).toEqual(["iphone-se", "android-phone"])
   })
+
+  it("does not stop an emulator whose serial another session holds", async () => {
+    const stops = []
+    const released = []
+    const inUse =
+      "emulator-5640 is already in use, so the runner does not start forge_rc_phone on it"
+    const phase = createSpeedPhase({
+      listInventory: ownedSimulators,
+      createSimulator: fakeSimulator,
+      createEmulator: (device) => ({
+        ...fakeEmulator(device),
+        boot: async () => ({ ...OK, ok: false, refused: true, error: inUse }),
+        shutdown: async () => {
+          stops.push(device.id)
+          return OK
+        },
+      }),
+      runChild: fakeChildren().run,
+      runMaestro: fakeMaestro().run,
+      memoryPollMs: 5,
+      now: () => LINK_SENT_AT,
+      linkLeadMs: 0,
+    })
+    const result = await phase({
+      signal: new AbortController().signal,
+      runDir: tempDir(),
+      env: { PATH: process.env.PATH, HOME: process.env.HOME },
+      selection: { devices: [deviceOf("android-phone")] },
+      settings: SETTINGS,
+      devicesConfig: DEVICES,
+      artifacts: { android: "/builds/android/app-release.apk" },
+      server: { setLaneDevice: () => {} },
+      gate: {
+        admit: async () => ({ admitted: true }),
+        release: (device) => released.push(device.id),
+      },
+      event: () => {},
+    })
+    expect(result.devices[0].failures).toEqual([
+      `Not measured: the device did not start: ${inUse}.`,
+    ])
+    expect(stops).toEqual([])
+    expect(released).toEqual(["android-phone"])
+  })
 })
 
 describe("the Android first frame", () => {

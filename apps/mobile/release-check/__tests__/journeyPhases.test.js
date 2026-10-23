@@ -106,7 +106,7 @@ function fakeMaestro(calls, failures, sequence) {
   }
 }
 
-function fakeHandle(ref, events, sequence) {
+function fakeHandle(ref, events, sequence, booted = { ok: true }) {
   const ok = async () => ({ ok: true })
   return {
     udid: ref,
@@ -114,7 +114,7 @@ function fakeHandle(ref, events, sequence) {
     restarts: 0,
     boot: async () => {
       events.push(`boot ${ref}`)
-      return { ok: true }
+      return booted
     },
     shutdown: async () => {
       events.push(`shutdown ${ref}`)
@@ -156,7 +156,8 @@ function twoSlotGate() {
   }
 }
 
-// `options.udid` maps a device id to its simulator UDID (default: the id).
+// `options.udid` maps a device id to its simulator UDID (default: the id);
+// `options.booted` maps a device ref to the result of its boot.
 function setUp(failures, options = {}) {
   const runDir = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-phases-"))
   tempDirs.push(runDir)
@@ -182,8 +183,10 @@ function setUp(failures, options = {}) {
         udid: udid(device.id),
       })),
     }),
-    createSimulator: (device) => fakeHandle(device.udid, events, sequence),
-    createEmulator: (device) => fakeHandle(device.id, events, sequence),
+    createSimulator: (device) =>
+      fakeHandle(device.udid, events, sequence, options.booted?.[device.udid]),
+    createEmulator: (device) =>
+      fakeHandle(device.id, events, sequence, options.booted?.[device.id]),
     appEvidence: async () => [],
   })
   const ctx = {
@@ -331,6 +334,56 @@ describe("a passing run", () => {
       setting: "EXPO_PUBLIC_EXPLORE_ENABLED",
     })
     expectValidAttempts(result.attempts)
+  })
+})
+
+describe("a device that does not start", () => {
+  const IN_USE =
+    "emulator-5640 is already in use, so the runner does not start forge_rc_phone on it"
+
+  it("does not stop an emulator whose serial another session holds", async () => {
+    const { phases, ctx, events, recorded } = setUp(
+      {},
+      {
+        booted: {
+          "android-phone": {
+            ok: false,
+            refused: true,
+            class: null,
+            error: IN_USE,
+          },
+        },
+      },
+    )
+
+    await phases.probing(ctx)
+
+    expect(events.filter((event) => event.endsWith("android-phone"))).toEqual([
+      "boot android-phone",
+    ])
+    expect(recorded).toContainEqual({
+      type: "device_start_failed",
+      deviceId: "android-phone",
+      error: IN_USE,
+    })
+  })
+
+  it("still stops a device whose boot failed after it started", async () => {
+    const { phases, ctx, events } = setUp(
+      {},
+      {
+        booted: {
+          "android-phone": { ok: false, class: null, error: "no boot" },
+        },
+      },
+    )
+
+    await phases.probing(ctx)
+
+    expect(events.filter((event) => event.endsWith("android-phone"))).toEqual([
+      "boot android-phone",
+      "shutdown android-phone",
+    ])
   })
 })
 

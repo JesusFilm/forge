@@ -382,8 +382,9 @@ async function recordOnDevice(deps, run, device) {
   const handle = await session.openDevice(deps, device, {
     logFile: path.join(run.recordDir, `${device.id}-emulator.log`),
   })
+  let booted = null
   try {
-    const booted = await handle.boot()
+    booted = await handle.boot()
     if (!booted.ok) {
       run.journeyFailures.push({
         deviceId: device.id,
@@ -429,8 +430,10 @@ async function recordOnDevice(deps, run, device) {
       }
     }
   } finally {
-    const stopped = await handle.shutdown()
-    if (!stopped.ok) run.log(`${device.id} did not stop: ${stopped.error}`)
+    if (booted?.refused !== true) {
+      const stopped = await handle.shutdown()
+      if (!stopped.ok) run.log(`${device.id} did not stop: ${stopped.error}`)
+    }
     run.server.setLaneDevice(device.lane, null)
   }
 }

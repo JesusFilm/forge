@@ -197,15 +197,15 @@ function createJourneyPhases(options = {}) {
     if (!admitted.admitted) return { device, started: false, admitted: false }
     ctx.server.setLaneDevice(device.lane, device.id)
     const handle = await openHandle(run, ctx, device)
-    const fail = async (error) => {
-      if (handle) await handle.shutdown()
+    const fail = async (error, { refused = false } = {}) => {
+      if (handle && !refused) await handle.shutdown()
       ctx.release(device)
       ctx.event({ type: "device_start_failed", deviceId: device.id, error })
       return { device, started: false, admitted: true, error }
     }
     if (!handle) return fail(`${device.name} has no simulator; run setup`)
     const boot = await handle.boot()
-    if (!boot.ok) return fail(boot.error)
+    if (!boot.ok) return fail(boot.error, { refused: boot.refused === true })
     if (device.platform === "android") {
       const installed = await handle.install(ctx.artifacts.android)
       if (!installed.ok) return fail(installed.error)

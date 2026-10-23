@@ -466,10 +466,11 @@ function createSpeedPhase(options = {}) {
       }
     }
     let handle = null
+    let boot = null
     try {
       ctx.server.setLaneDevice(device.lane, device.id)
       handle = await openHandle(ctx, device)
-      const boot = handle ? await handle.boot() : null
+      boot = handle ? await handle.boot() : null
       if (!handle) {
         failures.push(`Not measured: ${device.id} has no simulator; run setup.`)
       } else if (!boot.ok) {
@@ -499,7 +500,7 @@ function createSpeedPhase(options = {}) {
     } catch (error) {
       failures.push(`The speed pass stopped on this device: ${error.message}.`)
     } finally {
-      if (handle && !ctx.signal.aborted) {
+      if (handle && boot?.refused !== true && !ctx.signal.aborted) {
         const stopped = await handle.shutdown()
         if (!stopped.ok) {
           ctx.event({

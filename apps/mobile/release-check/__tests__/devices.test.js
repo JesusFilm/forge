@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
-/* global describe, expect, it, require */
+/* global describe, expect, it, require, setTimeout */
 // The restart helper restarts a device that stops answering the device
 // tools, and only that device (R11, KTD14, AE6). An app that hangs on a
 // device that still answers stays a journey failure.
@@ -34,15 +34,21 @@ function result(fields) {
   }
 }
 
-// One tablet emulator that is running. `answers` decides if adb gets a reply.
-function fakeEmulatorTools({ answers }) {
-  const state = { running: true, answers, exitEmulator: null }
+// One tablet emulator on emulator-5642. `answers` decides if adb gets a
+// reply; `running` and `avdName` say what holds the port at the start.
+function fakeEmulatorTools({
+  answers,
+  running = true,
+  avdName = "forge_rc_tablet",
+}) {
+  const state = { running, answers, avdName, exitEmulator: null }
   const calls = []
   async function runChild(command, args) {
     calls.push([command, ...args])
     if (command === PATHS.emulator) {
       state.running = true
       state.answers = true
+      state.avdName = args[args.indexOf("-avd") + 1]
       return new Promise((resolve) => {
         state.exitEmulator = () => resolve(result({ code: 0 }))
       })
@@ -57,6 +63,15 @@ function fakeEmulatorTools({ answers }) {
       state.running = false
       state.exitEmulator?.()
       return result({})
+    }
+    if (rest.join(" ") === "emu avd name") {
+      if (!state.running) {
+        return result({
+          code: 1,
+          stderr: "error: device 'emulator-5642' not found",
+        })
+      }
+      return result({ stdout: `${state.avdName}\r\nOK\r\n` })
     }
     if (!state.running) return result({ code: 1, stderr: "device not found" })
     if (!state.answers) return result({ code: null, timedOut: true })
@@ -97,6 +112,7 @@ describe("android restart helper", () => {
           call !== "devices",
       )
     expect(actions).toEqual([
+      "-s emulator-5642 emu avd name",
       "-s emulator-5642 emu kill",
       `-avd forge_rc_tablet -port 5642 -no-snapshot-load -no-snapshot-save -memory ${PINS.memoryMb} -no-boot-anim -no-audio -timezone ${PINS.timezone}`,
       "-s emulator-5642 reverse tcp:38211 tcp:38213",
@@ -144,6 +160,85 @@ describe("android restart helper", () => {
       restarts: 2,
     })
     expect(tools.calls.some((call) => call.includes("kill"))).toBe(false)
+  })
+})
+
+describe("android stop", () => {
+  const OTHER_AVD = "Pixel_9a_API_35"
+  const kills = (tools) => tools.calls.filter((call) => call.includes("kill"))
+  const nameReads = (tools) =>
+    tools.calls.filter((call) => call.slice(-3).join(" ") === "emu avd name")
+
+  it("refuses to boot on a serial that another session's emulator holds, and then sends it no kill", async () => {
+    const tools = fakeEmulatorTools({ answers: true, avdName: OTHER_AVD })
+    const tablet = emulatorFor(tools)
+
+    expect(await tablet.boot()).toMatchObject({ ok: false, refused: true })
+    expect(await tablet.shutdown()).toEqual({
+      ok: true,
+      skipped: true,
+      note: `emulator-5642 runs ${OTHER_AVD}, not forge_rc_tablet, so the runner did not stop it`,
+    })
+
+    expect(kills(tools)).toEqual([])
+    expect(tools.calls.some((call) => call[0] === PATHS.emulator)).toBe(false)
+    expect(tools.state.running).toBe(true)
+  })
+
+  it("sends no kill from a fresh handle whose serial reports another AVD, or no AVD", async () => {
+    const foreign = fakeEmulatorTools({ answers: true, avdName: OTHER_AVD })
+    expect(await emulatorFor(foreign).shutdown()).toMatchObject({
+      ok: true,
+      skipped: true,
+    })
+    expect(kills(foreign)).toEqual([])
+
+    const empty = fakeEmulatorTools({ answers: true, running: false })
+    expect(await emulatorFor(empty).shutdown()).toEqual({
+      ok: true,
+      skipped: true,
+      note: "emulator-5642 did not report its AVD name, so the runner did not stop it",
+    })
+    expect(kills(empty)).toEqual([])
+  })
+
+  it("stops its own AVD from a fresh handle when the serial reports that AVD", async () => {
+    const tools = fakeEmulatorTools({ answers: true })
+
+    expect(await emulatorFor(tools).shutdown()).toEqual({ ok: true })
+
+    expect(
+      tools.calls
+        .filter((call) => call[1] === "-s")
+        .map((call) => call.slice(1).join(" ")),
+    ).toEqual(["-s emulator-5642 emu avd name", "-s emulator-5642 emu kill"])
+    expect(tools.state.running).toBe(false)
+  })
+
+  it("stops the emulator that it started, without a read of the AVD name", async () => {
+    const tools = fakeEmulatorTools({ answers: true, running: false })
+    const tablet = emulatorFor(tools)
+
+    expect(await tablet.boot()).toMatchObject({ ok: true })
+    expect(await tablet.shutdown()).toEqual({ ok: true })
+
+    expect(kills(tools)).toHaveLength(1)
+    expect(nameReads(tools)).toEqual([])
+    expect(tools.state.running).toBe(false)
+  })
+
+  it("sends no kill after its own emulator ends and another AVD takes the serial", async () => {
+    const tools = fakeEmulatorTools({ answers: true, running: false })
+    const tablet = emulatorFor(tools)
+    expect(await tablet.boot()).toMatchObject({ ok: true })
+
+    tools.state.exitEmulator()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    tools.state.running = true
+    tools.state.avdName = OTHER_AVD
+
+    expect(await tablet.shutdown()).toMatchObject({ ok: true, skipped: true })
+    expect(kills(tools)).toEqual([])
   })
 })
 
