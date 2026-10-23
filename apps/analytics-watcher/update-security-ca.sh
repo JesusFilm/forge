@@ -4,9 +4,12 @@ apt-get update
 apt-get install -y --no-install-recommends ca-certificates libnss3-tools
 sed -i -e 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' -e 's|^mozilla/Comodo_AAA_Services_root.crt|!&|' /etc/ca-certificates.conf
 update-ca-certificates --fresh
-# Playwright's inherited PEM links can survive bundle regeneration. Remove the
-# distrusted named links before rebuilding the default OpenSSL hash directory.
-rm -f /etc/ssl/certs/emSign_ECC_Root_CA_-_G3.pem /etc/ssl/certs/Comodo_AAA_Services_root.pem
+# Remove the packaged copies too: regenerating the inherited directory must
+# never restore these excluded trust anchors from /usr/share.
+rm -f /usr/share/ca-certificates/mozilla/emSign_ECC_Root_CA_-_G3.crt \
+    /usr/share/ca-certificates/mozilla/Comodo_AAA_Services_root.crt \
+    /etc/ssl/certs/emSign_ECC_Root_CA_-_G3.pem \
+    /etc/ssl/certs/Comodo_AAA_Services_root.pem
 openssl rehash /etc/ssl/certs
 ca_directory=/usr/local/share/security-ca/certs
 mkdir -p "$ca_directory"
