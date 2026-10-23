@@ -43,3 +43,17 @@ Check formatting, shell syntax, checksum validation and image manifest pins befo
 ## Railpack follow-up
 
 Live patched Railpack containers still carried ca-certificates 20250419 and the older OS bundle; Nixpacks hooks do not apply to Railpack. Root `railpack.json` refreshes the build dependency-install and runtime stores using `scripts/update-security-ca.sh`. A dedicated hashed directory prevents inherited PEM links from restoring removed roots. Service-local package engines pin 24.22.1 and make the release visible to existing app-specific watch patterns. Preserve dashboard build/start commands.
+
+## Agentic stage controlled build
+
+`apps/agentic/Dockerfile` replaces the Nixpacks download step that precedes the
+application CA hook. The pinned Node24.22.1 base filters trust before package
+installation. Build-only placeholders are synthetic, Manager is loopback-only,
+and Mastra CLI telemetry is disabled. Generated output dependencies download with
+filtered trust; runtime acceptance has no external network. Production reads runtime keys and
+keeps its existing absolute LibSQL storage URL, start command and healthcheck.
+
+The actual image CI boots with different synthetic runtime keys and disposable
+SQLite under Docker `--network none`; health/operator reads and unauthorized,
+service-key and build-key denials must pass. No model/tool/workflow runs.
+Current stage replica/runtime/client checks remain required after normal release.

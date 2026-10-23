@@ -1,6 +1,6 @@
 [build]
-builder = "NIXPACKS"
-buildCommand = "pnpm --filter @forge/agentic build"
+builder = "DOCKERFILE"
+dockerfilePath = "/apps/agentic/Dockerfile"
 
 [deploy]
 startCommand = "cd apps/agentic && node .mastra/output/index.mjs"
