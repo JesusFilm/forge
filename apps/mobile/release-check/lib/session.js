@@ -57,7 +57,7 @@ function untilAborted(signal) {
 }
 
 function createSessionDeps(overrides = {}) {
-  const lifecycle = require("./lifecycle")
+  const { createDeps } = require("./deps")
   return {
     createSimulator,
     createEmulator,
@@ -72,7 +72,7 @@ function createSessionDeps(overrides = {}) {
     sessionEntry: __filename,
     upWaitMs: UP_WAIT_MS,
     downWaitMs: DOWN_WAIT_MS,
-    ...lifecycle.createDeps(overrides),
+    ...createDeps(overrides),
   }
 }
 
@@ -126,7 +126,7 @@ async function buildFindings(deps, file) {
 // passes the build check, else a new build, which needs clean inputs (R8).
 // Every caller holds the lock, so no run or other session uses a pruned build.
 async function checkedBuild(deps, { platforms, signal }) {
-  const { artifactPath, pruneBuilds } = require("./lifecycle")
+  const { artifactPath, pruneBuilds } = require("./testBuild/builds")
   const commit = await deps.git.head()
   const buildDir = path.join(deps.home, "builds", commit)
   const artifacts = {}
