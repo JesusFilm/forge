@@ -8,7 +8,6 @@ RUN sh /usr/local/bin/update-security-ca \
 ENV SSL_CERT_DIR=/usr/local/share/security-ca/certs
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches patches
 COPY apps/agentic/package.json apps/agentic/package.json
 RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filter @forge/agentic...
 COPY apps/agentic apps/agentic
