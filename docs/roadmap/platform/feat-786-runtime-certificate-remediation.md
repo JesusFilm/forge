@@ -91,3 +91,13 @@ Stage currently has no DATABASE_URL and still serves an older image whose health
 ## Chat controlled image
 
 A10 replaces source-bound Railpack with a pinned Node Docker image and filters OS trust before pnpm installation. It preserves non-standalone Next startup, existing auth/history/Seeker gates, healthcheck and default-off behavior. Actual-image CI checks public transport controls and network-disabled startup/HTML/assets/access denials, including HTTP500 readiness under invalid production egress configuration. Closure still requires green CI, normal source release and current-replica verification.
+
+### Mastra Gateway controlled image
+
+D13's pinned Docker proposal filters trust before any package download and
+preserves Prisma migration, standalone startup, static assets, health and identity
+boundaries. Actual-image CI uses disposable PostgreSQL, runtime-only synthetic
+keys, anonymous/invalid-cookie gates and a read-only admin API lookup. Production
+is dashboard canonical: source merge alone does not establish a deployment;
+separate owner approval and exact live verification remain required. No role,
+identity, proxy, schema or provider behavior changes.
