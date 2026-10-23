@@ -6,8 +6,15 @@ import qrcode from "qrcode-generator"
 
 import { feedbackUrl, type FeedbackContext } from "../../lib/feedbackUrl"
 import {
+  feedbackSimulatorEnabled,
+  isHostedSimulatorFeedbackDestination,
+  isSimulatorFeedbackDestination,
+  simulatorFeedbackUrl,
+} from "../../lib/feedbackSimulator"
+import {
   attestAppleFeedbackGrant,
   attestFeedbackGrant,
+  isFeedbackSimulatorNative,
 } from "../../../modules/tv-feedback-integrity"
 
 const CACHE_KEY = "watch-feedback-verified-qr"
@@ -42,6 +49,18 @@ export function useFeedbackQr(
   const [retry, setRetry] = useState(0)
   const base = process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
   const project = process.env.EXPO_PUBLIC_PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER
+  const simulator = feedbackSimulatorEnabled({
+    flag: process.env.EXPO_PUBLIC_TV_FEEDBACK_SIMULATOR_ENABLED,
+    development: __DEV__,
+    tv: Platform.isTV,
+    nativeSimulator: isFeedbackSimulatorNative(),
+  })
+  const platform = Platform.OS === "ios" ? "apple-tv" : "android-tv"
+  const mode = !simulator
+    ? ("verified" as const)
+    : isHostedSimulatorFeedbackDestination(base)
+      ? ("signed-simulator" as const)
+      : ("simulator" as const)
 
   useEffect(() => {
     if (!enabled) {
@@ -50,7 +69,18 @@ export function useFeedbackQr(
       setError(false)
       return
     }
-    if (!base || (Platform.OS === "android" && !project)) {
+    if (simulator) {
+      setVerified(null)
+      setLoading(false)
+      setError(!simulatorFeedbackUrl(base, { platform }))
+      return
+    }
+    if (
+      !base ||
+      !feedbackUrl(base, { platform }) ||
+      isSimulatorFeedbackDestination(base) ||
+      (Platform.OS === "android" && !project)
+    ) {
       setLoading(false)
       setError(true)
       return
@@ -111,10 +141,10 @@ export function useFeedbackQr(
     return () => {
       active = false
     }
-  }, [enabled, retry, base, project])
+  }, [enabled, retry, base, project, simulator, platform])
 
   useEffect(() => {
-    if (!enabled || !verified) return
+    if (!enabled || simulator || !verified) return
     const remaining = Date.parse(verified.expiresAt) - Date.now()
     const timer = setTimeout(
       () => {
@@ -124,19 +154,22 @@ export function useFeedbackQr(
       Math.max(1000, remaining),
     )
     return () => clearTimeout(timer)
-  }, [enabled, verified])
+  }, [enabled, verified, simulator])
 
   const url = useMemo(() => {
-    if (!enabled || !verified || !base) return null
-    const contextUrl = feedbackUrl(base, {
-      platform: Platform.OS === "ios" ? "apple-tv" : "android-tv",
+    if (!enabled || !base) return null
+    const fullContext: FeedbackContext = {
+      platform,
       appVersion: Constants.expoConfig?.version,
       build:
         Platform.OS === "ios"
           ? Constants.expoConfig?.ios?.buildNumber
           : String(Constants.expoConfig?.android?.versionCode ?? ""),
       ...context,
-    })
+    }
+    if (simulator) return simulatorFeedbackUrl(base, fullContext)
+    if (!verified) return null
+    const contextUrl = feedbackUrl(base, fullContext)
     if (!contextUrl) return null
     const link = new URL(verified.feedbackUrl)
     link.search = new URL(contextUrl).search
@@ -145,6 +178,8 @@ export function useFeedbackQr(
     verified,
     enabled,
     base,
+    simulator,
+    platform,
     context.screen,
     context.player,
     context.filmTitle,
@@ -166,7 +201,8 @@ export function useFeedbackQr(
   }, [url])
 
   return {
-    verified,
+    mode,
+    verified: simulator ? null : verified,
     loading,
     error,
     url,

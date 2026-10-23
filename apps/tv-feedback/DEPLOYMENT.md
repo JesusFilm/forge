@@ -1,5 +1,10 @@
 # Watch TV beta feedback deployment gates
 
+Simulator receiving, developer key setup and the separate signed staging entry
+are documented in [LOCAL-FEEDBACK.md](LOCAL-FEEDBACK.md). The signed entry is off
+by default and uses only a dedicated public verification key on the server.
+Preserve the deployed Linear/device credentials when enabling it in staging.
+
 The replacement service is deployed to Railway staging at `https://web-staging-920a.up.railway.app` (deployment `d118b25f-9aa5-49ad-b6f6-68ccd3066c75`, 2026-09-25). Production still uses the reviewed PR-to-main path.
 
 1. Create one Railway web service from the Forge repository. Set Config-as-code Path to `/apps/tv-feedback/railway.toml`, provide a Railway HTTPS domain, and attach Redis. Set `REDIS_URL` and `FEEDBACK_BASE_URL` in the web service. Configure Redis persistence and no-eviction behavior; a lost/evicted grant must fail closed.
