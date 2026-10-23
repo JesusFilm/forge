@@ -18,7 +18,7 @@ const PINNED_VERSIONS = {
 
 const RECHECK =
   "Re-check expo/expo#49254 and apps/mobile/plugins/withAndroidPushTapRelay.js. " +
-  "Expo PR #47615 drains the tap queue in SDK 58, so an SDK 58 upgrade is expected to trip this."
+  "Expo PR #47615 drains the tap queue; it shipped in expo-notifications 57.0.24, so a move past 57.0.23 needs the release-build cold-tap pass (feat-785)."
 
 const WRAPPER =
   "android/src/main/java/expo/modules/ReactActivityDelegateWrapper.kt"

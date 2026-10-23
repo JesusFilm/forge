@@ -1727,9 +1727,9 @@ design record is
   `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
   Expo's `isFCMIntent` gate, which is why removing the key makes the listener
   ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
-  Expect the Expo SDK 58 upgrade to trip the version pins. Then re-read expo
-  PR #47615 (merged 2026-07-09): it drains the tap queue after a listener
-  handles a tap.
+  Every Expo upgrade trips the version pins. Re-read expo PR #47615 (merged
+  2026-07-09): it drains the tap queue after a listener handles a tap. It
+  shipped in the SDK 57 patch `expo-notifications` 57.0.24, not in SDK 58.
   - For a patch bump, diff the old and new packages' `android/` folders under
     `node_modules/.pnpm`. Bump the pins without a new device pass only when
     every fact passes and the diff changes nothing but the package's own
