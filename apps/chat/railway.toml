@@ -6,15 +6,22 @@
 # configFile field).
 
 [build]
-builder = "railpack"
-buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter @forge/chat build"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/chat/Dockerfile"
 watchPatterns = [
   "/.nvmrc",
   "/railpack.json",
-  "/scripts/update-security-ca.sh","apps/chat/**"]
+  "/scripts/update-security-ca.sh",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/patches/**",
+  "/packages/video-player/**",
+  "/packages/watch-url-policy/**",
+  "apps/chat/**"]
 
 [deploy]
-startCommand = "cd apps/chat && npx next start -p ${PORT:-3200}"
+startCommand = "sh /app/apps/chat/start-production.sh"
 # Gates promotion on the new deployment actually serving HTTP (feat-305) —
 # restartPolicyType only covers a process that EXITS, not one that boots and
 # then fails every request. 60s matches admin/auth/manager/mastra/web.
