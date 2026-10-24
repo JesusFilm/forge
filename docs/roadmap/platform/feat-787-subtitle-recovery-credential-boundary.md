@@ -3,7 +3,7 @@ id: "feat-787"
 title: "Constrain subtitle recovery credential egress"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-23"
 duration: 1
 depends_on: []
@@ -44,11 +44,18 @@ Keep the five-minute UTC evented schedule, optional pair skip, 240-second defaul
 
 Run focused Vitest, Mastra typecheck/lint, touched-file Prettier, roadmap lint, hidden-lane checks, commitlint and `git diff --check`. Heavy commands use `agent-io-guard`; new outputs live under `/mnt/worktrees/checkouts/t3/Forge/pr-triage-20261024-r1/2350-implementation/`.
 
-## Local Checkpoint
+## Completion Evidence
 
-The scoped implementation and dummy-only boundary/transport tests are prepared.
+Independent review accepted the correction at
+`89ef76cd6768d1e6ccf1b827d883dbb374bdc582` with no blockers. Offline verification
+passed 246 mocked tests, including 14 fresh independent boundary checks. Mastra
+typecheck/lint, roadmap checks, formatting, commitlint and hooks passed during
+implementation; publication finalization reruns the focused documentation checks.
+
 The explicit process-env mapping now supplies the optional operator pair; the
 schema declaration alone did not map those values in the starting PR. No live
-configuration or deployed exposure was inspected. Keep this ticket in progress
-until a fresh independent reviewer accepts the local correction. Do not mark the
-broader Subtitle Quality Lab or PR queue complete from this checkpoint.
+configuration or deployed exploit was established. The durable pattern is recorded
+in `docs/solutions/security-issues/mastra-scheduled-workflow-credential-boundary.md`.
+This completes only the scoped correction; exact published-head CI remains a
+separate publication checkpoint. The broader Subtitle Quality Lab and PR queue
+are not marked complete.
