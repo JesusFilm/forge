@@ -27,6 +27,8 @@
  *   - `download`             a file transfer, not a route change
  *   - an absolute URL literal (`https:`, `mailto:`, `tel:`) — another origin
  *   - a fragment literal (`#top`) — same document, no navigation
+ *   - the two reviewed Partner hosted-auth expressions below — cookie-changing
+ *     Route Handlers with redirects, not App Router pages
  *
  * Everything else must be `next/link`, or carry an entry in
  * `KNOWN_RAW_NAVIGATION_ANCHORS` naming why it has not converted yet.
@@ -127,25 +129,106 @@ function collectComponentFiles(dir: string, out: string[] = []): string[] {
   return out
 }
 
-function findRawNavigationAnchors(): Finding[] {
-  const files = collectComponentFiles(APP_ROOT)
-
+function findRawNavigationAnchorsInSource(
+  file: string,
+  source: string,
+): Finding[] {
   const findings: Finding[] = []
-  for (const relative of files) {
-    const source = readFileSync(join(APP_ROOT, relative), "utf8")
-    for (const match of source.matchAll(ANCHOR_TAG)) {
-      const attrs = match[1]
-      if (!/\bhref\b/.test(attrs)) continue
-      if (isNonNavigating(attrs)) continue
-      findings.push({
-        file: relative,
-        line: source.slice(0, match.index).split("\n").length,
-        snippet: attrs.replace(/\s+/g, " ").trim().slice(0, 100),
-      })
-    }
+  for (const match of source.matchAll(ANCHOR_TAG)) {
+    const attrs = match[1]
+    if (!/\bhref\b/.test(attrs)) continue
+    if (isNonNavigating(attrs)) continue
+    // Like AccountControl's location.assign, hosted Auth needs a document
+    // navigation: login writes PKCE/state cookies before its external redirect;
+    // logout clears session cookies and reloads the return page's account state.
+    // Match both the owning file and exact reviewed expressions, never the file
+    // alone or an arbitrary /api/auth path. The tests below pin their counts.
+    const expression = attrs.match(/\bhref=\{([^}]+)\}/)?.[1]
+    if (
+      file === PARTNER_ACCOUNT_FILE &&
+      PARTNER_AUTH_HREFS.some(
+        (href) => expression?.replace(/\s+/g, "") === href.replace(/\s+/g, ""),
+      )
+    )
+      continue
+    findings.push({
+      file,
+      line: source.slice(0, match.index).split("\n").length,
+      snippet: attrs.replace(/\s+/g, " ").trim().slice(0, 100),
+    })
   }
   return findings
 }
+
+function findRawNavigationAnchors(): Finding[] {
+  return collectComponentFiles(APP_ROOT).flatMap((file) =>
+    findRawNavigationAnchorsInSource(
+      file,
+      readFileSync(join(APP_ROOT, file), "utf8"),
+    ),
+  )
+}
+
+const PARTNER_ACCOUNT_FILE = "components/watch/WatchPartnerAccount.tsx"
+const PARTNER_AUTH_HREFS = [
+  'watchAccountAuthUrl("login", session.loginUrl)',
+  'watchAccountAuthUrl("logout")',
+]
+
+describe("hosted Partner auth document navigation", () => {
+  it.each(PARTNER_AUTH_HREFS)(
+    "permits only the reviewed auth boundary %s",
+    (href) => {
+      expect(
+        findRawNavigationAnchorsInSource(
+          PARTNER_ACCOUNT_FILE,
+          `<a href={${href}}>Account</a>`,
+        ),
+      ).toEqual([])
+    },
+  )
+
+  it.each([
+    '<a href="/watch/history">History</a>',
+    "<a href={historyHref}>History</a>",
+    '<a href={watchAccountAuthUrl("session")}>Session</a>',
+    '<a href={watchAccountAuthUrl("login", arbitraryUrl)}>Login</a>',
+  ])(
+    "still rejects ordinary or unreviewed links in the auth component: %s",
+    (source) => {
+      expect(
+        findRawNavigationAnchorsInSource(PARTNER_ACCOUNT_FILE, source),
+      ).toHaveLength(1)
+    },
+  )
+
+  it("does not exempt the same helper expression in another component", () => {
+    for (const href of PARTNER_AUTH_HREFS) {
+      expect(
+        findRawNavigationAnchorsInSource(
+          "components/Other.tsx",
+          `<a href={${href}}>Account</a>`,
+        ),
+      ).toHaveLength(1)
+    }
+  })
+
+  it("pins exactly one of each reviewed auth link and still catches a third ordinary link", () => {
+    const source = readFileSync(join(APP_ROOT, PARTNER_ACCOUNT_FILE), "utf8")
+    const expressions = [...source.matchAll(ANCHOR_TAG)].map((match) =>
+      match[1].match(/\bhref=\{([^}]+)\}/)?.[1].replace(/\s+/g, ""),
+    )
+    expect(expressions).toEqual(
+      PARTNER_AUTH_HREFS.map((href) => href.replace(/\s+/g, "")),
+    )
+    expect(
+      findRawNavigationAnchorsInSource(
+        PARTNER_ACCOUNT_FILE,
+        source + '<a href="/watch/history">History</a>',
+      ),
+    ).toHaveLength(1)
+  })
+})
 
 describe("in-app navigation goes through next/link", () => {
   it("has no unaccounted raw anchor navigating to an in-app path", () => {
