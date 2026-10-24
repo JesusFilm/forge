@@ -19,11 +19,13 @@ type ReviewContextLoadState =
 type LiveJobDetailScreenProps = {
   initialJob: JobRecord
   languageLabelsById: Record<string, string>
+  subtitleReviewConfigured?: boolean
 }
 
 export function LiveJobDetailScreen({
   initialJob,
   languageLabelsById,
+  subtitleReviewConfigured = false,
 }: LiveJobDetailScreenProps) {
   const [job, setJob] = useState(initialJob)
   const [reviewContext, setReviewContext] = useState<ReviewContextLoadState>({
@@ -107,6 +109,7 @@ export function LiveJobDetailScreen({
         initialJob={initialJob}
         headingMeta={<code className="jobs-step-job-id">{initialJob.id}</code>}
         onJobUpdate={setJob}
+        subtitleReviewConfigured={subtitleReviewConfigured}
       />
 
       <JobErrorLogSection errors={job.errors} />

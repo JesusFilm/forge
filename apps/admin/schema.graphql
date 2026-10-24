@@ -2028,6 +2028,7 @@ type Mutation {
   claimManagerSubtitleEvalRecovery(assertion: String!, leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
   claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): SemanticRecommendationEpisodeClaim!
   clearMyWatchProgress(videoId: ID!): Boolean
+  compareAndSwapManagerJobArtifacts(artifacts: JSON!, expected: JSON!, id: ID!, muxAssetId: String!): Boolean
   completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
   """
   Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { LiveJobDetailScreen } from "@/features/jobs/live-job-detail-screen"
 import { getJob } from "@/lib/state"
+import { isSubtitleReviewConfigured } from "@/lib/subtitle-review-session"
 import type { JobRecord } from "@/types/job"
 
 export const dynamic = "force-dynamic"
@@ -86,6 +87,7 @@ export default async function JobDetailPage({
   return (
     <div className="studio-page studio-page--job-detail">
       <LiveJobDetailScreen
+        subtitleReviewConfigured={isSubtitleReviewConfigured()}
         initialJob={job}
         languageLabelsById={languageLabelsById}
       />

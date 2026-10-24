@@ -665,6 +665,49 @@ export async function countJobs(): Promise<number> {
   return 0
 }
 
+// Admin's whole-manifest predicate fences every review decision across processes.
+// Mock mode deliberately models the same comparison in its serialized updater.
+export async function compareAndSwapJobArtifacts(
+  job: JobRecord,
+  artifacts: JobArtifactManifest,
+): Promise<boolean> {
+  const gateway = getCmsGateway()
+  if (gateway.mode === "admin")
+    return getAdminJobClient().compareAndSwapJobArtifacts(job, artifacts)
+  if (gateway.mode !== "mock")
+    throw new Error("Subtitle review requires an atomic job backend")
+  let applied = false
+  await updateMockCmsState(gateway, (current) => ({
+    ...current,
+    readModels: {
+      ...current.readModels,
+      jobs: current.readModels.jobs.map((candidate) => {
+        if (
+          candidate.id !== job.id ||
+          candidate.muxAssetId !== job.muxAssetId ||
+          JSON.stringify(candidate.artifacts) !== JSON.stringify(job.artifacts)
+        )
+          return candidate
+        applied = true
+        return { ...candidate, artifacts, updatedAt: new Date().toISOString() }
+      }),
+    },
+  }))
+  return applied
+}
+
+function preserveReviewArtifacts(
+  current: JobArtifactManifest,
+  incoming: JobArtifactManifest,
+): JobArtifactManifest {
+  const reserved = (key: string) =>
+    key === "subtitleReviews" || /^subtitles-.+-reviewed-r\d+/.test(key)
+  return Object.fromEntries([
+    ...Object.entries(incoming).filter(([key]) => !reserved(key)),
+    ...Object.entries(current).filter(([key]) => reserved(key)),
+  ])
+}
+
 export async function updateJob(
   id: string,
   updates: Partial<
@@ -693,6 +736,14 @@ export async function updateJob(
             ? {
                 ...job,
                 ...updates,
+                ...(updates.artifacts
+                  ? {
+                      artifacts: preserveReviewArtifacts(
+                        job.artifacts,
+                        updates.artifacts,
+                      ),
+                    }
+                  : {}),
                 updatedAt: new Date().toISOString(),
               }
             : job,

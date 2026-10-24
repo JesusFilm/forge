@@ -18,6 +18,9 @@ describe("Manager job GraphQL contract", () => {
     expect(query.managerJob).toBeDefined()
     expect(mutation.createManagerJob).toBeDefined()
     expect(mutation.updateManagerJob).toBeDefined()
+    expect(
+      mutation.compareAndSwapManagerJobArtifacts?.args.map((arg) => arg.name),
+    ).toEqual(["artifacts", "expected", "id", "muxAssetId"])
   })
 
   it("exposes the Manager JobRecord-compatible fields", () => {

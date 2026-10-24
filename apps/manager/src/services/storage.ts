@@ -2,6 +2,8 @@
 // Uses Railway's RAILWAY_S3_* env pattern for artifact storage.
 // When RAILWAY_S3_BUCKET is not set, artifacts are written to .tmp/artifacts/ locally.
 
+import { createHash, randomUUID } from "node:crypto"
+import { link, open, unlink } from "node:fs/promises"
 import { env } from "@/config/env"
 import { mkdir, readFile, writeFile, access, stat } from "node:fs/promises"
 import { join } from "node:path"
@@ -486,4 +488,128 @@ export async function createPresignedArtifactUrl(
     }),
     { expiresIn: expiresInSeconds },
   )
+}
+
+// Reviewed revisions use create-only publication. A failed/ambiguous metadata
+// commit may leave an orphan; it must never permit replacing acknowledged bytes.
+export async function writeImmutableArtifact(
+  options: WriteArtifactOptions,
+): Promise<string> {
+  const key = artifactKey(options.assetId, options.artifactType, options.ext)
+  const bytes =
+    typeof options.body === "string"
+      ? Buffer.from(options.body, "utf8")
+      : Buffer.from(options.body)
+  const digest = (value: Uint8Array) =>
+    createHash("sha256").update(value).digest("hex")
+  if (bytes.byteLength > 512 * 1024)
+    throw new Error("Reviewed artifact exceeds byte limit")
+  try {
+    if (useS3) {
+      const { PutObjectCommand } = await import("@aws-sdk/client-s3")
+      await (
+        await getS3()
+      ).send(
+        new PutObjectCommand({
+          Bucket: env.RAILWAY_S3_BUCKET,
+          Key: key,
+          Body: bytes,
+          ContentType: options.contentType,
+          IfNoneMatch: "*",
+        }),
+      )
+    } else {
+      const destination = localPath(key)
+      await mkdir(join(destination, ".."), { recursive: true })
+      const temporary = `${destination}.${randomUUID()}.tmp`
+      const file = await open(temporary, "wx", 0o600)
+      try {
+        await file.writeFile(bytes)
+        await file.sync()
+        await file.close()
+        await link(temporary, destination)
+      } finally {
+        await file.close()
+        await unlink(temporary)
+      }
+    }
+  } catch {
+    // Conditional collision AND ambiguous transport outcome are reconciled by
+    // reading exact bytes. Never fall back to an unconditional write.
+    const current = await readArtifactBounded(
+      options.assetId,
+      options.artifactType,
+      options.ext,
+      bytes.byteLength,
+    )
+    if (
+      current.byteLength !== bytes.byteLength ||
+      digest(current) !== digest(bytes)
+    ) {
+      throw new Error("Reviewed artifact identity conflict")
+    }
+  }
+  return key
+}
+
+// Review bootstrap and immutable collision recovery must bound the bytes read,
+// including an untrusted oversized existing object (not just a HEAD estimate).
+export async function readArtifactBounded(
+  assetId: string,
+  artifactType: string,
+  ext: string,
+  maximumBytes: number,
+): Promise<Uint8Array> {
+  const key = artifactKey(assetId, artifactType, ext)
+  if (
+    !Number.isSafeInteger(maximumBytes) ||
+    maximumBytes < 0 ||
+    maximumBytes > 512 * 1024
+  )
+    throw new Error("Invalid review byte limit")
+  if (!useS3) {
+    const file = await open(localPath(key), "r")
+    try {
+      const buffer = Buffer.alloc(maximumBytes + 1)
+      let length = 0
+      while (length < buffer.length) {
+        const { bytesRead } = await file.read(
+          buffer,
+          length,
+          buffer.length - length,
+          null,
+        )
+        if (!bytesRead) break
+        length += bytesRead
+      }
+      if (length > maximumBytes)
+        throw new Error("Review artifact exceeds byte limit")
+      return buffer.subarray(0, length)
+    } finally {
+      await file.close()
+    }
+  }
+  const { GetObjectCommand } = await import("@aws-sdk/client-s3")
+  const response = await (
+    await getS3()
+  ).send(new GetObjectCommand({ Bucket: env.RAILWAY_S3_BUCKET, Key: key }))
+  if (!response.Body) throw new Error("Missing review artifact")
+  const reader = response.Body.transformToWebStream().getReader()
+  const chunks: Uint8Array[] = []
+  let length = 0
+  try {
+    for (;;) {
+      const chunk = await reader.read()
+      if (chunk.done) break
+      length += chunk.value.byteLength
+      if (length > maximumBytes) {
+        await reader.cancel()
+        throw new Error("Review artifact exceeds byte limit")
+      }
+      chunks.push(chunk.value)
+    }
+    return Buffer.concat(chunks)
+  } finally {
+    reader.releaseLock()
+  }
 }

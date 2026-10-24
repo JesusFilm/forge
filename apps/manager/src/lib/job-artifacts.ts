@@ -240,6 +240,12 @@ export function formatJobArtifactLabel(logicalKey: string): string {
   )
 }
 
+function isReviewedSubtitleArtifactKey(logicalKey: string): boolean {
+  return /^subtitles-.+-reviewed-r\d{4,}(?:-j[a-f0-9]{64}-[a-f0-9]{64})?$/.test(
+    logicalKey,
+  )
+}
+
 function buildTranslationArtifactDescriptor(
   logicalKey: string,
 ): JobArtifactDescriptor | null {
@@ -404,7 +410,8 @@ export function getArtifactsForStep(
           (key.startsWith("subtitles-") ||
             key.startsWith("translation-") ||
             key.startsWith("subtitle-validation-") ||
-            key === "translations"),
+            key === "translations") &&
+          !isReviewedSubtitleArtifactKey(key),
       )
       .sort(([left], [right]) => {
         const leftRank = getTranslationArtifactSortRank(left)
