@@ -1252,6 +1252,35 @@ describe("MediaCollection VideoCard href", () => {
     )
   })
 
+  it("caps intro paragraph line length on wide screens, titled and titleless", () => {
+    // N34: the intro paragraphs had `w-full` and nothing else, so at 1920px a
+    // line ran ~190 characters. `max-w-3xl` matches the "Browse by category"
+    // intro (WatchHomeCategoryRail). jsdom has no layout, so the utility is
+    // the assertion; the 1920px render is the visual evidence in the PR.
+    for (const title of ["Section title", null]) {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              title,
+              subtitle: "Supporting title",
+              mediaDescription: "Collection description",
+              itemsSource: "manual",
+              items: [makeManualItem()],
+            })}
+          />,
+        )
+      })
+      for (const testId of [
+        "media-collection-supporting-title",
+        "media-collection-description",
+      ]) {
+        const paragraph = container.querySelector(`[data-testid="${testId}"]`)
+        expect(paragraph?.classList).toContain("max-w-3xl")
+      }
+    }
+  })
+
   it("keeps supporting copy outside the title and CTA row without an eyebrow", () => {
     act(() => {
       root.render(

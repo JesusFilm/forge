@@ -371,7 +371,7 @@ function WatchHomeMediaCollection({
         <p
           data-testid="media-collection-supporting-title"
           className={cn(
-            "w-full text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
+            "w-full max-w-3xl text-lg leading-snug font-normal text-stone-100/90 xl:text-xl",
             title && "pt-1",
           )}
         >
@@ -381,7 +381,7 @@ function WatchHomeMediaCollection({
       {description ? (
         <p
           data-testid="media-collection-description"
-          className="w-full pt-2 text-base leading-relaxed font-normal text-stone-200/80 sm:text-sm xl:text-base"
+          className="w-full max-w-3xl pt-2 text-base leading-relaxed font-normal text-stone-200/80 sm:text-sm xl:text-base"
         >
           {description}
         </p>

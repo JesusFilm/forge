@@ -386,7 +386,10 @@ describe("LanguageInventoryPage typography roles", () => {
       expect(heroDescription?.className).toContain(utility)
     }
 
-    // Mirrors WatchBody's title rule. Scoped to CONTENT-section headings: the
+    // Mirrors WatchBody's title rule from `sm:` up. On phones the section
+    // <h2> deliberately sits ABOVE WatchBody's 18px (22px vs the 20px card
+    // <h3> below it) so the heading hierarchy does not invert (N60).
+    // Scoped to CONTENT-section headings: the
     // filter bar contributes its own <h2> ("Filters") that is an eyebrow, not a
     // section title, so a bare `querySelectorAll("h2")` would sweep it in.
     const sectionHeadings = Array.from(
@@ -395,10 +398,11 @@ describe("LanguageInventoryPage typography roles", () => {
     expect(sectionHeadings.length).toBeGreaterThan(0)
     for (const sectionHeading of sectionHeadings) {
       for (const utility of [
-        "text-lg",
+        "text-[22px]",
         "leading-[1.08]",
         "font-semibold",
         "text-stone-100",
+        "sm:text-[27px]",
         "md:text-4xl",
         "xl:text-5xl",
       ]) {

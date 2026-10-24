@@ -845,7 +845,7 @@ function GroupedVideoListSection({
               <Icon className="h-4 w-4" aria-hidden />
               {eyebrow}
             </div>
-            <h2 className="text-lg leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl">
+            <h2 className="text-[22px] leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl">
               {title}
             </h2>
             <p className="mt-3 max-w-2xl text-base leading-relaxed font-normal text-stone-200/80 md:text-lg">
@@ -986,7 +986,7 @@ function InventorySection({
               <Icon className="h-4 w-4" aria-hidden />
               {eyebrow}
             </div>
-            <h2 className="text-lg leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl">
+            <h2 className="text-[22px] leading-[1.08] font-semibold text-stone-100 sm:text-[27px] md:text-4xl xl:text-5xl">
               {title}
             </h2>
             <p className="mt-3 max-w-2xl text-base leading-relaxed font-normal text-stone-200/80 md:text-lg">
