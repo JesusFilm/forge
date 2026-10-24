@@ -27,7 +27,7 @@
  *   - `download`             a file transfer, not a route change
  *   - an absolute URL literal (`https:`, `mailto:`, `tel:`) — another origin
  *   - a fragment literal (`#top`) — same document, no navigation
- *   - the two reviewed Partner hosted-auth expressions below — cookie-changing
+ *   - the reviewed Partner and Grow hosted-auth expressions below — cookie-changing
  *     Route Handlers with redirects, not App Router pages
  *
  * Everything else must be `next/link`, or carry an entry in
@@ -142,13 +142,17 @@ function findRawNavigationAnchorsInSource(
     // navigation: login writes PKCE/state cookies before its external redirect;
     // logout clears session cookies and reloads the return page's account state.
     // Match both the owning file and exact reviewed expressions, never the file
-    // alone or an arbitrary /api/auth path. The tests below pin their counts.
+    // alone or an arbitrary /api/auth path. Grow carries only lesson/card return
+    // intent through that same login handler. The tests below pin their counts.
     const expression = attrs.match(/\bhref=\{([^}]+)\}/)?.[1]
     if (
-      file === PARTNER_ACCOUNT_FILE &&
-      PARTNER_AUTH_HREFS.some(
-        (href) => expression?.replace(/\s+/g, "") === href.replace(/\s+/g, ""),
-      )
+      (file === PARTNER_ACCOUNT_FILE &&
+        PARTNER_AUTH_HREFS.some(
+          (href) =>
+            expression?.replace(/\s+/g, "") === href.replace(/\s+/g, ""),
+        )) ||
+      (file === GROW_COURSE_FILE &&
+        expression?.replace(/\s+/g, "") === GROW_AUTH_HREF.replace(/\s+/g, ""))
     )
       continue
     findings.push({
@@ -224,6 +228,59 @@ describe("hosted Partner auth document navigation", () => {
     expect(
       findRawNavigationAnchorsInSource(
         PARTNER_ACCOUNT_FILE,
+        source + '<a href="/watch/history">History</a>',
+      ),
+    ).toHaveLength(1)
+  })
+})
+
+const GROW_COURSE_FILE = "components/watch/WatchGrowProgressCourse.tsx"
+const GROW_AUTH_HREF = `watchGrowLoginUrl(
+  lessonId,
+  currentCard,
+  session.status === "signed-out" ? session.loginUrl : undefined,
+)`
+
+describe("hosted Grow auth document navigation", () => {
+  it("permits the reviewed login boundary with lesson and card return intent", () => {
+    expect(
+      findRawNavigationAnchorsInSource(
+        GROW_COURSE_FILE,
+        `<a href={${GROW_AUTH_HREF}}>Sign in</a>`,
+      ),
+    ).toEqual([])
+  })
+
+  it.each([
+    '<a href="/watch/history">History</a>',
+    "<a href={historyHref}>History</a>",
+    "<a href={watchGrowLoginUrl(lessonId, currentCard, arbitraryUrl)}>Login</a>",
+    '<a href="/watch/api/auth/login">Login</a>',
+    "<a href={session.loginUrl}>Login</a>",
+  ])("still rejects ordinary or unreviewed Grow links: %s", (source) => {
+    expect(
+      findRawNavigationAnchorsInSource(GROW_COURSE_FILE, source),
+    ).toHaveLength(1)
+  })
+
+  it("does not exempt the Grow expression in another component", () => {
+    expect(
+      findRawNavigationAnchorsInSource(
+        "components/Other.tsx",
+        `<a href={${GROW_AUTH_HREF}}>Sign in</a>`,
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("pins exactly one reviewed login link and still catches an added ordinary link", () => {
+    const source = readFileSync(join(APP_ROOT, GROW_COURSE_FILE), "utf8")
+    const expressions = [...source.matchAll(ANCHOR_TAG)].map((match) =>
+      match[1].match(/\bhref=\{([^}]+)\}/)?.[1].replace(/\s+/g, ""),
+    )
+    expect(expressions).toEqual([GROW_AUTH_HREF.replace(/\s+/g, "")])
+    expect(
+      findRawNavigationAnchorsInSource(
+        GROW_COURSE_FILE,
         source + '<a href="/watch/history">History</a>',
       ),
     ).toHaveLength(1)

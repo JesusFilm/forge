@@ -3,7 +3,7 @@ id: "feat-743"
 title: "Grow course story and durable account progress"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-17"
 duration: 10
 depends_on:
@@ -121,3 +121,188 @@ The linked plan governs all KTDs and R-IDs cited above. Preserve the original di
 ## Verification
 
 Use the linked Verification Contract and the unit-specific scenarios above. Record real behavior, cross-layer checks where applicable, and a page-load comparison against the preceding stack parent. Run formatter and applicable lint/typecheck/build/schema drift checks before PR publication. Update this ticket to in-progress when implementation starts and complete only after the scoped implementation and checks finish; completion does not claim deployment.
+
+## Learning token and erasure rollout
+
+Auth's `AUTH_WATCH_LEARNING_ERASURE_REQUIRED` defaults to false so parallel Auth/Admin deployments preserve account deletion against a legacy successful receiver. Explicit refusal, network failure and non-2xx responses still abort. After the additive Admin migration and learning-erasure acknowledgement receiver are verified, set the requirement to true before enabling saved learning. Configure Auth's `ADMIN_WATCH_PROGRESS_BASE_URL`/`ADMIN_WATCH_PROGRESS_API_KEY` against the receiver's existing `WATCH_PROGRESS_ADMIN_API_KEYS`; required mode rejects missing configuration before external side effects. Keep both the configuration and requirement active once learning data may exist, including after a public audience-flag rollback.
+
+Use Auth's dedicated `watch-user-data` resource for the same environment as the Web client (local: `http://localhost:3003/api/graphql`), derived from the Admin application registry. `AUTH_VALID_AUDIENCES` does not admit this flow. Link both the existing public Web PKCE client and a confidential Admin introspection client to it. Set Web's optional `WEB_AUTH_ADMIN_RESOURCE` to the same URI, plus Admin's existing introspection credentials, issuer, accepted client IDs and environment pin. Reuse `web:watch-events:write`; never make Web confidential or expose a browser bearer. Existing audienceless Web cookies need a fresh hosted sign-in. The audience rollout flag remains off by default; no production setting or data was changed by implementation.
+
+## Demonstrated local verification
+
+Isolated PostgreSQL integration, checked-token HTTP ownership/races/reset and real Auth deletion/erasure passed. All four Grow browser cases ran with genuine hosted Auth/PKCE identities (none skipped), including explicit save and a second device; additional browser checks passed for real conflict recovery, offline retry, reset, account switch, late-response discard and sign-out. Reflection text was absent from progress mutations. Web/Admin/Auth relevant tests, scoped lint/type checks, actual regenerated SDL/introspection and production Web build passed. Matched parent/candidate initial-load and deferred course/Story mount measurements passed at desktop/390px. Exact commands, logs, measurement corrections and the stage branch/base/head/file receipt are under `/home/lado/.local/share/forge-watch-stack-20261017/`. Parent owns final independent security/code review and shipping.
+
+## Aborted deletion recovery
+
+Admin erasure and Auth user-row deletion are separate transactions. An abort retains the Auth row but may already have erased progress and fenced further writes. Preserve the fence; never compensate automatically after a timeout. Follow `apps/auth/docs/watch-learning-erasure-recovery.md` for idempotent deletion retry or exceptional, quiesced recovery after withdrawal of the deletion request. The error and logs report uncertain Admin commit; regression proof preserves the fence and prevents user-row deletion on a lost response.
+
+## Review regression verification (2026-10-17)
+
+Review fixes: unresolved save/reset conflicts and failures stay disarmed through same-account rechecks until explicit choice/retry. POST/DELETE carry x-watch-learning-subject as a stale-session precondition, compared only with the verified server session; focus revalidation pauses writes. Token-less sessions report authenticated/unavailable progress and stale callbacks latch per subject. 89 focused cases and real equal-revision shared-cookie/delayed-session races passed. 35 Admin erasure tests, 53 Auth tests and 11 real progress DB cases passed. The learning DB CI suite enters at stage 5. Token-less browser loop proof uses exact response interception; production localhost legacy fallback is deliberately refused.
+
+Detailed commands, red/green logs, real runtime proof, limits and six-stage reassembly receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r1/`.
+
+## Round 2 review corrections (2026-10-17)
+
+R2 corrections: GET/POST/DELETE fail closed with private/no-store 404 before session/Admin when the audience gate is off or unreadable. Identity revalidation now holds writes without replacing loaded state or re-reading same-account progress. Pending resume intent survives hold/pagehide and shows Saving until acknowledged; conflicts and failed writes require an explicit choice, including late resume timers. Older GET revisions cannot overwrite newer saves. Session reads time out with honest retry. Real hosted-auth races and rollback transport checks passed; the erasure fence and manual recovery contract are unchanged.
+
+Exact red/green, integration, performance, stage replay and limitations receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r2/return-to-caller.json`. Parent owns final independent review and PR shipping.
+
+R2 validation limit: the ten-sample mobile-home LCP median was 14.65% above the matched control, with unchanged initial request count, near-identical transferred bytes, +0.02% player-shell readiness and unchanged CLS. The changed initial bootstrap is identical after normalizing deferred chunk references; course/story chunks are absent from initial entry. The overlapping poster-paint mode frequencies differ. This remains visible for parent final review; no causal performance-clearance claim or unrelated product change is made. Exact original and expanded samples are retained.
+
+## Round 3 concurrency repair (2026-10-17)
+
+An explicit reset held during identity revalidation survives passive resume updates and a preceding save failure or conflict. Only the acknowledged POST may advance its own queued continuation; external revisions, account changes and DELETE acknowledgements cannot authorize replay. New regressions first failed with POST replacing DELETE, discarded resume intent and a lost reset choice. The repaired client passes all 48 owning cases, including both acknowledgement/release orders and explicit recovery choices.
+
+The retained performance investigation clears frozen `0199bef` against both the R2 source control and immediate stage-5 parent with unchanged budgets. The original +14.65% mobile-home observation remains recorded; matched interleaving and React reveal traces establish unchanged scheduling modes, with pooled old/new +6.92%. These measurements do not claim to measure later repairs. Exact samples, interruptions, cache and attribution limits remain in `performance-r3/return-to-caller.json` under the external evidence root.
+
+## Final validation harness correction (2026-10-17)
+
+The course unit test waits for the lazy story DOM instead of sleeping 20ms. All existing story, account, resume, unsaved-state and focus assertions remain intact; product mount budgets are unchanged. The cold import exceeded the old arbitrary sleep under the parallel suite while the identical isolated test passed. The corrected 62 course/client cases and all 518 stage-5 Web cases pass. The external validation runner also uses the package's standard unit-test secrets, rather than injecting the live local preview secret into revalidation tests. No product authentication or runtime code changed.
+
+## PR #2782 concurrency repair scope (2026-10-24)
+
+Repair only `apps/web/src/lib/watch-learning-progress-client.ts` and focused
+regressions in its owning test. Preserve the revision underlying edits held
+while identity is unavailable; a newer independent read must require the
+existing conflict choice. Reject mutation acknowledgements older than the
+installed server state without clearing edits or authorizing queued saves or
+resets. Cover both acknowledgement/release orders and retain account-switch,
+sign-out, reset, retry and structured-only payload behavior. Validate owning
+and adjacent progress/course tests, formatting, lint and Web typecheck under
+`agent-io-guard` for broad/heavy commands.
+
+Completed at reviewed head `022993aa05c5fc95ef483e4331d030ee8971c25b`.
+Held edits now retain their original revision, including edits made while the
+known account is unavailable. An independently newer read preserves local
+intent, disarms automatic replay and exposes the existing explicit conflict
+choice. Mutation acknowledgements cannot lower the installed revision or clear
+newer intent. Invalidated operations relinquish their request slot before a
+recovery choice, and late responses must still own that slot to affect state.
+Only an owning successful POST can advance its own held continuation.
+
+TDD reproduced nine failures for the two reported sequences, followed by two
+failing recovery-ownership cases before the final repair. All 64 owning tests
+and 166 tests across 11 adjacent progress/course/story/session/route files pass,
+including both acknowledgement/release orders, stale DELETE acknowledgements,
+account switch/sign-out and explicit recovery. Scoped Prettier, full Web lint
+and Web typecheck pass on available Node 24.19.0 (repository pin: 24.22.1).
+No wire fields, server CAS, rendering, hydration, media, routing or initialization
+scheduling changed. An interleaved 50,000-load-per-version client initialization
+comparison measured median 0.001434 ms before / 0.001443 ms after, with one GET
+and zero mutations per initial account load in both versions. The minified
+client module adds 154 gzip bytes. These are client initialization/resource
+measurements, not browser LCP/CLS or a new full-stage performance clearance.
+Commands, logs and samples are retained in `/tmp/forge-2782-validation/`.
+
+Durable rule: a held edit's base revision is user-intent lineage, not a cache
+hint. Refreshes and unrelated acknowledgements cannot rebase it; explicit
+recovery or the owning successful POST establishes the next permitted lineage.
+
+### Independent review round 2: resume lineage
+
+Scope: at exact head `6da6b45194e67436a821988d27391b0909fcc559`, extend
+held-edit lineage to `setResume` during identity checking/unavailability and
+progress refresh. Reproduce stale completion replay first, then use the same
+revision-bound deferral and existing explicit conflict recovery. Verify valid
+resume continuation, response/release orders, account transitions, reset/retry
+and stale acknowledgements. Keep this repair in the same client/test/ticket
+scope; preserve structured-only CAS writes and initialization scheduling.
+
+The resume updater now uses the known account holder and existing saved/armed
+eligibility before checking availability. If identity or the progress read is
+pending, it records the same revision-bound deferral used by explicit edits.
+A newer independent revision exposes Keep mine / Use saved; an unchanged base
+releases legitimate resume intent even when no local completion edit armed the
+lesson. Refresh keeps a valid deferred operation visibly Saving until release
+and acknowledgement. Ordinary resume debouncing and owning POST advancement
+remain intact; no new state field, wire field or CAS behavior was introduced.
+
+The exact-head red run reproduced 18 failures, including the four armed
+checking/unavailable and read/release-order replay variants, missing conflicts
+for unarmed lessons and stranded same-revision resume intent. All 118 owning
+cases now pass, including 54 new resume cases. The standard Web test entry point
+passed 220 tests across 11 progress/course/story/session/route files, UI locale
+generation and all five Next cache-size guards. Full Web lint (including locale
+drift), Web typecheck, scoped Prettier and the commit hooks pass. Recovery,
+account switch/sign-out, held reset/retry, owning/stale acknowledgements and
+navigation during a progress GET are covered; the prior blocker regressions
+remain passing. Exact commands and logs: `/tmp/forge-2782-r2-validation/`.
+
+Against `6da6b45194e67436a821988d27391b0909fcc559`, interleaved client
+initialization/first-read measurements over 50,000 loads per version retained
+one GET and zero mutations per load. Median cost was 0.001402 ms before /
+0.001432 ms after; the minified module grows by 58 bytes, or 8 gzip bytes.
+Rendering, hydration, routing, media, imports and initialization scheduling are
+unchanged. These measurements cover client initialization/resources; browser
+LCP/CLS and a full production build were not rerun for this state-machine repair.
+Checks used available Node 24.19.0; the repository pins 24.22.1.
+
+Durable extension: every updater that copies a whole lesson state must preserve
+its revision lineage, including passive navigation. A valid deferred resume is
+pending account work even when the lesson is unarmed; it must neither be
+silently rebased nor stranded behind an Unsaved/Saved status.
+
+### Independent review round 3: reset ownership
+
+Repair only the progress client, owning regressions and this note, based on
+`27a4d7ceea8a5bbc5f7c69d1cdf0ae99c5bd169c`. First reproduce GET erasing
+pending reset retry intent and DELETE acknowledging away later explicit edits.
+Keep a bounded reset intent separate from the transport lifetime: refresh may
+update server knowledge but must preserve active/failed operation ownership;
+only an owning reset success can reconcile edits made after its dispatch onto
+its acknowledged revision. Pre-dispatch intent remains superseded by reset.
+Audit read/acknowledgement/error/release ordering, queued operations, revision
+monotonicity, manual recovery and identity teardown. Retain structured-only
+payloads and all preceding lineage protections. Validate focused and adjacent
+Web suites, full Web lint/typecheck/format, CI guards, initialization requests
+and module size under `agent-io-guard` for heavy commands.
+
+The client now keeps a dispatched reset's intent separate from its transport
+slot. GET cannot clear its operation/retry marker or acknowledge later local
+edits; a failed parallel GET cannot invalidate a still-pending mutation either.
+A read of the reset's possible empty next revision waits for the owning DELETE
+response. Independently newer state disarms replay; late responses cannot take
+ownership back from explicit recovery. Retry retains DELETE, and repeated reset
+clicks coalesce. Use saved retires the transport, timer and reset intent.
+
+Updates after reset dispatch use its empty result as their base. The reset's
+success consumes only pre-dispatch intent, then queues the later structured
+edit/resume against its acknowledged revision. This includes navigation while
+identity is checking/unavailable and edits retained across reset failure/retry.
+They remain Saving until their own acknowledgement; old completion is never
+copied into a resume-only continuation. Queued writes now use the existing
+revision-bound operation queue instead of a generic send-again flag, preserving
+a queued DELETE behind POST in both held and ordinary sessions. The queue and
+reset intent each retain at most one state per lesson.
+
+TDD first reproduced seven failures on the exact base for the two reported
+sequences. All 244 owning tests pass, with 126 new cases including a 96-case
+read/acknowledgement/release matrix over both identity states, edit/resume/both,
+and older/same/possible-own/newer reads. Coverage also includes pre-dispatch
+intent, post-dispatch edits, retry/conflict choices, queued/repeated resets,
+failed GET, account switch/sign-out, stale/equal-inconsistent acknowledgements
+and recovery operation ownership. Five older expectations that discarded
+post-dispatch navigation now require its acknowledged position-only save; the
+three earlier blocker regressions remain passing.
+
+Validation passes: 346 tests across the 11 progress/course/story/session/route
+files through the standard Web test entry point; locale generation and all five
+Next cache-size guards; full Web lint with locale drift, Web typecheck, scoped
+and full-repository Prettier, staged checks/hooks and `git diff --check`. Exact
+commands and results are retained in `/tmp/forge-2782-r3-validation/` and
+`/tmp/forge-2782-r3-validation.py`. Heavy commands ran under `agent-io-guard`.
+
+An interleaved 50,000-load-per-version comparison against the required base
+retains one GET and zero writes per initial load. Median client initialization
+cost is 0.001467 ms before / 0.001409 ms after. The minified client module grows
+by 691 bytes, or 167 gzip bytes. No request/wire contract, server CAS, rendering,
+hydration, media, routing, import or initialization scheduling changes. These
+measurements cover client initialization/resources, not browser LCP/CLS or a
+full production build; those were not rerun for this state-machine-only repair.
+Checks used available Node 24.19.0; the repository pins 24.22.1.
+
+Durable ownership rule: a read is knowledge, not a mutation acknowledgement. A
+reset owns only its pre-dispatch intent; later updates belong to its empty
+successor and may continue only after the owning success or explicit recovery.
+Transport retirement, retry intent and post-reset edits have distinct lifetimes.
