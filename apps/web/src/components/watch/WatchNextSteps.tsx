@@ -1,6 +1,12 @@
 "use client"
 
+import dynamic from "next/dynamic"
+import { useState } from "react"
+import Link from "next/link"
+import type { WatchShareFilm } from "@/lib/watch-share-kit"
+
 import {
+  languageVideosIndexPath,
   languagesIndexPath,
   localizedHistoryPath,
   localizedLanguagesPath,
@@ -24,7 +30,17 @@ import {
 } from "./WatchRoleJourney"
 import { WatchRoleTabs } from "./WatchRoleTabs"
 
+const WatchShareIdeas = dynamic(() =>
+  import("./WatchShareIdeas").then((module) => module.WatchShareIdeas),
+)
+
+const WatchPartnerPanel = dynamic(() =>
+  import("./WatchPartnerPanel").then((module) => module.WatchPartnerPanel),
+)
+
 export type WatchNextStepsProps = {
+  shareFilm?: WatchShareFilm | null
+  onRequestShareLanguages?: () => void
   languageSlug?: string
   locale?: string
   config?: WatchAudienceConfig
@@ -35,12 +51,20 @@ export type WatchNextStepsProps = {
 
 /** Shared home/video frame. The host supplies only controls that work here. */
 export function WatchNextSteps({
+  shareFilm = null,
+  onRequestShareLanguages,
   languageSlug,
   locale,
   config = WATCH_AUDIENCE_CODE_CONFIG,
   currentVideoActions = {},
 }: WatchNextStepsProps) {
   const { role } = useWatchRole()
+  const [partnerReturn] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("partnerPanel") ===
+        "account",
+  )
   const definition = getWatchAudienceRole(config, role)
   const language = languageSlug ? tryAsLocaleSlug(languageSlug) : null
   const actions: WatchJourneyAction[] = (definition?.actions ?? []).flatMap(
@@ -111,9 +135,34 @@ export function WatchNextSteps({
                       locale={locale}
                     />
                   </div>
+                ) : role === "share" ? (
+                  <WatchShareIdeas
+                    film={shareFilm}
+                    onShareClick={currentVideoActions.share}
+                    onRequestLanguageOptions={onRequestShareLanguages}
+                    collection={
+                      language ? (
+                        <Link
+                          href={languageVideosIndexPath(language)}
+                          prefetch={false}
+                          className="inline-flex min-h-11 items-center underline underline-offset-4"
+                        >
+                          Browse films in this audio language
+                        </Link>
+                      ) : null
+                    }
+                  />
+                ) : role === "partner" &&
+                  !partnerReturn &&
+                  language &&
+                  locale ? (
+                  <WatchPartnerPanel languageSlug={language} locale={locale} />
                 ) : null
               }
             />
+          ) : null}
+          {role === "partner" && partnerReturn && language && locale ? (
+            <WatchPartnerPanel languageSlug={language} locale={locale} />
           ) : null}
         </WatchRoleTabs>
       </div>
