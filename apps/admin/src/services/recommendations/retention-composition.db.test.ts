@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { compositionGraphFixture } from "./composition/graph.test-fixture"
 import { compositionDigest } from "./composition/policy"
@@ -558,13 +558,38 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           },
         },
       })
-      await expect(
-        purgeExpiredRecommendationRequests(
-          failing as PrismaClient,
-          f.now,
-          1000,
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      let diagnosticLog: unknown[][] = []
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(
+            failing as PrismaClient,
+            f.now,
+            1000,
+          ),
+        ).rejects.toThrow("owned fixture failure")
+      } finally {
+        diagnosticLog = [...logged.mock.calls]
+        logged.mockRestore()
+      }
+      expect(diagnosticLog).toHaveLength(1)
+      const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
+      expect(diagnostic).toMatchObject({
+        event: "recommendation_retention_phase_failure",
+        errors: {
+          phase: { class: "Error", prismaCode: null, sqlstate: null },
+          terminal: null,
+          fallbackLedger: null,
+        },
+        failed: [{ label: "trace_access_audit", stage: "operation" }],
+        fallbackLedger: { outcome: "succeeded" },
+      })
+      expect(
+        diagnostic.precedingCompleted.some(
+          (phase: { label: string }) => phase.label === "delete_request_roots",
         ),
-      ).rejects.toThrow("owned fixture failure")
+      ).toBe(true)
+      expect(JSON.stringify(diagnostic)).not.toContain("owned fixture failure")
       expect(
         await db.recommendationRequest.findUnique({
           where: { id: f.requestId },
@@ -843,9 +868,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           return typeof value === "function" ? value.bind(target) : value
         },
       })
-      await expect(
-        purgeExpiredRecommendationRequests(uncertain, f.now, 500),
-      ).rejects.toThrow("lost commit acknowledgement")
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      let diagnosticLog: unknown[][] = []
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(uncertain, f.now, 500),
+        ).rejects.toThrow("lost commit acknowledgement")
+      } finally {
+        diagnosticLog = [...logged.mock.calls]
+        logged.mockRestore()
+      }
+      expect(diagnosticLog).toHaveLength(1)
+      const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
+      expect(diagnostic.failed[0]).toMatchObject({
+        label: "delete_request_roots",
+        stage: "commit_acknowledgement",
+        commitAcknowledgementMs: null,
+      })
+      expect(diagnostic.failed[0].counterUpdateMs).not.toBeNull()
+      expect(diagnostic.fallbackLedger.outcome).toBe("succeeded")
+      expect(JSON.stringify(diagnostic)).not.toContain(
+        "lost commit acknowledgement",
+      )
       expect(lost).toBe(true)
       expect(
         await db.recommendationRetentionRun.findFirstOrThrow({
