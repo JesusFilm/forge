@@ -262,7 +262,7 @@ describe("DownloadModal — quality bucketing", () => {
 
     // Open the dropdown so options render in the listbox.
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     act(() => {
       trigger.click()
@@ -294,7 +294,7 @@ describe("DownloadModal — quality bucketing", () => {
     })
 
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     act(() => {
       trigger.click()
@@ -333,7 +333,7 @@ describe("DownloadModal — quality bucketing", () => {
     })
 
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     act(() => {
       trigger.click()
@@ -369,7 +369,7 @@ describe("DownloadModal — quality bucketing", () => {
       )
     })
 
-    const trigger = $('[data-testid="watch-download-modal-size-trigger"]')
+    const trigger = $('[data-testid="watch-download-modal-size"]')
     expect(trigger?.textContent).toContain("Highest")
     expect(trigger?.parentElement?.parentElement?.className).toContain("-mx-2")
     expect(trigger?.parentElement?.parentElement?.className).toContain("px-2")
@@ -402,7 +402,7 @@ describe("DownloadModal — quality bucketing", () => {
     })
 
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     expect(trigger.textContent).toBe("Highest")
     act(() => {
@@ -435,9 +435,7 @@ describe("DownloadModal — quality bucketing", () => {
 
     act(() => {
       ;(
-        $(
-          '[data-testid="watch-download-modal-size-trigger"]',
-        ) as HTMLButtonElement
+        $('[data-testid="watch-download-modal-size"]') as HTMLButtonElement
       ).click()
     })
 
@@ -469,7 +467,7 @@ describe("DownloadModal — quality bucketing", () => {
     })
 
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
 
     act(() => {
@@ -930,9 +928,7 @@ describe("DownloadModal — account-authenticated downloads", () => {
 
       act(() => {
         ;(
-          $(
-            '[data-testid="watch-download-modal-size-trigger"]',
-          ) as HTMLButtonElement
+          $('[data-testid="watch-download-modal-size"]') as HTMLButtonElement
         ).click()
       })
       const option = $$(
@@ -1304,7 +1300,7 @@ describe("DownloadModal — hidden size metadata", () => {
       )
     })
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     expect(trigger.textContent).toContain("Highest")
     expect(trigger.textContent).not.toContain("(")
@@ -1356,7 +1352,7 @@ describe("DownloadModal — no lazy HEAD probe", () => {
     })
     expect(fetchMock).not.toHaveBeenCalled()
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     expect(trigger.textContent).toBe("Highest")
   })
@@ -1424,7 +1420,7 @@ describe("DownloadModal — no lazy HEAD probe", () => {
     })
     expect(fetchMock).not.toHaveBeenCalled()
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     expect(trigger.textContent).toBe("Highest")
   })
@@ -1497,7 +1493,7 @@ describe("DownloadModal — no lazy HEAD probe", () => {
     })
     // Open the dropdown to reveal the option element.
     const trigger = $(
-      '[data-testid="watch-download-modal-size-trigger"]',
+      '[data-testid="watch-download-modal-size"]',
     ) as HTMLButtonElement
     act(() => {
       trigger.click()
@@ -1506,7 +1502,107 @@ describe("DownloadModal — no lazy HEAD probe", () => {
       '[data-testid="watch-download-modal-size-option"][data-tier="highest"]',
     ) as HTMLButtonElement
     expect(option).not.toBeNull()
-    expect(option.getAttribute("data-size-bytes")).toBe("")
+    expect(option.getAttribute("data-size-bytes")).toBeNull()
+    expect(option.textContent).not.toMatch(/\d\s*(MB|GB)/)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+describe("DownloadModal — keyboard quality selection", () => {
+  function renderThreeTiers() {
+    const onClose = vi.fn()
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[
+            makeDownload({ documentId: "dl-fhd", quality: "fhd" }),
+            makeDownload({ documentId: "dl-hd", quality: "hd" }),
+            makeDownload({ documentId: "dl-low", quality: "low" }),
+          ]}
+          onClose={onClose}
+        />,
+      )
+    })
+    const trigger = $(
+      '[data-testid="watch-download-modal-size"]',
+    ) as HTMLButtonElement
+    act(() => {
+      trigger.focus()
+    })
+    return { trigger, onClose }
+  }
+
+  function press(target: HTMLElement, key: string) {
+    act(() => {
+      target.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+      )
+    })
+  }
+
+  function activeOptionTier(trigger: HTMLElement): string | null {
+    const id = trigger.getAttribute("aria-activedescendant")
+    return id
+      ? (document.getElementById(id)?.getAttribute("data-tier") ?? null)
+      : null
+  }
+
+  it("names the quality trigger with its visible label and the selected tier", () => {
+    const { trigger } = renderThreeTiers()
+    const labelText = (trigger.getAttribute("aria-labelledby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent?.trim())
+      .join(" ")
+
+    expect(trigger.getAttribute("role")).toBe("combobox")
+    expect(labelText).toBe("Select a file size Highest")
+  })
+
+  it("lets a keyboard user choose a lower quality and downloads that file", async () => {
+    const { trigger } = renderThreeTiers()
+
+    press(trigger, "ArrowDown")
+    expect(trigger.getAttribute("aria-expanded")).toBe("true")
+    expect(activeOptionTier(trigger)).toBe("highest")
+
+    press(trigger, "ArrowDown")
+    press(trigger, "ArrowDown")
+    expect(activeOptionTier(trigger)).toBe("low")
+
+    press(trigger, "Enter")
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    expect(trigger.textContent).toContain("Low")
+    expect(document.activeElement).toBe(trigger)
+
+    acceptTerms()
+    const created: HTMLAnchorElement[] = []
+    const realAppend = document.body.appendChild.bind(document.body)
+    vi.spyOn(document.body, "appendChild").mockImplementation(((node: Node) => {
+      if (node instanceof HTMLAnchorElement) created.push(node)
+      return realAppend(node)
+    }) as typeof document.body.appendChild)
+    await act(async () => {
+      ;(
+        $('[data-testid="watch-download-modal-confirm"]') as HTMLButtonElement
+      ).click()
+    })
+
+    expect(created).toHaveLength(1)
+    expect(created[0]?.getAttribute("href")).toContain("downloadId=dl-low&")
+  })
+
+  it("closes only the quality list on Escape and keeps the dialog open", () => {
+    const { trigger, onClose } = renderThreeTiers()
+
+    press(trigger, "ArrowDown")
+    press(trigger, "ArrowDown")
+    press(trigger, "Escape")
+
+    expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    expect(trigger.textContent).toContain("Highest")
+    expect(onClose).not.toHaveBeenCalled()
+    expect($('[data-testid="watch-download-modal"]')).not.toBeNull()
+    expect(document.activeElement).toBe(trigger)
   })
 })

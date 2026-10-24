@@ -19,11 +19,11 @@ import { cn } from "@/lib/utils"
  *
  * The popup mechanics (body portal, fixed positioning under the trigger,
  * capture-phase Escape and outside-pointerdown close, resize/scroll
- * repositioning, mount/unmount animation window) are lifted from the inline
+ * repositioning, mount/unmount animation window) were lifted from the former inline
  * tier dropdown in `DownloadModal.tsx`; the keyboard model (arrow keys with
  * `aria-activedescendant`, focus staying on the trigger) follows
- * `LanguageCombobox`. Migrating `DownloadModal` onto this component is
- * tracked separately.
+ * `LanguageCombobox`. Both download modals (single video and collection)
+ * render it.
  */
 export const TIER_LISTBOX_ANIMATION_MS = 160
 const POPUP_GAP_PX = 8

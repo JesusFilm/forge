@@ -1,5 +1,5 @@
 ---
-status: pending
+status: complete
 priority: p3
 issue_id: "025"
 title: Migrate DownloadModal's inline quality dropdown onto the shared TierListbox so the popup mechanics have one owner
@@ -59,3 +59,14 @@ did not belong in the collection-modal bug fix.
    level.
 4. Real-browser check inside the single-video modal (poster + terms dialog
    present): option click and Escape must not dismiss the outer dialog.
+
+# Resolution
+
+Done 2026-10-20 in feat-761
+(`docs/roadmap/platform/feat-761-watch-download-quality-keyboard.md`).
+`DownloadModal` now renders `TierListbox` with
+`testIdPrefix="watch-download-modal-size"` (trigger test id is the prefix
+itself; the suite's selectors were updated). The unused per-option
+`data-size-bytes` attribute was dropped instead of adding an
+`optionAttributes` hook. Modal-level keyboard scenarios live in
+`apps/web/src/components/watch/__tests__/DownloadModal.test.tsx`.
