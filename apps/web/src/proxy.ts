@@ -36,6 +36,7 @@ import {
 } from "@/lib/url-shape"
 import { logWatchServerEvent } from "@/lib/watch-observability"
 import {
+  canWatchRouteManifestProveMiss,
   getWatchRouteManifest,
   isWatchAudioLanguageSlug,
   isWatchEpisodeRouteExactlyAdmittedByManifest,
@@ -603,8 +604,8 @@ function logImplicitEnglishEpisodeRejected(
  * set it: the `[htmlLang]` `loading.tsx` streams a Suspense shell, which
  * flushes HTTP 200 before the sentinel's `notFound()` runs (feat-757).
  *
- * Pass `verified: false` when the miss was decided without a complete route
- * manifest (see `canManifestProveMiss`). Admin may simply have been
+ * Pass `verified: false` when the miss was decided without a complete, fresh
+ * route manifest (see `canWatchRouteManifestProveMiss`). Admin may simply have been
  * unreachable, or an older manifest may lack the index that would admit the
  * URL, so the URL can still be valid; that
  * response stays the old non-cached, noindex 200 instead of telling crawlers
@@ -619,56 +620,50 @@ function buildNotFound(
   { verified = true }: { verified?: boolean } = {},
 ): NextResponse {
   const locale = identity?.locale ?? DEFAULT_LOCALE
-  return rewriteToInternal(
-    request,
-    {
-      kind: "rewrite",
-      locale,
-      // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
-      // so its document is in the CHROME language. Carrying the raw content tag
-      // would declare English recovery copy as Aari — the FGE-170
-      // mis-declaration pointed the other way.
-      htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
-      pathname: "/404",
-    },
-    null,
-    verified ? 404 : undefined,
+  return applyNotFoundRecoveryHeaders(
+    rewriteToInternal(
+      request,
+      {
+        kind: "rewrite",
+        locale,
+        // The 404 sentinel renders `WatchNotFound` copy from the `locale` catalog,
+        // so its document is in the CHROME language. Carrying the raw content tag
+        // would declare English recovery copy as Aari — the FGE-170
+        // mis-declaration pointed the other way.
+        htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
+        pathname: "/404",
+      },
+      null,
+      verified ? 404 : undefined,
+    ),
   )
+}
+
+function applyNotFoundRecoveryHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  response.headers.set("X-Robots-Tag", "noindex, nofollow")
+  return response
 }
 
 function buildUnavailableLanguageNotFound(
   request: ProxyRequest,
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
+  manifest: WatchRouteManifest | null,
 ): NextResponse {
-  return rewriteToInternal(
-    request,
-    {
-      ...decision,
-      // Same reason as buildNotFound: the unavailable-language sentinel renders
-      // chrome-language copy, so it must not declare the content language.
-      htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
-      internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
-    },
-    null,
-    // Only reached when the manifest proves the language gap, so the 404 is
-    // verified. Same streaming reason as buildNotFound.
-    404,
-  )
-}
-
-/**
- * True only when the manifest can prove a miss: it exists AND carries every
- * per-route language index the admission checks read. Admin always emits
- * these today, but an older-shaped manifest (deploy skew) makes those checks
- * fail closed, which is not proof the URL is gone, so its misses stay the
- * unverified 200 like a missing manifest (feat-757).
- */
-function canManifestProveMiss(manifest: WatchRouteManifest | null): boolean {
-  return (
-    manifest != null &&
-    manifest.audioLanguageIndexesByContent !== undefined &&
-    manifest.audioLanguageIndexesByEpisode !== undefined &&
-    manifest.nestedContainerAudioLanguageIndexesByParent !== undefined
+  return applyNotFoundRecoveryHeaders(
+    rewriteToInternal(
+      request,
+      {
+        ...decision,
+        // Same reason as buildNotFound: the unavailable-language sentinel renders
+        // chrome-language copy, so it must not declare the content language.
+        htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
+        internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+      },
+      null,
+      // A stale or incomplete snapshot cannot prove a current language gap.
+      canWatchRouteManifestProveMiss(manifest) ? 404 : undefined,
+    ),
   )
 }
 
@@ -949,24 +944,24 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   if (rewrite.kind === "pass") return NextResponse.next()
   if (rewrite.kind === "not-found") {
     return buildNotFound(request, undefined, {
-      verified: canManifestProveMiss(manifest),
+      verified: canWatchRouteManifestProveMiss(manifest),
     })
   }
   const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
     return buildNotFound(request, rewrite, {
-      verified: canManifestProveMiss(manifest),
+      verified: canWatchRouteManifestProveMiss(manifest),
     })
   }
   if (admission.kind === "known-content-language-gap") {
-    return buildUnavailableLanguageNotFound(request, rewrite)
+    return buildUnavailableLanguageNotFound(request, rewrite, manifest)
   }
   if (admission.kind === "redirect") {
     const url = request.nextUrl.clone()
     url.pathname = admission.pathname
     return buildRedirect(url, admission.status ?? 301)
   }
-  return rewriteToInternal(
+  const response = rewriteToInternal(
     request,
     {
       ...rewrite,
@@ -974,6 +969,12 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     },
     manifest,
   )
+  if (rewrite.manifestRoute && !canWatchRouteManifestProveMiss(manifest)) {
+    // Preserve existing fallback/positive admission, without caching a render
+    // whose route authority is unavailable, incomplete or beyond its TTL.
+    response.headers.set("Cache-Control", "private, no-store, max-age=0")
+  }
+  return response
 }
 
 export const config = {

@@ -77,15 +77,40 @@ let manifestCache: WatchRouteManifestCache = {
 let sourceOverride: WatchRouteManifestSource | null = null
 
 const indexCache = new WeakMap<WatchRouteManifest, WatchRouteManifestIndex>()
+// Retrieval freshness is separate from the retry deadline. Last-good data can
+// admit known routes during an outage, but failed retries cannot prove absence.
+let validatedUntil = new WeakMap<WatchRouteManifest, number>()
+
+export function canWatchRouteManifestProveMiss(
+  manifest: WatchRouteManifest | null,
+): boolean {
+  return (
+    manifest != null &&
+    (validatedUntil.get(manifest) ?? 0) > Date.now() &&
+    manifest.audioLanguageIndexesByContent !== undefined &&
+    manifest.audioLanguageIndexesByEpisode !== undefined &&
+    manifest.nestedContainerAudioLanguageIndexesByParent !== undefined
+  )
+}
+
+function recordSuccessfulValidation(manifest: WatchRouteManifest): void {
+  validatedUntil.set(manifest, Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS)
+}
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string")
 }
 
-function isNumberArray(value: unknown): value is number[] {
+function isNumberArray(
+  value: unknown,
+  languageCount: number,
+): value is number[] {
   return (
     Array.isArray(value) &&
-    value.every((item) => Number.isInteger(item) && item >= 0)
+    // Invalid references must not silently disappear and prove a false gap.
+    value.every(
+      (item) => Number.isInteger(item) && item >= 0 && item < languageCount,
+    )
   )
 }
 
@@ -101,22 +126,25 @@ function isEpisodePairsByParent(
 
 function isAudioLanguageIndexesByContent(
   value: unknown,
+  languageCount: number,
 ): value is Record<string, number[]> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   return Object.entries(value).every(
     ([contentSlug, audioLanguageIndexes]) =>
-      typeof contentSlug === "string" && isNumberArray(audioLanguageIndexes),
+      typeof contentSlug === "string" &&
+      isNumberArray(audioLanguageIndexes, languageCount),
   )
 }
 
 function isAudioLanguageIndexesByEpisode(
   value: unknown,
+  languageCount: number,
 ): value is Record<string, Record<string, number[]>> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   return Object.entries(value).every(
     ([parentSlug, children]) =>
       typeof parentSlug === "string" &&
-      isAudioLanguageIndexesByContent(children),
+      isAudioLanguageIndexesByContent(children, languageCount),
   )
 }
 
@@ -141,13 +169,19 @@ export function parseWatchRouteManifest(
   if (!isStringArray(record.audioLanguageSlugs)) return null
   if (
     record.audioLanguageIndexesByContent !== undefined &&
-    !isAudioLanguageIndexesByContent(record.audioLanguageIndexesByContent)
+    !isAudioLanguageIndexesByContent(
+      record.audioLanguageIndexesByContent,
+      record.audioLanguageSlugs.length,
+    )
   ) {
     return null
   }
   if (
     record.audioLanguageIndexesByEpisode !== undefined &&
-    !isAudioLanguageIndexesByEpisode(record.audioLanguageIndexesByEpisode)
+    !isAudioLanguageIndexesByEpisode(
+      record.audioLanguageIndexesByEpisode,
+      record.audioLanguageSlugs.length,
+    )
   ) {
     return null
   }
@@ -155,6 +189,7 @@ export function parseWatchRouteManifest(
     record.nestedContainerAudioLanguageIndexesByParent !== undefined &&
     !isAudioLanguageIndexesByEpisode(
       record.nestedContainerAudioLanguageIndexesByParent,
+      record.audioLanguageSlugs.length,
     )
   ) {
     return null
@@ -449,6 +484,7 @@ export function isWatchParentAdmittedByNestedContainer(
 }
 
 export function clearWatchRouteManifestCache(): void {
+  validatedUntil = new WeakMap()
   manifestCache = {
     etag: null,
     expiresAt: 0,
@@ -507,13 +543,18 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
         ...(manifestCache.etag ? { "If-None-Match": manifestCache.etag } : {}),
       },
       cache: "no-store",
+      // The authenticated manifest must come from the configured Admin origin.
+      redirect: "error",
       signal: timeoutSignal(),
     })
 
     if (response.status === 304) {
+      if (manifestCache.etag && manifestCache.manifest) {
+        recordSuccessfulValidation(manifestCache.manifest)
+      }
       return manifestCache.manifest
     }
-    if (!response.ok) {
+    if (response.status !== 200) {
       logWatchServerEvent("watch_route_manifest.fetch.failed", {
         status: response.status,
         url,
@@ -528,6 +569,7 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
     }
 
     manifestCache.etag = response.headers.get("etag")
+    recordSuccessfulValidation(parsed)
     return parsed
   } catch (error) {
     logWatchServerEvent("watch_route_manifest.fetch.error", {
@@ -539,7 +581,11 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
 }
 
 export async function getWatchRouteManifest(): Promise<WatchRouteManifest | null> {
-  if (sourceOverride) return sourceOverride()
+  if (sourceOverride) {
+    const manifest = await sourceOverride()
+    if (manifest) recordSuccessfulValidation(manifest)
+    return manifest
+  }
 
   const now = Date.now()
   if (manifestCache.expiresAt > now) return manifestCache.manifest
@@ -554,6 +600,7 @@ export async function getWatchRouteManifest(): Promise<WatchRouteManifest | null
   // forever rather than for one TTL.
   const inFlight = fetchWatchRouteManifest().then((manifest) => {
     manifestCache.manifest = manifest
+    // Retry backoff only; successful-validation freshness is never renewed here.
     manifestCache.expiresAt = Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS
     return manifest
   })

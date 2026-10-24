@@ -184,6 +184,18 @@ DTO and older clients remain compatible.
 
 The route manifest cache in `src/lib/watch-route-manifest.ts` is process-local. The webhook clears only the process that receives it; other web instances rely on the 60 second manifest TTL unless production uses shared cache storage or all-instance webhook fan-out.
 
+Manifest negative proof has an exclusive 60,000 ms lifetime after a successful
+authenticated 200 retrieval or conditional 304 validation. This is retrieval
+freshness, not the producer's `generatedAt`. Only a fresh snapshot carrying all
+three route-language indexes may prove an HTTP 404. Failed refreshes may retain
+last-good positive admission and defer another fetch for 60 seconds, but never
+renew negative proof. Stale, unavailable, or older-shaped negative decisions
+use the existing soft recovery sentinel with private/no-store and noindex;
+fallback admitted routes also bypass caching until authority recovers. Do not
+expand admission or change language policy to compensate for an outage. See
+`docs/operations/watch-route-manifest-freshness.md` for offline verification and
+the separate live-manifest qualification gap.
+
 The SEO sitemap manifest cache in `src/lib/watch-seo-manifest.ts` follows the
 same process-local pattern. Sitemap routes read the cached snapshot and return
 a controlled 503 when no valid snapshot is available; Watch page metadata does
