@@ -1,0 +1,251 @@
+{
+  "action": "start",
+  "generationId": "editorial-catalog-20261019-v1",
+  "modelId": "codex-editorial-session",
+  "promptVersion": "editorial-related-videos-v1",
+  "inputDigest": "3077c34d9240c4e867480001a09f26c8ba4384052470b710bda952515334128a",
+  "sourceSetDigest": "5035449a49ed400a610c986eb4b99c368a20892afd62ae600bb2b786b4310b09",
+  "inputCutoff": "2026-10-19T03:02:29.357Z",
+  "expectedSourceCount": 1031,
+  "inputMode": "content_only",
+  "inputSnapshotMode": "observed_fenced",
+  "sources": 1031,
+  "choices": 6147,
+  "completeSixSources": 1017,
+  "emptySources": [
+    "cmp78utff0ghcqm01ppype541",
+    "cmp78uu4i0ghiqm01lqwq5erd",
+    "cmp783vir03feqm01iu0jas61",
+    "cmp78e30308k6qm01w674orig",
+    "cmp78j4xc0b44qm01ejb8ufxg"
+  ],
+  "exclusions": [
+    {
+      "sourceVideoId": "cmp78nnog0dc0qm01fgh0b0q1",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78nmf70dbgqm0130ehjmox",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78nodh0dceqm01vc4nrvrm",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78nmf70dbgqm0130ehjmox",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78odwj0do6qm019vr8i03o",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78ocn40dnuqm01v83mfksk",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78oell0dogqm0149fpy813",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78ocn40dnuqm01v83mfksk",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78nwwk0dgiqm019jr1fcw5",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78nvne0dfuqm01wxv5x66l",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78nxlm0dguqm01swu0ov0d",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78nvne0dfuqm01wxv5x66l",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78utff0ghcqm01ppype541",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp76norp00scny01k2hgi1mm",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76myry00qiny013hh6jspu",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp770j0i0306ny01nbq1ops3",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76znob02v8ny01ihd4kfn8",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76mgal00oqny01i2icuvik",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76k8r5009kny01zfr58abw",
+          "reason": "unresolved_source_evidence"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78uu4i0ghiqm01lqwq5erd",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp76znob02v8ny01ihd4kfn8",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp78jjwi0bc4qm013s6ufubo",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmsd4bn8m0fkbnx0mgrdq1sy1",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76n6zf00qsny01m75o56sw",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp787dbj055yqm010keumkuj",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp787ici058mqm01apicuawl",
+          "reason": "unresolved_source_evidence"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp783vir03feqm01iu0jas61",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp780wwr01y2qm015r29r0b7",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp780y0q01yqqm0130nrc1aa",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76lj5x00jgny01ykidyzln",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp780z4o01z8qm01u3foeyt3",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76m82w00o0ny01zajn20u6",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76nuj500t0ny01towb86f2",
+          "reason": "unresolved_source_evidence"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp788mo605ssqm01jsl7irch",
+      "exclusions": [
+        {
+          "targetVideoId": "cmokmpysx0ohcqsccm3d7jssu",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp783u4m03emqm01e7rcb2ll",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp780viu01xcqm01yhmyjm2b",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp780u4p01wkqm01fwx40y62",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp76nd5000rgny01a2iyer7r",
+          "reason": "Duplicate Video content"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78e30308k6qm01w674orig",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp78iao30aocqm01hq6jbeoq",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp78gwbl09xwqm014ml90qm5",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp78h7mb0a46qm0179gsvf7l",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp76tdvz01xwny01nsyo9mcs",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmsd4bjhm0dcxnx0m43s36ntb",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmsd4bm1j0elznx0mx3kdcbkf",
+          "reason": "unresolved_source_evidence"
+        }
+      ]
+    },
+    {
+      "sourceVideoId": "cmp78j4xc0b44qm01ejb8ufxg",
+      "exclusions": [
+        {
+          "targetVideoId": "cmp7837dy0334qm01q50g3zmy",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp772lje0384ny01i93ilpw5",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp78766g0530qm01emxuvw08",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp781f7z026gqm01103hj6ac",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp78g2yp09l2qm01pqge539s",
+          "reason": "unresolved_source_evidence"
+        },
+        {
+          "targetVideoId": "cmp78h2gq0a18qm01v6o717eh",
+          "reason": "unresolved_source_evidence"
+        }
+      ]
+    }
+  ],
+  "productionWrites": 0
+}
