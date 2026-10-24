@@ -8,9 +8,13 @@ import {
   getTranscriptionRoutingReport,
   setTranscriptionRoutingReport,
 } from "@/lib/transcription-routing-report"
-import { buildInitialSteps } from "@/lib/workflow-steps"
 import { resolveEnrichmentEngine } from "@/lib/enrichment-engine"
-import { getJob, restampEngine, updateJob } from "@/lib/state"
+import {
+  getJob,
+  resetEnrichmentForRerun,
+  restampEngine,
+  updateJob,
+} from "@/lib/state"
 import type {
   RequestedTranscriptionProvider,
   TranscriptionAttempt,
@@ -255,14 +259,7 @@ export async function POST(
     nextRoutingReport,
   )
 
-  const updatedJob = await updateJob(job.id, {
-    status: "pending",
-    currentStep: undefined,
-    completedAt: undefined,
-    artifacts: nextArtifacts,
-    errors: [],
-    steps: buildInitialSteps(),
-  })
+  const updatedJob = await resetEnrichmentForRerun(job.id, nextArtifacts)
 
   if (!updatedJob) {
     return NextResponse.json(
@@ -275,8 +272,22 @@ export async function POST(
     key: updatedJob.id,
     custom: { route: "api.jobs.transcription.rerun" },
   })
-  const restampedJob =
-    (await restampEngine(updatedJob.id, engine)) ?? updatedJob
+  let restampedJob
+  try {
+    restampedJob = await restampEngine(updatedJob.id, engine)
+  } catch (error) {
+    console.error(`Engine persistence failed for job ${updatedJob.id}:`, error)
+  }
+  if (!restampedJob || restampedJob.options.engine !== engine) {
+    return NextResponse.json(
+      {
+        error: "Failed to persist enrichment engine; retry the rerun request.",
+        code: "engine_persistence_failed",
+        retryable: true,
+      },
+      { status: 503 },
+    )
+  }
 
   try {
     await launchVideoEnrichment({

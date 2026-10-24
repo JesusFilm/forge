@@ -31,6 +31,7 @@ export const ForgeVideoEnrichmentInputSchema = z
     translateTo: z.array(z.string().min(1)).optional(),
     runSceneAnalysis: z.boolean().optional(),
     runAudioCleanup: z.boolean().optional(),
+    videoTitle: z.string().optional(),
     videoLabel: z.string().optional(),
     bibleVerses: z.array(z.string()).optional(),
     initialArtifacts: z.record(z.string(), JobArtifactEntrySchema).optional(),

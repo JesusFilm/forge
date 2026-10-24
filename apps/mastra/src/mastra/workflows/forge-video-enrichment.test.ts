@@ -18,6 +18,78 @@ const validInput = {
 }
 
 describe("forge video enrichment route", () => {
+  it("accepts and preserves the full current Manager caller shape through start", async () => {
+    const input = {
+      ...validInput,
+      playbackId: "playback-1",
+      language: "en",
+      runSceneAnalysis: false,
+      runAudioCleanup: false,
+      videoTitle: "Dummy source title",
+      videoLabel: "clip",
+      bibleVerses: ["John 3:16"],
+      videoDocumentId: "video-1",
+      requestedTranscriptionProvider: "automatic" as const,
+      initialArtifacts: {
+        transcript: { kind: "downloadable" as const },
+        materialization: {
+          kind: "metadata" as const,
+          data: { sourceLanguageCode: "en" },
+        },
+      },
+    }
+    const auth = {
+      authHeader: "Bearer dummy-key",
+      serviceKeys: ["dummy-key"],
+      configured: true,
+    }
+    const accepted = await handleForgeVideoEnrichmentRouteRequest({
+      ...auth,
+      readJson: async () => input,
+    })
+    expect(accepted.status).toBe(202)
+    const start = vi.fn(() => new Promise<never>(() => {}))
+    const createRun = vi.fn(async () => ({ start }))
+    const launch = vi.fn(
+      (parsed: ForgeVideoEnrichmentInput, options: { runId: string }) =>
+        launchForgeVideoEnrichmentWorkflow(parsed, { ...options, createRun }),
+    )
+    const started = await handleForgeVideoEnrichmentStartRouteRequest({
+      ...auth,
+      readJson: async () => ({ runId: accepted.body.runId, input }),
+      launch,
+    })
+    expect(started.status).toBe(202)
+    expect(launch).toHaveBeenCalledWith(input, { runId: accepted.body.runId })
+    expect(start).toHaveBeenCalledWith({ inputData: input })
+    for (const invalid of [
+      { ...input, unknown: true },
+      { ...input, videoTitle: 42 },
+    ]) {
+      expect(
+        (
+          await handleForgeVideoEnrichmentRouteRequest({
+            ...auth,
+            readJson: async () => invalid,
+          })
+        ).status,
+      ).toBe(400)
+      expect(
+        (
+          await handleForgeVideoEnrichmentStartRouteRequest({
+            ...auth,
+            readJson: async () => ({
+              runId: accepted.body.runId,
+              input: invalid,
+            }),
+            launch,
+          })
+        ).status,
+      ).toBe(400)
+    }
+    expect(launch).toHaveBeenCalledTimes(1)
+  })
+
   it("requires the enrichment-specific receiver key to be configured", async () => {
     const outcome = await handleForgeVideoEnrichmentRouteRequest({
       authHeader: "Bearer key",

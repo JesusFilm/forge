@@ -1,3 +1,5 @@
+import steps from "../../../../docs/fixtures/manager-enrichment-steps.json"
+import { FORGE_WORKFLOW_STEPS } from "./manager-enrichment-callback-client"
 import { describe, expect, it, vi } from "vitest"
 
 import callbackFixtures from "../../../../docs/fixtures/manager-enrichment-callbacks.json"
@@ -163,4 +165,84 @@ describe("isManagerEnrichmentCallbackConfigured", () => {
       }),
     ).toBe(false)
   })
+})
+
+// Shared data fixtures keep app-local schemas aligned without app imports.
+describe("complete callback inventory", () => {
+  it("matches every current Manager enrichment step", () => {
+    expect(FORGE_WORKFLOW_STEPS).toEqual(steps)
+  })
+  it.each(steps)(
+    "validates all callback statuses and strict fields for %s",
+    (step) => {
+      const base = {
+        jobId: "dummy-job",
+        engine: "mastra",
+        runId: "dummy-run",
+        sequence: 1,
+        step,
+      }
+      for (const status of ["running", "completed", "failed", "skipped"]) {
+        const callback = {
+          ...base,
+          status,
+          ...(status === "failed" ? { error: "dummy failure" } : {}),
+        }
+        expect(
+          ManagerEnrichmentCallbackSchema.safeParse(callback).success,
+        ).toBe(true)
+        expect(
+          ManagerEnrichmentCallbackSchema.safeParse({
+            ...callback,
+            unexpected: true,
+          }).success,
+        ).toBe(false)
+      }
+      for (const invalid of [
+        { ...base, status: "pending" },
+        { ...base, status: "failed" },
+        { ...base, status: "running", artifactsDelta: ["transcript"] },
+        {
+          ...base,
+          status: "completed",
+          artifactsDelta: [{ kind: "downloadable" }],
+        },
+        { ...base, status: "completed", artifactsDelta: ["x".repeat(129)] },
+        {
+          ...base,
+          status: "completed",
+          artifactsDelta: Array(101).fill("transcript"),
+        },
+        {
+          ...base,
+          status: "completed",
+          languageResults: [{ lang: "fr", status: "running" }],
+        },
+        { ...base, status: "completed", sequence: -1 },
+      ])
+        expect(ManagerEnrichmentCallbackSchema.safeParse(invalid).success).toBe(
+          false,
+        )
+    },
+  )
+})
+
+it("sends structured transcript progress through a dummy transport", async () => {
+  const fetchImpl = vi.fn<typeof fetch>(
+    async () => new Response("{}", { status: 200 }),
+  )
+  await expect(
+    postManagerEnrichmentCallback(
+      { ...validCallback, step: "structured_transcript" },
+      {
+        callbackUrl: "https://manager.test/callback",
+        bearer: "dummy-key",
+        fetchImpl,
+      },
+    ),
+  ).resolves.toEqual({ ok: true, status: 200 })
+  expect(fetchImpl).toHaveBeenCalledOnce()
+  expect(
+    JSON.parse(fetchImpl.mock.calls[0]?.[1]?.body as string),
+  ).toMatchObject({ step: "structured_transcript" })
 })

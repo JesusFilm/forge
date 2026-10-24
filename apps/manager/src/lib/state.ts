@@ -873,6 +873,13 @@ export async function restampEngine(
   id: string,
   engine: EnrichmentEngine,
 ): Promise<JobRecord | null> {
+  return serializeJobUpdate(id, () => doRestampEngine(id, engine))
+}
+
+async function doRestampEngine(
+  id: string,
+  engine: EnrichmentEngine,
+): Promise<JobRecord | null> {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
   if (mockState) {
@@ -922,10 +929,46 @@ export async function restampEngine(
   return null
 }
 
+/** Reset visible rerun state and retire the old run in the same queued write.
+ * Admin replaces the whole options column, so read it under the job lock.
+ */
+export async function resetEnrichmentForRerun(
+  id: string,
+  artifacts: JobArtifactManifest,
+): Promise<JobRecord | null> {
+  return serializeJobUpdate(id, async () => {
+    const current = await getJob(id)
+    if (!current) return null
+    const options = { ...current.options }
+    delete options.currentRunId
+    delete options.dispatchedAt
+    delete options.callbackSequences
+    return updateJob(id, {
+      options,
+      status: "pending",
+      currentStep: undefined,
+      completedAt: undefined,
+      artifacts,
+      errors: [],
+      steps: buildInitialSteps(),
+    })
+  })
+}
+
 export async function markEnrichmentDispatched(
   id: string,
   runId: string,
   dispatchedAt = new Date().toISOString(),
+): Promise<JobRecord | null> {
+  return serializeJobUpdate(id, () =>
+    doMarkEnrichmentDispatched(id, runId, dispatchedAt),
+  )
+}
+
+async function doMarkEnrichmentDispatched(
+  id: string,
+  runId: string,
+  dispatchedAt: string,
 ): Promise<JobRecord | null> {
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)

@@ -31,3 +31,14 @@ The original Manager test suite reproduced a collection failure from the mock-mo
 Normal integration reconciles 14 conflict paths and retains main's custom job options, step inventory, source materialization omission semantics, Mastra registrations and dependency graph. Final full Manager, Mastra, and feature-flag tests, all three typechecks and strict lint passes, full repository formatting, and the Manager production build passed. The private packet records exact commands and remaining validation qualifications. Mastra's build CLI always installs generated output dependencies without a frozen lock and performs temporary directory moves; it was not run under this assignment's frozen-install/no-move constraints. No rendering, hydration, or client initialization changes remain relative to current main.
 
 Implementation self-review is recorded; fresh independent acceptance remains pending. Keep feat-788 and this plan in progress until the parent review accepts the exact local candidate.
+
+## Bounded correction round 2 — independent findings
+
+Independent review rejected candidate `86d9dc7cc31aa2b5c70e062423bee2d3c51b354b` on four P2 findings. Keep the integrated main `aa3c8fe7a32c82661a7296c90ca64a5ff6109f20` and original S2 admission bounds.
+
+1. Serialize `restampEngine` and `markEnrichmentDispatched` on `serializeJobUpdate` in `apps/manager/src/lib/state.ts`. Add a queued rerun reset that retires `currentRunId`, `dispatchedAt`, and callback sequences atomically with pending steps. Test callback/watchdog before and after dispatch/reset/restamp using held Admin snapshots and whole-options replacement. Preserve siblings and materialization omission semantics; no distributed redesign.
+2. Accept optional `videoTitle` in Mastra's strict enrichment input. Exercise the full current Manager caller shape through accept/start/workflow handoff; preserve the unimplemented graph.
+3. Align the local Mastra callback step inventory, including `structured_transcript`, with Manager using shared data fixtures and independent local schemas. Enumerate every step/status and strict invalid payloads without cross-app imports.
+4. Return retryable 503 without launch on null/error/mismatched engine restamping. Prove successful selected-engine persistence before launch and rollback stamp survival under concurrent old callbacks/watchdogs.
+
+Run focused regressions first, then full affected suites, typechecks/strict lint, format, hooks, commitlint and roadmap checks. Keep all new substantial evidence/cache/temp in private `1087-implementation-r2/`; reuse pinned Node/dependencies, no installs. Inspect supported safe Mastra build paths read-only; retain explicit unrun qualification if none meets constraints. Record a local code commit and exact-head review packet; no push or independent acceptance in this round. feat-788 stays in progress.

@@ -7,6 +7,7 @@ const {
   markEnrichmentDispatchedMock,
   resolveEnrichmentEngineMock,
   restampEngineMock,
+  resetEnrichmentForRerunMock,
   getMuxAssetMock,
   getMuxStaticRenditionSourceUrlMock,
   isAudioCleanupConfiguredMock,
@@ -20,6 +21,7 @@ const {
   markEnrichmentDispatchedMock: vi.fn(),
   resolveEnrichmentEngineMock: vi.fn(),
   restampEngineMock: vi.fn(),
+  resetEnrichmentForRerunMock: vi.fn(),
   getMuxAssetMock: vi.fn(),
   getMuxStaticRenditionSourceUrlMock: vi.fn(),
   isAudioCleanupConfiguredMock: vi.fn(),
@@ -50,6 +52,7 @@ vi.mock("@/lib/state", () => ({
   getJob: getJobMock,
   markEnrichmentDispatched: markEnrichmentDispatchedMock,
   restampEngine: restampEngineMock,
+  resetEnrichmentForRerun: resetEnrichmentForRerunMock,
   updateJob: updateJobMock,
 }))
 
@@ -179,7 +182,26 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       errors: updates.errors ?? [],
       currentStep: updates.currentStep,
     }))
-    restampEngineMock.mockResolvedValue(null)
+    resetEnrichmentForRerunMock.mockImplementation(async (id, artifacts) => {
+      const job = await getJobMock(id)
+      return {
+        ...job,
+        status: "pending",
+        artifacts,
+        steps: [],
+        errors: [],
+        options: {},
+      }
+    })
+    restampEngineMock.mockImplementation(async (id, engine) => {
+      const job = await getJobMock(id)
+      return {
+        ...job,
+        status: "pending",
+        artifacts: resetEnrichmentForRerunMock.mock.calls.at(-1)?.[1] ?? {},
+        options: { ...job.options, engine },
+      }
+    })
   })
 
   it("accepts a forced rerun, preserves canonical transcription artifacts, and restarts the workflow from transcription", async () => {
@@ -193,56 +215,29 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
     )
 
     expect(response.status).toBe(202)
-    expect(updateJobMock).toHaveBeenCalledWith(
+    expect(resetEnrichmentForRerunMock).toHaveBeenCalledWith(
       "job-1",
       expect.objectContaining({
-        status: "pending",
-        currentStep: undefined,
-        completedAt: undefined,
-        artifacts: expect.objectContaining({
-          transcript: { kind: "downloadable" },
-          subtitles: { kind: "downloadable" },
-          transcriptionRouting: {
-            kind: "metadata",
-            data: expect.objectContaining({
-              sourceInputUrl: "https://cdn.example.com/video.mp4",
-              currentAttemptId: expect.any(String),
-              attempts: [
-                expect.objectContaining({
-                  requestedProvider: "elevenlabs",
-                  resolvedProvider: "elevenlabs",
-                  status: "running",
-                }),
-              ],
-            }),
-          },
-        }),
-        steps: [
-          expect.objectContaining({ name: "audio_cleanup", status: "pending" }),
-          expect.objectContaining({ name: "transcription", status: "pending" }),
-          expect.objectContaining({
-            name: "structured_transcript",
-            status: "pending",
+        transcript: { kind: "downloadable" },
+        subtitles: { kind: "downloadable" },
+        transcriptionRouting: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            sourceInputUrl: "https://cdn.example.com/video.mp4",
+            currentAttemptId: expect.any(String),
+            attempts: [
+              expect.objectContaining({
+                requestedProvider: "elevenlabs",
+                resolvedProvider: "elevenlabs",
+                status: "running",
+              }),
+            ],
           }),
-          expect.objectContaining({ name: "translation", status: "pending" }),
-          expect.objectContaining({ name: "chapters", status: "pending" }),
-          expect.objectContaining({ name: "metadata", status: "pending" }),
-          expect.objectContaining({ name: "embeddings", status: "pending" }),
-          expect.objectContaining({ name: "mux_upload", status: "pending" }),
-          expect.objectContaining({
-            name: "theology_validation_bible_quotes",
-            status: "skipped",
-          }),
-          expect.objectContaining({
-            name: "seo_improvements",
-            status: "skipped",
-          }),
-        ],
+        },
       }),
     )
-    const updatedArtifacts = updateJobMock.mock.calls[0]?.[1]?.artifacts as {
-      [key: string]: unknown
-    }
+    const updatedArtifacts = resetEnrichmentForRerunMock.mock
+      .calls[0]?.[1] as Record<string, unknown>
     expect(updatedArtifacts).not.toHaveProperty("chapters")
     expect(updatedArtifacts).not.toHaveProperty("transcript-raw")
     expect(updatedArtifacts).not.toHaveProperty("subtitles-raw")
@@ -261,13 +256,6 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
     )
     expect(updatedArtifacts).not.toHaveProperty(
       "transcriptionRouting.data.fallbackReason",
-    )
-
-    expect(updateJobMock).toHaveBeenCalledWith(
-      "job-1",
-      expect.objectContaining({
-        errors: [],
-      }),
     )
 
     dispatch.expectDispatched(runVideoEnrichment, [
@@ -289,37 +277,10 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
   it("returns a failed job payload when workflow dispatch fails", async () => {
     startMock.mockReset()
     startMock.mockRejectedValueOnce(new Error("workflow offline"))
-    updateJobMock
-      .mockImplementationOnce(async (_id, updates) => ({
-        id: "job-1",
-        muxAssetId: "mux-1",
-        muxPlaybackId: "play-1",
-        languages: ["fr"],
-        options: {},
-        status: updates.status ?? "pending",
-        retries: 0,
-        createdAt: "",
-        updatedAt: "",
-        artifacts: updates.artifacts ?? {},
-        steps: updates.steps ?? [],
-        errors: updates.errors ?? [],
-        currentStep: updates.currentStep,
-      }))
-      .mockImplementationOnce(async (_id, updates) => ({
-        id: "job-1",
-        muxAssetId: "mux-1",
-        muxPlaybackId: "play-1",
-        languages: ["fr"],
-        options: {},
-        status: updates.status ?? "failed",
-        retries: 0,
-        createdAt: "",
-        updatedAt: "",
-        artifacts: {},
-        steps: [],
-        errors: [],
-        currentStep: updates.currentStep,
-      }))
+    updateJobMock.mockImplementationOnce(async (_id, updates) => ({
+      ...(await getJobMock()),
+      ...updates,
+    }))
 
     const response = await POST(
       new Request("https://manager.test/api/jobs/job-1/transcription/rerun", {
@@ -339,7 +300,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
       }),
     })
     expect(updateJobMock).toHaveBeenNthCalledWith(
-      2,
+      1,
       "job-1",
       expect.objectContaining({
         status: "failed",
@@ -378,6 +339,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     expect(updateJobMock).not.toHaveBeenCalled()
+    expect(resetEnrichmentForRerunMock).not.toHaveBeenCalled()
     dispatch.expectNotDispatched()
   })
 
@@ -469,19 +431,17 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
         publicPlaybackId: "play-source-1",
       }),
     )
-    expect(updateJobMock).toHaveBeenCalledWith(
+    expect(resetEnrichmentForRerunMock).toHaveBeenCalledWith(
       "job-1",
       expect.objectContaining({
-        artifacts: expect.objectContaining({
-          transcriptionRouting: {
-            kind: "metadata",
-            data: expect.objectContaining({
-              sourceInputUrl: "https://stream.mux.com/play-source-1/480p.mp4",
-              sourceInputHost: "stream.mux.com",
-              currentAttemptId: expect.any(String),
-            }),
-          },
-        }),
+        transcriptionRouting: {
+          kind: "metadata",
+          data: expect.objectContaining({
+            sourceInputUrl: "https://stream.mux.com/play-source-1/480p.mp4",
+            sourceInputHost: "stream.mux.com",
+            currentAttemptId: expect.any(String),
+          }),
+        },
       }),
     )
     dispatch.expectDispatched(runVideoEnrichment, [
@@ -535,6 +495,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     expect(updateJobMock).not.toHaveBeenCalled()
+    expect(resetEnrichmentForRerunMock).not.toHaveBeenCalled()
     dispatch.expectNotDispatched()
   })
 
@@ -574,6 +535,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(409)
     expect(updateJobMock).not.toHaveBeenCalled()
+    expect(resetEnrichmentForRerunMock).not.toHaveBeenCalled()
     dispatch.expectNotDispatched()
   })
 
@@ -589,6 +551,7 @@ describe("POST /api/jobs/[id]/transcription/rerun", () => {
 
     expect(response.status).toBe(400)
     expect(updateJobMock).not.toHaveBeenCalled()
+    expect(resetEnrichmentForRerunMock).not.toHaveBeenCalled()
     dispatch.expectNotDispatched()
   })
 })

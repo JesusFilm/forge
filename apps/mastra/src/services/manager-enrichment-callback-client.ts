@@ -3,13 +3,14 @@ import { z } from "zod"
 import { env } from "../config/env"
 
 export const FORGE_WORKFLOW_STEPS = [
+  "audio_cleanup",
   "transcription",
+  "structured_transcript",
   "translation",
   "chapters",
   "metadata",
   "embeddings",
   "mux_upload",
-  "audio_cleanup",
   "theology_validation_bible_quotes",
   "seo_improvements",
 ] as const

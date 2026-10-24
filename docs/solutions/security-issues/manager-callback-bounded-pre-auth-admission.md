@@ -51,3 +51,13 @@ job-creation test imported a server-only feature-flag resolver and failed before
 collecting its test. Mocking that dependency in the test preserves the server
 boundary. Semantic integration must preserve current job discriminators and
 step inventories as well as the new engine/run metadata.
+
+## Run ownership and contract correction after independent review
+
+A callback run-id check is effective only when every writer that changes run ownership shares its read/write queue. Admin replaces the whole `options` value. An old callback or first-callback watchdog that has read before an unlocked dispatch can restore old options or fail the newly dispatched job, even with one process.
+
+`apps/manager/src/lib/state.ts` serializes engine restamping, new dispatch persistence, callbacks, watchdogs, and rerun reset on the existing per-job queue. `resetEnrichmentForRerun` retires the old run id, dispatch time, and callback sequences in the same write that resets visible steps. Callbacks arriving between reset and launch consequently fail the run fence. Keep sibling options and omitted materialization fields intact. `state.run-ownership.test.ts` holds one Admin read, starts the competing operation, then releases the read before awaiting both operations; this exposes unlocked writes and also permits a correct queued implementation to finish. It covers both orderings for callbacks/watchdogs against dispatch, reset, and rollback restamping. This remains process-local serialization, not distributed fencing.
+
+The rerun route must stop if engine persistence returns null, throws, or returns a stamp different from the selected engine. Falling back to the pre-stamp job can silently dispatch with the previous engine, including defeating a workflow rollback. Return a retryable failure without launching. State tests model Admin's whole-options replacement; route tests distinguish success from persistence failure and check launch ordering.
+
+Strict local HTTP schemas must track the complete current producer shape. Mastra accepts Manager's optional `videoTitle` and preserves it through accept/start; it also accepts `structured_transcript` callbacks. `docs/fixtures/manager-enrichment-steps.json` pins the full inventory through both app-local schemas without cross-app imports. Per-step tests cover every allowed status plus strict invalid fields/artifact shapes. The Phase 1 graph is still explicitly unimplemented, and all ramp gates remain default-off.
