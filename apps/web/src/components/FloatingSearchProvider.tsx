@@ -44,6 +44,8 @@ import {
 import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_HOME_LOGO_SLOT_CLASS,
+  FLOATING_HEADER_CONTAINER_CLASS,
+  FLOATING_HEADER_LARGE_TEXT_FIELD_CLASS,
   FLOATING_HEADER_LAYOUT_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_LOGO_SLOT_CLASS,
@@ -1027,7 +1029,7 @@ export function FloatingSearchProvider({
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-              : `${FLOATING_HEADER_LAYOUT_CLASS} max-[360px]:gap-2`
+              : `${FLOATING_HEADER_LAYOUT_CLASS} ${FLOATING_HEADER_CONTAINER_CLASS} max-[360px]:gap-2`
           } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
         >
           <Link
@@ -1053,7 +1055,10 @@ export function FloatingSearchProvider({
               unoptimized
               className={
                 isWatchHome
-                  ? "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px]"
+                  ? // Large text (see FLOATING_HEADER_CONTAINER_CLASS): the
+                    // wordmark shrinks to the sign's width so the language
+                    // control stays on screen.
+                    "h-auto w-20 drop-shadow-md sm:w-28 md:w-[139px] @max-[17rem]/header:w-11"
                   : "h-auto max-w-[38px] drop-shadow-md sm:max-w-[50px] lg:max-w-[70px]"
               }
             />
@@ -1064,7 +1069,7 @@ export function FloatingSearchProvider({
                 ? `${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
                     headerLanguageControlVisible ? "" : "col-span-2"
                   }`
-                : ""
+                : FLOATING_HEADER_LARGE_TEXT_FIELD_CLASS
             }`}
           >
             <FloatingSearchBar
