@@ -8,7 +8,6 @@ RUN sh /usr/local/bin/update-security-ca \
 ENV SSL_CERT_DIR=/usr/local/share/security-ca/certs NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY patches patches
 COPY apps/roadmap/package.json apps/roadmap/package.json
 RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filter roadmap...
 COPY apps/roadmap apps/roadmap
