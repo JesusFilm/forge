@@ -39,8 +39,10 @@ export default async function WatchHistoryPage({ params }: HistoryPageProps) {
 
   const session = await verifyAuthSession(await headers())
   if (!session.authenticated) {
+    // `redirect()` prepends the `/watch` basePath itself, so the target stays
+    // base-relative; `returnTo` is a full public path read by the login route.
     redirect(
-      `${watchPath("/api/auth/login")}?returnTo=${encodeURIComponent(watchPath("/history"))}` as Route,
+      `/api/auth/login?returnTo=${encodeURIComponent(watchPath("/history"))}` as Route,
     )
   }
 
