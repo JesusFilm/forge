@@ -5,7 +5,9 @@ import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 import { proxy } from "./proxy"
 import {
+  canWatchRouteManifestProveMiss,
   clearWatchRouteManifestCache,
+  getWatchRouteManifest,
   setWatchRouteManifestSourceForTest,
   type WatchRouteManifest,
 } from "./lib/watch-route-manifest"
@@ -219,6 +221,195 @@ describe("proxy manifest negative-proof freshness", () => {
     upstream = "503"
     vi.setSystemTime(START + 120_000)
     expectRecovery(await request("/absent-film.html/english.html"), 200)
+  })
+
+  describe("responses outstanding across cache invalidation", () => {
+    async function replaceDuringRefresh(replacementEtag: string | null) {
+      const original = await getWatchRouteManifest()
+      vi.setSystemTime(START + 60_000)
+      let finish!: (response: Response) => void
+      let fail!: (error: Error) => void
+      fetchFixture.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finish = resolve
+            fail = reject
+          }),
+      )
+      const pending = getWatchRouteManifest()
+      expect(fetchFixture.mock.calls[1][1]?.headers).toMatchObject({
+        "If-None-Match": '"fixture-version"',
+      })
+      clearWatchRouteManifestCache()
+      expect(canWatchRouteManifestProveMiss(original)).toBe(false)
+      vi.setSystemTime(START + 60_100)
+      fetchFixture.mockResolvedValueOnce(
+        Response.json(
+          { ...snapshot, version: "replacement-B" },
+          { headers: replacementEtag ? { etag: replacementEtag } : {} },
+        ),
+      )
+      const replacement = await getWatchRouteManifest()
+      expect(replacement?.version).toBe("replacement-B")
+      expect(canWatchRouteManifestProveMiss(replacement)).toBe(true)
+      vi.setSystemTime(START + 61_400) // Old response is within the 1.5s timeout.
+      return { pending, replacement, finish, fail }
+    }
+
+    it.each([
+      ["different ETag", '"B"'],
+      ["same ETag", '"fixture-version"'],
+      ["no ETag", null],
+    ])("does not credit a delayed A 304 to B with %s", async (_label, etag) => {
+      const { pending, replacement, finish } = await replaceDuringRefresh(etag)
+      finish(new Response(null, { status: 304 }))
+      expect(await pending).toBe(replacement)
+      upstream = "503"
+      const paths = [
+        "/published-film.html/english.html",
+        "/jesus.html/spanish-latin-american.html",
+      ]
+      vi.setSystemTime(START + 120_099) // B age 59,999ms: still authoritative.
+      for (const path of paths) expectRecovery(await request(path), 404)
+      expect(fetchFixture).toHaveBeenCalledTimes(3)
+      for (const age of [60_000, 60_001]) {
+        vi.setSystemTime(START + 60_100 + age)
+        for (const path of paths) {
+          expectRecovery(await request(path), 200)
+          expectRecovery(await request(path, true), 200)
+        }
+        expect(canWatchRouteManifestProveMiss(replacement)).toBe(false)
+      }
+      // One failed refresh at B's deadline; old A cannot delay B's retry.
+      expect(fetchFixture).toHaveBeenCalledTimes(4)
+      const positive = await request("/jesus.html/english.html")
+      expect(positive.status).toBe(200)
+      expect(positive.headers.get("x-middleware-rewrite")).not.toContain("404")
+      expect(positive.headers.get("x-robots-tag")).toBeNull()
+      expect(positive.headers.get("cache-control")).toContain("no-store")
+    })
+
+    it.each(["200", "503", "invalid", "throw"])(
+      "discards superseded %s completion without overwriting B or its retry deadline",
+      async (outcome) => {
+        const { pending, replacement, finish, fail } =
+          await replaceDuringRefresh('"B"')
+        if (outcome === "throw") fail(new Error("delayed fixture failure"))
+        else if (outcome === "503") finish(new Response(null, { status: 503 }))
+        else
+          finish(
+            Response.json(
+              outcome === "invalid" ? { invalid: true } : published,
+              { headers: { etag: '"old-response"' } },
+            ),
+          )
+        expect(await pending).toBe(replacement)
+        expect(await getWatchRouteManifest()).toBe(replacement)
+        expect(fetchFixture).toHaveBeenCalledTimes(3)
+        vi.setSystemTime(START + 120_100)
+        upstream = published
+        const response = await request("/published-film.html/english.html")
+        expect(response.status).toBe(200)
+        expect(response.headers.get("x-middleware-rewrite")).not.toContain(
+          "404",
+        )
+        expect(fetchFixture).toHaveBeenCalledTimes(4)
+        expect(fetchFixture.mock.calls[3][1]?.headers).toMatchObject({
+          "If-None-Match": '"B"',
+        })
+        expectRecovery(await request("/removed-film.html/english.html"), 404)
+      },
+    )
+
+    it("discards an old 200 whose JSON body finishes after B replaces the cache", async () => {
+      await getWatchRouteManifest()
+      vi.setSystemTime(START + 60_000)
+      let finishBody!: (body: WatchRouteManifest) => void
+      const response = Response.json(published, {
+        headers: { etag: '"old-body"' },
+      })
+      vi.spyOn(response, "json").mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            finishBody = resolve
+          }),
+      )
+      fetchFixture.mockResolvedValueOnce(response)
+      const pending = getWatchRouteManifest()
+      await vi.waitFor(() => expect(finishBody).toBeTypeOf("function"))
+      clearWatchRouteManifestCache()
+      vi.setSystemTime(START + 60_100)
+      const replacement = await getWatchRouteManifest()
+      vi.setSystemTime(START + 61_400)
+      finishBody(published)
+      expect(await pending).toBe(replacement)
+      expect(await getWatchRouteManifest()).toBe(replacement)
+      expect(fetchFixture).toHaveBeenCalledTimes(3)
+    })
+
+    it.each([304, 200])(
+      "keeps B's pending single-flight slot when old A returns %s",
+      async (status) => {
+        await getWatchRouteManifest()
+        vi.setSystemTime(START + 60_000)
+        let finishA!: (response: Response) => void
+        fetchFixture.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishA = resolve
+            }),
+        )
+        const pendingA = getWatchRouteManifest()
+        clearWatchRouteManifestCache()
+        vi.setSystemTime(START + 60_100)
+        let finishB!: (response: Response) => void
+        fetchFixture.mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              finishB = resolve
+            }),
+        )
+        const pendingB = getWatchRouteManifest()
+        vi.setSystemTime(START + 61_400)
+        finishA(
+          status === 304
+            ? new Response(null, { status })
+            : Response.json(snapshot),
+        )
+        expect(await pendingA).toBeNull()
+        const concurrent = getWatchRouteManifest()
+        finishB(Response.json(published, { headers: { etag: '"B"' } }))
+        const replacement = await pendingB
+        expect(await concurrent).toBe(replacement)
+        expect(await getWatchRouteManifest()).toBe(replacement)
+        expect(replacement?.version).toBe(published.version)
+        expect(fetchFixture).toHaveBeenCalledTimes(3)
+      },
+    )
+
+    it("revalidates the exact current snapshot until its exclusive renewed deadline", async () => {
+      const original = await getWatchRouteManifest()
+      vi.setSystemTime(START + 60_000)
+      upstream = "304"
+      expect(await getWatchRouteManifest()).toBe(original)
+      expect(fetchFixture.mock.calls[1][1]?.headers).toMatchObject({
+        "If-None-Match": '"fixture-version"',
+      })
+      vi.setSystemTime(START + 119_999)
+      for (const path of [
+        "/published-film.html/english.html",
+        "/jesus.html/spanish-latin-american.html",
+      ])
+        expectRecovery(await request(path), 404)
+      upstream = "503"
+      vi.setSystemTime(START + 120_000)
+      for (const path of [
+        "/published-film.html/english.html",
+        "/jesus.html/spanish-latin-american.html",
+      ])
+        expectRecovery(await request(path), 200)
+      expect(fetchFixture).toHaveBeenCalledTimes(3)
+    })
   })
 
   it.each([

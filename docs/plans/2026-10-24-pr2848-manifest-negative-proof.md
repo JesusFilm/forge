@@ -48,3 +48,19 @@ sentinels, forged rewrite claims, query privacy and configured-origin fetching.
 No authenticated live-manifest smoke, browser playback, deployed client RSC
 navigation, production performance, remote CI or independent acceptance is
 claimed. Offline HTTP wiring and measured proxy costs qualify only this repair.
+
+## Round 2: conditional response ownership
+
+Independent review of `13e892b3241cbd71d5df05d040e535996bcf264a`
+requested changes: a delayed conditional 304 for A could renew replacement B
+following cache invalidation. Bind each request to its cache object generation,
+captured snapshot, and sent ETag. Only the still-current exact snapshot may
+receive 304 freshness. Superseded 200 bodies and all settlement paths must also
+leave replacement manifest, validator, retry deadline and single-flight state
+alone. Current-generation retries and positive admission keep existing behavior.
+
+Colocated real-proxy regressions cover different/same/absent replacement ETags,
+both miss branches at B ages 59,999 / 60,000 / 60,001 ms, successful current 304,
+delayed errors and 200 bodies, publication recovery, and pending replacement
+single-flight state. Preserve round-1 evidence and obtain a new independent
+review of the final candidate. feat-790 stays in progress pending acceptance.

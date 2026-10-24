@@ -531,16 +531,20 @@ function timeoutSignal(): AbortSignal | undefined {
     : undefined
 }
 
-async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
+async function fetchWatchRouteManifest(
+  cache: WatchRouteManifestCache,
+): Promise<WatchRouteManifest | null> {
   const url = watchRouteManifestUrl()
   const bearer = watchRouteManifestBearer()
   if (!url || !bearer) return null
+  const snapshot = cache.manifest
+  const etag = cache.etag
 
   try {
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${bearer}`,
-        ...(manifestCache.etag ? { "If-None-Match": manifestCache.etag } : {}),
+        ...(etag ? { "If-None-Match": etag } : {}),
       },
       cache: "no-store",
       // The authenticated manifest must come from the configured Admin origin.
@@ -549,8 +553,16 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
     })
 
     if (response.status === 304) {
-      if (manifestCache.etag && manifestCache.manifest) {
-        recordSuccessfulValidation(manifestCache.manifest)
+      // A webhook can clear and replace the cache while this request awaits.
+      // Its validator only authenticates the exact snapshot sent with it.
+      if (
+        cache === manifestCache &&
+        snapshot &&
+        etag &&
+        cache.manifest === snapshot &&
+        cache.etag === etag
+      ) {
+        recordSuccessfulValidation(snapshot)
       }
       return manifestCache.manifest
     }
@@ -568,7 +580,9 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
       return manifestCache.manifest
     }
 
-    manifestCache.etag = response.headers.get("etag")
+    // Check after JSON completion too: body parsing can overlap invalidation.
+    if (cache !== manifestCache) return manifestCache.manifest
+    cache.etag = response.headers.get("etag")
     recordSuccessfulValidation(parsed)
     return parsed
   } catch (error) {
@@ -598,17 +612,20 @@ export async function getWatchRouteManifest(): Promise<WatchRouteManifest | null
   // would otherwise pin this slot to a rejected promise for the life of the
   // process, and every caller that degrades on a null manifest would degrade
   // forever rather than for one TTL.
-  const inFlight = fetchWatchRouteManifest().then((manifest) => {
-    manifestCache.manifest = manifest
+  // Cache object identity is the generation token; clear replaces the object.
+  const cache = manifestCache
+  const inFlight = fetchWatchRouteManifest(cache).then((manifest) => {
+    if (cache !== manifestCache) return manifestCache.manifest
+    cache.manifest = manifest
     // Retry backoff only; successful-validation freshness is never renewed here.
-    manifestCache.expiresAt = Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS
+    cache.expiresAt = Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS
     return manifest
   })
   const release = () => {
-    if (manifestCache.inFlight === inFlight) manifestCache.inFlight = null
+    if (cache.inFlight === inFlight) cache.inFlight = null
   }
   void inFlight.then(release, release)
-  manifestCache.inFlight = inFlight
+  cache.inFlight = inFlight
 
   return inFlight
 }

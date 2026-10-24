@@ -60,3 +60,20 @@ caller, rather than only asserting that a cache helper returns old data.
 The authenticated live-manifest smoke, deployed client RSC navigation,
 independent review and exact-head CI remain unqualified. See
 `docs/operations/watch-route-manifest-freshness.md` for that release gate.
+
+## Conditional validation across invalidation
+
+A conditional response authenticates the snapshot associated with the ETag sent
+in that request. Reading mutable global cache state again after awaiting 304
+can credit a replacement snapshot with freshness it never earned. Independent
+review reproduced this across a webhook cache clear: A's delayed 304 renewed B
+and produced hard 404 at B age 60,001 ms in both negative branches.
+
+Capture the cache object as a generation token plus its snapshot and ETag before
+fetching. Renew 304 proof only if all remain current. Check generation after
+200 JSON completion and before publishing any settled result or retry deadline;
+release only the request's own single-flight slot. A clear replaces the cache
+object, so old responses cannot mutate a replacement even with the same ETag.
+Colocated proxy tests retain this interleaving and the exclusive TTL boundary,
+with delayed 200/error and successful current-304 controls. Round-2 source
+acceptance remains pending a fresh independent review.
