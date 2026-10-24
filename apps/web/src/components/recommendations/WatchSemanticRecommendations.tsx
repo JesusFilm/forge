@@ -6,8 +6,15 @@ import {
 } from "@/lib/recommendation-activation"
 
 import { useTranslations } from "next-intl"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { MouseEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import type { MouseEvent, Ref } from "react"
 import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
@@ -41,9 +48,14 @@ import {
 } from "@/lib/routes"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
+import { cn } from "@/lib/utils"
 import { watchPath } from "@/lib/watch-paths"
 
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
+// Admin composes at most this many items for the Watch slot (Admin
+// `MAX_DELIVERY_ITEMS`). Production deliveries routinely fill it, so the
+// loading skeleton reserves this many cards.
+const MAX_RECOMMENDATION_ITEMS = 6
 const EVIDENCE_ENDPOINT = watchPath("/api/recommendations/evidence")
 const SELECTION_ENDPOINT = watchPath("/api/recommendations/select")
 const DELIVERY_DEADLINE_MS = 12_000
@@ -287,7 +299,7 @@ function parseEnvelope(value: unknown): SemanticEnvelope | null {
     !(envelope.reason == null || typeof envelope.reason === "string") ||
     !(envelope.expiresAt == null || typeof envelope.expiresAt === "string") ||
     !Array.isArray(envelope.items) ||
-    envelope.items.length > 6 ||
+    envelope.items.length > MAX_RECOMMENDATION_ITEMS ||
     (countFields.length !== 0 && countFields.length !== 2) ||
     (envelope.requestedCount != null &&
       (!Number.isInteger(envelope.requestedCount) ||
@@ -531,6 +543,29 @@ export function WatchSemanticRecommendations({
     impressed: new Set<string>(),
   })
   const visitIdentity = useRef<{ key: string; id: string } | null>(null)
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const removedSkeleton = useRef<{
+    top: number
+    height: number
+    gap: number
+    scrollY: number
+  } | null>(null)
+  // React detaches the skeleton's ref before removing it, so this reads the
+  // reserved box while it is still laid out.
+  const skeletonRef = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return
+    return () => {
+      const section = element.parentElement ?? element
+      const rect = section.getBoundingClientRect()
+      const parent = section.parentElement
+      removedSkeleton.current = {
+        top: rect.top,
+        height: rect.height,
+        gap: parent ? parseFloat(getComputedStyle(parent).rowGap) || 0 : 0,
+        scrollY: window.scrollY,
+      }
+    }
+  }, [])
 
   useEffect(() => {
     mountedRef.current = true
@@ -1097,14 +1132,34 @@ export function WatchSemanticRecommendations({
     ? t(recommendationExplanationKey)
     : null
 
+  const currentStatus = currentState.status
+  useLayoutEffect(() => {
+    const removed = removedSkeleton.current
+    removedSkeleton.current = null
+    if (!removed || currentStatus === "loading" || removed.top >= 0) return
+    // The viewer had already scrolled past the reserved slot. A shorter
+    // (partial, empty or failed) result would pull everything they are
+    // reading upward, so move the scroll position up by the same amount.
+    // Target an absolute offset: the shorter page may already have clamped
+    // the scroll position.
+    const section = sectionRef.current
+    const delta = section
+      ? removed.height - section.getBoundingClientRect().height
+      : removed.height + removed.gap
+    if (delta > 0) {
+      window.scrollTo({ top: removed.scrollY - delta, behavior: "instant" })
+    }
+  }, [currentStatus])
+
   if (currentState.status === "loading") {
     return (
       <section
+        ref={sectionRef}
         data-block-type="SemanticRecommendations"
         data-state="loading"
         aria-busy="true"
         aria-label={t("loadingLabel")}
-        className="min-h-48 rounded-xl bg-stone-800/40 p-6"
+        className="min-h-48"
       >
         {verification?.requestKey === requestKey ? (
           <WatchRecommendationVerification
@@ -1114,6 +1169,10 @@ export function WatchSemanticRecommendations({
             onFailure={() => verificationFailureHandler.current?.()}
           />
         ) : null}
+        <RecommendationListSkeleton
+          ref={skeletonRef}
+          footer={`${t("personalizationPrompt")} ${t("openCookieSettings")}`}
+        />
       </section>
     )
   }
@@ -1143,6 +1202,7 @@ export function WatchSemanticRecommendations({
 
   return (
     <section
+      ref={sectionRef}
       data-block-type="SemanticRecommendations"
       data-state={
         currentState.envelope.result === "fallback" ? "fallback" : "ready"
@@ -1172,6 +1232,51 @@ export function WatchSemanticRecommendations({
         {announcement}
       </p>
     </section>
+  )
+}
+
+const SKELETON_BAR =
+  "inline-block w-full rounded bg-stone-700/60 align-middle leading-none"
+
+// Mirrors the ready list (heading, card grid, personalization line) with the
+// same typography and grid classes, so the slot keeps its height across
+// breakpoints and text zoom when the cards arrive. It is decorative: the
+// section's aria-busy label carries the loading state, and the placeholders
+// are never links, so they can never count as rendered or impressed cards.
+function RecommendationListSkeleton({
+  ref,
+  footer,
+}: {
+  ref: Ref<HTMLDivElement>
+  footer: string
+}) {
+  return (
+    <div ref={ref} aria-hidden="true" className="motion-safe:animate-pulse">
+      <div className="mb-4 text-2xl font-semibold">
+        <span className={cn(SKELETON_BAR, "max-w-64")}>{"\u00a0"}</span>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: MAX_RECOMMENDATION_ITEMS }, (_, index) => (
+          <div
+            key={index}
+            className="flex flex-col overflow-hidden rounded-lg bg-stone-800"
+          >
+            <div className="aspect-video w-full bg-stone-900" />
+            <div className="flex flex-1 flex-col gap-2 p-3">
+              <p className="text-base font-semibold sm:text-sm">
+                <span className={cn(SKELETON_BAR, "w-3/4")}>{"\u00a0"}</span>
+              </p>
+              <p className="text-sm leading-relaxed sm:text-xs">
+                <span className={SKELETON_BAR}>{"\u00a0"}</span>
+                <br />
+                <span className={cn(SKELETON_BAR, "w-2/3")}>{"\u00a0"}</span>
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="invisible mt-4 text-sm">{footer}</p>
+    </div>
   )
 }
 
