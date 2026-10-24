@@ -20,6 +20,7 @@ import {
 } from "./watch-search-availability-score"
 import { resolveTypesenseWatchSearchApiKey } from "./typesense-client-config"
 import { tokenizeForExactTitle } from "./hybrid-search-keyword-first-retrievers"
+import { displayTranscriptSnippet } from "./watch-search-snippet"
 import {
   type TypesenseWatchAudioOption,
   type TypesenseWatchAvailabilityDocument,
@@ -307,7 +308,7 @@ function candidateCardSnippet(
   ) {
     return localizedDescription
   }
-  return candidate.snippet
+  return displayTranscriptSnippet(candidate.snippet) ?? localizedDescription
 }
 
 type CandidateHydrationScope = Pick<
@@ -1789,7 +1790,8 @@ export class TypesenseWatchSearchService {
                 locale.description,
                 candidateCardLanguageSlugs,
               )
-            : (candidate.snippet ?? locale.description),
+            : (displayTranscriptSnippet(candidate.snippet) ??
+              locale.description),
         imageUrl: document.imageUrl,
         imageBlurDataUrl: document.imageBlurDataUrl,
         muxThumbnailBlurDataUrl: null,

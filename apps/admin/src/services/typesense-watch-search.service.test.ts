@@ -3750,6 +3750,105 @@ describe("TypesenseWatchSearchService", () => {
     })
   })
 
+  // feat-760: the production chunk for "is god real" (2026-10-21) was ~170
+  // characters of caption cues before "Where is your faith?...", and the card
+  // showed the cues verbatim. This pins the extreme where no word is left.
+  it("falls back to the description when the winning transcript chunk is only caption cues", async () => {
+    const subtitleDocument: TypesenseWatchCatalogDocument = {
+      ...catalogDocument,
+      audioLanguageSlugs: [],
+      audioOptionsJson: "[]",
+      subtitleLanguageSlugs: ["french"],
+      subtitleOptionsJson: "[]",
+      containerLanguagesJson: "[]",
+    }
+    const typesense = typesenseFixture({
+      lexical: [],
+      catalog: [subtitleDocument],
+      availability: [
+        {
+          id: "video-communion:edition-a:language-fr",
+          videoId: "video-communion",
+          videoEditionId: "edition-a",
+          languageId: "language-fr",
+          languageSlug: "french",
+          languageEnglishName: "French",
+          audio: false,
+          subtitles: true,
+          playbackId: "playback-en-a",
+          durationSeconds: 175,
+          hrefLanguageSlug: "english",
+          actionVideoDubId: "dub-en-a",
+          actionPriority: 1,
+        },
+        {
+          id: "video-communion:edition-b:language-fr",
+          videoId: "video-communion",
+          videoEditionId: "edition-b",
+          languageId: "language-fr",
+          languageSlug: "french",
+          languageEnglishName: "French",
+          audio: false,
+          subtitles: true,
+          playbackId: "playback-en-b",
+          durationSeconds: 176,
+          hrefLanguageSlug: "spanish-castilian",
+          actionVideoDubId: "dub-en-b",
+          actionPriority: 1,
+        },
+      ],
+      hybrid: [
+        {
+          vectorDistance: 0.1,
+          document: {
+            id: "chunk-edition-a",
+            documentKind: "transcript",
+            videoId: "video-communion",
+            videoEditionId: "edition-a",
+            canonicalVideoId: "core:core-communion",
+            language: "fr",
+            publiclyVisible: true,
+            text: "[MUSIC] [MUSIC] [INAUDIBLE] [INAUDIBLE] [MUSIC] >> [INAUDIBLE] >>",
+            startSeconds: 12,
+          },
+        },
+        {
+          vectorDistance: 0.2,
+          document: {
+            id: "chunk-edition-b",
+            documentKind: "transcript",
+            videoId: "video-communion",
+            videoEditionId: "edition-b",
+            canonicalVideoId: "core:core-communion",
+            language: "fr",
+            publiclyVisible: true,
+            text: "Lower-ranked semantic evidence",
+            startSeconds: 24,
+          },
+        },
+      ],
+    })
+    const service = new TypesenseWatchSearchService(
+      prismaFixture(),
+      typesense as unknown as TypesenseClient,
+      { embedder: vi.fn(async () => embedding) },
+    )
+
+    const response = await service.search({
+      query: "community",
+      targetLanguageSlug: "french",
+    })
+
+    const [result] = response.results
+    expect(result?.description).toEqual(expect.any(String))
+    expect(result?.snippet).toBe(result?.description)
+    // Display only: the winning chunk still owns the start time and evidence.
+    expect(result).toMatchObject({
+      startSeconds: 12,
+      evidence: { kind: "transcript_semantic", languageSlug: "french" },
+    })
+  })
+
   it("fails closed for target subtitles when semantic evidence has no edition", async () => {
     const subtitleDocument: TypesenseWatchCatalogDocument = {
       ...catalogDocument,
