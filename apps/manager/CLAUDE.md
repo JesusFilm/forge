@@ -676,3 +676,7 @@ path continue to use dashboard settings until their owner approves a binding.
 Image acceptance covers actual startup, access denials, shipped assets and
 synthetic media extraction. It does not invoke providers or execute production
 content, renders or publication work.
+
+## Optional job artifact subtitle editor
+
+The textarea editor remains a separate default-off artifact review path, distinct from Subtitle Quality Lab. Requires SUBTITLE_EDITOR_PUBLIC_URL, SUBTITLE_EDITOR_ALLOWED_ORIGINS (exact origins), and SUBTITLE_REVIEW_SESSION_SECRET (dedicated HMAC). Saves do not publish.

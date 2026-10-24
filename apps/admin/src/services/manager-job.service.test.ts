@@ -10,6 +10,7 @@ function mockPrisma() {
       findMany: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     video: {
       findMany: vi.fn(),
@@ -215,5 +216,79 @@ describe("ManagerJobService", () => {
     )
     expect(result.status).toBe("running")
     expect(result.steps[0]?.status).toBe("completed")
+  })
+  it("uses an authoritative full-manifest and asset predicate for review transitions", async () => {
+    prisma.managerEnrichmentJob.updateMany
+      .mockResolvedValueOnce({ count: 1 })
+      .mockResolvedValueOnce({ count: 0 })
+    const input = {
+      user: MANAGER_BACKEND_PRINCIPAL,
+      id: "job-1",
+      muxAssetId: "asset-1",
+      expected: { source: { kind: "downloadable" } },
+      artifacts: { subtitleReviews: { kind: "metadata", data: {} } },
+    }
+    expect(await service.compareAndSwapArtifacts(input)).toBe(true)
+    expect(await service.compareAndSwapArtifacts(input)).toBe(false)
+    expect(prisma.managerEnrichmentJob.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "job-1",
+        muxAssetId: "asset-1",
+        artifacts: { equals: input.expected },
+      },
+      data: { artifacts: input.artifacts },
+    })
+  })
+  it.each([
+    null,
+    { id: "reviewer", role: "VIEWER", managerRole: "REVIEWER" },
+    { id: null, role: "WORKFLOW_TRIGGER" },
+    { id: null, role: "CONSUMER_BEARER" },
+  ])("denies review transitions to unrelated principals %j", async (user) => {
+    await expect(
+      service.compareAndSwapArtifacts({
+        user: user as Principal | null,
+        id: "job-1",
+        muxAssetId: "asset-1",
+        expected: {},
+        artifacts: {},
+      }),
+    ).rejects.toThrow("Forbidden")
+    expect(prisma.managerEnrichmentJob.updateMany).not.toHaveBeenCalled()
+  })
+  it("keeps current review metadata under a row lock while applying unrelated generic updates", async () => {
+    const current = {
+      subtitleReviews: {
+        kind: "metadata",
+        data: { revisions: ["acknowledged"] },
+      },
+      "subtitles-fr-reviewed-r0001": { kind: "downloadable" },
+    }
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ artifacts: current }]),
+      managerEnrichmentJob: { update: vi.fn().mockResolvedValue(JOB_ROW) },
+    }
+    prisma.$transaction = vi
+      .fn()
+      .mockImplementation((run: (value: typeof tx) => unknown) => run(tx))
+    await service.update({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      id: "job-1",
+      input: {
+        options: { rerun: true },
+        artifacts: {
+          background: { kind: "downloadable" },
+          subtitleReviews: { stale: true },
+        },
+      },
+    })
+    expect(tx.$queryRaw.mock.calls[0]![0].join("?")).toContain("FOR UPDATE")
+    expect(tx.managerEnrichmentJob.update).toHaveBeenCalledWith({
+      where: { id: "job-1" },
+      data: {
+        options: { rerun: true },
+        artifacts: { ...current, background: { kind: "downloadable" } },
+      },
+    })
   })
 })

@@ -245,6 +245,24 @@ builder.mutationFields((t) => ({
         },
       }),
   }),
+  compareAndSwapManagerJobArtifacts: t.field({
+    type: "Boolean",
+    authScopes: { hasPermission: "write:manager-jobs" },
+    args: {
+      id: t.arg.id({ required: true }),
+      muxAssetId: t.arg.string({ required: true }),
+      expected: t.arg({ type: "JSON", required: true }),
+      artifacts: t.arg({ type: "JSON", required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.managerJob.compareAndSwapArtifacts({
+        user: ctx.user,
+        id: String(args.id),
+        muxAssetId: args.muxAssetId,
+        expected: args.expected,
+        artifacts: args.artifacts,
+      }),
+  }),
   updateManagerJob: t.field({
     type: ManagerJobRef,
     authScopes: { hasPermission: "write:manager-jobs" },

@@ -97,11 +97,19 @@ export class MockCmsStore {
   async updateState(
     updater: (current: MockCmsState) => MockCmsState,
   ): Promise<MockCmsState> {
-    const current = await this.ensureState()
-    const nextState = cloneMockCmsSeed(updater(cloneMockCmsSeed(current)))
-    this.statePromise = Promise.resolve(nextState)
-    await this.queuePersist(nextState)
-    return cloneMockCmsSeed(nextState)
+    let result!: MockCmsState
+    const operation = this.writeChain
+      .catch(() => {})
+      .then(async () => {
+        const current = await this.ensureState()
+        const nextState = cloneMockCmsSeed(updater(cloneMockCmsSeed(current)))
+        await persistState(this.dataPath, nextState)
+        this.statePromise = Promise.resolve(nextState)
+        result = cloneMockCmsSeed(nextState)
+      })
+    this.writeChain = operation
+    await operation
+    return result
   }
 
   async findUserByEmail(email: string): Promise<MockManagerUserRecord | null> {

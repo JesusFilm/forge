@@ -382,6 +382,31 @@ export class ManagerJobService {
     return toJobRecord(row)
   }
 
+  async compareAndSwapArtifacts({
+    user,
+    id,
+    muxAssetId,
+    expected,
+    artifacts,
+  }: {
+    user: Principal | null
+    id: string
+    muxAssetId: string
+    expected: unknown
+    artifacts: unknown
+  }): Promise<boolean> {
+    assertManagerJobAccess(user)
+    const result = await this.prisma.managerEnrichmentJob.updateMany({
+      where: {
+        id,
+        muxAssetId,
+        artifacts: { equals: toPrismaJson(expected, {}) },
+      },
+      data: { artifacts: toPrismaJson(artifacts, {}) },
+    })
+    return result.count === 1
+  }
+
   async update({
     user,
     id,
@@ -444,10 +469,40 @@ export class ManagerJobService {
     if (input.startedAt !== undefined) data.startedAt = input.startedAt
     if (input.completedAt !== undefined) data.completedAt = input.completedAt
 
-    const row = await this.prisma.managerEnrichmentJob.update({
-      where: { id },
-      data,
-    })
+    // Generic pipeline/callback/rerun snapshots cannot remove or roll back
+    // review-owned state. Lock the same row used by conditional transitions.
+    const row =
+      input.artifacts === undefined
+        ? await this.prisma.managerEnrichmentJob.update({ where: { id }, data })
+        : await this.prisma.$transaction(async (tx) => {
+            const rows = await tx.$queryRaw<Array<{ artifacts: unknown }>>`
+            SELECT artifacts FROM manager_enrichment_job WHERE id = ${id} FOR UPDATE
+          `
+            if (!rows[0]) throw new NotFoundError("Manager enrichment job", id)
+            const incoming = objectEntries(input.artifacts)
+            const current = objectEntries(rows[0].artifacts)
+            const artifacts = Object.fromEntries([
+              ...Object.entries(incoming).filter(
+                ([key]) => !isReviewOwnedKey(key),
+              ),
+              ...Object.entries(current).filter(([key]) =>
+                isReviewOwnedKey(key),
+              ),
+            ])
+            return tx.managerEnrichmentJob.update({
+              where: { id },
+              data: { ...data, artifacts: toPrismaJson(artifacts, {}) },
+            })
+          })
     return toJobRecord(row)
   }
+}
+
+function objectEntries(value: unknown): Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+}
+function isReviewOwnedKey(key: string): boolean {
+  return key === "subtitleReviews" || /^subtitles-.+-reviewed-r\d+/.test(key)
 }

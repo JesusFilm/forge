@@ -63,6 +63,16 @@ describe("job artifact helpers", () => {
     })
   })
 
+  it("resolves reviewed subtitle descriptors as downloadable VTT artifacts", () => {
+    expect(resolveJobArtifactDescriptor("subtitles-ja-reviewed-r0001")).toEqual(
+      {
+        artifactType: "subtitles-ja-reviewed-r0001",
+        ext: "vtt",
+        contentType: "text/vtt; charset=utf-8",
+      },
+    )
+  })
+
   it("maps exact transcription artifacts to the transcription step", () => {
     expect(
       getArtifactsForStep("transcription", "job-1", {
@@ -201,6 +211,26 @@ describe("job artifact helpers", () => {
     ])
   })
 
+  it("keeps reviewed subtitle revisions out of generated translation artifacts", () => {
+    expect(
+      getArtifactsForStep("translation", "job-1", {
+        "subtitles-es": { kind: "downloadable" },
+        "subtitles-es-reviewed-r0001": { kind: "downloadable" },
+        "translation-es": { kind: "downloadable" },
+      }),
+    ).toEqual([
+      {
+        key: "subtitles-es",
+        label: "Subtitles es",
+        url: "/api/jobs/job-1/artifacts/subtitles-es",
+      },
+      {
+        key: "translation-es",
+        label: "Translation es",
+        url: "/api/jobs/job-1/artifacts/translation-es",
+      },
+    ])
+  })
   it("resolves smart-crop artifact descriptors with the versioned types", () => {
     expect(resolveJobArtifactDescriptor("smart-crop-fingerprint")).toEqual({
       artifactType: "smart-crop-fingerprint-v1",

@@ -1116,6 +1116,28 @@ export class AdminGraphqlClient {
     return total
   }
 
+  async compareAndSwapJobArtifacts(
+    job: JobRecord,
+    artifacts: JobRecord["artifacts"],
+  ): Promise<boolean> {
+    const data = await this.request<Record<string, unknown>>(
+      `
+      mutation CompareAndSwapManagerJobArtifacts($id: ID!, $muxAssetId: String!, $expected: JSON!, $artifacts: JSON!) {
+        compareAndSwapManagerJobArtifacts(id: $id, muxAssetId: $muxAssetId, expected: $expected, artifacts: $artifacts)
+      }
+    `,
+      {
+        id: job.id,
+        muxAssetId: job.muxAssetId,
+        expected: job.artifacts,
+        artifacts,
+      },
+    )
+    return (
+      readField<boolean>(data, "compareAndSwapManagerJobArtifacts") === true
+    )
+  }
+
   async updateJob(
     id: string,
     updates: UpdateAdminJobInput,

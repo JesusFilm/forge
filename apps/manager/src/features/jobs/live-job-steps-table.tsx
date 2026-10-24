@@ -4,11 +4,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Captions,
   Download,
+  ExternalLink,
   FileAudio2,
   FileJson2,
   Languages,
   ListOrdered,
   Network,
+  PencilLine,
   RefreshCw,
   Search,
   type LucideIcon,
@@ -43,12 +45,22 @@ import {
 } from "./live-jobs-realtime"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
+import {
+  getPresentedSubtitleReviews,
+  type PresentedSubtitleReview,
+} from "@/features/jobs/subtitle-review-presenter"
+import {
+  closeSubtitleReviewPopup,
+  completeSubtitleReviewLaunch,
+  openSubtitleReviewPopup,
+} from "@/features/jobs/subtitle-review-launch"
 import { CollapsibleStepRow } from "./collapsible-step-row"
 
 type LiveJobStepsTableProps = {
   initialJob: JobRecord
   headingMeta?: React.ReactNode
   onJobUpdate?: (job: JobRecord) => void
+  subtitleReviewConfigured?: boolean
 }
 
 // Exported for reuse by other step tables (e.g. the Shorts Studio detail) —
@@ -122,6 +134,24 @@ export function formatDuration(
     return `${hours}h ${remainingMinutes}m`
   }
   return `${hours}h`
+}
+
+function formatReviewDate(iso?: string): string {
+  if (!iso) {
+    return "No human review saved yet."
+  }
+
+  const parsed = new Date(iso)
+  if (Number.isNaN(parsed.getTime())) {
+    return "Human review saved."
+  }
+
+  return `Reviewed ${new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed)}`
 }
 
 function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
@@ -618,6 +648,7 @@ export function LiveJobStepsTable({
   initialJob,
   headingMeta,
   onJobUpdate,
+  subtitleReviewConfigured = false,
 }: LiveJobStepsTableProps) {
   const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
     createInitialLiveJobsRealtimeSnapshot(initialJob),
@@ -627,9 +658,13 @@ export function LiveJobStepsTable({
     () => getTranscriptionRoutingReport(job.artifacts),
     [job.artifacts],
   )
+  const initialSubtitleReviews = useMemo(
+    () => getPresentedSubtitleReviews(initialJob),
+    [initialJob],
+  )
   const [expandedSteps, setExpandedSteps] = useState<
     Partial<Record<WorkflowStepName, boolean>>
-  >({})
+  >({ translation: initialSubtitleReviews.length > 0 })
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
   )
@@ -637,6 +672,12 @@ export function LiveJobStepsTable({
   const [rerunProvider, setRerunProvider] =
     useState<RequestedTranscriptionProvider | null>(null)
   const [rerunError, setRerunError] = useState<string | null>(null)
+  const [subtitleReviewArtifactKey, setSubtitleReviewArtifactKey] = useState<
+    string | null
+  >(null)
+  const [subtitleReviewError, setSubtitleReviewError] = useState<string | null>(
+    null,
+  )
 
   const controllerRef = useRef<LiveJobsDetailRealtimeController | null>(null)
   const lastSyncedJobRef = useRef(initialJob)
@@ -811,6 +852,58 @@ export function LiveJobStepsTable({
     [job.id, replaceJobState],
   )
 
+  const handleSubtitleReviewLaunch = useCallback(
+    async (review: PresentedSubtitleReview) => {
+      const reviewWindow =
+        typeof window !== "undefined"
+          ? openSubtitleReviewPopup((url, target) => window.open(url, target))
+          : null
+      setSubtitleReviewArtifactKey(review.sourceArtifactKey)
+      setSubtitleReviewError(null)
+
+      try {
+        const response = await fetch(
+          `/api/jobs/${encodeURIComponent(job.id)}/subtitle-reviews/session`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              artifactKey: review.sourceArtifactKey,
+            }),
+          },
+        )
+
+        const payload = (await response.json()) as {
+          editorUrl?: string
+          error?: string
+        }
+        if (!response.ok || !payload.editorUrl) {
+          closeSubtitleReviewPopup(reviewWindow)
+          setSubtitleReviewError(
+            payload.error ?? "Could not open subtitle review.",
+          )
+          return
+        }
+
+        if (typeof window !== "undefined") {
+          completeSubtitleReviewLaunch(
+            reviewWindow,
+            payload.editorUrl,
+            window.location,
+          )
+        }
+      } catch {
+        closeSubtitleReviewPopup(reviewWindow)
+        setSubtitleReviewError("Could not open subtitle review.")
+      } finally {
+        setSubtitleReviewArtifactKey(null)
+      }
+    },
+    [job.id],
+  )
+
   const liveStatus = useMemo(() => {
     if (realtimeSnapshot.transportMode === "connecting") {
       return "Connecting live updates..."
@@ -833,6 +926,13 @@ export function LiveJobStepsTable({
     () => getPresentedMuxSyncComparisons(job),
     [job],
   )
+  const subtitleReviews = useMemo(() => getPresentedSubtitleReviews(job), [job])
+
+  useEffect(() => {
+    if (subtitleReviews.length > 0) {
+      setExpandedSteps((current) => ({ ...current, translation: true }))
+    }
+  }, [subtitleReviews.length])
 
   return (
     <section className="collection-card jobs-card">
@@ -903,11 +1003,14 @@ export function LiveJobStepsTable({
               const hasMastraDetails = mastraCorrelation != null
               const hasEmbeddingDetails =
                 step.name === "embeddings" && hasMastraDetails
+              const showSubtitleReviewDetails =
+                step.name === "translation" && subtitleReviews.length > 0
               const hasTranslationDetails =
                 step.name === "translation" &&
                 (translationFailures.length > 0 ||
                   hasMastraDetails ||
-                  subtitleValidation != null)
+                  subtitleValidation != null ||
+                  showSubtitleReviewDetails)
               const hasStructuredTranscriptDetails =
                 step.name === "structured_transcript" &&
                 (transcriptCorrection != null || hasMastraDetails)
@@ -1007,6 +1110,10 @@ export function LiveJobStepsTable({
                   <span className="jobs-step-inline-summary-note">
                     {mastraSummary}
                   </span>
+                ) : showSubtitleReviewDetails ? (
+                  <span className="jobs-step-inline-summary-note">
+                    Subtitle review available.
+                  </span>
                 ) : null
                 detailContent = (
                   <>
@@ -1040,6 +1147,80 @@ export function LiveJobStepsTable({
                           ))}
                         </ul>
                       </>
+                    ) : null}
+                    {showSubtitleReviewDetails ? (
+                      <div className="jobs-subtitle-review-list">
+                        <p className="jobs-step-detail-summary">
+                          Subtitle review
+                        </p>
+                        {!subtitleReviewConfigured ? (
+                          <p className="jobs-error-text">
+                            Subtitle review editor is not configured for this
+                            environment.
+                          </p>
+                        ) : subtitleReviewError ? (
+                          <p className="jobs-error-text">
+                            {subtitleReviewError}
+                          </p>
+                        ) : null}
+                        {subtitleReviews.map((review) => (
+                          <article
+                            key={`${step.name}-${review.sourceArtifactKey}`}
+                            className="jobs-subtitle-review-card"
+                          >
+                            <div className="jobs-subtitle-review-card-header">
+                              <strong>{review.targetLanguage}</strong>
+                              <span className="jobs-step-retry-pill">
+                                {review.latestRevision
+                                  ? `reviewed r${String(
+                                      review.latestRevision,
+                                    ).padStart(4, "0")}`
+                                  : "needs review"}
+                              </span>
+                            </div>
+                            <p className="jobs-subtitle-review-copy">
+                              {formatReviewDate(review.latestReviewedAt)}
+                            </p>
+                            <div className="jobs-subtitle-review-actions">
+                              {review.latestReviewArtifactKey ? (
+                                <a
+                                  href={`/api/jobs/${encodeURIComponent(
+                                    job.id,
+                                  )}/artifacts/${encodeURIComponent(
+                                    review.latestReviewArtifactKey,
+                                  )}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="jobs-subtitle-review-link"
+                                >
+                                  <ExternalLink aria-hidden="true" size={14} />
+                                  Reviewed VTT
+                                </a>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="jobs-mux-sync-override jobs-subtitle-review-button"
+                                onClick={() =>
+                                  void handleSubtitleReviewLaunch(review)
+                                }
+                                disabled={
+                                  !subtitleReviewConfigured ||
+                                  subtitleReviewArtifactKey ===
+                                    review.sourceArtifactKey
+                                }
+                              >
+                                <PencilLine aria-hidden="true" size={14} />
+                                {subtitleReviewArtifactKey ===
+                                review.sourceArtifactKey
+                                  ? "Opening..."
+                                  : review.latestReviewArtifactKey
+                                    ? "Continue review"
+                                    : "Review in editor"}
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
                     ) : null}
                   </>
                 )
