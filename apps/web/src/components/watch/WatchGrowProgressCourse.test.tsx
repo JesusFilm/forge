@@ -827,6 +827,63 @@ describe("real focus/session revalidation", () => {
     },
   )
 
+  it("retains a checkbox reversal through real focus failure, session retry and a stale GET after an uncertain POST", async () => {
+    mountWithSessionRoute()
+    await answerSession()
+    await answerRead([lesson({ revision: 3 })])
+    await act(async () => firstCheckbox().click())
+    expect(firstCheckbox().checked).toBe(true)
+    expect(calls[1]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 3, completedStepIds: ["back-how"] },
+    })
+    act(() => window.dispatchEvent(new Event("focus")))
+    await act(async () => firstCheckbox().click())
+    expect(firstCheckbox().checked).toBe(false)
+    await answerSession(false)
+    expect(text()).toContain("We could not confirm your account")
+    await click("Try again")
+    await answerSession()
+    expect(calls[2]!.request.method).toBe("GET")
+    // The server committed rev4, but the browser received no acknowledgement.
+    await act(async () => calls[1]!.resolve({ status: 503, body: null }))
+    await answerRead([lesson({ revision: 3 })])
+    expect(firstCheckbox().checked).toBe(false)
+    expect(text()).toContain("Not saved.")
+    expect(text()).not.toContain("Saved to your account.")
+    expect(calls).toHaveLength(3)
+    await click("Retry")
+    expect(calls[3]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 3, completedStepIds: [] },
+    })
+    await act(async () =>
+      calls[3]!.resolve({
+        status: 200,
+        body: {
+          status: "conflict",
+          progress: lesson({ revision: 4, completedStepIds: ["back-how"] }),
+        },
+      }),
+    )
+    expect(text()).toContain("Your changes here are not saved")
+    expect(firstCheckbox().checked).toBe(false)
+    await click("Keep my changes")
+    expect(calls[4]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 4, completedStepIds: [] },
+    })
+    await act(async () =>
+      calls[4]!.resolve({
+        status: 200,
+        body: { status: "saved", progress: lesson({ revision: 5 }) },
+      }),
+    )
+    expect(firstCheckbox().checked).toBe(false)
+    expect(text()).toContain("Saved to your account.")
+    expect(calls).toHaveLength(5)
+  })
+
   it("publishes Saving immediately when reset is confirmed during an actual focus read", async () => {
     mountWithSessionRoute()
     await answerSession()

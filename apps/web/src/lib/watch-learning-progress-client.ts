@@ -239,6 +239,7 @@ type Entry = {
   armed: boolean
   status: LessonSyncStatus
   error: LessonSyncError | null
+  /** Unsettled intent; only its acknowledgement or explicit Use saved retires it. */
   operation: "save" | "reset" | null
   inFlight: {
     controller: AbortController
@@ -671,18 +672,12 @@ export function createLearningProgressClient({
         disarmReplay(item)
         continue
       }
-      // Reads update server knowledge, never acknowledge a mutation or its
-      // post-reset edits. Failures retain the same intent until explicit retry.
-      if (item.inFlight || item.resetIntent) continue
+      // A read cannot settle an unresolved operation, even when final intent
+      // matches the old baseline: a failed response may hide a committed write.
+      // Keep ownership through failures and held recovery choices as well as
+      // in-flight writes; only an owning acknowledgement can deduplicate them.
+      if (item.operation || item.inFlight || item.resetIntent) continue
       if (item.local && sameState(item.local, item.server)) item.local = null
-      // Still unresolved after the re-read: keep the choice it waits for.
-      if (
-        blocked(item) &&
-        (item.operation === "reset"
-          ? item.server.revision > 0
-          : item.local !== null)
-      )
-        continue
       item.error = null
       item.operation = item.deferred?.reset ? "reset" : null
       item.status = item.deferred
@@ -761,10 +756,16 @@ export function createLearningProgressClient({
       }
       return
     }
-    // An explicit save of a lesson the account has never stored still
-    // creates its row; otherwise an unchanged state needs no request.
+    // Matching the last read does not settle an uncertain earlier write.
+    // Explicit recovery must CAS the final intent, even a toggle-back. Fresh
+    // unchanged state needs no request, except an explicit first account save.
     const unchanged = !item.local || sameState(item.local, item.server)
-    if (!reset && unchanged && !(explicit && item.server.revision === 0)) {
+    if (
+      !reset &&
+      !item.operation &&
+      unchanged &&
+      !(explicit && item.server.revision === 0)
+    ) {
       item.local = null
       item.status = item.server.revision > 0 ? "saved" : "idle"
       emit()

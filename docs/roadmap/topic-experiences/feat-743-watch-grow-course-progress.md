@@ -441,3 +441,74 @@ Durable pending-operation rule: debounce is a queue, not permission to adopt a
 future read. Capture its revision before reading, and publish accepted queued
 intent as pending immediately. A read may update knowledge, but only the owning
 mutation or an explicit recovery choice can settle the pending operation.
+
+### Independent review round 6: uncertain writes and explicit reversals
+
+Scope at `aee3e48eec11c1c5e73af1d9d5aaef09af1342d5`: reproduce the real
+focus/session failure and same-account recovery sequence where a POST commits
+but its response fails, then an older GET clears a toggle-back. Preserve
+unresolved mutation ownership and final structured intent through re-reads and
+explicit recovery, including matching-baseline retries. Cover equivalent
+step/completion/resume changes, response orders, identity isolation, reset and
+conflict recovery without changing wire contracts or broadening stage U10.
+
+TDD reproduced three failures at the exact base before implementation: matching
+stale GET erased the final reversal and reported Saved, explicit Retry skipped
+the needed CAS write, and the rendered course reproduced the false Saved state
+through the real session hook, browser focus, failed session lookup and Try
+again. The production repair reuses the existing bounded `operation` ownership
+marker rather than introducing another queue or field-specific recovery rule.
+A GET may advance server knowledge, but cannot deduplicate or retire any
+unsettled operation. Explicit recovery of that operation always performs CAS,
+even when final intent equals the last read. An owning acknowledgement or Use
+saved settles it; account teardown discards it. Fresh unchanged intent still
+sends no write. No wire contract, reflection payload or free text changed.
+
+The 288-case response-order model covers both directions of step/completion and
+resume changes; checking/unavailable; older/equal/committed/newer-independent
+GET revisions; GET before/after POST acknowledgement or network/upstream error;
+and retry accepted versus conflict requiring Keep mine. Network/HTTP errors do
+not provide trustworthy commit certainty, so the model represents both possible
+server outcomes and lets CAS decide. Additional cases cover held Retry / Keep
+mine / Save, Use saved, account switch/sign-out, failed GET recovery, and queued
+reset after uncertain resume with and without post-dispatch deltas. The resume
+API accepts valid card IDs, not null; reset is the explicit clear path and is
+covered without widening the API. Existing stale response, reset idempotence,
+initial-read delta and nine historical blocker tests remain in the same owning
+suite. After recovery, timers/pagehide/release produce no extra writes.
+
+Focused validation passes 1,102 owning tests (+305), 21 rendered course tests
+(+1), and 1,211 tests across all 11 relevant Web progress/course/session/API
+files through the standard test entry point (locale generation and five Next
+cache-size guards included). Full Web lint with `--max-warnings=0`, typecheck,
+scoped Prettier, patched-dependency guards/tests, hidden-roadmap-lane
+guards/tests, roadmap-ID/baseline tests and `git diff --check` pass. Heavy
+operations use `agent-io-guard`; exact commands/logs are retained in
+`/tmp/forge-2782-r6-final-validation.py` and
+`/tmp/forge-2782-r6-validation/`.
+
+The interleaved 50,000-load-per-version comparison against the exact base keeps
+one GET and zero writes per initialization. Median initialization is 0.001260
+ms before / 0.001252 ms after. Minified module size is 12,718 / 12,674 bytes
+(-44); gzip is 4,373 / 4,364 bytes (-9). No imports, rendering, hydration, routing,
+media or initial request scheduling changed. This measures client
+initialization/resources, not browser LCP/CLS or a full production build;
+neither was rerun. Controlled rendered session/focus tests do not mutate live
+accounts or production data. Available Node is 24.19.0 (repo pin: 24.22.1).
+The new head must rerun CI after push; local checks do not establish its CI
+result. No deployment, flags, configuration or content changed.
+
+Durable uncertain-write rule: equality with the last read does not acknowledge
+a mutation whose response failed. Preserve both its unresolved operation and
+the visitor's explicit final intent, including a reversal to that baseline,
+until owning acknowledgement or explicit recovery settles them. Retry must use
+CAS even for matching intent; only its response can establish whether the
+uncertain predecessor committed.
+
+The full Web suite also passes: 340 files passed / 3 skipped (343 total),
+6,835 tests passed / 13 skipped / 1 todo. Command:
+`pnpm --filter @forge/web run test --maxWorkers=1 --no-file-parallelism`.
+Active commit hooks run staged ESLint/Prettier, full-repository `format:check`
+and conventional commit validation. One focused fast-forward commit is pushed
+only to `origin/feat/watch-audience-grow` with the exact reviewed-head lease;
+the parent and changed-file set are verified before pushing.
