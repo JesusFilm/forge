@@ -530,7 +530,7 @@ The existing `co-watch-24-hour-production-check` retains its requested first
 comparison and subsequent weekly reports, with current lifecycle and unknown
 cause boundaries. No duplicate automation or production fault was introduced.
 
-### October 23 current checkpoint
+### October 23 pre-cycle checkpoint
 
 The earlier October 6 receipts above remain historical. The [October 23 rollout report](2026-10-23-watch-exposure-fortnight-rollout.md#strict-stored-expiry-release) records actual convergence of both Admin roles on `85e97f521` at 09:03:53 after reviewed, green #2878. Both manual entry paths now enforce stored-expiry scope, including old persisted manual workflow inputs. Its 80 focused unit tests, seven native retention-tail tests and five native generation-retention tests passed. The already-running daily 10:30 UTC scheduler was reverified at 09:12:17 with its durable runtime RUNNING and no error; #2877 records 46 workflow/job tests. The daily process runs in production independently of the Codex read-only monitor, with bounded continuation when backlog remains. These receipts establish installed automation, not success of its future daily cycle.
 
@@ -539,6 +539,39 @@ The authorized manual campaign's first 36 windows committed 8,509 request roots 
 Feat-554 still requires two later ordinary loaded failure-free cycles; the October 22 failures and manual campaign earn zero credit. Feat-756 keeps the separate October 27 old-exposure expiry wave and capacity verification open. The HNSW assertion failed again on #2878's main merge and passed one unchanged failed-job retry. Ten unchanged local full-file passes, bounded fixture experiments and matching observed CI image/version details establish no supported correction: feat-609 remains open, with no proven fix or production retrieval defect. Its ticket records the next discriminating experiment on a naturally failing original-geometry index; no runtime or assertion change resulted from this investigation. The active plan remains active, the daily storage monitor remains active, and the expired temporary outage monitor remains paused. Delivery reliability, accepted coverage limitations and unmeasured usefulness remain separate.
 
 The distinct window 38 admission was held without launch at 09:18:15: worker memory rose above the revised 4 GB admission limit, despite unchanged actual process identity, health 200 and zero OOM kills. No cleanup command or new attempt was issued. The normal daily scheduler remains enabled, the manual backlog remains uncleared, and any later manual recovery needs a fresh separate decision. The rollout report retains the exact readings and separate capacity snapshot.
+
+### October 24 current checkpoint
+
+The [October 23 ordinary-cycle receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6363320357)
+supersedes the unresolved backlog in the pre-cycle checkpoint above. Independent
+review accepted one qualifying loaded, failure-free feat-554 cycle: 85 successful
+scheduled passes cleared the fixed 12,129-row cohort, with a final success
+watermark at 10:51:19.463 UTC and a return to daily sleep. No manual purge
+launched. Each pass averaged 3.61 seconds; catch-up took 20 minutes 4 seconds
+including pauses. Newly expired rows after the watermark remained eligible for
+later scheduled cleanup; no global-empty or filesystem-recovery claim is made.
+
+October 24 does not supply the second qualifying cycle. The bounded diagnostic
+captured nine failed scheduled wrappers by 12:51:53 UTC: five expired/closed
+interactive transactions, two explicit batch-deadline errors, one generic
+transaction error and one terminated connection. Seven durable failures were
+recorded in an earlier snapshot, with one stale RUNNING entry. There is no shared
+per-attempt key, so these ledger entries must not be paired by timestamp. The
+reported error operation does not prove the budget-consuming statement; runtime
+diagnosis continues without a speculative timeout fix.
+
+At the separate 12:50 snapshot, the fixed 10:30 cohort was clear across the 26
+monitored families, while 1,196 currently expired rows remained across those
+families and none were over 24 hours overdue; 31 expired profile-session links
+were counted separately. Both actual Admin roles ran healthy, compact `6360b78ca`,
+with no retention code change from `85e97f521`. PGDATA free space was
+9,684,131,840 bytes, WAL 201,326,592 bytes, and lock waiters/long transactions zero.
+The normal scheduler remained in bounded catch-up. These observations establish
+continued cleanup, not a failure-free run. The [feat-554 ticket](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md#october-24-failure-after-one-qualifying-daily-cycle)
+records the dated evidence and acceptance limits. One further qualifying cycle
+is required; feat-756 and feat-609 retain their separate unresolved requirements.
+The scope stays 12 complete, 25 cancelled and three open. The daily monitor stays
+active and the expired temporary outage monitor stays paused.
 
 ## Dependencies, indexes and older PRs
 

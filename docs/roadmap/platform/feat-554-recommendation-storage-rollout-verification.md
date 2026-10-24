@@ -17,6 +17,48 @@ tags:
   - "operations"
 ---
 
+## October 24 failure after one qualifying daily cycle
+
+The ordinary October 23 cycle qualifies as **one** loaded, failure-free cycle.
+Independent review accepted all 85 scheduled passes: zero failures or yields,
+84 full batches and a final drain. They cleared the fixed October 23 10:24:08 UTC
+cohort from 12,129 expired rows across 26 families to zero, with the nine extra
+expiry categories and expired precomputed parent guards also clear. The last
+success watermark was 10:51:19.463 UTC, and the scheduler returned to its next
+daily wake. Mean wrapper duration was 3.61 seconds; elapsed catch-up time was
+20 minutes 4 seconds. No manual purge launched. The [reviewed production receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6363320357)
+retains both ledgers, descendants, backlog and capacity. The 95 newly expired
+tracked/session-link rows in the final snapshot all expired after that watermark;
+this was not a claim that production remained globally empty.
+
+The October 24 cycle does **not** qualify. A bounded 12:49-12:50 UTC snapshot
+recorded 308 durable successes, 91 safe budget yields, seven failures and one
+stale RUNNING entry; the wrapper ledger separately recorded 399 successes and
+eight failures. There is no shared per-attempt key between these ledgers, so
+their entries must not be paired by proximity. A later bounded failure read
+captured a ninth failed scheduled wrapper, started at 12:50:22 UTC. Five wrapper
+errors reported expired/closed interactive transactions, two reported the batch
+deadline, one reported a generic transaction error and one a terminated
+connection. Reported operations do not establish which SQL consumed the budget.
+The exact cause remains under investigation; no timeout correction is claimed.
+
+The fixed October 24 10:30 UTC cohort was clear across the 26 monitored families
+at the 12:50 snapshot; 1,196 currently expired rows remained across those families,
+with zero over 24 hours overdue, plus 31 expired profile-session links. The
+scheduler was still running bounded catch-up. Both actual
+Admin roles ran healthy, compact `6360b78ca`, a descendant of `85e97f521` with
+unchanged retention code. PGDATA had 9,684,131,840 free bytes of 48,891,670,528,
+WAL was 201,326,592 bytes, and no lock waiters or long transactions were observed.
+These dated observations do not erase the failures or prove physical reclamation.
+Sanitized evidence is retained under the storage owner's
+`outputs/heartbeats/20261024T-diagnostic/` and the parent incident checkpoint.
+
+Keep this ticket in progress: **one further ordinary loaded, failure-free cycle
+is required**. The October 23 credit remains valid. Continue bounded diagnosis
+and the existing daily read-only monitor; do not replay orphaned attempts,
+widen timeouts or manufacture acceptance with manual cleanup. A safe yield may
+precede a genuinely completed cycle; yield-only progress is not completion.
+
 ## October 23 daily automation verification
 
 The owner requested automatic daily deletion of rows whose stored expiry has

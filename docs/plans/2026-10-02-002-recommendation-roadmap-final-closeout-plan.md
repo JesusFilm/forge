@@ -200,3 +200,29 @@ Continue in this order:
 The window 38 admission was held without launch at 09:18:15 after worker memory rose above 4 GB. No new cleanup command or attempt was issued, and no further manual retry is authorized by this plan. Preserve the backlog as unresolved and let the existing daily monitor verify ordinary scheduled progress, errors, memory and capacity. The production daily scheduler remains enabled; do not confuse this manual hold with disabling automation.
 
 Parent merged the earlier evidence PR #2868 and owns this later release record, review/merge and final inventory. The storage owner retains coordinated production operations and daily read-only monitoring. No duplicate automation, direct deployment, manual restart, early Watch expiry or capacity purchase is authorized.
+
+### October 24 continuation
+
+This checkpoint supersedes the October 23 pre-cycle backlog and zero-credit
+state above. The independently reviewed October 23 ordinary cycle completed
+85 successful passes without failures or yields and cleared its fixed expired
+cohort. It earns one feat-554 cycle; no manual cleanup launched. The [current
+closeout checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-24-current-checkpoint)
+and feat-554 ticket retain the final watermark, descendant/backlog and capacity
+evidence. One further qualifying cycle is needed.
+
+October 24 recorded genuine failures and earns no credit, even though its fixed
+10:30 UTC cohort was clear in the 12:50 snapshot. The nine observed wrapper
+failures include expired transactions, explicit batch deadlines, a generic
+transaction error and a terminated connection. The exact expensive operation
+and connection-failure cause remain unproved. Keep both ledgers independent;
+do not replay or rewrite stale RUNNING entries.
+
+The storage owner continues bounded diagnosis using the captured evidence and
+owned local fixtures. Require a causal explanation and discriminating test
+before claiming a runtime fix, then independent review, green required checks,
+normal PR-to-main release and actual deployment verification. Preserve the
+five-second budget and truthful failure/yield classification. The already
+enabled daily scheduler and separate read-only daily monitor remain active;
+do not start manual cleanup or revive the expired outage monitor. Keep the
+October 27 exposure wave and the unresolved HNSW fixture separate from feat-554.
