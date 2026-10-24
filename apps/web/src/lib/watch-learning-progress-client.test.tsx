@@ -1837,6 +1837,469 @@ describe("focus re-check hold", () => {
   })
 })
 
+describe("resume lineage across identity checks", () => {
+  const identities = ["checking", "unavailable"] as const
+  const stored = (overrides: Record<string, unknown> = {}) =>
+    lesson({
+      completedStepIds: ["back-how", "back-give"],
+      completed: true,
+      resumeCardId: "back-how",
+      revision: 4,
+      ...overrides,
+    })
+
+  async function setup(armed = true) {
+    vi.useFakeTimers()
+    const { calls, transport } = fakeTransport()
+    const onAccountCleared = vi.fn()
+    const client = createLearningProgressClient({ transport, onAccountCleared })
+    if (armed) {
+      // Exact review repro: completed rev3, then an explicit acknowledged rev4.
+      await signIn(client, calls, [
+        stored({ completedStepIds: ["back-how"], revision: 3 }),
+      ])
+      client.change("lesson-1", {
+        completedStepIds: ["back-how", "back-give"],
+        completed: true,
+      })
+      calls
+        .at(-1)!
+        .resolve({ status: 200, body: { status: "saved", progress: stored() } })
+      await flush()
+    } else await signIn(client, calls, [stored()])
+    expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+    return { client, calls, onAccountCleared }
+  }
+
+  function answerRead(calls: Call[], progress: unknown) {
+    expect(calls.at(-1)!.request.method).toBe("GET")
+    calls.at(-1)!.resolve({
+      status: 200,
+      body: { authenticated: true, userId: "user-a", lessons: [progress] },
+    })
+  }
+
+  const cases = identities.flatMap((kind) =>
+    [false, true].flatMap((armed) =>
+      [false, true].flatMap((withChange) =>
+        [false, true].map((releaseBeforeRead) => ({
+          kind,
+          armed,
+          withChange,
+          releaseBeforeRead,
+        })),
+      ),
+    ),
+  )
+
+  it.each(cases)(
+    "requires explicit recovery after an independent reset (identity=$kind, armed=$armed, change=$withChange, releaseBeforeRead=$releaseBeforeRead)",
+    async ({ kind, armed, withChange, releaseBeforeRead }) => {
+      const { client, calls } = await setup(armed)
+      const before = calls.length
+      client.hold()
+      client.setAccount({ kind })
+      if (withChange)
+        client.change("lesson-1", {
+          completedStepIds: ["back-give"],
+          completed: true,
+        })
+      client.setResume("lesson-1", "up-watch")
+      await vi.advanceTimersByTimeAsync(2000)
+      client.flush({ keepalive: true })
+      expect(calls).toHaveLength(before)
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      if (releaseBeforeRead) client.release()
+      answerRead(calls, lesson({ revision: 5 }))
+      await flush()
+      if (!releaseBeforeRead) client.release()
+      await vi.advanceTimersByTimeAsync(2000)
+      client.flush()
+      expect(calls).toHaveLength(before + 1)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "conflict",
+        operation: "save",
+        completed: true,
+        completedStepIds: withChange
+          ? ["back-give"]
+          : ["back-how", "back-give"],
+        resumeCardId: "up-watch",
+      })
+      // Neither another read nor passive navigation answers the choice.
+      client.setResume("lesson-1", "end")
+      client.refresh()
+      answerRead(calls, lesson({ revision: 5 }))
+      await flush()
+      expect(calls).toHaveLength(before + 2)
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("conflict")
+      if (releaseBeforeRead) {
+        client.keepMine("lesson-1")
+        expect(calls.at(-1)!.request).toMatchObject({
+          method: "POST",
+          body: { expectedRevision: 5, completed: true, resumeCardId: "end" },
+        })
+        calls.at(-1)!.resolve({
+          status: 200,
+          body: {
+            status: "saved",
+            progress: stored({
+              completedStepIds: withChange
+                ? ["back-give"]
+                : ["back-how", "back-give"],
+              resumeCardId: "end",
+              revision: 6,
+            }),
+          },
+        })
+        await flush()
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+      } else {
+        client.useSaved("lesson-1")
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saved",
+          completed: false,
+          completedStepIds: [],
+          resumeCardId: null,
+        })
+        expect(calls).toHaveLength(before + 2)
+      }
+    },
+  )
+
+  it.each(cases)(
+    "saves held resume only after acknowledgement when the revision is unchanged (identity=$kind, armed=$armed, change=$withChange, releaseBeforeRead=$releaseBeforeRead)",
+    async ({ kind, armed, withChange, releaseBeforeRead }) => {
+      const { client, calls } = await setup(armed)
+      const before = calls.length
+      client.hold()
+      client.setAccount({ kind })
+      if (withChange)
+        client.change("lesson-1", {
+          completedStepIds: ["back-give"],
+          completed: true,
+        })
+      client.setResume("lesson-1", "up-watch")
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      if (releaseBeforeRead) client.release()
+      answerRead(calls, stored())
+      await flush()
+      if (!releaseBeforeRead) {
+        expect(calls).toHaveLength(before + 1)
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+        client.release()
+      }
+      expect(calls).toHaveLength(before + 2)
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 4,
+          completed: true,
+          completedStepIds: withChange
+            ? ["back-give"]
+            : ["back-how", "back-give"],
+          resumeCardId: "up-watch",
+        },
+      })
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+      calls.at(-1)!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: stored({
+            completedStepIds: withChange
+              ? ["back-give"]
+              : ["back-how", "back-give"],
+            resumeCardId: "up-watch",
+            revision: 5,
+          }),
+        },
+      })
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+      // Later legitimate navigation still uses the ordinary resume debounce.
+      client.setResume("lesson-1", "end")
+      await vi.advanceTimersByTimeAsync(1500)
+      expect(calls).toHaveLength(before + 3)
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: { expectedRevision: 5, resumeCardId: "end" },
+      })
+    },
+  )
+
+  it.each(
+    identities.flatMap((kind) =>
+      [false, true].map((duringRead) => ({ kind, duringRead })),
+    ),
+  )(
+    "retains the resume base without a focus hold (identity=$kind, duringRead=$duringRead)",
+    async ({ kind, duringRead }) => {
+      const { client, calls } = await setup()
+      const before = calls.length
+      client.setAccount({ kind })
+      if (!duringRead) client.setResume("lesson-1", "up-watch")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      if (duringRead) client.setResume("lesson-1", "up-watch")
+      answerRead(calls, lesson({ revision: 5 }))
+      await flush()
+      expect(calls).toHaveLength(before + 1)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "conflict",
+        completed: true,
+        resumeCardId: "up-watch",
+      })
+    },
+  )
+  const orders = identities.flatMap((kind) =>
+    [false, true].map((releaseBeforeAck) => ({ kind, releaseBeforeAck })),
+  )
+
+  it.each(orders)(
+    "continues resume after its own POST without stranding it (identity=$kind, releaseBeforeAck=$releaseBeforeAck)",
+    async ({ kind, releaseBeforeAck }) => {
+      const { client, calls } = await setup(false)
+      client.setResume("lesson-1", "back-carrying")
+      await vi.advanceTimersByTimeAsync(1500)
+      const post = calls.at(-1)!
+      client.hold()
+      client.setAccount({ kind })
+      client.setResume("lesson-1", "up-watch")
+      const acknowledged = stored({
+        resumeCardId: "back-carrying",
+        revision: 5,
+      })
+      if (!releaseBeforeAck) {
+        post.resolve({
+          status: 200,
+          body: { status: "saved", progress: acknowledged },
+        })
+        await flush()
+      }
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      answerRead(calls, releaseBeforeAck ? stored() : acknowledged)
+      await flush()
+      expect(calls).toHaveLength(3)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saving",
+        resumeCardId: "up-watch",
+      })
+      client.release()
+      if (releaseBeforeAck) {
+        expect(calls).toHaveLength(3)
+        post.resolve({
+          status: 200,
+          body: { status: "saved", progress: acknowledged },
+        })
+        await flush()
+      }
+      expect(calls).toHaveLength(4)
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 5,
+          completed: true,
+          resumeCardId: "up-watch",
+        },
+      })
+      calls.at(-1)!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: stored({ resumeCardId: "up-watch", revision: 6 }),
+        },
+      })
+      await flush()
+      client.flush()
+      expect(calls).toHaveLength(4)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        resumeCardId: "up-watch",
+      })
+    },
+  )
+
+  it.each(orders)(
+    "does not let a stale POST acknowledge held resume or undo Use saved (identity=$kind, releaseBeforeAck=$releaseBeforeAck)",
+    async ({ kind, releaseBeforeAck }) => {
+      const { client, calls } = await setup(false)
+      client.setResume("lesson-1", "back-carrying")
+      await vi.advanceTimersByTimeAsync(1500)
+      const post = calls.at(-1)!
+      client.hold()
+      client.setAccount({ kind })
+      client.setResume("lesson-1", "up-watch")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      answerRead(calls, lesson({ revision: 6 }))
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "conflict",
+        resumeCardId: "up-watch",
+        completed: true,
+      })
+      client.useSaved("lesson-1")
+      if (releaseBeforeAck) client.release()
+      post.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: stored({ resumeCardId: "back-carrying", revision: 5 }),
+        },
+      })
+      await flush()
+      if (!releaseBeforeAck) client.release()
+      expect(calls).toHaveLength(3)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        completed: false,
+        completedStepIds: [],
+        resumeCardId: null,
+      })
+      client.change("lesson-1", {
+        completedStepIds: ["back-give"],
+        completed: false,
+      })
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: { expectedRevision: 6, completed: false },
+      })
+    },
+  )
+
+  it.each(
+    identities.flatMap((kind) =>
+      ["anonymous", "user-b"].map((next) => ({ kind, next })),
+    ),
+  )(
+    "discards held resume on account transition (identity=$kind, next=$next)",
+    async ({ kind, next }) => {
+      const { client, calls, onAccountCleared } = await setup()
+      const before = calls.length
+      client.hold()
+      client.setAccount({ kind })
+      client.setResume("lesson-1", "up-watch")
+      if (next === "anonymous") client.setAccount({ kind: "anonymous" })
+      else await signIn(client, calls, [], next)
+      client.release()
+      client.flush({ keepalive: true })
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(calls).toHaveLength(before + (next === "anonymous" ? 0 : 1))
+      expect(onAccountCleared).toHaveBeenCalledOnce()
+      expect(client.getSnapshot().lessons["lesson-1"]?.completed).not.toBe(true)
+      expect(client.getSnapshot().lessons["lesson-1"]?.resumeCardId).not.toBe(
+        "up-watch",
+      )
+    },
+  )
+
+  it.each(orders)(
+    "keeps a held reset and its Retry ahead of resume (identity=$kind, releaseBeforeAck=$releaseBeforeAck)",
+    async ({ kind, releaseBeforeAck: releaseBeforeRead }) => {
+      const { client, calls } = await setup()
+      const before = calls.length
+      client.hold()
+      client.reset("lesson-1")
+      client.setAccount({ kind })
+      client.setResume("lesson-1", "up-watch")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      if (releaseBeforeRead) client.release()
+      answerRead(calls, stored())
+      await flush()
+      if (!releaseBeforeRead) {
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+        client.release()
+      }
+      expect(calls).toHaveLength(before + 2)
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "DELETE",
+        body: { expectedRevision: 4 },
+      })
+      calls.at(-1)!.resolve({ status: 503, body: null })
+      await flush()
+      client.setResume("lesson-1", "end")
+      client.refresh()
+      answerRead(calls, stored())
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "error",
+        operation: "reset",
+      })
+      client.retry("lesson-1")
+      expect(calls).toHaveLength(before + 4)
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "DELETE",
+        body: { expectedRevision: 4 },
+      })
+      calls.at(-1)!.resolve({
+        status: 200,
+        body: { status: "saved", progress: lesson({ revision: 5 }) },
+      })
+      await flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      client.flush()
+      expect(calls).toHaveLength(before + 4)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        completed: false,
+        completedStepIds: [],
+        resumeCardId: null,
+      })
+    },
+  )
+
+  it.each(identities)(
+    "recovers held resume after a failed read and write only through Retry (identity=%s)",
+    async (kind) => {
+      const { client, calls } = await setup(false)
+      client.setAccount({ kind })
+      client.setResume("lesson-1", "up-watch")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      calls.at(-1)!.reject(new Error("offline"))
+      await flush()
+      expect(client.getSnapshot()).toMatchObject({
+        load: "error",
+        lessons: { "lesson-1": { status: "error", resumeCardId: "up-watch" } },
+      })
+      client.retry("lesson-1")
+      answerRead(calls, stored())
+      await flush()
+      expect(calls).toHaveLength(4)
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: { expectedRevision: 4, resumeCardId: "up-watch" },
+      })
+      calls.at(-1)!.resolve({ status: 503, body: null })
+      await flush()
+      client.setResume("lesson-1", "end")
+      client.refresh()
+      answerRead(calls, stored())
+      await flush()
+      expect(calls).toHaveLength(5)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "error",
+        operation: "save",
+      })
+      client.retry("lesson-1")
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: { expectedRevision: 4, resumeCardId: "end" },
+      })
+      calls.at(-1)!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: stored({ resumeCardId: "end", revision: 5 }),
+        },
+      })
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        resumeCardId: "end",
+      })
+    },
+  )
+})
+
 describe("hosted sign-in return", () => {
   const page = "https://watch.test/watch?as=grow#steps"
 

@@ -198,3 +198,47 @@ Commands, logs and samples are retained in `/tmp/forge-2782-validation/`.
 Durable rule: a held edit's base revision is user-intent lineage, not a cache
 hint. Refreshes and unrelated acknowledgements cannot rebase it; explicit
 recovery or the owning successful POST establishes the next permitted lineage.
+
+### Independent review round 2: resume lineage
+
+Scope: at exact head `6da6b45194e67436a821988d27391b0909fcc559`, extend
+held-edit lineage to `setResume` during identity checking/unavailability and
+progress refresh. Reproduce stale completion replay first, then use the same
+revision-bound deferral and existing explicit conflict recovery. Verify valid
+resume continuation, response/release orders, account transitions, reset/retry
+and stale acknowledgements. Keep this repair in the same client/test/ticket
+scope; preserve structured-only CAS writes and initialization scheduling.
+
+The resume updater now uses the known account holder and existing saved/armed
+eligibility before checking availability. If identity or the progress read is
+pending, it records the same revision-bound deferral used by explicit edits.
+A newer independent revision exposes Keep mine / Use saved; an unchanged base
+releases legitimate resume intent even when no local completion edit armed the
+lesson. Refresh keeps a valid deferred operation visibly Saving until release
+and acknowledgement. Ordinary resume debouncing and owning POST advancement
+remain intact; no new state field, wire field or CAS behavior was introduced.
+
+The exact-head red run reproduced 18 failures, including the four armed
+checking/unavailable and read/release-order replay variants, missing conflicts
+for unarmed lessons and stranded same-revision resume intent. All 118 owning
+cases now pass, including 54 new resume cases. The standard Web test entry point
+passed 220 tests across 11 progress/course/story/session/route files, UI locale
+generation and all five Next cache-size guards. Full Web lint (including locale
+drift), Web typecheck, scoped Prettier and the commit hooks pass. Recovery,
+account switch/sign-out, held reset/retry, owning/stale acknowledgements and
+navigation during a progress GET are covered; the prior blocker regressions
+remain passing. Exact commands and logs: `/tmp/forge-2782-r2-validation/`.
+
+Against `6da6b45194e67436a821988d27391b0909fcc559`, interleaved client
+initialization/first-read measurements over 50,000 loads per version retained
+one GET and zero mutations per load. Median cost was 0.001402 ms before /
+0.001432 ms after; the minified module grows by 58 bytes, or 8 gzip bytes.
+Rendering, hydration, routing, media, imports and initialization scheduling are
+unchanged. These measurements cover client initialization/resources; browser
+LCP/CLS and a full production build were not rerun for this state-machine repair.
+Checks used available Node 24.19.0; the repository pins 24.22.1.
+
+Durable extension: every updater that copies a whole lesson state must preserve
+its revision lineage, including passive navigation. A valid deferred resume is
+pending account work even when the lesson is unarmed; it must neither be
+silently rebased nor stranded behind an Unsaved/Saved status.

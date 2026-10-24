@@ -588,13 +588,15 @@ export function createLearningProgressClient({
         continue
       item.error = null
       item.operation = null
-      item.status = item.local
-        ? item.armed
-          ? "saving"
-          : "unsaved"
-        : item.server.revision > 0
-          ? "saved"
-          : "idle"
+      item.status = item.deferred
+        ? "saving"
+        : item.local
+          ? item.armed
+            ? "saving"
+            : "unsaved"
+          : item.server.revision > 0
+            ? "saved"
+            : "idle"
     }
     load = "loaded"
     staleChecked = null
@@ -884,7 +886,7 @@ export function createLearningProgressClient({
       if (base.resumeCardId === cardId) return
       item.local = { ...base, resumeCardId: cardId }
       const syncs =
-        signedIn() &&
+        holder?.kind === "user" &&
         (item.armed || (item.server?.revision ?? 0) > 0) &&
         item.status !== "conflict" &&
         item.status !== "error"
@@ -895,6 +897,13 @@ export function createLearningProgressClient({
       }
       // The position is not on the account until the write is acknowledged.
       item.status = "saving"
+      if (!signedIn()) {
+        // Resume includes the whole local lesson, so preserve its revision
+        // while identity or progress is being checked, just like an edit.
+        defer(item)
+        emit()
+        return
+      }
       if (item.timer) clearTimeout(item.timer)
       item.timer = setTimeout(() => {
         item.timer = null
