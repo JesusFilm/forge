@@ -2,7 +2,7 @@
 // build plugin to be active for durable execution. Without the plugin configured
 // in next.config.ts, these directives are inert and the workflow runs as a plain
 // async function (no durability, no step-level retries, no checkpointing).
-// To enable: configure the workflow plugin and set WORKFLOW_API_KEY in env.
+// To enable: configure the workflow plugin. The SDK needs no API key.
 // See: https://useworkflow.dev/
 //
 // Video enrichment workflow — orchestrates the full pipeline for a single video asset.
