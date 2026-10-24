@@ -26,6 +26,8 @@
 // handling in the dashboard. No Prisma migration required.
 
 import { z } from "zod"
+import { WatchAudienceBlockSchema } from "@forge/experience-schema"
+export { WatchAudienceBlockSchema } from "@forge/experience-schema"
 import {
   WATCH_HOME_CATEGORY_CATALOG,
   type WatchHomeCategoryId,
@@ -719,6 +721,7 @@ export type SectionBlock = z.infer<typeof SectionBlockSchema>
  * only appears inside `section.content`.
  */
 export const BlockSchema = z.discriminatedUnion("t", [
+  WatchAudienceBlockSchema,
   MediaCollectionBlockSchema,
   PromoBannerBlockSchema,
   InfoBlocksBlockSchema,
@@ -758,6 +761,15 @@ export type Block = z.infer<typeof BlockSchema>
  * hand-authored 1-block content.
  */
 export const BlocksSchema = z.array(BlockSchema).superRefine((blocks, ctx) => {
+  const audienceIndices = blocks.flatMap((block, index) =>
+    block.t === "watchAudience" ? [index] : [],
+  )
+  for (const index of audienceIndices.slice(1))
+    ctx.addIssue({
+      code: "custom",
+      path: [index],
+      message: "Only one Watch audience block is allowed",
+    })
   const recommendations = blocks.flatMap((block, index) =>
     block.t === "homepageRecommendations" ? [index] : [],
   )

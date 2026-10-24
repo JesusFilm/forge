@@ -45,9 +45,11 @@ function json(body: unknown, status = 200) {
 }
 
 /**
- * Same rollout gate as the film finder: with the audience flag off, or
- * unreadable, the route does not exist, so a rollback also stops writes from
- * pages opened before it. Checked before the session or Admin is touched.
+ * Same rollout gate as the film finder for reads and saves: with the audience
+ * flag off, or unreadable, GET and POST do not exist, so a rollback also stops
+ * saves from pages opened before it. Checked before the session or Admin is
+ * touched. DELETE is deliberately NOT gated: resetting data a viewer already
+ * saved must keep working after a rollback (Admin's reset is ungated too).
  */
 async function isProgressEnabled(): Promise<boolean> {
   try {
@@ -162,9 +164,12 @@ export async function POST(request: Request): Promise<NextResponse> {
   return json({ status: result.status, progress: result.progress })
 }
 
-/** Resets one lesson; guarded by the revision the client last read. */
+/**
+ * Resets one lesson; guarded by the revision the client last read. Cleanup of
+ * existing data, so it is available whatever the audience flag says; origin,
+ * verified subject, payload and revision checks still apply.
+ */
 export async function DELETE(request: Request): Promise<NextResponse> {
-  if (!(await isProgressEnabled())) return notFound()
   if (!isSameOriginMutation(request)) return json({ error: "forbidden" }, 403)
   const viewer = await mutationViewer(request)
   if (viewer instanceof NextResponse) return viewer

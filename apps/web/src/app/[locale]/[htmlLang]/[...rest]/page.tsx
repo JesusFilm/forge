@@ -45,6 +45,7 @@ import {
   getWatchRouteFallbackMetadata,
 } from "@/lib/experience-metadata"
 import { resolveWatchHome } from "@/lib/watch-home"
+import { resolveWatchAudience } from "@/lib/watch-audience-content"
 import {
   isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
@@ -792,11 +793,17 @@ async function renderOneSegment(shape: {
           name: "Watch",
         })
       : null
+    const audienceEnabled = await isWatchAudienceEnabled()
+    // One published definition for home and video; omitted when the rollout is off.
+    const audience = audienceEnabled
+      ? await resolveWatchAudience(locale)
+      : undefined
     return (
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
-          audienceEnabled={await isWatchAudienceEnabled()}
+          audienceEnabled={audienceEnabled}
+          audience={audience}
           heroModel={heroResult.data}
           blocks={visibleContent.blocks}
           languageSlug={slug}
@@ -968,12 +975,18 @@ async function renderEpisode(
         languageSlug,
       })
 
+  const audienceEnabled = await isWatchAudienceEnabled()
+  // One published definition for home and video; omitted when the rollout is off.
+  const audience = audienceEnabled
+    ? await resolveWatchAudience(locale)
+    : undefined
   return (
     <>
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
-        audienceEnabled={await isWatchAudienceEnabled()}
+        audienceEnabled={audienceEnabled}
+        audience={audience}
         downloadButtonLabel={downloadButtonLabel}
         downloadSequence={downloadSequence}
         mergedBlocks={clientMergedBlocks}
@@ -1143,6 +1156,11 @@ async function renderVideo(
           blocks: mergedBlocks,
           languageSlug,
         })
+    const audienceEnabled = await isWatchAudienceEnabled()
+    // One published definition for home and video; omitted when the rollout is off.
+    const audience = audienceEnabled
+      ? await resolveWatchAudience(locale)
+      : undefined
     return (
       <>
         <WatchStructuredData
@@ -1150,7 +1168,8 @@ async function renderVideo(
         />
         <WatchStructuredData json={relatedItemsJson} />
         <WatchPageClient
-          audienceEnabled={await isWatchAudienceEnabled()}
+          audienceEnabled={audienceEnabled}
+          audience={audience}
           downloadButtonLabel={downloadButtonLabel}
           downloadSequence={downloadSequence}
           mergedBlocks={clientMergedBlocks}

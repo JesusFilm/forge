@@ -12,7 +12,9 @@ import type {
   LearningRequest,
   LearningResponse,
 } from "@/lib/watch-learning-progress-client"
+import { LESSONS } from "@/lib/beginning-with-jesus"
 import type { WatchAccountSession } from "./use-watch-account-session"
+import { movementStepIds } from "./watch-grow-prototype-adapter"
 import { createWatchLearningDraftStore } from "./watch-learning-drafts"
 import {
   WatchGrowProgressCourse,
@@ -92,7 +94,7 @@ async function waitForStory() {
   await vi.waitFor(async () => {
     await settle()
     expect(
-      container.querySelector('[data-testid="watch-grow-story"]'),
+      document.querySelector('[data-testid="watch-grow-story"]'),
     ).not.toBeNull()
   })
 }
@@ -101,7 +103,7 @@ function text() {
 }
 function button(label: string) {
   const found = [
-    ...container.querySelectorAll<HTMLButtonElement>("button"),
+    ...document.querySelectorAll<HTMLButtonElement>("button"),
   ].find((b) => b.textContent === label)
   if (!found) throw new Error(`No button ${label}: ${text()}`)
   return found
@@ -132,11 +134,56 @@ async function answerRead(lessons: unknown[] = [], userId = "user-a") {
     }),
   )
 }
-function firstCheckbox() {
-  return container.querySelector<HTMLInputElement>('input[type="checkbox"]')!
+// The original sheet has no per-step boxes: each third's Finish control
+// checks that third's steps, and the third reads "Done" once they all are.
+const BACK = movementStepIds(LESSONS[0]!, "back")
+const UP = movementStepIds(LESSONS[0]!, "up")
+async function storyNext() {
+  await act(async () =>
+    document
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="watch-grow-story-next"]',
+      )!
+      .click(),
+  )
+}
+async function openLessonOne() {
+  if (container.querySelector('[data-testid="watch-grow-course-sheet"]')) return
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="watch-grow-course-start"]',
+      )!
+      .click(),
+  )
+}
+async function finish(third: "back" | "up" | "forward") {
+  await openLessonOne()
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        `[data-testid="watch-grow-course-third-${third}"]`,
+      )!
+      .click(),
+  )
+  await act(async () =>
+    container
+      .querySelector<HTMLButtonElement>(
+        '[data-testid="watch-grow-course-advance"]',
+      )!
+      .click(),
+  )
+}
+async function thirdDone(third: "back" | "up" | "forward") {
+  await openLessonOne()
+  return (
+    container.querySelector(`[data-testid="watch-grow-course-third-${third}"]`)!
+      .textContent ?? ""
+  ).includes("Done")
 }
 
 beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn()
   calls = []
   transport.mockClear()
   drafts.clear()
@@ -159,8 +206,8 @@ describe("anonymous visitor", () => {
       }),
     )
     expect(text()).toContain("Progress is not saved to an account")
-    await act(async () => firstCheckbox().click())
-    expect(firstCheckbox().checked).toBe(true)
+    await finish("back")
+    expect(await thirdDone("back")).toBe(true)
     expect(transport).not.toHaveBeenCalled()
     expect(
       container.querySelector('[data-testid="watch-grow-sign-in"]'),
@@ -183,33 +230,27 @@ describe("anonymous visitor", () => {
     expect(
       container.querySelector('[data-testid="watch-grow-sign-in"]'),
     ).toBeNull()
-    expect(firstCheckbox().checked).toBe(true)
+    expect(await thirdDone("back")).toBe(true)
   })
 
   it("opens the story only on request, carries its card in the return address, and returns focus on close", async () => {
     mount(sessionStore({ status: "signed-out" }))
     expect(
-      container.querySelector('[data-testid="watch-grow-story"]'),
+      document.querySelector('[data-testid="watch-grow-story"]'),
     ).toBeNull()
-    await click("Read as story")
+    await openLessonOne()
+    await click("Play it, one card at a time")
     await waitForStory()
-    const story = container.querySelector<HTMLElement>(
-      '[data-testid="watch-grow-story"]',
+    // The story is portalled to the body, over the page.
+    const story = () =>
+      document.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
+    expect(story().dataset.cardId).toBe("cover")
+    await storyNext()
+    const option = story().querySelector<HTMLButtonElement>(
+      '[data-testid="watch-grow-story-poll-option"]',
     )!
-    expect(story.dataset.cardId).toBe("cover")
-    await click("Next")
-    const textarea = () =>
-      container.querySelector<HTMLTextAreaElement>(
-        '[data-testid="watch-grow-story"] textarea',
-      )!
-    const setter = Object.getOwnPropertyDescriptor(
-      HTMLTextAreaElement.prototype,
-      "value",
-    )!.set!
-    act(() => {
-      setter.call(textarea(), "never-in-url")
-      textarea().dispatchEvent(new Event("input", { bubbles: true }))
-    })
+    const chosen = option.textContent!
+    await act(async () => option.click())
     await click("Save progress to an account")
     const href = container
       .querySelector('[data-testid="watch-grow-sign-in"]')!
@@ -217,17 +258,27 @@ describe("anonymous visitor", () => {
     expect(new URL(href).searchParams.get("returnTo")).toBe(
       "/watch?as=grow&growLesson=lesson-1&growCard=back-how",
     )
-    expect(href).not.toContain("never-in-url")
+    expect(href).not.toContain(encodeURIComponent(chosen))
     expect(transport).not.toHaveBeenCalled()
 
-    await click("Back to lesson sheet")
-    expect(document.activeElement).toBe(button("Read as story"))
-    // The sheet shows the same browser-only draft.
+    await act(async () =>
+      story()
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-grow-story-close"]',
+        )!
+        .click(),
+    )
     expect(
-      container.querySelector<HTMLTextAreaElement>(
-        '[data-step-id="back-how"] textarea',
-      )!.value,
-    ).toBe("never-in-url")
+      document.querySelector('[data-testid="watch-grow-story"]'),
+    ).toBeNull()
+    expect(document.activeElement).toBe(button("Play it, one card at a time"))
+    // The sheet shows the same browser-only draft.
+    const chip = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="watch-grow-course-chip"]',
+      ),
+    ].find((b) => b.textContent === chosen)!
+    expect(chip.getAttribute("aria-pressed")).toBe("true")
   })
 
   it("after a cancelled sign-in, reopens the same card, says nothing was saved, and clears the address", async () => {
@@ -239,7 +290,7 @@ describe("anonymous visitor", () => {
     mount(sessionStore({ status: "signed-out" }))
     await waitForStory()
     expect(
-      container.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
+      document.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
         .dataset.cardId,
     ).toBe("up-question-2")
     expect(text()).toContain("Sign-in did not finish. Nothing was saved")
@@ -261,7 +312,7 @@ describe("signed-in visitor", () => {
     await answerRead()
     await waitForStory()
     expect(
-      container.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
+      document.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
         .dataset.cardId,
     ).toBe("forward-retell")
     expect(text()).toContain("This lesson is not saved to your account yet")
@@ -285,21 +336,21 @@ describe("signed-in visitor", () => {
     mount(sessionStore({ status: "signed-in", user: { id: "user-a" } }))
     expect(text()).toContain("Loading your saved progress")
     await answerRead()
-    await act(async () => firstCheckbox().click())
+    await finish("back")
     expect(text()).toContain("Saving…")
     await act(async () =>
       calls[1]!.resolve({ status: 502, body: { error: "upstream" } }),
     )
     expect(text()).toContain("Not saved. The progress service had a problem.")
     expect(text()).not.toContain("Saved to your account")
-    expect(firstCheckbox().checked).toBe(true)
+    expect(await thirdDone("back")).toBe(true)
     await click("Retry")
     await act(async () =>
       calls[2]!.resolve({
         status: 200,
         body: {
           status: "saved",
-          progress: lesson({ completedStepIds: ["back-how"], revision: 1 }),
+          progress: lesson({ completedStepIds: BACK, revision: 1 }),
         },
       }),
     )
@@ -309,26 +360,22 @@ describe("signed-in visitor", () => {
   it("on conflict keeps this tab's changes and offers an explicit choice", async () => {
     mount(sessionStore({ status: "signed-in", user: { id: "user-a" } }))
     await answerRead([lesson({ revision: 2 })])
-    await act(async () => firstCheckbox().click())
+    await finish("back")
     await act(async () =>
       calls[1]!.resolve({
         status: 200,
         body: {
           status: "conflict",
-          progress: lesson({ completedStepIds: ["up-watch"], revision: 3 }),
+          progress: lesson({ completedStepIds: UP, revision: 3 }),
         },
       }),
     )
     expect(text()).toContain("This lesson changed in another tab or device")
-    expect(firstCheckbox().checked).toBe(true)
+    expect(await thirdDone("back")).toBe(true)
     expect(calls).toHaveLength(2)
     await click("Use saved version")
-    expect(firstCheckbox().checked).toBe(false)
-    expect(
-      container.querySelector<HTMLInputElement>(
-        '[data-step-id="up-watch"] input[type="checkbox"]',
-      )!.checked,
-    ).toBe(true)
+    expect(await thirdDone("back")).toBe(false)
+    expect(await thirdDone("up")).toBe(true)
   })
 
   it("after closing and re-opening on a conflict, still waits for the visitor's choice", async () => {
@@ -336,7 +383,7 @@ describe("signed-in visitor", () => {
       sessionStore({ status: "signed-in", user: { id: "user-a" } }),
     )
     await answerRead([lesson({ revision: 1 })])
-    await act(async () => firstCheckbox().click())
+    await finish("back")
     // Another device reset the lesson.
     await act(async () =>
       calls[1]!.resolve({
@@ -366,7 +413,7 @@ describe("signed-in visitor", () => {
       "GET",
     ])
     expect(text()).toContain("This lesson changed in another tab or device")
-    expect(firstCheckbox().checked).toBe(true)
+    expect(await thirdDone("back")).toBe(true)
   })
 
   it("holds writes while a focus re-read of the session is pending", async () => {
@@ -377,7 +424,7 @@ describe("signed-in visitor", () => {
     mount(session)
     await answerRead([lesson({ revision: 1 })])
     session.revalidate()
-    await act(async () => firstCheckbox().click())
+    await finish("back")
     expect(calls).toHaveLength(1)
 
     expect(text()).toContain("Saving…")
@@ -390,7 +437,7 @@ describe("signed-in visitor", () => {
     expect(calls.at(-1)!.request).toMatchObject({
       method: "POST",
       subject: "user-a",
-      body: { expectedRevision: 1, completedStepIds: ["back-how"] },
+      body: { expectedRevision: 1, completedStepIds: BACK },
     })
   })
 
@@ -402,16 +449,17 @@ describe("signed-in visitor", () => {
     mount(session)
     await answerRead([
       lesson({
-        completedStepIds: ["back-how"],
+        completedStepIds: BACK,
         resumeCardId: "back-how",
         revision: 4,
       }),
     ])
-    await click("Read as story")
+    await openLessonOne()
+    await click("Play it, one card at a time")
     await waitForStory()
     // Opening on the saved card changes nothing: still Saved.
     expect(text()).toContain("Saved to your account.")
-    await click("Next")
+    await storyNext()
     // The new card is not on the account yet, so nothing reads as Saved.
     expect(text()).toContain("Saving…")
     expect(text()).not.toContain("Saved to your account")
@@ -431,7 +479,7 @@ describe("signed-in visitor", () => {
       subject: "user-a",
       body: {
         expectedRevision: 4,
-        completedStepIds: ["back-how"],
+        completedStepIds: BACK,
         resumeCardId: expect.not.stringMatching(/^back-how$/),
       },
     })
@@ -443,7 +491,7 @@ describe("signed-in visitor", () => {
         body: {
           status: "saved",
           progress: lesson({
-            completedStepIds: ["back-how"],
+            completedStepIds: BACK,
             resumeCardId: cardId,
             revision: 5,
           }),
@@ -461,7 +509,7 @@ describe("signed-in visitor", () => {
     })
     mount(session)
     await answerRead([lesson({ revision: 2 })])
-    await act(async () => firstCheckbox().click())
+    await finish("back")
     await act(async () =>
       calls[1]!.resolve({
         status: 200,
@@ -485,30 +533,31 @@ describe("signed-in visitor", () => {
     mount(session)
     await answerRead([lesson({ revision: 1 })])
     session.revalidate()
-    await act(async () => firstCheckbox().click())
+    await finish("back")
     session.set({ status: "signed-in", user: { id: "user-b" } })
     await answerRead([], "user-b")
     await settle()
     expect(calls.map((call) => call.request.method)).toEqual(["GET", "GET"])
-    expect(firstCheckbox().checked).toBe(false)
+    expect(await thirdDone("back")).toBe(false)
   })
 
   it("resumes a second device's saved position and flushes resume writes when the course closes", async () => {
     mount(sessionStore({ status: "signed-in", user: { id: "user-a" } }))
     await answerRead([
       lesson({
-        completedStepIds: ["back-how"],
+        completedStepIds: BACK,
         resumeCardId: "up-retell",
         revision: 4,
       }),
     ])
-    expect(firstCheckbox().checked).toBe(true)
-    await click("Read as story")
+    expect(await thirdDone("back")).toBe(true)
+    await openLessonOne()
+    await click("Play it, one card at a time")
     await waitForStory()
     const story = () =>
-      container.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
+      document.querySelector<HTMLElement>('[data-testid="watch-grow-story"]')!
     expect(story().dataset.cardId).toBe("up-retell")
-    await click("Next")
+    await storyNext()
     expect(calls).toHaveLength(1)
     act(() => root.unmount())
     root = createRoot(container)
@@ -518,7 +567,7 @@ describe("signed-in visitor", () => {
       body: {
         expectedRevision: 4,
         resumeCardId: "up-question-1",
-        completedStepIds: ["back-how"],
+        completedStepIds: BACK,
         completed: false,
       },
     })
@@ -530,47 +579,123 @@ describe("signed-in visitor", () => {
       user: { id: "user-a" },
     })
     mount(session)
-    await answerRead([lesson({ completedStepIds: ["back-how"], revision: 1 })])
+    await answerRead([lesson({ completedStepIds: BACK, revision: 1 })])
     act(() =>
       drafts.set(
         { ...KEY, lessonId: "lesson-1", stepId: "back-how" },
         "A's note",
       ),
     )
-    await act(async () =>
-      container
-        .querySelector<HTMLInputElement>(
-          '[data-step-id="back-carrying"] input[type="checkbox"]',
-        )!
-        .click(),
-    )
+    await finish("up")
     const late = calls.at(-1)!
     session.set({ status: "signed-in", user: { id: "user-b" } })
     expect(
       drafts.get({ ...KEY, lessonId: "lesson-1", stepId: "back-how" }),
     ).toBe("")
-    expect(firstCheckbox().checked).toBe(false)
+    expect(await thirdDone("back")).toBe(false)
     await act(async () =>
       late.resolve({
         status: 200,
         body: {
           status: "saved",
           progress: lesson({
-            completedStepIds: ["back-how", "back-carrying"],
+            completedStepIds: [...BACK, ...UP],
             revision: 2,
           }),
         },
       }),
     )
     await answerRead([], "user-b")
-    expect(firstCheckbox().checked).toBe(false)
+    expect(await thirdDone("back")).toBe(false)
     session.set({ status: "signed-out" })
     expect(text()).toContain("Progress is not saved to an account")
   })
 })
 
+describe("identity change", () => {
+  function type(el: HTMLInputElement, value: string) {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )!.set!
+    act(() => {
+      setter.call(el, value)
+      el.dispatchEvent(new Event("input", { bubbles: true }))
+    })
+  }
+  function blur(el: Element) {
+    act(() => {
+      el.dispatchEvent(new FocusEvent("focusout", { bubbles: true }))
+    })
+  }
+  const field = (id: string) =>
+    container.querySelector<HTMLInputElement>(`[data-testid="${id}"]`)!
+  async function fillPrivateInputs() {
+    await openLessonOne()
+    // Looking Back: a name typed but not added.
+    type(field("watch-grow-course-person"), "Alice draft name")
+    await act(async () =>
+      container
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-grow-course-third-forward"]',
+        )!
+        .click(),
+    )
+    // Looking Forward: the name to tell (committed) and a written commitment
+    // left uncommitted in its input.
+    type(field("watch-grow-course-tell"), "Alice private contact")
+    blur(field("watch-grow-course-tell"))
+    const commit = field("watch-grow-course-line")
+    type(commit, "Alice uncommitted words")
+    return commit
+  }
+
+  it("on a confirmed switch to another account, clears every private input and fences stale writes", async () => {
+    const session = sessionStore({
+      status: "signed-in",
+      user: { id: "user-a" },
+    })
+    mount(session)
+    await answerRead()
+    const staleCommit = await fillPrivateInputs()
+
+    session.set({ status: "signed-in", user: { id: "user-b" } })
+    await answerRead([], "user-b")
+    // The old input's late blur cannot carry A's words into B's store.
+    blur(staleCommit)
+    await openLessonOne()
+
+    const inputs = [
+      ...container.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+        "input, textarea",
+      ),
+    ]
+    expect(inputs.map((el) => el.value).join("")).not.toContain("Alice")
+    expect(text()).not.toContain("Alice")
+    for (const stepId of ["forward-differently", "forward-tell"])
+      expect(drafts.get({ ...KEY, lessonId: "lesson-1", stepId })).toBe("")
+  })
+
+  it("keeps the same visitor's inputs through a focus re-check", async () => {
+    const session = sessionStore({
+      status: "signed-in",
+      user: { id: "user-a" },
+    })
+    mount(session)
+    await answerRead()
+    await fillPrivateInputs()
+    session.revalidate()
+    session.set({ status: "signed-in", user: { id: "user-a" } })
+    await settle()
+    expect(field("watch-grow-course-tell").value).toBe("Alice private contact")
+    expect(field("watch-grow-course-line").value).toBe(
+      "Alice uncommitted words",
+    )
+  })
+})
+
 describe("WatchGrow integration", () => {
-  it("acquires shared modal activity before the progress course module loads", async () => {
+  it("loads the progress course only on the long shelf", async () => {
     vi.resetModules()
     const state = { active: false, atImport: [] as boolean[] }
     vi.doMock("./WatchGrowProgressCourse", () => {
@@ -601,13 +726,22 @@ describe("WatchGrow integration", () => {
         </WatchModalActivityProvider>,
       ),
     )
-    expect(state.atImport).toEqual([])
-    const trigger = [...document.querySelectorAll("button")].find(
-      (b) => b.textContent === "Open the nine lessons",
-    )!
-    await act(async () => trigger.click())
     await settle(50)
-    expect(state.atImport).toEqual([true])
+    // The short shape never loads the course.
+    expect(state.atImport).toEqual([])
+    act(() => root.unmount())
+    root = createRoot(container)
+    window.history.replaceState(null, "", "/watch?as=grow&grow=full")
+    act(() =>
+      root.render(
+        <WatchModalActivityProvider>
+          <Activity />
+          <WatchGrow />
+        </WatchModalActivityProvider>,
+      ),
+    )
+    await settle(50)
+    expect(state.atImport).toEqual([false])
     expect(document.body.textContent).toContain("Progress course ready")
     vi.doUnmock("./WatchGrowProgressCourse")
     vi.doUnmock("next/image")

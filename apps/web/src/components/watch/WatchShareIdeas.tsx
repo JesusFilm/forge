@@ -146,6 +146,19 @@ export function WatchShareIdeas({
       data-testid="watch-share-ideas"
       className="w-full min-w-0 pt-12 text-white md:pt-16"
     >
+      <style>{`
+        @keyframes wsi-rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+        .wsi-r > * { animation: wsi-rise .4s ease-out both }
+        .wsi-r > *:nth-child(2) { animation-delay: .04s }
+        .wsi-r > *:nth-child(3) { animation-delay: .08s }
+        .wsi-r > *:nth-child(4) { animation-delay: .12s }
+        .wsi-r > *:nth-child(5) { animation-delay: .16s }
+        .wsi-r > *:nth-child(6) { animation-delay: .20s }
+        .wsi-r > *:nth-child(7) { animation-delay: .24s }
+        .wsi-r > *:nth-child(8) { animation-delay: .28s }
+        @media (prefers-reduced-motion: reduce) { .wsi-r > * { animation: none } }
+      `}</style>
+
       <header className="max-w-2xl">
         <p className={WATCH_SECTION_EYEBROW_CLASS}>Sharing it well</p>
         <h2
@@ -192,12 +205,12 @@ export function WatchShareIdeas({
       <h3 className="mt-12 text-2xl leading-tight font-semibold sm:text-3xl">
         Eight things that help.
       </h3>
-      <ul className="mt-6 grid min-w-0 gap-3 md:grid-cols-2">
+      <ul className="wsi-r mt-6 grid min-w-0 gap-3 md:grid-cols-2">
         {IDEAS.map((idea, i) => (
           <li key={idea.id} className="min-w-0">
             <article
               data-testid="watch-share-idea"
-              className="flex h-full min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5"
+              className="flex h-full min-w-0 flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 transition-colors hover:border-white/25 hover:bg-white/[0.07]"
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-white/8">
@@ -233,8 +246,7 @@ export function WatchShareIdeas({
         <>
           <div className="mt-10 flex min-w-0 flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4">
             <p className="min-w-0 flex-1 text-[15px] leading-snug text-white/75">
-              Got someone in mind? Send the film now, or prepare a kit with a
-              link in their language, conversation prompts and guides.
+              Got someone in mind? That is the whole step.
             </p>
             {onShareClick ? (
               <button

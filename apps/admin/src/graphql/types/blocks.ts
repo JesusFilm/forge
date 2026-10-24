@@ -31,6 +31,7 @@ import type {
   InfoBlockItemSchema,
   InfoBlocksBlockSchema,
   LanguageGlobeBlockSchema,
+  WatchAudienceBlockSchema,
   MediaCollectionBlockSchema,
   MediaCollectionItemSchema,
   NavigationCarouselBlockSchema,
@@ -1260,6 +1261,25 @@ WatchHomeCategoryRailBlockRef.implement({
   }),
 })
 
+const WatchAudienceBlockRef =
+  builder.objectRef<z.infer<typeof WatchAudienceBlockSchema>>(
+    "WatchAudienceBlock",
+  )
+WatchAudienceBlockRef.implement({
+  description:
+    "Top-level audience questionnaire. Definitions use the shared published WatchSetting projection on public surfaces.",
+  fields: (t) => ({
+    // Match sibling union members: shared unaliased selections must have the
+    // same GraphQL response shape, including nullability.
+    t: t.exposeString("t", { nullable: true }),
+    sectionKey: t.exposeString("sectionKey", { nullable: true }),
+    configurationJson: t.string({
+      nullable: false,
+      resolve: (row) => JSON.stringify(row.configuration),
+    }),
+  }),
+})
+
 const LanguageGlobeBlockRef =
   builder.objectRef<LanguageGlobeBlock>("LanguageGlobeBlock")
 LanguageGlobeBlockRef.implement({
@@ -1379,6 +1399,7 @@ export const T_TO_TYPENAME = {
   easterDates: "EasterDatesBlock",
   infoBlocks: "InfoBlocksBlock",
   languageGlobe: "LanguageGlobeBlock",
+  watchAudience: "WatchAudienceBlock",
   mediaCollection: "MediaCollectionBlock",
   navigationCarousel: "NavigationCarouselBlock",
   promoBanner: "PromoBannerBlock",
@@ -1433,6 +1454,7 @@ export const ExperienceBlock = builder.unionType("ExperienceBlock", {
     EasterDatesBlockRef,
     InfoBlocksBlockRef,
     LanguageGlobeBlockRef,
+    WatchAudienceBlockRef,
     MediaCollectionBlockRef,
     NavigationCarouselBlockRef,
     PromoBannerBlockRef,
