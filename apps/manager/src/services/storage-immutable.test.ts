@@ -1,4 +1,5 @@
 import { mkdtemp, readFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
 
@@ -6,7 +7,7 @@ vi.mock("@/config/env", () => ({ env: {} }))
 let original: string
 beforeEach(async () => {
   original = process.cwd()
-  process.chdir(await mkdtemp(join(process.env.TMPDIR!, "immutable-")))
+  process.chdir(await mkdtemp(join(tmpdir(), "immutable-")))
   vi.resetModules()
 })
 afterEach(() => process.chdir(original))
