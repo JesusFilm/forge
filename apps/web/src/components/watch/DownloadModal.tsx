@@ -1,6 +1,14 @@
 "use client"
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
@@ -36,6 +44,8 @@ import {
   type WatchDownloadOption,
 } from "@/components/watch/download-options"
 import {
+  WATCH_MODAL_ACTION_WRAP_CLASS,
+  WATCH_MODAL_FILM_WIDTH_CLASS,
   WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
   WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
 } from "@/components/watch/watch-modal-presentation"
@@ -124,6 +134,7 @@ export function DownloadModal({
   )
   const [authChecking, setAuthChecking] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
+  const termsTriggerRef = useRef<HTMLButtonElement>(null)
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -170,6 +181,16 @@ export function DownloadModal({
     if (dropdownOpen) setDropdownMounted(true)
     setDropdownOpen(false)
   }, [dropdownOpen])
+
+  // The size list is a body portal above the Terms layer. Unmount it at once
+  // (no close animation) so it does not paint over the Terms text and its
+  // Escape listener does not take the first Escape from Terms.
+  const openTerms = useCallback(() => {
+    setDropdownOpen(false)
+    setDropdownMounted(false)
+    setDropdownRect(null)
+    setTermsOpen(true)
+  }, [])
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -305,10 +326,13 @@ export function DownloadModal({
 
   const modalHeader = (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-6">
+      {/* The row wraps: at large text the fixed-width poster leaves the title
+          column too narrow, so the title drops below the poster instead of
+          running past the dialog edge. */}
+      <div className="flex flex-col gap-6 sm:flex-row sm:flex-wrap sm:items-start sm:gap-6">
         <div
           data-testid="watch-download-modal-poster"
-          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56"
+          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56 sm:max-w-full"
         >
           {posterUrl ? (
             <Image
@@ -330,7 +354,7 @@ export function DownloadModal({
           ) : null}
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <div className="flex min-w-[min(100%,12rem)] flex-1 flex-col gap-3">
           <span
             data-testid="watch-download-modal-eyebrow"
             className={WATCH_SECTION_EYEBROW_CLASS}
@@ -362,7 +386,7 @@ export function DownloadModal({
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent
           data-testid="watch-download-modal"
-          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} ${WATCH_MODAL_FILM_WIDTH_CLASS} grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0`}
           overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
           viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
           showCloseButton={false}
@@ -372,6 +396,7 @@ export function DownloadModal({
             onClose={() => handleOpenChange(false)}
             testId="watch-download-modal-close"
             renderInline
+            inFlowBelowSm
           />
           <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
@@ -427,7 +452,7 @@ export function DownloadModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} ${WATCH_MODAL_FILM_WIDTH_CLASS} grid-cols-[minmax(0,1fr)] border-0 bg-transparent p-0 text-stone-100 ring-0`}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
         showCloseButton={false}
@@ -437,6 +462,7 @@ export function DownloadModal({
           onClose={() => handleOpenChange(false)}
           testId="watch-download-modal-close"
           renderInline
+          inFlowBelowSm
         />
         <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
@@ -585,13 +611,13 @@ export function DownloadModal({
 
           <div
             data-testid="watch-download-modal-confirmation-row"
-            className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
           >
             {/* Not a <label>: the sentence contains the Terms button, and an
                 interactive control must not be nested inside a label. The
                 checkbox carries the sentence as its accessible name, and a
                 click on the sentence's plain text still toggles it. */}
-            <div className="flex items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
+            <div className="flex min-w-[min(100%,12rem)] flex-1 items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
               <span className="relative mt-0.5 inline-flex shrink-0 items-center justify-center">
                 <input
                   type="checkbox"
@@ -624,8 +650,9 @@ export function DownloadModal({
                 {t.rich("termsAgreement", {
                   link: (chunks) => (
                     <button
+                      ref={termsTriggerRef}
                       type="button"
-                      onClick={() => setTermsOpen(true)}
+                      onClick={openTerms}
                       data-testid="watch-download-modal-tos-trigger"
                       className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
                     >
@@ -636,11 +663,18 @@ export function DownloadModal({
               </span>
             </div>
 
-            <div className="flex shrink-0 items-center justify-end gap-3">
+            {/* The row wraps: when the Terms sentence and both buttons do not
+                fit side by side (a narrow dialog or large text), the buttons
+                drop below the sentence instead of widening the dialog past
+                the screen. The group wraps too, so on 320-360px phones the
+                two buttons stack. At 200% text one button is wider than the
+                dialog, so each label wraps as well (with the content's
+                `minmax(0,1fr)` column). */}
+            <div className="ml-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-3">
               <Button
                 variant="ghost"
                 onClick={() => handleOpenChange(false)}
-                className="cursor-pointer rounded-full px-5 py-3.5 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
+                className="h-auto max-w-full shrink cursor-pointer rounded-full px-5 py-3.5 text-center text-base sm:text-sm font-bold tracking-wider whitespace-normal text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
               >
                 {t("close")}
               </Button>
@@ -650,7 +684,10 @@ export function DownloadModal({
                 disabled={!canDownload}
                 aria-label={t("download")}
                 data-testid="watch-download-modal-confirm"
-                className="px-7 py-4 text-base sm:text-sm"
+                className={cn(
+                  WATCH_MODAL_ACTION_WRAP_CLASS,
+                  "px-[min(1.75rem,8.75vw)] py-4 text-base sm:text-sm",
+                )}
               >
                 <DownloadIcon size={16} />
                 <span>{authChecking ? t("checking") : t("download")}</span>
@@ -662,6 +699,7 @@ export function DownloadModal({
 
       <TermsOfUseDialog
         open={termsOpen}
+        returnFocusRef={termsTriggerRef}
         onCancel={() => setTermsOpen(false)}
         onAccept={() => {
           setTosAgreed(true)
@@ -672,14 +710,83 @@ export function DownloadModal({
   )
 }
 
+const TERMS_FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+// Wraps Tab/Shift+Tab at the first/last control of the Terms layer, and pulls
+// focus back in when it is somewhere else (for example on <body> after a click
+// on non-focusable text).
+function keepTabFocusInside(event: KeyboardEvent, section: HTMLElement | null) {
+  if (section === null) return
+  const focusable = Array.from(
+    section.querySelectorAll<HTMLElement>(TERMS_FOCUSABLE_SELECTOR),
+  )
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (first === undefined || last === undefined) {
+    event.preventDefault()
+    section.focus()
+    return
+  }
+  const active = document.activeElement
+  if (!section.contains(active)) {
+    event.preventDefault()
+    ;(event.shiftKey ? last : first).focus()
+  } else if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 type TermsOfUseDialogProps = {
   open: boolean
   onCancel: () => void
   onAccept: () => void
+  returnFocusRef?: RefObject<HTMLElement | null>
 }
 
-function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
+function TermsOfUseDialog({
+  open,
+  onCancel,
+  onAccept,
+  returnFocusRef,
+}: TermsOfUseDialogProps) {
   const t = useTranslations("DownloadModal")
+  const sectionRef = useRef<HTMLElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+
+  // This layer is portaled outside the parent dialog, so nothing else moves
+  // focus into it, back out, or keeps the page behind it from being tabbed
+  // into. Focus its Close button on open and make everything else on the page
+  // inert while it is open; on close, return to the link that opened it
+  // unless the user moved focus elsewhere.
+  useEffect(() => {
+    if (!open) return
+    const section = sectionRef.current
+    const overlay = section?.parentElement
+    const returnFocusTarget = returnFocusRef?.current
+    const inertedSiblings: Element[] = []
+    for (const sibling of Array.from(document.body.children)) {
+      if (sibling === overlay || sibling.hasAttribute("inert")) continue
+      sibling.setAttribute("inert", "")
+      inertedSiblings.push(sibling)
+    }
+    closeButtonRef.current?.focus()
+    return () => {
+      for (const sibling of inertedSiblings) sibling.removeAttribute("inert")
+      const active = document.activeElement
+      if (
+        active === null ||
+        active === document.body ||
+        section?.contains(active)
+      ) {
+        returnFocusTarget?.focus()
+      }
+    }
+  }, [open, returnFocusRef])
 
   useEffect(() => {
     if (!open) return
@@ -689,7 +796,9 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
         event.preventDefault()
         event.stopPropagation()
         onCancel()
+        return
       }
+      if (event.key === "Tab") keepTabFocusInside(event, sectionRef.current)
     }
 
     document.addEventListener("keydown", handleKeyDown, true)
@@ -720,23 +829,26 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
       }}
     >
       <section
+        ref={sectionRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="watch-download-modal-terms-title"
+        tabIndex={-1}
         data-testid="watch-download-modal-terms-dialog"
-        className="m-auto flex w-full shrink-0 flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
+        className="m-auto flex w-full shrink-0 flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 outline-none sm:max-w-2xl"
         onClick={stopNestedDialogEvent}
         onPointerDown={stopNestedDialogEvent}
       >
-        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+        <div className="flex items-start justify-between gap-3 px-[min(2rem,10vw)] pt-8 pb-4">
           <h2
             id="watch-download-modal-terms-title"
             data-testid="watch-download-modal-terms-title"
-            className="text-2xl font-bold text-stone-50 sm:text-3xl"
+            className="min-w-0 text-2xl font-bold [overflow-wrap:anywhere] text-stone-50 sm:text-3xl"
           >
             {t("termsOfUse")}
           </h2>
           <button
+            ref={closeButtonRef}
             type="button"
             onClick={onCancel}
             aria-label={t("closeTermsOfUse")}
@@ -749,7 +861,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
 
         <div
           data-testid="watch-download-modal-terms-body"
-          className="space-y-4 pr-6 pb-6 pl-8 text-base sm:text-sm leading-relaxed text-stone-200"
+          className="space-y-4 pr-[min(1.5rem,7.5vw)] pb-6 pl-[min(2rem,10vw)] text-base sm:text-sm leading-relaxed [overflow-wrap:anywhere] text-stone-200"
         >
           {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
             <p key={index}>{paragraph}</p>
@@ -758,7 +870,7 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
 
         <div
           data-testid="watch-download-modal-terms-footer"
-          className="flex flex-col gap-4 border-t border-stone-700/50 px-8 py-5 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-4 border-t border-stone-700/50 px-[min(2rem,10vw)] py-5 sm:flex-row sm:items-center sm:justify-between"
         >
           <p
             data-testid="watch-download-modal-terms-canonical-notice"
@@ -770,18 +882,18 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
               href={TERMS_OF_USE_CANONICAL_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="cursor-pointer text-stone-200 underline decoration-stone-500 underline-offset-2 hover:text-white hover:decoration-white"
+              className="cursor-pointer [overflow-wrap:anywhere] text-stone-200 underline decoration-stone-500 underline-offset-2 hover:text-white hover:decoration-white"
             >
               {TERMS_OF_USE_CANONICAL_URL}
             </a>
             .
           </p>
-          <div className="flex shrink-0 items-center justify-end gap-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
             <button
               type="button"
               onClick={onCancel}
               data-testid="watch-download-modal-terms-cancel"
-              className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-base sm:text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
+              className="max-w-full cursor-pointer rounded-full bg-stone-700/60 px-[min(1.25rem,6.25vw)] py-2.5 text-base sm:text-sm font-medium [overflow-wrap:anywhere] text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
             >
               {t("cancel")}
             </button>
@@ -789,6 +901,10 @@ function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
               variant="pill"
               onClick={onAccept}
               data-testid="watch-download-modal-terms-accept"
+              className={cn(
+                WATCH_MODAL_ACTION_WRAP_CLASS,
+                "px-[min(1.25rem,6.25vw)]",
+              )}
             >
               {t("accept")}
             </Button>

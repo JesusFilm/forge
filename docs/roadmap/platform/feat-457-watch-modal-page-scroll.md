@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-09-04"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-782"
 tags:
   - "platform"
   - "web"
@@ -80,3 +81,30 @@ edge.
 - `pnpm --filter @forge/web lint`
 - Browser smoke the collection download, single-video download, share, and
   terms dialogs at short landscape and narrow portrait viewport sizes.
+
+## Follow-up: dialog fit and focus (PR 2836, accepted 2026-10-21)
+
+The September resolution above stays as it was. PR 2836 added a second round of
+work to the film and collection download dialogs and to the nested Terms
+dialog:
+
+- The fixed close button keeps clear of the dialog content. From `sm` up, each
+  dialog is at most the viewport width minus `10rem`.
+- The film header, confirmation row and footer wrap at large text. The
+  collection header and fields change layout by the width of the dialog, not by
+  the width of the viewport. The two fields stack until the content box is
+  `36rem` wide.
+- The Terms dialog keeps keyboard focus inside itself. Escape closes only the
+  top layer, and focus returns to the control that opened it.
+
+An independent reviewer accepted these changes on 2026-10-21 with a local
+Chromium run: 21 collection layouts, 12 film layouts and 1,353 scroll
+positions had no close-button overlap, no text outside the dialog and no
+sideways scroll. The Terms, Escape, focus-return and inert checks passed. The
+run used a root font size of 32px as a stand-in for 200% text and a stubbed
+anonymous session. It did not cover sign-in, a real download, a real device, a
+screen reader, Safari or Firefox.
+
+Three smaller problems remain and are tracked in `feat-782`: a narrow text
+budget at 320px with 200% text, a quality popup that only opens downward, and a
+native-language subtitle that does not scale with text.

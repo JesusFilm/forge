@@ -59,3 +59,12 @@ did not belong in the collection-modal bug fix.
    level.
 4. Real-browser check inside the single-video modal (poster + terms dialog
    present): option click and Escape must not dismiss the outer dialog.
+
+# Popup placement ownership
+
+`TierListbox` opens its popup below the trigger only. It does not flip above the
+trigger and does not limit its height to the viewport. This was deferred in the
+collection quality listbox plan and is now tracked in
+`docs/roadmap/platform/feat-782-watch-download-dialog-text-and-popup-residuals.md`.
+Fix placement once in `TierListbox`, so the single-video picker gets the same
+behavior after this migration.
