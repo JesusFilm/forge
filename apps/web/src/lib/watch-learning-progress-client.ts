@@ -408,12 +408,37 @@ export function createLearningProgressClient({
     // Retain the explicit operation if an earlier in-flight save fails.
     if (reset) item.operation = "reset"
     item.deferred = {
-      revision: item.server.revision,
+      // Additional held edits retain their base; only an explicit recovery
+      // choice may adopt the currently installed revision.
+      revision: choice
+        ? item.server.revision
+        : (item.deferred?.revision ?? item.server.revision),
       // Passive position updates cannot cancel an explicit held reset.
       reset: reset || (item.deferred?.reset ?? false),
       explicit: explicit || (item.deferred?.explicit ?? false),
       choice: choice || (item.deferred?.choice ?? false),
     }
+  }
+
+  /** An independent revision cannot acknowledge or authorize this intent. */
+  function disarmReplay(
+    item: Entry,
+    reset = item.operation === "reset" || item.deferred?.reset === true,
+  ) {
+    // Retire the invalidated operation before the visitor chooses recovery.
+    // A new explicit request owns the slot even if the old response arrives.
+    item.inFlight?.abort()
+    item.inFlight = null
+    item.armed = false
+    item.again = false
+    item.deferred = null
+    item.error = null
+    item.operation = reset ? "reset" : item.local ? "save" : null
+    item.status = item.operation
+      ? "conflict"
+      : (item.server?.revision ?? 0) > 0
+        ? "saved"
+        : "idle"
   }
 
   /** Send held writes whose lesson still has the revision they were built on. */
@@ -548,6 +573,10 @@ export function createLearningProgressClient({
       // must not move the lesson back to the older revision.
       if (!item.server || read.revision >= item.server.revision)
         item.server = read
+      if (item.deferred && item.deferred.revision !== item.server.revision) {
+        disarmReplay(item)
+        continue
+      }
       if (item.local && sameState(item.local, item.server)) item.local = null
       // Still unresolved after the re-read: keep the choice it waits for.
       if (
@@ -613,10 +642,16 @@ export function createLearningProgressClient({
       clearTimeout(item.timer)
       item.timer = null
     }
-    if (!signedIn() || !item.server) return
     // A conflict or failure waits for the visitor; a late resume timer, a
     // queued re-send or pagehide never answers it on their behalf.
     if (blocked(item) && !choice) return
+    if (!item.server) return
+    if (!signedIn()) {
+      // A known account's edit must retain its pre-refresh lineage while
+      // identity or progress is being checked. Anonymous edits stay unarmed.
+      if (holder?.kind === "user") defer(item, { reset, explicit, choice })
+      return
+    }
     if (held) {
       // Even pagehide waits: the page may come back, and an unconfirmed
       // account must not be written. Nothing reads as Saved meanwhile.
@@ -668,7 +703,12 @@ export function createLearningProgressClient({
     } catch {
       response = null
     }
-    if (started !== epoch || controller.signal.aborted) return
+    if (
+      started !== epoch ||
+      controller.signal.aborted ||
+      item.inFlight !== controller
+    )
+      return
     item.inFlight = null
 
     if (!response) return fail(item, "network")
@@ -684,8 +724,25 @@ export function createLearningProgressClient({
       (parsed.status === "saved" || parsed.status === "conflict") &&
       parsed.lesson?.lessonId === lessonId
     ) {
+      const incoming = parsed.lesson.progress
+      if (
+        incoming.revision < item.server.revision ||
+        (incoming.revision === item.server.revision &&
+          !sameState(incoming, item.server))
+      ) {
+        // A delayed POST/DELETE cannot replace a newer read, clear local
+        // edits, or grant its held continuation permission to write.
+        disarmReplay(item, reset || item.operation === "reset")
+        emit()
+        return
+      }
+      // A refresh may already have invalidated this operation's continuation.
+      if (blocked(item)) {
+        emit()
+        return
+      }
       const previousRevision = item.server.revision
-      item.server = parsed.lesson.progress
+      item.server = incoming
       if (parsed.status === "conflict") {
         // Keep what the visitor did; an explicit choice decides what wins.
         if (reset) item.local = null

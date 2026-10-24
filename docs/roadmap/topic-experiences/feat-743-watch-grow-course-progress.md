@@ -159,3 +159,42 @@ The retained performance investigation clears frozen `0199bef` against both the 
 ## Final validation harness correction (2026-10-17)
 
 The course unit test waits for the lazy story DOM instead of sleeping 20ms. All existing story, account, resume, unsaved-state and focus assertions remain intact; product mount budgets are unchanged. The cold import exceeded the old arbitrary sleep under the parallel suite while the identical isolated test passed. The corrected 62 course/client cases and all 518 stage-5 Web cases pass. The external validation runner also uses the package's standard unit-test secrets, rather than injecting the live local preview secret into revalidation tests. No product authentication or runtime code changed.
+
+## PR #2782 concurrency repair scope (2026-10-24)
+
+Repair only `apps/web/src/lib/watch-learning-progress-client.ts` and focused
+regressions in its owning test. Preserve the revision underlying edits held
+while identity is unavailable; a newer independent read must require the
+existing conflict choice. Reject mutation acknowledgements older than the
+installed server state without clearing edits or authorizing queued saves or
+resets. Cover both acknowledgement/release orders and retain account-switch,
+sign-out, reset, retry and structured-only payload behavior. Validate owning
+and adjacent progress/course tests, formatting, lint and Web typecheck under
+`agent-io-guard` for broad/heavy commands.
+
+Completed at reviewed head `022993aa05c5fc95ef483e4331d030ee8971c25b`.
+Held edits now retain their original revision, including edits made while the
+known account is unavailable. An independently newer read preserves local
+intent, disarms automatic replay and exposes the existing explicit conflict
+choice. Mutation acknowledgements cannot lower the installed revision or clear
+newer intent. Invalidated operations relinquish their request slot before a
+recovery choice, and late responses must still own that slot to affect state.
+Only an owning successful POST can advance its own held continuation.
+
+TDD reproduced nine failures for the two reported sequences, followed by two
+failing recovery-ownership cases before the final repair. All 64 owning tests
+and 166 tests across 11 adjacent progress/course/story/session/route files pass,
+including both acknowledgement/release orders, stale DELETE acknowledgements,
+account switch/sign-out and explicit recovery. Scoped Prettier, full Web lint
+and Web typecheck pass on available Node 24.19.0 (repository pin: 24.22.1).
+No wire fields, server CAS, rendering, hydration, media, routing or initialization
+scheduling changed. An interleaved 50,000-load-per-version client initialization
+comparison measured median 0.001434 ms before / 0.001443 ms after, with one GET
+and zero mutations per initial account load in both versions. The minified
+client module adds 154 gzip bytes. These are client initialization/resource
+measurements, not browser LCP/CLS or a new full-stage performance clearance.
+Commands, logs and samples are retained in `/tmp/forge-2782-validation/`.
+
+Durable rule: a held edit's base revision is user-intent lineage, not a cache
+hint. Refreshes and unrelated acknowledgements cannot rebase it; explicit
+recovery or the owning successful POST establishes the next permitted lineage.
