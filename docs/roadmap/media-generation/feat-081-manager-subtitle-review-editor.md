@@ -1,5 +1,5 @@
 ---
-id: "feat-081"
+id: "feat-794"
 title: "Manager Subtitle Review Editor"
 owner: "vlad"
 priority: "P1"
@@ -71,6 +71,12 @@ adds Admin artifact comparison, immutable job-bound review objects, equality-onl
 save replay, and initialization ownership across viewport changes. Configuration
 remains off by default. This does not complete the planned upstream editor fork,
 waveform/timeline work, publication, or operational qualification.
+
+The ticket's frontmatter ID was renumbered to resolve its inherited collision
+with current main's ElevenLabs transcription ticket. Its historical filename is
+retained so existing plan and review links continue to resolve. The ElevenLabs
+ticket is unchanged. Allocation also preserves IDs already reserved by other
+work in the shared PR coordination queue.
 
 Validation and remaining holds are recorded in the local
 `752-subtitle-editor-security-implementation-r1` packet. Offline process tests
