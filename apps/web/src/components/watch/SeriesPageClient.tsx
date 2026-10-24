@@ -448,12 +448,16 @@ export function SeriesPageClient({
         subtitleLanguageCountLabel={subtitleLanguageCountLabel}
         overlay={
           // Stack the label on top, then keep title and actions vertical on
-          // phones so the fixed-width pills cannot squeeze the heading into
-          // a one-word column. Desktop keeps the established side-by-side
-          // band, with the pills aligned to the title's lower edge.
+          // phones AND tablets so the fixed-width pills cannot squeeze the
+          // heading into a one-word column (at 768px the side-by-side band
+          // left the title ~260px, four lines). Desktop keeps the
+          // established side-by-side band, with the pills aligned to the
+          // title's lower edge. A phone held sideways has a hero ~200px
+          // tall, so there the band goes side by side with a smaller title
+          // that cannot climb under the fixed header.
           <div
             data-testid="series-page-hero-overlay"
-            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-5 max-[360px]:pb-2 md:pb-10 ${WATCH_PAGE_CONTENT_CLASSES}`}
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-5 max-[360px]:pb-2 md:pb-10 compact-landscape:gap-2 compact-landscape:pb-4 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             <span
               data-testid="series-page-label"
@@ -463,17 +467,17 @@ export function SeriesPageClient({
             </span>
             <div
               data-testid="series-page-hero-content-row"
-              className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between md:gap-4"
+              className="flex flex-col items-start gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-4 compact-landscape:flex-row compact-landscape:items-end compact-landscape:justify-between compact-landscape:gap-4"
             >
               <h1
                 data-testid="series-page-title"
-                className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
+                className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl compact-landscape:text-2xl"
               >
                 {series.title ?? ""}
               </h1>
               <div
                 data-testid="series-page-hero-actions"
-                className="flex w-full flex-wrap justify-start gap-2 md:w-auto md:shrink-0 md:justify-end"
+                className="flex w-full flex-wrap justify-start gap-2 lg:w-auto lg:shrink-0 lg:justify-end compact-landscape:w-auto compact-landscape:shrink-0 compact-landscape:justify-end"
               >
                 {episodes.length > 0 ? (
                   <Button
@@ -533,10 +537,12 @@ export function SeriesPageClient({
         >
           <div
             data-testid="series-page-meta-content"
-            className={`grid grid-cols-1 gap-6 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:pt-12 md:pb-8 ${WATCH_PAGE_CONTENT_CLASSES}`}
+            // Three columns on tablets: a quarter of a 768px rail left the
+            // language picker 130px, which showed "English" as "E".
+            className={`grid grid-cols-1 gap-6 pt-10 pb-6 md:grid-cols-3 md:gap-10 md:pt-12 md:pb-8 lg:grid-cols-4 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             {description ? (
-              <div className="md:col-span-3">
+              <div className="md:col-span-2 lg:col-span-3">
                 <p
                   data-testid="series-page-description"
                   className="text-base leading-relaxed text-stone-200/80 md:text-lg"
@@ -548,7 +554,7 @@ export function SeriesPageClient({
               // Reserve the left columns so the combobox stays in the right
               // rail even when description is missing.
               <div
-                className="hidden md:col-span-3 md:block"
+                className="hidden md:col-span-2 md:block lg:col-span-3"
                 aria-hidden="true"
               />
             )}
