@@ -1,0 +1,35 @@
+name: Roadmap stage production image
+on:
+  pull_request:
+    branches: [stage]
+    paths:
+      - "apps/roadmap/**"
+      - "docs/roadmap/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".dockerignore"
+      - ".github/workflows/roadmap-security-image.yml"
+  push:
+    branches: [stage]
+    paths:
+      - "apps/roadmap/**"
+      - "docs/roadmap/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - ".dockerignore"
+      - ".github/workflows/roadmap-security-image.yml"
+permissions:
+  contents: read
+jobs:
+  roadmap-stage-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build actual stage Dockerfile without credentials
+        run: docker build -f apps/roadmap/Dockerfile -t roadmap-stage-security-ci .
+      - name: Verify native runtime, independent certificate stores and serving reads
+        run: docker run --rm --entrypoint sh roadmap-stage-security-ci /usr/local/bin/verify-roadmap-image-trust
