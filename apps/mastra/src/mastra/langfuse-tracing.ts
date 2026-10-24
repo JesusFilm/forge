@@ -197,6 +197,9 @@ export function buildLangfuseSeekerObservabilityConfig(
         publicKey,
         secretKey,
         baseUrl,
+        // Select observations-first ingestion explicitly. The pinned SDK
+        // sends OTLP but does not itself include this v4 routing header.
+        additionalHeaders: { "x-langfuse-ingestion-version": "4" },
         // Batch mode in production (throughput); realtime locally so a dev
         // sees the trace immediately after the turn.
         realtime: !production,
@@ -297,14 +300,22 @@ export function buildSeekerTracingCallOptions(input: {
           ? { promptVersion: promptProvenance.version }
           : {}),
         ...(promptProvenance.stale === true ? { promptStale: true } : {}),
-        ...(promptProvenance.source === "langfuse" &&
-        promptProvenance.version !== undefined
-          ? {
-              langfuse: {
+        // Mastra's Langfuse adapter maps this namespace to explicit,
+        // filterable metadata on every observation. Generic mastra.metadata
+        // attributes alone are only inspectable catch-all data in v4.
+        langfuse: {
+          promptSource: promptProvenance.source,
+          promptName,
+          promptLabel: promptProvenance.resolvedLabel,
+          ...(sendOrigin !== undefined ? { sendOrigin } : {}),
+          ...(promptProvenance.stale === true ? { promptStale: true } : {}),
+          ...(promptProvenance.source === "langfuse" &&
+          promptProvenance.version !== undefined
+            ? {
                 prompt: { name: promptName, version: promptProvenance.version },
-              },
-            }
-          : {}),
+              }
+            : {}),
+        },
       },
     },
   }

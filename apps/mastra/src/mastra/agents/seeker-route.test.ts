@@ -366,7 +366,7 @@ describe("handleSeekerRouteRequest — Langfuse tracing stamp (feat-321)", () =>
       promptLabel: "production",
     })
     expect(opts.tracingOptions?.metadata).not.toHaveProperty("promptVersion")
-    expect(opts.tracingOptions?.metadata).not.toHaveProperty("langfuse")
+    expect(opts.tracingOptions?.metadata).not.toHaveProperty("langfuse.prompt")
   })
 
   it("stamps version metadata and native prompt linkage for a versioned langfuse serve", async () => {
