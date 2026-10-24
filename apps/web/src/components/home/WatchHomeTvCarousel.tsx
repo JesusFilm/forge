@@ -19,7 +19,7 @@ import {
 import type { MuxPlayerRef } from "@forge/video-player"
 import MuxVideo from "@forge/video-player/mux-video"
 import { useTranslations } from "next-intl"
-import { Play, Volume2, VolumeX } from "lucide-react"
+import { Pause, Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
@@ -554,9 +554,11 @@ function WatchHomeTvOverlay({
   isBuffering,
   isTurnHeld,
   isMuted,
+  isUserPaused,
   leavingSlide,
   onSelectSlide,
   onToggleMuted,
+  onToggleUserPaused,
   playbackTimeSeconds,
   slides,
   ringAnimationKey,
@@ -569,9 +571,11 @@ function WatchHomeTvOverlay({
   isBuffering: boolean
   isTurnHeld: boolean
   isMuted: boolean
+  isUserPaused: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onSelectSlide: (slideId: string) => void
   onToggleMuted: () => void
+  onToggleUserPaused: () => void
   playbackTimeSeconds: number
   ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
@@ -589,7 +593,15 @@ function WatchHomeTvOverlay({
   return (
     <div
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 pb-4 sm:pb-8 compact-landscape:pb-4",
+        // In flow at the bottom of the hero frame (which is a bottom-aligned
+        // flex column) rather than absolutely positioned: with enlarged text
+        // the copy outgrows the frame, and the frame now grows with it instead
+        // of the title climbing above the page under the header. The top
+        // padding clears the floating header, whose row grows past 52px with
+        // large text; on phones it is in rem so it also covers search wrapping
+        // onto a second header row (104px at default text, 208px at 200%). At
+        // default text the copy is shorter than the frame, so it never moves.
+        "relative z-10 flex items-end justify-between gap-4 pb-4 sm:pb-8 compact-landscape:pb-4 pt-[calc(env(safe-area-inset-top,0px)+6.5rem)] md:pt-[calc(env(safe-area-inset-top,0px)+3rem+max(52px,2.75rem))] compact-landscape:pt-[calc(env(safe-area-inset-top,0px)+0.5rem+max(52px,2.75rem))]",
         WATCH_PAGE_RAIL_PADDING_CLASSES,
       )}
       data-testid="watch-home-tv-overlay"
@@ -624,7 +636,9 @@ function WatchHomeTvOverlay({
           <div
             ref={actionsRef}
             data-testid="watch-home-tv-actions"
-            className="mt-3 flex flex-nowrap items-center gap-x-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
+            // Wraps rather than squeezing: on the narrowest phones the
+            // timeline drops to its own line instead of truncating "Watch Now".
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
           >
             <PrimaryAction
               slide={activeSlide}
@@ -656,9 +670,11 @@ function WatchHomeTvOverlay({
                 animationKey={ringAnimationKey}
                 buffering={isBuffering}
                 onSelectSlide={onSelectSlide}
+                onToggleUserPaused={onToggleUserPaused}
                 paused={isTurnHeld}
                 size="compact"
                 slides={slides}
+                userPaused={isUserPaused}
               />
             </div>
           </div>
@@ -671,9 +687,11 @@ function WatchHomeTvOverlay({
           animationKey={ringAnimationKey}
           buffering={isBuffering}
           onSelectSlide={onSelectSlide}
+          onToggleUserPaused={onToggleUserPaused}
           paused={isTurnHeld}
           size="large"
           slides={slides}
+          userPaused={isUserPaused}
         />
       </div>
     </div>
@@ -914,20 +932,25 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   animationKey,
   buffering,
   onSelectSlide,
+  onToggleUserPaused,
   paused,
   size,
   slides,
+  userPaused,
 }: {
   activeIndex: number
   advanceDurationSeconds: number
   animationKey: string
   buffering: boolean
   onSelectSlide: (slideId: string) => void
+  onToggleUserPaused: () => void
   paused: boolean
   size: "large" | "compact"
   slides: readonly WatchHomeTvCarouselSlide[]
+  userPaused: boolean
 }) {
   const t = useTranslations("WatchHome")
+  const controls = useTranslations("HeroPlayerControls")
   const items = useMemo(() => {
     const timelineItems = watchHomeVideoTimelineItems(activeIndex, slides)
 
@@ -1036,14 +1059,22 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
                 size={size}
               />
             ) : null}
+            {/* The current circle is the hero's pause control: its ring is
+                the auto-advance clock, so it is what pausing stops. */}
             <Button
               type="button"
               variant="ghost"
               size="icon"
               aria-current={isCurrent ? "true" : undefined}
-              aria-disabled={isCurrent ? "true" : undefined}
               aria-label={
-                isCurrent ? slide.title : t("showVideo", { title: slide.title })
+                isCurrent
+                  ? userPaused
+                    ? controls("play")
+                    : controls("pause")
+                  : t("showVideo", { title: slide.title })
+              }
+              data-testid={
+                isCurrent ? "watch-home-hero-pause-toggle" : undefined
               }
               onBlur={() => {
                 focusedSlideIdRef.current = null
@@ -1052,7 +1083,8 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
                 focusedSlideIdRef.current = slide.id
               }}
               onClick={() => {
-                if (!isCurrent) onSelectSlide(slide.id)
+                if (isCurrent) onToggleUserPaused()
+                else onSelectSlide(slide.id)
               }}
               className={cn(
                 buttonClassName,
@@ -1081,6 +1113,28 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
                     )}
                   />
                 </>
+              ) : null}
+              {isCurrent ? (
+                <span
+                  aria-hidden
+                  className="absolute inset-0 z-30 grid place-items-center bg-black/40 transition-colors group-hover:bg-black/55"
+                >
+                  {userPaused ? (
+                    <Play
+                      className={cn(
+                        "fill-current",
+                        size === "large" ? "size-5" : "size-4",
+                      )}
+                    />
+                  ) : (
+                    <Pause
+                      className={cn(
+                        "fill-current",
+                        size === "large" ? "size-5" : "size-4",
+                      )}
+                    />
+                  )}
+                </span>
               ) : null}
               <span
                 aria-hidden
@@ -1129,6 +1183,7 @@ export function WatchHomeTvCarousel({
     isBuffering,
     isTurnHeld,
     isMuted,
+    isUserPaused,
     leavingSlide,
     mediaReady,
     playbackTimeSeconds,
@@ -1136,6 +1191,7 @@ export function WatchHomeTvCarousel({
     selectSlide,
     slides: timelineSlides,
     toggleMuted,
+    toggleUserPaused,
     videoRef,
   } = useWatchHomeTvCarousel(carouselSlides, sequence, {
     playbackHeld: watchModalActive,
@@ -1215,7 +1271,10 @@ export function WatchHomeTvCarousel({
           } as CSSProperties
         }
         className={cn(
-          "relative mx-auto w-full max-w-[1920px] bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+          // `min-h-min` lets the frame grow past its fitted height only when
+          // the overlay copy needs more room (large text); otherwise the
+          // height below is used as before.
+          "relative mx-auto flex min-h-min w-full max-w-[1920px] flex-col justify-end bg-black transition-[height] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           isMuted && "cursor-pointer",
           isMuted
             ? // Short enough for the categories rail to sit fully inside the
@@ -1252,9 +1311,11 @@ export function WatchHomeTvCarousel({
           isBuffering={isBuffering}
           isTurnHeld={isTurnHeld}
           isMuted={isMuted}
+          isUserPaused={isUserPaused}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
           onToggleMuted={toggleMuted}
+          onToggleUserPaused={toggleUserPaused}
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
