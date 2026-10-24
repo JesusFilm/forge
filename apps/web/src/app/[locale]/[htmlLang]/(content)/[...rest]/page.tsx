@@ -535,7 +535,7 @@ async function getDownloadButtonLabel(
   })
   if (!useUpdatedCtaCopy) return undefined
 
-  const messages = (await import(`../../../../../messages/${locale}.json`))
+  const messages = (await import(`../../../../../../messages/${locale}.json`))
     .default as { DownloadButton?: { saveVideo?: string } }
   return messages.DownloadButton?.saveVideo ?? "Save Video"
 }

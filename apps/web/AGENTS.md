@@ -14,6 +14,7 @@ Scope: `apps/web`.
 - Read data via `@forge/admin-graphql` operations only (admin's GraphQL surface).
 - Add `loading.tsx` for async routes and `error.tsx` at route segments.
 - Keep preview/revalidate endpoints token-gated.
+- Keep normal Watch routes and loading shells in `[locale]/[htmlLang]/(content)`; fixed hard/soft recovery sentinels remain outside its loading boundary.
 - Export route metadata where relevant.
 - For any user-visible `/watch` link in a button, card, carousel, modal, or component, pass the public audio language slug to the route builders in `src/lib/routes.ts`. Eligible English content canonically omits `english.html`; non-English stays explicit. A content slug that is also a public language home stays explicit-English.
 - Keep search in the global modal surface. Do not add buttons, cards, or generated links to `/watch/search`, `/watch/search.html/search.html`, or query-driven search URLs; use the root modal fallback instead.
@@ -26,3 +27,9 @@ Scope: `apps/web`.
 - Import internals from other apps.
 - Handwrite API client logic duplicated from generated clients.
 - Do not use the internal message-catalog locale key (`en`, `es`, etc.) as a public `/watch` URL segment. `/watch/foo.html/en.html` is wrong: eligible English is `/watch/foo.html`, while explicit compatibility/internal paths use `/watch/foo.html/english.html`.
+
+Soft recovery pages live in the URL-transparent `(recovery)` group with their
+own loading boundary, preserving a streamed shell while optional recovery
+metadata resolves. Hard sentinels remain outside both loading groups. The
+production regression delays recovery GraphQL by 1500ms and checks that headers
+arrive before its body completes.

@@ -33,7 +33,7 @@ vi.mock("@/i18n/client-messages", async (importOriginal) => {
   }
 })
 
-import WatchHistoryPage from "@/app/[locale]/[htmlLang]/history/page"
+import WatchHistoryPage from "@/app/[locale]/[htmlLang]/(content)/history/page"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 describe("/history route", () => {

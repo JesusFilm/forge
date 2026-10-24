@@ -2249,7 +2249,7 @@ describe("resolveWatchVideoBySlug — runtime audio-language identity", () => {
 
   it("passes a kebab slug the compiled corpus does not know through as languageSlug without needing the manifest", async () => {
     // SYNTHETIC (2026-09-16): the page's `classify()` in
-    // app/[locale]/[htmlLang]/[...rest]/page.tsx and the proxy only admit a
+    // app/[locale]/[htmlLang]/(content)/[...rest]/page.tsx and the proxy only admit a
     // corpus-miss slug the manifest lists, so production never reaches this
     // function with a null manifest AND an unadmitted slug. The case pins
     // the shape-rule fallback (rule 3 in the helper's docstring) on its own.
@@ -2355,7 +2355,7 @@ describe("resolveWatchVideoBySlug — runtime audio-language identity", () => {
 
   it("survives a manifest fetch rejection by falling back to the shape rule", async () => {
     // SYNTHETIC (2026-09-16): `classify()` in
-    // app/[locale]/[htmlLang]/[...rest]/page.tsx already awaited the manifest
+    // app/[locale]/[htmlLang]/(content)/[...rest]/page.tsx already awaited the manifest
     // before content runs and 404s a slug it cannot admit, so a rejected
     // fetch here only reaches this function when the manifest module has no
     // cached copy to serve. Pins the `.catch(() => null)` branch on its own.

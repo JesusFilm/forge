@@ -79,7 +79,10 @@ try {
     "dir",
   )
   const routeSource = await readFile(
-    join(webRoot, "src/app/[locale]/[htmlLang]/videos/[languageSlug]/page.tsx"),
+    join(
+      webRoot,
+      "src/app/[locale]/[htmlLang]/(content)/videos/[languageSlug]/page.tsx",
+    ),
     "utf8",
   )
   const aliases = Object.fromEntries(
