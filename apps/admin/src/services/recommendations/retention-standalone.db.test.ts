@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import { readFileSync } from "node:fs"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { compositionGraphFixture } from "./composition/graph.test-fixture"
 import { compositionDigest } from "./composition/policy"
@@ -823,9 +823,34 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         FOR EACH ROW EXECUTE FUNCTION owned_retention_slow_projection()
       `)
       try {
-        await expect(
-          purgeExpiredRecommendationRequests(db, now),
-        ).rejects.toThrow(/transaction|deadline|timeout/i)
+        const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+        let diagnosticLog: unknown[][] = []
+        try {
+          await expect(
+            purgeExpiredRecommendationRequests(db, now),
+          ).rejects.toThrow(/transaction|deadline|timeout/i)
+        } finally {
+          diagnosticLog = [...logged.mock.calls]
+          logged.mockRestore()
+        }
+        expect(diagnosticLog).toHaveLength(1)
+        const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
+        expect(diagnostic.failed[0]).toMatchObject({
+          label: "projection_run_page",
+          stage: "operation",
+          operationMs: null,
+        })
+        expect(diagnostic.failed[0].incompleteStageElapsedMs).toBeGreaterThan(
+          4_000,
+        )
+        expect(
+          diagnostic.precedingCompleted.some(
+            (phase: { label: string }) =>
+              phase.label === "delete_request_roots",
+          ),
+        ).toBe(true)
+        expect(diagnostic.fallbackLedger.outcome).toBe("succeeded")
+        expect(JSON.stringify(diagnostic)).not.toContain(requestId)
         const failed = await db.recommendationRetentionRun.findFirstOrThrow({
           orderBy: { startedAt: "desc" },
         })

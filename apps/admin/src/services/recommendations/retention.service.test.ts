@@ -901,10 +901,29 @@ describe("recommendation retention service", () => {
     prisma.recommendationRetentionRun.update.mockRejectedValueOnce(
       new Error("skip ledger unavailable"),
     )
-
-    await expect(
-      purgeExpiredRecommendationRequests(prisma as never),
-    ).rejects.toThrow("skip ledger unavailable")
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    let diagnosticLog: unknown[][] = []
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toThrow("skip ledger unavailable")
+    } finally {
+      diagnosticLog = [...logged.mock.calls]
+      logged.mockRestore()
+    }
+    expect(diagnosticLog).toHaveLength(1)
+    const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
+    expect(diagnostic.errors).toEqual({
+      phase: {
+        class: "RecommendationConflictError",
+        prismaCode: null,
+        sqlstate: null,
+      },
+      terminal: null,
+      fallbackLedger: { class: "Error", prismaCode: null, sqlstate: null },
+    })
+    expect(diagnostic.fallbackLedger.outcome).toBe("failed")
+    expect(JSON.stringify(diagnostic)).not.toContain("skip ledger unavailable")
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
 
@@ -913,6 +932,7 @@ describe("recommendation retention service", () => {
     let clock = 0
     let lockAttempts = 0
     const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
     transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
       if (query.sql.includes("pg_try_advisory_xact_lock")) {
         if (++lockAttempts === 1) clock = 4_600
@@ -945,8 +965,10 @@ describe("recommendation retention service", () => {
           }),
         }),
       )
+      expect(logged).not.toHaveBeenCalled()
     } finally {
       now.mockRestore()
+      logged.mockRestore()
     }
   })
 
@@ -954,6 +976,7 @@ describe("recommendation retention service", () => {
     const { prisma, transaction } = buildPrisma()
     let clock = 0
     const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
     prisma.$transaction
       .mockImplementationOnce(async (callback) => {
         clock = 4_600
@@ -969,8 +992,27 @@ describe("recommendation retention service", () => {
           data: expect.objectContaining({ status: "FAILED" }),
         }),
       )
+      expect(logged).toHaveBeenCalledTimes(1)
+      const diagnostic = JSON.parse(String(logged.mock.calls[0]?.[0]))
+      expect(diagnostic).toMatchObject({
+        errors: {
+          phase: { class: "Error" },
+          terminal: { class: "Error" },
+          fallbackLedger: null,
+        },
+        failed: [
+          { label: "select_request_roots" },
+          { label: "terminal_budget_yield" },
+        ],
+        terminal: { label: "terminal_budget_yield" },
+        fallbackLedger: { outcome: "succeeded" },
+      })
+      expect(JSON.stringify(diagnostic)).not.toContain(
+        "terminal write timed out",
+      )
     } finally {
       now.mockRestore()
+      logged.mockRestore()
     }
   })
 
