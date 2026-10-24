@@ -2297,6 +2297,49 @@ describe("WatchHomePage", () => {
     ).toBe(false)
   })
 
+  // feat-763: the link is named by the visible title, so its image alt would
+  // read the title twice; an untitled card keeps the alt as its only name.
+  it("keeps card image alt text only when the card has no title", async () => {
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [{ ...makeCard({ href: null }), eyebrow: "Featured" }],
+            sections: [
+              {
+                id: "alts",
+                eyebrow: "Alts",
+                title: "Alt Cards",
+                description: null,
+                layout: "grid",
+                orientation: "horizontal",
+                showSequenceNumbers: false,
+                cards: [
+                  makeCard({
+                    id: "titled",
+                    imageUrl: "https://cdn.example/a.jpg",
+                  }),
+                  makeCard({
+                    id: "untitled",
+                    title: " ",
+                    imageUrl: "https://cdn.example/b.jpg",
+                  }),
+                ],
+              },
+            ],
+          })}
+        />,
+      )
+    })
+
+    const alt = (src: string) =>
+      container
+        .querySelector(`[role="img"][data-src="${src}"]`)
+        ?.getAttribute("aria-label")
+    expect(alt("https://cdn.example/a.jpg")).toBe("")
+    expect(alt("https://cdn.example/b.jpg")).toBe("Jesus still")
+  })
+
   it("renders an unlinked fallback card when href is missing", async () => {
     await act(async () => {
       root.render(

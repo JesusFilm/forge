@@ -63,7 +63,7 @@ export function WhatsNewFaq({
     >
       <div className={`${contentClass} py-16 sm:py-20 lg:py-24`}>
         <div className="max-w-2xl">
-          <p className={`${WATCH_FAQ_EYEBROW_CLASS} text-[#131111]/55`}>
+          <p className={`${WATCH_FAQ_EYEBROW_CLASS} text-[#131111]/65`}>
             {WHATS_NEW_FAQ.eyebrow}
           </p>
           <h2

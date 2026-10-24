@@ -659,7 +659,7 @@ export function WhatsNewNoteBoard({ contentClass }: { contentClass: string }) {
                region, which traps the page scroll on a phone. */
             className="relative min-h-[35rem] w-full rounded-xl pt-11 pb-4"
           >
-            <p className="pointer-events-none absolute inset-x-0 top-4 text-center text-xs font-semibold tracking-[0.28em] text-[#2c1a0e]/35 uppercase">
+            <p className="pointer-events-none absolute inset-x-0 top-4 text-center text-xs font-semibold tracking-[0.28em] text-[#2c1a0e]/65 uppercase">
               {board.title}
             </p>
 
