@@ -183,7 +183,7 @@ export function WatchNextSteps({
           )}
         >
           <div className="min-h-0 min-w-0">
-            <div className={cn("grid min-w-0 gap-6")}>
+            <div className={cn("grid min-w-0 grid-cols-1 gap-6")}>
               {/* Persona journey — on the Partner tab the panel shows it
                   only behind the real account session, so a signed-out
                   visitor sees only the promo + log-in. */}

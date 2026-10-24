@@ -153,11 +153,9 @@ test.describe("published audience configuration", () => {
     await expect(page.getByTestId("watch-home-tv-carousel")).toBeVisible()
     const band = page.getByTestId("watch-home-role-band")
     await expect(band).toHaveCount(1)
-    expect(
-      (await tabs(page).getByRole("tab").allInnerTexts()).map((label) =>
-        label.trim(),
-      ),
-    ).toEqual(config.roles.map((role) => role.label))
+    await expect(tabs(page).getByRole("tab")).toHaveText(
+      config.roles.map((role) => role.label),
+    )
     await expect(page.getByTestId("watch-next-steps")).toHaveCount(0)
     await expect(page.getByTestId("watch-role-journey")).toHaveCount(0)
     for (const role of config.roles) {
@@ -180,11 +178,9 @@ test.describe("published audience configuration", () => {
     const frame = page.getByTestId("watch-next-steps")
     await expect(frame).toHaveCount(1)
     await expect(frame.getByRole("tab")).toHaveCount(0)
-    expect(
-      (await tabs(page).getByRole("tab").allInnerTexts()).map((label) =>
-        label.trim(),
-      ),
-    ).toEqual(config.roles.map((role) => role.label))
+    await expect(tabs(page).getByRole("tab")).toHaveText(
+      config.roles.map((role) => role.label),
+    )
     for (const role of config.roles) {
       await selectRole(page, role)
       await expect(frame).toHaveAttribute("data-role", role.id)
