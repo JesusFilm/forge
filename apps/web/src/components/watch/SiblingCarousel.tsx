@@ -317,7 +317,7 @@ export function SiblingCarousel({
                 <Link
                   href={parentHref}
                   data-testid="sibling-carousel-parent-title"
-                  className="inline-flex min-w-0 items-center gap-1.5 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:outline-none"
+                  className="inline-flex min-w-0 items-center gap-1.5 rounded-sm pe-1 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset focus-visible:outline-none"
                 >
                   <ArrowLeft
                     aria-hidden="true"
@@ -389,7 +389,7 @@ export function SiblingCarousel({
               <Link
                 href={parentHref}
                 data-testid="sibling-carousel-parent-title"
-                className="inline-flex min-w-0 items-center gap-1.5 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:outline-none"
+                className="inline-flex min-w-0 items-center gap-1.5 rounded-sm pe-1 font-bold text-stone-50 hover:text-white hover:underline focus-visible:text-white focus-visible:underline focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-inset focus-visible:outline-none"
               >
                 <ArrowLeft
                   aria-hidden="true"

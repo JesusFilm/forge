@@ -42,6 +42,7 @@ export function FloatingSearchBar({
       aria-hidden={chromeHidden || undefined}
       display={display}
       mobileDisplay={isPlaceholder ? t("openSearch") : undefined}
+      mobileShortDisplay={isPlaceholder ? t("submitSearch") : undefined}
       isPlaceholder={isPlaceholder}
       className={`h-[52px] w-full ${openClass}`}
     />
