@@ -467,6 +467,11 @@ export function HeroPlayer({
         trackEl.src = subtitleVttSrc
         trackEl.default = true
         trackEl.setAttribute("data-subtitle-track", "true")
+        // Declare the language for assistive tech and the native track
+        // menu. The label stays the forge sentinel (see subtitle-track.ts).
+        if (subtitleLanguageCode) {
+          trackEl.srclang = subtitleLanguageCode.toLowerCase()
+        }
         video.appendChild(trackEl)
         trackEl.track.mode = "showing"
         forgeTrack = trackEl.track
@@ -482,7 +487,7 @@ export function HeroPlayer({
     return () => {
       tracks.removeEventListener("addtrack", onAddTrack)
     }
-  }, [subtitleVttSrc, player])
+  }, [subtitleVttSrc, subtitleLanguageCode, player])
 
   const [chromeRevealed, setChromeRevealed] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
@@ -531,6 +536,21 @@ export function HeroPlayer({
     if (!chromeRevealed) return
     onPlayerActivated?.(activationInitiationRef.current)
   }, [chromeRevealed, onPlayerActivated])
+
+  // Revealing the chrome unmounts the "Watch now" pill. When a keyboard user
+  // pressed it, focus would drop to <body>, where Space scrolls the page and
+  // the player shortcuts never fire. Hand focus to the chrome's play/pause
+  // button instead; focus that already moved somewhere real is left alone.
+  const focusChromeAfterRevealRef = useRef(false)
+  useEffect(() => {
+    if (!chromeRevealed || !focusChromeAfterRevealRef.current) return
+    focusChromeAfterRevealRef.current = false
+    const active = document.activeElement
+    if (active != null && active !== document.body) return
+    document
+      .querySelector<HTMLElement>('[data-testid="hero-chrome-play"]')
+      ?.focus({ preventScroll: true })
+  }, [chromeRevealed])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1324,11 +1344,16 @@ export function HeroPlayer({
     if (!playerActivated) {
       activatePlayerForIntent()
       player = playerRef.current
-      if (!player) {
-        pendingSoundIntentRef.current = pillState
-      }
     }
-    if (!player) return
+    // Queue the intent whenever the player is not attached yet, including
+    // when an Enter keydown already activated it: Enter's keydown runs
+    // activatePlayerForIntent before its click lands here, so gating the
+    // queue on !playerActivated dropped keyboard "Watch now" on the floor
+    // (silent preview, no chrome).
+    if (!player) {
+      pendingSoundIntentRef.current = pillState
+      return
+    }
 
     pendingSoundIntentRef.current = null
     runSoundIntent(player, pillState)
@@ -1361,10 +1386,12 @@ export function HeroPlayer({
     (event: KeyboardEvent<HTMLButtonElement>) => {
       if (event.key === " ") {
         event.preventDefault()
+        focusChromeAfterRevealRef.current = true
         handleUnmuteClick()
         return
       }
       if (event.key === "Enter") {
+        focusChromeAfterRevealRef.current = true
         activatePlayerForIntent()
       }
     },
