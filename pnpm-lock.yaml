@@ -576,6 +576,9 @@ importers:
       '@forge/admin-graphql':
         specifier: workspace:*
         version: link:../../packages/admin-graphql
+      '@forge/feature-flags':
+        specifier: workspace:*
+        version: link:../../packages/feature-flags
       '@forge/shorts-compositions':
         specifier: workspace:*
         version: link:../../packages/shorts-compositions

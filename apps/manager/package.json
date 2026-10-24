@@ -19,6 +19,7 @@
     "@aws-sdk/client-s3": "^3.0.0",
     "@aws-sdk/s3-request-presigner": "^3.0.0",
     "@forge/admin-graphql": "workspace:*",
+    "@forge/feature-flags": "workspace:*",
     "@forge/shorts-compositions": "workspace:*",
     "@forge/studio-contracts": "workspace:*",
     "@forge/video-player": "workspace:*",

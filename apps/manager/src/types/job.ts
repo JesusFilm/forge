@@ -93,10 +93,24 @@ export type ShortsJobOptions = {
   requestedBy?: string
 }
 
+/**
+ * Which workflow engine owns a job. Stamped once at creation from the runtime
+ * engine flag and read back via `readEngineStamp()` (see `@/lib/engine-stamp`).
+ * Absent / legacy / corrupt values resolve to "workflow" — the engine whose
+ * dependency stays installed through Phase 1 of the Mastra migration, so an
+ * unstamped in-flight job belongs to it. Stored inside `options` JSON so no
+ * Admin schema change is required.
+ */
+export type EnrichmentEngine = "workflow" | "mastra"
+
 export interface JobOptions {
   generateVoiceover?: boolean
   uploadMux?: boolean
   notifyCms?: boolean
+  engine?: EnrichmentEngine
+  currentRunId?: string
+  dispatchedAt?: string
+  callbackSequences?: Partial<Record<WorkflowStepName, number>>
   smartCrop?: SmartCropJobOptions
   shorts?: ShortsJobOptions
 }

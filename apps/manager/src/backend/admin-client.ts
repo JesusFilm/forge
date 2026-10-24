@@ -118,6 +118,7 @@ type UpdateAdminJobInput = Partial<
     | "sourceCollectionTitle"
     | "sourceMediaTitle"
     | "requestedLanguageAbbreviations"
+    | "options"
   >
 >
 

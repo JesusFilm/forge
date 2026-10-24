@@ -2,7 +2,7 @@
 title: "pnpm patchedDependencies breaks filtered Docker installs unless patches/ is COPYed"
 category: build-errors
 date: 2026-06-11
-last_updated: 2026-08-01
+last_updated: 2026-10-24
 tags: [pnpm, docker, monorepo, patched-dependencies, railway, shorts-worker]
 module: apps/shorts-worker
 problem_type: build_error
@@ -69,3 +69,35 @@ The regression gate must execute the exact Docker `build` target, including
 both Remotion prebundles. Package tests alone do not prove that manifests,
 ambient types, source imports, and runtime workspace symlinks are present in
 the container's staged filesystem.
+
+## Manager feature-flags closure (PR #1087, feat-789)
+
+Manager's package build passed in the complete monorepo, but its production
+image failed during Next compilation with `Can't resolve '@forge/feature-flags'`.
+The new dependency was declared in Manager and the lockfile; the Dockerfile
+omitted both its manifest before the filtered frozen install and its source
+before build. Copying only the source after install would leave its SDK
+dependencies outside the installed workspace closure.
+
+Supply both COPY entries and include `packages/feature-flags/**` in the image
+workflow's pull-request and main-push path filters and Railway source watch list.
+Keep the existing base digest, CA filtering, frozen install, media toolchain and image gates intact.
+Extend the actual-image network-disabled smoke to authenticate with a dummy
+service bearer and read `GET /api/admin/engine-flag`: the compiled resolver must
+return `{ engine: "workflow", override: null }` with no SDK key or flag settings.
+This exercises the shipped dependency path; a test that merely matches COPY
+lines cannot establish runtime resolution.
+
+An offline frozen install and real build against that staged file set then
+exposed a second missing boundary: the existing TypeScript include set checks
+`enrichment-callback.contract.test.ts`, which imports two shared JSON fixtures
+under `docs/fixtures/`. Copy `manager-enrichment-steps.json` and
+`manager-enrichment-callbacks.json` at their existing repository paths before
+build, with matching CI/Railway watch paths. Keep test typechecking enabled.
+Validate the resulting staged standalone server, not only the complete checkout.
+
+Treat package builds, standalone smoke and actual-container acceptance as
+separate evidence. If Docker is inaccessible or its storage is constrained,
+record that qualification and retain the actual image build/trust/media/smoke
+CI requirements. Do not redirect a build with an unsupported flag, change the
+global daemon, or infer image success from a green package build.

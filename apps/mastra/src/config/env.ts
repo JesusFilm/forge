@@ -336,6 +336,7 @@ const envSchema = z.object({
     .default("development"),
   NEXT_PHASE: z.string().optional(),
   MASTRA_SERVICE_API_KEYS: z.string().min(1).optional(),
+  MASTRA_ENRICHMENT_API_KEYS: z.string().min(1).optional(),
   // Human devotional approval lane. Must be disjoint from the shared service
   // pool; unset keeps resume fail-closed until mastra-gateway is provisioned.
   DEVOTIONAL_APPROVAL_API_KEYS: z.string().min(1).optional(),
@@ -372,6 +373,13 @@ const envSchema = z.object({
   AI_CHAT_TITLE_REPAIR_ENABLED: z.string().optional(),
   MASTRA_STORAGE_BACKEND: z.enum(["postgres", "memory"]).default("postgres"),
   MASTRA_STORAGE_DIR: z.string().min(1).optional(),
+  MANAGER_ENRICHMENT_CALLBACK_API_KEY: z.string().min(1).optional(),
+  MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10_000),
+  MANAGER_ENRICHMENT_CALLBACK_URL: z.string().url().optional(),
   OPENAI_EMBEDDINGS_BASE_URL: z
     .string()
     .url()
@@ -1000,6 +1008,9 @@ export const env = envSchema.parse({
   MASTRA_SERVICE_API_KEYS: emptyToUndefined(
     process.env.MASTRA_SERVICE_API_KEYS,
   ),
+  MASTRA_ENRICHMENT_API_KEYS: emptyToUndefined(
+    process.env.MASTRA_ENRICHMENT_API_KEYS,
+  ),
   DEVOTIONAL_APPROVAL_API_KEYS: emptyToUndefined(
     process.env.DEVOTIONAL_APPROVAL_API_KEYS,
   ),
@@ -1029,6 +1040,15 @@ export const env = envSchema.parse({
   ),
   MASTRA_STORAGE_BACKEND: emptyToUndefined(process.env.MASTRA_STORAGE_BACKEND),
   MASTRA_STORAGE_DIR: emptyToUndefined(process.env.MASTRA_STORAGE_DIR),
+  MANAGER_ENRICHMENT_CALLBACK_API_KEY: emptyToUndefined(
+    process.env.MANAGER_ENRICHMENT_CALLBACK_API_KEY,
+  ),
+  MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS: emptyToUndefined(
+    process.env.MANAGER_ENRICHMENT_CALLBACK_TIMEOUT_MS,
+  ),
+  MANAGER_ENRICHMENT_CALLBACK_URL: emptyToUndefined(
+    process.env.MANAGER_ENRICHMENT_CALLBACK_URL,
+  ),
   OPENAI_EMBEDDINGS_BASE_URL: emptyToUndefined(
     process.env.OPENAI_EMBEDDINGS_BASE_URL,
   ),

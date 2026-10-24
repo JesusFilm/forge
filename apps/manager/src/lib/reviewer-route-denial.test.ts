@@ -1,5 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
+const { resolveEnrichmentEngineMock } = vi.hoisted(() => ({
+  resolveEnrichmentEngineMock: vi.fn(async () => "workflow"),
+}))
+
+// Role-denial coverage must reach the real guard without server-only flag bootstrap.
+vi.mock("@/lib/enrichment-engine", () => ({
+  resolveEnrichmentEngine: resolveEnrichmentEngineMock,
+}))
+
 let reviewerCookie = ""
 let operatorCookie = ""
 
@@ -87,6 +96,7 @@ describe("reviewer denial at existing route boundaries", () => {
     expect(responses.map((response) => response.status)).toEqual([
       401, 401, 401,
     ])
+    expect(resolveEnrichmentEngineMock).not.toHaveBeenCalled()
   })
 
   it("denies Smart Crop and Shorts operator mutations", async () => {
