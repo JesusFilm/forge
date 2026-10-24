@@ -105,3 +105,18 @@ own loading boundary, preserving a streamed shell while optional recovery
 metadata resolves. Hard sentinels remain outside both loading groups. The
 production regression delays recovery GraphQL by 1500ms and checks that headers
 arrive before its body completes.
+
+## Cache policy also needs renderer proof
+
+A cold503/no-snapshot request with a compiled public language still admits
+fallback content. Its page can resolve to not-found. Next's force-static content
+renderer overwrote the proxy no-store header and stored that negative (MISS then
+HIT); a manifest-only language instead took bounded recovery and concealed it.
+
+Select an internal force-dynamic renderer for already-admitted content while
+authority is inconclusive. Reuse the content page and chrome, preserve subtitle
+intent and re-prove the same renderer on internal re-entry. Keep the positive
+root and fresh admitted content static. Test compiled and manifest-only language
+branches against actual production documents, including repeated requests and
+positive fallback content. Route groups also affect Next's sourceRoute hash:
+cache diagnostics must follow the actual build owner, including `(content)`.

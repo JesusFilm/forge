@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 import { proxy } from "./proxy"
+import { WATCH_INTERNAL_REWRITE_HEADER } from "./lib/watch-rewrite-headers"
 import {
   canWatchRouteManifestProveMiss,
   clearWatchRouteManifestCache,
@@ -154,7 +155,7 @@ describe("proxy manifest negative-proof freshness", () => {
       const outagePositive = await request("/jesus.html/english.html")
       expect(outagePositive.status).toBe(200)
       expect(outagePositive.headers.get("x-middleware-rewrite")).toContain(
-        "/en/en/jesus.html/english.html",
+        "/en/en/unconfirmed/jesus.html/english.html",
       )
       expect(outagePositive.headers.get("cache-control")).toBe(
         "private, no-store, max-age=0",
@@ -512,5 +513,77 @@ describe("proxy manifest negative-proof freshness", () => {
     expect(init?.cache).toBe("no-store")
     expect(init?.redirect).toBe("error")
     expect(init?.signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
+describe("inconclusive admitted content renderer", () => {
+  it.each(["english", "spanish-latin-american"])(
+    "retains compiled %s fallback and re-proves its uncached internal owner",
+    async (language) => {
+      upstream = "503"
+      const publicPath = `/cold-content.html/${language}.html?subtitles=english`
+      const first = await request(publicPath)
+      const rewritten = new URL(first.headers.get("x-middleware-rewrite")!)
+      const target = rewritten.pathname + rewritten.search
+      expect(first.status).toBe(200)
+      expect(target).toContain(
+        `/unconfirmed/cold-content.html/${language}.html`,
+      )
+      expect(first.headers.get("cache-control")).toContain("no-store")
+      expect(first.headers.get("x-robots-tag")).toBeNull()
+      expect(target).toContain("/__subtitle-english")
+      const headers = {
+        [WATCH_INTERNAL_REWRITE_HEADER]: publicPath.split("?")[0]!,
+        "x-forge-watch-subtitle-intent-rewrite": "english",
+      }
+      const reentry = await proxy(
+        new NextRequest(`https://viewer.fixture.test${target}`, { headers }),
+      )
+      expect(reentry.headers.get("x-middleware-next")).toBe("1")
+      // The same claim cannot bypass the uncached owner by naming the static page.
+      expectRecovery(
+        await proxy(
+          new NextRequest(
+            `https://viewer.fixture.test${target.replace("/unconfirmed", "")}`,
+            { headers },
+          ),
+        ),
+        404,
+      )
+      expectRecovery(
+        await proxy(
+          new NextRequest(`https://viewer.fixture.test${target}`, {
+            headers: {
+              [WATCH_INTERNAL_REWRITE_HEADER]: "/other.html/spanish.html",
+            },
+          }),
+        ),
+        404,
+      )
+      // Direct internal paths still follow the existing de-prefix policy.
+      const direct = await proxy(
+        new NextRequest(`https://viewer.fixture.test${target}`),
+      )
+      expect(direct.headers.get("x-middleware-next")).toBeNull()
+      // The renderer choice cannot survive a successful authority replacement.
+      clearWatchRouteManifestCache()
+      upstream = snapshot
+      expectRecovery(
+        await proxy(
+          new NextRequest(`https://viewer.fixture.test${target}`, { headers }),
+        ),
+        404,
+      )
+      const positive = await request("/jesus.html/english.html")
+      expect(positive.headers.get("x-middleware-rewrite")).not.toContain(
+        "/unconfirmed/",
+      )
+    },
+  )
+
+  it("keeps the cold corpus-miss language on bounded soft recovery", async () => {
+    upstream = "503"
+    expect(PUBLIC_WATCH_LANGUAGE_SLUGS).not.toContain("spanish")
+    expectRecovery(await request("/cold-content.html/spanish.html"), 200)
   })
 })

@@ -30,7 +30,7 @@ try {
   const prefix = process.env.NEXT_CACHE_REDIS_PREFIX || "forge:web:next-cache:"
   const key = getRouteCacheKey("/en/en", {
     kind: "APP_PAGE",
-    sourceRoute: "/[locale]/[htmlLang]/page",
+    sourceRoute: "/[locale]/[htmlLang]/(content)/page",
   })
   const cap = 8 * 1024 * 1024
   const stored = await client.getRange(

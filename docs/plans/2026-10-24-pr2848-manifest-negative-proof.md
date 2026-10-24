@@ -90,3 +90,24 @@ own loading boundary, preserving a streamed shell while optional recovery
 metadata resolves. Hard sentinels remain outside both loading groups. The
 production regression delays recovery GraphQL by 1500ms and checks that headers
 arrive before its body completes.
+
+## Round 4: uncached fallback renderer and diagnostic ownership
+
+Independent round 3 reproduced cold compiled-language negative documents entering
+Next's Full Route Cache despite the proxy's no-store header. Manifest-only
+Spanish takes a different admission branch and concealed the gap. Keep existing
+admission intact; select an internal force-dynamic content renderer only for
+already-admitted manifest routes whose authority is inconclusive. Reuse the
+existing page, metadata, chrome, error and loading components under the same root.
+Fresh positive content and the root retain static rendering. Re-entry must prove
+the same public claim, subtitle intent and selected renderer; no new public
+namespace or arbitrary negative cache is introduced.
+
+Extend the actual production document regression with a cold503 compiled-English,
+compiled-Spanish and manifest-only-Spanish matrix, first/repeat negative requests,
+and admitted positive content. Preserve real-TTL fresh404, stale soft recovery,
+publication, client RSC continuity and delayed metadata streaming controls. Match
+warm positive browser loading measurements against the verified round-3 source.
+Correct the homepage diagnostic's sourceRoute to the build's `(content)/page`
+owner and verify installed Next's actual route-cache key without Redis access.
+Keep feat-790 in progress; parent assigns independent review, CI and publication.

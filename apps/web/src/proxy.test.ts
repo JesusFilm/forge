@@ -601,7 +601,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     }))
 
     const response = await proxy(makeRequest("/jesus.html"))
-    expect(rewritePath(response)).toBe("/en/en/jesus.html")
+    expect(rewritePath(response)).toBe("/en/en/unconfirmed/jesus.html")
   })
 
   it("routes a known language-less English gap to the recovery sentinel", async () => {
@@ -1280,12 +1280,12 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(internationalResponse.status).toBe(200)
     expect(internationalResponse.headers.get("location")).toBeNull()
     expect(rewritePath(internationalResponse)).toBe(
-      "/es/es-419/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
+      "/es/es-419/unconfirmed/discipleship.html/parable-of-the-sower-and-the-seed/spanish-latin-american.html",
     )
     expect(englishCompatibilityResponse.status).toBe(200)
     expect(englishCompatibilityResponse.headers.get("location")).toBeNull()
     expect(rewritePath(englishCompatibilityResponse)).toBe(
-      "/en/en/discipleship.html/parable-of-the-sower-and-the-seed/english.html",
+      "/en/en/unconfirmed/discipleship.html/parable-of-the-sower-and-the-seed/english.html",
     )
   })
 

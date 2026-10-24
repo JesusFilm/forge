@@ -11,7 +11,7 @@ test("manifest proof controls actual Next document status and recovery", async (
   request,
 }, testInfo) => {
   test.skip(!origin || !fixtureOrigin, "Requires the isolated manifest fixture")
-  test.setTimeout(160_000)
+  test.setTimeout(230_000)
   const evidence: unknown[] = []
   async function document(path: string, status: number, recovery = false) {
     const response = await request.get(`${origin}/watch/${path}`, {
@@ -45,7 +45,47 @@ test("manifest proof controls actual Next document status and recovery", async (
     expect(response.ok()).toBe(true)
   }
   try {
-    // Start with a fresh process cache and the complete generation-1 fixture.
+    // No SSR/proxy snapshot may be warmed before this first request. A compiled
+    // language admits fallback content; manifest-only Spanish cannot. Exercise
+    // both, including positive content, through the actual production renderer.
+    await control({ mode: "unavailable" })
+    for (const language of ["english", "spanish-latin-american", "spanish"]) {
+      const path = `runtime-cold-absent.html/${language}.html`
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const body = await document(path, 200)
+        const response = evidence.at(-1) as { headers: Record<string, string> }
+        expect(response.headers["cache-control"]).toContain("private")
+        expect(response.headers["cache-control"]).toContain("no-store")
+        expect(response.headers["cache-control"]).not.toContain("s-maxage")
+        expect(response.headers["x-nextjs-cache"]).not.toBe("HIT")
+        expect(response.headers["x-nextjs-prerender"]).toBeUndefined()
+        expect(body).toContain('name="robots" content="noindex')
+      }
+    }
+    for (const language of ["english", "spanish-latin-american"]) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const body = await document(
+          `runtime-positive.html/${language}.html`,
+          200,
+        )
+        expect(body).toContain("Rendered runtime-positive")
+        const response = evidence.at(-1) as { headers: Record<string, string> }
+        expect(response.headers["cache-control"]).toContain("private")
+        expect(response.headers["cache-control"]).toContain("no-store")
+        expect(response.headers["x-nextjs-cache"]).not.toBe("HIT")
+      }
+    }
+    // A corpus-miss language still follows existing cold admission policy.
+    await document("runtime-positive.html/spanish.html", 200, true)
+    await control({ mode: "fresh" })
+    await expect
+      .poll(
+        async () =>
+          (await request.get(`${origin}/watch/runtime-positive.html`)).text(),
+        { timeout: 70_000, intervals: [1000] },
+      )
+      .toContain("Rendered runtime-positive")
+    // The normal retry has now retrieved the complete generation-1 fixture.
     expect(await document("runtime-positive.html", 200)).toContain(
       "Rendered runtime-positive",
     )

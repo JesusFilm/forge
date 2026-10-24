@@ -96,7 +96,19 @@ WATCH_MANIFEST_FIXTURE_ORIGIN=http://127.0.0.1:32849 \
 pnpm exec playwright test --config playwright.manifest.config.ts
 ```
 
-The test requires two real 60-second TTL intervals. It verifies fresh ordinary
+The test requires three real 60-second retry/TTL intervals. It first forces503
+with no snapshot and checks first/repeat compiled-English, compiled-Spanish and
+manifest-only-Spanish negative documents for private/no-store, no public cache
+policy and no Full Route Cache HIT. It also verifies retained compiled-language
+fallback content. Do not warm the manifest before starting this test.
+
+Already-admitted content with inconclusive authority uses the internal
+`(content)/unconfirmed/[...rest]` force-dynamic renderer. It reuses the ordinary
+page, metadata, chrome, loading and error boundaries. Proxy no-store alone cannot
+override a force-static renderer. Fresh positives and the root stay static;
+negative documents retain noindex while fallback positive metadata is unchanged.
+
+The remaining test uses two real TTL intervals. It verifies fresh ordinary
 and language-gap 404 documents, private/no-store/noindex soft recovery after
 503 and expiry, retained last-good positives, publication recovery after the
 normal retry interval, and fresh 404s after replacement retrieval. It attaches

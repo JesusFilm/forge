@@ -110,6 +110,7 @@ type RewriteDecision =
       htmlLang: string
       pathname: string
       internalPathname?: string
+      uncachedContent?: boolean
       languageHomeSlug?: string
       manifestRoute?: WatchRouteManifestRoute
       requiresExactEpisodeAdmission?: boolean
@@ -546,11 +547,28 @@ function internalRewritePathname(
   const subtitleSuffix = subtitleLanguageSlug
     ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
     : ""
-  const internalPathname = `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  const rendererPrefix = decision.uncachedContent ? "/unconfirmed" : ""
+  const internalPathname = `/${decision.locale}/${decision.htmlLang}${rendererPrefix}${suffix}${subtitleSuffix}`
   // Keep one URL encoding across direct rewrites and re-entry admission. Some
   // routes use a decoded manifest slug for their internal target while the
   // public path arrived percent-encoded.
   return encodeURI(decodeURI(internalPathname))
+}
+
+function admittedContentRewrite(
+  rewrite: Extract<RewriteDecision, { kind: "rewrite" }>,
+  admission: Extract<ManifestAdmissionDecision, { kind: "admit" }>,
+  manifest: WatchRouteManifest | null,
+): Extract<RewriteDecision, { kind: "rewrite" }> {
+  return {
+    ...rewrite,
+    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
+    // A proxy no-store header alone is overwritten by the force-static page.
+    // Keep fallback/last-good admission, but use an uncached renderer until
+    // authority recovers. The ordinary root and fresh positives stay static.
+    uncachedContent:
+      !!rewrite.manifestRoute && !canWatchRouteManifestProveMiss(manifest),
+  }
 }
 
 function subtitleIntentForRewrite(
@@ -869,10 +887,7 @@ async function isAdmittedInternalRewrite(
   }
   if (admission.kind !== "admit") return false
 
-  const admittedRewrite = {
-    ...rewrite,
-    internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-  }
+  const admittedRewrite = admittedContentRewrite(rewrite, admission, manifest)
   const subtitleLanguageSlug = subtitleIntentForRewrite(
     request,
     admittedRewrite,
@@ -972,10 +987,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   }
   const response = rewriteToInternal(
     request,
-    {
-      ...rewrite,
-      internalPathname: admission.internalPathname ?? rewrite.internalPathname,
-    },
+    admittedContentRewrite(rewrite, admission, manifest),
     manifest,
   )
   if (rewrite.manifestRoute && !canWatchRouteManifestProveMiss(manifest)) {
