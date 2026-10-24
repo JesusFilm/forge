@@ -1,0 +1,82 @@
+---
+id: "feat-779"
+title: "Keep Node crypto polyfills out of every Watch client bundle"
+owner: "vlad"
+priority: "P1"
+status: "complete"
+start_date: "2026-10-20"
+duration: 1
+depends_on: []
+blocks: []
+tags:
+  - "web"
+  - "watch"
+  - "performance"
+---
+
+## Problem
+
+Every Watch route (home, video, series, inventory, languages, history,
+what's-new, 404) loads one client chunk of about 450 KB decoded (91 KB brotli
+locally, 135 KB as served by production on 2026-10-20) that contains only the
+browser polyfills for Node's `crypto` module: `crypto-browserify`, its
+`stream`/`buffer` shims, `pbkdf2`, `ripemd160`, `secp256k1`, `publicEncrypt`.
+No Watch browser code uses any of it.
+
+The cause is one import edge. The locale root layout renders
+`RecommendationConsentShell`, and that client component, plus
+`RecommendationCookieSettingsTrigger` and
+`RecommendationPersonalizationControl`, import three event and channel names
+from `apps/web/src/lib/recommendation-consent.ts`. That module also holds the
+server-side consent cookie helpers and imports `createHash` and `randomBytes`
+from `node:crypto`. Turbopack resolves the whole module graph for the client
+and substitutes the polyfill.
+
+Found during the 2026-10-19 overnight website audit, round 01. Evidence is
+in `docs/reports/2026-10-20-watch-website-audit-round-01.md`.
+
+## Entry Points — Read These First
+
+1. `apps/web/src/lib/recommendation-consent.ts` — server cookie helpers plus
+   the three browser event/channel constants.
+2. `apps/web/src/components/recommendations/RecommendationConsentShell.tsx`,
+   `RecommendationCookieSettingsTrigger.tsx`,
+   `RecommendationPersonalizationControl.tsx` — the client importers.
+3. `apps/web/src/app/[locale]/[htmlLang]/layout.tsx` — renders the shell on
+   every Watch route, which is why every route pays.
+
+## Grep These
+
+- `from "@/lib/recommendation-consent"` in files that start with `"use client"`
+- `from "node:crypto"` under `apps/web/src/lib`
+- `pbkdf2` in `apps/web/.next/static/chunks/*.js` after `next build`
+
+## What To Build
+
+- Move `RECOMMENDATION_CONSENT_CHANGED_EVENT`,
+  `RECOMMENDATION_CONSENT_CHANNEL` and
+  `RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT` into a dependency-free
+  `apps/web/src/lib/recommendation-consent-events.ts`.
+- Re-export them from `recommendation-consent.ts` so server callers and
+  tests keep working unchanged.
+- Point the three client components at the new module.
+- Pin the boundary with a source test: no `"use client"` module under
+  `apps/web/src` may import a module that imports `node:crypto`.
+
+## Constraints
+
+- Do not change consent, profile, recommendation or analytics behaviour. The
+  values of the three constants must stay byte-identical (the channel name is
+  shared across already-open tabs).
+- Do not add `server-only` to `recommendation-consent.ts` in this change;
+  the source test is the guard, and widening the import surface is out of
+  scope.
+
+## Verification
+
+- `pnpm --filter @forge/web exec vitest run src/lib src/components/recommendations src/components/home`
+- `pnpm --filter @forge/web typecheck` and `lint`
+- `next build`: `grep -l pbkdf2 .next/static/chunks/*.js` returns nothing.
+- Matched `next start` lab runs (same harness, same profile) on `/watch`,
+  `/watch/whats-new` and the 404 template before and after: script bytes and
+  script execution time drop; FCP/LCP/CLS do not regress.

@@ -14,7 +14,7 @@ import {
   RECOMMENDATION_CONSENT_CHANGED_EVENT,
   RECOMMENDATION_CONSENT_CHANNEL,
   RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT,
-} from "@/lib/recommendation-consent"
+} from "@/lib/recommendation-consent-events"
 import { RECOMMENDATION_PROFILE_CONTRACT } from "@/lib/recommendation-contracts"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import { RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"

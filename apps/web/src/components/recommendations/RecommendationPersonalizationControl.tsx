@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl"
 
-import { RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT } from "@/lib/recommendation-consent"
+import { RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT } from "@/lib/recommendation-consent-events"
 
 export function RecommendationPersonalizationControl() {
   const t = useTranslations("VideoRecommendations")

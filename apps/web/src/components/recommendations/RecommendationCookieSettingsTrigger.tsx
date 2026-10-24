@@ -1,6 +1,6 @@
 "use client"
 
-import { RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT } from "@/lib/recommendation-consent"
+import { RECOMMENDATION_COOKIE_SETTINGS_OPEN_EVENT } from "@/lib/recommendation-consent-events"
 
 type RecommendationCookieSettingsTriggerProps = Readonly<{
   label: string
