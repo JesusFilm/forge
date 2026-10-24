@@ -29,10 +29,40 @@ export function notRestrictedFromWatchSql(alias: string): Prisma.Sql {
   return Prisma.sql`NOT ('watch' = ANY(${Prisma.raw(alias)}.restrict_view_platforms))`
 }
 
-export function watchVisibilityWhere(
+/**
+ * Full video-row visibility gate for public (anonymous/VIEWER) reads: a
+ * non-deleted video with at least one PUBLISHED, non-deleted locale, and not
+ * restricted from the "watch" platform. EDITOR/ADMIN bypass the publish and
+ * restriction checks (still excluding soft-deleted rows) so the dashboard
+ * keeps showing DRAFT/restricted videos for review — mirrors
+ * `videoParentsFilter`/`videoChildrenFilter` in `graphql/types/video.ts`.
+ */
+export function videoVisibilityWhere(
   user: Principal | null,
 ): Prisma.VideoWhereInput {
-  return isEditorOrAdmin(user) ? {} : notRestrictedFromWatchWhere()
+  if (isEditorOrAdmin(user)) return { deletedAt: null }
+  return {
+    deletedAt: null,
+    locales: { some: { status: "PUBLISHED", deletedAt: null } },
+    ...notRestrictedFromWatchWhere(),
+  }
+}
+
+/**
+ * Status-only gate for the video library list/count paths. Deliberately
+ * narrower than `videoVisibilityWhere`: `VideoService.list`/`countActive`
+ * already get `deletedAt: null` from their own search filter and gate
+ * restriction exclusion behind the separate opt-in `excludeWatchRestricted`
+ * flag, so this covers only the publish-status half. EDITOR/ADMIN see every
+ * status so the dashboard video library keeps showing DRAFT videos for
+ * editing.
+ */
+export function videoPublishStatusWhere(
+  user: Principal | null,
+): Prisma.VideoWhereInput {
+  return isEditorOrAdmin(user)
+    ? {}
+    : { locales: { some: { status: "PUBLISHED", deletedAt: null } } }
 }
 
 export type SearchWatchabilityKind =

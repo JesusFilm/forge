@@ -881,21 +881,26 @@ async function countActiveVideos({
   category,
   collection,
   language,
+  principal,
   query,
 }: {
   category?: VideoLibraryCategory
   collection?: string
   language?: string
+  principal: Principal
   query?: string
 }) {
   const services = createServices(prisma)
   try {
-    return await services.video.countActive({
-      category,
-      collection,
-      language,
-      search: query,
-    })
+    return await services.video.countActive(
+      {
+        category,
+        collection,
+        language,
+        search: query,
+      },
+      principal,
+    )
   } catch (error) {
     if (isMissingTableError(error)) {
       return 0
@@ -1820,8 +1825,6 @@ async function loadVideoRowSlice({
   >
   let videos: VideoRowForSlice[]
   try {
-    // U2: VideoService.list dropped its `user` param. Route is gated by requireSession().
-    void principal
     if (videoIds && videoIds.length > 0) {
       // Targeted fetch for the experience editor's AI-referenced videos.
       // Raw rows feed the same locale/dub/image mapping below, which reads
@@ -1847,6 +1850,7 @@ async function loadVideoRowSlice({
       videos = await services.video.list({
         input: { category, collection, language, limit, offset, search, sort },
         query: {},
+        user: principal,
       })
     }
   } catch (error) {
@@ -2203,7 +2207,6 @@ export async function loadExperienceEditorVideoRows(
     preferredLocale?: string
   } = {},
 ) {
-  void principal
   const locale =
     compactText(options.preferredLocale) ?? (await getAdminLocale())
   const request = {
@@ -2233,6 +2236,7 @@ export async function loadExperienceEditorVideoRows(
         sort: undefined,
       },
       query: {},
+      user: principal,
     })
     const rows = await loadExperienceEditorVideoSummaryList(prisma, {
       ...request,
@@ -2324,6 +2328,7 @@ export async function loadVideoLibraryPage(
     category,
     collection,
     language,
+    principal,
     query,
   })
   const languageOptionsPromise = loadVideoLibraryLanguageOptions(language)

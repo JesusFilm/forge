@@ -87,6 +87,64 @@ describe("getWatchRouteSnapshotBySlug", () => {
     )
   })
 
+  // #1831 fix: the root fetch previously only checked `{slug, deletedAt:
+  // null}` plus the watch-restriction exclusion — a DRAFT video's root row
+  // (and everything the snapshot hangs off it) resolved for anonymous/VIEWER
+  // callers. It must now require at least one PUBLISHED, non-deleted locale,
+  // mirroring the existing `visibleVideo` gate already applied to the
+  // parent/child relation lookups in this same function.
+  it("gates the root video fetch on publish status for a non-editor caller", async () => {
+    const queryRaw = vi.fn(() => Promise.resolve([]))
+    const prisma = {
+      video: { findFirst: vi.fn().mockResolvedValue(null) },
+      videoRelation: { findMany: vi.fn().mockResolvedValue([]) },
+      bibleCitation: { findMany: vi.fn().mockResolvedValue([]) },
+      videoImage: { findMany: vi.fn().mockResolvedValue([]) },
+      videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+      videoStudyQuestion: { findMany: vi.fn().mockResolvedValue([]) },
+      $queryRaw: queryRaw,
+    }
+    const service = new VideoService(prisma as never)
+
+    await service.getWatchRouteSnapshotBySlug({
+      slug: "draft-video",
+      locale: "en",
+      user: null,
+    })
+
+    expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+      slug: "draft-video",
+      deletedAt: null,
+      locales: { some: { status: "PUBLISHED", deletedAt: null } },
+      NOT: { restrictViewPlatforms: { has: "watch" } },
+    })
+  })
+
+  it("does not gate the root video fetch on publish status for an EDITOR/ADMIN caller", async () => {
+    const queryRaw = vi.fn(() => Promise.resolve([]))
+    const prisma = {
+      video: { findFirst: vi.fn().mockResolvedValue(null) },
+      videoRelation: { findMany: vi.fn().mockResolvedValue([]) },
+      bibleCitation: { findMany: vi.fn().mockResolvedValue([]) },
+      videoImage: { findMany: vi.fn().mockResolvedValue([]) },
+      videoLocale: { findMany: vi.fn().mockResolvedValue([]) },
+      videoStudyQuestion: { findMany: vi.fn().mockResolvedValue([]) },
+      $queryRaw: queryRaw,
+    }
+    const service = new VideoService(prisma as never)
+
+    await service.getWatchRouteSnapshotBySlug({
+      slug: "draft-video",
+      locale: "en",
+      user: { id: "editor-1", role: "EDITOR" },
+    })
+
+    expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
+      slug: "draft-video",
+      deletedAt: null,
+    })
+  })
+
   describe("requested language identity (FGE-284)", () => {
     const frenchAfricanColumns = {
       requestedLanguageCoreId: "7140",
@@ -655,7 +713,7 @@ describe("VideoService", () => {
     it("returns non-deleted videos ordered by updatedAt", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: {}, query: {} })
+      await service.list({ input: {}, query: {}, user: EDITOR })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where).toHaveProperty("deletedAt", null)
@@ -665,25 +723,49 @@ describe("VideoService", () => {
     it("clamps limit to 200", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: { limit: 500 }, query: {} })
+      await service.list({
+        input: { limit: 500 },
+        query: {},
+        user: EDITOR,
+      })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.take).toBe(200)
     })
 
-    // U2 (2026-05-11): resolver authScopes is the sole gate for list/getById/
-    // getBySlug. Re-adding a `user` param here breaks this assertion.
-    it("does not require a user principal (resolver-only auth contract)", async () => {
+    // #1831 fix: list/countActive are called by both the dashboard's video
+    // library (which must keep showing DRAFT videos to editors) and the
+    // public `videos` GraphQL resolver, so `user` decides visibility —
+    // EDITOR/ADMIN see every status, everyone else sees PUBLISHED-only.
+    it("excludes non-PUBLISHED videos for a non-editor caller", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
-      await expect(
-        service.list({ input: {}, query: {} }),
-      ).resolves.not.toThrow()
+
+      await service.list({ input: {}, query: {}, user: PUBLIC_USER })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          {
+            locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          },
+        ]),
+      )
+    })
+
+    it("does not filter by status for an EDITOR/ADMIN caller (dashboard library)", async () => {
+      prisma.video.findMany.mockResolvedValueOnce([])
+
+      await service.list({ input: {}, query: {}, user: EDITOR })
+
+      const call = prisma.video.findMany.mock.calls[0][0]
+      expect(call.where).not.toHaveProperty("AND")
+      expect(call.where).not.toHaveProperty("locales")
     })
 
     it("does not exclude watch-restricted videos by default (dashboard caller)", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: {}, query: {} })
+      await service.list({ input: {}, query: {}, user: EDITOR })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where).not.toHaveProperty("NOT")
@@ -696,12 +778,14 @@ describe("VideoService", () => {
       await service.list({
         input: { excludeWatchRestricted: true },
         query: {},
+        user: PUBLIC_USER,
       })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where).toEqual({
         AND: [
           { deletedAt: null },
+          { locales: { some: { status: "PUBLISHED", deletedAt: null } } },
           { NOT: { restrictViewPlatforms: { has: "watch" } } },
         ],
       })
@@ -710,7 +794,11 @@ describe("VideoService", () => {
     it("filters across video identifiers and localized metadata when search is present", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: { search: "Jesus Film" }, query: {} })
+      await service.list({
+        input: { search: "Jesus Film" },
+        query: {},
+        user: EDITOR,
+      })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where.deletedAt).toBeNull()
@@ -740,7 +828,11 @@ describe("VideoService", () => {
     it("adds enum filters for human-readable video label and source queries", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: { search: "feature film" }, query: {} })
+      await service.list({
+        input: { search: "feature film" },
+        query: {},
+        user: EDITOR,
+      })
 
       let call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where.OR).toEqual(
@@ -748,7 +840,7 @@ describe("VideoService", () => {
       )
 
       prisma.video.findMany.mockResolvedValueOnce([])
-      await service.list({ input: { search: "mux" }, query: {} })
+      await service.list({ input: { search: "mux" }, query: {}, user: EDITOR })
 
       call = prisma.video.findMany.mock.calls[1][0]
       expect(call.where.OR).toEqual(
@@ -759,7 +851,11 @@ describe("VideoService", () => {
     it("filters through dub language and image metadata", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: { search: "english" }, query: {} })
+      await service.list({
+        input: { search: "english" },
+        query: {},
+        user: EDITOR,
+      })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where.OR).toEqual(
@@ -806,6 +902,7 @@ describe("VideoService", () => {
       await service.list({
         input: { category: "features", search: "" },
         query: {},
+        user: EDITOR,
       })
 
       let call = prisma.video.findMany.mock.calls[0][0]
@@ -820,6 +917,7 @@ describe("VideoService", () => {
       await service.list({
         input: { category: "collections", search: "" },
         query: {},
+        user: EDITOR,
       })
 
       call = prisma.video.findMany.mock.calls[1][0]
@@ -834,6 +932,7 @@ describe("VideoService", () => {
       await service.list({
         input: { category: "episodes", search: "" },
         query: {},
+        user: EDITOR,
       })
 
       call = prisma.video.findMany.mock.calls[2][0]
@@ -848,7 +947,11 @@ describe("VideoService", () => {
     it("does not add a category label filter for the all category", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: { category: "all" }, query: {} })
+      await service.list({
+        input: { category: "all" },
+        query: {},
+        user: EDITOR,
+      })
 
       const call = prisma.video.findMany.mock.calls[0][0]
       expect(call.where).toEqual({ deletedAt: null })
@@ -860,6 +963,7 @@ describe("VideoService", () => {
       await service.list({
         input: { collection: "the-story" },
         query: {},
+        user: EDITOR,
       })
 
       const call = prisma.video.findMany.mock.calls[0][0]
@@ -895,6 +999,7 @@ describe("VideoService", () => {
           search: "Jesus",
         },
         query: {},
+        user: EDITOR,
       })
 
       const call = prisma.video.findMany.mock.calls[0][0]
@@ -946,13 +1051,17 @@ describe("VideoService", () => {
     it("applies supported video library sort orders", async () => {
       prisma.video.findMany.mockResolvedValueOnce([])
 
-      await service.list({ input: { sort: "oldest" }, query: {} })
+      await service.list({ input: { sort: "oldest" }, query: {}, user: EDITOR })
 
       let call = prisma.video.findMany.mock.calls[0][0]
       expect(call.orderBy).toEqual([{ updatedAt: "asc" }, { createdAt: "asc" }])
 
       prisma.video.findMany.mockResolvedValueOnce([])
-      await service.list({ input: { sort: "created" }, query: {} })
+      await service.list({
+        input: { sort: "created" },
+        query: {},
+        user: EDITOR,
+      })
 
       call = prisma.video.findMany.mock.calls[1][0]
       expect(call.orderBy).toEqual([
@@ -1607,7 +1716,7 @@ describe("VideoService", () => {
     it("counts the same non-deleted video scope used by list", async () => {
       prisma.video.count.mockResolvedValueOnce(12)
 
-      await expect(service.countActive()).resolves.toBe(12)
+      await expect(service.countActive(undefined, EDITOR)).resolves.toBe(12)
       expect(prisma.video.count).toHaveBeenCalledWith({
         where: { deletedAt: null },
       })
@@ -1616,7 +1725,7 @@ describe("VideoService", () => {
     it("uses the same search filter as list", async () => {
       prisma.video.count.mockResolvedValueOnce(4)
 
-      await expect(service.countActive("published")).resolves.toBe(4)
+      await expect(service.countActive("published", EDITOR)).resolves.toBe(4)
 
       const call = prisma.video.count.mock.calls[0][0]
       expect(call.where.deletedAt).toBeNull()
@@ -1633,16 +1742,37 @@ describe("VideoService", () => {
       )
     })
 
+    // #1831 fix: countActive mirrors list's status gate — EDITOR/ADMIN see
+    // every status (dashboard video library count), everyone else sees only
+    // PUBLISHED videos.
+    it("excludes non-PUBLISHED videos for a non-editor caller", async () => {
+      prisma.video.count.mockResolvedValueOnce(3)
+
+      await expect(service.countActive(undefined, PUBLIC_USER)).resolves.toBe(3)
+
+      const call = prisma.video.count.mock.calls[0][0]
+      expect(call.where.AND).toEqual(
+        expect.arrayContaining([
+          {
+            locales: { some: { status: "PUBLISHED", deletedAt: null } },
+          },
+        ]),
+      )
+    })
+
     it("counts with the same category, collection, and language filters as list", async () => {
       prisma.video.count.mockResolvedValueOnce(7)
 
       await expect(
-        service.countActive({
-          category: "shortFilms",
-          collection: "the-story",
-          language: "spanish",
-          search: "story",
-        }),
+        service.countActive(
+          {
+            category: "shortFilms",
+            collection: "the-story",
+            language: "spanish",
+            search: "story",
+          },
+          EDITOR,
+        ),
       ).resolves.toBe(7)
 
       const call = prisma.video.count.mock.calls[0][0]
@@ -1702,8 +1832,23 @@ describe("VideoService", () => {
       expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
         id: "v-1",
         deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
         NOT: { restrictViewPlatforms: { has: "watch" } },
       })
+    })
+
+    // #1831 fix: a DRAFT video's scalar fields (slug, coreId, muxPlaybackId
+    // via relations, etc.) were previously reachable by id alone. getById is
+    // public-only (see file header), so this gate is unconditional.
+    it("excludes videos with no PUBLISHED locale", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getById({ id: "v-1", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toHaveProperty(
+        "locales",
+        { some: { status: "PUBLISHED", deletedAt: null } },
+      )
     })
   })
 
@@ -1724,8 +1869,21 @@ describe("VideoService", () => {
       expect(prisma.video.findFirst.mock.calls[0][0].where).toEqual({
         slug: "jf",
         deletedAt: null,
+        locales: { some: { status: "PUBLISHED", deletedAt: null } },
         NOT: { restrictViewPlatforms: { has: "watch" } },
       })
+    })
+
+    // #1831 fix: mirrors getById — a DRAFT video must not resolve by slug.
+    it("excludes videos with no PUBLISHED locale", async () => {
+      prisma.video.findFirst.mockResolvedValueOnce(null)
+
+      await service.getBySlug({ slug: "jf", query: {} })
+
+      expect(prisma.video.findFirst.mock.calls[0][0].where).toHaveProperty(
+        "locales",
+        { some: { status: "PUBLISHED", deletedAt: null } },
+      )
     })
   })
 
@@ -2265,6 +2423,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1", "core-missing", "core-2"] },
           deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
@@ -2295,6 +2454,7 @@ describe("VideoService", () => {
         where: {
           coreId: { in: ["core-1"] },
           deletedAt: null,
+          locales: { some: { status: "PUBLISHED", deletedAt: null } },
           NOT: { restrictViewPlatforms: { has: "watch" } },
         },
       })
