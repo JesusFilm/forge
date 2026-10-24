@@ -12,6 +12,7 @@ import {
   isWatchAnalyticsContractV2Enabled,
 } from "@/lib/watch-analytics-contract"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
+import { watchRumPathShape } from "@/lib/watch-rum-path-shape"
 
 const DATADOG_SERVICE = "forge-web"
 
@@ -29,6 +30,36 @@ const DATADOG_ALLOWED_TRACING_URLS = [
     propagatorTypes: ["tracecontext"],
   },
 ] satisfies NonNullable<RumInitConfiguration["allowedTracingUrls"]>
+
+type WatchRumEvent = {
+  view?: { url?: string }
+  context?: Record<string, unknown>
+}
+
+export function enrichWatchRumEvent(event: WatchRumEvent): true {
+  try {
+    const viewUrl = event.view?.url
+    if (typeof viewUrl !== "string") return true
+
+    const shape = watchRumPathShape(viewUrl)
+    if (!shape) return true
+
+    const context = event.context ?? {}
+    const existingWatch = context["watch"]
+    event.context = {
+      ...context,
+      watch: {
+        ...(existingWatch && typeof existingWatch === "object"
+          ? existingWatch
+          : {}),
+        path_shape: shape,
+      },
+    }
+  } catch {
+    // RUM enrichment is diagnostic only; it must never block event delivery.
+  }
+  return true
+}
 
 export function getDatadogRumInitConfig(): RumInitConfiguration | null {
   const applicationId = env.NEXT_PUBLIC_DATADOG_APPLICATION_ID
@@ -51,6 +82,7 @@ export function getDatadogRumInitConfig(): RumInitConfiguration | null {
     defaultPrivacyLevel: "mask-user-input",
     allowedTracingUrls: DATADOG_ALLOWED_TRACING_URLS,
     plugins: [reactPlugin()],
+    beforeSend: enrichWatchRumEvent,
   }
 }
 

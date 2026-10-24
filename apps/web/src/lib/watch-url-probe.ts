@@ -27,6 +27,8 @@ export type WatchUrlFixture = {
   requireStructuredDataCanonical?: boolean
   /** Production may 404 because this fixture intentionally adds a public route. */
   allowProductionNotFound?: boolean
+  /** Complete HTML must preload only its above-the-fold hero poster. */
+  performanceHint?: "hero-image-preload"
 }
 
 const ROOTS: readonly string[] = [
@@ -217,6 +219,9 @@ function fixturesOf(
     ...(WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS.has(path)
       ? { allowProductionNotFound: true }
       : {}),
+    ...(WATCH_HERO_IMAGE_PRELOAD_PATHS.has(path)
+      ? { performanceHint: "hero-image-preload" as const }
+      : {}),
   }))
 }
 
@@ -224,6 +229,12 @@ const WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS: ReadonlySet<string> = new Set([
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
   "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
   "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
+])
+
+const WATCH_HERO_IMAGE_PRELOAD_PATHS: ReadonlySet<string> = new Set([
+  "/watch/jesus.html",
+  "/watch/jesus.html/spanish-castilian.html",
+  "/watch/lumo-john-1-1-34.html",
 ])
 
 const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
@@ -308,8 +319,17 @@ export type ProbeResult = {
     canonicalUrls?: string[]
     openGraphUrl: string | null
   }
+  imagePreloads?: ImagePreloadIdentity[]
+  heroPoster?: { src: string | null; srcSet: string | null } | null
+  highPriorityImages?: Array<{ src: string | null; srcSet: string | null }>
   /** Set when the request failed at the transport layer (DNS, timeout, etc.). */
   error?: string
+}
+
+export type ImagePreloadIdentity = {
+  href: string | null
+  imageSrcSet: string | null
+  fetchPriority: string | null
 }
 
 export type StructuredDataContract = {
@@ -421,6 +441,7 @@ type ClassifyFixture = {
   expectedCanonicalPath?: string
   requireStructuredDataCanonical?: boolean
   allowProductionNotFound?: boolean
+  performanceHint?: "hero-image-preload"
 }
 
 function passthroughViolation(
@@ -629,6 +650,16 @@ export function classifyProbe(
       return {
         outcome: "hard-regression",
         note: `JSON-LD CONTRACT: ${violations.join("; ")}`,
+      }
+    }
+  }
+
+  if (fixture?.performanceHint === "hero-image-preload") {
+    const violations = heroImagePreloadViolations(preview)
+    if (violations.length > 0) {
+      return {
+        outcome: "hard-regression",
+        note: `IMAGE PRELOAD CONTRACT: ${violations.join("; ")}`,
       }
     }
   }
@@ -888,6 +919,132 @@ export function parseDocumentIdentity(html: string): {
   }
 }
 
+function parseImageSrcSet(value: string | null): string[] {
+  return (value ?? "")
+    .split(",")
+    .map((candidate) => candidate.trim().replace(/\s+\d+(?:w|x)$/, ""))
+    .filter(Boolean)
+}
+
+export function parseImagePreloadHints(
+  html: string,
+  linkHeader?: string | null,
+): {
+  imagePreloads: ImagePreloadIdentity[]
+  heroPoster: { src: string | null; srcSet: string | null } | null
+  highPriorityImages: Array<{ src: string | null; srcSet: string | null }>
+} {
+  const linkTags = Array.from(html.matchAll(/<link\b[^>]*>/gi), ([tag]) => tag)
+  const imagePreloads = linkTags.flatMap((tag) => {
+    const rel = (htmlAttribute(tag, "rel") ?? "").toLowerCase().split(/\s+/)
+    if (
+      !rel.includes("preload") ||
+      htmlAttribute(tag, "as")?.toLowerCase() !== "image"
+    ) {
+      return []
+    }
+    return [
+      {
+        href: htmlAttribute(tag, "href"),
+        imageSrcSet: htmlAttribute(tag, "imagesrcset"),
+        fetchPriority: htmlAttribute(tag, "fetchpriority"),
+      },
+    ]
+  })
+  const headerPreloads = (linkHeader ?? "")
+    .split(/,(?=\s*<)/)
+    .flatMap((entry) => {
+      const match = entry.match(/^\s*<([^>]+)>\s*;(.*)$/)
+      if (!match) return []
+      const params = match[2]
+      const rel = params.match(/(?:^|;)\s*rel\s*=\s*"?([^;"]+)/i)?.[1]
+      const as = params.match(/(?:^|;)\s*as\s*=\s*"?([^;"]+)/i)?.[1]
+      if (rel?.toLowerCase() !== "preload" || as?.toLowerCase() !== "image") {
+        return []
+      }
+      const fetchPriority =
+        params.match(/(?:^|;)\s*fetchpriority\s*=\s*"?([^;"]+)/i)?.[1] ?? null
+      return [{ href: match[1], imageSrcSet: null, fetchPriority }]
+    })
+
+  const imageTags = Array.from(html.matchAll(/<img\b[^>]*>/gi), ([tag]) => tag)
+  const heroTag = imageTags.find(
+    (tag) => htmlAttribute(tag, "data-testid") === "hero-player-poster",
+  )
+  const toImageIdentity = (tag: string) => ({
+    src: htmlAttribute(tag, "src"),
+    srcSet: htmlAttribute(tag, "srcset"),
+  })
+  const highPriorityImages = imageTags
+    .filter(
+      (tag) => htmlAttribute(tag, "fetchpriority")?.toLowerCase() === "high",
+    )
+    .map(toImageIdentity)
+
+  return {
+    imagePreloads: [...imagePreloads, ...headerPreloads],
+    heroPoster: heroTag ? toImageIdentity(heroTag) : null,
+    highPriorityImages,
+  }
+}
+
+export function heroImagePreloadViolations(result: ProbeResult): string[] {
+  const preloads = result.imagePreloads ?? []
+  const hero = result.heroPoster
+  const highPriorityImages = result.highPriorityImages ?? []
+  const violations: string[] = []
+
+  if (preloads.length !== 1) {
+    violations.push(
+      `expected exactly 1 image preload, found ${preloads.length}`,
+    )
+  }
+  if (!hero) violations.push("hero poster image is missing from initial HTML")
+
+  const preload = preloads[0]
+  if (preload && preload.fetchPriority?.toLowerCase() !== "high") {
+    violations.push("hero image preload is not high priority")
+  }
+
+  const sameSrcSet = (left: string | null, right: string | null) => {
+    const leftCandidates = parseImageSrcSet(left)
+    const rightCandidates = parseImageSrcSet(right)
+    return (
+      leftCandidates.length > 0 &&
+      leftCandidates.length === rightCandidates.length &&
+      leftCandidates.every(
+        (candidate, index) => candidate === rightCandidates[index],
+      )
+    )
+  }
+  if (preload && hero) {
+    const matchesHero =
+      preload.imageSrcSet && hero.srcSet
+        ? sameSrcSet(preload.imageSrcSet, hero.srcSet)
+        : preload.href != null &&
+          (preload.href === hero.src ||
+            parseImageSrcSet(hero.srcSet).includes(preload.href))
+    if (!matchesHero) {
+      violations.push("image preload candidates do not match the hero poster")
+    }
+  }
+
+  if (highPriorityImages.length !== 1) {
+    violations.push(
+      `expected exactly 1 high-priority image, found ${highPriorityImages.length}`,
+    )
+  } else if (
+    hero &&
+    highPriorityImages[0] &&
+    highPriorityImages[0].src !== hero.src &&
+    !sameSrcSet(highPriorityImages[0].srcSet, hero.srcSet)
+  ) {
+    violations.push("high-priority image does not match the hero poster")
+  }
+
+  return violations
+}
+
 /**
  * Returns the schema contract violations in a complete initial response.
  * Missing HTML/JSON-LD is intentionally treated as zero entities, so a route
@@ -960,6 +1117,9 @@ export async function probeUrl(
       const html = contentType.includes("text/html") ? await res.text() : null
       const structuredData = html ? parseJsonLdScripts(html) : undefined
       const documentIdentity = html ? parseDocumentIdentity(html) : undefined
+      const imageHints = html
+        ? parseImagePreloadHints(html, res.headers.get("link"))
+        : undefined
 
       return {
         status: res.status,
@@ -968,6 +1128,7 @@ export async function probeUrl(
         ms: Date.now() - start,
         ...(structuredData && { structuredData }),
         ...(documentIdentity && { documentIdentity }),
+        ...(imageHints && imageHints),
       }
     }
   } catch (err) {
