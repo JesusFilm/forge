@@ -33,6 +33,11 @@ const EDIT_TOKEN_TTL_MS = 30 * 60 * 1000
 const EXCHANGE_RATE_LIMIT_WINDOW_MS = 60 * 1000
 const EXCHANGE_RATE_LIMIT_MAX_ATTEMPTS = 10
 const MAX_EXCHANGE_BUCKETS = 1024
+// Rejected keys share fixed hash slots; they can never reserve verified capacity.
+const rejectedExchangeAttempts = new Map<
+  string,
+  { count: number; resetAt: number; requestFingerprint?: string }
+>()
 const MAX_TRANSITION_ATTEMPTS = 8
 const exchangeAttemptsByJob = new Map<
   string,
@@ -210,14 +215,18 @@ function withUpdatedReport(
   })
 }
 
-function isExchangeRateLimited(jobId: string, nowMs: number): boolean {
-  for (const [key, bucket] of exchangeAttemptsByJob) {
-    if (bucket.resetAt <= nowMs) exchangeAttemptsByJob.delete(key)
+function isExchangeRateLimited(
+  buckets: typeof exchangeAttemptsByJob,
+  jobId: string,
+  nowMs: number,
+): boolean {
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= nowMs) buckets.delete(key)
   }
-  const current = exchangeAttemptsByJob.get(jobId)
+  const current = buckets.get(jobId)
   if (!current || current.resetAt <= nowMs) {
-    if (exchangeAttemptsByJob.size >= MAX_EXCHANGE_BUCKETS) return true
-    exchangeAttemptsByJob.set(jobId, {
+    if (buckets.size >= MAX_EXCHANGE_BUCKETS) return true
+    buckets.set(jobId, {
       count: 1,
       resetAt: nowMs + EXCHANGE_RATE_LIMIT_WINDOW_MS,
     })
@@ -303,12 +312,49 @@ export async function exchangeSubtitleReviewLaunchCode(input: {
   jobId: string
   launchCode: string
 }): Promise<SubtitleReviewExchangeResult> {
-  if (isExchangeRateLimited(input.jobId, Date.now()))
+  // Existing verified jobs retain the ten-attempt limit, including bad codes.
+  // New keys earn a scarce bucket only after a live, unconsumed launch matches.
+  const counted =
+    (exchangeAttemptsByJob.get(input.jobId)?.resetAt ?? 0) > Date.now()
+  if (
+    counted &&
+    isExchangeRateLimited(exchangeAttemptsByJob, input.jobId, Date.now())
+  )
     return { ok: false, reason: "rate_limited" }
+  const slot = String(
+    parseInt(fingerprintSubtitleVtt(input.jobId).slice(0, 8), 16) %
+      MAX_EXCHANGE_BUCKETS,
+  )
+  const requestFingerprint = fingerprintSubtitleVtt(
+    JSON.stringify([input.jobId, input.launchCode]),
+  )
+  const rejected = rejectedExchangeAttempts.get(slot)
+  // A repeated rejected request can be refused before another job read. Hash
+  // collisions alone cannot deny a different (potentially valid) launch.
+  if (
+    !counted &&
+    rejected &&
+    rejected.resetAt > Date.now() &&
+    rejected.count >= EXCHANGE_RATE_LIMIT_MAX_ATTEMPTS &&
+    rejected.requestFingerprint === requestFingerprint
+  )
+    return { ok: false, reason: "rate_limited" }
+  const reject = (
+    reason: "job_not_found" | "invalid_launch",
+  ): SubtitleReviewFailure => {
+    // Collisions may throttle rejected requests, never a valid new capability.
+    const limited =
+      !counted &&
+      isExchangeRateLimited(rejectedExchangeAttempts, slot, Date.now())
+    const bucket = rejectedExchangeAttempts.get(slot)
+    if (!counted && bucket) bucket.requestFingerprint = requestFingerprint
+    return { ok: false, reason: limited ? "rate_limited" : reason }
+  }
+  let admitted = counted
   for (let attempt = 0; attempt < MAX_TRANSITION_ATTEMPTS; attempt++) {
     const job = await getJob(input.jobId)
     if (!job) {
-      return { ok: false, reason: "job_not_found" }
+      return reject("job_not_found")
     }
 
     const report = getSubtitleReviewReport(job.artifacts)
@@ -322,7 +368,12 @@ export async function exchangeSubtitleReviewLaunchCode(input: {
       session.consumedAt ||
       Date.parse(session.expiresAt) <= now.getTime()
     ) {
-      return { ok: false, reason: "invalid_launch" }
+      return reject("invalid_launch")
+    }
+    if (!admitted) {
+      if (isExchangeRateLimited(exchangeAttemptsByJob, input.jobId, Date.now()))
+        return { ok: false, reason: "rate_limited" }
+      admitted = true
     }
 
     const consumedAt = now.toISOString()

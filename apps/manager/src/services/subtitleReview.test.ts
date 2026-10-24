@@ -273,30 +273,127 @@ describe("review transition integrity", () => {
     })
     expect(seam.get).not.toHaveBeenCalled()
   })
-  it("bounds limiter retention and admits fresh work after expiry", async () => {
+  it("IR1F2: 1024 unverified chosen IDs cannot deny a genuine new launch", async () => {
+    const { createSubtitleReviewSession, exchangeSubtitleReviewLaunchCode } =
+      await import("./subtitleReview")
+    for (let i = 0; i < 1024; i++) {
+      await exchangeSubtitleReviewLaunchCode({
+        jobId: `missing-${i}`,
+        launchCode: "invalid",
+      })
+    }
+    const launch = await createSubtitleReviewSession({
+      jobId: "job-1",
+      sourceArtifactKey: "subtitles-fr",
+      actorId: "operator",
+    })
+    const result = await exchangeSubtitleReviewLaunchCode({
+      jobId: "job-1",
+      launchCode: new URL(launch.editorUrl).searchParams.get("launch")!,
+    })
+    expect(result.ok).toBe(true)
+  })
+  it("limits unknown and invalid known-job attempts without reserving verified capacity; expires failures", async () => {
     vi.useFakeTimers()
     try {
-      const { exchangeSubtitleReviewLaunchCode } =
+      const { createSubtitleReviewSession, exchangeSubtitleReviewLaunchCode } =
         await import("./subtitleReview")
-      for (let i = 0; i < 1024; i++) {
-        await exchangeSubtitleReviewLaunchCode({
-          jobId: `missing-${i}`,
-          launchCode: "invalid",
-        })
+      for (const jobId of ["missing", "job-1"]) {
+        const reason = jobId === "missing" ? "job_not_found" : "invalid_launch"
+        for (let i = 0; i < 10; i++)
+          expect(
+            await exchangeSubtitleReviewLaunchCode({
+              jobId,
+              launchCode: "invalid",
+            }),
+          ).toEqual({ ok: false, reason })
+        const reads = seam.get.mock.calls.length
+        expect(
+          await exchangeSubtitleReviewLaunchCode({
+            jobId,
+            launchCode: "invalid",
+          }),
+        ).toEqual({ ok: false, reason: "rate_limited" })
+        expect(seam.get).toHaveBeenCalledTimes(reads)
       }
+      const launch = await createSubtitleReviewSession({
+        jobId: "job-1",
+        sourceArtifactKey: "subtitles-fr",
+        actorId: "operator",
+      })
+      expect(
+        (
+          await exchangeSubtitleReviewLaunchCode({
+            jobId: "job-1",
+            launchCode: new URL(launch.editorUrl).searchParams.get("launch")!,
+          })
+        ).ok,
+      ).toBe(true)
+      vi.advanceTimersByTime(60_001)
       expect(
         await exchangeSubtitleReviewLaunchCode({
-          jobId: "new-job",
+          jobId: "missing",
+          launchCode: "invalid",
+        }),
+      ).toEqual({ ok: false, reason: "job_not_found" })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it("bounds verified bucket capacity, preserves admitted per-job limits and prunes expired buckets", async () => {
+    vi.useFakeTimers()
+    try {
+      const { createSubtitleReviewSession, exchangeSubtitleReviewLaunchCode } =
+        await import("./subtitleReview")
+      const launch = async (jobId: string) => {
+        const result = await createSubtitleReviewSession({
+          jobId,
+          sourceArtifactKey: "subtitles-fr",
+          actorId: "operator",
+        })
+        return new URL(result.editorUrl).searchParams.get("launch")!
+      }
+      for (let i = 0; i < 1024; i++) {
+        const id = `verified-${i}`
+        jobs.set(id, job(id))
+        expect(
+          (
+            await exchangeSubtitleReviewLaunchCode({
+              jobId: id,
+              launchCode: await launch(id),
+            })
+          ).ok,
+        ).toBe(true)
+      }
+      const code = await launch("job-1")
+      expect(
+        await exchangeSubtitleReviewLaunchCode({
+          jobId: "job-1",
+          launchCode: code,
+        }),
+      ).toEqual({ ok: false, reason: "rate_limited" })
+      for (let i = 0; i < 9; i++)
+        expect(
+          await exchangeSubtitleReviewLaunchCode({
+            jobId: "verified-0",
+            launchCode: "invalid",
+          }),
+        ).toEqual({ ok: false, reason: "invalid_launch" })
+      expect(
+        await exchangeSubtitleReviewLaunchCode({
+          jobId: "verified-0",
           launchCode: "invalid",
         }),
       ).toEqual({ ok: false, reason: "rate_limited" })
       vi.advanceTimersByTime(60_001)
       expect(
-        await exchangeSubtitleReviewLaunchCode({
-          jobId: "new-job",
-          launchCode: "invalid",
-        }),
-      ).toEqual({ ok: false, reason: "job_not_found" })
+        (
+          await exchangeSubtitleReviewLaunchCode({
+            jobId: "job-1",
+            launchCode: code,
+          })
+        ).ok,
+      ).toBe(true)
     } finally {
       vi.useRealTimers()
     }

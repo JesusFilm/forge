@@ -29,3 +29,19 @@ See `docs/plans/2026-10-24-pr752-subtitle-review-integrity.md` for this repair's
 scope. Offline injected-Prisma tests establish application behavior and query
 predicates; they do not qualify PostgreSQL engine behavior. Keep publication and
 feature completion separate from this local repair.
+
+A mounted editor can receive a different launch without remounting. Clear its
+active capability/base/save intent at that boundary and keep any old dirty text
+in a separate copyable, read-only draft until explicitly discarded. A successful
+bootstrap owner, rather than the mere presence of old bootstrap data, admits
+save. Reload may retry only the current launch's exchanged token. Every pending
+save/reload response must still belong to the current owner before applying it.
+Equal base bytes across jobs do not establish common draft ownership.
+
+Scarce limiter keys need an admission proof. Reserve verified-job buckets only
+after matching an unconsumed, unexpired launch. Rejected inputs share a separate
+fixed hash-slot cache; collisions may throttle failures but cannot reject a valid
+new capability. Cache an exact rejected request digest to refuse repeated bad
+requests before another job read. Both caches expire, remain bounded at 1024
+entries each and retain ten-attempt windows. Varied invalid codes still require
+job validation; these local controls do not qualify deployed ingress/DB capacity.

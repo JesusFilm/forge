@@ -30,6 +30,12 @@ type Props = {
   initialLaunchEnvelope: LaunchEnvelope | null
 }
 
+type Initialization = {
+  launch: LaunchEnvelope
+  token: string | null
+  promise: Promise<{ token: string; review: BootstrapReviewSessionResult }>
+}
+
 function describeManagerClientError(error: unknown): string {
   if (error instanceof ManagerClientError) {
     if (error.kind === "validation") {
@@ -89,11 +95,13 @@ export function SubtitleEditorApp({
   )
   const [pendingLoadLabel, setPendingLoadLabel] = useState("Waiting for launch")
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const initialization = useRef<{
-    launch: LaunchEnvelope
-    token: string | null
-    promise: Promise<{ token: string; review: BootstrapReviewSessionResult }>
-  } | null>(null)
+  const initialization = useRef<Initialization | null>(null)
+  const [sessionOwner, setSessionOwner] = useState<Initialization | null>(null)
+  const [loadedOwner, setLoadedOwner] = useState<Initialization | null>(null)
+  const [retainedDrafts, setRetainedDrafts] = useState<
+    { jobId: string; vtt: string }[]
+  >([])
+  const dirtyRef = useRef(false)
   const operationRef = useRef<object | null>(null)
   const saveIntent = useRef<{ id: string; vtt: string; base: string } | null>(
     null,
@@ -127,6 +135,37 @@ export function SubtitleEditorApp({
   const launchJobId = resolvedLaunch?.jobId
   const launchCode = resolvedLaunch?.launchCode
   useEffect(() => {
+    const previous = initialization.current
+    if (
+      previous &&
+      (previous.launch.jobId !== launchJobId ||
+        previous.launch.launchCode !== launchCode)
+    ) {
+      // Keep old unsaved bytes available for deliberate disposition, without
+      // carrying their base, intent or capability into another launch.
+      if (dirtyRef.current) {
+        const vtt = draftRef.current
+        setRetainedDrafts((drafts) => [
+          ...drafts,
+          { jobId: previous.launch.jobId, vtt },
+        ])
+      }
+      initialization.current = null
+      operationRef.current = null
+      setSessionOwner(null)
+      setLoadedOwner(null)
+      setEditSessionToken(null)
+      setBootstrap(null)
+      setBaseFingerprint(null)
+      saveIntent.current = null
+      draftRef.current = ""
+      setDraft("")
+      dirtyRef.current = false
+      setIsDirty(false)
+      setIsSaved(false)
+      setLastSavedRevision(null)
+      setNotice(null)
+    }
     if (!launchJobId || !launchCode) return
     let active = true
     const launch = { jobId: launchJobId, launchCode }
@@ -163,18 +202,21 @@ export function SubtitleEditorApp({
       request = owned
     }
     const owned = request
+    setSessionOwner(owned)
     setPhase("loading")
     setJobId(launch.jobId)
     setPendingLoadLabel("Loading review session")
     void owned.promise.then(
       ({ token, review }) => {
         if (!active || initialization.current !== owned) return
+        setLoadedOwner(owned)
         setEditSessionToken(token)
         setBootstrap(review)
         setBaseFingerprint(review.baseArtifactFingerprint)
         setDraft(review.vtt)
         draftRef.current = review.vtt
         saveIntent.current = null
+        dirtyRef.current = false
         setIsDirty(false)
         setIsSaved(false)
         setLastSavedRevision(null)
@@ -198,8 +240,18 @@ export function SubtitleEditorApp({
     }
   }, [launchJobId, launchCode])
 
+  const ownsLaunch = (owner: Initialization | null) =>
+    !!owner &&
+    owner.launch.jobId === launchJobId &&
+    owner.launch.launchCode === launchCode
+  const canSave = ownsLaunch(loadedOwner)
+  const canReload = !!editSessionToken && ownsLaunch(sessionOwner)
+
   async function handleSave() {
+    const owner = loadedOwner
     if (
+      !canSave ||
+      initialization.current !== owner ||
       operationRef.current ||
       !editSessionToken ||
       !bootstrap ||
@@ -236,7 +288,11 @@ export function SubtitleEditorApp({
       const fingerprint = Array.from(new Uint8Array(hash), (byte) =>
         byte.toString(16).padStart(2, "0"),
       ).join("")
-      if (operationRef.current !== operation) return
+      if (
+        operationRef.current !== operation ||
+        initialization.current !== owner
+      )
+        return
       if (
         fingerprint !== result.contentFingerprint ||
         result.jobId !== jobId ||
@@ -246,6 +302,7 @@ export function SubtitleEditorApp({
       setBaseFingerprint(result.contentFingerprint)
       setLastSavedRevision(result.revision)
       const unchanged = draftRef.current === submitted
+      dirtyRef.current = !unchanged
       setIsDirty(!unchanged)
       setIsSaved(unchanged)
       setPhase(unchanged ? "saved" : "ready")
@@ -264,7 +321,15 @@ export function SubtitleEditorApp({
   }
 
   async function handleReloadLatest() {
-    if (operationRef.current || !jobId || !editSessionToken) return
+    const owner = initialization.current
+    if (
+      !canReload ||
+      owner !== sessionOwner ||
+      operationRef.current ||
+      !jobId ||
+      !editSessionToken
+    )
+      return
     if (
       isDirty &&
       !window.confirm("Load the latest version and discard this unsaved draft?")
@@ -278,17 +343,23 @@ export function SubtitleEditorApp({
       setNotice("Reloading the latest reviewed subtitles...")
       setNoticeTone("info")
       const review = await bootstrapReviewSession({ jobId, editSessionToken })
-      if (operationRef.current !== operation) return
+      if (
+        operationRef.current !== operation ||
+        initialization.current !== owner
+      )
+        return
       // A response cannot replace a draft edited after this request started.
       if (draftRef.current !== submitted)
         throw new Error(
           "The draft changed while loading. Try loading latest again.",
         )
+      setLoadedOwner(owner)
       setBootstrap(review)
       setBaseFingerprint(review.baseArtifactFingerprint)
       setDraft(review.vtt)
       draftRef.current = review.vtt
       saveIntent.current = null
+      dirtyRef.current = false
       setIsDirty(false)
       setIsSaved(false)
       setLastSavedRevision(null)
@@ -309,6 +380,7 @@ export function SubtitleEditorApp({
   function handleDraftChange(value: string) {
     draftRef.current = value
     setDraft(value)
+    dirtyRef.current = true
     setIsDirty(true)
     setIsSaved(false)
     if (phase === "saved" || phase === "error") setPhase("ready")
@@ -317,7 +389,7 @@ export function SubtitleEditorApp({
 
   function handleReturnToManager() {
     const target = getReturnUrl(jobId)
-    const shouldWarn = isDirty && !isSaved
+    const shouldWarn = (isDirty && !isSaved) || retainedDrafts.length > 0
     if (shouldWarn && typeof window !== "undefined") {
       const confirmed = window.confirm(
         "Return to Manager and discard the unsaved draft?",
@@ -397,13 +469,44 @@ export function SubtitleEditorApp({
           <button
             type="button"
             onClick={handleSave}
-            disabled={phase === "saving" || phase === "loading" || !bootstrap}
+            disabled={
+              phase === "saving" ||
+              phase === "loading" ||
+              !canSave ||
+              !bootstrap
+            }
           >
             {phase === "saving" ? "Saving..." : "Save reviewed subtitles"}
           </button>
         </div>
       </header>
 
+      {retainedDrafts.map((retained, index) => (
+        <section className="panel" key={index}>
+          <div className="panel-body stack">
+            <p>
+              Unsaved draft from job {retained.jobId}. Copy it before
+              discarding; it cannot be saved in this review.
+            </p>
+            <textarea
+              className="editor-textarea"
+              aria-label={`Unsaved draft from job ${retained.jobId}`}
+              value={retained.vtt}
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={() =>
+                setRetainedDrafts((drafts) =>
+                  drafts.filter((draft) => draft !== retained),
+                )
+              }
+            >
+              Discard retained draft
+            </button>
+          </div>
+        </section>
+      ))}
       <main className="editor-main">
         <section className="panel">
           <div className="panel-body stack">
@@ -452,7 +555,10 @@ export function SubtitleEditorApp({
                 aria-label="Subtitle VTT text"
                 placeholder="WEBVTT..."
                 disabled={
-                  !bootstrap || phase === "loading" || phase === "saving"
+                  !canSave ||
+                  !bootstrap ||
+                  phase === "loading" ||
+                  phase === "saving"
                 }
               />
             </div>
@@ -470,7 +576,10 @@ export function SubtitleEditorApp({
                 type="button"
                 onClick={handleSave}
                 disabled={
-                  !bootstrap || phase === "saving" || phase === "loading"
+                  !canSave ||
+                  !bootstrap ||
+                  phase === "saving" ||
+                  phase === "loading"
                 }
               >
                 {phase === "saving" ? "Saving..." : "Save reviewed subtitles"}
@@ -479,7 +588,7 @@ export function SubtitleEditorApp({
                 type="button"
                 onClick={handleReloadLatest}
                 disabled={
-                  !editSessionToken || phase === "saving" || phase === "loading"
+                  !canReload || phase === "saving" || phase === "loading"
                 }
               >
                 Reload latest reviewed version

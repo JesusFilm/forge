@@ -66,6 +66,18 @@ Manager can generate source and translated subtitle artifacts, but there is no h
 
 ### Local repair disposition — 2026-10-24
 
+Independent review of the first local candidate found two additional P2 issues:
+different-launch draft/capability mixing after failed bootstrap, and unverified
+job IDs reserving exchange-limiter capacity. The r2 correction and evidence are
+tracked in `752-launch-ownership-limiter-implementation-r2`. Fresh independent
+review remains required; this entry does not mark feature or release completion.
+
+Both P2 corrections passed local component/service regressions, focused
+Manager/editor/Admin checks and native-browser draft/recovery controls. The
+interrupted worker's edits and raw evidence were recovered without resetting
+the checkout; `recovery-receipt.md` records the handoff. No independent acceptance
+exists for this correction.
+
 PR #752 remains draft and this ticket remains in progress. The bounded repair
 adds Admin artifact comparison, immutable job-bound review objects, equality-only
 save replay, and initialization ownership across viewport changes. Configuration
