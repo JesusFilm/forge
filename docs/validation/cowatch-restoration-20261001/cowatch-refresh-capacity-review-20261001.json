@@ -1,0 +1,45 @@
+{
+  "reviewedAt": "2026-10-01T02:58:25.403292+00:00",
+  "graphAllocatedGrowthBytes": 57769984,
+  "reserveToMeasuredGraphGrowth": 1.742484401588202,
+  "databaseIntervalGrowthBytes": 59400192,
+  "walIntervalBytes": 173062976,
+  "tempIntervalBytes": 447056058,
+  "filesystemIntervalUsedGrowthBytes": 143511552,
+  "intervalAttribution": "WAL, temp, database and filesystem deltas include all concurrent production activity; graph relation allocation is measured directly. No claim of isolated WAL/temp cost.",
+  "budget": {
+    "publicationLimits": {
+      "rawSourceCount": 50000,
+      "sourceCount": 8500,
+      "attemptedPairCount": 60000,
+      "contributionCount": 51000,
+      "edgeCount": 11500,
+      "publicationRowCount": 71001,
+      "graphRowJsonBytes": {
+        "sources": {
+          "maximum": 907,
+          "total": 6921144
+        },
+        "contributions": {
+          "maximum": 569,
+          "total": 26419552
+        },
+        "edges": {
+          "maximum": 533,
+          "total": 5501087
+        }
+      }
+    },
+    "publicationReserveBytes": 100663296,
+    "maxRetainedGraphBytes": 6300000000,
+    "maxRetainedGenerations": 64,
+    "maxDatabaseBytes": 44500000000
+  },
+  "remainingFuturePublicationsAt12hFor29d": 58,
+  "existingRetainedGraphs": 4,
+  "maximumGraphsIncludingRetained": 62,
+  "fullOverlapReservedGraphBytes": 6054420480,
+  "databaseHeadroomBytes": 6279857729,
+  "filesystemHeadroomOutsideDatabaseCeilingBytes": 4118870463,
+  "rationale": "96 MiB reserve is 1.74 times measured graph allocation. Counts allow about 25% growth (bounded pairs about 28%); total serialized row bytes allow 25%, maximum row width 5%. Count/width and physical allocation guards refuse excess. Full 29-day overlap fits without crediting any purge. A fixed DB ceiling preserves over 4 GB of presently observed filesystem space for WAL, temp and other non-database allocation. Other database growth can make refresh refuse sooner; no forecast of guaranteed 29-day availability and no continuous filesystem monitoring."
+}

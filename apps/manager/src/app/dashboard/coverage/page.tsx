@@ -8,7 +8,7 @@ import {
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Coverage -- Forge Manager",
+  title: "Coverage -- Studio",
 }
 
 export default async function CoveragePage({
@@ -20,11 +20,13 @@ export default async function CoveragePage({
   const requestedLanguageIds = resolveRequestedLanguageIds(resolvedSearchParams)
 
   return (
-    <CoverageReportClient
-      gatewayConfigured={true}
-      initialLanguages={[]}
-      initialSelectedLanguageIds={requestedLanguageIds}
-      initialErrorMessage={null}
-    />
+    <div className="studio-page studio-page--coverage">
+      <CoverageReportClient
+        gatewayConfigured={true}
+        initialLanguages={[]}
+        initialSelectedLanguageIds={requestedLanguageIds}
+        initialErrorMessage={null}
+      />
+    </div>
   )
 }

@@ -8,7 +8,9 @@ start_date: "2026-04-10"
 duration: 2
 depends_on:
   - "feat-009"
-blocks: []
+blocks:
+  - "feat-131"
+  - "feat-132"
 tags:
   - "cms"
   - "pgvector"

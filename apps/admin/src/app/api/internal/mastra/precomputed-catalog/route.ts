@@ -1,0 +1,99 @@
+import { isValidMastraRecommendationIngestBearer } from "@/auth/mastra-ingest-bearer"
+import { prisma } from "@/db/client"
+import {
+  PrecomputedCatalogError,
+  readPrecomputedCatalog,
+} from "@/services/recommendations/precomputed/catalog"
+
+const MAX_BODY_BYTES = 4 * 1024
+
+function error(message: string, status: number): Response {
+  return Response.json({ error: message }, { status })
+}
+
+async function readJson(request: Request): Promise<unknown | Response> {
+  if (
+    !/^\s*application\/json(?:\s*;|$)/i.test(
+      request.headers.get("content-type") ?? "",
+    )
+  ) {
+    return error("Content-Type must be application/json", 415)
+  }
+  const declared = request.headers.get("content-length")
+  if (
+    declared != null &&
+    (!/^\d+$/.test(declared) || Number(declared) > MAX_BODY_BYTES)
+  ) {
+    return error("Invalid or oversized Content-Length", 413)
+  }
+  if (!request.body) return error("Invalid JSON body", 400)
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let size = 0
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > MAX_BODY_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        return error("JSON body is too large", 413)
+      }
+      chunks.push(value)
+    }
+    const bytes = new Uint8Array(size)
+    let offset = 0
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return JSON.parse(new TextDecoder().decode(bytes))
+  } catch {
+    return error("Invalid JSON body", 400)
+  }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  if (
+    !isValidMastraRecommendationIngestBearer(
+      request.headers.get("authorization"),
+    )
+  ) {
+    return error("Authorization required", 401)
+  }
+  const body = await readJson(request)
+  if (body instanceof Response) return body
+  try {
+    return Response.json({
+      result: await readPrecomputedCatalog(
+        prisma,
+        body,
+        request.headers.get("authorization"),
+      ),
+    })
+  } catch (cause) {
+    if (cause instanceof PrecomputedCatalogError) {
+      return Response.json(
+        { error: cause.message, reason: cause.code },
+        {
+          status:
+            cause.code === "unauthorized"
+              ? 401
+              : cause.code === "invalid"
+                ? 400
+                : cause.code === "not_found"
+                  ? 404
+                  : cause.code === "stale_cutoff"
+                    ? 409
+                    : 413,
+        },
+      )
+    }
+    console.warn("[precomputed-catalog] read_failed")
+    return error("Catalog read failed", 502)
+  }
+}
+
+export async function GET(): Promise<Response> {
+  return error("Authorization required", 401)
+}

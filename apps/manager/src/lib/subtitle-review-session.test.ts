@@ -74,6 +74,22 @@ describe("subtitle review session helpers", () => {
     expect(url).not.toContain("token")
   })
 
+  it("rejects a signed token with an invalid expiry", async () => {
+    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
+    const { signSubtitleReviewToken, verifySubtitleReviewToken } =
+      await import("@/lib/subtitle-review-session")
+    const token = await signSubtitleReviewToken({
+      jobId: "job-1",
+      sourceArtifactKey: "subtitles-fr",
+      targetLanguage: "fr",
+      baseArtifactKey: "subtitles-fr",
+      baseFingerprint: "base",
+      actorId: "operator",
+      expiresAt: "not-a-date",
+    })
+    expect(await verifySubtitleReviewToken(token)).toBeNull()
+  })
+
   it("allows only exact configured subtitle editor origins", async () => {
     vi.stubEnv(
       "SUBTITLE_EDITOR_ALLOWED_ORIGINS",

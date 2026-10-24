@@ -1,0 +1,1358 @@
+{
+  "schemaVersion": 1,
+  "status": "equivalent",
+  "source": {
+    "database": "jesusfilm_rag",
+    "hostHash": "27b5360b8bdd9563"
+  },
+  "target": {
+    "database": "forge_rag_copy_rehearsal",
+    "hostHash": "6aafd6e62fdd88b1"
+  },
+  "copiedRows": {
+    "sources": 27,
+    "documents": 24518,
+    "chunks": 77060,
+    "chunk_embeddings": 77060,
+    "http_cache": 0,
+    "robots_cache": 0,
+    "raw_documents": 24518
+  },
+  "reconciliation": {
+    "equivalent": true,
+    "factsEquivalent": true,
+    "retrievalEquivalent": true,
+    "source": {
+      "counts": {
+        "sources": 57,
+        "documents": 24518,
+        "chunks": 77060,
+        "chunk_embeddings": 77060,
+        "http_cache": 0,
+        "robots_cache": 0,
+        "raw_documents": 24518
+      },
+      "bySourceLanguage": [
+        {
+          "source_key": "cru",
+          "language": "en",
+          "documents": "1944",
+          "chunks": "6652"
+        },
+        {
+          "source_key": "cru",
+          "language": "es",
+          "documents": "499",
+          "chunks": "1843"
+        },
+        {
+          "source_key": "cru",
+          "language": "fr",
+          "documents": "1",
+          "chunks": "2"
+        },
+        {
+          "source_key": "everystudent",
+          "language": "en",
+          "documents": "116",
+          "chunks": "536"
+        },
+        {
+          "source_key": "everystudent-am",
+          "language": "am",
+          "documents": "41",
+          "chunks": "163"
+        },
+        {
+          "source_key": "everystudent-ar",
+          "language": "ar",
+          "documents": "66",
+          "chunks": "267"
+        },
+        {
+          "source_key": "everystudent-bg",
+          "language": "bg",
+          "documents": "84",
+          "chunks": "474"
+        },
+        {
+          "source_key": "everystudent-bn",
+          "language": "bn",
+          "documents": "48",
+          "chunks": "297"
+        },
+        {
+          "source_key": "everystudent-cs",
+          "language": "cs",
+          "documents": "74",
+          "chunks": "360"
+        },
+        {
+          "source_key": "everystudent-de",
+          "language": "de",
+          "documents": "44",
+          "chunks": "293"
+        },
+        {
+          "source_key": "everystudent-el",
+          "language": "el",
+          "documents": "32",
+          "chunks": "259"
+        },
+        {
+          "source_key": "everystudent-es",
+          "language": "es",
+          "documents": "75",
+          "chunks": "482"
+        },
+        {
+          "source_key": "everystudent-et",
+          "language": "et",
+          "documents": "46",
+          "chunks": "214"
+        },
+        {
+          "source_key": "everystudent-fa",
+          "language": "fa",
+          "documents": "75",
+          "chunks": "390"
+        },
+        {
+          "source_key": "everystudent-fr",
+          "language": "fr",
+          "documents": "67",
+          "chunks": "418"
+        },
+        {
+          "source_key": "everystudent-hi",
+          "language": "hi",
+          "documents": "33",
+          "chunks": "240"
+        },
+        {
+          "source_key": "everystudent-hr",
+          "language": "hr",
+          "documents": "41",
+          "chunks": "248"
+        },
+        {
+          "source_key": "everystudent-hu",
+          "language": "hu",
+          "documents": "82",
+          "chunks": "461"
+        },
+        {
+          "source_key": "everystudent-hy",
+          "language": "hy",
+          "documents": "33",
+          "chunks": "228"
+        },
+        {
+          "source_key": "everystudent-id",
+          "language": "id",
+          "documents": "57",
+          "chunks": "380"
+        },
+        {
+          "source_key": "everystudent-it",
+          "language": "it",
+          "documents": "38",
+          "chunks": "274"
+        },
+        {
+          "source_key": "everystudent-ja",
+          "language": "ja",
+          "documents": "78",
+          "chunks": "281"
+        },
+        {
+          "source_key": "everystudent-ka",
+          "language": "ka",
+          "documents": "16",
+          "chunks": "169"
+        },
+        {
+          "source_key": "everystudent-kk",
+          "language": "kk",
+          "documents": "17",
+          "chunks": "158"
+        },
+        {
+          "source_key": "everystudent-ko",
+          "language": "ko",
+          "documents": "37",
+          "chunks": "125"
+        },
+        {
+          "source_key": "everystudent-lt",
+          "language": "lt",
+          "documents": "49",
+          "chunks": "302"
+        },
+        {
+          "source_key": "everystudent-mk",
+          "language": "mk",
+          "documents": "49",
+          "chunks": "308"
+        },
+        {
+          "source_key": "everystudent-mn",
+          "language": "mn",
+          "documents": "82",
+          "chunks": "428"
+        },
+        {
+          "source_key": "everystudent-ms",
+          "language": "ms",
+          "documents": "52",
+          "chunks": "364"
+        },
+        {
+          "source_key": "everystudent-my",
+          "language": "my",
+          "documents": "30",
+          "chunks": "328"
+        },
+        {
+          "source_key": "everystudent-ne",
+          "language": "ne",
+          "documents": "20",
+          "chunks": "152"
+        },
+        {
+          "source_key": "everystudent-om",
+          "language": "om",
+          "documents": "18",
+          "chunks": "136"
+        },
+        {
+          "source_key": "everystudent-pl",
+          "language": "pl",
+          "documents": "77",
+          "chunks": "466"
+        },
+        {
+          "source_key": "everystudent-pt",
+          "language": "pt",
+          "documents": "75",
+          "chunks": "430"
+        },
+        {
+          "source_key": "everystudent-ro",
+          "language": "ro",
+          "documents": "63",
+          "chunks": "375"
+        },
+        {
+          "source_key": "everystudent-ru",
+          "language": "ru",
+          "documents": "95",
+          "chunks": "526"
+        },
+        {
+          "source_key": "everystudent-ru-ca",
+          "language": "ru",
+          "documents": "5",
+          "chunks": "20"
+        },
+        {
+          "source_key": "everystudent-sk",
+          "language": "sk",
+          "documents": "83",
+          "chunks": "329"
+        },
+        {
+          "source_key": "everystudent-sl",
+          "language": "sl",
+          "documents": "23",
+          "chunks": "188"
+        },
+        {
+          "source_key": "everystudent-sq",
+          "language": "sq",
+          "documents": "76",
+          "chunks": "438"
+        },
+        {
+          "source_key": "everystudent-sw",
+          "language": "sw",
+          "documents": "13",
+          "chunks": "105"
+        },
+        {
+          "source_key": "everystudent-ta",
+          "language": "ta",
+          "documents": "30",
+          "chunks": "266"
+        },
+        {
+          "source_key": "everystudent-te",
+          "language": "te",
+          "documents": "30",
+          "chunks": "203"
+        },
+        {
+          "source_key": "everystudent-th",
+          "language": "th",
+          "documents": "44",
+          "chunks": "554"
+        },
+        {
+          "source_key": "everystudent-ti",
+          "language": "ti",
+          "documents": "14",
+          "chunks": "48"
+        },
+        {
+          "source_key": "everystudent-tr",
+          "language": "tr",
+          "documents": "71",
+          "chunks": "423"
+        },
+        {
+          "source_key": "everystudent-uk",
+          "language": "uk",
+          "documents": "47",
+          "chunks": "266"
+        },
+        {
+          "source_key": "everystudent-ur",
+          "language": "ur",
+          "documents": "33",
+          "chunks": "177"
+        },
+        {
+          "source_key": "everystudent-vi",
+          "language": "vi",
+          "documents": "67",
+          "chunks": "408"
+        },
+        {
+          "source_key": "everystudent-zh-cn",
+          "language": "zh",
+          "documents": "127",
+          "chunks": "283"
+        },
+        {
+          "source_key": "everystudent-zh-tw",
+          "language": "zh",
+          "documents": "46",
+          "chunks": "82"
+        },
+        {
+          "source_key": "familylife",
+          "language": "en",
+          "documents": "2240",
+          "chunks": "9821"
+        },
+        {
+          "source_key": "familylife",
+          "language": "es",
+          "documents": "1",
+          "chunks": "3"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": null,
+          "documents": "763",
+          "chunks": "2073"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "ber",
+          "documents": "1",
+          "chunks": "2"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "de",
+          "documents": "1",
+          "chunks": "4"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "en",
+          "documents": "9796",
+          "chunks": "27554"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "fr",
+          "documents": "1",
+          "chunks": "1"
+        },
+        {
+          "source_key": "jesusfilm-org",
+          "language": "en",
+          "documents": "349",
+          "chunks": "2114"
+        },
+        {
+          "source_key": "sightline-ministry",
+          "language": "en",
+          "documents": "1390",
+          "chunks": "3470"
+        },
+        {
+          "source_key": "starting-with-god",
+          "language": "en",
+          "documents": "40",
+          "chunks": "183"
+        },
+        {
+          "source_key": "thelife",
+          "language": "en",
+          "documents": "4483",
+          "chunks": "7896"
+        },
+        {
+          "source_key": "thelife",
+          "language": "fr",
+          "documents": "2",
+          "chunks": "9"
+        },
+        {
+          "source_key": "thelife-fr",
+          "language": "fr",
+          "documents": "156",
+          "chunks": "651"
+        },
+        {
+          "source_key": "thelife-zh",
+          "language": "zh",
+          "documents": "332",
+          "chunks": "460"
+        }
+      ],
+      "models": [
+        {
+          "embedding_model": "qwen/qwen3-embedding-8b",
+          "dimensions": 1536,
+          "count": "77060"
+        }
+      ],
+      "indexes": [
+        "chunk_embeddings_hnsw",
+        "chunk_embeddings_model_idx",
+        "chunks_document_idx",
+        "chunks_search_tsv_gin",
+        "chunks_source_idx",
+        "chunks_tags_gin",
+        "documents_source_idx",
+        "raw_documents_ingested_at_idx",
+        "raw_documents_source_key_idx"
+      ],
+      "integrity": {
+        "orphan_documents": "0",
+        "orphan_chunks": "0",
+        "orphan_chunk_sources": "0",
+        "orphan_embeddings": "0",
+        "null_embeddings": "0"
+      },
+      "fingerprints": {
+        "sources": "-1973476001663785720",
+        "documents": "-556837348517746561781",
+        "chunks": "-1741224742999610491348",
+        "chunk_embeddings": "1043178290774464887768",
+        "http_cache": "0",
+        "robots_cache": "0",
+        "raw_documents": "696134903062963218524"
+      }
+    },
+    "target": {
+      "counts": {
+        "sources": 57,
+        "documents": 24518,
+        "chunks": 77060,
+        "chunk_embeddings": 77060,
+        "http_cache": 0,
+        "robots_cache": 0,
+        "raw_documents": 24518
+      },
+      "bySourceLanguage": [
+        {
+          "source_key": "cru",
+          "language": "en",
+          "documents": "1944",
+          "chunks": "6652"
+        },
+        {
+          "source_key": "cru",
+          "language": "es",
+          "documents": "499",
+          "chunks": "1843"
+        },
+        {
+          "source_key": "cru",
+          "language": "fr",
+          "documents": "1",
+          "chunks": "2"
+        },
+        {
+          "source_key": "everystudent",
+          "language": "en",
+          "documents": "116",
+          "chunks": "536"
+        },
+        {
+          "source_key": "everystudent-am",
+          "language": "am",
+          "documents": "41",
+          "chunks": "163"
+        },
+        {
+          "source_key": "everystudent-ar",
+          "language": "ar",
+          "documents": "66",
+          "chunks": "267"
+        },
+        {
+          "source_key": "everystudent-bg",
+          "language": "bg",
+          "documents": "84",
+          "chunks": "474"
+        },
+        {
+          "source_key": "everystudent-bn",
+          "language": "bn",
+          "documents": "48",
+          "chunks": "297"
+        },
+        {
+          "source_key": "everystudent-cs",
+          "language": "cs",
+          "documents": "74",
+          "chunks": "360"
+        },
+        {
+          "source_key": "everystudent-de",
+          "language": "de",
+          "documents": "44",
+          "chunks": "293"
+        },
+        {
+          "source_key": "everystudent-el",
+          "language": "el",
+          "documents": "32",
+          "chunks": "259"
+        },
+        {
+          "source_key": "everystudent-es",
+          "language": "es",
+          "documents": "75",
+          "chunks": "482"
+        },
+        {
+          "source_key": "everystudent-et",
+          "language": "et",
+          "documents": "46",
+          "chunks": "214"
+        },
+        {
+          "source_key": "everystudent-fa",
+          "language": "fa",
+          "documents": "75",
+          "chunks": "390"
+        },
+        {
+          "source_key": "everystudent-fr",
+          "language": "fr",
+          "documents": "67",
+          "chunks": "418"
+        },
+        {
+          "source_key": "everystudent-hi",
+          "language": "hi",
+          "documents": "33",
+          "chunks": "240"
+        },
+        {
+          "source_key": "everystudent-hr",
+          "language": "hr",
+          "documents": "41",
+          "chunks": "248"
+        },
+        {
+          "source_key": "everystudent-hu",
+          "language": "hu",
+          "documents": "82",
+          "chunks": "461"
+        },
+        {
+          "source_key": "everystudent-hy",
+          "language": "hy",
+          "documents": "33",
+          "chunks": "228"
+        },
+        {
+          "source_key": "everystudent-id",
+          "language": "id",
+          "documents": "57",
+          "chunks": "380"
+        },
+        {
+          "source_key": "everystudent-it",
+          "language": "it",
+          "documents": "38",
+          "chunks": "274"
+        },
+        {
+          "source_key": "everystudent-ja",
+          "language": "ja",
+          "documents": "78",
+          "chunks": "281"
+        },
+        {
+          "source_key": "everystudent-ka",
+          "language": "ka",
+          "documents": "16",
+          "chunks": "169"
+        },
+        {
+          "source_key": "everystudent-kk",
+          "language": "kk",
+          "documents": "17",
+          "chunks": "158"
+        },
+        {
+          "source_key": "everystudent-ko",
+          "language": "ko",
+          "documents": "37",
+          "chunks": "125"
+        },
+        {
+          "source_key": "everystudent-lt",
+          "language": "lt",
+          "documents": "49",
+          "chunks": "302"
+        },
+        {
+          "source_key": "everystudent-mk",
+          "language": "mk",
+          "documents": "49",
+          "chunks": "308"
+        },
+        {
+          "source_key": "everystudent-mn",
+          "language": "mn",
+          "documents": "82",
+          "chunks": "428"
+        },
+        {
+          "source_key": "everystudent-ms",
+          "language": "ms",
+          "documents": "52",
+          "chunks": "364"
+        },
+        {
+          "source_key": "everystudent-my",
+          "language": "my",
+          "documents": "30",
+          "chunks": "328"
+        },
+        {
+          "source_key": "everystudent-ne",
+          "language": "ne",
+          "documents": "20",
+          "chunks": "152"
+        },
+        {
+          "source_key": "everystudent-om",
+          "language": "om",
+          "documents": "18",
+          "chunks": "136"
+        },
+        {
+          "source_key": "everystudent-pl",
+          "language": "pl",
+          "documents": "77",
+          "chunks": "466"
+        },
+        {
+          "source_key": "everystudent-pt",
+          "language": "pt",
+          "documents": "75",
+          "chunks": "430"
+        },
+        {
+          "source_key": "everystudent-ro",
+          "language": "ro",
+          "documents": "63",
+          "chunks": "375"
+        },
+        {
+          "source_key": "everystudent-ru",
+          "language": "ru",
+          "documents": "95",
+          "chunks": "526"
+        },
+        {
+          "source_key": "everystudent-ru-ca",
+          "language": "ru",
+          "documents": "5",
+          "chunks": "20"
+        },
+        {
+          "source_key": "everystudent-sk",
+          "language": "sk",
+          "documents": "83",
+          "chunks": "329"
+        },
+        {
+          "source_key": "everystudent-sl",
+          "language": "sl",
+          "documents": "23",
+          "chunks": "188"
+        },
+        {
+          "source_key": "everystudent-sq",
+          "language": "sq",
+          "documents": "76",
+          "chunks": "438"
+        },
+        {
+          "source_key": "everystudent-sw",
+          "language": "sw",
+          "documents": "13",
+          "chunks": "105"
+        },
+        {
+          "source_key": "everystudent-ta",
+          "language": "ta",
+          "documents": "30",
+          "chunks": "266"
+        },
+        {
+          "source_key": "everystudent-te",
+          "language": "te",
+          "documents": "30",
+          "chunks": "203"
+        },
+        {
+          "source_key": "everystudent-th",
+          "language": "th",
+          "documents": "44",
+          "chunks": "554"
+        },
+        {
+          "source_key": "everystudent-ti",
+          "language": "ti",
+          "documents": "14",
+          "chunks": "48"
+        },
+        {
+          "source_key": "everystudent-tr",
+          "language": "tr",
+          "documents": "71",
+          "chunks": "423"
+        },
+        {
+          "source_key": "everystudent-uk",
+          "language": "uk",
+          "documents": "47",
+          "chunks": "266"
+        },
+        {
+          "source_key": "everystudent-ur",
+          "language": "ur",
+          "documents": "33",
+          "chunks": "177"
+        },
+        {
+          "source_key": "everystudent-vi",
+          "language": "vi",
+          "documents": "67",
+          "chunks": "408"
+        },
+        {
+          "source_key": "everystudent-zh-cn",
+          "language": "zh",
+          "documents": "127",
+          "chunks": "283"
+        },
+        {
+          "source_key": "everystudent-zh-tw",
+          "language": "zh",
+          "documents": "46",
+          "chunks": "82"
+        },
+        {
+          "source_key": "familylife",
+          "language": "en",
+          "documents": "2240",
+          "chunks": "9821"
+        },
+        {
+          "source_key": "familylife",
+          "language": "es",
+          "documents": "1",
+          "chunks": "3"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": null,
+          "documents": "763",
+          "chunks": "2073"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "ber",
+          "documents": "1",
+          "chunks": "2"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "de",
+          "documents": "1",
+          "chunks": "4"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "en",
+          "documents": "9796",
+          "chunks": "27554"
+        },
+        {
+          "source_key": "gotquestions",
+          "language": "fr",
+          "documents": "1",
+          "chunks": "1"
+        },
+        {
+          "source_key": "jesusfilm-org",
+          "language": "en",
+          "documents": "349",
+          "chunks": "2114"
+        },
+        {
+          "source_key": "sightline-ministry",
+          "language": "en",
+          "documents": "1390",
+          "chunks": "3470"
+        },
+        {
+          "source_key": "starting-with-god",
+          "language": "en",
+          "documents": "40",
+          "chunks": "183"
+        },
+        {
+          "source_key": "thelife",
+          "language": "en",
+          "documents": "4483",
+          "chunks": "7896"
+        },
+        {
+          "source_key": "thelife",
+          "language": "fr",
+          "documents": "2",
+          "chunks": "9"
+        },
+        {
+          "source_key": "thelife-fr",
+          "language": "fr",
+          "documents": "156",
+          "chunks": "651"
+        },
+        {
+          "source_key": "thelife-zh",
+          "language": "zh",
+          "documents": "332",
+          "chunks": "460"
+        }
+      ],
+      "models": [
+        {
+          "embedding_model": "qwen/qwen3-embedding-8b",
+          "dimensions": 1536,
+          "count": "77060"
+        }
+      ],
+      "indexes": [
+        "chunk_embeddings_hnsw",
+        "chunk_embeddings_model_idx",
+        "chunks_document_idx",
+        "chunks_search_tsv_gin",
+        "chunks_source_idx",
+        "chunks_tags_gin",
+        "documents_source_idx",
+        "raw_documents_ingested_at_idx",
+        "raw_documents_source_key_idx"
+      ],
+      "integrity": {
+        "orphan_documents": "0",
+        "orphan_chunks": "0",
+        "orphan_chunk_sources": "0",
+        "orphan_embeddings": "0",
+        "null_embeddings": "0"
+      },
+      "fingerprints": {
+        "sources": "-1973476001663785720",
+        "documents": "-556837348517746561781",
+        "chunks": "-1741224742999610491348",
+        "chunk_embeddings": "1043178290774464887768",
+        "http_cache": "0",
+        "robots_cache": "0",
+        "raw_documents": "696134903062963218524"
+      }
+    },
+    "retrieval": {
+      "scoreTolerance": 0.00001,
+      "source": [
+        {
+          "probeId": "00003978-370c-4577-b807-1d6148b7d1d5",
+          "hits": [
+            {
+              "chunk_id": "00003978-370c-4577-b807-1d6148b7d1d5",
+              "score": 1
+            },
+            {
+              "chunk_id": "62ebb1ef-9ffd-435d-935f-e1b49974f67a",
+              "score": 0.709930182540808
+            },
+            {
+              "chunk_id": "2151019c-fd4c-45ba-8090-f914a752bc94",
+              "score": 0.687629509422608
+            },
+            {
+              "chunk_id": "b5cba896-f13a-4e32-87df-d5e418841a0d",
+              "score": 0.6859603323331975
+            },
+            {
+              "chunk_id": "8cdac5c0-b693-4c9e-9402-3d1d1bbf2848",
+              "score": 0.6811116885682001
+            },
+            {
+              "chunk_id": "4102ef07-695f-48f3-8dd5-35f9481b8014",
+              "score": 0.6795505410681368
+            },
+            {
+              "chunk_id": "176d9af4-657e-4ef3-9c17-f55c7bc15ce2",
+              "score": 0.6792525503814563
+            },
+            {
+              "chunk_id": "1c27c270-515b-4a49-9531-db72cc041ba5",
+              "score": 0.6778619798445126
+            },
+            {
+              "chunk_id": "4334d9da-1a61-4db1-b29d-dbcddde26538",
+              "score": 0.6777041092102228
+            },
+            {
+              "chunk_id": "e7e11e04-d93d-4161-b825-26b5511b8531",
+              "score": 0.6764508667588528
+            }
+          ]
+        },
+        {
+          "probeId": "0001f96c-024f-4c74-98e1-298a7c2db4e9",
+          "hits": [
+            {
+              "chunk_id": "0001f96c-024f-4c74-98e1-298a7c2db4e9",
+              "score": 1
+            },
+            {
+              "chunk_id": "78e2ca06-5466-4ad0-a1d2-46dcde38ee77",
+              "score": 0.7967101982626881
+            },
+            {
+              "chunk_id": "a0d42a5f-9e0f-40d4-88ad-6f10bed71c1d",
+              "score": 0.7771557314522543
+            },
+            {
+              "chunk_id": "26ce0be2-9a70-42e9-81b2-d97eb6852406",
+              "score": 0.7620872084226586
+            },
+            {
+              "chunk_id": "b6f8512c-b50a-4683-8d4f-e9e5a5b4b374",
+              "score": 0.7308534039591839
+            },
+            {
+              "chunk_id": "359cec08-195b-4843-bf39-f8b7f10cae28",
+              "score": 0.7224779244349471
+            },
+            {
+              "chunk_id": "79a3b61e-1548-4d39-9e81-a38e621f8a9c",
+              "score": 0.7083324890561782
+            },
+            {
+              "chunk_id": "688e8b33-ef83-44b7-85fa-42bdf6567f25",
+              "score": 0.6976231240521663
+            },
+            {
+              "chunk_id": "ba3fcb6c-de23-4b1e-a528-886b23ea5839",
+              "score": 0.6964248537072034
+            },
+            {
+              "chunk_id": "2c88a41c-8f01-4f06-85cd-08b893ab5df2",
+              "score": 0.6887642475147022
+            }
+          ]
+        },
+        {
+          "probeId": "00023e75-b224-46e3-b7b6-5385d8b0178f",
+          "hits": [
+            {
+              "chunk_id": "00023e75-b224-46e3-b7b6-5385d8b0178f",
+              "score": 1
+            },
+            {
+              "chunk_id": "6e521a42-d80c-4a4f-834b-146564725fef",
+              "score": 0.9120272932771603
+            },
+            {
+              "chunk_id": "be5dbe5d-ef67-4e17-b341-ff3f2475462a",
+              "score": 0.8640086146699603
+            },
+            {
+              "chunk_id": "037777e5-7b7e-4102-a8ee-d99e1afc9774",
+              "score": 0.8448221559022444
+            },
+            {
+              "chunk_id": "27410680-3f5e-4464-9b9b-6ce99f5c1b13",
+              "score": 0.8445160599488049
+            },
+            {
+              "chunk_id": "b2560120-23d9-4863-abcb-ecb31f7f56c3",
+              "score": 0.8342199306144771
+            },
+            {
+              "chunk_id": "65eb322d-cc90-4edb-897a-16dec4f2ddf8",
+              "score": 0.8294414326965418
+            },
+            {
+              "chunk_id": "91c2b4b1-e170-45b6-a52a-8080fb089430",
+              "score": 0.825337836735066
+            },
+            {
+              "chunk_id": "a99e3b12-9c3e-474f-9eec-5e655a4bd5fd",
+              "score": 0.8217121428351744
+            },
+            {
+              "chunk_id": "207e184b-571b-4cbd-b45d-e30fc3cf3c55",
+              "score": 0.8042010624451582
+            }
+          ]
+        },
+        {
+          "probeId": "00027224-4795-406f-bbee-bbf6f9ab974e",
+          "hits": [
+            {
+              "chunk_id": "00027224-4795-406f-bbee-bbf6f9ab974e",
+              "score": 1
+            },
+            {
+              "chunk_id": "5dce64e8-22b8-498c-a9d5-c541f0be7ada",
+              "score": 0.821807611063582
+            },
+            {
+              "chunk_id": "1ae743ee-6485-40d9-b048-cdaff630f381",
+              "score": 0.6250200713986548
+            },
+            {
+              "chunk_id": "d62f8087-a90d-4238-a99b-50a564d01360",
+              "score": 0.621916203233362
+            },
+            {
+              "chunk_id": "0ed64cca-e902-4463-97df-1246d0cd4ac5",
+              "score": 0.6149682315093552
+            },
+            {
+              "chunk_id": "74200b7d-6040-43f3-8d4f-78c2745b2802",
+              "score": 0.6071507630959352
+            },
+            {
+              "chunk_id": "8836f925-e390-4ffe-b58d-d05cb2d95844",
+              "score": 0.6064525204913839
+            },
+            {
+              "chunk_id": "e5f0857b-d5c9-4479-a3a4-575844ed7df8",
+              "score": 0.6021227727595567
+            },
+            {
+              "chunk_id": "32b23aa3-455e-4975-823b-65e90f1558a4",
+              "score": 0.59959529160839
+            },
+            {
+              "chunk_id": "68dd8a7b-e1b6-4697-bc31-5a6a75c344a4",
+              "score": 0.5984951958643254
+            }
+          ]
+        },
+        {
+          "probeId": "0002aeed-d432-4ade-a0d2-fbc14b2e2585",
+          "hits": [
+            {
+              "chunk_id": "0002aeed-d432-4ade-a0d2-fbc14b2e2585",
+              "score": 1
+            },
+            {
+              "chunk_id": "2c4f5746-141e-4446-9032-46f2b169ea75",
+              "score": 0.8165561877233742
+            },
+            {
+              "chunk_id": "aa40bcb9-af51-4797-845c-287083a882b0",
+              "score": 0.8051964857936869
+            },
+            {
+              "chunk_id": "0118ed8a-df06-4a54-b15c-861fbb7ca5a2",
+              "score": 0.7777078377387437
+            },
+            {
+              "chunk_id": "507f3913-227e-41c1-a235-751c1c570698",
+              "score": 0.7473725417134272
+            },
+            {
+              "chunk_id": "96d18bf3-fd81-45ab-a885-6d0919baf503",
+              "score": 0.7371111641703838
+            },
+            {
+              "chunk_id": "17254d90-28c3-456a-9a8d-a875117ea872",
+              "score": 0.7201434263566708
+            },
+            {
+              "chunk_id": "b16fb205-5e23-43e4-83bc-bd5afee025b4",
+              "score": 0.7042508224045755
+            },
+            {
+              "chunk_id": "cf88dd82-bb8a-4373-b269-8ea550895a23",
+              "score": 0.6874609416650881
+            },
+            {
+              "chunk_id": "e9aae587-938e-4ec1-bcca-0faf943d9df1",
+              "score": 0.6763804866301635
+            }
+          ]
+        }
+      ],
+      "target": [
+        {
+          "probeId": "00003978-370c-4577-b807-1d6148b7d1d5",
+          "hits": [
+            {
+              "chunk_id": "00003978-370c-4577-b807-1d6148b7d1d5",
+              "score": 1
+            },
+            {
+              "chunk_id": "62ebb1ef-9ffd-435d-935f-e1b49974f67a",
+              "score": 0.7099301536469016
+            },
+            {
+              "chunk_id": "2151019c-fd4c-45ba-8090-f914a752bc94",
+              "score": 0.6876293249845777
+            },
+            {
+              "chunk_id": "b5cba896-f13a-4e32-87df-d5e418841a0d",
+              "score": 0.6859601448930476
+            },
+            {
+              "chunk_id": "8cdac5c0-b693-4c9e-9402-3d1d1bbf2848",
+              "score": 0.6811109465490267
+            },
+            {
+              "chunk_id": "4102ef07-695f-48f3-8dd5-35f9481b8014",
+              "score": 0.679550177679683
+            },
+            {
+              "chunk_id": "176d9af4-657e-4ef3-9c17-f55c7bc15ce2",
+              "score": 0.6792524671563248
+            },
+            {
+              "chunk_id": "1c27c270-515b-4a49-9531-db72cc041ba5",
+              "score": 0.6778616192105569
+            },
+            {
+              "chunk_id": "4334d9da-1a61-4db1-b29d-dbcddde26538",
+              "score": 0.6777038254670847
+            },
+            {
+              "chunk_id": "e7e11e04-d93d-4161-b825-26b5511b8531",
+              "score": 0.6764505056274667
+            }
+          ]
+        },
+        {
+          "probeId": "0001f96c-024f-4c74-98e1-298a7c2db4e9",
+          "hits": [
+            {
+              "chunk_id": "0001f96c-024f-4c74-98e1-298a7c2db4e9",
+              "score": 1
+            },
+            {
+              "chunk_id": "78e2ca06-5466-4ad0-a1d2-46dcde38ee77",
+              "score": 0.7967095799559011
+            },
+            {
+              "chunk_id": "a0d42a5f-9e0f-40d4-88ad-6f10bed71c1d",
+              "score": 0.7771553476016193
+            },
+            {
+              "chunk_id": "26ce0be2-9a70-42e9-81b2-d97eb6852406",
+              "score": 0.7620869954902989
+            },
+            {
+              "chunk_id": "b6f8512c-b50a-4683-8d4f-e9e5a5b4b374",
+              "score": 0.7308530119091519
+            },
+            {
+              "chunk_id": "359cec08-195b-4843-bf39-f8b7f10cae28",
+              "score": 0.722477639544354
+            },
+            {
+              "chunk_id": "79a3b61e-1548-4d39-9e81-a38e621f8a9c",
+              "score": 0.7083321165334338
+            },
+            {
+              "chunk_id": "688e8b33-ef83-44b7-85fa-42bdf6567f25",
+              "score": 0.6976227498279712
+            },
+            {
+              "chunk_id": "ba3fcb6c-de23-4b1e-a528-886b23ea5839",
+              "score": 0.6964247600510864
+            },
+            {
+              "chunk_id": "2c88a41c-8f01-4f06-85cd-08b893ab5df2",
+              "score": 0.6887642005378695
+            }
+          ]
+        },
+        {
+          "probeId": "00023e75-b224-46e3-b7b6-5385d8b0178f",
+          "hits": [
+            {
+              "chunk_id": "00023e75-b224-46e3-b7b6-5385d8b0178f",
+              "score": 1
+            },
+            {
+              "chunk_id": "6e521a42-d80c-4a4f-834b-146564725fef",
+              "score": 0.9120270434038825
+            },
+            {
+              "chunk_id": "be5dbe5d-ef67-4e17-b341-ff3f2475462a",
+              "score": 0.8640083490689918
+            },
+            {
+              "chunk_id": "037777e5-7b7e-4102-a8ee-d99e1afc9774",
+              "score": 0.8448217504799629
+            },
+            {
+              "chunk_id": "27410680-3f5e-4464-9b9b-6ce99f5c1b13",
+              "score": 0.8445160215129628
+            },
+            {
+              "chunk_id": "b2560120-23d9-4863-abcb-ecb31f7f56c3",
+              "score": 0.8342193740726934
+            },
+            {
+              "chunk_id": "65eb322d-cc90-4edb-897a-16dec4f2ddf8",
+              "score": 0.829440996519867
+            },
+            {
+              "chunk_id": "91c2b4b1-e170-45b6-a52a-8080fb089430",
+              "score": 0.8253377487563389
+            },
+            {
+              "chunk_id": "a99e3b12-9c3e-474f-9eec-5e655a4bd5fd",
+              "score": 0.8217121640879003
+            },
+            {
+              "chunk_id": "207e184b-571b-4cbd-b45d-e30fc3cf3c55",
+              "score": 0.8042011337180952
+            }
+          ]
+        },
+        {
+          "probeId": "00027224-4795-406f-bbee-bbf6f9ab974e",
+          "hits": [
+            {
+              "chunk_id": "00027224-4795-406f-bbee-bbf6f9ab974e",
+              "score": 1
+            },
+            {
+              "chunk_id": "5dce64e8-22b8-498c-a9d5-c541f0be7ada",
+              "score": 0.8218074886032144
+            },
+            {
+              "chunk_id": "1ae743ee-6485-40d9-b048-cdaff630f381",
+              "score": 0.6250200713986548
+            },
+            {
+              "chunk_id": "d62f8087-a90d-4238-a99b-50a564d01360",
+              "score": 0.621916270838334
+            },
+            {
+              "chunk_id": "0ed64cca-e902-4463-97df-1246d0cd4ac5",
+              "score": 0.6149683094409218
+            },
+            {
+              "chunk_id": "74200b7d-6040-43f3-8d4f-78c2745b2802",
+              "score": 0.6071507269075628
+            },
+            {
+              "chunk_id": "8836f925-e390-4ffe-b58d-d05cb2d95844",
+              "score": 0.6064524120492388
+            },
+            {
+              "chunk_id": "e5f0857b-d5c9-4479-a3a4-575844ed7df8",
+              "score": 0.6021228086484076
+            },
+            {
+              "chunk_id": "32b23aa3-455e-4975-823b-65e90f1558a4",
+              "score": 0.5995951009241773
+            },
+            {
+              "chunk_id": "68dd8a7b-e1b6-4697-bc31-5a6a75c344a4",
+              "score": 0.5984950888432237
+            }
+          ]
+        },
+        {
+          "probeId": "0002aeed-d432-4ade-a0d2-fbc14b2e2585",
+          "hits": [
+            {
+              "chunk_id": "0002aeed-d432-4ade-a0d2-fbc14b2e2585",
+              "score": 1
+            },
+            {
+              "chunk_id": "2c4f5746-141e-4446-9032-46f2b169ea75",
+              "score": 0.816555995507157
+            },
+            {
+              "chunk_id": "aa40bcb9-af51-4797-845c-287083a882b0",
+              "score": 0.8051964974054785
+            },
+            {
+              "chunk_id": "0118ed8a-df06-4a54-b15c-861fbb7ca5a2",
+              "score": 0.7777076390771708
+            },
+            {
+              "chunk_id": "507f3913-227e-41c1-a235-751c1c570698",
+              "score": 0.7473724375644246
+            },
+            {
+              "chunk_id": "96d18bf3-fd81-45ab-a885-6d0919baf503",
+              "score": 0.7371109131515275
+            },
+            {
+              "chunk_id": "17254d90-28c3-456a-9a8d-a875117ea872",
+              "score": 0.7201434334757384
+            },
+            {
+              "chunk_id": "b16fb205-5e23-43e4-83bc-bd5afee025b4",
+              "score": 0.704250857661934
+            },
+            {
+              "chunk_id": "cf88dd82-bb8a-4373-b269-8ea550895a23",
+              "score": 0.6874610608778009
+            },
+            {
+              "chunk_id": "e9aae587-938e-4ec1-bcca-0faf943d9df1",
+              "score": 0.6763803078148403
+            }
+          ]
+        }
+      ]
+    },
+    "embeddingCalls": 0
+  }
+}

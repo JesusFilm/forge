@@ -92,7 +92,7 @@ export default function HomePage() {
           />
           <StatCard
             label="Total Planned"
-            count={features.length}
+            count={features.length - totals.cancelled}
             color="text-stone-300"
           />
         </div>

@@ -4,12 +4,13 @@ import {
   corsHeaders,
   failureResponse,
   noStoreJson,
+  readReviewJson,
   preflightResponse,
   requireEditorCorsHeaders,
 } from "../../response"
 
 const requestBodySchema = z.object({
-  launchCode: z.string().min(1),
+  launchCode: z.string().min(1).max(128),
 })
 
 export function OPTIONS(request: Request) {
@@ -24,9 +25,7 @@ export async function POST(
   if (corsError) return corsError
 
   const headers = corsHeaders(request)
-  const parsedBody = requestBodySchema.safeParse(
-    await request.json().catch(() => null),
-  )
+  const parsedBody = requestBodySchema.safeParse(await readReviewJson(request))
   if (!parsedBody.success) {
     return noStoreJson(
       { error: "Invalid exchange request" },

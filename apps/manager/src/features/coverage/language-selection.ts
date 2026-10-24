@@ -14,6 +14,17 @@ export type CoverageLanguageSearchParams = {
   languageIds?: string
 }
 
+export type CoverageLanguageSelectionResolution = {
+  languageIds: string[]
+  shouldReplaceUrl: boolean
+  shouldRememberSelection: boolean
+}
+
+type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">
+
+export const COVERAGE_LANGUAGE_SELECTION_STORAGE_KEY =
+  "forge-coverage-language-ids"
+
 const LANGUAGE_PRESET_DEFINITIONS: Array<{
   label: string
   aliases: string[]
@@ -66,6 +77,16 @@ export function resolveRequestedLanguageIds(
   )
 }
 
+function toSearchParams(
+  currentQuery: string | URLSearchParams,
+): URLSearchParams {
+  if (currentQuery instanceof URLSearchParams) {
+    return new URLSearchParams(currentQuery)
+  }
+
+  return new URLSearchParams(currentQuery.replace(/^\?/, ""))
+}
+
 export function normalizeCoverageLanguageSearchParams(
   currentQuery: string,
   languageIds: string[],
@@ -81,6 +102,121 @@ export function normalizeCoverageLanguageSearchParams(
   }
 
   return nextParams
+}
+
+export function resolveEnglishLanguageId(
+  languages: LanguageOption[],
+): string | null {
+  return (
+    resolveLanguagePresets(languages).find(
+      (preset) => preset.label === "English",
+    )?.id ?? null
+  )
+}
+
+export function readRememberedCoverageLanguageIds(
+  storage: StorageLike | undefined,
+): string[] {
+  if (!storage) return []
+
+  try {
+    return parseRequestedLanguageIds(
+      storage.getItem(COVERAGE_LANGUAGE_SELECTION_STORAGE_KEY) ?? undefined,
+    )
+  } catch {
+    return []
+  }
+}
+
+export function writeRememberedCoverageLanguageIds(
+  storage: StorageLike | undefined,
+  languageIds: string[],
+) {
+  if (!storage) return
+
+  const normalized = parseRequestedLanguageIds(languageIds.join(","))
+
+  try {
+    if (normalized.length === 0) {
+      storage.removeItem(COVERAGE_LANGUAGE_SELECTION_STORAGE_KEY)
+      return
+    }
+
+    storage.setItem(
+      COVERAGE_LANGUAGE_SELECTION_STORAGE_KEY,
+      normalized.join(","),
+    )
+  } catch {
+    // Ignore storage errors so private browsing or quota issues do not break navigation.
+  }
+}
+
+export function clearRememberedCoverageLanguageIds(
+  storage: StorageLike | undefined,
+) {
+  if (!storage) return
+
+  try {
+    storage.removeItem(COVERAGE_LANGUAGE_SELECTION_STORAGE_KEY)
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+export function resolveCoverageLanguageSelection({
+  currentQuery,
+  rememberedLanguageIds,
+  languages,
+}: {
+  currentQuery: string | URLSearchParams
+  rememberedLanguageIds: string[]
+  languages: LanguageOption[]
+}): CoverageLanguageSelectionResolution {
+  const params = toSearchParams(currentQuery)
+  const requestedLanguageIds = resolveRequestedLanguageIds({
+    languageId: params.get("languageId") ?? undefined,
+    languageIds: params.get("languageIds") ?? undefined,
+  })
+
+  if (params.has("languageId")) {
+    return {
+      languageIds: requestedLanguageIds,
+      shouldReplaceUrl: false,
+      shouldRememberSelection: requestedLanguageIds.length > 0,
+    }
+  }
+
+  if (params.has("languageIds")) {
+    return {
+      languageIds: requestedLanguageIds,
+      shouldReplaceUrl: true,
+      shouldRememberSelection: requestedLanguageIds.length > 0,
+    }
+  }
+
+  const remembered = parseRequestedLanguageIds(rememberedLanguageIds.join(","))
+  if (remembered.length > 0) {
+    return {
+      languageIds: remembered,
+      shouldReplaceUrl: true,
+      shouldRememberSelection: false,
+    }
+  }
+
+  const englishLanguageId = resolveEnglishLanguageId(languages)
+  if (englishLanguageId) {
+    return {
+      languageIds: [englishLanguageId],
+      shouldReplaceUrl: true,
+      shouldRememberSelection: false,
+    }
+  }
+
+  return {
+    languageIds: [],
+    shouldReplaceUrl: false,
+    shouldRememberSelection: false,
+  }
 }
 
 export function resolveLanguagePresets(

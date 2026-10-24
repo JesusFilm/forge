@@ -1,0 +1,191 @@
+import { createHash } from "node:crypto"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { adminUserRecommendationsOperation } from "@forge/admin-graphql/operations"
+import { resetRecommendationMutationAdmissionForTests } from "@/lib/recommendation-mutation-admission"
+const { query, enabled } = vi.hoisted(() => ({
+  query: vi.fn(),
+  enabled: vi.fn(),
+}))
+vi.mock("@/lib/homepage-recommendations-flag", () => ({
+  homepageRecommendationsEnabled: enabled,
+}))
+vi.mock("@/env", () => ({
+  env: { NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example" },
+}))
+vi.mock("@/lib/admin-client", () => ({ default: { query } }))
+const { POST } = await import("./route")
+const body = { locale: "en", audioLanguageSlug: "english" }
+const delivery = { result: "served", items: [] }
+function request(value: unknown = body, headers: Record<string, string> = {}) {
+  return new Request(
+    "https://watch.example/watch/api/recommendations/for-you",
+    {
+      method: "POST",
+      headers: {
+        origin: "https://watch.example",
+        "sec-fetch-site": "same-origin",
+        "content-type": "application/json",
+        ...headers,
+      },
+      body: JSON.stringify(value),
+    },
+  )
+}
+beforeEach(() => {
+  vi.clearAllMocks()
+  vi.spyOn(console, "info").mockImplementation(() => undefined)
+  enabled.mockResolvedValue(true)
+  resetRecommendationMutationAdmissionForTests()
+  query.mockResolvedValue({ data: { userRecommendations: delivery } })
+})
+const deliveryLogs = () =>
+  vi
+    .mocked(console.info)
+    .mock.calls.map(([message]) =>
+      typeof message === "string"
+        ? message.replace(
+            /trafficCategory=\S+ trafficClassifierVersion=\S+ trustedEdgeSource=\S+ persistenceDisposition=\S+ attempted=\S+ avoidedPersistence=\S+ committed=\S+ /,
+            "",
+          )
+        : message,
+    )
+    .filter(
+      (message) =>
+        typeof message === "string" &&
+        message.startsWith("event=recommendation.delivery "),
+    )
+afterEach(() => vi.restoreAllMocks())
+describe("source-free Web adapter", () => {
+  it("denies unflagged requests before reaching Admin or issuing a recommendation session", async () => {
+    enabled.mockResolvedValue(false)
+    const response = await POST(request())
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=for_you httpStatus=403 result=rejected reason=feature_disabled itemCount=0 upstreamResult=not_observed",
+    ])
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ error: "feature_disabled" })
+    expect(response.headers.get("cache-control")).toMatch(/private.*no-store/)
+    expect(response.headers.get("set-cookie")).toBeNull()
+    expect(query).not.toHaveBeenCalled()
+  })
+  it("issues private no-store responses and requests six using a host-only session", async () => {
+    const response = await POST(request())
+    expect(deliveryLogs()).toEqual([
+      "event=recommendation.delivery endpoint=for_you httpStatus=200 result=served reason=none itemCount=0 upstreamResult=served",
+    ])
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toMatch(/private.*no-store/)
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly")
+    expect(response.headers.get("set-cookie")).not.toContain("Domain=")
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        query: adminUserRecommendationsOperation,
+        fetchPolicy: "no-cache",
+        variables: expect.objectContaining({
+          ...body,
+          count: 6,
+          sessionDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      }),
+    )
+  })
+  it("forwards digests only and leaves a profile dormant without its receipt", async () => {
+    const raw = "a".repeat(43)
+    await POST(
+      request(body, {
+        cookie: `forge_recommendation_session=${raw}; forge_recommendation_profile=${"b".repeat(43)}`,
+      }),
+    )
+    expect(query.mock.calls[0][0].variables).toMatchObject({
+      sessionDigest: createHash("sha256").update(raw).digest("hex"),
+      profileTokenDigest: null,
+      consentReceiptDigest: null,
+    })
+    expect(JSON.stringify(query.mock.calls)).not.toContain(raw)
+  })
+  it("honors a pending withdrawal despite remaining profile cookies", async () => {
+    await POST(
+      request(body, {
+        cookie: `forge_recommendation_session=${"a".repeat(43)}; forge_recommendation_profile=${"b".repeat(43)}; forge_recommendation_consent=${"c".repeat(43)}; forge_recommendation_withdrawal_pending=1`,
+      }),
+    )
+    expect(query.mock.calls[0][0].variables).toMatchObject({
+      profileTokenDigest: null,
+      consentReceiptDigest: null,
+    })
+  })
+  it.each([
+    { ...body, viewerToken: "injected" },
+    { ...body, sessionDigest: "a".repeat(64) },
+    { ...body, count: 20 },
+  ])("rejects client identity/count injection", async (input) => {
+    expect((await POST(request(input))).status).toBe(400)
+    expect(query).not.toHaveBeenCalled()
+  })
+  it("rejects cross-origin delivery", async () => {
+    expect(
+      (await POST(request(body, { origin: "https://other.example" }))).status,
+    ).toBe(403)
+    expect(query).not.toHaveBeenCalled()
+  })
+})
+
+it.each([
+  [
+    { "user-agent": "meta-externalagent/1.1" },
+    "declared_crawler",
+    "contextual",
+  ],
+  [{ purpose: "prefetch" }, "speculative_prefetch", "deferred"],
+  [
+    { "sec-purpose": "prefetch;prerender" },
+    "speculative_prerender",
+    "deferred",
+  ],
+] as const)(
+  "isolates For You %s before reading identities",
+  async (headers, category, disposition) => {
+    query.mockResolvedValue({
+      data: {
+        userRecommendations: {
+          ...delivery,
+          requestId: "upstream-private",
+          expiresAt: "private-expiry",
+          items: [{ id: "card", capability: "signed-secret" }],
+        },
+      },
+    })
+    const response = await POST(
+      request(body, {
+        ...headers,
+        cookie: `forge_recommendation_session=${"a".repeat(43)}; forge_recommendation_profile=${"b".repeat(43)}`,
+      }),
+    )
+    expect(response.headers.get("set-cookie")).toBeNull()
+    const value = await response.json()
+    expect(value).toMatchObject({
+      deliveryDisposition: disposition,
+      delivery: { requestId: null, expiresAt: null, personalization: null },
+    })
+    expect(JSON.stringify(value)).not.toContain("signed-secret")
+    expect(JSON.stringify(value)).not.toContain("upstream-private")
+    expect(query.mock.calls[0][0].variables).toMatchObject({
+      trafficCategory: category,
+      sessionDigest: "0".repeat(64),
+      profileTokenDigest: null,
+      consentReceiptDigest: null,
+    })
+    expect(
+      vi
+        .mocked(console.info)
+        .mock.calls.some(
+          ([message]) =>
+            String(message).includes(`trafficCategory=${category}`) &&
+            String(message).includes(
+              "persistenceDisposition=unexpected_commit",
+            ) &&
+            String(message).includes("avoidedPersistence=0"),
+        ),
+    ).toBe(true)
+  },
+)

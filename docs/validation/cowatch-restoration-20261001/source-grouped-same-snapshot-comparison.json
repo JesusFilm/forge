@@ -1,0 +1,33 @@
+{
+  "declaredAt": "2026-09-30T20:15:03.367Z",
+  "scope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "readOnly": true,
+  "isolation": "repeatable read",
+  "statementTimeoutMs": 5000,
+  "transactionTimeoutMs": 30000,
+  "queryLabels": [
+    "first optimized retained matches",
+    "grouped retained ownership and identity"
+  ],
+  "lockTimeoutMs": 1000,
+  "jit": false,
+  "sourceSqlSha256": [
+    "ba124615661a647820952989ffae4d7d61c98cd7623e14cf977d2760f6a7fc12",
+    "2cafd993ce8d4e83c3f6851933549c74c82125b1f35ef2632233721620861857"
+  ],
+  "publicationPerformed": false,
+  "transportExitCode": 1,
+  "records": [
+    {
+      "status": "failed",
+      "sqlstate": null,
+      "diagnosticsRedacted": true
+    }
+  ],
+  "rawTransportOutputRetained": false
+}

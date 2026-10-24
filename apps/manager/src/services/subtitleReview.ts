@@ -1,7 +1,10 @@
 import {
+  fingerprintSubtitleVtt,
+  fingerprintSubtitleBytes,
+} from "@/lib/subtitle-review-fingerprint"
+import {
   buildReviewedSubtitleArtifactKey,
   findExistingSubtitleReviewRevision,
-  fingerprintSubtitleVtt,
   getLatestSubtitleReviewRevision,
   getSubtitleReviewReport,
   isReviewedSubtitleArtifactKey,
@@ -14,9 +17,9 @@ import {
   signSubtitleReviewToken,
   verifySubtitleReviewToken,
 } from "@/lib/subtitle-review-session"
-import { getJob, updateJob } from "@/lib/state"
+import { getJob, compareAndSwapJobArtifacts } from "@/lib/state"
 import { parseVTT } from "@/lib/vtt"
-import { readArtifact, writeArtifact } from "@/services/storage"
+import { readArtifactBounded, writeImmutableArtifact } from "@/services/storage"
 import type {
   JobArtifactManifest,
   JobRecord,
@@ -29,6 +32,8 @@ const LAUNCH_TTL_MS = 5 * 60 * 1000
 const EDIT_TOKEN_TTL_MS = 30 * 60 * 1000
 const EXCHANGE_RATE_LIMIT_WINDOW_MS = 60 * 1000
 const EXCHANGE_RATE_LIMIT_MAX_ATTEMPTS = 10
+const MAX_EXCHANGE_BUCKETS = 1024
+const MAX_TRANSITION_ATTEMPTS = 8
 const exchangeAttemptsByJob = new Map<
   string,
   {
@@ -48,6 +53,7 @@ export type SubtitleReviewFailureReason =
   | "rate_limited"
   | "stale_base"
   | "persist_failed"
+  | "save_id_conflict"
 
 export type SubtitleReviewFailure = {
   ok: false
@@ -130,7 +136,30 @@ function textFromArtifact(bytes: Uint8Array): string {
 }
 
 function isUsableReviewVtt(vtt: string): boolean {
-  return vtt.trimStart().startsWith("WEBVTT") && parseVTT(vtt).length > 0
+  if (
+    Buffer.byteLength(vtt, "utf8") > 512 * 1024 ||
+    !/^WEBVTT(?:[ \t][^\n]*)?\r?\n/.test(vtt)
+  )
+    return false
+  const cues = parseVTT(vtt)
+  const timingLines = vtt.split("\n").filter((line) => line.includes("-->"))
+  return (
+    cues.length > 0 &&
+    cues.length <= 5000 &&
+    cues.length === timingLines.length &&
+    timingLines.every((line) =>
+      /^\d{2,}:([0-5]\d):([0-5]\d)\.\d{3} --> \d{2,}:([0-5]\d):([0-5]\d)\.\d{3}(?:[ \t].*)?\r?$/.test(
+        line,
+      ),
+    ) &&
+    cues.every(
+      (cue) =>
+        cue.start >= 0 &&
+        cue.end > cue.start &&
+        cue.end <= 86400 &&
+        cue.text.length <= 8192,
+    )
+  )
 }
 
 async function readSubtitleArtifact(
@@ -142,9 +171,21 @@ async function readSubtitleArtifact(
   }
 
   try {
-    return textFromArtifact(
-      await readArtifact(job.muxAssetId, artifactKey, "vtt"),
+    const bytes = await readArtifactBounded(
+      job.muxAssetId,
+      artifactKey,
+      "vtt",
+      512 * 1024,
     )
+    const revision = getSubtitleReviewReport(job.artifacts).revisions.find(
+      (entry) => entry.artifactKey === artifactKey,
+    )
+    if (
+      revision &&
+      fingerprintSubtitleBytes(bytes) !== revision.contentFingerprint
+    )
+      return null
+    return textFromArtifact(bytes)
   } catch {
     return null
   }
@@ -169,16 +210,13 @@ function withUpdatedReport(
   })
 }
 
-async function persistArtifacts(
-  jobId: string,
-  artifacts: JobArtifactManifest,
-): Promise<boolean> {
-  return (await updateJob(jobId, { artifacts })) != null
-}
-
 function isExchangeRateLimited(jobId: string, nowMs: number): boolean {
+  for (const [key, bucket] of exchangeAttemptsByJob) {
+    if (bucket.resetAt <= nowMs) exchangeAttemptsByJob.delete(key)
+  }
   const current = exchangeAttemptsByJob.get(jobId)
   if (!current || current.resetAt <= nowMs) {
+    if (exchangeAttemptsByJob.size >= MAX_EXCHANGE_BUCKETS) return true
     exchangeAttemptsByJob.set(jobId, {
       count: 1,
       resetAt: nowMs + EXCHANGE_RATE_LIMIT_WINDOW_MS,
@@ -193,133 +231,137 @@ function isExchangeRateLimited(jobId: string, nowMs: number): boolean {
 export async function createSubtitleReviewSession(
   input: CreateSubtitleReviewSessionInput,
 ): Promise<CreateSubtitleReviewSessionResult> {
-  const job = await getJob(input.jobId)
-  if (!job) {
-    throw new Error("job_not_found")
-  }
-
-  const targetLanguage = targetLanguageFromSubtitleArtifact(
-    input.sourceArtifactKey,
-  )
-  const report = getSubtitleReviewReport(job.artifacts)
-  const latestRevision = getLatestSubtitleReviewRevision(
-    job.artifacts,
-    input.sourceArtifactKey,
-  )
-  const baseArtifactKey = latestRevision?.artifactKey ?? input.sourceArtifactKey
-  const baseVtt = await readSubtitleArtifact(job, baseArtifactKey)
-  if (!baseVtt) {
-    throw new Error("artifact_not_found")
-  }
-
-  const now = new Date()
-  const expiresAt = new Date(now.getTime() + LAUNCH_TTL_MS).toISOString()
   const launchCode = createSubtitleReviewLaunchCode()
-  const launchSession: SubtitleReviewLaunchSession = {
-    nonceHash: hashSubtitleReviewLaunchCode(launchCode),
-    sourceArtifactKey: input.sourceArtifactKey,
-    targetLanguage,
-    baseArtifactKey,
-    baseFingerprint:
-      latestRevision?.contentFingerprint ?? fingerprintSubtitleVtt(baseVtt),
-    actorId: input.actorId,
-    createdAt: now.toISOString(),
-    expiresAt,
-  }
+  for (let attempt = 0; attempt < MAX_TRANSITION_ATTEMPTS; attempt++) {
+    const job = await getJob(input.jobId)
+    if (!job) {
+      throw new Error("job_not_found")
+    }
 
-  const nextReport: SubtitleReviewReport = {
-    ...report,
-    launchSessions: [
-      ...pruneLaunchSessions(report.launchSessions ?? [], now),
-      launchSession,
-    ],
-    updatedAt: now.toISOString(),
-  }
+    const targetLanguage = targetLanguageFromSubtitleArtifact(
+      input.sourceArtifactKey,
+    )
+    const report = getSubtitleReviewReport(job.artifacts)
+    const latestRevision = getLatestSubtitleReviewRevision(
+      job.artifacts,
+      input.sourceArtifactKey,
+    )
+    const baseArtifactKey =
+      latestRevision?.artifactKey ?? input.sourceArtifactKey
+    const baseVtt = await readSubtitleArtifact(job, baseArtifactKey)
+    if (!baseVtt) {
+      throw new Error("artifact_not_found")
+    }
 
-  const persisted = await persistArtifacts(
-    input.jobId,
-    withUpdatedReport(job.artifacts, nextReport),
-  )
-  if (!persisted) {
-    throw new Error("persist_failed")
-  }
+    const now = new Date()
+    const expiresAt = new Date(now.getTime() + LAUNCH_TTL_MS).toISOString()
+    const launchSession: SubtitleReviewLaunchSession = {
+      nonceHash: hashSubtitleReviewLaunchCode(launchCode),
+      sourceArtifactKey: input.sourceArtifactKey,
+      targetLanguage,
+      baseArtifactKey,
+      baseFingerprint:
+        latestRevision?.contentFingerprint ?? fingerprintSubtitleVtt(baseVtt),
+      actorId: input.actorId,
+      createdAt: now.toISOString(),
+      expiresAt,
+    }
 
-  return {
-    editorUrl: buildSubtitleEditorLaunchUrl({
-      jobId: input.jobId,
-      launchCode,
-    }),
-    sourceArtifactKey: input.sourceArtifactKey,
-    targetLanguage,
-    baseArtifactKey,
-    baseFingerprint: launchSession.baseFingerprint,
-    expiresAt,
+    const nextReport: SubtitleReviewReport = {
+      ...report,
+      launchSessions: [
+        ...pruneLaunchSessions(report.launchSessions ?? [], now),
+        launchSession,
+      ],
+      updatedAt: now.toISOString(),
+    }
+
+    if ((nextReport.launchSessions?.length ?? 0) > 64)
+      throw new Error("rate_limited")
+    const persisted = await compareAndSwapJobArtifacts(
+      job,
+      withUpdatedReport(job.artifacts, nextReport),
+    )
+    if (!persisted) continue
+
+    return {
+      editorUrl: buildSubtitleEditorLaunchUrl({
+        jobId: input.jobId,
+        launchCode,
+      }),
+      sourceArtifactKey: input.sourceArtifactKey,
+      targetLanguage,
+      baseArtifactKey,
+      baseFingerprint: launchSession.baseFingerprint,
+      expiresAt,
+    }
   }
+  throw new Error("persist_failed")
 }
 
 export async function exchangeSubtitleReviewLaunchCode(input: {
   jobId: string
   launchCode: string
 }): Promise<SubtitleReviewExchangeResult> {
-  const job = await getJob(input.jobId)
-  if (!job) {
-    return { ok: false, reason: "job_not_found" }
-  }
-
-  const report = getSubtitleReviewReport(job.artifacts)
-  const nonceHash = hashSubtitleReviewLaunchCode(input.launchCode)
-  const now = new Date()
-  if (isExchangeRateLimited(input.jobId, now.getTime())) {
+  if (isExchangeRateLimited(input.jobId, Date.now()))
     return { ok: false, reason: "rate_limited" }
-  }
-  const session = (report.launchSessions ?? []).find(
-    (candidate) => candidate.nonceHash === nonceHash,
-  )
-  if (
-    !session ||
-    session.consumedAt ||
-    Date.parse(session.expiresAt) <= now.getTime()
-  ) {
-    return { ok: false, reason: "invalid_launch" }
-  }
+  for (let attempt = 0; attempt < MAX_TRANSITION_ATTEMPTS; attempt++) {
+    const job = await getJob(input.jobId)
+    if (!job) {
+      return { ok: false, reason: "job_not_found" }
+    }
 
-  const consumedAt = now.toISOString()
-  const nextReport: SubtitleReviewReport = {
-    ...report,
-    launchSessions: (report.launchSessions ?? []).map((candidate) =>
-      candidate.nonceHash === nonceHash
-        ? { ...candidate, consumedAt }
-        : candidate,
-    ),
-    updatedAt: consumedAt,
-  }
+    const report = getSubtitleReviewReport(job.artifacts)
+    const nonceHash = hashSubtitleReviewLaunchCode(input.launchCode)
+    const now = new Date()
+    const session = (report.launchSessions ?? []).find(
+      (candidate) => candidate.nonceHash === nonceHash,
+    )
+    if (
+      !session ||
+      session.consumedAt ||
+      Date.parse(session.expiresAt) <= now.getTime()
+    ) {
+      return { ok: false, reason: "invalid_launch" }
+    }
 
-  const persisted = await persistArtifacts(
-    input.jobId,
-    withUpdatedReport(job.artifacts, nextReport),
-  )
-  if (!persisted) {
-    return { ok: false, reason: "persist_failed" }
-  }
+    const consumedAt = now.toISOString()
+    const nextReport: SubtitleReviewReport = {
+      ...report,
+      launchSessions: (report.launchSessions ?? []).map((candidate) =>
+        candidate.nonceHash === nonceHash
+          ? { ...candidate, consumedAt }
+          : candidate,
+      ),
+      updatedAt: consumedAt,
+    }
 
-  const expiresAt = new Date(now.getTime() + EDIT_TOKEN_TTL_MS).toISOString()
-  return {
-    ok: true,
-    editToken: await signSubtitleReviewToken({
-      jobId: input.jobId,
+    const persisted = await compareAndSwapJobArtifacts(
+      job,
+      withUpdatedReport(job.artifacts, nextReport),
+    )
+    if (!persisted) continue
+
+    const expiresAt = new Date(now.getTime() + EDIT_TOKEN_TTL_MS).toISOString()
+    return {
+      ok: true,
+      editToken: await signSubtitleReviewToken({
+        jobId: input.jobId,
+        sourceArtifactKey: session.sourceArtifactKey,
+        targetLanguage: session.targetLanguage,
+        baseArtifactKey: session.baseArtifactKey,
+        baseFingerprint: session.baseFingerprint,
+        actorId: session.actorId,
+        expiresAt,
+      }),
+      expiresAt,
       sourceArtifactKey: session.sourceArtifactKey,
       targetLanguage: session.targetLanguage,
       baseArtifactKey: session.baseArtifactKey,
       baseFingerprint: session.baseFingerprint,
-      actorId: session.actorId,
-      expiresAt,
-    }),
-    expiresAt,
-    sourceArtifactKey: session.sourceArtifactKey,
-    targetLanguage: session.targetLanguage,
-    baseArtifactKey: session.baseArtifactKey,
-    baseFingerprint: session.baseFingerprint,
+    }
   }
+  return { ok: false, reason: "persist_failed" }
 }
 
 export async function bootstrapSubtitleReviewSession(input: {
@@ -358,7 +400,9 @@ export async function bootstrapSubtitleReviewSession(input: {
     sourceArtifactKey: token.sourceArtifactKey,
     targetLanguage: token.targetLanguage,
     baseArtifactKey,
-    baseFingerprint,
+    baseFingerprint: latestRevision
+      ? baseFingerprint
+      : fingerprintSubtitleVtt(vtt),
     vtt,
     media: {
       muxPlaybackId: job.muxPlaybackId,
@@ -380,106 +424,152 @@ export async function saveSubtitleReviewRevision(input: {
     return { ok: false, reason: "invalid_token" }
   }
 
-  if (!isUsableReviewVtt(input.vtt)) {
+  if (
+    !input.clientSaveId ||
+    input.clientSaveId.length > 128 ||
+    !isUsableReviewVtt(input.vtt)
+  ) {
     return { ok: false, reason: "invalid_vtt" }
   }
 
-  const job = await getJob(input.jobId)
-  if (!job) {
-    return { ok: false, reason: "job_not_found" }
-  }
+  for (let attempt = 0; attempt < MAX_TRANSITION_ATTEMPTS; attempt++) {
+    const job = await getJob(input.jobId)
+    if (!job) {
+      return { ok: false, reason: "job_not_found" }
+    }
 
-  const report = getSubtitleReviewReport(job.artifacts)
-  const contentFingerprint = fingerprintSubtitleVtt(input.vtt)
-  const baseArtifactFingerprint =
-    input.baseArtifactFingerprint ?? token.baseFingerprint
-  const existingRevision = findExistingSubtitleReviewRevision(report, {
-    sourceArtifactKey: token.sourceArtifactKey,
-    clientSaveId: input.clientSaveId,
-    contentFingerprint,
-  })
-  if (existingRevision) {
+    const report = getSubtitleReviewReport(job.artifacts)
+    const contentFingerprint = fingerprintSubtitleVtt(input.vtt)
+    const baseArtifactFingerprint =
+      input.baseArtifactFingerprint ?? token.baseFingerprint
+    const existingRevision = findExistingSubtitleReviewRevision(report, {
+      sourceArtifactKey: token.sourceArtifactKey,
+      clientSaveId: input.clientSaveId,
+      contentFingerprint,
+    })
+    if (
+      existingRevision &&
+      (existingRevision.sourceArtifactKey !== token.sourceArtifactKey ||
+        existingRevision.contentFingerprint !== contentFingerprint ||
+        existingRevision.baseFingerprint !== baseArtifactFingerprint ||
+        existingRevision.actorId !== token.actorId ||
+        existingRevision.targetLanguage !== token.targetLanguage ||
+        existingRevision.sessionFingerprint !==
+          fingerprintSubtitleVtt(input.editToken))
+    ) {
+      return { ok: false, reason: "save_id_conflict" }
+    }
+    if (existingRevision) {
+      if (!(await readSubtitleArtifact(job, existingRevision.artifactKey)))
+        return { ok: false, reason: "persist_failed" }
+      return {
+        ok: true,
+        status: "duplicate",
+        jobId: input.jobId,
+        artifactKey: existingRevision.artifactKey,
+        reviewedArtifactKey: existingRevision.artifactKey,
+        revision: existingRevision.revision,
+        contentFingerprint: existingRevision.contentFingerprint,
+        baseArtifactFingerprint: existingRevision.baseFingerprint,
+        savedAt: existingRevision.createdAt,
+      }
+    }
+
+    if (report.revisions.length >= 5000)
+      return { ok: false, reason: "rate_limited" }
+    const latestRevision = getLatestSubtitleReviewRevision(
+      job.artifacts,
+      token.sourceArtifactKey,
+    )
+    const baseVtt = await readSubtitleArtifact(
+      job,
+      latestRevision?.artifactKey ?? token.sourceArtifactKey,
+    )
+    if (!baseVtt) return { ok: false, reason: "artifact_not_found" }
+    if (fingerprintSubtitleVtt(baseVtt) !== baseArtifactFingerprint) {
+      return {
+        ok: false,
+        reason: "stale_base",
+        latestArtifactKey: latestRevision?.artifactKey,
+      }
+    }
+
+    const revision =
+      report.revisions
+        .filter((entry) => entry.sourceArtifactKey === token.sourceArtifactKey)
+        .reduce((highest, entry) => Math.max(highest, entry.revision), 0) + 1
+    const artifactKey = buildReviewedSubtitleArtifactKey(
+      token.targetLanguage,
+      revision,
+      fingerprintSubtitleVtt(input.jobId),
+      fingerprintSubtitleVtt(
+        JSON.stringify([
+          token.sourceArtifactKey,
+          token.actorId,
+          input.editToken,
+          baseArtifactFingerprint,
+          input.clientSaveId,
+          contentFingerprint,
+        ]),
+      ),
+    )
+
+    try {
+      await writeImmutableArtifact({
+        assetId: job.muxAssetId,
+        artifactType: artifactKey,
+        ext: "vtt",
+        body: input.vtt,
+        contentType: "text/vtt; charset=utf-8",
+      })
+    } catch {
+      return { ok: false, reason: "persist_failed" }
+    }
+
+    const now = new Date().toISOString()
+    const nextRevision: SubtitleReviewRevision = {
+      artifactKey,
+      sourceArtifactKey: token.sourceArtifactKey,
+      targetLanguage: token.targetLanguage,
+      revision,
+      baseFingerprint: baseArtifactFingerprint,
+      contentFingerprint,
+      clientSaveId: input.clientSaveId,
+      sessionFingerprint: fingerprintSubtitleVtt(input.editToken),
+      actorId: token.actorId,
+      createdAt: now,
+    }
+    const nextReport: SubtitleReviewReport = {
+      ...report,
+      revisions: [...report.revisions, nextRevision],
+      launchSessions: report.launchSessions ?? [],
+      updatedAt: now,
+    }
+
+    let persisted = false
+    try {
+      persisted = await compareAndSwapJobArtifacts(job, {
+        ...withUpdatedReport(job.artifacts, nextReport),
+        [artifactKey]: { kind: "downloadable" },
+      })
+    } catch {
+      // A transport failure can follow a committed write. Re-read, then the
+      // equality-only replay path reconciles it without overwriting any object.
+      continue
+    }
+    if (!persisted) continue
+
     return {
       ok: true,
-      status: "duplicate",
+      status: "saved",
       jobId: input.jobId,
-      artifactKey: existingRevision.artifactKey,
-      reviewedArtifactKey: existingRevision.artifactKey,
-      revision: existingRevision.revision,
-      contentFingerprint: existingRevision.contentFingerprint,
-      baseArtifactFingerprint: existingRevision.baseFingerprint,
-      savedAt: existingRevision.createdAt,
+      artifactKey,
+      reviewedArtifactKey: artifactKey,
+      revision,
+      contentFingerprint,
+      baseArtifactFingerprint,
+      savedAt: now,
     }
   }
-
-  const latestRevision = getLatestSubtitleReviewRevision(
-    job.artifacts,
-    token.sourceArtifactKey,
-  )
-  if (
-    latestRevision &&
-    latestRevision.contentFingerprint !== baseArtifactFingerprint
-  ) {
-    return {
-      ok: false,
-      reason: "stale_base",
-      latestArtifactKey: latestRevision.artifactKey,
-    }
-  }
-
-  const revision =
-    report.revisions
-      .filter((entry) => entry.sourceArtifactKey === token.sourceArtifactKey)
-      .reduce((highest, entry) => Math.max(highest, entry.revision), 0) + 1
-  const artifactKey = buildReviewedSubtitleArtifactKey(
-    token.targetLanguage,
-    revision,
-  )
-
-  await writeArtifact({
-    assetId: job.muxAssetId,
-    artifactType: artifactKey,
-    ext: "vtt",
-    body: input.vtt,
-    contentType: "text/vtt; charset=utf-8",
-  })
-
-  const now = new Date().toISOString()
-  const nextRevision: SubtitleReviewRevision = {
-    artifactKey,
-    sourceArtifactKey: token.sourceArtifactKey,
-    targetLanguage: token.targetLanguage,
-    revision,
-    baseFingerprint: baseArtifactFingerprint,
-    contentFingerprint,
-    clientSaveId: input.clientSaveId,
-    actorId: token.actorId,
-    createdAt: now,
-  }
-  const nextReport: SubtitleReviewReport = {
-    ...report,
-    revisions: [...report.revisions, nextRevision],
-    launchSessions: report.launchSessions ?? [],
-    updatedAt: now,
-  }
-
-  const persisted = await persistArtifacts(input.jobId, {
-    ...withUpdatedReport(job.artifacts, nextReport),
-    [artifactKey]: { kind: "downloadable" },
-  })
-  if (!persisted) {
-    return { ok: false, reason: "persist_failed" }
-  }
-
-  return {
-    ok: true,
-    status: "saved",
-    jobId: input.jobId,
-    artifactKey,
-    reviewedArtifactKey: artifactKey,
-    revision,
-    contentFingerprint,
-    baseArtifactFingerprint,
-    savedAt: now,
-  }
+  return { ok: false, reason: "persist_failed" }
 }

@@ -106,7 +106,7 @@ describe("subtitle review helpers", () => {
     })
   })
 
-  it("finds an existing idempotent save by client save id or content fingerprint", () => {
+  it("locates save IDs for equality validation without content-only deduplication", () => {
     const report: SubtitleReviewReport = {
       revisions: [
         {
@@ -138,7 +138,7 @@ describe("subtitle review helpers", () => {
         clientSaveId: "different",
         contentFingerprint: "content-fingerprint",
       })?.artifactKey,
-    ).toBe("subtitles-ja-reviewed-r0001")
+    ).toBeUndefined()
   })
 
   it("returns an empty report for missing or malformed metadata", () => {

@@ -1,0 +1,208 @@
+export const AUTH_SCOPES = [
+  {
+    key: "shorts:narration",
+    label: "Generate draft Shorts narration",
+    description:
+      "Use an approved existing voice for one initial pass and one correction per project. Provider charges apply. Never approves final script or publication.",
+  },
+  {
+    key: "shorts:render",
+    label: "Render Shorts drafts",
+    description:
+      "Request private draft renders using infrastructure; never approve or publish.",
+  },
+  {
+    key: "shorts:read",
+    label: "Read Shorts projects",
+    description: "Read Shorts projects, history and shared assets.",
+  },
+  {
+    key: "shorts:edit",
+    label: "Edit Shorts drafts",
+    description:
+      "Apply revision-checked draft edits; never approve or publish.",
+  },
+  {
+    key: "shorts:chat",
+    label: "Run Shorts agent",
+    description:
+      "Request hosted authoring proposals; never approve narration or publication.",
+  },
+  {
+    key: "shorts:instructions:read",
+    label: "Read Shorts instructions",
+    description: "Inspect active Shorts guidance without changing activation.",
+  },
+  {
+    key: "openid",
+    label: "Sign you in",
+    description: "Confirm your identity for the requesting application.",
+  },
+  {
+    key: "profile:read",
+    label: "Read your profile",
+    description: "Share your name, profile image, and Jesus Film account id.",
+  },
+  {
+    key: "email:read",
+    label: "Read your email address",
+    description: "Share your verified email address.",
+  },
+  {
+    key: "offline_access",
+    label: "Stay signed in",
+    description:
+      "Allow the requesting application to keep access active without asking you to sign in again.",
+  },
+  {
+    key: "membership:read",
+    label: "Read membership status",
+    description:
+      "Share whether your Jesus Film account can use first-party apps.",
+  },
+  {
+    key: "admin:access",
+    label: "Access Admin",
+    description: "Allow sign-in to the Jesus Film Admin application.",
+  },
+  {
+    key: "manager:access",
+    label: "Access Manager",
+    description: "Allow sign-in to the Jesus Film Manager application.",
+  },
+  {
+    key: "mastra-studio:access",
+    label: "Access Mastra Studio",
+    description: "Allow sign-in to the Mastra Studio gateway.",
+  },
+  {
+    key: "web:watch-events:write",
+    label: "Record watch activity",
+    description:
+      "Allow Web to record meaningful signed-in video watch activity.",
+  },
+  {
+    key: "admin:manager-session:validate",
+    label: "Validate Manager sessions",
+    description:
+      "Allow Manager to validate operator access against the Admin app.",
+  },
+  {
+    key: "admin:manager-backend",
+    label: "Use the Manager backend",
+    description:
+      "Allow the Manager service to call its Admin-owned backend contracts.",
+  },
+  {
+    key: "tokens:manage",
+    label: "Manage tokens",
+    description: "Create, inspect, and revoke scoped Auth tokens.",
+  },
+  {
+    key: "experience:read",
+    label: "Read experiences",
+    description: "Read Experience pages and locale content for localization.",
+  },
+  {
+    key: "experience:locale:create",
+    label: "Create experience locales",
+    description: "Create new localized Experience drafts.",
+  },
+  {
+    key: "experience:locale:update",
+    label: "Update experience locales",
+    description: "Update localized Experience drafts you can edit.",
+  },
+  {
+    key: "experience:locale:validate",
+    label: "Validate experience locales",
+    description: "Validate localized Experience drafts before writing.",
+  },
+  {
+    key: "media:read",
+    label: "Read media",
+    description: "Read media asset metadata needed for localized Experiences.",
+  },
+  {
+    key: "video:read",
+    label: "Read videos",
+    description: "Read video availability and replacement candidates.",
+  },
+  {
+    key: "bible:read",
+    label: "Read Bible references",
+    description: "Read Bible passages and reference metadata for localization.",
+  },
+  {
+    key: "experience:publish",
+    label: "Publish experience locales",
+    description: "Publish localized Experiences after validation.",
+  },
+  {
+    key: "experience:create",
+    label: "Create experiences",
+    description: "Create new Experience pages as drafts.",
+  },
+  {
+    key: "experience:generate",
+    label: "Generate experiences",
+    description: "Generate new Experience page drafts with AI.",
+  },
+  {
+    key: "push:campaign:read",
+    label: "Read push campaigns",
+    description:
+      "Read push campaigns and their reports, languages, destinations, and audience counts.",
+  },
+  {
+    key: "push:campaign:draft",
+    label: "Draft push campaigns",
+    description:
+      "Create and edit push campaign drafts. Cannot test, schedule, or send.",
+  },
+  {
+    key: "changelog:read",
+    label: "Read Changelog",
+    description: "View and filter published Changelog entries.",
+  },
+  {
+    key: "changelog:submit",
+    label: "Submit Changelog entries",
+    description: "Submit entries and manage entries created by the caller.",
+  },
+  {
+    key: "changelog:admin",
+    label: "Administer Changelog",
+    description: "Manage all Changelog entries and products.",
+  },
+] as const
+
+export type AuthScopeKey = (typeof AUTH_SCOPES)[number]["key"]
+
+export const CHANGELOG_OAUTH_SCOPES = [
+  "changelog:read",
+  "changelog:submit",
+  "changelog:admin",
+] as const satisfies readonly AuthScopeKey[]
+
+const scopeKeys = new Set(AUTH_SCOPES.map((scope) => scope.key))
+
+export function isKnownScope(scope: string): scope is AuthScopeKey {
+  return scopeKeys.has(scope as AuthScopeKey)
+}
+
+export function assertKnownScopes(scopes: readonly string[]): AuthScopeKey[] {
+  const unknownScopes = scopes.filter((scope) => !isKnownScope(scope))
+
+  if (unknownScopes.length > 0) {
+    throw new Error(`Unknown Auth scope(s): ${unknownScopes.join(", ")}`)
+  }
+
+  return [...new Set(scopes)] as AuthScopeKey[]
+}
+
+export function describeScopes(scopes: readonly string[]) {
+  const requested = new Set(assertKnownScopes(scopes))
+
+  return AUTH_SCOPES.filter((scope) => requested.has(scope.key))
+}

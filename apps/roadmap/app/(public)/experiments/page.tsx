@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function ExperimentsPage() {
   return (
-    <div className="mx-auto max-w-4xl pb-20">
+    <div className="pb-20">
       {/* Hero */}
       <section className="space-y-4 pb-12 pt-8">
         <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">

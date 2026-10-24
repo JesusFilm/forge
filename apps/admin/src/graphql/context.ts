@@ -1,0 +1,122 @@
+// Per-request GraphQL context builder.
+//
+// Unit 5 resolves the admin-local OAuth session from request cookies, then
+// maps the DB-backed user role into the GraphQL principal. `SYSTEM` remains
+// an in-process-only principal; HTTP requests can never mint it.
+//
+// Plan 006 adds a service-to-service `Authorization: Bearer <key>` path
+// that mints the request-bound `WORKFLOW_TRIGGER` principal when the
+// header matches `WORKFLOW_API_KEYS`. The admin session path continues to take
+// precedence — a logged-in admin's session is never
+// downgraded by the presence of a bearer header.
+//
+// Plan 003 (U1) adds a second bearer path that mints `CONSUMER_BEARER`
+// when the header matches `WEB_ADMIN_API_KEYS`. Used by apps/web SSR
+// for rate-limit bucketing — the principal carries NO permissions
+// beyond PUBLIC. Same session-wins precedence applies: an editor with
+// a session cookie who also forwards a consumer-app bearer keeps their
+// editorial role. YTM-002 adds `VIDEO_MAPPER`, a mapper-only catalog-sync
+// bearer. Web signed-in watch-event writes mint `WEB_USER` after Auth token
+// introspection. Mobile signed-in progress ops mint `MOBILE_USER` after local
+// JWKS verification of the Auth-issued user JWT. The bearer-resolution chain is:
+//   session -> workflow-bearer -> manager-bearer -> video-mapper-bearer ->
+//   manager-service-token -> mobile-user-token -> web-user-token ->
+//   consumer-bearer -> PUBLIC
+// in that order; the first match wins. The internal bearer CSVs are
+// contractually disjoint per `config/env.ts`; precedence here is the safety
+// net if that invariant ever drifts.
+//
+// SECURITY: this module MUST NEVER log raw `Authorization` header
+// values or bearer key strings. Log scrubbing is unit-tested via
+// console spies in `context.test.ts`.
+//
+// Per Unit 3 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
+
+import { prisma } from "@/db/client"
+import { resolvePrincipalFromRequest } from "@/auth/session"
+import {
+  CONSUMER_BEARER_PRINCIPAL,
+  MANAGER_BACKEND_PRINCIPAL,
+  VIDEO_MAPPER_PRINCIPAL,
+  WORKFLOW_TRIGGER_PRINCIPAL,
+} from "@/auth/principal"
+import { isValidConsumerBearer } from "@/auth/consumer-bearer"
+import { isValidManagerBearer } from "@/auth/manager-bearer"
+import { isValidManagerServiceToken } from "@/auth/manager-service-token"
+import { resolveMobileUserPrincipalFromToken } from "@/auth/mobile-user-token"
+import { isValidVideoMapperBearer } from "@/auth/video-mapper-bearer"
+import { resolveWebUserPrincipalFromToken } from "@/auth/web-user-token"
+import { isValidWorkflowBearer } from "@/auth/workflow-bearer"
+import type { ContextShape } from "@/graphql/builder"
+import { createLoaders } from "@/graphql/loaders"
+import { createServices } from "@/services"
+import { readWatchHomeCategoryRailRolloutCompleted } from "@/services/watch-home-category-rail-rollout"
+
+export async function createContext({
+  request,
+}: {
+  request: Request
+}): Promise<ContextShape> {
+  const watchHomeCategoryRailRolloutCompleted =
+    await readWatchHomeCategoryRailRolloutCompleted(prisma)
+  const sessionUser = await resolvePrincipalFromRequest(request)
+  // Session wins. A user with an admin session who happens to also send
+  // a (valid or stray) bearer header is treated as that session, not
+  // demoted to a narrower bearer principal. Otherwise the chain is
+  // workflow -> manager -> mapper -> OAuth Manager -> web-user -> consumer ->
+  // PUBLIC. The
+  // bearer CSVs are contractually disjoint per `config/env.ts`; precedence here
+  // is the safety net if that invariant ever drifts.
+  let user = sessionUser
+  if (user == null) {
+    const authHeader = request.headers.get("authorization")
+    if (isValidWorkflowBearer(authHeader)) {
+      user = WORKFLOW_TRIGGER_PRINCIPAL
+    } else if (isValidManagerBearer(authHeader)) {
+      user = MANAGER_BACKEND_PRINCIPAL
+    } else if (isValidVideoMapperBearer(authHeader)) {
+      user = VIDEO_MAPPER_PRINCIPAL
+    } else if (
+      await isValidManagerServiceToken(authHeader, "admin:manager-backend")
+    ) {
+      user = MANAGER_BACKEND_PRINCIPAL
+    } else {
+      // Manager service and web-user access tokens are both opaque Auth
+      // tokens, so they cannot be classified locally. An unrecognized web
+      // token can therefore incur the bounded Manager introspection timeout
+      // before its web introspection. Keep every locally verifiable/static
+      // principal above this network boundary; consolidate the two remote
+      // lookups only when Auth offers one least-privilege shared introspector.
+      // Mobile runs BEFORE web-user: mobile JWTs verify locally against
+      // Auth's JWKS, while the web branch introspects every unrecognized
+      // bearer over the network (a wasted 3s budget per mobile request).
+      const mobileUser = await resolveMobileUserPrincipalFromToken(authHeader)
+      const webUser = mobileUser
+        ? null
+        : await resolveWebUserPrincipalFromToken(authHeader)
+      if (mobileUser) {
+        user = mobileUser
+      } else if (webUser) {
+        user = webUser
+      } else {
+        const consumer = isValidConsumerBearer(authHeader)
+        if (consumer.valid) {
+          user = CONSUMER_BEARER_PRINCIPAL({
+            rateLimitBucketKey: consumer.bucketKey,
+            fleet: consumer.fleet,
+          })
+        } else {
+          user = null
+        }
+      }
+    }
+  }
+  return {
+    user,
+    request,
+    prisma,
+    watchHomeCategoryRailRolloutCompleted,
+    loaders: createLoaders(prisma),
+    services: createServices(prisma),
+  }
+}

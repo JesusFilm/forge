@@ -1,3 +1,16 @@
+vi.mock("@/config/env", () => ({
+  env: {
+    get SUBTITLE_EDITOR_PUBLIC_URL() {
+      return process.env.SUBTITLE_EDITOR_PUBLIC_URL
+    },
+    get SUBTITLE_EDITOR_ALLOWED_ORIGINS() {
+      return process.env.SUBTITLE_EDITOR_ALLOWED_ORIGINS
+    },
+    get SUBTITLE_REVIEW_SESSION_SECRET() {
+      return process.env.SUBTITLE_REVIEW_SESSION_SECRET
+    },
+  },
+}))
 import { NextResponse } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 

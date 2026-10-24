@@ -1,0 +1,79 @@
+{
+  "measured_at": "2026-09-29T07:00:08.204899+00:00",
+  "health_measured_at": "2026-09-29T07:00:08.068594+00:00",
+  "decision": "PASS narrow current DB health and disk admission for ONE previously reviewed isolated LOCAL read-only preflight",
+  "lock_waiters": 0,
+  "transactions_older_than_30s": 0,
+  "available_bytes": 10184667136,
+  "above_5GB_reserve_bytes": 5184667136,
+  "disk_threshold_crossed": false,
+  "filesystem_growth_comparisons": [
+    {
+      "baseline_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260929T0616-integration-capacity-review/runtime.json",
+      "baseline_measured_at": "2026-09-29T06:16:26.527800+00:00",
+      "hours": 0.7282436386111111,
+      "available_delta_bytes": -6328320,
+      "growth_GB_per_day": 0.20855613691272512,
+      "days_to_exhaustion": 48.834176192388895
+    },
+    {
+      "baseline_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260929T0436-migration-readiness/runtime.json",
+      "baseline_measured_at": "2026-09-29T04:36:25.300424+00:00",
+      "hours": 2.3952512430555553,
+      "available_delta_bytes": 221184,
+      "growth_GB_per_day": -0.0022162251310339377,
+      "days_to_exhaustion": null
+    },
+    {
+      "baseline_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260929T0341/runtime.json",
+      "baseline_measured_at": "2026-09-29T03:44:56.902607+00:00",
+      "hours": 3.2531395255555555,
+      "available_delta_bytes": -133373952,
+      "growth_GB_per_day": 0.983964820092785,
+      "days_to_exhaustion": 10.350641535171569
+    },
+    {
+      "baseline_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260928T2140/runtime.json",
+      "baseline_measured_at": "2026-09-28T21:41:42.441939+00:00",
+      "hours": 9.307156377777778,
+      "available_delta_bytes": -338878464,
+      "growth_GB_per_day": 0.8738526361734876,
+      "days_to_exhaustion": 11.654902342113
+    },
+    {
+      "baseline_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260928T1540/heartbeat-20260928T1540-runtime.json",
+      "baseline_measured_at": "2026-09-28T15:39:48.011988+00:00",
+      "hours": 15.338942475277777,
+      "available_delta_bytes": -674816000,
+      "growth_GB_per_day": 1.055847495751607,
+      "days_to_exhaustion": 9.645964191779443
+    },
+    {
+      "baseline_receipt": "/home/nisal/Documents/Codex/2026-09-28/recommendation-traffic-isolation/outputs/heartbeats/20260928T0500/heartbeat-20260928T0500-runtime.json",
+      "baseline_measured_at": "2026-09-28T05:02:38.881889+00:00",
+      "hours": 25.958145280555552,
+      "available_delta_bytes": -922099712,
+      "growth_GB_per_day": 0.8525413834006544,
+      "days_to_exhaustion": 11.946243706522436
+    }
+  ],
+  "nominal_volume_MB_from_0616_receipt": 50000,
+  "volume_size_refreshed_here": false,
+  "latest_observed_filesystem_total_bytes": 48891670528,
+  "full_transition_capacity_proven": false,
+  "production_queries": 1,
+  "production_filesystem_probes": 1,
+  "production_mutations": 0,
+  "preflight_executions": 0,
+  "population_or_rate_queries": 0,
+  "release_verification": "Admin 0a70712399bf99e10d88477b98cc34c8ababcc6b convergence reported by owning parent; parent separately checks HTTP/worker health and 0107\u20130110 authority/catalog. Not re-verified in this narrow probe.",
+  "runner_path": "/tmp/forge-cowatch-isolated-preflight.py",
+  "runner_sha256_at_admission": "63142215fa4d649e6c60f513dfaaba3e66bf9cdffd45307d9320810fa4cd5788",
+  "scope_limits": [
+    "One local isolated no-execute invocation after parent release/empty-authority/local-resource checks pass.",
+    "Fixed Sep22 00:00 inclusive to Sep29 00:00 exclusive; asOf Sep29 06:15.",
+    "45 second host deadline, 1GiB hard memory/no swap, 1 CPU, original SQL guards; no retry/window narrowing.",
+    "Graph publication, shadow runs and A/A enrollment remain uncleared.",
+    "This point-in-time admission is not a capacity reservation; recheck if materially delayed or new contention/capacity evidence appears."
+  ]
+}

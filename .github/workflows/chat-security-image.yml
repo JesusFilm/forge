@@ -1,0 +1,38 @@
+name: Chat production image
+on:
+  pull_request:
+    paths:
+      - "apps/chat/**"
+      - "packages/video-player/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/chat-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/chat/**"
+      - "packages/video-player/**"
+      - "packages/watch-url-policy/**"
+      - "scripts/update-security-ca.sh"
+      - ".github/workflows/chat-security-image.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build the actual production image with filtered package trust
+        run: docker build -f apps/chat/Dockerfile -t chat-security-ci .
+      - name: Verify independent runtime and OS trust contexts
+        run: docker run --rm --entrypoint sh chat-security-ci apps/chat/verify-image-trust.sh
+      - name: Verify actual production command and fail-closed readiness without external networking
+        run: docker run --rm --network none -e CHAT_IMAGE_FIXTURE=isolated --entrypoint node chat-security-ci apps/chat/verify-production-image.mjs

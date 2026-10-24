@@ -1,8 +1,8 @@
 // Scene analysis pipeline — standalone workflow decoupled from video enrichment.
 //
-// This pipeline consumes existing subtitle data from the CMS (synced from Core API)
-// rather than requiring Mux transcription. It runs independently and can be
-// triggered for any video that has subtitles + Mux playback data.
+// This pipeline prefers existing subtitle data from admin/Core. If that subtitle
+// is unavailable but a Mux asset exists, it can generate/read Mux subtitles as a
+// fallback so admin-triggered scene analysis is not blocked by a stale subtitle URL.
 //
 // Steps: fetch subtitle → generate chapters → extract scene boundaries → analyze scenes (OpenRouter + stills)
 
@@ -11,13 +11,16 @@ import { generateChapters } from "@/services/chapters"
 import { extractAndStoreSceneBoundaries } from "@/services/sceneBoundaries"
 import { analyzeAllScenes } from "@/services/sceneAnalysis"
 import { getMuxAsset } from "@/services/mux"
+import { transcribe } from "@/services/transcription"
 
 export type SceneAnalysisPipelineInput = {
   videoId: number
   assetId: string
   muxAssetId: string
-  subtitleUrl: string
+  subtitleUrl?: string
   videoLabel: string
+  languageCode?: string
+  targetLocale?: string
   bibleVerses?: string[]
 }
 
@@ -40,8 +43,14 @@ export async function runSceneAnalysisPipeline(
     }),
   )
 
-  // Step 1: Fetch existing subtitle and parse to plain text
-  const transcript = await fetchSubtitleText(input.subtitleUrl)
+  const inputLanguageBcp47 = input.targetLocale ?? input.languageCode ?? "auto"
+
+  // Step 1: Fetch existing target-language subtitle or transcribe the
+  // selected target-language Mux asset as fallback.
+  const transcript = input.subtitleUrl
+    ? await fetchSubtitleText(input.subtitleUrl)
+    : (await transcribe(input.assetId, input.muxAssetId, inputLanguageBcp47))
+        .text
 
   if (!transcript || transcript.length < 10) {
     throw new Error(
@@ -71,6 +80,20 @@ export async function runSceneAnalysisPipeline(
     {
       videoLabel: input.videoLabel,
       bibleVerses: input.bibleVerses,
+      targetLocale: input.targetLocale,
+      inputLanguageBcp47,
+      muxAssetId: input.muxAssetId,
+      transcriptSource: input.subtitleUrl
+        ? {
+            kind: "subtitle-url",
+            languageBcp47: inputLanguageBcp47,
+            subtitleUrl: input.subtitleUrl,
+          }
+        : {
+            kind: "mux-transcription",
+            languageBcp47: inputLanguageBcp47,
+            muxAssetId: input.muxAssetId,
+          },
     },
   )
 

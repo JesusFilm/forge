@@ -1,0 +1,17 @@
+{
+  "id": "search-back",
+  "objective": "Verify that remote Back from Search returns to Watch Home with visible focus.",
+  "kind": "ui",
+  "platform": "apple-tv",
+  "targets": {
+    "appleTvSimulatorId": "REPLACE_WITH_AVAILABLE_4K_SIMULATOR_UUID"
+  },
+  "allowedPaths": ["apps/tv/", "docs/plans/example-tv-search-back.md"],
+  "acceptance": [
+    {
+      "id": "search-back",
+      "description": "From Search with a typed query, one remote Back returns to Home without exiting Watch."
+    }
+  ],
+  "agentModel": "not supplied"
+}

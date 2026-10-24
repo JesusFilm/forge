@@ -12,6 +12,8 @@ depends_on:
 blocks:
   - "feat-020"
   - "feat-013"
+  - "feat-036"
+  - "feat-039"
 tags:
   - "manager"
   - "ai-pipeline"

@@ -121,6 +121,7 @@ export function failureResponse(
     invalid_vtt: 422,
     rate_limited: 429,
     stale_base: 409,
+    save_id_conflict: 409,
     persist_failed: 500,
   }
 
@@ -143,5 +144,36 @@ export function readBearerToken(request: Request): string | null {
   if (!header?.startsWith("Bearer ")) {
     return null
   }
-  return header.slice("Bearer ".length)
+  const token = header.slice("Bearer ".length)
+  return token.length <= 4096 ? token : null
+}
+
+export async function readReviewJson(
+  request: Request,
+  maximumBytes = 4096,
+): Promise<unknown> {
+  const declared = request.headers.get("content-length")
+  if (declared && (!/^\d+$/.test(declared) || Number(declared) > maximumBytes))
+    return null
+  if (!request.body) return null
+  const reader = request.body.getReader()
+  const chunks: Uint8Array[] = []
+  let length = 0
+  try {
+    for (;;) {
+      const chunk = await reader.read()
+      if (chunk.done) break
+      length += chunk.value.byteLength
+      if (length > maximumBytes) {
+        await reader.cancel()
+        return null
+      }
+      chunks.push(chunk.value)
+    }
+    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown
+  } catch {
+    return null
+  } finally {
+    reader.releaseLock()
+  }
 }

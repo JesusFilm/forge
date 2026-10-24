@@ -339,7 +339,31 @@ describe("stageClone", () => {
     })
   })
 
-  it("reuses the existing mux asset directly when clone mode is disabled", async () => {
+  it("reuses the existing mux asset directly and preserves a static MP4 source when clone mode is disabled", async () => {
+    const getAsset = vi.fn().mockResolvedValue({
+      assetId: "mux-ru",
+      playbackId: "play-ru",
+      publicPlaybackId: "play-ru",
+      status: "ready",
+      duration: 123,
+      staticRenditions: [
+        {
+          name: "360p.mp4",
+          status: "ready",
+          width: 640,
+          height: 360,
+          type: "advanced",
+        },
+        {
+          name: "480p.mp4",
+          status: "ready",
+          width: 854,
+          height: 480,
+          type: "advanced",
+        },
+      ],
+    })
+
     const result = await materializeEnrichmentTargetForJob(
       {
         coreId: "video-1",
@@ -355,6 +379,7 @@ describe("stageClone", () => {
         sourceLanguagePriorityCodes: buildMuxSourceLanguagePriority("ru"),
         requestedTargetLanguageCode: "ru",
       },
+      { getAsset },
     )
 
     expect(result).toEqual({
@@ -366,19 +391,31 @@ describe("stageClone", () => {
       sourceMuxAssetId: "mux-ru",
       sourceMuxPlaybackId: "play-ru",
       sourceInputType: "mux_asset",
+      sourceInputUrl: "https://stream.mux.com/play-ru/480p.mp4",
       sourceSelectionReason: "requested",
       sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("ru"),
       targetMuxAssetId: "mux-ru",
       targetMuxPlaybackId: "play-ru",
     })
+    expect(getAsset).toHaveBeenCalledWith("mux-ru")
   })
 
   it("recovers a missing playback id from live mux state for direct reuse", async () => {
     const getAsset = vi.fn().mockResolvedValue({
       assetId: "mux-en",
       playbackId: "play-en",
+      publicPlaybackId: "play-en",
       status: "ready",
       duration: 123,
+      staticRenditions: [
+        {
+          name: "270p.mp4",
+          status: "ready",
+          width: 480,
+          height: 270,
+          type: "basic",
+        },
+      ],
     })
 
     await expect(
@@ -408,6 +445,7 @@ describe("stageClone", () => {
       sourceMuxAssetId: "mux-en",
       sourceMuxPlaybackId: "play-en",
       sourceInputType: "mux_asset",
+      sourceInputUrl: "https://stream.mux.com/play-en/270p.mp4",
       sourceSelectionReason: "requested",
       sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("en"),
       targetMuxAssetId: "mux-en",
@@ -415,6 +453,43 @@ describe("stageClone", () => {
     })
 
     expect(getAsset).toHaveBeenCalledWith("mux-en")
+  })
+
+  it("keeps direct reuse available when static rendition lookup fails but playback is known", async () => {
+    const getAsset = vi.fn().mockRejectedValue(new Error("Mux lookup failed"))
+
+    await expect(
+      materializeEnrichmentTargetForJob(
+        {
+          coreId: "video-1",
+          variants: [
+            {
+              language: { coreId: "529", bcp47: "en", iso3: "eng" },
+              muxVideo: { assetId: "mux-en", playbackId: "play-en" },
+            },
+          ],
+        },
+        {
+          materializationTarget: "direct",
+          sourceLanguagePriorityCodes: buildMuxSourceLanguagePriority("en"),
+          requestedTargetLanguageCode: "en",
+        },
+        { getAsset },
+      ),
+    ).resolves.toEqual({
+      status: "ready",
+      materializationMode: "direct_mux_asset_reuse",
+      sourceVideoCoreId: "video-1",
+      sourceLanguage: { coreId: "529", bcp47: "en", iso3: "eng" },
+      sourceLanguageCode: "en",
+      sourceMuxAssetId: "mux-en",
+      sourceMuxPlaybackId: "play-en",
+      sourceInputType: "mux_asset",
+      sourceSelectionReason: "requested",
+      sourceSelectionAttemptedCodes: buildMuxSourceLanguagePriority("en"),
+      targetMuxAssetId: "mux-en",
+      targetMuxPlaybackId: "play-en",
+    })
   })
 
   it("surfaces direct-mode unsupported results when no reusable mux asset exists", async () => {

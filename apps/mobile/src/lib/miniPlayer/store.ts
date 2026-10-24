@@ -1,0 +1,417 @@
+/**
+ * The mini-player session store (KTD2): a module-scope subscribable store, not
+ * React context. The window shows a position updating at the adapter's
+ * one-second poll, and a root context would re-render every consumer beneath it
+ * on each tick. It is also readable WITHOUT React, which the picture-in-picture
+ * latch and the AppState handler need.
+ *
+ * A factory plus a lazy module singleton, matching `authSession.ts`: every
+ * behaviour decision unit-tests against a fresh instance with no React and no
+ * native module, while the app reads one store.
+ */
+
+import type { AdminLanguageForms } from "../../i18n/adminLanguage"
+import type { AuthSessionSnapshot } from "../authSession"
+import type { VideoQoeReason } from "../videoQoe"
+
+/** playing | ended is a session PHASE, distinct from dismissal (R21, R27). */
+export type MiniPlayerPhase = "playing" | "ended"
+
+/** Why the session ended in place: playback finished, or the stream failed
+ *  unrecoverably (R22). Both keep the window on screen. */
+export type MiniPlayerEndedCause = "playToEnd" | "failure"
+
+/**
+ * Dismissal is a three-state, not a boolean: a dismiss requested while the
+ * picture-in-picture hold is set must DEFER, because R24 forbids any mount or
+ * unmount while that hold is set (AE12).
+ */
+export type MiniPlayerDismissal = "none" | "deferred" | "exiting"
+
+export type MiniPlayerSession = {
+  /** Admin video id; null for downloaded playback, which has only a slug. */
+  videoId: string | null
+  videoSlug: string
+  languageSlug: string | null
+  title: string
+  posterUrl: string | null
+  /** The signed-in subject at creation, null when signed out. A change ends the
+   *  session (R25). */
+  accountId: string | null
+  /** The route pattern the session was created from — R19 exclusion is keyed on
+   *  where a session ORIGINATED, never on where the viewer now is. */
+  originPattern: string | null
+  positionSeconds: number
+  durationSeconds: number
+  phase: MiniPlayerPhase
+  endedCause: MiniPlayerEndedCause | null
+  /** KTD16: the Admin language forms the session's screen read its text
+   *  with. An expand of the same video reads them back, so a live language
+   *  change does not move that screen's text. Null when no screen noted any. */
+  adminForms: AdminLanguageForms | null
+}
+
+export type MiniPlayerSessionInput = {
+  videoId: string | null
+  videoSlug: string
+  languageSlug?: string | null
+  title: string
+  posterUrl?: string | null
+  originPattern?: string | null
+  positionSeconds?: number
+  durationSeconds?: number
+  adminForms?: AdminLanguageForms | null
+  /** The caller verified unfinished playback for this content. A merge onto an
+   *  ended session then resets the phase — a full-view replay is watching again,
+   *  and a window mounted "ended" over live audio releases its surface (R27). */
+  playbackLive?: boolean
+}
+
+export type MiniPlayerStoreSnapshot = {
+  session: MiniPlayerSession | null
+  dismissal: MiniPlayerDismissal
+  /** KTD12/KTD16: while set, no view mounts, unmounts, or changes owner. */
+  pipHold: boolean
+}
+
+/**
+ * The explicit end signal (KTD13). The store owns no progress or telemetry
+ * dependency; it reports the ending and the ended session, and U5 turns that
+ * into a flush trigger and a quality-session finalize.
+ */
+export type MiniPlayerEndEvent = {
+  session: MiniPlayerSession
+  reason: VideoQoeReason
+  /** Set when the reason is "ended", so a failure is distinguishable from a
+   *  play-to-end without widening the quality vocabulary here. */
+  endedCause: MiniPlayerEndedCause | null
+}
+
+/**
+ * The auth surface KTD15 needs, typed off `authSession.ts`'s own snapshot so
+ * `getAuthSession()` plugs in with no adapter.
+ */
+export type MiniPlayerAuthSource = {
+  getSnapshot: () => AuthSessionSnapshot
+  subscribe: (listener: () => void) => () => void
+}
+
+export type MiniPlayerStore = ReturnType<typeof createMiniPlayerStore>
+
+const EMPTY_SNAPSHOT: MiniPlayerStoreSnapshot = {
+  session: null,
+  dismissal: "none",
+  pipHold: false,
+}
+
+/** Same content by whichever key each side carries: a remounted screen names
+ *  a video by slug before its record lands and by id after, so an id-only
+ *  compare reads one video as two and ends its session on every expand. */
+export function sameSessionContent(
+  a: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
+  b: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
+): boolean {
+  if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
+  return a.videoSlug === b.videoSlug
+}
+
+/** KTD16: the forms a media screen for `videoSlug` reads at mount: the
+ *  session's when it plays that video (an expand keeps its text), else the
+ *  current ones. A screen knows only its slug at mount, hence the key. */
+export function screenAdminForms(
+  session: Pick<MiniPlayerSession, "videoSlug" | "adminForms"> | null,
+  videoSlug: string,
+  current: AdminLanguageForms,
+): AdminLanguageForms {
+  if (session != null && session.videoSlug === videoSlug && session.adminForms)
+    return session.adminForms
+  return current
+}
+
+// Enough for a stack of open watch screens; older notes are never read.
+const NOTED_SCREEN_FORMS_MAX = 16
+
+export function createMiniPlayerStore() {
+  let snapshot: MiniPlayerStoreSnapshot = EMPTY_SNAPSHOT
+  const listeners = new Set<() => void>()
+  const endListeners = new Set<(event: MiniPlayerEndEvent) => void>()
+  let auth: MiniPlayerAuthSource | null = null
+  // Set by the dismissal that armed the current exit, so a deferred exit keeps
+  // the choice made when the viewer closed the window.
+  let exitReports = true
+  // KTD16: the forms each open media screen read with, by slug. The session
+  // starts from the playback request, which does not carry them.
+  const notedScreenForms = new Map<string, AdminLanguageForms>()
+
+  function currentAccountId(): string | null {
+    const authSnapshot = auth?.getSnapshot()
+    return authSnapshot?.status === "signedIn" ? authSnapshot.user.id : null
+  }
+
+  function commit(next: MiniPlayerStoreSnapshot) {
+    snapshot = next
+    for (const listener of listeners) listener()
+  }
+
+  /** Commit first, then report: a listener that reads the store during the
+   *  report sees the state the ending produced, never the state it replaced. */
+  function emitEnd(session: MiniPlayerSession, reason: VideoQoeReason) {
+    const event: MiniPlayerEndEvent = {
+      session,
+      reason,
+      endedCause:
+        reason === "ended" || reason === "failed" ? session.endedCause : null,
+    }
+    for (const listener of endListeners) listener(event)
+  }
+
+  /** An ended session already closed its quality session at `markEnded`, so no
+   *  later ending may close it a second time (R27). */
+  function reportEnd(session: MiniPlayerSession, reason: VideoQoeReason) {
+    if (session.phase === "ended") return
+    emitEnd(session, reason)
+  }
+
+  function withSession(session: MiniPlayerSession): MiniPlayerStoreSnapshot {
+    return { ...snapshot, session }
+  }
+
+  /**
+   * Start the exit: playback stops and the window slides away (R6). The quality
+   * session closes as dismissed only if it has not already closed as ended —
+   * R27 forbids closing it twice.
+   */
+  function beginExit() {
+    const session = snapshot.session
+    if (!session) return
+    commit({ ...snapshot, dismissal: "exiting" })
+    if (exitReports) reportEnd(session, "dismissed")
+  }
+
+  function dismiss(reports: boolean) {
+    if (!snapshot.session || snapshot.dismissal !== "none") return
+    exitReports = reports
+    if (snapshot.pipHold) {
+      commit({ ...snapshot, dismissal: "deferred" })
+      return
+    }
+    beginExit()
+  }
+
+  return {
+    getSnapshot(): MiniPlayerStoreSnapshot {
+      return snapshot
+    },
+
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+
+    /** Subscribe to explicit session endings (progress flush + telemetry). */
+    onEnd(listener: (event: MiniPlayerEndEvent) => void): () => void {
+      endListeners.add(listener)
+      return () => {
+        endListeners.delete(listener)
+      }
+    },
+
+    /**
+     * The one session-start entry point: starting different content implicitly
+     * ends the previous session as replaced, so no call site has to remember to
+     * stop the old one first. Re-starting the SAME content (the viewer expands
+     * back to the full screen) merges metadata and keeps the position.
+     */
+    start(input: MiniPlayerSessionInput): void {
+      const previous = snapshot.session
+      const merging = previous != null && sameSessionContent(previous, input)
+      const session: MiniPlayerSession = {
+        // A slug-only re-start must not drop the id, or the dub, the window
+        // already knows: a remounted screen re-reads the dub from here.
+        videoId: input.videoId ?? (merging ? previous.videoId : null),
+        videoSlug: input.videoSlug,
+        languageSlug:
+          input.languageSlug ?? (merging ? previous.languageSlug : null),
+        title: input.title,
+        posterUrl: input.posterUrl ?? null,
+        accountId: merging ? previous.accountId : currentAccountId(),
+        originPattern:
+          input.originPattern ?? (merging ? previous.originPattern : null),
+        positionSeconds:
+          input.positionSeconds ?? (merging ? previous.positionSeconds : 0),
+        durationSeconds:
+          input.durationSeconds ?? (merging ? previous.durationSeconds : 0),
+        phase: merging && !input.playbackLive ? previous.phase : "playing",
+        endedCause: merging && !input.playbackLive ? previous.endedCause : null,
+        // A merge keeps the forms the video first played with (KTD16).
+        adminForms:
+          input.adminForms ??
+          (merging ? previous.adminForms : null) ??
+          notedScreenForms.get(input.videoSlug) ??
+          null,
+      }
+      commit({
+        session,
+        dismissal: merging ? snapshot.dismissal : "none",
+        pipHold: snapshot.pipHold,
+      })
+      if (previous && !merging) reportEnd(previous, "replaced")
+    },
+
+    /** KTD16: a media screen notes the forms it read its text with. A session
+     *  that starts for that slug takes them; a note changes no snapshot. */
+    noteScreenAdminForms(videoSlug: string, forms: AdminLanguageForms): void {
+      notedScreenForms.delete(videoSlug)
+      notedScreenForms.set(videoSlug, forms)
+      if (notedScreenForms.size > NOTED_SCREEN_FORMS_MAX) {
+        const oldest = notedScreenForms.keys().next().value
+        if (oldest !== undefined) notedScreenForms.delete(oldest)
+      }
+    },
+
+    /**
+     * Position feed from the adapter's one-second poll (U5). Rejected when the
+     * signed-in subject no longer matches the one the session was created under,
+     * so a tick in flight across a sign-out cannot write for the old account
+     * (R25).
+     */
+    publishPosition(update: {
+      positionSeconds: number
+      durationSeconds?: number
+    }): void {
+      const session = snapshot.session
+      if (!session) return
+      if (session.accountId !== currentAccountId()) return
+      commit(
+        withSession({
+          ...session,
+          positionSeconds: update.positionSeconds,
+          durationSeconds: update.durationSeconds ?? session.durationSeconds,
+        }),
+      )
+    },
+
+    /**
+     * Playback finished, or the stream failed: the window persists showing the
+     * thumbnail and the quality session closes here, not on dismissal (R21,
+     * R22, R27).
+     */
+    markEnded(cause: MiniPlayerEndedCause): void {
+      const session = snapshot.session
+      if (!session || session.phase === "ended") return
+      const ended: MiniPlayerSession = {
+        ...session,
+        phase: "ended",
+        endedCause: cause,
+      }
+      commit(withSession(ended))
+      emitEnd(ended, cause === "failure" ? "failed" : "ended")
+    },
+
+    /** Replay from the ended state (R27) — the window is already mounted. */
+    markPlaying(): void {
+      const session = snapshot.session
+      if (!session || session.phase === "playing") return
+      commit(
+        withSession({
+          ...session,
+          phase: "playing",
+          endedCause: null,
+          positionSeconds: 0,
+        }),
+      )
+    },
+
+    /**
+     * The viewer dismissed the window. Idempotent, and deferred while the
+     * picture-in-picture hold is set (R6, R24).
+     */
+    requestDismiss(): void {
+      dismiss(true)
+    },
+
+    /** feat-553 KTD10: a window closed over the reader exits as usual but ends
+     *  with no report, so the quality session, the recommendation episode and
+     *  the settings survive for the return. */
+    dismissWithoutReport(): void {
+      dismiss(false)
+    },
+
+    /**
+     * The exit animation finished. The store clears ONLY from `exiting`, so a
+     * stray report can never remove a live window (R6).
+     */
+    reportExitComplete(): void {
+      if (snapshot.dismissal !== "exiting") return
+      commit(EMPTY_SNAPSHOT)
+    },
+
+    /**
+     * Explicit end that clears immediately — the paths with no exit animation
+     * (R25's subject change, and the adapter's safety nets).
+     */
+    end(reason: VideoQoeReason): void {
+      const session = snapshot.session
+      if (!session) return
+      commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
+      reportEnd(session, reason)
+    },
+
+    /** feat-553 KTD10: the reader cover's return. The viewer never ended this
+     *  session, so the screen goes back to its state before the cover. */
+    clearWithoutReport(): void {
+      if (!snapshot.session) return
+      commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
+    },
+
+    /** The picture-in-picture latch (KTD12), fed from the video view's own
+     *  callbacks. Releasing it runs a dismiss that was deferred (AE12). */
+    setPipHold(held: boolean): void {
+      if (snapshot.pipHold === held) return
+      commit({ ...snapshot, pipHold: held })
+      if (!held && snapshot.dismissal === "deferred") beginExit()
+    },
+
+    /**
+     * KTD15: the store subscribes to the auth session directly and ends on a
+     * subject change (R25). A sign-out is neither a viewer dismissal nor a
+     * replacement nor a play-to-end, so it reports as abandoned.
+     *
+     * Signing IN is not a loss of a subject: R25 names sign-out, account switch
+     * and deletion, and stopping a video because the viewer signed in from
+     * Profile would be a regression. That session is retagged instead.
+     */
+    attachAuthSession(source: MiniPlayerAuthSource): () => void {
+      auth = source
+      let knownAccountId = currentAccountId()
+      const unsubscribe = source.subscribe(() => {
+        const accountId = currentAccountId()
+        if (accountId === knownAccountId) return
+        const previousAccountId = knownAccountId
+        knownAccountId = accountId
+        const session = snapshot.session
+        if (!session) return
+        if (previousAccountId == null) {
+          commit(withSession({ ...session, accountId }))
+          return
+        }
+        commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
+        reportEnd(session, "abandoned")
+      })
+      return () => {
+        unsubscribe()
+        auth = null
+      }
+    },
+  }
+}
+
+let store: MiniPlayerStore | null = null
+
+/** The app-wide mini-player session store. */
+export function getMiniPlayerStore(): MiniPlayerStore {
+  if (!store) store = createMiniPlayerStore()
+  return store
+}

@@ -1,0 +1,1048 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Watch — 10 Logo Motion Studies</title>
+    <style>
+      :root {
+        --red: #ef3340;
+        --ink: #f6f3f1;
+        --muted: #a29b96;
+        --ground: #11100f;
+        --stage: #161311;
+        --line: #36302c;
+        --cycle: 6s;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: var(--ink);
+        background: var(--ground);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+      }
+      button,
+      a {
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+      }
+      button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid white;
+        outline-offset: 5px;
+      }
+      button:disabled {
+        cursor: default;
+      }
+      header,
+      main,
+      footer {
+        width: min(1600px, calc(100% - 88px));
+        margin: auto;
+      }
+      header {
+        height: 84px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid var(--line);
+        gap: 20px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        font-weight: 700;
+        font-size: 22px;
+        letter-spacing: -0.6px;
+      }
+      .brand svg {
+        width: 34px;
+        height: 27px;
+      }
+      .edition {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--muted);
+      }
+      .intro {
+        display: flex;
+        align-items: end;
+        justify-content: space-between;
+        gap: 30px;
+        padding: 45px 0 31px;
+      }
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--red);
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        font-weight: 650;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 3.4vw, 53px);
+        font-weight: 650;
+        letter-spacing: -1.9px;
+        line-height: 1.05;
+      }
+      .lead {
+        font-size: 15px;
+        color: var(--muted);
+        margin: 15px 0 0;
+        line-height: 1.5;
+      }
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: end;
+      }
+      .control {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 11px 15px;
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--ink);
+        font-size: 12px;
+        white-space: nowrap;
+        border-radius: 7px;
+        text-decoration: none;
+        min-height: 42px;
+      }
+      .control:hover {
+        border-color: #8b7e75;
+        background: #25201c;
+      }
+      .control.active {
+        background: var(--ink);
+        color: var(--ground);
+        border-color: var(--ink);
+      }
+      .control svg {
+        width: 14px;
+        height: 14px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+      }
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 25px 18px;
+      }
+      .study {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 0;
+        border: 0;
+        color: inherit;
+        background: none;
+        border-radius: 10px;
+        align-content: start;
+        align-self: start;
+      }
+      .stage {
+        position: relative;
+        aspect-ratio: 16/11;
+        overflow: hidden;
+        background: var(--stage);
+        border: 1px solid #28231f;
+        border-radius: 10px;
+        transition: border-color 0.2s;
+      }
+      .stage > svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .study:hover .stage,
+      .study:focus-visible .stage {
+        border-color: #c1b0a4;
+      }
+      .expand {
+        position: absolute;
+        right: 12px;
+        bottom: 12px;
+        width: 24px;
+        height: 24px;
+        opacity: 0;
+        color: #e9dfd8;
+        transition: opacity 0.2s;
+      }
+      .study:hover .expand,
+      .study:focus-visible .expand {
+        opacity: 1;
+      }
+      .expand svg {
+        width: 100%;
+        height: 100%;
+        stroke: currentColor;
+        stroke-width: 1.3;
+        fill: none;
+      }
+      .caption {
+        padding: 13px 2px 0;
+      }
+      .caption-top {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .number {
+        color: var(--red);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.6px;
+      }
+      .caption h2 {
+        font-size: 14px;
+        margin: 0;
+        font-weight: 600;
+        letter-spacing: -0.15px;
+      }
+      .caption p {
+        font-size: 11px;
+        margin: 7px 0 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      footer {
+        display: flex;
+        gap: 24px;
+        justify-content: space-between;
+        margin-top: 35px;
+        padding: 23px 0 30px;
+        border-top: 1px solid var(--line);
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      footer p {
+        margin: 0;
+      }
+      footer a {
+        color: var(--ink);
+        text-underline-offset: 4px;
+        white-space: nowrap;
+      }
+      .slow {
+        --cycle: 12s;
+      }
+      .is-paused .motion,
+      .is-paused .motion * {
+        animation-play-state: paused !important;
+      }
+      .restarting .motion,
+      .restarting .motion * {
+        animation: none !important;
+      }
+      .sheen-strip {
+        animation: sheen var(--cycle) ease-in-out infinite;
+      }
+      .trace {
+        animation: trace var(--cycle) linear infinite;
+      }
+      .breath {
+        animation: breath var(--cycle) ease-in-out infinite;
+      }
+      .glass-band {
+        animation: glass var(--cycle) ease-in-out infinite;
+      }
+      .glass-band.secondary {
+        animation-delay: calc(var(--cycle) * -0.35);
+        opacity: 0.18;
+      }
+      .metal-beam {
+        animation: metal var(--cycle) ease-in-out infinite;
+      }
+      .orbit-spot {
+        animation: orbit var(--cycle) linear infinite;
+      }
+      .ripple {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: ripple var(--cycle) ease-out infinite;
+      }
+      .ripple.second {
+        animation-delay: calc(var(--cycle) / -3);
+      }
+      .ripple.third {
+        animation-delay: calc(var(--cycle) * -0.666666);
+      }
+      .particle {
+        animation: particle var(--cycle) ease-in-out infinite;
+        animation-delay: var(--delay);
+      }
+      .reveal-face {
+        animation: reveal-face var(--cycle) ease-in-out infinite;
+      }
+      .reveal-edge {
+        animation: reveal-edge var(--cycle) ease-in-out infinite;
+      }
+      .silk-wave {
+        animation: silk var(--cycle) ease-in-out infinite;
+      }
+      .silk-wave.secondary {
+        animation-delay: calc(var(--cycle) / -2);
+      }
+      @keyframes sheen {
+        0%,
+        12% {
+          transform: translateX(-80px);
+          opacity: 0;
+        }
+        24% {
+          opacity: 0.7;
+        }
+        60% {
+          opacity: 0.7;
+        }
+        76%,
+        100% {
+          transform: translateX(90px);
+          opacity: 0;
+        }
+      }
+      @keyframes trace {
+        from {
+          stroke-dashoffset: 100;
+        }
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
+      @keyframes breath {
+        0%,
+        100% {
+          opacity: 0.58;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      @keyframes glass {
+        0%,
+        100% {
+          transform: translate(-26px, 0);
+          opacity: 0.2;
+        }
+        50% {
+          transform: translate(29px, 0);
+          opacity: 0.65;
+        }
+      }
+      @keyframes metal {
+        0%,
+        100% {
+          transform: translateX(-34px);
+        }
+        50% {
+          transform: translateX(34px);
+        }
+      }
+      @keyframes orbit {
+        0%,
+        100% {
+          transform: translate(-15px, -9px);
+        }
+        25% {
+          transform: translate(15px, -9px);
+        }
+        50% {
+          transform: translate(15px, 9px);
+        }
+        75% {
+          transform: translate(-15px, 9px);
+        }
+      }
+      @keyframes ripple {
+        0% {
+          transform: scale(0.03);
+          opacity: 0;
+        }
+        9% {
+          opacity: 0.55;
+        }
+        85%,
+        100% {
+          transform: scale(1.75);
+          opacity: 0;
+        }
+      }
+      @keyframes particle {
+        0%,
+        100% {
+          transform: translate(var(--dx), var(--dy));
+          opacity: 0;
+        }
+        32%,
+        68% {
+          transform: translate(0, 0);
+          opacity: var(--brightness);
+        }
+      }
+      @keyframes reveal-face {
+        0%,
+        23%,
+        100% {
+          opacity: 0;
+        }
+        42%,
+        73% {
+          opacity: 1;
+        }
+        93% {
+          opacity: 0;
+        }
+      }
+      @keyframes reveal-edge {
+        0%,
+        100% {
+          stroke-dashoffset: 100;
+          opacity: 0;
+        }
+        13% {
+          opacity: 0.9;
+        }
+        36% {
+          stroke-dashoffset: 0;
+          opacity: 0.9;
+        }
+        58%,
+        90% {
+          stroke-dashoffset: 0;
+          opacity: 0;
+        }
+      }
+      @keyframes silk {
+        0%,
+        100% {
+          transform: translate(-10px, -3px);
+        }
+        50% {
+          transform: translate(11px, 4px);
+        }
+      }
+      dialog {
+        padding: 0;
+        width: min(980px, calc(100vw - 40px));
+        border: 1px solid #4a3b33;
+        border-radius: 15px;
+        background: var(--ground);
+        color: var(--ink);
+        box-shadow: 0 30px 100px #0008;
+      }
+      dialog::backdrop {
+        background: #000c;
+        backdrop-filter: blur(8px);
+      }
+      .dialog-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 23px;
+        gap: 15px;
+      }
+      .dialog-title {
+        font-size: 18px;
+        font-weight: 550;
+        letter-spacing: -0.4px;
+      }
+      .dialog-title .number {
+        margin-right: 12px;
+        font-size: 12px;
+      }
+      .close {
+        border: 0;
+        border-radius: 50%;
+        height: 36px;
+        width: 36px;
+        background: #29231f;
+        color: var(--ink);
+        font-size: 24px;
+        line-height: 1;
+      }
+      .dialog-stage {
+        aspect-ratio: 16/10;
+        background: var(--stage);
+      }
+      .dialog-stage > svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .dialog-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+        padding: 20px 23px;
+      }
+      .dialog-copy {
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.5;
+        margin: 0;
+        max-width: 500px;
+      }
+      .dialog-actions {
+        display: flex;
+        gap: 7px;
+      }
+      .dialog-actions .control {
+        min-width: 40px;
+      }
+      @media (min-width: 1800px) {
+        .stage {
+          aspect-ratio: 16/12;
+        }
+        .intro {
+          padding-top: 50px;
+        }
+      }
+      @media (max-width: 1220px) {
+        .gallery {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .intro {
+          align-items: start;
+        }
+        .controls {
+          max-width: 310px;
+        }
+        .stage {
+          aspect-ratio: 16/10;
+        }
+      }
+      @media (max-width: 780px) {
+        header,
+        main,
+        footer {
+          width: calc(100% - 40px);
+        }
+        header {
+          height: 70px;
+        }
+        .edition {
+          font-size: 9px;
+          letter-spacing: 1px;
+        }
+        .intro {
+          display: block;
+          padding-top: 30px;
+        }
+        .controls {
+          margin-top: 22px;
+          justify-content: start;
+          max-width: none;
+        }
+        .gallery {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 24px 12px;
+        }
+        .caption h2 {
+          font-size: 13px;
+        }
+        .caption p {
+          font-size: 11px;
+        }
+        .dialog-bottom {
+          align-items: start;
+        }
+        .dialog-copy {
+          font-size: 12px;
+        }
+      }
+      @media (max-width: 480px) {
+        .gallery {
+          grid-template-columns: 1fr;
+        }
+        .stage {
+          aspect-ratio: 16/9;
+        }
+        .caption h2 {
+          font-size: 16px;
+        }
+        .caption p {
+          font-size: 12px;
+        }
+        .caption {
+          padding-top: 12px;
+        }
+        .number {
+          font-size: 11px;
+        }
+        h1 {
+          letter-spacing: -1.2px;
+          font-size: 37px;
+        }
+        .lead {
+          font-size: 14px;
+        }
+        .control {
+          padding: 10px 12px;
+        }
+        footer {
+          display: block;
+        }
+        footer p + p {
+          margin-top: 14px;
+        }
+        .dialog-top {
+          padding: 15px;
+        }
+        .dialog-title {
+          font-size: 15px;
+        }
+        .dialog-bottom {
+          padding: 15px;
+          display: block;
+        }
+        .dialog-actions {
+          margin-top: 14px;
+        }
+        .dialog-stage {
+          aspect-ratio: 4/3;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .stage,
+        .expand {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <svg viewBox="0 0 49 36" aria-hidden="true">
+          <path
+            fill="#ef3340"
+            d="M45.854 -.000301361H2.34C1.048 -.000301361 0 1.0467 0 2.3397V20.2427C0 21.2917 .699 22.2137 1.709 22.4957L47.072 35.2077C47.636 35.3657 48.194 34.9417 48.194 34.3567V2.3397C48.194 1.0467 47.147 -.000301361 45.854 -.000301361Z"
+          /></svg
+        >Watch
+      </div>
+      <span class="edition">Motion studies / 01—10</span>
+    </header>
+    <main>
+      <section class="intro" aria-labelledby="title">
+        <div>
+          <p class="eyebrow">Logo animation concepts</p>
+          <h1>One mark. Ten ways to move.</h1>
+          <p class="lead">Compare the mood. Click a study for a closer look.</p>
+        </div>
+        <nav class="controls" aria-label="Animation controls">
+          <button class="control" id="pause" type="button" aria-pressed="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M5 3v10M11 3v10" /></svg
+            ><span>Pause</span>
+          </button>
+          <button class="control" id="replay" type="button">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 5a5 5 0 1 1-1 5M3 1v4h4" /></svg
+            >Replay
+          </button>
+          <button class="control" id="speed" type="button" aria-pressed="false">
+            0.5× speed
+          </button>
+        </nav>
+      </section>
+      <section
+        class="gallery"
+        id="gallery"
+        aria-label="Ten animated Watch logo effects"
+      ></section>
+    </main>
+    <footer>
+      <p>
+        Live SVG/CSS concepts · Original vector outline · 6-second cycles<br />Material
+        previews are illustrative, not final Blender renders.
+      </p>
+      <p>
+        <a
+          href="lighting-loop/Watch-Logo-Lighting-Loop-4K.mp4"
+          target="_blank"
+          rel="noopener"
+          >View the Blender 4K lighting loop ↗</a
+        >
+      </p>
+    </footer>
+    <dialog id="preview" aria-labelledby="preview-title">
+      <div class="dialog-top">
+        <div class="dialog-title" id="preview-title"></div>
+        <button class="close" type="button" aria-label="Close preview">
+          ×
+        </button>
+      </div>
+      <div class="dialog-stage" id="preview-stage"></div>
+      <div class="dialog-bottom">
+        <p class="dialog-copy" id="preview-copy"></p>
+        <div class="dialog-actions">
+          <button
+            class="control"
+            id="previous"
+            type="button"
+            aria-label="Previous effect"
+          >
+            ←</button
+          ><button class="control" id="modal-pause" type="button">Pause</button
+          ><button
+            class="control"
+            id="next"
+            type="button"
+            aria-label="Next effect"
+          >
+            →
+          </button>
+        </div>
+      </div>
+    </dialog>
+    <script>
+      const path =
+        "M45.854 -.000301361H2.34C1.048 -.000301361 0 1.0467 0 2.3397V20.2427C0 21.2917 .699 22.2137 1.709 22.4957L47.072 35.2077C47.636 35.3657 48.194 34.9417 48.194 34.3567V2.3397C48.194 1.0467 47.147 -.000301361 45.854 -.000301361Z"
+      const studies = [
+        [
+          "Diagonal light sweep",
+          "A soft highlight glides across the red face.",
+          "Clean, restrained and closest to the existing Blender lighting loop.",
+        ],
+        [
+          "Neon edge tracing",
+          "A red light follows the outline.",
+          "A luminous edge travels around the original contour, while the face stays quiet.",
+        ],
+        [
+          "Breathing glow",
+          "A gentle pulse, with no movement.",
+          "Soft illumination rises and falls. The logo never scales or shifts.",
+        ],
+        [
+          "Red glass",
+          "Moving reflections on translucent red.",
+          "A polished glass concept: layered reflections, red depth and a fine rim of light.",
+        ],
+        [
+          "Brushed metal",
+          "A sharp highlight on a satin finish.",
+          "Fine horizontal grain and a narrow moving reflection give the red surface a metallic character.",
+        ],
+        [
+          "Orbiting spotlight",
+          "Shading travels around a stationary mark.",
+          "An illuminated patch circles the face, shifting the balance between light and shade.",
+        ],
+        [
+          "Light ripples",
+          "Waves of light flow across the face.",
+          "Soft concentric waves move through the red surface without warping the outline.",
+        ],
+        [
+          "Particle outline",
+          "Tiny lights gather along the edges.",
+          "Small red and white particles converge on the vector contour, linger and gently disperse.",
+        ],
+        [
+          "Cinematic reveal",
+          "Emerge, hold, then return to darkness.",
+          "The outline lights first. The red face follows, holds briefly and fades for the next loop.",
+        ],
+        [
+          "Silk reflections",
+          "Slow, flowing ribbons of light.",
+          "Curved, diffuse reflections travel across the red face for a softer, fabric-like finish.",
+        ],
+      ]
+      let serial = 0
+      let current = 0
+      const icon =
+        '<span class="expand" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4"/></svg></span>'
+      function graphic(index) {
+        const id = "fx" + ++serial
+        const shape = "M" + path.slice(1)
+        const mark =
+          '<path id="' +
+          id +
+          '-mark" pathLength="100" d="' +
+          shape +
+          '" transform="translate(24,14)"/>'
+        const use = (attributes = "") =>
+          '<use href="#' + id + '-mark" ' + attributes + "/>"
+        const defs =
+          "<defs>" +
+          mark +
+          '<clipPath id="' +
+          id +
+          '-clip">' +
+          use() +
+          "</clipPath>" +
+          '<linearGradient id="' +
+          id +
+          '-body" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#ff5963"/><stop offset=".46" stop-color="#ef3340"/><stop offset="1" stop-color="#941724"/></linearGradient>' +
+          '<linearGradient id="' +
+          id +
+          '-beam"><stop stop-color="white" stop-opacity="0"/><stop offset=".5" stop-color="#fff4f0" stop-opacity=".85"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient>' +
+          '<linearGradient id="' +
+          id +
+          '-metal"><stop stop-color="#951523"/><stop offset=".33" stop-color="#e53240"/><stop offset=".53" stop-color="#fa5261"/><stop offset=".71" stop-color="#c92635"/><stop offset="1" stop-color="#8c1522"/></linearGradient>' +
+          '<radialGradient id="' +
+          id +
+          '-spot"><stop stop-color="#fff0eb" stop-opacity=".7"/><stop offset=".4" stop-color="#ff6872" stop-opacity=".45"/><stop offset="1" stop-color="#ef3340" stop-opacity="0"/></radialGradient>' +
+          '<pattern id="' +
+          id +
+          '-grain" width="4" height=".65" patternUnits="userSpaceOnUse"><path d="M0 .25H4" stroke="#ffc4c8" stroke-opacity=".18" stroke-width=".08"/></pattern>' +
+          '<filter id="' +
+          id +
+          '-glow" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="1.05"/></filter>' +
+          '<filter id="' +
+          id +
+          '-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2"/></filter></defs>'
+        const clip = '<g clip-path="url(#' + id + '-clip)">'
+        let content = ""
+        if (index === 0)
+          content =
+            use('fill="#ef3340"') +
+            clip +
+            '<g class="sheen-strip"><path d="M-20 -30H-1L80 90H61Z" fill="url(#' +
+            id +
+            '-beam)"/></g></g>'
+        if (index === 1)
+          content =
+            use('fill="#9a1826" opacity=".45"') +
+            use('fill="none" stroke="#ae2634" stroke-width=".35"') +
+            use(
+              'class="trace" fill="none" stroke="#ef3340" stroke-width="1.6" stroke-linecap="round" stroke-dasharray="21 79" pathLength="100" filter="url(#' +
+                id +
+                '-glow)"',
+            ) +
+            use(
+              'class="trace" fill="none" stroke="#ff9ba3" stroke-width=".42" stroke-linecap="round" stroke-dasharray="17 83" pathLength="100"',
+            )
+        if (index === 2)
+          content =
+            '<g class="breath">' +
+            use('fill="#ef3340" filter="url(#' + id + '-glow)" opacity=".9"') +
+            use('fill="#ef3340"') +
+            "</g>"
+        if (index === 3)
+          content =
+            use('fill="url(#' + id + '-body)"') +
+            clip +
+            '<g class="glass-band"><path d="M24 0H43L64 70H45Z" fill="url(#' +
+            id +
+            '-beam)"/></g><g class="glass-band secondary"><path d="M43 -10H51L74 80H66Z" fill="white"/></g></g>' +
+            use(
+              'fill="none" stroke="#ffc9c9" stroke-opacity=".38" stroke-width=".35"',
+            )
+        if (index === 4)
+          content =
+            use('fill="url(#' + id + '-metal)"') +
+            use('fill="url(#' + id + '-grain)"') +
+            clip +
+            '<g class="metal-beam"><rect x="39" y="0" width="13" height="80" fill="url(#' +
+            id +
+            '-beam)" opacity=".6"/></g></g>' +
+            use(
+              'fill="none" stroke="#ff8b98" stroke-opacity=".35" stroke-width=".25"',
+            )
+        if (index === 5)
+          content =
+            use('fill="url(#' + id + '-body)"') +
+            clip +
+            '<circle class="orbit-spot" cx="48" cy="32" r="24" fill="url(#' +
+            id +
+            '-spot)"/></g>'
+        if (index === 6)
+          content =
+            use('fill="#ce2734"') +
+            clip +
+            '<g fill="none" stroke="#ffd3d6" stroke-width=".6"><circle class="ripple" cx="48" cy="32" r="27"/><circle class="ripple second" cx="48" cy="32" r="27"/><circle class="ripple third" cx="48" cy="32" r="27"/></g></g>'
+        if (index === 7)
+          content =
+            use('fill="#ef3340" opacity=".18"') +
+            '<path class="particle-guide" d="' +
+            path +
+            '" transform="translate(24,14)" fill="none" stroke="#ef3340" stroke-width=".15" stroke-opacity=".35"/><g class="particles"></g>'
+        if (index === 8)
+          content =
+            use('class="reveal-face" fill="#ef3340"') +
+            use(
+              'class="reveal-edge" fill="none" stroke="#ff6a78" stroke-width="1.2" pathLength="100" stroke-dasharray="100" filter="url(#' +
+                id +
+                '-glow)"',
+            ) +
+            use(
+              'class="reveal-edge" fill="none" stroke="#ffa0a8" stroke-width=".35" pathLength="100" stroke-dasharray="100"',
+            )
+        if (index === 9)
+          content =
+            use('fill="url(#' + id + '-body)"') +
+            clip +
+            '<g class="silk-wave" filter="url(#' +
+            id +
+            '-soft)"><path d="M-5 51C18 44 22 5 48 18S74 54 105 7" fill="none" stroke="#fff0e9" stroke-width="4" opacity=".42"/></g><g class="silk-wave secondary" filter="url(#' +
+            id +
+            '-soft)"><path d="M-5 43C15 5 27 49 48 40S72 11 105 48" fill="none" stroke="#ff99a0" stroke-width="8" opacity=".32"/></g></g>'
+        return (
+          '<svg class="motion" data-effect="' +
+          index +
+          '" viewBox="0 0 96 64" role="img" aria-label="' +
+          studies[index][0] +
+          ' animated logo preview">' +
+          defs +
+          content +
+          "</svg>"
+        )
+      }
+      function addParticles(root) {
+        root.querySelectorAll('svg[data-effect="7"]').forEach((svg) => {
+          const guide = svg.querySelector(".particle-guide")
+          const group = svg.querySelector(".particles")
+          if (group.children.length) return
+          const length = guide.getTotalLength()
+          for (let i = 0; i < 80; i++) {
+            const point = guide.getPointAtLength((length * i) / 80)
+            const circle = document.createElementNS(
+              "http://www.w3.org/2000/svg",
+              "circle",
+            )
+            circle.setAttribute("cx", point.x + 24)
+            circle.setAttribute("cy", point.y + 14)
+            circle.setAttribute("r", i % 9 === 0 ? ".4" : ".22")
+            circle.setAttribute("fill", i % 5 === 0 ? "#fff0ef" : "#ff5362")
+            circle.setAttribute("class", "particle")
+            circle.style.setProperty(
+              "--dx",
+              ((point.x - 24) * 0.36).toFixed(2) + "px",
+            )
+            circle.style.setProperty(
+              "--dy",
+              ((point.y - 17) * 0.5).toFixed(2) + "px",
+            )
+            circle.style.setProperty(
+              "--delay",
+              ((-i % 7) * 0.075).toFixed(3) + "s",
+            )
+            circle.style.setProperty("--brightness", i % 3 === 0 ? "1" : ".65")
+            group.append(circle)
+          }
+        })
+      }
+      const gallery = document.querySelector("#gallery")
+      studies.forEach((study, index) => {
+        const button = document.createElement("button")
+        button.type = "button"
+        button.className = "study"
+        button.setAttribute(
+          "aria-label",
+          "Enlarge effect " + (index + 1) + ": " + study[0],
+        )
+        button.innerHTML =
+          '<div class="stage">' +
+          graphic(index) +
+          icon +
+          '</div><div class="caption"><div class="caption-top"><span class="number">' +
+          String(index + 1).padStart(2, "0") +
+          "</span><h2>" +
+          study[0] +
+          "</h2></div><p>" +
+          study[1] +
+          "</p></div>"
+        button.addEventListener("click", () => showPreview(index))
+        gallery.append(button)
+      })
+      addParticles(gallery)
+      const dialog = document.querySelector("#preview")
+      function showPreview(index) {
+        current = (index + studies.length) % studies.length
+        document.querySelector("#preview-title").innerHTML =
+          '<span class="number">' +
+          String(current + 1).padStart(2, "0") +
+          "</span>" +
+          studies[current][0]
+        document.querySelector("#preview-stage").innerHTML = graphic(current)
+        document.querySelector("#preview-copy").textContent =
+          studies[current][2]
+        if (!dialog.open) dialog.showModal()
+        addParticles(dialog)
+      }
+      let paused = matchMedia("(prefers-reduced-motion: reduce)").matches
+      function updatePause() {
+        document.body.classList.toggle("is-paused", paused)
+        document
+          .querySelector("#pause")
+          .setAttribute("aria-pressed", String(paused))
+        document.querySelector("#pause span").textContent = paused
+          ? "Play"
+          : "Pause"
+        document.querySelector("#modal-pause").textContent = paused
+          ? "Play"
+          : "Pause"
+      }
+      document.querySelector("#pause").addEventListener("click", () => {
+        paused = !paused
+        updatePause()
+      })
+      document.querySelector("#modal-pause").addEventListener("click", () => {
+        paused = !paused
+        updatePause()
+      })
+      document.querySelector("#speed").addEventListener("click", (event) => {
+        const slow = document.body.classList.toggle("slow")
+        event.currentTarget.classList.toggle("active", slow)
+        event.currentTarget.setAttribute("aria-pressed", String(slow))
+        event.currentTarget.textContent = slow ? "1× speed" : "0.5× speed"
+      })
+      document.querySelector("#replay").addEventListener("click", () => {
+        document.body.classList.add("restarting")
+        void document.body.offsetHeight
+        document.body.classList.remove("restarting")
+      })
+      document
+        .querySelector(".close")
+        .addEventListener("click", () => dialog.close())
+      document
+        .querySelector("#previous")
+        .addEventListener("click", () => showPreview(current - 1))
+      document
+        .querySelector("#next")
+        .addEventListener("click", () => showPreview(current + 1))
+      dialog.addEventListener("click", (event) => {
+        if (event.target !== dialog) return
+        const bounds = dialog.getBoundingClientRect()
+        if (
+          event.clientX < bounds.left ||
+          event.clientX > bounds.right ||
+          event.clientY < bounds.top ||
+          event.clientY > bounds.bottom
+        )
+          dialog.close()
+      })
+      dialog.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowLeft") {
+          event.preventDefault()
+          showPreview(current - 1)
+        }
+        if (event.key === "ArrowRight") {
+          event.preventDefault()
+          showPreview(current + 1)
+        }
+      })
+      updatePause()
+    </script>
+  </body>
+</html>

@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CatalogRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+
+  @@map("catalog_run_status")
+}
+
+enum MediaSourceType {
+  DOWNLOAD @map("download")
+  HLS      @map("hls")
+  DASH     @map("dash")
+  NONE     @map("none")
+
+  @@map("media_source_type")
+}
+
+enum SignatureType {
+  VISUAL_FRAME      @map("visual_frame")
+  AUDIO_FINGERPRINT @map("audio_fingerprint")
+  TEXT_SEGMENT      @map("text_segment")
+  STRUCTURAL_HINT   @map("structural_hint")
+
+  @@map("signature_type")
+}
+
+enum MatchJobStatus {
+  QUEUED   @map("queued")
+  RUNNING  @map("running")
+  COMPLETE @map("complete")
+  FAILED   @map("failed")
+  EXPIRED  @map("expired")
+
+  @@map("match_job_status")
+}
+
+enum MatchStrength {
+  HIGH   @map("high")
+  MEDIUM @map("medium")
+  LOW    @map("low")
+
+  @@map("match_strength")
+}
+
+enum EvidenceSignal {
+  VISUAL   @map("visual")
+  AUDIO    @map("audio")
+  TEXT     @map("text")
+  DURATION @map("duration")
+  FUSION   @map("fusion")
+
+  @@map("evidence_signal")
+}
+
+model CatalogVideo {
+  id           String    @id @default(cuid())
+  coreId       String    @unique @map("core_id")
+  title        String
+  titleLocale  String?   @map("title_locale")
+  included     Boolean   @default(true)
+  lastSyncedAt DateTime? @map("last_synced_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  variants   CatalogVariant[]
+  signatures MediaSignature[]
+  candidates MatchCandidate[]
+
+  @@index([included])
+  @@map("mapper_catalog_video")
+}
+
+model CatalogVariant {
+  id                     String          @id @default(cuid())
+  coreId                 String          @map("core_id")
+  catalogVideo           CatalogVideo    @relation(fields: [coreId], references: [coreId], onDelete: Cascade)
+  videoVariantId         String          @map("video_variant_id")
+  adminVideoId           String?         @map("admin_video_id")
+  adminDubId             String?         @map("admin_dub_id")
+  editionCoreId          String?         @map("edition_core_id")
+  editionName            String?         @map("edition_name")
+  languageId             String?         @map("language_id")
+  languageSlug           String?         @map("language_slug")
+  locale                 String?
+  durationSeconds        Int?            @map("duration_seconds")
+  lengthInMilliseconds   BigInt?         @map("length_in_milliseconds")
+  hlsUrl                 String?         @map("hls_url")
+  dashUrl                String?         @map("dash_url")
+  downloadUrl            String?         @map("download_url")
+  downloadQuality        String?         @map("download_quality")
+  downloadWidth          Int?            @map("download_width")
+  downloadHeight         Int?            @map("download_height")
+  downloadRenditions     Json?           @map("download_renditions")
+  mediaSourceType        MediaSourceType @default(NONE) @map("media_source_type")
+  mediaSourceUrl         String?         @map("media_source_url")
+  indexable              Boolean         @default(false)
+  nonIndexableReason     String?         @map("non_indexable_reason")
+  published              Boolean         @default(true)
+  videoPublished         Boolean         @default(false) @map("video_published")
+  dubPublished           Boolean         @default(false) @map("dub_published")
+  videoNoIndex           Boolean         @default(false) @map("video_no_index")
+  videoDeleted           Boolean         @default(false) @map("video_deleted")
+  dubDeleted             Boolean         @default(false) @map("dub_deleted")
+  deletedAt              DateTime?       @map("deleted_at")
+  lastSyncedAt           DateTime?       @map("last_synced_at")
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+
+  signatures MediaSignature[]
+  candidates MatchCandidate[]
+
+  @@unique([coreId, videoVariantId])
+  @@index([coreId])
+  @@index([indexable])
+  @@index([mediaSourceType])
+  @@index([deletedAt])
+  @@map("mapper_catalog_variant")
+}
+
+model CatalogSyncRun {
+  id                String           @id @default(cuid())
+  status            CatalogRunStatus @default(RUNNING)
+  cursor            String?
+  videosSeen        Int              @default(0) @map("videos_seen")
+  variantsSeen      Int              @default(0) @map("variants_seen")
+  variantsIndexable Int              @default(0) @map("variants_indexable")
+  failureSummary    Json?            @map("failure_summary")
+  startedAt         DateTime         @default(now()) @map("started_at")
+  completedAt       DateTime?        @map("completed_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  @@index([status, startedAt])
+  @@map("mapper_catalog_sync_run")
+}
+
+model IndexRun {
+  id                String           @id @default(cuid())
+  status            CatalogRunStatus @default(RUNNING)
+  algorithmVersion  String           @map("algorithm_version")
+  cursorVariantId   String?          @map("cursor_variant_id")
+  variantsAttempted Int              @default(0) @map("variants_attempted")
+  variantsIndexed   Int              @default(0) @map("variants_indexed")
+  variantsFailed    Int              @default(0) @map("variants_failed")
+  failureSummary    Json?            @map("failure_summary")
+  startedAt         DateTime         @default(now()) @map("started_at")
+  completedAt       DateTime?        @map("completed_at")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  @@index([status, startedAt])
+  @@index([cursorVariantId])
+  @@map("mapper_index_run")
+}
+
+model MediaSignature {
+  id                   String         @id @default(cuid())
+  coreId               String         @map("core_id")
+  catalogVideo         CatalogVideo   @relation(fields: [coreId], references: [coreId], onDelete: Cascade)
+  videoVariantId       String         @map("video_variant_id")
+  catalogVariant       CatalogVariant @relation(fields: [coreId, videoVariantId], references: [coreId, videoVariantId], onDelete: Cascade)
+  signatureType        SignatureType  @map("signature_type")
+  algorithmVersion     String         @map("algorithm_version")
+  offsetMilliseconds   Int            @default(0) @map("offset_milliseconds")
+  durationMilliseconds Int?           @map("duration_milliseconds")
+  signature            Json
+  sourceMediaUrl       String?        @map("source_media_url")
+  sourceMediaHash      String?        @map("source_media_hash")
+  createdAt            DateTime       @default(now()) @map("created_at")
+
+  @@unique([coreId, videoVariantId, signatureType, algorithmVersion, offsetMilliseconds], map: "mapper_media_signature_variant_signature_key")
+  @@index([coreId, signatureType])
+  @@index([algorithmVersion, signatureType])
+  @@index([algorithmVersion, coreId, videoVariantId])
+  @@map("mapper_media_signature")
+}
+
+model MatchJob {
+  id                        String         @id @default(cuid())
+  status                    MatchJobStatus @default(QUEUED)
+  uploadStorageKey          String?        @map("upload_storage_key")
+  uploadContentType         String?        @map("upload_content_type")
+  uploadByteLength          BigInt?        @map("upload_byte_length")
+  inputDurationMilliseconds Int?           @map("input_duration_milliseconds")
+  resultLimit               Int            @default(3) @map("result_limit")
+  safeErrorCode             String?        @map("safe_error_code")
+  queuedAt                  DateTime       @default(now()) @map("queued_at")
+  startedAt                 DateTime?      @map("started_at")
+  completedAt               DateTime?      @map("completed_at")
+  failedAt                  DateTime?      @map("failed_at")
+  retentionExpiresAt        DateTime?      @map("retention_expires_at")
+  createdAt                 DateTime       @default(now()) @map("created_at")
+  updatedAt                 DateTime       @updatedAt @map("updated_at")
+
+  candidates MatchCandidate[]
+  evidence   MatchEvidence[]
+
+  @@index([status, createdAt])
+  @@index([status, queuedAt])
+  @@index([retentionExpiresAt])
+  @@map("mapper_match_job")
+}
+
+model MatchJobCleanerLease {
+  name        String   @id
+  lockedUntil DateTime @map("locked_until")
+  ownerToken  String   @map("owner_token")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("mapper_match_job_cleaner_lease")
+}
+
+model MatchCandidate {
+  id             String        @id @default(cuid())
+  jobId          String        @map("job_id")
+  job            MatchJob      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rank           Int
+  coreId         String        @map("core_id")
+  catalogVideo   CatalogVideo  @relation(fields: [coreId], references: [coreId], onDelete: Restrict)
+  videoVariantId String        @map("video_variant_id")
+  catalogVariant CatalogVariant @relation(fields: [coreId, videoVariantId], references: [coreId, videoVariantId], onDelete: Restrict)
+  confidence     Float
+  matchStrength  MatchStrength @map("match_strength")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  evidence MatchEvidence[]
+
+  @@unique([jobId, rank])
+  @@unique([jobId, coreId, videoVariantId], map: "mapper_match_candidate_job_variant_key")
+  @@unique([id, jobId])
+  @@index([coreId])
+  @@map("mapper_match_candidate")
+}
+
+model MatchEvidence {
+  id          String         @id @default(cuid())
+  jobId       String         @map("job_id")
+  job         MatchJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  candidateId String?        @map("candidate_id")
+  candidate   MatchCandidate? @relation(fields: [candidateId, jobId], references: [id, jobId], onDelete: Cascade)
+  signal      EvidenceSignal
+  score       Float?
+  details     Json?
+  internal    Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@index([jobId, signal])
+  @@index([candidateId])
+  @@map("mapper_match_evidence")
+}

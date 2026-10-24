@@ -13,6 +13,7 @@ blocks:
   - "feat-042"
   - "feat-044"
   - "feat-045"
+  - "feat-131"
 tags:
   - "cms"
   - "pgvector"

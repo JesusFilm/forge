@@ -81,8 +81,10 @@ describe("POST /api/automations/runs/[id]/enqueue", () => {
     expect(response.status).toBe(200)
     expect(enqueueAutomationRunMock).toHaveBeenCalledWith({
       runDocumentId: "run-1",
+      runMode: "live",
       automation: {
         ...body.automation,
+        runMode: "live",
         timezone: "UTC",
         runs: [],
       },
@@ -91,6 +93,51 @@ describe("POST /api/automations/runs/[id]/enqueue", () => {
       status: "no_op",
       enqueuedCount: 0,
     })
+  })
+
+  it("accepts dry-run mode for service-to-service enqueue", async () => {
+    const response = await POST(
+      buildRequestWithBody({
+        automation: {
+          ...body.automation,
+          runMode: "dry_run",
+        },
+      }),
+      {
+        params: Promise.resolve({ id: "run-1" }),
+      },
+    )
+
+    expect(response.status).toBe(200)
+    expect(enqueueAutomationRunMock).toHaveBeenCalledWith({
+      runDocumentId: "run-1",
+      runMode: "dry_run",
+      automation: {
+        ...body.automation,
+        runMode: "dry_run",
+        timezone: "UTC",
+        runs: [],
+      },
+    })
+  })
+
+  it("rejects top-level run mode payloads before enqueue", async () => {
+    const response = await POST(
+      buildRequestWithBody({
+        ...body,
+        runMode: "dry_run",
+        automation: {
+          ...body.automation,
+          runMode: "live",
+        },
+      }),
+      {
+        params: Promise.resolve({ id: "run-1" }),
+      },
+    )
+
+    expect(response.status).toBe(400)
+    expect(enqueueAutomationRunMock).not.toHaveBeenCalled()
   })
 
   it("rejects malformed target language payloads before enqueue", async () => {

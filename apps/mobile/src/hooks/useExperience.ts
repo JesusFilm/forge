@@ -1,80 +1,51 @@
-import type { ApolloClient } from "@apollo/client"
-import { useEffect, useState } from "react"
+import { useMemo, useCallback, useRef } from "react"
+import { useQuery } from "@apollo/client/react"
+import { GET_EXPERIENCE_BY_SLUG, type WatchExperience } from "../lib/queries"
+import { localeQueryVariables } from "../lib/videoText"
+import { useUiTag } from "./useUiTag"
 
-import { getApolloClient } from "../lib/apolloClient"
-import {
-  getExperienceBySlug,
-  getWatchHome,
-  type ExperienceResult,
-  type MappedExperience,
-} from "../lib/experienceService"
-
-type ExperienceStatus =
-  | { status: "loading" }
-  | { status: "error"; message: string }
-  | { status: "success"; data: MappedExperience }
-
-export interface UseExperienceOptions {
-  slug?: string
-  fallbackSlug?: string
-  locale: string
+type UseExperienceResult = {
+  experience: WatchExperience | null
+  loading: boolean
+  error: string | null
+  refetch: () => void
 }
 
-/**
- * Loads an experience with optional fallback.
- * Extracted for testability — the hook wraps this in useState/useEffect.
- */
-export async function loadExperience(
-  client: ApolloClient,
-  { slug, fallbackSlug, locale }: UseExperienceOptions,
-): Promise<ExperienceResult> {
-  const primary = slug
-    ? getExperienceBySlug(client, slug, locale)
-    : getWatchHome(client, locale)
+/** The Experience in the UI locale, else its `en` variant (KTD10). KTD16: the
+ *  slug's last good Experience stays until the new locale resolves, so an
+ *  Experience media route keeps its section and never unmounts its player. */
+export function useExperience({ slug }: { slug: string }): UseExperienceResult {
+  const catalogTag = useUiTag()
+  const {
+    data,
+    loading,
+    error,
+    refetch: apolloRefetch,
+  } = useQuery(GET_EXPERIENCE_BY_SLUG, {
+    variables: { slug, ...localeQueryVariables(catalogTag) },
+    fetchPolicy: "cache-and-network",
+  })
 
-  const result = await primary
-  if (result.data) return result
+  // undefined = no answer yet for these variables; null = Admin has none.
+  const resolved = useMemo<WatchExperience | null | undefined>(() => {
+    if (data == null) return undefined
+    return data.experienceBySlug ?? data.englishExperience ?? null
+  }, [data])
 
-  // Try fallback slug if primary failed
-  if (fallbackSlug) {
-    const fallback = await getExperienceBySlug(client, fallbackSlug, locale)
-    if (fallback.data) return fallback
+  // A cache keyed by slug, filled during render so the swap has no gap frame.
+  const lastGoodRef = useRef(new Map<string, WatchExperience>())
+  if (resolved != null) lastGoodRef.current.set(slug, resolved)
+  const experience =
+    resolved !== undefined ? resolved : (lastGoodRef.current.get(slug) ?? null)
+
+  const refetch = useCallback(() => {
+    apolloRefetch()
+  }, [apolloRefetch])
+
+  return {
+    experience,
+    loading: loading && experience === null,
+    error: error?.message ?? null,
+    refetch,
   }
-
-  return result
-}
-
-export function useExperience({
-  slug,
-  fallbackSlug,
-  locale,
-}: UseExperienceOptions) {
-  const [state, setState] = useState<ExperienceStatus>({ status: "loading" })
-
-  useEffect(() => {
-    let cancelled = false
-    setState({ status: "loading" })
-
-    loadExperience(getApolloClient(), { slug, fallbackSlug, locale })
-      .then((result) => {
-        if (cancelled) return
-        if (result.error) {
-          setState({ status: "error", message: result.error.message })
-        } else if (!result.data) {
-          setState({ status: "error", message: "No data returned" })
-        } else {
-          setState({ status: "success", data: result.data })
-        }
-      })
-      .catch((err: Error) => {
-        if (cancelled) return
-        setState({ status: "error", message: err.message })
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [slug, fallbackSlug, locale])
-
-  return state
 }

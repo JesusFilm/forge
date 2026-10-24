@@ -3,7 +3,7 @@ id: "feat-012"
 title: "Search UI — Mobile"
 owner: "urim"
 priority: "P0"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-14"
 duration: 21
 depends_on:
@@ -53,7 +53,11 @@ tags:
      const res = await fetch(`${CMS_URL}/api/search?${params}`)
      return res.json()
    }
-   // Each result has: type, id, slug, title, imageUrl, snippet, startSeconds, playbackId, score
+   // Each result has: type, id, slug, title, imageUrl, snippet, score +
+   //   startSeconds: number | null   (null for keyword-only matches — no deep-link)
+   //   playbackId: string | null     (null for keyword-only matches — no Mux player)
+   // Response also has `hasMore: boolean` for pagination (not `total`).
+   // 429 responses include a Retry-After header (seconds) — honor before retrying.
    ```
 
 4. Add search entry point to navigation (tab bar icon, or button on home screen).

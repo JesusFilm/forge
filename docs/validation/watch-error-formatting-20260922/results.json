@@ -1,0 +1,118 @@
+{
+  "scope": "Owned actual Admin Next production build, 207 synthetic videos, real PostgreSQL selection/claim/playback and local UDP log receiver",
+  "baseRevision": "5445588991cb645f70a12187c6c7e4bc6f120c26",
+  "runtime": "Node 24.16.0, Next 16.2.4, Yoga 5.21.0",
+  "control": "Same built production logger with customInspect true; fixed build restored after every probe",
+  "fault": "Task-owned mux_video view raises PostgreSQL 53100 during catalog reads; this reproduces error handling, not shared-memory exhaustion itself",
+  "catalog": "200 + 6 Video scalar fields; two failed loader batches, 206 GraphQL errors",
+  "deadlineAccounting": "Measure complete Admin response locally; compare selections to unchanged 700 ms production caller budget and playback to 3000 ms",
+  "runs": [
+    {
+      "mode": "control",
+      "trial": 1,
+      "healthReadyMs": 4225.69,
+      "catalogMs": 75757.55,
+      "catalogStatus": 200,
+      "catalogErrors": 206,
+      "allMasked": true,
+      "syslogErrorCount": 208,
+      "selectionMs": [75852.23, 75857.36, 75848.19, 75844.9, 75895.67],
+      "selectionAccepted": 5,
+      "selectionAbove700ms": 5,
+      "playback": {
+        "ms": 75876.76,
+        "httpStatus": 200,
+        "errors": null,
+        "accepted": true
+      }
+    },
+    {
+      "mode": "fixed",
+      "trial": 2,
+      "healthReadyMs": 3840.94,
+      "catalogMs": 142.48,
+      "catalogStatus": 200,
+      "catalogErrors": 206,
+      "allMasked": true,
+      "syslogErrorCount": 208,
+      "selectionMs": [165.59, 168.64, 208.25, 179.15, 188.52],
+      "selectionAccepted": 5,
+      "selectionAbove700ms": 0,
+      "playback": {
+        "ms": 183.18,
+        "httpStatus": 200,
+        "errors": null,
+        "accepted": true
+      }
+    },
+    {
+      "mode": "control",
+      "trial": 3,
+      "incomplete": true,
+      "failure": "Playback HTTP 408 Request Timeout; response body read reset the connection. Complete measurements were not retained."
+    },
+    {
+      "mode": "fixed",
+      "trial": 4,
+      "healthReadyMs": 4059.64,
+      "catalogMs": 85.81,
+      "catalogStatus": 200,
+      "catalogErrors": 206,
+      "allMasked": true,
+      "syslogYogaErrorCount": 206,
+      "selectionMs": [135.36, 138.57, 137.11, 172.03, 139.19],
+      "selectionAccepted": 5,
+      "selectionAbove700ms": 0,
+      "playback": {
+        "ms": 140.96,
+        "httpStatus": 200,
+        "errors": null,
+        "accepted": true
+      }
+    },
+    {
+      "mode": "fixed",
+      "trial": 5,
+      "healthReadyMs": 3947.96,
+      "catalogMs": 91.37,
+      "catalogStatus": 200,
+      "catalogErrors": 206,
+      "allMasked": true,
+      "syslogYogaErrorCount": 206,
+      "selectionMs": [138.66, 135.3, 138.89, 172.29, 144.07],
+      "selectionAccepted": 5,
+      "selectionAbove700ms": 0,
+      "playback": {
+        "ms": 139.98,
+        "httpStatus": 200,
+        "errors": null,
+        "accepted": true
+      }
+    },
+    {
+      "mode": "fixed",
+      "trial": 6,
+      "healthReadyMs": 3917.06,
+      "catalogMs": 128.66,
+      "catalogStatus": 200,
+      "catalogErrors": 206,
+      "allMasked": true,
+      "syslogYogaErrorCount": 206,
+      "selectionMs": [180.07, 168.86, 207.98, 169.4, 193.78],
+      "selectionAccepted": 5,
+      "selectionAbove700ms": 0,
+      "playback": {
+        "ms": 170.45,
+        "httpStatus": 200,
+        "errors": null,
+        "accepted": true
+      }
+    }
+  ],
+  "initialDiagnosticFailure": "Original diagnostic client stopped at its own 30-second measurement limit; later measurement used 180 seconds only to observe the control. No application deadline changed.",
+  "limits": [
+    "Local hardware and Node version differ from production",
+    "A second complete-duration control hit a playback HTTP 408 followed by a response reset; it is retained as incomplete, not discarded",
+    "Existing earlier selection capability-budget stall and initiating catalog shared-memory failure remain separate investigations"
+  ]
+}

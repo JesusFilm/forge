@@ -1,0 +1,391 @@
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+import { candidateWatchSearchIndexContractRevision } from "./typesense-watch-search-candidate-identity"
+import type { TypesenseWatchSearchProfile } from "./typesense-watch-search-profile"
+import {
+  resolveEvaluationCandidateWatchSearchProfile,
+  TypesenseWatchSearchComparisonService,
+} from "./typesense-watch-search-comparison.service"
+import type { WatchSearchInput } from "./watch-search.service"
+
+const currentProfile = {
+  kind: "CURRENT",
+  binding: {
+    catalog: "watch_search_catalog_physical",
+    availability: "watch_search_availability_physical",
+    lexical: "watch_search_lexical_physical",
+    transcript: "watch_search_transcripts_physical",
+  },
+  generationId: null,
+  indexContractRevision: null,
+  contentEmbeddingContractId: null,
+  transcriptChunkingVersion: null,
+  transcriptProjectionRevision: null,
+  fieldManifests: null,
+  allowCompatibilityFallback: false,
+} as const satisfies TypesenseWatchSearchProfile
+
+const candidateProfile = {
+  ...currentProfile,
+  kind: "CANDIDATE",
+  binding: {
+    catalog: "watch_search_candidate_generation-1_catalog",
+    availability: "watch_search_candidate_generation-1_availability",
+    lexical: "watch_search_candidate_generation-1_lexical",
+    transcript: "watch_search_transcripts_physical",
+  },
+  generationId: "generation-1",
+  indexContractRevision: "revision-1",
+  contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+  transcriptChunkingVersion: "mastra-v1",
+  transcriptProjectionRevision: 7n,
+  fieldManifests: {
+    catalog: [{ name: "slug", type: "string" }],
+    availability: [{ name: "videoId", type: "string" }],
+    lexical: [{ name: "title_en", type: "string[]" }],
+    transcript: [{ name: "embedding", type: "float[]" }],
+  },
+} as const satisfies TypesenseWatchSearchProfile
+
+function searchResult(profile: "CURRENT" | "CANDIDATE") {
+  return {
+    response: {
+      query: "Jesus",
+      results: [],
+      hasMore: false,
+      nextOffset: 10,
+      searchMode: "watch-search-typesense",
+      requestId: "comparison-request-1",
+      degraded: false,
+      latencyMs: 20,
+      laneStatuses: [],
+      languageInterpretation: {
+        queryLanguageSlug: null,
+        queryNamedLanguageSlug: null,
+        targetLanguageSlug: "english",
+        targetLanguageSource: "fallback" as const,
+        displayLanguageSlug: null,
+        routeLanguageSlug: null,
+        currentWatchLanguageSlug: null,
+        acceptLanguage: null,
+        acceptLanguageSlug: null,
+      },
+    },
+    diagnostics: {
+      profile,
+      generationId: profile === "CANDIDATE" ? "generation-1" : null,
+      indexContractRevision: profile === "CANDIDATE" ? "revision-1" : null,
+      contentEmbeddingContractId:
+        profile === "CANDIDATE" ? "semantic-transcript-pgvector-v1" : null,
+      transcriptChunkingVersion: profile === "CANDIDATE" ? "mastra-v1" : null,
+      transcriptProjectionRevision: profile === "CANDIDATE" ? 7n : null,
+      activeTranscriptProjectionRevision: profile === "CANDIDATE" ? 7n : null,
+      binding:
+        profile === "CANDIDATE"
+          ? candidateProfile.binding
+          : currentProfile.binding,
+      retrievalCalls: 2,
+      logicalSubsearches: 5,
+      queryFieldCount: 4,
+      queryByBytes: 40,
+      requestBytes: 100,
+      parsedResponseBytes: 200,
+      typesenseSearchTimeMs: 10,
+      typesenseWallTimeMs: 12,
+      retryCount: 0,
+      groupedHits: 3,
+      candidates: 3,
+      hydratedRecords: 1,
+      rankingImplementation: "legacy-rrf" as const,
+      rankingMode: "SEMANTIC" as const,
+      rankingAnchor: null,
+      rankingTrace: [],
+    },
+  }
+}
+
+function fixture() {
+  const calls: string[] = []
+  const currentSearch = vi.fn(async (_input: WatchSearchInput) => {
+    calls.push("current")
+    return searchResult("CURRENT")
+  })
+  const candidateSearch = vi.fn(async (_input: WatchSearchInput) => {
+    calls.push("candidate")
+    return searchResult("CANDIDATE")
+  })
+  const enabled = vi.fn(() => true)
+  const lease = {
+    holderToken: "holder-1",
+    generationId: "generation-1",
+    indexContractRevision: "revision-1",
+    transcriptCollection: "watch_search_transcripts_physical",
+    contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+    transcriptChunkingVersion: "mastra-v1",
+    transcriptProjectionRevision: 7n,
+    currentBindings: Object.values(currentProfile.binding),
+    expiresAt: new Date(Date.now() + 60_000),
+  }
+  const deps = {
+    resolveCurrentProfile: vi.fn(async () => currentProfile),
+    resolveCandidateProfile: vi.fn(
+      async (_currentProfile: TypesenseWatchSearchProfile) => candidateProfile,
+    ),
+    createSearch: vi.fn((profile: TypesenseWatchSearchProfile) => ({
+      searchWithDiagnostics:
+        profile.kind === "CURRENT" ? currentSearch : candidateSearch,
+    })),
+    acquireLease: vi.fn(async (): Promise<typeof lease | null> => lease),
+    renewLease: vi.fn(async () => true),
+    releaseLease: vi.fn(async () => true),
+    candidateEnabled: enabled,
+    admitActor: vi.fn(async () => true),
+    recordTrace: vi.fn(async () => undefined),
+  }
+  return { calls, currentSearch, candidateSearch, enabled, lease, deps }
+}
+
+describe("TypesenseWatchSearchComparisonService", () => {
+  afterEach(() => vi.unstubAllEnvs())
+
+  it("keeps an evaluation generation compatible across unrelated Admin deployments", async () => {
+    vi.stubEnv("RAILWAY_GIT_COMMIT_SHA", "unrelated-admin-deployment")
+    const generations = {
+      getPointer: vi.fn(async () => ({
+        kind: "EVALUATION" as const,
+        generationId: "generation-1",
+        version: 1,
+        updatedAt: new Date(),
+      })),
+      getGeneration: vi.fn(async () => ({
+        id: "generation-1",
+        indexContractRevision: candidateWatchSearchIndexContractRevision(),
+        transcriptCollection: "watch_search_transcripts_physical",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 7n,
+      })),
+      resolveGeneration: vi.fn(async () => ({
+        generationId: "generation-1",
+        indexContractRevision: candidateWatchSearchIndexContractRevision(),
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 7n,
+        fieldManifests: candidateProfile.fieldManifests,
+        collections: candidateProfile.binding,
+      })),
+    }
+
+    await expect(
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_physical",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
+          projectionRevision: 7n,
+        },
+      }),
+    ).resolves.toMatchObject({
+      kind: "CANDIDATE",
+      generationId: "generation-1",
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
+    })
+    expect(generations.resolveGeneration).toHaveBeenCalledWith({
+      generationId: "generation-1",
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
+      transcriptCollection: "watch_search_transcripts_physical",
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+      transcriptChunkingVersion: "mastra-v1",
+      transcriptProjectionRevision: 7n,
+      requireQualified: false,
+    })
+  })
+
+  it("rejects evaluation candidates when the active transcript compatibility tuple drifted", async () => {
+    const generations = {
+      getPointer: vi.fn(async () => ({
+        kind: "EVALUATION" as const,
+        generationId: "generation-1",
+        version: 1,
+        updatedAt: new Date(),
+      })),
+      getGeneration: vi.fn(async () => ({
+        id: "generation-1",
+        transcriptCollection: "watch_search_transcripts_physical",
+        contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+        transcriptChunkingVersion: "mastra-v1",
+        transcriptProjectionRevision: 7n,
+      })),
+      resolveGeneration: vi.fn(async () => {
+        throw new Error("candidate generation transcript identity is stale")
+      }),
+    }
+
+    await expect(
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_physical",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
+          transcriptChunkingVersion: "mastra-v2",
+          projectionRevision: 8n,
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: "Error",
+      message: "candidate generation transcript identity is stale",
+    })
+    expect(generations.resolveGeneration).toHaveBeenCalledWith({
+      generationId: "generation-1",
+      indexContractRevision: candidateWatchSearchIndexContractRevision(),
+      transcriptCollection: currentProfile.binding.transcript,
+      contentEmbeddingContractId: "semantic-transcript-pgvector-v2",
+      transcriptChunkingVersion: "mastra-v2",
+      transcriptProjectionRevision: 7n,
+      requireQualified: false,
+    })
+  })
+
+  it("fails closed when the current transcript alias drifts from the published projection", async () => {
+    const generations = {
+      getPointer: vi.fn(async () => ({
+        kind: "EVALUATION" as const,
+        generationId: "generation-1",
+      })),
+      getGeneration: vi.fn(),
+      resolveGeneration: vi.fn(),
+    }
+
+    await expect(
+      resolveEvaluationCandidateWatchSearchProfile({
+        generations,
+        currentProfile,
+        transcriptProjection: {
+          transcriptCollection: "watch_search_transcripts_other",
+          contentEmbeddingContractId: "semantic-transcript-pgvector-v1",
+          transcriptChunkingVersion: "mastra-v1",
+          projectionRevision: 7n,
+        },
+      }),
+    ).rejects.toMatchObject({
+      name: "ComparisonError",
+      code: "profile_unavailable",
+    })
+    expect(generations.getPointer).not.toHaveBeenCalled()
+  })
+
+  it("rejects blank input with the typed comparison error", async () => {
+    const { deps } = fixture()
+    await expect(
+      new TypesenseWatchSearchComparisonService(deps).compare({
+        actorKey: "evaluator-1",
+        input: { query: "   " },
+      }),
+    ).rejects.toMatchObject({
+      name: "ComparisonError",
+      code: "invalid_input",
+    })
+  })
+
+  it("runs one normalized input through current then candidate under one lease", async () => {
+    const { calls, currentSearch, candidateSearch, deps } = fixture()
+    const service = new TypesenseWatchSearchComparisonService(deps)
+
+    const result = await service.compare({
+      actorKey: "evaluator-1",
+      input: { query: "  Jesus  ", limit: 10, offset: 0 },
+    })
+
+    expect(calls).toEqual(["current", "candidate"])
+    expect(currentSearch.mock.calls[0]?.[0]).toEqual(
+      candidateSearch.mock.calls[0]?.[0],
+    )
+    expect(currentSearch.mock.calls[0]?.[0]).toMatchObject({
+      query: "Jesus",
+      limit: 10,
+      offset: 0,
+      clientRequestId: result.comparisonId,
+    })
+    expect(result.current.status).toBe("success")
+    expect(result.candidate.status).toBe("success")
+    expect(deps.renewLease).toHaveBeenCalledOnce()
+    expect(deps.releaseLease).toHaveBeenCalledOnce()
+  })
+
+  it("preserves current results when candidate execution fails", async () => {
+    const { deps, candidateSearch } = fixture()
+    candidateSearch.mockRejectedValueOnce(new Error("candidate unavailable"))
+    const service = new TypesenseWatchSearchComparisonService(deps)
+
+    const result = await service.compare({
+      actorKey: "evaluator-1",
+      input: { query: "Jesus" },
+    })
+
+    expect(result.current.status).toBe("success")
+    expect(result.candidate).toEqual({
+      status: "error",
+      error: { code: "search_failed", errorClass: "Error" },
+    })
+  })
+
+  it("fails candidate closed when admission or the mid-action kill switch fails", async () => {
+    const first = fixture()
+    first.deps.admitActor.mockResolvedValueOnce(false)
+    const denied = await new TypesenseWatchSearchComparisonService(
+      first.deps,
+    ).compare({ actorKey: "evaluator-1", input: { query: "Jesus" } })
+    expect(denied.current.status).toBe("success")
+    expect(denied.candidate).toMatchObject({
+      status: "error",
+      error: { code: "admission_denied" },
+    })
+    expect(first.candidateSearch).not.toHaveBeenCalled()
+
+    const second = fixture()
+    second.enabled.mockReturnValueOnce(true).mockReturnValueOnce(false)
+    const disabled = await new TypesenseWatchSearchComparisonService(
+      second.deps,
+    ).compare({ actorKey: "evaluator-1", input: { query: "Jesus" } })
+    expect(disabled.current.status).toBe("success")
+    expect(disabled.candidate).toMatchObject({
+      status: "error",
+      error: { code: "candidate_disabled" },
+    })
+    expect(second.candidateSearch).not.toHaveBeenCalled()
+  })
+
+  it("fails candidate closed on lease contention while still running current", async () => {
+    const { deps, candidateSearch } = fixture()
+    deps.acquireLease.mockResolvedValueOnce(null)
+    const result = await new TypesenseWatchSearchComparisonService(
+      deps,
+    ).compare({ actorKey: "evaluator-1", input: { query: "Jesus" } })
+
+    expect(result.current.status).toBe("success")
+    expect(result.candidate).toMatchObject({
+      status: "error",
+      error: { code: "lease_unavailable" },
+    })
+    expect(candidateSearch).not.toHaveBeenCalled()
+  })
+
+  it("fails candidate closed when lease renewal is lost", async () => {
+    const { deps, candidateSearch } = fixture()
+    deps.renewLease.mockResolvedValueOnce(false)
+    const result = await new TypesenseWatchSearchComparisonService(
+      deps,
+    ).compare({ actorKey: "evaluator-1", input: { query: "Jesus" } })
+
+    expect(result.current.status).toBe("success")
+    expect(result.candidate).toMatchObject({
+      status: "error",
+      error: { code: "lease_lost" },
+    })
+    expect(candidateSearch).not.toHaveBeenCalled()
+    expect(deps.releaseLease).toHaveBeenCalledOnce()
+  })
+})

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto"
 import type {
   JobArtifactManifest,
   SubtitleReviewLaunchSession,
@@ -42,6 +41,9 @@ function normalizeRevision(raw: unknown): SubtitleReviewRevision | null {
     clientSaveId: raw.clientSaveId,
     actorId: raw.actorId,
     createdAt: raw.createdAt,
+    ...(typeof raw.sessionFingerprint === "string"
+      ? { sessionFingerprint: raw.sessionFingerprint }
+      : {}),
   }
 }
 
@@ -81,19 +83,19 @@ function normalizeLaunchSession(
 export function buildReviewedSubtitleArtifactKey(
   targetLanguage: string,
   revision: number,
+  jobId?: string,
+  requestFingerprint?: string,
 ): string {
   return `subtitles-${targetLanguage}-reviewed-r${String(revision).padStart(
     4,
     "0",
-  )}`
+  )}${jobId && requestFingerprint ? `-j${jobId}-${requestFingerprint}` : ""}`
 }
 
 export function isReviewedSubtitleArtifactKey(logicalKey: string): boolean {
-  return /^subtitles-.+-reviewed-r\d{4}$/.test(logicalKey)
-}
-
-export function fingerprintSubtitleVtt(vtt: string): string {
-  return createHash("sha256").update(vtt, "utf8").digest("hex")
+  return /^subtitles-.+-reviewed-r\d{4,}(?:-j[a-f0-9]{64}-[a-f0-9]{64})?$/.test(
+    logicalKey,
+  )
 }
 
 export function getSubtitleReviewReport(
@@ -162,9 +164,6 @@ export function findExistingSubtitleReviewRevision(
   },
 ): SubtitleReviewRevision | undefined {
   return report.revisions.find(
-    (revision) =>
-      revision.sourceArtifactKey === input.sourceArtifactKey &&
-      (revision.clientSaveId === input.clientSaveId ||
-        revision.contentFingerprint === input.contentFingerprint),
+    (revision) => revision.clientSaveId === input.clientSaveId,
   )
 }

@@ -160,7 +160,9 @@ export function CollapsibleStepRow({
               >
                 <ChevronDown size={18} />
               </button>
-            ) : null}
+            ) : (
+              <span className="jobs-step-expand-spacer" aria-hidden="true" />
+            )}
           </div>
         </td>
       </tr>

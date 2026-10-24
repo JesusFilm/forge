@@ -1,0 +1,88 @@
+{
+  "capturedAt": "2026-09-15T22:01:06.010Z",
+  "results": [
+    {
+      "name": "latest_200_personalized_request_repeat_diagnostic_post_admin_initial",
+      "milliseconds": 458,
+      "rows": []
+    },
+    {
+      "name": "latest_200_personalized_request_sample_size",
+      "milliseconds": 430,
+      "rows": [
+        {
+          "sample_requests": "8"
+        }
+      ]
+    },
+    {
+      "name": "post_admin_bounded_candidate_suppression",
+      "milliseconds": 430,
+      "rows": [
+        {
+          "stage": "canonicalized",
+          "evidence_entries": "323",
+          "requests_with_entries": "8",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "composed",
+          "evidence_entries": "48",
+          "requests_with_entries": "8",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "39"
+        },
+        {
+          "stage": "deduplicated",
+          "evidence_entries": "266",
+          "requests_with_entries": "8",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "nominated",
+          "evidence_entries": "323",
+          "requests_with_entries": "8",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "ordered",
+          "evidence_entries": "266",
+          "requests_with_entries": "8",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "rejected",
+          "evidence_entries": "41",
+          "requests_with_entries": "7",
+          "recent_start_entries": "5",
+          "recent_selection_entries": "3",
+          "repeatedly_served_entries": "33",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "scored",
+          "evidence_entries": "266",
+          "requests_with_entries": "8",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        }
+      ]
+    }
+  ]
+}

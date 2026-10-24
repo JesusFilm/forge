@@ -1,0 +1,62 @@
+[
+  [],
+  [],
+  [],
+  [
+    {
+      "observed_at": "2026-09-30T19:30:26.066Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "aggregates": {
+        "actorChanged": 0,
+        "stateChanged": 0,
+        "scopesChanged": 0,
+        "sourceChanged": 0,
+        "weightChanged": 0,
+        "reasonsChanged": 0,
+        "capturedCurrent": 6657,
+        "capturedMissing": 0,
+        "measuresChanged": 22,
+        "successorStates": {
+          "eligible": 23,
+          "excluded": 0,
+          "quarantined": 0
+        },
+        "successorReasons": {
+          "late_evidence": 0,
+          "other_redacted": 0,
+          "promotion_rollback": 0,
+          "conflicting_evidence": 0,
+          "qualified_view_required": 0,
+          "replay_velocity_exceeded": 0,
+          "superseded_outcome_revision": 0,
+          "anonymous_concentration_exceeded": 0,
+          "identity_content_contribution_cap": 0,
+          "aggregate_distinct_support_pending": 0
+        },
+        "capturedNotCurrent": 23,
+        "comparedSourceRows": 6680,
+        "inputDigestChanged": 23,
+        "observedSourceRows": 6680,
+        "retainedSuccessors": 23,
+        "sourceBoundExceeded": false,
+        "samePositiveDecision": 23,
+        "successorNotPositive": 0,
+        "successorRevisionGaps": 0,
+        "successorStillPositive": 23,
+        "changedEffectiveDecision": 0,
+        "sourcePopulationComplete": true,
+        "samePositiveNearRevocation": 12,
+        "changedDecisionNearRevocation": 0,
+        "successorsWhileCapturedCurrent": 0,
+        "capturedNotCurrentWithoutSuccessor": 0,
+        "successorLaterThanRevocationWindow": 11,
+        "successorEarlierThanRevocationWindow": 0,
+        "successorWithin60SecondsOfRevocation": 12
+      }
+    }
+  ]
+]

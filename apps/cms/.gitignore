@@ -1,9 +1,0 @@
-.tmp/
-dist/
-.cache/
-.strapi/
-.strapi-updater.json
-types/
-public/uploads/*
-!public/uploads/.gitkeep
-imports/

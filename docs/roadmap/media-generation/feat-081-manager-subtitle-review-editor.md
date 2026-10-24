@@ -3,7 +3,7 @@ id: "feat-081"
 title: "Manager Subtitle Review Editor"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-04-13"
 duration: 14
 depends_on: []
@@ -63,6 +63,20 @@ Manager can generate source and translated subtitle artifacts, but there is no h
 - PRs target `main`; never skip pre-commit hooks.
 
 ## Verification
+
+### Local repair disposition — 2026-10-24
+
+PR #752 remains draft and this ticket remains in progress. The bounded repair
+adds Admin artifact comparison, immutable job-bound review objects, equality-only
+save replay, and initialization ownership across viewport changes. Configuration
+remains off by default. This does not complete the planned upstream editor fork,
+waveform/timeline work, publication, or operational qualification.
+
+Validation and remaining holds are recorded in the local
+`752-subtitle-editor-security-implementation-r1` packet. Offline process tests
+exercise the current Admin service with an injected Prisma authority; they do
+not qualify a live database. Parent must assign a fresh independent review of
+the exact local candidate before publication.
 
 - Red/Green TDD for edit-session signing, reviewed artifact naming, save validation, conflict handling, Manager job-detail presentation, and editor load/save adapter behavior.
 - `pnpm --filter @forge/manager test`

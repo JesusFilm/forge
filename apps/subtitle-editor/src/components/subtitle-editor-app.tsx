@@ -84,13 +84,21 @@ export function SubtitleEditorApp({
   const [baseFingerprint, setBaseFingerprint] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
-  const [currentSaveId, setCurrentSaveId] = useState<string | null>(null)
   const [lastSavedRevision, setLastSavedRevision] = useState<number | null>(
     null,
   )
   const [pendingLoadLabel, setPendingLoadLabel] = useState("Waiting for launch")
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const sessionStartedRef = useRef(false)
+  const initialization = useRef<{
+    launch: LaunchEnvelope
+    token: string | null
+    promise: Promise<{ token: string; review: BootstrapReviewSessionResult }>
+  } | null>(null)
+  const operationRef = useRef<object | null>(null)
+  const saveIntent = useRef<{ id: string; vtt: string; base: string } | null>(
+    null,
+  )
+  const draftRef = useRef("")
 
   const resolvedLaunch = useMemo(() => {
     return (
@@ -116,157 +124,195 @@ export function SubtitleEditorApp({
     return () => window.removeEventListener("resize", updateViewport)
   }, [])
 
+  const launchJobId = resolvedLaunch?.jobId
+  const launchCode = resolvedLaunch?.launchCode
   useEffect(() => {
-    if (viewportWidth === null || sessionStartedRef.current) {
-      return
-    }
-
-    if (blockedViewport) {
-      return
-    }
-
-    const launchEnvelope = resolvedLaunch
-    if (!launchEnvelope) {
-      return
-    }
-    const { jobId: launchJobId, launchCode } = launchEnvelope
-
-    let cancelled = false
-    async function startSession() {
-      try {
-        sessionStartedRef.current = true
-        setPhase("loading")
-        setPendingLoadLabel("Exchanging launch code")
+    if (!launchJobId || !launchCode) return
+    let active = true
+    const launch = { jobId: launchJobId, launchCode }
+    // Scrub before any media/other request. Referrer policy also covers the
+    // initial document. The capability is retained only in this hook instance.
+    window.history.replaceState({}, "", window.location.pathname)
+    let request = initialization.current
+    if (
+      !request ||
+      request.launch.jobId !== launch.jobId ||
+      request.launch.launchCode !== launch.launchCode
+    ) {
+      const owned = {
+        launch,
+        token: null as string | null,
+        promise: null as unknown as Promise<{
+          token: string
+          review: BootstrapReviewSessionResult
+        }>,
+      }
+      owned.promise = (async () => {
         const exchanged = await exchangeLaunchCode({
-          jobId: launchJobId,
-          launchCode,
+          jobId: launch.jobId,
+          launchCode: launch.launchCode,
         })
-
-        if (cancelled) {
-          return
-        }
-
-        setEditSessionToken(exchanged.editSessionToken)
-        setJobId(launchJobId)
-        setPendingLoadLabel("Loading subtitles")
+        owned.token = exchanged.editSessionToken
         const review = await bootstrapReviewSession({
-          jobId: launchJobId,
-          editSessionToken: exchanged.editSessionToken,
+          jobId: launch.jobId,
+          editSessionToken: owned.token,
         })
-
-        if (cancelled) {
-          return
-        }
-
+        return { token: owned.token, review }
+      })()
+      initialization.current = owned
+      request = owned
+    }
+    const owned = request
+    setPhase("loading")
+    setJobId(launch.jobId)
+    setPendingLoadLabel("Loading review session")
+    void owned.promise.then(
+      ({ token, review }) => {
+        if (!active || initialization.current !== owned) return
+        setEditSessionToken(token)
         setBootstrap(review)
         setBaseFingerprint(review.baseArtifactFingerprint)
         setDraft(review.vtt)
+        draftRef.current = review.vtt
+        saveIntent.current = null
         setIsDirty(false)
         setIsSaved(false)
         setLastSavedRevision(null)
         setNotice(null)
         setPhase("ready")
         setPendingLoadLabel("Ready")
-        window.history.replaceState({}, "", window.location.pathname)
-        if (textareaRef.current) {
-          textareaRef.current.focus()
-        }
-      } catch (error) {
-        if (cancelled) {
-          return
-        }
-
+      },
+      (error) => {
+        if (!active || initialization.current !== owned) return
+        setEditSessionToken(owned.token)
         setPhase("error")
         setNotice(describeManagerClientError(error))
         setNoticeTone("error")
         setPendingLoadLabel("Could not load review session")
-      }
-    }
-
-    void startSession()
-
+      },
+    )
+    // Unsubscribe this render, never cancel or repeat the one-use exchange.
     return () => {
-      cancelled = true
+      active = false
+      operationRef.current = null
     }
-  }, [blockedViewport, viewportWidth, resolvedLaunch])
+  }, [launchJobId, launchCode])
 
   async function handleSave() {
-    if (!editSessionToken || !bootstrap || !jobId || !baseFingerprint) {
+    if (
+      operationRef.current ||
+      !editSessionToken ||
+      !bootstrap ||
+      !jobId ||
+      !baseFingerprint
+    )
       return
-    }
-
-    const saveId = currentSaveId ?? crypto.randomUUID()
-    setCurrentSaveId(saveId)
+    const operation = {}
+    operationRef.current = operation
+    const submitted = draftRef.current
+    const previous = saveIntent.current
+    const intent =
+      previous &&
+      previous.vtt === submitted &&
+      previous.base === baseFingerprint
+        ? previous
+        : { id: crypto.randomUUID(), vtt: submitted, base: baseFingerprint }
+    saveIntent.current = intent
     setPhase("saving")
     setNotice("Saving reviewed subtitles...")
     setNoticeTone("info")
-
     try {
       const result = await saveReviewedVtt({
         jobId,
         editSessionToken,
-        vtt: draft,
-        baseArtifactFingerprint: baseFingerprint,
-        clientSaveId: saveId,
+        vtt: submitted,
+        baseArtifactFingerprint: intent.base,
+        clientSaveId: intent.id,
       })
-
+      const hash = await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(submitted),
+      )
+      const fingerprint = Array.from(new Uint8Array(hash), (byte) =>
+        byte.toString(16).padStart(2, "0"),
+      ).join("")
+      if (operationRef.current !== operation) return
+      if (
+        fingerprint !== result.contentFingerprint ||
+        result.jobId !== jobId ||
+        result.baseArtifactFingerprint !== intent.base
+      )
+        throw new Error("Manager did not acknowledge the submitted draft.")
       setBaseFingerprint(result.contentFingerprint)
       setLastSavedRevision(result.revision)
-      setIsDirty(false)
-      setIsSaved(true)
-      setPhase("saved")
+      const unchanged = draftRef.current === submitted
+      setIsDirty(!unchanged)
+      setIsSaved(unchanged)
+      setPhase(unchanged ? "saved" : "ready")
       setNotice(
         `Saved as reviewed revision r${String(result.revision).padStart(4, "0")}.`,
       )
       setNoticeTone("info")
     } catch (error) {
+      if (operationRef.current !== operation) return
       setPhase("ready")
       setNotice(describeManagerClientError(error))
       setNoticeTone("error")
+    } finally {
+      if (operationRef.current === operation) operationRef.current = null
     }
   }
 
   async function handleReloadLatest() {
-    if (!jobId || !editSessionToken) {
+    if (operationRef.current || !jobId || !editSessionToken) return
+    if (
+      isDirty &&
+      !window.confirm("Load the latest version and discard this unsaved draft?")
+    )
       return
-    }
-
+    const operation = {}
+    operationRef.current = operation
+    const submitted = draftRef.current
     try {
       setPhase("loading")
       setNotice("Reloading the latest reviewed subtitles...")
       setNoticeTone("info")
-      const review = await bootstrapReviewSession({
-        jobId,
-        editSessionToken,
-      })
+      const review = await bootstrapReviewSession({ jobId, editSessionToken })
+      if (operationRef.current !== operation) return
+      // A response cannot replace a draft edited after this request started.
+      if (draftRef.current !== submitted)
+        throw new Error(
+          "The draft changed while loading. Try loading latest again.",
+        )
       setBootstrap(review)
       setBaseFingerprint(review.baseArtifactFingerprint)
       setDraft(review.vtt)
+      draftRef.current = review.vtt
+      saveIntent.current = null
       setIsDirty(false)
+      setIsSaved(false)
+      setLastSavedRevision(null)
       setPhase("ready")
       setNotice("Loaded the latest reviewed version.")
       setNoticeTone("info")
-      if (textareaRef.current) {
-        textareaRef.current.focus()
-      }
+      setPendingLoadLabel("Ready")
     } catch (error) {
-      setPhase("error")
+      if (operationRef.current !== operation) return
+      setPhase(bootstrap ? "ready" : "error")
       setNotice(describeManagerClientError(error))
       setNoticeTone("error")
+    } finally {
+      if (operationRef.current === operation) operationRef.current = null
     }
   }
 
   function handleDraftChange(value: string) {
+    draftRef.current = value
     setDraft(value)
     setIsDirty(true)
     setIsSaved(false)
-    setCurrentSaveId(null)
-    if (phase === "saved" || phase === "error") {
-      setPhase("ready")
-    }
-    if (noticeTone === "error") {
-      setNotice(null)
-    }
+    if (phase === "saved" || phase === "error") setPhase("ready")
+    if (noticeTone === "error") setNotice(null)
   }
 
   function handleReturnToManager() {
@@ -368,6 +414,7 @@ export function SubtitleEditorApp({
                   title="Subtitle review preview"
                   className="preview-frame"
                   src={bootstrap.mediaUrl}
+                  referrerPolicy="no-referrer"
                 />
               ) : (
                 <div className="notice">
@@ -419,13 +466,21 @@ export function SubtitleEditorApp({
               )}
             </p>
             <div className="footer-actions">
-              <button type="button" onClick={handleSave} disabled={!bootstrap}>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={
+                  !bootstrap || phase === "saving" || phase === "loading"
+                }
+              >
                 {phase === "saving" ? "Saving..." : "Save reviewed subtitles"}
               </button>
               <button
                 type="button"
                 onClick={handleReloadLatest}
-                disabled={!editSessionToken}
+                disabled={
+                  !editSessionToken || phase === "saving" || phase === "loading"
+                }
               >
                 Reload latest reviewed version
               </button>

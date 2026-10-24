@@ -1,0 +1,4 @@
+{
+  "stage": "preflight",
+  "reason": "official prompt preflight refused production benchmark: config_missing/base_url_missing"
+}

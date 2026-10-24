@@ -1,0 +1,15 @@
+# Railway only reads this file if the service's Config-as-code Path is set to
+# apps/mastra/railway.toml. Otherwise configure the same commands in the
+# Railway dashboard and treat that dashboard config as canonical.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/mastra/Dockerfile"
+watchPatterns = ["/apps/mastra/**", "/packages/devotional-workspace/**", "/packages/experience-schema/**", "/packages/watch-url-policy/**", "/packages/studio-contracts/**", "/packages/studio-server/**", "/scripts/update-security-ca.sh", "/package.json", "/pnpm-lock.yaml", "/pnpm-workspace.yaml", "/patches/**"]
+
+[deploy]
+startCommand = "node /app/apps/mastra/.mastra/output/index.mjs"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

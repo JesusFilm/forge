@@ -1,0 +1,37 @@
+# Railway only reads this file if the service's Config-as-code Path is set to
+# apps/crop-worker/railway.toml. Otherwise configure the same commands in the
+# Railway dashboard and treat that dashboard config as canonical.
+#
+# The source Dockerfile supplies FFmpeg/ffprobe and a patched Node before any
+# dependency download. Keep the existing single-replica and health contracts.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/crop-worker/Dockerfile"
+watchPatterns = [
+  "/apps/crop-worker/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+  "/.nvmrc",
+  "/nixpacks.toml",
+  "/scripts/install-security-node.sh",
+  "/scripts/update-security-ca.sh",
+]
+
+[deploy]
+# Single replica REQUIRED — the job registry/queue is in-memory (src/jobs.ts).
+# A second replica round-robins manager's GET /jobs/{id} polls onto replicas
+# that never saw the POST, producing spurious 404s that manager classifies as
+# job_lost (bounded resubmit, then terminal failure) while orphaned renders
+# keep burning CPU. Scale throughput via CROP_WORKER_MAX_CONCURRENT_JOBS /
+# CROP_WORKER_QUEUE_LIMIT, not replicas. Railway only honors this file when
+# the service's Config-as-code Path is set — keep the dashboard replica
+# setting at 1 as well.
+numReplicas = 1
+startCommand = "node /app/apps/crop-worker/dist/server.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

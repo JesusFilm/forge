@@ -1,0 +1,10 @@
+{
+  "recordedAt": "2026-09-30T00:16:42.191Z",
+  "generation": "f2d67e9f7a2209059922504c9fd3b7ed788133c567129dd1e20d04945a8b4a79",
+  "admissionSha256": "56d20fc33250adc08ae822d0572e12774ff330ea73d7ca662fa1fdaeba2244c2",
+  "pinsSha256": "26d7184ecb21458471f0769491bc443f6d993bea132d2ccaf4db8433aef9bc37",
+  "brokerSha256": "939afb79777e2b622071c7f32c08161579a25158aae48f1359b159ddcfcded92",
+  "limitsAndWindowUnchanged": true,
+  "preflightAttemptId": "a6d4f73a-cc79-4114-9eff-2a27eec1c6a1",
+  "publicationAttemptId": "67758d1c-c028-48f4-9b1b-b764b03c6f11"
+}

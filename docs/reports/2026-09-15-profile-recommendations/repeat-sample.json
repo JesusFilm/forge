@@ -1,0 +1,31 @@
+[
+  [
+    {
+      "candidate_generator": "multi-interest-profile",
+      "learned_outside_recommendations": true,
+      "learned_from_recommendation": false,
+      "repeat_cards": "84",
+      "affected_requests": "64",
+      "suppression_recorded": "1",
+      "refill_or_movement_recorded": "52"
+    },
+    {
+      "candidate_generator": "semantic",
+      "learned_outside_recommendations": true,
+      "learned_from_recommendation": false,
+      "repeat_cards": "6",
+      "affected_requests": "5",
+      "suppression_recorded": "0",
+      "refill_or_movement_recorded": "6"
+    },
+    {
+      "candidate_generator": "multi-interest-profile",
+      "learned_outside_recommendations": false,
+      "learned_from_recommendation": true,
+      "repeat_cards": "1",
+      "affected_requests": "1",
+      "suppression_recorded": "1",
+      "refill_or_movement_recorded": "1"
+    }
+  ]
+]

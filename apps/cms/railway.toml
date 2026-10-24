@@ -1,5 +1,0 @@
-[build]
-dockerfilePath = "apps/cms/Dockerfile"
-
-[deploy]
-releaseCommand = "pnpm data-import-check"

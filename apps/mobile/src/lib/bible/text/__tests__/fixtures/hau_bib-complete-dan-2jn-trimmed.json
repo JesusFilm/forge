@@ -1,0 +1,283 @@
+{
+  "translation": {
+    "id": "hau_bib",
+    "name": "Biblica® Buɗaɗɗen Littafi Mai Tsarki, Sabon Rai Don Kowa™",
+    "website": "https://ebible.org/Scriptures/details.php?id=hausa",
+    "licenseUrl": "https://ebible.org/Scriptures/details.php?id=hausa",
+    "shortName": "BIB",
+    "englishName": "Hausa Contemporary Bible",
+    "language": "hau",
+    "textDirection": "ltr",
+    "sha256": "7ae5fd9f0dda259fe3fdcf3f3abc111a8e909f1fd977e1109ed0d708b11a9dc3",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/hau_bib/books.json",
+    "completeTranslationApiLink": "/api/hau_bib/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/hau_bib/complete.simple.json",
+    "numberOfBooks": 66,
+    "totalNumberOfChapters": 1190,
+    "totalNumberOfVerses": 31087,
+    "languageName": "Hausa",
+    "languageEnglishName": "Hausa"
+  },
+  "books": [
+    {
+      "id": "DAN",
+      "name": "Daniyel",
+      "commonName": "Daniyel",
+      "title": "Daniyel",
+      "order": 27,
+      "numberOfChapters": 13,
+      "totalNumberOfVerses": 357,
+      "chapters": [
+        {
+          "numberOfVerses": 13,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": {
+            "number": 12,
+            "content": [
+              { "type": "heading", "content": ["Ƙarshe zamani"] },
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "“A wannan lokaci Mika’ilu, babban mai mulki wanda yake kāre mutanenka, zai tashi. Za a yi lokacin matsananciyar wahala wanda ba a taɓa yi tun farkon ƙasashe har zuwa yanzu. Amma a lokacin da mutanenka, kowane mutum wanda aka sami sunansa a rubuce a cikin littafin, za a cece shi."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "Ɗumbun mutanen da suka yi barci cikin turɓayar duniya za su farka, waɗansu zuwa ga rai madawwami, waɗansu zuwa ga madawwamiyar kunya da kuma madawwamin ƙasƙanci."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "Waɗanda suke da hikima",
+                  { "noteId": 39 },
+                  "za su haskaka kamar hasken samaniya, waɗanda kuma suka jagoranci waɗansu da yawa zuwa adalci, za su zama kamar taurari har abada abadin."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 4,
+                "content": [
+                  "Amma kai, Daniyel, ka rufe zancen nan ka kuma liƙe kalmomin littafin nan har sai ƙarshe. Mutane da yawa za su yi ta kai komo don neman sani.”"
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "Sa’an nan ni, Daniyel, na duba, a gabana kuwa ga waɗansu mutum biyu tsaye, ɗaya a wannan hayen kogi ɗaya kuma a ƙetaren kogin."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "Ɗayansu ya ce wa mutumin da yake sanye da tufafin lilin, wanda yake a saman ruwan kogin, “Har yaushe waɗannan abubuwan banmamakin za su cika?”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "Mutumin da yake sanye da tufafin lilin, wanda yake a saman ruwan kogin, ya ɗaga hannun damansa da kuma na hagunsa sama, sai na ji yana rantsuwa da wannan da yake raye har abada, yana cewa, “Zai kasance na ɗan lokaci, lokuta da rabin lokaci.",
+                  { "noteId": 40 },
+                  "Za a kammala waɗannan abubuwa, sa’ad da aka gama ragargaje ikon tsarkakan mutane.”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "Na kuma ji, amma ban fahimta ba. Don haka sai na yi tambaya, “Ranka yă daɗe, mene ne ƙarshen waɗannan abubuwa?”"
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "Sai ya amsa ya ce, “Ka kama hanyarka, Daniyel, domin a rufe kalmomin aka kuma liƙe su har sai ƙarshen lokaci."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "Za a tsarkake mutane da yawa, za a maishe su marasa aibi a kuma tace su; amma mugaye za su ci gaba da mugunta. Babu wani mugun da zai fahimta, amma waɗanda za su zama masu hikima za su fahimta."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "“Daga lokacin da za a hana miƙa hadayar ƙonawa ta yau da kullum, a kuma kafa abin banƙyama, wanda yake lalatarwa, za a yi kwana 1,290."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "Mai albarka ne wanda ya jira har yă zuwa ƙarshen kwanakin nan 1,335."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "“Gare ka dai, ka yi tafiyarka har zuwa ƙarshe. Za ka huta, sa’an nan a ƙarshen kwanaki za ka tashi don karɓi sashen gadon da aka ba ka.”"
+                ]
+              }
+            ],
+            "footnotes": [
+              {
+                "noteId": 39,
+                "caller": "+",
+                "text": "Ko kuwa waɗanda suke ba da hikima",
+                "reference": { "chapter": 12, "verse": 3 }
+              },
+              {
+                "noteId": 40,
+                "caller": "+",
+                "text": "Ko kuwa shekara, shekara biyu da kuma rabi shekara",
+                "reference": { "chapter": 12, "verse": 7 }
+              }
+            ]
+          }
+        },
+        {
+          "numberOfVerses": 0,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": { "number": 14, "content": [], "footnotes": [] }
+        }
+      ]
+    },
+    {
+      "id": "2JN",
+      "name": "2 Yohanna",
+      "commonName": "2 Yohanna",
+      "title": "2 Yohanna",
+      "order": 63,
+      "numberOfChapters": 1,
+      "totalNumberOfVerses": 13,
+      "chapters": [
+        {
+          "numberOfVerses": 13,
+          "thisChapterAudioLinks": {},
+          "thisChapterAudioTimings": {},
+          "chapter": {
+            "number": 1,
+            "content": [
+              {
+                "type": "verse",
+                "number": 1,
+                "content": [
+                  "Dattijon nan,",
+                  { "lineBreak": true },
+                  "Zuwa ga uwargida zaɓaɓɓiya da kuma ’ya’yanta, waɗanda nake ƙauna ƙwarai da gaske kuma ba ni kaɗai ba, amma har da dukan waɗanda suka san gaskiya."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 2,
+                "content": [
+                  "Muna ƙaunarku saboda gaskiyan nan, wadda take cikinmu za tă kuma kasance tare da mu har abada."
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 3,
+                "content": [
+                  "Alheri, jinƙai da kuma salama daga Allah Uba da kuma Yesu Kiristi, Ɗan Uba, su kasance tare da mu cikin gaskiya da ƙauna."
+                ]
+              },
+              { "type": "line_break" },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 4,
+                "content": [
+                  "Na yi farin ciki ƙwarai, da na sami waɗansu ’ya’yanki suna tafiya cikin gaskiya, kamar yadda Uba ya umarce mu."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 5,
+                "content": [
+                  "Yanzu kuma, uwargida ƙaunatacciya, ba sabon umarni nake rubuta miki ba sai dai wanda muke da shi tun farko. Ina roƙo cewa mu ƙaunaci juna."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 6,
+                "content": [
+                  "Ƙauna, ita ce mu yi biyayya ga umarnansa. Kamar yadda kuka ji tun da fari, umarninsa shi ne ku yi zaman ƙauna."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 7,
+                "content": [
+                  "Masu ruɗi da yawa, waɗanda ba su yarda da zuwan Yesu Kiristi cikin jiki ba, sun riga sun fito a duniya. Duk irin mutumin nan mai ruɗi ne kuma magabcin Kiristi."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 8,
+                "content": [
+                  "Ku lura don kada ku yi hasarar aikin da kuka yi, sai dai ku sami cikakken lada."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 9,
+                "content": [
+                  "Duk mutumin da bai tsaya a kan koyarwar Kiristi ba, amma ya yi ƙari a kanta, mutumin nan ba shi da Allah. Amma wanda ya tsaya a kan koyarwar Kiristi, yana da Uban da kuma Ɗan."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 10,
+                "content": [
+                  "Duk wanda ya zo wurinku bai kuma kawo koyarwan nan ba, kada ku karɓe shi a gidanku ko ku marabce shi."
+                ]
+              },
+              {
+                "type": "verse",
+                "number": 11,
+                "content": [
+                  "Duk wanda ya karɓe shi yana tarayya da mugun aikinsa ke nan."
+                ]
+              },
+              { "type": "line_break" },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 12,
+                "content": [
+                  "Ina da abubuwa da dama da zan rubuta muku, sai dai ba na so in yi amfani da takarda da inki in rubuta. A maimako, ina fata in ziyarce ku in kuma yi magana da ku fuska da fuska, domin farin cikinmu yă zama cikakke."
+                ]
+              },
+              { "type": "line_break" },
+              {
+                "type": "verse",
+                "number": 13,
+                "content": [
+                  "’Ya’yan ’yar’uwarki wadda Allah ya keɓe, suna gaishe ku."
+                ]
+              }
+            ],
+            "footnotes": []
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+[
+  [],
+  [],
+  [],
+  [
+    {
+      "status": {
+        "readOnly": "on",
+        "scheduler": {
+          "status": "running",
+          "nextRunAt": "2026-10-01T02:58:00.431Z",
+          "startedAt": "2026-10-01T02:52:47.171",
+          "updatedAt": "2026-10-01T02:53:00.432",
+          "lastBatchStatus": "completed"
+        },
+        "grantTable": "recommendation_cowatch_refresh_grant",
+        "migrations": [
+          {
+            "name": "0126_recommendation_cowatch_refresh",
+            "finishedAt": "2026-10-01T02:51:03.749742+00:00",
+            "rolledBackAt": null
+          }
+        ],
+        "observedAt": "2026-10-01T02:53:00.569673+00:00",
+        "attemptTable": "recommendation_cowatch_refresh_attempt"
+      }
+    }
+  ]
+]

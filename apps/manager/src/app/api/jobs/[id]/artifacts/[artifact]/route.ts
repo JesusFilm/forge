@@ -1,9 +1,14 @@
+import { fingerprintSubtitleBytes } from "@/lib/subtitle-review-fingerprint"
+import { getSubtitleReviewReport } from "@/lib/subtitle-review"
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { resolveJobArtifactDescriptor } from "@/lib/job-artifacts"
+import {
+  getJobArtifactStorageAssetId,
+  resolveJobArtifactDescriptor,
+} from "@/lib/job-artifacts"
 import { hasValidMuxArtifactAccessSignature } from "@/lib/mux-artifact-access"
 import { getJob } from "@/lib/state"
-import { readArtifact } from "@/services/storage"
+import { readArtifact, readArtifactBounded } from "@/services/storage"
 
 export async function GET(
   request: Request,
@@ -43,11 +48,33 @@ export async function GET(
     )
   }
 
-  const body = await readArtifact(
-    job.muxAssetId,
-    descriptor.artifactType,
-    descriptor.ext,
+  // Smart-crop jobs store artifacts under options.smartCrop.assetId, which may
+  // differ from the job's muxAssetId. Enrichment jobs keep muxAssetId.
+  const reviewed = getSubtitleReviewReport(job.artifacts).revisions.find(
+    (revision) => revision.artifactKey === logicalKey,
   )
+  const body = reviewed
+    ? await readArtifactBounded(
+        job.muxAssetId,
+        descriptor.artifactType,
+        descriptor.ext,
+        512 * 1024,
+      )
+    : await readArtifact(
+        getJobArtifactStorageAssetId(job),
+        descriptor.artifactType,
+        descriptor.ext,
+      )
+
+  if (
+    reviewed &&
+    fingerprintSubtitleBytes(body) !== reviewed.contentFingerprint
+  ) {
+    return NextResponse.json(
+      { error: "Reviewed artifact integrity check failed" },
+      { status: 409, headers: { "Cache-Control": "private, no-store" } },
+    )
+  }
 
   return new NextResponse(
     new Blob([body as Uint8Array<ArrayBuffer>], {

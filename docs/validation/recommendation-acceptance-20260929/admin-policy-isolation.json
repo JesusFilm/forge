@@ -1,0 +1,437 @@
+{
+  "source": "Authorized Admin Recommendations DOM via existing authenticated browser; public filter controls only.",
+  "window": "rolling 24h; each page request has its own cutoff, capture timestamps follow page load",
+  "runtimeReceipt": "deployment-policy-interim.json",
+  "adminRuntimeRevision": "ec976e186318db70f94770d330ec93aa14ffc0eb",
+  "watchRuntimeRevision": "ab54e389755ef134257b228a5c1d388761dcae93",
+  "filter": "watch-video:chapters:carousel",
+  "placement": "chapters-1",
+  "registryCompleteness": "2/10; acceptance metadata, not the number of observed V2 cohorts",
+  "signedReplayCountAllPositions": 44,
+  "signedReplayRate": "unavailable; replay audit combines attempts without position",
+  "v2": {
+    "capturedAt": "2026-09-28T23:59:42.440Z",
+    "policy": "watch-exposure-v2",
+    "rowCount": 74,
+    "displayBound": 128,
+    "columns": [
+      "served",
+      "rendered",
+      "eligible",
+      "selected",
+      "eligibleSelections",
+      "ctr",
+      "earlySelections",
+      "repeats",
+      "replayRateToDate",
+      "nativeVisibilityV2 / unknown"
+    ],
+    "positionGroups": [
+      {
+        "startPosition": 0,
+        "endPosition": 0,
+        "values": [
+          "321",
+          "244",
+          "49",
+          "5",
+          "0",
+          "0.0%",
+          "5",
+          "0",
+          "3.6%",
+          "14 / 35"
+        ]
+      },
+      {
+        "startPosition": 1,
+        "endPosition": 1,
+        "values": ["87", "48", "7", "0", "0", "0.0%", "0", "0", "5.2%", "0 / 7"]
+      },
+      {
+        "startPosition": 2,
+        "endPosition": 2,
+        "values": [
+          "87",
+          "48",
+          "5",
+          "2",
+          "2",
+          "40.0%",
+          "0",
+          "0",
+          "3.5%",
+          "0 / 5"
+        ]
+      },
+      {
+        "startPosition": 3,
+        "endPosition": 4,
+        "values": ["85", "46", "1", "0", "0", "0.0%", "0", "0", "4.1%", "0 / 1"]
+      },
+      {
+        "startPosition": 5,
+        "endPosition": 5,
+        "values": ["82", "43", "1", "0", "0", "0.0%", "0", "0", "4.3%", "0 / 1"]
+      },
+      {
+        "startPosition": 6,
+        "endPosition": 6,
+        "values": [
+          "80",
+          "41",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "4.7%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 7,
+        "endPosition": 8,
+        "values": [
+          "80",
+          "41",
+          "0",
+          "1",
+          "0",
+          "undefined",
+          "1",
+          "0",
+          "4.5%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 9,
+        "endPosition": 9,
+        "values": [
+          "80",
+          "41",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "4.7%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 10,
+        "endPosition": 10,
+        "values": [
+          "78",
+          "41",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "4.7%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 11,
+        "endPosition": 13,
+        "values": [
+          "77",
+          "41",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "4.7%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 14,
+        "endPosition": 19,
+        "values": ["77", "41", "2", "0", "0", "0.0%", "0", "0", "4.4%", "0 / 2"]
+      },
+      {
+        "startPosition": 20,
+        "endPosition": 22,
+        "values": [
+          "77",
+          "41",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "4.7%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 23,
+        "endPosition": 24,
+        "values": [
+          "76",
+          "40",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "2.4%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 25,
+        "endPosition": 25,
+        "values": ["76", "40", "1", "0", "0", "0.0%", "0", "0", "2.4%", "0 / 1"]
+      },
+      {
+        "startPosition": 26,
+        "endPosition": 26,
+        "values": [
+          "76",
+          "40",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "2.4%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 27,
+        "endPosition": 27,
+        "values": [
+          "75",
+          "39",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "2.5%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 28,
+        "endPosition": 39,
+        "values": [
+          "55",
+          "34",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "2.9%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 40,
+        "endPosition": 40,
+        "values": [
+          "55",
+          "34",
+          "1",
+          "1",
+          "1",
+          "100.0%",
+          "0",
+          "0",
+          "2.7%",
+          "0 / 1"
+        ]
+      },
+      {
+        "startPosition": 41,
+        "endPosition": 42,
+        "values": ["54", "33", "1", "0", "0", "0.0%", "0", "0", "2.9%", "0 / 1"]
+      },
+      {
+        "startPosition": 43,
+        "endPosition": 43,
+        "values": ["54", "33", "1", "1", "0", "0.0%", "1", "0", "2.8%", "0 / 1"]
+      },
+      {
+        "startPosition": 44,
+        "endPosition": 44,
+        "values": [
+          "54",
+          "33",
+          "0",
+          "1",
+          "0",
+          "undefined",
+          "1",
+          "0",
+          "2.9%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 45,
+        "endPosition": 46,
+        "values": [
+          "54",
+          "33",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "2.9%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 47,
+        "endPosition": 49,
+        "values": [
+          "52",
+          "31",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "3.1%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 50,
+        "endPosition": 57,
+        "values": [
+          "43",
+          "24",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "0.0%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 58,
+        "endPosition": 60,
+        "values": [
+          "41",
+          "22",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "0.0%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 61,
+        "endPosition": 61,
+        "values": [
+          "40",
+          "21",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "0.0%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 62,
+        "endPosition": 63,
+        "values": [
+          "11",
+          "7",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "0.0%",
+          "0 / 0"
+        ]
+      },
+      {
+        "startPosition": 64,
+        "endPosition": 73,
+        "values": [
+          "11",
+          "8",
+          "0",
+          "0",
+          "0",
+          "undefined",
+          "0",
+          "0",
+          "0.0%",
+          "0 / 0"
+        ]
+      }
+    ],
+    "warningAlerts": []
+  },
+  "v1": {
+    "capturedAt": "2026-09-29T00:00:45.627Z",
+    "policy": "watch-exposure-v1",
+    "rowCount": 77,
+    "positions": {
+      "start": 0,
+      "end": 76
+    },
+    "allServedUnknown": true,
+    "position0": [
+      "unknown",
+      "5558",
+      "951",
+      "46",
+      "9",
+      "0.9%",
+      "37",
+      "10",
+      "8.1%",
+      "199 / 752"
+    ],
+    "warningAlerts": [],
+    "retention": "Only position0 and the all-rows served-unknown check retained for this legacy-policy control; no claim of retaining all legacy counts."
+  },
+  "interpretation": [
+    "All 74 V2 rows in this selected cohort fit below the unchanged 128-row cap; the 77 legacy rows are inspected separately.",
+    "The two rolling-window reads include concurrent production traffic and are not isolated browser-event attribution or a matched common cutoff.",
+    "CTR is eligible selections divided by eligible impressions; zero denominator remains undefined. Early selections are not manufactured impressions.",
+    "Anonymous replay rate is cumulative to date for facts in the window and can include retries after its cutoff; repeats are separate.",
+    "Visibility V2 is browser capability, distinct from exposure policy V2.",
+    "This does not complete registry coverage or resolve shared ingestion health, loaded retention or D1-D9."
+  ],
+  "rawIdentitiesRetained": false
+}

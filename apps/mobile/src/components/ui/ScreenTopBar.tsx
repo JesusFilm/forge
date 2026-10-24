@@ -1,0 +1,226 @@
+import type { ComponentProps } from "react"
+import { Pressable, StyleSheet, Text, View } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { useRouter } from "expo-router"
+
+import { useTypography } from "../../hooks/useTypography"
+import { directionalIcon } from "../../i18n/layoutRtl"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
+import { ACCENT, BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
+import { canUseLiquidGlass } from "../../lib/liquidGlass"
+import { FLOATING_BACK_SIZE } from "../../lib/playerLayout"
+import { HORIZONTAL_PADDING, button } from "../../styles/shared"
+import { GlassSurface, type GlassFallback } from "./GlassSurface"
+import { HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
+
+export type ScreenTopBarAction = {
+  icon: ComponentProps<typeof Ionicons>["name"]
+  accessibilityLabel: string
+  onPress: () => void
+  /** The RUM tap name, so a translated label does not split the series. */
+  actionName?: string
+}
+
+export type ScreenTopBarProps = {
+  /** UI catalog text. Omitted on the My Watch tab, whose tab bar item already
+   *  names it. */
+  title?: string
+  /** Adds a leading back control, for a screen pushed over My Watch. */
+  showBack?: boolean
+  trailingAction?: ScreenTopBarAction
+  /** Floats the bar over the page instead of taking a row, so the page can
+   *  start its content just under the safe area. The host pads for that. */
+  overlay?: boolean
+}
+
+const TARGET_SIZE = 44
+// Pulls each 44pt target out so its glyph lines up with the content edge.
+const EDGE_PULL = 10
+// FloatingBackButton's glass circle (R9). Its edge, not the glyph, sits on
+// the content edge.
+const BACK_GLASS_SIZE = FLOATING_BACK_SIZE
+const BACK_GLASS_PULL = (TARGET_SIZE - BACK_GLASS_SIZE) / 2
+const BACK_GLASS_TITLE_GAP = 8
+// Without Liquid Glass the bar draws the bare glyph, so it adds no fill.
+const BARE_GLYPH: GlassFallback = { kind: "fill", style: null }
+
+type LeaveRouter = Pick<
+  ReturnType<typeof useRouter>,
+  "back" | "canGoBack" | "navigate"
+>
+
+/** Leave a screen pushed over My Watch. A cold deep link lands on an empty
+ *  stack, where back() does nothing, so it navigates to the tab instead. */
+export function leaveToMyWatch(router: LeaveRouter): void {
+  if (router.canGoBack()) router.back()
+  else router.navigate("/(tabs)/profile")
+}
+
+export function ScreenTopBar({
+  title,
+  showBack = false,
+  trailingAction,
+  overlay = false,
+}: ScreenTopBarProps) {
+  const insets = useSafeAreaInsets()
+  const router = useRouter()
+  const typography = useTypography()
+  const t = useT("Common")
+  const uiDirection = useTextDirection().ui
+  const glass = canUseLiquidGlass()
+
+  const handleBack = () => leaveToMyWatch(router)
+  // Overlaid, only the controls take touches, so a drag beside them scrolls.
+  const passThrough = overlay ? "box-none" : "auto"
+
+  return (
+    <View
+      pointerEvents={passThrough}
+      style={[
+        overlay ? styles.overlay : styles.bar,
+        { paddingTop: insets.top + HOME_HEADER_ROW_TOP },
+      ]}
+    >
+      {overlay && (
+        <View
+          pointerEvents="none"
+          style={[styles.statusBackdrop, { height: insets.top }]}
+        />
+      )}
+      <View style={styles.row} pointerEvents={passThrough}>
+        {showBack && (
+          <Pressable
+            onPress={handleBack}
+            accessibilityRole="button"
+            accessibilityLabel={t("goBackAriaLabel")}
+            {...{ "dd-action-name": "screen-top-bar-back" }}
+            style={[
+              button.iconButton44,
+              glass ? styles.leadingGlass : styles.leading,
+            ]}
+          >
+            {({ pressed }) => (
+              <GlassSurface
+                style={styles.glassCircle}
+                fallback={BARE_GLYPH}
+                interactive
+                pressed={pressed}
+              >
+                <Ionicons
+                  name={directionalIcon("chevron-back")}
+                  size={glass ? 24 : 28}
+                  color={glass ? ACCENT : TEXT_PRIMARY}
+                />
+              </GlassSurface>
+            )}
+          </Pressable>
+        )}
+        {title != null ? (
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={[
+              styles.title,
+              showBack ? typography.titleLarge : typography.headingScale.h2,
+              uiDirection,
+            ]}
+          >
+            {title}
+          </Text>
+        ) : (
+          <View style={styles.spacer} pointerEvents="none" />
+        )}
+        {trailingAction != null && (
+          <Pressable
+            onPress={trailingAction.onPress}
+            accessibilityRole="button"
+            accessibilityLabel={trailingAction.accessibilityLabel}
+            {...(trailingAction.actionName != null && {
+              "dd-action-name": trailingAction.actionName,
+            })}
+            style={[
+              button.iconButton44,
+              glass ? styles.trailingGlass : styles.trailing,
+            ]}
+          >
+            {({ pressed }) => (
+              <GlassSurface
+                style={styles.glassCircle}
+                fallback={BARE_GLYPH}
+                interactive
+                pressed={pressed}
+              >
+                <Ionicons
+                  name={trailingAction.icon}
+                  size={glass ? 22 : 26}
+                  color={TEXT_PRIMARY}
+                />
+              </GlassSurface>
+            )}
+          </Pressable>
+        )}
+      </View>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    backgroundColor: BG_COLOR,
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingBottom: 8,
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    paddingHorizontal: HORIZONTAL_PADDING,
+  },
+  // Keeps scrolled content from showing under the status bar.
+  statusBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: BG_COLOR,
+  },
+  row: {
+    minHeight: TARGET_SIZE,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  leading: {
+    marginLeft: -EDGE_PULL,
+  },
+  // The circle fills its target, so it keeps the glyph's gap to the title.
+  leadingGlass: {
+    marginLeft: -BACK_GLASS_PULL,
+    marginRight: BACK_GLASS_TITLE_GAP,
+  },
+  glassCircle: {
+    width: BACK_GLASS_SIZE,
+    height: BACK_GLASS_SIZE,
+    borderRadius: BACK_GLASS_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  trailing: {
+    marginRight: -EDGE_PULL,
+  },
+  // Like the back circle, the glass edge sits on the content edge.
+  trailingGlass: {
+    marginRight: -BACK_GLASS_PULL,
+  },
+  title: {
+    flex: 1,
+    color: TEXT_PRIMARY,
+    fontWeight: "700",
+  },
+  spacer: {
+    flex: 1,
+  },
+})

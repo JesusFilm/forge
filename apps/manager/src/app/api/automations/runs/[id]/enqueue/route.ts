@@ -10,12 +10,12 @@ import {
 const automationPayloadSchema = z.object({
   documentId: z.string().min(1),
   name: z.string().min(1),
+  runMode: z.enum(["live", "dry_run"]).default("live"),
   template: z.enum([
     "source_subtitles_missing",
     "target_subtitles_missing",
     "metadata_missing",
     "transcript_embeddings_missing",
-    "scene_embeddings_missing",
   ]),
   status: z.enum(["active", "paused"]),
   schedule: automationScheduleSchema,
@@ -36,9 +36,11 @@ const automationPayloadSchema = z.object({
   maxVideosPerRun: z.number().int().min(1).max(100),
 })
 
-const enqueueSchema = z.object({
-  automation: automationPayloadSchema,
-})
+const enqueueSchema = z
+  .object({
+    automation: automationPayloadSchema,
+  })
+  .strict()
 
 export async function POST(
   request: Request,
@@ -81,8 +83,10 @@ export async function POST(
   }
 
   const { id } = await context.params
+  const runMode = parsed.data.automation.runMode
   const automation: EnrichmentAutomation = {
     ...parsed.data.automation,
+    runMode,
     timezone:
       parsed.data.automation.timezone ??
       parsed.data.automation.schedule.timezone,
@@ -91,6 +95,7 @@ export async function POST(
 
   const result = await enqueueAutomationRun({
     runDocumentId: id,
+    runMode,
     automation,
   })
 

@@ -1,4 +1,9 @@
-import { createMuxAsset, getMuxAsset, type MuxAssetInfo } from "@/services/mux"
+import {
+  createMuxAsset,
+  getMuxAsset,
+  getMuxStaticRenditionSourceUrl,
+  type MuxAssetInfo,
+} from "@/services/mux"
 import {
   buildMuxSourceLanguagePriority,
   type SupportedMuxGeneratedSubtitleLanguage,
@@ -319,10 +324,15 @@ export async function materializeEnrichmentTargetForJob(
     const getAsset = deps.getAsset ?? getMuxAsset
 
     try {
-      const liveAsset =
-        candidate.sourceMuxPlaybackId != null
-          ? null
-          : await getAsset(candidate.sourceMuxAssetId!)
+      let liveAsset: MuxAssetInfo | null = null
+      try {
+        liveAsset = await getAsset(candidate.sourceMuxAssetId!)
+      } catch (error) {
+        if (!candidate.sourceMuxPlaybackId) {
+          throw error
+        }
+      }
+
       const resolvedPlaybackId =
         candidate.sourceMuxPlaybackId ?? liveAsset?.playbackId
 
@@ -332,10 +342,15 @@ export async function materializeEnrichmentTargetForJob(
         )
       }
 
+      const sourceInputUrl = liveAsset
+        ? (getMuxStaticRenditionSourceUrl(liveAsset) ?? undefined)
+        : undefined
+
       return {
         status: "ready",
         ...candidate,
         sourceMuxPlaybackId: resolvedPlaybackId,
+        ...(sourceInputUrl ? { sourceInputUrl } : {}),
         materializationMode: "direct_mux_asset_reuse",
         targetMuxAssetId: candidate.sourceMuxAssetId!,
         targetMuxPlaybackId: resolvedPlaybackId,

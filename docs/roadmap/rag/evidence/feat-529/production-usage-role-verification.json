@@ -1,0 +1,44 @@
+{
+  "checkedAt": "2026-09-29T03:09:28.570Z",
+  "roles": [
+    {
+      "rolname": "forge_rag_usage_inventory",
+      "rolsuper": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false,
+      "rolinherit": false,
+      "rolreplication": false,
+      "rolbypassrls": false,
+      "rolcanlogin": true
+    },
+    {
+      "rolname": "forge_rag_usage_report_reader",
+      "rolsuper": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false,
+      "rolinherit": false,
+      "rolreplication": false,
+      "rolbypassrls": false,
+      "rolcanlogin": true
+    },
+    {
+      "rolname": "forge_rag_usage_writer",
+      "rolsuper": false,
+      "rolcreatedb": false,
+      "rolcreaterole": false,
+      "rolinherit": false,
+      "rolreplication": false,
+      "rolbypassrls": false,
+      "rolcanlogin": true
+    }
+  ],
+  "roleChecks": {
+    "usageWriterAndReportReader": "passed",
+    "inventory": "passed"
+  },
+  "credentialReceiverEntries": [
+    "FORGE_RAG_USAGE_WRITER_DATABASE_URL",
+    "FORGE_RAG_USAGE_REPORT_DATABASE_URL",
+    "FORGE_RAG_USAGE_INVENTORY_DATABASE_URL"
+  ]
+}

@@ -40,17 +40,9 @@ function configuredValue(value: string | undefined): string | null {
 }
 
 export function getSubtitleReviewConfiguration(): SubtitleReviewConfiguration {
-  const editorPublicUrl = configuredValue(
-    process.env.SUBTITLE_EDITOR_PUBLIC_URL ?? env.SUBTITLE_EDITOR_PUBLIC_URL,
-  )
-  const allowedOrigins = configuredValue(
-    process.env.SUBTITLE_EDITOR_ALLOWED_ORIGINS ??
-      env.SUBTITLE_EDITOR_ALLOWED_ORIGINS,
-  )
-  const sessionSecret = configuredValue(
-    process.env.SUBTITLE_REVIEW_SESSION_SECRET ??
-      env.SUBTITLE_REVIEW_SESSION_SECRET,
-  )
+  const editorPublicUrl = configuredValue(env.SUBTITLE_EDITOR_PUBLIC_URL)
+  const allowedOrigins = configuredValue(env.SUBTITLE_EDITOR_ALLOWED_ORIGINS)
+  const sessionSecret = configuredValue(env.SUBTITLE_REVIEW_SESSION_SECRET)
   const missing: SubtitleReviewConfigVariable[] = []
   if (!editorPublicUrl) missing.push("SUBTITLE_EDITOR_PUBLIC_URL")
   if (!allowedOrigins) missing.push("SUBTITLE_EDITOR_ALLOWED_ORIGINS")
@@ -78,10 +70,7 @@ export function isSubtitleReviewConfigured(): boolean {
 }
 
 function getSubtitleReviewSessionSecret(): string {
-  const secret = configuredValue(
-    process.env.SUBTITLE_REVIEW_SESSION_SECRET ??
-      env.SUBTITLE_REVIEW_SESSION_SECRET,
-  )
+  const secret = configuredValue(env.SUBTITLE_REVIEW_SESSION_SECRET)
   if (!secret) {
     throw new Error("SUBTITLE_REVIEW_SESSION_SECRET is required")
   }
@@ -160,6 +149,7 @@ export async function signSubtitleReviewToken(
 export async function verifySubtitleReviewToken(
   token: string,
 ): Promise<SubtitleReviewTokenPayload | null> {
+  if (token.length > 4096) return null
   const [body, signature, extra] = token.split(".")
   if (!body || !signature || extra != null) {
     return null
@@ -185,7 +175,10 @@ export async function verifySubtitleReviewToken(
     return null
   }
 
-  if (Date.parse(parsed.expiresAt) <= Date.now()) {
+  if (
+    !Number.isFinite(Date.parse(parsed.expiresAt)) ||
+    Date.parse(parsed.expiresAt) <= Date.now()
+  ) {
     return null
   }
 
@@ -204,9 +197,7 @@ export function buildSubtitleEditorLaunchUrl(input: {
   jobId: string
   launchCode: string
 }): string {
-  const editorPublicUrl = configuredValue(
-    process.env.SUBTITLE_EDITOR_PUBLIC_URL ?? env.SUBTITLE_EDITOR_PUBLIC_URL,
-  )
+  const editorPublicUrl = configuredValue(env.SUBTITLE_EDITOR_PUBLIC_URL)
   if (!editorPublicUrl) {
     throw new Error("SUBTITLE_EDITOR_PUBLIC_URL is required")
   }
@@ -218,10 +209,7 @@ export function buildSubtitleEditorLaunchUrl(input: {
 }
 
 export function isAllowedSubtitleEditorOrigin(origin: string | null): boolean {
-  const allowedOrigins = configuredValue(
-    process.env.SUBTITLE_EDITOR_ALLOWED_ORIGINS ??
-      env.SUBTITLE_EDITOR_ALLOWED_ORIGINS,
-  )
+  const allowedOrigins = configuredValue(env.SUBTITLE_EDITOR_ALLOWED_ORIGINS)
   if (!origin || !allowedOrigins) {
     return false
   }

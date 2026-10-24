@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Watch TV — Join the beta</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f5f3ef;
+        color: #242321;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      a {
+        color: inherit;
+      }
+      button,
+      input {
+        font: inherit;
+      }
+      button,
+      a {
+        touch-action: manipulation;
+      }
+      button {
+        cursor: pointer;
+      }
+      header,
+      main,
+      footer {
+        max-width: 1120px;
+        margin: auto;
+        padding: 0 32px;
+      }
+      header {
+        height: 104px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 24px;
+        font-weight: 850;
+        letter-spacing: -1px;
+      }
+      .brand svg {
+        width: 31px;
+        height: 32px;
+      }
+      .badge {
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        font-weight: 700;
+        color: #706c66;
+        border: 1px solid #d9d5ce;
+        border-radius: 20px;
+        padding: 8px 12px;
+      }
+      .intro {
+        margin: 42px 0 38px;
+      }
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        font-weight: 800;
+        color: #d62a30;
+        margin-bottom: 14px;
+      }
+      h1 {
+        font-size: clamp(40px, 5vw, 64px);
+        letter-spacing: -0.055em;
+        line-height: 1.05;
+        margin: 0 0 17px;
+        font-weight: 780;
+      }
+      .intro p {
+        font-size: 19px;
+        color: #79746d;
+        margin: 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+      }
+      .card {
+        border: 1px solid #dedad3;
+        border-radius: 26px;
+        background: #fff;
+        padding: 30px;
+        box-shadow: 0 8px 30px #36302a04;
+      }
+      .card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+      }
+      .platform {
+        display: flex;
+        gap: 13px;
+        align-items: center;
+      }
+      h2 {
+        font-size: 26px;
+        letter-spacing: -0.035em;
+        margin: 0;
+      }
+      .platform-icon {
+        width: 45px;
+        height: 45px;
+        border-radius: 13px;
+        background: #f4f2ef;
+        display: grid;
+        place-items: center;
+      }
+      .platform-icon svg {
+        width: 25px;
+        height: 25px;
+      }
+      .tag {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        background: #f5f4f1;
+        border-radius: 7px;
+        padding: 7px 9px;
+        color: #777169;
+        font-weight: 650;
+      }
+      .join-zone {
+        height: 200px;
+        background: #f8f7f4;
+        border-radius: 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 18px;
+        margin-bottom: 27px;
+      }
+      .qr {
+        width: 160px;
+        height: 160px;
+        background: white;
+        border-radius: 12px;
+        flex-shrink: 0;
+        border: 1px solid #ece8e2;
+        padding: 4px;
+      }
+      .qr svg {
+        display: block;
+        width: 100%;
+        height: 100%;
+      }
+      .scan-copy {
+        max-width: 160px;
+      }
+      .scan-copy strong {
+        font-size: 19px;
+        line-height: 1.3;
+        letter-spacing: -0.025em;
+        display: block;
+      }
+      .scan-copy span {
+        font-size: 13px;
+        line-height: 1.5;
+        color: #817a72;
+        display: block;
+        margin-top: 7px;
+      }
+      .android-zone {
+        background: #eff3eb;
+        position: relative;
+        overflow: hidden;
+      }
+      .tv {
+        width: 205px;
+        height: 120px;
+        border: 6px solid #303c2c;
+        border-radius: 11px;
+        background: #dce8d3;
+        position: relative;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 15px 25px #34462815;
+      }
+      .tv:after {
+        content: "";
+        position: absolute;
+        width: 70px;
+        height: 5px;
+        background: #303c2c;
+        bottom: -18px;
+        border-radius: 10px;
+      }
+      .tv:before {
+        content: "";
+        position: absolute;
+        width: 6px;
+        height: 15px;
+        background: #303c2c;
+        bottom: -15px;
+      }
+      .tv svg {
+        width: 48px;
+        height: 48px;
+      }
+      .mail {
+        position: absolute;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: white;
+        right: 55px;
+        bottom: 31px;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 5px 14px #34462814;
+        border: 1px solid #e0e7da;
+      }
+      .mail svg {
+        width: 25px;
+        stroke: #506743;
+      }
+      .steps {
+        list-style: none;
+        margin: 0 0 27px;
+        padding: 0;
+        display: grid;
+        gap: 18px;
+      }
+      .steps li {
+        display: flex;
+        gap: 13px;
+        align-items: flex-start;
+      }
+      .num {
+        background: #f3f1ee;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+        font-weight: 750;
+        flex-shrink: 0;
+      }
+      .step strong {
+        font-size: 16px;
+        line-height: 1.4;
+        font-weight: 650;
+      }
+      .step small {
+        display: block;
+        margin-top: 3px;
+        color: #79736b;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .cta {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 53px;
+        border: 0;
+        border-radius: 12px;
+        background: #e52d35;
+        color: #fff;
+        text-decoration: none;
+        font-size: 15px;
+        font-weight: 750;
+        transition:
+          background 0.15s,
+          transform 0.15s;
+      }
+      .cta:hover {
+        background: #c9222b;
+        transform: translateY(-1px);
+      }
+      .cta:focus-visible,
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 3px solid #ed9094;
+        outline-offset: 4px;
+      }
+      .cta.secondary {
+        background: #253422;
+      }
+      .cta.secondary:hover {
+        background: #3c5035;
+      }
+      .below {
+        font-size: 12px;
+        line-height: 1.5;
+        color: #888078;
+        text-align: center;
+        margin: 12px 0 0;
+        min-height: 20px;
+      }
+      .below a {
+        font-weight: 650;
+        text-underline-offset: 3px;
+      }
+      .existing {
+        margin: 28px 0 0;
+        padding: 20px 24px;
+        border-radius: 16px;
+        border: 1px solid #dedad3;
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        align-items: center;
+        font-size: 14px;
+      }
+      .existing strong {
+        font-weight: 650;
+      }
+      .existing span {
+        color: #827a72;
+      }
+      .existing a {
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 40px;
+        padding-bottom: 30px;
+        font-size: 11px;
+        color: #8b847b;
+      }
+      .preview {
+        color: #a05e43;
+      }
+      dialog {
+        border: 0;
+        border-radius: 24px;
+        padding: 32px;
+        width: min(440px, calc(100% - 32px));
+        box-shadow: 0 20px 100px #0003;
+      }
+      dialog::backdrop {
+        background: #24231f77;
+        backdrop-filter: blur(4px);
+      }
+      dialog h2 {
+        font-size: 27px;
+        margin: 12px 0;
+      }
+      dialog p {
+        color: #787168;
+        line-height: 1.6;
+        font-size: 14px;
+      }
+      .close {
+        float: right;
+        border: 0;
+        background: #f4f2ef;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        font-size: 22px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        font-weight: 650;
+        margin: 22px 0 9px;
+      }
+      input {
+        width: 100%;
+        padding: 15px;
+        border: 1px solid #d9d5cd;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        font-size: 16px;
+      }
+      .notice {
+        font-size: 12px !important;
+        background: #faf3e9;
+        padding: 11px 13px;
+        border-radius: 8px;
+      }
+      .success {
+        display: none;
+        background: #eff3eb;
+        border-radius: 12px;
+        padding: 18px;
+        margin-top: 20px;
+        color: #35482b;
+        line-height: 1.5;
+      }
+      .account-tip {
+        display: none;
+      }
+      .mobile-link {
+        display: none;
+      }
+      @media (max-width: 760px) {
+        header,
+        main,
+        footer {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+        header {
+          height: 79px;
+        }
+        .brand {
+          font-size: 22px;
+        }
+        .intro {
+          margin: 24px 0 28px;
+        }
+        h1 {
+          font-size: 43px;
+        }
+        .intro p {
+          font-size: 16px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+          gap: 20px;
+        }
+        .card {
+          padding: 23px;
+          border-radius: 22px;
+        }
+        .join-zone {
+          height: 180px;
+          gap: 18px;
+        }
+        .qr {
+          width: 145px;
+          height: 145px;
+        }
+        .card-top {
+          margin-bottom: 20px;
+        }
+        h2 {
+          font-size: 24px;
+        }
+        .scan-copy strong {
+          font-size: 17px;
+        }
+        .steps {
+          gap: 16px;
+        }
+        .existing {
+          display: block;
+          padding: 18px;
+        }
+        .existing span {
+          display: block;
+          font-size: 13px;
+          margin-top: 6px;
+        }
+        .existing a {
+          display: inline-block;
+          margin-top: 12px;
+        }
+        footer {
+          display: block;
+          line-height: 1.8;
+          margin-top: 28px;
+        }
+        .mobile-link {
+          display: block;
+          margin-bottom: 5px;
+          color: #25231f !important;
+        }
+        .mail {
+          right: calc(50% - 124px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+      .scan-copy .mobile-link {
+        display: none;
+      }
+      @media (max-width: 960px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .join-zone {
+          gap: 24px;
+        }
+        .scan-copy {
+          max-width: 180px;
+        }
+        .card-top {
+          gap: 16px;
+        }
+        h2 {
+          white-space: nowrap;
+        }
+      }
+      .design-nav {
+        max-width: 1120px;
+        margin: 20px auto 0;
+        padding: 18px 32px;
+        border-bottom: 1px solid #dedad3;
+      }
+      .design-nav strong {
+        font-size: 15px;
+      }
+      .design-nav > div {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 12px 0;
+      }
+      .design-nav button {
+        padding: 11px 15px;
+        border: 1px solid #cbc6be;
+        border-radius: 9px;
+        background: white;
+        font-size: 14px;
+      }
+      .design-nav button[aria-pressed="true"] {
+        background: #252321;
+        color: white;
+      }
+      .design-nav p {
+        font-size: 14px;
+        color: #6f6961;
+        line-height: 1.5;
+        margin: 0;
+      }
+      .intro {
+        margin-top: 12px;
+      }
+      .watch-guide {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        text-align: left;
+        width: 100%;
+        border: 1px solid #ead8d7;
+        background: #fff7f6;
+        border-radius: 14px;
+        padding: 15px;
+        margin: 0 0 25px;
+        color: #292421;
+      }
+      .play-circle {
+        background: #e52d35;
+        color: white;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        flex: none;
+        font-size: 15px;
+      }
+      .watch-guide strong {
+        display: block;
+        font-size: 15px;
+      }
+      .watch-guide small {
+        display: block;
+        font-size: 13px;
+        color: #7a6b65;
+        margin-top: 5px;
+      }
+      .end-arrow {
+        margin-left: auto;
+        color: #be3037;
+      }
+      .watch-guide:hover {
+        background: #ffeded;
+      }
+      #video-modal {
+        width: min(980px, 94vw);
+        padding: 24px;
+        background: #fff;
+        border-radius: 20px;
+      }
+      #video-modal .video-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      }
+      #video-modal h2 {
+        font-size: 22px;
+      }
+      #close-video {
+        border: 0;
+        background: #f1efec;
+        border-radius: 50%;
+        width: 38px;
+        height: 38px;
+        font-size: 24px;
+      }
+      video {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: #151a23;
+        border-radius: 12px;
+      }
+      #inline-slot {
+        margin: 0 0 25px;
+      }
+      #inline-slot p {
+        font-size: 13px;
+        color: #756d66;
+        margin: 10px 0 0;
+      }
+      .chapter-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 15px;
+      }
+      .chapter-links button {
+        border: 1px solid #dedad3;
+        border-radius: 8px;
+        background: white;
+        padding: 9px 12px;
+        font-size: 14px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .card {
+        align-self: start;
+      }
+      @media (max-width: 760px) {
+        .design-nav {
+          padding: 16px 20px;
+        }
+        .watch-guide {
+          padding: 13px;
+          gap: 10px;
+        }
+        #video-modal {
+          padding: 15px;
+        }
+        .chapter-links button {
+          font-size: 13px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <img
+          class="brand-app-icon"
+          src="media/watch-app-icon.png"
+          width="40"
+          height="40"
+          alt="Watch app logo"
+        />WATCH <span style="font-weight: 400">TV</span>
+      </div>
+      <span class="badge">BETA ACCESS</span>
+    </header>
+    <main>
+      <section class="intro">
+        <div class="eyebrow">YOU’RE INVITED</div>
+        <h1>Watch on your TV.</h1>
+        <p>Choose your TV. We’ll help you get started.</p>
+      </section>
+      <div class="grid">
+        <section class="card" aria-labelledby="apple-title">
+          <div class="card-top">
+            <div class="platform">
+              <span class="platform-icon"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="4" width="20" height="14" rx="2" />
+                  <path d="M8 22h8m-4-4v4" />
+                  <path
+                    d="m10 8 5 3-5 3Z"
+                    fill="currentColor"
+                    stroke="none"
+                  /></svg
+              ></span>
+              <h2 id="apple-title">Apple TV</h2>
+            </div>
+            <span class="tag">Join now</span>
+          </div>
+          <div class="join-zone">
+            <div
+              class="qr"
+              role="img"
+              aria-label="Scan to join Jesus Film Watch on TestFlight"
+            >
+              <svg
+                version="1.1"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 185 185"
+                preserveAspectRatio="xMinYMin meet"
+              >
+                <rect width="100%" height="100%" fill="white" cx="0" cy="0" />
+                <path
+                  d="M20,20l5,0 0,5 -5,0 0,-5z M25,20l5,0 0,5 -5,0 0,-5z M30,20l5,0 0,5 -5,0 0,-5z M35,20l5,0 0,5 -5,0 0,-5z M40,20l5,0 0,5 -5,0 0,-5z M45,20l5,0 0,5 -5,0 0,-5z M50,20l5,0 0,5 -5,0 0,-5z M60,20l5,0 0,5 -5,0 0,-5z M80,20l5,0 0,5 -5,0 0,-5z M90,20l5,0 0,5 -5,0 0,-5z M95,20l5,0 0,5 -5,0 0,-5z M100,20l5,0 0,5 -5,0 0,-5z M105,20l5,0 0,5 -5,0 0,-5z M110,20l5,0 0,5 -5,0 0,-5z M115,20l5,0 0,5 -5,0 0,-5z M120,20l5,0 0,5 -5,0 0,-5z M130,20l5,0 0,5 -5,0 0,-5z M135,20l5,0 0,5 -5,0 0,-5z M140,20l5,0 0,5 -5,0 0,-5z M145,20l5,0 0,5 -5,0 0,-5z M150,20l5,0 0,5 -5,0 0,-5z M155,20l5,0 0,5 -5,0 0,-5z M160,20l5,0 0,5 -5,0 0,-5z M20,25l5,0 0,5 -5,0 0,-5z M50,25l5,0 0,5 -5,0 0,-5z M60,25l5,0 0,5 -5,0 0,-5z M65,25l5,0 0,5 -5,0 0,-5z M70,25l5,0 0,5 -5,0 0,-5z M80,25l5,0 0,5 -5,0 0,-5z M100,25l5,0 0,5 -5,0 0,-5z M105,25l5,0 0,5 -5,0 0,-5z M110,25l5,0 0,5 -5,0 0,-5z M120,25l5,0 0,5 -5,0 0,-5z M130,25l5,0 0,5 -5,0 0,-5z M160,25l5,0 0,5 -5,0 0,-5z M20,30l5,0 0,5 -5,0 0,-5z M30,30l5,0 0,5 -5,0 0,-5z M35,30l5,0 0,5 -5,0 0,-5z M40,30l5,0 0,5 -5,0 0,-5z M50,30l5,0 0,5 -5,0 0,-5z M65,30l5,0 0,5 -5,0 0,-5z M85,30l5,0 0,5 -5,0 0,-5z M90,30l5,0 0,5 -5,0 0,-5z M95,30l5,0 0,5 -5,0 0,-5z M100,30l5,0 0,5 -5,0 0,-5z M115,30l5,0 0,5 -5,0 0,-5z M130,30l5,0 0,5 -5,0 0,-5z M140,30l5,0 0,5 -5,0 0,-5z M145,30l5,0 0,5 -5,0 0,-5z M150,30l5,0 0,5 -5,0 0,-5z M160,30l5,0 0,5 -5,0 0,-5z M20,35l5,0 0,5 -5,0 0,-5z M30,35l5,0 0,5 -5,0 0,-5z M35,35l5,0 0,5 -5,0 0,-5z M40,35l5,0 0,5 -5,0 0,-5z M50,35l5,0 0,5 -5,0 0,-5z M60,35l5,0 0,5 -5,0 0,-5z M65,35l5,0 0,5 -5,0 0,-5z M90,35l5,0 0,5 -5,0 0,-5z M95,35l5,0 0,5 -5,0 0,-5z M105,35l5,0 0,5 -5,0 0,-5z M120,35l5,0 0,5 -5,0 0,-5z M130,35l5,0 0,5 -5,0 0,-5z M140,35l5,0 0,5 -5,0 0,-5z M145,35l5,0 0,5 -5,0 0,-5z M150,35l5,0 0,5 -5,0 0,-5z M160,35l5,0 0,5 -5,0 0,-5z M20,40l5,0 0,5 -5,0 0,-5z M30,40l5,0 0,5 -5,0 0,-5z M35,40l5,0 0,5 -5,0 0,-5z M40,40l5,0 0,5 -5,0 0,-5z M50,40l5,0 0,5 -5,0 0,-5z M75,40l5,0 0,5 -5,0 0,-5z M95,40l5,0 0,5 -5,0 0,-5z M100,40l5,0 0,5 -5,0 0,-5z M105,40l5,0 0,5 -5,0 0,-5z M115,40l5,0 0,5 -5,0 0,-5z M130,40l5,0 0,5 -5,0 0,-5z M140,40l5,0 0,5 -5,0 0,-5z M145,40l5,0 0,5 -5,0 0,-5z M150,40l5,0 0,5 -5,0 0,-5z M160,40l5,0 0,5 -5,0 0,-5z M20,45l5,0 0,5 -5,0 0,-5z M50,45l5,0 0,5 -5,0 0,-5z M65,45l5,0 0,5 -5,0 0,-5z M75,45l5,0 0,5 -5,0 0,-5z M80,45l5,0 0,5 -5,0 0,-5z M100,45l5,0 0,5 -5,0 0,-5z M110,45l5,0 0,5 -5,0 0,-5z M115,45l5,0 0,5 -5,0 0,-5z M130,45l5,0 0,5 -5,0 0,-5z M160,45l5,0 0,5 -5,0 0,-5z M20,50l5,0 0,5 -5,0 0,-5z M25,50l5,0 0,5 -5,0 0,-5z M30,50l5,0 0,5 -5,0 0,-5z M35,50l5,0 0,5 -5,0 0,-5z M40,50l5,0 0,5 -5,0 0,-5z M45,50l5,0 0,5 -5,0 0,-5z M50,50l5,0 0,5 -5,0 0,-5z M60,50l5,0 0,5 -5,0 0,-5z M70,50l5,0 0,5 -5,0 0,-5z M80,50l5,0 0,5 -5,0 0,-5z M90,50l5,0 0,5 -5,0 0,-5z M100,50l5,0 0,5 -5,0 0,-5z M110,50l5,0 0,5 -5,0 0,-5z M120,50l5,0 0,5 -5,0 0,-5z M130,50l5,0 0,5 -5,0 0,-5z M135,50l5,0 0,5 -5,0 0,-5z M140,50l5,0 0,5 -5,0 0,-5z M145,50l5,0 0,5 -5,0 0,-5z M150,50l5,0 0,5 -5,0 0,-5z M155,50l5,0 0,5 -5,0 0,-5z M160,50l5,0 0,5 -5,0 0,-5z M60,55l5,0 0,5 -5,0 0,-5z M65,55l5,0 0,5 -5,0 0,-5z M70,55l5,0 0,5 -5,0 0,-5z M75,55l5,0 0,5 -5,0 0,-5z M95,55l5,0 0,5 -5,0 0,-5z M100,55l5,0 0,5 -5,0 0,-5z M105,55l5,0 0,5 -5,0 0,-5z M110,55l5,0 0,5 -5,0 0,-5z M120,55l5,0 0,5 -5,0 0,-5z M20,60l5,0 0,5 -5,0 0,-5z M30,60l5,0 0,5 -5,0 0,-5z M35,60l5,0 0,5 -5,0 0,-5z M45,60l5,0 0,5 -5,0 0,-5z M50,60l5,0 0,5 -5,0 0,-5z M55,60l5,0 0,5 -5,0 0,-5z M80,60l5,0 0,5 -5,0 0,-5z M90,60l5,0 0,5 -5,0 0,-5z M105,60l5,0 0,5 -5,0 0,-5z M115,60l5,0 0,5 -5,0 0,-5z M120,60l5,0 0,5 -5,0 0,-5z M130,60l5,0 0,5 -5,0 0,-5z M145,60l5,0 0,5 -5,0 0,-5z M155,60l5,0 0,5 -5,0 0,-5z M160,60l5,0 0,5 -5,0 0,-5z M20,65l5,0 0,5 -5,0 0,-5z M25,65l5,0 0,5 -5,0 0,-5z M30,65l5,0 0,5 -5,0 0,-5z M35,65l5,0 0,5 -5,0 0,-5z M40,65l5,0 0,5 -5,0 0,-5z M60,65l5,0 0,5 -5,0 0,-5z M70,65l5,0 0,5 -5,0 0,-5z M75,65l5,0 0,5 -5,0 0,-5z M80,65l5,0 0,5 -5,0 0,-5z M100,65l5,0 0,5 -5,0 0,-5z M105,65l5,0 0,5 -5,0 0,-5z M110,65l5,0 0,5 -5,0 0,-5z M115,65l5,0 0,5 -5,0 0,-5z M120,65l5,0 0,5 -5,0 0,-5z M125,65l5,0 0,5 -5,0 0,-5z M130,65l5,0 0,5 -5,0 0,-5z M135,65l5,0 0,5 -5,0 0,-5z M140,65l5,0 0,5 -5,0 0,-5z M160,65l5,0 0,5 -5,0 0,-5z M25,70l5,0 0,5 -5,0 0,-5z M30,70l5,0 0,5 -5,0 0,-5z M45,70l5,0 0,5 -5,0 0,-5z M50,70l5,0 0,5 -5,0 0,-5z M65,70l5,0 0,5 -5,0 0,-5z M70,70l5,0 0,5 -5,0 0,-5z M75,70l5,0 0,5 -5,0 0,-5z M80,70l5,0 0,5 -5,0 0,-5z M85,70l5,0 0,5 -5,0 0,-5z M90,70l5,0 0,5 -5,0 0,-5z M100,70l5,0 0,5 -5,0 0,-5z M110,70l5,0 0,5 -5,0 0,-5z M125,70l5,0 0,5 -5,0 0,-5z M135,70l5,0 0,5 -5,0 0,-5z M150,70l5,0 0,5 -5,0 0,-5z M155,70l5,0 0,5 -5,0 0,-5z M55,75l5,0 0,5 -5,0 0,-5z M70,75l5,0 0,5 -5,0 0,-5z M75,75l5,0 0,5 -5,0 0,-5z M80,75l5,0 0,5 -5,0 0,-5z M85,75l5,0 0,5 -5,0 0,-5z M90,75l5,0 0,5 -5,0 0,-5z M95,75l5,0 0,5 -5,0 0,-5z M115,75l5,0 0,5 -5,0 0,-5z M135,75l5,0 0,5 -5,0 0,-5z M160,75l5,0 0,5 -5,0 0,-5z M40,80l5,0 0,5 -5,0 0,-5z M45,80l5,0 0,5 -5,0 0,-5z M50,80l5,0 0,5 -5,0 0,-5z M65,80l5,0 0,5 -5,0 0,-5z M75,80l5,0 0,5 -5,0 0,-5z M80,80l5,0 0,5 -5,0 0,-5z M85,80l5,0 0,5 -5,0 0,-5z M105,80l5,0 0,5 -5,0 0,-5z M135,80l5,0 0,5 -5,0 0,-5z M145,80l5,0 0,5 -5,0 0,-5z M150,80l5,0 0,5 -5,0 0,-5z M25,85l5,0 0,5 -5,0 0,-5z M30,85l5,0 0,5 -5,0 0,-5z M35,85l5,0 0,5 -5,0 0,-5z M45,85l5,0 0,5 -5,0 0,-5z M65,85l5,0 0,5 -5,0 0,-5z M70,85l5,0 0,5 -5,0 0,-5z M80,85l5,0 0,5 -5,0 0,-5z M85,85l5,0 0,5 -5,0 0,-5z M95,85l5,0 0,5 -5,0 0,-5z M105,85l5,0 0,5 -5,0 0,-5z M115,85l5,0 0,5 -5,0 0,-5z M130,85l5,0 0,5 -5,0 0,-5z M150,85l5,0 0,5 -5,0 0,-5z M155,85l5,0 0,5 -5,0 0,-5z M160,85l5,0 0,5 -5,0 0,-5z M35,90l5,0 0,5 -5,0 0,-5z M50,90l5,0 0,5 -5,0 0,-5z M55,90l5,0 0,5 -5,0 0,-5z M65,90l5,0 0,5 -5,0 0,-5z M85,90l5,0 0,5 -5,0 0,-5z M100,90l5,0 0,5 -5,0 0,-5z M105,90l5,0 0,5 -5,0 0,-5z M115,90l5,0 0,5 -5,0 0,-5z M125,90l5,0 0,5 -5,0 0,-5z M135,90l5,0 0,5 -5,0 0,-5z M140,90l5,0 0,5 -5,0 0,-5z M150,90l5,0 0,5 -5,0 0,-5z M155,90l5,0 0,5 -5,0 0,-5z M160,90l5,0 0,5 -5,0 0,-5z M25,95l5,0 0,5 -5,0 0,-5z M55,95l5,0 0,5 -5,0 0,-5z M60,95l5,0 0,5 -5,0 0,-5z M75,95l5,0 0,5 -5,0 0,-5z M90,95l5,0 0,5 -5,0 0,-5z M100,95l5,0 0,5 -5,0 0,-5z M115,95l5,0 0,5 -5,0 0,-5z M120,95l5,0 0,5 -5,0 0,-5z M125,95l5,0 0,5 -5,0 0,-5z M140,95l5,0 0,5 -5,0 0,-5z M155,95l5,0 0,5 -5,0 0,-5z M30,100l5,0 0,5 -5,0 0,-5z M35,100l5,0 0,5 -5,0 0,-5z M45,100l5,0 0,5 -5,0 0,-5z M50,100l5,0 0,5 -5,0 0,-5z M55,100l5,0 0,5 -5,0 0,-5z M70,100l5,0 0,5 -5,0 0,-5z M75,100l5,0 0,5 -5,0 0,-5z M80,100l5,0 0,5 -5,0 0,-5z M85,100l5,0 0,5 -5,0 0,-5z M95,100l5,0 0,5 -5,0 0,-5z M110,100l5,0 0,5 -5,0 0,-5z M115,100l5,0 0,5 -5,0 0,-5z M120,100l5,0 0,5 -5,0 0,-5z M125,100l5,0 0,5 -5,0 0,-5z M140,100l5,0 0,5 -5,0 0,-5z M145,100l5,0 0,5 -5,0 0,-5z M155,100l5,0 0,5 -5,0 0,-5z M25,105l5,0 0,5 -5,0 0,-5z M35,105l5,0 0,5 -5,0 0,-5z M45,105l5,0 0,5 -5,0 0,-5z M55,105l5,0 0,5 -5,0 0,-5z M65,105l5,0 0,5 -5,0 0,-5z M70,105l5,0 0,5 -5,0 0,-5z M95,105l5,0 0,5 -5,0 0,-5z M105,105l5,0 0,5 -5,0 0,-5z M135,105l5,0 0,5 -5,0 0,-5z M145,105l5,0 0,5 -5,0 0,-5z M150,105l5,0 0,5 -5,0 0,-5z M155,105l5,0 0,5 -5,0 0,-5z M20,110l5,0 0,5 -5,0 0,-5z M35,110l5,0 0,5 -5,0 0,-5z M40,110l5,0 0,5 -5,0 0,-5z M45,110l5,0 0,5 -5,0 0,-5z M50,110l5,0 0,5 -5,0 0,-5z M70,110l5,0 0,5 -5,0 0,-5z M90,110l5,0 0,5 -5,0 0,-5z M95,110l5,0 0,5 -5,0 0,-5z M100,110l5,0 0,5 -5,0 0,-5z M105,110l5,0 0,5 -5,0 0,-5z M125,110l5,0 0,5 -5,0 0,-5z M130,110l5,0 0,5 -5,0 0,-5z M135,110l5,0 0,5 -5,0 0,-5z M140,110l5,0 0,5 -5,0 0,-5z M150,110l5,0 0,5 -5,0 0,-5z M35,115l5,0 0,5 -5,0 0,-5z M40,115l5,0 0,5 -5,0 0,-5z M45,115l5,0 0,5 -5,0 0,-5z M55,115l5,0 0,5 -5,0 0,-5z M60,115l5,0 0,5 -5,0 0,-5z M65,115l5,0 0,5 -5,0 0,-5z M75,115l5,0 0,5 -5,0 0,-5z M80,115l5,0 0,5 -5,0 0,-5z M105,115l5,0 0,5 -5,0 0,-5z M110,115l5,0 0,5 -5,0 0,-5z M125,115l5,0 0,5 -5,0 0,-5z M150,115l5,0 0,5 -5,0 0,-5z M25,120l5,0 0,5 -5,0 0,-5z M35,120l5,0 0,5 -5,0 0,-5z M40,120l5,0 0,5 -5,0 0,-5z M50,120l5,0 0,5 -5,0 0,-5z M75,120l5,0 0,5 -5,0 0,-5z M90,120l5,0 0,5 -5,0 0,-5z M95,120l5,0 0,5 -5,0 0,-5z M100,120l5,0 0,5 -5,0 0,-5z M105,120l5,0 0,5 -5,0 0,-5z M110,120l5,0 0,5 -5,0 0,-5z M115,120l5,0 0,5 -5,0 0,-5z M120,120l5,0 0,5 -5,0 0,-5z M125,120l5,0 0,5 -5,0 0,-5z M130,120l5,0 0,5 -5,0 0,-5z M135,120l5,0 0,5 -5,0 0,-5z M140,120l5,0 0,5 -5,0 0,-5z M145,120l5,0 0,5 -5,0 0,-5z M150,120l5,0 0,5 -5,0 0,-5z M60,125l5,0 0,5 -5,0 0,-5z M65,125l5,0 0,5 -5,0 0,-5z M70,125l5,0 0,5 -5,0 0,-5z M75,125l5,0 0,5 -5,0 0,-5z M85,125l5,0 0,5 -5,0 0,-5z M90,125l5,0 0,5 -5,0 0,-5z M100,125l5,0 0,5 -5,0 0,-5z M105,125l5,0 0,5 -5,0 0,-5z M110,125l5,0 0,5 -5,0 0,-5z M115,125l5,0 0,5 -5,0 0,-5z M120,125l5,0 0,5 -5,0 0,-5z M140,125l5,0 0,5 -5,0 0,-5z M145,125l5,0 0,5 -5,0 0,-5z M150,125l5,0 0,5 -5,0 0,-5z M155,125l5,0 0,5 -5,0 0,-5z M160,125l5,0 0,5 -5,0 0,-5z M20,130l5,0 0,5 -5,0 0,-5z M25,130l5,0 0,5 -5,0 0,-5z M30,130l5,0 0,5 -5,0 0,-5z M35,130l5,0 0,5 -5,0 0,-5z M40,130l5,0 0,5 -5,0 0,-5z M45,130l5,0 0,5 -5,0 0,-5z M50,130l5,0 0,5 -5,0 0,-5z M60,130l5,0 0,5 -5,0 0,-5z M65,130l5,0 0,5 -5,0 0,-5z M70,130l5,0 0,5 -5,0 0,-5z M75,130l5,0 0,5 -5,0 0,-5z M90,130l5,0 0,5 -5,0 0,-5z M100,130l5,0 0,5 -5,0 0,-5z M105,130l5,0 0,5 -5,0 0,-5z M110,130l5,0 0,5 -5,0 0,-5z M115,130l5,0 0,5 -5,0 0,-5z M120,130l5,0 0,5 -5,0 0,-5z M130,130l5,0 0,5 -5,0 0,-5z M140,130l5,0 0,5 -5,0 0,-5z M145,130l5,0 0,5 -5,0 0,-5z M155,130l5,0 0,5 -5,0 0,-5z M20,135l5,0 0,5 -5,0 0,-5z M50,135l5,0 0,5 -5,0 0,-5z M60,135l5,0 0,5 -5,0 0,-5z M70,135l5,0 0,5 -5,0 0,-5z M85,135l5,0 0,5 -5,0 0,-5z M95,135l5,0 0,5 -5,0 0,-5z M110,135l5,0 0,5 -5,0 0,-5z M120,135l5,0 0,5 -5,0 0,-5z M140,135l5,0 0,5 -5,0 0,-5z M145,135l5,0 0,5 -5,0 0,-5z M20,140l5,0 0,5 -5,0 0,-5z M30,140l5,0 0,5 -5,0 0,-5z M35,140l5,0 0,5 -5,0 0,-5z M40,140l5,0 0,5 -5,0 0,-5z M50,140l5,0 0,5 -5,0 0,-5z M65,140l5,0 0,5 -5,0 0,-5z M75,140l5,0 0,5 -5,0 0,-5z M80,140l5,0 0,5 -5,0 0,-5z M105,140l5,0 0,5 -5,0 0,-5z M110,140l5,0 0,5 -5,0 0,-5z M120,140l5,0 0,5 -5,0 0,-5z M125,140l5,0 0,5 -5,0 0,-5z M130,140l5,0 0,5 -5,0 0,-5z M135,140l5,0 0,5 -5,0 0,-5z M140,140l5,0 0,5 -5,0 0,-5z M150,140l5,0 0,5 -5,0 0,-5z M155,140l5,0 0,5 -5,0 0,-5z M160,140l5,0 0,5 -5,0 0,-5z M20,145l5,0 0,5 -5,0 0,-5z M30,145l5,0 0,5 -5,0 0,-5z M35,145l5,0 0,5 -5,0 0,-5z M40,145l5,0 0,5 -5,0 0,-5z M50,145l5,0 0,5 -5,0 0,-5z M60,145l5,0 0,5 -5,0 0,-5z M75,145l5,0 0,5 -5,0 0,-5z M80,145l5,0 0,5 -5,0 0,-5z M85,145l5,0 0,5 -5,0 0,-5z M90,145l5,0 0,5 -5,0 0,-5z M95,145l5,0 0,5 -5,0 0,-5z M100,145l5,0 0,5 -5,0 0,-5z M120,145l5,0 0,5 -5,0 0,-5z M125,145l5,0 0,5 -5,0 0,-5z M135,145l5,0 0,5 -5,0 0,-5z M140,145l5,0 0,5 -5,0 0,-5z M145,145l5,0 0,5 -5,0 0,-5z M160,145l5,0 0,5 -5,0 0,-5z M20,150l5,0 0,5 -5,0 0,-5z M30,150l5,0 0,5 -5,0 0,-5z M35,150l5,0 0,5 -5,0 0,-5z M40,150l5,0 0,5 -5,0 0,-5z M50,150l5,0 0,5 -5,0 0,-5z M60,150l5,0 0,5 -5,0 0,-5z M65,150l5,0 0,5 -5,0 0,-5z M70,150l5,0 0,5 -5,0 0,-5z M75,150l5,0 0,5 -5,0 0,-5z M90,150l5,0 0,5 -5,0 0,-5z M100,150l5,0 0,5 -5,0 0,-5z M105,150l5,0 0,5 -5,0 0,-5z M110,150l5,0 0,5 -5,0 0,-5z M115,150l5,0 0,5 -5,0 0,-5z M120,150l5,0 0,5 -5,0 0,-5z M135,150l5,0 0,5 -5,0 0,-5z M150,150l5,0 0,5 -5,0 0,-5z M160,150l5,0 0,5 -5,0 0,-5z M20,155l5,0 0,5 -5,0 0,-5z M50,155l5,0 0,5 -5,0 0,-5z M85,155l5,0 0,5 -5,0 0,-5z M120,155l5,0 0,5 -5,0 0,-5z M140,155l5,0 0,5 -5,0 0,-5z M145,155l5,0 0,5 -5,0 0,-5z M155,155l5,0 0,5 -5,0 0,-5z M20,160l5,0 0,5 -5,0 0,-5z M25,160l5,0 0,5 -5,0 0,-5z M30,160l5,0 0,5 -5,0 0,-5z M35,160l5,0 0,5 -5,0 0,-5z M40,160l5,0 0,5 -5,0 0,-5z M45,160l5,0 0,5 -5,0 0,-5z M50,160l5,0 0,5 -5,0 0,-5z M60,160l5,0 0,5 -5,0 0,-5z M65,160l5,0 0,5 -5,0 0,-5z M75,160l5,0 0,5 -5,0 0,-5z M80,160l5,0 0,5 -5,0 0,-5z M95,160l5,0 0,5 -5,0 0,-5z M110,160l5,0 0,5 -5,0 0,-5z M115,160l5,0 0,5 -5,0 0,-5z M120,160l5,0 0,5 -5,0 0,-5z M125,160l5,0 0,5 -5,0 0,-5z M130,160l5,0 0,5 -5,0 0,-5z M145,160l5,0 0,5 -5,0 0,-5z M155,160l5,0 0,5 -5,0 0,-5z "
+                  stroke="transparent"
+                  fill="black"
+                />
+              </svg>
+            </div>
+            <div class="scan-copy">
+              <strong>Scan with your<br />iPhone or iPad.</strong
+              ><span class="mobile-link">Already on your phone?</span
+              ><span>Or use the join button below.</span>
+            </div>
+          </div>
+          <button
+            class="watch-guide"
+            id="watch-guide"
+            aria-label="Watch the Apple TV setup guide, 49 seconds"
+          >
+            <span class="guide-thumb"
+              ><img class="thumb-tv" src="media/thumbnail-tv.jpg" alt="" /><span
+                class="thumb-shade"
+              ></span
+              ><img
+                class="thumb-phone"
+                src="media/thumbnail-phone.jpg"
+                alt=""
+              /><span class="thumb-label">FROM PHONE<br />TO BIG SCREEN</span
+              ><span class="play-circle"
+                ><svg
+                  width="25"
+                  height="25"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M9 5.5a1 1 0 0 1 1.5-.86l10 5.9a1.7 1.7 0 0 1 0 2.92l-10 5.9A1 1 0 0 1 9 18.5Z"
+                    fill="currentColor"
+                  /></svg></span
+              ><span class="video-time">0:49</span></span
+            ><span class="guide-caption"
+              ><span
+                ><strong>Watch the setup guide</strong
+                ><small>iPhone / iPad → Apple TV</small></span
+              ><svg
+                class="caption-arrow"
+                width="21"
+                height="21"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                aria-hidden="true"
+              >
+                <path d="m9 5 7 7-7 7" /></svg
+            ></span>
+          </button>
+          <ol class="steps">
+            <li>
+              <span class="num">1</span>
+              <div class="step">
+                <strong>Join the beta on your phone</strong
+                ><small>Scan the QR or open the link, then tap Accept.</small>
+              </div>
+            </li>
+            <li>
+              <span class="num">2</span>
+              <div class="step">
+                <strong>Get TestFlight on Apple TV</strong
+                ><small>Download it from the TV’s App Store.</small>
+              </div>
+            </li>
+            <li>
+              <span class="num">3</span>
+              <div class="step">
+                <strong>Install Watch on Apple TV</strong
+                ><small
+                  >Open TestFlight using the same App Store account.</small
+                >
+              </div>
+            </li>
+          </ol>
+          <a
+            class="cta"
+            href="https://testflight.apple.com/join/vcUSc9mx"
+            target="_blank"
+            rel="noopener"
+            >Join Apple TV beta <span aria-hidden="true">↗</span></a
+          >
+          <p class="below">
+            <a
+              href="https://apps.apple.com/app/testflight/id899247664"
+              target="_blank"
+              rel="noopener"
+              >Get TestFlight ↗</a
+            >
+          </p>
+        </section>
+        <section class="card" aria-labelledby="android-title">
+          <div class="card-top">
+            <div class="platform">
+              <span class="platform-icon"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <path d="m7 5-2-3m12 3 2-3" />
+                  <path d="M3 13a9 9 0 0 1 18 0v5H3Z" />
+                  <circle cx="8" cy="10" r="1" fill="currentColor" />
+                  <circle cx="16" cy="10" r="1" fill="currentColor" /></svg
+              ></span>
+              <h2 id="android-title">Android TV</h2>
+            </div>
+            <span class="tag">Request access</span>
+          </div>
+          <div class="join-zone android-zone" aria-hidden="true">
+            <div class="tv">
+              <img
+                class="tv-app-icon"
+                src="media/watch-tv-icon.png"
+                width="1280"
+                height="768"
+                alt=""
+              />
+            </div>
+            <div class="mail">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="1.7">
+                <rect x="2" y="5" width="20" height="14" rx="2" />
+                <path d="m3 6 9 7 9-7" />
+              </svg>
+            </div>
+          </div>
+          <button
+            class="watch-guide"
+            id="android-guide"
+            aria-label="Watch the Android TV setup guide, 57 seconds"
+          >
+            <span class="guide-thumb"
+              ><img
+                class="thumb-tv"
+                src="media/android-thumbnail.jpg"
+                alt=""
+              /><span class="thumb-shade"></span
+              ><span class="android-video-badge"
+                ><svg
+                  width="28"
+                  height="28"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  aria-hidden="true"
+                >
+                  <rect x="2" y="4" width="20" height="14" rx="2" />
+                  <path d="M8 22h8m-4-4v4" /></svg
+                >Google TV</span
+              ><span class="thumb-label android-thumb-label"
+                >JOIN. INSTALL.<br />WATCH.</span
+              ><span class="play-circle"
+                ><svg
+                  width="25"
+                  height="25"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M9 5.5a1 1 0 0 1 1.5-.86l10 5.9a1.7 1.7 0 0 1 0 2.92l-10 5.9A1 1 0 0 1 9 18.5Z"
+                    fill="currentColor"
+                  /></svg></span
+              ><span class="video-time">0:57</span></span
+            ><span class="guide-caption"
+              ><span
+                ><strong>Watch the setup guide</strong
+                ><small>Request access → Install on your TV</small></span
+              ><svg
+                class="caption-arrow"
+                width="21"
+                height="21"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                aria-hidden="true"
+              >
+                <path d="m9 5 7 7-7 7" /></svg
+            ></span>
+          </button>
+          <ol class="steps">
+            <li>
+              <span class="num">1</span>
+              <div class="step">
+                <strong>Request tester access</strong
+                ><small>Use the Google account signed in on your TV.</small>
+              </div>
+            </li>
+            <li>
+              <span class="num">2</span>
+              <div class="step">
+                <strong>Wait for your invitation</strong
+                ><small
+                  >An admin approves your request. Your invitation email may
+                  arrive later.</small
+                >
+              </div>
+            </li>
+            <li>
+              <span class="num">3</span>
+              <div class="step">
+                <strong>Join, then install Watch</strong
+                ><small
+                  >Open the link, join the test, and install on your TV.</small
+                >
+              </div>
+            </li>
+          </ol>
+          <button class="cta secondary" id="request">
+            Request Android access <span aria-hidden="true">→</span>
+          </button>
+          <p class="below">
+            Already approved?
+            <a
+              href="https://play.google.com/apps/internaltest/4700011355782745405"
+              target="_blank"
+              rel="noopener"
+              >Join the test ↗</a
+            >
+          </p>
+        </section>
+      </div>
+    </main>
+    <footer>
+      <span>Jesus Film Project · Watch TV Beta</span
+      ><span class="preview"></span>
+    </footer>
+
+    <dialog id="video-modal" aria-labelledby="video-title">
+      <div class="video-heading">
+        <h2 id="video-title">Set up Watch on Apple TV</h2>
+        <button id="close-video" aria-label="Close video">×</button>
+      </div>
+      <div id="modal-slot"></div>
+      <div class="chapter-links">
+        <button data-time="0">1 · Join beta</button
+        ><button data-time="14.9">2 · Get TestFlight</button
+        ><button data-time="33.4">3 · Install Watch</button>
+      </div>
+    </dialog>
+    <style>
+      .watch-guide {
+        display: block;
+        padding: 0;
+        overflow: hidden;
+        border: 1px solid #e4ded6;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 12px #28201708;
+      }
+      .watch-guide:hover {
+        background: white;
+      }
+      .guide-thumb {
+        position: relative;
+        display: block;
+        aspect-ratio: 2.15;
+        overflow: hidden;
+        background: #151a23;
+      }
+      .thumb-tv {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center 25%;
+        transition: transform 0.25s;
+      }
+      .thumb-shade {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, #0b111ddd, #0b111d35 65%, #0b111d50);
+      }
+      .thumb-phone {
+        position: absolute;
+        height: 80%;
+        left: 6%;
+        top: 10%;
+        width: auto;
+        border: 2px solid #d6dce5;
+        border-radius: 12px;
+        box-shadow: 0 7px 20px #0008;
+        transform: rotate(-5deg);
+      }
+      .thumb-label {
+        position: absolute;
+        left: 28%;
+        top: 18%;
+        font-size: clamp(12px, 1.2vw, 16px);
+        line-height: 1.25;
+        letter-spacing: 0.06em;
+        font-weight: 800;
+        color: white;
+        text-align: left;
+      }
+      .guide-thumb .play-circle {
+        position: absolute;
+        width: 58px;
+        height: 58px;
+        left: 57%;
+        top: 52%;
+        transform: translate(-50%, -50%);
+        background: #ffffffef;
+        color: #e52d35;
+        box-shadow: 0 6px 30px #0005;
+        transition: transform 0.2s;
+      }
+      .guide-thumb .play-circle svg {
+        margin-left: -4px;
+      }
+      .video-time {
+        position: absolute;
+        right: 12px;
+        bottom: 11px;
+        background: #10151edb;
+        color: white;
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+        padding: 5px 7px;
+        border-radius: 5px;
+      }
+      .guide-caption {
+        padding: 15px 17px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .guide-caption small {
+        font-size: 13px;
+      }
+      .caption-arrow {
+        flex: none;
+        color: #83786e;
+      }
+      .watch-guide:hover .thumb-tv {
+        transform: scale(1.035);
+      }
+      .watch-guide:hover .play-circle {
+        transform: translate(-50%, -50%) scale(1.07);
+      }
+      @media (max-width: 760px) {
+        .watch-guide {
+          padding: 0;
+        }
+        .thumb-label {
+          font-size: 13px;
+        }
+        .guide-thumb .play-circle {
+          width: 48px;
+          height: 48px;
+        }
+        .guide-caption {
+          padding: 13px 14px;
+        }
+      }
+      .android-video-badge {
+        position: absolute;
+        left: 6%;
+        top: 14%;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: white;
+        font-size: 15px;
+        font-weight: 650;
+      }
+      .android-thumb-label {
+        left: 6%;
+        top: 40%;
+        font-size: 19px;
+        line-height: 1.25;
+      }
+    </style>
+    <style>
+      .brand-app-icon {
+        display: block;
+        object-fit: contain;
+        border-radius: 9px;
+        flex: none;
+      }
+      .tv-app-icon {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        border-radius: 5px;
+      }
+      .tv {
+        background: #151210;
+      }
+    </style>
+    <dialog id="request-dialog">
+      <button class="close" aria-label="Close request form">×</button>
+      <div class="eyebrow">ANDROID TV</div>
+      <h2>Let’s get you access.</h2>
+      <p>Enter the Google account you use on your TV.</p>
+      <form id="request-form">
+        <label for="email">Google account email</label
+        ><input
+          type="email"
+          id="email"
+          placeholder="you@gmail.com"
+          autocomplete="email"
+          required
+        />
+        <div id="verification"></div>
+        <button
+          class="cta secondary"
+          type="submit"
+          id="submit-request"
+          disabled
+        >
+          Request access →
+        </button>
+      </form>
+      <div class="success" id="success">
+        <strong>Request received.</strong><br />We’ll review your request for
+        Android TV access.
+      </div>
+      <p class="notice" id="request-status" role="status"></p>
+    </dialog>
+    <script
+      src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+      async
+      defer
+    ></script>
+    <script>
+      const dialog = document.querySelector("#request-dialog"),
+        form = document.querySelector("#request-form"),
+        status = document.querySelector("#request-status"),
+        submit = document.querySelector("#submit-request")
+      let token = "",
+        widget
+      document.querySelector("#request").onclick = () => {
+        dialog.showModal()
+        if (window.turnstile && widget === undefined)
+          widget = turnstile.render("#verification", {
+            sitekey: "0x4AAAAAAFCyqm5bfnxjLhKf",
+            action: "tv_beta_signup",
+            callback: (value) => {
+              token = value
+              submit.disabled = false
+            },
+            "expired-callback": () => {
+              token = ""
+              submit.disabled = true
+            },
+            "error-callback": () => {
+              token = ""
+              submit.disabled = true
+              status.textContent = "Verification unavailable. Please try again."
+            },
+          })
+        else if (!window.turnstile)
+          status.textContent =
+            "Verification is loading. Close and try again in a moment."
+      }
+      document.querySelector(".close").onclick = () => dialog.close()
+      form.onsubmit = async (e) => {
+        e.preventDefault()
+        if (!token) return
+        submit.disabled = true
+        status.textContent = "Sending…"
+        try {
+          const response = await fetch("/api/beta-requests", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: document.querySelector("#email").value,
+              turnstileToken: token,
+            }),
+          })
+          const result = await response.json()
+          if (!response.ok || !result.saved)
+            throw new Error(result.error || "Please try again later.")
+          form.hidden = true
+          document.querySelector("#success").style.display = "block"
+          status.textContent = ""
+        } catch (error) {
+          status.textContent = error.message
+        } finally {
+          token = ""
+          if (widget !== undefined) turnstile.reset(widget)
+        }
+      }
+      dialog.addEventListener("close", () => {
+        form.hidden = false
+        form.reset()
+        document.querySelector("#success").style.display = "none"
+        status.textContent = ""
+        token = ""
+        submit.disabled = true
+        if (widget !== undefined) turnstile.reset(widget)
+      })
+      window.addEventListener("load", () => {
+        if (location.hash === "#request")
+          document.querySelector("#request").click()
+      })
+    </script>
+    <script>
+      const guideModal = document.querySelector("#video-modal")
+      const guideVideo = document.createElement("video")
+      guideVideo.controls = true
+      guideVideo.preload = "none"
+      guideVideo.playsInline = true
+      guideVideo.setAttribute("aria-label", "Watch TV setup tutorial")
+      document.querySelector("#modal-slot").append(guideVideo)
+      const tutorials = {
+        apple: {
+          title: "Set up Watch on Apple TV",
+          video: "media/apple-tv-guide.mp4",
+          poster: "media/thumbnail-tv.jpg",
+          captions: "media/apple-captions.vtt",
+          chapters: [
+            [0, "Join beta"],
+            [14.9, "Get TestFlight"],
+            [36.94, "Install Watch"],
+          ],
+        },
+        android: {
+          title: "Set up Watch on Android TV",
+          video: "media/android-tv-guide.mp4",
+          poster: "media/android-thumbnail.jpg",
+          captions: "media/android-captions.vtt",
+          chapters: [
+            [0, "Request access"],
+            [15.57, "Admin approval"],
+            [23.64, "Join test"],
+            [32.67, "Play Store"],
+            [39.17, "Choose TV"],
+            [49.24, "Open Watch"],
+          ],
+        },
+      }
+      function showTutorial(platform) {
+        const tutorial = tutorials[platform]
+        guideVideo.pause()
+        document.querySelector("#video-title").textContent = tutorial.title
+        guideVideo.src = tutorial.video
+        guideVideo.poster = tutorial.poster
+        guideVideo.replaceChildren()
+        const captions = document.createElement("track")
+        captions.kind = "captions"
+        captions.src = tutorial.captions
+        captions.srclang = "en"
+        captions.label = "English"
+        guideVideo.append(captions)
+        guideVideo.load()
+        document.querySelector(".chapter-links").replaceChildren(
+          ...tutorial.chapters.map(([time, label]) => {
+            const button = document.createElement("button")
+            button.type = "button"
+            button.textContent = label
+            button.onclick = () => {
+              guideVideo.currentTime = time
+              guideVideo.play().catch(() => {})
+            }
+            return button
+          }),
+        )
+        guideModal.showModal()
+        guideVideo.play().catch(() => {})
+      }
+      document.querySelector("#watch-guide").onclick = () =>
+        showTutorial("apple")
+      document.querySelector("#android-guide").onclick = () =>
+        showTutorial("android")
+      document.querySelector("#close-video").onclick = () => guideModal.close()
+      guideModal.addEventListener("close", () => guideVideo.pause())
+    </script>
+  </body>
+</html>

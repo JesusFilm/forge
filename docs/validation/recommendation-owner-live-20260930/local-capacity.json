@@ -1,0 +1,384 @@
+{
+  "collectedAt": "2026-09-29T19:50:59.474Z",
+  "fixture": "isolated-local-2cpu-2gib-postgresql",
+  "measuredSourceSha256": {
+    "delivery-owner-capacity.db.test.ts": "268190cd231d6d871a49fcc4bc73699210ca1c77ea120cbccacc36a3a41f87fb",
+    "delivery-owner-capacity.test-helper.ts": "bda7b1112f69a11cd2ecef67057f5249d26b39e37bb2ae0ef16d665736985ed8",
+    "delivery-owner.service.ts": "3f39091c39b911972f2bf255ce86ffec1421dbe1117cd227f5f320c31f68cbd5",
+    "delivery.service.ts": "047d93698b921b6b4cfeee88db6e21a9cd42b7d5282f71a64f4549f8e35d3723",
+    "delivery.factory.ts": "cdd366474db9b5dbbb4e910c7059c66baafe94c0df07fd555d8e7d1b9c7c195c",
+    "promotion/owner-authority.ts": "52511d5d79e88987fc56695a3db2d0f82e0a1ccea75b9a7a4e96bdfff4a614d3",
+    "promotion/owner-operator.ts": "11b46b08dc83da0ef961e67f779bc42fce584317844cfe6167de1775edd0af25",
+    "promotion/manifest.ts": "b4d905a5c93262c74e7dc2aa4c23a29b4a0c27dec82e7dc981005520f4c44795",
+    "cowatch/projection.service.ts": "c0115a9c12bdc9b7045d81946f8e967155a6e64e10fef9bcb0bc311cc25ffec3"
+  },
+  "databasePoolConnections": 1,
+  "server": {
+    "version": "PostgreSQL 18.6 (Debian 18.6-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "full_page_writes": "on",
+    "toast_compression": "pglz",
+    "autovacuum": "off",
+    "checkpoint_timeout": "30min"
+  },
+  "arms": {
+    "incumbent": {
+      "requests": 100,
+      "semanticInput": 36,
+      "profileInput": 28,
+      "profileLineageContributions": 1,
+      "nominatedPerRequest": 64,
+      "composedPerRequest": 6,
+      "cowatchNominatedPerRequest": 0,
+      "cowatchSelectedTotal": 0,
+      "graph": {
+        "tables": [
+          {
+            "table": "recommendation_cowatch_contribution",
+            "rows": 390,
+            "heapBytes": 270336,
+            "indexBytes": 221184,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 516096
+          },
+          {
+            "table": "recommendation_cowatch_edge",
+            "rows": 78,
+            "heapBytes": 40960,
+            "indexBytes": 65536,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 131072
+          },
+          {
+            "table": "recommendation_cowatch_generation",
+            "rows": 1,
+            "heapBytes": 8192,
+            "indexBytes": 24576,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 32768
+          },
+          {
+            "table": "recommendation_cowatch_source_contribution",
+            "rows": 70,
+            "heapBytes": 49152,
+            "indexBytes": 90112,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 163840
+          }
+        ],
+        "rowsAdded": 539,
+        "totalBytes": 843776,
+        "walBytes": 894496,
+        "elapsedMs": 209.8636609999994,
+        "sourceCount": 70,
+        "contributionCount": 390,
+        "edgeCount": 78
+      },
+      "release": {
+        "tables": [
+          {
+            "table": "recommendation_owner_release",
+            "rows": 1,
+            "heapBytes": 8192,
+            "indexBytes": 24576,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 32768
+          },
+          {
+            "table": "recommendation_promotion_event",
+            "rows": 1,
+            "heapBytes": 0,
+            "indexBytes": 0,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 0
+          }
+        ],
+        "rowsAdded": 2,
+        "totalBytes": 32768,
+        "walBytes": 95416,
+        "elapsedMs": 99.186283
+      },
+      "delivery": {
+        "tables": [
+          {
+            "table": "recommendation_candidate_run",
+            "rows": 100,
+            "heapBytes": 49152,
+            "indexBytes": 32768,
+            "toastBytes": 2932736,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 3039232
+          },
+          {
+            "table": "recommendation_evidence_audit",
+            "rows": 100,
+            "heapBytes": 16384,
+            "indexBytes": 32768,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 73728
+          },
+          {
+            "table": "recommendation_personalization_decision",
+            "rows": 100,
+            "heapBytes": 32768,
+            "indexBytes": 32768,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 90112
+          },
+          {
+            "table": "recommendation_profile_session_link",
+            "rows": 0,
+            "heapBytes": 0,
+            "indexBytes": 16384,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 16384
+          },
+          {
+            "table": "recommendation_request",
+            "rows": 100,
+            "heapBytes": 49152,
+            "indexBytes": 73728,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 147456
+          },
+          {
+            "table": "recommendation_served_item",
+            "rows": 600,
+            "heapBytes": 983040,
+            "indexBytes": 327680,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 1335296
+          }
+        ],
+        "rowsAdded": 1000,
+        "totalBytes": 4702208,
+        "walBytes": 4690720,
+        "elapsedMs": 10116.160401,
+        "latency": {
+          "firstRequestMs": 150.1064610000003,
+          "subsequentMedianMs": 99.07898899999964,
+          "medianMs": 99.17335099999946,
+          "p95Ms": 114.90831199999957,
+          "maxMs": 150.1064610000003,
+          "samples": 100
+        },
+        "bytesPerRequest": 47022.08,
+        "walBytesPerRequest": 46907.2,
+        "payload": {
+          "meanJsonBytes": 217345,
+          "meanStoredColumnBytes": 26413.03
+        }
+      },
+      "noStudyEvidence": {
+        "studies": 0,
+        "assignments": 0,
+        "evaluations": 0,
+        "compositionProtocols": 0
+      },
+      "stageCounts": {
+        "nominatedCount": 64,
+        "canonicalizedCount": 64,
+        "deduplicatedCount": 64,
+        "rejectedCount": 0,
+        "scoredCount": 64,
+        "orderedCount": 64,
+        "requestedCount": 6,
+        "composedCount": 6
+      }
+    },
+    "direct": {
+      "requests": 100,
+      "semanticInput": 36,
+      "profileInput": 28,
+      "profileLineageContributions": 1,
+      "nominatedPerRequest": 64,
+      "composedPerRequest": 6,
+      "cowatchNominatedPerRequest": 12,
+      "cowatchSelectedTotal": 100,
+      "graph": {
+        "tables": [
+          {
+            "table": "recommendation_cowatch_contribution",
+            "rows": 390,
+            "heapBytes": 270336,
+            "indexBytes": 221184,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 516096
+          },
+          {
+            "table": "recommendation_cowatch_edge",
+            "rows": 78,
+            "heapBytes": 40960,
+            "indexBytes": 65536,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 131072
+          },
+          {
+            "table": "recommendation_cowatch_generation",
+            "rows": 1,
+            "heapBytes": 8192,
+            "indexBytes": 24576,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 32768
+          },
+          {
+            "table": "recommendation_cowatch_source_contribution",
+            "rows": 70,
+            "heapBytes": 49152,
+            "indexBytes": 90112,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 163840
+          }
+        ],
+        "rowsAdded": 539,
+        "totalBytes": 843776,
+        "walBytes": 894240,
+        "elapsedMs": 199.93048400000043,
+        "sourceCount": 70,
+        "contributionCount": 390,
+        "edgeCount": 78
+      },
+      "release": {
+        "tables": [
+          {
+            "table": "recommendation_owner_release",
+            "rows": 1,
+            "heapBytes": 8192,
+            "indexBytes": 24576,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 32768
+          },
+          {
+            "table": "recommendation_promotion_event",
+            "rows": 1,
+            "heapBytes": 0,
+            "indexBytes": 0,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 0
+          }
+        ],
+        "rowsAdded": 2,
+        "totalBytes": 32768,
+        "walBytes": 95392,
+        "elapsedMs": 113.96147300000302
+      },
+      "delivery": {
+        "tables": [
+          {
+            "table": "recommendation_candidate_run",
+            "rows": 100,
+            "heapBytes": 49152,
+            "indexBytes": 32768,
+            "toastBytes": 4382720,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 4489216
+          },
+          {
+            "table": "recommendation_evidence_audit",
+            "rows": 100,
+            "heapBytes": 16384,
+            "indexBytes": 32768,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 73728
+          },
+          {
+            "table": "recommendation_personalization_decision",
+            "rows": 100,
+            "heapBytes": 32768,
+            "indexBytes": 32768,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 90112
+          },
+          {
+            "table": "recommendation_profile_session_link",
+            "rows": 0,
+            "heapBytes": 0,
+            "indexBytes": 16384,
+            "toastBytes": 0,
+            "auxiliaryBytes": 0,
+            "totalBytes": 16384
+          },
+          {
+            "table": "recommendation_request",
+            "rows": 100,
+            "heapBytes": 49152,
+            "indexBytes": 73728,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 147456
+          },
+          {
+            "table": "recommendation_served_item",
+            "rows": 600,
+            "heapBytes": 983040,
+            "indexBytes": 311296,
+            "toastBytes": 0,
+            "auxiliaryBytes": 24576,
+            "totalBytes": 1318912
+          }
+        ],
+        "rowsAdded": 1000,
+        "totalBytes": 6135808,
+        "walBytes": 6438920,
+        "elapsedMs": 29818.160638999998,
+        "latency": {
+          "firstRequestMs": 332.1500989999986,
+          "subsequentMedianMs": 265.8953580000016,
+          "medianMs": 271.0042260000009,
+          "p95Ms": 468.5061679999999,
+          "maxMs": 569.0664249999973,
+          "samples": 100
+        },
+        "bytesPerRequest": 61358.08,
+        "walBytesPerRequest": 64389.2,
+        "payload": {
+          "meanJsonBytes": 281427,
+          "meanStoredColumnBytes": 41258.16
+        }
+      },
+      "noStudyEvidence": {
+        "studies": 0,
+        "assignments": 0,
+        "evaluations": 0,
+        "compositionProtocols": 0
+      },
+      "stageCounts": {
+        "nominatedCount": 64,
+        "canonicalizedCount": 64,
+        "deduplicatedCount": 64,
+        "rejectedCount": 58,
+        "scoredCount": 64,
+        "orderedCount": 64,
+        "requestedCount": 6,
+        "composedCount": 6
+      }
+    }
+  },
+  "method": "Fresh child database per arm; identical source/catalog/profile setup; explicit checkpoint before each measured phase; all public table row/allocation deltas including heap, indexes, TOAST and forks; WAL insert-LSN delta on otherwise idle owned instance.",
+  "boundaries": [
+    "Actual graph publisher, source qualification, authenticated operator, profile authorization/session-link refresh, live graph hydration/scoring, ranker/MMR, authority fences, issuance and request/trace persistence.",
+    "Semantic/profile candidate retrieval, admission, serving-state retrieval, recent history, initial viewing-mode and token signing use existing synthetic harness inputs; live co-watch viewing-mode query is real.",
+    "First request means first client path after setup, not cold database cache; no concurrent request load. JSON uses sixteen synthetic labels on semantic/profile candidates; identifiers are typical fixture widths, not maximum allowed widths.",
+    "No viewer impression/playback/learning events are emitted; their future costs are excluded. Zero experiment/study/shadow/composition evidence rows. Existing source/catalog/profile setup and bootstrap stop/clear excluded from per-request and release deltas.",
+    "Allocation is page-granular and includes reusable slack. WAL is a whole isolated-instance interval and includes full-page images after explicit checkpoints; it is not a production per-request WAL forecast. Graph is 70 sources/390 contributions/78 edges, not maximum population capacity; profile lineage has one contribution, not the 64-source maximum."
+  ],
+  "productionClearance": false
+}

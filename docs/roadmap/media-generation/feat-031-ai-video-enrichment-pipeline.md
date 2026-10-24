@@ -11,12 +11,14 @@ depends_on:
 blocks:
   - "feat-035"
   - "feat-037"
+  - "feat-038"
+  - "feat-041"
   - "feat-048"
   - "feat-049"
   - "feat-050"
-  - "feat-081"
-  - "feat-082"
-  - "feat-084"
+  - "feat-087"
+  - "feat-106"
+  - "feat-184"
 tags:
   - "manager"
   - "ai-pipeline"

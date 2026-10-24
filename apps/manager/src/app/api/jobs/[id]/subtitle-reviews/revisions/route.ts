@@ -1,18 +1,23 @@
+import { verifySubtitleReviewToken } from "@/lib/subtitle-review-session"
 import { z } from "zod"
 import { saveSubtitleReviewRevision } from "@/services/subtitleReview"
 import {
   corsHeaders,
   failureResponse,
   noStoreJson,
+  readReviewJson,
   preflightResponse,
   readBearerToken,
   requireEditorCorsHeaders,
 } from "../response"
 
 const requestBodySchema = z.object({
-  baseArtifactFingerprint: z.string().min(1).optional(),
-  clientSaveId: z.string().min(1),
-  vtt: z.string().min(1),
+  baseArtifactFingerprint: z.string().min(1).max(128).optional(),
+  clientSaveId: z.string().min(1).max(128),
+  vtt: z
+    .string()
+    .min(1)
+    .max(512 * 1024),
 })
 
 export function OPTIONS(request: Request) {
@@ -35,8 +40,13 @@ export async function POST(
     )
   }
 
+  const { id } = await params
+  const token = await verifySubtitleReviewToken(editToken)
+  if (!token || token.jobId !== id)
+    return failureResponse("invalid_token", { cors: headers })
+
   const parsedBody = requestBodySchema.safeParse(
-    await request.json().catch(() => null),
+    await readReviewJson(request, 3200000),
   )
   if (!parsedBody.success) {
     return noStoreJson(
@@ -45,7 +55,6 @@ export async function POST(
     )
   }
 
-  const { id } = await params
   const result = await saveSubtitleReviewRevision({
     jobId: id,
     editToken,

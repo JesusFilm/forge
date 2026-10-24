@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "forge-release-health-baseline-v1",
+  "windowStart": "2026-09-14T21:00:00Z",
+  "windowEnd": "2026-09-15T21:00:00Z",
+  "source": "Datadog aggregate logs; full request denominator comes from Railway separately",
+  "adminSerializationConflictLogs": 112,
+  "adminSerializationConflictRevisions": 10,
+  "previousAdminSha": "7a51d20bf125abad44442940ee3ed8342711080f",
+  "previousAdminSerializationConflictLogs": 31,
+  "adminFactsUnknownRetryableLogs": 24,
+  "previousAdminFactsUnknownRetryableLogs": 2,
+  "webFactsInvalidRequest400Logs": 25,
+  "webFactsInvalidRequest400Revisions": 6,
+  "newReleaseObservedPairAt": "2026-09-15T22:15:51Z",
+  "newReleasePair": [
+    "PostgreSQL SQLSTATE40001 serialization conflict",
+    "Admin facts failed unknown/retryable",
+    "Web facts rejected invalid_request HTTP400/terminal"
+  ],
+  "sourceFinding": "Unchanged recommendation transaction retry code recognizes P2034. The observed raw SQL SQLSTATE40001 failure escaped to the generic observer; P2010/meta40001 normalization is the concrete follow-up to verify and cover.",
+  "existingOwnership": "feat-464, owner nisal, in-progress",
+  "followUp": "Parent is documenting feat-509 linked to feat-464",
+  "interpretation": "Pre-existing bounded failure mode; counts are log messages, not distinct incidents or qualified-view loss. No causal usefulness or error-free claim."
+}

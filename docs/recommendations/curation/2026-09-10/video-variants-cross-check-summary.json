@@ -1,0 +1,48 @@
+{
+  "startedAt": "2026-09-10T03:32:52.023117+00:00",
+  "finishedAt": "2026-09-10T03:35:03.242481+00:00",
+  "endpoint": "https://api-gateway.central.jesusfilm.org/",
+  "query": "query RecommendationVariantCrossCheck($language:ID!,$offset:Int!,$limit:Int!){\n  videoVariants(input:{languageId:$language,onlyPublished:true},offset:$offset,limit:$limit){\n    id videoId duration hls published language{id slug} muxVideo{playbackId}\n    video{id label title(primary:true){value}}\n  }\n}",
+  "languageCount": 244,
+  "completePaginationEveryLanguage": true,
+  "localCoverageSourceSha256": "6e76e389ff7a2415f6e4b978d32ce0a43323606e7406e57aade3dd8aa9420a33",
+  "scope": "Fresh public Core videoVariants. Published distinct leaf videos with declared HLS or Mux playback; not stream network testing, localized card publication, restrictions, or canonical-dedup clearance.",
+  "rawEvidenceDirectory": "/home/nisal/.cache/forge-477-preview/fresh-video-variants",
+  "byPriorReason": {
+    "Missing published card translation": {
+      "languages": 200,
+      "coreStreamCountAtLeast6": 200,
+      "coreStreamCountBelow6": 0,
+      "minCoreStreamVideos": 48,
+      "maxCoreStreamVideos": 568
+    },
+    "Insufficient eligible catalog inventory": {
+      "languages": 35,
+      "coreStreamCountAtLeast6": 1,
+      "coreStreamCountBelow6": 34,
+      "minCoreStreamVideos": 0,
+      "maxCoreStreamVideos": 62
+    },
+    "Additional curation needed": {
+      "languages": 1,
+      "coreStreamCountAtLeast6": 1,
+      "coreStreamCountBelow6": 0,
+      "minCoreStreamVideos": 9,
+      "maxCoreStreamVideos": 9
+    },
+    "Six cards available; reserve below 30": {
+      "languages": 8,
+      "coreStreamCountAtLeast6": 8,
+      "coreStreamCountBelow6": 0,
+      "minCoreStreamVideos": 10,
+      "maxCoreStreamVideos": 54
+    }
+  },
+  "localDisplayIsolationCheck": {
+    "languages": 200,
+    "allMeetThirtyCuratedWithEnglishUi": true,
+    "minCuratedWithEnglishUi": 31,
+    "maxCuratedWithEnglishUi": 152,
+    "policy": "Diagnostic only; English card fallback not enabled."
+  }
+}

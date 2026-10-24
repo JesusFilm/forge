@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useId } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import { useTranslations } from "next-intl"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { adventCountdownFragment } from "@/lib/fragments/advent-countdown"
 
 export { adventCountdownFragment }
@@ -36,6 +37,7 @@ type AdventCountdownProps = {
 }
 
 export function AdventCountdown({ data }: AdventCountdownProps) {
+  const t = useTranslations("WatchHomeSections")
   const { adventTitle: title, scripture, scriptureReference } = data
 
   const instanceId = useId()
@@ -58,11 +60,11 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-green-800 via-red-800 to-amber-600 bg-blend-multiply shadow-lg"
+      className="relative w-full overflow-hidden rounded-lg bg-gradient-to-tr from-green-800 via-brand-red to-amber-600 bg-blend-multiply shadow-lg"
       data-testid="AdventCountdown"
     >
       <div
-        className="absolute inset-0 bg-gradient-to-br from-green-600/40 via-red-600/40 to-amber-500/40 blur-xl"
+        className="absolute inset-0 bg-gradient-to-br from-green-600/40 via-brand-red/40 to-amber-500/40 blur-xl"
         style={{ mixBlendMode: "overlay" }}
       />
       <div
@@ -112,7 +114,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                 {isChristmasDay ? (
                   <div>
                     <p className="text-5xl font-extrabold tracking-tighter text-white/90">
-                      Merry Christmas!
+                      {t("merryChristmas")}
                     </p>
                   </div>
                 ) : (
@@ -121,7 +123,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                       {days}
                     </p>
                     <p className="text-lg font-medium text-white/60">
-                      {days === 1 ? "day" : "days"} until Christmas
+                      {t("daysUntilChristmas", { count: days })}
                     </p>
                   </div>
                 )}
@@ -131,7 +133,7 @@ export function AdventCountdown({ data }: AdventCountdownProps) {
                       &ldquo;{scripture}&rdquo;
                     </p>
                     {scriptureReference && (
-                      <p className="mt-1 text-sm font-medium text-white/50">
+                      <p className="mt-1 text-base sm:text-sm font-medium text-white/50">
                         — {scriptureReference}
                       </p>
                     )}

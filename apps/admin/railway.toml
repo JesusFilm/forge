@@ -1,0 +1,35 @@
+# Railway only reads this file if the @forge/admin service's Config-as-code Path
+# is set to apps/admin/railway.toml. Without that service setting, this file is
+# ignored and the Railway dashboard remains canonical.
+#
+# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# service variables are present during Railpack/mise build setup, before
+# dependencies are installed. Keep the Datadog preload scoped to startCommand.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/admin/Dockerfile"
+watchPatterns = [
+  "/.nvmrc",
+  "/railpack.json",
+  "/scripts/update-security-ca.sh",
+  "/apps/admin/**",
+  "/packages/experience-schema/**",
+  "/packages/studio-contracts/**",
+  "/packages/watch-url-policy/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/packages/studio-server/**",
+  "/patches/**",
+  "/scripts/upload-datadog-sourcemaps.mjs",
+  "/turbo.json",
+]
+
+[deploy]
+preDeployCommand = "sh /app/apps/admin/predeploy-production.sh web"
+startCommand = "sh /app/apps/admin/start-production.sh web"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

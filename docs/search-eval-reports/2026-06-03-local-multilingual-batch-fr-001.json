@@ -1,0 +1,409 @@
+{
+  "event": "run-embeds.complete",
+  "pipeline": "both",
+  "wallClockMs": 476548,
+  "reports": {
+    "scene": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 13,
+      "localeFilter": ["fr"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nw70wpsqsl381px1wge",
+            "videoEditionId": "cmoqa7nwk0wq7qsl3wwhwi7ll",
+            "coreId": "10_Darkroom01Doubt",
+            "cmsVideoId": 508,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 6,
+          "embeddingsWritten": 6,
+          "durationMs": 20084
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nwn0wqfqsl33wywwo12",
+            "videoEditionId": "cmoqa7nx50wqwqsl3vdtq6cip",
+            "coreId": "10_Darkroom02Church",
+            "cmsVideoId": 509,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 5,
+          "embeddingsWritten": 5,
+          "durationMs": 17209
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nx90wr4qsl3xlszs8ij",
+            "videoEditionId": "cmoqa7nxs0wrnqsl33fccp47f",
+            "coreId": "10_Darkroom03Sin",
+            "cmsVideoId": 510,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3537
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nxv0wrvqsl37vkqz2tb",
+            "videoEditionId": "cmoqa7nya0wscqsl35sjag2o7",
+            "coreId": "10_Darkroom04Science",
+            "cmsVideoId": 511,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 9,
+          "embeddingsWritten": 9,
+          "durationMs": 32116
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nyd0wskqsl36lh6srxo",
+            "videoEditionId": "cmoqa7nyx0wt1qsl3egvo7g3i",
+            "coreId": "10_Darkroom05Religion",
+            "cmsVideoId": 512,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 7,
+          "embeddingsWritten": 7,
+          "durationMs": 24101
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nz20wt9qsl3g4zkqwvf",
+            "videoEditionId": "cmoqa7nzu0wtsqsl3pyabq5bl",
+            "coreId": "10_Darkroom06Suffering",
+            "cmsVideoId": 513,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 7,
+          "embeddingsWritten": 7,
+          "durationMs": 23522
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nzy0wu0qsl3yxvxd7r1",
+            "videoEditionId": "cmoqa7o0f0wuhqsl3kazvznp6",
+            "coreId": "10_Darkroom07Bible",
+            "cmsVideoId": 514,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 7,
+          "embeddingsWritten": 7,
+          "durationMs": 23199
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o0h0wupqsl3w8qfwi04",
+            "videoEditionId": "cmoqa7o0z0wv4qsl3f5qsy0e8",
+            "coreId": "10_Darkroom08Purpose",
+            "cmsVideoId": 515,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 5,
+          "embeddingsWritten": 5,
+          "durationMs": 16440
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o120wvcqsl3o3cmw9u7",
+            "videoEditionId": "cmoqa7o1i0wvtqsl3vutvq47x",
+            "coreId": "10_Darkroom09Identity",
+            "cmsVideoId": 516,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 7,
+          "embeddingsWritten": 7,
+          "durationMs": 23803
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o1l0ww1qsl31eeayq85",
+            "videoEditionId": "cmoqa7o2a0wwgqsl3h375eum4",
+            "coreId": "10_Darkroom10Justice",
+            "cmsVideoId": 517,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 8,
+          "embeddingsWritten": 8,
+          "durationMs": 26841
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o2e0wwoqsl3nczl8dqo",
+            "videoEditionId": "cmoqa7o300wx5qsl3cvslxhjx",
+            "coreId": "10_Darkroom11Afterlife",
+            "cmsVideoId": 518,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 8,
+          "embeddingsWritten": 8,
+          "durationMs": 26700
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o330wxdqsl3gwm5ksan",
+            "videoEditionId": "cmoqa7o3k0wxsqsl3fo4lzsbf",
+            "coreId": "10_Darkroom12Mission",
+            "cmsVideoId": 519,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 9,
+          "embeddingsWritten": 9,
+          "durationMs": 30451
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o3n0wy0qsl3htn64krn",
+            "videoEditionId": "cmoqa7o4e0wyhqsl38d6tml41",
+            "coreId": "10_Darkroom13Supernatural",
+            "cmsVideoId": 520,
+            "locale": "fr"
+          },
+          "locale": "fr",
+          "scenesIndexed": 5,
+          "embeddingsWritten": 5,
+          "durationMs": 16601
+        }
+      ],
+      "succeeded": 13,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": [],
+      "retrySelection": null,
+      "groupedFailures": []
+    },
+    "transcript": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 13,
+      "languageFilter": ["fr"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nw70wpsqsl381px1wge",
+            "videoEditionId": "cmoqa7nwk0wq7qsl3wwhwi7ll",
+            "coreId": "10_Darkroom01Doubt",
+            "cmsVideoId": 508,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13423
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nwn0wqfqsl33wywwo12",
+            "videoEditionId": "cmoqa7nx50wqwqsl3vdtq6cip",
+            "coreId": "10_Darkroom02Church",
+            "cmsVideoId": 509,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 15312
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nx90wr4qsl3xlszs8ij",
+            "videoEditionId": "cmoqa7nxs0wrnqsl33fccp47f",
+            "coreId": "10_Darkroom03Sin",
+            "cmsVideoId": 510,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13878
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nxv0wrvqsl37vkqz2tb",
+            "videoEditionId": "cmoqa7nya0wscqsl35sjag2o7",
+            "coreId": "10_Darkroom04Science",
+            "cmsVideoId": 511,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 5,
+          "embeddingsWritten": 5,
+          "chunksPruned": 0,
+          "durationMs": 16922
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nyd0wskqsl36lh6srxo",
+            "videoEditionId": "cmoqa7nyx0wt1qsl3egvo7g3i",
+            "coreId": "10_Darkroom05Religion",
+            "cmsVideoId": 512,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13447
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nz20wt9qsl3g4zkqwvf",
+            "videoEditionId": "cmoqa7nzu0wtsqsl3pyabq5bl",
+            "coreId": "10_Darkroom06Suffering",
+            "cmsVideoId": 513,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10266
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nzy0wu0qsl3yxvxd7r1",
+            "videoEditionId": "cmoqa7o0f0wuhqsl3kazvznp6",
+            "coreId": "10_Darkroom07Bible",
+            "cmsVideoId": 514,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 12872
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o0h0wupqsl3w8qfwi04",
+            "videoEditionId": "cmoqa7o0z0wv4qsl3f5qsy0e8",
+            "coreId": "10_Darkroom08Purpose",
+            "cmsVideoId": 515,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13018
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o120wvcqsl3o3cmw9u7",
+            "videoEditionId": "cmoqa7o1i0wvtqsl3vutvq47x",
+            "coreId": "10_Darkroom09Identity",
+            "cmsVideoId": 516,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 5,
+          "embeddingsWritten": 5,
+          "chunksPruned": 0,
+          "durationMs": 16773
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o1l0ww1qsl31eeayq85",
+            "videoEditionId": "cmoqa7o2a0wwgqsl3h375eum4",
+            "coreId": "10_Darkroom10Justice",
+            "cmsVideoId": 517,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13563
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o2e0wwoqsl3nczl8dqo",
+            "videoEditionId": "cmoqa7o300wx5qsl3cvslxhjx",
+            "coreId": "10_Darkroom11Afterlife",
+            "cmsVideoId": 518,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13333
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o330wxdqsl3gwm5ksan",
+            "videoEditionId": "cmoqa7o3k0wxsqsl3fo4lzsbf",
+            "coreId": "10_Darkroom12Mission",
+            "cmsVideoId": 519,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 5,
+          "embeddingsWritten": 5,
+          "chunksPruned": 0,
+          "durationMs": 16514
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o3n0wy0qsl3htn64krn",
+            "videoEditionId": "cmoqa7o4e0wyhqsl38d6tml41",
+            "coreId": "10_Darkroom13Supernatural",
+            "cmsVideoId": 520,
+            "language": "fr"
+          },
+          "language": "fr",
+          "chunksIndexed": 2,
+          "embeddingsWritten": 2,
+          "chunksPruned": 0,
+          "durationMs": 6899
+        }
+      ],
+      "succeeded": 13,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": []
+    }
+  },
+  "contentBackfillGateBypass": null
+}

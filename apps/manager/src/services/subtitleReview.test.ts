@@ -1,489 +1,304 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
-import type { JobRecord } from "@/types/job"
+import { createHash } from "node:crypto"
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
+import type { JobRecord, JobArtifactManifest } from "@/types/job"
 
-const { getJobMock, readArtifactMock, updateJobMock, writeArtifactMock } =
-  vi.hoisted(() => ({
-    getJobMock: vi.fn(),
-    readArtifactMock: vi.fn(),
-    updateJobMock: vi.fn(),
-    writeArtifactMock: vi.fn(),
-  }))
-
+const seam = vi.hoisted(() => ({
+  get: vi.fn(),
+  cas: vi.fn(),
+  read: vi.fn(),
+  write: vi.fn(),
+}))
 vi.mock("@/lib/state", () => ({
-  getJob: getJobMock,
-  updateJob: updateJobMock,
+  getJob: seam.get,
+  compareAndSwapJobArtifacts: seam.cas,
 }))
-
 vi.mock("@/services/storage", () => ({
-  readArtifact: readArtifactMock,
-  writeArtifact: writeArtifactMock,
+  readArtifactBounded: seam.read,
+  writeImmutableArtifact: seam.write,
 }))
-
-function buildJob(overrides: Partial<JobRecord> = {}): JobRecord {
+const vtt = (text: string) =>
+  `WEBVTT\n\n00:00:00.000 --> 00:00:01.000\n${text}\n`
+const hash = (text: string) => createHash("sha256").update(text).digest("hex")
+function job(id = "job-1"): JobRecord {
   return {
-    id: "job-1",
-    muxAssetId: "asset-1",
-    muxPlaybackId: "playback-1",
+    id,
+    muxAssetId: "shared",
+    muxPlaybackId: "playback",
     languages: ["fr"],
     options: {},
     status: "completed",
     retries: 0,
-    createdAt: "2026-04-12T11:00:00.000Z",
-    updatedAt: "2026-04-12T11:00:00.000Z",
-    artifacts: {
-      "subtitles-fr": { kind: "downloadable" },
-    },
+    createdAt: "2026-10-24T00:00:00Z",
+    updatedAt: "2026-10-24T00:00:00Z",
+    artifacts: { "subtitles-fr": { kind: "downloadable" } },
     steps: [],
     errors: [],
-    ...overrides,
   }
 }
-
-const sampleVtt = `WEBVTT
-
-00:00:00.000 --> 00:00:01.000
-Bonjour
-`
-
-const reviewedVtt = `WEBVTT
-
-00:00:00.000 --> 00:00:01.000
-Salut
-`
-
-describe("subtitle review service", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-    vi.useRealTimers()
-    vi.resetModules()
-    vi.clearAllMocks()
+const jobs = new Map<string, JobRecord>()
+const objects = new Map<string, string>()
+async function token(id = "job-1", actorId = "operator") {
+  const { signSubtitleReviewToken } =
+    await import("@/lib/subtitle-review-session")
+  return signSubtitleReviewToken({
+    jobId: id,
+    sourceArtifactKey: "subtitles-fr",
+    targetLanguage: "fr",
+    baseArtifactKey: "subtitles-fr",
+    baseFingerprint: hash(vtt("source")),
+    actorId,
+    expiresAt: new Date(Date.now() + 600000).toISOString(),
   })
-
-  it("creates a launch session without persisting the raw launch code", async () => {
-    vi.stubEnv("SUBTITLE_EDITOR_PUBLIC_URL", "https://subtitles.forge.test")
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-    getJobMock.mockResolvedValue(buildJob())
-    readArtifactMock.mockResolvedValue(Buffer.from(sampleVtt))
-    updateJobMock.mockResolvedValue(buildJob())
-
-    const { createSubtitleReviewSession } =
-      await import("@/services/subtitleReview")
-
-    const result = await createSubtitleReviewSession({
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      actorId: "user-1",
-    })
-
-    const url = new URL(result.editorUrl)
-    const launchCode = url.searchParams.get("launch")
-    expect(url.origin).toBe("https://subtitles.forge.test")
-    expect(url.searchParams.get("jobId")).toBe("job-1")
-    expect(launchCode).toBeTruthy()
-    expect(result.editorUrl).not.toContain("token")
-    expect(JSON.stringify(updateJobMock.mock.calls[0]?.[1])).not.toContain(
-      launchCode,
-    )
-    expect(updateJobMock.mock.calls[0]?.[1]).toEqual({
-      artifacts: expect.objectContaining({
-        subtitleReviews: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            launchSessions: [
-              expect.objectContaining({
-                sourceArtifactKey: "subtitles-fr",
-                targetLanguage: "fr",
-                baseArtifactKey: "subtitles-fr",
-                actorId: "user-1",
-              }),
-            ],
-          }),
-        },
-      }),
-    })
+}
+async function save(
+  text: string,
+  clientSaveId: string,
+  opts: { id?: string; base?: string; editToken?: string } = {},
+) {
+  const { saveSubtitleReviewRevision } = await import("./subtitleReview")
+  return saveSubtitleReviewRevision({
+    jobId: opts.id ?? "job-1",
+    editToken: opts.editToken ?? (await token(opts.id)),
+    vtt: vtt(text),
+    clientSaveId,
+    baseArtifactFingerprint: opts.base ?? hash(vtt("source")),
   })
-
-  it("exchanges a stored launch code once and returns an edit token", async () => {
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-
-    const { hashSubtitleReviewLaunchCode, verifySubtitleReviewToken } =
-      await import("@/lib/subtitle-review-session")
-    const job = buildJob({
-      artifacts: {
-        "subtitles-fr": { kind: "downloadable" },
-        subtitleReviews: {
-          kind: "metadata",
-          data: {
-            revisions: [],
-            launchSessions: [
-              {
-                nonceHash: hashSubtitleReviewLaunchCode("launch-code"),
-                sourceArtifactKey: "subtitles-fr",
-                targetLanguage: "fr",
-                baseArtifactKey: "subtitles-fr",
-                baseFingerprint: "base-fingerprint",
-                actorId: "user-1",
-                createdAt: "2026-04-12T11:59:00.000Z",
-                expiresAt: "2026-04-12T12:05:00.000Z",
-              },
-            ],
-            updatedAt: "2026-04-12T11:59:00.000Z",
-          },
-        },
+}
+function cas(observed: JobRecord, artifacts: JobArtifactManifest) {
+  const current = jobs.get(observed.id)!
+  if (JSON.stringify(current.artifacts) !== JSON.stringify(observed.artifacts))
+    return false
+  current.artifacts = structuredClone(artifacts)
+  return true
+}
+beforeEach(() => {
+  vi.stubEnv("SUBTITLE_EDITOR_PUBLIC_URL", "https://editor.test")
+  vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
+  jobs.clear()
+  objects.clear()
+  jobs.set("job-1", job())
+  seam.get.mockImplementation(async (id: string) =>
+    structuredClone(jobs.get(id) ?? null),
+  )
+  seam.cas.mockImplementation(cas)
+  seam.read.mockImplementation(async (asset: string, key: string) =>
+    Buffer.from(
+      key === "subtitles-fr" ? vtt("source") : objects.get(`${asset}/${key}`)!,
+    ),
+  )
+  seam.write.mockImplementation(
+    async (input: { assetId: string; artifactType: string; body: string }) => {
+      const key = `${input.assetId}/${input.artifactType}`
+      if (objects.has(key) && objects.get(key) !== input.body)
+        throw new Error("immutable collision")
+      objects.set(key, input.body)
+    },
+  )
+})
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.resetModules()
+  vi.resetAllMocks()
+})
+describe("review transition integrity", () => {
+  it("F1: concurrent saves have one winner; no acknowledged revision loss", async () => {
+    const editToken = await token()
+    const results = await Promise.all([
+      save("A", "a", { editToken }),
+      save("B", "b", { editToken }),
+    ])
+    expect(results.filter((r) => r.ok)).toHaveLength(1)
+    expect(results.filter((r) => !r.ok)).toEqual([
+      {
+        ok: false,
+        reason: "stale_base",
+        latestArtifactKey: expect.any(String),
       },
-    })
-    getJobMock.mockResolvedValue(job)
-    updateJobMock.mockResolvedValue(job)
-
-    const { exchangeSubtitleReviewLaunchCode } =
-      await import("@/services/subtitleReview")
-
-    const result = await exchangeSubtitleReviewLaunchCode({
-      jobId: "job-1",
-      launchCode: "launch-code",
-    })
-
-    expect(result.ok).toBe(true)
-    if (result.ok) {
-      await expect(
-        verifySubtitleReviewToken(result.editToken),
-      ).resolves.toEqual(
-        expect.objectContaining({
-          jobId: "job-1",
-          sourceArtifactKey: "subtitles-fr",
-        }),
-      )
-    }
-    expect(updateJobMock.mock.calls[0]?.[1]).toEqual({
-      artifacts: expect.objectContaining({
-        subtitleReviews: expect.objectContaining({
-          kind: "metadata",
-          data: expect.objectContaining({
-            launchSessions: [
-              expect.objectContaining({
-                consumedAt: "2026-04-12T12:00:00.000Z",
-              }),
-            ],
-          }),
-        }),
-      }),
-    })
+    ])
+    const { getSubtitleReviewReport } = await import("@/lib/subtitle-review")
+    expect(
+      getSubtitleReviewReport(jobs.get("job-1")!.artifacts).revisions,
+    ).toHaveLength(1)
   })
-
-  it("rate-limits repeated launch-code exchange attempts per job", async () => {
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-    getJobMock.mockResolvedValue(
-      buildJob({
-        id: "job-rate-limited",
-        artifacts: {
-          "subtitles-fr": { kind: "downloadable" },
-          subtitleReviews: {
-            kind: "metadata",
-            data: {
-              revisions: [],
-              launchSessions: [],
-              updatedAt: "2026-04-12T11:59:00.000Z",
-            },
-          },
-        },
-      }),
-    )
-
-    const { exchangeSubtitleReviewLaunchCode } =
-      await import("@/services/subtitleReview")
-
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      await expect(
-        exchangeSubtitleReviewLaunchCode({
-          jobId: "job-rate-limited",
-          launchCode: `bad-code-${attempt}`,
-        }),
-      ).resolves.toEqual({ ok: false, reason: "invalid_launch" })
-    }
-
-    await expect(
-      exchangeSubtitleReviewLaunchCode({
-        jobId: "job-rate-limited",
-        launchCode: "one-too-many",
-      }),
-    ).resolves.toEqual({ ok: false, reason: "rate_limited" })
-  })
-
-  it("bootstraps the editor with the token base VTT and playback id", async () => {
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-
-    const { signSubtitleReviewToken } =
-      await import("@/lib/subtitle-review-session")
-    const editToken = await signSubtitleReviewToken({
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      targetLanguage: "fr",
-      baseArtifactKey: "subtitles-fr",
-      baseFingerprint: "base-fingerprint",
-      actorId: "user-1",
-      expiresAt: "2026-04-12T12:15:00.000Z",
-    })
-    getJobMock.mockResolvedValue(buildJob())
-    readArtifactMock.mockResolvedValue(Buffer.from(sampleVtt))
-
-    const { bootstrapSubtitleReviewSession } =
-      await import("@/services/subtitleReview")
-
-    await expect(
-      bootstrapSubtitleReviewSession({ jobId: "job-1", editToken }),
-    ).resolves.toEqual({
-      ok: true,
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      targetLanguage: "fr",
-      baseArtifactKey: "subtitles-fr",
-      baseFingerprint: "base-fingerprint",
-      vtt: sampleVtt,
-      media: {
-        muxPlaybackId: "playback-1",
-        muxAssetId: "asset-1",
-      },
-      returnUrl: "/dashboard/jobs/job-1",
-    })
-  })
-
-  it("bootstraps with the latest reviewed revision when one exists", async () => {
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-
-    const { fingerprintSubtitleVtt } = await import("@/lib/subtitle-review")
-    const { signSubtitleReviewToken } =
-      await import("@/lib/subtitle-review-session")
-    const baseFingerprint = fingerprintSubtitleVtt(sampleVtt)
-    const reviewedFingerprint = fingerprintSubtitleVtt(reviewedVtt)
-    const editToken = await signSubtitleReviewToken({
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      targetLanguage: "fr",
-      baseArtifactKey: "subtitles-fr",
-      baseFingerprint,
-      actorId: "user-1",
-      expiresAt: "2026-04-12T12:15:00.000Z",
-    })
-    getJobMock.mockResolvedValue(
-      buildJob({
-        artifacts: {
-          "subtitles-fr": { kind: "downloadable" },
-          "subtitles-fr-reviewed-r0001": { kind: "downloadable" },
-          subtitleReviews: {
-            kind: "metadata",
-            data: {
-              revisions: [
-                {
-                  artifactKey: "subtitles-fr-reviewed-r0001",
-                  sourceArtifactKey: "subtitles-fr",
-                  targetLanguage: "fr",
-                  revision: 1,
-                  baseFingerprint,
-                  contentFingerprint: reviewedFingerprint,
-                  clientSaveId: "save-1",
-                  actorId: "user-2",
-                  createdAt: "2026-04-12T12:05:00.000Z",
-                },
-              ],
-              launchSessions: [],
-              updatedAt: "2026-04-12T12:05:00.000Z",
-            },
-          },
-        },
-      }),
-    )
-    readArtifactMock.mockImplementation(
-      (_assetId: string, artifactType: string) =>
-        Promise.resolve(
-          Buffer.from(
-            artifactType === "subtitles-fr-reviewed-r0001"
-              ? reviewedVtt
-              : sampleVtt,
-          ),
-        ),
-    )
-
-    const { bootstrapSubtitleReviewSession } =
-      await import("@/services/subtitleReview")
-
-    await expect(
-      bootstrapSubtitleReviewSession({ jobId: "job-1", editToken }),
-    ).resolves.toEqual({
-      ok: true,
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      targetLanguage: "fr",
-      baseArtifactKey: "subtitles-fr-reviewed-r0001",
-      baseFingerprint: reviewedFingerprint,
-      vtt: reviewedVtt,
-      media: {
-        muxPlaybackId: "playback-1",
-        muxAssetId: "asset-1",
-      },
-      returnUrl: "/dashboard/jobs/job-1",
-    })
-    expect(readArtifactMock).toHaveBeenCalledWith(
-      "asset-1",
-      "subtitles-fr-reviewed-r0001",
-      "vtt",
-    )
-  })
-
-  it("saves a reviewed VTT as a new downloadable revision artifact", async () => {
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-
-    const { fingerprintSubtitleVtt } = await import("@/lib/subtitle-review")
-    const { signSubtitleReviewToken } =
-      await import("@/lib/subtitle-review-session")
-    const baseFingerprint = fingerprintSubtitleVtt(sampleVtt)
-    const editToken = await signSubtitleReviewToken({
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      targetLanguage: "fr",
-      baseArtifactKey: "subtitles-fr",
-      baseFingerprint,
-      actorId: "user-1",
-      expiresAt: "2026-04-12T12:15:00.000Z",
-    })
-    getJobMock.mockResolvedValue(buildJob())
-    writeArtifactMock.mockResolvedValue(
-      "asset-1/subtitles-fr-reviewed-r0001.vtt",
-    )
-    updateJobMock.mockResolvedValue(buildJob())
-
-    const { saveSubtitleReviewRevision } =
-      await import("@/services/subtitleReview")
-
-    const result = await saveSubtitleReviewRevision({
-      jobId: "job-1",
-      editToken,
-      baseArtifactFingerprint: baseFingerprint,
-      vtt: sampleVtt.replace("Bonjour", "Salut"),
-      clientSaveId: "save-1",
-    })
-
-    expect(result).toEqual({
-      ok: true,
-      status: "saved",
-      jobId: "job-1",
-      artifactKey: "subtitles-fr-reviewed-r0001",
-      reviewedArtifactKey: "subtitles-fr-reviewed-r0001",
-      revision: 1,
-      contentFingerprint: fingerprintSubtitleVtt(
-        sampleVtt.replace("Bonjour", "Salut"),
-      ),
-      baseArtifactFingerprint: baseFingerprint,
-      savedAt: "2026-04-12T12:00:00.000Z",
-    })
-    expect(writeArtifactMock).toHaveBeenCalledWith({
-      assetId: "asset-1",
-      artifactType: "subtitles-fr-reviewed-r0001",
-      ext: "vtt",
-      body: sampleVtt.replace("Bonjour", "Salut"),
-      contentType: "text/vtt; charset=utf-8",
-    })
-    expect(updateJobMock.mock.calls[0]?.[1]).toEqual({
-      artifacts: expect.objectContaining({
-        "subtitles-fr-reviewed-r0001": { kind: "downloadable" },
-        subtitleReviews: {
-          kind: "metadata",
-          data: expect.objectContaining({
-            revisions: [
-              expect.objectContaining({
-                artifactKey: "subtitles-fr-reviewed-r0001",
-                sourceArtifactKey: "subtitles-fr",
-                revision: 1,
-                clientSaveId: "save-1",
-              }),
-            ],
-          }),
-        },
-      }),
-    })
-  })
-
-  it("does not rewrite storage for an idempotent duplicate save", async () => {
-    vi.stubEnv("SUBTITLE_REVIEW_SESSION_SECRET", "test-secret")
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date("2026-04-12T12:00:00.000Z"))
-
-    const { fingerprintSubtitleVtt } = await import("@/lib/subtitle-review")
-    const { signSubtitleReviewToken } =
-      await import("@/lib/subtitle-review-session")
-    const contentFingerprint = fingerprintSubtitleVtt(sampleVtt)
-    const editToken = await signSubtitleReviewToken({
-      jobId: "job-1",
-      sourceArtifactKey: "subtitles-fr",
-      targetLanguage: "fr",
-      baseArtifactKey: "subtitles-fr",
-      baseFingerprint: contentFingerprint,
-      actorId: "user-1",
-      expiresAt: "2026-04-12T12:15:00.000Z",
-    })
-    getJobMock.mockResolvedValue(
-      buildJob({
-        artifacts: {
-          "subtitles-fr": { kind: "downloadable" },
-          "subtitles-fr-reviewed-r0001": { kind: "downloadable" },
-          subtitleReviews: {
-            kind: "metadata",
-            data: {
-              revisions: [
-                {
-                  artifactKey: "subtitles-fr-reviewed-r0001",
-                  sourceArtifactKey: "subtitles-fr",
-                  targetLanguage: "fr",
-                  revision: 1,
-                  baseFingerprint: contentFingerprint,
-                  contentFingerprint,
-                  clientSaveId: "save-1",
-                  actorId: "user-1",
-                  createdAt: "2026-04-12T11:59:00.000Z",
-                },
-              ],
-              launchSessions: [],
-              updatedAt: "2026-04-12T11:59:00.000Z",
-            },
-          },
-        },
-      }),
-    )
-
-    const { saveSubtitleReviewRevision } =
-      await import("@/services/subtitleReview")
-
-    await expect(
-      saveSubtitleReviewRevision({
+  it("F1: concurrent creates retain both launches and exactly one exchange consumes a launch", async () => {
+    const api = await import("./subtitleReview")
+    const create = () =>
+      api.createSubtitleReviewSession({
         jobId: "job-1",
-        editToken,
-        baseArtifactFingerprint: contentFingerprint,
-        vtt: sampleVtt,
-        clientSaveId: "save-1",
-      }),
-    ).resolves.toEqual({
+        sourceArtifactKey: "subtitles-fr",
+        actorId: "operator",
+      })
+    const created = await Promise.all([create(), create()])
+    const launchCode = new URL(created[0]!.editorUrl).searchParams.get(
+      "launch",
+    )!
+    const exchanged = await Promise.all(
+      [1, 2].map(() =>
+        api.exchangeSubtitleReviewLaunchCode({ jobId: "job-1", launchCode }),
+      ),
+    )
+    expect(exchanged.filter((r) => r.ok)).toHaveLength(1)
+    expect(exchanged.filter((r) => !r.ok)).toEqual([
+      { ok: false, reason: "invalid_launch" },
+    ])
+    const { getSubtitleReviewReport } = await import("@/lib/subtitle-review")
+    expect(
+      getSubtitleReviewReport(jobs.get("job-1")!.artifacts).launchSessions,
+    ).toHaveLength(2)
+  })
+  it("F1: retries comparison after background artifact mutation without losing siblings", async () => {
+    seam.cas
+      .mockImplementationOnce((observed: JobRecord) => {
+        jobs.get(observed.id)!.artifacts.background = {
+          kind: "metadata",
+          data: { done: true },
+        }
+        return false
+      })
+      .mockImplementation(cas)
+    expect((await save("edit", "a")).ok).toBe(true)
+    expect(jobs.get("job-1")!.artifacts.background).toEqual({
+      kind: "metadata",
+      data: { done: true },
+    })
+  })
+  it("F2: two jobs sharing an asset keep separate acknowledged immutable bytes", async () => {
+    jobs.set("job-2", job("job-2"))
+    const a = await save("A", "a"),
+      b = await save("B", "b", { id: "job-2" })
+    expect(a.ok && b.ok).toBe(true)
+    if (!a.ok || !b.ok) throw new Error("save failed")
+    expect(a.artifactKey).not.toBe(b.artifactKey)
+    expect(hash(objects.get(`shared/${a.artifactKey}`)!)).toBe(
+      a.contentFingerprint,
+    )
+    expect(hash(objects.get(`shared/${b.artifactKey}`)!)).toBe(
+      b.contentFingerprint,
+    )
+  })
+  it("F2: reconciles a committed but failed transport as an exact replay", async () => {
+    seam.cas.mockImplementationOnce(
+      (observed: JobRecord, artifacts: JobArtifactManifest) => {
+        cas(observed, artifacts)
+        throw new Error("reply lost")
+      },
+    )
+    const result = await save("A", "a")
+    expect(result).toMatchObject({ ok: true, status: "duplicate", revision: 1 })
+    expect(objects.size).toBe(1)
+  })
+  it("F2: a failed persist followed by another save never rewrites the winner", async () => {
+    const editToken = await token()
+    seam.cas.mockResolvedValue(false)
+    expect(await save("orphan", "orphan", { editToken })).toEqual({
+      ok: false,
+      reason: "persist_failed",
+    })
+    seam.cas.mockImplementation(cas)
+    const result = await save("winner", "winner", { editToken })
+    expect(result.ok).toBe(true)
+    expect(await save("orphan", "orphan", { editToken })).toMatchObject({
+      ok: false,
+      reason: "stale_base",
+    })
+    if (result.ok)
+      expect(hash(objects.get(`shared/${result.artifactKey}`)!)).toBe(
+        result.contentFingerprint,
+      )
+  })
+  it("F3: same ID replays equal content/base/actor/session only", async () => {
+    const editToken = await token()
+    const a = await save("A", "a", { editToken })
+    expect(a.ok).toBe(true)
+    expect(await save("A", "a", { editToken })).toMatchObject({
       ok: true,
       status: "duplicate",
-      jobId: "job-1",
-      artifactKey: "subtitles-fr-reviewed-r0001",
-      reviewedArtifactKey: "subtitles-fr-reviewed-r0001",
-      revision: 1,
-      contentFingerprint,
-      baseArtifactFingerprint: contentFingerprint,
-      savedAt: "2026-04-12T11:59:00.000Z",
     })
-    expect(writeArtifactMock).not.toHaveBeenCalled()
-    expect(updateJobMock).not.toHaveBeenCalled()
+    expect(await save("B", "a", { editToken })).toEqual({
+      ok: false,
+      reason: "save_id_conflict",
+    })
+    expect(await save("A", "a", { editToken, base: hash(vtt("A")) })).toEqual({
+      ok: false,
+      reason: "save_id_conflict",
+    })
+    expect(
+      await save("A", "a", { editToken: await token("job-1", "other") }),
+    ).toEqual({ ok: false, reason: "save_id_conflict" })
+  })
+  it("does not deduplicate another ID by matching content", async () => {
+    const editToken = await token()
+    await save("A", "a", { editToken })
+    expect(await save("A", "b", { editToken })).toMatchObject({
+      ok: false,
+      reason: "stale_base",
+    })
+    expect(
+      await save("A", "b", { editToken, base: hash(vtt("A")) }),
+    ).toMatchObject({ ok: true, status: "saved", revision: 2 })
+  })
+  it("bootstrap rejects a reviewed digest mismatch and preserves legacy readability", async () => {
+    const editToken = await token()
+    const saved = await save("A", "a", { editToken })
+    const { bootstrapSubtitleReviewSession } = await import("./subtitleReview")
+    expect(
+      await bootstrapSubtitleReviewSession({ jobId: "job-1", editToken }),
+    ).toMatchObject({ ok: true, vtt: vtt("A") })
+    if (saved.ok) objects.set(`shared/${saved.artifactKey}`, vtt("corrupt"))
+    expect(
+      await bootstrapSubtitleReviewSession({ jobId: "job-1", editToken }),
+    ).toEqual({ ok: false, reason: "artifact_not_found" })
+  })
+  it.each([
+    "WEBVTT\n",
+    "WEBVTT\n\n00:00:02.000 --> 00:00:01.000\nbackwards\n",
+    vtt("x".repeat(8193)),
+    vtt("x").repeat(5001),
+  ])("bounds invalid VTT and cues", async (invalid) => {
+    const { saveSubtitleReviewRevision } = await import("./subtitleReview")
+    expect(
+      await saveSubtitleReviewRevision({
+        jobId: "job-1",
+        editToken: await token(),
+        vtt: invalid,
+        clientSaveId: "a",
+      }),
+    ).toEqual({ ok: false, reason: "invalid_vtt" })
+    expect(seam.write).not.toHaveBeenCalled()
+  })
+  it("rejects invalid tokens before looking up state", async () => {
+    expect(await save("A", "a", { editToken: "invalid" })).toEqual({
+      ok: false,
+      reason: "invalid_token",
+    })
+    expect(seam.get).not.toHaveBeenCalled()
+  })
+  it("bounds limiter retention and admits fresh work after expiry", async () => {
+    vi.useFakeTimers()
+    try {
+      const { exchangeSubtitleReviewLaunchCode } =
+        await import("./subtitleReview")
+      for (let i = 0; i < 1024; i++) {
+        await exchangeSubtitleReviewLaunchCode({
+          jobId: `missing-${i}`,
+          launchCode: "invalid",
+        })
+      }
+      expect(
+        await exchangeSubtitleReviewLaunchCode({
+          jobId: "new-job",
+          launchCode: "invalid",
+        }),
+      ).toEqual({ ok: false, reason: "rate_limited" })
+      vi.advanceTimersByTime(60_001)
+      expect(
+        await exchangeSubtitleReviewLaunchCode({
+          jobId: "new-job",
+          launchCode: "invalid",
+        }),
+      ).toEqual({ ok: false, reason: "job_not_found" })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

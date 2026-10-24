@@ -1,5 +1,8 @@
-import type { FragmentOf } from "@forge/graphql"
-import { CONTENT_WIDTH_CLASSES } from "@/lib/content-width"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { RouteVideo } from "@/lib/content"
 import { sectionFragment } from "@/lib/fragments/section"
 import type { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
@@ -18,6 +21,20 @@ import { NavigationCarousel } from "./NavigationCarousel"
 import { QuizButton } from "./QuizButton"
 import { RelatedQuestions } from "./RelatedQuestions"
 import { Video } from "./Video"
+import { AdventCountdown } from "./AdventCountdown"
+import { CTASection } from "./CTASection"
+import { EasterDates } from "./EasterDates"
+import { InfoBlocks } from "./InfoBlocks"
+import { PromoBanner } from "./PromoBanner"
+import { Text } from "./Text"
+
+// Admin GraphQL typenames for blocks that can appear nested inside a
+// SectionBlock's `content[]`. The Strapi switch above only knows
+// `ComponentSections*` typenames; admin's payloads carry these instead.
+// We inline the dispatch (rather than reusing `renderAdminBlock` from
+// `./index`) to avoid an import cycle — `index.tsx` already imports
+// `Section.tsx`, so the reverse import resolves undefined at module
+// load and the component silently no-ops.
 
 export { sectionFragment }
 
@@ -50,34 +67,47 @@ const SECTION_TEXT_COLOR: Record<string, string> = {
   purple: "text-white",
 }
 
+function isHexColor(value: unknown) {
+  return /^#[0-9a-fA-F]{6}$/.test(typeof value === "string" ? value.trim() : "")
+}
+
 type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
 type SectionContentItem = NonNullable<
   NonNullable<SectionData["sectionContent"]>[number]
 >
+type AssetBackedSectionData = SectionData & {
+  backgroundImageAsset?: { previewUrl?: string | null } | null
+}
 
-export function Section({ data, routeVideo }: SectionProps) {
+export function Section({ data, routeVideo, languageSlug }: SectionProps) {
   const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
     data
+  const backgroundImageUrl =
+    (data as AssetBackedSectionData).backgroundImageAsset?.previewUrl ?? null
 
   const raw = data as Record<string, unknown>
   const isDynamicBg = raw.dynamicBackgroundImage === true
   const hasStaticOverlay = raw.staticOverlay === true
 
   const validContent =
-    sectionContent?.filter((c): c is NonNullable<typeof c> => c != null) ?? []
+    sectionContent?.filter(
+      (c: LegacyFragmentValue): c is NonNullable<typeof c> => c != null,
+    ) ?? []
   if (!validContent.length) return null
 
-  const content = validContent.map((item, index) =>
+  const content = validContent.map((item: SectionContentItem, index: number) =>
     item && (item as { __typename?: string }).__typename !== "Error" ? (
       <SectionContentRenderer
         key={`section-${id ?? index}-${index}`}
         item={item as SectionContentItem}
         routeVideo={routeVideo}
+        languageSlug={languageSlug}
       />
     ) : null,
   )
@@ -120,6 +150,12 @@ export function Section({ data, routeVideo }: SectionProps) {
   const opacity =
     backgroundOpacity != null ? backgroundOpacity : BASE_BACKGROUND_OPACITY
   const rgb = BACKGROUND_CSS_VAR[bgKey] ?? BACKGROUND_CSS_VAR.default
+  const explicitBackgroundColor = isHexColor(backgroundColor)
+    ? backgroundColor
+    : undefined
+  const backgroundStyle = explicitBackgroundColor
+    ? { backgroundColor: explicitBackgroundColor }
+    : { backgroundColor: `rgb(${rgb} / ${opacity})` }
 
   return (
     <section
@@ -129,9 +165,19 @@ export function Section({ data, routeVideo }: SectionProps) {
       className={`relative w-full ${textColor}`}
     >
       <div
-        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${bgClass} ${hasStaticOverlay ? "relative overflow-hidden" : ""}`}
-        style={{ backgroundColor: `rgb(${rgb} / ${opacity})` }}
+        className={`mx-auto w-full backdrop-blur-2xl md:max-w-[1920px] ${bgClass} ${hasStaticOverlay || backgroundImageUrl ? "relative overflow-hidden" : ""}`}
+        style={backgroundStyle}
       >
+        {backgroundImageUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center opacity-45"
+            style={{ backgroundImage: `url("${backgroundImageUrl}")` }}
+            aria-hidden="true"
+          />
+        ) : null}
+        {backgroundImageUrl ? (
+          <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+        ) : null}
         {hasStaticOverlay && (
           <div
             className="absolute inset-0 z-1 bg-repeat mix-blend-multiply"
@@ -142,7 +188,7 @@ export function Section({ data, routeVideo }: SectionProps) {
           />
         )}
         <div
-          className={`${hasStaticOverlay ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${CONTENT_WIDTH_CLASSES}`}
+          className={`${hasStaticOverlay || backgroundImageUrl ? "relative z-2 " : ""}flex flex-col items-stretch justify-center gap-10 py-10 pb-16 ${WATCH_PAGE_CONTENT_CLASSES}`}
         >
           {content}
         </div>
@@ -154,18 +200,23 @@ export function Section({ data, routeVideo }: SectionProps) {
 function SectionContentRenderer({
   item,
   routeVideo,
+  languageSlug,
 }: {
   item: SectionContentItem
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
-  switch (typename) {
+  // Cast to broader string so the admin typename cases below (which
+  // are not in the Strapi-derived discriminated union) type-check.
+  switch (typename as string) {
     case "ComponentSectionsContainer":
       return (
         <Container
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsVideo":
@@ -194,6 +245,7 @@ function SectionContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsQuizButton":
@@ -220,6 +272,107 @@ function SectionContentRenderer({
           data={
             item as unknown as FragmentOf<typeof navigationCarouselFragment>
           }
+        />
+      )
+    // Admin GraphQL typenames inlined here. See module-level comment for
+    // why we don't bounce through `renderAdminBlock` in `./index`.
+    case "ContainerBlock":
+      return (
+        <Container
+          data={item as unknown as FragmentOf<typeof containerFragment>}
+          routeVideo={routeVideo}
+          languageSlug={languageSlug}
+        />
+      )
+    case "VideoBlock":
+      return (
+        <Video
+          data={item as unknown as FragmentOf<typeof videoSectionFragment>}
+          routeVideo={routeVideo}
+        />
+      )
+    case "TextBlock":
+      return (
+        <Text data={item as unknown as Parameters<typeof Text>[0]["data"]} />
+      )
+    case "CtaBlock":
+      return (
+        <CTASection
+          data={item as unknown as Parameters<typeof CTASection>[0]["data"]}
+        />
+      )
+    case "EasterDatesBlock":
+      return (
+        <EasterDates
+          data={item as unknown as Parameters<typeof EasterDates>[0]["data"]}
+        />
+      )
+    case "AdventCountdownBlock":
+      return (
+        <AdventCountdown
+          data={
+            item as unknown as Parameters<typeof AdventCountdown>[0]["data"]
+          }
+        />
+      )
+    case "BibleQuotesCarouselBlock":
+      return (
+        <BibleQuotesCarousel
+          data={
+            item as unknown as FragmentOf<typeof bibleQuotesCarouselFragment>
+          }
+        />
+      )
+    case "MediaCollectionBlock":
+      return (
+        <MediaCollection
+          data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
+          routeVideo={routeVideo}
+          languageSlug={languageSlug}
+        />
+      )
+    case "NavigationCarouselBlock":
+      return (
+        <NavigationCarousel
+          data={
+            item as unknown as FragmentOf<typeof navigationCarouselFragment>
+          }
+        />
+      )
+    case "RelatedQuestionsBlock":
+      return (
+        <RelatedQuestions
+          data={item as unknown as FragmentOf<typeof relatedQuestionsFragment>}
+        />
+      )
+    case "QuizButtonBlock":
+      return (
+        <QuizButton
+          data={
+            item as unknown as {
+              id: string
+              buttonText: string
+              iframeSrc: string
+            }
+          }
+        />
+      )
+    case "VideoCarouselBlock":
+      return (
+        <CarouselVideo
+          data={item as unknown as FragmentOf<typeof videoCarouselFragment>}
+        />
+      )
+    case "PromoBannerBlock":
+      return (
+        <PromoBanner
+          data={item as unknown as Parameters<typeof PromoBanner>[0]["data"]}
+        />
+      )
+    case "InfoBlocksBlock":
+      return (
+        <InfoBlocks
+          data={item as unknown as Parameters<typeof InfoBlocks>[0]["data"]}
         />
       )
     default: {

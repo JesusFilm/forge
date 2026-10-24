@@ -1,42 +1,37 @@
-// SYNC: keep in sync with apps/mobile-v2/src/lib/queries.ts
+// Fragments here are kept structurally in sync with apps/mobile/src/lib/queries.ts.
 
 /**
- * gql.tada typed GraphQL query and fragments for Experience blocks.
- *
- * Defined here in apps/tv/ per convention:
- * "Operations are defined in apps using graphql() from this package."
- *
- * Uses @_unmask to make fragment fields directly accessible on parent results.
+ * gql.tada typed Experience-block query and fragments. Defined here in apps/tv
+ * per convention (operations live in apps, not the package). @_unmask exposes
+ * fragment fields directly on parent results.
  */
-import { graphql } from "@forge/graphql"
+import {
+  adminGraphql as graphql,
+  type AdminResultOf as ResultOf,
+} from "@forge/admin-graphql"
 
 // ── Leaf fragments ──────────────────────────────────────────────────
 
 export const VideoHeroFragment = graphql(`
-  fragment VideoHeroFields on ComponentSectionsVideoHero @_unmask {
-    id
+  fragment VideoHeroFields on VideoHeroBlock @_unmask {
     sectionKey
     heading
     subheading
     ctaLabel
     ctaLink
-    streamingUrl
-    video {
-      documentId
-      title
-      slug
-      images {
-        url
-        mobileCinematicHigh
-        videoStill
+    videoDub {
+      hls
+      dash
+      share
+      muxVideo {
+        playbackId
       }
     }
   }
 `)
 
 export const TextSectionFragment = graphql(`
-  fragment TextSectionFields on ComponentSectionsText @_unmask {
-    id
+  fragment TextSectionFields on TextBlock @_unmask {
     sectionKey
     textHeading: heading
     headingLevel
@@ -47,15 +42,12 @@ export const TextSectionFragment = graphql(`
 `)
 
 export const RelatedQuestionsFragment = graphql(`
-  fragment RelatedQuestionsFields on ComponentSectionsRelatedQuestions
-  @_unmask {
-    id
+  fragment RelatedQuestionsFields on RelatedQuestionsBlock @_unmask {
     sectionKey
     rqHeading: heading
     ctaLabel
     ctaLink
     questions {
-      id
       question
       answer
     }
@@ -63,17 +55,19 @@ export const RelatedQuestionsFragment = graphql(`
 `)
 
 export const BibleQuotesCarouselFragment = graphql(`
-  fragment BibleQuotesCarouselFields on ComponentSectionsBibleQuotesCarousel
-  @_unmask {
-    id
+  fragment BibleQuotesCarouselFields on BibleQuotesCarouselBlock @_unmask {
     sectionKey
     bqcHeading: heading
     quotes {
-      id
       reference
       text
       attribution
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
+      backgroundImageAsset {
+        previewUrl
+      }
       backgroundColor
       ctaLabel
       ctaLink
@@ -82,8 +76,7 @@ export const BibleQuotesCarouselFragment = graphql(`
 `)
 
 export const EasterDatesFragment = graphql(`
-  fragment EasterDatesFields on ComponentSectionsEasterDates @_unmask {
-    id
+  fragment EasterDatesFields on EasterDatesBlock @_unmask {
     sectionKey
     easterDatesTitle
     westernEasterLabel
@@ -94,8 +87,7 @@ export const EasterDatesFragment = graphql(`
 `)
 
 export const AdventCountdownFragment = graphql(`
-  fragment AdventCountdownFields on ComponentSectionsAdventCountdown @_unmask {
-    id
+  fragment AdventCountdownFields on AdventCountdownBlock @_unmask {
     sectionKey
     adventTitle: title
     scripture
@@ -105,8 +97,7 @@ export const AdventCountdownFragment = graphql(`
 `)
 
 export const CTASectionFragment = graphql(`
-  fragment CTASectionFields on ComponentSectionsCta @_unmask {
-    id
+  fragment CTASectionFields on CtaBlock @_unmask {
     sectionKey
     ctaHeading: heading
     body
@@ -117,48 +108,39 @@ export const CTASectionFragment = graphql(`
 `)
 
 export const VideoSectionFragment = graphql(`
-  fragment VideoSectionFields on ComponentSectionsVideo @_unmask {
-    id
+  fragment VideoSectionFields on VideoBlock @_unmask {
     sectionKey
-    streamingUrl
     videoTitle: title
     videoSubtitle: subtitle
-    media {
-      url
-    }
-    videoRef: video {
-      documentId
-      title
-      slug
-      imageAlt
-      images {
-        url
-        mobileCinematicHigh
-        videoStill
+    videoId
+    videoDub {
+      hls
+      dash
+      share
+      muxVideo {
+        playbackId
       }
     }
   }
 `)
 
 export const NavigationCarouselFragment = graphql(`
-  fragment NavigationCarouselFields on ComponentSectionsNavigationCarousel
-  @_unmask {
-    id
+  fragment NavigationCarouselFields on NavigationCarouselBlock @_unmask {
     sectionKey
     items {
-      id
       contentId
       title
       category
-      imageUrl
+      imageAsset {
+        previewUrl
+      }
       backgroundColor
     }
   }
 `)
 
 export const MediaCollectionFragment = graphql(`
-  fragment MediaCollectionFields on ComponentSectionsMediaCollection @_unmask {
-    id
+  fragment MediaCollectionFields on MediaCollectionBlock @_unmask {
     sectionKey
     mcTitle: title
     mcSubtitle: subtitle
@@ -168,61 +150,58 @@ export const MediaCollectionFragment = graphql(`
     mcCtaLabel: ctaLabel
     showItemNumbers
     mcVariant: variant
+    thumbnailOrientation
     footerText
     items {
-      id
       titleOverride
       subtitleOverride
       labelOverride
       collectionSize
-      imageUrl
-      linkToSectionKey
-      video {
-        documentId
-        title
-        slug
-        imageAlt
-        images {
-          url
-          mobileCinematicHigh
-          videoStill
+      imageAsset {
+        previewUrl
+      }
+      videoImage {
+        previewUrl
+      }
+      videoDub {
+        muxVideo {
+          playbackId
         }
       }
+      linkToSectionKey
+      videoId
+      coreId
     }
   }
 `)
 
 export const VideoCarouselFragment = graphql(`
-  fragment VideoCarouselFields on ComponentSectionsVideoCarousel @_unmask {
-    id
+  fragment VideoCarouselFields on VideoCarouselBlock @_unmask {
     sectionKey
     vcTitle: title
     vcSubtitle: subtitle
     vcDescription: description
     items {
-      id
-      streamingUrl
-      imageUrl
-      titleOverride
-      backgroundColor
-      video {
-        documentId
-        title
-        slug
-        imageAlt
-        images {
-          url
-          mobileCinematicHigh
-          videoStill
+      videoDub {
+        hls
+        dash
+        share
+        muxVideo {
+          playbackId
         }
       }
+      imageAsset {
+        previewUrl
+      }
+      titleOverride
+      backgroundColor
+      videoId
     }
   }
 `)
 
 export const QuizButtonFragment = graphql(`
-  fragment QuizButtonFields on ComponentSectionsQuizButton @_unmask {
-    id
+  fragment QuizButtonFields on QuizButtonBlock @_unmask {
     buttonText
     iframeSrc
   }
@@ -230,44 +209,49 @@ export const QuizButtonFragment = graphql(`
 
 // ── Composite fragments (nested content) ────────────────────────────
 
-// ContainerSlotContentDynamicZone members (from schema.graphql):
-// AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
-// MediaCollection, RelatedQuestions, Text, Video
-// NOTE: Container, NavigationCarousel, VideoCarousel, QuizButton are NOT in this union
+// content[] is flat: ContainerSlotBlock markers divide it into side-by-side
+// slots (each marker carries the grid span), then content blocks follow.
+// Members: AdventCountdown, BibleQuotesCarousel, Card, Cta, EasterDates,
+// MediaCollection, RelatedQuestions, Text, Video (+ the ContainerSlot marker).
 export const ContainerFragment = graphql(
   `
-    fragment ContainerFields on ComponentSectionsContainer @_unmask {
-      id
+    fragment ContainerFields on ContainerBlock @_unmask {
       sectionKey
-      slots {
-        id
-        gridSpan
-        slotContent: content {
-          __typename
-          ... on ComponentSectionsText {
-            ...TextSectionFields
+      content {
+        __typename
+        ... on ContainerSlotBlock {
+          gridSpan
+          spans {
+            xs
+            sm
+            md
+            lg
+            xl
           }
-          ... on ComponentSectionsEasterDates {
-            ...EasterDatesFields
-          }
-          ... on ComponentSectionsAdventCountdown {
-            ...AdventCountdownFields
-          }
-          ... on ComponentSectionsCta {
-            ...CTASectionFields
-          }
-          ... on ComponentSectionsVideo {
-            ...VideoSectionFields
-          }
-          ... on ComponentSectionsRelatedQuestions {
-            ...RelatedQuestionsFields
-          }
-          ... on ComponentSectionsBibleQuotesCarousel {
-            ...BibleQuotesCarouselFields
-          }
-          ... on ComponentSectionsMediaCollection {
-            ...MediaCollectionFields
-          }
+        }
+        ... on TextBlock {
+          ...TextSectionFields
+        }
+        ... on EasterDatesBlock {
+          ...EasterDatesFields
+        }
+        ... on AdventCountdownBlock {
+          ...AdventCountdownFields
+        }
+        ... on CtaBlock {
+          ...CTASectionFields
+        }
+        ... on VideoBlock {
+          ...VideoSectionFields
+        }
+        ... on RelatedQuestionsBlock {
+          ...RelatedQuestionsFields
+        }
+        ... on BibleQuotesCarouselBlock {
+          ...BibleQuotesCarouselFields
+        }
+        ... on MediaCollectionBlock {
+          ...MediaCollectionFields
         }
       }
     }
@@ -284,50 +268,51 @@ export const ContainerFragment = graphql(
   ],
 )
 
-// SectionContentDynamicZone members (from schema.graphql):
-// BibleQuotesCarousel, Card, Container, Cta, InfoBlocks, MediaCollection,
-// NavigationCarousel, PromoBanner, QuizButton, RelatedQuestions, Text, Video, VideoCarousel
-// NOTE: EasterDates and AdventCountdown are NOT in this union (only in ContainerSlotContentDynamicZone)
+// SectionContentDynamicZone members: BibleQuotesCarousel, Card, Container, Cta,
+// InfoBlocks, MediaCollection, NavigationCarousel, PromoBanner, QuizButton,
+// RelatedQuestions, Text, Video, VideoCarousel. NOT here: EasterDates, AdventCountdown.
 export const SectionFragment = graphql(
   `
-    fragment SectionFields on ComponentSectionsSection @_unmask {
-      id
+    fragment SectionFields on SectionBlock @_unmask {
       sectionKey
       backgroundColor
+      backgroundImageAsset {
+        previewUrl
+      }
       backgroundOpacity
       dynamicBackgroundImage
       staticOverlay
       blurHash
       sectionContent: content {
         __typename
-        ... on ComponentSectionsContainer {
+        ... on ContainerBlock {
           ...ContainerFields
         }
-        ... on ComponentSectionsVideo {
+        ... on VideoBlock {
           ...VideoSectionFields
         }
-        ... on ComponentSectionsRelatedQuestions {
+        ... on RelatedQuestionsBlock {
           ...RelatedQuestionsFields
         }
-        ... on ComponentSectionsBibleQuotesCarousel {
+        ... on BibleQuotesCarouselBlock {
           ...BibleQuotesCarouselFields
         }
-        ... on ComponentSectionsMediaCollection {
+        ... on MediaCollectionBlock {
           ...MediaCollectionFields
         }
-        ... on ComponentSectionsQuizButton {
+        ... on QuizButtonBlock {
           ...QuizButtonFields
         }
-        ... on ComponentSectionsVideoCarousel {
+        ... on VideoCarouselBlock {
           ...VideoCarouselFields
         }
-        ... on ComponentSectionsNavigationCarousel {
+        ... on NavigationCarouselBlock {
           ...NavigationCarouselFields
         }
-        ... on ComponentSectionsText {
+        ... on TextBlock {
           ...TextSectionFields
         }
-        ... on ComponentSectionsCta {
+        ... on CtaBlock {
           ...CTASectionFields
         }
       }
@@ -351,53 +336,50 @@ export const SectionFragment = graphql(
 
 export const GET_WATCH_EXPERIENCE = graphql(
   `
-    query GetWatchExperience(
-      $locale: I18NLocaleCode!
-      $filters: ExperienceFiltersInput!
-    ) {
-      experiences(filters: $filters, locale: $locale) {
-        documentId
+    query GetWatchExperience($locale: String!, $slug: String!) {
+      experienceBySlug(locale: $locale, slug: $slug) {
+        documentId: id
         slug
         title
         blocks {
           __typename
-          ... on ComponentSectionsVideoHero {
+          ... on VideoHeroBlock {
             ...VideoHeroFields
           }
-          ... on ComponentSectionsSection {
+          ... on SectionBlock {
             ...SectionFields
           }
-          ... on ComponentSectionsVideoCarousel {
+          ... on VideoCarouselBlock {
             ...VideoCarouselFields
           }
-          ... on ComponentSectionsMediaCollection {
+          ... on MediaCollectionBlock {
             ...MediaCollectionFields
           }
-          ... on ComponentSectionsNavigationCarousel {
+          ... on NavigationCarouselBlock {
             ...NavigationCarouselFields
           }
-          ... on ComponentSectionsText {
+          ... on TextBlock {
             ...TextSectionFields
           }
-          ... on ComponentSectionsEasterDates {
+          ... on EasterDatesBlock {
             ...EasterDatesFields
           }
-          ... on ComponentSectionsAdventCountdown {
+          ... on AdventCountdownBlock {
             ...AdventCountdownFields
           }
-          ... on ComponentSectionsBibleQuotesCarousel {
+          ... on BibleQuotesCarouselBlock {
             ...BibleQuotesCarouselFields
           }
-          ... on ComponentSectionsCta {
+          ... on CtaBlock {
             ...CTASectionFields
           }
-          ... on ComponentSectionsRelatedQuestions {
+          ... on RelatedQuestionsBlock {
             ...RelatedQuestionsFields
           }
-          ... on ComponentSectionsContainer {
+          ... on ContainerBlock {
             ...ContainerFields
           }
-          ... on ComponentSectionsVideo {
+          ... on VideoBlock {
             ...VideoSectionFields
           }
         }
@@ -421,24 +403,61 @@ export const GET_WATCH_EXPERIENCE = graphql(
   ],
 )
 
-// ── Lightweight listing query (no blocks) ─────────────────────────
+// ── Watch search query ──────────────────────────────────────────────
 
-export const LIST_EXPERIENCES = graphql(`
-  query ListExperiences($locale: I18NLocaleCode!) {
-    experiences(locale: $locale) {
-      documentId
-      slug
-      title
-      metaDescription
-      isHomepage
-      ogImage {
-        url
-        alternativeText
-        width
-        height
+// Admin retired the legacy `Query.search` in #1622; `watchSearch` is the
+// multilingual replacement. Selection stays narrow — TV renders a card grid, so
+// the language/evidence/availability signals web uses are deliberately unread.
+export const WATCH_SEARCH = graphql(`
+  query WatchSearch($input: WatchSearchInput!) {
+    watchSearch(input: $input) {
+      query
+      hasMore
+      nextOffset
+      results {
+        type
+        id
+        slug
+        title
+        imageUrl
+        snippet
+        startSeconds
+        playbackId
+        score
+        label
+        childCount
       }
     }
   }
 `)
 
-// Type is inferred by gql.tada at compile time via ResultOf<typeof GET_WATCH_EXPERIENCE>
+/** One row exactly as admin returns it — every field nullable. */
+export type WatchSearchResultItem = NonNullable<
+  NonNullable<ResultOf<typeof WATCH_SEARCH>["watchSearch"]>["results"]
+>[number]
+
+// ── Search result shape ─────────────────────────────────────────────
+// UI-facing row: narrowed to non-null so cards and routing can read slug/title
+// without guards. `mapWatchSearchResult` drops server rows missing any of them.
+
+export type SearchResult = {
+  readonly type: string
+  readonly id: string
+  readonly slug: string
+  readonly title: string
+  readonly imageUrl: string | null
+  readonly snippet: string | null
+  readonly startSeconds: number | null
+  readonly playbackId: string | null
+  readonly score: number | null
+  readonly label: string | null
+  readonly childCount: number | null
+}
+
+export type SearchResponse = {
+  readonly query: string
+  readonly hasMore: boolean
+  /** Offset to request for the next page; admin owns the cursor arithmetic. */
+  readonly nextOffset: number
+  readonly results: readonly SearchResult[]
+}

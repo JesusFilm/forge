@@ -4,8 +4,10 @@ import React, { useEffect, useMemo, useState } from "react"
 import type { JobRecord } from "@/types/job"
 import { JobErrorLogSection } from "./job-error-log-section"
 import { LiveJobDetailHeader } from "./live-job-detail-header"
+import { getSourceTitle } from "./jobs-table-presenter"
 import { LiveJobStepsTable } from "./live-job-steps-table"
 import { ReviewPlayerCard } from "./review-player/review-player-card"
+import { getReviewContextRefreshKey } from "./review-player/review-context-refresh-key"
 import type { JobReviewContextResult } from "./review-player/review-player-types"
 
 type ReviewContextLoadState =
@@ -23,12 +25,16 @@ type LiveJobDetailScreenProps = {
 export function LiveJobDetailScreen({
   initialJob,
   languageLabelsById,
-  subtitleReviewConfigured = true,
+  subtitleReviewConfigured = false,
 }: LiveJobDetailScreenProps) {
   const [job, setJob] = useState(initialJob)
   const [reviewContext, setReviewContext] = useState<ReviewContextLoadState>({
     status: "loading",
   })
+  const reviewContextRefreshKey = useMemo(
+    () => getReviewContextRefreshKey(job),
+    [job],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -75,7 +81,7 @@ export function LiveJobDetailScreen({
       cancelled = true
       controller.abort()
     }
-  }, [initialJob.id, job.updatedAt])
+  }, [initialJob.id, reviewContextRefreshKey])
 
   const muxPlaybackId = useMemo(
     () => job.muxPlaybackId ?? null,
@@ -84,6 +90,15 @@ export function LiveJobDetailScreen({
 
   return (
     <>
+      <header className="studio-page-intro">
+        <span className="studio-page-eyebrow">Workflow run</span>
+        <h1>{getSourceTitle(job)}</h1>
+        <p>
+          Review job status, workflow steps, generated outputs, and sync details
+          for this enrichment run.
+        </p>
+      </header>
+
       <LiveJobDetailHeader
         job={job}
         languageLabelsById={languageLabelsById}

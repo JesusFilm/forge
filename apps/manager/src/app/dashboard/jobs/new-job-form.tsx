@@ -2,6 +2,7 @@
 
 import React from "react"
 import { useState } from "react"
+import { Play, RefreshCw } from "lucide-react"
 
 type RequestStatus =
   | { type: "idle" }
@@ -147,6 +148,11 @@ export function NewJobForm() {
           disabled={!canSubmit}
           className="jobs-primary-button"
         >
+          {isSubmitting ? (
+            <RefreshCw className="icon is-spinning" aria-hidden="true" />
+          ) : (
+            <Play className="icon" aria-hidden="true" />
+          )}
           {isSubmitting ? "Creating..." : "Start Job"}
         </button>
       </div>
