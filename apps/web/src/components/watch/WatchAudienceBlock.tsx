@@ -4,7 +4,10 @@ import {
 } from "@/lib/watch-audience-config"
 import { WatchNextSteps, type WatchNextStepsProps } from "./WatchNextSteps"
 
-export type WatchAudienceBlockProps = Omit<WatchNextStepsProps, "config"> & {
+export type WatchAudienceBlockProps = Omit<
+  WatchNextStepsProps,
+  "config" | "questionnaireLocale"
+> & {
   /** The published configuration both Watch surfaces share. */
   audience?: WatchAudienceResolution
 }
@@ -22,6 +25,11 @@ export function WatchAudienceBlock({
   const frame = watchAudienceFrame(audience)
   if (!frame) return null
   return (
-    <WatchNextSteps key={frame.identity} config={frame.config} {...props} />
+    <WatchNextSteps
+      key={frame.identity}
+      config={frame.config}
+      questionnaireLocale={frame.sourceLocale}
+      {...props}
+    />
   )
 }

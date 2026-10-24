@@ -44,6 +44,7 @@ import {
   watchAudienceReasons,
   type WatchAudienceRoleDefinition,
 } from "@/lib/watch-audience-config"
+import { textDirectionForLocale } from "@/lib/locale"
 import { cn } from "@/lib/utils"
 
 /* ----------------------------- content ----------------------------- */
@@ -184,8 +185,10 @@ export type JourneyAction = {
 export function WatchRoleJourney({
   definition,
   actions,
+  locale = "en",
 }: {
   definition: WatchAudienceRoleDefinition
+  locale?: string
   /** Only the actions this page can actually serve; ranked by stable id. */
   actions: JourneyAction[]
 }) {
@@ -258,6 +261,8 @@ export function WatchRoleJourney({
 
   return (
     <section
+      lang={locale}
+      dir={textDirectionForLocale(locale)}
       aria-labelledby={headingId}
       data-testid="watch-role-journey"
       data-role={role}
@@ -343,7 +348,11 @@ export function WatchRoleJourney({
           >
             {question ? (
               <>
-                <p className="text-sm font-medium tracking-wide text-white/50 uppercase">
+                <p
+                  lang="en"
+                  dir="ltr"
+                  className="text-sm font-medium tracking-wide text-white/50 uppercase"
+                >
                   Question {step + 1} of {journey.questions.length}
                 </p>
                 <h3
@@ -365,7 +374,7 @@ export function WatchRoleJourney({
                           type="button"
                           data-option-id={o.id}
                           onClick={() => choose(o.id)}
-                          className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl border border-white/12 bg-white/[0.06] p-4 text-left transition-[transform,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-stone-900 focus-visible:border-white focus-visible:bg-white focus-visible:text-stone-900 focus-visible:outline-none active:translate-y-0 md:p-5"
+                          className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl border border-white/12 bg-white/[0.06] p-4 text-start transition-[transform,background-color,border-color] duration-200 hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-stone-900 focus-visible:border-white focus-visible:bg-white focus-visible:text-stone-900 focus-visible:outline-none active:translate-y-0 md:p-5"
                         >
                           <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-white/10 transition-colors group-hover:bg-brand-red/10 group-focus-visible:bg-brand-red/10">
                             <OptionIcon
@@ -390,6 +399,8 @@ export function WatchRoleJourney({
                 </ul>
                 {reveal ? (
                   <div
+                    lang="en"
+                    dir="ltr"
                     key={reveal.key}
                     className="wj-rise mt-6 flex gap-3.5 rounded-2xl border border-white/10 bg-white/[0.05] p-4 md:p-5"
                   >
@@ -410,6 +421,8 @@ export function WatchRoleJourney({
                 {step > 0 ? (
                   <button
                     type="button"
+                    lang="en"
+                    dir="ltr"
                     onClick={back}
                     className="mt-6 inline-flex cursor-pointer items-center gap-1.5 text-sm text-white/60 transition-colors hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                   >
@@ -462,20 +475,34 @@ function Result({
   return (
     <div>
       <p className="text-sm text-white/70">
-        Because {reason.length ? joinReasons(reason) : "of what you told us"}:
+        <span lang="en" dir="ltr">
+          Because{" "}
+        </span>
+        {reason.length ? (
+          joinReasons(reason)
+        ) : (
+          <span lang="en" dir="ltr">
+            of what you told us
+          </span>
+        )}
+        :
       </p>
       {best ? (
         <div data-testid="watch-journey-result" className="wj-pop mt-4">
           {best.render({
             className:
-              "group relative flex w-full cursor-pointer items-center gap-5 overflow-hidden rounded-2xl bg-white p-6 text-left text-stone-900 shadow-[0_20px_60px_rgba(0,0,0,.45)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40 md:p-7",
+              "group relative flex w-full cursor-pointer items-center gap-5 overflow-hidden rounded-2xl bg-white p-6 text-start text-stone-900 shadow-[0_20px_60px_rgba(0,0,0,.45)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40 md:p-7",
             children: (
               <>
                 <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-brand-red/10">
                   <best.Icon aria-hidden className="size-7 text-brand-red" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-bold tracking-[0.16em] text-brand-red uppercase">
+                  <span
+                    lang="en"
+                    dir="ltr"
+                    className="block text-[11px] font-bold tracking-[0.16em] text-brand-red uppercase"
+                  >
                     Your next step
                   </span>
                   <span className="mt-1 block text-xl leading-tight font-semibold md:text-2xl">
@@ -485,7 +512,11 @@ function Result({
                     {best.body}
                   </span>
                 </span>
-                <span className="hidden shrink-0 rounded-full bg-stone-900 px-5 py-3 text-xs font-bold tracking-wider text-white uppercase transition-colors group-hover:bg-brand-red sm:inline-flex">
+                <span
+                  lang="en"
+                  dir="ltr"
+                  className="hidden shrink-0 rounded-full bg-stone-900 px-5 py-3 text-xs font-bold tracking-wider text-white uppercase transition-colors group-hover:bg-brand-red sm:inline-flex"
+                >
                   Go
                 </span>
               </>
@@ -495,14 +526,18 @@ function Result({
       ) : (
         // No served action (an authored role whose every target is absent
         // here): say so instead of an empty card.
-        <p className="mt-4 text-sm text-white/70">
+        <p lang="en" dir="ltr" className="mt-4 text-sm text-white/70">
           No next step is available on this page. You can change your answers or
           choose another audience.
         </p>
       )}
       {others.length ? (
         <>
-          <p className="mt-6 text-[12px] font-semibold tracking-[0.14em] text-white/50 uppercase">
+          <p
+            lang="en"
+            dir="ltr"
+            className="mt-6 text-[12px] font-semibold tracking-[0.14em] text-white/50 uppercase"
+          >
             Also worth a look
           </p>
           <ul
@@ -513,7 +548,7 @@ function Result({
               <li key={a.id}>
                 {a.render({
                   className:
-                    "group flex w-full cursor-pointer items-start gap-3.5 rounded-xl border border-white/10 bg-white/[0.06] p-4 text-left transition-colors hover:border-white hover:bg-white hover:text-stone-900 focus-visible:border-white focus-visible:bg-white focus-visible:text-stone-900 focus-visible:outline-none",
+                    "group flex w-full cursor-pointer items-start gap-3.5 rounded-xl border border-white/10 bg-white/[0.06] p-4 text-start transition-colors hover:border-white hover:bg-white hover:text-stone-900 focus-visible:border-white focus-visible:bg-white focus-visible:text-stone-900 focus-visible:outline-none",
                   children: (
                     <>
                       <a.Icon
@@ -538,6 +573,8 @@ function Result({
       ) : null}
       <button
         type="button"
+        lang="en"
+        dir="ltr"
         onClick={onReset}
         className="mt-7 inline-flex cursor-pointer items-center gap-1.5 text-sm text-white/60 transition-colors hover:text-white focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
       >
@@ -549,5 +586,14 @@ function Result({
 
 function joinReasons(parts: string[]) {
   if (parts.length === 1) return parts[0]
-  return `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`
+  return (
+    <>
+      {parts.slice(0, -1).join(", ")}
+      <span lang="en" dir="ltr">
+        {" "}
+        and{" "}
+      </span>
+      {parts.at(-1)}
+    </>
+  )
 }

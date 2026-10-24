@@ -384,6 +384,7 @@ describe("draft audience questionnaire preview", () => {
       const content = page.props.children.props.children[1]
       expect(content.props.audience).toMatchObject({
         kind: "authored",
+        sourceLocale: "ru",
         config: configuration,
       })
       if (homepage) expect(content.props.audienceEnabled).toBe(true)

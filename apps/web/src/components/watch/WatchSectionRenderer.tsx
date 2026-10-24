@@ -1,5 +1,7 @@
 "use client"
 
+import { textDirectionForLocale } from "@/lib/locale"
+
 import { Suspense, useId } from "react"
 import type { WatchShareFilm } from "@/lib/watch-share-kit"
 import dynamic from "next/dynamic"
@@ -207,6 +209,7 @@ export function WatchSectionRenderer({
     audienceFrame && bodyAt !== -1
       ? {
           config: audienceFrame.config,
+          sourceLocale: audienceFrame.sourceLocale,
           head: orderedBody.slice(0, bodyAt + 1),
           tail: orderedBody.slice(bodyAt + 1),
         }
@@ -342,11 +345,16 @@ export function WatchSectionRenderer({
                 >
                   {personaBand.head.map(renderBodyEntry)}
                   {/* Tabs sit ABOVE the band's top edge; the band starts right under them. */}
-                  <WatchRoleTabs
-                    className="mt-2"
-                    idBase={audienceIdBase}
-                    config={personaBand.config}
-                  />
+                  <div
+                    lang={personaBand.sourceLocale}
+                    dir={textDirectionForLocale(personaBand.sourceLocale)}
+                  >
+                    <WatchRoleTabs
+                      className="mt-2"
+                      idBase={audienceIdBase}
+                      config={personaBand.config}
+                    />
+                  </div>
                   {/* The page's one finder host; the Grow lean button opens it. */}
                   {findLanguage && locale ? (
                     <WatchFindFlowHost

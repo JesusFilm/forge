@@ -3806,6 +3806,7 @@ describe("Catch-all routing — manifest-only audio language (FGE-81)", () => {
 describe("published audience configuration", () => {
   const authored = {
     kind: "authored",
+    sourceLocale: "en",
     config: { roles: [] },
     identity: "en:watch-audience:abc",
   } as const

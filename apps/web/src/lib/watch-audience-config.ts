@@ -966,12 +966,18 @@ export const WATCH_AUDIENCE_CODE_CONFIG: WatchAudienceConfig = {
  * the frame is omitted and never replaced by the baked-in questions.
  */
 export type WatchAudienceResolution =
-  | { kind: "authored"; config: WatchAudienceConfig; identity: string }
+  | {
+      kind: "authored"
+      config: WatchAudienceConfig
+      identity: string
+      sourceLocale: string
+    }
   | { kind: "rejected" }
   | { kind: "unavailable" }
   | { kind: "absent" }
 
 export type WatchAudienceFrame = {
+  sourceLocale: string
   config: WatchAudienceConfig
   /** Changes whenever the configuration does, so the frame remounts and answers reset. */
   identity: string
@@ -981,10 +987,18 @@ export function watchAudienceFrame(
   resolution: WatchAudienceResolution | undefined,
 ): WatchAudienceFrame | null {
   if (resolution?.kind === "authored") {
-    return { config: resolution.config, identity: resolution.identity }
+    return {
+      config: resolution.config,
+      identity: resolution.identity,
+      sourceLocale: resolution.sourceLocale,
+    }
   }
   if (resolution === undefined || resolution.kind === "absent") {
-    return { config: WATCH_AUDIENCE_CODE_CONFIG, identity: "code" }
+    return {
+      config: WATCH_AUDIENCE_CODE_CONFIG,
+      identity: "code",
+      sourceLocale: "en",
+    }
   }
   return null
 }

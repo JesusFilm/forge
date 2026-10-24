@@ -108,6 +108,7 @@ describe("Watch root homepage", () => {
     vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
     const authored = {
       kind: "authored",
+      sourceLocale: "en",
       config: { roles: [] },
       identity: "en:watch-audience:abc",
     }

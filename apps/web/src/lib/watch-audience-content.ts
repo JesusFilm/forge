@@ -323,6 +323,7 @@ export function projectWatchAudience(
   if (!parsed.ok) return { kind: "rejected" }
   return {
     kind: "authored",
+    sourceLocale: wire.sourceLocale,
     config: parsed.config,
     identity: `${wire.sourceLocale}:${wire.sourceBlockId}:${fingerprint(
       JSON.stringify(parsed.config),

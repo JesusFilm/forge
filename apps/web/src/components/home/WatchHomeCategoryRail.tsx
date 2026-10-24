@@ -225,7 +225,7 @@ function PrefetchGatedLink(
     "prefetch" | "onFocus" | "onPointerMove"
   >,
 ) {
-  const prefetchGate = useTouchGatedPrefetch()
+  const prefetchGate = useTouchGatedPrefetch({ eagerOnHover: false })
   return (
     <Link
       {...props}

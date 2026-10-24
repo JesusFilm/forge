@@ -60,8 +60,8 @@ const clone = (): WatchAudienceConfig =>
 function authored(
   config: WatchAudienceConfig,
   identity = "en:watch-audience:v1",
-): WatchAudienceResolution {
-  return { kind: "authored", config, identity }
+): Extract<WatchAudienceResolution, { kind: "authored" }> {
+  return { kind: "authored", config, identity, sourceLocale: "en" }
 }
 
 function render(props: WatchAudienceBlockProps) {
@@ -261,4 +261,102 @@ describe("WatchAudienceBlock", () => {
     expect(container.textContent).toContain("No next step is available")
     expect(frames()).toHaveLength(1)
   })
+})
+
+describe("published questionnaire language boundaries", () => {
+  it.each([
+    ["ar", "rtl", "من أين تبدأ؟", "استكشف الإيمان"],
+    ["fr", "ltr", "Par où commencer ?", "Explorer la foi"],
+  ])(
+    "declares authored %s copy in its resolved language and direction",
+    (sourceLocale, direction, prompt, label) => {
+      const config = clone()
+      config.roles[0].questions[0].prompt = prompt
+      config.roles[0].label = label
+      const audience = { ...authored(config), sourceLocale }
+      render({ audience, languageSlug: "arabic", locale: "ar" })
+      const question = [...container.querySelectorAll("h3")].find(
+        (node) => node.textContent === prompt,
+      )!
+      const tab = [...container.querySelectorAll('[role="tab"]')].find(
+        (node) => node.textContent === label,
+      )!
+      for (const element of [question, tab]) {
+        expect(element.closest("[lang]")?.getAttribute("lang")).toBe(
+          sourceLocale,
+        )
+        expect(element.closest("[dir]")?.getAttribute("dir")).toBe(direction)
+      }
+      expect(question.textContent).toBe(prompt)
+    },
+  )
+
+  it("keeps code and published-English fallback explicitly English on an Arabic page", () => {
+    for (const audience of [
+      { kind: "absent" } as const,
+      { ...authored(clone()), sourceLocale: "en" },
+    ]) {
+      render({ audience, languageSlug: "arabic", locale: "ar" })
+      const question = container.querySelector("h3")!
+      expect(question.closest("[lang]")?.getAttribute("lang")).toBe("en")
+      expect(question.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
+    }
+  })
+})
+
+it("keeps English resource notices and renderer controls outside authored Arabic semantics", () => {
+  const config = clone()
+  config.roles[0].questions[0].prompt = "من أين تبدأ؟"
+  render({
+    audience: { ...authored(config), sourceLocale: "ar" },
+    languageSlug: "arabic",
+    locale: "ar",
+  })
+  const notice = [...container.querySelectorAll("p")].find(
+    (p) => p.textContent === "English resources",
+  )!
+  expect(notice.lang).toBe("en")
+  expect(notice.dir).toBe("ltr")
+  const progress = [...container.querySelectorAll("p")].find(
+    (p) => p.textContent === "Question 1 of 3",
+  )!
+  expect(progress.lang).toBe("en")
+  chooseOptions(1)
+  const back = [...container.querySelectorAll("button")].find(
+    (b) => b.textContent?.trim() === "Back",
+  )!
+  expect(back.lang).toBe("en")
+  expect(back.dir).toBe("ltr")
+})
+
+it("renders English sharing resources beside an Arabic authored journey", async () => {
+  setWatchRole("share")
+  const config = clone()
+  config.roles[2].questions[0].prompt = "مع من تشارك؟"
+  await act(async () => {
+    root.render(
+      createElement(WatchAudienceBlock, {
+        audience: {
+          kind: "authored",
+          config,
+          identity: "ar:mixed",
+          sourceLocale: "ar",
+        },
+        languageSlug: "arabic",
+        locale: "ar",
+      }),
+    )
+  })
+  await act(async () => {
+    await import("./WatchShareIdeas")
+  })
+  const resources = container.querySelector(
+    '[data-testid="watch-share-ideas"]',
+  )!
+  expect(resources.closest("[lang]")?.getAttribute("lang")).toBe("en")
+  expect(resources.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
+  const question = container.querySelector("h3")!
+  expect(question.textContent).toBe("مع من تشارك؟")
+  expect(question.closest("[lang]")?.getAttribute("lang")).toBe("ar")
+  expect(question.closest("[dir]")?.getAttribute("dir")).toBe("rtl")
 })

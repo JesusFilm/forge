@@ -3,7 +3,7 @@ id: "feat-744"
 title: "Editor-owned Watch audience questionnaires"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-17"
 duration: 7
 depends_on:
@@ -135,3 +135,25 @@ Fresh matched local production loads cover real HTTP-200 home and synthetic-vide
 These are unthrottled local Chromium 154 measurements with identical no-store proxy instrumentation, warm servers and disposable fixtures, not field or playback clearance. External Mux media requests encounter 403s and cross-origin transfer sizes are unavailable. No production data, live content or external flag/config was changed. Exact commands, raw timings, limitations and file/ancestry audits are retained in `/tmp/forge-pr2783-restack-evidence/`.
 
 Durable restack lesson: a clean textual replay can still join newer concurrency regressions to replaced UI controls incorrectly. Preserve the owning state-machine implementation and assertions, then exercise the real replacement controls and inspect both revision requests and rendered recovery status before declaring the stack compatible.
+
+## PR #2783 review round 1 repairs (2026-10-24)
+
+Repair base is exactly `7b9d30865e320ad178ab092604dc50dd829fe536`; the branch is a fast-forward continuation of the repaired stack. Scope and validation contract: [review repair plan](../../plans/2026-10-24-pr2783-review-round-1-repairs.md). This ticket remains in progress while this repair's implementation validation and review clearance are outstanding; historical implementation and review receipts above remain intact.
+
+- Admin image: copy the `@forge/feature-flags` manifest before install and its source before build; include it in both security-image workflow filters. A new Node regression walks Admin's transitive workspace dependency closure, checks both copy phases and both filters, and verifies the shared web/worker image contract. It failed on the two omissions before the fix and now passes.
+- Importer: reject duplicate host keys (including encoded aliases), case-ambiguous keys, alternate destination selectors, empty hosts, malformed URLs and non-Postgres schemes. Validate the once-decoded authority plus any query override as explicit loopback or an absolute local Unix socket. Tests inspect the installed pg driver's effective host without connecting, reproduce its last-host rule, and prove both dry/apply orchestration refuse before loading a client. The importer CLI was never run.
+- Authored localization: retain the producer's resolved `sourceLocale` through projection and frame; render authored questions/tabs in that locale and direction, including Arabic RTL and LTR source fallback on an Arabic page. Mark English fallback, controls, reveals and resource modules explicitly English. DOM tests pin authored copy, inherited language/direction, mixed resources and fallback boundaries.
+- Publication E2E: compact home uses published role labels and canonical navigation pills; video owns the questionnaire with external tabs. Anonymous Partner stays locked; the Partner questionnaire test requires a real hosted-Auth session. An unpublished draft sentinel must stay out of the public projection and serialized home/video HTML. No auth or publication route is mocked.
+- Initial loading: category links remain gated through desktop hydration and arm individually on focus or deliberate mouse intent; touch scrolling never arms them. Hero prefetch behavior is unchanged. Regression tests failed before the change; production E2E also checks initial category requests, absent persona-resource scripts and progress writes, then positively checks intent prefetch/navigation and lazy Share loading.
+
+Validation receipts and the original red logs are retained in `/home/lado/.local/share/forge-pr2783-r1-20261024/`. Shared `/tmp` inode exhaustion interrupted the first broad run; task-owned temporary files and subsequent validation moved to the workspace disk without deleting other work. Initial lint/type findings in the new guard/test helper were corrected before final validation.
+
+Detailed commands, distributions, file audit and limitations: [review round 1 validation report](../../reports/2026-10-24-pr2783-review-r1-validation.md). Real pointer E2E exposed an incomplete inherited local home fixture: it had a legacy fixed `VideoHero` and no TV-carousel catalog source. The October 24 restack home timings above and the first repair corpus remain historical diagnostics, but do not clear the intended TV-carousel/compact-role-band composition. The report records corrected-fixture comparisons separately; the disposable fixture correction leaves template canonical configuration and its unpublished draft sentinel unchanged.
+
+No Auth, migration, generated schema/introspection, or learning-progress concurrency implementation was edited. `forge.watch.audience` remains default-off in the shared registry; only owned local test processes enable it. No external flag/config change, importer CLI, live publication, deployment or production write is part of this repair.
+
+Durable repair lessons: validate connection destinations against the installed driver's parsing contract rather than the first URL parameter; test Docker's entire workspace dependency closure; carry the resolved content language instead of inferring it from page language; and re-measure viewport-driven prefetch when a compact composition moves links earlier into view.
+
+Round-1 implementation validation completed locally: strict five-package lint/types, schema/introspection zero drift, 871 scoped Admin tests, 6,998 passing Web tests (13 skips/one todo), 660 Auth tests (106 environment skips), 70 experience-schema tests, 2 admin-graphql tests, 23 feature-flag tests, all 162 disposable DB migrations and 22 publication/import/finder/progress DB tests. Admin/Web production builds and the actual CI Admin Docker image passed, including isolated shared web/worker startup and TLS PostgreSQL client contracts. All 10 final desktop/390px publication E2E cases passed through real local hosted Auth.
+
+Corrected-fixture matched production sampling retains seven loads per build/cell, extended to fourteen for compact home. Main/before/repaired desktop-home shell medians are 25.7/28.8/25.1ms; initial route prefetches fall from 11 to 3, matching main. Every corrected home/video cell meets the plan's 10% median timing and 0.05 added-CLS budget. The report contains all distributions, request/byte counts, mount smoke observations and limits (unthrottled local host, external media failures, desktop pointer at 390px). No performance requirement is waived. Status remains in progress pending review clearance.

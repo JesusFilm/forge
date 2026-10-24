@@ -20,6 +20,7 @@ import {
   type WatchAudienceConfig,
   type WatchAudienceCurrentVideoTarget,
 } from "@/lib/watch-audience-config"
+import { textDirectionForLocale } from "@/lib/locale"
 import { cn } from "@/lib/utils"
 import { useRegisterWatchAudiencePresence } from "./watch-audience-presence"
 import type { WatchGrowFilmContext } from "./watch-grow-film-context"
@@ -50,6 +51,8 @@ export type WatchNextStepsProps = {
   onRequestShareLanguages?: () => void
   languageSlug?: string
   locale?: string
+  /** Resolved published locale, including English fallback; distinct from page locale. */
+  questionnaireLocale?: string
   config?: WatchAudienceConfig
   currentVideoActions?: Partial<
     Record<WatchAudienceCurrentVideoTarget, () => void>
@@ -120,6 +123,7 @@ export function WatchNextSteps({
   languageSlug,
   locale,
   config = WATCH_AUDIENCE_CODE_CONFIG,
+  questionnaireLocale = "en",
   currentVideoActions = {},
   growFilm = null,
   tabsIdBase,
@@ -143,12 +147,17 @@ export function WatchNextSteps({
     (locale != null && locale.split("-")[0] !== "en") ||
     (language != null && language !== "english")
   const journey = definition ? (
-    <WatchRoleJourney key={mode} definition={definition} actions={actions} />
+    <WatchRoleJourney
+      key={mode}
+      definition={definition}
+      actions={actions}
+      locale={questionnaireLocale}
+    />
   ) : null
 
   const panel = (
     <section
-      aria-label="What’s next"
+      aria-labelledby={`${ownIdBase}-heading`}
       data-testid="watch-next-steps"
       data-mode={mode}
       data-role={mode}
@@ -157,7 +166,9 @@ export function WatchNextSteps({
         hydrated ? "opacity-100" : "opacity-0",
       )}
     >
-      <h2 className="sr-only">What’s next</h2>
+      <h2 id={`${ownIdBase}-heading`} lang="en" dir="ltr" className="sr-only">
+        What’s next
+      </h2>
 
       <div
         {...watchRolePanelProps(idBase, mode)}
@@ -182,35 +193,39 @@ export function WatchNextSteps({
                   that wait inside the panel, rather than hiding the route's
                   player and page behind its outer loading boundary. */}
               <Suspense fallback={null}>
-                {mode === "grow" ? <WatchGrow {...growFilm} /> : null}
+                {mode !== "explore" ? (
+                  <div lang="en" dir="ltr">
+                    {mode === "grow" ? <WatchGrow {...growFilm} /> : null}
 
-                {mode === "share" ? (
-                  <WatchShareIdeas
-                    film={shareFilm}
-                    onShareClick={currentVideoActions.share}
-                    onRequestLanguageOptions={onRequestShareLanguages}
-                    collection={
-                      language ? (
-                        <Link
-                          href={languageVideosIndexPath(language)}
-                          prefetch={false}
-                          className="inline-flex min-h-11 items-center underline underline-offset-4"
-                        >
-                          Browse films in this audio language
-                        </Link>
-                      ) : null
-                    }
-                  />
-                ) : null}
+                    {mode === "share" ? (
+                      <WatchShareIdeas
+                        film={shareFilm}
+                        onShareClick={currentVideoActions.share}
+                        onRequestLanguageOptions={onRequestShareLanguages}
+                        collection={
+                          language ? (
+                            <Link
+                              href={languageVideosIndexPath(language)}
+                              prefetch={false}
+                              className="inline-flex min-h-11 items-center underline underline-offset-4"
+                            >
+                              Browse films in this audio language
+                            </Link>
+                          ) : null
+                        }
+                      />
+                    ) : null}
 
-                {/* Partner tab: promo for everyone, journey and materials only
+                    {/* Partner tab: promo for everyone, journey and materials only
                   once the real session says signed-in. */}
-                {mode === "partner" && language && locale ? (
-                  <WatchPartnerPanel
-                    languageSlug={language}
-                    locale={locale}
-                    journey={journey}
-                  />
+                    {mode === "partner" && language && locale ? (
+                      <WatchPartnerPanel
+                        languageSlug={language}
+                        locale={locale}
+                        journey={journey}
+                      />
+                    ) : null}
+                  </div>
                 ) : null}
               </Suspense>
             </div>
@@ -221,9 +236,13 @@ export function WatchNextSteps({
   )
 
   return (
-    <div lang="en" dir="ltr" className="min-w-0">
+    <div
+      lang={questionnaireLocale}
+      dir={textDirectionForLocale(questionnaireLocale)}
+      className="min-w-0"
+    >
       {englishResources ? (
-        <p lang="en" className="mb-4 text-sm text-white/60">
+        <p lang="en" dir="ltr" className="mb-4 text-sm text-white/60">
           English resources
         </p>
       ) : null}

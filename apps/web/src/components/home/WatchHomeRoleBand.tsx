@@ -43,6 +43,7 @@ import {
   watchVideoPath,
   type LocaleSlug,
 } from "@/lib/routes"
+import { textDirectionForLocale } from "@/lib/locale"
 import { cn } from "@/lib/utils"
 import {
   watchAudienceFrame,
@@ -220,7 +221,12 @@ export function WatchHomeRoleBand({
         hydrated ? "opacity-100" : "opacity-0",
       )}
     >
-      <WatchRoleTabs idBase={idBase} config={frame.config} />
+      <div
+        lang={frame.sourceLocale}
+        dir={textDirectionForLocale(frame.sourceLocale)}
+      >
+        <WatchRoleTabs idBase={idBase} config={frame.config} />
+      </div>
 
       <div
         {...watchRolePanelProps(idBase, role)}

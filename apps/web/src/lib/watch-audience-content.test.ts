@@ -292,6 +292,15 @@ describe("parseWatchAudienceConfig", () => {
 })
 
 describe("projectWatchAudience", () => {
+  it("preserves the resolved source language independently from the requested page", () => {
+    expect(
+      projectWatchAudience(wire(clone(), { sourceLocale: "ar" })),
+    ).toMatchObject({ kind: "authored", sourceLocale: "ar" })
+    expect(
+      projectWatchAudience(wire(clone(), { sourceLocale: "en" })),
+    ).toMatchObject({ kind: "authored", sourceLocale: "en" })
+  })
+
   it("is absent only when Admin returned no projection", () => {
     expect(projectWatchAudience(null)).toEqual({ kind: "absent" })
   })
