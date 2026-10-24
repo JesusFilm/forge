@@ -42,6 +42,7 @@ import {
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import { RECOMMENDATION_EVIDENCE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
+import { randomUuid } from "@/lib/random-uuid"
 
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations")
 const EVIDENCE_ENDPOINT = watchPath("/api/recommendations/evidence")
@@ -570,7 +571,7 @@ export function WatchSemanticRecommendations({
     let active = true
     const visitKey = `${seedMediaId}\0${seedMediaSlug ?? ""}\0${locale}\0${audioLanguageSlug}`
     if (visitIdentity.current?.key !== visitKey) {
-      visitIdentity.current = { key: visitKey, id: crypto.randomUUID() }
+      visitIdentity.current = { key: visitKey, id: randomUuid() }
     }
     const visitId = visitIdentity.current.id
     const activationController = new AbortController()
