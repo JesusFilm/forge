@@ -464,6 +464,37 @@ describe("WatchPageClient chapter navigation", () => {
     expect(renderer()?.getAttribute("data-pending-poster")).toBe("")
   })
 
+  it("still navigates to the chapter when the sessionStorage getter throws", async () => {
+    // Chrome "block all site data": reading `window.sessionStorage` throws.
+    // The carousel handoff is optional; the push that follows it is not.
+    const original = Object.getOwnPropertyDescriptor(window, "sessionStorage")
+    renderWatchPage()
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get() {
+        throw new DOMException("Storage disabled", "SecurityError")
+      },
+    })
+    try {
+      act(() => {
+        ;(
+          container.querySelector(
+            '[data-testid="watch-section-renderer"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      await act(async () => {
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      expect(routerPushMock).toHaveBeenCalledWith("/parent.html/child-2.html", {
+        scroll: false,
+      })
+    } finally {
+      if (original) Object.defineProperty(window, "sessionStorage", original)
+    }
+  })
+
   it("waits for the background route warm before pushing", async () => {
     const response = deferred<{ text: () => Promise<string> }>()
     const body = deferred<string>()
