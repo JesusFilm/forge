@@ -530,6 +530,9 @@
     "scrollToVideo": "Skroll pa {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Bai na kontenido prinsipal"
+  },
   "WatchFooter": {
     "home": "Página prome di Jesus Film Project",
     "navigation": "Navigashon di footer",

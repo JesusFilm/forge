@@ -530,6 +530,9 @@
     "scrollToVideo": "Naw ka ci video bi {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tëb ba ci li gën a am solo"
+  },
   "WatchFooter": {
     "home": "Kër Jesus Film Project",
     "navigation": "Navigation bu footer",

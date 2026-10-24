@@ -530,6 +530,9 @@
     "scrollToVideo": "Ehecha hag̃ua video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Eho tetepy tenondeguápe"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project óga",
     "navigation": "Footer jeikeha",

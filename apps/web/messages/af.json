@@ -530,6 +530,9 @@
     "scrollToVideo": "Scroll na die {title}-video",
     "forYou": "Vir jou"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Slaan oor na hoofinhoud"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-tuis",
     "navigation": "Voetsjabloonnavigasie",

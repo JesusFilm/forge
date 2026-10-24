@@ -530,6 +530,9 @@
     "scrollToVideo": "Kɔ video {title} no so",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Kɔ nsɛm titiriw no so"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project fie",
     "navigation": "Ase hɔ akwantu menu",

@@ -530,6 +530,9 @@
     "scrollToVideo": "Rulla til videobrotið {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Far til høvuðsinnihald"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project forsíða",
     "navigation": "Fótmynstrunavigatión",

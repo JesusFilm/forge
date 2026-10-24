@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} авидео ахь аиасра",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Ихадоу аҵанакы ахь ииасра"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ахатә хы",
     "navigation": "Афутер аԥхьарақәа",
