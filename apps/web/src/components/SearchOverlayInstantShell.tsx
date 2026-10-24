@@ -1,7 +1,13 @@
 "use client"
 
-import { useEffect, useRef, type ChangeEvent } from "react"
+import {
+  useEffect,
+  useRef,
+  type ChangeEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react"
 import { useTranslations } from "next-intl"
+import { X } from "lucide-react"
 
 import {
   FloatingSearchFieldInput,
@@ -10,8 +16,6 @@ import {
 import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
-  FLOATING_HEADER_TRAILING_SLOT_CLASS,
-  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
   FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
   FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
   FLOATING_MODAL_HEADER_LAYOUT_CLASS,
@@ -45,6 +49,7 @@ export function SearchOverlayInstantShell({
   headerLanguageControlVisible,
 }: SearchOverlayInstantShellProps) {
   const t = useTranslations("SearchOverlay")
+  const floatingSearchT = useTranslations("FloatingSearch")
   const inputRef = useRef<HTMLInputElement>(null)
 
   useFloatingSearchInputAutofocus(open, inputRef)
@@ -67,13 +72,42 @@ export function SearchOverlayInstantShell({
     inputRef.current?.focus()
   }
 
+  // The header is inert while search is open, so this shell owns its own
+  // close control and keeps Tab within its two controls until the full
+  // overlay replaces it.
+  const handleTab = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab") return
+    const focusable = Array.from(
+      event.currentTarget.querySelectorAll<HTMLElement>("input, button"),
+    ).filter(
+      (element) =>
+        !element.hasAttribute("disabled") &&
+        element.tabIndex >= 0 &&
+        element.getClientRects().length > 0,
+    )
+    if (focusable.length === 0) return
+    const index = focusable.indexOf(document.activeElement as HTMLElement)
+    const next = event.shiftKey
+      ? index <= 0
+        ? focusable.length - 1
+        : index - 1
+      : index === -1 || index === focusable.length - 1
+        ? 0
+        : index + 1
+    event.preventDefault()
+    focusable[next]?.focus()
+  }
+
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={t("dialogLabel")}
       data-testid="search-overlay-instant-shell"
-      onClick={() => setOpen(false)}
+      onKeyDown={handleTab}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) setOpen(false)
+      }}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${
         closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"
       }`}
@@ -95,9 +129,7 @@ export function SearchOverlayInstantShell({
         <div
           data-testid="search-overlay-instant-field-shell"
           onClick={(event) => event.stopPropagation()}
-          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
-            headerLanguageControlVisible ? "" : "col-span-2"
-          }`}
+          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} col-span-2`}
         >
           <FloatingSearchFieldInput
             ref={inputRef}
@@ -114,18 +146,24 @@ export function SearchOverlayInstantShell({
           />
         </div>
         <div
-          aria-hidden="true"
           data-testid="search-overlay-instant-trailing-controls-spacer"
           className={FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS}
         >
           {headerLanguageControlVisible ? (
             <span
-              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS}`}
+              aria-hidden="true"
+              className={`hidden md:block ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS}`}
             />
           ) : null}
-          <span
-            className={`${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS}`}
-          />
+          <button
+            type="button"
+            aria-label={floatingSearchT("closeSearch")}
+            data-testid="search-overlay-instant-close"
+            onClick={() => setOpen(false)}
+            className="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-[52px]"
+          >
+            <X aria-hidden className="h-6 w-6" />
+          </button>
         </div>
       </div>
 

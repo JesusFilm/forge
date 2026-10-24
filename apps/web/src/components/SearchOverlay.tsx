@@ -26,6 +26,7 @@ import {
   ListVideo,
   PlaySquare,
   Search,
+  X,
 } from "lucide-react"
 
 import {
@@ -57,8 +58,6 @@ import {
   FLOATING_HEADER_LOGO_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
-  FLOATING_HEADER_TRAILING_SLOT_CLASS,
-  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
   FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
   FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
   FLOATING_MODAL_HEADER_LAYOUT_CLASS,
@@ -92,6 +91,12 @@ const SEARCH_SUGGESTIONS_VIEWPORT_PADDING = 16
 const SEARCH_SUGGESTION_DESCRIPTION_LENGTH = 96
 const SEARCH_SUGGESTION_DESCRIPTION_CONTEXT_BEFORE = 18
 const MEANINGFUL_SEARCH_CHARACTER = /[\p{L}\p{N}]/u
+// The language row ("Search in [language] for …") keeps one truncated line
+// where it fits. Phones get two lines so the language pill never runs past
+// the row or into the submit glyph; the 36 px line leaves room for the
+// pill's focus ring, and two lines stay above the results (`top-56`).
+const LANGUAGE_CONTEXT_TEXT_CLASS =
+  "truncate max-[479px]:line-clamp-2 max-[479px]:leading-9 max-[479px]:break-words max-[479px]:whitespace-normal"
 
 type SuggestionListPosition = {
   height: number
@@ -301,6 +306,16 @@ export function SearchOverlay() {
     overlayRef.current = node
     setClosePortalContainer(node)
   }, [])
+
+  const handleOverlayKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      invalidateSuggestionRequest()
+      setOpen(false)
+    },
+    [invalidateSuggestionRequest, setOpen],
+  )
 
   useFloatingSearchInputAutofocus(open, inputRef)
 
@@ -573,55 +588,23 @@ export function SearchOverlay() {
     }
   }, [activeSuggestionIndex])
 
-  // Escape closes the modal through the provider-owned reset boundary.
-  useEffect(() => {
-    if (!open) return
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        invalidateSuggestionRequest()
-        setOpen(false)
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown)
-    return () => document.removeEventListener("keydown", handleKeyDown)
-  }, [invalidateSuggestionRequest, open, setOpen])
-
-  // Body scroll lock — prevents the page behind from scrolling while modal open.
-  useEffect(() => {
-    if (!open) return
-    document.body.style.overflow = "hidden"
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [open])
-
-  // Focus trap — keep Tab cycling inside the overlay.
+  // Keep keyboard navigation within the modal dialog.
   useEffect(() => {
     if (!open) return
     function handleTab(e: KeyboardEvent) {
-      if (e.key !== "Tab") return
       const overlay = overlayRef.current
-      if (!overlay) return
+      if (!overlay || e.key !== "Tab") return
       const overlayFocusable = Array.from(
         overlay.querySelectorAll<HTMLElement>(
           'input, button, a[href], [tabindex]:not([tabindex="-1"])',
         ),
+      ).filter(
+        (element) =>
+          !element.hasAttribute("disabled") &&
+          element.tabIndex >= 0 &&
+          element.getClientRects().length > 0,
       )
-      const headerLogo = document.querySelector<HTMLElement>(
-        '[data-testid="floating-header-logo"]',
-      )
-      const headerLanguage = document.querySelector<HTMLElement>(
-        '[data-testid="floating-header-language-button"]',
-      )
-      const headerClose = document.querySelector<HTMLElement>(
-        '[data-testid="floating-header-search-close"]',
-      )
-      const focusable = [
-        headerLogo,
-        ...overlayFocusable,
-        headerLanguage,
-        headerClose,
-      ].filter((element): element is HTMLElement => element != null)
+      const focusable = overlayFocusable
       if (focusable.length === 0) return
       const activeIndex = focusable.indexOf(
         document.activeElement as HTMLElement,
@@ -636,8 +619,9 @@ export function SearchOverlay() {
       e.preventDefault()
       focusable[nextIndex]?.focus()
     }
-    document.addEventListener("keydown", handleTab)
-    return () => document.removeEventListener("keydown", handleTab)
+    const overlay = overlayRef.current
+    overlay?.addEventListener("keydown", handleTab)
+    return () => overlay?.removeEventListener("keydown", handleTab)
   }, [open])
 
   const visibleResultIds = useMemo(
@@ -1018,7 +1002,7 @@ export function SearchOverlay() {
   ) =>
     hasUnsubmittedSearchIntent ? (
       <>
-        <span className="min-w-0 flex-1 truncate">
+        <span className={`min-w-0 flex-1 ${LANGUAGE_CONTEXT_TEXT_CLASS}`}>
           {splitSearchLanguageTemplate(
             t.raw("searchSuggestionWithLanguage") as string,
             ["{language}", "{suggestion}"],
@@ -1049,7 +1033,9 @@ export function SearchOverlay() {
         <CornerDownLeft aria-hidden className="h-4 w-4 shrink-0" />
       </>
     ) : (
-      <span className="min-w-0 flex-1 truncate text-base sm:text-sm">
+      <span
+        className={`min-w-0 flex-1 text-base sm:text-sm ${LANGUAGE_CONTEXT_TEXT_CLASS}`}
+      >
         {splitSearchLanguageTemplate(languageContextMessage, [
           "{language}",
         ]).map((segment, index) =>
@@ -1069,6 +1055,7 @@ export function SearchOverlay() {
   const headerTopClass = headerPinned
     ? FLOATING_HEADER_PINNED_TOP_CLASS
     : FLOATING_HEADER_TOP_CLASS
+  const closeSearchLabel = floatingSearchT("closeSearch")
 
   return (
     <div
@@ -1076,7 +1063,10 @@ export function SearchOverlay() {
       role="dialog"
       aria-modal="true"
       aria-label={t("dialogLabel")}
-      onClick={() => setOpen(false)}
+      onKeyDown={handleOverlayKeyDown}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) setOpen(false)
+      }}
       className={`fixed inset-0 h-dvh min-h-dvh overflow-visible ${closing ? "animate-overlay-fade-out" : "animate-overlay-fade-in"}`}
       style={{
         zIndex: 45,
@@ -1101,9 +1091,10 @@ export function SearchOverlay() {
           ref={fieldShellRef}
           data-testid="search-overlay-field-shell"
           onClick={(e) => e.stopPropagation()}
-          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} ${
-            headerLanguageSwitcherVisible ? "" : "col-span-2"
-          }`}
+          // Spans the phone language column: the header language control is
+          // hidden while search is open, and 320 px phones need that width
+          // for the placeholder and the language row.
+          className={`pointer-events-auto ${FLOATING_HEADER_FIELD_WIDTH_CLASS} ${FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS} col-span-2`}
         >
           <FloatingSearchFieldInput
             ref={inputRef}
@@ -1169,22 +1160,26 @@ export function SearchOverlay() {
           )}
         </div>
         <div
-          aria-hidden="true"
           data-testid="search-overlay-trailing-controls-spacer"
           className={FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS}
         >
-          {headerLanguageSwitcherVisible ? (
-            <div
-              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
-                headerLanguageCode
-                  ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
-                  : ""
-              }`}
-            />
-          ) : null}
           <div
-            className={`${FLOATING_HEADER_TRAILING_SLOT_CLASS} ${FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS}`}
+            className={`hidden md:block ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
+              headerLanguageSwitcherVisible && headerLanguageCode
+                ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
+                : ""
+            }`}
+            aria-hidden="true"
           />
+          <button
+            type="button"
+            aria-label={closeSearchLabel}
+            data-testid="floating-header-search-close"
+            onClick={() => setOpen(false)}
+            className="pointer-events-auto inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none md:h-[52px] md:w-[52px]"
+          >
+            <X aria-hidden className="h-6 w-6" />
+          </button>
         </div>
       </div>
 
@@ -1195,6 +1190,7 @@ export function SearchOverlay() {
         !languagePickerOwnedByContextRow &&
         createPortal(
           <div
+            onKeyDown={handleOverlayKeyDown}
             ref={suggestionPanelRef}
             data-testid="search-suggestions-panel"
             onClick={(event) => event.stopPropagation()}
@@ -1429,7 +1425,7 @@ export function SearchOverlay() {
             >
               <span className="flex min-w-0 items-center gap-2.5">
                 <ListVideo aria-hidden className="size-5 shrink-0" />
-                <span className="truncate text-base font-semibold">
+                <span className="line-clamp-2 text-base font-semibold break-words">
                   {t("allVideosOnSinglePage")}
                 </span>
               </span>
