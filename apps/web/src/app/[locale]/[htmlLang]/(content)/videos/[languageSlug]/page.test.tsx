@@ -27,7 +27,7 @@ vi.mock("next/navigation", () => ({
 
 import LanguageVideosPage, {
   generateMetadata,
-} from "@/app/[locale]/[htmlLang]/videos/[languageSlug]/page"
+} from "@/app/[locale]/[htmlLang]/(content)/videos/[languageSlug]/page"
 import { resolveWatchLanguageInventory } from "@/lib/watch-language-inventory"
 import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 

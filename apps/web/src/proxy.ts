@@ -72,6 +72,7 @@ const DEMO_PREFIXES = new Set([
 ])
 const EXPERIENCE_PREVIEW_PREFIX = "/preview/experience/"
 const WATCH_UNAVAILABLE_SENTINEL_PATH = "/unavailable/404"
+const WATCH_UNAVAILABLE_RECOVERY_PATH = "/unavailable/recover"
 /**
  * The error sentinels render copy from the `locale` message catalog, so their
  * document language must be the CHROME language — not the requested content
@@ -88,9 +89,12 @@ function chromeDocumentLang(locale: string, htmlLang: string): string {
 // does not match what buildNotFound emits would make every ordinary 404 fail
 // the admitted-internal-rewrite check.
 const WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS = new Set(
-  [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((languageSlug) => {
+  [DEFAULT_LOCALE, ...PUBLIC_WATCH_LANGUAGE_SLUGS].flatMap((languageSlug) => {
     const { locale, htmlLang } = resolveWatchLocaleIdentity(languageSlug)
-    return `/${locale}/${chromeDocumentLang(locale, htmlLang)}/404`
+    return ["404", "recover"].map(
+      (sentinel) =>
+        `/${locale}/${chromeDocumentLang(locale, htmlLang)}/${sentinel}`,
+    )
   }),
 )
 
@@ -600,16 +604,10 @@ function logImplicitEnglishEpisodeRejected(
 }
 
 /**
- * `status: 404` is set on the rewrite itself because the sentinel page cannot
- * set it: the `[htmlLang]` `loading.tsx` streams a Suspense shell, which
- * flushes HTTP 200 before the sentinel's `notFound()` runs (feat-757).
- *
- * Pass `verified: false` when the miss was decided without a complete, fresh
- * route manifest (see `canWatchRouteManifestProveMiss`). Admin may simply have been
- * unreachable, or an older manifest may lack the index that would admit the
- * URL, so the URL can still be valid; that
- * response stays the old non-cached, noindex 200 instead of telling crawlers
- * the page is gone.
+ * Hard sentinels must render outside the content loading boundary: Next does
+ * not carry a rewrite status into the App Router, and a streamed shell commits
+ * 200 before notFound(). Inconclusive misses render the same recovery UI through
+ * a fixed soft sentinel that does not throw.
  */
 function buildNotFound(
   request: ProxyRequest,
@@ -631,7 +629,7 @@ function buildNotFound(
         // would declare English recovery copy as Aari — the FGE-170
         // mis-declaration pointed the other way.
         htmlLang: chromeDocumentLang(locale, identity?.htmlLang ?? locale),
-        pathname: "/404",
+        pathname: verified ? "/404" : "/recover",
       },
       null,
       verified ? 404 : undefined,
@@ -650,6 +648,7 @@ function buildUnavailableLanguageNotFound(
   decision: Extract<RewriteDecision, { kind: "rewrite" }>,
   manifest: WatchRouteManifest | null,
 ): NextResponse {
+  const verified = canWatchRouteManifestProveMiss(manifest)
   return applyNotFoundRecoveryHeaders(
     rewriteToInternal(
       request,
@@ -658,11 +657,13 @@ function buildUnavailableLanguageNotFound(
         // Same reason as buildNotFound: the unavailable-language sentinel renders
         // chrome-language copy, so it must not declare the content language.
         htmlLang: chromeDocumentLang(decision.locale, decision.htmlLang),
-        internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+        internalPathname: verified
+          ? WATCH_UNAVAILABLE_SENTINEL_PATH
+          : WATCH_UNAVAILABLE_RECOVERY_PATH,
       },
       null,
       // A stale or incomplete snapshot cannot prove a current language gap.
-      canWatchRouteManifestProveMiss(manifest) ? 404 : undefined,
+      verified ? 404 : undefined,
     ),
   )
 }
@@ -823,8 +824,14 @@ async function isAdmittedInternalRewrite(
   pathname: string,
   claimedPublicPathname: string,
 ): Promise<boolean> {
-  if (claimedPublicPathname === "/404") {
-    return WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS.has(pathname)
+  if (
+    claimedPublicPathname === "/404" ||
+    claimedPublicPathname === "/recover"
+  ) {
+    return (
+      WATCH_ORDINARY_NOT_FOUND_INTERNAL_PATHS.has(pathname) &&
+      pathname.endsWith(claimedPublicPathname)
+    )
   }
   if (
     !claimedPublicPathname.startsWith("/") ||
@@ -849,7 +856,9 @@ async function isAdmittedInternalRewrite(
     }
     const unavailableRewrite = {
       ...rewrite,
-      internalPathname: WATCH_UNAVAILABLE_SENTINEL_PATH,
+      internalPathname: canWatchRouteManifestProveMiss(manifest)
+        ? WATCH_UNAVAILABLE_SENTINEL_PATH
+        : WATCH_UNAVAILABLE_RECOVERY_PATH,
     }
     if (
       subtitleIntentForRewrite(request, unavailableRewrite, manifest) != null

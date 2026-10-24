@@ -64,3 +64,29 @@ both miss branches at B ages 59,999 / 60,000 / 60,001 ms, successful current 304
 delayed errors and 200 bodies, publication recovery, and pending replacement
 single-flight state. Preserve round-1 evidence and obtain a new independent
 review of the final candidate. feat-790 stays in progress pending acceptance.
+
+## Round 3: actual Next document status
+
+The unchanged published candidate reproduces HTTP 200 for both fresh-negative
+documents through Next 16.3.8 production rendering. The router does not carry
+a rewrite's status into App Router rendering; the shared loading boundary
+flushes before sentinel `notFound()`. Proxy-only adapters cannot verify this.
+
+Keep the shared root layout and all ordinary route loading boundaries. Move
+ordinary routes plus their existing loading boundary into a URL-transparent
+`(content)` group. Hard sentinels stay outside that group and throw before any
+loading shell; two fixed soft-recovery pages render the same UI without throwing.
+The proxy selects hard versus soft with the existing proof predicate. Preserve
+namespace/admission and cache ownership logic; no new dependency or policy.
+
+Verify discriminating before/after actual production documents, real browser
+RSC/DOM commits, real-TTL outage/publication recovery, and matched local document
+loading measurements. Add a supported Playwright HTTP regression plus retain
+fixture/config commands outside source. Parent assigns independent review; keep
+feat-790 in progress and leave the correction committed locally only.
+
+Soft recovery pages live in the URL-transparent `(recovery)` group with their
+own loading boundary, preserving a streamed shell while optional recovery
+metadata resolves. Hard sentinels remain outside both loading groups. The
+production regression delays recovery GraphQL by 1500ms and checks that headers
+arrive before its body completes.

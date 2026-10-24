@@ -21,7 +21,7 @@ export {
  * It is not a cookie-routing bypass; Watch routing is URL-only. Used as the
  * contract between three sites:
  *
- *   1. `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` — sets it
+ *   1. `apps/web/src/app/[locale]/[htmlLang]/(content)/[...rest]/page.tsx` — sets it
  *      on the server redirect when the requested audio slug has no matching
  *      dub and the resolver falls back to a different variant.
  *   2. `apps/web/src/proxy.ts` — preserves it while canonicalizing and

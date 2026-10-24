@@ -11,7 +11,10 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: "WatchNotFound" })
-  return { title: t("metadataTitle") }
+  return {
+    title: t("metadataTitle"),
+    robots: { index: false, follow: false },
+  }
 }
 
 export default function WatchNotFoundSentinel() {

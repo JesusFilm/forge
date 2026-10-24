@@ -51,3 +51,8 @@ live-manifest qualification remain separate gates.
   new routes/languages, seven-day outage, TTL edges, 304, and recovery.
 - Focused routing/admission tests, Web typecheck, lint, format, commitlint.
 - Matched original/candidate HTTP response and request-cost evidence.
+- Actual production Next document 404 for fresh ordinary/language-gap misses;
+  real-TTL soft recovery, retained positives and publication recovery through
+  `apps/web/e2e/watch-manifest-document-status.spec.ts`.
+- Shared-root browser RSC-to-DOM continuity and matched local document loading
+  observations; preserve normal streaming in the `(content)` route group.

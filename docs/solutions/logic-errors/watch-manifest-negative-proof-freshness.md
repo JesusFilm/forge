@@ -77,3 +77,31 @@ object, so old responses cannot mutate a replacement even with the same ETag.
 Colocated proxy tests retain this interleaving and the exclusive TTL boundary,
 with delayed 200/error and successful current-304 controls. Round-2 source
 acceptance remains pending a fresh independent review.
+
+## Actual document status is a renderer contract
+
+A subsequent production `next build` / `next start` reproduction found that both
+fresh-negative branches still returned HTTP 200. The proxy-only adapters had
+supplied synthetic bodies and observed the rewrite status without executing
+Next's renderer. Next 16.3.8's `router-server.js` uses middleware status for
+response bodies and redirects, but does not assign it before dispatching a
+rewritten App Router page. A loading boundary then streams 200 before the
+sentinel's `notFound()` can establish 404.
+
+Keep ordinary pages and their existing loading boundaries in a URL-transparent
+route group, outside the fixed hard sentinels. Verified misses call `notFound()`
+before streaming. Explicit fixed soft sentinels render the same recovery UI
+without throwing for stale/incomplete/unavailable proof. Keep their shared root
+layout so client transitions continue through RSC rather than a root-layout
+reload. No request-time header read belongs in the static positive layout.
+
+`apps/web/e2e/watch-manifest-document-status.spec.ts` checks actual production
+HTTP documents using the synthetic fixture and real TTL expiry. See the runbook
+for fixture/config commands. Unit proxy status assertions remain useful for
+admission and cache races, but cannot certify final document status.
+
+Soft recovery pages live in the URL-transparent `(recovery)` group with their
+own loading boundary, preserving a streamed shell while optional recovery
+metadata resolves. Hard sentinels remain outside both loading groups. The
+production regression delays recovery GraphQL by 1500ms and checks that headers
+arrive before its body completes.

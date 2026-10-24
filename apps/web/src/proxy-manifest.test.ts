@@ -88,9 +88,11 @@ function expectRecovery(response: Response, status: 200 | 404) {
   expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   expect(response.headers.get("location")).toBeNull()
   const rewrite = new URL(response.headers.get("x-middleware-rewrite")!)
-  expect(["/en/en/404", "/es/es-419/unavailable/404"]).toContain(
-    rewrite.pathname,
-  )
+  const sentinel = status === 404 ? "404" : "recover"
+  expect([
+    `/en/en/${sentinel}`,
+    `/es/es-419/unavailable/${sentinel}`,
+  ]).toContain(rewrite.pathname)
   expect(rewrite.origin).toBe("https://viewer.fixture.test")
   expect(JSON.stringify([...response.headers])).not.toContain(
     "synthetic-fixture-bearer",

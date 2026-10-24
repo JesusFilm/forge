@@ -52,3 +52,65 @@ and client RSC navigation must preserve the intended status/body/cache behavior.
 Do not generate snapshots, trigger a refresh, alter flags, deploy, or disclose
 bearers merely to obtain that evidence. Independent review and exact-head CI
 remain gates; this runbook grants no release approval.
+
+## Production document regression
+
+Proxy response assertions cannot establish the final document status. Next 16's
+router ignores a rewrite status for renderer dispatch, and `notFound()` below
+a loading boundary can only produce a streamed 200. Normal routes therefore
+live with their loading shells in `[locale]/[htmlLang]/(content)`. Hard recovery
+sentinels live outside that group. The fixed `recover` and
+`unavailable/recover` pages render recovery without throwing when proof is
+inconclusive. All retain the shared locale root layout for client navigation.
+
+The opt-in Playwright regression uses HTTP documents from a real production
+server, not replacement HTML or RSC-looking headers. With pinned dependencies,
+start the synthetic fixture from the repository root in one terminal:
+
+```bash
+node apps/web/e2e/fixtures/watch-manifest-runtime.mjs
+```
+
+In `apps/web`, build and start using the same synthetic configuration (never
+point this regression at a live Admin). Supply these environment variables for
+both `next build` and `next start --hostname 127.0.0.1 --port 32848`:
+
+```bash
+export NODE_ENV=production
+export NEXT_TELEMETRY_DISABLED=1
+export ADMIN_GRAPHQL_URL=http://127.0.0.1:32849/api/graphql
+export WEB_ADMIN_API_KEYS=synthetic-local-fixture-key
+export REVALIDATION_SECRET=synthetic-local-revalidation-key
+export NEXT_PUBLIC_CANONICAL_ORIGIN=http://127.0.0.1:32848
+export NEXT_PUBLIC_ADMIN_GRAPHQL_URL=http://127.0.0.1:32849/api/graphql
+export WEB_BASE_URL=http://127.0.0.1:32848
+export WATCH_FOR_YOU_ENABLED=false
+```
+
+Use a fresh fixture and Next process; do not warm the manifest before the test.
+Then, from `apps/web`:
+
+```bash
+WATCH_MANIFEST_DOCUMENT_ORIGIN=http://127.0.0.1:32848 \
+WATCH_MANIFEST_FIXTURE_ORIGIN=http://127.0.0.1:32849 \
+pnpm exec playwright test --config playwright.manifest.config.ts
+```
+
+The test requires two real 60-second TTL intervals. It verifies fresh ordinary
+and language-gap 404 documents, private/no-store/noindex soft recovery after
+503 and expiry, retained last-good positives, publication recovery after the
+normal retry interval, and fresh 404s after replacement retrieval. It attaches
+status/header/byte evidence. The default dev-server suite skips this opt-in
+test. Stop the owned fixture and Next processes afterward. Apply the environment's
+foreground I/O guard separately to build and test commands when required.
+
+This synthetic curated-Experience fixture does not qualify video playback,
+authenticated live manifest, current-main integration, or production loading
+performance. Browser client RSC-to-DOM continuity and matched baseline/candidate
+loading measurements are separate acceptance evidence.
+
+Soft recovery pages live in the URL-transparent `(recovery)` group with their
+own loading boundary, preserving a streamed shell while optional recovery
+metadata resolves. Hard sentinels remain outside both loading groups. The
+production regression delays recovery GraphQL by 1500ms and checks that headers
+arrive before its body completes.

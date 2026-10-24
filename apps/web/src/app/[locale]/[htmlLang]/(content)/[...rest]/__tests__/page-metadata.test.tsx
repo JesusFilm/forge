@@ -77,7 +77,7 @@ vi.mock("@/lib/feature-flags", () => ({
   isWatchQuestionPanelEnabled: vi.fn(),
 }))
 
-import { generateMetadata } from "@/app/[locale]/[htmlLang]/[...rest]/page"
+import { generateMetadata } from "@/app/[locale]/[htmlLang]/(content)/[...rest]/page"
 
 const approvedTitle =
   "Watch JESUS — Full Movie Free Online | Jesus Film Project"

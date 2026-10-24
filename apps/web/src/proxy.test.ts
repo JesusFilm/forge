@@ -118,7 +118,11 @@ function expectNotFoundRewrite(
   expectedStatus: 200 | 404 = 404,
 ): void {
   expect(response.status).toBe(expectedStatus)
-  expect(rewritePath(response)).toBe(expectedInternalPathname)
+  expect(rewritePath(response)).toBe(
+    expectedStatus === 404
+      ? expectedInternalPathname
+      : expectedInternalPathname.replace(/\/404$/, "/recover"),
+  )
   // CSP is deliberately NOT set here — next.config.mjs `headers()` owns it for
   // every route. Middleware headers overwrite config ones, so a static value
   // written here would clobber the promoted policy after WATCH_CSP_ENFORCE.
@@ -126,7 +130,7 @@ function expectNotFoundRewrite(
   expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
-  ).toBe("/404")
+  ).toBe(expectedStatus === 404 ? "/404" : "/recover")
 }
 
 function expectUnavailableLanguageRewrite(
@@ -1498,6 +1502,37 @@ describe("proxy — visible internal-prefix policy", () => {
     )
     expectNotFoundRewrite(nonCanonicalPath)
   })
+
+  it.each([
+    ["/unknown-video.html/english.html", "/en/en/recover"],
+    [
+      "/good-friday-live.html/chinese-simplified.html",
+      "/zh-Hans/zh-Hans/unavailable/recover",
+    ],
+  ])(
+    "keeps inconclusive recovery bounded for %s",
+    async (publicPath, target) => {
+      resetManifestSource?.()
+      resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+        ...TEST_MANIFEST,
+        nestedContainerAudioLanguageIndexesByParent: undefined,
+      }))
+      const first = await proxy(makeRequest(publicPath))
+      expect(first.status).toBe(200)
+      expect(rewritePath(first)).toBe(target)
+      const admitted = await proxy(
+        makeRequest(target, { headers: rewrittenRequestHeaders(first) }),
+      )
+      expect(rewritePath(admitted)).toBeNull()
+      // A claim for the soft sentinel cannot admit the hard sentinel.
+      const forged = await proxy(
+        makeRequest(target.replace(/\/recover$/, "/404"), {
+          headers: rewrittenRequestHeaders(first),
+        }),
+      )
+      expectNotFoundRewrite(forged)
+    },
+  )
 
   it("allows only a re-proven unavailable sentinel rewrite to re-enter", async () => {
     const publicPath = "/good-friday-live.html/chinese-simplified.html"

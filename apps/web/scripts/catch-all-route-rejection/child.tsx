@@ -9,7 +9,10 @@ import { scenarios, state, type Scenario } from "./control.ts"
 const name = process.argv[2] as keyof typeof scenarios
 const routeModule =
   process.argv[3] ??
-  join(__dirname, "../../src/app/[locale]/[htmlLang]/[...rest]/page.tsx")
+  join(
+    __dirname,
+    "../../src/app/[locale]/[htmlLang]/(content)/[...rest]/page.tsx",
+  )
 
 async function main() {
   const route = await import(routeModule)
