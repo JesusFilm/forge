@@ -2,10 +2,14 @@
  * @vitest-environment jsdom
  */
 
+import { act, createElement } from "react"
+import { createRoot } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   readWatchAccountSession,
+  SESSION_READ_TIMEOUT_MS,
+  useWatchAccountSession,
   watchAccountAuthUrl,
   watchAccountReturnTo,
 } from "./use-watch-account-session"
@@ -138,6 +142,97 @@ describe("readWatchAccountSession", () => {
   })
 })
 
+describe("session read timeout", () => {
+  function hangingFetch() {
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () =>
+            reject(new DOMException("aborted", "AbortError")),
+          )
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    return fetchMock
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("gives up on a hung read and locks, instead of waiting forever", async () => {
+    vi.useFakeTimers()
+    const fetchMock = hangingFetch()
+    let answer: unknown = "pending"
+    void readWatchAccountSession().then((value) => {
+      answer = value
+    })
+    await vi.advanceTimersByTimeAsync(SESSION_READ_TIMEOUT_MS - 1)
+    expect(answer).toBe("pending")
+    await vi.advanceTimersByTimeAsync(1)
+    expect(answer).toEqual({ status: "unavailable" })
+    const init = fetchMock.mock.calls[0]![1]
+    expect(init.signal!.aborted).toBe(true)
+  })
+
+  it("still honors the caller's abort", async () => {
+    hangingFetch()
+    const controller = new AbortController()
+    const read = readWatchAccountSession(controller.signal)
+    controller.abort()
+    await expect(read).resolves.toEqual({ status: "unavailable" })
+  })
+
+  it("ends a hung focus re-read so held writes are released, and Try again reads again", async () => {
+    vi.useFakeTimers()
+    ;(
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true
+    const signedIn = {
+      accountGateEnabled: true,
+      authenticated: true,
+      user: { id: "user-a" },
+    }
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json(signedIn)),
+    )
+    const seen: Array<ReturnType<typeof useWatchAccountSession>> = []
+    function Probe() {
+      seen.push(useWatchAccountSession())
+      return null
+    }
+    const root = createRoot(document.createElement("div"))
+    await act(async () => root.render(createElement(Probe)))
+    try {
+      expect(seen.at(-1)).toMatchObject({ session: { status: "signed-in" } })
+
+      hangingFetch()
+      act(() => window.dispatchEvent(new Event("focus")))
+      expect(seen.at(-1)!.revalidating).toBe(true)
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(SESSION_READ_TIMEOUT_MS)
+      })
+      expect(seen.at(-1)).toMatchObject({
+        session: { status: "unavailable" },
+        revalidating: false,
+      })
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json(signedIn)),
+      )
+      await act(async () => seen.at(-1)!.retry())
+      expect(seen.at(-1)).toMatchObject({
+        session: { status: "signed-in", user: { id: "user-a" } },
+        revalidating: false,
+      })
+    } finally {
+      act(() => root.unmount())
+    }
+  })
+})
+
 describe("watchAccountReturnTo", () => {
   it("returns the current page, query and hash", () => {
     expect(watchAccountReturnTo()).toBe("/watch/jesus.html?as=partner#top")
@@ -178,5 +273,55 @@ describe("watchAccountAuthUrl", () => {
     expect(url.searchParams.get("returnTo")).toBe(
       "/watch/jesus.html?as=partner#top",
     )
+  })
+})
+
+describe("useWatchAccountSession", () => {
+  it("reports a focus re-read as revalidating until its answer lands", async () => {
+    ;(
+      globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true
+    const answers: Array<(body: unknown) => void> = []
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            answers.push((body) => resolve(Response.json(body)))
+          }),
+      ),
+    )
+    const seen: Array<ReturnType<typeof useWatchAccountSession>> = []
+    function Probe() {
+      seen.push(useWatchAccountSession())
+      return null
+    }
+    const container = document.createElement("div")
+    const root = createRoot(container)
+    act(() => root.render(createElement(Probe)))
+    const signedIn = (id: string) => ({
+      accountGateEnabled: true,
+      authenticated: true,
+      user: { id },
+    })
+    await act(async () => answers[0]!(signedIn("user-a")))
+    expect(seen.at(-1)).toMatchObject({
+      session: { status: "signed-in", user: { id: "user-a" } },
+      revalidating: false,
+    })
+
+    // Back to the tab after another tab switched accounts; the read is slow.
+    act(() => window.dispatchEvent(new Event("focus")))
+    expect(answers).toHaveLength(2)
+    expect(seen.at(-1)).toMatchObject({
+      session: { status: "signed-in", user: { id: "user-a" } },
+      revalidating: true,
+    })
+    await act(async () => answers[1]!(signedIn("user-b")))
+    expect(seen.at(-1)).toMatchObject({
+      session: { status: "signed-in", user: { id: "user-b" } },
+      revalidating: false,
+    })
+    act(() => root.unmount())
   })
 })

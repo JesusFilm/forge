@@ -2090,6 +2090,7 @@ type Mutation {
   reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
   requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
   requestShortsExperiment(input: JSON!): JSON
+  resetMyWatchLearningProgress(contentVersion: String!, courseId: String!, expectedRevision: Int!, lessonId: String!): WatchLearningSaveResult!
   """
   Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
@@ -2099,6 +2100,7 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  saveMyWatchLearningProgress(input: WatchLearningProgressSaveInput!): WatchLearningSaveResult!
   selectSemanticRecommendation(browserDigest: String, capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
@@ -2387,6 +2389,7 @@ type Query {
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
+  myWatchLearningProgress(contentVersion: String!, courseId: String!): [WatchLearningLessonProgress!]!
   myWatchProgress: [WatchProgressEntry!]
   precomputedWatchPreviewDelivery(audioLanguageSlug: String!, locale: String!, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
   precomputedWatchPublicVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, humanVerificationReceipt: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrecomputedWatchPublicVisitDelivery!
@@ -3753,6 +3756,40 @@ type WatchLanguageInventoryLanguage {
   bcp47: String
   name: JSON
   slug: String!
+}
+
+type WatchLearningLessonProgress {
+  completed: Boolean!
+  completedAt: String
+  completedMovementIds: [String!]!
+  completedStepIds: [String!]!
+  contentVersion: String!
+  courseId: String!
+  lessonId: String!
+  resumeCardId: String
+  revision: Int!
+  updatedAt: String
+}
+
+input WatchLearningProgressSaveInput {
+  completed: Boolean!
+  completedMovementIds: [String!]!
+  completedStepIds: [String!]!
+  contentVersion: String!
+  courseId: String!
+  expectedRevision: Int!
+  lessonId: String!
+  resumeCardId: String
+}
+
+type WatchLearningSaveResult {
+  progress: WatchLearningLessonProgress!
+  status: WatchLearningSaveStatus!
+}
+
+enum WatchLearningSaveStatus {
+  CONFLICT
+  SAVED
 }
 
 type WatchPlaybackContextReceipt {

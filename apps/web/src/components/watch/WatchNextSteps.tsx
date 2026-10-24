@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import { useState } from "react"
 import Link from "next/link"
 import type { WatchShareFilm } from "@/lib/watch-share-kit"
+import { hasWatchGrowReturnIntent } from "@/lib/watch-grow-return-intent"
 
 import {
   languageVideosIndexPath,
@@ -38,6 +39,10 @@ const WatchPartnerPanel = dynamic(() =>
   import("./WatchPartnerPanel").then((module) => module.WatchPartnerPanel),
 )
 
+const WatchGrow = dynamic(() =>
+  import("./WatchGrow").then((module) => module.WatchGrow),
+)
+
 export type WatchNextStepsProps = {
   shareFilm?: WatchShareFilm | null
   onRequestShareLanguages?: () => void
@@ -59,6 +64,7 @@ export function WatchNextSteps({
   currentVideoActions = {},
 }: WatchNextStepsProps) {
   const { role } = useWatchRole()
+  const [growReturn] = useState(() => hasWatchGrowReturnIntent())
   const [partnerReturn] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -152,6 +158,8 @@ export function WatchNextSteps({
                       ) : null
                     }
                   />
+                ) : role === "grow" && !growReturn ? (
+                  <WatchGrow />
                 ) : role === "partner" &&
                   !partnerReturn &&
                   language &&
@@ -164,6 +172,7 @@ export function WatchNextSteps({
           {role === "partner" && partnerReturn && language && locale ? (
             <WatchPartnerPanel languageSlug={language} locale={locale} />
           ) : null}
+          {role === "grow" && growReturn ? <WatchGrow /> : null}
         </WatchRoleTabs>
       </div>
     </section>
