@@ -28,6 +28,9 @@ export const WatchRouteManifestSchema = z.object({
   generatedAt: z.string().datetime(),
   contentSlugs: z.array(z.string().min(1)),
   oneSegmentSlugs: z.array(z.string().min(1)),
+  // Optional for backward-compatible reads of snapshots written before the
+  // localized-home admission corpus was added. New snapshots always emit it.
+  homepageLocales: z.array(z.string().min(1)).optional(),
   episodePairsByParent: z.record(z.string().min(1), z.array(z.string().min(1))),
   audioLanguageSlugs: z.array(z.string().min(1)),
   audioLanguageIndexesByContent: AudioLanguageIndexesByContentSchema.default(
@@ -36,6 +39,10 @@ export const WatchRouteManifestSchema = z.object({
   audioLanguageIndexesByEpisode: AudioLanguageIndexesByEpisodeSchema.default(
     {},
   ),
+  nestedContainerAudioLanguageIndexesByParent:
+    // Omitted only by legacy snapshots. New snapshots always emit this field,
+    // so web can distinguish a known-empty relation from a pre-feature one.
+    AudioLanguageIndexesByEpisodeSchema.optional(),
 })
 
 export type WatchRouteManifest = z.infer<typeof WatchRouteManifestSchema>
@@ -43,11 +50,13 @@ export type WatchRouteManifest = z.infer<typeof WatchRouteManifestSchema>
 export type WatchRouteManifestCounts = {
   contentSlugs: number
   oneSegmentSlugs: number
+  homepageLocales: number
   parentSlugs: number
   parentChildPairs: number
   audioLanguageSlugs: number
   contentAudioLanguagePairs: number
   episodeAudioLanguagePairs: number
+  nestedContainerAudioLanguagePairs: number
 }
 
 type QueryablePrisma = Pick<PrismaClient, "$queryRaw">
@@ -63,17 +72,21 @@ export class WatchRouteManifestService {
     const [
       contentSlugs,
       oneSegmentSlugs,
+      homepageLocales,
       episodePairs,
       audioLanguageSlugs,
       audioLanguageSlugsByContent,
       audioLanguageSlugsByEpisode,
+      nestedContainerPairsByParent,
     ] = await Promise.all([
       this.loadContentSlugs(),
       this.loadOneSegmentSlugs(),
+      this.loadHomepageLocales(),
       this.loadEpisodePairsByParent(),
       this.loadAudioLanguageSlugs(),
       this.loadAudioLanguageSlugsByContent(),
       this.loadAudioLanguageSlugsByEpisode(),
+      this.loadNestedContainerPairsByParent(),
     ])
     const audioLanguageIndexesByContent = toAudioLanguageIndexMap(
       audioLanguageSlugsByContent,
@@ -83,14 +96,22 @@ export class WatchRouteManifestService {
       audioLanguageSlugsByEpisode,
       audioLanguageSlugs,
     )
+    const nestedContainerAudioLanguageIndexesByParent =
+      toNestedContainerAudioLanguageIndexMap(
+        nestedContainerPairsByParent,
+        audioLanguageSlugsByContent,
+        audioLanguageSlugs,
+      )
 
     const generatedAt = (this.options.now?.() ?? new Date()).toISOString()
     const contentForVersion = {
       audioLanguageSlugs,
       audioLanguageIndexesByContent,
       audioLanguageIndexesByEpisode,
+      nestedContainerAudioLanguageIndexesByParent,
       contentSlugs,
       episodePairsByParent: episodePairs,
+      homepageLocales,
       oneSegmentSlugs,
     }
     const version = createHash("sha256")
@@ -102,10 +123,12 @@ export class WatchRouteManifestService {
       generatedAt,
       contentSlugs,
       oneSegmentSlugs,
+      homepageLocales,
       episodePairsByParent: episodePairs,
       audioLanguageSlugs,
       audioLanguageIndexesByContent,
       audioLanguageIndexesByEpisode,
+      nestedContainerAudioLanguageIndexesByParent,
     })
 
     const counts = summarizeWatchRouteManifest(manifest)
@@ -128,6 +151,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" vl
           ON vl."video_id" = v.id
           AND vl.status = 'published'::"LocaleStatus"
+          AND vl."deleted_at" IS NULL
         JOIN "video_dub" dub
           ON dub."video_id" = v.id
           AND dub."deleted_at" IS NULL
@@ -148,6 +172,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
           AND parent_locale.status = 'published'::"LocaleStatus"
+          AND parent_locale."deleted_at" IS NULL
         JOIN "video_relation" relation
           ON relation."parent_id" = parent.id
         JOIN "video" child
@@ -157,6 +182,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" child_locale
           ON child_locale."video_id" = child.id
           AND child_locale.status = 'published'::"LocaleStatus"
+          AND child_locale."deleted_at" IS NULL
         JOIN "video_dub" child_dub
           ON child_dub."video_id" = child.id
           AND child_dub."deleted_at" IS NULL
@@ -177,6 +203,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
           AND parent_locale.status = 'published'::"LocaleStatus"
+          AND parent_locale."deleted_at" IS NULL
         JOIN "video_relation" relation
           ON relation."parent_id" = parent.id
         WHERE parent."deleted_at" IS NULL
@@ -227,6 +254,24 @@ export class WatchRouteManifestService {
       .map((row) => row.slug)
   }
 
+  private async loadHomepageLocales(): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<unknown[]>`
+      SELECT DISTINCT locale.locale AS slug
+      FROM "experience_locale" locale
+      JOIN "experience" experience
+        ON experience.id = locale."experience_id"
+      WHERE experience."archived_at" IS NULL
+        AND experience."is_template" = FALSE
+        AND locale.status = 'published'::"LocaleStatus"
+        AND locale."is_homepage" = TRUE
+        AND locale.locale <> ''
+      ORDER BY locale.locale ASC
+    `
+    return SlugRowSchema.array()
+      .parse(rows)
+      .map((row) => row.slug)
+  }
+
   private async loadEpisodePairsByParent(): Promise<Record<string, string[]>> {
     const rows = await this.prisma.$queryRaw<unknown[]>`
       SELECT DISTINCT
@@ -240,6 +285,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" parent_locale
         ON parent_locale."video_id" = parent.id
         AND parent_locale.status = 'published'::"LocaleStatus"
+        AND parent_locale."deleted_at" IS NULL
       JOIN "video" child
         ON child.id = relation."child_id"
         AND child."deleted_at" IS NULL
@@ -247,6 +293,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" child_locale
         ON child_locale."video_id" = child.id
         AND child_locale.status = 'published'::"LocaleStatus"
+        AND child_locale."deleted_at" IS NULL
       JOIN "video_dub" child_dub
         ON child_dub."video_id" = child.id
         AND child_dub."deleted_at" IS NULL
@@ -261,20 +308,7 @@ export class WatchRouteManifestService {
       ORDER BY parent.slug ASC, child.slug ASC
     `
 
-    const pairs = EpisodePairRowSchema.array().parse(rows)
-    const byParent = new Map<string, Set<string>>()
-    for (const pair of pairs) {
-      const children = byParent.get(pair.parentSlug) ?? new Set<string>()
-      children.add(pair.childSlug)
-      byParent.set(pair.parentSlug, children)
-    }
-
-    return Object.fromEntries(
-      [...byParent.entries()].map(([parentSlug, childSlugs]) => [
-        parentSlug,
-        [...childSlugs].sort(),
-      ]),
-    )
+    return groupEpisodePairs(EpisodePairRowSchema.array().parse(rows))
   }
 
   private async loadAudioLanguageSlugs(): Promise<string[]> {
@@ -312,6 +346,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" vl
           ON vl."video_id" = v.id
           AND vl.status = 'published'::"LocaleStatus"
+          AND vl."deleted_at" IS NULL
         JOIN "video_dub" dub
           ON dub."video_id" = v.id
           AND dub."deleted_at" IS NULL
@@ -334,6 +369,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
           AND parent_locale.status = 'published'::"LocaleStatus"
+          AND parent_locale."deleted_at" IS NULL
         JOIN "video_relation" relation
           ON relation."parent_id" = parent.id
         JOIN "video" child
@@ -343,6 +379,7 @@ export class WatchRouteManifestService {
         JOIN "video_locale" child_locale
           ON child_locale."video_id" = child.id
           AND child_locale.status = 'published'::"LocaleStatus"
+          AND child_locale."deleted_at" IS NULL
         JOIN "video_dub" child_dub
           ON child_dub."video_id" = child.id
           AND child_dub."deleted_at" IS NULL
@@ -384,6 +421,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" parent_locale
         ON parent_locale."video_id" = parent.id
         AND parent_locale.status = 'published'::"LocaleStatus"
+        AND parent_locale."deleted_at" IS NULL
       JOIN "video" child
         ON child.id = relation."child_id"
         AND child."deleted_at" IS NULL
@@ -391,6 +429,7 @@ export class WatchRouteManifestService {
       JOIN "video_locale" child_locale
         ON child_locale."video_id" = child.id
         AND child_locale.status = 'published'::"LocaleStatus"
+        AND child_locale."deleted_at" IS NULL
       JOIN "video_dub" child_dub
         ON child_dub."video_id" = child.id
         AND child_dub."deleted_at" IS NULL
@@ -405,26 +444,40 @@ export class WatchRouteManifestService {
       ORDER BY parent.slug ASC, child.slug ASC, child_lang.slug ASC
     `
 
-    const byParent = new Map<string, Map<string, Set<string>>>()
-    for (const row of EpisodeAudioLanguageRowSchema.array().parse(rows)) {
-      const children = byParent.get(row.parentSlug) ?? new Map()
-      const languages = children.get(row.childSlug) ?? new Set<string>()
-      languages.add(row.audioLanguageSlug)
-      children.set(row.childSlug, languages)
-      byParent.set(row.parentSlug, children)
-    }
-
-    return Object.fromEntries(
-      [...byParent.entries()].map(([parentSlug, children]) => [
-        parentSlug,
-        Object.fromEntries(
-          [...children.entries()].map(([childSlug, audioLanguageSlugs]) => [
-            childSlug,
-            [...audioLanguageSlugs].sort(),
-          ]),
-        ),
-      ]),
+    return groupEpisodeAudioLanguageRows(
+      EpisodeAudioLanguageRowSchema.array().parse(rows),
     )
+  }
+
+  private async loadNestedContainerPairsByParent(): Promise<
+    Record<string, string[]>
+  > {
+    const rows = await this.prisma.$queryRaw<unknown[]>`
+      SELECT DISTINCT
+        parent.slug AS "parentSlug",
+        child.slug AS "childSlug"
+      FROM "video_relation" relation
+      JOIN "video" parent
+        ON parent.id = relation."parent_id"
+        AND parent."deleted_at" IS NULL
+        AND parent.slug <> ''
+        AND parent.label IN ('collection'::"VideoLabel", 'series'::"VideoLabel")
+      JOIN "video_locale" parent_locale
+        ON parent_locale."video_id" = parent.id
+        AND parent_locale.status = 'published'::"LocaleStatus"
+        AND parent_locale."deleted_at" IS NULL
+      JOIN "video" child
+        ON child.id = relation."child_id"
+        AND child."deleted_at" IS NULL
+        AND child.slug <> ''
+        AND child.label IN ('collection'::"VideoLabel", 'series'::"VideoLabel")
+      JOIN "video_locale" child_locale
+        ON child_locale."video_id" = child.id
+        AND child_locale.status = 'published'::"LocaleStatus"
+        AND child_locale."deleted_at" IS NULL
+      ORDER BY parent.slug ASC, child.slug ASC
+    `
+    return groupEpisodePairs(EpisodePairRowSchema.array().parse(rows))
   }
 }
 
@@ -480,14 +533,80 @@ function toEpisodeAudioLanguageIndexMap(
   )
 }
 
+function toNestedContainerAudioLanguageIndexMap(
+  pairsByParent: Record<string, string[]>,
+  audioLanguageSlugsByContent: Record<string, string[]>,
+  audioLanguageSlugs: readonly string[],
+): Record<string, Record<string, number[]>> {
+  const languagesByNestedContainer = Object.fromEntries(
+    Object.entries(pairsByParent).flatMap(([parentSlug, childSlugs]) => {
+      const childEntries = childSlugs.flatMap((childSlug) => {
+        const childLanguages = audioLanguageSlugsByContent[childSlug]
+        return childLanguages ? [[childSlug, childLanguages] as const] : []
+      })
+      return childEntries.length
+        ? [[parentSlug, Object.fromEntries(childEntries)] as const]
+        : []
+    }),
+  )
+  return toEpisodeAudioLanguageIndexMap(
+    languagesByNestedContainer,
+    audioLanguageSlugs,
+  )
+}
+
+function groupEpisodePairs(
+  rows: z.infer<typeof EpisodePairRowSchema>[],
+): Record<string, string[]> {
+  const byParent = new Map<string, Set<string>>()
+  for (const { parentSlug, childSlug } of rows) {
+    const children = byParent.get(parentSlug) ?? new Set<string>()
+    children.add(childSlug)
+    byParent.set(parentSlug, children)
+  }
+  return Object.fromEntries(
+    [...byParent.entries()].map(([parentSlug, childSlugs]) => [
+      parentSlug,
+      [...childSlugs].sort(),
+    ]),
+  )
+}
+
+function groupEpisodeAudioLanguageRows(
+  rows: z.infer<typeof EpisodeAudioLanguageRowSchema>[],
+): Record<string, Record<string, string[]>> {
+  const byParent = new Map<string, Map<string, Set<string>>>()
+  for (const row of rows) {
+    const children = byParent.get(row.parentSlug) ?? new Map()
+    const languages = children.get(row.childSlug) ?? new Set<string>()
+    languages.add(row.audioLanguageSlug)
+    children.set(row.childSlug, languages)
+    byParent.set(row.parentSlug, children)
+  }
+
+  return Object.fromEntries(
+    [...byParent.entries()].map(([parentSlug, children]) => [
+      parentSlug,
+      Object.fromEntries(
+        [...children.entries()].map(([childSlug, audioLanguageSlugs]) => [
+          childSlug,
+          [...audioLanguageSlugs].sort(),
+        ]),
+      ),
+    ]),
+  )
+}
+
 export function summarizeWatchRouteManifest(
   manifest: Pick<
     WatchRouteManifest,
     | "audioLanguageSlugs"
     | "audioLanguageIndexesByContent"
     | "audioLanguageIndexesByEpisode"
+    | "nestedContainerAudioLanguageIndexesByParent"
     | "contentSlugs"
     | "episodePairsByParent"
+    | "homepageLocales"
     | "oneSegmentSlugs"
   >,
 ): WatchRouteManifestCounts {
@@ -495,9 +614,13 @@ export function summarizeWatchRouteManifest(
   const episodeAudioEntries = Object.values(
     manifest.audioLanguageIndexesByEpisode,
   )
+  const nestedContainerAudioEntries = Object.values(
+    manifest.nestedContainerAudioLanguageIndexesByParent ?? {},
+  )
   return {
     contentSlugs: manifest.contentSlugs.length,
     oneSegmentSlugs: manifest.oneSegmentSlugs.length,
+    homepageLocales: manifest.homepageLocales?.length ?? 0,
     parentSlugs: parentEntries.length,
     parentChildPairs: parentEntries.reduce(
       (sum, [, childSlugs]) => sum + childSlugs.length,
@@ -511,6 +634,16 @@ export function summarizeWatchRouteManifest(
       0,
     ),
     episodeAudioLanguagePairs: episodeAudioEntries.reduce(
+      (sum, children) =>
+        sum +
+        Object.values(children).reduce(
+          (childSum, audioLanguageIndexes) =>
+            childSum + audioLanguageIndexes.length,
+          0,
+        ),
+      0,
+    ),
+    nestedContainerAudioLanguagePairs: nestedContainerAudioEntries.reduce(
       (sum, children) =>
         sum +
         Object.values(children).reduce(

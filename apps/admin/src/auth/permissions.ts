@@ -43,23 +43,44 @@ export type PermissionKey =
   | "read:experiences"
   | "read:videos"
   | "read:video-metadata"
+  | "read:video-mapper-catalog"
   | "read:media-assets"
   | "read:reference"
   | "access:manager"
   | "read:manager-read-models"
+  | "read:manager-seo"
+  | "read:manager-seo-audit-detail"
+  | "read:manager-subtitle-eval"
+  | "read:manager-watch-route-alerts"
+  | "read:recommendation-aggregates"
+  | "read:recommendation-traces"
+  | "operate:recommendation-experiments"
+  | "rollback:recommendations"
+  | "approve:recommendation-permanent"
   // Write scopes (admin-write on Core-sourced is intentionally restricted)
   | "write:experiences"
   | "write:videos"
   | "write:media-assets"
-  | "write:scene-embeddings"
   | "write:transcript-embeddings"
   | "write:experience-embeddings"
+  | "write:watch-events"
+  // Own-data watch-progress scopes for the MOBILE_USER principal. "own"
+  // is enforced at the service layer: identity comes from the verified
+  // token subject, never from arguments (R13).
+  | "read:watch-progress:own"
+  | "write:watch-progress:own"
+  | "delete:watch-progress:own"
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // Admin's `triggerManagerEnrichment` mutation gates on this key;
   // the mutation forwards the call to apps/manager's
   // `/api/admin-trigger/{scene-analysis,transcript}` endpoint.
   | "write:manager-enrichment-trigger"
   | "write:manager-jobs"
+  | "write:manager-subtitle-eval"
+  // Localized push campaigns. Any signed-in admin user may write, test,
+  // schedule, and send an announcement (R28), so this sits at the viewer
+  // tier rather than behind a campaign role.
+  | "write:push-campaigns"
   // Lifecycle scopes (publish / archive ExperienceLocale, etc.)
   | "publish:experiences"
   | "archive:experiences"
@@ -90,6 +111,11 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // gating happens via the `WORKFLOW_TRIGGER_PERMISSIONS` allowlist
   // below so manager's bearer call is the intended caller.
   "read:video-metadata": "VIEWER",
+  // YTM-002 — whole-catalog mapper sync projection, including media URLs.
+  // Human ADMINs may inspect it, and the dedicated VIDEO_MAPPER bearer role
+  // below may page it for sync. Do not reuse `read:video-metadata`: that key
+  // is VIEWER-tier and workflow-bearer-callable for manager lookups.
+  "read:video-mapper-catalog": "ADMIN",
   "read:media-assets": "EDITOR",
   // Reference data is public-shape; PUBLIC may read.
   "read:reference": "PUBLIC",
@@ -97,13 +123,22 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // the editorial role ladder.
   "access:manager": "PUBLIC",
   "read:manager-read-models": "PUBLIC",
+  "read:manager-seo": "PUBLIC",
+  "read:manager-seo-audit-detail": "PUBLIC",
+  "read:manager-subtitle-eval": "PUBLIC",
+  "read:manager-watch-route-alerts": "PUBLIC",
+  // Recommendation operations are deliberately split: EDITOR may inspect
+  // windowed aggregate health, while only ADMIN may inspect request roots.
+  "read:recommendation-aggregates": "EDITOR",
+  "read:recommendation-traces": "ADMIN",
+  "operate:recommendation-experiments": "ADMIN",
+  "rollback:recommendations": "ADMIN",
+  "approve:recommendation-permanent": "ADMIN",
   // Editor writes
   "write:experiences": "EDITOR",
   // Core-sourced; only ADMIN may override (also flips source='manager').
   "write:videos": "ADMIN",
   "write:media-assets": "EDITOR",
-  // Derived-column trigger (scene-embedding backfill). ADMIN-only.
-  "write:scene-embeddings": "ADMIN",
   // Derived-column trigger (transcript-embedding backfill). ADMIN-only.
   "write:transcript-embeddings": "ADMIN",
   // Experience-embedding backfill (admin-native). Enumerates
@@ -114,6 +149,13 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // a WORKFLOW_TRIGGER principal without standing up admin's full
   // session-cookie auth flow).
   "write:experience-embeddings": "ADMIN",
+  "write:watch-events": "ADMIN",
+  // ADMIN-only on the editorial ladder (operational override); the
+  // intended callers are MOBILE_USER and WEB_USER (TV device-grant
+  // tokens introspect as WEB_USER) via their per-key allowlists below.
+  "read:watch-progress:own": "ADMIN",
+  "write:watch-progress:own": "ADMIN",
+  "delete:watch-progress:own": "ADMIN",
   // feat-119 PR2 — admin → manager outbound enrichment trigger.
   // ADMIN-only at the editorial-tier ladder; the bearer-mintable
   // `WORKFLOW_TRIGGER` role is also granted via the per-key allowlist
@@ -122,6 +164,10 @@ const permissionMatrix: Record<PermissionKey, MinTier> = {
   // that path.
   "write:manager-enrichment-trigger": "ADMIN",
   "write:manager-jobs": "PUBLIC",
+  "write:manager-subtitle-eval": "PUBLIC",
+  // No service or anonymous caller reaches it: a campaign is always a
+  // person's decision, and the send-now confirmation is theirs to complete.
+  "write:push-campaigns": "VIEWER",
   // Lifecycle
   "publish:experiences": "EDITOR",
   "archive:experiences": "EDITOR",
@@ -171,11 +217,16 @@ function meetsTier(role: Role, min: MinTier): boolean {
   // MANAGER_BACKEND is gated by `MANAGER_BACKEND_PERMISSIONS`; it never
   // satisfies human panel access or editorial tier checks.
   if (role === "MANAGER_BACKEND") return false
+  // VIDEO_MAPPER is gated by `VIDEO_MAPPER_PERMISSIONS`; it never satisfies
+  // human panel access or editorial tier checks.
+  if (role === "VIDEO_MAPPER") return false
   // CONSUMER_BEARER is gated by `CONSUMER_BEARER_PERMISSIONS` (empty set)
   // in `hasPermission` via early-return; it never satisfies tier-based
   // checks. The bearer's sole purpose is rate-limit bucketing, not
   // permission granting.
   if (role === "CONSUMER_BEARER") return false
+  if (role === "WEB_USER") return false
+  if (role === "MOBILE_USER") return false
   return editorialRank(role) >= editorialRank(min)
 }
 
@@ -188,8 +239,8 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * allowed to satisfy. This role is minted by `createContext` when an
  * incoming request carries a valid bearer key matching
  * `WORKFLOW_API_KEYS`. It is intentionally narrower than ADMIN — the
- * bearer-auth path is for service-to-service trigger calls (apps/manager
- * → admin's embed-backfill mutations), NOT a generic admin session.
+ * bearer-auth path is for service-to-service trigger calls, NOT a
+ * generic admin session.
  *
  * **Adding a key here widens the bearer caller's blast radius.** It also
  * widens the manager proxy's reach: any user with the Strapi "Manager"
@@ -201,7 +252,6 @@ function meetsTier(role: Role, min: MinTier): boolean {
  * editorial tier ladder is bypassed for this role.
  */
 const WORKFLOW_TRIGGER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
-  "write:scene-embeddings",
   "write:transcript-embeddings",
   // feat-119 PR2: the `pnpm trigger-enrichment` CLI authenticates
   // with `WORKFLOW_API_KEYS` (mints `WORKFLOW_TRIGGER`) when an
@@ -252,7 +302,49 @@ const CONSUMER_BEARER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set()
 
 const MANAGER_BACKEND_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
   "read:manager-read-models",
+  "read:manager-seo",
+  "read:manager-seo-audit-detail",
+  "read:manager-subtitle-eval",
+  "read:manager-watch-route-alerts",
   "write:manager-jobs",
+  "write:manager-subtitle-eval",
+])
+
+const VIDEO_MAPPER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:video-mapper-catalog",
+])
+
+/**
+ * WEB_USER is minted by Auth-token introspection for BOTH web watch
+ * sessions and TV device-grant sessions (the `jfp_tv_*` client ids in
+ * `web-user-token.ts`). The three own-data watch-progress scopes joined
+ * `write:watch-events` for feat-322's TV Continue Watching account merge
+ * — own-data only: the subject comes from the introspected token (R13),
+ * never from arguments, so this grants a signed-in viewer access to
+ * exactly their own rows. Adding any NON-own-data key here widens what a
+ * verified user token can reach; the enumerating test in
+ * `permissions.test.ts` pins the set.
+ */
+const WEB_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "write:watch-events",
+  "read:watch-progress:own",
+  "write:watch-progress:own",
+  "delete:watch-progress:own",
+])
+
+/**
+ * Permission keys the request-bound `MOBILE_USER` principal is allowed
+ * to satisfy — exactly the three own-data watch-progress scopes.
+ * Mobile still carries no event-write permission in v1 and no content
+ * or editorial scope. (Until feat-322's TV merge these three scopes
+ * were MOBILE_USER-exclusive; WEB_USER now shares them — see above.)
+ * Adding a key here widens what a verified mobile JWT can reach; the
+ * enumerating test in `permissions.test.ts` pins the set.
+ */
+const MOBILE_USER_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  "read:watch-progress:own",
+  "write:watch-progress:own",
+  "delete:watch-progress:own",
 ])
 
 const MANAGER_MEMBERSHIP_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
@@ -282,6 +374,15 @@ export function hasPermission(
   }
   if (role === "MANAGER_BACKEND") {
     return MANAGER_BACKEND_PERMISSIONS.has(key)
+  }
+  if (role === "VIDEO_MAPPER") {
+    return VIDEO_MAPPER_PERMISSIONS.has(key)
+  }
+  if (role === "WEB_USER") {
+    return WEB_USER_PERMISSIONS.has(key)
+  }
+  if (role === "MOBILE_USER") {
+    return MOBILE_USER_PERMISSIONS.has(key)
   }
   // CONSUMER_BEARER's permission set is intentionally empty; this
   // early-return makes the contract explicit at the call site so a
@@ -431,4 +532,28 @@ export function canEditVideo(user: Principal | null): boolean {
 export function canWriteDerived(user: Principal | null): boolean {
   const role = principalRole(user)
   return role === "SYSTEM" || role === "ADMIN"
+}
+
+/** Studio is a shared operator workspace; all verified operators can author it. */
+export function isStudioHuman(user: Principal | null): boolean {
+  return Boolean(
+    user?.id &&
+    user.role !== "SYSTEM" &&
+    user.role !== "MANAGER_BACKEND" &&
+    (user.role === "ADMIN" || user.managerRole === "OPERATOR"),
+  )
+}
+
+/** Service principals can manage attempts/edits but cannot manufacture review. */
+export function canAuthorStudio(user: Principal | null): boolean {
+  return (
+    isStudioHuman(user) ||
+    user?.role === "SYSTEM" ||
+    user?.role === "MANAGER_BACKEND"
+  )
+}
+
+/** Attribution does not confer explicit operator review authority. */
+export function canReviewStudio(user: Principal | null): boolean {
+  return isStudioHuman(user) && user?.studioAuthority === "interactive"
 }

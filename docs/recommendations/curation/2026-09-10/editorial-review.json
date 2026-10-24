@@ -1,0 +1,628 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-09-10T02:40:36.430424+00:00",
+  "status": "complete-metadata-review-no-activation",
+  "sourceManifestVersion": "2026-09-10.astra-editorial.v1",
+  "scope": "All eleven editorial-manifest candidates with sensitivityReviewRequired=true, including both alternate Core records of the Jairus choice.",
+  "reviewer": "Delegated Codex agent in the existing curation session; no paid model API call.",
+  "source": {
+    "endpoint": "https://api-gateway.central.jesusfilm.org/",
+    "fetchedAt": "2026-09-09T22:14:43.569359+00:00",
+    "snapshotSha256": "6d3fc987852bca729ac23ec6cf2b372d2ab6263d8a063d1a930c4e8553c3a240",
+    "snapshotRecordCount": 1129,
+    "retainedProvenanceFile": "provenance.json",
+    "recordHashEncoding": "UTF-8 JSON with keys sorted, ensure_ascii=false and compact comma/colon separators."
+  },
+  "interpretation": {
+    "disposition": "A recommendation about editorial placement based on metadata; not a clearance of the existing media/cut context flag or technical eligibility.",
+    "keep-excluded": "Evidence does not support automatic fallback use; retain exclusion.",
+    "suitable-for-narrower-interest-only": "Evidence supports a deeper content-interest placement if the stated context check is later resolved; do not admit to start.",
+    "supportable-for-starter": "The metadata supports a later starter-reserve position, subject to the explicitly stated unresolved cut/presentation check.",
+    "runtimeClearance": "No existing flags or source/pool records were changed. All eleven remain excluded in the current generation. Unresolved context has not been waived.",
+    "contentJudgment": "Christian teaching, references to death and biblical resurrection are not categorical reasons for exclusion. Assess introductory clarity, contextual dependence and the specific presentation described.",
+    "identityBoundary": "Themes describe content interests. They do not establish that a viewer experienced abuse, bereavement, displacement or any other personal circumstance.",
+    "limitations": "No full-film viewing, transcript review, individual dub cultural/translation review, live playback check or production eligibility check. Exact alternate cuts do not inherit primary-cut clearance."
+  },
+  "summary": {
+    "flaggedChoices": 11,
+    "reviewedChoices": 11,
+    "byProposedDisposition": {
+      "keep-excluded": 4,
+      "suitable-for-narrower-interest-only": 5,
+      "supportable-for-starter": 2
+    },
+    "runtimeFlagsCleared": 0,
+    "extraActiveEligibleCandidates": 0
+  },
+  "reviews": [
+    {
+      "coreVideoId": "2_0-Venia",
+      "title": "Venia",
+      "originalStartPool": false,
+      "originalThemeKeys": ["forgiveness-and-new-beginnings"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "keep-excluded",
+      "proposedThemeKeys": [],
+      "evidenceSummary": "A son describes harm to himself and his mother, then forgives his father. The ending references a shooting victim and presents forgiveness as necessary for recovery. The Conversation Starters and Love Your Neighbor collections supply a discussion setting.",
+      "rationale": "Family abuse and a prescriptive recovery message make this a poor automatic fallback based only on a broad forgiveness interest. Keep it out of this fallback generation; its existing deliberate discovery routes can provide the intended context.",
+      "remainingContext": "Do not reopen solely to increase language counts. A future deliberate editorial use needs to account for the closing message and the setting in which it is presented.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [274, 274],
+      "evidence": [
+        {
+          "coreVideoId": "2_0-Venia",
+          "primaryTitle": "Venia",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "20362ca7c300e4db3df85805ae4f3361436fcc005b0f82f6269497c41ecadff1"
+        },
+        {
+          "coreVideoId": "CS1",
+          "primaryTitle": "Short Film Conversation Starters",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "321579b4eb1fa0a01ad4dca546fda8da42302a0f26f03f8f03fa2a13648ae944"
+        },
+        {
+          "coreVideoId": "LOVE40",
+          "primaryTitle": "Love Your Neighbor",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "595f64c4f7b942dec3b53da81871bbf34687f0878773e4bd73b156136f99b08f"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "2_0-Uninvited",
+      "title": "Uninvited Guests",
+      "originalStartPool": false,
+      "originalThemeKeys": ["forgiveness-and-new-beginnings"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "suitable-for-narrower-interest-only",
+      "proposedThemeKeys": ["forgiveness-and-new-beginnings"],
+      "evidenceSummary": "Phil encounters personified past choices and tragedies. The description frames the story around being unable to escape the past and needing restoration. Core places it in Conversation Starters and Relationships.",
+      "rationale": "The premise and theme are intelligible without another episode, but the guilt-centered opening is more appropriate as a deeper forgiveness choice than as a general first visit recommendation.",
+      "remainingContext": "Confirm the actual ending and presentation of the personified regrets before clearing its existing flag; the description describes the premise more fully than the resolution.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [268, 268],
+      "evidence": [
+        {
+          "coreVideoId": "2_0-Uninvited",
+          "primaryTitle": "Uninvited Guests",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "c282154481d022b70ad4cc3aa81082a3fe0101e42922e3c7499c342d96c34a99"
+        },
+        {
+          "coreVideoId": "CS1",
+          "primaryTitle": "Short Film Conversation Starters",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "321579b4eb1fa0a01ad4dca546fda8da42302a0f26f03f8f03fa2a13648ae944"
+        },
+        {
+          "coreVideoId": "JFP-Interests-Relationships",
+          "primaryTitle": "Relationships",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "04618a54a02409cb938fc7ecea9a94295a06607774dcad8c6910a31d55128c33"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "2_0-Marea",
+      "title": "Marea",
+      "originalStartPool": false,
+      "originalThemeKeys": ["love-and-belonging", "hope-and-perseverance"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "keep-excluded",
+      "proposedThemeKeys": [],
+      "evidenceSummary": "A father and son try to rescue refugees who are drowning. The description mentions personal cost but gives no outcome. Core also places it in Conversation Starters, Love Your Neighbor and World Youth Day.",
+      "rationale": "The catalog supports a compassion theme, but does not establish the rescue outcome or intensity of the peril. That is insufficient to clear an existing context flag for an automatically filled homepage slot.",
+      "remainingContext": "View the rescue and ending before reconsidering a love-and-belonging interest placement. A collection membership alone does not resolve what an unprepared viewer will see.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [445, 445],
+      "evidence": [
+        {
+          "coreVideoId": "2_0-Marea",
+          "primaryTitle": "Marea",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "f92757ec1c66a3de869da4dfc315acf40269d143a6055faf1b6990cee05a5081"
+        },
+        {
+          "coreVideoId": "CS1",
+          "primaryTitle": "Short Film Conversation Starters",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "321579b4eb1fa0a01ad4dca546fda8da42302a0f26f03f8f03fa2a13648ae944"
+        },
+        {
+          "coreVideoId": "LOVE40",
+          "primaryTitle": "Love Your Neighbor",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "595f64c4f7b942dec3b53da81871bbf34687f0878773e4bd73b156136f99b08f"
+        },
+        {
+          "coreVideoId": "WYDCollection",
+          "primaryTitle": "World Youth Day",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "fb1c6c58bfe3320fb1352ca3588626c1ac1bf6f817998374105c67da79e79aaf"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "2_0-To-Be-Like-You",
+      "title": "To Be Like You",
+      "originalStartPool": false,
+      "originalThemeKeys": ["love-and-belonging"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "keep-excluded",
+      "proposedThemeKeys": [],
+      "evidenceSummary": "A boy in Ethiopia earns money for an abusive father amid a tragedy. The snippet points viewers to discussion questions, and Core includes it in Conversation Starters.",
+      "rationale": "The existing love-and-belonging label is not sufficient evidence of an accessible or restorative story: neither the outcome nor treatment of the abuse is described. Keep it outside automated fallback pools.",
+      "remainingContext": "Review the full narrative and the accompanying discussion framing before considering any fallback theme.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [431, 459],
+      "evidence": [
+        {
+          "coreVideoId": "2_0-To-Be-Like-You",
+          "primaryTitle": "To Be Like You",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "c8d6b3f52e0735e4740c97f4e20e831809febca7a7b4b096759cb8d796fdbfc6"
+        },
+        {
+          "coreVideoId": "CS1",
+          "primaryTitle": "Short Film Conversation Starters",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "321579b4eb1fa0a01ad4dca546fda8da42302a0f26f03f8f03fa2a13648ae944"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "1_jf6109-0-0",
+      "title": "Jairus's Daughter Brought Back to Life",
+      "originalStartPool": true,
+      "originalThemeKeys": ["hope-and-perseverance", "exploring-jesus"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "supportable-for-starter",
+      "proposedThemeKeys": ["exploring-jesus", "hope-and-perseverance"],
+      "evidenceSummary": "The primary JESUS cut describes the complete sequence: a father asks Jesus to help his ill daughter, learns that she has died, and witnesses Jesus restore her. The title, detailed description and parent film establish both the premise and resolution.",
+      "rationale": "The primary cut offers a short, understandable encounter with Jesus. Death within this explicitly Christian story is not itself a reason to reject it. Its complete narrative supports a later starter-reserve placement, with the existing broader introduction films earlier.",
+      "remainingContext": "The metadata supports placement, but the existing depiction/cut review is not completed by reading it. Check the selected cut before removing the flag, and review alternate presentations separately rather than inheriting the primary cut decision.",
+      "alternateSourceReview": [
+        {
+          "coreVideoId": "1_cl1304-0-0",
+          "assessment": "The description includes the same complete episode and a lesson-download link. Its StoryClubs parent explicitly supplies facilitated lessons. Keep the alternate excluded until the actual episode opening and ending confirm that it works independently of those materials."
+        },
+        {
+          "coreVideoId": "1_wl604424-0-0",
+          "assessment": "The Magdalena description stops with news of the death and Jesus reassuring the father. The shared story title supports thematic identity, but that description does not establish this cut includes the resolution. Keep the alternate excluded until its boundaries are checked."
+        }
+      ],
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [134, 135],
+      "evidence": [
+        {
+          "coreVideoId": "1_jf6109-0-0",
+          "primaryTitle": "Jairus's Daughter Brought Back to Life",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "509e72f5af0a8cc58db97eb5aad0df7545914709eceb8e8857a076e907eb6d48"
+        },
+        {
+          "coreVideoId": "1_cl1304-0-0",
+          "primaryTitle": "StoryClubs: Jairus' Daughter",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "299b4887ab0b055fc9d4d221ab9949a3afd7faa6a80d3b2f69c29db4be7ae532"
+        },
+        {
+          "coreVideoId": "1_wl604424-0-0",
+          "primaryTitle": "Jairus' Daughter Brought Back to Life",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "8c98b5c3f46b200e68e8f821593d40a65ce6c9afc0257ac0d7686d3ebc3642ee"
+        },
+        {
+          "coreVideoId": "1_jf-0-0",
+          "primaryTitle": "JESUS",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "41c15bfc069448fa2b7563d3e3767ac132ef2b730a9b119c6007d0973da722bc"
+        },
+        {
+          "coreVideoId": "1_cl13-0-0",
+          "primaryTitle": "StoryClubs",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "a27629c74ae8cf84ec8aec88567328f8dcce16eefdbcad393ff2591e4d899ce2"
+        },
+        {
+          "coreVideoId": "1_wl60-0-0",
+          "primaryTitle": "Magdalena",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "18b2dcbd31bbaf7bbf50598982af430f22012a3976e11e6243b7818bd1734311"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "1_wl604430-0-0",
+      "title": "The Adulterous Woman Forgiven",
+      "originalStartPool": false,
+      "originalThemeKeys": [
+        "forgiveness-and-new-beginnings",
+        "love-and-belonging"
+      ],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "keep-excluded",
+      "proposedThemeKeys": [],
+      "evidenceSummary": "The title refers to forgiveness, but the available description only states that religious leaders bring a woman before Jesus and a crowd. The Magdalena parent and women-resources collection establish the wider compassion context.",
+      "rationale": "The title suggests the outcome but the actual excerpt description does not cover it. The original manifest also raises a threat-of-violence concern that this sparse source does not resolve. Keep the scene excluded rather than treating familiarity with the Bible story as proof of this exact cut.",
+      "remainingContext": "Check the selected cut for the accusation, threat, response and ending; then reconsider a forgiveness interest placement. The threat is a concern from the original manifest, not newly verified footage in this review.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [179, 179],
+      "evidence": [
+        {
+          "coreVideoId": "1_wl604430-0-0",
+          "primaryTitle": "The Adulterous Woman Forgiven",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "9554dbcfd75c59375e3ef3831acdea05164f3d3892fdc21bf785aa9114a2a4eb"
+        },
+        {
+          "coreVideoId": "1_wl60-0-0",
+          "primaryTitle": "Magdalena",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "18b2dcbd31bbaf7bbf50598982af430f22012a3976e11e6243b7818bd1734311"
+        },
+        {
+          "coreVideoId": "JFP-Interests-Women-Resources",
+          "primaryTitle": "Women's Resources",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "ad13b5bfb8d2a3d2451c8d0d6980c6d943b015c41872dc816d2a1a2275fa75a7"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "1_wl604418-0-0",
+      "title": "Jesus Raises the Widow's Son",
+      "originalStartPool": true,
+      "originalThemeKeys": ["hope-and-perseverance", "love-and-belonging"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "suitable-for-narrower-interest-only",
+      "proposedThemeKeys": ["exploring-jesus", "hope-and-perseverance"],
+      "evidenceSummary": "The description gives a complete short event in which Jesus restores a widow's deceased son. Its Magdalena parent frames the broader film around compassion toward women.",
+      "rationale": "This compact miracle scene fits viewers already interested in accounts of Jesus. The sparse character context makes the broader film or another introductory short a stronger cold-start opening. Nominate it from a content interest, not an assumption that the viewer is bereaved.",
+      "remainingContext": "Confirm the scene stands alone and its opening/ending are intelligible before clearing its existing contextual flag.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [62, 69],
+      "evidence": [
+        {
+          "coreVideoId": "1_wl604418-0-0",
+          "primaryTitle": "Jesus Raises the Widow's Son",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "df22dfa9c096c16c61650db621dec6dbe426c432ea39ec6a0f9de037a7fad3d3"
+        },
+        {
+          "coreVideoId": "1_wl60-0-0",
+          "primaryTitle": "Magdalena",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "18b2dcbd31bbaf7bbf50598982af430f22012a3976e11e6243b7818bd1734311"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0705",
+      "title": "5. Jesus' Death & Resurrection",
+      "originalStartPool": true,
+      "originalThemeKeys": ["exploring-jesus", "hope-and-perseverance"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "supportable-for-starter",
+      "proposedThemeKeys": ["exploring-jesus", "hope-and-perseverance"],
+      "evidenceSummary": "The episode description outlines Jesus' life, death and resurrection and their meaning in the Christian account. The Creation to Christ parent explicitly identifies the series as animated and introductory.",
+      "rationale": "The described subject is a complete introduction to a central Christian belief, and the parent confirms its explanatory format. That supports a later starter-reserve position. The reference to death does not by itself disqualify content from this Christian library.",
+      "remainingContext": "The fifth-episode number and animated format do not prove independence or visual intensity. Check the opening for unexplained dependence on episodes one through four and the depiction of the crucifixion before clearing the flag.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [150, 273],
+      "evidence": [
+        {
+          "coreVideoId": "9_CreationtoChrist0705",
+          "primaryTitle": "5. Jesus' Death & Resurrection",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "c4dfd686c90f9b06346627d89cca07d8dd182da1d4368d3e129f3e39277a6287"
+        },
+        {
+          "coreVideoId": "9_CreationtoChrist",
+          "primaryTitle": "Creation to Christ",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "c7e2d567e9ad2184e640f6eec18ee373579e99a20739190abd185206a06a8934"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "6_GOJohn2220",
+      "title": "LUMO - John 19:38-20:31",
+      "originalStartPool": true,
+      "originalThemeKeys": ["hope-and-perseverance", "exploring-jesus"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "suitable-for-narrower-interest-only",
+      "proposedThemeKeys": ["exploring-jesus"],
+      "evidenceSummary": "The listed scenes run from Jesus' burial to the empty tomb, appearances to Mary and the disciples, Thomas' encounter and the Gospel's purpose. The LUMO John parent identifies the film as a direct rendering of the Gospel text.",
+      "rationale": "A resurrection-focused passage is coherent for a viewer interested in Jesus or the Gospel of John. Beginning with burial and using a verse-range title make it a less accessible first introduction than an overview story.",
+      "remainingContext": "Confirm the excerpt boundaries and the portrayal of Jesus' body before clearing the existing flag. A matching hope theme alone should not be treated as a request for this late-Gospel scene.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [481, 535],
+      "evidence": [
+        {
+          "coreVideoId": "6_GOJohn2220",
+          "primaryTitle": "LUMO - John 19:38-20:31",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "a6dac5b4e30432b2de51c465132c1d458e0975ddca0cd2d651f2dbec38d66a34"
+        },
+        {
+          "coreVideoId": "GOJohnCollection",
+          "primaryTitle": "LUMO - The Gospel of John",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "da42070ae31e614ce53a97d5d0c8efa274ae36dbcd69b1c16969179d43c136e6"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "6_GOLuke2607",
+      "title": "LUMO - Luke 7:1-50",
+      "originalStartPool": true,
+      "originalThemeKeys": [
+        "hope-and-perseverance",
+        "forgiveness-and-new-beginnings"
+      ],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "suitable-for-narrower-interest-only",
+      "proposedThemeKeys": [
+        "exploring-jesus",
+        "forgiveness-and-new-beginnings"
+      ],
+      "evidenceSummary": "The listed passage includes a centurion, a widow's son, John the Baptist and a woman anointing Jesus. The LUMO Luke parent identifies a Gospel-text narrative.",
+      "rationale": "Its multiple encounters offer a useful Bible-interest reserve, but the chapter makes several topic and character transitions. It is a weaker first card than a self-contained scene or general introduction.",
+      "remainingContext": "Review transitions, the widow sequence and the portrayal of the anointing scene before removing its flag. Add exploring-jesus as a content nomination if this is subsequently admitted; the original themes omit it.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [554, 571],
+      "evidence": [
+        {
+          "coreVideoId": "6_GOLuke2607",
+          "primaryTitle": "LUMO - Luke 7:1-50",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "3330d48026c3824101d65b01c3402eafc2589ddc0718a9a9166115f278028fd2"
+        },
+        {
+          "coreVideoId": "GOLukeCollection",
+          "primaryTitle": "LUMO - The Gospel of Luke",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "2b6b321102581639e2f0b83d9d7da7e5375d5dfcacfff118ee63c01be1936160"
+        }
+      ]
+    },
+    {
+      "coreVideoId": "6_GOLuke2609",
+      "title": "LUMO - Luke 8:40-9:17",
+      "originalStartPool": true,
+      "originalThemeKeys": ["hope-and-perseverance", "love-and-belonging"],
+      "metadataReviewComplete": true,
+      "reviewMethod": "Primary Core metadata and collection/series relations; no film or transcript viewing.",
+      "disposition": "suitable-for-narrower-interest-only",
+      "proposedThemeKeys": ["exploring-jesus", "hope-and-perseverance"],
+      "evidenceSummary": "The passage combines a girl restored to life and a woman healed, the sending of the twelve, and the feeding of a crowd. Its LUMO Luke parent uses the Gospel text as narrative.",
+      "rationale": "The content is a good continuation for an existing Jesus/Bible interest. Its three changing sequences and mid-Gospel context make it less suitable for the general starter list than a single introductory story.",
+      "remainingContext": "Check the girl's death/restoration and the transitions between these sequences before clearing the flag. A future use should be nominated as Bible content rather than inferred from a viewer's personal hardship.",
+      "runtimeClearance": "not-granted",
+      "currentPoolAction": "retain-existing-exclusion",
+      "publishedHlsDurationRangeSeconds": [387, 484],
+      "evidence": [
+        {
+          "coreVideoId": "6_GOLuke2609",
+          "primaryTitle": "LUMO - Luke 8:40-9:17",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "20e31335309216ad18bd30a7e41929b29ff7d32975373b9d354885836f6ff075"
+        },
+        {
+          "coreVideoId": "GOLukeCollection",
+          "primaryTitle": "LUMO - The Gospel of Luke",
+          "fieldsReviewed": [
+            "title",
+            "description",
+            "snippet",
+            "label",
+            "children"
+          ],
+          "recordSha256": "2b6b321102581639e2f0b83d9d7da7e5375d5dfcacfff118ee63c01be1936160"
+        }
+      ]
+    }
+  ]
+}

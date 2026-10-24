@@ -5,6 +5,8 @@ topic: web-floating-search-redesign
 
 # Web — Floating Searchbar + Category Modal Redesign
 
+> Superseded on 2026-06-24 for Watch search URL state: the modal remains canonical, but search no longer reads from or writes to `?q=`. Use `docs/brainstorms/2026-06-24-watch-search-local-state-requirements.md` for the current Watch search query-state contract.
+
 ## Problem Frame
 
 The web app's sticky `SiteHeader` (JFP logo + search button, `bg-stone-900/80` backdrop) is utilitarian and buries search as a small icon in the top-right. Users without a specific query have no way to browse — they must either know what to type or leave the header to scroll curated experiences.

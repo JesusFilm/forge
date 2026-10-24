@@ -3,7 +3,7 @@ id: "feat-090"
 title: "Watch Event Collection & Session Tracking"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-04-30"
 duration: 10
 depends_on:
@@ -18,9 +18,19 @@ tags:
   - "personalization"
 ---
 
+## Closure Decision
+
+Cancelled on 2026-07-21. `feat-229` delivered the current authenticated Web
+watch-event foundation in Admin, superseding this ticket's anonymous
+`jfp_session` and legacy CMS storage design. Future personalization work should
+build on the durable `WatchEvent` and `WatchProgress` models rather than create
+a parallel anonymous event stream.
+
 ## Problem
 
 The recommendation system returns identical results for every user watching the same video — pure cosine similarity with no learning from behavior. Before any personalization model can be trained (FPMC for "watch next", Two-Tower for home page), interaction data must be collected. No watch event infrastructure exists today.
+
+Related signed-in progress brainstorm: `docs/brainstorms/2026-07-02-watch-signed-in-playback-progress-requirements.md`.
 
 ## Entry Points — Read These First
 
@@ -94,7 +104,7 @@ CREATE INDEX IF NOT EXISTS watch_events_not_bounce
 
 - No login system. All identity is session/cookie-based.
 - No PII stored — session_id is a random UUID, not tied to any user account.
-- GDPR: cookie is functional (enables personalized recommendations), not tracking. May need consent banner for EU — defer legal review to implementation.
+- Collect configured Watch events without a consent prerequisite; follow `docs/analytics-and-recommendation-policy.md` and retain bounded payloads and retention controls.
 - Do not modify the existing recommendation query in this ticket. Data collection only.
 - Web app first. Mobile instrumentation is a follow-up.
 

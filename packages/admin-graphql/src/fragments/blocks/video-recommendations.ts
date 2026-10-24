@@ -12,7 +12,15 @@ export const adminVideoRecommendationsFragment = adminGraphql(`
     sourceVideoId
     sourceSceneIndex
     limit
-    imageUrl
+    imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
   }
 `)

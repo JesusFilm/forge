@@ -53,14 +53,14 @@ PGPASSWORD=forge psql -h db -p 5432 -U forge -d "$NEW_DB" -Atc \
 Point Prisma at the copied database, not the shared source:
 
 ```bash
-DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=10&pool_timeout=20" \
+DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB" \
   pnpm --filter @forge/admin exec prisma migrate deploy
 ```
 
 If the branch uses Workflow Postgres World, install its runtime schema too:
 
 ```bash
-DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=10&pool_timeout=20" \
+DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB" \
 WORKFLOW_POSTGRES_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=4&pool_timeout=20" \
   pnpm --filter @forge/admin workflow:setup:postgres
 ```
@@ -123,8 +123,7 @@ cd apps/admin
 PORT=3013
 FEATURE="core-sync-preview"
 
-DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=10&pool_timeout=20" \
-DATABASE_URL_SYNC="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=2&pool_timeout=20" \
+DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB" \
 WORKFLOW_TARGET_WORLD="@workflow/world-postgres" \
 WORKFLOW_POSTGRES_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=4&pool_timeout=20" \
 WORKFLOW_POSTGRES_JOB_PREFIX="forge_admin_${FEATURE}" \
@@ -158,6 +157,10 @@ curl -I -sS "http://localhost:${PORT}/dashboard/workflows" | sed -n '1,20p'
 curl -I -sS "http://localhost:${PORT}/dashboard/system-status" | sed -n '1,20p'
 ```
 
+For UI smoke checks, click between `/dashboard/videos` and
+`/dashboard/languages` after sign-in so the persistent shell, route loading
+states, and dashboard data boundaries all run through the browser.
+
 If Workflow Postgres World has runtime rows, open
 `/dashboard/workflows/<runId>` in the browser to smoke the embedded
 `@workflow/web-shared` trace/detail view.
@@ -176,8 +179,7 @@ PGPASSWORD=forge psql -h db -p 5432 -U forge -d "$NEW_DB" -Atc \
 Use the copied database for benchmarks or manual sync tests:
 
 ```bash
-DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=10&pool_timeout=20" \
-DATABASE_URL_SYNC="postgresql://forge:forge@db:5432/$NEW_DB?connection_limit=2&pool_timeout=20" \
+DATABASE_URL="postgresql://forge:forge@db:5432/$NEW_DB" \
   pnpm --filter @forge/admin core-sync:run -- --scope=languages
 ```
 

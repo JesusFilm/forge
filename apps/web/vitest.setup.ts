@@ -1,5 +1,14 @@
 import { vi } from "vitest"
+import arMessages from "./messages/ar.json"
 import enMessages from "./messages/en.json"
+import esMessages from "./messages/es.json"
+import hiMessages from "./messages/hi.json"
+import ruMessages from "./messages/ru.json"
+import urMessages from "./messages/ur.json"
+import zhHansMessages from "./messages/zh-Hans.json"
+
+const { createTranslator } =
+  await vi.importActual<typeof import("next-intl")>("next-intl")
 
 process.env.CI ??= "1"
 process.env.STRAPI_PREVIEW_SECRET ??= "test-strapi-preview-secret"
@@ -7,62 +16,57 @@ process.env.REVALIDATION_SECRET ??= "test-revalidation-secret"
 process.env.ADMIN_GRAPHQL_URL ??= "http://localhost:1437/admin/api/graphql"
 process.env.WEB_ADMIN_API_KEYS ??= "test-admin-bearer-key"
 
-// next-intl provider context isn't set up in route-render tests. Mock
-// useTranslations / getTranslations to look up keys in messages/en.json
-// so assertions on user-visible English copy keep working without a
-// provider wrap. Minimal ICU formatter below covers the two shapes our
-// catalogs use: simple `{name}` interpolation and `{count, plural, one
-// {…} other {…}}` (with `#` → the count). NOT a full ICU engine — if a
-// catalog grows select/selectordinal/nested-plural, swap this for the
-// real intl-messageformat. Keep in sync across both next-intl exports.
-const enCatalog = enMessages as Record<string, Record<string, string>>
+// next-intl provider context isn't set up in route-render tests. Reuse the
+// production translator so the hook/server mocks still exercise real ICU and
+// rich-text behavior without wrapping every test in a provider.
+const catalogs: Record<string, Record<string, Record<string, string>>> = {
+  ar: arMessages,
+  en: enMessages,
+  es: esMessages,
+  hi: hiMessages,
+  ru: ruMessages,
+  ur: urMessages,
+  "zh-Hans": zhHansMessages,
+}
+let activeLocale = "en"
 
-function selectPlural(template: string, values: Record<string, unknown>) {
-  // {var, plural, one {…} other {…}} — one nesting level of braces in arms.
-  return template.replace(
-    /\{(\w+),\s*plural,\s*((?:[^{}]|\{[^{}]*\})*)\}/g,
-    (_, name: string, body: string) => {
-      const n = Number(values[name])
-      if (Number.isNaN(n)) return `{${name}}`
-      const arms: Record<string, string> = {}
-      const armRe = /(=\d+|zero|one|two|few|many|other)\s*\{([^{}]*)\}/g
-      let m: RegExpExecArray | null
-      while ((m = armRe.exec(body)) !== null) arms[m[1]] = m[2]
-      const category = new Intl.PluralRules("en").select(n)
-      const chosen = arms[`=${n}`] ?? arms[category] ?? arms.other ?? ""
-      return chosen.replace(/#/g, String(n))
+function makeT(namespace: string, locale = activeLocale) {
+  return createTranslator({
+    locale,
+    namespace,
+    messages: catalogs[locale] ?? catalogs.en,
+    onError() {},
+    getMessageFallback({ namespace: fallbackNamespace, key }) {
+      return `${fallbackNamespace}.${key}`
     },
-  )
-}
-
-function formatIcu(template: string, values?: Record<string, unknown>) {
-  if (!values) return template
-  const withPlurals = selectPlural(template, values)
-  // Simple {name} substitution (runs after plural so `#` inside arms is
-  // already resolved and arm-local placeholders still interpolate).
-  return withPlurals.replace(/\{(\w+)\}/g, (_, name: string) =>
-    name in values ? String(values[name]) : `{${name}}`,
-  )
-}
-
-function lookup(namespace: string, key: string): string {
-  return enCatalog[namespace]?.[key] ?? `${namespace}.${key}`
-}
-
-function makeT(namespace: string) {
-  return (key: string, values?: Record<string, unknown>) =>
-    formatIcu(lookup(namespace, key), values)
+  })
 }
 
 vi.mock("next-intl", () => ({
+  useLocale: () => activeLocale,
   useTranslations: (namespace: string) => makeT(namespace),
+  useFormatter: () => ({
+    dateTime: (value: Date, options?: Intl.DateTimeFormatOptions) =>
+      new Intl.DateTimeFormat(activeLocale, options).format(value),
+    number: (value: number) =>
+      new Intl.NumberFormat(activeLocale).format(value),
+  }),
   NextIntlClientProvider: ({ children }: { children: unknown }) => children,
 }))
 
 vi.mock("next-intl/server", () => ({
-  setRequestLocale: vi.fn(),
-  getLocale: vi.fn(async () => "en"),
-  getTranslations: vi.fn(async (namespace: string) => makeT(namespace)),
+  setRequestLocale: vi.fn((locale: string) => {
+    activeLocale = locale
+  }),
+  getLocale: vi.fn(async () => activeLocale),
+  getTranslations: vi.fn(
+    async (request: string | { locale?: string; namespace: string }) => {
+      const namespace =
+        typeof request === "string" ? request : request.namespace
+      const locale = typeof request === "string" ? activeLocale : request.locale
+      return makeT(namespace, locale ?? activeLocale)
+    },
+  ),
 }))
 
 // Required for React 19 + react-dom/client `act` under vitest jsdom environment.
@@ -124,4 +128,51 @@ if (typeof globalThis !== "undefined" && !globalThis.ResizeObserver) {
   }
   ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver =
     MockResizeObserver as unknown as typeof ResizeObserver
+}
+
+/**
+ * Web Storage for DOM tests.
+ *
+ * Node 24+ defines an experimental `localStorage` global that stays
+ * `undefined` unless the process was started with `--localstorage-file`.
+ * The key existing on `globalThis` is enough to stop vitest's jsdom
+ * environment installing jsdom's own Storage over it, so every DOM test sees
+ * `window.localStorage === undefined` — a shape no browser has, and one that
+ * sends storage-backed components down their "storage unavailable" branch
+ * before a single assertion runs. Only installed when the DOM is present and
+ * nothing real is there, so `environment: "node"` suites are untouched.
+ */
+if (typeof window !== "undefined" && !globalThis.localStorage) {
+  class MemoryStorage implements Storage {
+    #entries = new Map<string, string>()
+
+    get length(): number {
+      return this.#entries.size
+    }
+    key(index: number): string | null {
+      return [...this.#entries.keys()][index] ?? null
+    }
+    getItem(key: string): string | null {
+      return this.#entries.get(String(key)) ?? null
+    }
+    setItem(key: string, value: string): void {
+      this.#entries.set(String(key), String(value))
+    }
+    removeItem(key: string): void {
+      this.#entries.delete(String(key))
+    }
+    clear(): void {
+      this.#entries.clear()
+    }
+  }
+
+  for (const name of ["localStorage", "sessionStorage"] as const) {
+    // `defineProperty`, not assignment: the Node global is a getter-only
+    // accessor and assigning to it is a silent no-op.
+    Object.defineProperty(globalThis, name, {
+      configurable: true,
+      writable: true,
+      value: new MemoryStorage(),
+    })
+  }
 }

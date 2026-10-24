@@ -7,6 +7,12 @@ import type { RouteVideo, Section } from "@/lib/content"
 // Type-only imports stay (zero runtime cost) so `Parameters<typeof X>`
 // callsites in the dispatch switch keep their original signatures.
 import type { MediaCollection as MediaCollectionType } from "./MediaCollection"
+import type { DynamicMediaCollection as DynamicMediaCollectionType } from "./DynamicMediaCollection"
+import type { FeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import type {
+  DynamicCollectionFeedCacheScope,
+  DynamicCollectionFeedCacheSignatures,
+} from "@/lib/dynamic-collection-contract"
 import type { PromoBanner as PromoBannerType } from "./PromoBanner"
 import type { InfoBlocks as InfoBlocksType } from "./InfoBlocks"
 import type { CTASection as CTASectionType } from "./CTASection"
@@ -21,9 +27,17 @@ import type { Section as SectionBlockType } from "./Section"
 import type { RelatedQuestions as RelatedQuestionsType } from "./RelatedQuestions"
 import type { CarouselVideo as CarouselVideoType } from "./CarouselVideo"
 import type { NavigationCarousel as NavigationCarouselType } from "./NavigationCarousel"
+import type { LanguageGlobeExperience as LanguageGlobeExperienceType } from "./LanguageGlobeExperience"
+import type { WatchHomeCategoryRailExperience as WatchHomeCategoryRailExperienceType } from "./WatchHomeCategoryRailExperience"
+import type { HomepageRecommendations as HomepageRecommendationsType } from "./HomepageRecommendations"
 const MediaCollection = dynamic(() =>
   import("./MediaCollection").then((m) => ({ default: m.MediaCollection })),
 ) as typeof MediaCollectionType
+const DynamicMediaCollection = dynamic(() =>
+  import("./DynamicMediaCollection").then((m) => ({
+    default: m.DynamicMediaCollection,
+  })),
+) as typeof DynamicMediaCollectionType
 const PromoBanner = dynamic(() =>
   import("./PromoBanner").then((m) => ({ default: m.PromoBanner })),
 ) as typeof PromoBannerType
@@ -70,7 +84,22 @@ const NavigationCarousel = dynamic(() =>
     default: m.NavigationCarousel,
   })),
 ) as typeof NavigationCarouselType
+const LanguageGlobeExperience = dynamic(() =>
+  import("./LanguageGlobeExperience").then((m) => ({
+    default: m.LanguageGlobeExperience,
+  })),
+) as typeof LanguageGlobeExperienceType
+const WatchHomeCategoryRailExperience = dynamic(() =>
+  import("./WatchHomeCategoryRailExperience").then((m) => ({
+    default: m.WatchHomeCategoryRailExperience,
+  })),
+) as typeof WatchHomeCategoryRailExperienceType
 export type { Section } from "@/lib/content"
+const HomepageRecommendations = dynamic(() =>
+  import("./HomepageRecommendations").then((m) => ({
+    default: m.HomepageRecommendations,
+  })),
+) as typeof HomepageRecommendationsType
 
 /**
  * Set of admin block typenames the renderer dispatch handles, derived
@@ -86,11 +115,10 @@ export type { Section } from "@/lib/content"
  *      typed-union blocks don't. Renderers using `<section id={id}>`
  *      emit no id attribute on admin; section anchor lookups use
  *      `data-section-key` (from `sectionKey`), not `id`.
- *   2. `MediaCollection.items[].video` / `imageOverride` — Strapi
- *      joins the related Video row. Admin returns FLAT `videoId` +
- *      `imageUrl` only. `enrichment.ts` falls back to `titleOverride`
- *      and `imageUrl` when the join is absent; videoId hydration is a
- *      U6+ concern (out of U5 scope).
+ *   2. `MediaCollection.items[].video` — Strapi joins the related Video row.
+ *      Admin returns a flat item with linked
+ *      video metadata plus Web's locale-aware `resolvedTitle` projection,
+ *      so `enrichment.ts` does not need a client-side Video join.
  *
  * The dispatch param type stays `Section` (Strapi-derived) — content.ts
  * is U6's scope. Admin payloads will reach this dispatch via the same
@@ -101,6 +129,7 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "MediaCollectionBlock",
   "PromoBannerBlock",
   "InfoBlocksBlock",
+  "LanguageGlobeBlock",
   "CtaBlock",
   "VideoHeroBlock",
   "VideoBlock",
@@ -115,6 +144,9 @@ const ADMIN_BLOCK_TYPENAMES_LIST = [
   "NavigationCarouselBlock",
   "CardBlock",
   "VideoRecommendationsBlock",
+  "HomepageRecommendationsBlock",
+  "WatchHomeHeroBlock",
+  "WatchHomeCategoryRailBlock",
 ] as const
 type AdminBlockTypename = (typeof ADMIN_BLOCK_TYPENAMES_LIST)[number]
 const ADMIN_BLOCK_TYPENAMES: ReadonlySet<string> = new Set(
@@ -125,18 +157,41 @@ type AnyBlock = {
   readonly __typename?: AdminBlockTypename | string | null
 } & Record<string, unknown>
 
+type DynamicCollectionsRenderContext = {
+  featuredCollections?: FeaturedCollectionReferences
+  cacheScope: DynamicCollectionFeedCacheScope
+  cacheSignatures?: DynamicCollectionFeedCacheSignatures
+}
+
 function renderAdminBlock(
   block: AnyBlock,
   routeVideo: RouteVideo | null | undefined,
+  languageSlug: string | null | undefined,
+  locale: string | null | undefined,
+  dynamicCollections: DynamicCollectionsRenderContext | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
+      if (block.itemsSource === "dynamicCollections") {
+        if (!dynamicCollections) return null
+        return (
+          <DynamicMediaCollection
+            data={block as Parameters<typeof DynamicMediaCollection>[0]["data"]}
+            locale={locale ?? "en"}
+            languageSlug={languageSlug ?? "english"}
+            featuredCollections={dynamicCollections.featuredCollections}
+            cacheScope={dynamicCollections.cacheScope}
+            cacheSignatures={dynamicCollections.cacheSignatures}
+          />
+        )
+      }
       return (
         <MediaCollection
           data={
             block as unknown as Parameters<typeof MediaCollection>[0]["data"]
           }
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "PromoBannerBlock":
@@ -149,6 +204,12 @@ function renderAdminBlock(
       return (
         <InfoBlocks
           data={block as unknown as Parameters<typeof InfoBlocks>[0]["data"]}
+        />
+      )
+    case "LanguageGlobeBlock":
+      return (
+        <LanguageGlobeExperience
+          data={block as Parameters<typeof LanguageGlobeExperience>[0]["data"]}
         />
       )
     case "CtaBlock":
@@ -204,6 +265,7 @@ function renderAdminBlock(
         <Container
           data={block as unknown as Parameters<typeof Container>[0]["data"]}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "SectionBlock":
@@ -211,6 +273,7 @@ function renderAdminBlock(
         <SectionBlock
           data={block as unknown as Parameters<typeof SectionBlock>[0]["data"]}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "RelatedQuestionsBlock":
@@ -266,6 +329,31 @@ function renderAdminBlock(
       }
       return null
     }
+    case "WatchHomeHeroBlock":
+      // The Watch homepage route renders this placeholder with the static
+      // hero model it already resolved. Other routes deliberately ignore it.
+      return null
+    case "HomepageRecommendationsBlock":
+      if (!languageSlug) return null
+      return (
+        <HomepageRecommendations
+          data={block as Parameters<typeof HomepageRecommendations>[0]["data"]}
+          locale={locale}
+          languageSlug={languageSlug}
+        />
+      )
+    case "WatchHomeCategoryRailBlock":
+      if (!languageSlug) return null
+      return (
+        <WatchHomeCategoryRailExperience
+          data={
+            block as Parameters<
+              typeof WatchHomeCategoryRailExperience
+            >[0]["data"]
+          }
+          languageSlug={languageSlug}
+        />
+      )
     default: {
       // F6 (ce-code-review): if this branch fires for a typename in
       // ADMIN_BLOCK_TYPENAMES_LIST, the dispatch set and the switch have
@@ -290,16 +378,28 @@ function renderAdminBlock(
 export function ExperienceSectionRenderer({
   section,
   routeVideo,
+  languageSlug,
+  locale,
+  dynamicCollections,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
+  locale?: string | null
+  dynamicCollections?: DynamicCollectionsRenderContext
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
   const typename = (section as { readonly __typename?: string | null })
     .__typename
   if (typename != null && ADMIN_BLOCK_TYPENAMES.has(typename)) {
-    return renderAdminBlock(section as unknown as AnyBlock, routeVideo)
+    return renderAdminBlock(
+      section as unknown as AnyBlock,
+      routeVideo,
+      languageSlug,
+      locale,
+      dynamicCollections,
+    )
   }
 
   if (process.env.NODE_ENV === "development") {

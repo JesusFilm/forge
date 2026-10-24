@@ -37,6 +37,13 @@ export type ProgressReporter = {
   increment: (count?: number) => void
 }
 
+export type SyncPhaseProgress = {
+  phase: SyncPhase
+  completed: number
+  total: number
+  elapsedMs: number
+}
+
 export type PhaseRunner = (opts: {
   prisma: import("@prisma/client").PrismaClient
   progress: ProgressReporter

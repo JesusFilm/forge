@@ -9,6 +9,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import {
   fetchInputEmbeddings,
+  getEligibleRecommendationVideoIds,
   getRelatedVideoIds,
   queryScenesSimilar,
   resolveSlugToVideoId,
@@ -43,7 +44,7 @@ describe("fetchInputEmbeddings", () => {
     prisma = mockPrisma()
   })
 
-  it("returns embeddings for a specific scene when sceneIndex is provided", async () => {
+  it("returns embeddings for a specific transcript chunk when sceneIndex is provided", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       { embedding_text: "[0.1,0.2]", scene_index: 3 },
     ])
@@ -51,7 +52,7 @@ describe("fetchInputEmbeddings", () => {
     expect(rows).toEqual([{ embedding: "[0.1,0.2]", sceneIndex: 3 }])
   })
 
-  it("returns every scene for the video when sceneIndex is omitted", async () => {
+  it("returns every transcript chunk for the video when sceneIndex is omitted", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       { embedding_text: "[0.1]", scene_index: 0 },
       { embedding_text: "[0.2]", scene_index: 1 },
@@ -91,6 +92,30 @@ describe("getRelatedVideoIds", () => {
     const prisma = mockPrisma()
     prisma.$queryRaw.mockResolvedValueOnce([{ id: "vid-self" }])
     expect(await getRelatedVideoIds(prisma, "vid-self")).toEqual(["vid-self"])
+  })
+})
+
+describe("getEligibleRecommendationVideoIds", () => {
+  it("returns only the currently visible and playable candidate ids", async () => {
+    const prisma = mockPrisma()
+    prisma.$queryRaw.mockResolvedValueOnce([{ id: "vid-playable" }])
+
+    await expect(
+      getEligibleRecommendationVideoIds(
+        prisma,
+        ["vid-hidden", "vid-playable"],
+        "en",
+      ),
+    ).resolves.toEqual(new Set(["vid-playable"]))
+    expect(prisma.$queryRaw).toHaveBeenCalledOnce()
+  })
+
+  it("avoids a database query for an empty pool", async () => {
+    const prisma = mockPrisma()
+    await expect(
+      getEligibleRecommendationVideoIds(prisma, [], "en"),
+    ).resolves.toEqual(new Set())
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 })
 
@@ -175,7 +200,7 @@ describe("queryScenesSimilar", () => {
     expect(await queryScenesSimilar(prisma, "[]", "zz", [], 10)).toEqual([])
   })
 
-  it("SQL invariant: DISTINCT ON (video_id) + locale filter + inner mux join + exclude-by-ALL", async () => {
+  it("SQL invariant: transcript-only + DISTINCT ON (video_id) + locale filter + inner mux join + exclude-by-ALL", async () => {
     // Scrapes the tagged-template SQL passed to $queryRaw to assert the
     // load-bearing invariants called out in apps/admin/CLAUDE.md R5
     // section. A silent regression (e.g. LEFT JOIN slipping in, locale
@@ -188,8 +213,12 @@ describe("queryScenesSimilar", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = (call[0] as any).join(" ")
     const sql = String(raw)
-    expect(sql).toMatch(/DISTINCT ON\s*\(\s*vs\.video_id\s*\)/)
-    expect(sql).toMatch(/JOIN\s+video\s+v\s+ON\s+v\.id\s*=\s*vs\.video_id/)
+    expect(sql).toMatch(/DISTINCT ON\s*\(\s*vt\.video_id\s*\)/)
+    expect(sql).toMatch(/FROM video_transcript_chunk/)
+    expect(sql).toMatch(/JOIN\s+video_transcript\s+vt/)
+    expect(sql).toMatch(/JOIN\s+video\s+v\s+ON\s+v\.id\s*=\s*vt\.video_id/)
+    expect(sql).not.toMatch(/video_scene_locale/)
+    expect(sql).not.toMatch(/video_scene\b/)
     expect(sql).toMatch(/v\.deleted_at IS NULL/)
     expect(sql).toMatch(/vl\.status\s*=\s*'published'/)
     // INNER JOIN on dub/mux (not LEFT JOIN) — preserves cms's non-null
@@ -199,8 +228,10 @@ describe("queryScenesSimilar", () => {
     expect(sql).toMatch(/JOIN\s+mux_video\s+mv/)
     expect(sql).not.toMatch(/LEFT\s+JOIN\s+mux_video/)
     expect(sql).toMatch(/mv\.playback_id IS NOT NULL/)
-    expect(sql).toMatch(/vsl\.embedding IS NOT NULL/)
-    expect(sql).toMatch(/vs\.video_id\s*<>\s*ALL/)
+    expect(sql).toMatch(/vtc\.embedding IS NOT NULL/)
+    expect(sql).toMatch(/vt\.video_id\s*<>\s*ALL/)
+    expect(sql).toMatch(/vtc\.felt_needs/)
+    expect(sql).toMatch(/vtc\.spiritual_context/)
   })
 
   it("resolveSlugToVideoId SQL invariant: deleted_at filter bound to slug parameter", async () => {

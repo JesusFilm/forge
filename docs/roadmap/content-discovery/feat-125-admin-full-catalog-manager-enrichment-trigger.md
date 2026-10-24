@@ -3,7 +3,7 @@ id: "feat-125"
 title: "Admin full-catalog manager enrichment trigger for scene analysis and transcripts"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-19"
 duration: 3
 depends_on:
@@ -18,6 +18,15 @@ tags:
   - "embeddings"
   - "operator-tools"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. The mutation, CLI, catalog lookup, validation, and
+Manager dispatch path were delivered, but the proposed full-catalog UI,
+preflight experience, durable progress, retry controls, and audit trail were
+not. Scene enrichment was subsequently retired, so the remaining work is not
+being pursued under this ticket. Any future operator workflow should be scoped
+afresh against the pipelines and data ownership that exist at that time.
 
 ## Problem
 

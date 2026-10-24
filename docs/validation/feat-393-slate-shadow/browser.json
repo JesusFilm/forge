@@ -1,0 +1,14 @@
+{
+  "desktop": {
+    "readyState": "complete",
+    "resources": 0,
+    "documentWidth": 1280,
+    "viewportWidth": 1280,
+    "rows": 64
+  },
+  "mobile": {
+    "documentWidth": 390,
+    "viewportWidth": 390
+  },
+  "errors": []
+}

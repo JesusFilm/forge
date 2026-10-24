@@ -1,10 +1,8 @@
 import { Platform } from "react-native"
 
 /**
- * In dev, relative paths resolve to the local Next.js server which serves
- * apps/web/public/ directly. In production, the web app sits behind Cloudflare
- * routing that intercepts static file paths, so we resolve to the GitHub raw
- * URL for the same files in apps/web/public/.
+ * Static asset base. Dev hits the local Next.js server; prod can't (Cloudflare
+ * intercepts static paths), so it resolves to GitHub raw for apps/web/public/.
  */
 const STATIC_BASE_URL = __DEV__
   ? Platform.OS === "android"
@@ -13,12 +11,8 @@ const STATIC_BASE_URL = __DEV__
   : "https://raw.githubusercontent.com/JesusFilm/forge/main/apps/web/public"
 
 /**
- * Resolve and validate an image URL from CMS content.
- *
- * - **Relative paths** (e.g. /images/thumbnails/...): Prefixed with the
- *   appropriate static base URL for the current environment.
- * - **Absolute URLs**: Must use https (or http in dev). Passed through as-is.
- * - **Invalid/dangerous schemes**: Returns null.
+ * Resolve and validate a CMS image URL. Relative paths get the static base
+ * prefix; absolute URLs must be https (or http in dev); else null.
  */
 export function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null

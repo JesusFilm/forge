@@ -1,13 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
-import { ExternalLink, Globe } from "lucide-react"
+import { Download, ExternalLink } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
+import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
+import { DOWNLOAD_RETURN_INTENT_PARAM } from "@/components/watch/download-session-client"
 import {
   LanguageCombobox,
   type LanguageComboboxOption,
@@ -16,15 +19,44 @@ import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
+import { buildSubtitleProxyUrl } from "@/components/watch/download-link"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
+import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
+import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { resolveEpisodeImageUrl } from "@/lib/episode-image"
+import { languageBadgeCodeFor, languageCodeFor } from "@/lib/language-code"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { LOCALE_RESOLVED_PARAM } from "@/lib/locale"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import { resolveSeriesLanguageIdentity } from "@/lib/series-language"
+import {
+  SUBTITLE_INTENT_PARAM,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchVideoPath,
+} from "@/lib/routes"
+import {
+  readSubtitlePreference,
+  writeSubtitlePreference,
+} from "@/lib/subtitle-preference-client"
 import { resolvePosterUrl } from "@/lib/url"
+import {
+  WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+  type WatchHeaderLanguageSwitcherDetail,
+} from "@/lib/watch-player-chrome-events"
+
+const CollectionDownloadModal = dynamic(
+  () =>
+    import("@/components/watch/CollectionDownloadModal").then((module) => ({
+      default: module.CollectionDownloadModal,
+    })),
+  { ssr: false },
+)
 
 // Non-null `hls` marker for the synthesized LanguagePickerVariant entries.
 // `series.childDubLanguages` is server-guaranteed playable but ships no
@@ -34,31 +66,64 @@ import { resolvePosterUrl } from "@/lib/url"
 // navigates by language slug — so the real URL is intentionally elided.
 const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
-// Narrowed from WatchModalState ("none" | "download" | "language" | "share")
-// because the series page never offers downloads (R-scope: no series-level
-// downloads). The language picker mirrors the video page's globe-button +
-// modal pattern as a second affordance alongside the inline
-// LanguageCombobox in the meta section — both surfaces dispatch to the
-// same handleLanguageChange path.
-type SeriesModalState = "none" | "share" | "language"
+type SeriesModalState = "none" | "download" | "share" | "language"
+
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 
 type SeriesPageClientProps = {
+  surfaceManifest?: SignedWatchSurfaceManifest
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
+  subtitleLanguageSlug?: string | null
+  audioLanguageCountLabel?: string | null
+  subtitleLanguageCountLabel?: string | null
 }
 
 export function SeriesPageClient({
+  surfaceManifest,
   series,
   selectedVariant,
   locale,
+  subtitleLanguageSlug = null,
+  audioLanguageCountLabel = null,
+  subtitleLanguageCountLabel = null,
 }: SeriesPageClientProps) {
   const t = useTranslations("SeriesPage")
   const router = useRouter()
   const [modalState, setModalState] = useState<SeriesModalState>("none")
-  const openShare = useCallback(() => setModalState("share"), [])
-  const openLanguage = useCallback(() => setModalState("language"), [])
-  const closeModal = useCallback(() => setModalState("none"), [])
+  useWatchModalActivity(modalState !== "none")
+  const [downloadPending, setDownloadPending] = useState(false)
+  const [downloadError, setDownloadError] = useState<string | null>(null)
+  const [downloadLoginUrl, setDownloadLoginUrl] = useState<string | null>(null)
+  const [downloadAccountGateEnabled, setDownloadAccountGateEnabled] =
+    useState(false)
+  const downloadPendingRef = useRef(false)
+  const downloadSessionRequestVersionRef = useRef(0)
+  const cancelDownloadSessionRequest = useCallback(() => {
+    downloadSessionRequestVersionRef.current += 1
+    downloadPendingRef.current = false
+    setDownloadPending(false)
+  }, [])
+  const openShare = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("share")
+  }, [cancelDownloadSessionRequest])
+  const openLanguage = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("language")
+  }, [cancelDownloadSessionRequest])
+  const closeModal = useCallback(() => {
+    cancelDownloadSessionRequest()
+    setModalState("none")
+  }, [cancelDownloadSessionRequest])
+
+  useEffect(
+    () => () => {
+      downloadSessionRequestVersionRef.current += 1
+    },
+    [],
+  )
 
   // Mirror `WatchPageClient`'s `LOCALE_RESOLVED_PARAM` strip — series
   // pages can also receive the server-side URL-↔-variant sync redirect
@@ -79,15 +144,107 @@ export function SeriesPageClient({
   // what we want for series-level language switching.
   const playerRef = useRef<MuxPlayerRef | null>(null)
 
-  const episodes = (series.children ?? []).filter(
-    (child): child is NonNullable<(typeof series.children)[number]> =>
-      child != null,
+  const episodes = useMemo(
+    () =>
+      (series.children ?? []).filter(
+        (child): child is NonNullable<(typeof series.children)[number]> =>
+          child != null,
+      ),
+    [series],
+  )
+  const downloadEpisodes = useMemo(
+    () =>
+      episodes.map((episode) => ({
+        documentId: episode.documentId,
+        order: episode.order ?? null,
+        slug: episode.slug,
+        title: episode.title,
+        thumbnailUrl: resolveEpisodeImageUrl(episode),
+      })),
+    [episodes],
   )
   // R8 pluralization: ICU plural covers N === 0 / 1 / 2+. The "SERIES · …"
   // composite is built from the localized episode-count string.
   const episodeLabel = t("episodeCount", { count: episodes.length })
   const description = series.description ?? series.snippet ?? null
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
+  const subtitles = useMemo(() => series.subtitles ?? [], [series.subtitles])
+  const [selectedSubtitleSlug, setSelectedSubtitleSlug] = useState<
+    string | null
+  >(null)
+
+  useEffect(() => {
+    const preference = readSubtitlePreference()
+    const preferredSlug =
+      preference.enabled &&
+      preference.languageSlug != null &&
+      subtitles.some(
+        (subtitle) => subtitle.language.slug === preference.languageSlug,
+      )
+        ? preference.languageSlug
+        : null
+    setSelectedSubtitleSlug(preferredSlug)
+  }, [selectedVariant?.documentId, subtitles])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    const rawIntent = url.searchParams.get(SUBTITLE_INTENT_PARAM)
+    if (rawIntent == null) return
+
+    url.searchParams.delete(SUBTITLE_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+
+    const intent = tryAsLocaleSlug(rawIntent)
+    if (subtitleLanguageSlug == null && intent != null) return
+    if (subtitleLanguageSlug != null && intent !== subtitleLanguageSlug) return
+    const availableIntent =
+      intent != null &&
+      subtitles.some((subtitle) => subtitle.language.slug === intent)
+        ? intent
+        : null
+
+    if (!availableIntent) return
+    setSelectedSubtitleSlug(availableIntent)
+    writeSubtitlePreference(true, availableIntent)
+  }, [subtitleLanguageSlug, subtitles])
+
+  const selectedSubtitle = useMemo(
+    () =>
+      selectedSubtitleSlug == null
+        ? null
+        : (subtitles.find(
+            (subtitle) => subtitle.language.slug === selectedSubtitleSlug,
+          ) ?? null),
+    [selectedSubtitleSlug, subtitles],
+  )
+  const subtitleVttSrc =
+    selectedSubtitle?.vttSrc && selectedVariant
+      ? buildSubtitleProxyUrl({
+          subtitleId: selectedSubtitle.documentId,
+          variantId: selectedVariant.documentId,
+        })
+      : null
+  const subtitleLanguageCode = selectedSubtitle
+    ? languageCodeFor(selectedSubtitle.language)
+    : null
+  const handleSubtitleChange = useCallback(
+    (enabled: boolean, languageSlug: string | null) => {
+      const validatedSlug = languageSlug ? tryAsLocaleSlug(languageSlug) : null
+      if (enabled && !validatedSlug) return
+      if (
+        validatedSlug &&
+        !subtitles.some((subtitle) => subtitle.language.slug === validatedSlug)
+      ) {
+        return
+      }
+
+      const nextSlug = enabled ? validatedSlug : null
+      setSelectedSubtitleSlug(nextSlug)
+      writeSubtitlePreference(enabled, nextSlug)
+    },
+    [subtitles],
+  )
 
   // `series.childDubLanguages` is the distinct dub-language union across all
   // episodes, aggregated + deduped server-side (DISTINCT ON) and guaranteed
@@ -96,12 +253,10 @@ export function SeriesPageClient({
   // unstable_cache). We re-dedupe by slug here purely as a belt-and-braces
   // guard.
   //
-  // Three downstream consumers all need a per-language projection, built in
-  // one pass keyed by slug:
+  // Two downstream consumers need a per-language projection, built in one
+  // pass keyed by slug:
   //  - languageOptions — the inline LanguageCombobox feed (sorted A→Z
   //    by English form via deriveLanguageDisplay).
-  //  - slugByBcp47 — URL locale resolution: accept either bcp47 ("en")
-  //    OR slug-form ("english") and map back to the combobox option.
   //  - variantsForLanguagePicker — the LanguagePickerModal feed. The modal
   //    filters its input through isPlayableLanguageVariant (it also serves
   //    the watch page, which passes unfiltered variants). These entries are
@@ -110,63 +265,150 @@ export function SeriesPageClient({
   //    only returns published dubs) and a non-null `hls` marker. The modal
   //    reads only hls's PRESENCE, never its value — it navigates by slug —
   //    so eliding the real stream URL here is safe.
-  const { languageOptions, slugByBcp47, variantsForLanguagePicker } =
-    useMemo(() => {
-      const bySlug = new Map<
-        string,
-        {
-          display: LanguageComboboxOption
-          variant: LanguagePickerVariant
-        }
-      >()
-      const bcp47Map = new Map<string, string>()
-      for (const language of series.childDubLanguages ?? []) {
-        if (!language?.slug) continue
-        const slug = language.slug
-        const bcp47 = language.bcp47 ?? null
-        if (bcp47 && !bcp47Map.has(bcp47.toLowerCase())) {
-          bcp47Map.set(bcp47.toLowerCase(), slug)
-        }
-        if (bySlug.has(slug)) continue
-        bySlug.set(slug, {
-          display: {
-            ...deriveLanguageDisplay(slug, language.name),
-            bcp47,
-          },
-          variant: {
-            documentId: slug,
-            published: true,
-            hls: SERVER_GUARANTEED_PLAYABLE,
-            language: {
-              bcp47: language.bcp47,
-              slug: language.slug,
-              name: language.name,
-            },
-          },
-        })
+  const { languageOptions, variantsForLanguagePicker } = useMemo(() => {
+    const bySlug = new Map<
+      string,
+      {
+        display: LanguageComboboxOption
+        variant: LanguagePickerVariant
       }
-      const entries = Array.from(bySlug.values())
-      return {
-        languageOptions: entries
-          .map((e) => e.display)
-          .sort((a, b) => a.name.localeCompare(b.name)),
-        slugByBcp47: bcp47Map,
-        variantsForLanguagePicker: entries.map((e) => e.variant),
-      }
-    }, [series.childDubLanguages])
+    >()
+    for (const language of series.childDubLanguages ?? []) {
+      if (!language?.slug) continue
+      const slug = language.slug
+      const bcp47 = language.bcp47 ?? null
+      if (bySlug.has(slug)) continue
+      bySlug.set(slug, {
+        display: {
+          ...deriveLanguageDisplay(slug, language.name),
+          bcp47,
+        },
+        variant: {
+          documentId: slug,
+          published: true,
+          hls: SERVER_GUARANTEED_PLAYABLE,
+          language: {
+            bcp47: language.bcp47,
+            slug: language.slug,
+            name: language.name,
+          },
+        },
+      })
+    }
+    const entries = Array.from(bySlug.values())
+    return {
+      languageOptions: entries
+        .map((e) => e.display)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+      variantsForLanguagePicker: entries.map((e) => e.variant),
+    }
+  }, [series.childDubLanguages])
 
   // Resolve the current language slug from the URL locale. Accept either
   // form — language-slug form ("english") OR bcp47 ("en") — since the
   // resolver matches variants on either. Falls back to the first option
   // so the combobox's controlled value always has a matching entry.
   const currentLanguageSlug =
-    languageOptions.find(
-      (opt) =>
-        opt.slug === locale || opt.slug.toLowerCase() === locale.toLowerCase(),
-    )?.slug ??
-    slugByBcp47.get(locale.toLowerCase()) ??
-    languageOptions[0]?.slug ??
-    ""
+    resolveSeriesLanguageIdentity(languageOptions, locale, { slug: locale })
+      ?.slug ?? ""
+  const currentLanguageOption = languageOptions.find(
+    (option) => option.slug === currentLanguageSlug,
+  )
+  const currentLanguageCode = languageBadgeCodeFor(currentLanguageOption ?? {})
+  const currentLanguageName = deriveLanguageDisplay(
+    currentLanguageSlug,
+    currentLanguageOption?.name ?? null,
+  ).name
+  const headerLanguageSwitcherOwnerToken = useRef(
+    Symbol("series-page-language-switcher"),
+  ).current
+
+  const openDownload = useCallback(async () => {
+    if (downloadPendingRef.current) return
+    downloadPendingRef.current = true
+    setDownloadPending(true)
+    const requestVersion = ++downloadSessionRequestVersionRef.current
+    try {
+      const session = await resolveDownloadSessionAccess()
+      if (downloadSessionRequestVersionRef.current !== requestVersion) return
+      if (!session.ok && session.reason === "session-unavailable") {
+        setDownloadError(t("downloadSessionError"))
+        return
+      }
+      setDownloadError(null)
+      if (session.ok) {
+        setDownloadAccountGateEnabled(session.accountGateEnabled)
+        setDownloadLoginUrl(null)
+      } else {
+        setDownloadAccountGateEnabled(true)
+        setDownloadLoginUrl(session.loginUrl)
+      }
+      setModalState("download")
+    } finally {
+      if (downloadSessionRequestVersionRef.current === requestVersion) {
+        downloadPendingRef.current = false
+        setDownloadPending(false)
+      }
+    }
+  }, [t])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get(DOWNLOAD_RETURN_INTENT_PARAM) !== "1") return
+    url.searchParams.delete(DOWNLOAD_RETURN_INTENT_PARAM)
+    window.history.replaceState(window.history.state, "", url.toString())
+    void openDownload()
+  }, [openDownload])
+
+  const headerLanguageSwitcherVisible = variantsForLanguagePicker.length >= 2
+  const heroOwnsHeaderLanguageSwitcher = Boolean(selectedVariant?.hls)
+  useEffect(() => {
+    if (typeof window === "undefined" || heroOwnsHeaderLanguageSwitcher) return
+
+    window.dispatchEvent(
+      new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+        WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+        {
+          detail: {
+            visible: headerLanguageSwitcherVisible,
+            onClick: headerLanguageSwitcherVisible ? openLanguage : null,
+            languageCode: headerLanguageSwitcherVisible
+              ? currentLanguageCode
+              : null,
+            languageName: headerLanguageSwitcherVisible
+              ? currentLanguageName
+              : null,
+            ownerToken: headerLanguageSwitcherOwnerToken,
+          },
+        },
+      ),
+    )
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent<WatchHeaderLanguageSwitcherDetail>(
+          WATCH_HEADER_LANGUAGE_SWITCHER_EVENT,
+          {
+            detail: {
+              visible: false,
+              onClick: null,
+              languageCode: null,
+              languageName: null,
+              ownerToken: headerLanguageSwitcherOwnerToken,
+            },
+          },
+        ),
+      )
+    }
+  }, [
+    currentLanguageCode,
+    currentLanguageName,
+    headerLanguageSwitcherOwnerToken,
+    headerLanguageSwitcherVisible,
+    heroOwnsHeaderLanguageSwitcher,
+    openLanguage,
+  ])
 
   const handleLanguageChange = useCallback(
     (nextSlug: string) => {
@@ -193,41 +435,25 @@ export function SeriesPageClient({
       data-modal-state={modalState}
       className="min-h-screen bg-stone-900 text-stone-100"
     >
-      {/* Floating globe button — mirrors HeroPlayer's top-right globe
-          on the video page (same top-10 right-10 offset, same Globe
-          icon, same circular 12×12 hit area). Only renders when there
-          are 2+ playable languages — a single-language series has
-          nothing to switch to. Sits above the hero via z-50 so it
-          remains tappable while the sticky hero is still painted. */}
-      {variantsForLanguagePicker.length >= 2 ? (
-        <button
-          type="button"
-          data-testid="series-page-language-button"
-          onClick={openLanguage}
-          aria-label={t("changeAudioLanguage")}
-          title={t("changeAudioLanguage")}
-          className="fixed top-10 right-10 z-50 inline-flex h-12 w-12 cursor-pointer items-center justify-center rounded-full text-stone-100 transition hover:text-white focus-visible:ring-2 focus-visible:ring-stone-300 focus-visible:outline-none"
-        >
-          <Globe
-            aria-hidden
-            className="h-6 w-6 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]"
-          />
-        </button>
-      ) : null}
-
       <SeriesHero
         series={series}
         selectedVariant={selectedVariant}
+        onLanguageClick={openLanguage}
+        languageSlug={currentLanguageSlug}
+        playableLanguageCount={variantsForLanguagePicker.length}
+        hasSubtitleOptions={subtitles.length > 0}
+        subtitleLanguageCode={subtitleLanguageCode}
+        subtitleVttSrc={subtitleVttSrc}
+        audioLanguageCountLabel={audioLanguageCountLabel}
+        subtitleLanguageCountLabel={subtitleLanguageCountLabel}
         overlay={
-          // Stack the label on top, then a horizontal row with the title
-          // on the left and the share pill on the right. Using
-          // `items-center` on that row aligns the share button to the
-          // title's vertical midline rather than its bottom — earlier
-          // `items-end` alignment positioned the share slightly below
-          // the title baseline because the pill is shorter than the H1.
+          // Stack the label on top, then keep title and actions vertical on
+          // phones so the fixed-width pills cannot squeeze the heading into
+          // a one-word column. Desktop keeps the established side-by-side
+          // band, with the pills aligned to the title's lower edge.
           <div
             data-testid="series-page-hero-overlay"
-            className="absolute right-10 bottom-0 left-10 flex flex-col items-stretch gap-3 pb-8 md:right-16 md:left-16 md:pb-10 xl:right-24 xl:left-24"
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-stretch gap-3 pb-5 max-[360px]:pb-2 md:pb-10 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             <span
               data-testid="series-page-label"
@@ -235,25 +461,57 @@ export function SeriesPageClient({
             >
               {t("seriesLabel", { episodes: episodeLabel })}
             </span>
-            <div className="flex items-baseline justify-between gap-4">
+            <div
+              data-testid="series-page-hero-content-row"
+              className="flex flex-col items-start gap-3 md:flex-row md:items-end md:justify-between md:gap-4"
+            >
               <h1
                 data-testid="series-page-title"
                 className="min-w-0 text-3xl font-bold text-white drop-shadow-lg md:text-5xl xl:text-6xl"
               >
                 {series.title ?? ""}
               </h1>
-              <div className="shrink-0">
+              <div
+                data-testid="series-page-hero-actions"
+                className="flex w-full flex-wrap justify-start gap-2 md:w-auto md:shrink-0 md:justify-end"
+              >
+                {episodes.length > 0 ? (
+                  <Button
+                    variant="pill"
+                    className="max-w-full min-w-0 px-3 text-[0.6875rem] md:max-w-none md:px-5 md:text-xs"
+                    onClick={openDownload}
+                    disabled={downloadPending}
+                    aria-label={t("downloadCollection")}
+                    data-testid="series-page-download-button"
+                  >
+                    <Download size={16} />
+                    <span className="min-w-0 truncate">
+                      {downloadPending
+                        ? t("checkingDownloads")
+                        : t("downloadCollection")}
+                    </span>
+                  </Button>
+                ) : null}
                 <Button
                   variant="pill"
+                  className="px-3 text-[0.6875rem] md:px-5 md:text-xs"
                   onClick={openShare}
                   aria-label={t("share")}
                   data-testid="series-page-share-button"
                 >
                   <ExternalLink size={16} />
-                  <span>{t("share")}</span>
+                  <span className="max-[360px]:sr-only">{t("share")}</span>
                 </Button>
               </div>
             </div>
+            {downloadError ? (
+              <p
+                role="alert"
+                className="text-base sm:text-sm font-semibold text-red-300"
+              >
+                {downloadError}
+              </p>
+            ) : null}
           </div>
         }
       />
@@ -271,40 +529,48 @@ export function SeriesPageClient({
       {showMetaSection ? (
         <section
           data-testid="series-page-meta"
-          className="relative z-30 grid w-full grid-cols-1 gap-6 bg-stone-900/80 px-10 pt-10 pb-6 text-stone-100 backdrop-blur-2xl backdrop-saturate-150 md:grid-cols-4 md:gap-10 md:px-16 md:pt-12 md:pb-8 xl:px-24"
+          className={`relative z-30 ${SERIES_CONTENT_GLASS_CLASS_NAME}`}
         >
-          {description ? (
-            <div className="md:col-span-3">
-              <p
-                data-testid="series-page-description"
-                className="text-base leading-relaxed text-stone-200/80 md:text-lg"
-              >
-                {description}
-              </p>
-            </div>
-          ) : (
-            // Reserve the left columns so the combobox stays in the right
-            // rail even when description is missing.
-            <div className="hidden md:col-span-3 md:block" aria-hidden="true" />
-          )}
-          {languageOptions.length > 0 ? (
-            <div
-              data-testid="series-page-languages"
-              className="flex flex-col gap-2"
-            >
-              <span
-                data-testid="series-page-languages-label"
-                className="text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
-              >
-                {t("languages")}
-              </span>
-              <LanguageCombobox
-                options={languageOptions}
-                value={currentLanguageSlug}
-                onChange={handleLanguageChange}
+          <div
+            data-testid="series-page-meta-content"
+            className={`grid grid-cols-1 gap-6 pt-10 pb-6 md:grid-cols-4 md:gap-10 md:pt-12 md:pb-8 ${WATCH_PAGE_CONTENT_CLASSES}`}
+          >
+            {description ? (
+              <div className="md:col-span-3">
+                <p
+                  data-testid="series-page-description"
+                  className="text-base leading-relaxed text-stone-200/80 md:text-lg"
+                >
+                  {description}
+                </p>
+              </div>
+            ) : (
+              // Reserve the left columns so the combobox stays in the right
+              // rail even when description is missing.
+              <div
+                className="hidden md:col-span-3 md:block"
+                aria-hidden="true"
               />
-            </div>
-          ) : null}
+            )}
+            {languageOptions.length > 0 ? (
+              <div
+                data-testid="series-page-languages"
+                className="flex flex-col gap-2"
+              >
+                <span
+                  data-testid="series-page-languages-label"
+                  className="text-sm sm:text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase"
+                >
+                  {t("languages")}
+                </span>
+                <LanguageCombobox
+                  options={languageOptions}
+                  value={currentLanguageSlug}
+                  onChange={handleLanguageChange}
+                />
+              </div>
+            ) : null}
+          </div>
         </section>
       ) : null}
 
@@ -312,14 +578,38 @@ export function SeriesPageClient({
           (acceptable low-content state per the doc-review deferral —
           editors mid-populating a series still see the hero + metadata
           so they can confirm they're on the right page).
-          The grid owns its own full-bleed section element (bg + padding
-          + z-20 to cover the sticky hero) and accepts the series poster
-          as a default backdrop. SeriesPageClient no longer wraps it. */}
-      <SeriesEpisodesGrid
-        episodes={episodes}
-        languageSlug={currentLanguageSlug}
-        seriesPosterUrl={posterUrl}
-      />
+          The grid owns its full-bleed section and repeats the metadata
+          band's stone glass treatment so the lower page remains visually
+          continuous. */}
+      <WatchExposureBoundary
+        manifest={surfaceManifest}
+        config={{
+          surface: "watch-series",
+          block: "episodes",
+          presentation: "episode-grid",
+          placement: "series-episodes",
+        }}
+      >
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug={currentLanguageSlug}
+          parentSlug={series.slug ?? ""}
+        />
+      </WatchExposureBoundary>
+
+      {modalState === "download" ? (
+        <CollectionDownloadModal
+          open
+          collectionSlug={series.slug ?? ""}
+          collectionTitle={series.title}
+          episodes={downloadEpisodes}
+          languages={languageOptions}
+          currentLanguageSlug={currentLanguageSlug}
+          accountGateEnabled={downloadAccountGateEnabled}
+          authRequiredLoginUrl={downloadLoginUrl}
+          onClose={closeModal}
+        />
+      ) : null}
 
       <LanguagePickerModal
         open={modalState === "language"}
@@ -329,12 +619,16 @@ export function SeriesPageClient({
         playerRef={playerRef}
         onClose={closeModal}
         kind="series"
+        subtitles={subtitles}
+        currentSubtitleEnabled={selectedSubtitle != null}
+        currentSubtitleSlug={selectedSubtitleSlug}
+        onSubtitleChange={handleSubtitleChange}
       />
 
       <ShareModal
         open={modalState === "share"}
         videoSlug={series.slug ?? ""}
-        currentLanguageSlug={locale}
+        currentLanguageSlug={currentLanguageSlug}
         videoTitle={series.title ?? null}
         videoDescription={description}
         posterUrl={posterUrl}

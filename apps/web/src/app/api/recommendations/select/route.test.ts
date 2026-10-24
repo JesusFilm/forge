@@ -1,0 +1,364 @@
+import { createHash } from "node:crypto"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { issueWatchExperimentMeasurementTicket } from "@/lib/recommendation-experiment-measurement-ticket"
+import {
+  adminSelectPrivatePrecomputedRecommendationOperation,
+  adminSelectSemanticRecommendationOperation,
+} from "@forge/admin-graphql/operations"
+import {
+  createRecommendationExperimentTesterLink,
+  exchangeRecommendationExperimentTesterLink,
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+} from "@/lib/recommendation-tester-token"
+import {
+  createRecommendationExperimentBrowser,
+  RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE,
+} from "@/lib/recommendation-experiment-browser"
+
+const { mutate, observePublic, observeScoped } = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  observePublic: vi.fn(async () => true),
+  observeScoped: vi.fn(async () => true),
+}))
+
+vi.mock("@/env", () => ({
+  env: {
+    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example",
+    WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED: "true",
+    WATCH_RECOMMENDATION_TESTER_SECRET:
+      "test-private-secret-strong-enough-1234567890",
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET:
+      "proof-test-secret-strong-enough-1234567890",
+  },
+}))
+vi.mock("@/lib/admin-client", () => ({ default: { mutate } }))
+vi.mock("@/lib/recommendation-public-observation", () => ({
+  watchPublicObservationHour: () => "2026100620",
+  recordWatchPublicObservation: observePublic,
+  recordWatchExperimentObservation: observeScoped,
+}))
+
+const { POST, dynamic, revalidate } = await import("./route")
+
+const session = "b".repeat(43)
+const tabNonce = "tab_correlation_nonce_123"
+const claimNonce = "client_handoff_nonce_1234567890"
+
+function request(body: string, extraCookies = "") {
+  return new Request("https://watch.example/watch/api/recommendations/select", {
+    method: "POST",
+    headers: {
+      origin: "https://watch.example",
+      "sec-fetch-site": "same-origin",
+      "content-type": "application/json",
+      cookie: `forge_recommendation_session=${session}${extraCookies}`,
+    },
+    body,
+  })
+}
+
+const body = {
+  contractVersion: "recommendation-evidence-v1",
+  capability: "capability-secret",
+  requestId: "request-1",
+  itemId: "item-1",
+  eventId: "selection-1",
+  occurredAt: "2026-08-19T03:00:00.000Z",
+  tabNonce,
+  claimNonce,
+}
+
+describe("POST /watch/api/recommendations/select", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mutate.mockResolvedValue({
+      data: {
+        selectSemanticRecommendation: {
+          status: "accepted",
+          claimNonce,
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+  })
+
+  it("keeps signed experiment click attempts and failures separate from accepted selections", async () => {
+    const ticket = issueWatchExperimentMeasurementTicket(
+      "test-private-secret-strong-enough-1234567890",
+      { experimentId: "trial-7", requestId: body.requestId },
+    )
+    expect(ticket).toBeTruthy()
+    const first = await POST(
+      request(JSON.stringify({ ...body, measurementTicket: ticket })),
+    )
+    expect(first.status).toBe(200)
+    expect(observeScoped.mock.calls).toEqual([
+      ["trial-7", "click_attempt", "2026100620"],
+      ["trial-7", "click_ack", "2026100620"],
+    ])
+    observeScoped.mockClear()
+    mutate.mockRejectedValueOnce(new Error("Admin response lost"))
+    const failed = await POST(
+      request(JSON.stringify({ ...body, measurementTicket: ticket })),
+    )
+    expect(failed.status).toBeGreaterThanOrEqual(400)
+    expect(observeScoped.mock.calls).toEqual([
+      ["trial-7", "click_attempt", "2026100620"],
+      ["trial-7", "click_unavailable", "2026100620"],
+    ])
+    observeScoped.mockClear()
+    await POST(
+      request(JSON.stringify({ ...body, measurementTicket: `${ticket}x` })),
+    )
+    expect(observeScoped).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    "Applebot/0.1",
+    "meta-externalagent/1.1",
+    "Meta-ExternalFetcher/1.1",
+  ])("rejects crawler %s before any Admin mutation", async (userAgent) => {
+    const crawlerRequest = request(JSON.stringify(body))
+    crawlerRequest.headers.set("user-agent", userAgent)
+    const response = await POST(crawlerRequest)
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({
+      error: "machine_evidence_rejected",
+    })
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it("is dynamic/private, hashes session and tab correlation, and returns only a fresh handoff", async () => {
+    expect(dynamic).toBe("force-dynamic")
+    expect(revalidate).toBe(0)
+
+    const response = await POST(request(JSON.stringify(body)))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get("cache-control")).toContain("no-store")
+    const responseBody = await response.json()
+    expect(responseBody).toEqual({
+      claimNonce,
+      canonicalHref: "/watch/target.html",
+      targetMediaId: "target-1",
+    })
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: adminSelectSemanticRecommendationOperation,
+        fetchPolicy: "no-cache",
+      }),
+    )
+    const variables = mutate.mock.calls[0]?.[0]?.variables
+    expect(variables.sessionDigest).toBe(
+      createHash("sha256").update(session).digest("hex"),
+    )
+    expect(variables.tabDigest).toBe(
+      createHash("sha256").update(tabNonce).digest("hex"),
+    )
+    expect(variables.claimNonce).toBe(claimNonce)
+    expect(JSON.stringify(variables)).not.toContain(session)
+    expect(JSON.stringify(variables)).not.toContain(tabNonce)
+    expect(JSON.stringify(responseBody)).not.toContain("capability-secret")
+  })
+
+  it("uses the gated private operation with the signed HttpOnly browser unit without consent", async () => {
+    const config = {
+      secret: "test-private-secret-strong-enough-1234567890",
+      origin: "https://watch.example",
+    }
+    const link = await createRecommendationExperimentTesterLink(
+      config,
+      "00000000-0000-4000-8000-000000000001",
+    )
+    const exchanged = await exchangeRecommendationExperimentTesterLink(
+      new URL(link).hash.slice(1),
+      config,
+    )
+    expect(exchanged).not.toBeNull()
+    const browser = createRecommendationExperimentBrowser(
+      config.secret,
+      exchanged!.cookie,
+    )!
+    const cookies = `; ${RECOMMENDATION_EXPERIMENT_TESTER_COOKIE}=${exchanged!.cookie}; ${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${browser.value}`
+    const response = await POST(request(JSON.stringify(body), cookies))
+    expect(response.status).toBe(200)
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: adminSelectPrivatePrecomputedRecommendationOperation,
+      }),
+    )
+    const variables = mutate.mock.calls[0]?.[0]?.variables
+    expect(variables.browserDigest).toBe(browser.digest)
+    expect(JSON.stringify(variables)).not.toContain(browser.value)
+    expect(await response.text()).not.toContain("capability-secret")
+
+    mutate.mockClear()
+    await POST(
+      request(
+        JSON.stringify(body),
+        `${cookies}; forge_recommendation_withdrawal_pending=1`,
+      ),
+    )
+    expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBe(
+      browser.digest,
+    )
+
+    mutate.mockClear()
+    await POST(
+      request(
+        JSON.stringify(body),
+        `; ${RECOMMENDATION_EXPERIMENT_TESTER_COOKIE}=${exchanged!.cookie}`,
+      ),
+    )
+    expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBeNull()
+
+    mutate.mockClear()
+    const altered = `${browser.value.slice(0, -1)}${browser.value.endsWith("a") ? "b" : "a"}`
+    await POST(
+      request(
+        JSON.stringify(body),
+        `; ${RECOMMENDATION_EXPERIMENT_TESTER_COOKIE}=${exchanged!.cookie}; ${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${altered}`,
+      ),
+    )
+    expect(mutate.mock.calls[0]?.[0]?.variables.browserDigest).toBeNull()
+  })
+
+  it("binds a public experiment selection to its signed browser after rollback", async () => {
+    const browser = createRecommendationExperimentBrowser(
+      "test-private-secret-strong-enough-1234567890",
+    )!
+    const response = await POST(
+      request(
+        JSON.stringify(body),
+        `; ${RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE}=${browser.value}`,
+      ),
+    )
+    expect(response.status).toBe(200)
+    expect(mutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mutation: adminSelectPrivatePrecomputedRecommendationOperation,
+        variables: expect.objectContaining({ browserDigest: browser.digest }),
+      }),
+    )
+  })
+
+  it("accepts an exact replay but refuses null handoffs and non-canonical Admin targets", async () => {
+    mutate.mockResolvedValueOnce({
+      data: {
+        selectSemanticRecommendation: {
+          status: "replay",
+          claimNonce,
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+    const replay = await POST(request(JSON.stringify(body)))
+    expect(replay.status).toBe(200)
+    await expect(replay.json()).resolves.toEqual({
+      claimNonce,
+      canonicalHref: "/watch/target.html",
+      targetMediaId: "target-1",
+    })
+
+    mutate.mockResolvedValueOnce({
+      data: {
+        selectSemanticRecommendation: {
+          status: "replay",
+          claimNonce: null,
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+    const missing = await POST(request(JSON.stringify(body)))
+    expect(missing.status).toBe(409)
+
+    mutate.mockResolvedValueOnce({
+      data: {
+        selectSemanticRecommendation: {
+          status: "accepted",
+          claimNonce: "different_client_handoff_nonce_123",
+          canonicalHref: "/watch/target.html",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+    const mismatched = await POST(request(JSON.stringify(body)))
+    expect(mismatched.status).toBe(502)
+
+    mutate.mockResolvedValueOnce({
+      data: {
+        selectSemanticRecommendation: {
+          status: "accepted",
+          claimNonce,
+          canonicalHref: "https://attacker.example/steal",
+          targetMediaId: "target-1",
+        },
+      },
+    })
+    const external = await POST(request(JSON.stringify(body)))
+    expect(external.status).toBe(502)
+    expect(await external.text()).not.toContain("attacker.example")
+  })
+
+  it("rejects malformed input before creating a handoff", async () => {
+    const duplicate = await POST(
+      request(
+        '{"contractVersion":"recommendation-evidence-v1","capability":"one","requestId":"request-1","itemId":"item-1","eventId":"selection-1","occurredAt":"2026-08-19T03:00:00.000Z","tabNonce":"one","tabNonce":"two","claimNonce":"client_handoff_nonce_1234567890"}',
+      ),
+    )
+    expect(duplicate.status).toBe(400)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it.each(["thrown", "returned"])(
+    "makes %s structured invalid selection input terminal without exposing details",
+    async (mode) => {
+      const error = {
+        errors: [
+          {
+            message: "private capability rejection",
+            extensions: { code: "BAD_USER_INPUT" },
+          },
+        ],
+      }
+      if (mode === "thrown") mutate.mockRejectedValueOnce(error)
+      else mutate.mockResolvedValueOnce({ error })
+
+      const response = await POST(request(JSON.stringify(body)))
+      expect(response.status).toBe(400)
+      expect(response.headers.get("cache-control")).toContain("no-store")
+      expect(await response.json()).toEqual({
+        error: "evidence_request_invalid",
+      })
+      expect(mutate).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it("preserves retryable failures without a structured invalid-input code", async () => {
+    mutate.mockRejectedValueOnce(new Error("Recommendation request is invalid"))
+    const response = await POST(request(JSON.stringify(body)))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: "recommendations_unavailable",
+    })
+  })
+
+  it("retains the more specific definitive binding response", async () => {
+    mutate.mockRejectedValueOnce({
+      errors: [
+        {
+          extensions: {
+            code: "BAD_USER_INPUT",
+            recommendationCode: "invalid_binding",
+          },
+        },
+      ],
+    })
+    const response = await POST(request(JSON.stringify(body)))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: "playback_binding_invalid" })
+  })
+})

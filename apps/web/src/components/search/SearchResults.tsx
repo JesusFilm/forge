@@ -2,8 +2,8 @@
 
 import { useState } from "react"
 import type { Route } from "next"
-import { runSearch } from "@/lib/search-actions"
 import type { SearchContentType, SearchResult } from "@/lib/search"
+import { searchWatchDirect } from "@/lib/watch-search-client"
 import { VideoCard } from "./VideoCard"
 
 type SearchResultsProps = {
@@ -37,8 +37,8 @@ export function SearchResults({
         <h2 className="text-lg font-semibold text-stone-100">
           No results for &apos;{query}&apos;
         </h2>
-        <p className="mt-2 text-sm text-stone-400">
-          Try different keywords or browse experiences
+        <p className="mt-2 text-base sm:text-sm text-stone-400">
+          Try different keywords or browse videos
         </p>
       </div>
     )
@@ -52,7 +52,7 @@ export function SearchResults({
       typeof performance !== "undefined" ? performance.now() : Date.now()
 
     try {
-      const data = await runSearch({
+      const data = await searchWatchDirect({
         query,
         limit: 20,
         offset,
@@ -65,7 +65,7 @@ export function SearchResults({
 
       setResults((prev) => [...prev, ...data.results])
       setHasMore(data.hasMore)
-      setOffset((prev) => prev + data.results.length)
+      setOffset((prev) => data.nextOffset ?? prev + data.results.length)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load more results",
@@ -90,11 +90,11 @@ export function SearchResults({
 
       {error && (
         <div className="mt-6 text-center">
-          <p className="text-sm text-red-400">{error}</p>
+          <p className="text-base sm:text-sm text-red-400">{error}</p>
           <button
             type="button"
             onClick={loadMore}
-            className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-sm text-stone-200 transition hover:bg-stone-600"
+            className="mt-2 rounded-lg bg-stone-700 px-4 py-2 text-base sm:text-sm text-stone-200 transition hover:bg-stone-600"
           >
             Retry
           </button>
@@ -107,7 +107,7 @@ export function SearchResults({
             type="button"
             onClick={loadMore}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg bg-stone-800 px-6 py-3 text-sm font-medium text-stone-200 transition hover:bg-stone-700 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-stone-800 px-6 py-3 text-base sm:text-sm font-medium text-stone-200 transition hover:bg-stone-700 disabled:opacity-50"
           >
             {loading && (
               <svg

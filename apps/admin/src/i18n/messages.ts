@@ -17,10 +17,15 @@ export const adminMessages = {
       operatorNotes: "Operator Notes",
       premiumStubLabel: "Premium stub wired for future data",
       fieldGuide: "FIELD_GUIDE",
-      searchPlaceholder: "Search or ⌘K",
-      searchPalettePrompt: "Search routes, tools, and editorial surfaces",
+      searchPlaceholder: "Open route palette",
+      searchPalettePrompt: "Navigate routes, tools, and editorial surfaces",
       navigate: "Navigate",
       quickActions: "Quick Actions",
+      readOnly: "Read-only",
+      openCommandPalette: "Open command palette",
+      closeCommandPalette: "Close command palette",
+      helpUnavailable: "Help is not available yet",
+      navigationLoading: "Loading route...",
       context: "Context",
       paletteContext:
         "This palette is shared across the entire dashboard shell and uses the same route registry as the sidebar so future pages stay synchronized automatically.",
@@ -102,8 +107,12 @@ export const adminMessages = {
           description: "Vector coverage, freshness, and indexing status.",
         },
         search: {
-          label: "Semantic Search",
+          label: "Search",
           description: "Retrieval quality and trace inspection.",
+        },
+        recommendations: {
+          label: "Recommendations",
+          description: "Semantic delivery health and authorized traces.",
         },
         users: {
           label: "Users",
@@ -112,6 +121,14 @@ export const adminMessages = {
         partnerKeys: {
           label: "Partner API keys",
           description: "Issued partner bearer tokens and revocation status.",
+        },
+        pushCampaigns: {
+          label: "Push campaigns",
+          description: "Announcements, test devices, and per-campaign reports.",
+        },
+        mcp: {
+          label: "MCP",
+          description: "Admin MCP endpoints, OAuth scopes, and agent skills.",
         },
         settings: {
           label: "Settings",
@@ -166,7 +183,7 @@ export const adminMessages = {
         okta: "Okta",
       },
       errors: {
-        forbidden: "Your account does not have access to the admin dashboard.",
+        forbidden: "You're signed in, but Admin access has not been approved.",
         invalidCredentials: "Invalid email or password",
         requestAccessFailed: "Access request failed. Try signing in again.",
       },
@@ -175,11 +192,11 @@ export const adminMessages = {
         approved:
           "Access has been approved. Continue to sign in again and enter the dashboard.",
         available:
-          "Request access and an administrator will review your account.",
+          "You're signed in, but Admin access has not been approved. Request access and an administrator will review your account.",
         description:
           "This account is authenticated, but it has not been approved for Forge Admin.",
         pending:
-          "Access has been requested and is waiting for an administrator to approve it.",
+          "You're signed in, but Admin access has not been approved. An administrator still needs to approve your account.",
         requested:
           "Access requested. An administrator must approve your account before you can enter the dashboard.",
         title: "Admin access required",
@@ -192,6 +209,7 @@ export const adminMessages = {
         title: "System Overview",
         description: "Real-time status of content delivery and sync pipelines.",
         action: "Run Manual Sync",
+        actionUnavailable: "Manual sync starts from Core Sync.",
         metrics: [
           {
             label: "Experiences",
@@ -345,7 +363,11 @@ export const adminMessages = {
         title: "Experiences",
         description:
           "Manage interactive spiritual journeys and storytelling sequences.",
-        actions: { filter: "Filter", primary: "New Experience" },
+        actions: {
+          filter: "Filter",
+          filterUnavailable: "Experience filters are not available yet.",
+          primary: "New Experience",
+        },
         modal: {
           title: "Create Experience",
           description:
@@ -373,16 +395,91 @@ export const adminMessages = {
         eyebrow: "Index / Videos",
         title: "Video Library",
         description:
-          "Review the media catalog, source of truth, and dub coverage in one dense table.",
+          "Review the catalog and dub coverage across {total} titles.",
         infoStrip: {
           items: ["INGESTION PIPELINE: ACTIVE", "MUX EDGE ONLINE"],
           trailing: "REGION: US-EAST-1 (PROD)",
         },
-        actions: { filter: "Filter", primary: "Add manual video" },
+        actions: {
+          filter: "Filter",
+          filterUnavailable: "Video filters are not available yet.",
+          primary: "Add manual video",
+          primaryUnavailable: "Manual video creation is not available yet.",
+          rowActionsUnavailable: "Video row actions are not available yet.",
+        },
+        collection: {
+          clear: "Clear collection filter",
+          childCount: "{count} child videos",
+          missing: "Collection not found",
+          title: "Collection filter",
+        },
+        detail: {
+          close: "Back to video library",
+          count: "{count} records",
+          eyebrow: "Video detail",
+          openVisitor: "Open visitor page",
+        },
+        search: {
+          label: "Search videos",
+          placeholder: "Search videos, IDs, languages...",
+          submit: "Search",
+          clear: "Clear",
+          active: 'Filtered by "{query}"',
+        },
+        filters: {
+          categoryLabel: "Filter by video type",
+          languageLabel: "Filter by dubbed language",
+          languageSearchPlaceholder: "Filter languages...",
+          languageNoResults: "No matching languages",
+          allLanguages: "All languages",
+          loading: "Thinking...",
+          ready: "Video filters ready",
+        },
+        tabs: {
+          all: "All",
+          collections: "Collections",
+          episodes: "Single episodes",
+          features: "Features",
+          shortFilms: "Short films",
+          series: "Series",
+        },
+        sort: {
+          label: "Sort videos",
+          options: {
+            recent: "Recently updated",
+            oldest: "Oldest updated",
+            created: "Recently created",
+            createdOldest: "Oldest created",
+          },
+        },
+        coverage: {
+          languagesDubbed: "languages dubbed",
+          noLanguages: "No dubbed languages",
+          overflow: "+{count}",
+        },
+        summary: {
+          total: "Active videos",
+          visible: "Visible rows",
+          page: "Page",
+          query: "Query",
+          queryAll: "All videos",
+        },
         table: {
           title: "Video Library",
-          meta: "ROW_THUMBNAILS / SOURCE_BADGES",
+          meta: "SEARCHABLE_ROWS / TYPE_LABELS / VISITOR_LINKS",
           columns: ["Thumbnail", "Video Details", "Source", "Dubs", "Updated"],
+          empty: "No active videos found.",
+          emptySearch: "No active videos match this search or filter.",
+          openCollectionLabel: "Filter by collection",
+          openDetailsLabel: "Open video detail",
+          openVisitorLabel: "Open visitor-facing video page",
+          noVisitorLinkLabel: "No public watch link available",
+          pagination: {
+            summary: "Showing {start}-{end} of {total}",
+            page: "Page {current} of {count}",
+            previous: "Previous",
+            next: "Next",
+          },
           rows: [
             {
               title: "Neon Genesis: The Digital Divide",
@@ -704,10 +801,9 @@ export const adminMessages = {
         ],
       },
       search: {
-        eyebrow: "System / Semantic Search",
-        title: "Semantic Search",
-        description:
-          "Inspect query response quality, similarity score ranges, and hydration paths.",
+        eyebrow: "",
+        title: "Search",
+        description: "Monitor recent search requests, clicks, and latency.",
         cards: [
           { label: "Median Latency", value: "87ms", footer: "TOP_10_RESULTS" },
           { label: "Queries / Hr", value: "1.2k", footer: "EDITOR_TRAFFIC" },
@@ -849,6 +945,110 @@ export const adminMessages = {
           revokedBy: "Revoked by",
         },
       },
+      pushCampaigns: {
+        eyebrow: "System / Push Campaigns",
+        title: "Push campaigns",
+        description:
+          "Announcements that reach a viewer at a chosen hour of their own morning, in the language they watch in.",
+        newCampaign: "New campaign",
+        testDevices: "Test devices",
+        allCampaigns: "All campaigns",
+        emptyTitle: "No campaigns yet",
+        emptyDescription:
+          "Choose New campaign to start one. A campaign needs English copy, a destination, and a test send before it can go out.",
+        registrationsTitle: "Registrations per day",
+        registrationsMeta: "PUSH_REGISTRATION / LAST 14 DAYS",
+        registrationsEmpty: "No device has registered yet.",
+        workerTitle: "Send worker",
+        workerOnline: "A worker is online, so a wave can send.",
+        workerStale:
+          "Every worker heartbeat is stale. A scheduled campaign will not send until a worker comes back.",
+        workerUnknown:
+          "No worker heartbeat is readable. Check the Workflows page before you schedule a campaign.",
+        flagOffTitle: "Push campaigns are turned off",
+        flagOffDescription:
+          "Admin refuses to test, schedule, or send while PUSH_CAMPAIGNS_ENABLED is not true. You can still write copy and save.",
+        columns: {
+          title: "Title",
+          status: "Status",
+          destination: "Destination",
+          audience: "Audience",
+          schedule: "Schedule",
+          languages: "Languages",
+          updated: "Updated",
+        },
+        editor: {
+          eyebrow: "Push campaigns / Campaign",
+          notFoundTitle: "That campaign does not exist",
+          notFoundDescription:
+            "It may have been removed. Go back to the campaign list and start a new one.",
+          tabEditor: "Editor",
+          tabReport: "Report",
+          frozenNotice:
+            "This campaign is frozen. Copy, destination, and audience are fixed once sending starts; cancel it instead of editing it.",
+          untestedNotice:
+            "Send this campaign to a test device before you schedule it or send it now.",
+        },
+        review: {
+          aiMarker: "An AI agent changed this campaign for {person} at {time}.",
+          aiMarkerPrompt: "Check every language before you test.",
+          staleTestResults:
+            "These results are for an earlier version. Send a new test.",
+          staleChange:
+            "This campaign changed after you loaded it. The last change was by {person} at {time}.",
+          staleNextStep: "Load the latest version, then try again.",
+          unknownPerson: "an unknown person",
+          loadLatest: "Load the latest version",
+          loadLatestTitle: "Load the latest version?",
+          loadLatestConsequence:
+            "The page shows the saved campaign again. The text that you typed here and did not save is lost.",
+        },
+        report: {
+          title: "Campaign report",
+          notStartedTitle: "This campaign has not started sending",
+          notStartedDescription:
+            "Counts appear here once the first zone dispatches. Every number is a count of registered devices.",
+          refresh: "Refresh",
+          byLanguage: "By language",
+          byCountry: "By country",
+          totals: "Totals",
+          generatedAt: "Re-aggregated at",
+          columns: {
+            key: "Key",
+            audience: "Audience",
+            accepted: "Accepted",
+            handedOff: "Handed off",
+            unknown: "Unknown",
+            pending: "Pending",
+            failed: "Failed",
+            invalid: "Invalid",
+            suppressed: "Suppressed",
+            unreachable: "Unreachable",
+            missed: "Missed",
+            opened: "Opened",
+            attributed: "Attributed devices",
+            attributedWatchStarts: "Attributed watch starts",
+          },
+        },
+        devices: {
+          eyebrow: "Push campaigns / Test devices",
+          title: "Test devices",
+          description:
+            "A test device is any device whose notification test ID an admin user has added here. To find the ID, tap the “Our mission” card at the bottom of the app's Home tab. On the mission page, hold its “Become a beta tester” button for 5 seconds. The Home card with the same name does not show the ID.",
+          emptyTitle: "No test devices yet",
+          emptyDescription:
+            "Paste the notification test ID from the app, give it a label, and add it.",
+          columns: {
+            label: "Label",
+            testDeviceId: "Notification test ID",
+            platform: "Platform",
+            state: "State",
+            added: "Added",
+          },
+          active: "Active",
+          retired: "Retired",
+        },
+      },
       settings: {
         eyebrow: "System / Settings",
         title: "Settings & API Keys",
@@ -913,9 +1113,9 @@ export const adminMessages = {
       },
       languages: {
         eyebrow: "Content / Languages",
-        title: "Languages Reference Data",
+        title: "Language Library",
         description:
-          "Reference locale metadata, publication coverage, and sync provenance.",
+          "Review reference metadata, country links, and content coverage across {total} languages.",
         cards: [
           { label: "Languages", value: "212", footer: "REFERENCE_ROWS" },
           { label: "Countries", value: "247", footer: "ISO_MAPPED" },
@@ -1050,11 +1250,16 @@ export const adminMessages = {
       operatorNotes: "Notas del operador",
       premiumStubLabel: "Superficie premium lista para datos futuros",
       fieldGuide: "GUIA_DE_CAMPO",
-      searchPlaceholder: "Buscar o ⌘K",
+      searchPlaceholder: "Abrir paleta de rutas",
       searchPalettePrompt:
-        "Buscar rutas, herramientas y superficies editoriales",
+        "Navegar rutas, herramientas y superficies editoriales",
       navigate: "Navegar",
       quickActions: "Acciones rápidas",
+      readOnly: "Solo lectura",
+      openCommandPalette: "Abrir paleta de comandos",
+      closeCommandPalette: "Cerrar paleta de comandos",
+      helpUnavailable: "La ayuda aun no esta disponible",
+      navigationLoading: "Cargando ruta...",
       context: "Contexto",
       paletteContext:
         "Esta paleta se comparte en todo el panel y usa el mismo registro de rutas que la barra lateral para que las futuras páginas permanezcan sincronizadas automáticamente.",
@@ -1141,6 +1346,11 @@ export const adminMessages = {
           label: "Busqueda semantica",
           description: "Calidad de recuperacion e inspeccion de trazas.",
         },
+        recommendations: {
+          label: "Recomendaciones",
+          description:
+            "Salud de entrega semantica y trazas con acceso autorizado.",
+        },
         users: {
           label: "Usuarios",
           description: "Permisos, invitaciones y postura de roles.",
@@ -1148,6 +1358,16 @@ export const adminMessages = {
         partnerKeys: {
           label: "Claves API de socios",
           description: "Tokens portadores emitidos y estado de revocacion.",
+        },
+        pushCampaigns: {
+          label: "Campanas push",
+          description:
+            "Anuncios, dispositivos de prueba e informes por campana.",
+        },
+        mcp: {
+          label: "MCP",
+          description:
+            "Endpoints MCP de Admin, alcances OAuth y skills de agentes.",
         },
         settings: {
           label: "Configuracion",
@@ -1202,7 +1422,8 @@ export const adminMessages = {
         okta: "Okta",
       },
       errors: {
-        forbidden: "Tu cuenta no tiene acceso al panel de administracion.",
+        forbidden:
+          "Iniciaste sesion, pero el acceso de administrador aun no fue aprobado.",
         invalidCredentials: "Correo o contrasena no validos",
         requestAccessFailed:
           "No se pudo solicitar acceso. Intenta iniciar sesion de nuevo.",
@@ -1211,11 +1432,12 @@ export const adminMessages = {
         accountLabel: "Iniciaste sesion como",
         approved:
           "El acceso fue aprobado. Continua para iniciar sesion de nuevo y entrar al panel.",
-        available: "Solicita acceso y un administrador revisara tu cuenta.",
+        available:
+          "Iniciaste sesion, pero el acceso de administrador aun no fue aprobado. Solicita acceso y un administrador revisara tu cuenta.",
         description:
           "Esta cuenta esta autenticada, pero aun no tiene aprobacion para Forge Admin.",
         pending:
-          "El acceso fue solicitado y esta esperando la aprobacion de un administrador.",
+          "Iniciaste sesion, pero el acceso de administrador aun no fue aprobado. Un administrador aun debe aprobar tu cuenta.",
         requested:
           "Acceso solicitado. Un administrador debe aprobar tu cuenta antes de que puedas entrar al panel.",
         title: "Se requiere acceso de administrador",

@@ -1,0 +1,4 @@
+profile_source,semantic_source,cards,same_as_current_video,previously_learned_video,learned_last_24h,profile_similarity_p50,profile_similarity_p10
+False,True,16501,0,436,418,,
+True,False,7270,0,3672,3111,0.9220614524239991,0.6724791350584566
+True,True,8195,0,1171,1035,0.7593534362508852,0.6302858088211654

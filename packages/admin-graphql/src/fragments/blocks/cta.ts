@@ -9,8 +9,15 @@ export const adminCtaFragment = adminGraphql(`
     body
     buttonLabel
     buttonLink
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
     ctaVariant: variant
   }

@@ -5,13 +5,16 @@ import { auth } from "@/auth/config"
 import { prisma } from "@/db/client"
 
 export function canAccessAuthOperator({
+  actorType,
   membershipStatus,
   nodeEnv,
 }: {
+  actorType?: "HUMAN" | "AGENT" | null
   membershipStatus: "INVITED" | "ACTIVE" | "SUSPENDED" | "DISABLED"
   nodeEnv: string | undefined
 }) {
   if (membershipStatus !== "ACTIVE") return false
+  if (actorType === "AGENT") return false
 
   return nodeEnv !== "production"
 }
@@ -28,6 +31,7 @@ export async function requireAuthOperator() {
       id: true,
       email: true,
       name: true,
+      actorType: true,
       membershipStatus: true,
     },
   })
@@ -36,6 +40,7 @@ export async function requireAuthOperator() {
     !user ||
     !canAccessAuthOperator({
       membershipStatus: user.membershipStatus,
+      actorType: user.actorType,
       nodeEnv: process.env.NODE_ENV,
     })
   ) {

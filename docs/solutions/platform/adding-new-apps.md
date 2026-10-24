@@ -26,9 +26,9 @@ The monorepo uses `apps/*` and `packages/*` globs in `pnpm-workspace.yaml`, so *
 
 ## Key decisions
 
-- **Port assignment**: web=3000 (default), mobile=N/A, cms=1337 (Strapi default), manager=3002
-- **CMS access**: always use `@forge/graphql` typed operations via Apollo Client (`src/cms/client.ts`) — never REST
-- **Env validation**: always use t3-oss/env-nextjs; never read `process.env` directly
+- **Port assignment**: web=3000 (default), mobile=N/A, cms=1337 (Strapi default), manager=3002, admin=3003, auth=3004, mastra-gateway=3005, roadmap=3100, chat=3200
+- **Data access**: consumer apps read from `apps/admin` via the typed `adminGraphql()` client from `@forge/admin-graphql` — never REST. (The old Strapi CMS app and its Strapi-bound `packages/graphql` / `@forge/graphql` client were removed; do not reach for them.)
+- **Env validation**: when an app has env vars, validate them with t3-oss/env-nextjs — never read `process.env` directly. An env-less app ships no `env.ts`.
 - **No root turbo.json changes**: tasks (dev, build, lint, typecheck, test) are inherited universally
 
 ## Example: apps/manager

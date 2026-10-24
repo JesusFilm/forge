@@ -1,10 +1,9 @@
 #!/usr/bin/env tsx
 /**
- * Run scene, transcript, and/or experience embedding backfills from a
+ * Run transcript and/or experience embedding backfills from a
  * workstation against any DATABASE_URL.
  *
- * Bypasses the GraphQL `triggerSceneEmbeddingBackfill` /
- * `triggerTranscriptEmbeddingBackfill` /
+ * Bypasses the GraphQL `triggerTranscriptEmbeddingBackfill` /
  * `triggerExperienceEmbeddingBackfill` mutations (which are
  * ADMIN-gated and dispatch via the useworkflow runtime). Calls the
  * workflow functions directly with the in-process Prisma singleton
@@ -23,21 +22,20 @@
  *   pnpm --filter @forge/admin run-embeds --pipeline=transcript
  *
  *   # Filters (all optional, repeatable):
- *   --pipeline=scene|transcript|experience|both         # required
- *                                                       # `both` = scene + transcript
- *                                                       # (back-compat; experience runs only via its own pipeline)
- *   --mapping-key=admin-migrations/core-id-mapping.json # scene/transcript default
- *   --core-id=<id>                                      # scene/transcript filter (repeatable)
- *   --locale=<bcp47>                                    # scene + experience pipeline filter (repeatable)
+ *   --pipeline=transcript|experience|both|all           # required
+ *                                                       # `both` = transcript (legacy alias)
+ *                                                       # `all` = transcript + experience
+ *   --mapping-key=admin-migrations/core-id-mapping.json # transcript default
+ *   --core-id=<id>                                      # transcript filter (repeatable)
+ *   --locale=<bcp47>                                    # experience pipeline filter (repeatable)
  *   --language=<bcp47>                                  # transcript pipeline filter (repeatable)
- *   --scene-mode=idempotent|repair|force|model-upgrade
  *   --transcript-mode=idempotent|repair|force|model-upgrade
  *   --experience-mode=idempotent|repair|force|model-upgrade
  *   --experience-id=<cuid>                              # experience pipeline filter (repeatable)
  *   --force                                             # experience pipeline only — re-embed
  *                                                       # rows that already have a non-NULL embedding
  *   --report-out=<path>                                 # optional; dump final report JSON
- *   --from-report=<path>                                # scene retry only; retry failed targets
+ *   --gate-report=<path>                                # required for --pipeline=all
  *
  * The mapping snapshot must already exist at the configured S3 key
  * (or the local-fallback path when RAILWAY_S3_BUCKET is unset).
@@ -54,17 +52,13 @@
  *
  *   stdout:
  *     - `run-embeds.start` — one line at startup with resolved config
- *     - `run-embeds.scene.preflight`       (pipeline=scene|both)
- *     - `run-embeds.scene.start`           (pipeline=scene|both)
- *     - `run-embeds.scene.complete`        (pipeline=scene|both)
- *     - `run-embeds.scene.error`           (pipeline=scene|both, on error)
- *     - `run-embeds.transcript.start`      (pipeline=transcript|both)
- *     - `run-embeds.transcript.complete`   (pipeline=transcript|both)
- *     - `run-embeds.transcript.error`      (pipeline=transcript|both, on error)
- *     - `run-embeds.experience.start`      (pipeline=experience)
- *     - `run-embeds.experience.complete`   (pipeline=experience)
- *     - `run-embeds.experience.error`      (pipeline=experience, on error)
- *     - `run-embeds.experience.skipped`    (pipeline=both — both = scene+transcript only;
+ *     - `run-embeds.transcript.start`      (pipeline=transcript|both|all)
+ *     - `run-embeds.transcript.complete`   (pipeline=transcript|both|all)
+ *     - `run-embeds.transcript.error`      (pipeline=transcript|both|all, on error)
+ *     - `run-embeds.experience.start`      (pipeline=experience|all)
+ *     - `run-embeds.experience.complete`   (pipeline=experience|all)
+ *     - `run-embeds.experience.error`      (pipeline=experience|all, on error)
+ *     - `run-embeds.experience.skipped`    (pipeline=both — legacy transcript-only alias;
  *                                           experience is explicitly omitted)
  *     - `run-embeds.complete` — final aggregated report (pretty-printed JSON)
  *     - `run-embeds.report_out_written` — when --report-out succeeded
@@ -80,8 +74,20 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
-import { dirname, isAbsolute, resolve } from "node:path"
+import {
+  basename,
+  dirname,
+  extname,
+  isAbsolute,
+  relative,
+  resolve,
+} from "node:path"
 import { DEFAULT_CORE_ID_MAPPING_S3_KEY } from "@/services/core-id-mapping.constants"
+import {
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+} from "@/services/content-embedding-contract"
 
 /**
  * Resolve a `--report-out=<path>` argument to an absolute path, or
@@ -125,28 +131,6 @@ export async function writeReportToPath(
   }
 }
 
-export type SceneRetryTargetFromReport = {
-  coreId: string
-  videoEditionId: string
-  locale: string
-  cmsVideoId: number
-}
-
-export type SceneRetrySelectionDetails = {
-  requested: number
-  matched: number
-  unmatched: number
-  unmatchedRetryTargets: ReadonlyArray<{
-    coreId: string
-    videoEditionId: string
-    locale: string
-  }>
-}
-
-export type PipelineErrorDetails = {
-  retrySelection?: SceneRetrySelectionDetails
-}
-
 export class RunEmbedsConfigError extends Error {
   constructor(
     message: string,
@@ -157,160 +141,22 @@ export class RunEmbedsConfigError extends Error {
   }
 }
 
-export function resolveReportInPath(
-  arg: string | undefined,
-): string | undefined {
-  if (arg === undefined || arg === "") return undefined
-  return isAbsolute(arg) ? arg : resolve(process.cwd(), arg)
-}
-
-export function extractFailedSceneRetryTargetsFromReport(
-  report: unknown,
-): SceneRetryTargetFromReport[] {
-  if (!report || typeof report !== "object") {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report is not an object",
-    )
+export type ContentBackfillGateSummary = {
+  reportId: string
+  mastraRunId: string
+  baselineName: string
+  judgeModel: string
+  netWinRate: number
+  comparableQueries: number
+  contentEmbeddingProvider: {
+    provider: string
+    model: string
+    requestModel: string
+    nativeDimensions: number
+    finalDimensions: number
+    transformVersion: string | null
   }
-  const reports = (report as Record<string, unknown>).reports
-  if (!reports || typeof reports !== "object") {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report missing reports object",
-    )
-  }
-  const scene = (reports as Record<string, unknown>).scene
-  if (!scene || typeof scene !== "object") {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report missing reports.scene",
-    )
-  }
-  const outcomes = (scene as Record<string, unknown>).outcomes
-  if (!Array.isArray(outcomes)) {
-    throw new RunEmbedsConfigError(
-      "[run-embeds] --from-report missing reports.scene.outcomes",
-    )
-  }
-
-  const byKey = new Map<string, SceneRetryTargetFromReport>()
-  outcomes.forEach((outcome, index) => {
-    if (!outcome || typeof outcome !== "object") return
-    const o = outcome as Record<string, unknown>
-    if (o.status !== "failed") return
-    const target = o.target
-    if (!target || typeof target !== "object") {
-      throw new RunEmbedsConfigError(
-        `[run-embeds] failed scene outcome at reports.scene.outcomes[${index}] is missing target`,
-      )
-    }
-    const t = target as Record<string, unknown>
-    const coreId = typeof t.coreId === "string" ? t.coreId : undefined
-    const videoEditionId =
-      typeof t.videoEditionId === "string" ? t.videoEditionId : undefined
-    const locale = typeof o.locale === "string" ? o.locale : undefined
-    const cmsVideoId =
-      typeof t.cmsVideoId === "number" ? t.cmsVideoId : undefined
-    if (!coreId || !videoEditionId || !locale || cmsVideoId === undefined) {
-      throw new RunEmbedsConfigError(
-        `[run-embeds] failed scene outcome at reports.scene.outcomes[${index}] is missing target.coreId, target.videoEditionId, locale, or numeric target.cmsVideoId`,
-      )
-    }
-    const key = `${coreId}::${videoEditionId}::${locale}`
-    if (!byKey.has(key)) {
-      byKey.set(key, { coreId, videoEditionId, locale, cmsVideoId })
-    }
-  })
-  return [...byKey.values()].sort((a, b) => {
-    const ak = `${a.coreId}::${a.videoEditionId}::${a.locale}`
-    const bk = `${b.coreId}::${b.videoEditionId}::${b.locale}`
-    return ak.localeCompare(bk)
-  })
 }
-
-export function pipelineErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
-}
-
-export function pipelineErrorDetails(
-  error: unknown,
-): PipelineErrorDetails | undefined {
-  if (!error || typeof error !== "object") return undefined
-  const retrySelection = (error as Record<string, unknown>).retrySelection
-  if (!isSceneRetrySelectionDetails(retrySelection)) return undefined
-  return { retrySelection }
-}
-
-function isSceneRetrySelectionDetails(
-  value: unknown,
-): value is SceneRetrySelectionDetails {
-  if (!value || typeof value !== "object") return false
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.requested === "number" &&
-    typeof record.matched === "number" &&
-    typeof record.unmatched === "number" &&
-    Array.isArray(record.unmatchedRetryTargets) &&
-    record.unmatchedRetryTargets.every(isSceneRetryTargetSummary)
-  )
-}
-
-function isSceneRetryTargetSummary(value: unknown): boolean {
-  if (!value || typeof value !== "object") return false
-  const record = value as Record<string, unknown>
-  return (
-    typeof record.coreId === "string" &&
-    typeof record.videoEditionId === "string" &&
-    typeof record.locale === "string"
-  )
-}
-
-export async function loadSceneRetryTargetsFromReport(
-  reportPath: string,
-): Promise<SceneRetryTargetFromReport[]> {
-  let raw: string
-  try {
-    raw = await readFile(reportPath, "utf8")
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    throw new RunEmbedsConfigError(
-      `[run-embeds] failed to read --from-report=${reportPath}: ${message}`,
-    )
-  }
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw) as unknown
-  } catch {
-    throw new RunEmbedsConfigError(
-      `[run-embeds] --from-report=${reportPath} is not valid JSON`,
-    )
-  }
-  const retryTargets = extractFailedSceneRetryTargetsFromReport(parsed)
-  if (retryTargets.length === 0) {
-    throw new RunEmbedsConfigError(
-      `[run-embeds] no failed scene outcomes found in ${reportPath}`,
-    )
-  }
-  return retryTargets
-}
-
-export type SceneBranchPreflightReport = {
-  ok: boolean
-  checks: ReadonlyArray<{
-    name: string
-    status: string
-    reason: string
-  }>
-}
-
-export type SceneBranchReport = {
-  totalTargets: number
-  succeeded: number
-  skipped: number
-  failed: number
-}
-
-export type SceneBranchResult =
-  | { ok: true; report: SceneBranchReport }
-  | { ok: false; error: string; details?: PipelineErrorDetails }
 
 export type EmbeddingBackfillMode =
   | "idempotent"
@@ -318,87 +164,512 @@ export type EmbeddingBackfillMode =
   | "force"
   | "model-upgrade"
 
-export async function runSceneBranch(args: {
-  mappingS3Key: string
-  coreIds: readonly string[]
-  locales: readonly string[]
-  sceneMode?: EmbeddingBackfillMode
-  sceneRetryTargets: readonly SceneRetryTargetFromReport[] | undefined
-  runManagerArtifactsPreflight: (input: {
-    mappingS3Key: string
-    sampleSceneAssetId?: number
-  }) => Promise<SceneBranchPreflightReport>
-  runSceneEmbeddingBackfill: (input: {
-    mappingS3Key: string
-    coreIds?: readonly string[]
-    locales?: readonly string[]
-    retryTargets?: readonly SceneRetryTargetFromReport[]
-    mode?: EmbeddingBackfillMode
-  }) => Promise<SceneBranchReport>
-  writeStdout?: (line: string) => void
-}): Promise<SceneBranchResult> {
-  const writeStdout = args.writeStdout ?? ((line) => process.stdout.write(line))
+const EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS =
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS
+const EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS =
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS
+const EXPECTED_CONTENT_GATE_TRANSFORM_VERSION =
+  EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS ===
+  EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS
+    ? null
+    : "matryoshka-truncate-1536-v1"
 
-  try {
-    const preflight = await args.runManagerArtifactsPreflight({
-      mappingS3Key: args.mappingS3Key,
-      sampleSceneAssetId: args.sceneRetryTargets?.[0]?.cmsVideoId,
-    })
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.preflight",
-        ok: preflight.ok,
-        checks: preflight.checks,
-      }) + "\n",
+const EXPECTED_CONTENT_GATE_PROVIDER = {
+  provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  requestModel: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  nativeDimensions: EXPECTED_CONTENT_GATE_NATIVE_DIMENSIONS,
+  finalDimensions: EXPECTED_CONTENT_GATE_FINAL_DIMENSIONS,
+  transformVersion: EXPECTED_CONTENT_GATE_TRANSFORM_VERSION,
+} as const
+
+const GATE_REPORT_SECRET_STRING_PATTERN =
+  /(?:Bearer\s+[A-Za-z0-9._~-]+|sk-[A-Za-z0-9_-]{8,}|https?:\/\/[^/?#\s]+:[^/?#\s]+@|[?&](?:api[_-]?key|access[_-]?token|token|key|secret|password)=|\b\d{1,3}(?:\.\d{1,3}){3}\b)/i
+
+function gateReportField(value: Record<string, unknown>, key: string): unknown {
+  return value[key]
+}
+
+function gateReportRecord(
+  value: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const field = gateReportField(value, key)
+  if (!field || typeof field !== "object" || Array.isArray(field)) {
+    throw new RunEmbedsConfigError(`[run-embeds] --gate-report missing ${key}`)
+  }
+  return field as Record<string, unknown>
+}
+
+function assertGateReportHasNoSecretStrings(value: unknown): void {
+  const check = (input: unknown): void => {
+    if (typeof input === "string") {
+      if (GATE_REPORT_SECRET_STRING_PATTERN.test(input)) {
+        throw new RunEmbedsConfigError(
+          "[run-embeds] --gate-report contains a prohibited secret-like string",
+        )
+      }
+      return
+    }
+    if (Array.isArray(input)) {
+      input.forEach(check)
+      return
+    }
+    if (input && typeof input === "object") {
+      Object.values(input).forEach(check)
+    }
+  }
+  check(value)
+}
+
+function finiteNumberField(
+  value: Record<string, unknown>,
+  key: string,
+): number {
+  const field = gateReportField(value, key)
+  if (typeof field !== "number" || !Number.isFinite(field)) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report missing numeric ${key}`,
     )
-    if (!preflight.ok) {
-      throw new Error(
-        `scene preflight failed: ${preflight.checks
-          .filter((check) => check.status === "failed")
-          .map((check) => `${check.name}:${check.reason}`)
-          .join(", ")}`,
+  }
+  return field
+}
+
+function optionalFiniteNumberField(
+  value: Record<string, unknown>,
+  key: string,
+): number | undefined {
+  const field = gateReportField(value, key)
+  if (field === undefined) return undefined
+  if (typeof field !== "number" || !Number.isFinite(field)) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report ${key} must be numeric when present`,
+    )
+  }
+  return field
+}
+
+function stringField(value: Record<string, unknown>, key: string): string {
+  const field = gateReportField(value, key)
+  if (typeof field !== "string" || field.length === 0) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report missing string ${key}`,
+    )
+  }
+  return field
+}
+
+function nullableStringField(
+  value: Record<string, unknown>,
+  key: string,
+): string | null {
+  const field = gateReportField(value, key)
+  if (field === null) return null
+  if (typeof field !== "string" || field.length === 0) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report missing string or null ${key}`,
+    )
+  }
+  return field
+}
+
+function nearlyEqual(left: number, right: number): boolean {
+  return Math.abs(left - right) <= 1e-12
+}
+
+function validateContentEmbeddingProvider(
+  provider: Record<string, unknown>,
+): ContentBackfillGateSummary["contentEmbeddingProvider"] {
+  const actual = {
+    provider: stringField(provider, "provider"),
+    model: stringField(provider, "model"),
+    requestModel: stringField(provider, "requestModel"),
+    nativeDimensions: finiteNumberField(provider, "nativeDimensions"),
+    finalDimensions: finiteNumberField(provider, "finalDimensions"),
+    transformVersion: nullableStringField(provider, "transformVersion"),
+  }
+  for (const [key, expected] of Object.entries(
+    EXPECTED_CONTENT_GATE_PROVIDER,
+  )) {
+    if (actual[key as keyof typeof actual] !== expected) {
+      throw new RunEmbedsConfigError(
+        `[run-embeds] --gate-report contentEmbeddingProvider.${key} does not match the AI Gateway migration contract`,
       )
     }
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.start",
-        mappingS3Key: args.mappingS3Key,
-        mode: args.sceneMode ?? "idempotent",
-        retryTargets: args.sceneRetryTargets?.length ?? null,
-      }) + "\n",
+  }
+  return actual
+}
+
+function validateHumanJudgeDisagreementAdjudications(args: {
+  report: Record<string, unknown>
+  searchEvalReport: Record<string, unknown>
+  expectedCount: number
+}): number {
+  if (!Number.isInteger(args.expectedCount) || args.expectedCount < 0) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report adjudicatedJudgeDisagreements must be a non-negative integer",
     )
-    const report = await args.runSceneEmbeddingBackfill({
-      mappingS3Key: args.mappingS3Key,
-      coreIds: args.coreIds.length > 0 ? args.coreIds : undefined,
-      locales: args.locales.length > 0 ? args.locales : undefined,
-      retryTargets: args.sceneRetryTargets,
-      mode: args.sceneMode,
-    })
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.complete",
-        totalTargets: report.totalTargets,
-        succeeded: report.succeeded,
-        skipped: report.skipped,
-        failed: report.failed,
-      }) + "\n",
+  }
+  if (args.expectedCount === 0) return 0
+
+  const humanAdjudications = gateReportField(args.report, "humanAdjudications")
+  if (
+    !humanAdjudications ||
+    typeof humanAdjudications !== "object" ||
+    Array.isArray(humanAdjudications)
+  ) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report missing humanAdjudications for adjudicated judge disagreements",
     )
-    return { ok: true, report }
-  } catch (err) {
-    const error = pipelineErrorMessage(err)
-    const details = pipelineErrorDetails(err)
-    writeStdout(
-      JSON.stringify({
-        event: "run-embeds.scene.error",
-        error,
-        details,
-      }) + "\n",
+  }
+
+  const judgeDisagreements = gateReportField(
+    humanAdjudications as Record<string, unknown>,
+    "judgeDisagreements",
+  )
+  if (!Array.isArray(judgeDisagreements)) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report missing humanAdjudications.judgeDisagreements",
     )
-    return details ? { ok: false, error, details } : { ok: false, error }
+  }
+  if (judgeDisagreements.length !== args.expectedCount) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report adjudicatedJudgeDisagreements does not match humanAdjudications",
+    )
+  }
+
+  const outcomes = gateReportField(args.searchEvalReport, "outcomes")
+  if (!Array.isArray(outcomes)) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report searchEvalReport missing outcomes for adjudication validation",
+    )
+  }
+  const disagreementKeys = new Set<string>()
+  for (const outcome of outcomes) {
+    if (!outcome || typeof outcome !== "object" || Array.isArray(outcome)) {
+      continue
+    }
+    const record = outcome as Record<string, unknown>
+    if (record.kind !== "judge-disagreement") continue
+    const caseId = gateReportField(record, "caseId")
+    const locale = gateReportField(record, "locale")
+    if (typeof caseId === "string" && typeof locale === "string") {
+      disagreementKeys.add(`${caseId}\0${locale}`)
+    }
+  }
+
+  const seen = new Set<string>()
+  for (const [index, adjudication] of judgeDisagreements.entries()) {
+    if (
+      !adjudication ||
+      typeof adjudication !== "object" ||
+      Array.isArray(adjudication)
+    ) {
+      throw new RunEmbedsConfigError(
+        `[run-embeds] --gate-report humanAdjudications.judgeDisagreements[${index}] must be an object`,
+      )
+    }
+    const record = adjudication as Record<string, unknown>
+    const caseId = stringField(record, "caseId")
+    const locale = stringField(record, "locale")
+    const reviewer = stringField(record, "reviewer")
+    const reason = stringField(record, "reason")
+    const reviewedAt = stringField(record, "reviewedAt")
+    if (reviewer.trim() !== reviewer || reason.trim() !== reason) {
+      throw new RunEmbedsConfigError(
+        "[run-embeds] --gate-report adjudication reviewer and reason must be trimmed non-empty strings",
+      )
+    }
+    if (!Number.isFinite(Date.parse(reviewedAt))) {
+      throw new RunEmbedsConfigError(
+        "[run-embeds] --gate-report adjudication reviewedAt must be an ISO timestamp",
+      )
+    }
+    if (record.acceptedOutcome !== "current-better") {
+      throw new RunEmbedsConfigError(
+        "[run-embeds] --gate-report only current-better judge-disagreement adjudications are accepted",
+      )
+    }
+    if (record.rawOutcomeKind !== "judge-disagreement") {
+      throw new RunEmbedsConfigError(
+        "[run-embeds] --gate-report adjudications must cover judge-disagreement outcomes",
+      )
+    }
+
+    const key = `${caseId}\0${locale}`
+    if (seen.has(key)) {
+      throw new RunEmbedsConfigError(
+        "[run-embeds] --gate-report duplicate judge-disagreement adjudication",
+      )
+    }
+    seen.add(key)
+    if (!disagreementKeys.has(key)) {
+      throw new RunEmbedsConfigError(
+        "[run-embeds] --gate-report adjudication does not match a judge-disagreement outcome",
+      )
+    }
+  }
+
+  return judgeDisagreements.length
+}
+
+export function extractContentBackfillGateFromReport(
+  report: unknown,
+  reportPath?: string,
+): ContentBackfillGateSummary {
+  if (!report || typeof report !== "object") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report is not an object",
+    )
+  }
+  const record = report as Record<string, unknown>
+  assertGateReportHasNoSecretStrings(record)
+  if (record.schemaVersion !== "1") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report schemaVersion must be 1",
+    )
+  }
+  if (record.kind !== "content-search-eval-gate-report") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report must be a content-search-eval-gate-report",
+    )
+  }
+  if (
+    typeof record.exportedAt !== "string" ||
+    !Number.isFinite(Date.parse(record.exportedAt))
+  ) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report exportedAt must be an ISO timestamp",
+    )
+  }
+  const contentEmbeddingProvider = validateContentEmbeddingProvider(
+    gateReportRecord(record, "contentEmbeddingProvider"),
+  )
+  const g = gateReportRecord(record, "gate")
+  const searchEvalReport = gateReportRecord(record, "searchEvalReport")
+  const searchEvalMetadata = gateReportRecord(searchEvalReport, "metadata")
+  const searchEvalTotals = gateReportRecord(searchEvalReport, "totals")
+  const searchEvalCalibration = gateReportRecord(
+    searchEvalReport,
+    "calibration",
+  )
+  gateReportRecord(record, "orchestratorSummary")
+  const reasons = gateReportField(g, "reasons")
+  if (g.backfillReady !== true) {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report is not backfill-ready: ${
+        Array.isArray(reasons) ? reasons.join(", ") : "unknown reason"
+      }`,
+    )
+  }
+  if (g.passFailState !== "passed") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report passFailState must be passed",
+    )
+  }
+  if (g.calibrationPassed !== true || g.calibrationSkipped !== false) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report requires non-skipped passing calibration",
+    )
+  }
+  const reportId = stringField(g, "reportId")
+  const mastraRunId = stringField(g, "mastraRunId")
+  const baselineName = stringField(g, "baselineName")
+  const judgeModel = stringField(g, "judgeModel")
+  const netWinRate = finiteNumberField(g, "netWinRate")
+  const queries = finiteNumberField(g, "queries")
+  const comparableQueries = finiteNumberField(g, "comparableQueries")
+  const losses = finiteNumberField(g, "losses")
+  const searchFailures = finiteNumberField(g, "searchFailures")
+  const judgeFailures = finiteNumberField(g, "judgeFailures")
+  const judgeDisagreements = finiteNumberField(g, "judgeDisagreements")
+  const rawJudgeDisagreements =
+    optionalFiniteNumberField(g, "rawJudgeDisagreements") ?? judgeDisagreements
+  const adjudicatedJudgeDisagreements =
+    optionalFiniteNumberField(g, "adjudicatedJudgeDisagreements") ?? 0
+  const adjudicatedCurrentWins = validateHumanJudgeDisagreementAdjudications({
+    report: record,
+    searchEvalReport,
+    expectedCount: adjudicatedJudgeDisagreements,
+  })
+  if (netWinRate < 0 || comparableQueries <= 0 || queries <= 0) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report quality metrics do not permit all-content backfill",
+    )
+  }
+  if (
+    losses !== 0 ||
+    searchFailures !== 0 ||
+    judgeFailures !== 0 ||
+    judgeDisagreements !== 0
+  ) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report must have zero losses, search failures, judge failures, and unadjudicated judge disagreements",
+    )
+  }
+  if (searchEvalReport.kind !== "comparison-report") {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report searchEvalReport must be a comparison-report",
+    )
+  }
+  const searchEvalWins = finiteNumberField(searchEvalTotals, "wins")
+  const searchEvalJudgeDisagreements = finiteNumberField(
+    searchEvalTotals,
+    "judgeDisagreements",
+  )
+  if (
+    rawJudgeDisagreements !== searchEvalJudgeDisagreements ||
+    rawJudgeDisagreements - adjudicatedJudgeDisagreements !==
+      judgeDisagreements ||
+    adjudicatedCurrentWins !== adjudicatedJudgeDisagreements
+  ) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report adjudicated judge-disagreement counts do not match searchEvalReport",
+    )
+  }
+  if (
+    searchEvalReport.reportId !== reportId ||
+    searchEvalMetadata.baselineName !== baselineName ||
+    searchEvalMetadata.judgeModel !== judgeModel ||
+    finiteNumberField(searchEvalTotals, "queries") !== queries ||
+    finiteNumberField(searchEvalTotals, "losses") !== losses ||
+    finiteNumberField(searchEvalTotals, "searchFailures") !== searchFailures ||
+    finiteNumberField(searchEvalTotals, "judgeFailures") !== judgeFailures ||
+    searchEvalCalibration.passed !== true ||
+    searchEvalCalibration.skipped !== false
+  ) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report gate fields do not match searchEvalReport",
+    )
+  }
+  const bothIrrelevant = finiteNumberField(searchEvalTotals, "bothIrrelevant")
+  const computedComparable =
+    queries -
+    bothIrrelevant -
+    searchFailures -
+    judgeDisagreements -
+    judgeFailures
+  if (computedComparable !== comparableQueries) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report comparableQueries does not match searchEvalReport totals",
+    )
+  }
+  const computedNetWinRate =
+    comparableQueries > 0
+      ? (searchEvalWins + adjudicatedCurrentWins - losses) / comparableQueries
+      : 0
+  if (!nearlyEqual(computedNetWinRate, netWinRate)) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report netWinRate does not match effective searchEvalReport totals",
+    )
+  }
+  if (reportPath && basename(reportPath) !== `${reportId}.json`) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report filename must match gate.reportId",
+    )
+  }
+  return {
+    reportId,
+    mastraRunId,
+    baselineName,
+    judgeModel,
+    netWinRate,
+    comparableQueries,
+    contentEmbeddingProvider,
   }
 }
 
-type Pipeline = "scene" | "transcript" | "experience" | "both"
+function assertGateReportPathAllowed(reportPath: string, cwd: string): void {
+  const reportsDir = resolve(cwd, "docs/search-eval-reports")
+  const relativePath = relative(reportsDir, reportPath)
+  if (
+    relativePath === "" ||
+    relativePath.startsWith("..") ||
+    isAbsolute(relativePath) ||
+    dirname(reportPath) !== reportsDir ||
+    extname(reportPath) !== ".json"
+  ) {
+    throw new RunEmbedsConfigError(
+      "[run-embeds] --gate-report must point at docs/search-eval-reports/<reportId>.json",
+    )
+  }
+}
+
+export function resolveGateReportPath(
+  arg: string | undefined,
+  cwd = process.cwd(),
+): string | undefined {
+  if (arg === undefined || arg === "") return undefined
+  const reportPath = isAbsolute(arg) ? arg : resolve(cwd, arg)
+  assertGateReportPathAllowed(reportPath, cwd)
+  return reportPath
+}
+
+export async function loadContentBackfillGateReport(
+  reportPath: string,
+  cwd = process.cwd(),
+): Promise<ContentBackfillGateSummary> {
+  assertGateReportPathAllowed(reportPath, cwd)
+  let raw: string
+  try {
+    raw = await readFile(reportPath, "utf8")
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    throw new RunEmbedsConfigError(
+      `[run-embeds] failed to read --gate-report=${reportPath}: ${message}`,
+    )
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw) as unknown
+  } catch {
+    throw new RunEmbedsConfigError(
+      `[run-embeds] --gate-report=${reportPath} is not valid JSON`,
+    )
+  }
+  return extractContentBackfillGateFromReport(parsed, reportPath)
+}
+
+type Pipeline = "transcript" | "experience" | "both" | "all"
+
+const LOCAL_BACKFILL_DATABASE_HOSTS = new Set([
+  "localhost",
+  "127.0.0.1",
+  "::1",
+  "[::1]",
+])
+const LOCAL_BACKFILL_DATABASE_NAME_PATTERN =
+  /(?:^|_)(?:local|test|dev|development)(?:_|$)/i
+
+export function isLocalBackfillDatabaseUrl(databaseUrl: string): boolean {
+  try {
+    const parsed = new URL(databaseUrl)
+    const hostname = parsed.hostname.toLowerCase()
+    const databaseName = decodeURIComponent(parsed.pathname.replace(/^\//, ""))
+    return (
+      LOCAL_BACKFILL_DATABASE_HOSTS.has(hostname) &&
+      LOCAL_BACKFILL_DATABASE_NAME_PATTERN.test(databaseName)
+    )
+  } catch {
+    return false
+  }
+}
+
+export function requiresContentBackfillGateReport(args: {
+  pipeline: Pipeline
+  gateReportPath: string | undefined
+  allowUngatedLocalBackfill: boolean
+  nodeEnv: string | undefined
+  databaseUrl: string
+}): boolean {
+  return (
+    args.pipeline === "all" &&
+    args.gateReportPath === undefined &&
+    (!args.allowUngatedLocalBackfill ||
+      args.nodeEnv === "production" ||
+      !isLocalBackfillDatabaseUrl(args.databaseUrl))
+  )
+}
 
 function parseSingle(name: string): string | undefined {
   const flag = `--${name}=`
@@ -419,9 +690,7 @@ function parseFlag(name: string): boolean {
 }
 
 function isPipeline(v: string): v is Pipeline {
-  return (
-    v === "scene" || v === "transcript" || v === "experience" || v === "both"
-  )
+  return v === "transcript" || v === "experience" || v === "both" || v === "all"
 }
 
 function isEmbeddingBackfillMode(v: string): v is EmbeddingBackfillMode {
@@ -437,13 +706,13 @@ async function main(): Promise<void> {
   const pipelineArg = parseSingle("pipeline")
   if (!pipelineArg) {
     process.stderr.write(
-      "[run-embeds] --pipeline=scene|transcript|experience|both is required\n",
+      "[run-embeds] --pipeline=transcript|experience|both|all is required\n",
     )
     process.exit(2)
   }
   if (!isPipeline(pipelineArg)) {
     process.stderr.write(
-      `[run-embeds] invalid --pipeline=${pipelineArg}; expected scene|transcript|experience|both\n`,
+      `[run-embeds] invalid --pipeline=${pipelineArg}; expected transcript|experience|both|all\n`,
     )
     process.exit(2)
   }
@@ -459,7 +728,6 @@ async function main(): Promise<void> {
   const coreIds = parseRepeated("core-id")
   const locales = parseRepeated("locale")
   const languages = parseRepeated("language")
-  const sceneMode = parseSingle("scene-mode")
   const transcriptMode = parseSingle("transcript-mode")
   const experienceMode = parseSingle("experience-mode")
   const experienceIds = parseRepeated("experience-id")
@@ -468,19 +736,20 @@ async function main(): Promise<void> {
   // `pnpm trigger-enrichment --from-report=<path>` need a stable
   // file format. When unset, behavior is unchanged (stdout only).
   const reportOutPath = resolveReportOutPath(parseSingle("report-out"))
-  const reportInPath = resolveReportInPath(parseSingle("from-report"))
+  const gateReportPath = resolveGateReportPath(parseSingle("gate-report"))
+  const allowUngatedLocalBackfill = parseFlag("allow-ungated-local-backfill")
 
-  if (reportInPath !== undefined && pipelineArg !== "scene") {
+  if (parseSingle("from-report") !== undefined) {
     process.stderr.write(
-      "[run-embeds] --from-report is only supported with --pipeline=scene\n",
+      "[run-embeds] --from-report is no longer supported; scene embedding backfills have been retired\n",
     )
     process.exit(2)
   }
-  if (sceneMode !== undefined && !isEmbeddingBackfillMode(sceneMode)) {
+  if (parseSingle("scene-mode") !== undefined) {
     process.stderr.write(
-      `[run-embeds] invalid --scene-mode=${sceneMode}; expected idempotent|repair|force|model-upgrade\n`,
+      "[run-embeds] --scene-mode is no longer supported; scene embedding backfills have been retired\n",
     )
-    process.exit(1)
+    process.exit(2)
   }
   if (
     transcriptMode !== undefined &&
@@ -501,19 +770,24 @@ async function main(): Promise<void> {
     process.exit(1)
   }
   if (
-    reportInPath !== undefined &&
-    (coreIds.length > 0 || locales.length > 0 || languages.length > 0)
+    requiresContentBackfillGateReport({
+      pipeline: pipelineArg,
+      gateReportPath,
+      allowUngatedLocalBackfill,
+      nodeEnv: undefined,
+      databaseUrl,
+    })
   ) {
     process.stderr.write(
-      "[run-embeds] --from-report is mutually exclusive with --core-id/--locale/--language filters\n",
+      "[run-embeds] --pipeline=all requires --gate-report=<docs/search-eval-reports/*.json>\n",
     )
     process.exit(2)
   }
 
-  let sceneRetryTargets: SceneRetryTargetFromReport[] | undefined
-  if (reportInPath !== undefined) {
+  let contentBackfillGate: ContentBackfillGateSummary | undefined
+  if (gateReportPath !== undefined) {
     try {
-      sceneRetryTargets = await loadSceneRetryTargetsFromReport(reportInPath)
+      contentBackfillGate = await loadContentBackfillGateReport(gateReportPath)
     } catch (err) {
       if (err instanceof RunEmbedsConfigError) {
         process.stderr.write(err.message + "\n")
@@ -530,8 +804,6 @@ async function main(): Promise<void> {
   // a bound prisma reference. Importing the workflows here also pulls
   // in the validated `env` and the workflow defaults — single source
   // of truth for both the CLI's start-event log and the workflow body.
-  const { runSceneEmbeddingBackfill, DEFAULT_SCENE_EMBEDDING_CONCURRENCY } =
-    await import("@/workflows/sceneEmbeddingBackfill")
   const {
     runTranscriptEmbeddingBackfill,
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY,
@@ -540,11 +812,22 @@ async function main(): Promise<void> {
     await import("@/workflows/experienceEmbeddingBackfill")
   const { prisma } = await import("@/db/client")
   const { env } = await import("@/config/env")
-  const { runManagerArtifactsPreflight } =
-    await import("@/services/manager-artifacts-preflight.service")
 
-  const sceneConcurrency =
-    env.SCENE_EMBEDDING_CONCURRENCY ?? DEFAULT_SCENE_EMBEDDING_CONCURRENCY
+  if (
+    requiresContentBackfillGateReport({
+      pipeline: pipelineArg,
+      gateReportPath,
+      allowUngatedLocalBackfill,
+      nodeEnv: env.NODE_ENV,
+      databaseUrl,
+    })
+  ) {
+    process.stderr.write(
+      "[run-embeds] --pipeline=all requires --gate-report=<docs/search-eval-reports/*.json>\n",
+    )
+    process.exit(2)
+  }
+
   const transcriptConcurrency =
     env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
     DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
@@ -565,17 +848,23 @@ async function main(): Promise<void> {
       coreIds: coreIds.length > 0 ? coreIds : null,
       locales: locales.length > 0 ? locales : null,
       languages: languages.length > 0 ? languages : null,
-      sceneMode: sceneMode ?? null,
       transcriptMode: transcriptMode ?? null,
       experienceMode: resolvedExperienceMode,
       experienceIds: experienceIds.length > 0 ? experienceIds : null,
       force: resolvedExperienceForce,
-      sceneConcurrency,
       transcriptConcurrency,
       managerArtifactsBucket:
         process.env.MANAGER_ARTIFACTS_S3_BUCKET ?? "(unset)",
-      fromReport: reportInPath ?? null,
-      sceneRetryTargets: sceneRetryTargets?.length ?? null,
+      gateReport: gateReportPath ?? null,
+      contentBackfillGate: contentBackfillGate ?? null,
+      contentBackfillGateBypass:
+        pipelineArg === "all" && contentBackfillGate == null
+          ? {
+              allowed: true,
+              reason: "explicit_local_backfill",
+              databaseHost: new URL(databaseUrl).hostname,
+            }
+          : null,
     }) + "\n",
   )
 
@@ -602,30 +891,13 @@ async function main(): Promise<void> {
 
   const reports: Record<string, unknown> = {}
   const errors: Record<string, string> = {}
-  const errorDetails: Record<string, PipelineErrorDetails> = {}
 
   try {
-    if (pipelineArg === "scene" || pipelineArg === "both") {
-      const sceneResult = await runSceneBranch({
-        mappingS3Key,
-        coreIds,
-        locales,
-        sceneMode,
-        sceneRetryTargets,
-        runManagerArtifactsPreflight,
-        runSceneEmbeddingBackfill,
-      })
-      if (sceneResult.ok) {
-        reports.scene = sceneResult.report
-      } else {
-        errors.scene = sceneResult.error
-        if (sceneResult.details) {
-          errorDetails.scene = sceneResult.details
-        }
-      }
-    }
-
-    if (pipelineArg === "transcript" || pipelineArg === "both") {
+    if (
+      pipelineArg === "transcript" ||
+      pipelineArg === "both" ||
+      pipelineArg === "all"
+    ) {
       try {
         process.stdout.write(
           JSON.stringify({
@@ -668,8 +940,8 @@ async function main(): Promise<void> {
     // `pipeline=both` deliberately runs the original R1+R2 pair only.
     // Emit a structured `experience.skipped` event so agents/operators
     // parsing the event stream see the omission as an explicit signal
-    // rather than absence-of-event. Pair with `--pipeline=experience`
-    // (or, in the future, `--pipeline=all`) to also run R3.
+    // rather than absence-of-event. Use `--pipeline=experience` or
+    // `--pipeline=all` to also run R3.
     if (pipelineArg === "both") {
       process.stdout.write(
         JSON.stringify({
@@ -679,7 +951,7 @@ async function main(): Promise<void> {
       )
     }
 
-    if (pipelineArg === "experience") {
+    if (pipelineArg === "experience" || pipelineArg === "all") {
       try {
         process.stdout.write(
           JSON.stringify({
@@ -726,9 +998,16 @@ async function main(): Promise<void> {
       pipeline: pipelineArg,
       wallClockMs: Date.now() - startedAt,
       reports,
+      contentBackfillGate,
+      contentBackfillGateBypass:
+        pipelineArg === "all" && contentBackfillGate == null
+          ? {
+              allowed: true,
+              reason: "explicit_local_backfill",
+              databaseHost: new URL(databaseUrl).hostname,
+            }
+          : null,
       errors: Object.keys(errors).length > 0 ? errors : undefined,
-      errorDetails:
-        Object.keys(errorDetails).length > 0 ? errorDetails : undefined,
     }
 
     process.stdout.write(JSON.stringify(finalReport, null, 2) + "\n")

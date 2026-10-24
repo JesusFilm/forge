@@ -1,0 +1,120 @@
+{
+  "schemaVersion": "subtitle-translation-eval/v1",
+  "referenceAuthority": "provisional",
+  "referenceNotes": "Core subtitle tracks are treated by Forge as human-produced and sync with aiGenerated=false. A content curator still needs to certify edition alignment, reference quality, and benchmark reuse rights before these tracks become an approved publication gate.",
+  "sourceLanguage": "en",
+  "targetLanguages": ["de", "es", "fr", "ru"],
+  "languages": [
+    {
+      "bcp47": "en",
+      "coreLanguageId": "529",
+      "label": "English"
+    },
+    {
+      "bcp47": "de",
+      "coreLanguageId": "1106",
+      "label": "German, Standard"
+    },
+    {
+      "bcp47": "es",
+      "coreLanguageId": "21028",
+      "label": "Spanish"
+    },
+    {
+      "bcp47": "fr",
+      "coreLanguageId": "496",
+      "label": "French"
+    },
+    {
+      "bcp47": "ru",
+      "coreLanguageId": "3934",
+      "label": "Russian"
+    }
+  ],
+  "cases": [
+    {
+      "id": "jesus-john-the-baptist",
+      "videoId": "1_jf-0-0",
+      "title": "JESUS — John the Baptist",
+      "collection": "Jesus Film",
+      "edition": "jl",
+      "coreVideoEditionId": "98f7ea32-b12f-4f97-a175-86ac48c7d3b3",
+      "clip": {
+        "startSeconds": 480,
+        "endSeconds": 600
+      },
+      "translationContext": {
+        "videoTitle": "JESUS",
+        "videoLabel": "featureFilm",
+        "bibleReferences": ["Luke 3:1-20"]
+      }
+    },
+    {
+      "id": "magdalena-love-and-samaria",
+      "videoId": "1_wl60-0-0",
+      "title": "Magdalena — Love and Samaria",
+      "collection": "Magdalena",
+      "edition": "wl60",
+      "coreVideoEditionId": "4c834eb6-50e1-476d-b17f-8bbeb35b42ab",
+      "clip": {
+        "startSeconds": 1095,
+        "endSeconds": 1200
+      },
+      "translationContext": {
+        "videoTitle": "Magdalena",
+        "videoLabel": "featureFilm",
+        "bibleReferences": ["Luke 6:27-36", "John 4:1-42"]
+      }
+    },
+    {
+      "id": "falling-plates",
+      "videoId": "2_0-FallingPlates",
+      "title": "#FallingPlates",
+      "collection": "Short Films",
+      "edition": "0-FallingPlates",
+      "coreVideoEditionId": "3df59762-3d40-4b45-ab29-4f00e0ab3860",
+      "clip": {
+        "startSeconds": 7.2,
+        "endSeconds": 235
+      },
+      "translationContext": {
+        "videoTitle": "#FallingPlates",
+        "videoLabel": "shortFilm"
+      }
+    },
+    {
+      "id": "where-you-belong",
+      "videoId": "2_0-WhereYouBelong",
+      "title": "Where You Belong",
+      "collection": "Global Football Event",
+      "edition": "base",
+      "coreVideoEditionId": "4b5e4ce2-cef9-4c2d-8712-73ea7dd8a936",
+      "clip": {
+        "startSeconds": 0.5,
+        "endSeconds": 85.12
+      },
+      "translationContext": {
+        "videoTitle": "Where You Belong",
+        "videoLabel": "shortFilm",
+        "bibleReferences": ["Psalm 86:15"]
+      }
+    },
+    {
+      "id": "simple-gospel",
+      "videoId": "8_NBC01",
+      "title": "The Simple Gospel",
+      "collection": "New Believer Course",
+      "edition": "base",
+      "coreVideoEditionId": "34ba5872-e647-46cc-a3bc-a297bc02208d",
+      "clip": {
+        "startSeconds": 1.833,
+        "endSeconds": 185
+      },
+      "translationContext": {
+        "videoTitle": "The Simple Gospel",
+        "videoLabel": "episode",
+        "bibleReferences": ["Genesis 1-3", "John 3:16-17"]
+      }
+    }
+  ]
+}

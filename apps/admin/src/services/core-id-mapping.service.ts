@@ -1,9 +1,9 @@
 // Core-ID → cms video id mapping loader.
 //
-// admin and cms run on separate Postgres databases. During scene-embedding
-// backfill (R1), admin needs to translate its `Video.coreId` into the
+// admin and cms run on separate Postgres databases. During transcript
+// embedding backfills, admin needs to translate its `Video.coreId` into the
 // integer `videos.id` used by cms as the S3 key prefix for manager's
-// scene-analysis artifacts. That mapping is dumped from cms via
+// transcript artifacts. That mapping is dumped from cms via
 // `pnpm --filter @forge/cms dump:core-id-mapping`, uploaded to the
 // shared Railway S3 bucket, and loaded here.
 //

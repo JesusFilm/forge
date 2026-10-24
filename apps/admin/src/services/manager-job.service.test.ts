@@ -11,6 +11,9 @@ function mockPrisma() {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    video: {
+      findMany: vi.fn(),
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 }
@@ -131,6 +134,48 @@ describe("ManagerJobService", () => {
       orderBy: { createdAt: "desc" },
       take: 250,
       skip: 125,
+    })
+  })
+
+  it("hydrates missing source titles from the related video when listing jobs", async () => {
+    prisma.managerEnrichmentJob.findMany.mockResolvedValueOnce([
+      {
+        ...JOB_ROW,
+        sourceCollectionTitle: null,
+        sourceMediaTitle: null,
+      },
+    ])
+    prisma.video.findMany.mockResolvedValueOnce([
+      {
+        id: "video-1",
+        locales: [
+          { locale: "fr", title: "Titre français" },
+          { locale: "en", title: "Recovered video title" },
+        ],
+        parents: [
+          {
+            parent: {
+              locales: [{ locale: "en", title: "Recovered collection" }],
+            },
+          },
+        ],
+      },
+    ])
+
+    const result = await service.list({
+      user: MANAGER_BACKEND_PRINCIPAL,
+      limit: 50,
+      offset: 0,
+    })
+
+    expect(prisma.video.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ["video-1"] }, deletedAt: null },
+      }),
+    )
+    expect(result[0]).toMatchObject({
+      sourceCollectionTitle: "Recovered collection",
+      sourceMediaTitle: "Recovered video title",
     })
   })
 

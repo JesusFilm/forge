@@ -7,6 +7,7 @@ import type { SyncStats, ProgressReporter } from "../types"
 import { coreQuery } from "../core-client"
 import { CoreCountrySchema } from "../schemas/country"
 import { emptySyncStats } from "../types"
+import { syncLanguages } from "./sync-languages"
 import { toPgArray } from "@/db/pgvector"
 import {
   toLocalizedNames,
@@ -72,6 +73,29 @@ type LocalizedNameRow = {
   value: string
   primary: boolean
   order: number | null
+}
+
+type CountryLanguageWrite = {
+  id: string
+  coreId: string
+  countryCoreId: string
+  languageId: string
+  speakers: number | null
+  displaySpeakers: string | null
+  primary: boolean | null
+  suggested: boolean | null
+  order: number | null
+}
+
+type MissingCountryLanguageRef = {
+  countryCoreId: string
+  countryLanguageCoreId: string
+  languageCoreId: string
+}
+
+const fallbackProgress: ProgressReporter = {
+  setTotal: () => {},
+  increment: () => {},
 }
 
 function encodeJsonForPgArray(value: unknown): string {
@@ -338,17 +362,7 @@ async function bulkUpsertCountryLocales(
 
 async function bulkUpsertCountryLanguages(
   prisma: PrismaClient,
-  countryLanguages: ReadonlyArray<{
-    id: string
-    coreId: string
-    countryCoreId: string
-    languageId: string
-    speakers: number | null
-    displaySpeakers: string | null
-    primary: boolean | null
-    suggested: boolean | null
-    order: number | null
-  }>,
+  countryLanguages: ReadonlyArray<CountryLanguageWrite>,
 ) {
   if (countryLanguages.length === 0) return
 
@@ -419,6 +433,74 @@ async function bulkUpsertCountryLanguages(
   `
 }
 
+async function loadLanguageMap(prisma: PrismaClient) {
+  const languages = await prisma.language.findMany({
+    select: { id: true, coreId: true },
+  })
+  return new Map(languages.map((l) => [l.coreId, l.id]))
+}
+
+function buildCountryLanguageRows(
+  countries: readonly CoreCountry[],
+  langMap: ReadonlyMap<string, string>,
+) {
+  const missingRefs: MissingCountryLanguageRef[] = []
+  const rows: CountryLanguageWrite[] = []
+
+  for (const country of countries) {
+    for (const countryLanguage of country.countryLanguages) {
+      const languageCoreId = countryLanguage.language.id
+      const languageId = langMap.get(languageCoreId)
+      if (!languageId) {
+        missingRefs.push({
+          countryCoreId: country.id,
+          countryLanguageCoreId: countryLanguage.id,
+          languageCoreId,
+        })
+        continue
+      }
+
+      rows.push({
+        id: randomUUID(),
+        coreId: countryLanguage.id,
+        countryCoreId: country.id,
+        languageId,
+        speakers: countryLanguage.speakers,
+        displaySpeakers: countryLanguage.displaySpeakers,
+        primary: countryLanguage.primary,
+        suggested: countryLanguage.suggested,
+        order: countryLanguage.order,
+      })
+    }
+  }
+
+  return { rows, missingRefs }
+}
+
+async function repairMissingLanguagesForCountries(
+  prisma: PrismaClient,
+  missingRefs: readonly MissingCountryLanguageRef[],
+) {
+  if (missingRefs.length === 0) return { errors: 0 }
+
+  console.warn(
+    JSON.stringify({
+      event: "core-sync.country-language.missing-language.fallback",
+      missingLanguageCoreIds: [
+        ...new Set(missingRefs.map((ref) => ref.languageCoreId)),
+      ],
+      missingCountryLanguageRefs: missingRefs.length,
+    }),
+  )
+
+  const stats = await syncLanguages({
+    prisma,
+    progress: fallbackProgress,
+  })
+
+  return { errors: stats.errors }
+}
+
 export async function syncCountries({
   prisma,
   progress,
@@ -475,27 +557,13 @@ export async function syncCountries({
   progress.setTotal(countries.length)
 
   try {
-    const languages = await prisma.language.findMany({
-      select: { id: true, coreId: true },
-    })
-    const langMap = new Map(languages.map((l) => [l.coreId, l.id]))
+    let langMap = await loadLanguageMap(prisma)
     const continentsByCoreId = new Map<
       string,
       { id: string; coreId: string; nameBase64: string }
     >()
     const continentLocales: LocalizedNameRow[] = []
     const countryLocales: LocalizedNameRow[] = []
-    const countryLanguageRows: Array<{
-      id: string
-      coreId: string
-      countryCoreId: string
-      languageId: string
-      speakers: number | null
-      displaySpeakers: string | null
-      primary: boolean | null
-      suggested: boolean | null
-      order: number | null
-    }> = []
 
     const countryRows = uniqueBy(
       countries.map((country) => {
@@ -531,35 +599,6 @@ export async function syncCountries({
           })
         }
 
-        for (const countryLanguage of country.countryLanguages) {
-          const languageId = langMap.get(countryLanguage.language.id)
-          if (!languageId) {
-            stats.errors++
-            console.warn(
-              JSON.stringify({
-                event: "core-sync.country-language.missing-language",
-                countryCoreId: country.id,
-                countryLanguageCoreId: countryLanguage.id,
-                languageCoreId: countryLanguage.language.id,
-              }),
-            )
-            continue
-          }
-
-          seenCountryLanguageCoreIds.add(countryLanguage.id)
-          countryLanguageRows.push({
-            id: randomUUID(),
-            coreId: countryLanguage.id,
-            countryCoreId: country.id,
-            languageId,
-            speakers: countryLanguage.speakers,
-            displaySpeakers: countryLanguage.displaySpeakers,
-            primary: countryLanguage.primary,
-            suggested: countryLanguage.suggested,
-            order: countryLanguage.order,
-          })
-        }
-
         return {
           id: randomUUID(),
           coreId: country.id,
@@ -576,6 +615,41 @@ export async function syncCountries({
       }),
       (country) => country.coreId,
     )
+
+    let { rows: countryLanguageRows, missingRefs } = buildCountryLanguageRows(
+      countries,
+      langMap,
+    )
+
+    if (missingRefs.length > 0) {
+      const fallback = await repairMissingLanguagesForCountries(
+        prisma,
+        missingRefs,
+      )
+      stats.errors += fallback.errors
+      if (fallback.errors === 0) {
+        langMap = await loadLanguageMap(prisma)
+        const rebuilt = buildCountryLanguageRows(countries, langMap)
+        countryLanguageRows = rebuilt.rows
+        missingRefs = rebuilt.missingRefs
+      }
+    }
+
+    for (const missingRef of missingRefs) {
+      stats.errors++
+      console.warn(
+        JSON.stringify({
+          event: "core-sync.country-language.missing-language",
+          countryCoreId: missingRef.countryCoreId,
+          countryLanguageCoreId: missingRef.countryLanguageCoreId,
+          languageCoreId: missingRef.languageCoreId,
+        }),
+      )
+    }
+
+    for (const countryLanguage of countryLanguageRows) {
+      seenCountryLanguageCoreIds.add(countryLanguage.coreId)
+    }
 
     await bulkUpsertContinents(prisma, [...continentsByCoreId.values()])
     await bulkUpsertContinentLocales(

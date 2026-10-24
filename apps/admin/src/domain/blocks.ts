@@ -18,15 +18,24 @@
 //   - `BlockSchema`                      — top level of `ExperienceLocale.blocks`
 //                                          (excludes quizButton)
 //
-// Media fields: legacy CMS used Strapi media relations; here we store external
-// URL strings until the storage service lands (Unit 11). A future migration
-// can link these to a MediaAsset table.
+// Media fields are asset-backed for authored block visuals. Video-derived
+// images remain resolved from Video rows at read time.
 //
 // Agent extensibility (R25): adding a new block type is (1) add a Zod schema
 // + `t` literal below, (2) add it to the relevant scope union, (3) add UI
 // handling in the dashboard. No Prisma migration required.
 
 import { z } from "zod"
+import {
+  WATCH_HOME_CATEGORY_CATALOG,
+  type WatchHomeCategoryId,
+} from "@forge/watch-url-policy/watch-home-categories"
+import {
+  MAX_WATCH_HOME_TILE_TITLE_LENGTH,
+  WATCH_HOME_TILE_ICON_KEYS,
+  WATCH_HOME_TILE_STYLE_KEYS,
+  isSafeWatchHomeTileHref,
+} from "@forge/watch-url-policy/watch-home-tiles"
 
 // -----------------------------------------------------------------------------
 // Shared primitives
@@ -41,6 +50,13 @@ const sectionKey = z.string().min(1).max(200).optional()
 /** Explicit union of Strapi heading levels so downstream renderers are narrow. */
 const headingLevel = z.enum(["h1", "h2", "h3", "h4", "h5", "h6"])
 const assetId = z.string().min(1).optional()
+const mediaUrl = z.string().refine(
+  (value) => {
+    if (value.startsWith("/")) return true
+    return URL.canParse(value)
+  },
+  { message: "Invalid URL" },
+)
 
 // -----------------------------------------------------------------------------
 // Leaf components (embedded inside blocks; not top-level)
@@ -50,14 +66,28 @@ const assetId = z.string().min(1).optional()
 export const BibleQuoteItemSchema = z
   .object({
     reference: z.string().min(1),
-    text: z.string().min(1),
-    backgroundImageUrl: z.string().url().optional(),
+    /**
+     * Verse text. Optional because reference-first scripture (video-anchored
+     * generation) stores only the reference + structured citation identity and
+     * resolves the actual verse text at web render from the YouVersion / jsdelivr
+     * pipeline — the LLM never authors it. Hand-authored quotes may still carry text.
+     */
+    text: z.string().min(1).optional(),
+    /**
+     * Structured citation identity (from BibleCitation rows) so apps/web can resolve
+     * verse text by stable book/chapter/verse instead of parsing the reference label.
+     * Optional for backward compatibility with existing hand-authored quotes.
+     */
+    osisId: z.string().min(1).optional(),
+    chapterStart: z.number().int().min(1).optional(),
+    chapterEnd: z.number().int().min(1).optional(),
+    verseStart: z.number().int().min(1).optional(),
+    verseEnd: z.number().int().min(1).optional(),
     backgroundImageAssetId: assetId,
     ctaEnabled: z.boolean().optional(),
     ctaLabel: z.string().optional(),
     ctaLink: z.string().optional(),
     attribution: z.string().optional(),
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
@@ -77,13 +107,14 @@ export const MediaCollectionItemSchema = z
   .object({
     /** Reference to a Video row by id (resolved on read). */
     videoId: z.string().optional(),
-    imageOverrideUrl: z.string().url().optional(),
-    imageOverrideAssetId: assetId,
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
+    /** Snapshot of the Video route slug so static authored collections can link. */
+    videoSlug: z.string().min(1).optional(),
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     labelOverride: z.string().optional(),
     collectionSize: z.string().optional(),
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     linkToSectionKey: z.string().optional(),
   })
@@ -95,7 +126,6 @@ export const NavigationCarouselItemSchema = z
     contentId: z.string().min(1),
     title: z.string().min(1),
     category: z.string().optional(),
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
   })
@@ -114,11 +144,10 @@ export const RelatedQuestionItemSchema = z
 export const VideoCarouselItemSchema = z
   .object({
     videoId: z.string().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
     streamingUrl: z.string().optional(),
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
-    imageOverrideUrl: z.string().url().optional(),
-    imageOverrideAssetId: assetId,
     titleOverride: z.string().optional(),
     subtitleOverride: z.string().optional(),
     backgroundColor: z.string().optional(),
@@ -133,7 +162,6 @@ export const AdventCountdownBlockSchema = z
   .object({
     t: z.literal("adventCountdown"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     title: z.string().min(1),
@@ -147,7 +175,6 @@ export const BibleQuotesCarouselBlockSchema = z
   .object({
     t: z.literal("bibleQuotesCarousel"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -161,7 +188,7 @@ export const CardBlockSchema = z
     sectionKey,
     title: z.string().min(1),
     description: z.string().min(1),
-    mediaUrl: z.string().url().optional(),
+    mediaUrl: mediaUrl.optional(),
     mediaAssetId: assetId,
     backgroundColor: z.string().optional(),
     link: z.string().optional(),
@@ -173,7 +200,6 @@ export const CtaBlockSchema = z
   .object({
     t: z.literal("cta"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -188,7 +214,6 @@ export const EasterDatesBlockSchema = z
   .object({
     t: z.literal("easterDates"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     easterDatesTitle: z.string().min(1),
@@ -206,7 +231,6 @@ export const InfoBlocksBlockSchema = z
   .object({
     t: z.literal("infoBlocks"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
@@ -217,16 +241,35 @@ export const InfoBlocksBlockSchema = z
   })
   .strict()
 
+/**
+ * Web-owned animated language globe with locale-authored promotional copy.
+ * Top-level only because the visual is a full-width Experience surface.
+ */
+export const LanguageGlobeBlockSchema = z
+  .object({
+    t: z.literal("languageGlobe"),
+    sectionKey,
+    eyebrow: z.string().optional(),
+    title: z.string().min(1),
+    description: z.string().optional(),
+    ctaEnabled: z.boolean().optional(),
+    ctaLabel: z.string().optional(),
+    ctaLink: z.string().optional(),
+  })
+  .strict()
+
 export const MediaCollectionBlockSchema = z
   .object({
     t: z.literal("mediaCollection"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     categoryLabel: z.string().optional(),
     variant: z.enum(["carousel", "grid", "collection", "hero", "player"]),
-    itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
+    thumbnailOrientation: z.enum(["vertical", "horizontal"]).optional(),
+    itemsSource: z
+      .enum(["manual", "routeVideoChildren", "dynamicCollections"])
+      .default("manual"),
     title: z.string().optional(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
@@ -234,6 +277,10 @@ export const MediaCollectionBlockSchema = z
     ctaLabel: z.string().optional(),
     showItemNumbers: z.boolean().default(false),
     footerText: z.string().optional(),
+    excludedVideoIds: z
+      .array(z.string().trim().min(1).max(200))
+      .max(200)
+      .default([]),
     items: z.array(MediaCollectionItemSchema).default([]),
   })
   .strict()
@@ -242,7 +289,6 @@ export const NavigationCarouselBlockSchema = z
   .object({
     t: z.literal("navigationCarousel"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     items: z.array(NavigationCarouselItemSchema).default([]),
@@ -253,7 +299,6 @@ export const PromoBannerBlockSchema = z
   .object({
     t: z.literal("promoBanner"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     widthPercent: z.number().int().min(1).max(100).optional(),
@@ -286,7 +331,6 @@ export const RelatedQuestionsBlockSchema = z
   .object({
     t: z.literal("relatedQuestions"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
@@ -301,14 +345,13 @@ export const TextBlockSchema = z
   .object({
     t: z.literal("text"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     heading: z.string().optional(),
     headingLevel: headingLevel.optional(),
     subtitle: z.string().optional(),
     contentParagraphs: z.array(z.string()).optional(),
-    variant: z.enum(["default", "lead", "small"]).optional(),
+    variant: z.enum(["default", "lead", "small", "promotional"]).optional(),
   })
   .strict()
 
@@ -320,7 +363,9 @@ export const VideoBlockSchema = z
     streamingUrl: z.string().optional(),
     /** Reference to a Video row by id. */
     videoId: z.string().optional(),
-    mediaUrl: z.string().url().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
+    mediaUrl: mediaUrl.optional(),
     mediaAssetId: assetId,
     clipStartSeconds: z.number().min(0).optional(),
     clipEndSeconds: z.number().min(0).optional(),
@@ -339,7 +384,6 @@ export const VideoCarouselBlockSchema = z
   .object({
     t: z.literal("videoCarousel"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
     imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     itemsSource: z.enum(["manual", "routeVideoChildren"]).default("manual"),
@@ -362,7 +406,7 @@ export const VideoRecommendationsBlockSchema = z
   .object({
     t: z.literal("videoRecommendations"),
     sectionKey,
-    imageUrl: z.string().url().optional(),
+    imageAssetId: assetId,
     backgroundColor: z.string().optional(),
     title: z.string().optional(),
     subtitle: z.string().optional(),
@@ -376,6 +420,15 @@ export const VideoRecommendationsBlockSchema = z
   })
   .strict()
 
+/** Page-level personalized row. Content is resolved privately by the consumer. */
+export const HomepageRecommendationsBlockSchema = z
+  .object({
+    t: z.literal("homepageRecommendations"),
+    sectionKey,
+    title: z.string().max(160).optional(),
+  })
+  .strict()
+
 export const VideoHeroBlockSchema = z
   .object({
     t: z.literal("videoHero"),
@@ -383,6 +436,8 @@ export const VideoHeroBlockSchema = z
     useRouteVideo: z.boolean().default(false),
     ctaEnabled: z.boolean().optional(),
     videoId: z.string().optional(),
+    /** Reference to a Language row by id for language-specific video picks. */
+    languageId: z.string().optional(),
     streamingUrl: z.string().optional(),
     clipStartSeconds: z.number().min(0).optional(),
     clipEndSeconds: z.number().min(0).optional(),
@@ -396,6 +451,150 @@ export const VideoHeroBlockSchema = z
     subheading: z.string().optional(),
     ctaLink: z.string().optional(),
     ctaLabel: z.string().optional(),
+  })
+  .strict()
+
+export const WatchHomeHeroBlockSchema = z
+  .object({
+    t: z.literal("watchHomeHero"),
+    sectionKey,
+  })
+  .strict()
+
+const WatchHomeCategoryIdSchema = z.enum(
+  WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id) as [
+    WatchHomeCategoryId,
+    ...WatchHomeCategoryId[],
+  ],
+)
+
+/**
+ * One tile in the Watch homepage carousel.
+ *
+ * A tile with a `categoryId` is a PREDEFINED tile: the catalog supplies its
+ * destination, and apps/web supplies the localized title plus the default
+ * icon and gradient. Any of `title` / `href` / `icon` / `style` present on
+ * the tile overrides that default, so authoring an override is additive and
+ * clearing the field restores the default. Authoring a `title` also opts that
+ * tile OUT of localization — the literal renders in every locale, which is
+ * the deliberate trade for letting staff name a tile at all.
+ *
+ * A tile WITHOUT a `categoryId` is fully custom and has no defaults to fall
+ * back on, so it must carry both a title and a destination.
+ */
+export const WatchHomeCategoryRailTileSchema = z
+  .object({
+    /**
+     * Stable per-tile identity. Load-bearing beyond a React key: reordering
+     * and per-field edits address a tile by id, and two custom tiles can
+     * legitimately share every other field.
+     */
+    id: z.string().min(1).max(200),
+    categoryId: WatchHomeCategoryIdSchema.optional(),
+    title: z.string().min(1).max(MAX_WATCH_HOME_TILE_TITLE_LENGTH).optional(),
+    href: z
+      .string()
+      .refine(isSafeWatchHomeTileHref, {
+        message:
+          "Destination must be a site path starting with / or an https:// URL",
+      })
+      .optional(),
+    icon: z.enum(WATCH_HOME_TILE_ICON_KEYS as [string, ...string[]]).optional(),
+    style: z
+      .enum(WATCH_HOME_TILE_STYLE_KEYS as [string, ...string[]])
+      .optional(),
+  })
+  .strict()
+  .superRefine((tile, ctx) => {
+    if (tile.categoryId != null) return
+    if (tile.title == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["title"],
+        message: "A custom tile needs a title",
+      })
+    }
+    if (tile.href == null) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["href"],
+        message: "A custom tile needs a destination",
+      })
+    }
+  })
+
+export type WatchHomeCategoryRailTile = z.infer<
+  typeof WatchHomeCategoryRailTileSchema
+>
+
+/**
+ * Web-owned Watch homepage category carousel.
+ *
+ * `categoryIds` is the ORIGINAL shape and stays required: it is what a web
+ * deploy that predates authored tiles reads, so the editor keeps it in sync
+ * with the predefined tiles in `tiles` and an old renderer degrades to the
+ * predefined subset in the authored order rather than to an empty rail.
+ * `tiles` is the richer successor — when present it is authoritative.
+ *
+ * Top-level only because the section is a full-width homepage surface.
+ */
+export const WatchHomeCategoryRailBlockSchema = z
+  .object({
+    t: z.literal("watchHomeCategoryRail"),
+    sectionKey,
+    eyebrow: z.string().max(80).optional(),
+    title: z.string().max(160).optional(),
+    description: z.string().max(500).optional(),
+    ctaLabel: z.string().max(80).optional(),
+    categoryIds: z
+      .array(WatchHomeCategoryIdSchema)
+      .min(1, "Select at least one Watch category")
+      .superRefine((categoryIds, ctx) => {
+        const firstIndexById = new Map<WatchHomeCategoryId, number>()
+        for (const [index, id] of categoryIds.entries()) {
+          if (firstIndexById.has(id)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [index],
+              message: `Duplicate Watch category id: ${id}`,
+            })
+          } else {
+            firstIndexById.set(id, index)
+          }
+        }
+      }),
+    tiles: z
+      .array(WatchHomeCategoryRailTileSchema)
+      .min(1, "Add at least one tile")
+      .max(48, "A carousel of more than 48 tiles is not browsable")
+      .optional()
+      .superRefine((tiles, ctx) => {
+        if (tiles == null) return
+        const firstIndexById = new Map<string, number>()
+        const firstIndexByCategoryId = new Map<string, number>()
+        for (const [index, tile] of tiles.entries()) {
+          if (firstIndexById.has(tile.id)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [index, "id"],
+              message: `Duplicate tile id: ${tile.id}`,
+            })
+          } else {
+            firstIndexById.set(tile.id, index)
+          }
+
+          if (tile.categoryId == null) continue
+          if (firstIndexByCategoryId.has(tile.categoryId)) {
+            ctx.addIssue({
+              code: "custom",
+              path: [index, "categoryId"],
+              message: `Duplicate Watch category id: ${tile.categoryId}`,
+            })
+          } else {
+            firstIndexByCategoryId.set(tile.categoryId, index)
+          }
+        }
+      }),
   })
   .strict()
 
@@ -424,7 +623,6 @@ export const ContainerSlotBlockSchema = z
     gridSpan: z.number().int().min(1).max(12).default(6),
     spans: ContainerSlotSpansSchema.optional(),
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: z.string().url().optional(),
     backgroundImageAssetId: assetId,
   })
   .strict()
@@ -455,7 +653,6 @@ export const ContainerBlockSchema = z
     t: z.literal("container"),
     sectionKey,
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: z.string().url().optional(),
     backgroundImageAssetId: assetId,
     content: z.array(ContainerContentBlockSchema).default([]),
     /** Legacy nested-slot payloads are tolerated so old drafts can be opened. */
@@ -501,7 +698,6 @@ export const SectionBlockSchema = z
     t: z.literal("section"),
     sectionKey,
     backgroundColor: z.string().optional(),
-    backgroundImageUrl: z.string().url().optional(),
     backgroundImageAssetId: assetId,
     blurHash: z.string().optional(),
     backgroundOpacity: z.number().min(0).max(1).optional(),
@@ -518,7 +714,7 @@ export type SectionBlock = z.infer<typeof SectionBlockSchema>
 // -----------------------------------------------------------------------------
 
 /**
- * Discriminated union of the 16 top-level block types for
+ * Discriminated union of the top-level block types for
  * `ExperienceLocale.blocks`. `quizButton` is deliberately excluded here — it
  * only appears inside `section.content`.
  */
@@ -536,10 +732,14 @@ export const BlockSchema = z.discriminatedUnion("t", [
   CardBlockSchema,
   EasterDatesBlockSchema,
   AdventCountdownBlockSchema,
+  LanguageGlobeBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoRecommendationsBlockSchema,
+  HomepageRecommendationsBlockSchema,
   NavigationCarouselBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
+  WatchHomeHeroBlockSchema,
 ])
 
 export type Block = z.infer<typeof BlockSchema>
@@ -547,7 +747,39 @@ export type Block = z.infer<typeof BlockSchema>
 /**
  * Schema applied to `ExperienceLocale.blocks` as a whole — an array of
  * top-level blocks. Used by the service layer before writes (Unit 7).
+ *
+ * Deliberately has NO global `.min()`: this schema governs ALL persistence,
+ * including legitimate manual experiences that may have a single block. The
+ * AI-generation minimum-block-count rule is single-sourced as
+ * `GENERATION_MIN_BLOCKS` in `@forge/experience-schema`
+ * and enforced only on the generation path (the workflow's
+ * `DraftExperienceSchema` gate + the post-normalize check in
+ * `experience-ai-normalize.ts`). Adding a minimum here would reject valid
+ * hand-authored 1-block content.
  */
-export const BlocksSchema = z.array(BlockSchema)
+export const BlocksSchema = z.array(BlockSchema).superRefine((blocks, ctx) => {
+  const recommendations = blocks.flatMap((block, index) =>
+    block.t === "homepageRecommendations" ? [index] : [],
+  )
+  for (const index of recommendations.slice(1)) {
+    ctx.addIssue({
+      code: "custom",
+      path: [index],
+      message: "Only one user recommendations block is allowed",
+    })
+  }
+  let categoryRailSeen = false
+  for (const [index, block] of blocks.entries()) {
+    if (block.t !== "watchHomeCategoryRail") continue
+    if (categoryRailSeen) {
+      ctx.addIssue({
+        code: "custom",
+        path: [index],
+        message: "Only one Watch homepage category rail block is allowed",
+      })
+    }
+    categoryRailSeen = true
+  }
+})
 
 export type Blocks = z.infer<typeof BlocksSchema>

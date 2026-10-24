@@ -31,12 +31,14 @@ describe("embedding exclusion — field name scan", () => {
   const ALLOWED_ACTION_FIELDS = new Set([
     "Mutation.triggerExperienceEmbedding",
     "Mutation.triggerExperienceEmbeddingBackfill",
-    "Mutation.triggerSceneEmbeddingBackfill",
     "Mutation.triggerTranscriptEmbeddingBackfill",
     // R5 scene recommendations: `similarity` is a computed Float exposed
     // by cms's identical type. The field carries a scalar number, not an
     // embedding vector. Byte-parity with cms's SceneRecommendation SDL.
     "SceneRecommendation.similarity",
+    // The versioned semantic delivery contract preserves the same bounded
+    // scalar score for each committed item; it never exposes a vector.
+    "SemanticRecommendationDeliveryItem.similarity",
   ])
   const fields = allFields(schema)
 

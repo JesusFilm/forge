@@ -1,17 +1,22 @@
 export const featureFlags = {
+  watchAudience: {
+    key: "forge.watch.audience",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_AUDIENCE_DEFAULT",
+    description: "Release gate for Watch audience tabs and next steps.",
+  },
+  watchHomepageRecommendations: {
+    key: "forge.watch.homepageRecommendations",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT",
+    description: "Release gate for the Homepage Recommendations Block on Web.",
+  },
   watchPlayerMigration: {
     key: "forge.watch.playerMigration",
     defaultValue: false,
     localOverrideEnv: "FORGE_WATCH_PLAYER_MIGRATION_DEFAULT",
     description:
       "Runtime rollout gate for the web inline watch player migration.",
-  },
-  watchHeroMuxVideo: {
-    key: "forge.watch.heroMuxVideo",
-    defaultValue: false,
-    localOverrideEnv: "FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT",
-    description:
-      "Runtime rollout gate for the web watch hero MuxVideo backend.",
   },
   watchCtaTextCopy: {
     key: "forge.watch.ctaTextCopy",
@@ -25,7 +30,7 @@ export const featureFlags = {
     defaultValue: false,
     localOverrideEnv: "FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT",
     description:
-      "Gradual rollout gate requiring a Jesus Film One account before watch-page video downloads.",
+      "Runtime rollout gate for requiring a Web account before Watch downloads.",
   },
   watchYouVersionBibleQuotes: {
     key: "forge.watch.youVersionBibleQuotes",
@@ -33,6 +38,13 @@ export const featureFlags = {
     localOverrideEnv: "FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT",
     description:
       "Runtime rollout gate for the watch-page YouVersion Bible Quotes panel.",
+  },
+  watchHideBibleQuotes: {
+    key: "forge.watch.hideBibleQuotes",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT",
+    description:
+      "Runtime rollout gate for hiding the watch-page Bible Quotes section.",
   },
   watchQuestionPanel: {
     key: "forge.watch.questionPanel",
@@ -47,6 +59,13 @@ export const featureFlags = {
     localOverrideEnv: "FORGE_ENRICHMENT_ENGINE_DEFAULT",
     description:
       "Runtime rollout gate for Manager enrichment engine selection. false=workflow, true=mastra.",
+  },
+  watchAlgoliaSearch: {
+    key: "forge.watch.algoliaSearch",
+    defaultValue: false,
+    localOverrideEnv: "FORGE_WATCH_ALGOLIA_SEARCH_DEFAULT",
+    description:
+      "Runtime rollout gate for Algolia-backed video results in the Forge watch search modal.",
   },
 } as const
 

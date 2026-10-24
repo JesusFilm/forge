@@ -16,6 +16,7 @@ related:
   - docs/solutions/platform/admin-manager-enrichment-trigger-endpoint-20260506.md
   - docs/solutions/platform/local-embed-pipeline-pattern-20260429.md
   - docs/solutions/runtime-errors/aws-s3-nosuchkey-classification-pattern-20260506.md
+  - docs/solutions/best-practices/buffered-http-response-byte-cap-oom-guard-20260629.md
 ---
 
 # Outbound timeout must be shorter than the caller's upstream budget
@@ -168,3 +169,15 @@ cms_unreachable when Strapi hangs" uses `vi.useFakeTimers()` +
 
 See `apps/manager/src/lib/admin-trigger-route.ts:285-300` and the
 test in `apps/manager/src/lib/admin-trigger-route.test.ts`.
+
+## Companion: the space axis
+
+This rule bounds _how long_ an outbound call may take. Its companion bounds
+_how many bytes_ its response may buffer: a downstream client that does
+`await response.json()` (or `.text()`/`.arrayBuffer()`) buffers the whole body
+into the heap before any slicing, so a misbehaving upstream returning a
+multi-GB body can OOM a shared process even when the call returns quickly.
+Reach for both together on any outbound call in a shared/long-lived runtime —
+the time cap (`AbortSignal.timeout` / `Promise.race`) and the size cap
+(streamed byte counter + `reader.cancel()`). See
+[byte-cap buffered HTTP response reads to guard against OOM](buffered-http-response-byte-cap-oom-guard-20260629.md).

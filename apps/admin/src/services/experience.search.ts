@@ -7,14 +7,15 @@
 // 4. Preserves search order in the final result (not Prisma's default)
 //
 // SET LOCAL + search query are wrapped in an interactive $transaction so
-// the hnsw.ef_search tuning parameter actually applies to the search
-// (SET LOCAL only persists within a transaction block).
+// the optional pgvector tuning parameter is scoped to the search
+// transaction (SET LOCAL only persists within a transaction block).
 //
 // Per Unit 8 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { isEditorOrAdmin, type Principal } from "@/auth/principal"
 import { toPgVector } from "@/db/pgvector"
+import { activeExperienceContentEmbeddingWhere } from "./content-embedding-contract"
 
 type SearchHit = { id: string; distance: number }
 
@@ -39,9 +40,10 @@ export class ExperienceSearchService {
   /**
    * Semantic search over ExperienceLocale embeddings.
    *
-   * The query uses the partial HNSW index on `experience_locale.embedding`
-   * (WHERE embedding IS NOT NULL). `hnsw.ef_search` is set per-transaction
-   * for recall tuning via SET LOCAL inside an interactive transaction.
+   * The query uses raw pgvector cosine distance over non-null
+   * `experience_locale.embedding` rows. `hnsw.ef_search` is harmless when
+   * no HNSW index is present and stays scoped via SET LOCAL inside an
+   * interactive transaction.
    */
   async search({
     vector,
@@ -84,6 +86,7 @@ export class ExperienceSearchService {
         FROM experience_locale el
         JOIN experience e ON e.id = el.experience_id
         WHERE el.embedding IS NOT NULL
+          ${activeExperienceContentEmbeddingWhere("el")}
           ${localeFilter}
           ${statusFilter}
           ${archiveFilter}

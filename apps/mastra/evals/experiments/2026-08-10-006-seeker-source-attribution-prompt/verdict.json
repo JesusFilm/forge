@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "seeker-verdict/v1",
+  "experimentId": "2026-08-10-006-seeker-source-attribution-prompt",
+  "attemptId": "attempt-001",
+  "candidateId": "source-attribution-prompt-v3",
+  "verdict": "successful",
+  "actor": "codex",
+  "recordedAt": "2026-08-10T02:16:52.781Z",
+  "reasoning": "The exact Langfuse version 3 candidate completed the full paid Sonnet/Haiku grid with no invalid cells, answer errors, tool skips, query drift, or new hard failures, and matched the exact managed version 1 baseline score at 1.0000.",
+  "evidence": [
+    "attempts/attempt-001/gate-report.json",
+    "attempts/attempt-001/score.json",
+    "attempts/attempt-001/comparison.md"
+  ],
+  "eligibility": {
+    "gate": {
+      "outcome": "green"
+    },
+    "criterion": {
+      "id": "minimum-run-score",
+      "version": "1",
+      "outcome": "passed"
+    },
+    "eligible": true,
+    "evidence": [
+      "attempts/attempt-001/gate-report.json",
+      "attempts/attempt-001/score.json",
+      "attempts/attempt-001/comparison.md"
+    ]
+  }
+}

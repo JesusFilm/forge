@@ -34,7 +34,6 @@ const VIDEOS_WITH_IMAGES_QUERY = `
         mobileCinematicVeryLow
         thumbnail
         videoStill
-        blurhash
       }
     }
   }
@@ -52,7 +51,6 @@ type CoreVideoWithImages = {
     mobileCinematicVeryLow: string | null
     thumbnail: string | null
     videoStill: string | null
-    blurhash: string | null
   }>
 }
 
@@ -151,11 +149,23 @@ export async function syncVideoImages({
 
     try {
       let updated = 0
+      let skippedMissingVideo = 0
+      const missingVideoSamples: Array<{ imageId: string; videoId: string }> =
+        []
       await prisma.$transaction(async (tx) => {
         for (const image of images) {
           if (!image.videoId) continue
           const videoId = videoMap.get(image.videoId)
-          if (!videoId) continue
+          if (!videoId) {
+            skippedMissingVideo++
+            if (missingVideoSamples.length < 5) {
+              missingVideoSamples.push({
+                imageId: image.id,
+                videoId: image.videoId,
+              })
+            }
+            continue
+          }
           seenCoreIds.add(image.id)
 
           await tx.videoImage.upsert({
@@ -170,7 +180,6 @@ export async function syncVideoImages({
               mobileCinematicVeryLow: image.mobileCinematicVeryLow,
               thumbnail: image.thumbnail,
               videoStill: image.videoStill,
-              blurhash: image.blurhash,
               syncedAt: new Date(),
             },
             update: {
@@ -182,7 +191,6 @@ export async function syncVideoImages({
               mobileCinematicVeryLow: image.mobileCinematicVeryLow,
               thumbnail: image.thumbnail,
               videoStill: image.videoStill,
-              blurhash: image.blurhash,
               syncedAt: new Date(),
               deletedAt: null,
             },
@@ -191,6 +199,16 @@ export async function syncVideoImages({
         }
       }, CORE_SYNC_TRANSACTION_OPTIONS)
       stats.updated += updated
+      if (skippedMissingVideo > 0) {
+        console.warn(
+          JSON.stringify({
+            event: "core-sync.video-image.skipped-missing-videos",
+            offset,
+            count: skippedMissingVideo,
+            samples: missingVideoSamples,
+          }),
+        )
+      }
     } catch (err) {
       stats.errors++
       console.error(

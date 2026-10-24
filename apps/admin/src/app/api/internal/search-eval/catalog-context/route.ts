@@ -5,7 +5,7 @@ import {
   SearchEvalCatalogContextError,
   readSearchEvalCatalogContext,
   type SearchEvalCatalogContextFilters,
-} from "@/services/search-eval/catalog-context"
+} from "@/services/search-eval-catalog-context"
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60_000

@@ -1,0 +1,26 @@
+{
+  "status": "admin-local-snapshot-audit-not-production-validation",
+  "database": "forge_feat477_20260910 (isolated clone of local forge_feat453)",
+  "checkedAt": "2026-09-10T00:54:06.702Z",
+  "sourceVersion": "2026-09-10.astra-editorial.v1",
+  "auditInputDigest": "d93ba0e43b1dd87db511fc499e67dd584b3df9af8469136d682aa6e66790d893",
+  "validationVersion": "curated-admin-eligibility-v1",
+  "fullAuditSha256": "8cb003ef6c2a632746a3f10dfefe907c55707c77ccc35afd93d7be890ff3dd91",
+  "inventoryAuditSha256": "9148204cb71b3c96da4af49c193fa4affb0ef7548a12d53b7b1756e87e0331b3",
+  "localesAuditedAcrossAllAudioLanguages": ["en"],
+  "languageContexts": 2317,
+  "unknownCoreVideoIds": [],
+  "starterCoverage": {
+    "atLeast30": 2273,
+    "sixTo29": 8,
+    "oneTo5": 29,
+    "zero": 7,
+    "atLeast44": 268
+  },
+  "allCatalogOptimisticInventory": {
+    "belowSix": 35,
+    "zero": 5,
+    "interpretation": "Distinct Admin IDs before canonical dedup, including uncurated content; upper bound only"
+  },
+  "themePoolsAddUniqueCandidatesBeyondStarter": false
+}

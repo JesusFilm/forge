@@ -10,6 +10,7 @@ depends_on:
   - "feat-010"
 blocks:
   - "feat-058"
+  - "feat-172"
 tags:
   - "web"
   - "search"

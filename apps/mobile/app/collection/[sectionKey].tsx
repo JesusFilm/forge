@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  AppState,
   FlatList,
   Platform,
   Pressable,
@@ -11,10 +10,18 @@ import {
 } from "react-native"
 import { useLocalSearchParams, useNavigation } from "expo-router"
 import { Image } from "expo-image"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { VideoView } from "expo-video"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
+import {
+  useExperienceContext,
+  useSectionByKey,
+} from "../../src/contexts/ExperienceProvider"
+import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { experienceMuxData } from "../../src/lib/muxData/monitorSession"
+import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
+import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
+import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
 import {
   ACCENT,
   BLACK,
@@ -23,20 +30,36 @@ import {
   TEXT_SECONDARY,
 } from "../../src/lib/color"
 import { layout, text } from "../../src/styles/shared"
+import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
+import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 import { useTypography } from "../../src/hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../src/i18n/useT"
 import type { AdminBlock } from "../../src/lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type CollectionItem = {
   videoId?: string | null
+  // Admin resolves the playable dub live into `videoDub`; it exposes no bare
+  // `streamingUrl` on an item. Always read through `blockStreamingUrl`.
+  videoDub?: {
+    hls?: string | null
+    dash?: string | null
+    share?: string | null
+  } | null
   streamingUrl?: string | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
+}
+
+/** The item's playable url, from the dub admin actually sends. */
+function itemStreamUrl(item: CollectionItem | undefined): string | null {
+  return item == null ? null : blockStreamingUrl(item)
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -53,6 +76,7 @@ export default function CollectionPlayerScreen() {
     index?: string
   }>()
   const typography = useTypography()
+  const t = useT("Sections")
 
   const decodedKey = parseSectionKey(sectionKey)
 
@@ -61,11 +85,11 @@ export default function CollectionPlayerScreen() {
   if (decodedKey == null || section == null) {
     return (
       <View style={layout.centered}>
-        <Text style={text.errorTitle}>Collection not found</Text>
+        <Text style={text.errorTitle}>{t("collectionNotFoundTitle")}</Text>
         <Text style={text.errorMessage}>
           {decodedKey == null
-            ? "Invalid collection identifier."
-            : `No collection found for "${decodedKey}".`}
+            ? t("invalidCollectionId")
+            : t("collectionNotFound", { key: decodedKey })}
         </Text>
       </View>
     )
@@ -93,6 +117,9 @@ function CollectionPlayerContent({
   initialIndex: number
   typography: ReturnType<typeof useTypography>
 }) {
+  const t = useT("Sections")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const navigation = useNavigation()
   const { width: screenWidth } = useWindowDimensions()
   const playerHeight = Math.round(screenWidth * (9 / 16))
@@ -112,7 +139,7 @@ function CollectionPlayerContent({
   const playableIndices = useMemo(
     () =>
       items.reduce<number[]>((acc, item, i) => {
-        if (validateStreamingUrl(item.streamingUrl)) {
+        if (validateStreamingUrl(itemStreamUrl(item))) {
           acc.push(i)
         }
         return acc
@@ -129,52 +156,54 @@ function CollectionPlayerContent({
 
   const [currentIndex, setCurrentIndex] = useState(safeInitialIndex)
 
-  // Stable initial source for useVideoPlayer (must not change across renders)
-  const initialSourceRef = useRef<string | null>(
-    safeInitialIndex >= 0
-      ? (items[safeInitialIndex]?.streamingUrl ?? null)
-      : null,
+  // The active playable source; the shared adapter freezes the first value as
+  // the creation source and swaps (replaceAsync + Mux-ID compare) on change.
+  const activeStreamingUrl = useMemo(() => {
+    if (currentIndex < 0 || currentIndex >= items.length) return null
+    const url = itemStreamUrl(items[currentIndex])
+    return url && validateStreamingUrl(url) ? url : null
+  }, [currentIndex, items])
+
+  // Authored art wins; the Mux still is the fallback, matching the video route.
+  const activePosterUrl = useMemo(() => {
+    const item = items[currentIndex]
+    if (item == null) return null
+    return (
+      resolveImageUrl(item.imageUrl) ??
+      resolveImageUrl(deriveMuxThumbnailUrl(itemStreamUrl(item)))
+    )
+  }, [currentIndex, items])
+
+  const activeVideoId = items[currentIndex]?.videoId ?? null
+  // R15: the record title the provider loads, never the item's titleOverride.
+  const { getVideoTitle } = useExperienceContext()
+  const { player, isPlaying, muxMonitor } = useManagedVideoPlayer(
+    activeStreamingUrl,
+    undefined,
+    {
+      // KTD5 opt-in: identity re-keys with the active pager item, flushing
+      // the departing episode inside the adapter.
+      progress: activeVideoId ? { videoId: activeVideoId } : null,
+      muxData: experienceMuxData(activeVideoId, getVideoTitle),
+    },
   )
 
-  const player = useVideoPlayer(initialSourceRef.current, (p) => {
-    p.muted = false
-    p.loop = false
-  })
+  useEffect(() => {
+    muxMonitor.setPlayerSize({ width: screenWidth, height: playerHeight })
+  }, [muxMonitor, screenWidth, playerHeight])
+
+  // Autostarts behind a poster + spinner, the same as every other player
+  // surface. Opening this screen IS the viewer asking to watch, so it must not
+  // sit on the native transport waiting for a second tap.
+  const { awaitingAutostart } = useAutostartPlayback(
+    player,
+    activeStreamingUrl,
+    isPlaying,
+  )
+
+  useEndSessionOnViewerInitiatedPlayback(isPlaying)
 
   const flatListRef = useRef<FlatList<CollectionItem>>(null)
-  const appActiveRef = useRef(true)
-  const wasPlayingRef = useRef(false)
-
-  // Defensive cleanup
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause()
-      } catch {
-        // Already released
-      }
-    }
-  }, [player])
-
-  // AppState handling — pause on background, resume only if was playing
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      appActiveRef.current = nextState === "active"
-      if (appActiveRef.current) {
-        if (wasPlayingRef.current) {
-          player.play()
-        }
-      } else {
-        wasPlayingRef.current = player.playing
-        try {
-          player.pause()
-        } catch {
-          // Released
-        }
-      }
-    })
-    return () => subscription.remove()
-  }, [player])
 
   // Pause when screen loses focus (stack navigator keeps screens mounted)
   useEffect(() => {
@@ -204,22 +233,6 @@ function CollectionPlayerContent({
     return () => subscription.remove()
   }, [player, playableIndices])
 
-  // Source swap when currentIndex changes (but not on initial mount)
-  const isInitialMount = useRef(true)
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false
-      return
-    }
-    if (currentIndex < 0 || currentIndex >= items.length) return
-    const url = items[currentIndex]?.streamingUrl
-    if (url && validateStreamingUrl(url)) {
-      player.replaceAsync(url).catch(() => {
-        // Network error or decoder failure — stay on current state
-      })
-    }
-  }, [currentIndex, items, player])
-
   // Auto-scroll playlist to active item
   useEffect(() => {
     if (currentIndex >= 0 && flatListRef.current) {
@@ -246,11 +259,11 @@ function CollectionPlayerContent({
   const renderItem = useCallback(
     ({ item, index: idx }: { item: CollectionItem; index: number }) => {
       const isActive = idx === currentIndex
-      const isPlayable = validateStreamingUrl(item.streamingUrl)
+      const isPlayable = validateStreamingUrl(itemStreamUrl(item))
       const title =
         (item.titleOverride != null && item.titleOverride !== ""
           ? item.titleOverride
-          : null) ?? "Untitled"
+          : null) ?? tCommon("untitled")
       const thumbnailUrl = resolveImageUrl(item.imageUrl)
 
       return (
@@ -269,7 +282,10 @@ function CollectionPlayerContent({
           onPress={isPlayable ? () => handleItemPress(idx) : undefined}
           disabled={!isPlayable}
           accessibilityRole="button"
-          accessibilityLabel={`${isActive ? "Now playing: " : ""}${title}`}
+          accessibilityLabel={
+            isActive ? t("nowPlayingAriaLabel", { title }) : title
+          }
+          {...{ "dd-action-name": "sdui-collection-item" }}
           accessibilityState={{ disabled: !isPlayable, selected: isActive }}
         >
           {/* Thumbnail */}
@@ -322,7 +338,7 @@ function CollectionPlayerContent({
         </Pressable>
       )
     },
-    [currentIndex, handleItemPress, typography],
+    [currentIndex, handleItemPress, typography, t, tCommon],
   )
 
   const hasSubtitle = vcSubtitle != null && vcSubtitle !== ""
@@ -336,7 +352,7 @@ function CollectionPlayerContent({
       <View style={layout.screenContainer}>
         <View style={[styles.playerContainer, { height: playerHeight }]}>
           <View style={[StyleSheet.absoluteFill, styles.fallback]}>
-            <Text style={styles.noVideoText}>No playable videos</Text>
+            <Text style={styles.noVideoText}>{t("noPlayableVideos")}</Text>
           </View>
         </View>
         {hasHeader && (
@@ -370,6 +386,7 @@ function CollectionPlayerContent({
         <FlatList
           data={items}
           renderItem={renderItem}
+          extraData={epoch}
           keyExtractor={(_item, idx) => `coll-${idx}`}
           contentContainerStyle={styles.listContent}
         />
@@ -385,10 +402,31 @@ function CollectionPlayerContent({
           player={player}
           style={StyleSheet.absoluteFill}
           nativeControls
-          allowsFullscreen
-          allowsPictureInPicture
+          fullscreenOptions={{ enable: true }}
+          // Android SurfaceView composites outside the RN tree and punches
+          // through the poster and veil below. No-op on iOS.
+          surfaceType={Platform.OS === "android" ? "textureView" : undefined}
+          // Native controls carry a picture-in-picture button on iOS, so this
+          // view feeds the same latch the host does. `automatic` is the host's
+          // alone — expo-video elects only one view.
+          {...pictureInPictureViewProps({ automatic: false })}
           contentFit="contain"
         />
+        {/* Poster and veil share ONE predicate. Gating the poster on
+            `!hasStarted` instead would leave it covering the native controls
+            after a failed or timed-out load — visible controls are the
+            recovery affordance, so both must clear together. */}
+        {awaitingAutostart && activePosterUrl != null && (
+          <Image
+            source={activePosterUrl}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            pointerEvents="none"
+            recyclingKey={`sdui-collection-poster-${currentIndex}`}
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
+          />
+        )}
+        {awaitingAutostart && <PlayerLoadingVeil />}
       </View>
 
       {/* Sticky header */}
@@ -426,6 +464,7 @@ function CollectionPlayerContent({
         ref={flatListRef}
         data={items}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(_item, idx) => `coll-${idx}`}
         getItemLayout={(_data, idx) => ({
           length: ROW_HEIGHT,
@@ -460,7 +499,6 @@ const styles = StyleSheet.create({
   noVideoText: {
     color: TEXT_SECONDARY,
     fontSize: 15,
-    fontFamily: "System",
   },
   listContent: {
     paddingBottom: 48,
@@ -475,7 +513,6 @@ const styles = StyleSheet.create({
   },
   description: {
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     marginTop: 6,
     lineHeight: 20,
   },
@@ -521,7 +558,6 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontWeight: "500",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
   },
   rowTitleActive: {
     color: TEXT_PRIMARY,

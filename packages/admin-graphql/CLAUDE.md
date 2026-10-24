@@ -38,7 +38,9 @@ Fragments live under `@forge/admin-graphql/fragments`:
 import { adminWatchExperienceFragment } from "@forge/admin-graphql/fragments"
 ```
 
-That's the whole API: one factory, three type utilities, one `readFragment` helper, plus the fragment barrel.
+The package also exposes narrowly shared contracts under
+`@forge/admin-graphql/operations` when the same operation is executed by more
+than one runtime path.
 
 ## Generation flow
 
@@ -62,7 +64,7 @@ If you find yourself reaching for an admin runtime type, lift the shape into the
 
 ## Conventions
 
-- Operations are defined in consuming apps (e.g., `apps/web/src/lib/...`) using the `adminGraphql()` factory exported here.
+- Operations are defined in consuming apps (e.g., `apps/web/src/lib/...`) using the `adminGraphql()` factory exported here by default. Put an operation under `src/operations/` only when multiple runtime paths need one selection set and variable contract; keep page-specific selections in the consuming app.
 - Root WatchExperience composition + per-block fragments live in this package under `src/fragments/`. They're shared infrastructure across web routes. Per-page custom selections stay colocated in the consuming app.
 - Run codegen after every admin SDL change.
 - Commit generated type files — they are part of the contract.
@@ -72,3 +74,4 @@ If you find yourself reaching for an admin runtime type, lift the shape into the
 - **gql.tada cast drift across multiple queries selecting the same fragment.** Adding the same fragment as a second anchor to a different query can silently drift the cast type. See `docs/solutions/logic-errors/gql-tada-fragment-anchor-cast-drift-same-fragment-multi-query-20260514.md` for the failure mode and the typed-anchor pattern.
 - **Cross-schema type contamination.** `AdminResultOf`/`AdminFragmentOf`/`AdminVariablesOf` are aliases for the same gql.tada utilities under the bare names — there is NO nominal branding. The naming is a call-site readability convention. Structural distinctness is enforced via `src/__tests__/type-isolation.types.ts`; an `as` cast bypasses it.
 - **Forgetting to run codegen after a Pothos change** breaks types silently (builds pass, runtime fails). CI's `admin-graphql-generate` job catches this — don't merge red.
+- **Never add `.js` extensions to value-level relative imports in this package.** This package ships TS source consumed under bundler resolution (web Turbopack, tv Jest, mobile Metro) — none of them map `./x.js` → `./x.ts`, so a `.js` extension breaks their builds/tests (main went red on 2026-06-10 this way). NodeNext consumers (yt-video-mapper-backend) are satisfied differently: the `"."` entry (`src/index.ts`) holds the implementation inline with only a **type-only** `.js`-suffixed import (erased at build time), and internal modules that NodeNext consumers never reach (`admin.ts` shim, `fragments/` tree) stay extensionless. See `docs/solutions/build-errors/ts-source-package-js-extension-bundler-vs-nodenext-20260610.md`.

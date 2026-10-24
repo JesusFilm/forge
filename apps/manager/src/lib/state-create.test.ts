@@ -48,6 +48,8 @@ describe("createJob", () => {
 
     const job = await createJob("asset-1", "playback-1", ["529"], {
       videoDocumentId: "video-doc-1",
+      sourceCollectionTitle: "Collection A",
+      sourceMediaTitle: "Main feature",
       initialArtifacts: {
         transcriptionRouting: {
           kind: "metadata",
@@ -62,6 +64,8 @@ describe("createJob", () => {
         muxPlaybackId: "playback-1",
         languages: ["529"],
         videoDocumentId: "video-doc-1",
+        sourceCollectionTitle: "Collection A",
+        sourceMediaTitle: "Main feature",
       }),
     )
     expect(job).toBe(createdJob)

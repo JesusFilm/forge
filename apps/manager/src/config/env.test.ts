@@ -12,6 +12,13 @@ describe("manager env mode validation", () => {
     vi.resetModules()
   })
 
+  it("does not trust Cloudflare address metadata by default", async () => {
+    vi.stubEnv("CI", "")
+    vi.stubEnv("ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP", undefined)
+    const { env } = await import("./env")
+    expect(env.ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP).toBe("false")
+  })
+
   it("requires a mock session secret in mock mode", async () => {
     vi.stubEnv("MANAGER_DATA_MODE", "mock")
     vi.stubEnv("MUX_TOKEN_ID", REQUIRED_BASE_ENV.MUX_TOKEN_ID)

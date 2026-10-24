@@ -68,14 +68,17 @@ Patching any one of these creates a local-only code path that drifts from prod. 
 
 ### Use CLI workflows that bypass auth entirely
 
-For day-to-day dev — sync, embeddings, dumps, search-eval — invoke the in-process scripts that run against `DATABASE_URL` directly. They share the same service code the GraphQL mutations call, so behaviour parity is preserved without going through the browser:
+For day-to-day dev — sync, embeddings, dumps, and enrichment triggers — invoke
+the in-process Admin scripts that run against `DATABASE_URL` directly. They
+share the same service code the GraphQL mutations call, so behaviour parity is
+preserved without going through the browser. Search eval is Mastra-owned; use
+the Mastra runbook instead of an Admin CLI.
 
 ```bash
 pnpm --filter @forge/admin run-sync
 pnpm --filter @forge/admin run-experience-dump
 pnpm --filter @forge/admin run-embeds --pipeline=both
 pnpm --filter @forge/admin trigger-enrichment --from-report=<path> --kind=scene-analysis
-pnpm --filter @forge/admin eval:search:quick
 ```
 
 `run-sync.ts`-shape scripts gate only on `DATABASE_URL` — point them at your local `forge_admin` DB and they don't touch the auth surface at all.

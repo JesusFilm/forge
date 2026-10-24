@@ -1,6 +1,7 @@
 ---
 title: tsx ESM static-link fails on named exports across workspace package boundary
 date: 2026-05-08
+last_refreshed: 2026-06-24
 category: runtime-errors
 module: packages/graphql
 problem_type: runtime_error
@@ -27,6 +28,8 @@ tags:
 ---
 
 # tsx ESM static-link fails on named exports across workspace package boundary
+
+> **Refresh note (2026-06-24).** The `packages/graphql` parity harness this incident occurred in has since been **removed** (Strapi→admin migration cleanup; see root `CLAUDE.md`). The harness-specific specifics below are historical, but the generalizable lesson — a raw-`.ts` workspace boundary fails differently under bare Node vs tsx vs a bundler — remains live and recurs in [mastra-dev-tsx-loader-for-raw-ts-workspace-deps](../tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md).
 
 ## Problem
 
@@ -78,6 +81,8 @@ After the fix: capture script runs cleanly under tsx, exits 2 with the documente
 
 ## Why This Works
 
+> **Root-cause correction (2026-06-24 refresh).** The precise cause is the **imported package's module type**, not a tsx-transformer inconsistency. `apps/admin` has no `"type": "module"`, so Node 24 classifies its `.ts` source as **CommonJS**; an ESM importer then cannot see a CJS module's named exports through static-link, and no loader (`tsx` included) bridges that. This was pinned in [parity-harness-prod-gate-defects](../workflow-issues/parity-harness-prod-gate-defects-20260514.md) (Defect 1) six days later. The layering fix above still works because it _removes_ the cross-workspace import entirely — which is exactly why the original "transformer doesn't apply across the exports-map" framing below was never falsified at the time. The original as-diagnosed account is retained for the record:
+
 Node's ESM `#asyncInstantiate` runs a static-link pass BEFORE any module body executes — it checks every named import resolves to a real export on the source module. tsx's loader transforms `.ts` files so named exports become visible to that static-link, but the transformer does not consistently apply across workspace `exports`-map boundaries that point at raw `.ts` source paths. When the static-link asks "does `@forge/admin/domain/blocks` export `BlocksSchema`?", it sees a module whose exports haven't been materialized by the transformer and reports the export as missing.
 
 Vitest avoids this because Vite owns its own resolver and module graph — it never delegates to Node's ESM static-link for workspace `.ts` files. Next's build avoids it because the bundler inlines and rewrites these imports before runtime. Only `tsx` + Node's runtime ESM hits the broken seam.
@@ -97,6 +102,7 @@ The fix breaks the chain at the script entry point: `capture-parity-fixture.ts` 
 
 - [`docs/solutions/best-practices/experience-embeddings-backfill-strapi-v5-tsx-compat-20260414.md`](../best-practices/experience-embeddings-backfill-strapi-v5-tsx-compat-20260414.md) — sibling tsx + module-resolution pattern (Strapi v5 CJS init ordering). Different mechanism, complementary prevention rule (smoke-run the actual script in CI).
 - [`docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md`](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — META home. Register this doc as a sixth worked instance: vitest's transformer is the "mock" that hid tsx's "production contract" gap.
+- [`docs/solutions/tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md`](../tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md) — the generalized, still-live form of this lesson: same raw-`.ts`-workspace-boundary territory, but the _missing-extension_ failure mode (which tsx fixes) rather than this _named-export/CJS_ one (which it does not). Carries the discriminator.
 - [`docs/solutions/best-practices/throwaway-operator-harness-deletion-contract-20260430.md`](../best-practices/throwaway-operator-harness-deletion-contract-20260430.md) — the parity harness lifecycle / architecture frame. The capture script that surfaced this bug ships under that pattern.
 - [`docs/solutions/architecture-patterns/dual-client-gql-tada-multi-schema-codegen-pattern-20260507.md`](../architecture-patterns/dual-client-gql-tada-multi-schema-codegen-pattern-20260507.md) — direct upstream context. The cross-workspace `.ts` source path being imported (`@forge/admin/domain/blocks` → `BlocksSchema`) is a consumer-side artifact of this pattern.
 - PR #912 — the parity harness Unit 4 PR where the fix landed.

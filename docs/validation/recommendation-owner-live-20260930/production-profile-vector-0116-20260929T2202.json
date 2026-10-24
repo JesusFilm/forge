@@ -1,0 +1,152 @@
+{
+  "probe": "forge_owner_profile_vector_0116_verification",
+  "executed": true,
+  "expectedRuntimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "sqlSha256": "fdc4c392fe3b701af52d0618629a8991d1f122d46c743e8d538c844d8a531358",
+  "specSha256": "6711958818fc9dcf84ee180f52aa91cd49a1276dbf29d7ea24647688b42fc99b",
+  "expectedMigrationChecksums": [
+    {
+      "name": "0116_recommendation_profile_vector_snapshot",
+      "checksum": "50edf17b3dc487ba4b5513f295820495f80ee899f5be43fd6630340f218d5ca3"
+    }
+  ],
+  "transport": "RailwaySSHAdmin",
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "nodeWallTimeoutMs": 15000,
+  "transportWallTimeoutMs": 20000,
+  "activationNotPerformed": true,
+  "environment": "production",
+  "startedAt": "2026-09-29T22:02:21.709127+00:00",
+  "transportExitCode": 0,
+  "unparsedStdoutLinesWithheld": 0,
+  "rawStderrWithheld": true,
+  "stderrLineCount": 1,
+  "status": "metadata_pass",
+  "runtimeCommit": "3abde2aa564e30c16631979b5d9403fc4c265403",
+  "revisionSource": "RailwayAdminEnvironment",
+  "checks": {
+    "migrationChecksumExact": true,
+    "noUnfinishedMigrations": true,
+    "snapshotTableShapeExact": true,
+    "indexesExactValidReadyLive": true,
+    "functionDefinitionsSha256Exact": true,
+    "immutabilityTriggerExactEnabled": true,
+    "columnTypesNullabilityDefaultsExact": true,
+    "serverMajorMatchesCanonicalDefinitions": true,
+    "constraintsEnforcedWithExactNotValidState": true,
+    "readOnly": true,
+    "expectedRuntimeCommit": true,
+    "statementTimeout": true,
+    "lockTimeout": true
+  },
+  "receipt": {
+    "probe": "forge_owner_profile_vector_migration_0116",
+    "checks": {
+      "migrationChecksumExact": true,
+      "noUnfinishedMigrations": true,
+      "snapshotTableShapeExact": true,
+      "indexesExactValidReadyLive": true,
+      "functionDefinitionsSha256Exact": true,
+      "immutabilityTriggerExactEnabled": true,
+      "columnTypesNullabilityDefaultsExact": true,
+      "serverMajorMatchesCanonicalDefinitions": true,
+      "constraintsEnforcedWithExactNotValidState": true,
+      "readOnly": true,
+      "expectedRuntimeCommit": true,
+      "statementTimeout": true,
+      "lockTimeout": true
+    },
+    "catalog": {
+      "columns": [
+        {
+          "ok": true,
+          "name": "recommendation_profile_interest.embedding"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_interest.vector_digest"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.created_at"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.digest"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.embedding"
+        }
+      ],
+      "indexes": [
+        {
+          "ok": true,
+          "name": "recommendation_profile_interest_vector_digest_idx"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot_pkey"
+        }
+      ],
+      "triggers": [
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot_immutable"
+        }
+      ],
+      "functions": [
+        {
+          "ok": true,
+          "name": "prevent_recommendation_profile_vector_snapshot_update"
+        }
+      ],
+      "migrations": [
+        {
+          "ok": true,
+          "name": "0116_recommendation_profile_vector_snapshot"
+        }
+      ],
+      "constraints": [
+        {
+          "ok": true,
+          "name": "recommendation_profile_interest.recommendation_profile_interest_vector_digest_fkey"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_interest.recommendation_profile_interest_vector_shape_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.recommendation_profile_vector_snapshot_created_at_not_null"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.recommendation_profile_vector_snapshot_digest_check"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.recommendation_profile_vector_snapshot_digest_not_null"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.recommendation_profile_vector_snapshot_embedding_not_null"
+        },
+        {
+          "ok": true,
+          "name": "recommendation_profile_vector_snapshot.recommendation_profile_vector_snapshot_pkey"
+        }
+      ]
+    },
+    "lockTimeout": "1s",
+    "serverMajor": 18,
+    "statementTimeout": "3s",
+    "sourceRowsQueried": false,
+    "transactionReadOnly": "on",
+    "activationNotPerformed": true,
+    "writerFlagNotEvaluated": true,
+    "servingReadinessNotEvaluated": true
+  },
+  "endedAt": "2026-09-29T22:02:25.553480+00:00"
+}

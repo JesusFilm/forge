@@ -3,7 +3,7 @@ id: "feat-141"
 title: "Mastra retrieval strategy ownership investigation"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-29"
 duration: 2
 depends_on:
@@ -18,6 +18,12 @@ tags:
   - "observability"
   - "evals"
 ---
+
+## Historical Note
+
+This cancelled investigation references legacy Admin search-eval harness paths
+that were removed by `feat-155`. Use Mastra search-eval workflows and the flat
+Admin internal-contract services for current work.
 
 ## Problem
 
@@ -35,6 +41,15 @@ be native Mastra Evaluation: promoted Datasets, Scorers, and Experiment results
 from feat-142. Custom JSON artifacts can remain supporting evidence, but they
 should not be the only operator-quality source once native Experiments are
 populated.
+
+## Closure Decision
+
+Closed on 2026-06-01. The current decision is to keep live retrieval strategy
+owned by Admin and not run a separate P0 investigation now. Mastra remains on
+the offline evaluation/orchestration side of the boundary; future retrieval
+strategy experiments should be opened only when promoted native Experiments show
+a concrete quality or operator-iteration need that Admin-owned orchestration
+cannot cover.
 
 ## Entry Points - Read These First
 
@@ -64,7 +79,7 @@ populated.
 ```
 rg -n "hybrid|keyword-first|semantic-video|semantic-experience|fuseRankedLists|RRF" apps/admin/src/services
 rg -n "searchMode|HybridSearchResponse|public search|q \\(search query\\)" apps/admin/src/graphql apps/admin/src/app/api/search
-rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services/search-eval apps/mastra/src
+rg -n "strategy version|eval report|baseline|candidate" apps/admin/src/services apps/mastra/src
 rg -n "Dataset|Experiment|compareExperiments|startExperiment|search-eval" apps/mastra/src apps/mastra/node_modules/@mastra/core/dist/datasets
 ```
 

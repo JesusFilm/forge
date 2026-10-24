@@ -32,6 +32,8 @@ tags:
 
 ## Context
 
+> **Refresh note (2026-06-24).** The `packages/graphql` parity harness this post-mortem covers has since been **removed** (Strapi→admin migration cleanup; see root `CLAUDE.md`). Defects 2 and 3 were harness/operational-specific and are now moot. Defect 1's root cause (ESM importer can't see a CommonJS package's named exports) is the durable lesson — generalized in [tsx-esm-named-export-resolution…](../runtime-errors/tsx-esm-named-export-resolution-across-workspace-package-boundary-20260508.md) and [mastra-dev-tsx-loader…](../tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md).
+
 `packages/graphql/scripts/run-batch-verification.ts` shipped in PR #937 (plan-003 U8) as the cutover gate: it walks the published-slug corpus, fetches each slug from Strapi AND admin in parallel, diffs the normalized payloads across structural/value/order/semantic classes, and exits 0 only when every diff is empty or allow-listed. The cutover runbook (`docs/admin-core-migration/cutover-runbook.md`) names "batch verification harness gate is green" as a pre-cutover checklist box.
 
 Attempting to run the harness against prod (`cms.jesusfilm.org` + `admin.jesusfilm.org`) on 2026-05-14 surfaced two independent defects. Neither was caught at merge because the harness has no end-to-end test against real cross-package imports or a real Strapi prod endpoint — unit tests stub both surfaces.
@@ -121,3 +123,5 @@ Cutover-runbook should be updated to list "Experience content synced into admin 
 - Runbook: [docs/admin-core-migration/cutover-runbook.md](../../admin-core-migration/cutover-runbook.md) (pre-cutover checklist references the gate)
 - PR: #937 (the cutover bundle that shipped the harness)
 - Adjacent learning: [docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md) — same META: mocked-shape tests do not catch real-contract bugs at the integration seam.
+- Root-cause sibling: [docs/solutions/runtime-errors/tsx-esm-named-export-resolution-across-workspace-package-boundary-20260508.md](../runtime-errors/tsx-esm-named-export-resolution-across-workspace-package-boundary-20260508.md) — same `@forge/admin/domain/blocks` named-export failure; Defect 1 here is the precise root cause that doc's "Why This Works" was corrected to cite.
+- Generalized form: [docs/solutions/tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md](../tooling-decisions/mastra-dev-tsx-loader-for-raw-ts-workspace-deps.md) — distinguishes this CJS named-export seam (tsx can't fix) from the missing-extension case (tsx fixes).

@@ -1,3 +1,5 @@
+import { SAFE_SLUG_PATTERN } from "./url-shape"
+
 const LEGACY_EPISODE_ALIASES: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = Object.freeze({
@@ -13,5 +15,14 @@ export function resolveLegacyWatchEpisodeAlias(
   seriesSlug: string,
   episodeSlug: string,
 ): string | null {
-  return LEGACY_EPISODE_ALIASES[seriesSlug]?.[episodeSlug] ?? null
+  if (!Object.hasOwn(LEGACY_EPISODE_ALIASES, seriesSlug)) return null
+  const episodeAliases = LEGACY_EPISODE_ALIASES[seriesSlug]
+  if (!episodeAliases || !Object.hasOwn(episodeAliases, episodeSlug)) {
+    return null
+  }
+  const canonicalSlug = episodeAliases[episodeSlug]
+  return typeof canonicalSlug === "string" &&
+    SAFE_SLUG_PATTERN.test(canonicalSlug)
+    ? canonicalSlug
+    : null
 }

@@ -39,11 +39,17 @@ function nameIsNativeForm(slug: string, name: string): boolean {
 export function deriveLanguageDisplay(
   slug: string,
   rawName: string | null | undefined,
+  options: {
+    /** The name came from the map entry for the UI language (R9). */
+    inUiLanguage?: boolean
+  } = {},
 ): LanguageDisplay {
   const trimmed = rawName?.trim() ?? ""
   if (!trimmed) {
     return { slug, name: titleCaseSlug(slug), nativeName: null }
   }
+  // The English-or-native check below reads for an English UI only.
+  if (options.inUiLanguage) return { slug, name: trimmed, nativeName: null }
   if (!nameIsNativeForm(slug, trimmed)) {
     return { slug, name: trimmed, nativeName: null }
   }

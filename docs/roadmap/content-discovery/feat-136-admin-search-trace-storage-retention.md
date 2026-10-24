@@ -18,6 +18,12 @@ tags:
   - "observability"
 ---
 
+## Historical Note
+
+This completed ticket references legacy Admin search-eval harness paths that
+were removed by `feat-155`. Use the flat Admin trace/search-eval contract
+services and Mastra search-eval workflows for current work.
+
 ## Problem
 
 Search quality work needs real production query traces, but Mastra should not
@@ -44,15 +50,16 @@ human-approved sanitized eval queries may survive beyond that window.
    - place for the trace storage model and retention indexes.
 7. `apps/admin/src/config/env.ts`
    - retention and trace capture env configuration.
-8. `apps/admin/src/services/search-eval/fingerprint.ts`
-   - existing search-state fingerprint pattern for eval context.
+8. `apps/mastra/src/services/offline-search-eval/`
+   - current search eval artifact/report domain that consumes sampled traces.
 
 ## Grep These
 
 ```
 rg -n "hybridSearch|search\\(|searchMode|query_embedding_failure" apps/admin/src/services apps/admin/src/graphql apps/admin/src/app/api/search
 rg -n "model Search|@@index|deletedAt|expiresAt|retention" apps/admin/prisma/schema.prisma apps/admin/src
-rg -n "fingerprint|search-eval|eval-search" apps/admin/src/services/search-eval apps/admin/src/scripts
+rg -n "SearchTrace|sampleSearchTraces|retention" apps/admin/src apps/admin/prisma
+rg -n "offline-search-eval|search-eval-orchestrator" apps/mastra/src
 ```
 
 ## What To Build

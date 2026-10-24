@@ -29,7 +29,9 @@ const FIXTURE_ROW = {
   id: "v-1",
   coreId: "core-1",
   label: "featureFilm",
+  targetLocale: null,
   primaryLanguageBcp47: "en",
+  languageBcp47: "en",
   muxAssetId: "mux-asset-en",
   subtitleUrl: "https://example.com/en.vtt",
 }
@@ -84,8 +86,45 @@ describe("admin-video-lookup", () => {
       })
       const parsed = JSON.parse(init.body) as {
         coreIds: string[]
+        items: Array<{ coreId: string; targetLocale: string | null }>
       }
       expect(parsed.coreIds).toEqual(["core-1"])
+      expect(parsed.items).toEqual([{ coreId: "core-1", targetLocale: null }])
+    })
+
+    it("returns localized rows keyed by normalized coreId and targetLocale", async () => {
+      fetchSpy.mockResolvedValueOnce(
+        jsonResponse({
+          videos: [
+            {
+              ...FIXTURE_ROW,
+              targetLocale: "es",
+              languageBcp47: "es",
+              muxAssetId: "mux-asset-es",
+              subtitleUrl: "https://example.com/es.vtt",
+            },
+          ],
+        }),
+      )
+
+      const result = await lookupVideosByCoreIdFromAdmin([
+        { coreId: "core-1", targetLocale: "ES" },
+      ])
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) throw new Error("expected ok envelope")
+      expect(result.data.get("core-1::es")).toEqual(
+        expect.objectContaining({
+          targetLocale: "es",
+          languageBcp47: "es",
+          muxAssetId: "mux-asset-es",
+        }),
+      )
+      const init = fetchSpy.mock.calls[0][1] as { body: string }
+      expect(JSON.parse(init.body)).toEqual({
+        coreIds: ["core-1"],
+        items: [{ coreId: "core-1", targetLocale: "es" }],
+      })
     })
 
     it("falls back to GraphQL when the derived REST route is not deployed yet", async () => {

@@ -52,28 +52,91 @@ if (result.type === "EXPERIENCE") { ... }
 
 Check the admin SDL or a live query response before writing discriminator logic for any enum field.
 
-### 2. expo-video language switching: replace, do not reinitialize
+### 2. expo-video language switching: replace, don't reinitialize — and FREEZE the source
 
-When a user switches the audio language, swap the stream URL via `player.replace(newUrl)` rather than re-creating the `useVideoPlayer` instance. Reinitializing destroys the decoder slot, causes a blank frame, buffering delay, and lost playback position.
+> **Superseded as a recipe (2026-08-12).** Do not hand-roll this in a new
+> screen. `apps/mobile/src/hooks/useManagedVideoPlayer.ts` (todo 016) now owns
+> the frozen creation source, the `replaceAsync` swap with resume, and the
+> AppState handling, and every player screen consumes it. The reasoning below
+> is still correct and is the best explanation of WHY the source must be
+> frozen — read it to understand the adapter, not to reimplement it.
+
+When a user switches the audio language, swap the stream URL via `player.replaceAsync(newUrl)` rather than re-creating the `useVideoPlayer` instance. Reinitializing destroys the decoder slot, causes a blank frame, buffering delay, and lost playback position.
+
+**Critically, the source passed to `useVideoPlayer` must be frozen.** `useVideoPlayer` recreates AND releases the native player whenever its source argument _value_ changes (its internal dependency is `JSON.stringify(source)`). Passing a ref value you then mutate — which an earlier version of this pattern did (`initialUrl.current = streamingUrl`) — defeats `replaceAsync`: the next render hands `useVideoPlayer` the new value, so it tears down the playing player and builds a fresh paused one on the new asset while the in-flight `replaceAsync` runs against the just-released instance. Symptom: black/stuck frame on language switch, controls showing "playing" while nothing plays. Track the loaded URL in a **separate** ref.
 
 ```typescript
-const initialUrl = useRef(streamingUrl)
-const player = useVideoPlayer(initialUrl.current, (p) => {
+// Frozen at creation — never reassigned, so useVideoPlayer never recreates.
+const creationSource = useRef(streamingUrl).current
+const player = useVideoPlayer(creationSource, (p) => {
   p.muted = false
   p.loop = false
 })
 
+// Separate ref tracks the loaded URL for swap decisions.
+const loadedUrlRef = useRef(streamingUrl)
+
 useEffect(() => {
-  if (streamingUrl && streamingUrl !== initialUrl.current) {
-    initialUrl.current = streamingUrl
-    player.replace(streamingUrl)
-  }
+  if (!streamingUrl || streamingUrl === loadedUrlRef.current) return
+  loadedUrlRef.current = streamingUrl
+  // Preserve playback: replace does not carry the play state to the new source.
+  const wasPlaying = player.playing
+
+  // Resume on the LOAD, not on the promise. See the note below.
+  const sub = player.addListener("sourceLoad", () => {
+    sub.remove()
+    if (wasPlaying) player.play()
+  })
+
+  void player.replaceAsync(streamingUrl).catch(() => {
+    try {
+      // The synchronous path lands the item immediately, so the listener above
+      // has already fired or will fire from this call.
+      player.replace(streamingUrl, true)
+    } catch {
+      sub.remove()
+    }
+  })
 }, [streamingUrl, player])
 ```
 
-The parent component must pass `activeVariant?.hls` (the currently-selected variant's stream), not the base `video.streamingUrl`. A common bug (found in code review) is wiring the player to a fixed base URL so the language switch becomes a no-op.
+**Do not resume in the `replaceAsync` continuation.** The promise settles when
+the source has been SET, not when it has LOADED — on Android `replaceAsync` is
+aliased to `replace` — so work written in `.then()` runs while the player still
+holds the OUTGOING item. A bare `play()` there is the mild form; a
+`player.currentTime = X` written there is silently discarded, which is the
+tvOS-side failure recorded in
+`docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`
+(same root premise — the promise resolves before the incoming item is usable —
+reached by a different route). Ride `sourceLoad` and scope the listener to the
+source that asked for it, since one player is shared app-wide.
+
+The app now codifies this in two places:
+`apps/mobile/src/hooks/useAutostartPlayback.ts` ("Start on `sourceLoad`, never
+on the `replaceAsync` promise — that resolves before the source is applied")
+and `apps/mobile/src/lib/recoverPlayback.ts`.
+
+**Keep the resume on the fallback path too.** The earlier version of this
+snippet captured `wasPlaying`, honoured it on the success path, and dropped it
+inside `.catch()` — so a swap that fell back to the synchronous `replace()`
+left a playing video stopped with no signal.
+
+Also make play/pause controls read the **live** `player.playing`, not a cached React snapshot: a source swap can leave the player paused without emitting a `playingChange`, so a stale snapshot wedges the toggle (it calls `pause()` on an already-paused player forever, and the user can't resume without leaving the screen).
+
+The parent component must pass `activeVariant?.hls` (the currently-selected variant's stream), not the base `video.streamingUrl`. A common bug (found in code review) is wiring the player to a fixed base URL so the language switch becomes a no-op. Identify _which_ language is active by the unique language slug, never by bcp47 — see the language-identity doc in Related.
 
 ### 3. Bible verse fetching: bookSlugForApi strips spaces, not replaces with hyphens
+
+> **Superseded 2026-08-27 for `apps/mobile` and `apps/web`. Do not follow this
+> section on either app.** Both now read admin's server-resolved
+> `BibleCitation.passage`. Web moved on 2026-07-03; mobile moved in the Bible
+> Quotes passages work, which deleted its whole mirror stack — the client fetch,
+> `formatScripture` and `bookSlugForApi`. The mirror dropped verse ranges,
+> inlined footnote text into the verse body, truncated poetry to its first line,
+> and named no translation or copyright holder. Mobile's replacement is
+> `src/lib/biblePassages.ts` plus the `GetVideoBiblePassages` companion query in
+> `src/lib/queries.ts`. **`apps/tv` still holds its own copy of the code below**,
+> so the section stays for that app until TV moves too.
 
 Bible verse content is fetched client-side from the jsdelivr CDN (`wldeh/bible-api`). The book slug format strips spaces entirely. Both the mobile and web implementations use the same logic.
 
@@ -107,6 +170,8 @@ function MiniPlayerBar({ visible }: { visible: boolean }) {
   return <Animated.View style={{ opacity, transform: [{ translateY }] }}>...</Animated.View>
 }
 ```
+
+> **Exemplar moved, 2026-08-18 (feat-367).** `MiniPlayerBar.tsx` was deleted — it never had an import site, and the root-owned playback host replaced it. The pattern itself is unchanged and still in use; read it from `apps/mobile/src/components/library/DeleteConfirmSheet.tsx:74-92` (the same shape, plus a reduce-motion path) or `apps/mobile/src/hooks/useControlsVisibility.ts:79-92` (the same shape, where a re-reveal mid-fade makes the completion stale). One caution the snippet above cannot show: `useNativeDriver: true` is safe only because nothing writes these nodes with `setValue`. On a node a PanResponder drives, the native driver fails silently — see `apps/mobile/CLAUDE.md`, section "Mini player and the root-owned playback session".
 
 ### 5. FlatList performance: memoize renderItem and hook returns
 
@@ -183,5 +248,6 @@ Web reference for study questions CTA parity: `apps/web/src/components/watch/Wat
 
 - `docs/solutions/architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md` — normalizer pattern upstream
 - `docs/solutions/database-issues/prisma-video-relation-inverted-back-references-20260514.md` — known constraint for sibling queries
-- `docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md` — prior `useVideoPlayer` source-swap approach
+- `docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md` — prior `useVideoPlayer` source-swap approach (frozen creation source + `replaceAsync`); the canonical reference for why the source arg must not change
+- `docs/solutions/best-practices/language-identity-on-slug-not-bcp47-20260605.md` — how to identify _which_ language is active/preferred (key on the unique language slug, not bcp47); complements Pattern 2's swap mechanism
 - `docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md` — ref-mirror patterns for expo-video async events

@@ -1,7 +1,7 @@
 ---
 title: "Expo TV Platform Setup in an SDUI Monorepo"
 date: "2026-04-10"
-last_updated: "2026-04-20"
+last_updated: "2026-06-25"
 category: best-practices
 module: tv-app
 problem_type: best_practice
@@ -30,7 +30,7 @@ tags:
 
 ## Context
 
-A monorepo has a working mobile Expo app (SDK 54, React Native 0.81.5) and a web Next.js app, both consuming a Server-Driven UI pipeline: Strapi CMS -> GraphQL -> gql.tada -> normalizer -> dispatcher -> renderers. The team wanted to add Apple TV and Android TV support without duplicating SDUI logic or diverging from the existing content model.
+A monorepo has a working mobile Expo app (SDK 54, React Native 0.81.5) and a web Next.js app, both consuming a Server-Driven UI pipeline: admin GraphQL -> gql.tada -> normalizer -> dispatcher -> renderers. The team wanted to add Apple TV and Android TV support without duplicating SDUI logic or diverging from the existing content model.
 
 The key challenge was uncertainty about whether Expo SDK 54 supported TV targets at all, combined with the architectural question of how to share the SDUI pipeline across a fundamentally different interaction model (D-pad focus vs touch).
 
@@ -158,19 +158,21 @@ export function getGraphQLUrl(): string {
 
 This is a known Android emulator behavior — `10.0.2.2` maps to the host machine's loopback interface.
 
+**Use `localhost`, not `127.0.0.1`, in `EXPO_PUBLIC_GRAPHQL_URL` for simulator/emulator dev.** The swap above only matches the literal string `"localhost"`, so `127.0.0.1` silently bypasses it and breaks the Android emulator. `localhost` is correct for _both_ the Apple TV simulator (shares the Mac's loopback directly) and the Android emulator (swapped to `10.0.2.2`). A **physical** Apple TV cannot resolve `localhost`/`127.0.0.1` (they resolve to the TV itself) — point its `.env.local` at the Mac's LAN IP instead. `EXPO_PUBLIC_*` is inlined by Metro at startup, so restart Metro (`--clear`) after editing `.env.local`. See `docs/solutions/runtime-errors/tv-rctfatal-network-request-failed-admin-down-20260626.md` and the `tv-mobile-sim-local-admin-use-localhost` memory.
+
 ### 2. Separate App, Shared Logic
 
 Create `apps/tv/` as a new Expo app -- do NOT add TV as a platform target inside the mobile app. Touch UX assumptions (gestures, small screen, portrait) conflict with 10-foot TV UX (D-pad, focus rings, landscape).
 
 ```
 apps/
-  mobile-v2/    # touch app -- do not modify for TV
+  mobile/       # touch app -- do not modify for TV
   tv/           # new Expo app for Apple TV + Android TV
 packages/
-  graphql/      # shared typed GraphQL client (already exists)
+  admin-graphql/  # shared gql.tada admin GraphQL client (@forge/admin-graphql)
 ```
 
-Import normalizer and queries from mobile-v2 via pnpm workspace paths. Avoids copy-and-drift -- a CMS schema change propagates automatically after codegen. Renderers are rewritten from scratch for TV.
+Import normalizer and queries from mobile via pnpm workspace paths (or copy with a sync comment). Avoids copy-and-drift -- an admin GraphQL schema change propagates after codegen. Renderers are rewritten from scratch for TV.
 
 ### 3. Home Screen Data Model
 
@@ -237,7 +239,7 @@ const focusMemory = new Map<string, number>() // railId -> itemIndex
 
 **Overlay VideoView focus pattern:** In fullscreen video overlays where `TVFocusGuideView` with `trapFocusUp/Down/Left/Right` already constrains D-pad navigation, do NOT wrap `VideoView` in `<View pointerEvents="none">`. The wrapper blocks AVPlayerLayer rendering on tvOS (black screen, controls work). Use `focusable={false}` directly on the `VideoView` instead. The `pointerEvents="none"` wrapper is only correct for inline VideoViews without focus trapping. See `docs/solutions/ui-bugs/tv-videoplayer-pointerevents-blocks-avplayerlayer-tvos-20260415.md`.
 
-**Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). Workaround: restore focus via `hasTVPreferredFocus` in a `useEffect` on screen focus.
+**Known issue:** Focus lost on back-navigation (react-native-tvos issue #852). For a screen with one fixed control to restore, set a one-shot `hasTVPreferredFocus` on re-entry. For a screen with **many** focusables (rails, hero, tabs) where the user should land back on the _exact_ element, use a screen-level focus memory (`requestTVFocus` on the remembered node, on `useFocusEffect` re-entry) instead — see [`../design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md`](../design-patterns/tv-back-nav-focus-restoration-screen-focus-memory.md).
 
 **Focus-driven background media heroes (rail-owns-focus pattern):** If a hero reacts to rail focus with a background `VideoView`, prefer making the hero subtree fully non-interactive (no `Pressable`/`focusable`/`hasTVPreferredFocus` anywhere in the hero) and letting the rail's `TVFocusGuideView autoFocus` own focus outright. Wrapping the hero in `TVFocusGuideView` with `destinations` is fragile once the video is actively playing — `VideoView` continues to intercept focus despite `focusable={false}` + `pointerEvents="none"` + `isTVSelectable={false}`. See `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` for the full pattern (including the poster-hold technique that hides the black flash during HLS source swap).
 
@@ -262,6 +264,13 @@ FlatList with complex SDUI block content may render all items at zero height, pr
 ```
 
 Horizontal FlatList (used in ContentRail) works correctly — the issue is specific to vertical FlatList with variable-height SDUI content.
+
+Vertical FlatList IS viable on tvOS when rows are **fixed-height** with
+`getItemLayout` provided (no dynamic measurement) — the watch menus virtualize
+2,000+ fixed-height rows this way. See
+`docs/solutions/best-practices/react-native-tvos-flatlist-sheet-virtualization-pitfalls.md`
+for that configuration and its own pitfalls (Yoga maxHeight, one-shot
+`hasTVPreferredFocus`, mount-once `initialScrollIndex`).
 
 ### 8. GraphQL Fragment Alias Pitfalls
 
@@ -312,7 +321,7 @@ This is silent — TypeScript doesn't catch it because `NormalizedBlock` uses `[
 **Correct monorepo structure:**
 
 ```
-apps/mobile-v2/   # untouched
+apps/mobile/      # untouched
 apps/tv/          # new app -- shares logic, rewrites renderers
   app/
     _layout.tsx
@@ -326,7 +335,7 @@ apps/tv/          # new app -- shares logic, rewrites renderers
 **Incorrect approach -- do not add TV target to mobile app:**
 
 ```jsonc
-// apps/mobile-v2/app.json -- DO NOT DO THIS
+// apps/mobile/app.json -- DO NOT DO THIS
 {
   "expo": {
     "platforms": ["ios", "android", "tvos"],
@@ -358,6 +367,7 @@ const rail = experiences.map((e) => ({
 - `docs/solutions/mobile/experience-selection-provider-library-tab-pattern-2026-04-08.md` -- `isHomepage` resolution pattern used for TV home screen hero
 - `docs/solutions/best-practices/playlist-video-player-sdui-mobile-20260409.md` -- `useVideoPlayer` stability patterns; TV adds remote control event mapping
 - `docs/solutions/platform/adding-new-apps.md` -- monorepo scaffold checklist; TV uses EAS Build instead of Railway
+- `docs/solutions/build-errors/eas-managed-react-native-tvos-build-gotchas-20260615.md` -- the EAS **cloud-build** + TestFlight + app-icon layer this doc leaves open. This doc covers local prebuild / dev-client; that one covers the managed-workflow provisioning-profile-resolves-to-iOS failure, the Android `ic_launcher` duplicate-resource collision, and `appleTVImages` asset constraints
 - `docs/solutions/mobile/expo-router-slash-in-dynamic-route-params.md` -- `encodeURIComponent` for `experience/[slug]` route params
 - `docs/brainstorms/2026-04-10-tv-app-prototype-requirements.md` -- full requirements document for the TV prototype
 - Roadmap: feat-072 through feat-076 -- implementation tickets

@@ -1,0 +1,1222 @@
+/**
+ * feat-517 KTD3: Home hosts the slate hook, so the shelf's first mount is the
+ * only fetch trigger, a closed gate stops the slate and its expiry timer, and
+ * a blurred Home holds every refresh until focus returns. The client is
+ * injected, so no Apollo, no viewer store and no native module take part.
+ *
+ * apps/mobile's tsconfig maps `react` to its .d.ts and jest-expo mirrors
+ * tsconfig paths into jest's moduleNameMapper, so the mocks below re-point
+ * `react` at the real package (see apps/mobile/CLAUDE.md "Component render
+ * tests").
+ */
+
+jest.mock("react", () => {
+  const r = require as unknown as NodeRequireLike
+  const path = r("path") as NodePath
+  return jest.requireActual(path.dirname(r.resolve("react/package.json")))
+})
+jest.mock("react/jsx-runtime", () => {
+  const r = require as unknown as NodeRequireLike
+  const path = r("path") as NodePath
+  return jest.requireActual(
+    path.join(path.dirname(r.resolve("react/package.json")), "jsx-runtime.js"),
+  )
+})
+jest.mock("../../env", () => ({
+  env: { EXPO_PUBLIC_ADMIN_GRAPHQL_URL: "http://localhost:3003/api/graphql" },
+}))
+jest.mock("../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+jest.mock("../../contexts/WatchPreferencesProvider", () => ({
+  useWatchPreferences: jest.fn(() => ({ audioLanguageSlug: null })),
+}))
+
+// U7: the phone's languages reach the controller through the real locale
+// store. `ru` is a fixture catalog, so a phone change moves the epoch.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      ru: {},
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
+
+import { StrictMode, act, createElement } from "react"
+import type React from "react"
+import { AppState } from "react-native"
+
+import {
+  useHomeRecommendations,
+  type HomeRecommendationsController,
+  type UseHomeRecommendationsOptions,
+} from "../useHomeRecommendations"
+import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { datadogLog } from "../../lib/datadog"
+import * as delivery from "../../lib/recommendations/delivery"
+import type {
+  DeliveryDeps,
+  DeliveryResult,
+  RawUserRecommendationDelivery,
+  UserRecommendationItem,
+  UserRecommendationSlate,
+} from "../../lib/recommendations/delivery"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
+import {
+  getUserRecommendationsClient,
+  type UserRecommendationsClient,
+} from "../useUserRecommendations"
+import {
+  TestRenderer,
+  type NodePath,
+  type NodeRequireLike,
+  type TestInstance,
+} from "../../test-utils/rnTestRenderer"
+
+const mockPreferences = useWatchPreferences as unknown as jest.Mock
+const warnLog = datadogLog.warn as jest.Mock
+
+function item(index: number): UserRecommendationItem {
+  return {
+    id: `item-${index}`,
+    position: index,
+    targetMediaId: `media-${index}`,
+    canonicalHref: `https://www.jesusfilm.org/watch/video-${index}.html`,
+    capability: `cap-${index}`,
+    videoSlug: `video-${index}`,
+    videoTitle: `Video ${index}`,
+    imageUrl: null,
+    description: "",
+    durationSeconds: 120,
+    generator: "curated",
+    poolVersion: null,
+    poolKey: null,
+  }
+}
+
+function slate(
+  requestId: string,
+  expiresAt: string | null = null,
+): UserRecommendationSlate {
+  return {
+    requestId,
+    expiresAt,
+    cohort: "cold_start",
+    profileCount: 0,
+    curatedCount: 6,
+    poolVersion: null,
+    items: Array.from({ length: 6 }, (_, index) => item(index)),
+  }
+}
+
+type TestClient = UserRecommendationsClient & {
+  fetch: jest.Mock
+  recordEvidence: jest.Mock
+  select: jest.Mock
+}
+
+function client(
+  overrides: Partial<UserRecommendationsClient> = {},
+): TestClient {
+  let served = 0
+  return {
+    fetch: jest.fn(async () => {
+      served += 1
+      return { kind: "served", slate: slate(`req-${served}`) } as DeliveryResult
+    }),
+    recordEvidence: jest.fn(async () => "sent"),
+    select: jest.fn(async (_slate, entry: UserRecommendationItem) => ({
+      videoSlug: entry.videoSlug,
+      targetMediaId: entry.targetMediaId,
+      claimNonce: "n".repeat(32),
+      acknowledged: true,
+    })),
+    ...overrides,
+  } as TestClient
+}
+
+const mounted: TestInstance[] = []
+
+/**
+ * `strict` defaults to FALSE, unlike the repo's other hook harnesses: most
+ * cases here count `client.fetch` calls, and StrictMode's setup → cleanup →
+ * setup cycle doubles the effects that drive them. The remount-safety case
+ * opts in, and it is the only deterministic detector of that hazard.
+ */
+function renderController(
+  initial: UseHomeRecommendationsOptions,
+  useClient: UserRecommendationsClient,
+  options: { strict?: boolean } = {},
+) {
+  const seen: HomeRecommendationsController[] = []
+  function Harness(props: UseHomeRecommendationsOptions) {
+    seen.push(useHomeRecommendations(props, useClient))
+    return null
+  }
+  const wrap = (props: UseHomeRecommendationsOptions) => {
+    const element = createElement(
+      Harness,
+      props,
+    ) as unknown as React.ReactElement
+    return (
+      options.strict === true
+        ? createElement(StrictMode, null, element)
+        : element
+    ) as React.ReactElement
+  }
+  let renderer!: TestInstance
+  act(() => {
+    renderer = TestRenderer.create(wrap(initial))
+  })
+  mounted.push(renderer)
+  return {
+    latest: () => seen[seen.length - 1]!,
+    all: () => seen,
+    rerender: (next: UseHomeRecommendationsOptions) =>
+      act(() => {
+        renderer.update(wrap(next))
+      }),
+    unmount: () => act(() => renderer.unmount()),
+  }
+}
+
+// ── The app-state seam ──────────────────────────────────────────────────────
+
+type AppStateHandler = (state: string) => void
+
+const appStateHandlers: AppStateHandler[] = []
+const appStateSpy = jest.spyOn(AppState, "addEventListener")
+
+function sendAppState(state: string): void {
+  act(() => {
+    appStateHandlers.forEach((handler) => handler(state))
+  })
+}
+
+const flush = async () => {
+  await act(async () => {
+    for (let i = 0; i < 6; i += 1) await Promise.resolve()
+  })
+}
+
+const OPEN: UseHomeRecommendationsOptions = { gateOpen: true, focused: true }
+
+beforeEach(() => {
+  mockPreferences.mockReturnValue({ audioLanguageSlug: null })
+  appStateHandlers.length = 0
+  appStateSpy.mockImplementation(((_type: string, handler: AppStateHandler) => {
+    appStateHandlers.push(handler)
+    return {
+      remove: () => {
+        const at = appStateHandlers.indexOf(handler)
+        if (at >= 0) appStateHandlers.splice(at, 1)
+      },
+    }
+  }) as unknown as typeof AppState.addEventListener)
+})
+
+afterEach(() => {
+  act(() => {
+    mounted.splice(0).forEach((renderer) => renderer.unmount())
+  })
+  jest.useRealTimers()
+  jest.clearAllMocks()
+  resetLocaleStoreForTests()
+})
+
+function startPhone(tag: string): void {
+  mockGetLocales.mockReturnValue(phoneLocales(tag))
+  startLocaleSync()
+}
+
+async function changePhone(tag: string): Promise<void> {
+  mockGetLocales.mockReturnValue(phoneLocales(tag))
+  await act(async () => {
+    refreshLocale()
+  })
+}
+
+describe("the deferred first fetch", () => {
+  it("sends nothing until the shelf reports its first mount (R7)", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    await flush()
+    expect(c.fetch).not.toHaveBeenCalled()
+
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(hook.latest().status).toBe("served")
+  })
+
+  it("requests the UI locale and the stored audio preference (R5)", async () => {
+    mockPreferences.mockReturnValue({ audioLanguageSlug: "french" })
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledWith({
+      locale: "en",
+      audioLanguageSlug: "french",
+      count: 6,
+      attempt: 1,
+    })
+  })
+
+  it("stays idle while the gate is closed, then fetches when it opens (AE9)", async () => {
+    const c = client()
+    const hook = renderController({ gateOpen: false, focused: true }, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).not.toHaveBeenCalled()
+    expect(hook.latest().status).toBe("idle")
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("latches a first mount reported while Home was blurred", async () => {
+    const c = client()
+    const hook = renderController({ gateOpen: true, focused: false }, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).not.toHaveBeenCalled()
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ── U7: the UI language (KTD11, KTD16) ──────────────────────────────────────
+
+async function mountShelf(
+  c: TestClient,
+  initial: UseHomeRecommendationsOptions = OPEN,
+  options: { strict?: boolean } = {},
+) {
+  const hook = renderController(initial, c, options)
+  act(() => hook.latest().reportShelfMounted())
+  await flush()
+  return hook
+}
+
+type FetchInput = { locale: string; audioLanguageSlug: string }
+
+function askedSince(c: TestClient, before: number): FetchInput[] {
+  return c.fetch.mock.calls.slice(before).map(([input]: [FetchInput]) => input)
+}
+
+describe("the request's languages (KTD11)", () => {
+  // KTD12: with no pick, the phone's language picks the audio, as the player
+  // does. `ha` has no UI catalog, so the metadata stays English.
+  it.each<[string, string, string | null, string, string]>([
+    [
+      "the table's For You locale with the saved pick",
+      "ru-RU",
+      "english",
+      "ru",
+      "english",
+    ],
+    [
+      "Hausa audio for a Hausa phone with no pick",
+      "ha-NG",
+      null,
+      "en",
+      "hausa",
+    ],
+  ])("asks for %s", async (_name, phone, pick, locale, audio) => {
+    startPhone(phone)
+    mockPreferences.mockReturnValue({ audioLanguageSlug: pick })
+    const c = client()
+    await mountShelf(c)
+    expect(c.fetch).toHaveBeenCalledWith({
+      locale,
+      audioLanguageSlug: audio,
+      count: 6,
+      attempt: 1,
+    })
+  })
+
+  // AE9 through the app's client and its coverage retry: Admin has no
+  // (ru, english) pool, so the shelf shows the (en, english) slate.
+  it("shows the English-metadata slate when the Russian pair has no pool (AE9)", async () => {
+    startPhone("ru-RU")
+    mockPreferences.mockReturnValue({ audioLanguageSlug: "english" })
+    const asked: string[] = []
+    const englishSlate = slate("req-en")
+    const deps: DeliveryDeps = {
+      getIdentity: async () => ({
+        kind: "ready",
+        identity: { viewerToken: "v".repeat(43), sessionToken: "s".repeat(43) },
+        personalization: true,
+      }),
+      query: async (variables) => {
+        asked.push(`${variables.locale}:${variables.audioLanguageSlug}`)
+        if (variables.locale === "ru") {
+          return {
+            contractVersion: "user-recommendation-v1",
+            surfaceVersion: "watch-for-you-v1",
+            requestId: null,
+            result: "unavailable",
+            reason: "coverage_unavailable",
+            items: [],
+          } as unknown as RawUserRecommendationDelivery
+        }
+        return {
+          contractVersion: "user-recommendation-v1",
+          surfaceVersion: "watch-for-you-v1",
+          requestId: englishSlate.requestId,
+          result: "served",
+          reason: null,
+          expiresAt: null,
+          requestedCount: 6,
+          profileCount: 0,
+          curatedCount: 6,
+          cohort: "cold_start",
+          poolVersion: null,
+          items: englishSlate.items,
+        } as unknown as RawUserRecommendationDelivery
+      },
+      invalidateIdentity: async () => undefined,
+      touch: () => undefined,
+      report: () => undefined,
+    }
+    const spy = jest.spyOn(delivery, "getDeliveryDeps").mockReturnValue(deps)
+    const hook = await mountShelf(
+      client({ fetch: jest.fn(getUserRecommendationsClient().fetch) }),
+    )
+    spy.mockRestore()
+    expect(asked).toEqual(["ru:english", "en:english"])
+    expect(hook.latest().status).toBe("served")
+    expect(hook.latest().slate?.items.map((entry) => entry.videoTitle)).toEqual(
+      englishSlate.items.map((entry) => entry.videoTitle),
+    )
+  })
+})
+
+describe("a UI language change (KTD16)", () => {
+  it("clears the shelf to its skeleton at once and refetches in the new locale", async () => {
+    startPhone("en-US")
+    const c = client()
+    const hook = await mountShelf(c, OPEN, { strict: true })
+    const oldSlate = hook.latest().slate
+    expect(oldSlate).not.toBeNull()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("ru-RU")
+    await flush()
+    // No render after the change carries the old slate, not even for one commit.
+    const after = hook.all().slice(rendersBefore)
+    expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
+    const localesAsked = askedSince(c, before).map((input) => input.locale)
+    expect(localesAsked.length).toBeGreaterThan(0)
+    expect(new Set(localesAsked)).toEqual(new Set(["ru"]))
+    expect(hook.latest().status).toBe("served")
+  })
+
+  it("clears the shelf in the commit after the change, and holds the new locale's fetch until Home has focus", async () => {
+    startPhone("en-US")
+    const c = client()
+    const hook = await mountShelf(c, OPEN, { strict: true })
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    const oldSlate = hook.latest().slate
+    expect(oldSlate).not.toBeNull()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("ru-RU")
+    await flush()
+    const after = hook.all().slice(rendersBefore)
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.filter((seen) => seen.slate === oldSlate)).toHaveLength(0)
+    expect(hook.latest().slate).toBeNull()
+    expect(hook.latest().status).toBe("idle")
+    expect(c.fetch).toHaveBeenCalledTimes(before)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(askedSince(c, before).map((input) => input.locale)).toEqual(["ru"])
+    expect(hook.latest().slate).not.toBeNull()
+  })
+})
+
+// R21: `ha` and `ig` have no UI catalog, so the change keeps the epoch and
+// moves only the default audio, which only a viewer with no pick hears.
+describe("a phone change that keeps the catalog (R21)", () => {
+  it("asks for the new default audio once Home has focus, and keeps the slate on show", async () => {
+    startPhone("ha-NG")
+    const c = client()
+    const hook = await mountShelf(c)
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    const before = c.fetch.mock.calls.length
+    const rendersBefore = hook.all().length
+
+    await changePhone("ig-NG")
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(before)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(askedSince(c, before)).toEqual([
+      { locale: "en", audioLanguageSlug: "igbo", count: 6, attempt: 1 },
+    ])
+    const after = hook.all().slice(rendersBefore)
+    expect(after.filter((seen) => seen.slate === null)).toHaveLength(0)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  it("asks for the new default audio at once while Home has focus", async () => {
+    startPhone("ha-NG")
+    const c = client()
+    await mountShelf(c)
+    const before = c.fetch.mock.calls.length
+
+    await changePhone("ig-NG")
+    await flush()
+    expect(
+      askedSince(c, before).map((input) => input.audioLanguageSlug),
+    ).toEqual(["igbo"])
+  })
+
+  it("changes nothing for a viewer with an audio pick", async () => {
+    startPhone("ha-NG")
+    mockPreferences.mockReturnValue({ audioLanguageSlug: "french" })
+    const c = client()
+    const hook = await mountShelf(c)
+    const shown = hook.latest().slate
+    expect(shown).not.toBeNull()
+    const rendersBefore = hook.all().length
+
+    await changePhone("ig-NG")
+    await flush()
+    hook.rerender({ gateOpen: true, focused: false })
+    await flush()
+    hook.rerender(OPEN)
+    await flush()
+
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(c.fetch).toHaveBeenCalledWith({
+      locale: "en",
+      audioLanguageSlug: "french",
+      count: 6,
+      attempt: 1,
+    })
+    const after = hook.all().slice(rendersBefore)
+    expect(after.length).toBeGreaterThan(0)
+    expect(after.filter((seen) => seen.slate !== shown)).toHaveLength(0)
+  })
+})
+
+describe("the gate closing later", () => {
+  it("drops the displayed slate and sends nothing more", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    hook.rerender({ gateOpen: false, focused: true })
+    await flush()
+    expect(hook.latest().slate).toBeNull()
+    expect(hook.latest().status).toBe("idle")
+
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe("the displayed slate", () => {
+  it("stays on the last served slate during a refetch (R18, KTD6)", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    act(() => hook.latest().refresh())
+    // The inner hook clears its own slate at the start of every refetch; the
+    // controller is what keeps the cards on screen until the next one lands.
+    expect(hook.latest().status).toBe("loading")
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  it("passes evidence and selection through for the served slate", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+
+    act(() => hook.latest().recordRender("item-0"))
+    await act(async () => {
+      await hook.latest().select("item-2")
+    })
+    expect(c.recordEvidence).toHaveBeenCalledTimes(1)
+    expect(c.select).toHaveBeenCalledTimes(1)
+    expect(c.select.mock.calls[0]![1]).toEqual(
+      expect.objectContaining({ id: "item-2" }),
+    )
+  })
+})
+
+describe("the expiry timer", () => {
+  const EXPIRY_MS = 60_000
+
+  async function servedWithExpiry(c: TestClient) {
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    return hook
+  }
+
+  function expiringClient(): TestClient {
+    let served = 0
+    return client({
+      fetch: jest.fn(async () => {
+        served += 1
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() + EXPIRY_MS).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+  }
+
+  it("refreshes once when the displayed slate expires (R16)", async () => {
+    jest.useFakeTimers()
+    const c = expiringClient()
+    const hook = await servedWithExpiry(c)
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  it("clears the timer on unmount", async () => {
+    jest.useFakeTimers()
+    const c = expiringClient()
+    const hook = await servedWithExpiry(c)
+    hook.unmount()
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  // This pins the END-TO-END rule: a closed gate sends nothing. It does NOT
+  // discriminate the timer effect's own `enabled` guard, which stays a second
+  // bound behind the display-slate clear that already nulls `expiresAt`.
+  it("sends no request after the gate drops", async () => {
+    jest.useFakeTimers()
+    const c = expiringClient()
+    const hook = await servedWithExpiry(c)
+    hook.rerender({ gateOpen: false, focused: true })
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("holds the expiry refresh while Home is blurred", async () => {
+    jest.useFakeTimers()
+    const c = expiringClient()
+    const hook = await servedWithExpiry(c)
+    hook.rerender({ gateOpen: true, focused: false })
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  /** Every answer is a slate that expired a second before it arrived. */
+  function expiredOnArrivalClient(): TestClient {
+    let served = 0
+    return client({
+      fetch: jest.fn(async () => {
+        served += 1
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() - 1_000).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+  }
+
+  // A slate that is already dead cannot be rescued by an immediate refetch:
+  // the next one arrives expired too. The controller warns once and waits for
+  // a coalesced trigger instead of spending the viewer's evidence budget.
+  it("arms no refetch loop for a slate that arrives already expired", async () => {
+    jest.useFakeTimers()
+    const c = expiredOnArrivalClient()
+    const hook = await servedWithExpiry(c)
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    for (let round = 0; round < 4; round += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(EXPIRY_MS)
+      })
+      await flush()
+    }
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+    expect(warnLog).toHaveBeenCalledTimes(1)
+    expect(warnLog).toHaveBeenCalledWith(
+      "recommendation.slate_expired_on_arrival",
+      { rec_surface: "home" },
+    )
+  })
+
+  // An unparsable stamp is not a dead slate, so it takes neither the timer
+  // nor the expired-on-arrival warning.
+  it("arms no timer for a malformed expiry stamp", async () => {
+    jest.useFakeTimers()
+    const c = client({
+      fetch: jest.fn(
+        async () =>
+          ({
+            kind: "served",
+            slate: slate("req-1", "not-a-date"),
+          }) as DeliveryResult,
+      ),
+    })
+    const hook = await servedWithExpiry(c)
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    expect(warnLog).not.toHaveBeenCalled()
+  })
+
+  // R8: a terminal non-served refetch means the held cards' capabilities are
+  // gone, so the row drops to its placeholder rather than keep evidence
+  // flowing against a slate Admin would reject.
+  it("clears the displayed slate when a refetch inside the window ends unavailable", async () => {
+    jest.useFakeTimers()
+    let served = 0
+    const c = client({
+      fetch: jest.fn(async () => {
+        served += 1
+        if (served === 2) {
+          return {
+            kind: "unavailable",
+            reason: "coverage_unavailable",
+            retryable: false,
+          } as DeliveryResult
+        }
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() + EXPIRY_MS).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+    const hook = await servedWithExpiry(c)
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS - 1_000)
+    })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate).toBeNull()
+
+    // The cleared slate takes its `expiresAt` with it, so nothing is armed.
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    // A later trigger outside the window still refetches.
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it("clears the displayed slate when the expiry refetch ends unavailable", async () => {
+    jest.useFakeTimers()
+    let served = 0
+    const c = client({
+      fetch: jest.fn(async () => {
+        served += 1
+        if (served >= 2) {
+          return {
+            kind: "unavailable",
+            reason: "coverage_unavailable",
+            retryable: false,
+          } as DeliveryResult
+        }
+        return {
+          kind: "served",
+          slate: slate(
+            `req-${served}`,
+            new Date(Date.now() + EXPIRY_MS).toISOString(),
+          ),
+        } as DeliveryResult
+      }),
+    })
+    const hook = await servedWithExpiry(c)
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate).toBeNull()
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 4)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  // R17: the viewer sits on the Discover tab long enough for the slate to
+  // expire. Home is mounted the whole time, so the timer fires on a blurred
+  // screen and the refetch waits for the tab switch back.
+  it("expires on another tab and refetches exactly once on return", async () => {
+    jest.useFakeTimers()
+    const c = expiringClient()
+    const hook = await servedWithExpiry(c)
+    hook.rerender({ gateOpen: true, focused: false })
+
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS * 3)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    // The held refetch served a fresh slate, so its own timer is the only one
+    // left: nothing more may land until that one expires.
+    await act(async () => {
+      jest.advanceTimersByTime(EXPIRY_MS - 1)
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("the coalescing window (KTD5, KTD12)", () => {
+  async function served(c: TestClient) {
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+    return hook
+  }
+
+  it("runs one refetch for two triggers half a second apart", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await served(c)
+
+    act(() => hook.latest().refresh())
+    await flush()
+    await act(async () => {
+      jest.advanceTimersByTime(500)
+    })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("runs two refetches for two triggers three seconds apart", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await served(c)
+
+    act(() => hook.latest().refresh())
+    await flush()
+    await act(async () => {
+      jest.advanceTimersByTime(3_000)
+    })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+  })
+
+  it("counts the held refetch as the window's own event", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await served(c)
+
+    hook.rerender({ gateOpen: true, focused: false })
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    // Home regains focus and the viewer pulls to refresh at once: the released
+    // trigger already spent the window.
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  // A viewer-identity change is the one trigger the window may not drop. It
+  // clears the displayed slate first, so a dropped refetch would strand the
+  // row on its placeholder until some other signal happened to arrive.
+  it("refetches once for a profile transition inside another trigger's window", async () => {
+    jest.useFakeTimers()
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = await served(c)
+
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+
+    act(() => notify())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+    expect(hook.latest().slate?.requestId).toBe("req-3")
+
+    // It spends the window, so an ordinary trigger right behind it is dropped.
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(3)
+  })
+})
+
+describe("a profile transition while Home is focused", () => {
+  it("serves the slate the transition refetched", async () => {
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    act(() => notify())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+
+  // The identity moved, so the old viewer's cards leave the screen before the
+  // refetch answers. Only then can they back no further evidence.
+  it("drops the displayed slate as soon as the profile moves", async () => {
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(hook.latest().slate?.requestId).toBe("req-1")
+
+    act(() => notify())
+    expect(hook.latest().slate).toBeNull()
+
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+    expect(hook.latest().slate?.requestId).toBe("req-2")
+  })
+})
+
+describe("the blurred-Home hold (KTD3)", () => {
+  it("runs exactly one refetch for several held triggers", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender({ gateOpen: true, focused: false })
+    act(() => {
+      hook.latest().refresh()
+      hook.latest().refresh()
+      hook.latest().refresh()
+    })
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("holds a profile transition that lands while Home is blurred", async () => {
+    let notify = () => {}
+    const c = client({
+      subscribeProfile: (listener) => {
+        notify = listener
+        return () => {}
+      },
+    })
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender({ gateOpen: true, focused: false })
+    act(() => notify())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(1)
+
+    hook.rerender(OPEN)
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("runs a refresh straight away while Home is focused", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+
+    act(() => hook.latest().refresh())
+    await flush()
+    expect(c.fetch).toHaveBeenCalledTimes(2)
+  })
+})
+
+// ── The impression dwell (KTD4) ─────────────────────────────────────────────
+
+describe("the impression dwell (R12, KTD4)", () => {
+  /** The item ids the client was asked to record an impression for. */
+  function impressions(c: TestClient): string[] {
+    return c.recordEvidence.mock.calls
+      .filter((call) => call[0] === "impression")
+      .map((call) => (call[2] as UserRecommendationItem).id)
+  }
+
+  type Hook = ReturnType<typeof renderController>
+
+  /** A served slate with the row and one card reported visible. */
+  async function watching(
+    c: TestClient,
+    options: UseHomeRecommendationsOptions = OPEN,
+    strict = false,
+  ): Promise<Hook> {
+    const hook = renderController(options, c, { strict })
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    act(() => {
+      hook.latest().reportShelfVisible(true)
+      hook.latest().reportVisibleCards(["item-0"])
+    })
+    return hook
+  }
+
+  const dwell = async (ms = 1_000) => {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  it("records one impression per card once every signal holds", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell(999)
+    expect(impressions(c)).toEqual([])
+
+    await dwell(1)
+    expect(impressions(c)).toEqual(["item-0"])
+
+    act(() => hook.latest().reportVisibleCards(["item-0", "item-1"]))
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0", "item-1"])
+  })
+
+  it("records nothing while Home is blurred", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    hook.rerender({ gateOpen: true, focused: false })
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+
+    hook.rerender(OPEN)
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("records nothing while the app is in the background", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    await watching(c)
+    sendAppState("background")
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+
+    sendAppState("active")
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("records nothing until Home's list reports the row visible", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    act(() => hook.latest().reportVisibleCards(["item-0"]))
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+
+    act(() => hook.latest().reportShelfVisible(true))
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("records nothing once the row detaches", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell(900)
+    act(() => hook.latest().reportShelfDetached())
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+  })
+
+  it("records nothing after the controller unmounts", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell(900)
+    hook.unmount()
+    await dwell(5_000)
+    expect(impressions(c)).toEqual([])
+    expect(appStateHandlers).toHaveLength(0)
+  })
+
+  it("records the same card again for the next slate", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+
+    act(() => hook.latest().refresh())
+    await flush()
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0", "item-0"])
+  })
+
+  it("keeps its per-slate record across a re-render", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    const hook = await watching(c)
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+
+    // A tracker rebuilt on any render would lose what it already recorded and
+    // send a second impression for the same card the next time it scrolls in.
+    hook.rerender(OPEN)
+    act(() => {
+      hook.latest().reportVisibleCards([])
+      hook.latest().reportVisibleCards(["item-0"])
+    })
+    await dwell(5_000)
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+
+  it("still records through a StrictMode mount cycle", async () => {
+    jest.useFakeTimers()
+    const c = client()
+    await watching(c, OPEN, true)
+    // One listener, not two: the cleanup removed the first subscription, and
+    // the second setup re-armed the tracker it suspended.
+    expect(appStateHandlers).toHaveLength(1)
+
+    await dwell()
+    expect(impressions(c)).toEqual(["item-0"])
+  })
+})
+
+// ── The row's visibility reporters ───────────────────────────────────────────
+
+describe("the row's visibility reporters", () => {
+  it("holds the same reporter identity across a refetch", async () => {
+    const c = client()
+    const hook = renderController(OPEN, c)
+    act(() => hook.latest().reportShelfMounted())
+    await flush()
+    const before = hook.latest()
+
+    act(() => before.refresh())
+    await flush()
+    const after = hook.latest()
+    expect(after.slate?.requestId).toBe("req-2")
+    // Anti-vacuous: two absent reporters would also compare equal.
+    expect(typeof after.reportShelfVisible).toBe("function")
+    expect(after.reportShelfVisible).toBe(before.reportShelfVisible)
+    expect(after.reportVisibleCards).toBe(before.reportVisibleCards)
+    expect(after.reportShelfDetached).toBe(before.reportShelfDetached)
+  })
+})

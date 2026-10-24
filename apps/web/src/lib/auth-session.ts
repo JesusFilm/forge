@@ -1,7 +1,21 @@
 import { env } from "@/env"
+import {
+  WEB_AUTH_SESSION_COOKIE,
+  readWebAuthSessionCookie,
+} from "@/auth/web-session"
 
 type AuthSessionResult =
-  | { authenticated: true; userId: string }
+  | {
+      authenticated: true
+      userId: string
+      accessToken?: string
+      user?: {
+        id: string
+        email?: string
+        name?: string
+        image?: string
+      }
+    }
   | { authenticated: false }
 
 const AUTH_BASE_ALLOWED_HOSTS = new Set([
@@ -16,6 +30,16 @@ function hasBetterAuthCookie(cookieHeader: string | null): boolean {
   return cookieHeader
     .split(";")
     .some((cookie) => cookie.trim().startsWith("better-auth.session"))
+}
+
+function getCookieValue(cookieHeader: string | null, name: string) {
+  if (!cookieHeader) return undefined
+
+  return cookieHeader
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .find((cookie) => cookie.startsWith(`${name}=`))
+    ?.slice(name.length + 1)
 }
 
 export function resolveAuthBaseURL(): URL | null {
@@ -47,6 +71,23 @@ export async function verifyAuthSession(
   headers: Headers,
 ): Promise<AuthSessionResult> {
   const cookieHeader = headers.get("cookie")
+  const webSession = await readWebAuthSessionCookie(
+    getCookieValue(cookieHeader, WEB_AUTH_SESSION_COOKIE),
+  )
+  if (webSession) {
+    return {
+      authenticated: true,
+      userId: webSession.subject,
+      accessToken: webSession.accessToken,
+      user: {
+        id: webSession.subject,
+        email: webSession.email,
+        name: webSession.name,
+        image: webSession.image,
+      },
+    }
+  }
+
   if (!hasBetterAuthCookie(cookieHeader)) return { authenticated: false }
 
   const authBase = resolveAuthBaseURL()
@@ -67,7 +108,7 @@ export async function verifyAuthSession(
     if (!response.ok) return { authenticated: false }
 
     const body = (await response.json()) as {
-      user?: { id?: unknown }
+      user?: { id?: unknown; email?: unknown; name?: unknown; image?: unknown }
       session?: { userId?: unknown }
     } | null
     const userId =
@@ -77,7 +118,25 @@ export async function verifyAuthSession(
           ? body.session.userId
           : undefined
 
-    return userId ? { authenticated: true, userId } : { authenticated: false }
+    return userId
+      ? {
+          authenticated: true,
+          userId,
+          user: {
+            id: userId,
+            email:
+              typeof body?.user?.email === "string"
+                ? body.user.email
+                : undefined,
+            name:
+              typeof body?.user?.name === "string" ? body.user.name : undefined,
+            image:
+              typeof body?.user?.image === "string"
+                ? body.user.image
+                : undefined,
+          },
+        }
+      : { authenticated: false }
   } catch {
     return { authenticated: false }
   }

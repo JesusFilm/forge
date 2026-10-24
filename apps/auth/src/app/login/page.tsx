@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation"
+import { isDeviceLoginContinuation } from "@/app/device/device-login-redirect"
 import { LoginPageClient } from "@/app/login/login-page-client"
 import {
   firstParam,
@@ -19,7 +20,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
   const params = (await searchParams) ?? {}
   if (!isOAuthAuthorizeRequest(params)) {
     const callbackURL = resolveConsumerCallbackURL(params)
-    if (!callbackURL) redirect("https://www.jesusfilm.org")
+    // The `/device` approval page cannot ride `callbackURL` — web-callback.ts
+    // filters auth's own origin out of the allowed callback origins — so its
+    // signed-out hop arrives carrying `user_code` instead.
+    if (!callbackURL && !isDeviceLoginContinuation(params)) {
+      redirect("https://www.jesusfilm.org")
+    }
 
     return (
       <LoginPageClient
@@ -28,7 +34,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps = {}) {
         flow="login"
         initialEmail={firstParam(params.email)}
         initialError={parseLoginError(firstParam(params.error))}
-        oauthQuery=""
+        oauthQuery={callbackURL ? "" : toOAuthQuery(params)}
         requestingAppName="Jesus Film"
       />
     )

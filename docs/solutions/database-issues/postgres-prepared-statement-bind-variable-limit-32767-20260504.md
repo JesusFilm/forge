@@ -1,17 +1,20 @@
 ---
-title: Prisma `notIn` / `in` with large arrays trips Postgres's 32,767 prepared-statement parameter cap
+title: Prisma `notIn` / `in` with large arrays trips the observed 32,767 bind-variable limit
 date: 2026-05-04
-last_updated: 2026-05-04
+last_updated: 2026-09-29
 category: database-issues
-module: apps/admin
+module: apps/admin, apps/auth
 problem_type: database_issue
 component: database
 root_cause: wrong_api
 resolution_type: code_fix
 severity: high
+symptoms:
+  - "Prisma reports too many bind variables in a prepared statement when a filter set grows past the driver limit."
 applies_when:
   - Calling `prisma.<model>.findMany|updateMany|deleteMany({ where: { <field>: { in|notIn: [...] }}})`
     with an array whose length can exceed ~32,000 entries.
+  - Building a Prisma `OR` filter with one clause per row in a persistent, growing set.
   - Soft-delete tails of paginated sync phases that build a "seen" set across all pages.
   - Bulk imports / cleanup jobs that take an in-memory ID list and want to persist a derived set.
 tags:
@@ -23,7 +26,6 @@ tags:
   - notIn
   - array-binding
   - core-sync
-  - admin
 related:
   - docs/solutions/platform/core-graphql-unbounded-relation-fan-out-20260504.md
   - docs/solutions/cms/core-sync-bulk-update-temp-table-pattern.md
@@ -31,11 +33,11 @@ related:
   - docs/solutions/best-practices/prisma-raw-sql-invariant-assertions-20260423.md
 ---
 
-# Prisma `notIn` / `in` with large arrays trips Postgres's 32,767 prepared-statement parameter cap
+# Prisma `notIn` / `in` with large arrays trips the observed 32,767 bind-variable limit
 
 ## Problem
 
-Postgres caps prepared-statement parameters at **32,767** (`PG_INT16_MAX`). Prisma's `{ field: { in: [...] }}` and `{ field: { notIn: [...] }}` translate to `field IN ($1, $2, …, $N)` / `field NOT IN ($1, $2, …, $N)` — one bind variable per array element. Any call that hands Prisma an array longer than ~32,000 entries throws at execution time:
+This repository observed Prisma rejecting generated prepared statements above **32,767** bound values. [PostgreSQL's documented query-parameter limit is 65,535](https://www.postgresql.org/docs/17/limits.html), so 32,767 is the observed limit of this Prisma call path, not a universal PostgreSQL limit. Prisma's `{ field: { in: [...] }}` and `{ field: { notIn: [...] }}` translate to `field IN ($1, $2, …, $N)` / `field NOT IN ($1, $2, …, $N)` — one bind variable per array element. A call that hands Prisma a larger array fails before the statement executes:
 
 ```
 Assertion violation on the database: too many bind variables in prepared statement,
@@ -55,7 +57,7 @@ Hit in `apps/admin`'s Core sync `video-dubs` phase soft-delete tail at 209k seen
 
 - **Smaller batch size on the upstream loop.** The bind-var cap is on the _cleanup_ call, which gets the union of every page's IDs. Lowering `PAGE_SIZE` doesn't shrink the seen-set.
 - **`Promise.all` chunking the `notIn` array into `Math.ceil(seenIds.length / 30000)` separate `updateMany` calls.** Works mechanically but loses transactional atomicity (a partial chunk crash leaves a half-mutated table) and multiplies round-trips. Acceptable as an emergency hack; not the right shape for a permanent fix.
-- **Raising any Prisma timeout / connection pool setting.** The cap is parsed by Postgres's libpq before the statement reaches the planner; client-side limits don't matter.
+- **Raising any Prisma timeout / connection pool setting.** The generated statement still contains the same number of bound values; timeout and pool settings do not reduce that count.
 
 ## Solution
 
@@ -118,6 +120,30 @@ expect(typeof values[0]).toBe("string")
 ```
 
 The `values.length === 1` assertion is the single most important regression guard: it locks in "one bound param regardless of catalogue size."
+
+## Case-insensitive lookup over retained approvals (PR #2457)
+
+The Changelog People directory had the same growth shape on a read path: it built one case-insensitive Prisma `OR` clause per pending preapproval. An approval remains in `pending` state when its expiry time passes; the response derives an `expired` display state instead (`apps/auth/src/services/changelog-people.service.ts:65` and `apps/auth/src/services/changelog-people.service.ts:108`). Old approvals therefore still increased the lookup's predicate count. This was a preventive fix; a production timeout or bind-limit failure was not observed.
+
+The fix deduplicates normalized addresses, binds them as one JSON value, and expands them inside PostgreSQL for indexed lookup (`apps/auth/src/services/changelog-people.service.ts:69-90`):
+
+```ts
+const emails = [
+  ...new Set(approvals.map(({ email }) => email.trim().toLowerCase())),
+]
+const recipients = emails.length
+  ? await tx.$queryRaw`
+      SELECT u.id, u.email
+      FROM "user" AS u
+      WHERE lower(u.email) = ANY(ARRAY(
+        SELECT jsonb_array_elements_text(${JSON.stringify(emails)}::jsonb)
+      ))
+        AND u.actor_type = 'human' AND u.email_verified = true
+    `
+  : []
+```
+
+The email set uses one bound parameter regardless of approval count; the timestamp is a separate, fixed parameter in the full query. The companion migration adds an index on `lower(email)`; the existing unique index on the original email column does not serve this case-insensitive expression (`apps/auth/prisma/migrations/20260929000000_changelog_people_email_lookup/migration.sql:1`). A disposable PostgreSQL run confirmed the lookup and the concurrent index migration, and the Changelog integration suite passed. When moving this kind of Prisma filter to raw SQL, check `@map`'d enum literals against the database values: the first real-DB run caught `HUMAN` where PostgreSQL stores `human`, exactly the seam documented in the related enum learning.
 
 ## Related learnings
 

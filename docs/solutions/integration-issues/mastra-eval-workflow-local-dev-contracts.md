@@ -1,7 +1,7 @@
 ---
 title: "Mastra eval workflow local dev requires Admin contracts and browser-reachable Studio"
 date: "2026-05-27"
-last_updated: "2026-05-28"
+last_updated: "2026-06-01"
 category: "integration-issues"
 module: "apps/mastra, apps/admin, .devcontainer"
 problem_type: "integration_issue"
@@ -9,10 +9,9 @@ component: "development_workflow"
 symptoms:
   - "Mastra eval query generation returned admin_config_missing when run from Studio"
   - "The host browser could not reach localhost:4111 or a container-private 172.x address"
-  - "The Mastra Evaluation sidebar stayed empty even though the workflow existed"
-  - "Studio Form input treated JSON as a string and returned invalid_input"
-  - "Studio rendered a single generic input instead of usable workflow fields"
-  - "A workflow run showed a green Studio card even though the result body was ok:false"
+  - "Studio origin mismatches blocked credentialed API calls when opened from 127.0.0.1"
+  - "The Mastra Evaluation sidebar stayed empty until native Dataset, Scorer, and Experiment records were created"
+  - "Workflow failures looked green or generic when schemas or routes hid the typed failure result"
 root_cause: "incomplete_setup"
 resolution_type: "environment_setup"
 severity: "medium"
@@ -28,6 +27,7 @@ tags:
   - "devcontainer"
   - "workflow"
   - "browser-smoke"
+  - "orchestrator"
 ---
 
 # Mastra Eval Workflow Local Dev Requires Admin Contracts and Browser-Reachable Studio
@@ -40,9 +40,16 @@ server was running, but a local Studio run returned
 rebuilt, the host browser still could not consistently reach Studio because
 Mastra was bound inside the devcontainer without a browser-reachable host port.
 
-The working path required treating local validation as three separate
+The working path required treating local validation as four separate
 contracts: Mastra-to-Admin HTTP configuration, host-to-container Studio
-reachability, and Studio workflow input shape.
+reachability, Studio workflow input shape, and native Evaluation record
+creation from artifact-backed reports.
+
+The feat-144 orchestrator added one more operator contract on top: a thin
+workflow may coordinate the leaf workflows, but it must preserve child run ids,
+artifact ids, native Dataset/Scorer/Experiment ids, counts, pass/fail state,
+and typed child failure reasons so a failed run is resumable instead of merely
+generic.
 
 ## Symptoms
 
@@ -73,12 +80,23 @@ reachability, and Studio workflow input shape.
 - The workflow returned `{ ok: false, reason: "invalid_input" }` as a normal
   output value. Mastra Studio correctly treated the step as completed because
   no exception was thrown.
+- Opening Studio at `http://127.0.0.1:4111/studio` while the SPA called
+  `http://localhost:4111/api/*` caused credentialed browser requests to fail
+  on CORS. `127.0.0.1` and `localhost` are different browser origins.
+- A real-data orchestrator smoke without Admin search env originally collapsed
+  the leaf workflow's `admin_config_missing` into a generic
+  `orchestration_failed` response. The route needed to unwrap Mastra's
+  serialized workflow failure result.
 
 ## What Didn't Work
 
 - Checking only the custom service route was insufficient. A bearer-authenticated
   route can work while the Studio workflow path is still broken. Validate the
   built-in workflow APIs and run history as well.
+- Checking only curl output was insufficient for feat-142/144. Native records
+  can exist through `/api/datasets`, `/api/scores/scorers`, and
+  `/api/experiments` while the browser Studio path is still broken by a host
+  origin mismatch.
 - Using the container IP from inside Chrome on the host was the wrong network
   boundary. The host browser needs a published/forwarded host port, not the
   container's internal Docker address.
@@ -96,6 +114,11 @@ reachability, and Studio workflow input shape.
 - Returning a failure-shaped object from a workflow step is not the same thing
   as failing the run. Studio marks the step green unless the step throws or
   Mastra rejects the input schema.
+- Catching a thrown Mastra workflow failure at the service route without
+  inspecting the serialized `error.result`, nested `result`, or prefixed
+  message/stack hides the useful child workflow failure reason. Operators need
+  `offline_eval_failed` with the child `admin_config_missing` and child run id,
+  not a generic `orchestration_failed`.
 - Running the default empty input locally can pull in `locale_quality` generation.
   Without `OPENROUTER_API_KEY`, that path may fail with generation configuration
   errors. Use explicit `catalog` and `trace` sources for local smoke unless the
@@ -167,6 +190,11 @@ Mastra instance URL: http://localhost:4111
 API prefix: /api
 Headers: none
 ```
+
+Prefer `http://localhost:4111/studio` over
+`http://127.0.0.1:4111/studio` unless the Studio API base is also configured to
+use `127.0.0.1`. Mastra Studio makes credentialed API calls, and the browser
+treats those hosts as different origins.
 
 If the current devcontainer only exposes SSH on host `2222` and is temporarily
 bridging that traffic to Mastra, use `http://localhost:2222` as the instance
@@ -271,6 +299,44 @@ Run the same workflow a second time with the same report id through
 Dataset should stay singular, items should update by source key, and the report
 Experiment should be reused instead of duplicated.
 
+For the feat-144 `search-eval-orchestrator` smoke, create or reuse a sample
+report first, then resume through the orchestrator instead of rerunning the
+offline leaf:
+
+```bash
+curl -sS -X POST http://localhost:4111/forge-search-eval-native-suite \
+  -H 'authorization: Bearer local-mastra-service-key' \
+  -H 'content-type: application/json' \
+  -d '{"action":"create-sample-report","baselineName":"local-smoke","environmentLabel":"local"}'
+```
+
+Use the returned `reportId`, then run a release-gate resume:
+
+```bash
+curl -sS -X POST http://localhost:4111/forge-search-eval-orchestrator \
+  -H 'authorization: Bearer local-mastra-service-key' \
+  -H 'content-type: application/json' \
+  -d '{
+    "mode": "release-gate",
+    "baselineName": "local-smoke",
+    "resumeReportId": "<reportId>",
+    "syncPromoted": false
+  }'
+```
+
+A healthy resume returns one summary containing the orchestrator run id, child
+workflow run ids, the skipped offline resume child, report id/path, native
+Dataset/Scorer/Experiment ids, counts, and `passFail.state`. The corresponding
+Studio pages should show the native records from `http://localhost:4111/studio`.
+
+To prove the real-data failure path without implementing production baseline
+capture yet, run `mode=full` without `ADMIN_SEARCH_EVAL_SEARCH_URL` and
+`ADMIN_SEARCH_EVAL_API_KEY`. The service route should return HTTP 503 with
+`reason: "offline_eval_failed"` and a failed child reason of
+`admin_config_missing`. That failure is intentional and resumable: once the
+Admin search contract exists, the operator can retry or resume from the report
+artifact if one was written.
+
 ## Why This Works
 
 Mastra does not read Admin's database directly. The eval workflow needs Admin's
@@ -285,6 +351,11 @@ sufficient; Docker or the devcontainer must publish that port to the host. A
 container-private `172.x` URL can work from inside the container and still be
 unreachable from Chrome on the host.
 
+Browser origins are part of that same local contract. If Studio is opened from
+`127.0.0.1` but its client calls `localhost`, credentialed fetches cross origins
+and fail. Use the printed `localhost` Studio URL unless the API base is changed
+with it.
+
 Finally, Studio's workflow runner distinguishes object input from string input.
 The JSON editor sends the object shape the workflow schema expects. The Form
 textbox can serialize the same text as a string, which produces an
@@ -298,10 +369,17 @@ Studio still sees a successful step output; throw a typed workflow error when a
 run should be red in Studio, and keep service routes responsible for mapping the
 same failure into clean HTTP JSON.
 
+Mastra may wrap step failures before they reach a custom service route. The
+orchestrator route therefore has to recover the typed failure from direct
+values, nested `error.result` or `result`, and prefixed JSON in the error
+message/stack. That keeps the operator-facing HTTP response aligned with the
+workflow summary instead of falling back to a generic 502.
+
 ## Prevention
 
-- Treat Mastra eval workflow smoke as a three-part check: Admin contract env,
-  host-reachable Studio URL, and object-shaped workflow input.
+- Treat Mastra eval workflow smoke as a four-part check: Admin contract env,
+  host-reachable Studio URL, object-shaped workflow input, and native Evaluation
+  record visibility when the workflow claims to sync native records.
 - Treat Studio workflow schemas as operator UX. Use concrete Zod object schemas
   with defaults for common local smoke paths; reserve `z.unknown()` for
   non-Studio internal glue.
@@ -321,10 +399,23 @@ same failure into clean HTTP JSON.
 - For `search-eval-native-suite`, use `create-sample-report` with
   `MASTRA_STORAGE_BACKEND=memory` when local Postgres or Admin data is
   unavailable. Use `sync-promoted` only when Admin candidate env is configured.
+- For `search-eval-orchestrator`, smoke the resume path with a sample report
+  before running real data. The release-gate summary should expose child runs,
+  report artifacts, native ids, counts, and pass/fail state in one place.
+- Open Studio through `http://localhost:4111/studio` unless the API base is also
+  using `127.0.0.1`; do not mix those origins during browser click-through.
+- When a child workflow fails under the orchestrator, preserve and surface the
+  child reason and run id. A real-data local run missing Admin search env should
+  be a clear 503 `offline_eval_failed`/`admin_config_missing`, not an opaque
+  orchestration fallback.
 - Confirm `/api/workflows/eval-query-generation/runs` and
   `search_eval_candidate` rows after a Studio run. Seeing a Studio "success" row
   alone is not enough because `{ ok: false }` is still a completed workflow
   result.
+- Confirm `/api/datasets`, `/api/scores/scorers`, `/api/experiments`, and the
+  rendered Studio Evaluation pages after native sync. API-only proof can miss
+  browser-origin failures; browser-only proof can miss idempotency drift in the
+  native records.
 - Keep generated candidates separate from promoted truth. A successful local
   offline-search-eval run should use seed prompts only; staged generated
   candidates remain out of the operator workflow until a later promotion flow.
@@ -350,3 +441,9 @@ same failure into clean HTTP JSON.
   query generation builds on.
 - [Devcontainer setup](../platform/devcontainer-setup.md) documents the local
   devcontainer port and SSH assumptions that can affect host-browser access.
+- [Mastra native Evaluation search eval bridge pattern](../architecture-patterns/mastra-native-evaluation-search-eval-bridge-pattern.md)
+  covers the artifact-to-Dataset/Scorer/Experiment bridge that the native suite
+  and orchestrator rely on.
+- [Mastra offline search eval orchestration boundary pattern](../architecture-patterns/mastra-offline-search-eval-orchestration-boundary-pattern.md)
+  covers why the orchestrator should coordinate leaf workflows without
+  collapsing them into one mega-workflow.

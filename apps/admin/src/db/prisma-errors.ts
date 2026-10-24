@@ -2,7 +2,7 @@
 //
 // Prisma raw SQL errors (especially `$executeRaw` failures on vector
 // writes) can surface the full statement text and parameter values in
-// `error.message`. A 1536-element float vector literal embedded in
+// `error.message`. A large float vector literal embedded in
 // `error.message` would round-trip into per-target outcomes and out the
 // GraphQL mutation response if a service rethrew the raw error. These
 // helpers let services remap a Prisma runtime error to a typed,
@@ -55,4 +55,16 @@ export function sanitizePrismaErrorMessage(
       ? (error as { code: string }).code
       : "unknown"
   return `${name}(${code}) during ${context}`
+}
+
+/**
+ * True for Prisma's unique-constraint violation (P2002). Shape-based, like
+ * the helpers above, so a service boundary needs no `instanceof`.
+ */
+export function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2002"
+  )
 }

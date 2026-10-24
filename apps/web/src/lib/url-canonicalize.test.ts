@@ -54,8 +54,11 @@ describe("canonicalizeWatchPath: short-circuit guards", () => {
     })
   })
 
-  it("returns canonical for reserved literals: favicon, robots, sitemap", () => {
+  it("returns canonical for reserved literals: favicon, manifest, robots, sitemap", () => {
     expect(canonical({ rawPathname: "/favicon.ico" })).toEqual({
+      kind: "canonical",
+    })
+    expect(canonical({ rawPathname: "/manifest.webmanifest" })).toEqual({
       kind: "canonical",
     })
     expect(canonical({ rawPathname: "/robots.txt" })).toEqual({
@@ -156,6 +159,15 @@ describe("Rule 1: trailing-slash strip → 308 with long cache", () => {
       cache: "long",
     })
   })
+
+  it("strips a trailing slash from the bare Watch history route", () => {
+    expect(canonical({ rawPathname: "/history/" })).toEqual({
+      kind: "redirect",
+      pathname: "/history",
+      status: 308,
+      cache: "long",
+    })
+  })
 })
 
 describe("Rule 2: lowercase .HTML → .html → 307", () => {
@@ -226,6 +238,25 @@ describe("Rule 4: per-segment .html append → 307", () => {
     })
   })
 
+  it("keeps localized /videos indexes .html-free on the final segment", () => {
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american/videos" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+    expect(
+      canonical({ rawPathname: "/spanish-latin-american.html/videos.html" }),
+    ).toEqual({
+      kind: "redirect",
+      pathname: "/spanish-latin-american.html/videos",
+      status: 307,
+      cache: "short",
+    })
+  })
+
   it("appends .html on 3-segment missing first + last (episode stays bare)", () => {
     expect(canonical({ rawPathname: "/jesus/the-beginning/english" })).toEqual({
       kind: "redirect",
@@ -263,9 +294,35 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
-  it("does NOT fire for /videos (exempt)", () => {
-    expect(canonical({ rawPathname: "/videos" })).toEqual({
+  it("does NOT fire for /languages (exempt)", () => {
+    expect(canonical({ rawPathname: "/languages" })).toEqual({
       kind: "canonical",
+    })
+  })
+
+  it("redirects legacy /videos to /languages", () => {
+    expect(canonical({ rawPathname: "/videos" })).toEqual({
+      kind: "redirect",
+      pathname: "/languages",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("does NOT fire for /whats-new (exempt)", () => {
+    expect(canonical({ rawPathname: "/whats-new" })).toEqual({
+      kind: "canonical",
+    })
+  })
+
+  it("still fires for a hyphenated slug outside the exempt set", () => {
+    // Falsifies the case above — the exemption is keyed on the literal, not
+    // on the presence of a hyphen.
+    expect(canonical({ rawPathname: "/whats-old" })).toEqual({
+      kind: "redirect",
+      pathname: "/whats-old.html/whats-old.html",
+      status: 307,
+      cache: "short",
     })
   })
 
@@ -365,6 +422,22 @@ describe("Rule 6: language-slug alias → 307", () => {
     })
   })
 
+  it.each(["languages", "history", "videos", "whats-new"])(
+    "applies alias to localized %s routes",
+    (utility) => {
+      expect(
+        canonical({
+          rawPathname: `/chinese-mandarin.html/${utility}`,
+        }),
+      ).toEqual({
+        kind: "redirect",
+        pathname: `/mandarin-china.html/${utility}`,
+        status: 307,
+        cache: "short",
+      })
+    },
+  )
+
   it("does NOT apply alias to slug segment (segment 0)", () => {
     // No content slug named "chinese-mandarin", but verify shape: even if
     // it were, alias resolves only on the locale segment, not the slug.
@@ -417,7 +490,10 @@ describe("canonical (no-op) cases — production §5.2/§5.3 shapes", () => {
     "/jesus.html/the-beginning/russian.html",
     "/russian.html",
     "/portuguese-brazil.html",
-    "/videos",
+    "/languages",
+    "/french.html/languages",
+    "/spanish-latin-american.html/history",
+    "/spanish-latin-american.html/videos",
   ]
 
   for (const url of canonicalUrls) {

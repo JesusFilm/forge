@@ -1,6 +1,6 @@
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isValidSearchTraceSamplingBearer } from "@/auth/search-trace-bearer"
-import { SearchEvalCandidateStoreError } from "@/services/search-eval/candidates"
+import { SearchEvalCandidateStoreError } from "@/services/search-eval-candidates"
 
 const RATE_LIMIT_MAX = 20
 const RATE_LIMIT_WINDOW_MS = 60_000

@@ -74,8 +74,13 @@ RUN mkdir -p /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex
   touch /commandhistory/.zsh_history && \
   chown -R vscode:vscode /commandhistory /workspace /home/vscode/.claude /home/vscode/.codex /opt
 
-RUN mkdir -p /run/sshd /etc/ssh/sshd_config.d && \
+# SSH uses the account shell from /etc/passwd; align it with the VS Code terminal.
+RUN usermod --shell /bin/zsh vscode
+
+RUN rm -f /etc/ssh/ssh_host_* && \
+  mkdir -p /run/sshd /etc/ssh/sshd_config.d && \
   printf '%s\n' \
+    'HostKey /etc/ssh/host_keys/ssh_host_ed25519_key' \
     'PasswordAuthentication no' \
     'KbdInteractiveAuthentication no' \
     'PermitRootLogin no' \
@@ -160,8 +165,9 @@ WORKDIR /workspace
 # Switch to non-root user for remaining setup
 USER vscode
 
-# Set PATH early so claude and other user-installed binaries are available
-ENV PATH="/home/vscode/.local/bin:$PATH"
+# Keep fnm and its default Node version available to interactive shells and
+# non-interactive SSH commands such as `ssh forge node --version`.
+ENV PATH="/home/vscode/.fnm:/home/vscode/.fnm/aliases/default/bin:/home/vscode/.local/bin:$PATH"
 
 # Install Claude Code natively with marketplace plugins
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
@@ -175,8 +181,9 @@ RUN uv python install 3.13 --default
 # Install ast-grep (AST-based code search)
 RUN uv tool install ast-grep-cli
 
-# Install fnm (Fast Node Manager), Node 24, pnpm, and Codex CLI
+# Install fnm (Fast Node Manager), Node 24, pnpm, Codex CLI, and T3 CLI
 ARG NODE_VERSION=24
+ARG T3_VERSION=0.0.33
 ENV FNM_DIR="/home/vscode/.fnm"
 RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell && \
   export PATH="$FNM_DIR:$PATH" && \
@@ -185,7 +192,8 @@ RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_D
   fnm default ${NODE_VERSION} && \
   corepack enable && \
   corepack prepare pnpm@9.12.3 --activate && \
-  npm install -g @openai/codex@latest
+  npm install -g @openai/codex@latest && \
+  npm install -g --allow-scripts=node-pty,msgpackr-extract "t3@${T3_VERSION}"
 
 # Install Oh My Zsh
 ARG ZSH_IN_DOCKER_VERSION=1.2.1
@@ -194,6 +202,7 @@ RUN sh -c "$(curl -fsSL https://github.com/deluan/zsh-in-docker/releases/downloa
   -x
 
 # Copy zsh configuration
+COPY --chown=vscode:vscode .zshenv /home/vscode/.zshenv
 COPY --chown=vscode:vscode .zshrc /home/vscode/.zshrc.custom
 
 # Append custom zshrc to the main one

@@ -1,8 +1,27 @@
 import {
+  cleanStreamUrl,
   validateStreamingUrl,
   validateActionUrl,
   isAllowedQuizUrl,
 } from "./validateUrl"
+
+describe("cleanStreamUrl", () => {
+  it("trims outer whitespace", () => {
+    expect(cleanStreamUrl("  https://stream.mux.com/abc123.m3u8\n")).toBe(
+      "https://stream.mux.com/abc123.m3u8",
+    )
+  })
+
+  it("rejects interior whitespace", () => {
+    expect(cleanStreamUrl("https://stream.mux.com/abc\n123.m3u8")).toBeNull()
+  })
+
+  it("rejects missing and whitespace-only values", () => {
+    expect(cleanStreamUrl(null)).toBeNull()
+    expect(cleanStreamUrl(undefined)).toBeNull()
+    expect(cleanStreamUrl("  \n")).toBeNull()
+  })
+})
 
 describe("isAllowedQuizUrl", () => {
   it("allows https://nextstep.is", () => {
@@ -51,6 +70,49 @@ describe("isAllowedQuizUrl", () => {
 })
 
 describe("validateStreamingUrl", () => {
+  it("avoids URL parsing for canonical catalog streams", () => {
+    const parser = jest.spyOn(globalThis, "URL").mockImplementation(() => {
+      throw new Error("Unexpected slow parser")
+    })
+    try {
+      for (let i = 0; i < 2300; i++) {
+        expect(
+          validateStreamingUrl(`https://stream.mux.com/video_${i}-id.m3u8`),
+        ).toBe(true)
+      }
+      expect(parser).not.toHaveBeenCalled()
+    } finally {
+      parser.mockRestore()
+    }
+  })
+
+  it.each([
+    "https://stream.mux.com.evil.test/a.m3u8",
+    "https://stream.mux.com@evil.test/a.m3u8",
+    "https://stream.mux.com\\@evil.test/a.m3u8",
+    "https://evil.test/stream.mux.com/a.m3u8",
+    "javascript:https://stream.mux.com/a.m3u8",
+  ])("does not fast-accept a crafted authority: %s", (url) => {
+    const expected = (() => {
+      try {
+        return new URL(url).hostname === "stream.mux.com"
+      } catch {
+        return false
+      }
+    })()
+    expect(validateStreamingUrl(url)).toBe(expected)
+  })
+
+  it("keeps full parsing for signed URLs and noncanonical forms", () => {
+    expect(
+      validateStreamingUrl("https://stream.mux.com/a.m3u8?token=abc&foo=1"),
+    ).toBe(true)
+    const mixedCase = "https://STREAM.MUX.COM/a.m3u8"
+    expect(validateStreamingUrl(mixedCase)).toBe(
+      new URL(mixedCase).hostname === "stream.mux.com",
+    )
+  })
+
   it("allows Mux streaming URLs", () => {
     expect(validateStreamingUrl("https://stream.mux.com/abc123.m3u8")).toBe(
       true,

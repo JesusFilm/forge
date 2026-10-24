@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/config/env", () => ({
-  env: {} as { WEB_ADMIN_API_KEYS?: string },
+  env: {} as { WEB_ADMIN_API_KEYS?: string; FLEET_ADMIN_API_KEYS?: string },
 }))
 
 const { env } = await import("@/config/env")
 const { isValidConsumerBearer } = await import("@/auth/consumer-bearer")
 
-const envMutable = env as { WEB_ADMIN_API_KEYS?: string }
+const envMutable = env as {
+  WEB_ADMIN_API_KEYS?: string
+  FLEET_ADMIN_API_KEYS?: string
+}
 
 describe("isValidConsumerBearer", () => {
   beforeEach(() => {
@@ -15,24 +18,28 @@ describe("isValidConsumerBearer", () => {
   })
   afterEach(() => {
     envMutable.WEB_ADMIN_API_KEYS = undefined
+    envMutable.FLEET_ADMIN_API_KEYS = undefined
   })
 
   // ---------------------------------------------------------------------------
-  // Happy path
+  // Happy path — web SSR keys (fleet:false)
   // ---------------------------------------------------------------------------
 
   it("accepts a valid bearer token and returns the matched bucket key", () => {
     expect(isValidConsumerBearer("Bearer key-aaa")).toEqual({
       valid: true,
       bucketKey: "key-aaa",
+      fleet: false,
     })
     expect(isValidConsumerBearer("Bearer key-bbb")).toEqual({
       valid: true,
       bucketKey: "key-bbb",
+      fleet: false,
     })
     expect(isValidConsumerBearer("Bearer key-ccc")).toEqual({
       valid: true,
       bucketKey: "key-ccc",
+      fleet: false,
     })
   })
 
@@ -40,10 +47,12 @@ describe("isValidConsumerBearer", () => {
     expect(isValidConsumerBearer("bearer key-aaa")).toEqual({
       valid: true,
       bucketKey: "key-aaa",
+      fleet: false,
     })
     expect(isValidConsumerBearer("BEARER key-aaa")).toEqual({
       valid: true,
       bucketKey: "key-aaa",
+      fleet: false,
     })
   })
 
@@ -52,6 +61,43 @@ describe("isValidConsumerBearer", () => {
     expect(isValidConsumerBearer("Bearer key-aaa")).toEqual({
       valid: true,
       bucketKey: "key-aaa",
+      fleet: false,
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // Fleet keys (fleet:true) — the new per-IP bucketing discriminant
+  // ---------------------------------------------------------------------------
+
+  it("flags a web key fleet:false and a fleet key fleet:true", () => {
+    envMutable.FLEET_ADMIN_API_KEYS = "fleet-key-1,fleet-key-2"
+    expect(isValidConsumerBearer("Bearer key-aaa")).toEqual({
+      valid: true,
+      bucketKey: "key-aaa",
+      fleet: false,
+    })
+    expect(isValidConsumerBearer("Bearer fleet-key-1")).toEqual({
+      valid: true,
+      bucketKey: "fleet-key-1",
+      fleet: true,
+    })
+  })
+
+  it("matches a fleet key even though the web list is scanned first", () => {
+    // Fleet entries come after web in iteration order; a regression that
+    // short-circuited on the web list would leave fleet keys unreachable.
+    envMutable.FLEET_ADMIN_API_KEYS = "fleet-only-key"
+    expect(isValidConsumerBearer("Bearer fleet-only-key")).toEqual({
+      valid: true,
+      bucketKey: "fleet-only-key",
+      fleet: true,
+    })
+  })
+
+  it("rejects a fleet key when FLEET_ADMIN_API_KEYS is unset", () => {
+    expect(isValidConsumerBearer("Bearer fleet-key-1")).toEqual({
+      valid: false,
+      bucketKey: null,
     })
   })
 
@@ -117,7 +163,7 @@ describe("isValidConsumerBearer", () => {
     })
   })
 
-  it("rejects when WEB_ADMIN_API_KEYS is unset", () => {
+  it("rejects when both allowlists are unset", () => {
     envMutable.WEB_ADMIN_API_KEYS = undefined
     expect(isValidConsumerBearer("Bearer key-aaa")).toEqual({
       valid: false,
@@ -151,13 +197,19 @@ describe("isValidConsumerBearer", () => {
     expect(isValidConsumerBearer("Bearer key-correct-len")).toEqual({
       valid: true,
       bucketKey: "key-correct-len",
+      fleet: false,
     })
     expect(isValidConsumerBearer("Bearer short")).toEqual({
       valid: true,
       bucketKey: "short",
+      fleet: false,
     })
     expect(isValidConsumerBearer("Bearer much-longer-than-the-target")).toEqual(
-      { valid: true, bucketKey: "much-longer-than-the-target" },
+      {
+        valid: true,
+        bucketKey: "much-longer-than-the-target",
+        fleet: false,
+      },
     )
     expect(isValidConsumerBearer("Bearer not-a-real-key")).toEqual({
       valid: false,
@@ -218,15 +270,17 @@ describe("isValidConsumerBearer", () => {
   // ---------------------------------------------------------------------------
 
   it("does NOT log the Authorization header value or the bearer key on any path", () => {
+    envMutable.FLEET_ADMIN_API_KEYS = "fleet-secret-key"
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {})
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
     const infoSpy = vi.spyOn(console, "info").mockImplementation(() => {})
     const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {})
     try {
-      // Walk the happy path AND every failure branch.
+      // Walk the happy path (web + fleet) AND every failure branch.
       isValidConsumerBearer("Bearer key-aaa")
       isValidConsumerBearer("Bearer key-bbb")
+      isValidConsumerBearer("Bearer fleet-secret-key")
       isValidConsumerBearer("Bearer wrong-key-of-rightlength")
       isValidConsumerBearer("Bearer ")
       isValidConsumerBearer("")
@@ -247,6 +301,7 @@ describe("isValidConsumerBearer", () => {
       // output from this module.
       expect(combined).not.toContain("key-aaa")
       expect(combined).not.toContain("key-bbb")
+      expect(combined).not.toContain("fleet-secret-key")
       expect(combined).not.toContain("wrong-key-of-rightlength")
       expect(combined).not.toContain("Bearer ")
     } finally {

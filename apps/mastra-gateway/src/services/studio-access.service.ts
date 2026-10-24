@@ -31,13 +31,23 @@ export type StudioAccessRepository = {
     email: string
     name?: string
   }): Promise<StudioAccessRecord>
+  listByEmails(input: {
+    emails: readonly string[]
+  }): Promise<StudioAccessRecord[]>
   list(): Promise<StudioAccessRecord[]>
   approve(input: {
     id: string
     role: StudioAccessRole
     approvedBy: string
   }): Promise<StudioAccessRecord>
+  approveByEmail(input: {
+    email: string
+    name?: string
+    role: StudioAccessRole
+    approvedBy: string
+  }): Promise<StudioAccessRecord>
   revoke(input: { id: string }): Promise<StudioAccessRecord>
+  revokeByEmail(input: { email: string }): Promise<StudioAccessRecord | null>
   updateRole(input: {
     id: string
     role: StudioAccessRole
@@ -66,6 +76,7 @@ export function createStudioAccessService({
 
   async function resolve(
     identity: StudioAccessIdentity,
+    { recordAccess = true }: { recordAccess?: boolean } = {},
   ): Promise<StudioAccessDecision> {
     const email = normalizeEmail(identity.email)
     if (!email) return { allowed: false, reason: "missing_email" }
@@ -100,7 +111,7 @@ export function createStudioAccessService({
       return { allowed: false, reason: "pending" }
     }
 
-    await repository.markAccessed({ id: record.id })
+    if (recordAccess) await repository.markAccessed({ id: record.id })
     return { allowed: true, role: record.role, record }
   }
 
@@ -109,12 +120,53 @@ export function createStudioAccessService({
     return decision.allowed && decision.role === "admin"
   }
 
+  function normalizeEmailOrThrow(email: string) {
+    const normalized = normalizeEmail(email)
+    if (!normalized) {
+      throw new Error("email is required")
+    }
+    return normalized
+  }
+
+  async function listByEmails(emails: readonly string[]) {
+    const normalizedEmails = Array.from(
+      new Set(
+        emails
+          .map(normalizeEmail)
+          .filter((email): email is string => Boolean(email)),
+      ),
+    )
+    if (normalizedEmails.length === 0) return []
+    return repository.listByEmails({ emails: normalizedEmails })
+  }
+
+  async function approveByEmail(input: {
+    email: string
+    name?: string
+    role: StudioAccessRole
+    approvedBy: string
+  }) {
+    return repository.approveByEmail({
+      ...input,
+      email: normalizeEmailOrThrow(input.email),
+    })
+  }
+
+  async function revokeByEmail(input: { email: string }) {
+    return repository.revokeByEmail({
+      email: normalizeEmailOrThrow(input.email),
+    })
+  }
+
   return {
     resolve,
     requireAdmin,
+    listByEmails,
     list: repository.list,
     approve: repository.approve,
+    approveByEmail,
     revoke: repository.revoke,
+    revokeByEmail,
     updateRole: repository.updateRole,
   }
 }

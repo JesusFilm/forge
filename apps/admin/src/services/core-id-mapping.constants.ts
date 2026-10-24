@@ -10,9 +10,8 @@
 
 /**
  * Canonical S3 key for the coreId → cms video id snapshot that the admin
- * refresh CLI uploads. Consumed by (a) the `triggerSceneEmbeddingBackfill`
- * Pothos defaultValue, (b) the refresh CLI's upload target, and (c) the
- * operator runbook.
+ * refresh CLI uploads. Consumed by transcript embedding backfills, the
+ * refresh CLI's upload target, and the operator runbook.
  */
 export const DEFAULT_CORE_ID_MAPPING_S3_KEY =
   "admin-migrations/core-id-mapping.json"

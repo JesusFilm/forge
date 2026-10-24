@@ -2,9 +2,16 @@ import { defineConfig, globalIgnores } from "eslint/config"
 import commonConfig from "../../eslint.config.mjs"
 import nextVitals from "eslint-config-next/core-web-vitals"
 
+const nextVitalsWithSharedTypescriptPlugin = nextVitals.map((config) => {
+  if (config.name !== "next/typescript") return config
+
+  const entries = Object.entries(config).filter(([key]) => key !== "plugins")
+  return Object.fromEntries(entries)
+})
+
 export default defineConfig([
   ...commonConfig,
-  ...nextVitals,
+  ...nextVitalsWithSharedTypescriptPlugin,
   globalIgnores([
     ".next/**",
     "out/**",

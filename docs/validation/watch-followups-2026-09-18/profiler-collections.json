@@ -1,0 +1,142 @@
+[
+  {
+    "trial": "baseline-catalog1",
+    "windows": [
+      {
+        "collection": 1,
+        "ms": 814.9303070000024,
+        "mappingMs": 468.81211700062704,
+        "rssBytes": 1158942720,
+        "healthMaxMs": 930.5048079695553,
+        "catalogMaxMs": 914.774440927431,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 184.98197388648987,
+        "gcMaxMs": 90.96009200811386,
+        "asyncEncodingMs": [
+          134.38722500001313, 111.69843099999707, 91.61530199999106
+        ]
+      },
+      {
+        "collection": 2,
+        "ms": 348.6555300000473,
+        "mappingMs": 109.48677500098711,
+        "rssBytes": 1202794496,
+        "healthMaxMs": 382.8083580592647,
+        "catalogMaxMs": 228.46949694212526,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 70.8023709654808,
+        "gcMaxMs": 56.107641994953156,
+        "asyncEncodingMs": [
+          71.22363299998688, 68.42971500000567, 58.41938500001561
+        ]
+      }
+    ]
+  },
+  {
+    "trial": "patched-catalog-sections1",
+    "windows": [
+      {
+        "collection": 1,
+        "ms": 215.4485649999915,
+        "mappingMs": 68.56318200009991,
+        "rssBytes": 1202180096,
+        "healthMaxMs": 270.0183989945799,
+        "catalogMaxMs": 285.816767020151,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 21.767080008983612,
+        "gcMaxMs": 14.437655985355377,
+        "asyncEncodingMs": [
+          115.63468999999895, 109.8675660000008, 89.65280500000517
+        ]
+      },
+      {
+        "collection": 2,
+        "ms": 142.9530209999939,
+        "mappingMs": 53.686580000125105,
+        "rssBytes": 1310707712,
+        "healthMaxMs": 156.61683701910079,
+        "catalogMaxMs": 182.5906609883532,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 17.772360026836395,
+        "gcMaxMs": 10.101433038711548,
+        "asyncEncodingMs": [
+          70.053934999989, 67.65903100000287, 57.42786799999885
+        ]
+      }
+    ]
+  },
+  {
+    "trial": "baseline-catalog-final1",
+    "windows": [
+      {
+        "collection": 1,
+        "ms": 741.7323670000042,
+        "mappingMs": 409.4831469996352,
+        "rssBytes": 1148997632,
+        "healthMaxMs": 910.1722160121426,
+        "catalogMaxMs": 950.6122180027887,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 200.17726480960846,
+        "gcMaxMs": 62.37212598323822,
+        "asyncEncodingMs": [
+          199.7096029999957, 127.64446399999724, 94.6606710000051
+        ]
+      },
+      {
+        "collection": 2,
+        "ms": 134.15706400001363,
+        "mappingMs": 53.410901001567254,
+        "rssBytes": 1191882752,
+        "healthMaxMs": 173.0547760380432,
+        "catalogMaxMs": 202.56566791795194,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 13.396987974643707,
+        "gcMaxMs": 13.396987974643707,
+        "asyncEncodingMs": [
+          63.46921600002679, 60.81117799997446, 50.257557999982964
+        ]
+      }
+    ]
+  },
+  {
+    "trial": "patched-catalog-final2",
+    "windows": [
+      {
+        "collection": 1,
+        "ms": 209.02621599999839,
+        "mappingMs": 68.90680400033307,
+        "rssBytes": 1234010112,
+        "healthMaxMs": 285.2117079310119,
+        "catalogMaxMs": 292.2925188904628,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 23.914591014385223,
+        "gcMaxMs": 14.985264003276825,
+        "asyncEncodingMs": [
+          120.48288999999204, 115.38774799999373, 84.19385800001328
+        ]
+      },
+      {
+        "collection": 2,
+        "ms": 143.13430399999197,
+        "mappingMs": 45.4463410005701,
+        "rssBytes": 1206296576,
+        "healthMaxMs": 188.4812880307436,
+        "catalogMaxMs": 225.6130820605904,
+        "httpFailures": 0,
+        "semanticErrors": 0,
+        "gcTotalMs": 44.427067041397095,
+        "gcMaxMs": 36.76351702213287,
+        "asyncEncodingMs": [
+          89.3050990000047, 86.90044000001217, 74.35378099999798
+        ]
+      }
+    ]
+  }
+]

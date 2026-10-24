@@ -8,7 +8,9 @@ start_date: "2026-04-14"
 duration: 2
 depends_on:
   - "feat-086"
-blocks: []
+blocks:
+  - "feat-153"
+  - "feat-155"
 tags:
   - "platform"
   - "admin"

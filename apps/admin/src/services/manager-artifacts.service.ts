@@ -1,45 +1,15 @@
-// Manager artifact reader — downloads scene-analysis.json and
-// transcript.json artifacts from
+// Manager artifact reader — downloads transcript.json artifacts from
 // manager's Railway S3 bucket (MANAGER_ARTIFACTS_S3_*) and
 // Zod-validates against the expected shape before returning.
 //
-// Scene embeddings read `{assetId}/scene-analysis.json` and launch Mastra;
-// Admin stores Mastra-generated vectors through scene-specific ingest.
 // feat-132 transcript embeddings read `{assetId}/transcript.json` and
 // launch Mastra; Admin no longer imports manager-generated transcript vectors.
 //
 // Source references (shapes mirrored here):
-//   apps/manager/src/services/sceneAnalysis.ts (scene-analysis write)
-//   apps/manager/src/services/sceneEmbeddingSync.ts (scene-analysis read)
 //   apps/manager/src/services/transcription.ts (transcript write)
 
 import { z } from "zod"
 import { readManagerArtifact } from "@/storage/s3"
-
-export const SceneAnalysisSchema = z
-  .object({
-    sceneIndex: z.number().int().nonnegative(),
-    startSeconds: z.number().finite().nonnegative(),
-    endSeconds: z.number().finite().nullable().optional(),
-    chapterTitle: z.string().nullable().optional(),
-    description: z.string(),
-    themes: z.array(z.string()),
-    bibleVerses: z.array(z.string()),
-    demographics: z.array(z.string()),
-    spiritualContext: z.array(z.string()),
-  })
-  .strict()
-
-export const SceneAnalysisResultSchema = z
-  .object({
-    scenes: z.array(SceneAnalysisSchema),
-    totalInputTokens: z.number().finite().optional(),
-    totalOutputTokens: z.number().finite().optional(),
-  })
-  .passthrough()
-
-export type SceneAnalysis = z.infer<typeof SceneAnalysisSchema>
-export type SceneAnalysisResult = z.infer<typeof SceneAnalysisResultSchema>
 
 export const TranscriptSourceSegmentSchema = z
   .object({
@@ -116,62 +86,6 @@ function isArtifactMissing(error: unknown): boolean {
   }
   const message = error instanceof Error ? error.message : String(error)
   return /not found|does not exist|ENOENT/i.test(message)
-}
-
-/**
- * Read a scene-analysis artifact from manager's Railway S3 bucket
- * (MANAGER_ARTIFACTS_S3_*) or local
- * `.tmp/artifacts/{assetId}/scene-analysis.json` fallback and return
- * the parsed, Zod-validated result.
- *
- * @param assetId  The integer cms video id as a string — this is the
- *                 key manager used when writing the artifact. Admin's
- *                 Video.coreId must be mapped to this via the core-id
- *                 mapping file before calling.
- */
-export async function readSceneAnalysisArtifact(
-  assetId: string,
-): Promise<SceneAnalysisResult> {
-  let bytes: Uint8Array
-  try {
-    bytes = await readManagerArtifact(assetId, "scene-analysis", "json")
-  } catch (error) {
-    if (isArtifactMissing(error)) {
-      throw new ManagerArtifactError(
-        "artifact_missing",
-        `scene-analysis artifact not found for assetId=${assetId}`,
-        error,
-      )
-    }
-    const message = error instanceof Error ? error.message : String(error)
-    throw new ManagerArtifactError(
-      "artifact_read_failed",
-      `failed to read scene-analysis artifact for assetId=${assetId}: ${message}`,
-      error,
-    )
-  }
-
-  let raw: unknown
-  try {
-    raw = JSON.parse(new TextDecoder().decode(bytes))
-  } catch (error) {
-    throw new ManagerArtifactError(
-      "artifact_invalid",
-      `scene-analysis artifact for assetId=${assetId} is not valid JSON`,
-      error,
-    )
-  }
-
-  const parsed = SceneAnalysisResultSchema.safeParse(raw)
-  if (!parsed.success) {
-    throw new ManagerArtifactError(
-      "artifact_invalid",
-      `scene-analysis artifact for assetId=${assetId} failed schema validation: ${parsed.error.message}`,
-      parsed.error,
-    )
-  }
-
-  return parsed.data
 }
 
 export async function readTranscriptSourceArtifact(

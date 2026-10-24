@@ -4,13 +4,22 @@ import path from "node:path"
 import { z } from "zod"
 
 import { env, getMastraStorageDir } from "../../config/env"
-import type { BaselineArtifact, SearchEvalReport } from "./types"
+import {
+  DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+  SEARCH_EVAL_CALLER_TRACK_IDS,
+  SEARCH_EVAL_SEARCH_MODES,
+  type BaselineArtifact,
+  type SearchEvalReport,
+} from "./types"
 
 const SAFE_ARTIFACT_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/
-const MAX_BASELINE_CASES = 100
+const MAX_BASELINE_CASES = 150
 const MAX_RESULT_COUNT = 50
 const MAX_SAFE_TEXT = 1024
 const MAX_TAGS = 20
+
+const SearchEvalCallerTrackSchema = z.enum(SEARCH_EVAL_CALLER_TRACK_IDS)
+const SearchEvalSearchModeSchema = z.enum(SEARCH_EVAL_SEARCH_MODES)
 
 const SearchEvalResultSchema = z
   .object({
@@ -26,6 +35,8 @@ const SearchEvalResultSchema = z
     label: z.string().nullable(),
     durationSeconds: z.number().nullable(),
     childCount: z.number().nullable(),
+    canonicalVideoId: z.string().max(128).optional(),
+    languageSlug: z.string().max(128).nullable().optional(),
   })
   .strict()
 
@@ -72,8 +83,12 @@ const SearchEvalMetadataSchema = z
     startedAt: z.string(),
     finishedAt: z.string(),
     baselineName: z.string(),
+    callerTrack: SearchEvalCallerTrackSchema.default(
+      DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+    ),
     promptSetVersion: z.string(),
     adminSearchUrl: z.string().max(512).nullable(),
+    servingRevision: z.string().min(1).max(128).nullable().default(null),
     judgeModel: z.string().nullable(),
     search: z
       .object({
@@ -89,16 +104,22 @@ const BaselineCaseSchema = z
   .object({
     caseId: z.string().max(128),
     locale: z.string().max(32),
+    languageSlug: z.string().max(128).optional(),
+    websiteLocale: z.string().max(32).optional(),
     queryText: z.string().max(MAX_SAFE_TEXT),
     source: z.literal("seed"),
+    callerTrack: SearchEvalCallerTrackSchema.default(
+      DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+    ),
     tags: z.array(z.string().max(64)).max(MAX_TAGS),
     operatorNotes: z.string().max(MAX_SAFE_TEXT).optional(),
+    serverRevision: z.string().min(1).max(128).optional(),
     results: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
     searchFailure: SearchFailureSchema.optional(),
   })
   .strict()
 
-const BaselineArtifactSchema = z
+export const BaselineArtifactSchema = z
   .object({
     schemaVersion: z.literal("1"),
     kind: z.literal("baseline"),
@@ -108,6 +129,20 @@ const BaselineArtifactSchema = z
     cases: z.array(BaselineCaseSchema).min(1).max(MAX_BASELINE_CASES),
   })
   .strict()
+  .superRefine((baseline, context) => {
+    const servingRevision = baseline.metadata.servingRevision
+    if (servingRevision == null) return
+
+    baseline.cases.forEach((entry, index) => {
+      if (entry.serverRevision !== servingRevision) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["cases", index, "serverRevision"],
+          message: "baseline case revision must match metadata servingRevision",
+        })
+      }
+    })
+  })
 
 const ArtifactOnlyMastraEvaluationProjectionSchema = z
   .object({
@@ -207,8 +242,13 @@ const ComparisonOutcomeSchema = z
     kind: ReportOutcomeKindSchema,
     caseId: z.string().max(128),
     locale: z.string().max(32),
+    languageSlug: z.string().max(128).optional(),
+    websiteLocale: z.string().max(32).optional(),
     queryText: z.string().max(MAX_SAFE_TEXT),
     source: z.literal("seed"),
+    callerTrack: SearchEvalCallerTrackSchema.default(
+      DEFAULT_SEARCH_EVAL_CALLER_TRACK,
+    ),
     baselineResults: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
     currentResults: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
     verdicts: z.tuple([JudgeVerdictSchema, JudgeVerdictSchema]).optional(),
@@ -233,6 +273,45 @@ const ExploratoryGeneratedOutcomeSchema = z
     skippedReason: z.literal("trace_derived_not_judged_or_searched").optional(),
     results: z.array(SearchEvalResultSchema).max(MAX_RESULT_COUNT),
     searchFailure: SearchFailureSchema.optional(),
+  })
+  .strict()
+
+const TrackSummarySchema = z
+  .object({
+    callerTrack: SearchEvalCallerTrackSchema,
+    caller: z.string().max(256),
+    job: z.string().max(512),
+    mode: z.string().max(64).nullable(),
+    defaultMode: SearchEvalSearchModeSchema,
+    suitableMode: z.boolean(),
+    successCriteria: z.array(z.string().max(512)).max(10),
+    totals: z
+      .object({
+        queries: z.number().int().nonnegative(),
+        wins: z.number().int().nonnegative(),
+        losses: z.number().int().nonnegative(),
+        ties: z.number().int().nonnegative(),
+        bothIrrelevant: z.number().int().nonnegative(),
+        judgeDisagreements: z.number().int().nonnegative(),
+        judgeFailures: z.number().int().nonnegative(),
+        searchFailures: z.number().int().nonnegative(),
+        netWinRate: z.number(),
+      })
+      .strict(),
+    noResultCases: z.number().int().nonnegative(),
+    representativeFailures: z
+      .array(
+        z
+          .object({
+            caseId: z.string().max(128),
+            queryText: z.string().max(MAX_SAFE_TEXT),
+            kind: ReportOutcomeKindSchema,
+            rationale: z.string().max(MAX_SAFE_TEXT).optional(),
+            topResults: z.array(z.string().max(256)).max(5),
+          })
+          .strict(),
+      )
+      .max(5),
   })
   .strict()
 
@@ -276,6 +355,10 @@ export const SearchEvalReportSchema = z
       .strict(),
     localeMix: z.record(z.string(), z.number().int().nonnegative()),
     promptSourceMix: z.record(z.string(), z.number().int().nonnegative()),
+    callerTrackMix: z
+      .record(z.string(), z.number().int().nonnegative())
+      .default({}),
+    trackSummaries: z.array(TrackSummarySchema).max(10).default([]),
     generatedCandidateBehavior: z
       .object({
         included: z.number().int().nonnegative(),
@@ -318,20 +401,52 @@ export const SearchEvalReportSchema = z
       report.mastraEvaluation.integrationStatus === "native_synced"
         ? report.mastraEvaluation.dataset.environmentLabel
         : null
-    const expectedDatasetName =
+    const callerTrack =
+      report.metadata.callerTrack ?? DEFAULT_SEARCH_EVAL_CALLER_TRACK
+    const pipelineMode =
+      report.metadata.search.mode === "semantic-only"
+        ? "semantic-only"
+        : report.metadata.search.mode === "keyword-first"
+          ? "keyword-first"
+          : "hybrid"
+    const legacyDatasetName =
       environmentLabel == null
         ? `search-eval:${report.metadata.baselineName}`
         : `search-eval:${environmentLabel}:${report.metadata.baselineName}`
-    const expectedExperimentName =
+    const modeAwareDatasetName = `${legacyDatasetName}:${pipelineMode}`
+    const trackAwareDatasetName = `${legacyDatasetName}:${callerTrack}:${pipelineMode}`
+    const expectedDatasetNames = [
+      legacyDatasetName,
+      modeAwareDatasetName,
+      trackAwareDatasetName,
+    ] as const
+    const legacyExperimentName =
       environmentLabel == null
         ? `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${report.reportId}`
         : `search-eval-${expectedExperimentVerb}:${environmentLabel}:${report.metadata.baselineName}:${report.reportId}`
+    const modeAwareExperimentName =
+      environmentLabel == null
+        ? `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${pipelineMode}:${report.reportId}`
+        : `search-eval-${expectedExperimentVerb}:${environmentLabel}:${report.metadata.baselineName}:${pipelineMode}:${report.reportId}`
+    const trackAwareExperimentName =
+      environmentLabel == null
+        ? `search-eval-${expectedExperimentVerb}:${report.metadata.baselineName}:${callerTrack}:${pipelineMode}:${report.reportId}`
+        : `search-eval-${expectedExperimentVerb}:${environmentLabel}:${report.metadata.baselineName}:${callerTrack}:${pipelineMode}:${report.reportId}`
+    const expectedExperimentNames = [
+      legacyExperimentName,
+      modeAwareExperimentName,
+      trackAwareExperimentName,
+    ] as const
 
-    if (report.mastraEvaluation.dataset.name !== expectedDatasetName) {
+    if (
+      !(expectedDatasetNames as readonly string[]).includes(
+        report.mastraEvaluation.dataset.name,
+      )
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["mastraEvaluation", "dataset", "name"],
-        message: "dataset name must match the report baseline name",
+        message: "dataset name must match the report baseline name and mode",
       })
     }
     if (
@@ -351,11 +466,15 @@ export const SearchEvalReportSchema = z
         message: "dataset item count must match report outcome count",
       })
     }
-    if (report.mastraEvaluation.experiment.name !== expectedExperimentName) {
+    if (
+      !(expectedExperimentNames as readonly string[]).includes(
+        report.mastraEvaluation.experiment.name,
+      )
+    ) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["mastraEvaluation", "experiment", "name"],
-        message: "experiment name must match the report kind and id",
+        message: "experiment name must match the report kind, mode, and id",
       })
     }
     if (report.mastraEvaluation.experiment.mode !== expectedExperimentMode) {
@@ -438,6 +557,10 @@ export class SearchEvalArtifactError extends Error {
 export type SearchEvalArtifactStore = {
   readonly rootDir: string
   writeBaseline: (baseline: BaselineArtifact) => Promise<{ path: string }>
+  writeBaselineCapture?: (
+    baseline: BaselineArtifact,
+    report: SearchEvalReport,
+  ) => Promise<{ baselinePath: string; reportPath: string }>
   readBaseline: (name: string) => Promise<BaselineArtifact>
   writeReport: (report: SearchEvalReport) => Promise<{ path: string }>
   readReport: (reportId: string) => Promise<SearchEvalReport>
@@ -520,6 +643,55 @@ export function createSearchEvalArtifactStore(
       const filePath = baselinePath(rootDir, baseline.name)
       await writeJson(filePath, parsed.data)
       return { path: filePath }
+    },
+    async writeBaselineCapture(baseline, report) {
+      const parsedBaseline = BaselineArtifactSchema.safeParse(baseline)
+      const parsedReport = SearchEvalReportSchema.safeParse(report)
+      if (!parsedBaseline.success || !parsedReport.success) {
+        throw new SearchEvalArtifactError(
+          "invalid_artifact",
+          "search eval baseline capture failed artifact validation",
+          parsedBaseline.success ? parsedReport.error : parsedBaseline.error,
+        )
+      }
+      const baselineFilePath = baselinePath(rootDir, baseline.name)
+      const reportFilePath = reportPath(rootDir, report.reportId)
+      let previousReport: string | null = null
+      try {
+        previousReport = await readFile(reportFilePath, "utf8")
+      } catch (cause) {
+        if (!isNodeErrorCode(cause, "ENOENT")) {
+          throw new SearchEvalArtifactError(
+            "read_failed",
+            "existing search eval report could not be preserved",
+            cause,
+          )
+        }
+      }
+
+      await writeJson(reportFilePath, parsedReport.data)
+      try {
+        await writeJson(baselineFilePath, parsedBaseline.data)
+      } catch (cause) {
+        try {
+          if (previousReport == null) {
+            await rm(reportFilePath, { force: true })
+          } else {
+            await writeFile(reportFilePath, previousReport, "utf8")
+          }
+        } catch (rollbackCause) {
+          throw new SearchEvalArtifactError(
+            "write_failed",
+            "baseline capture failed and its report rollback also failed",
+            { cause, rollbackCause },
+          )
+        }
+        throw cause
+      }
+      return {
+        baselinePath: baselineFilePath,
+        reportPath: reportFilePath,
+      }
     },
     async readBaseline(name) {
       const filePath = baselinePath(rootDir, name)

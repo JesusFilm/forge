@@ -1,6 +1,8 @@
+import { sleep } from "workflow"
 import type {
   CoreSyncJobResult,
   CoreSyncJobStart,
+  CoreSyncSchedulerInput,
   CoreSyncWorkflowInput,
 } from "@/services/core-sync/job"
 import type { PhaseResult } from "@/services/core-sync/orchestrator"
@@ -60,6 +62,48 @@ export async function runCoreSync(
     )
     throw error
   }
+}
+
+export async function runCoreSyncScheduler(
+  input: CoreSyncSchedulerInput = {},
+): Promise<never> {
+  "use workflow"
+
+  await stepMarkSchedulerStarted(input)
+  await stepRunScheduledCoreSync()
+
+  while (true) {
+    const nextRunAt = await stepNextRunAt(input)
+    await sleep(nextRunAt)
+    await stepRunScheduledCoreSync()
+  }
+}
+
+async function stepMarkSchedulerStarted(
+  input: CoreSyncSchedulerInput,
+): Promise<void> {
+  "use step"
+
+  const { markCoreSyncSchedulerStarted } =
+    await import("@/services/core-sync/job")
+  await markCoreSyncSchedulerStarted(input)
+}
+
+async function stepNextRunAt(input: CoreSyncSchedulerInput): Promise<Date> {
+  "use step"
+
+  const { nextCoreSyncRunAt, recordCoreSyncSchedulerHeartbeat } =
+    await import("@/services/core-sync/job")
+  const nextRunAt = nextCoreSyncRunAt()
+  await recordCoreSyncSchedulerHeartbeat(input, nextRunAt)
+  return nextRunAt
+}
+
+async function stepRunScheduledCoreSync(): Promise<void> {
+  "use step"
+
+  const { runCoreSyncFromScheduler } = await import("@/services/core-sync/job")
+  await runCoreSyncFromScheduler()
 }
 
 async function stepStartCoreSync(

@@ -32,7 +32,65 @@ const MANAGER_OPERATOR_ADMIN: Principal = {
   role: "ADMIN",
   managerRole: "OPERATOR",
 }
+const MANAGER_REVIEWER_VIEWER: Principal = {
+  id: "reviewer-1",
+  role: "VIEWER",
+  managerRole: "REVIEWER",
+}
 const SYSTEM: Principal = { id: null, role: "SYSTEM" }
+
+/**
+ * Every permission key, for the exhaustive per-principal grant walks. Shared
+ * so the two bearer-principal suites cannot drift into checking different key
+ * sets — and so adding a key to `PermissionKey` is one edit here rather than
+ * a silently-missing column in each walk.
+ */
+const PERMISSION_KEY_REGISTRY: Record<PermissionKey, true> = {
+  "read:experiences": true,
+  "read:videos": true,
+  "read:video-metadata": true,
+  "read:video-mapper-catalog": true,
+  "read:reference": true,
+  "read:media-assets": true,
+  "access:manager": true,
+  "read:manager-read-models": true,
+  "read:manager-seo": true,
+  "read:manager-seo-audit-detail": true,
+  "read:manager-subtitle-eval": true,
+  "read:manager-watch-route-alerts": true,
+  "read:recommendation-aggregates": true,
+  "read:recommendation-traces": true,
+  "operate:recommendation-experiments": true,
+  "rollback:recommendations": true,
+  "approve:recommendation-permanent": true,
+  "write:experiences": true,
+  "write:videos": true,
+  "write:media-assets": true,
+  "write:transcript-embeddings": true,
+  "write:experience-embeddings": true,
+  "write:watch-events": true,
+  "read:watch-progress:own": true,
+  "write:watch-progress:own": true,
+  "delete:watch-progress:own": true,
+  "write:manager-enrichment-trigger": true,
+  "write:manager-jobs": true,
+  "write:manager-subtitle-eval": true,
+  "write:push-campaigns": true,
+  "delete:media-assets": true,
+  "publish:experiences": true,
+  "archive:experiences": true,
+  "system:trigger-workflow": true,
+  "system:write-derived": true,
+  "admin:all": true,
+}
+const ALL_PERMISSION_KEYS = Object.keys(
+  PERMISSION_KEY_REGISTRY,
+) as PermissionKey[]
+const WEB_USER: Principal = {
+  id: "auth-user-1",
+  role: "WEB_USER",
+  rateLimitBucketKey: "auth-user-1",
+}
 
 const EXPERIENCE_OWNED_BY_ALICE = {
   ownerId: "alice",
@@ -72,24 +130,48 @@ describe("hasPermission — tier-based gate", () => {
       { key: "read:reference", role: "PUBLIC", expected: true },
       { key: "read:experiences", role: "PUBLIC", expected: false },
       { key: "read:videos", role: "PUBLIC", expected: false },
+      { key: "read:video-mapper-catalog", role: "PUBLIC", expected: false },
       { key: "read:media-assets", role: "PUBLIC", expected: false },
       { key: "access:manager", role: "PUBLIC", expected: false },
       { key: "read:manager-read-models", role: "PUBLIC", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "PUBLIC",
+        expected: false,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "PUBLIC",
+        expected: false,
+      },
       { key: "write:experiences", role: "PUBLIC", expected: false },
       { key: "write:media-assets", role: "PUBLIC", expected: false },
       { key: "write:manager-jobs", role: "PUBLIC", expected: false },
+      { key: "write:watch-events", role: "PUBLIC", expected: false },
       { key: "admin:all", role: "PUBLIC", expected: false },
 
       // VIEWER reach
       { key: "read:reference", role: "VIEWER", expected: true },
       { key: "read:experiences", role: "VIEWER", expected: true },
       { key: "read:videos", role: "VIEWER", expected: true },
+      { key: "read:video-mapper-catalog", role: "VIEWER", expected: false },
       { key: "read:media-assets", role: "VIEWER", expected: false },
       { key: "access:manager", role: "VIEWER", expected: false },
       { key: "read:manager-read-models", role: "VIEWER", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "VIEWER",
+        expected: false,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "VIEWER",
+        expected: false,
+      },
       { key: "write:experiences", role: "VIEWER", expected: false },
       { key: "write:media-assets", role: "VIEWER", expected: false },
       { key: "write:manager-jobs", role: "VIEWER", expected: false },
+      { key: "write:watch-events", role: "VIEWER", expected: false },
       { key: "publish:experiences", role: "VIEWER", expected: false },
 
       // EDITOR reach
@@ -101,7 +183,18 @@ describe("hasPermission — tier-based gate", () => {
       { key: "write:media-assets", role: "EDITOR", expected: true },
       { key: "access:manager", role: "EDITOR", expected: false },
       { key: "read:manager-read-models", role: "EDITOR", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "EDITOR",
+        expected: true,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "EDITOR",
+        expected: false,
+      },
       { key: "write:manager-jobs", role: "EDITOR", expected: false },
+      { key: "write:watch-events", role: "EDITOR", expected: false },
       { key: "delete:media-assets", role: "EDITOR", expected: false },
       { key: "write:videos", role: "EDITOR", expected: false },
       { key: "system:trigger-workflow", role: "EDITOR", expected: false },
@@ -109,13 +202,25 @@ describe("hasPermission — tier-based gate", () => {
 
       // ADMIN gets everything editorial + sync triggers + admin:all
       { key: "read:experiences", role: "ADMIN", expected: true },
+      { key: "read:video-mapper-catalog", role: "ADMIN", expected: true },
       { key: "write:experiences", role: "ADMIN", expected: true },
       { key: "write:videos", role: "ADMIN", expected: true },
       { key: "read:media-assets", role: "ADMIN", expected: true },
       { key: "write:media-assets", role: "ADMIN", expected: true },
       { key: "access:manager", role: "ADMIN", expected: false },
       { key: "read:manager-read-models", role: "ADMIN", expected: false },
+      {
+        key: "read:recommendation-aggregates",
+        role: "ADMIN",
+        expected: true,
+      },
+      {
+        key: "read:recommendation-traces",
+        role: "ADMIN",
+        expected: true,
+      },
       { key: "write:manager-jobs", role: "ADMIN", expected: false },
+      { key: "write:watch-events", role: "ADMIN", expected: true },
       { key: "delete:media-assets", role: "ADMIN", expected: true },
       { key: "publish:experiences", role: "ADMIN", expected: true },
       { key: "system:trigger-workflow", role: "ADMIN", expected: true },
@@ -129,12 +234,14 @@ describe("hasPermission — tier-based gate", () => {
 
       // SYSTEM is workflow-only — never satisfies editorial gates.
       { key: "read:experiences", role: "SYSTEM", expected: false },
+      { key: "read:video-mapper-catalog", role: "SYSTEM", expected: false },
       { key: "write:experiences", role: "SYSTEM", expected: false },
       { key: "read:media-assets", role: "SYSTEM", expected: false },
       { key: "write:media-assets", role: "SYSTEM", expected: false },
       { key: "access:manager", role: "SYSTEM", expected: false },
       { key: "read:manager-read-models", role: "SYSTEM", expected: false },
       { key: "write:manager-jobs", role: "SYSTEM", expected: false },
+      { key: "write:watch-events", role: "SYSTEM", expected: false },
       { key: "system:write-derived", role: "SYSTEM", expected: true },
       { key: "system:trigger-workflow", role: "SYSTEM", expected: false },
     ]
@@ -159,6 +266,43 @@ describe("hasPermission — Manager membership gate", () => {
     expect(hasPermission(ADMIN, "access:manager")).toBe(false)
     expect(hasPermission(MANAGER_OPERATOR_ADMIN, "access:manager")).toBe(true)
   })
+
+  it("does not grant operator panel access to reviewer memberships", () => {
+    expect(hasPermission(MANAGER_REVIEWER_VIEWER, "access:manager")).toBe(false)
+  })
+
+  // REVIEWER is the one narrow principal without its own exhaustive walk.
+  // Asserting the single `access:manager` key above would still pass if a
+  // future edit routed some other permission off `managerRole` — this pins the
+  // real invariant: a REVIEWER membership grants NOTHING beyond the editorial
+  // role the principal already had.
+  it.each([
+    ["VIEWER", "VIEWER"],
+    ["EDITOR", "EDITOR"],
+    ["ADMIN", "ADMIN"],
+  ] as const)(
+    "grants a %s reviewer membership nothing beyond its editorial role",
+    (_label, role) => {
+      const withMembership: Principal = {
+        id: "reviewer-1",
+        role,
+        managerRole: "REVIEWER",
+      }
+      const withoutMembership: Principal = { id: "reviewer-1", role }
+
+      // Both sides of the comparison below come from the function under test,
+      // so a globally-false `hasPermission` would satisfy it. Anchor on a
+      // grant the reference principal must have before comparing.
+      expect(hasPermission(withoutMembership, "read:experiences")).toBe(true)
+
+      for (const key of ALL_PERMISSION_KEYS) {
+        expect(
+          hasPermission(withMembership, key),
+          `reviewer membership changed the ${role} grant for ${key}`,
+        ).toBe(hasPermission(withoutMembership, key))
+      }
+    },
+  )
 })
 
 describe("hasPermission — Manager backend bearer gate", () => {
@@ -169,9 +313,81 @@ describe("hasPermission — Manager backend bearer gate", () => {
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-jobs")).toBe(
       true,
     )
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "read:manager-subtitle-eval"),
+    ).toBe(true)
+    expect(
+      hasPermission(MANAGER_BACKEND_PRINCIPAL, "write:manager-subtitle-eval"),
+    ).toBe(true)
     expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, "access:manager")).toBe(
       false,
     )
+  })
+})
+
+describe("hasPermission — Web user bearer gate", () => {
+  const WEB_USER_GRANTS: ReadonlySet<PermissionKey> = new Set([
+    "write:watch-events",
+    // feat-322: TV device-grant tokens introspect as WEB_USER, so the
+    // own-data progress scopes are granted here too (subject comes from the
+    // verified token, never from arguments — own rows only).
+    "read:watch-progress:own",
+    "write:watch-progress:own",
+    "delete:watch-progress:own",
+  ])
+
+  it("grants exactly the watch-event write and the three own-data scopes", () => {
+    // Exhaustive walk, matching MOBILE_USER's: an assertion list that only
+    // names the granted keys pins the NARROWING direction and says nothing
+    // about widening — the direction that actually matters when a future key
+    // is added to WEB_USER_PERMISSIONS.
+    for (const key of ALL_PERMISSION_KEYS) {
+      expect(hasPermission(WEB_USER, key)).toBe(WEB_USER_GRANTS.has(key))
+    }
+  })
+
+  it("shares the own-data scopes with MOBILE_USER but keeps its own event write", () => {
+    // The two user principals are no longer disjoint (they were before
+    // feat-322); this pins WHERE they overlap and where they still differ.
+    expect(hasPermission(WEB_USER, "write:watch-events")).toBe(true)
+    expect(
+      hasPermission(
+        { id: "m", role: "MOBILE_USER", rateLimitBucketKey: "m" },
+        "write:watch-events",
+      ),
+    ).toBe(false)
+  })
+})
+
+describe("hasPermission — Mobile user gate", () => {
+  const MOBILE_USER: Principal = {
+    id: "auth-user-2",
+    role: "MOBILE_USER",
+    rateLimitBucketKey: "auth-user-2",
+  }
+
+  const MOBILE_USER_GRANTS: ReadonlySet<PermissionKey> = new Set([
+    "read:watch-progress:own",
+    "write:watch-progress:own",
+    "delete:watch-progress:own",
+  ])
+
+  it("grants exactly the three own-data watch-progress scopes", () => {
+    for (const key of ALL_PERMISSION_KEYS) {
+      expect(hasPermission(MOBILE_USER, key)).toBe(MOBILE_USER_GRANTS.has(key))
+    }
+  })
+
+  it("carries no watch-EVENT write — the analytics log stays WEB_USER-only in v1", () => {
+    expect(hasPermission(MOBILE_USER, "write:watch-events")).toBe(false)
+  })
+
+  it("ADMIN retains the own-data keys as operational override", () => {
+    expect(hasPermission(ADMIN, "read:watch-progress:own")).toBe(true)
+    expect(hasPermission(ADMIN, "write:watch-progress:own")).toBe(true)
+    expect(hasPermission(ADMIN, "delete:watch-progress:own")).toBe(true)
+    expect(hasPermission(VIEWER, "read:watch-progress:own")).toBe(false)
+    expect(hasPermission(PUBLIC_USER, "read:watch-progress:own")).toBe(false)
   })
 })
 
@@ -396,6 +612,7 @@ describe("permission matrix completeness", () => {
       "read:experiences",
       "read:videos",
       "read:video-metadata",
+      "read:video-mapper-catalog",
       "read:reference",
       "read:media-assets",
       "access:manager",
@@ -403,11 +620,15 @@ describe("permission matrix completeness", () => {
       "write:experiences",
       "write:videos",
       "write:media-assets",
-      "write:scene-embeddings",
       "write:transcript-embeddings",
       "write:experience-embeddings",
+      "write:watch-events",
+      "read:watch-progress:own",
+      "write:watch-progress:own",
+      "delete:watch-progress:own",
       "write:manager-enrichment-trigger",
       "write:manager-jobs",
+      "write:push-campaigns",
       "delete:media-assets",
       "publish:experiences",
       "archive:experiences",
@@ -421,6 +642,19 @@ describe("permission matrix completeness", () => {
         expect(() => hasPermission(p, key)).not.toThrow()
       }
     }
+  })
+
+  it("write:push-campaigns is granted from the viewer tier up (R28)", () => {
+    expect(hasPermission(VIEWER, "write:push-campaigns")).toBe(true)
+    expect(hasPermission(EDITOR_ALICE, "write:push-campaigns")).toBe(true)
+    expect(hasPermission(ADMIN, "write:push-campaigns")).toBe(true)
+  })
+
+  it("write:push-campaigns reaches no anonymous or service caller", () => {
+    expect(hasPermission(PUBLIC_USER, "write:push-campaigns")).toBe(false)
+    expect(hasPermission(null, "write:push-campaigns")).toBe(false)
+    expect(hasPermission(SYSTEM, "write:push-campaigns")).toBe(false)
+    expect(hasPermission(WEB_USER, "write:push-campaigns")).toBe(false)
   })
 
   it("write:manager-enrichment-trigger is ADMIN-only at the editorial-tier ladder", () => {
@@ -441,9 +675,9 @@ describe("permission matrix completeness", () => {
 
   it("write:experience-embeddings is ADMIN-only", () => {
     // Admin-native experience-embedding backfill. Mirrors the
-    // write:scene-embeddings / write:transcript-embeddings tier gates
-    // so a regression that widens the key (e.g. flips to EDITOR) fails
-    // loudly here and not just at the mutation boundary.
+    // write:transcript-embeddings tier gate so a regression that widens
+    // the key (e.g. flips to EDITOR) fails loudly here and not just at
+    // the mutation boundary.
     expect(hasPermission(ADMIN, "write:experience-embeddings")).toBe(true)
     expect(hasPermission(EDITOR_ALICE, "write:experience-embeddings")).toBe(
       false,
@@ -458,9 +692,8 @@ describe("permission matrix completeness", () => {
   })
 
   it("write:transcript-embeddings is ADMIN-only", () => {
-    // Mirror the existing write:scene-embeddings tier gate so a
-    // regression that widens the key (e.g. flips to EDITOR) fails
-    // loudly here and not just at the mutation boundary.
+    // A regression that widens the key (e.g. flips to EDITOR) should
+    // fail loudly here and not just at the mutation boundary.
     expect(hasPermission(ADMIN, "write:transcript-embeddings")).toBe(true)
     expect(hasPermission(EDITOR_ALICE, "write:transcript-embeddings")).toBe(
       false,
@@ -489,12 +722,6 @@ describe("permission matrix completeness", () => {
       role: "WORKFLOW_TRIGGER",
     }
 
-    it("satisfies write:scene-embeddings", () => {
-      expect(hasPermission(WORKFLOW_TRIGGER, "write:scene-embeddings")).toBe(
-        true,
-      )
-    })
-
     it("satisfies write:transcript-embeddings", () => {
       expect(
         hasPermission(WORKFLOW_TRIGGER, "write:transcript-embeddings"),
@@ -517,6 +744,12 @@ describe("permission matrix completeness", () => {
       expect(hasPermission(WORKFLOW_TRIGGER, "read:video-metadata")).toBe(true)
     })
 
+    it("does NOT satisfy read:video-mapper-catalog", () => {
+      expect(hasPermission(WORKFLOW_TRIGGER, "read:video-mapper-catalog")).toBe(
+        false,
+      )
+    })
+
     it("does NOT satisfy any permission key outside the narrow allowlist", () => {
       // Iterate every PermissionKey via TypeScript's exhaustive Record
       // pattern so adding a new key without explicitly deciding
@@ -525,36 +758,12 @@ describe("permission matrix completeness", () => {
       // key is added to WORKFLOW_TRIGGER_PERMISSIONS without updating
       // the allowedKeys list.
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
-        "write:scene-embeddings",
         "write:transcript-embeddings",
         "write:manager-enrichment-trigger",
         "write:experience-embeddings",
         "read:video-metadata",
       ])
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:scene-embeddings": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         const expected = allowedKeys.has(key)
         expect(hasPermission(WORKFLOW_TRIGGER, key)).toBe(expected)
       }
@@ -565,34 +774,33 @@ describe("permission matrix completeness", () => {
     it("satisfies only Manager backend contract permissions", () => {
       const allowedKeys: ReadonlySet<PermissionKey> = new Set([
         "read:manager-read-models",
+        "read:manager-seo",
+        "read:manager-seo-audit-detail",
+        "read:manager-subtitle-eval",
+        "read:manager-watch-route-alerts",
         "write:manager-jobs",
+        "write:manager-subtitle-eval",
       ])
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:scene-embeddings": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         const expected = allowedKeys.has(key)
         expect(hasPermission(MANAGER_BACKEND_PRINCIPAL, key)).toBe(expected)
+      }
+    })
+  })
+
+  describe("VIDEO_MAPPER (service-account, catalog sync)", () => {
+    const VIDEO_MAPPER: Principal = {
+      id: null,
+      role: "VIDEO_MAPPER",
+    }
+
+    it("satisfies only read:video-mapper-catalog", () => {
+      const allowedKeys: ReadonlySet<PermissionKey> = new Set([
+        "read:video-mapper-catalog",
+      ])
+      for (const key of ALL_PERMISSION_KEYS) {
+        const expected = allowedKeys.has(key)
+        expect(hasPermission(VIDEO_MAPPER, key)).toBe(expected)
       }
     })
   })
@@ -615,31 +823,8 @@ describe("permission matrix completeness", () => {
       // Adding a new PermissionKey forces a compile error here AND a
       // test failure unless explicitly added to the registry. The
       // Record exhaustiveness check pairs with the runtime walk.
-      const allKeys: Record<PermissionKey, true> = {
-        "read:experiences": true,
-        "read:videos": true,
-        "read:video-metadata": true,
-        "read:reference": true,
-        "read:media-assets": true,
-        "access:manager": true,
-        "read:manager-read-models": true,
-        "write:experiences": true,
-        "write:videos": true,
-        "write:media-assets": true,
-        "write:scene-embeddings": true,
-        "write:transcript-embeddings": true,
-        "write:experience-embeddings": true,
-        "write:manager-enrichment-trigger": true,
-        "write:manager-jobs": true,
-        "delete:media-assets": true,
-        "publish:experiences": true,
-        "archive:experiences": true,
-        "system:trigger-workflow": true,
-        "system:write-derived": true,
-        "admin:all": true,
-      }
       const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      for (const key of Object.keys(allKeys) as PermissionKey[]) {
+      for (const key of ALL_PERMISSION_KEYS) {
         expect(hasPermission(bearer, key)).toBe(false)
       }
     })
@@ -663,7 +848,6 @@ describe("permission matrix completeness", () => {
       // WORKFLOW_TRIGGER — the two principal types share the bearer
       // surface but not the permission surface).
       const bearer = CONSUMER_BEARER_PRINCIPAL({ rateLimitBucketKey: "any" })
-      expect(hasPermission(bearer, "write:scene-embeddings")).toBe(false)
       expect(hasPermission(bearer, "write:transcript-embeddings")).toBe(false)
       expect(hasPermission(bearer, "write:manager-enrichment-trigger")).toBe(
         false,
@@ -679,11 +863,6 @@ describe("permission matrix completeness", () => {
       // mint WORKFLOW_TRIGGER (permission widening). The distinct
       // env vars are the load-bearing boundary.
       //
-      // `search-bearer.ts` itself no longer reads any env CSV after
-      // Plan 003 (partner-key store PR3) — it only composes the
-      // partner / consumer / workflow validators. The regression
-      // guard for that file is that it doesn't ACCIDENTALLY reach
-      // back into env vars.
       const { readFile } = await import("node:fs/promises")
       const { fileURLToPath } = await import("node:url")
       const consumerSource = await readFile(
@@ -694,23 +873,19 @@ describe("permission matrix completeness", () => {
         fileURLToPath(new URL("./workflow-bearer.ts", import.meta.url)),
         "utf8",
       )
-      const searchSource = await readFile(
-        fileURLToPath(new URL("./search-bearer.ts", import.meta.url)),
+      const videoMapperSource = await readFile(
+        fileURLToPath(new URL("./video-mapper-bearer.ts", import.meta.url)),
         "utf8",
       )
       // Each narrow file references its own env var…
       expect(consumerSource).toMatch(/env\.WEB_ADMIN_API_KEYS/)
       expect(workflowSource).toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(videoMapperSource).toMatch(/env\.VIDEO_MAPPER_ADMIN_API_KEYS/)
       // …and NOT the others'.
       expect(consumerSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
       expect(workflowSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      // The composer reads NO env CSV directly — it only imports the
-      // narrow validators + verifyPartnerToken. Source MUST NOT
-      // reference env CSV names; a regression that re-introduced a
-      // direct env read would slip the cross-CSV isolation boundary.
-      expect(searchSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
-      expect(searchSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
-      expect(searchSource).not.toMatch(/env\.SEARCH_API_KEYS/)
+      expect(videoMapperSource).not.toMatch(/env\.WORKFLOW_API_KEYS/)
+      expect(videoMapperSource).not.toMatch(/env\.WEB_ADMIN_API_KEYS/)
     })
   })
 })

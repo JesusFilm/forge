@@ -13,7 +13,6 @@ import {
   Search,
   type LucideIcon,
 } from "lucide-react"
-import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import {
   getTranscriptionRoutingReport,
   getUnresolvedElevenLabsFailureReason,
@@ -23,12 +22,15 @@ import { formatStepName } from "@/lib/workflow-steps"
 import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
 import type {
   JobRecord,
+  MastraStepCorrelation,
   MuxSyncComparison,
   RequestedTranscriptionProvider,
   StepStatus,
+  SubtitleValidationStepSummary,
   TranscriptionRoutingReport,
   WorkflowStepName,
 } from "@/types/job"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
@@ -40,11 +42,6 @@ import {
   type LiveJobsDetailRealtimeController,
 } from "./live-jobs-realtime"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
-import {
-  hasSceneEmbeddingSyncIssue,
-  SceneEmbeddingSyncInlineDetails,
-  shouldExpandSceneEmbeddingSyncByDefault,
-} from "./scene-embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
 import { CollapsibleStepRow } from "./collapsible-step-row"
 
@@ -54,7 +51,9 @@ type LiveJobStepsTableProps = {
   onJobUpdate?: (job: JobRecord) => void
 }
 
-const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail) —
+// single source of truth for step description copy.
+export const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   download_video: "Fetches source media and validates job inputs.",
   transcription: "Generates a timestamped transcript from the source audio.",
   structured_transcript:
@@ -65,7 +64,8 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   metadata: "Extracts summary, tags, and structured content metadata.",
   embeddings: "Creates semantic vectors for search and retrieval.",
   translation: "Translates transcript content into target languages.",
-  audio_cleanup: "Prepares original and cleaned audio for manager review.",
+  audio_cleanup:
+    "Cleans source audio before transcription and stores review artifacts.",
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
   mux_upload: "Publishes translated subtitle tracks to Mux when needed.",
@@ -74,9 +74,27 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   seo_improvements:
     "Future SEO optimization phase. No SEO actions run in this version.",
   cms_notify: "Notifies downstream CMS integrations of completion.",
+  smart_crop_fingerprint:
+    "Builds the visual fingerprint (shot boundaries + perceptual hashes).",
+  smart_crop_plan: "Generates the AI canonical 9:16 crop plan per shot batch.",
+  smart_crop_align:
+    "Aligns localized shots to the canonical fingerprint with confidence gates.",
+  smart_crop_preview_render:
+    "Renders a sampled 9:16 preview through the crop worker.",
+  smart_crop_qa: "Runs AI review over the rendered preview frames.",
+  smart_crop_render: "Renders the full 9:16 output through the crop worker.",
+  smart_crop_mux_output: "Creates the Mux output asset from the rendered file.",
+  shorts_prepare:
+    "Trims the source clip and generates whisper word captions via the shorts worker.",
+  shorts_render: "Renders the 1080x1920 short through the shorts worker.",
+  shorts_mux_output: "Creates the Mux output asset from the rendered short.",
 }
 
-function formatDuration(startedAt?: string, finishedAt?: string): string {
+// Exported for reuse by other job UIs (shorts steps table, detail header).
+export function formatDuration(
+  startedAt?: string,
+  finishedAt?: string,
+): string {
   if (!startedAt || !finishedAt) {
     return "–"
   }
@@ -164,6 +182,218 @@ function getTranslationFailureSummary(
   return `${translationFailures.length} target${
     translationFailures.length === 1 ? "" : "s"
   } failed during translation.`
+}
+
+function getMastraInlineSummary(
+  mastra: MastraStepCorrelation | undefined,
+): string | null {
+  if (!mastra) {
+    return null
+  }
+
+  return mastra.status
+    ? `Mastra run ${mastra.runId} (${mastra.status}).`
+    : `Mastra run ${mastra.runId}.`
+}
+
+function getSubtitleValidationInlineSummary(
+  validation: SubtitleValidationStepSummary | undefined,
+): string | null {
+  if (!validation || validation.languagesChecked === 0) {
+    return null
+  }
+
+  if (validation.needsReviewCount > 0) {
+    return `${validation.needsReviewCount} scripture validation finding${
+      validation.needsReviewCount === 1 ? "" : "s"
+    } need review.`
+  }
+
+  if (validation.warningCount > 0) {
+    return `${validation.warningCount} scripture validation warning${
+      validation.warningCount === 1 ? "" : "s"
+    }.`
+  }
+
+  if (validation.unavailableLanguages.length > 0) {
+    return `Scripture validation unavailable for ${validation.unavailableLanguages.join(", ")}.`
+  }
+
+  if (validation.modelOnlyLanguages.length > 0) {
+    return `Scripture validation passed with model knowledge for ${validation.modelOnlyLanguages.join(", ")}.`
+  }
+
+  return "Scripture validation passed."
+}
+
+function SubtitleValidationInlineDetails({
+  validation,
+}: {
+  validation: SubtitleValidationStepSummary
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">Subtitle scripture validation</p>
+      <ul className="jobs-step-detail-list">
+        {validation.results.map((result) => (
+          <li
+            key={`subtitle-validation-${result.lang}`}
+            className="jobs-step-detail-item"
+          >
+            <strong>{result.lang}</strong>
+            {`: ${result.verdict} (${result.basis}, confidence ${Math.round(
+              result.confidence * 100,
+            )}%)`}
+            {result.fallbackReason
+              ? `; fallback ${result.fallbackReason}`
+              : null}
+            {result.unavailableReason
+              ? `; unavailable ${result.unavailableReason}`
+              : null}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function getTranscriptCorrectionInlineSummary(
+  correction: TranscriptScriptureCorrectionStepSummary | undefined,
+): { text: string; needsAttention: boolean } | null {
+  if (!correction) return null
+
+  if (correction.status === "unavailable") {
+    return {
+      text: `Transcript correction unavailable${
+        correction.unavailableReason ? `: ${correction.unavailableReason}` : ""
+      }.`,
+      needsAttention: true,
+    }
+  }
+
+  if (correction.appliedCount > 0) {
+    return {
+      text: `${correction.appliedCount} source correction${
+        correction.appliedCount === 1 ? "" : "s"
+      } applied${
+        correction.flaggedCount > 0
+          ? `; ${correction.flaggedCount} flagged`
+          : ""
+      }.`,
+      needsAttention: correction.flaggedCount > 0,
+    }
+  }
+
+  if (correction.flaggedCount > 0) {
+    return {
+      text: `${correction.flaggedCount} transcript correction finding${
+        correction.flaggedCount === 1 ? "" : "s"
+      } need review.`,
+      needsAttention: true,
+    }
+  }
+
+  return {
+    text:
+      correction.status === "skipped"
+        ? "No source scripture correction applied."
+        : "Transcript correction reviewed.",
+    needsAttention: false,
+  }
+}
+
+function TranscriptCorrectionInlineDetails({
+  correction,
+}: {
+  correction: TranscriptScriptureCorrectionStepSummary
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">
+        Source transcript scripture correction
+      </p>
+      <ul className="jobs-step-detail-list">
+        <li className="jobs-step-detail-item">
+          <strong>Status</strong>
+          {`: ${correction.status} (${correction.basis}, confidence ${Math.round(
+            correction.confidence * 100,
+          )}%)`}
+        </li>
+        {correction.unavailableReason ? (
+          <li className="jobs-step-detail-item">
+            <strong>Unavailable</strong>: {correction.unavailableReason}
+          </li>
+        ) : null}
+        {correction.skippedReason ? (
+          <li className="jobs-step-detail-item">
+            <strong>Skipped</strong>: {correction.skippedReason}
+          </li>
+        ) : null}
+        {correction.findings.map((finding) => (
+          <li
+            key={`${finding.action}-${finding.segmentIndex}-${finding.originalText}`}
+            className="jobs-step-detail-item"
+          >
+            <strong>
+              {finding.action === "applied" ? "Applied" : "Flagged"} segment{" "}
+              {finding.segmentIndex}
+            </strong>
+            {`: ${finding.originalText}`}
+            {finding.correctedText ? ` -> ${finding.correctedText}` : ""}
+            {finding.reference ? ` (${finding.reference})` : ""}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function MastraStepInlineDetails({
+  mastra,
+}: {
+  mastra: MastraStepCorrelation
+}) {
+  const rows = [
+    { label: "Run ID", value: mastra.runId },
+    { label: "Status", value: mastra.status },
+    { label: "Reason", value: mastra.reason },
+    {
+      label: "Retryable",
+      value:
+        mastra.retryable === undefined ? undefined : String(mastra.retryable),
+    },
+    { label: "Provider", value: mastra.provider },
+    { label: "Model", value: mastra.model },
+    {
+      label: "Chunks",
+      value: mastra.chunks === undefined ? undefined : String(mastra.chunks),
+    },
+    {
+      label: "Total tokens",
+      value:
+        mastra.totalTokens === undefined
+          ? undefined
+          : String(mastra.totalTokens),
+    },
+    { label: "Source hash", value: mastra.sourceContentHash },
+    {
+      label: "Languages",
+      value: mastra.languages?.length ? mastra.languages.join(", ") : undefined,
+    },
+  ].filter((row): row is { label: string; value: string } => Boolean(row.value))
+
+  return (
+    <>
+      <p className="jobs-step-detail-summary">Mastra run diagnostics</p>
+      <ul className="jobs-step-detail-list">
+        {rows.map((row) => (
+          <li key={row.label} className="jobs-step-detail-item">
+            <strong>{row.label}</strong>: {row.value}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
 }
 
 function getMuxSyncInlineSummary(
@@ -312,7 +542,8 @@ function TranscriptionRoutingInlineDetails({
   )
 }
 
-function StepStatusGlyph({ status }: { status: StepStatus }) {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail).
+export function StepStatusGlyph({ status }: { status: StepStatus }) {
   if (status === "completed") {
     return (
       <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -392,21 +623,13 @@ export function LiveJobStepsTable({
     createInitialLiveJobsRealtimeSnapshot(initialJob),
   )
   const job = realtimeSnapshot.state
-  const sceneEmbeddingSyncReport = useMemo(
-    () => getSceneEmbeddingSyncReport(job.artifacts),
-    [job.artifacts],
-  )
   const transcriptionRoutingReport = useMemo(
     () => getTranscriptionRoutingReport(job.artifacts),
     [job.artifacts],
   )
   const [expandedSteps, setExpandedSteps] = useState<
     Partial<Record<WorkflowStepName, boolean>>
-  >(() => ({
-    embeddings: shouldExpandSceneEmbeddingSyncByDefault(
-      getSceneEmbeddingSyncReport(initialJob.artifacts),
-    ),
-  }))
+  >({})
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
   )
@@ -491,17 +714,6 @@ export function LiveJobStepsTable({
     },
     [onJobUpdate],
   )
-
-  useEffect(() => {
-    if (shouldExpandSceneEmbeddingSyncByDefault(sceneEmbeddingSyncReport)) {
-      setExpandedSteps((current) => ({ ...current, embeddings: true }))
-      return
-    }
-
-    if (!hasSceneEmbeddingSyncIssue(sceneEmbeddingSyncReport)) {
-      setExpandedSteps((current) => ({ ...current, embeddings: false }))
-    }
-  }, [sceneEmbeddingSyncReport])
 
   const handleToggleStep = useCallback((stepName: WorkflowStepName) => {
     setExpandedSteps((current) => ({
@@ -674,13 +886,31 @@ export function LiveJobStepsTable({
                     "ElevenLabs transcription did not complete successfully.")
                   : null)
               const translationFailures = getTranslationFailureDetails(step)
-              const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
-                sceneEmbeddingSyncReport,
-              )
+              const mastraCorrelation =
+                step.name === "translation" ||
+                step.name === "embeddings" ||
+                step.name === "structured_transcript"
+                  ? step.details?.mastra
+                  : undefined
+              const subtitleValidation =
+                step.name === "translation"
+                  ? step.details?.subtitleValidation
+                  : undefined
+              const transcriptCorrection =
+                step.name === "structured_transcript"
+                  ? step.details?.transcriptCorrection
+                  : undefined
+              const hasMastraDetails = mastraCorrelation != null
               const hasEmbeddingDetails =
-                step.name === "embeddings" && hasSceneEmbeddingDetails
+                step.name === "embeddings" && hasMastraDetails
               const hasTranslationDetails =
-                step.name === "translation" && translationFailures.length > 0
+                step.name === "translation" &&
+                (translationFailures.length > 0 ||
+                  hasMastraDetails ||
+                  subtitleValidation != null)
+              const hasStructuredTranscriptDetails =
+                step.name === "structured_transcript" &&
+                (transcriptCorrection != null || hasMastraDetails)
               const hasTranscriptionDetails =
                 step.name === "transcription" &&
                 (transcriptionRoutingReport != null || rerunError != null)
@@ -690,6 +920,11 @@ export function LiveJobStepsTable({
               const isExpanded = expandedSteps[step.name] ?? false
               const translationFailureSummary =
                 getTranslationFailureSummary(translationFailures)
+              const mastraSummary = getMastraInlineSummary(mastraCorrelation)
+              const subtitleValidationSummary =
+                getSubtitleValidationInlineSummary(subtitleValidation)
+              const transcriptCorrectionSummary =
+                getTranscriptCorrectionInlineSummary(transcriptCorrection)
               const transcriptionSummary =
                 transcriptionRoutingReport != null
                   ? `Final provider: ${
@@ -711,40 +946,101 @@ export function LiveJobStepsTable({
               let detailRowClassName: string | undefined
 
               if (hasEmbeddingDetails) {
-                inlineSummary = hasSceneEmbeddingDetails ? (
-                  <span className="jobs-step-inline-summary-text">
-                    Scene sync needs attention.
+                inlineSummary = mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
                   </span>
                 ) : null
-                detailContent = <SceneEmbeddingSyncInlineDetails job={job} />
+                detailContent = (
+                  <>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                  </>
+                )
                 detailRowClassName = "jobs-embedding-sync-detail-row"
+              } else if (hasStructuredTranscriptDetails) {
+                inlineSummary = transcriptCorrectionSummary ? (
+                  <span
+                    className={
+                      transcriptCorrectionSummary.needsAttention
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {transcriptCorrectionSummary.text}
+                  </span>
+                ) : mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                    {transcriptCorrection ? (
+                      <TranscriptCorrectionInlineDetails
+                        correction={transcriptCorrection}
+                      />
+                    ) : null}
+                  </>
+                )
               } else if (hasTranslationDetails) {
                 inlineSummary = translationFailureSummary ? (
                   <span className="jobs-step-inline-summary-note">
                     {translationFailureSummary}
                   </span>
+                ) : subtitleValidationSummary ? (
+                  <span
+                    className={
+                      subtitleValidation?.highestVerdict === "needs_review" ||
+                      subtitleValidation?.highestVerdict === "warning"
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {subtitleValidationSummary}
+                  </span>
+                ) : mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
+                  </span>
                 ) : null
                 detailContent = (
                   <>
-                    <p className="jobs-step-detail-summary">
-                      {translationFailureSummary}
-                    </p>
-                    <ul className="jobs-step-detail-list">
-                      {translationFailures.map((failure) => (
-                        <li
-                          key={`${step.name}-${failure.lang}`}
-                          className="jobs-step-detail-item"
-                          title={
-                            failure.error
-                              ? `${failure.lang}: ${failure.error}`
-                              : failure.lang
-                          }
-                        >
-                          <strong>{failure.lang}</strong>
-                          {failure.error ? `: ${failure.error}` : null}
-                        </li>
-                      ))}
-                    </ul>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                    {subtitleValidation ? (
+                      <SubtitleValidationInlineDetails
+                        validation={subtitleValidation}
+                      />
+                    ) : null}
+                    {translationFailureSummary ? (
+                      <>
+                        <p className="jobs-step-detail-summary">
+                          {translationFailureSummary}
+                        </p>
+                        <ul className="jobs-step-detail-list">
+                          {translationFailures.map((failure) => (
+                            <li
+                              key={`${step.name}-${failure.lang}`}
+                              className="jobs-step-detail-item"
+                              title={
+                                failure.error
+                                  ? `${failure.lang}: ${failure.error}`
+                                  : failure.lang
+                              }
+                            >
+                              <strong>{failure.lang}</strong>
+                              {failure.error ? `: ${failure.error}` : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : null}
                   </>
                 )
               } else if (hasTranscriptionDetails) {

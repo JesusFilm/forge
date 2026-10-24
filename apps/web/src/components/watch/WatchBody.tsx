@@ -4,26 +4,54 @@ import { DownloadButton } from "@/components/watch/DownloadButton"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
+// Some editorial content (e.g. Darkroom Faith) bakes "1. " / "2) " into the
+// question text, which renders next to the row's own question icon as a
+// doubled marker. A leading number can also be real content ("2. Mose 3:14" is
+// Exodus in German), so only strip when the list is visibly hand-numbered: the
+// ordinals found, in order, run exactly 1, 2, 3... with at least two of them.
+// Anything else is left untouched (fail safe: a stray marker beats lost text).
+// Known residual: a list whose only leading numbers are "1. Mose" then "2. Mose"
+// reads as numbered; accepted as vanishingly unlikely next to the real case.
+const LEADING_ORDINAL = /^\s*(\d{1,2})[.)]\s+/
+
+export function stripBakedQuestionNumbering(values: string[]): string[] {
+  const ordinals = values
+    .map((v) => LEADING_ORDINAL.exec(v)?.[1])
+    .filter((n): n is string => n !== undefined)
+    .map(Number)
+  const isNumberedList =
+    ordinals.length >= 2 && ordinals.every((n, i) => n === i + 1)
+  if (!isNumberedList) return values
+  return values.map((v) => v.replace(LEADING_ORDINAL, "").trim())
+}
+
 export function WatchBody({
   block,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending = false,
   studyQuestions,
   onDownloadClick,
+  optimisticTitle,
 }: {
   block: WatchBodyBlock
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   studyQuestions: WatchStudyQuestionsBlock | null
   onDownloadClick: () => void
+  optimisticTitle?: string | null
 }) {
   const { video, variant } = block
+  const visualTitle = optimisticTitle ?? video.title ?? ""
   const hasDownloads = (variant.downloads ?? []).length > 0
-  const prompts = (studyQuestions?.studyQuestions ?? [])
-    .map((q) => q.value)
-    .filter((v): v is string => v != null && v.length > 0)
+  const prompts = stripBakedQuestionNumbering(
+    (studyQuestions?.studyQuestions ?? [])
+      .map((q) => q.value)
+      .filter((v): v is string => v != null),
+  ).filter((v) => v.length > 0)
 
   // The right column (Related Questions + Ask Yours CTA) always renders.
   // When there are no editorial prompts, WatchStudyQuestions falls back to
@@ -39,11 +67,13 @@ export function WatchBody({
         data-testid="watch-body-left"
         className="col-span-1 flex min-w-0 flex-col gap-4 md:col-span-7"
       >
-        {/* Keep Download grouped with the title, but stack it below the title on
-            mobile so the title can use the full content rail. */}
+        {/* Keep Download beside and top-aligned with the title by default so
+            both column actions share one visual row. On landscape phones,
+            stack the CTA below so long localized titles can use the full
+            column width and the action stays anchored to its heading. */}
         <div
           data-testid="watch-body-title-row"
-          className="flex flex-col items-start gap-3 md:flex-row md:justify-between md:gap-4"
+          className="flex flex-nowrap items-start justify-between gap-3 [@media(max-width:1023px)_and_(orientation:landscape)]:flex-col"
         >
           {/* The HeroPlayer overlay already renders the canonical <h1> for
               this video. The body title repeats that text for visual
@@ -51,20 +81,24 @@ export function WatchBody({
               one <h1> per page (WCAG 1.3.1). Visual styling is unchanged. */}
           <h2
             data-testid="watch-body-title"
-            className="min-w-0 text-3xl font-bold text-stone-100 md:text-4xl xl:text-5xl"
+            className="min-w-0 flex-1 text-lg leading-[1.08] font-semibold text-stone-100 [@media(max-width:1023px)_and_(orientation:landscape)]:w-full sm:text-[27px] md:text-4xl xl:text-5xl"
           >
-            {video.title ?? ""}
+            {visualTitle}
           </h2>
           {hasDownloads ? (
-            <div className="flex shrink-0 flex-col items-start gap-2 md:items-end">
+            <div
+              data-testid="watch-download-group"
+              className="ml-auto flex shrink-0 flex-col items-end gap-2 [@media(max-width:1023px)_and_(orientation:landscape)]:ml-0 [@media(max-width:1023px)_and_(orientation:landscape)]:items-start"
+            >
               <DownloadButton
+                href={downloadHref}
                 label={downloadButtonLabel}
                 onClick={onDownloadClick}
                 pending={downloadPending}
               />
               {downloadError ? (
                 <p
-                  className="max-w-64 text-sm leading-snug font-semibold text-red-200"
+                  className="max-w-64 text-base sm:text-sm leading-snug font-semibold text-red-200"
                   data-testid="watch-download-error"
                   role="alert"
                 >
@@ -77,7 +111,7 @@ export function WatchBody({
         {video.description ? (
           <p
             data-testid="watch-body-description"
-            className="text-base leading-relaxed text-stone-200/80 md:mt-6 md:text-lg"
+            className="text-base leading-relaxed font-normal text-stone-200/80 md:mt-6 md:text-lg"
           >
             {video.description}
           </p>

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto"
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { env } from "../../config/env"
+import { env, getOpenRouterApiKey } from "../../config/env"
 import { isValidServiceBearer } from "../../server/service-bearer"
 import {
   callAdminCandidateStore,
@@ -303,7 +303,7 @@ function generatorFor(
   if (options.generator) return options.generator
   if (options.generatorFactory) return options.generatorFactory()
   return createEvalQueryGenerator({
-    apiKey: env.OPENROUTER_API_KEY,
+    apiKey: getOpenRouterApiKey(),
     model: env.EVAL_QUERY_GENERATION_MODEL,
     timeoutMs: options.timeoutMs,
     fetchImpl: options.fetchImpl,

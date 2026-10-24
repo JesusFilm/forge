@@ -39,4 +39,4 @@
 export {
   SAFE_DOWNLOAD_EXTENSIONS,
   isAllowedDownloadOrigin,
-} from "@forge/watch-url-policy"
+} from "@forge/watch-url-policy/download"

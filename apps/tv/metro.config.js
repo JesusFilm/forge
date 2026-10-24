@@ -24,9 +24,8 @@ config.resolver.nodeModulesPaths = [
 // Apollo Client v4 can ship .cjs; ensure Metro resolves them
 config.resolver.sourceExts.push("cjs")
 
-// In a pnpm monorepo Metro can follow symlinks into .pnpm and resolve a
-// different copy of react from another workspace package.
-// Force every import of these packages to the single copy this app owns.
+// pnpm symlinks let Metro resolve a duplicate react from another workspace pkg;
+// force every import to the single copy this app owns.
 // Note: react-native resolves to react-native-tvos via the npm alias.
 const singletonPkgs = {
   react: path.resolve(projectRoot, "node_modules/react"),

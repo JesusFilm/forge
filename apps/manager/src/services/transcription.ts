@@ -14,7 +14,7 @@ import {
   getMux,
   type MuxPlaybackPolicy,
 } from "@/services/mux"
-import { writeArtifact } from "@/services/storage"
+import { readArtifact, writeArtifact } from "@/services/storage"
 import { parseVTT, segmentsToVTT, type TranscriptSegment } from "@/lib/vtt"
 import type {
   RequestedTranscriptionProvider,
@@ -42,6 +42,12 @@ export type TranscriptionResult = {
 }
 
 type RawTranscriptionResult = Omit<TranscriptionResult, "artifactKeys">
+
+export type CleanedAudioTranscriptionSource = {
+  assetId: string
+  artifactType: "cleaned-audio"
+  ext: "mp3"
+}
 
 export class TranscriptionExecutionError extends Error {
   routingReport: TranscriptionRoutingReport
@@ -352,6 +358,7 @@ export async function transcribe(
   options?: {
     requestedProvider?: RequestedTranscriptionProvider
     sourceInputUrl?: string
+    cleanedAudioArtifact?: CleanedAudioTranscriptionSource
     keyterms?: string[]
     priorRoutingReport?: TranscriptionRoutingReport
   },
@@ -588,6 +595,7 @@ async function resolveTranscriptionResult(
   options?: {
     requestedProvider?: RequestedTranscriptionProvider
     sourceInputUrl?: string
+    cleanedAudioArtifact?: CleanedAudioTranscriptionSource
     keyterms?: string[]
     priorRoutingReport?: TranscriptionRoutingReport
   },
@@ -596,6 +604,10 @@ async function resolveTranscriptionResult(
   const sourceLanguageCode = normalizeSourceLanguageCode(language)
   const sourceInputUrl =
     options?.sourceInputUrl ?? options?.priorRoutingReport?.sourceInputUrl
+  const cleanedAudioArtifact = options?.cleanedAudioArtifact
+  const hasElevenLabsMediaInput = Boolean(
+    sourceInputUrl || cleanedAudioArtifact,
+  )
   const baseReport: TranscriptionRoutingReport = {
     ...(options?.priorRoutingReport ??
       buildInitialTranscriptionRoutingReport(
@@ -649,7 +661,7 @@ async function resolveTranscriptionResult(
     return runMuxDirectly("Operator explicitly requested Mux transcription.")
   }
 
-  if (!sourceInputUrl) {
+  if (!hasElevenLabsMediaInput) {
     if (requestedProvider === "elevenlabs") {
       failAttemptWithRoutingReport(baseReport, {
         requestedProvider,
@@ -658,7 +670,7 @@ async function resolveTranscriptionResult(
         decisionReason:
           "Operator explicitly requested ElevenLabs transcription.",
         message:
-          "ElevenLabs transcription requires a persisted source input URL.",
+          "ElevenLabs transcription requires a persisted source input URL or cleaned audio artifact.",
       })
     }
 
@@ -705,15 +717,33 @@ async function resolveTranscriptionResult(
     requestedProvider,
     resolvedProvider: "elevenlabs",
     sourceLanguageCode,
-    decisionReason:
-      requestedProvider === "automatic"
+    decisionReason: cleanedAudioArtifact
+      ? requestedProvider === "automatic"
+        ? "Automatic routing chose ElevenLabs for the resolved source language using cleaned audio from audio_cleanup."
+        : "Operator explicitly requested ElevenLabs transcription using cleaned audio from audio_cleanup."
+      : requestedProvider === "automatic"
         ? "Automatic routing chose ElevenLabs for the resolved source language."
         : "Operator explicitly requested ElevenLabs transcription.",
   })
 
   try {
+    const isolatedAudio = cleanedAudioArtifact
+      ? new Blob(
+          [
+            Buffer.from(
+              await readArtifact(
+                cleanedAudioArtifact.assetId,
+                cleanedAudioArtifact.artifactType,
+                cleanedAudioArtifact.ext,
+              ),
+            ),
+          ],
+          { type: "audio/mpeg" },
+        )
+      : undefined
     const elevenlabsResult = await transcribeViaElevenLabs({
-      sourceUrl: sourceInputUrl,
+      ...(sourceInputUrl ? { sourceUrl: sourceInputUrl } : {}),
+      ...(isolatedAudio ? { isolatedAudio } : {}),
       languageCode: sourceLanguageCode,
       keyterms: options?.keyterms,
     })

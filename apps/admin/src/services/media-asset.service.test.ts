@@ -4,10 +4,15 @@ import {
   MediaAssetService,
   mediaAssetDownloadUrl,
   mediaAssetPreviewUrl,
+  publicMediaAssetPreviewUrl,
 } from "./media-asset.service"
 
 function mockPrisma() {
-  return {
+  const client = {
+    shortAssetVersion: {
+      findMany: vi.fn().mockResolvedValue([]),
+      findFirst: vi.fn().mockResolvedValue(null),
+    },
     mediaAsset: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
@@ -28,8 +33,16 @@ function mockPrisma() {
     experienceLocale: {
       findMany: vi.fn(),
     },
+    videoLocale: {
+      findMany: vi.fn().mockResolvedValue([]),
+      count: vi.fn().mockResolvedValue(0),
+    },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
+  client.$transaction = vi.fn(
+    async (operation: (tx: typeof client) => unknown) => operation(client),
+  )
+  return client
 }
 
 const ADMIN: Principal = { id: "admin-1", role: "ADMIN" }
@@ -230,6 +243,31 @@ describe("MediaAssetService", () => {
       })
     })
 
+    it("blocks leaving public-ready while a video locale references the asset", async () => {
+      prisma.videoLocale.count.mockResolvedValueOnce(1)
+
+      await expect(
+        service.update({
+          input: { id: "asset-1", visibility: "PRIVATE" },
+          user: ADMIN,
+        }),
+      ).rejects.toThrow("Clear or replace every video")
+
+      expect(prisma.mediaAsset.update).not.toHaveBeenCalled()
+    })
+
+    it("allows leaving public-ready after video locale references are cleared", async () => {
+      prisma.videoLocale.count.mockResolvedValueOnce(0)
+      prisma.mediaAsset.update.mockResolvedValueOnce({ id: "asset-1" })
+
+      await expect(
+        service.update({
+          input: { id: "asset-1", status: "FAILED" },
+          user: ADMIN,
+        }),
+      ).resolves.toEqual({ id: "asset-1" })
+    })
+
     it("rejects unsafe storage object keys on update", async () => {
       await expect(
         service.update({
@@ -376,6 +414,42 @@ describe("MediaAssetService", () => {
         }),
       ).toBe("https://image.mux.com/playback-1/thumbnail.jpg")
     })
+
+    it("returns absolute public app routes for public ready assets", () => {
+      expect(
+        publicMediaAssetPreviewUrl(
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PUBLIC",
+            objectKey: "media-assets/asset-1/original/hero.webp",
+            previewObjectKey: null,
+            muxPlaybackId: null,
+          },
+          "https://admin.example.test/dashboard",
+        ),
+      ).toBe(
+        "https://admin.example.test/api/public/media-assets/asset-1/preview",
+      )
+    })
+
+    it("does not return public routes for private or missing assets", () => {
+      expect(
+        publicMediaAssetPreviewUrl(
+          {
+            id: "asset-1",
+            backend: "S3",
+            status: "READY",
+            visibility: "PRIVATE",
+            objectKey: "media-assets/asset-1/original/hero.webp",
+            previewObjectKey: null,
+            muxPlaybackId: null,
+          },
+          "https://admin.example.test",
+        ),
+      ).toBeNull()
+    })
   })
 
   describe("usage", () => {
@@ -396,19 +470,20 @@ describe("MediaAssetService", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },
       ])
+      prisma.videoLocale.findMany.mockResolvedValueOnce([])
 
       const result = await service.usage({ id: "asset-1", user: EDITOR })
 
       expect(result).toEqual([
         expect.objectContaining({
-          experienceLocaleId: "loc-1",
-          fieldPath: "$.blocks[0].imageUrl",
+          resourceLocaleId: "loc-1",
+          fieldPath: "$.blocks[0].mediaUrl",
           match: "object-key",
         }),
       ])
@@ -431,6 +506,7 @@ describe("MediaAssetService", () => {
         muxPlaybackId: null,
       })
       prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      prisma.videoLocale.findMany.mockResolvedValueOnce([])
       prisma.mediaAsset.delete.mockResolvedValueOnce({ id: "asset-1" })
 
       const result = await service.delete({ id: "asset-1", user: ADMIN })
@@ -458,10 +534,38 @@ describe("MediaAssetService", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
+        },
+      ])
+      prisma.videoLocale.findMany.mockResolvedValueOnce([])
+
+      await expect(
+        service.delete({ id: "asset-1", user: ADMIN }),
+      ).rejects.toThrow("still used")
+      expect(prisma.mediaAsset.delete).not.toHaveBeenCalled()
+    })
+
+    it("refuses to delete an asset referenced by a recoverable video locale", async () => {
+      prisma.mediaAsset.findFirst.mockResolvedValueOnce({
+        id: "asset-1",
+        backend: "LOCAL",
+        objectKey: "media-assets/asset-1/original/hero.webp",
+        previewObjectKey: null,
+        muxPlaybackId: null,
+      })
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      prisma.videoLocale.findMany.mockResolvedValueOnce([
+        {
+          id: "video-locale-1",
+          videoId: "video-1",
+          locale: "en",
+          title: "JESUS",
+          socialImageAssetId: "asset-1",
+          deletedAt: new Date("2026-01-01T00:00:00Z"),
+          video: { slug: "jesus", deletedAt: null },
         },
       ])
 

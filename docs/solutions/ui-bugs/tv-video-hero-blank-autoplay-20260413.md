@@ -13,7 +13,7 @@ symptoms:
 root_cause: wrong_api
 resolution_type: code_fix
 severity: high
-last_updated: "2026-04-20"
+last_updated: "2026-06-09"
 tags:
   - expo-video
   - mux
@@ -124,6 +124,8 @@ useEffect(() => {
 
 Falls back to static `Image` when no valid stream, solid color when no image.
 
+> **Looping caution (tvOS):** `p.loop = true` works but is not seamless on tvOS — the native loop re-buffers the HLS seek-to-start, and if the `VideoView` is gated on a readiness flag that resets on the loop seam's transient status blip, the hero re-inits and pauses on black before restarting. For a background that must loop seamlessly, drive the loop yourself (`p.loop = false` + a `playToEnd` listener calling `player.replay()`, with the readiness gate latched so a loop-seam blip never unmounts the player). See [`docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop-20260609.md`](../runtime-errors/expo-video-backdrop-seamless-loop-20260609.md).
+
 ### Fix 4 — `LinearGradient` with `hexToRgba`
 
 **Before:**
@@ -174,6 +176,7 @@ The pattern: poster-hold during HLS init. Always paint a base `<Image>` poster b
 ## Related Issues
 
 - `docs/solutions/best-practices/tv-focus-driven-hero-patterns-20260420.md` — extends this doc with the runtime source-swap poster-hold pattern and the focus model for a rail-driven hero
+- `docs/solutions/runtime-errors/expo-video-backdrop-seamless-loop-20260609.md` — why `p.loop = true` (Fix 3) is unreliable for seamless looping on tvOS, and the `playToEnd` -> `replay()` + latched-readiness fix for a backdrop that must loop without a black pause
 - `docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md` — same `hexToRgba` pattern, now also applied in TV app
 - `docs/solutions/mobile/full-bleed-video-hero-with-scroll-over-content.md` — mobile-v2 hero pattern; TV simplifies by removing scroll layer
 - `docs/solutions/best-practices/expo-tv-platform-setup-sdui-monorepo-20260410.md` — TV platform setup; should add tvOS autoplay pattern

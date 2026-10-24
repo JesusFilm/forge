@@ -16,6 +16,13 @@ import {
 
 type VideosByCoreIdsBody = {
   coreIds?: unknown
+  targetLocale?: unknown
+  items?: unknown
+}
+
+type LookupItem = {
+  coreId: string
+  targetLocale: string | null
 }
 
 function unauthorized(): Response {
@@ -34,17 +41,16 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  if (
-    !Array.isArray(body.coreIds) ||
-    !body.coreIds.every((coreId) => typeof coreId === "string")
-  ) {
+  const parsedItems = parseLookupItems(body)
+  if (!parsedItems.ok) {
     return Response.json(
-      { error: "Validation failed", details: "coreIds must be string[]" },
+      { error: "Validation failed", details: parsedItems.details },
       { status: 400 },
     )
   }
 
-  if (body.coreIds.length > VIDEOS_BY_CORE_IDS_MAX) {
+  const items = parsedItems.items
+  if (items.length > VIDEOS_BY_CORE_IDS_MAX) {
     return Response.json(
       {
         error: "Validation failed",
@@ -56,11 +62,9 @@ export async function POST(request: Request): Promise<Response> {
 
   const startedAt = Date.now()
   try {
-    const videos = await createServices(prisma).video.getByCoreIds({
-      coreIds: body.coreIds,
-    })
+    const videos = await loadVideosByLocaleGroups(items)
     console.warn(
-      `[videosByCoreIds] event=rest_lookup.complete coreIdCount=${body.coreIds.length} rowCount=${videos.length} durationMs=${Date.now() - startedAt}`,
+      `[videosByCoreIds] event=rest_lookup.complete coreIdCount=${items.length} rowCount=${videos.length} durationMs=${Date.now() - startedAt}`,
     )
     return Response.json({ videos }, { status: 200 })
   } catch (error) {
@@ -69,7 +73,7 @@ export async function POST(request: Request): Promise<Response> {
     const errorCode =
       typeof maybeCode === "string" ? ` errorCode=${maybeCode}` : ""
     console.warn(
-      `[videosByCoreIds] event=rest_lookup.failed coreIdCount=${body.coreIds.length} durationMs=${Date.now() - startedAt} errorName=${errorName}${errorCode}`,
+      `[videosByCoreIds] event=rest_lookup.failed coreIdCount=${items.length} durationMs=${Date.now() - startedAt} errorName=${errorName}${errorCode}`,
     )
 
     if (error instanceof VideoLookupValidationError) {
@@ -92,4 +96,89 @@ export async function POST(request: Request): Promise<Response> {
 
 export async function GET(): Promise<Response> {
   return unauthorized()
+}
+
+function parseLookupItems(
+  body: VideosByCoreIdsBody,
+): { ok: true; items: LookupItem[] } | { ok: false; details: string } {
+  if (body.items !== undefined) {
+    if (!Array.isArray(body.items)) {
+      return { ok: false, details: "items must be an array" }
+    }
+    const items: LookupItem[] = []
+    for (const item of body.items) {
+      if (typeof item !== "object" || item === null) {
+        return { ok: false, details: "items entries must be objects" }
+      }
+      const row = item as Record<string, unknown>
+      if (typeof row.coreId !== "string") {
+        return { ok: false, details: "items[].coreId must be a string" }
+      }
+      const targetLocale = normalizeTargetLocale(row.targetLocale)
+      if (targetLocale === false) {
+        return {
+          ok: false,
+          details: "items[].targetLocale must be a non-empty string when set",
+        }
+      }
+      items.push({ coreId: row.coreId, targetLocale })
+    }
+    return { ok: true, items }
+  }
+
+  if (
+    !Array.isArray(body.coreIds) ||
+    !body.coreIds.every((coreId) => typeof coreId === "string")
+  ) {
+    return { ok: false, details: "coreIds must be string[]" }
+  }
+  const targetLocale = normalizeTargetLocale(body.targetLocale)
+  if (targetLocale === false) {
+    return {
+      ok: false,
+      details: "targetLocale must be a non-empty string when set",
+    }
+  }
+  return {
+    ok: true,
+    items: body.coreIds.map((coreId) => ({
+      coreId,
+      targetLocale,
+    })),
+  }
+}
+
+function normalizeTargetLocale(value: unknown): string | null | false {
+  if (value == null) return null
+  if (typeof value !== "string") return false
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized.toLowerCase() : false
+}
+
+async function loadVideosByLocaleGroups(items: readonly LookupItem[]) {
+  const service = createServices(prisma).video
+  const groups = new Map<
+    string,
+    { targetLocale: string | null; coreIds: string[] }
+  >()
+  for (const item of items) {
+    const key = item.targetLocale ?? ""
+    let group = groups.get(key)
+    if (!group) {
+      group = { targetLocale: item.targetLocale, coreIds: [] }
+      groups.set(key, group)
+    }
+    group.coreIds.push(item.coreId)
+  }
+
+  const videos: Awaited<ReturnType<typeof service.getByCoreIds>> = []
+  for (const group of groups.values()) {
+    videos.push(
+      ...(await service.getByCoreIds({
+        coreIds: group.coreIds,
+        targetLocale: group.targetLocale,
+      })),
+    )
+  }
+  return videos
 }

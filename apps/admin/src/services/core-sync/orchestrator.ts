@@ -9,6 +9,11 @@
 // Phase order: languages → countries → keywords → video-origins → videos → video-images → video-editions → video-subtitles → video-dubs → video-dub-downloads
 // Later phases resolve coreId → id maps from earlier ones.
 
+import { resolveWatchCatalogPublicationEnabled } from "@/config/env"
+import {
+  requestWatchCatalogPublication,
+  shouldRequestWatchCatalogPublication,
+} from "../watch-catalog-publication"
 import type { PrismaClient } from "@prisma/client"
 import {
   PHASE_ORDER,
@@ -16,9 +21,11 @@ import {
   type SyncStats,
   type ProgressReporter,
   type PhaseRunner,
+  type SyncPhaseProgress,
   emptySyncStats,
 } from "./types"
 import { acquireSyncLock, refreshSyncLock, releaseSyncLock } from "./lock"
+import { CoreGraphQLError } from "./core-client"
 import {
   getWatermark,
   advanceWatermark,
@@ -37,6 +44,7 @@ import { syncDubs } from "./phases/sync-dubs"
 import { syncDubDownloads } from "./phases/sync-dub-downloads"
 import { runCoverageAudit, type CoverageAudit } from "./coverage-audit"
 import { refreshWatchRouteManifestAfterCoreSync } from "../watch-route-manifest-refresh.service"
+import { refreshWatchSeoManifestAfterCoreSync } from "../watch-seo-manifest-refresh.service"
 
 const PHASE_RUNNERS: Record<SyncPhase, PhaseRunner> = {
   languages: syncLanguages,
@@ -65,7 +73,50 @@ const PHASE_TABLES: Record<SyncPhase, string[]> = {
   "video-dub-downloads": ["video_dub_download"],
 }
 
+// Phases that resolve parent rows written by an earlier phase and skip
+// (not fail) Core rows whose parent is missing — Core carries orphans for
+// unpublished videos, so those skips cannot count as errors (#1818). A
+// phase's watermark therefore must never pass its parent's: otherwise, while
+// the parent is failing, the child keeps advancing past rows it skipped and
+// an incremental run never re-reads them once the parent recovers.
+const PHASE_WATERMARK_PARENT: Partial<Record<SyncPhase, SyncPhase>> = {
+  "video-images": "videos",
+  "video-subtitles": "videos",
+  "video-dubs": "videos",
+  "video-dub-downloads": "video-dubs",
+}
+
+async function resolveWatermarkTarget(
+  prisma: PrismaClient,
+  phase: SyncPhase,
+  fetchStartedAt: string,
+): Promise<string | null> {
+  const parent = PHASE_WATERMARK_PARENT[phase]
+  if (!parent) return fetchStartedAt
+  const parentWatermark = await getWatermark(prisma, parent)
+  if (!parentWatermark) return null
+  return Date.parse(parentWatermark) < Date.parse(fetchStartedAt)
+    ? parentWatermark
+    : fetchStartedAt
+}
+
+function describePhaseError(err: unknown) {
+  return {
+    error: err instanceof Error ? err.message : String(err),
+    ...(err instanceof CoreGraphQLError
+      ? {
+          coreErrors: err.errors.map((detail) => ({
+            message: detail.message,
+            path: detail.path,
+            code: detail.extensions?.code,
+          })),
+        }
+      : {}),
+  }
+}
+
 const LOCK_HEARTBEAT_INTERVAL_MS = 60_000
+const PROGRESS_REPORT_INTERVAL_MS = 30_000
 
 export type PhaseResult = SyncStats & { phase: string; durationMs: number }
 
@@ -87,6 +138,16 @@ export type SyncRunContext = {
 export type SyncRunStart =
   | { skipped: true; result: SyncResult }
   | { skipped: false; run: SyncRunContext }
+
+export type RunSyncPhaseOptions = {
+  onProgress?: (progress: SyncPhaseProgress) => void
+}
+
+export type RunSyncOptions = {
+  scope?: string | string[]
+  incremental?: boolean
+  onProgress?: (progress: SyncPhaseProgress) => void
+}
 
 export function resolveScope(input?: string | string[]): SyncPhase[] {
   if (!input) return [...PHASE_ORDER]
@@ -147,6 +208,7 @@ export async function runSyncPhase(
   prisma: PrismaClient,
   run: SyncRunContext,
   phase: SyncPhase,
+  options: RunSyncPhaseOptions = {},
 ): Promise<PhaseResult> {
   const ownsLock = await refreshSyncLock(prisma, run.runId)
   if (!ownsLock) {
@@ -160,10 +222,11 @@ export async function runSyncPhase(
   heartbeat.unref?.()
 
   try {
-    const progress: ProgressReporter = {
-      setTotal: () => {},
-      increment: () => {},
-    }
+    const progress = createProgressReporter({
+      phase,
+      phaseStart,
+      onProgress: options.onProgress,
+    })
 
     let since: string | undefined
     if (run.incremental) {
@@ -183,17 +246,32 @@ export async function runSyncPhase(
         JSON.stringify({
           event: "core-sync.phase.error",
           phase,
-          error: err instanceof Error ? err.message : String(err),
+          ...describePhaseError(err),
           service: "forge-admin",
         }),
       )
       stats = { ...emptySyncStats, errors: 1 }
     }
 
-    // Advance watermark only on zero errors
-    if (stats.errors === 0) {
-      await advanceWatermark(prisma, phase, fetchStartedAt, stats)
+    // Advance watermark only on zero errors, and never past the parent's
+    const watermarkTarget =
+      stats.errors === 0
+        ? await resolveWatermarkTarget(prisma, phase, fetchStartedAt)
+        : null
+    if (watermarkTarget) {
+      await advanceWatermark(prisma, phase, watermarkTarget, stats)
     } else {
+      if (stats.errors === 0) {
+        console.warn(
+          JSON.stringify({
+            event: "core-sync.phase.watermark-held",
+            phase,
+            parent: PHASE_WATERMARK_PARENT[phase],
+            reason: "parent_never_synced",
+            service: "forge-admin",
+          }),
+        )
+      }
       await updateStatsOnly(prisma, phase, stats).catch(() => {})
     }
 
@@ -225,15 +303,72 @@ export async function runSyncPhase(
   }
 }
 
+function createProgressReporter({
+  phase,
+  phaseStart,
+  onProgress,
+}: {
+  phase: SyncPhase
+  phaseStart: number
+  onProgress?: (progress: SyncPhaseProgress) => void
+}): ProgressReporter {
+  let completed = 0
+  let total = 0
+  let lastReportedAt = 0
+  let hasReported = false
+
+  function report(force = false) {
+    if (!onProgress) return
+
+    const now = Date.now()
+    if (
+      !force &&
+      hasReported &&
+      now - lastReportedAt < PROGRESS_REPORT_INTERVAL_MS
+    ) {
+      return
+    }
+
+    hasReported = true
+    lastReportedAt = now
+    onProgress({
+      phase,
+      completed,
+      total,
+      elapsedMs: now - phaseStart,
+    })
+  }
+
+  return {
+    setTotal: (nextTotal) => {
+      total = Math.max(total, nextTotal)
+      report(!hasReported)
+    },
+    increment: (count = 1) => {
+      completed += count
+      report()
+    },
+  }
+}
+
 export async function finishSyncRun(
   prisma: PrismaClient,
   run: SyncRunContext,
   phases: PhaseResult[],
 ): Promise<SyncResult> {
-  await releaseSyncLock(prisma, run.runId).catch(() => {})
-
+  // Persist delivery intent while this import still owns the source-data lock.
+  try {
+    if (shouldRequestWatchCatalogPublication(phases)) {
+      await requestWatchCatalogPublication(prisma)
+    }
+  } finally {
+    await releaseSyncLock(prisma, run.runId).catch(() => {})
+  }
   const coverageAudit = await runCoverageAudit(prisma).catch(() => undefined)
-  await refreshWatchRouteManifestAfterCoreSync({ prisma, phases })
+  if (!resolveWatchCatalogPublicationEnabled()) {
+    await refreshWatchRouteManifestAfterCoreSync({ prisma, phases })
+    await refreshWatchSeoManifestAfterCoreSync({ prisma, phases })
+  }
 
   return {
     incremental: run.incremental,
@@ -252,7 +387,7 @@ export async function abortSyncRun(
 
 export async function runSync(
   prisma: PrismaClient,
-  options?: { scope?: string | string[]; incremental?: boolean },
+  options?: RunSyncOptions,
 ): Promise<SyncResult> {
   const start = await startSyncRun(prisma, options)
   if (start.skipped) return start.result
@@ -262,7 +397,11 @@ export async function runSync(
 
   try {
     for (const phase of start.run.phasesToRun) {
-      phases.push(await runSyncPhase(prisma, start.run, phase))
+      phases.push(
+        await runSyncPhase(prisma, start.run, phase, {
+          onProgress: options?.onProgress,
+        }),
+      )
     }
 
     const result = await finishSyncRun(prisma, start.run, phases)

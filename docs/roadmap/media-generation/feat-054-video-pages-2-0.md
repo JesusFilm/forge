@@ -21,7 +21,7 @@ tags:
 > - Migration plan for any production 3-segment `/watch/[collection]/[video]/[locale]` URLs that may have indexed/inbound traffic (constraint: "Preserve existing watch-page URLs or add a clear migration plan")
 > - Body-zone wrapper extraction from `Section.tsx` (extensibility — verification criterion 4)
 > - Hardcoded English strings in `WatchStudyQuestions` / `BibleQuotesSection` (CMS-driven copy)
-> - Video/Experience slug-collision precedence audit (CMS data review)
+> - Video/Experience slug-collision precedence audit — addressed in the route layer by `docs/plans/2026-06-11-002-fix-watch-video-precedence-plan.md`: two-segment Watch video/playlist URLs now win over same-slug Experiences.
 > - Resolver / route-level test coverage
 >
 > Ownership: ticket carries `vlad`; the PR contributor is urim. Coordinate before flipping `status: complete`.

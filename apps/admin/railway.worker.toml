@@ -1,0 +1,53 @@
+# Railway only reads this file if the dedicated @forge/admin worker service's
+# Config-as-code Path is set to apps/admin/railway.worker.toml. The traffic-
+# serving admin web service should keep using apps/admin/railway.toml.
+#
+# Set WORKFLOW_RUNNER_ENABLED=true on this worker service only. Leave it unset
+# or false on admin web replicas so web scaling does not also scale background
+# job runners.
+# EXPO_ACCESS_TOKEN belongs on this worker service only, never on admin web:
+# admin web refuses to boot with it injected. The build and pre-deploy commands
+# unset it because neither installs, compiles, nor migrates with sending
+# authority; only startCommand keeps it.
+# Keep WATCH_SEARCH_TRANSCRIPT_PUBLICATION_ENABLED=false until incremental
+# publication is ready to roll out. TYPESENSE_OPERATOR_API_KEY belongs on this
+# worker service only and must never be shared with admin web replicas.
+# Railway project variables can still inject the reader credentials into every
+# service. Remove them from every worker command before Admin loads its
+# fail-closed reader/operator disjointness check. The operator credential is a
+# runtime-only secret: dependency lifecycle scripts, the Next.js build, and
+# migrations do not need collection mutation authority. Clear the publication
+# flag with it outside the runtime command so build-time instrumentation stays
+# on the disabled path.
+#
+# Do not set NODE_OPTIONS=--require dd-trace/init as a global Railway variable:
+# service variables are present during Railpack/mise build setup, before
+# dependencies are installed. Keep the Datadog preload scoped to startCommand.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/admin/Dockerfile"
+watchPatterns = [
+  "/.nvmrc",
+  "/railpack.json",
+  "/scripts/update-security-ca.sh",
+  "/apps/admin/**",
+  "/packages/experience-schema/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/packages/studio-contracts/**",
+  "/packages/studio-server/**",
+  "/packages/watch-url-policy/**",
+  "/patches/**",
+  "/scripts/upload-datadog-sourcemaps.mjs",
+  "/turbo.json",
+]
+
+[deploy]
+preDeployCommand = "sh /app/apps/admin/predeploy-production.sh worker"
+startCommand = "sh /app/apps/admin/start-production.sh worker"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

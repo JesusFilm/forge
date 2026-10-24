@@ -109,11 +109,16 @@ When `Search failed` appears in the browser during local development,
 work through this diagnostic in order:
 
 1. Open admin's dev terminal.
-2. Scan recent output for `PothosSchemaError: Duplicate typename`.
-3. If found: `Ctrl-C` → `pnpm --filter @forge/admin dev`. Done.
-4. If not found: check that `ADMIN_GRAPHQL_URL=http://127.0.0.1:3003`
-   in `apps/web/.env.local` and that admin's `/api/health` returns
-   `200`.
+2. Scan recent output for a `PothosSchemaError`.
+3. If it reads `Duplicate typename`: `Ctrl-C` → `pnpm --filter @forge/admin dev`. Done.
+4. If it reads `Field '<x>' not found in model '<Model>'`: this is a
+   _stale generated Prisma client_ (not HMR) — run
+   `pnpm --filter @forge/admin exec prisma generate`, then restart. After a
+   pull that touched Prisma the local DB may also be behind its migrations;
+   see `docs/solutions/database-issues/admin-prisma-client-and-db-migration-drift-after-pull-20260603.md`.
+5. If there's no `PothosSchemaError`: check that
+   `ADMIN_GRAPHQL_URL=http://127.0.0.1:3003` in `apps/web/.env.local` and
+   that admin's `/api/health` returns `200`.
 
 **Eliminate the symptom at the source** — the admin owner can ship
 either of these (not yet implemented):
@@ -140,3 +145,8 @@ acceptable because schema edits are rare relative to other dev edits.
   Prevention guidance ("centralize in `reference.ts`") is correct for
   the static case but does not prevent this HMR variant — even a
   centralized shared module gets re-evaluated by HMR and re-registers.
+- `docs/solutions/database-issues/admin-prisma-client-and-db-migration-drift-after-pull-20260603.md`
+  — the _other_ `PothosSchemaError` variant in local admin dev:
+  `Field '<x>' not found in model '<Model>'`, caused by a stale generated
+  Prisma client (fixed by `prisma generate`, not a restart). Covered in
+  step 4 of the diagnostic above.

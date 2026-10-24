@@ -6,17 +6,38 @@ export const adminBibleQuotesCarouselFragment = adminGraphql(`
     t
     sectionKey
     heading
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
     quotes {
       reference
       text
       attribution
-      imageUrl
       imageAssetId
-      backgroundImageUrl
+      imageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       backgroundImageAssetId
+      backgroundImageAsset {
+        id
+        previewUrl
+        blurDataUrl
+        dominantColor
+        width
+        height
+      }
       backgroundColor
       ctaEnabled
       ctaLabel

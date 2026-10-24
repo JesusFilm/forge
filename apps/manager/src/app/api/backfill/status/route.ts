@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     {
       running: false,
       retired: true,
-      reason: "scene_embeddings_migrated_to_mastra",
+      reason: "legacy_scene_embedding_pipeline_removed",
     },
     { status: 410 },
   )

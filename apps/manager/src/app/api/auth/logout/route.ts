@@ -6,6 +6,7 @@ import {
   MANAGER_OAUTH_VERIFIER_COOKIE,
   MANAGER_SESSION_COOKIE,
 } from "@/lib/manager-session-cookie"
+import { getManagerBaseUrl } from "@/lib/oauth-client"
 
 export function POST() {
   const response = NextResponse.json({ success: true })
@@ -13,9 +14,9 @@ export function POST() {
   return response
 }
 
-export function GET(request: Request) {
+export function GET() {
   const response = NextResponse.redirect(
-    new URL("/api/auth/login?prompt=login", request.url),
+    new URL("/api/auth/login?prompt=login", getManagerBaseUrl()),
   )
   clearManagerSession(response)
   return response

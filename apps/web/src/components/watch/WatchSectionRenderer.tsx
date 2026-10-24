@@ -1,20 +1,29 @@
 "use client"
 
+import { Suspense } from "react"
+import dynamic from "next/dynamic"
+
 import type { MuxPlayerRef } from "@forge/video-player"
+import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
 
 import {
-  isWatchBlock,
   type MergedWatchBlock,
   type WatchBlock,
   type WatchStudyQuestionsBlock,
 } from "@/lib/content"
+import { isWatchBlock } from "@/lib/watch-blocks"
 import { ExperienceSectionRenderer } from "@/components/sections"
+import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
+import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
+import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
+import { DEFAULT_LOCALE } from "@/lib/locale"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 
 // Typo guard: literal-union typing fails the type check on misspellings.
@@ -26,28 +35,62 @@ import { isPlayableLanguageVariant } from "@/lib/playable-variant"
 // "cover" the hero during scroll. Demoting the carousel into the body zone
 // keeps it directly below the hero in normal flow, with the rest of the body
 // content (WatchBody, StudyQuestions, BibleQuotes, Share) following it.
+const WatchNextSteps = dynamic(() =>
+  import("@/components/watch/WatchNextSteps").then(
+    (module) => module.WatchNextSteps,
+  ),
+)
+
 const TOP_ZONE_KINDS: Set<WatchBlock["kind"]> = new Set(["HeroPlayer"])
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 export function WatchSectionRenderer({
+  audienceEnabled = false,
+  surfaceManifests,
   blocks,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending,
   modalCallbacks,
   onPlayerReady,
-  locale,
+  onPlayerActivated,
+  onPlayerViewabilityChange,
   languageSlug,
+  locale,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode,
+  shareHref,
   subtitleVttSrc,
+  hideBibleQuotes = false,
+  pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
+  onChapterNavigateIntent,
 }: {
+  audienceEnabled?: boolean
   blocks: MergedWatchBlock[]
+  surfaceManifests?: readonly (SignedWatchSurfaceManifest | null)[]
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  locale?: string
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   languageSlug?: string
+  locale?: string
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
+  shareHref?: string
   subtitleVttSrc?: string | null
+  hideBibleQuotes?: boolean
+  pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   // WatchBody owns both columns; the standalone StudyQuestions slot
   // renders as a hidden marker to avoid double-mounting.
@@ -70,20 +113,40 @@ export function WatchSectionRenderer({
   return (
     <>
       {topBlocks.map((block, index) => (
-        <WatchBlockEntry
+        <Suspense
           key={blockKey(block, index)}
-          block={block}
-          index={index}
-          downloadButtonLabel={downloadButtonLabel}
-          downloadError={downloadError}
-          downloadPending={downloadPending}
-          studyQuestionsBlock={studyQuestionsBlock}
-          modalCallbacks={modalCallbacks}
-          onPlayerReady={onPlayerReady}
-          locale={locale}
-          languageSlug={languageSlug}
-          subtitleVttSrc={subtitleVttSrc}
-        />
+          fallback={
+            <div className="relative flex h-[66svh] min-h-[320px] w-full items-center justify-center bg-black md:h-[min(100svh,56.25vw)]">
+              <WatchPlayerLoadingIndicator />
+            </div>
+          }
+        >
+          <WatchBlockEntry
+            block={block}
+            manifest={surfaceManifests?.[index] ?? undefined}
+            index={index}
+            downloadButtonLabel={downloadButtonLabel}
+            downloadError={downloadError}
+            downloadHref={downloadHref}
+            downloadPending={downloadPending}
+            studyQuestionsBlock={studyQuestionsBlock}
+            modalCallbacks={modalCallbacks}
+            onPlayerReady={onPlayerReady}
+            onPlayerActivated={onPlayerActivated}
+            onPlayerViewabilityChange={onPlayerViewabilityChange}
+            languageSlug={languageSlug}
+            locale={locale}
+            hasSubtitleOptions={hasSubtitleOptions}
+            subtitleLanguageCode={subtitleLanguageCode}
+            shareHref={shareHref}
+            subtitleVttSrc={subtitleVttSrc}
+            hideBibleQuotes={hideBibleQuotes}
+            pendingChapter={pendingChapter}
+            coverBlackoutKey={coverBlackoutKey}
+            coverBlackoutPhase={coverBlackoutPhase}
+            onChapterNavigateIntent={onChapterNavigateIntent}
+          />
+        </Suspense>
       ))}
       {bodyBlocks.length > 0 ? (
         <section
@@ -91,10 +154,8 @@ export function WatchSectionRenderer({
           className="relative w-full text-white"
         >
           <div
-            className="relative mx-auto w-full overflow-hidden backdrop-blur-2xl md:max-w-[1920px]"
-            style={{
-              backgroundColor: "rgb(var(--color-section-default) / 0.35)",
-            }}
+            data-testid="watch-body-backdrop"
+            className="watch-body-backdrop relative w-full overflow-visible backdrop-blur-2xl md:overflow-hidden"
           >
             <div
               data-testid="watch-body-texture"
@@ -106,20 +167,52 @@ export function WatchSectionRenderer({
               className={`relative z-2 flex flex-col items-stretch justify-center gap-6 pt-2 pb-16 ${WATCH_PAGE_CONTENT_CLASSES}`}
             >
               {bodyBlocks.map((block, index) => (
-                <WatchBlockEntry
+                <Suspense
                   key={blockKey(block, index + topBlocks.length)}
-                  block={block}
-                  index={index + topBlocks.length}
-                  downloadButtonLabel={downloadButtonLabel}
-                  downloadError={downloadError}
-                  downloadPending={downloadPending}
-                  studyQuestionsBlock={studyQuestionsBlock}
-                  modalCallbacks={modalCallbacks}
-                  onPlayerReady={onPlayerReady}
-                  locale={locale}
-                  languageSlug={languageSlug}
-                />
+                  fallback={null}
+                >
+                  <WatchBlockEntry
+                    block={block}
+                    manifest={
+                      surfaceManifests?.[index + topBlocks.length] ?? undefined
+                    }
+                    index={index + topBlocks.length}
+                    downloadButtonLabel={downloadButtonLabel}
+                    downloadError={downloadError}
+                    downloadHref={downloadHref}
+                    downloadPending={downloadPending}
+                    studyQuestionsBlock={studyQuestionsBlock}
+                    modalCallbacks={modalCallbacks}
+                    onPlayerReady={onPlayerReady}
+                    onPlayerActivated={onPlayerActivated}
+                    onPlayerViewabilityChange={onPlayerViewabilityChange}
+                    languageSlug={languageSlug}
+                    locale={locale}
+                    hasSubtitleOptions={hasSubtitleOptions}
+                    subtitleLanguageCode={subtitleLanguageCode}
+                    shareHref={shareHref}
+                    hideBibleQuotes={hideBibleQuotes}
+                    pendingChapter={pendingChapter}
+                    coverBlackoutKey={coverBlackoutKey}
+                    coverBlackoutPhase={coverBlackoutPhase}
+                    onChapterNavigateIntent={onChapterNavigateIntent}
+                  />
+                </Suspense>
               ))}
+              {audienceEnabled ? (
+                <WatchNextSteps
+                  languageSlug={languageSlug}
+                  locale={locale}
+                  currentVideoActions={{
+                    ...(modalCallbacks?.openShare
+                      ? { share: modalCallbacks.openShare }
+                      : {}),
+                    ...(modalCallbacks?.openDownload
+                      ? { download: modalCallbacks.openDownload }
+                      : {}),
+                  }}
+                />
+              ) : null}
             </div>
           </div>
         </section>
@@ -129,89 +222,215 @@ export function WatchSectionRenderer({
 }
 
 function WatchBlockEntry({
+  manifest,
   block,
   index,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
-  locale,
+  onPlayerActivated,
+  onPlayerViewabilityChange,
   languageSlug,
+  locale,
+  hasSubtitleOptions,
+  subtitleLanguageCode,
+  shareHref,
   subtitleVttSrc,
+  hideBibleQuotes,
+  pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
+  onChapterNavigateIntent,
 }: {
   block: MergedWatchBlock
+  manifest?: SignedWatchSurfaceManifest
   index: number
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  locale?: string
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   languageSlug?: string
+  locale?: string
+  hasSubtitleOptions: boolean
+  subtitleLanguageCode?: string | null
+  shareHref?: string
   subtitleVttSrc?: string | null
+  hideBibleQuotes: boolean
+  pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
   if (isWatchBlock(block)) {
+    if (block.kind === "SiblingCarousel") {
+      return (
+        <WatchExposureBoundary
+          manifest={manifest}
+          config={{
+            surface: "watch-video",
+            block: "chapters",
+            presentation: "carousel",
+            placement: `chapters-${index}`,
+          }}
+        >
+          <SyntheticBlock
+            block={block}
+            studyQuestionsBlock={studyQuestionsBlock}
+            languageSlug={languageSlug}
+            locale={locale}
+            hasSubtitleOptions={hasSubtitleOptions}
+            hideBibleQuotes={hideBibleQuotes}
+            pendingChapter={pendingChapter}
+            onChapterNavigateIntent={onChapterNavigateIntent}
+          />
+        </WatchExposureBoundary>
+      )
+    }
     return (
       <SyntheticBlock
         block={block}
         downloadButtonLabel={downloadButtonLabel}
         downloadError={downloadError}
+        downloadHref={downloadHref}
         downloadPending={downloadPending}
         studyQuestionsBlock={studyQuestionsBlock}
         modalCallbacks={modalCallbacks}
         onPlayerReady={onPlayerReady}
-        locale={locale}
+        onPlayerActivated={onPlayerActivated}
+        onPlayerViewabilityChange={onPlayerViewabilityChange}
         languageSlug={languageSlug}
+        locale={locale}
+        hasSubtitleOptions={hasSubtitleOptions}
+        subtitleLanguageCode={subtitleLanguageCode}
+        shareHref={shareHref}
         subtitleVttSrc={subtitleVttSrc}
+        hideBibleQuotes={hideBibleQuotes}
+        pendingChapter={pendingChapter}
+        coverBlackoutKey={coverBlackoutKey}
+        coverBlackoutPhase={coverBlackoutPhase}
+        onChapterNavigateIntent={onChapterNavigateIntent}
       />
     )
   }
-  return <ExperienceSectionRenderer section={block} key={`strapi-${index}`} />
+  return (
+    <WatchExposureBoundary
+      manifest={manifest}
+      config={{
+        surface: "watch-video",
+        block: "editorial",
+        presentation: "authored-block",
+        placement: `editorial-${index}`,
+      }}
+    >
+      <ExperienceSectionRenderer
+        section={block}
+        key={`strapi-${index}`}
+        languageSlug={languageSlug}
+      />
+    </WatchExposureBoundary>
+  )
 }
 
 function SyntheticBlock({
   block,
   downloadButtonLabel,
   downloadError,
+  downloadHref,
   downloadPending,
   studyQuestionsBlock,
   modalCallbacks,
   onPlayerReady,
-  locale,
+  onPlayerActivated,
+  onPlayerViewabilityChange,
   languageSlug,
+  locale,
+  hasSubtitleOptions,
+  subtitleLanguageCode,
+  shareHref,
   subtitleVttSrc,
+  hideBibleQuotes,
+  pendingChapter,
+  coverBlackoutKey,
+  coverBlackoutPhase,
+  onChapterNavigateIntent,
 }: {
   block: WatchBlock
   downloadButtonLabel?: string
   downloadError?: string | null
+  downloadHref?: string
   downloadPending?: boolean
   studyQuestionsBlock: WatchStudyQuestionsBlock | null
   modalCallbacks?: WatchModalCallbacks
   onPlayerReady?: (player: MuxPlayerRef | null) => void
-  locale?: string
+  onPlayerActivated?: (initiation: "manual" | "automatic") => void
+  onPlayerViewabilityChange?: (visible: boolean) => void
   languageSlug?: string
+  locale?: string
+  hasSubtitleOptions: boolean
+  subtitleLanguageCode?: string | null
+  shareHref?: string
   subtitleVttSrc?: string | null
+  hideBibleQuotes: boolean
+  pendingChapter?: WatchChapterNavigationIntent | null
+  coverBlackoutKey?: string | null
+  coverBlackoutPhase?: "covering" | "revealing" | null
+  onChapterNavigateIntent?: (intent: WatchChapterNavigationIntent) => void
 }) {
+  const optimisticVisual =
+    pendingChapter != null
+      ? {
+          title: pendingChapter.title,
+          label: pendingChapter.label,
+          posterUrl: pendingChapter.posterUrl,
+          posterBlurDataUrl: pendingChapter.posterBlurDataUrl ?? null,
+          loading: true,
+          transitionKey: pendingChapter.targetVideoDocumentId,
+        }
+      : null
+
   switch (block.kind) {
     case "HeroPlayer": {
-      const playableLanguageCount = (block.video.variants ?? []).filter(
-        isPlayableLanguageVariant,
-      ).length
+      const playableLanguageCount =
+        block.playableLanguageCount ??
+        (block.video.variants ?? []).filter(isPlayableLanguageVariant).length
       return (
         <HeroPlayer
           block={block}
           onPlayerReady={onPlayerReady}
+          onPlayerActivated={onPlayerActivated}
+          onPlayerViewabilityChange={onPlayerViewabilityChange}
           onLanguageClick={modalCallbacks?.openLanguage}
+          onCancelLanguageOpen={modalCallbacks?.cancelPendingLanguage}
+          onShareClick={modalCallbacks?.openShare}
+          languageSlug={languageSlug ?? null}
           playableLanguageCount={playableLanguageCount}
+          hasSubtitleOptions={hasSubtitleOptions}
+          subtitleLanguageCode={subtitleLanguageCode}
           subtitleVttSrc={subtitleVttSrc}
+          optimisticVisual={optimisticVisual}
+          coverBlackoutKey={coverBlackoutKey}
+          coverBlackoutPhase={coverBlackoutPhase}
         />
       )
     }
     case "SiblingCarousel":
-      return <SiblingCarousel block={block} languageSlug={languageSlug ?? ""} />
+      return (
+        <SiblingCarousel
+          block={block}
+          languageSlug={languageSlug ?? ""}
+          pendingNavigation={pendingChapter ?? null}
+          onChapterNavigateIntent={onChapterNavigateIntent}
+        />
+      )
 
     case "WatchBody":
       return (
@@ -219,9 +438,20 @@ function SyntheticBlock({
           block={block}
           downloadButtonLabel={downloadButtonLabel}
           downloadError={downloadError}
+          downloadHref={downloadHref}
           downloadPending={downloadPending}
           studyQuestions={studyQuestionsBlock}
           onDownloadClick={modalCallbacks?.openDownload ?? noop}
+          optimisticTitle={pendingChapter?.title ?? null}
+        />
+      )
+    case "SemanticRecommendations":
+      return (
+        <WatchSemanticRecommendations
+          seedMediaId={block.seedMediaId}
+          seedMediaSlug={block.seedMediaSlug}
+          locale={locale ?? DEFAULT_LOCALE}
+          audioLanguageSlug={languageSlug ?? DEFAULT_WATCH_LANGUAGE_SLUG}
         />
       )
     case "StudyQuestions":
@@ -238,12 +468,13 @@ function SyntheticBlock({
         />
       )
     case "BibleQuotes":
+      if (hideBibleQuotes) return null
       return (
         <BibleQuotesSection
           bibleCitations={block.bibleCitations}
+          href={shareHref}
           onShareClick={modalCallbacks?.openShare ?? noop}
-          locale={locale}
-          youVersionPassages={block.youVersionPassages}
+          passages={block.passages}
         />
       )
     case "Share":

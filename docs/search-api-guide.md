@@ -1,6 +1,6 @@
 # Semantic Search API — Agent Integration Guide
 
-The JesusFilm Semantic Search API lets AI agents find video content by meaning, not just keywords. It combines vector similarity over scene-level embeddings with PostgreSQL full-text search, merged via Reciprocal Rank Fusion (RRF). Results include scene-level timestamps, themes, bible verses, and Mux playback IDs for deep-linking.
+The JesusFilm Semantic Search API lets AI agents find video content by meaning, not just keywords. It combines vector similarity over scene-level embeddings with PostgreSQL full-text search, merged via Reciprocal Rank Fusion (RRF). Results include video-level display metadata plus optional scene timestamps and Mux playback IDs for deep-linking.
 
 ## Endpoints
 
@@ -70,7 +70,7 @@ Both endpoints are public — no authentication required.
       "slug": "easter-explained",
       "title": "Easter Explained",
       "imageUrl": "https://imagedelivery.net/.../f=jpg,w=1280,h=600,q=95",
-      "snippet": "Themes: new life, awe, meaning.\nBible verses: 2 Corinthians 5:17, Revelation 21:5, John 3:3-7.\nContent: The speaker observes how Easter symbols like bunnies, eggs, and spring flowers represent new life...",
+      "snippet": "A short video explaining the meaning of Easter and the hope of new life.",
       "startSeconds": 0,
       "playbackId": "x3XKV1Yi01z7dyF6f8ZLBMNrHtNWS02iHoQw6vIcf4hBw",
       "score": 0.488
@@ -91,9 +91,9 @@ Both endpoints are public — no authentication required.
 | `slug`         | string                         | URL-safe identifier for linking.                                                                                                                                                                                                                                                             |
 | `title`        | string                         | Display title.                                                                                                                                                                                                                                                                               |
 | `imageUrl`     | string or null                 | Thumbnail URL. Null when no image is available.                                                                                                                                                                                                                                              |
-| `snippet`      | string                         | For video results: scene-level description with themes, bible verses, content summary, tone, and demographics. For experience results: meta description.                                                                                                                                     |
+| `snippet`      | string                         | For video results: localized video description or snippet for display. For experience results: meta description.                                                                                                                                                                             |
 | `startSeconds` | number or null                 | Scene timestamp in seconds. Null for experience results and keyword-only video matches with no scene-level data. Use this to deep-link into a video at the matching moment.                                                                                                                  |
-| `playbackId`   | string or null                 | Mux playback ID. Null for experiences and keyword-only matches. Use to construct thumbnail URLs or playback URLs via Mux.                                                                                                                                                                    |
+| `playbackId`   | string or null                 | Mux playback ID. Null for experiences or when no playable Mux-backed dub is available. Use to construct thumbnail URLs or playback URLs via Mux.                                                                                                                                             |
 | `score`        | number (0-1)                   | RRF-normalized relevance score. Higher is better. Scores are relative within a result set, not absolute.                                                                                                                                                                                     |
 | `hasMore`      | boolean                        | True when more results exist beyond the current page.                                                                                                                                                                                                                                        |
 | `searchMode`   | `"hybrid"` or `"keyword-only"` | Which retrieval paths contributed. `"hybrid"` means semantic + keyword both ran (normal operation). `"keyword-only"` means the embedding service was unavailable and results are from keyword matching only — thematic and felt-need queries will return poor or empty results in this mode. |
@@ -168,7 +168,7 @@ GET /api/search?q=hope&locale=en&limit=10&offset=10
 When `searchMode` is `"keyword-only"`, the embedding service is temporarily unavailable. The API still returns results, but:
 
 - Thematic/felt-need queries may return empty or irrelevant results
-- Scene-level data (`startSeconds`, `playbackId`, rich snippets) will be absent
+- Scene-level match timestamps (`startSeconds`) will be absent
 - Only title/description keyword matches contribute to ranking
 
 Agents should check `searchMode` and adjust behavior accordingly — e.g., fall back to broader keyword queries, or surface a notice that semantic search is temporarily limited.

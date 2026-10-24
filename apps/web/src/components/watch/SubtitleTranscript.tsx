@@ -1,12 +1,19 @@
 "use client"
 
 import {
-  useCallback,
+  lazy,
+  Suspense,
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
+  type MouseEvent as ReactMouseEvent,
   type RefObject,
+  type ReactNode,
 } from "react"
+import { ChevronDown } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 import type { MuxPlayerRef } from "@forge/video-player"
@@ -14,140 +21,83 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import type { WatchSubtitle } from "@/lib/content"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
+import { isolateLanguageName } from "@/lib/language-display"
+import {
+  filterTranscriptSubtitlesForAudio,
+  formatCompactTranscript,
+  pickInitialSubtitleSlug,
+  type InitialSubtitleTranscript,
+  type SubtitleCue,
+} from "@/lib/subtitle-transcript"
 
-type Cue = { start: number; end: number; text: string }
+import { NativeLanguageName } from "./NativeLanguageName"
 
-const TIMING_RE =
-  /(?:(\d+):)?(\d+):(\d+)[.,](\d+)\s*-->\s*(?:(\d+):)?(\d+):(\d+)[.,](\d+)/
+type InteractiveTranscriptModule =
+  typeof import("./InteractiveSubtitleTranscript")
 
-function toSeconds(
-  h: string | undefined,
-  m: string,
-  s: string,
-  ms: string,
-): number {
-  const hours = h ? parseInt(h, 10) : 0
-  return (
-    hours * 3600 +
-    parseInt(m, 10) * 60 +
-    parseInt(s, 10) +
-    parseInt(ms.padEnd(3, "0").slice(0, 3), 10) / 1000
-  )
+let interactiveTranscriptModulePromise: Promise<InteractiveTranscriptModule> | null =
+  null
+
+function loadInteractiveTranscriptModule(): Promise<InteractiveTranscriptModule> {
+  interactiveTranscriptModulePromise ??=
+    import("./InteractiveSubtitleTranscript").catch((error: unknown) => {
+      interactiveTranscriptModulePromise = null
+      throw error
+    })
+  return interactiveTranscriptModulePromise
 }
 
-// Entity map. Single-pass replace so a literal `&amp;lt;` in source
-// decodes to `&lt;` (not `<`). Decoding `&amp;` last in a chained
-// `.replace()` would double-unescape that case — see CodeQL js/double-escaping.
-const HTML_ENTITY_MAP: Record<string, string> = {
-  "&amp;": "&",
-  "&lt;": "<",
-  "&gt;": ">",
-  "&quot;": '"',
-  "&#39;": "'",
-  "&nbsp;": " ",
-}
-const HTML_ENTITY_RE = /&(?:amp|lt|gt|quot|#39|nbsp);/g
-
-function decodeEntities(text: string): string {
-  return text.replace(HTML_ENTITY_RE, (m) => HTML_ENTITY_MAP[m] ?? m)
-}
-
-// Strip VTT/HTML-ish tags. Iterate until the string stabilises so nested
-// or overlapping payloads (e.g. `<scr<script>ipt>`) can't survive a single
-// pass — see CodeQL js/incomplete-multi-character-sanitization. Output
-// still flows into a React text node, so the regex is defense-in-depth
-// over auto-escaped JSX rather than the primary safety boundary.
-function stripTags(text: string): string {
-  let prev = ""
-  let cur = text
-  while (cur !== prev) {
-    prev = cur
-    cur = cur.replace(/<[^>]*>/g, "")
-  }
-  return cur
-}
+const LazyInteractiveSubtitleTranscript = lazy(loadInteractiveTranscriptModule)
 
 /**
- * SMPTE-offset normalization. Broadcast-authored VTT files often start at
- * 01:00:00 (the first hour reserved for color bars / leader), so cues run
- * 01:HH:MM:SS instead of 00:HH:MM:SS. The video file itself plays from
- * 0:00, so the raw cues never line up with `currentTime`. Detect by
- * comparing the last cue's end against the variant duration with a 60s
- * grace; shift by the largest whole-hour offset that brings cues back
- * inside duration. No-op when duration is unknown.
+ * The overflow measurement must land before the browser paints, or a transcript
+ * that fits shows the "there is more" fade for a frame (seconds on a slow
+ * phone, where hydration is late). `useLayoutEffect` warns during SSR, so fall
+ * back to `useEffect` on the server, where there is no paint to beat anyway.
  */
-export function normalizeCueOffset(
-  cues: Cue[],
-  durationSeconds: number | null | undefined,
-): Cue[] {
-  if (cues.length === 0) return cues
-  if (!durationSeconds || durationSeconds <= 0) return cues
-  const first = cues[0]!.start
-  const last = cues[cues.length - 1]!.end
-  if (last <= durationSeconds + 60) return cues
-  if (first < 3600) return cues
-  const offset = Math.floor(first / 3600) * 3600
-  const candidateLast = last - offset
-  if (candidateLast < 0 || candidateLast > durationSeconds + 60) return cues
-  return cues.map((c) => ({
-    start: c.start - offset,
-    end: c.end - offset,
-    text: c.text,
-  }))
-}
+const useIsomorphicLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect
 
-export function parseVtt(raw: string): Cue[] {
-  const cues: Cue[] = []
-  const normalized = raw.replace(/\r\n?/g, "\n")
-  const blocks = normalized.split(/\n\n+/)
-  for (const block of blocks) {
-    const lines = block.split("\n").filter((l) => l.length > 0)
-    const timingIdx = lines.findIndex((l) => l.includes("-->"))
-    if (timingIdx < 0) continue
-    const m = lines[timingIdx]!.match(TIMING_RE)
-    if (!m) continue
-    const start = toSeconds(m[1], m[2]!, m[3]!, m[4]!)
-    const end = toSeconds(m[5], m[6]!, m[7]!, m[8]!)
-    const textLines = lines.slice(timingIdx + 1)
-    const text = decodeEntities(stripTags(textLines.join(" ")).trim())
-    if (text) cues.push({ start, end, text })
-  }
-  return cues
-}
+/**
+ * Collapsed transcripts are clamped so the card stops pushing every section
+ * below it thousands of pixels down. The clamp applies to the TEXT box; the
+ * subtracted 15rem is the card's non-text chrome (measured 237-249px across
+ * desktop and mobile: section padding plus header), so the CARD is what lands
+ * at ~60% of the viewport.
+ *
+ * `svh`, NOT `dvh`: this is an in-flow, document-scroll element, and every
+ * other viewport-unit box in apps/web is a fixed/absolute overlay. `dvh`
+ * re-resolves as mobile browser chrome retracts, which would move this card —
+ * and everything below it — by ~35-60px mid-scroll. `WatchHomeTvCarousel`'s
+ * in-flow `h-[66svh]` is the precedent.
+ *
+ * The 60% target only holds while `0.6 * viewport - 240px` clears the 6rem
+ * floor, i.e. above a ~560px-tall viewport. Below that the chrome alone
+ * exceeds 60%, the floor binds, and the card is a fixed ~336px (a landscape
+ * phone therefore sees a card taller than 60% showing ~3 lines) — deliberate,
+ * because the alternative is a card too short to read.
+ */
+const COLLAPSED_TEXT_CLAMP_CLASS =
+  "max-h-[max(6rem,calc(60svh_-_15rem))] overflow-hidden"
 
-function formatTimestamp(seconds: number): string {
-  const total = Math.max(0, Math.floor(seconds))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const pad = (n: number) => n.toString().padStart(2, "0")
-  if (h > 0) return `${h}:${pad(m)}:${pad(s)}`
-  return `${m}:${pad(s)}`
-}
+/**
+ * Bottom fade telling the reader there is more text behind the clamp. Paired
+ * with the `-webkit-` property for Safari, matching `SiblingCarousel`.
+ *
+ * Do NOT factor the repeated gradient into a shared variable: Tailwind
+ * extracts candidates by scanning source text, so an interpolated class name
+ * never appears in the source and the utility is silently never generated —
+ * the fade would just stop rendering with no build or test error.
+ */
+const COLLAPSED_TEXT_FADE_CLASS =
+  "[mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_62%,transparent_100%)]"
 
-function pickInitialSubtitleSlug(
-  subtitles: WatchSubtitle[],
-  audioSlug: string | null | undefined,
-): string | null {
-  if (subtitles.length === 0) return null
-  if (audioSlug) {
-    const match = subtitles.find((s) => s.language.slug === audioSlug)
-    if (match) return match.language.slug
-  }
-  const primary = subtitles.find((s) => s.primary)
-  if (primary) return primary.language.slug
-  const human = subtitles.find((s) => !s.aiGenerated)
-  if (human) return human.language.slug
-  return subtitles[0]!.language.slug
-}
-
-export function filterTranscriptSubtitlesForAudio(
-  subtitles: WatchSubtitle[],
-  audioSlug: string | null | undefined,
-): WatchSubtitle[] {
-  if (!audioSlug) return subtitles
-  return subtitles.filter((s) => s.language.slug === audioSlug)
-}
+/**
+ * Sub-pixel line-height rounding leaves `scrollHeight` a hair above
+ * `clientHeight` on text that visually fits, so require more than a rounding
+ * error's worth of overflow before claiming there is more to read.
+ */
+const OVERFLOW_TOLERANCE_PX = 4
 
 type SubtitleTranscriptProps = {
   subtitles: WatchSubtitle[]
@@ -155,20 +105,23 @@ type SubtitleTranscriptProps = {
   audioSlug?: string | null
   /**
    * Selected variant's duration in seconds. Used to detect and unwind
-   * SMPTE-style 1-hour authoring offsets in the VTT timing (see
-   * `normalizeCueOffset`). Optional — when omitted, cues render as
-   * authored.
+   * SMPTE-style 1-hour authoring offsets in the VTT timing.
    */
   durationSeconds?: number | null
+  initialTranscript?: InitialSubtitleTranscript
 }
+
+type TranscriptStatus = "loading" | "error" | "ready"
 
 export function SubtitleTranscript({
   subtitles,
   playerRef,
   audioSlug,
   durationSeconds,
+  initialTranscript = null,
 }: SubtitleTranscriptProps) {
   const t = useTranslations("SubtitleTranscript")
+  const contentId = useId()
   const transcriptSubtitles = useMemo(
     () => filterTranscriptSubtitlesForAudio(subtitles, audioSlug),
     [subtitles, audioSlug],
@@ -177,11 +130,16 @@ export function SubtitleTranscript({
     () => pickInitialSubtitleSlug(transcriptSubtitles, audioSlug ?? null),
     [transcriptSubtitles, audioSlug],
   )
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(initialSlug)
-
-  useEffect(() => {
-    setSelectedSlug(initialSlug)
-  }, [initialSlug])
+  const [interaction, setInteraction] = useState(() => ({
+    expanded: false,
+    initialSlug,
+    selectedSlug: initialSlug,
+  }))
+  const interactionIsCurrent = interaction.initialSlug === initialSlug
+  const selectedSlug = interactionIsCurrent
+    ? interaction.selectedSlug
+    : initialSlug
+  const expanded = interactionIsCurrent ? interaction.expanded : false
 
   const activeSubtitle = useMemo(() => {
     if (!selectedSlug) return null
@@ -192,141 +150,229 @@ export function SubtitleTranscript({
     )
   }, [selectedSlug, transcriptSubtitles])
 
-  const [loaded, setLoaded] = useState<{
-    vttSrc: string
-    cues: Cue[] | null
-  } | null>(null)
-  // activeMark carries BOTH the cue-list identity and the highlighted index,
-  // so render-time we only treat the index as valid when it belongs to the
-  // currently-rendered cues array. Switching subtitle language drops the
-  // stale highlight without an extra effect-driven setState.
-  const [activeMark, setActiveMark] = useState<{
-    cues: Cue[] | null
-    idx: number
-  }>({ cues: null, idx: -1 })
-
   const activeVttSrc = activeSubtitle?.vttSrc ?? null
+  const [loadedTranscripts, setLoadedTranscripts] = useState<
+    ReadonlyMap<string, SubtitleCue[] | null>
+  >(() => new Map())
+  const hasLoadedActiveSource = activeVttSrc
+    ? loadedTranscripts.has(activeVttSrc)
+    : false
   const cues =
-    loaded && activeVttSrc && loaded.vttSrc === activeVttSrc
-      ? loaded.cues
+    activeVttSrc && hasLoadedActiveSource
+      ? (loadedTranscripts.get(activeVttSrc) ?? null)
       : null
-  const status: "idle" | "loading" | "error" | "ready" = !activeVttSrc
-    ? "idle"
-    : !loaded || loaded.vttSrc !== activeVttSrc
-      ? "loading"
-      : loaded.cues === null
-        ? "error"
-        : loaded.cues.length === 0
-          ? "error"
-          : "ready"
-
-  const activeIdx = activeMark.cues === cues ? activeMark.idx : -1
+  const serverCompactText =
+    initialTranscript?.vttSrc === activeVttSrc
+      ? initialTranscript.compactText
+      : null
+  const compactText = useMemo(() => {
+    if (serverCompactText) return serverCompactText
+    if (expanded || !cues || cues.length === 0) return null
+    return formatCompactTranscript(cues)
+  }, [cues, expanded, serverCompactText])
 
   useEffect(() => {
-    if (!activeVttSrc) return
+    if (!expanded || !activeVttSrc || hasLoadedActiveSource) return
+
     const controller = new AbortController()
-    fetch(activeVttSrc, {
-      credentials: "omit",
-      signal: controller.signal,
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.text()
+    loadInteractiveTranscriptModule()
+      .then(({ loadSubtitleCues }) => {
+        if (controller.signal.aborted) return []
+        return loadSubtitleCues(
+          activeVttSrc,
+          durationSeconds,
+          controller.signal,
+        )
       })
-      .then((text) => {
-        setLoaded({
-          vttSrc: activeVttSrc,
-          cues: normalizeCueOffset(parseVtt(text), durationSeconds),
+      .then((nextCues) => {
+        if (controller.signal.aborted) return
+        setLoadedTranscripts((current) => {
+          const next = new Map(current)
+          next.set(activeVttSrc, nextCues.length > 0 ? nextCues : null)
+          return next
         })
       })
-      .catch((err: unknown) => {
-        if (err instanceof DOMException && err.name === "AbortError") return
-        setLoaded({ vttSrc: activeVttSrc, cues: null })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return
+        if (controller.signal.aborted) return
+        setLoadedTranscripts((current) => {
+          const next = new Map(current)
+          next.set(activeVttSrc, null)
+          return next
+        })
       })
+
     return () => controller.abort()
-  }, [activeVttSrc, durationSeconds])
+  }, [activeVttSrc, durationSeconds, expanded, hasLoadedActiveSource])
 
-  useEffect(() => {
-    const el = playerRef.current as HTMLMediaElement | null
-    if (!el || !cues || cues.length === 0) return
-    let lastIdx = -1
-    const update = () => {
-      const t = el.currentTime
-      let idx = -1
-      for (let i = 0; i < cues.length; i++) {
-        const c = cues[i]!
-        if (t >= c.start && t < c.end) {
-          idx = i
-          break
-        }
-        if (c.start > t) break
-      }
-      if (idx !== lastIdx) {
-        lastIdx = idx
-        setActiveMark({ cues, idx })
-      }
-    }
-    update()
-    el.addEventListener("timeupdate", update)
-    el.addEventListener("seeking", update)
-    return () => {
-      el.removeEventListener("timeupdate", update)
-      el.removeEventListener("seeking", update)
-    }
-  }, [cues, playerRef])
+  const collapsedTextRef = useRef<HTMLDivElement | null>(null)
+  // Defaults to faded: a real transcript overflows the clamp far more often
+  // than not, and measurement only ever removes the fade. Environments that
+  // cannot measure (jsdom, a hidden ancestor) therefore keep the honest hint.
+  const [collapsedTextOverflows, setCollapsedTextOverflows] = useState(true)
 
-  const handleSeek = useCallback(
-    (cue: Cue) => {
-      const el = playerRef.current as HTMLMediaElement | null
-      if (!el) return
-      // Promote the hero out of muted-preview if it has not committed yet.
-      // The pre-reveal click surface owns the unmute + chrome-revealed
-      // state transition inside HeroPlayer; clicking it from this cue-click
-      // handler chains the user gesture so the browser still treats the
-      // synthetic click as user-initiated and grants unmuted playback.
-      // The synthetic click also resets `currentTime` to 0 inside
-      // HeroPlayer, so we apply the seek AFTER the click to land at the
-      // requested cue.
-      if (typeof document !== "undefined") {
-        const wrapper = document.querySelector(
-          '[data-testid="hero-player-wrapper"]',
-        )
-        const revealed =
-          wrapper?.getAttribute("data-chrome-revealed") === "true"
-        if (!revealed) {
-          const surface = document.querySelector(
-            '[data-testid="hero-player-pre-reveal-click-surface"]',
-          ) as HTMLButtonElement | null
-          surface?.click()
-        }
-      }
-      // Belt-and-suspenders unmute for the already-revealed case (the
-      // click surface above is absent post-reveal). Safe to set on every
-      // click — the user explicitly asked for the moment, so silent
-      // playback is never the desired outcome here.
-      el.muted = false
-      el.currentTime = cue.start
-      const result = el.play()
-      if (result && typeof (result as Promise<void>).then === "function") {
-        ;(result as Promise<void>).catch(() => {})
-      }
-      // Bring the player into view so the user sees the moment they
-      // jumped to. The hero wrapper is sticky-positioned, so
-      // scrollIntoView is a no-op (it's always at viewport top); scroll
-      // the window to the document origin instead.
-      if (typeof window !== "undefined") {
-        window.scrollTo({ top: 0, behavior: "smooth" })
-      }
-    },
-    [playerRef],
-  )
+  useIsomorphicLayoutEffect(() => {
+    if (expanded) return
+    const element = collapsedTextRef.current
+    if (!element) return
+
+    const measure = () => {
+      // A zero-height box means "not laid out", not "fits" — treating it as
+      // fitting would strip the fade from every overflowing transcript.
+      if (element.clientHeight === 0) return
+      setCollapsedTextOverflows(
+        element.scrollHeight - element.clientHeight > OVERFLOW_TOLERANCE_PX,
+      )
+    }
+
+    // Measure once synchronously: ResizeObserver's first callback is async, and
+    // this is the only measurement at all when ResizeObserver is unavailable.
+    measure()
+    if (typeof ResizeObserver === "undefined") {
+      // No observer to re-measure on viewport/orientation change, so listen
+      // for the one event that changes this box's height.
+      window.addEventListener("resize", measure)
+      return () => window.removeEventListener("resize", measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [compactText, expanded])
 
   if (transcriptSubtitles.length === 0) return null
 
-  const languageLabel = (s: WatchSubtitle) =>
-    s.language.nativeName && s.language.nativeName !== s.language.name
-      ? `${s.language.name} (${s.language.nativeName})`
-      : s.language.name
+  const hasNativeLabel = (subtitle: WatchSubtitle) =>
+    Boolean(subtitle.language.nativeName) &&
+    subtitle.language.nativeName !== subtitle.language.name
+
+  // Native <option> content is text only: nested markup is dropped and a `lang`
+  // on the <option> would tag the whole mixed label. Keep one plain label and
+  // isolate each name so an RTL native name cannot reorder its neighbours.
+  const optionLabel = (subtitle: WatchSubtitle) =>
+    hasNativeLabel(subtitle)
+      ? `${isolateLanguageName(subtitle.language.name)} (${isolateLanguageName(subtitle.language.nativeName!)})`
+      : subtitle.language.name
+
+  const chipLabel = (subtitle: WatchSubtitle) =>
+    hasNativeLabel(subtitle) ? (
+      <>
+        {subtitle.language.nameLang === "en" ? (
+          <bdi lang="en" dir="ltr">
+            {subtitle.language.name}
+          </bdi>
+        ) : (
+          <bdi>{subtitle.language.name}</bdi>
+        )}{" "}
+        (
+        <NativeLanguageName
+          text={subtitle.language.nativeName!}
+          lang={subtitle.language.nativeNameLang}
+        />
+        )
+      </>
+    ) : (
+      subtitle.language.name
+    )
+
+  const openTranscript = () => {
+    if (activeVttSrc && loadedTranscripts.get(activeVttSrc) === null) {
+      setLoadedTranscripts((current) => {
+        if (current.get(activeVttSrc) !== null) return current
+        const next = new Map(current)
+        next.delete(activeVttSrc)
+        return next
+      })
+    }
+    setInteraction({ expanded: true, initialSlug, selectedSlug })
+  }
+  const closeTranscript = () => {
+    setInteraction({ expanded: false, initialSlug, selectedSlug })
+  }
+  const handleCollapsedClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    // Ignore the second click of a double-click. Expanding mounts the cue list
+    // synchronously whenever cues are already cached, so the next click can
+    // land on a cue button and seek/unmute/play/scroll the page — a reader
+    // double-clicking to select a word would lose their place in the video.
+    if (event.detail > 1) return
+    // A click that ends a text selection is a selection, not a request to
+    // expand. Without this, selecting teaser text collapses into an expand.
+    const selection =
+      typeof window === "undefined" ? null : window.getSelection()
+    if (selection && !selection.isCollapsed) return
+    openTranscript()
+  }
+  let interactiveStatus: TranscriptStatus = "ready"
+  if (!hasLoadedActiveSource) interactiveStatus = "loading"
+  else if (!cues || cues.length === 0) interactiveStatus = "error"
+
+  const collapsedStatus: TranscriptStatus = compactText ? "ready" : "error"
+  const status = expanded ? interactiveStatus : collapsedStatus
+
+  const loadingContent = (
+    <div
+      id={contentId}
+      className="flex items-center justify-center px-8 py-16 text-base sm:text-sm text-stone-400"
+    >
+      {t("loading")}
+    </div>
+  )
+  let content: ReactNode
+  if (status === "loading") {
+    content = loadingContent
+  } else if (status === "error") {
+    content = (
+      <div
+        id={contentId}
+        className="px-8 py-16 text-center text-base sm:text-sm text-stone-400"
+      >
+        {t("unavailable")}
+      </div>
+    )
+  } else if (expanded && cues) {
+    content = (
+      <Suspense fallback={loadingContent}>
+        <LazyInteractiveSubtitleTranscript
+          id={contentId}
+          cues={cues}
+          playerRef={playerRef}
+        />
+      </Suspense>
+    )
+  } else {
+    // Click-anywhere is a MOUSE-ONLY enhancement layered on a plain, non-
+    // interactive text container. It is deliberately not a <button>:
+    //   - a button's role is children-presentational, so wrapping the teaser
+    //     pruned it from the accessibility tree and (with aria-label) from the
+    //     accessible name too, making the default state unreadable to screen
+    //     readers and worse for text-extracting crawlers;
+    //   - WebKit sets `-webkit-user-select: none` on button, which broke
+    //     selecting and copying the transcript;
+    //   - the button unmounted on activation, dropping keyboard focus to
+    //     <body>;
+    //   - <div> inside <button> violates the button content model.
+    // The header chevron remains the sole accessible disclosure control: it
+    // already carries aria-expanded/aria-controls, is keyboard reachable, and
+    // PERSISTS across expand/collapse, so focus never sits on a disappearing
+    // element. Anything added here must keep that property.
+    content = (
+      <div
+        data-testid="watch-subtitle-compact-expand"
+        onClick={handleCollapsedClick}
+        className="cursor-pointer rounded-b-2xl"
+      >
+        <div
+          id={contentId}
+          ref={collapsedTextRef}
+          data-testid="watch-subtitle-compact-text"
+          className={`whitespace-pre-line px-6 py-6 text-base leading-relaxed text-stone-300 sm:px-8 sm:py-8 sm:text-lg ${COLLAPSED_TEXT_CLAMP_CLASS} ${
+            collapsedTextOverflows ? COLLAPSED_TEXT_FADE_CLASS : ""
+          }`}
+        >
+          {compactText}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <section
@@ -344,88 +390,81 @@ export function SubtitleTranscript({
               >
                 {t("heading")}
               </h2>
-              <p className="mt-1 text-sm text-stone-400">{t("subheading")}</p>
+              {expanded ? (
+                <p className="mt-1 text-base sm:text-sm text-stone-400">
+                  {t("subheading")}
+                </p>
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
-              {transcriptSubtitles.length > 1 ? (
-                <label className="flex items-center gap-2 text-sm text-stone-300">
+              {expanded && transcriptSubtitles.length > 1 ? (
+                <label className="flex items-center gap-2 text-base sm:text-sm text-stone-300">
                   <span className="sr-only">{t("subtitleLanguage")}</span>
                   <select
                     data-testid="watch-subtitle-language"
                     value={selectedSlug ?? ""}
-                    onChange={(e) => setSelectedSlug(e.target.value)}
-                    className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
+                    onChange={(event) => {
+                      const nextSlug = event.target.value
+                      const nextVttSrc = transcriptSubtitles.find(
+                        (subtitle) => subtitle.language.slug === nextSlug,
+                      )?.vttSrc
+                      if (
+                        nextVttSrc &&
+                        loadedTranscripts.get(nextVttSrc) === null
+                      ) {
+                        setLoadedTranscripts((current) => {
+                          if (current.get(nextVttSrc) !== null) return current
+                          const next = new Map(current)
+                          next.delete(nextVttSrc)
+                          return next
+                        })
+                      }
+                      setInteraction({
+                        expanded,
+                        initialSlug,
+                        selectedSlug: nextSlug,
+                      })
+                    }}
+                    className={`appearance-none rounded-full bg-stone-900/80 px-4 py-2 text-base sm:text-sm font-medium text-stone-100 ${GLASS_OUTLINE_CLASS} focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2`}
                   >
-                    {transcriptSubtitles.map((s) => (
-                      <option key={s.documentId} value={s.language.slug}>
-                        {languageLabel(s)}
-                        {s.aiGenerated ? t("aiSuffix") : ""}
+                    {transcriptSubtitles.map((subtitle) => (
+                      <option
+                        key={subtitle.documentId}
+                        value={subtitle.language.slug}
+                      >
+                        {optionLabel(subtitle)}
+                        {subtitle.aiGenerated ? t("aiSuffix") : ""}
                       </option>
                     ))}
                   </select>
                 </label>
               ) : (
-                <span className="rounded-full bg-stone-900/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-stone-300">
-                  {activeSubtitle ? languageLabel(activeSubtitle) : ""}
+                <span className="rounded-full bg-stone-900/60 px-3 py-1 text-sm sm:text-xs font-medium uppercase tracking-wide text-stone-300">
+                  {activeSubtitle ? chipLabel(activeSubtitle) : ""}
                   {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
                 </span>
               )}
+              <button
+                type="button"
+                data-testid="watch-subtitle-transcript-toggle"
+                aria-expanded={expanded}
+                aria-controls={contentId}
+                aria-label={t("heading")}
+                title={t("heading")}
+                onClick={expanded ? closeTranscript : openTranscript}
+                className="inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-stone-50 focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+              >
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`size-5 transition-transform duration-200 ${
+                    expanded ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
             </div>
           </header>
 
-          {status === "loading" ? (
-            <div className="flex items-center justify-center px-8 py-16 text-sm text-stone-400">
-              {t("loading")}
-            </div>
-          ) : status === "error" ? (
-            <div className="px-8 py-16 text-center text-sm text-stone-400">
-              {t("unavailable")}
-            </div>
-          ) : cues && cues.length > 0 ? (
-            <ol
-              data-testid="watch-subtitle-cues"
-              className="px-2 py-3 sm:px-4 sm:py-4"
-            >
-              {cues.map((cue, idx) => {
-                const isActive = idx === activeIdx
-                return (
-                  <li key={`${cue.start}-${idx}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleSeek(cue)}
-                      aria-current={isActive ? "true" : undefined}
-                      className={[
-                        "group flex w-full cursor-pointer items-baseline gap-4 rounded-lg px-4 py-3 text-left transition-colors duration-150",
-                        "focus-visible:outline-2 focus-visible:outline-white/80 focus-visible:outline-offset-2",
-                        isActive
-                          ? "bg-white/10 text-stone-50"
-                          : "text-stone-300 hover:bg-white/5 hover:text-stone-100",
-                      ].join(" ")}
-                    >
-                      <time
-                        dateTime={`PT${Math.floor(cue.start)}S`}
-                        className={[
-                          "shrink-0 font-mono text-xs tabular-nums tracking-tight transition-colors",
-                          isActive
-                            ? "text-amber-300"
-                            : "text-stone-500 group-hover:text-stone-300",
-                        ].join(" ")}
-                      >
-                        {formatTimestamp(cue.start)}
-                      </time>
-                      <span className="text-base leading-relaxed sm:text-lg">
-                        {cue.text}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ol>
-          ) : (
-            <div className="px-8 py-16 text-center text-sm text-stone-400">
-              {t("empty")}
-            </div>
-          )}
+          {content}
         </div>
       </div>
     </section>

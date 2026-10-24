@@ -1,0 +1,406 @@
+{
+  "recorded_utc": "2026-09-09T02:01:22.635026+00:00",
+  "boundary": "Production EXPLAIN ANALYZE full SQL statement; not complete service delivery, concurrency, p95, or post-deployment recovery.",
+  "safeguards": {
+    "default_transaction_read_only": "on",
+    "transaction": "BEGIN READ ONLY / ROLLBACK",
+    "statement_timeout_ms": 2500,
+    "lock_timeout_ms": 1000,
+    "sequential_queries": true,
+    "profile_data_accessed": false,
+    "raw_vectors_exported": false
+  },
+  "server": {
+    "vector_version": "0.8.2",
+    "ef_search": "40",
+    "iterative_scan": "off",
+    "max_scan_tuples": "20000",
+    "plan_cache_mode": "auto"
+  },
+  "latest_query_sha256": "94a430f1e16b1d0cc2099ddd63ebb9b08fe0b311e2b0ea1d0b261ecdfdb5add0",
+  "runtime_test_settings": {
+    "plan_cache_mode": "force_custom_plan",
+    "hnsw.iterative_scan": "strict_order",
+    "hnsw.max_scan_tuples": 20000
+  },
+  "baseline_and_intermediate": [
+    {
+      "server_execution_ms": null,
+      "client_wall_ms": 3334,
+      "error_code": "57014",
+      "indexes": [],
+      "seed_chunks": null,
+      "seed_probes": null,
+      "nearest_chunks": null,
+      "eligible_chunks": null,
+      "ordered_targets": null,
+      "result_rows": null,
+      "prepared_stats": null
+    },
+    {
+      "server_execution_ms": 169.907,
+      "client_wall_ms": 777,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 118,
+      "eligible_chunks": 70,
+      "ordered_targets": 14,
+      "result_rows": 14,
+      "prepared_stats": null
+    },
+    {
+      "server_execution_ms": 61.625,
+      "client_wall_ms": 465,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 118,
+      "eligible_chunks": 70,
+      "ordered_targets": 14,
+      "result_rows": 14,
+      "prepared_stats": null
+    },
+    {
+      "server_execution_ms": null,
+      "client_wall_ms": 2766,
+      "error_code": "57014",
+      "indexes": [],
+      "seed_chunks": null,
+      "seed_probes": null,
+      "nearest_chunks": null,
+      "eligible_chunks": null,
+      "ordered_targets": null,
+      "result_rows": null,
+      "prepared_stats": null
+    }
+  ],
+  "latest_query_matrix": [
+    {
+      "seed": "birth",
+      "locale": "en",
+      "audio_language_slug": "english",
+      "server_execution_ms": 25.819,
+      "client_wall_ms": 433,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 192,
+      "eligible_chunks": 106,
+      "ordered_targets": 20,
+      "result_rows": 20,
+      "prepared_stats": null
+    },
+    {
+      "seed": "birth",
+      "locale": "es",
+      "audio_language_slug": "spanish-latin-american",
+      "server_execution_ms": 106.403,
+      "client_wall_ms": 491,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_es"],
+      "seed_chunks": 2,
+      "seed_probes": 2,
+      "nearest_chunks": 96,
+      "eligible_chunks": 71,
+      "ordered_targets": 25,
+      "result_rows": 25,
+      "prepared_stats": null
+    },
+    {
+      "seed": "birth",
+      "locale": "fr",
+      "audio_language_slug": "french",
+      "server_execution_ms": 26.347,
+      "client_wall_ms": 685,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_fr"],
+      "seed_chunks": 3,
+      "seed_probes": 3,
+      "nearest_chunks": 144,
+      "eligible_chunks": 105,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": null
+    },
+    {
+      "seed": "birth",
+      "locale": "pt",
+      "audio_language_slug": "portuguese-brazil",
+      "server_execution_ms": 59.236,
+      "client_wall_ms": 652,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": 2,
+      "seed_probes": 2,
+      "nearest_chunks": 96,
+      "eligible_chunks": 70,
+      "ordered_targets": 31,
+      "result_rows": 31,
+      "prepared_stats": null
+    },
+    {
+      "seed": "jesus",
+      "locale": "en",
+      "audio_language_slug": "english",
+      "server_execution_ms": 65.347,
+      "client_wall_ms": 1312,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 176,
+      "seed_probes": 8,
+      "nearest_chunks": 384,
+      "eligible_chunks": 241,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": null
+    },
+    {
+      "seed": "jesus",
+      "locale": "es",
+      "audio_language_slug": "spanish-latin-american",
+      "server_execution_ms": 61.41,
+      "client_wall_ms": 418,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_es"],
+      "seed_chunks": 123,
+      "seed_probes": 8,
+      "nearest_chunks": 384,
+      "eligible_chunks": 295,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": null
+    },
+    {
+      "seed": "jesus",
+      "locale": "fr",
+      "audio_language_slug": "french",
+      "server_execution_ms": 50.468,
+      "client_wall_ms": 447,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_fr"],
+      "seed_chunks": 126,
+      "seed_probes": 8,
+      "nearest_chunks": 384,
+      "eligible_chunks": 197,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": null
+    },
+    {
+      "seed": "jesus",
+      "locale": "pt",
+      "audio_language_slug": "portuguese-brazil",
+      "server_execution_ms": 198.552,
+      "client_wall_ms": 608,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": 161,
+      "seed_probes": 8,
+      "nearest_chunks": 384,
+      "eligible_chunks": 366,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": null
+    }
+  ],
+  "iterative_off_comparison": [
+    {
+      "server_execution_ms": 15.71,
+      "client_wall_ms": 655,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 118,
+      "eligible_chunks": 70,
+      "ordered_targets": 14,
+      "result_rows": 14,
+      "prepared_stats": null
+    },
+    {
+      "server_execution_ms": 42.6,
+      "client_wall_ms": 504,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 176,
+      "seed_probes": 8,
+      "nearest_chunks": 215,
+      "eligible_chunks": 135,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": null
+    }
+  ],
+  "prepared_plan_proof": [
+    {
+      "server_execution_ms": 226.671,
+      "client_wall_ms": 1145,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 192,
+      "eligible_chunks": 106,
+      "ordered_targets": 20,
+      "result_rows": 20,
+      "prepared_stats": {
+        "generic_plans": 1,
+        "custom_plans": 0
+      }
+    },
+    {
+      "server_execution_ms": 53.008,
+      "client_wall_ms": 556,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_en"],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 118,
+      "eligible_chunks": 70,
+      "ordered_targets": 14,
+      "result_rows": 14,
+      "prepared_stats": {
+        "generic_plans": 0,
+        "custom_plans": 1
+      }
+    },
+    {
+      "server_execution_ms": null,
+      "client_wall_ms": 2748,
+      "error_code": "57014",
+      "indexes": [],
+      "seed_chunks": null,
+      "seed_probes": null,
+      "nearest_chunks": null,
+      "eligible_chunks": null,
+      "ordered_targets": null,
+      "result_rows": null,
+      "prepared_stats": {
+        "generic_plans": 0,
+        "custom_plans": 2
+      }
+    },
+    {
+      "server_execution_ms": 39.673,
+      "client_wall_ms": 634,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_fr"],
+      "seed_chunks": 3,
+      "seed_probes": 3,
+      "nearest_chunks": 80,
+      "eligible_chunks": 62,
+      "ordered_targets": 25,
+      "result_rows": 25,
+      "prepared_stats": {
+        "generic_plans": 0,
+        "custom_plans": 3
+      }
+    },
+    {
+      "server_execution_ms": 1982.992,
+      "client_wall_ms": 2428,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_fr"],
+      "seed_chunks": 126,
+      "seed_probes": 8,
+      "nearest_chunks": 107,
+      "eligible_chunks": 50,
+      "ordered_targets": 31,
+      "result_rows": 31,
+      "prepared_stats": {
+        "generic_plans": 0,
+        "custom_plans": 4
+      }
+    },
+    {
+      "server_execution_ms": 33.186,
+      "client_wall_ms": 378,
+      "error_code": null,
+      "indexes": ["video_transcript_chunk_embedding_hnsw_es"],
+      "seed_chunks": 2,
+      "seed_probes": 2,
+      "nearest_chunks": 38,
+      "eligible_chunks": 30,
+      "ordered_targets": 11,
+      "result_rows": 11,
+      "prepared_stats": {
+        "generic_plans": 0,
+        "custom_plans": 5
+      }
+    },
+    {
+      "server_execution_ms": 219.134,
+      "client_wall_ms": 695,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": 4,
+      "seed_probes": 4,
+      "nearest_chunks": 192,
+      "eligible_chunks": 106,
+      "ordered_targets": 20,
+      "result_rows": 20,
+      "prepared_stats": {
+        "generic_plans": 1,
+        "custom_plans": 5
+      }
+    },
+    {
+      "server_execution_ms": 86.496,
+      "client_wall_ms": 636,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": 3,
+      "seed_probes": 3,
+      "nearest_chunks": 144,
+      "eligible_chunks": 105,
+      "ordered_targets": 36,
+      "result_rows": 36,
+      "prepared_stats": {
+        "generic_plans": 2,
+        "custom_plans": 5
+      }
+    }
+  ],
+  "synthetic_profile_diagnostic": [
+    {
+      "interest_count": 1,
+      "server_execution_ms": 56.44,
+      "client_wall_ms": 614,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": null,
+      "seed_probes": null,
+      "nearest_chunks": null,
+      "eligible_chunks": null,
+      "ordered_targets": null,
+      "result_rows": 8,
+      "prepared_stats": null
+    },
+    {
+      "interest_count": 2,
+      "server_execution_ms": 86.359,
+      "client_wall_ms": 529,
+      "error_code": null,
+      "indexes": [],
+      "seed_chunks": null,
+      "seed_probes": null,
+      "nearest_chunks": null,
+      "eligible_chunks": null,
+      "ordered_targets": null,
+      "result_rows": 16,
+      "prepared_stats": null
+    }
+  ],
+  "limitations": [
+    "Samples were sequential and server caches were not flushed; do not call them cold benchmarks.",
+    "Ordered targets precede application identity deduplication and final six-item slate selection.",
+    "Forced/generic plan proof used intermediate scalar shape before hierarchy exclusion was moved; it demonstrates prepared partial-index behavior.",
+    "Initial Spanish/Portuguese probes used nonexistent generic audio slugs; those zero-target samples are excluded from the final matrix.",
+    "Profile vectors came from first two active Birth of Jesus English chunks via subqueries, not real visitor profiles.",
+    "Profile query still bypasses HNSW but these two bounded samples did not show a timeout."
+  ]
+}

@@ -10,8 +10,15 @@ export const adminTextFragment = adminGraphql(`
     subtitle
     contentParagraphs
     textVariant: variant
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
   }
 `)

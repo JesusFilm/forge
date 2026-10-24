@@ -1,54 +1,58 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { Captions, Check, Languages, RefreshCw, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
 import type { RefObject } from "react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { flushSync } from "react-dom"
 
 import type { MuxPlayerRef } from "@forge/video-player"
 
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { LanguageCombobox } from "@/components/watch/LanguageCombobox"
-import type { WatchSubtitle } from "@/lib/content"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import {
+  LanguageCombobox,
+  type LanguageComboboxOption,
+} from "@/components/watch/LanguageCombobox"
+import {
+  LANGUAGE_PICKER_FOCUS_RING_CLASS,
+  LANGUAGE_PICKER_MODAL_CLASS,
+  LANGUAGE_PICKER_VIEWPORT_CLASS,
+  MULTILINGUAL_TOOLTIPS,
+  LanguagePickerActions,
+  LanguagePickerComboboxFrame,
+  LanguagePickerHeader,
+  LanguagePickerInventoryLink,
+  MultilingualTooltip,
+  MultilingualTooltipPanel,
+  isolateLanguageName,
+  tooltipLanguageKeyForCurrentLanguage,
+  type TooltipLanguageKey,
+} from "@/components/watch/LanguagePickerPresentation"
+import type { WatchLanguagePickerVariant, WatchSubtitle } from "@/lib/content"
 import { deriveLanguageDisplay } from "@/lib/language-display"
 import { writePreferredLanguageSlug } from "@/lib/language-preference-client"
 import { isPlayableLanguageVariant } from "@/lib/playable-variant"
-import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "@/lib/routes"
+import {
+  languagesIndexPath,
+  languageVideosIndexPath,
+  localizedLanguagesPath,
+  tryAsContentSlug,
+  tryAsLocaleSlug,
+  watchEpisodePath,
+  watchVideoPath,
+} from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
-export type LanguagePickerVariant = {
-  documentId: string
-  hls: string | null
-  published: boolean | null
-  language: {
-    coreId?: string | null
-    bcp47?: string | null
-    slug: string | null
-    name: string | null
-    nativeName?: string | null
-  } | null
-  videoEdition?: {
-    subtitles?:
-      | {
-          vttSrc?: string | null
-          srtSrc?: string | null
-          language?: {
-            coreId?: string | null
-            bcp47?: string | null
-            slug: string | null
-            name: string | null
-          } | null
-        }[]
-      | null
-  } | null
-}
+export type LanguagePickerVariant = WatchLanguagePickerVariant
 
 export type LanguagePickerModalProps = {
   open: boolean
   variants: LanguagePickerVariant[]
   currentLanguageSlug: string
+  collectionSlug?: string | null
   videoSlug: string
   /** Read `currentTime` for the `?t=` clamp on language switch. */
   playerRef: RefObject<MuxPlayerRef | null>
@@ -65,19 +69,18 @@ export type LanguagePickerModalProps = {
   currentSubtitleEnabled?: boolean
   currentSubtitleSlug?: string | null
   onSubtitleChange?: (enabled: boolean, languageSlug: string | null) => void
+  languageOptionsLoading?: boolean
+  languageOptionsError?: boolean
+  onRetryLanguageOptions?: () => void
 }
 
-// Safety cap on the in-flight navigation guard. router.push is fire-and-
-// forget; if the navigation never lands (offline, abort, cookie-driven
-// proxy redirect to a slug that doesn't match draftSlug), the modal-local
-// guard would otherwise stay set and disable Apply for the rest of the
-// session. After this timeout the guard releases so the user can retry.
-const NAVIGATING_TIMEOUT_MS = 5000
+type OpenCombobox = "language" | "subtitles" | null
 
 export function LanguagePickerModal({
   open,
   variants,
   currentLanguageSlug,
+  collectionSlug = null,
   videoSlug,
   playerRef,
   onClose,
@@ -86,8 +89,12 @@ export function LanguagePickerModal({
   currentSubtitleEnabled = false,
   currentSubtitleSlug = null,
   onSubtitleChange,
+  languageOptionsLoading = false,
+  languageOptionsError = false,
+  onRetryLanguageOptions,
 }: LanguagePickerModalProps) {
   const t = useTranslations("LanguagePickerModal")
+  const headingId = useId()
   const router = useRouter()
 
   // Per row, deriveLanguageDisplay decides whether Strapi's `name` is a
@@ -100,13 +107,23 @@ export function LanguagePickerModal({
       variants
         .filter(isPlayableLanguageVariant)
         .map((v) => {
-          const display = deriveLanguageDisplay(
-            v.language.slug,
-            v.language.name,
-          )
+          const display =
+            v.language.nameLang === "en" && v.language.name
+              ? {
+                  slug: v.language.slug,
+                  name: v.language.name,
+                  nativeName: null,
+                }
+              : deriveLanguageDisplay(v.language.slug, v.language.name)
           return {
             ...display,
+            ...(v.language.nameLang ? { nameLang: v.language.nameLang } : {}),
             nativeName: display.nativeName ?? v.language.nativeName ?? null,
+            // `display.nativeName` is a slug heuristic, never declared; only
+            // the source-selected own-language name carries a verified tag.
+            nativeNameLang: display.nativeName
+              ? null
+              : (v.language.nativeNameLang ?? null),
             bcp47: v.language.bcp47 ?? null,
           }
         })
@@ -122,23 +139,194 @@ export function LanguagePickerModal({
     currentSubtitleSlug,
   )
   const [translationRequestSent, setTranslationRequestSent] = useState(false)
+  const [openCombobox, setOpenCombobox] = useState<OpenCombobox>(null)
+  const [activeTooltipCopy, setActiveTooltipCopy] = useState<Record<
+    TooltipLanguageKey,
+    string
+  > | null>(null)
+  const openComboboxRef = useRef<OpenCombobox>(null)
+  const pointerStartedWithComboboxOpenRef = useRef(false)
+  const escapeStartedWithComboboxOpenRef = useRef(false)
 
-  const subtitleOptions = useMemo(
+  const clearActiveTooltip = useCallback(() => {
+    setActiveTooltipCopy(null)
+  }, [])
+
+  const draftLanguageOption = useMemo(
+    () => options.find((option) => option.slug === draftSlug) ?? null,
+    [draftSlug, options],
+  )
+  const draftLanguageDisplay = useMemo(
+    () => draftLanguageOption ?? deriveLanguageDisplay(draftSlug, null),
+    [draftLanguageOption, draftSlug],
+  )
+  const draftLanguageInventoryName =
+    draftLanguageOption?.nativeName?.trim() || draftLanguageDisplay.name
+  const draftLanguageInventoryLabel = t("seeAllVideosInLanguage", {
+    language: isolateLanguageName(draftLanguageInventoryName),
+  })
+  const draftLanguageInventoryPath = useMemo(() => {
+    const slug = tryAsLocaleSlug(draftSlug)
+    return slug ? languageVideosIndexPath(slug) : null
+  }, [draftSlug])
+  const appliedLanguageSlug = tryAsLocaleSlug(currentLanguageSlug)
+  const allLanguagesPath =
+    appliedLanguageSlug && appliedLanguageSlug !== "english"
+      ? localizedLanguagesPath(appliedLanguageSlug)
+      : languagesIndexPath()
+  const excludedTooltipLanguage = useMemo(
+    () =>
+      tooltipLanguageKeyForCurrentLanguage({
+        bcp47: draftLanguageOption?.bcp47,
+        name: draftLanguageOption?.name,
+        nativeName: draftLanguageOption?.nativeName,
+        slug: draftSlug,
+      }),
+    [draftLanguageOption, draftSlug],
+  )
+
+  const setOpenComboboxState = useCallback((next: OpenCombobox) => {
+    openComboboxRef.current = next
+    setOpenCombobox(next)
+  }, [])
+
+  useEffect(() => {
+    function rememberComboboxStateAtPointerStart() {
+      pointerStartedWithComboboxOpenRef.current =
+        openComboboxRef.current !== null
+    }
+    function closeComboboxBeforeDialogEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return
+
+      escapeStartedWithComboboxOpenRef.current =
+        openComboboxRef.current !== null
+      if (!escapeStartedWithComboboxOpenRef.current) return
+
+      event.preventDefault()
+      event.stopPropagation()
+      setOpenComboboxState(null)
+    }
+
+    document.addEventListener(
+      "pointerdown",
+      rememberComboboxStateAtPointerStart,
+      true,
+    )
+    document.addEventListener(
+      "mousedown",
+      rememberComboboxStateAtPointerStart,
+      true,
+    )
+    document.addEventListener("keydown", closeComboboxBeforeDialogEscape, true)
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        rememberComboboxStateAtPointerStart,
+        true,
+      )
+      document.removeEventListener(
+        "mousedown",
+        rememberComboboxStateAtPointerStart,
+        true,
+      )
+      document.removeEventListener(
+        "keydown",
+        closeComboboxBeforeDialogEscape,
+        true,
+      )
+    }
+  }, [setOpenComboboxState])
+
+  const allSubtitleOptions = useMemo(
     () =>
       subtitles
         .map((s) => ({
-          ...deriveLanguageDisplay(s.language.slug, s.language.name),
+          ...(s.language.nameLang === "en"
+            ? { slug: s.language.slug, name: s.language.name, nativeName: null }
+            : deriveLanguageDisplay(s.language.slug, s.language.name)),
+          ...(s.language.nameLang ? { nameLang: s.language.nameLang } : {}),
           nativeName: s.language.nativeName ?? null,
+          nativeNameLang: s.language.nativeNameLang ?? null,
           bcp47: s.language.bcp47 ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
     [subtitles],
   )
+  const sameLanguageSubtitleOptions = useMemo(
+    () =>
+      allSubtitleOptions.filter((option) =>
+        currentLanguageSlug ? option.slug === currentLanguageSlug : true,
+      ),
+    [allSubtitleOptions, currentLanguageSlug],
+  )
+  const translatedSubtitleOptions = useMemo(
+    () =>
+      allSubtitleOptions.filter(
+        (option) => !currentLanguageSlug || option.slug !== currentLanguageSlug,
+      ),
+    [allSubtitleOptions, currentLanguageSlug],
+  )
+  const currentLanguageDisplay = useMemo(
+    () => deriveLanguageDisplay(currentLanguageSlug, null),
+    [currentLanguageSlug],
+  )
+  const currentLanguageOption = useMemo(
+    () => options.find((option) => option.slug === currentLanguageSlug) ?? null,
+    [currentLanguageSlug, options],
+  )
+  const currentLanguageUnavailableSubtitleOption =
+    useMemo<LanguageComboboxOption | null>(() => {
+      if (!currentLanguageSlug) return null
+      if (allSubtitleOptions.length === 0) return null
+      if (sameLanguageSubtitleOptions.length > 0) return null
+
+      return {
+        slug: currentLanguageSlug,
+        name: currentLanguageDisplay.name,
+        ...(currentLanguageOption?.nameLang
+          ? { nameLang: currentLanguageOption.nameLang }
+          : {}),
+        nativeName:
+          currentLanguageOption?.nativeName ??
+          currentLanguageDisplay.nativeName ??
+          null,
+        nativeNameLang: currentLanguageOption?.nativeName
+          ? (currentLanguageOption.nativeNameLang ?? null)
+          : null,
+        bcp47: currentLanguageOption?.bcp47 ?? null,
+        disabled: true,
+        chipLabel: t("notAvailable"),
+      }
+    }, [
+      allSubtitleOptions.length,
+      currentLanguageDisplay.name,
+      currentLanguageDisplay.nativeName,
+      currentLanguageOption,
+      currentLanguageSlug,
+      sameLanguageSubtitleOptions.length,
+      t,
+    ])
+  const subtitleOptions = useMemo(
+    () => [
+      ...(currentLanguageUnavailableSubtitleOption
+        ? [currentLanguageUnavailableSubtitleOption]
+        : []),
+      ...sameLanguageSubtitleOptions,
+      ...translatedSubtitleOptions,
+    ],
+    [
+      currentLanguageUnavailableSubtitleOption,
+      sameLanguageSubtitleOptions,
+      translatedSubtitleOptions,
+    ],
+  )
+  const hasSelectableSubtitleOptions = allSubtitleOptions.length > 0
 
   // Track which slug we've dispatched a navigation toward. `navigating`
   // becomes false NATURALLY once the URL catches up — no setState in
   // effect required (React Compiler's anti-cascade rule is satisfied by
-  // construction). Set to null to force-release on safety timeout.
+  // construction). Keep this set while unresolved so the primary action
+  // never reverts to "Apply" before a slow route commit lands.
   const [pendingNavTo, setPendingNavTo] = useState<string | null>(null)
 
   // Synchronous double-click guard. `pendingNavTo` state alone is async
@@ -170,44 +358,77 @@ export function LanguagePickerModal({
       setDraftSubtitleEnabled(currentSubtitleEnabledRef.current)
       setDraftSubtitleSlug(currentSubtitleSlugRef.current)
       setTranslationRequestSent(false)
+      setOpenComboboxState(null)
+      setActiveTooltipCopy(null)
+      pointerStartedWithComboboxOpenRef.current = false
+      escapeStartedWithComboboxOpenRef.current = false
       navigatingRef.current.inFlight = false
       setPendingNavTo(null)
     }
-  }, [open])
+  }, [open, setOpenComboboxState])
 
   const languageDirty = draftSlug !== currentLanguageSlug
   const subtitleDirty =
     draftSubtitleEnabled !== currentSubtitleEnabled ||
     draftSubtitleSlug !== currentSubtitleSlug
   const isDirty = languageDirty || subtitleDirty
+  const subtitleSelectionRequired =
+    draftSubtitleEnabled && hasSelectableSubtitleOptions && !draftSubtitleSlug
+  const subtitleUnavailableLabel = currentLanguageDisplay.name
+    ? `${t("noSubtitles")} (${currentLanguageDisplay.name})`
+    : t("noSubtitles")
+  const subtitlePlaceholder = currentLanguageUnavailableSubtitleOption
+    ? t("noLanguageSubtitles", {
+        language: currentLanguageUnavailableSubtitleOption.name,
+      })
+    : t("noSubtitles")
   // Derived: navigating iff we dispatched and the URL hasn't caught up.
   // When currentLanguageSlug matches pendingNavTo, navigating flips to
   // false automatically on the next render — no setter call needed.
   const navigating =
     pendingNavTo !== null && currentLanguageSlug !== pendingNavTo
 
+  const buildTargetPath = useCallback(
+    (languageSlug: string) => {
+      const slug = tryAsContentSlug(videoSlug)
+      const lang = tryAsLocaleSlug(languageSlug)
+      if (!slug || !lang) return null
+      if (kind === "series") return watchVideoPath(slug, lang)
+
+      const rawT = playerRef.current?.currentTime
+      const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
+      const collection = collectionSlug
+        ? tryAsContentSlug(collectionSlug)
+        : null
+      return collection
+        ? watchEpisodePath(collection, slug, lang, { t, autoplay: true })
+        : watchVideoPath(slug, lang, { t, autoplay: true })
+    },
+    [collectionSlug, kind, playerRef, videoSlug],
+  )
+
   // Release the sync guard once the URL catches up. The ref-mirror effect
   // is the only path that touches `.inFlight = false` outside the open
-  // reset and timeout — fires once per slug change.
+  // reset — fires once per slug change.
   useEffect(() => {
     navigatingRef.current.inFlight = false
   }, [currentLanguageSlug])
 
-  // Safety timeout: if the navigation never lands (e.g. cookie-driven
-  // proxy redirect to a slug that doesn't match draftSlug, or router.push
-  // silently fails), release the guard and clear pendingNavTo so the user
-  // can retry. Re-armed whenever a new navigation starts.
+  const lastPrefetchedPathRef = useRef<string | null>(null)
   useEffect(() => {
-    if (pendingNavTo === null) return
-    const timer = window.setTimeout(() => {
-      navigatingRef.current.inFlight = false
-      setPendingNavTo(null)
-    }, NAVIGATING_TIMEOUT_MS)
-    return () => window.clearTimeout(timer)
-  }, [pendingNavTo])
+    if (!open) return
+    if (!languageDirty) return
+    const targetPath = buildTargetPath(draftSlug)
+    if (!targetPath) return
+    if (targetPath === lastPrefetchedPathRef.current) return
+
+    lastPrefetchedPathRef.current = targetPath
+    Promise.resolve(router.prefetch(targetPath)).catch(() => undefined)
+  }, [buildTargetPath, draftSlug, languageDirty, open, router])
 
   const handleApply = useCallback(() => {
     if (!isDirty) return
+    if (subtitleSelectionRequired) return
     if (navigatingRef.current.inFlight) return
     if (!videoSlug) return
 
@@ -222,40 +443,50 @@ export function LanguagePickerModal({
       // navigation — rather than poison the cookie then no-op (matches
       // SeriesPageClient's validate-before-write ordering). The rest of
       // handleApply (incl. onClose) still runs.
-      const slug = tryAsContentSlug(videoSlug)
-      const lang = tryAsLocaleSlug(draftSlug)
-      if (slug && lang) {
+      const targetPath = buildTargetPath(draftSlug)
+      if (targetPath) {
         navigatingRef.current.inFlight = true
-        setPendingNavTo(draftSlug)
+        // Commit the visible pending state before starting App Router
+        // navigation. Otherwise React may batch the state update with
+        // router.push, which is exactly the "nothing happened" feeling
+        // this modal is meant to avoid on cold language routes.
+        flushSync(() => setPendingNavTo(draftSlug))
         writePreferredLanguageSlug(draftSlug)
-        if (kind === "series") {
-          router.push(watchVideoPath(slug, lang))
-        } else {
-          const rawT = playerRef.current?.currentTime
-          const t = typeof rawT === "number" && Number.isFinite(rawT) ? rawT : 0
-          router.push(watchVideoPath(slug, lang, { t, autoplay: true }))
-        }
+        router.push(targetPath)
+        return
       }
     }
 
     onClose()
   }, [
+    buildTargetPath,
     draftSlug,
     draftSubtitleEnabled,
     draftSubtitleSlug,
     isDirty,
-    kind,
     languageDirty,
     onClose,
     onSubtitleChange,
-    playerRef,
     router,
+    subtitleSelectionRequired,
     subtitleDirty,
     videoSlug,
   ])
 
   function handleOpenChange(next: boolean) {
-    if (!next) onClose()
+    if (!next) {
+      if (
+        openComboboxRef.current !== null ||
+        pointerStartedWithComboboxOpenRef.current ||
+        escapeStartedWithComboboxOpenRef.current
+      ) {
+        setOpenComboboxState(null)
+        pointerStartedWithComboboxOpenRef.current = false
+        escapeStartedWithComboboxOpenRef.current = false
+        return
+      }
+      onClose()
+    }
   }
 
   // When the player is in fullscreen, portal the dialog INTO the
@@ -278,75 +509,153 @@ export function LanguagePickerModal({
           null) as HTMLElement | null)
       : null
 
+  const subtitleToggleTooltip = !hasSelectableSubtitleOptions
+    ? MULTILINGUAL_TOOLTIPS.subtitlesUnavailable
+    : draftSubtitleEnabled
+      ? MULTILINGUAL_TOOLTIPS.subtitlesOff
+      : MULTILINGUAL_TOOLTIPS.subtitlesOn
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <WatchModalViewportCloseButton
-        open={open}
-        onClose={onClose}
-        testId="watch-language-picker-close"
-        portalContainer={portalContainer}
-      />
       <DialogContent
         data-testid="watch-language-picker-modal"
-        className="w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]"
+        // Name from the one visible heading; with subtitles, keep the
+        // "Language & Subtitles" name (aria-label adds no second heading).
+        aria-label={
+          subtitles.length > 0 ? t("dialogTitleWithSubtitles") : undefined
+        }
+        aria-labelledby={subtitles.length > 0 ? undefined : headingId}
+        className={LANGUAGE_PICKER_MODAL_CLASS}
         overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
         showCloseButton={false}
         portalContainer={portalContainer}
+        viewportClassName={LANGUAGE_PICKER_VIEWPORT_CLASS}
       >
-        <DialogTitle className="sr-only">
-          {subtitles.length > 0
-            ? t("dialogTitleWithSubtitles")
-            : t("dialogTitle")}
-        </DialogTitle>
-
-        <div className="flex flex-col gap-14">
-          <div className="flex flex-col gap-5">
-            <div className="flex items-baseline gap-4">
-              <h2 className="text-2xl font-semibold text-stone-100">
-                {t("languageHeading")}
-              </h2>
-              <span
-                data-testid="watch-language-picker-count"
-                className="text-lg font-normal text-stone-400"
-              >
-                {t("languageCount", { count: options.length })}
-              </span>
-            </div>
-            <LanguageCombobox
-              options={options}
-              value={draftSlug}
-              onChange={setDraftSlug}
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={onClose}
+          testId="watch-language-picker-close"
+          renderInline
+        />
+        <div className="relative flex w-full flex-col gap-10">
+          <MultilingualTooltipPanel
+            copy={activeTooltipCopy}
+            excludedLanguage={excludedTooltipLanguage}
+          />
+          <div className="flex flex-col gap-4">
+            <LanguagePickerHeader
+              allLanguagesHref={allLanguagesPath}
+              allLanguagesLabel={t("seeAllLanguages")}
+              countLabel={
+                !languageOptionsLoading && !languageOptionsError
+                  ? t("languageCount", { count: options.length })
+                  : undefined
+              }
+              heading={t("languageHeading")}
+              headingId={headingId}
+              loading={languageOptionsLoading}
+              testIdPrefix="watch-language-picker"
+              onActivate={setActiveTooltipCopy}
+              onDeactivate={clearActiveTooltip}
             />
+            {languageOptionsError ? (
+              <div
+                data-testid="watch-language-picker-load-error"
+                className="flex min-h-16 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-3"
+              >
+                <span className="flex items-center gap-3 text-base font-semibold text-stone-400">
+                  <Languages aria-hidden className="size-5" />
+                  {t("languageHeading")}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={t("retryLoadingLanguages")}
+                  title={t("retryLoadingLanguages")}
+                  data-testid="watch-language-picker-retry-languages"
+                  onClick={onRetryLanguageOptions}
+                  className={`size-10 rounded-full p-0 text-stone-300 hover:bg-white/10 hover:text-white ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+                >
+                  <RefreshCw aria-hidden className="size-4" />
+                </Button>
+              </div>
+            ) : (
+              <LanguageCombobox
+                options={options}
+                value={draftSlug}
+                onChange={setDraftSlug}
+                disabled={languageOptionsLoading}
+                placeholder={t("languageHeading")}
+                compact
+                open={openCombobox === "language"}
+                onOpenChange={(next) =>
+                  setOpenComboboxState(next ? "language" : null)
+                }
+                popoverPortalContainer={portalContainer}
+                triggerWrapper={(trigger) => (
+                  <LanguagePickerComboboxFrame
+                    testIdPrefix="watch-language-picker"
+                    onActivate={setActiveTooltipCopy}
+                    onDeactivate={clearActiveTooltip}
+                  >
+                    {trigger}
+                  </LanguagePickerComboboxFrame>
+                )}
+              />
+            )}
+            {draftLanguageInventoryPath ? (
+              <LanguagePickerInventoryLink
+                href={draftLanguageInventoryPath}
+                label={draftLanguageInventoryLabel}
+                testIdPrefix="watch-language-picker"
+              />
+            ) : null}
           </div>
 
-          <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-baseline gap-4">
-                <h2 className="text-2xl font-semibold text-stone-100">
-                  {t("subtitlesHeading")}
-                </h2>
-                <span
-                  data-testid="watch-language-picker-subtitle-count"
-                  className="text-lg font-normal text-stone-400"
-                >
-                  {t("languageCount", { count: subtitleOptions.length })}
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                {subtitleOptions.length === 0 ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    data-testid="watch-language-picker-request-ai-translation"
-                    disabled={translationRequestSent}
-                    onClick={() => setTranslationRequestSent(true)}
-                    className="cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-4 py-2 text-xs font-bold tracking-wider text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100"
+          <div className="flex flex-col gap-4">
+            <div
+              data-testid="watch-language-picker-subtitles-header"
+              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+            >
+              <MultilingualTooltip
+                copy={MULTILINGUAL_TOOLTIPS.subtitles}
+                testId="watch-language-picker-tooltip-subtitles"
+                className="col-start-1 row-start-1 min-w-0"
+                onActivate={setActiveTooltipCopy}
+                onDeactivate={clearActiveTooltip}
+              >
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <span
+                    data-testid="watch-language-picker-subtitles-icon"
+                    className="flex size-8 shrink-0 items-center justify-center text-stone-200"
                   >
-                    {translationRequestSent
-                      ? t("requestSent")
-                      : t("translateWithAi")}
-                  </Button>
-                ) : null}
+                    <Captions aria-hidden className="size-4" />
+                  </span>
+                  <div
+                    data-testid="watch-language-picker-subtitles-copy"
+                    className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:gap-3"
+                  >
+                    <h2 className="min-w-0 break-words text-xl font-semibold text-stone-100">
+                      {t("subtitlesHeading")}
+                    </h2>
+                    <span
+                      data-testid="watch-language-picker-subtitle-count"
+                      className="text-xs font-normal text-stone-400 sm:text-sm"
+                    >
+                      {t("languageCount", {
+                        count: allSubtitleOptions.length,
+                      })}
+                    </span>
+                  </div>
+                </div>
+              </MultilingualTooltip>
+              <MultilingualTooltip
+                copy={subtitleToggleTooltip}
+                testId="watch-language-picker-tooltip-subtitles-toggle"
+                className="col-start-2 row-start-1"
+                onActivate={setActiveTooltipCopy}
+                onDeactivate={clearActiveTooltip}
+              >
                 <button
                   type="button"
                   role="switch"
@@ -356,9 +665,9 @@ export function LanguagePickerModal({
                   aria-checked={draftSubtitleEnabled}
                   data-state={draftSubtitleEnabled ? "on" : "off"}
                   data-testid="watch-language-picker-subtitles-toggle"
-                  disabled={subtitleOptions.length === 0}
+                  disabled={!hasSelectableSubtitleOptions}
                   onClick={() => setDraftSubtitleEnabled((value) => !value)}
-                  className={`relative flex h-10 w-[88px] shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-[11px] font-bold uppercase transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-100 disabled:cursor-not-allowed disabled:opacity-45 ${
+                  className={`relative flex h-9 w-16 shrink-0 cursor-pointer items-center overflow-hidden rounded-full p-1 text-xs font-bold uppercase sm:text-[10px] transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-45 ${LANGUAGE_PICKER_FOCUS_RING_CLASS} ${
                     draftSubtitleEnabled
                       ? "bg-stone-100 text-stone-950"
                       : "border border-stone-500/80 bg-stone-950/70 text-stone-300"
@@ -366,22 +675,59 @@ export function LanguagePickerModal({
                 >
                   <span
                     data-testid="watch-language-picker-subtitles-toggle-state"
-                    className={`pointer-events-none absolute top-1/2 -translate-y-1/2 ${
-                      draftSubtitleEnabled ? "left-3" : "right-3"
+                    className={`pointer-events-none absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center ${
+                      draftSubtitleEnabled ? "left-1" : "right-1"
                     }`}
                   >
-                    {draftSubtitleEnabled ? t("toggleOn") : t("toggleOff")}
+                    {draftSubtitleEnabled ? "I" : "O"}
                   </span>
                   <span
                     aria-hidden="true"
-                    className={`relative z-10 size-8 rounded-full shadow-sm transition-transform duration-200 ${
+                    className={`relative z-10 size-7 rounded-full shadow-sm transition-transform duration-200 ${
                       draftSubtitleEnabled
-                        ? "translate-x-12 bg-stone-950"
+                        ? "translate-x-7 bg-stone-950"
                         : "translate-x-0 bg-stone-100"
                     }`}
                   />
                 </button>
-              </div>
+              </MultilingualTooltip>
+              {sameLanguageSubtitleOptions.length === 0 ? (
+                <MultilingualTooltip
+                  copy={MULTILINGUAL_TOOLTIPS.requestSubtitles}
+                  testId="watch-language-picker-tooltip-request-subtitles"
+                  className="col-span-2 row-start-2 min-w-0 max-w-full justify-self-end sm:col-span-1 sm:col-start-3 sm:row-start-1"
+                  onActivate={setActiveTooltipCopy}
+                  onDeactivate={clearActiveTooltip}
+                >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="watch-language-picker-request-ai-translation"
+                    disabled={translationRequestSent}
+                    onClick={() => setTranslationRequestSent(true)}
+                    className={`min-w-0 max-w-full flex-1 shrink gap-1.5 cursor-pointer rounded-full border border-stone-400/50 bg-transparent px-3 py-1.5 text-center text-xs leading-4 font-bold tracking-wider sm:text-[11px] whitespace-normal text-stone-300 uppercase transition-colors duration-200 hover:border-stone-200 hover:bg-transparent hover:text-white disabled:cursor-default disabled:border-stone-500/35 disabled:text-stone-500 disabled:opacity-100 sm:flex-none ${LANGUAGE_PICKER_FOCUS_RING_CLASS}`}
+                  >
+                    {translationRequestSent ? (
+                      <Check
+                        aria-hidden
+                        data-testid="watch-language-picker-request-sent-icon"
+                        className="size-3.5 text-emerald-400"
+                      />
+                    ) : (
+                      <Sparkles
+                        aria-hidden
+                        data-testid="watch-language-picker-request-icon"
+                        className="size-3.5"
+                      />
+                    )}
+                    <span>
+                      {translationRequestSent
+                        ? t("requestSent")
+                        : t("translateWithAi")}
+                    </span>
+                  </Button>
+                </MultilingualTooltip>
+              ) : null}
             </div>
             {draftSubtitleEnabled && subtitleOptions.length > 0 ? (
               <LanguageCombobox
@@ -389,30 +735,51 @@ export function LanguagePickerModal({
                 value={draftSubtitleSlug ?? ""}
                 onChange={setDraftSubtitleSlug}
                 icon="subtitles"
-                placeholder={t("noSubtitles")}
+                placeholder={subtitlePlaceholder}
+                compact
+                open={openCombobox === "subtitles"}
+                onOpenChange={(next) =>
+                  setOpenComboboxState(next ? "subtitles" : null)
+                }
+                popoverPortalContainer={portalContainer}
+                triggerWrapper={(trigger) => (
+                  <MultilingualTooltip
+                    copy={MULTILINGUAL_TOOLTIPS.subtitles}
+                    testId="watch-language-picker-tooltip-subtitles-select"
+                    className="w-full"
+                    onActivate={setActiveTooltipCopy}
+                    onDeactivate={clearActiveTooltip}
+                  >
+                    {trigger}
+                  </MultilingualTooltip>
+                )}
               />
+            ) : null}
+            {!hasSelectableSubtitleOptions ? (
+              <p
+                data-testid="watch-language-picker-subtitles-unavailable"
+                className="text-base sm:text-sm leading-6 text-stone-400"
+              >
+                {subtitleUnavailableLabel}
+              </p>
             ) : null}
           </div>
 
-          <div className="flex items-center justify-end gap-9 pt-6">
-            <Button
-              variant="ghost"
-              data-testid="watch-language-picker-close-action"
-              onClick={onClose}
-              className="cursor-pointer rounded-full px-5 py-3.5 text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
-            >
-              {t("close")}
-            </Button>
-            <Button
-              variant="pill"
-              data-testid="watch-language-picker-apply"
-              disabled={!isDirty || navigating}
-              onClick={handleApply}
-              className="bg-stone-300 px-7 py-4 text-sm text-stone-950 hover:bg-white hover:text-stone-950 disabled:bg-stone-300 disabled:text-stone-950"
-            >
-              {t("apply")}
-            </Button>
-          </div>
+          <LanguagePickerActions
+            applyDisabled={!isDirty || navigating || subtitleSelectionRequired}
+            applyIconTestId="watch-language-picker-apply-icon"
+            applyLabel={t("apply")}
+            closeIconTestId="watch-language-picker-close-action-icon"
+            closeLabel={t("close")}
+            closeTestId="watch-language-picker-close-action"
+            navigating={navigating}
+            onApply={handleApply}
+            onClose={onClose}
+            switchingLabel={t("switching")}
+            testIdPrefix="watch-language-picker"
+            onActivate={setActiveTooltipCopy}
+            onDeactivate={clearActiveTooltip}
+          />
         </div>
       </DialogContent>
     </Dialog>

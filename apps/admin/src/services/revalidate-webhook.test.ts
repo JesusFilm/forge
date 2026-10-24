@@ -75,6 +75,23 @@ describe("emitRevalidateWebhook", () => {
     })
   })
 
+  it("additively forwards an exact video language slug", async () => {
+    fetchSpy.mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+    await emitRevalidateWebhook({
+      model: "video",
+      slug: "jesus",
+      locale: "en",
+      languageSlug: "english",
+    })
+
+    const [, init] = fetchSpy.mock.calls[0]
+    expect(JSON.parse(String(init?.body))).toEqual({
+      model: "video",
+      entry: { slug: "jesus", locale: "en", languageSlug: "english" },
+    })
+  })
+
   it("skips silently when WEB_REVALIDATE_URL is unset", async () => {
     envMutable.WEB_REVALIDATE_URL = undefined
 

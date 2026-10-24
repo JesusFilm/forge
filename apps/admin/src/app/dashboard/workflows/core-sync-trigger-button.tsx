@@ -62,7 +62,7 @@ export function CoreSyncTriggerButton() {
         type="button"
         disabled={disabled}
         onClick={startSync}
-        className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[var(--color-brand)]"
       >
         <RefreshCcw
           className={isPending ? "h-4 w-4 animate-spin" : "h-4 w-4"}

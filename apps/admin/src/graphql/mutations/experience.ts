@@ -4,13 +4,46 @@
 // and ABAC checks. Resolvers are thin wiring.
 
 import { builder } from "@/graphql/builder"
+import type { ContextShape } from "@/graphql/builder"
+import type { ExperienceDuplicationSourceVersion } from "@/services/experience.schemas"
+
+const ExperienceDuplicationSourceVersionEnum = builder.enumType(
+  "ExperienceDuplicationSourceVersion",
+  {
+    description:
+      "Which saved version of each source locale a duplicate copies. Unsaved editor state is never copied.",
+    values: {
+      EFFECTIVE: {
+        value: "EFFECTIVE",
+        description:
+          "The locale's active saved draft when one exists, otherwise its canonical row.",
+      },
+      CANONICAL: {
+        value: "CANONICAL",
+        description:
+          "The stored canonical row only; for a published locale, the live published content.",
+      },
+    } as const,
+  },
+)
+
+export function duplicateExperienceFromContext(
+  ctx: Pick<ContextShape, "services" | "user">,
+  id: string,
+  sourceVersion: ExperienceDuplicationSourceVersion = "EFFECTIVE",
+) {
+  return ctx.services.experience.duplicate({
+    input: { id, sourceVersion },
+    user: ctx.user,
+  })
+}
 
 builder.mutationFields((t) => ({
   createExperience: t.prismaField({
     type: "Experience",
     authScopes: { hasPermission: "write:experiences" },
     description:
-      "Create a new Experience with an initial locale. Caller becomes owner.",
+      "Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.",
     args: {
       locale: t.arg.string({ required: true }),
       slug: t.arg.string({ required: true }),
@@ -18,7 +51,7 @@ builder.mutationFields((t) => ({
       isTemplate: t.arg.boolean({ required: false }),
       blocks: t.arg({ type: "JSON", required: false }),
     },
-    resolve: (query, _root, args, ctx) =>
+    resolve: (_query, _root, args, ctx) =>
       ctx.services.experience.create({
         input: {
           locale: args.locale,
@@ -31,10 +64,33 @@ builder.mutationFields((t) => ({
       }),
   }),
 
+  duplicateExperience: t.prismaField({
+    type: "Experience",
+    nullable: false,
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Duplicate every locale of an Experience into a new unpublished draft owned by the caller. Each copied locale starts with an active draft and preview capability; the copy never becomes the live homepage, and a homepage copy keeps homepageLayout instead.",
+    args: {
+      id: t.arg.id({ required: true }),
+      sourceVersion: t.arg({
+        type: ExperienceDuplicationSourceVersionEnum,
+        required: false,
+        defaultValue: "EFFECTIVE",
+      }),
+    },
+    resolve: (_query, _root, args, ctx) =>
+      duplicateExperienceFromContext(
+        ctx,
+        String(args.id),
+        args.sourceVersion ?? "EFFECTIVE",
+      ),
+  }),
+
   updateExperienceLocale: t.prismaField({
     type: "ExperienceLocale",
     authScopes: { hasPermission: "write:experiences" },
-    description: "Update an ExperienceLocale (slug, title, blocks, etc.).",
+    description:
+      "Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.",
     args: {
       id: t.arg.id({ required: true }),
       slug: t.arg.string({ required: false }),
@@ -44,7 +100,6 @@ builder.mutationFields((t) => ({
       ogDescription: t.arg.string({ required: false }),
       ogImageUrl: t.arg.string({ required: false }),
       isHomepage: t.arg.boolean({ required: false }),
-      isTemplate: t.arg.boolean({ required: false }),
       pathSegment: t.arg.string({ required: false }),
       blocks: t.arg({ type: "JSON", required: false }),
     },
@@ -65,7 +120,6 @@ builder.mutationFields((t) => ({
             ? { ogImageUrl: args.ogImageUrl }
             : {}),
           ...(args.isHomepage != null ? { isHomepage: args.isHomepage } : {}),
-          ...(args.isTemplate != null ? { isTemplate: args.isTemplate } : {}),
           ...(args.pathSegment !== undefined
             ? { pathSegment: args.pathSegment }
             : {}),
@@ -79,13 +133,43 @@ builder.mutationFields((t) => ({
     type: "ExperienceLocale",
     authScopes: { hasPermission: "publish:experiences" },
     description:
-      "Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.",
+      "Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.",
     args: {
       id: t.arg.id({ required: true }),
     },
     resolve: (_query, _root, args, ctx) =>
       ctx.services.experience.publishLocale({
         input: { id: String(args.id) },
+        user: ctx.user,
+      }),
+  }),
+
+  discardExperienceLocaleDraft: t.prismaField({
+    type: "ExperienceLocale",
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Retire the locale's shared active draft without changing canonical content. Idempotent when no draft exists.",
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: (_query, _root, args, ctx) =>
+      ctx.services.experience.discardLocaleDraft({
+        input: { id: String(args.id) },
+        user: ctx.user,
+      }),
+  }),
+
+  restoreExperienceLocaleRevisionToDraft: t.prismaField({
+    type: "ExperienceLocale",
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Copy a historical Experience locale revision into the shared active draft without changing canonical content.",
+    args: {
+      revisionId: t.arg.id({ required: true }),
+    },
+    resolve: (_query, _root, args, ctx) =>
+      ctx.services.experience.restoreLocaleRevision({
+        input: { revisionId: String(args.revisionId) },
         user: ctx.user,
       }),
   }),

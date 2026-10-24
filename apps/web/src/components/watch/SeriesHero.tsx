@@ -4,12 +4,25 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import {
+  CONTENT_WIDTH_ALIGN_CLASSES,
+  WATCH_PAGE_CONTENT_CLASSES,
+} from "@/lib/content-width"
 import { resolvePosterUrl } from "@/lib/url"
+import { WATCH_MUTED_INTRO_HEIGHT_CLASS } from "@/lib/watch-home-hero-fit"
 import { HeroPlayer } from "./HeroPlayer"
 
 type SeriesHeroProps = {
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
+  onLanguageClick?: () => void
+  languageSlug?: string | null
+  playableLanguageCount?: number
+  hasSubtitleOptions?: boolean
+  subtitleLanguageCode?: string | null
+  subtitleVttSrc?: string | null
+  audioLanguageCountLabel?: string | null
+  subtitleLanguageCountLabel?: string | null
   // Optional hero-overlay content. When provided, replaces the default
   // label/title overlay in both trailer and static modes. The series
   // page uses this to render the episode-count label, title, and share
@@ -31,6 +44,14 @@ function hasPlayableTrailer(
 export function SeriesHero({
   series,
   selectedVariant,
+  onLanguageClick,
+  languageSlug,
+  playableLanguageCount,
+  hasSubtitleOptions = false,
+  subtitleLanguageCode = null,
+  subtitleVttSrc = null,
+  audioLanguageCountLabel = null,
+  subtitleLanguageCountLabel = null,
   overlay,
 }: SeriesHeroProps) {
   if (hasPlayableTrailer(selectedVariant)) {
@@ -39,8 +60,20 @@ export function SeriesHero({
     // player page — it's a landing page with a trailer for visual mood).
     return (
       <HeroPlayer
-        block={{ kind: "HeroPlayer", video: series, variant: selectedVariant }}
+        block={{
+          kind: "HeroPlayer",
+          video: series,
+          variant: selectedVariant,
+          audioLanguageCountLabel,
+          subtitleLanguageCountLabel,
+        }}
         darkenOverlay
+        onLanguageClick={onLanguageClick}
+        languageSlug={languageSlug}
+        playableLanguageCount={playableLanguageCount}
+        hasSubtitleOptions={hasSubtitleOptions}
+        subtitleLanguageCode={subtitleLanguageCode}
+        subtitleVttSrc={subtitleVttSrc}
         overlay={overlay}
       />
     )
@@ -49,11 +82,11 @@ export function SeriesHero({
 }
 
 // Static-mode hero: no <MuxPlayer>, no autoplay state, no chrome reveal.
-// Renders the series poster pinned to viewport-top using the same sticky-
-// math as HeroPlayer so the title overlay's overlay-anchor sits at the
-// same scroll-aware position. The body section slides over the sticky
-// hero on scroll, and the title (anchored to the zero-height div below)
-// rides the body's top edge in lockstep with the video page's behavior.
+// Renders the series poster pinned to viewport-top using the same bounded
+// muted-intro height as Watch home. That home rule is designed to read at the
+// same height as a single-video page's muted preview; a bare `aspect-video`
+// grows taller than the viewport on wide screens. The title overlay's anchor
+// keeps the same scroll-aware behavior as HeroPlayer.
 function SeriesHeroStatic({
   series,
   overlay,
@@ -64,9 +97,10 @@ function SeriesHeroStatic({
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const [heroHeight, setHeroHeight] = useState<number | null>(null)
 
-  // useLayoutEffect: aspect-video pins the wrapper height before paint, so
-  // we can install the ResizeObserver and seed heroHeight without flashing
-  // the fallback `top: 0px` for a frame. Mirrors HeroPlayer's pattern.
+  // useLayoutEffect: the responsive height class pins the wrapper height
+  // before paint, so we can install the ResizeObserver and seed heroHeight
+  // without flashing the fallback `top: 0px` for a frame. Mirrors
+  // HeroPlayer's pattern.
   useLayoutEffect(() => {
     const el = wrapperRef.current
     if (!el) return
@@ -91,7 +125,7 @@ function SeriesHeroStatic({
         ref={wrapperRef}
         data-block-type="SeriesHeroStatic"
         data-testid="series-hero-static"
-        className="sticky aspect-video w-full overflow-hidden bg-black"
+        className={`sticky w-full overflow-hidden bg-black ${WATCH_MUTED_INTRO_HEIGHT_CLASS}`}
         style={{
           // Same sticky-top math as HeroPlayer: 100svh tracks the small
           // viewport on iOS Safari, min() clamps to 0 so the player pins
@@ -136,12 +170,12 @@ function SeriesHeroStatic({
           to the video page in both modes. */}
       <div
         data-testid="hero-player-overlay-anchor"
-        className="relative z-10 h-0 w-full"
+        className={`relative z-10 h-0 ${CONTENT_WIDTH_ALIGN_CLASSES}`}
       >
         {overlay ?? (
           <div
             data-testid="series-hero-overlay"
-            className="absolute right-6 bottom-0 left-10 flex flex-col items-start gap-4 pb-6 md:right-auto md:left-16 xl:left-24"
+            className={`absolute inset-x-0 bottom-0 flex flex-col items-start gap-4 pb-6 ${WATCH_PAGE_CONTENT_CLASSES}`}
           >
             {series.label ? (
               <span

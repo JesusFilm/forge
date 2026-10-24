@@ -3,7 +3,7 @@
 // Mirrors `apps/cms/src/api/scene-embedding/services/indexer.ts` patterns:
 //   - PostgreSQL 18 on Railway rejects `?::jsonb::text[]` casts. Use a PG
 //     array literal like `{val1,val2}` with `?::text[]` instead.
-//   - Vector parameters bind as 1536-float arrays; cast with `::vector` in SQL.
+//   - Vector parameters bind as float arrays; cast with `::vector` in SQL.
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 // Unsafe brace input is rejected with a clear error rather than silently

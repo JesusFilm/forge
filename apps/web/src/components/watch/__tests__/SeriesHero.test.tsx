@@ -47,7 +47,10 @@ vi.mock("next/image", () => ({
 }))
 
 import { SeriesHero } from "@/components/watch/SeriesHero"
+import { HeroPlayer } from "@/components/watch/HeroPlayer"
+import { WATCH_MUTED_INTRO_HEIGHT_CLASS } from "@/lib/watch-home-hero-fit"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
+import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 
 let container: HTMLDivElement
 let root: Root
@@ -113,10 +116,21 @@ function makeVariant(
 }
 
 describe("SeriesHero — trailer mode (AE1)", () => {
-  it("mounts HeroPlayer when selectedVariant has hls", () => {
+  it("mounts HeroPlayer with the global language-switcher contract", () => {
+    const onLanguageClick = vi.fn()
     act(() => {
       root.render(
-        <SeriesHero series={makeSeries()} selectedVariant={makeVariant()} />,
+        <SeriesHero
+          series={makeSeries()}
+          selectedVariant={makeVariant()}
+          onLanguageClick={onLanguageClick}
+          playableLanguageCount={2}
+          hasSubtitleOptions
+          subtitleLanguageCode="RU"
+          subtitleVttSrc="/watch/api/download?subtitle=russian"
+          audioLanguageCountLabel="2 languages"
+          subtitleLanguageCountLabel="57 languages"
+        />,
       )
     })
     expect(
@@ -125,6 +139,18 @@ describe("SeriesHero — trailer mode (AE1)", () => {
     expect(
       container.querySelector('[data-testid="series-hero-static"]'),
     ).toBeNull()
+    const heroPlayerProps = vi.mocked(HeroPlayer).mock.calls.at(-1)?.[0]
+    expect(heroPlayerProps?.onLanguageClick).toBe(onLanguageClick)
+    expect(heroPlayerProps?.playableLanguageCount).toBe(2)
+    expect(heroPlayerProps?.hasSubtitleOptions).toBe(true)
+    expect(heroPlayerProps?.subtitleLanguageCode).toBe("RU")
+    expect(heroPlayerProps?.subtitleVttSrc).toBe(
+      "/watch/api/download?subtitle=russian",
+    )
+    expect(heroPlayerProps?.block.audioLanguageCountLabel).toBe("2 languages")
+    expect(heroPlayerProps?.block.subtitleLanguageCountLabel).toBe(
+      "57 languages",
+    )
   })
 })
 
@@ -138,13 +164,15 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
       container.querySelector('[data-testid="hero-player-mock"]'),
     ).toBeNull()
 
-    // Static-hero wrapper with sticky aspect-video.
+    // Static decorative heroes use the same bounded muted-intro dimensions as
+    // Watch home instead of growing past the viewport on wide screens.
     const wrapper = container.querySelector(
       '[data-testid="series-hero-static"]',
     )
     expect(wrapper).not.toBeNull()
     expect(wrapper?.className).toContain("sticky")
-    expect(wrapper?.className).toContain("aspect-video")
+    expect(wrapper?.className).toContain(WATCH_MUTED_INTRO_HEIGHT_CLASS)
+    expect(wrapper?.className).not.toContain("aspect-video")
 
     // Image rendered from series.images[0].mobileCinematicHigh (per
     // resolvePosterUrl's resolution chain).
@@ -161,8 +189,14 @@ describe("SeriesHero — static mode (AE2, AE3 partial)", () => {
     expect(
       container.querySelector('[data-testid="hero-player-overlay-anchor"]'),
     ).not.toBeNull()
+    const overlay = container.querySelector(
+      '[data-testid="series-hero-overlay"]',
+    )
+    for (const className of WATCH_PAGE_CONTENT_CLASSES.split(" ")) {
+      expect(overlay?.className).toContain(className)
+    }
 
-    // Title and label overlay rendered (no Play with Sound button — there's
+    // Title and label overlay rendered (no Watch now button — there's
     // nothing to play in static mode).
     expect(
       container.querySelector('[data-testid="series-hero-overlay-title"]')

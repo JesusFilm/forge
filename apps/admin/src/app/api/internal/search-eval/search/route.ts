@@ -1,64 +1,66 @@
+import { z } from "zod"
+
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
 import { isValidSearchTraceSamplingBearer } from "@/auth/search-trace-bearer"
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
+import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import {
-  HybridSearchService,
-  isContentType,
-  type ContentType,
-} from "@/services/hybrid-search.service"
+  createTypesenseWatchSearchService,
+  TypesenseWatchSearchUnavailableError,
+} from "@/services/typesense-watch-search.service"
+import { canonicalTypesenseVideoId } from "@/services/typesense-watch-search-identifiers"
+import {
+  WatchSearchService,
+  WatchSearchValidationError,
+  type WatchSearchInput,
+} from "@/services/watch-search.service"
 
-const RATE_LIMIT_MAX = 60
+const RATE_LIMIT_MAX = 300
 const RATE_LIMIT_WINDOW_MS = 60_000
-const MAX_BODY_BYTES = 4096
-const MAX_QUERY_LENGTH = 1024
-const MAX_LOCALE_LENGTH = 32
-const BCP47_REGEX = /^[a-zA-Z]{2,3}(-[A-Za-z0-9]{2,8})*$/
+const MAX_BODY_BYTES = 4_096
 
-function tooManyRequests(): Response {
-  return Response.json(
-    { error: "Too many requests" },
-    { status: 429, headers: { "retry-after": "60" } },
-  )
+const SearchEvalInputSchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    locale: z.string().trim().min(1).max(32),
+    languageSlug: z.string().trim().min(1).max(128).optional(),
+    clientRequestId: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]{8,80}$/)
+      .optional(),
+    limit: z.number().int().min(1).max(50).optional(),
+    offset: z.number().int().min(0).optional(),
+    mode: z
+      .enum(["modern", "default", "hybrid", "keyword-first", "semantic-only"])
+      .default("modern"),
+    contentType: z.enum(["video", "experience"]).nullable().optional(),
+  })
+  .strict()
+
+function jsonError(error: string, status: number, headers?: HeadersInit) {
+  return Response.json({ error }, { status, headers })
 }
 
-function unauthorized(): Response {
-  return Response.json({ error: "Authorization required" }, { status: 401 })
-}
-
-function badRequest(error: string): Response {
-  return Response.json({ error }, { status: 400 })
-}
-
-function unsupportedMediaType(): Response {
-  return Response.json(
-    { error: "Content-Type must be application/json" },
-    { status: 415 },
-  )
-}
-
-function payloadTooLarge(): Response {
-  return Response.json({ error: "JSON body is too large" }, { status: 413 })
-}
-
-async function readJsonBody(request: Request): Promise<unknown | Response> {
+async function readBoundedJson(request: Request): Promise<unknown | Response> {
   const contentType = request.headers.get("content-type") ?? ""
   if (!/^\s*application\/json(?:\s*;|$)/i.test(contentType)) {
-    return unsupportedMediaType()
+    return jsonError("Content-Type must be application/json", 415)
   }
 
   const contentLength = request.headers.get("content-length")
   if (contentLength != null) {
     const declaredBytes = Number(contentLength)
     if (!Number.isFinite(declaredBytes) || declaredBytes < 0) {
-      return badRequest("Content-Length must be a non-negative number")
+      return jsonError("Invalid Content-Length", 400)
     }
-    if (declaredBytes > MAX_BODY_BYTES) return payloadTooLarge()
+    if (declaredBytes > MAX_BODY_BYTES) {
+      return jsonError("JSON body is too large", 413)
+    }
   }
 
-  const body = request.body
-  if (body == null) return badRequest("Invalid JSON body")
-
-  const reader = body.getReader()
+  if (request.body == null) return jsonError("Invalid JSON body", 400)
+  const reader = request.body.getReader()
   const chunks: Uint8Array[] = []
   let totalBytes = 0
   try {
@@ -68,110 +70,31 @@ async function readJsonBody(request: Request): Promise<unknown | Response> {
       totalBytes += value.byteLength
       if (totalBytes > MAX_BODY_BYTES) {
         await reader.cancel().catch(() => undefined)
-        return payloadTooLarge()
+        return jsonError("JSON body is too large", 413)
       }
       chunks.push(value)
     }
   } catch {
-    return badRequest("Invalid JSON body")
+    return jsonError("Invalid JSON body", 400)
   }
+
   const bytes = new Uint8Array(totalBytes)
   let offset = 0
   for (const chunk of chunks) {
     bytes.set(chunk, offset)
     offset += chunk.byteLength
   }
-  const text = new TextDecoder().decode(bytes)
-
   try {
-    return JSON.parse(text)
+    return JSON.parse(new TextDecoder().decode(bytes))
   } catch {
-    return badRequest("Invalid JSON body")
+    return jsonError("Invalid JSON body", 400)
   }
 }
 
-function parseInteger(
-  value: unknown,
-  name: string,
-): number | Response | undefined {
-  if (value == null) return undefined
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    return badRequest(`${name} must be an integer`)
-  }
-  return value
-}
-
-function parseString(
-  value: unknown,
-  name: string,
-): string | Response | undefined {
-  if (value == null) return undefined
-  if (typeof value !== "string") return badRequest(`${name} must be a string`)
-  const normalized = value.trim()
-  return normalized.length === 0
-    ? badRequest(`${name} must not be empty`)
-    : normalized
-}
-
-function parseBody(body: unknown):
-  | {
-      query: string
-      locale: string
-      limit?: number
-      offset?: number
-      mode?: string
-      contentTypes?: ContentType[]
-    }
-  | Response {
-  if (body == null || typeof body !== "object" || Array.isArray(body)) {
-    return badRequest("JSON body must be an object")
-  }
-  const record = body as Record<string, unknown>
-  const query = parseString(record.query, "query")
-  if (query instanceof Response) return query
-  if (query == null || query.length > MAX_QUERY_LENGTH) {
-    return badRequest(`query must be at most ${MAX_QUERY_LENGTH} characters`)
-  }
-  const locale = parseString(record.locale, "locale")
-  if (locale instanceof Response) return locale
-  if (locale == null) return badRequest("locale is required")
-  if (locale.length > MAX_LOCALE_LENGTH || !BCP47_REGEX.test(locale)) {
-    return badRequest("locale must be a safe BCP-47 tag")
-  }
-
-  const limit = parseInteger(record.limit, "limit")
-  if (limit instanceof Response) return limit
-  if (limit != null && (limit <= 0 || limit > 50)) {
-    return badRequest("limit must be between 1 and 50")
-  }
-  const offset = parseInteger(record.offset, "offset")
-  if (offset instanceof Response) return offset
-  if (offset != null && offset < 0) {
-    return badRequest("offset must be at least 0")
-  }
-
-  const mode = parseString(record.mode, "mode")
-  if (mode instanceof Response) return mode
-
-  const contentType = parseString(record.contentType, "contentType")
-  if (contentType instanceof Response) return contentType
-  if (contentType != null && !isContentType(contentType)) {
-    return badRequest("contentType must be 'video' or 'experience'")
-  }
-
-  return {
-    query,
-    locale,
-    limit,
-    offset,
-    mode,
-    contentTypes: contentType ? [contentType] : undefined,
-  }
-}
-
-function logValue(value: string | undefined): string {
-  if (value == null || value.length === 0) return "none"
-  return value.replace(/[\r\n\t\s=]/g, "_").slice(0, 64)
+function resultTypesFor(
+  contentType: "video" | "experience" | null | undefined,
+): WatchSearchInput["resultTypes"] {
+  return contentType == null ? undefined : [contentType]
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -181,39 +104,100 @@ export async function POST(request: Request): Promise<Response> {
     limit: RATE_LIMIT_MAX,
     windowMs: RATE_LIMIT_WINDOW_MS,
   })
-  if (!limit.allowed) return tooManyRequests()
-
+  if (!limit.allowed) {
+    return jsonError("Too many requests", 429, { "retry-after": "60" })
+  }
   if (!isValidSearchTraceSamplingBearer(request.headers.get("authorization"))) {
-    console.warn(
-      `[search] event=eval_search_auth_denied route=internal rl=${limit.source}`,
-    )
-    return unauthorized()
+    return jsonError("Authorization required", 401)
   }
 
-  const body = await readJsonBody(request)
+  const body = await readBoundedJson(request)
   if (body instanceof Response) return body
+  const parsed = SearchEvalInputSchema.safeParse(body)
+  if (!parsed.success) return jsonError("Invalid search eval input", 400)
 
-  const params = parseBody(body)
-  if (params instanceof Response) return params
+  const routeInput = parsed.data
+  const mode = routeInput.mode === "modern" ? "modern" : "default"
+  const input: WatchSearchInput = {
+    query: routeInput.query,
+    mode,
+    clientRequestId: routeInput.clientRequestId,
+    targetLanguageSlug: routeInput.languageSlug,
+    queryLanguageSlug: routeInput.languageSlug,
+    displayLanguageSlug: routeInput.languageSlug,
+    routeLanguageSlug: routeInput.languageSlug,
+    limit: routeInput.limit,
+    offset: routeInput.offset,
+    resultTypes: resultTypesFor(routeInput.contentType),
+  }
+  const startedAt = new Date()
 
   try {
-    const service = new HybridSearchService({ prisma })
-    const response = await service.search(params)
-    console.info(
-      `[search] event=eval_search auth=bearer route=internal rl=${limit.source} locale=${logValue(params.locale)} mode=${logValue(params.mode)} result_count=${response.results.length}`,
+    const service =
+      mode === "modern"
+        ? createTypesenseWatchSearchService(prisma)
+        : new WatchSearchService(prisma)
+    if (service == null) throw new TypesenseWatchSearchUnavailableError()
+    const response = await service.search(input)
+    enqueueWatchSearchTrace(
+      {
+        input,
+        response,
+        startedAt,
+        completedAt: new Date(),
+      },
+      prisma,
     )
-    return Response.json(response, { status: 200 })
-  } catch (error) {
-    console.error(
-      `[search] event=eval_search_failed route=internal error_class=${logValue(error instanceof Error ? error.name : typeof error)}`,
-    )
-    return Response.json(
-      { error: "Search is temporarily unavailable" },
-      { status: 503 },
-    )
-  }
-}
 
-export async function GET(): Promise<Response> {
-  return unauthorized()
+    const videoIds = response.results
+      .filter((result) => result.type === "video")
+      .map((result) => result.id)
+    const videos = await prisma.video.findMany({
+      where: { id: { in: videoIds } },
+      select: { id: true, coreId: true },
+    })
+    const canonicalByVideoId = new Map(
+      videos.map((video) => [
+        video.id,
+        canonicalTypesenseVideoId(video.id, video.coreId),
+      ]),
+    )
+
+    return Response.json({
+      results: response.results.map((result) => ({
+        type: result.type,
+        id: result.id,
+        slug: result.slug,
+        title: result.title,
+        imageUrl: result.imageUrl,
+        snippet: result.snippet ?? result.description ?? "",
+        startSeconds: result.startSeconds,
+        playbackId: result.playbackId,
+        score: result.score,
+        label: result.label,
+        durationSeconds: result.durationSeconds,
+        childCount: result.childCount,
+        ...(result.type === "video" && canonicalByVideoId.has(result.id)
+          ? { canonicalVideoId: canonicalByVideoId.get(result.id) }
+          : {}),
+        languageSlug: result.languageSlug,
+      })),
+      hasMore: response.hasMore,
+      query: response.query,
+      searchMode: response.searchMode,
+      requestId: response.requestId,
+      degraded: response.degraded,
+      latencyMs: response.latencyMs,
+      revision: env.NEXT_PUBLIC_DATADOG_VERSION ?? null,
+      laneStatuses: response.laneStatuses,
+    })
+  } catch (error) {
+    if (error instanceof WatchSearchValidationError) {
+      return jsonError(error.message, 400)
+    }
+    if (error instanceof TypesenseWatchSearchUnavailableError) {
+      return jsonError("MODERN search is unavailable", 503)
+    }
+    return jsonError("Search eval is temporarily unavailable", 503)
+  }
 }

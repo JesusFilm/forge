@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect } from "react"
+import { useTranslations } from "next-intl"
 
+import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
 
 // Last-line fallback for unexpected render-time errors. Resolver errors are
@@ -13,7 +15,9 @@ export default function WatchPageError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const t = useTranslations("ExperienceError")
   useEffect(() => {
+    reportDatadogRumError(error, { boundary: "watch-page" })
     if (process.env.NODE_ENV !== "production") {
       console.error("[watch-page] error boundary caught:", error)
     }
@@ -26,9 +30,9 @@ export default function WatchPageError({
         <button
           type="button"
           onClick={reset}
-          className="rounded-full border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          className="rounded-full border border-amber-400 px-4 py-2 text-base sm:text-sm font-semibold text-amber-400 transition hover:bg-amber-400 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
         >
-          Try again
+          {t("tryAgain")}
         </button>
       </div>
     </main>

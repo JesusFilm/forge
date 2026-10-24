@@ -1,0 +1,23 @@
+{
+  "name": "[forge-admin] push zone_missed — a wave group was retired unsent",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin \\\"event=zone_missed\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "A time-zone group of a campaign was recorded as missed, so those phones never received it. A missed row never consumes the phone's local day, so the next campaign can still reach them.\n\nThe line carries reason=late, reason=flag_off, or reason=run_not_alive.\n- late: the group's instant passed by more than three hours, which means a worker outage or a deploy that spanned the hour.\n- flag_off: PUSH_CAMPAIGNS_ENABLED was set to false mid-wave, which is the intended kill switch.\n- run_not_alive: the recovery sweep found a live campaign whose run the runtime no longer holds.\n\nExpected to be flat zero on the first campaign. Read the campaign's report for the missed count per country.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:push-campaigns",
+    "area:push"
+  ],
+  "priority": 2,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 120,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

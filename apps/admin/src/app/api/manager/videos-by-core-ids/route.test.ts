@@ -42,7 +42,9 @@ describe("POST /api/manager/videos-by-core-ids", () => {
         id: "v-1",
         coreId: "core-1",
         label: "featureFilm",
+        targetLocale: null,
         primaryLanguageBcp47: "en",
+        languageBcp47: "en",
         muxAssetId: "mux-1",
         subtitleUrl: "https://example.test/subtitles.vtt",
       },
@@ -66,7 +68,9 @@ describe("POST /api/manager/videos-by-core-ids", () => {
           id: "v-1",
           coreId: "core-1",
           label: "featureFilm",
+          targetLocale: null,
           primaryLanguageBcp47: "en",
+          languageBcp47: "en",
           muxAssetId: "mux-1",
           subtitleUrl: "https://example.test/subtitles.vtt",
         },
@@ -75,10 +79,66 @@ describe("POST /api/manager/videos-by-core-ids", () => {
     expect(isValidWorkflowBearerMock).toHaveBeenCalledWith(
       "Bearer workflow-key",
     )
-    expect(getByCoreIdsMock).toHaveBeenCalledWith({ coreIds: ["core-1"] })
+    expect(getByCoreIdsMock).toHaveBeenCalledWith({
+      coreIds: ["core-1"],
+      targetLocale: null,
+    })
     expect(warn.mock.calls[0][0]).toContain("event=rest_lookup.complete")
     expect(warn.mock.calls[0][0]).not.toContain("workflow-key")
     warn.mockRestore()
+  })
+
+  it("accepts per-item target locales and groups service lookups by locale", async () => {
+    getByCoreIdsMock
+      .mockResolvedValueOnce([
+        {
+          id: "v-1",
+          coreId: "core-1",
+          label: "featureFilm",
+          targetLocale: "es",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "es",
+          muxAssetId: "mux-es",
+          subtitleUrl: "https://example.test/es.vtt",
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "v-2",
+          coreId: "core-2",
+          label: "featureFilm",
+          targetLocale: "ar",
+          primaryLanguageBcp47: "en",
+          languageBcp47: "ar",
+          muxAssetId: "mux-ar",
+          subtitleUrl: "https://example.test/ar.vtt",
+        },
+      ])
+
+    const response = await POST(
+      request({
+        items: [
+          { coreId: "core-1", targetLocale: "es" },
+          { coreId: "core-2", targetLocale: "ar" },
+        ],
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      videos: [
+        { coreId: "core-1", targetLocale: "es", muxAssetId: "mux-es" },
+        { coreId: "core-2", targetLocale: "ar", muxAssetId: "mux-ar" },
+      ],
+    })
+    expect(getByCoreIdsMock).toHaveBeenNthCalledWith(1, {
+      coreIds: ["core-1"],
+      targetLocale: "es",
+    })
+    expect(getByCoreIdsMock).toHaveBeenNthCalledWith(2, {
+      coreIds: ["core-2"],
+      targetLocale: "ar",
+    })
   })
 
   it("rejects missing or invalid bearer without invoking the service", async () => {

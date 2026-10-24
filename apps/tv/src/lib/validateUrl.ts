@@ -12,11 +12,25 @@ const BLOCKED_SCHEMES = new Set([
 ])
 
 /**
+ * Normalize a CMS-sourced stream URL before validation/playback: trim outer
+ * whitespace and reject any interior whitespace. WHATWG URL parsing silently
+ * strips both, so a tainted value passes validation but 400s at the player.
+ */
+export function cleanStreamUrl(url: string | null | undefined): string | null {
+  const trimmed = url?.trim()
+  if (!trimmed || /\s/.test(trimmed)) return null
+  return trimmed
+}
+
+/**
  * Validate a streaming URL before passing to useVideoPlayer().
  * Only allows Mux streaming domains.
  */
 export function validateStreamingUrl(url: string | null | undefined): boolean {
   if (!url) return false
+  // TV-only fast path: thousands of canonical Mux variants otherwise invoke Hermes URL parsing.
+  if (/^https:\/\/stream\.mux\.com\/[A-Za-z0-9_-]+\.m3u8$/.test(url))
+    return true
   try {
     const parsed = new URL(url)
     return ALLOWED_STREAMING_HOSTS.has(parsed.hostname)

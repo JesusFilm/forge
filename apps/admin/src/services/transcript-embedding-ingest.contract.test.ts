@@ -1,4 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "./content-embedding-contract"
 
 import {
   ingestTranscriptEmbeddings,
@@ -13,8 +23,13 @@ type StoredTranscript = {
   language: string
   model: string
   dimensions: number
+  embeddingProvider: string | null
+  embeddingNativeDimensions: number | null
+  embeddingTransformVersion: string | null
   sourceContentHash: string | null
+  sourceGeneration: bigint
   chunkingType: string
+  chunkingVersion: string | null
   maxChunkTokens: number
   overlapTokens: number
   totalChunks: number
@@ -28,12 +43,38 @@ type StoredChunk = {
   chunkIndex: number
   chunkId: string
   text: string
+  rawSourceText: string | null
+  embeddingInputText: string | null
+  feltNeeds: string[]
+  bibleVerses: string[]
+  contentSummary: string | null
+  tone: string | null
+  demographics: string[]
+  spiritualContext: string[]
+  extractionMetadata: Record<string, unknown> | null
   tokenCount: number
   startSeconds: number | null
   endSeconds: number | null
   model: string
   dimensions: number
   embeddingText: string
+}
+
+function parseJsonStringArray(value: string | null | undefined): string[] {
+  if (value == null) return []
+  const parsed = JSON.parse(value) as unknown
+  if (!Array.isArray(parsed)) return []
+  return parsed.map(String)
+}
+
+function parseBase64Json(
+  value: string | null | undefined,
+): Record<string, unknown> | null {
+  if (value == null) return null
+  return JSON.parse(Buffer.from(value, "base64").toString("utf8")) as Record<
+    string,
+    unknown
+  >
 }
 
 function required(value: string | null | undefined): string {
@@ -104,6 +145,24 @@ function buildContractPrisma() {
 
   const queryRaw = vi.fn(async (strings: TemplateStringsArray) => {
     const sql = strings.join(" ")
+    if (sql.includes("FROM content_embedding_contract_pointer")) {
+      return [
+        {
+          pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+          contractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+          queryProvider: ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+          queryModel: ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+          queryNativeDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryTransformVersion: null,
+          storageProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+          storageModel: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          storageNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageTransformVersion: null,
+        },
+      ]
+    }
     if (sql.includes("pg_advisory_xact_lock")) {
       return []
     }
@@ -122,7 +181,7 @@ function buildContractPrisma() {
       return [...transcripts.values()]
     }
 
-    if (sql.includes("WITH scene_source AS")) {
+    if (sql.includes("transcript_source AS")) {
       return chunks.map((chunk) => {
         const transcript = transcripts.get(chunk.transcriptId)!
         return {
@@ -164,15 +223,35 @@ function buildContractPrisma() {
                 videoId: stringValue(update, "videoId"),
                 model: stringValue(update, "model"),
                 dimensions: numberValue(update, "dimensions"),
-                chunkingType: stringValue(update, "chunkingType"),
-                maxChunkTokens: numberValue(update, "maxChunkTokens"),
-                overlapTokens: numberValue(update, "overlapTokens"),
-                totalChunks: numberValue(update, "totalChunks"),
-                totalTokens: numberValue(update, "totalTokens"),
+                embeddingProvider:
+                  typeof update.embeddingProvider === "string"
+                    ? update.embeddingProvider
+                    : null,
+                embeddingNativeDimensions:
+                  typeof update.embeddingNativeDimensions === "number"
+                    ? update.embeddingNativeDimensions
+                    : null,
+                embeddingTransformVersion:
+                  typeof update.embeddingTransformVersion === "string"
+                    ? update.embeddingTransformVersion
+                    : null,
                 sourceContentHash:
                   typeof update.sourceContentHash === "string"
                     ? update.sourceContentHash
                     : null,
+                sourceGeneration:
+                  typeof update.sourceGeneration === "bigint"
+                    ? update.sourceGeneration
+                    : existing.sourceGeneration,
+                chunkingType: stringValue(update, "chunkingType"),
+                chunkingVersion:
+                  typeof update.chunkingVersion === "string"
+                    ? update.chunkingVersion
+                    : null,
+                maxChunkTokens: numberValue(update, "maxChunkTokens"),
+                overlapTokens: numberValue(update, "overlapTokens"),
+                totalChunks: numberValue(update, "totalChunks"),
+                totalTokens: numberValue(update, "totalTokens"),
               }
             : {
                 id,
@@ -181,11 +260,31 @@ function buildContractPrisma() {
                 language: stringValue(create, "language"),
                 model: stringValue(create, "model"),
                 dimensions: numberValue(create, "dimensions"),
+                embeddingProvider:
+                  typeof create.embeddingProvider === "string"
+                    ? create.embeddingProvider
+                    : null,
+                embeddingNativeDimensions:
+                  typeof create.embeddingNativeDimensions === "number"
+                    ? create.embeddingNativeDimensions
+                    : null,
+                embeddingTransformVersion:
+                  typeof create.embeddingTransformVersion === "string"
+                    ? create.embeddingTransformVersion
+                    : null,
                 sourceContentHash:
                   typeof create.sourceContentHash === "string"
                     ? create.sourceContentHash
                     : null,
+                sourceGeneration:
+                  typeof create.sourceGeneration === "bigint"
+                    ? create.sourceGeneration
+                    : 0n,
                 chunkingType: stringValue(create, "chunkingType"),
+                chunkingVersion:
+                  typeof create.chunkingVersion === "string"
+                    ? create.chunkingVersion
+                    : null,
                 maxChunkTokens: numberValue(create, "maxChunkTokens"),
                 overlapTokens: numberValue(create, "overlapTokens"),
                 totalChunks: numberValue(create, "totalChunks"),
@@ -197,7 +296,30 @@ function buildContractPrisma() {
       ),
     },
     videoTranscriptChunk: {
+      findMany: vi.fn(
+        async (args: {
+          where: {
+            transcriptId: string
+            chunkIndex?: { notIn?: number[] }
+          }
+          select: { id: true }
+        }) => {
+          const notIn = args.where.chunkIndex?.notIn
+          return chunks
+            .filter(
+              (chunk) =>
+                chunk.transcriptId === args.where.transcriptId &&
+                (notIn == null || !notIn.includes(chunk.chunkIndex)),
+            )
+            .sort((left, right) => left.chunkIndex - right.chunkIndex)
+            .map((chunk) => ({ id: chunk.id }))
+        },
+      ),
       deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    watchSearchCurrentTranscriptPublicationEvent: {
+      create: vi.fn(async () => ({ id: "event-1" })),
+      findFirst: vi.fn(async () => null),
     },
     $queryRaw: queryRaw,
     $executeRaw: vi.fn(
@@ -209,6 +331,15 @@ function buildContractPrisma() {
         chunkIndexesLiteral: string,
         chunkIdsLiteral: string,
         textsLiteral: string,
+        rawSourceTextsLiteral: string,
+        embeddingInputTextsLiteral: string,
+        feltNeedsJsonLiteral: string,
+        bibleVersesJsonLiteral: string,
+        contentSummariesLiteral: string,
+        tonesLiteral: string,
+        demographicsJsonLiteral: string,
+        spiritualContextJsonLiteral: string,
+        extractionMetadataBase64Literal: string,
         tokenCountsLiteral: string,
         startSecondsLiteral: string,
         endSecondsLiteral: string,
@@ -225,6 +356,19 @@ function buildContractPrisma() {
         const chunkIndexes = parsePgTextArray(chunkIndexesLiteral)
         const chunkIds = parsePgTextArray(chunkIdsLiteral)
         const texts = parsePgTextArray(textsLiteral)
+        const rawSourceTexts = parsePgTextArray(rawSourceTextsLiteral)
+        const embeddingInputTexts = parsePgTextArray(embeddingInputTextsLiteral)
+        const feltNeedsJson = parsePgTextArray(feltNeedsJsonLiteral)
+        const bibleVersesJson = parsePgTextArray(bibleVersesJsonLiteral)
+        const contentSummaries = parsePgTextArray(contentSummariesLiteral)
+        const tones = parsePgTextArray(tonesLiteral)
+        const demographicsJson = parsePgTextArray(demographicsJsonLiteral)
+        const spiritualContextJson = parsePgTextArray(
+          spiritualContextJsonLiteral,
+        )
+        const extractionMetadataBase64 = parsePgTextArray(
+          extractionMetadataBase64Literal,
+        )
         const tokenCounts = parsePgTextArray(tokenCountsLiteral)
         const startSeconds = parsePgTextArray(startSecondsLiteral)
         const endSeconds = parsePgTextArray(endSecondsLiteral)
@@ -240,6 +384,17 @@ function buildContractPrisma() {
             chunkIndex: Number(chunkIndexes[index]),
             chunkId: required(chunkIds[index]),
             text: required(texts[index]),
+            rawSourceText: rawSourceTexts[index] ?? null,
+            embeddingInputText: embeddingInputTexts[index] ?? null,
+            feltNeeds: parseJsonStringArray(feltNeedsJson[index]),
+            bibleVerses: parseJsonStringArray(bibleVersesJson[index]),
+            contentSummary: contentSummaries[index] ?? null,
+            tone: tones[index] ?? null,
+            demographics: parseJsonStringArray(demographicsJson[index]),
+            spiritualContext: parseJsonStringArray(spiritualContextJson[index]),
+            extractionMetadata: parseBase64Json(
+              extractionMetadataBase64[index],
+            ),
             tokenCount: Number(tokenCounts[index]),
             startSeconds:
               startSeconds[index] == null ? null : Number(startSeconds[index]),
@@ -290,9 +445,10 @@ function contractPayload(overrides?: Record<string, unknown>) {
       generatedAt: "2026-05-25T00:00:00.000Z",
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
-      dimensions: 1536,
+      name: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
     },
     chunking: {
       type: "segment-aware",
@@ -313,7 +469,9 @@ function contractPayload(overrides?: Record<string, unknown>) {
         tokenCount: 7,
         startSeconds: 12.5,
         endSeconds: 16.25,
-        embedding: new Array(1536).fill(0.0123),
+        embedding: new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(
+          0.0123,
+        ),
       },
     ],
     ...overrides,
@@ -362,8 +520,11 @@ describe("Mastra transcript ingest contract", () => {
       videoId: "video-1",
       videoEditionId: "edition-1",
       language: "en",
-      model: "openai/text-embedding-3-small",
-      dimensions: 1536,
+      model: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingTransformVersion: null,
       totalChunks: 1,
     })
     expect(chunks[0]).toMatchObject({
@@ -375,7 +536,7 @@ describe("Mastra transcript ingest contract", () => {
     })
 
     const searchRows = await searchVideoSemantic(prisma as never, {
-      queryEmbedding: `[${new Array(1536).fill(0.0123).join(",")}]`,
+      queryEmbedding: `[${new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(0.0123).join(",")}]`,
       locale: "en",
       limit: 5,
     })
@@ -424,7 +585,7 @@ describe("Mastra transcript ingest contract", () => {
     })
 
     const searchRows = await searchVideoSemantic(prisma as never, {
-      queryEmbedding: `[${new Array(1536).fill(0.0123).join(",")}]`,
+      queryEmbedding: `[${new Array(ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS).fill(0.0123).join(",")}]`,
       locale: "en",
       limit: 5,
     })

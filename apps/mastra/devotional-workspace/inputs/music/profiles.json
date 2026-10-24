@@ -1,0 +1,9 @@
+{
+  "moods": {
+    "peace": "Calm worshipful ambient. Soft ambient electric guitar swells with reverb over a warm pad, slowly building. Emotive, cinematic, background-friendly. No drums, no percussion, no vocals. Reflective, peaceful, and still.",
+    "hope": "Calm worshipful ambient, quietly hopeful. Soft ambient electric guitar swells with reverb over a warm pad, gently rising. Emotive, cinematic, background-friendly. No drums, no percussion, no vocals. Uplifting and tender.",
+    "lament": "Calm ambient, gently sorrowful yet comforting. Soft ambient electric guitar swells with reverb over a warm pad, with a quiet, subtle cello low in the mix underneath. Slow, tender, not anxious, not dramatic. No drums, no percussion, no vocals. Reflective.",
+    "awe": "Calm reverent ambient. Soft ambient electric guitar swells with deep reverb over a spacious warm pad. Still, holy, and expansive. No drums, no percussion, no vocals. Worshipful and awe-filled."
+  },
+  "defaultLengthMs": 60000
+}

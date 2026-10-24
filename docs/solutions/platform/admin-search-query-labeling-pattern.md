@@ -98,8 +98,8 @@ without receiving sensitive or abusive content.
 ## Optional LLM Classification
 
 The optional classifier is eval-side Admin code, not live search code. It lives
-under `apps/admin/src/services/search-eval/query-classifier.ts` and must never
-run from REST `/api/search`, GraphQL `Query.search`, or live query embedding
+at `apps/admin/src/services/search-trace-query-classifier.ts` and must never run
+from REST `/api/search`, GraphQL `Query.search`, or live query embedding
 generation.
 
 The classifier is only for safe ambiguous or high-impact samples:
@@ -157,7 +157,7 @@ failures must not fail or reshape the public REST or GraphQL search response.
 - Internal sample HTTP contract:
   `apps/admin/src/app/api/internal/search-traces/sample/route.ts`
 - Optional classifier:
-  `apps/admin/src/services/search-eval/query-classifier.ts`
+  `apps/admin/src/services/search-trace-query-classifier.ts`
 - Schema and migration:
   `apps/admin/prisma/schema.prisma` and
   `apps/admin/prisma/migrations/0022_search_trace_query_label_provenance/migration.sql`

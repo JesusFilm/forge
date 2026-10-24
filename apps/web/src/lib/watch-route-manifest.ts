@@ -1,12 +1,20 @@
+import { isPublicWatchLanguageSlug } from "./locale"
+import { logWatchServerEvent } from "./watch-observability"
+
 export type WatchRouteManifest = {
   version: string
   generatedAt: string
   contentSlugs: string[]
   oneSegmentSlugs: string[]
+  homepageLocales?: string[]
   episodePairsByParent: Record<string, string[]>
   audioLanguageSlugs: string[]
   audioLanguageIndexesByContent?: Record<string, number[]>
   audioLanguageIndexesByEpisode?: Record<string, Record<string, number[]>>
+  nestedContainerAudioLanguageIndexesByParent?: Record<
+    string,
+    Record<string, number[]>
+  >
 }
 
 export type WatchRouteManifestRoute =
@@ -19,6 +27,11 @@ export type WatchRouteManifestRoute =
       audioLanguageSlug: string
     }
 
+type WatchEpisodeManifestRoute = Extract<
+  WatchRouteManifestRoute,
+  { kind: "episode" }
+>
+
 type WatchRouteManifestIndex = {
   contentSlugs: ReadonlySet<string>
   oneSegmentSlugs: ReadonlySet<string>
@@ -29,9 +42,19 @@ type WatchRouteManifestIndex = {
     string,
     ReadonlyMap<string, ReadonlySet<string>>
   >
+  nestedContainerAudioLanguageSlugsByParent: ReadonlyMap<
+    string,
+    ReadonlyMap<string, ReadonlySet<string>>
+  >
   hasContentAudioLanguageIndex: boolean
   hasEpisodeAudioLanguageIndex: boolean
 }
+
+export type WatchContentAudioLanguageProof =
+  | { kind: "admitted" }
+  | { kind: "known-missing" }
+  | { kind: "unknown-content" }
+  | { kind: "inconclusive" }
 
 type WatchRouteManifestCache = {
   etag: string | null
@@ -108,6 +131,12 @@ export function parseWatchRouteManifest(
   }
   if (!isStringArray(record.contentSlugs)) return null
   if (!isStringArray(record.oneSegmentSlugs)) return null
+  if (
+    record.homepageLocales !== undefined &&
+    !isStringArray(record.homepageLocales)
+  ) {
+    return null
+  }
   if (!isEpisodePairsByParent(record.episodePairsByParent)) return null
   if (!isStringArray(record.audioLanguageSlugs)) return null
   if (
@@ -122,11 +151,22 @@ export function parseWatchRouteManifest(
   ) {
     return null
   }
+  if (
+    record.nestedContainerAudioLanguageIndexesByParent !== undefined &&
+    !isAudioLanguageIndexesByEpisode(
+      record.nestedContainerAudioLanguageIndexesByParent,
+    )
+  ) {
+    return null
+  }
   return {
     version: record.version,
     generatedAt: record.generatedAt,
     contentSlugs: record.contentSlugs,
     oneSegmentSlugs: record.oneSegmentSlugs,
+    ...(record.homepageLocales
+      ? { homepageLocales: record.homepageLocales }
+      : {}),
     episodePairsByParent: record.episodePairsByParent,
     audioLanguageSlugs: record.audioLanguageSlugs,
     ...(record.audioLanguageIndexesByContent
@@ -134,6 +174,12 @@ export function parseWatchRouteManifest(
       : {}),
     ...(record.audioLanguageIndexesByEpisode
       ? { audioLanguageIndexesByEpisode: record.audioLanguageIndexesByEpisode }
+      : {}),
+    ...(record.nestedContainerAudioLanguageIndexesByParent
+      ? {
+          nestedContainerAudioLanguageIndexesByParent:
+            record.nestedContainerAudioLanguageIndexesByParent,
+        }
       : {}),
   }
 }
@@ -148,6 +194,29 @@ function audioLanguageSetFromIndexes(
     if (slug) slugs.add(slug)
   }
   return slugs
+}
+
+function audioLanguageSlugsByParentAndChild(
+  indexesByParent: Record<string, Record<string, number[]>>,
+  audioLanguageSlugs: readonly string[],
+): ReadonlyMap<string, ReadonlyMap<string, ReadonlySet<string>>> {
+  return new Map(
+    Object.entries(indexesByParent).map(([parentSlug, childEntries]) => [
+      parentSlug,
+      new Map(
+        Object.entries(childEntries).map(
+          ([childSlug, audioLanguageIndexes]) =>
+            [
+              childSlug,
+              audioLanguageSetFromIndexes(
+                audioLanguageIndexes,
+                audioLanguageSlugs,
+              ),
+            ] as const,
+        ),
+      ),
+    ]),
+  )
 }
 
 function getManifestIndex(
@@ -168,26 +237,15 @@ function getManifestIndex(
         ] as const,
     ),
   )
-  const audioLanguageSlugsByEpisode = new Map(
-    Object.entries(manifest.audioLanguageIndexesByEpisode ?? {}).map(
-      ([parentSlug, childEntries]) =>
-        [
-          parentSlug,
-          new Map(
-            Object.entries(childEntries).map(
-              ([childSlug, audioLanguageIndexes]) =>
-                [
-                  childSlug,
-                  audioLanguageSetFromIndexes(
-                    audioLanguageIndexes,
-                    manifest.audioLanguageSlugs,
-                  ),
-                ] as const,
-            ),
-          ),
-        ] as const,
-    ),
+  const audioLanguageSlugsByEpisode = audioLanguageSlugsByParentAndChild(
+    manifest.audioLanguageIndexesByEpisode ?? {},
+    manifest.audioLanguageSlugs,
   )
+  const nestedContainerAudioLanguageSlugsByParent =
+    audioLanguageSlugsByParentAndChild(
+      manifest.nestedContainerAudioLanguageIndexesByParent ?? {},
+      manifest.audioLanguageSlugs,
+    )
 
   const index: WatchRouteManifestIndex = {
     contentSlugs: new Set(manifest.contentSlugs),
@@ -201,6 +259,7 @@ function getManifestIndex(
     audioLanguageSlugs: new Set(manifest.audioLanguageSlugs),
     audioLanguageSlugsByContent,
     audioLanguageSlugsByEpisode,
+    nestedContainerAudioLanguageSlugsByParent,
     hasContentAudioLanguageIndex: audioLanguageSlugsByContent.size > 0,
     hasEpisodeAudioLanguageIndex: audioLanguageSlugsByEpisode.size > 0,
   }
@@ -232,6 +291,30 @@ function isEpisodeAudioLanguageAdmitted(
   return index.audioLanguageSlugs.has(audioLanguageSlug)
 }
 
+/**
+ * Whether a public URL segment names an audio language, for route-shape
+ * disambiguation (`/{content}.html/{language}.html` vs
+ * `/{series}.html/{episode}.html`).
+ *
+ * The compiled `PUBLIC_WATCH_LANGUAGE_SLUGS` corpus is a generated snapshot
+ * and is only the synchronous fallback here. The live manifest is the
+ * authority for languages admin published after that snapshot: before this
+ * helper existed, 58 newly published languages (e.g. `german-pennsylvania`)
+ * were reinterpreted as implicit-English episode slugs and 404'd even though
+ * the same manifest already admitted them (Linear FGE-81).
+ *
+ * A `null` manifest (fetch failed or not configured) degrades to the corpus
+ * alone, so an unavailable manifest never widens the namespace.
+ */
+export function isWatchAudioLanguageSlug(
+  slug: string,
+  manifest: WatchRouteManifest | null,
+): boolean {
+  if (isPublicWatchLanguageSlug(slug)) return true
+  if (!manifest) return false
+  return getManifestIndex(manifest).audioLanguageSlugs.has(slug)
+}
+
 export function isWatchRouteAdmittedByManifest(
   manifest: WatchRouteManifest,
   route: WatchRouteManifestRoute,
@@ -260,6 +343,109 @@ export function isWatchRouteAdmittedByManifest(
       route.audioLanguageSlug,
     )
   )
+}
+
+/**
+ * Prove an exact standalone content/audio combination without falling back to
+ * the manifest-wide language corpus. A missing per-content entry is
+ * inconclusive, not evidence that the requested language is unavailable.
+ */
+export function proveWatchContentAudioLanguageByManifest(
+  manifest: WatchRouteManifest,
+  contentSlug: string,
+  audioLanguageSlug: string,
+): WatchContentAudioLanguageProof {
+  const index = getManifestIndex(manifest)
+  if (!index.contentSlugs.has(contentSlug)) return { kind: "unknown-content" }
+  const exactLanguages = index.audioLanguageSlugsByContent.get(contentSlug)
+  if (!exactLanguages) return { kind: "inconclusive" }
+  return exactLanguages.has(audioLanguageSlug)
+    ? { kind: "admitted" }
+    : { kind: "known-missing" }
+}
+
+/** Whether the manifest proves the exact parent-child relationship. */
+export function isWatchEpisodePairAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: WatchEpisodeManifestRoute,
+): boolean {
+  return (
+    getManifestIndex(manifest)
+      .episodePairsByParent.get(route.parentSlug)
+      ?.has(route.childSlug) ?? false
+  )
+}
+
+/**
+ * Whether the manifest's per-episode audio index explicitly proves this route.
+ * Unlike the compatibility admission helper, this never falls back to the
+ * global audio-language corpus when an older manifest lacks exact indexes.
+ */
+export function isWatchEpisodeRouteExactlyAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: WatchEpisodeManifestRoute,
+): boolean {
+  if (!isWatchEpisodePairAdmittedByManifest(manifest, route)) return false
+  return (
+    getManifestIndex(manifest)
+      .audioLanguageSlugsByEpisode.get(route.parentSlug)
+      ?.get(route.childSlug)
+      ?.has(route.audioLanguageSlug) ?? false
+  )
+}
+
+export function isWatchNestedContainerRouteAdmittedByManifest(
+  manifest: WatchRouteManifest,
+  route: {
+    parentSlug: string
+    childSlug: string
+    audioLanguageSlug: string
+  },
+): boolean {
+  return getWatchNestedContainerAudioLanguageSlugs(
+    manifest,
+    route.parentSlug,
+    route.childSlug,
+  ).includes(route.audioLanguageSlug)
+}
+
+export function getWatchNestedContainerAudioLanguageSlugs(
+  manifest: WatchRouteManifest,
+  parentSlug: string,
+  childSlug: string,
+): readonly string[] {
+  const index = getManifestIndex(manifest)
+  if (
+    !index.contentSlugs.has(parentSlug) ||
+    !index.contentSlugs.has(childSlug)
+  ) {
+    return []
+  }
+  const exactLanguages = index.nestedContainerAudioLanguageSlugsByParent
+    .get(parentSlug)
+    ?.get(childSlug)
+  if (exactLanguages) return [...exactLanguages]
+  return []
+}
+
+export function isWatchParentAdmittedByNestedContainer(
+  manifest: WatchRouteManifest,
+  parentSlug: string,
+  audioLanguageSlug: string,
+): boolean {
+  const index = getManifestIndex(manifest)
+  if (!index.contentSlugs.has(parentSlug)) return false
+  for (const [
+    childSlug,
+    languages,
+  ] of index.nestedContainerAudioLanguageSlugsByParent
+    .get(parentSlug)
+    ?.entries() ?? []) {
+    if (index.contentSlugs.has(childSlug) && languages.has(audioLanguageSlug)) {
+      return true
+    }
+  }
+  return false
 }
 
 export function clearWatchRouteManifestCache(): void {
@@ -328,35 +514,26 @@ async function fetchWatchRouteManifest(): Promise<WatchRouteManifest | null> {
       return manifestCache.manifest
     }
     if (!response.ok) {
-      console.warn(
-        JSON.stringify({
-          event: "watch_route_manifest.fetch.failed",
-          status: response.status,
-        }),
-      )
+      logWatchServerEvent("watch_route_manifest.fetch.failed", {
+        status: response.status,
+        url,
+      })
       return manifestCache.manifest
     }
 
     const parsed = parseWatchRouteManifest(await response.json())
     if (!parsed) {
-      console.warn(
-        JSON.stringify({
-          event: "watch_route_manifest.fetch.invalid_payload",
-        }),
-      )
+      logWatchServerEvent("watch_route_manifest.fetch.invalid_payload", { url })
       return manifestCache.manifest
     }
 
     manifestCache.etag = response.headers.get("etag")
     return parsed
   } catch (error) {
-    console.warn(
-      JSON.stringify({
-        event: "watch_route_manifest.fetch.error",
-        detail:
-          error instanceof Error ? error.message.slice(0, 500) : String(error),
-      }),
-    )
+    logWatchServerEvent("watch_route_manifest.fetch.error", {
+      detail: error instanceof Error ? error : String(error),
+      url,
+    })
     return manifestCache.manifest
   }
 }
@@ -368,12 +545,23 @@ export async function getWatchRouteManifest(): Promise<WatchRouteManifest | null
   if (manifestCache.expiresAt > now) return manifestCache.manifest
   if (manifestCache.inFlight) return manifestCache.inFlight
 
-  manifestCache.inFlight = fetchWatchRouteManifest().then((manifest) => {
+  // Release the single-flight slot on BOTH settlement paths. `.then(ok, err)`
+  // rather than `.finally`, which would re-throw into an unhandled rejection.
+  // `fetchWatchRouteManifest` swallows its own failures today, so the reject
+  // arm is a guard rather than a live path — but a rejection that escaped it
+  // would otherwise pin this slot to a rejected promise for the life of the
+  // process, and every caller that degrades on a null manifest would degrade
+  // forever rather than for one TTL.
+  const inFlight = fetchWatchRouteManifest().then((manifest) => {
     manifestCache.manifest = manifest
     manifestCache.expiresAt = Date.now() + WATCH_ROUTE_MANIFEST_CACHE_TTL_MS
-    manifestCache.inFlight = null
     return manifest
   })
+  const release = () => {
+    if (manifestCache.inFlight === inFlight) manifestCache.inFlight = null
+  }
+  void inFlight.then(release, release)
+  manifestCache.inFlight = inFlight
 
-  return manifestCache.inFlight
+  return inFlight
 }

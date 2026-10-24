@@ -1,7 +1,7 @@
 ---
 title: Mux Player + custom React-rendered chrome (HeroPlayerControls pattern)
 date: 2026-04-30
-last_updated: 2026-05-04
+last_updated: 2026-10-14
 category: docs/solutions/design-patterns
 module: apps/web, packages/video-player
 problem_type: design_pattern
@@ -159,6 +159,17 @@ Stack the chrome layers explicitly. Inside the player wrapper:
 | Chrome (`<div data-visible={...}>`)                  | `z-10`  | auto (always)  | Play / timeline / time / volume / fullscreen      |
 
 Do **not** flip the chrome to `pointer-events-none` when auto-hiding. Doing so blocks agent `.click()` and keyboard interactions even though the user can still see roughly where the controls were. Keep `pointer-events: auto` always; toggle only `opacity` (and let the reveal listeners — see section 5 below for the dual-target binding rule once chrome is portaled — bring it back to opacity-100 on the next interaction).
+
+#### 4a. When copy sits above the media, delegate the click from the frame (added 2026-10-14)
+
+The transparent click-surface button only works when nothing click-catching sits above it. The Watch home intro (`WatchHomeTvCarousel`) stacks the title copy, Watch Now, mute button, and timeline in a `z-10` overlay band over the video. A surface layered under that band never sees clicks on the title or the band's empty space. Making the band `pointer-events-none` and re-enabling each control is fragile.
+
+Instead, the intro puts one `onClick` on the hero frame. The click runs only while muted, so a stray click can never mute an unmuted intro. It skips any click whose `event.target.closest(...)` matches an interactive element (`a[href]`, `button`, form fields, `[role=button]`, `[role=link]`), so controls keep their own click. It unmutes through the same `toggleMuted` the mute button uses. Keyboard users keep the real mute button, so the frame needs no role or tab stop.
+
+Two rules come with it:
+
+- Give each selector branch a test that only it can catch. Click a **different** slide's circle, not the current one. The current circle is `aria-disabled` and its handler is a no-op, so it passes even when the `button` branch is deleted.
+- An interactive child that is not a link, button, or form field (for example a `tabindex` div or `role="tab"`) unmutes on click until it is added to the selector. A portal rendered from inside the frame bubbles through the React tree too.
 
 ### 5. Sticky-hero scroll-over-video layout (added 2026-05-01)
 
@@ -332,7 +343,9 @@ Pointermove on the chrome bar bubbles through chrome → anchor → reveal handl
 
 #### 5e. Frosted-glass body slides over the pinned hero
 
-The body section sibling-rendered after the hero already had `bg-stone-800` overridden with `rgb(var(--color-section-default) / 0.65)` plus `backdrop-blur-2xl`. With sticky hero behind it in paint order and `backdrop-filter: blur(40px)` on the body, the browser samples the playing video texture through the translucent body — the dark frosted-glass effect "for free." No JavaScript or canvas compositing is required.
+The body section sibling-rendered after the hero already had `bg-stone-800` overridden with `rgb(var(--color-section-default) / 0.35)` plus `backdrop-blur-2xl`. With sticky hero behind it in paint order and `backdrop-filter: blur(40px)` on the body, reliable browser compositors sample the playing video texture through the translucent body — the dark frosted-glass effect without JavaScript or canvas compositing.
+
+**Firefox rendering caveat.** Firefox can retain the expected `backdrop-filter` computed style while dropping the painted blur as this sheet scrolls over the sticky video. Keep the structural pattern, but scope a Firefox-only near-opaque, neutral-dark fallback to the body backdrop hook; reliable browsers should retain the glass treatment. See [`firefox-backdrop-filter-sticky-hero-scroll-fallback.md`](../ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md) for the reproduction evidence, Mozilla bug reports, and current CSS workaround.
 
 **Stacking-context caveat.** The pattern depends on the sticky hero and the body section sharing a stacking context rooted at or near the page root. Any ancestor with `transform`, `filter`, `backdrop-filter`, `will-change`, `opacity < 1`, or `isolation: isolate` between page root and the hero will silently create a new stacking context and can flip paint order — breaking the glass effect or trapping the chrome bar under the body. Cross-reference [`docs/solutions/best-practices/nextjs-search-overlay-ui-patterns-20260415.md`](../best-practices/nextjs-search-overlay-ui-patterns-20260415.md) §2 for the full list of stacking-context-creating CSS properties; portaling out of trapping subtrees is the same escape hatch used by the search overlay.
 
@@ -527,6 +540,11 @@ useEffect(() => {
 
 iPhone Safari does **not** allow fullscreen on arbitrary elements like the wrapper `div` — only the inner `<video>` element via `videoEl.webkitEnterFullscreen()`. The webkit-prefixed fallbacks above cover desktop Safari and iPad, but iPhone-specific full-fullscreen still needs to delegate to the `<video>` element directly. **Verify on real device hardware** before claiming iPhone fullscreen works.
 
+When adding that video-element fallback, branch on wrapper method availability
+rather than the wrapper method's return value. Older WebKit fullscreen methods
+can return `void`; a handler that falls through on an `undefined` return may
+call both `wrapper.webkitRequestFullscreen()` and `video.webkitEnterFullscreen()`.
+
 ### Volume slider with pointer capture + lost-capture safety
 
 ```tsx
@@ -707,3 +725,5 @@ The `HeroPlayerControls` test suite lives in `apps/web/src/components/watch/__te
 - The 2026-05-01 update layer (sections 5a–5e and the iOS-safe sequence patch) was developed against `main` directly without a separate PR; the working tree carries the change.
 - [`docs/solutions/logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md`](../logic-errors/strapi-graphql-pagination-cap-wrong-language-watch-page-20260504.md) — sibling fix from the same PR (#878). The `aspect-video` + `useLayoutEffect` + `onCanPlay`+`onError` combination in section 5a/5f was added as part of fixing the wrong-language-variant bug, because the original watch page used `useEffect` for the ResizeObserver and had no loading-state coverage at all. Read together for the full context of PR #878.
 - PR [#878](https://github.com/JesusFilm/forge/pull/878) — `feat(web): fix English variant selection + redesign watch share modal + harden hero loading`. Source of the 2026-05-04 updates to sections 5a and 5f.
+- [`docs/solutions/design-patterns/watch-language-player-chrome-layout-20260609.md`](./watch-language-player-chrome-layout-20260609.md) — current watch-page UX refinements layered on top of this pattern: language-picker icons/tooltips/I/O switch, 0.3 player/header opacity states, pointer lockout, and measured muted-preview episode-rail overlap. Read before changing the files touched in that branch.
+- [`docs/solutions/ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md`](../ui-bugs/firefox-backdrop-filter-sticky-hero-scroll-fallback.md) — Firefox-specific rendering failure and neutral dark fallback for the frosted body sheet in section 5e.

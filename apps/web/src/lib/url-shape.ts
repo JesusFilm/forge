@@ -35,6 +35,9 @@ export const RESERVED_PREFIXES: ReadonlySet<string> = new Set([
   "images",
   "fonts",
   "favicon.ico",
+  "manifest.webmanifest",
+  "preview",
+  "sitemap",
   "robots.txt",
   "sitemap.xml",
   ".well-known",
@@ -80,11 +83,12 @@ export function isUnsafeRedirectPath(path: string): boolean {
   )
 }
 
-// Kebab-case ASCII slug: lowercase alphanumerics + hyphen. The canonical
-// URL-segment vocabulary. Single source of truth shared by proxy.ts (the
-// language-preference cookie validator) and url-canonicalize.ts (the Rule 5
-// single-segment-duplicate guard that rejects host-shaped segments).
-export const SAFE_SLUG_PATTERN = /^[a-z0-9-]+$/
+// Content-safe slug: lowercase Unicode letters/digits, hyphen, and underscore.
+// Admin content slugs include legacy underscores such as
+// `soccer_event_collection`, and some Core titles use native Latin diacritics.
+// Public language slugs are still narrowed by locale-specific validators.
+export const SAFE_SLUG_PATTERN =
+  /^(?:(?=\p{Ll})(?![\u0250-\u02FF\u1D00-\u1D7F\u2100-\u214F\uA700-\uA7FF\uFB00-\uFB4F\uFF00-\uFFEF])\p{Script=Latin}|[0-9_-])+$/u
 
 // One-segment collection landings observed in production. Most collections
 // and all single-video slugs 404 without an explicit language segment, so keep

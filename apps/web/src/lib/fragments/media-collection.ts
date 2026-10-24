@@ -12,6 +12,7 @@ export const mediaCollectionFragment = graphql(`
     title
     subtitle
     mediaDescription: description
+    backgroundColor
     categoryLabel
     itemsSource
     mediaCtaLink: ctaLink
@@ -26,9 +27,6 @@ export const mediaCollectionFragment = graphql(`
       labelOverride
       collectionSize
       imageUrl
-      imageOverride {
-        url
-      }
       video {
         documentId
         title

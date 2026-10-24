@@ -4,27 +4,80 @@ import {
   resolveWatchPage,
   type ResolvedSeriesBySlug,
   type ResolvedWatchPage,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
+import { correctedBcp47 } from "@/lib/locale"
 import {
   WATCH_BASE_PATH,
-  WATCH_CANONICAL_ORIGIN,
-  localizedHomeAbsolute,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+  localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchVideoAbsolute,
+  watchVideoPath,
 } from "@/lib/routes"
 import { getSocialConfig } from "@/lib/social-config"
 import { resolvePosterUrl } from "@/lib/url"
 import { stripHtmlSuffix } from "@/lib/url-shape"
 
 const TITLE_SUFFIX = "| Jesus Film Project"
+const TITLE_SUFFIX_TEXT = "Jesus Film Project"
+
+/** Google shows roughly 155-160 characters of a meta description. */
+export const META_DESCRIPTION_MAX_LENGTH = 160
+
+/**
+ * Cap a description for the meta / og / twitter tags at a word boundary,
+ * appending an ellipsis. Short text (including authored copy under the cap)
+ * is returned unchanged apart from whitespace collapsing. Applied to every
+ * source \u2014 derived synopsis, authored `searchDescription`, Experience
+ * `metaDescription` / `ogDescription` \u2014 because a long value in any of them
+ * reproduces QA N40. JSON-LD keeps the full text.
+ */
+export function truncateMetaDescription(
+  value: string,
+  maxLength = META_DESCRIPTION_MAX_LENGTH,
+): string {
+  const text = value.replace(/\s+/g, " ").trim()
+  if (text.length <= maxLength) return text
+  // Cut on a grapheme boundary so emoji, ZWJ sequences and combining marks
+  // are never split.
+  let slice = ""
+  for (const { segment } of new Intl.Segmenter(undefined, {
+    granularity: "grapheme",
+  }).segment(text)) {
+    if (slice.length + segment.length > maxLength - 1) break
+    slice += segment
+  }
+  // When the budget ends exactly at a word end, keep that whole word.
+  const endsOnWord = text.charAt(slice.length) === " "
+  const lastSpace = slice.lastIndexOf(" ")
+  // Cut at a word boundary unless that would throw away most of the budget.
+  const cut =
+    endsOnWord || lastSpace < maxLength * 0.6
+      ? slice
+      : slice.slice(0, lastSpace)
+  // Strip trailing punctuation (Latin, Devanagari danda, Arabic/CJK commas
+  // and full stops) so the ellipsis does not follow a sentence mark.
+  return `${cut.replace(/[\s.,;:!?\u2013\u2014\u0964\u0965\u060c\u061b\u06d4\u3001\u3002\uff0c\uff0e-]+$/u, "")}\u2026`
+}
+
+/**
+ * First non-blank candidate (authored override first), capped for the meta /
+ * og / twitter tags.
+ */
+function cappedMetaDescription(
+  ...candidates: Array<string | null | undefined>
+): string {
+  return truncateMetaDescription(candidates.find((v) => v?.trim()) ?? "")
+}
 
 /**
  * Build the canonical absolute URL for a watch page in the `.html` shape,
  * keyed off the (slug, pathLocale) the route resolved. Routes through the
- * `lib/routes.ts` absolute builders so the canonical `<link>` matches the
- * production URL contract exactly (origin from `WATCH_CANONICAL_ORIGIN`,
- * `.html` per segment).
+ * `lib/routes.ts` path builders so the canonical `<link>` matches the public
+ * website URL contract exactly (origin from `WATCH_PUBLIC_METADATA_ORIGIN`,
+ * `.html` per segment), independent of local/preview deployment origins.
  *
  * Shapes:
  * - slug + pathLocale → 2-segment `/{slug}.html/{locale}.html`
@@ -42,25 +95,25 @@ const TITLE_SUFFIX = "| Jesus Film Project"
  * href attribute, so a slug with quotes/brackets can't break out.
  */
 function buildCanonicalUrl(slug?: string, pathLocale?: string): string {
-  const root = `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}`
+  const root = `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}`
   const s = slug ? stripHtmlSuffix(slug) : undefined
   const l = pathLocale ? stripHtmlSuffix(pathLocale) : undefined
 
   if (s && l) {
     const cs = tryAsContentSlug(s)
     const ls = tryAsLocaleSlug(l)
-    if (cs && ls) return watchVideoAbsolute(cs, ls)
+    if (cs && ls) return `${root}${watchVideoPath(cs, ls)}`
     return `${root}/${s}/${l}`
   }
 
   const single = s ?? l
   if (single) {
     const ls = tryAsLocaleSlug(single)
-    // localizedHomeAbsolute emits `${origin}/watch/{seg}.html` — the correct
-    // 1-segment canonical for both a localized home (seg is a language) and a
-    // single-segment collection landing (seg is content); the URL shape is
-    // identical, so the nominal LocaleSlug brand is fine here.
-    if (ls) return localizedHomeAbsolute(ls)
+    // localizedHomePath emits `/{seg}.html` — the correct 1-segment canonical
+    // for both a localized home (seg is a language) and a single-segment
+    // collection landing (seg is content); the URL shape is identical, so the
+    // nominal LocaleSlug brand is fine here.
+    if (ls) return `${root}${localizedHomePath(ls)}`
     return `${root}/${single}`
   }
 
@@ -78,12 +131,242 @@ function getOgLocale(locale: string): string {
   return `${locale}_${locale.toUpperCase()}`
 }
 
+function withTitleSuffix(title: string): string {
+  const trimmed = title.trim()
+  if (!trimmed) return `Watch ${TITLE_SUFFIX}`
+  if (trimmed.endsWith(TITLE_SUFFIX_TEXT)) return trimmed
+  return `${trimmed} ${TITLE_SUFFIX}`
+}
+
 const DEFAULT_OG_IMAGE = {
   url: "https://images.unsplash.com/photo-1482424917728-d82d29662023?w=1400&auto=format&fit=crop&q=60",
   width: 1400,
   height: 933,
   alt: "Jesus Film Project",
   type: "image/jpeg" as const,
+}
+
+type WatchMetadataImage = {
+  url: string
+  width: number
+  height: number
+  alt: string
+  type?: string
+}
+
+export type WatchStructuredDataCaption = {
+  contentUrl: string
+  inLanguage: string
+}
+
+const MUX_SOCIAL_IMAGE_WIDTH = 1200
+const MUX_SOCIAL_IMAGE_HEIGHT = 630
+
+function trimmedValue(value: string | null | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed ? trimmed : null
+}
+
+function positiveDimension(value: number | null | undefined, fallback: number) {
+  return value != null && Number.isFinite(value) && value > 0 ? value : fallback
+}
+
+function buildManagedSocialImage(
+  image:
+    | {
+        url: string
+        width: number | null
+        height: number | null
+        mimeType?: string | null
+      }
+    | null
+    | undefined,
+  alt: string,
+): WatchMetadataImage | null {
+  const url = trimmedValue(image?.url)
+  if (!url) return null
+  const mimeType = trimmedValue(image?.mimeType)
+
+  return {
+    url,
+    width: positiveDimension(image?.width, DEFAULT_OG_IMAGE.width),
+    height: positiveDimension(image?.height, DEFAULT_OG_IMAGE.height),
+    alt,
+    ...(mimeType ? { type: mimeType } : {}),
+  }
+}
+
+function buildMuxSocialImage(
+  playbackId: string | null | undefined,
+  alt: string,
+): WatchMetadataImage | null {
+  if (!playbackId) return null
+
+  return {
+    url: `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${MUX_SOCIAL_IMAGE_WIDTH}&height=${MUX_SOCIAL_IMAGE_HEIGHT}&fit_mode=smartcrop`,
+    width: MUX_SOCIAL_IMAGE_WIDTH,
+    height: MUX_SOCIAL_IMAGE_HEIGHT,
+    alt,
+    type: "image/jpeg",
+  }
+}
+
+function firstValidDate(
+  ...values: Array<string | null | undefined>
+): string | null {
+  for (const value of values) {
+    const candidate = value?.trim()
+    if (candidate && Number.isFinite(Date.parse(candidate))) return candidate
+  }
+  return null
+}
+
+export type WatchVideoMetadataModel = {
+  title: string
+  videoTitle: string
+  /**
+   * Eligible VideoObject name. Unlike page and social metadata titles, this
+   * intentionally never falls back to the route slug or a generic label.
+   */
+  structuredDataTitle: string | null
+  structuredDataDescription: string | null
+  description: string
+  canonicalUrl: string
+  image: WatchMetadataImage
+  structuredDataThumbnailUrl: string | null
+  noIndex: boolean
+  inLanguage: string | null
+  durationSeconds: number | null
+  contentUrl: string | null
+  uploadDate: string | null
+  captions: WatchStructuredDataCaption[]
+}
+
+type WatchVideoMetadataOptions = {
+  video: WatchVideoRecord
+  selectedVariant: WatchVariant
+  routeSlug: string
+  pathLocale: string
+  seriesSlug?: string
+}
+
+export function buildWatchVideoMetadataModel(
+  options: WatchVideoMetadataOptions,
+): WatchVideoMetadataModel {
+  const episodeSlug = options.video.slug ?? options.routeSlug
+  const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
+  const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const structuredDataTitle = options.video.title?.trim() || null
+  const title =
+    trimmedValue(options.video.searchTitle) ?? `${videoTitle} ${TITLE_SUFFIX}`
+  const description = cappedMetaDescription(
+    options.video.searchDescription,
+    options.video.description,
+    options.video.snippet,
+  )
+  const structuredDataDescription =
+    options.video.description?.trim() ||
+    options.video.snippet?.trim() ||
+    (structuredDataTitle
+      ? `Watch ${structuredDataTitle} from Jesus Film Project.`
+      : null)
+  const imageAlt =
+    options.video.imageAlt ?? options.video.title ?? DEFAULT_OG_IMAGE.alt
+  const muxSocialImage = buildMuxSocialImage(
+    options.selectedVariant.muxVideo?.playbackId,
+    imageAlt,
+  )
+  const managedSocialImage = buildManagedSocialImage(
+    options.video.socialImage,
+    imageAlt,
+  )
+  const posterUrl = resolvePosterUrl(
+    options.video.images?.[0],
+    options.selectedVariant.muxVideo?.playbackId,
+  )
+  const image =
+    managedSocialImage ??
+    muxSocialImage ??
+    (posterUrl
+      ? {
+          url: posterUrl,
+          width: DEFAULT_OG_IMAGE.width,
+          height: DEFAULT_OG_IMAGE.height,
+          alt: imageAlt,
+          type: "image/jpeg" as const,
+        }
+      : DEFAULT_OG_IMAGE)
+
+  return {
+    title,
+    videoTitle,
+    structuredDataTitle,
+    structuredDataDescription,
+    description,
+    canonicalUrl,
+    image,
+    structuredDataThumbnailUrl: muxSocialImage?.url ?? posterUrl,
+    noIndex: options.video.noIndex ?? false,
+    inLanguage:
+      correctedBcp47(
+        options.selectedVariant.language?.slug,
+        options.selectedVariant.language?.bcp47,
+      )?.trim() || null,
+    durationSeconds: options.selectedVariant.duration ?? null,
+    contentUrl: options.selectedVariant.hls?.trim() || null,
+    uploadDate: firstValidDate(
+      options.video.publishedAt,
+      options.video.localePublishedAt,
+    ),
+    captions: options.video.subtitles.map((subtitle) => ({
+      contentUrl: subtitle.vttSrc.trim(),
+      inLanguage: (
+        correctedBcp47(subtitle.language.slug, subtitle.language.bcp47) ?? ""
+      ).trim(),
+    })),
+  }
+}
+
+export function generateWatchVideoMetadata(
+  locale: string,
+  options: WatchVideoMetadataOptions,
+): Metadata {
+  const model = buildWatchVideoMetadataModel(options)
+  const { fbAppId } = getSocialConfig()
+
+  return {
+    title: model.title,
+    description: model.description || undefined,
+    openGraph: {
+      title: model.title,
+      description: model.description || undefined,
+      url: model.canonicalUrl,
+      siteName: "Jesus Film Project",
+      locale: getOgLocale(locale),
+      type: "website" as const,
+      images: [model.image],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      site: "@JesusFilm",
+      creator: "@JesusFilm",
+      title: model.title,
+      description: model.description || undefined,
+      images: [
+        {
+          url: model.image.url,
+          alt: model.image.alt,
+        },
+      ],
+    },
+    robots: model.noIndex
+      ? { index: false, follow: false }
+      : { index: true, follow: true },
+    ...(fbAppId && { other: { "fb:app_id": fbAppId } }),
+    alternates: {
+      canonical: model.canonicalUrl,
+    },
+  }
 }
 
 function toMetadata(
@@ -100,28 +383,33 @@ function toMetadata(
     // Google prefers 120–160 chars in the meta description; snippets are
     // routinely below that floor (one-line taglines). Keep snippet as the
     // fallback so videos with no body description still get something.
-    const description =
-      resolvedPage.routeVideo.description ??
-      resolvedPage.routeVideo.snippet ??
-      ""
+    const description = cappedMetaDescription(
+      resolvedPage.routeVideo.searchDescription,
+      resolvedPage.routeVideo.description,
+      resolvedPage.routeVideo.snippet,
+    )
     const baseTitle = resolvedPage.routeVideo.title || options?.slug || "Watch"
-    // Always append the brand suffix so video pages get the same
-    // "<title> | Jesus Film Project" treatment that experience pages and
-    // series pages already produce (via `experienceToMetadata` and
-    // `generateSeriesMetadata`).
-    const title = `${baseTitle} ${TITLE_SUFFIX}`
-    const ogImage = resolvedPage.routeVideo.imageUrl
+    const title =
+      trimmedValue(resolvedPage.routeVideo.searchTitle) ??
+      `${baseTitle} ${TITLE_SUFFIX}`
+    const imageAlt =
+      resolvedPage.routeVideo.imageAlt ??
+      resolvedPage.routeVideo.title ??
+      DEFAULT_OG_IMAGE.alt
+    const managedSocialImage = buildManagedSocialImage(
+      resolvedPage.routeVideo.socialImage,
+      imageAlt,
+    )
+    const fallbackImage = resolvedPage.routeVideo.imageUrl
       ? {
           url: resolvedPage.routeVideo.imageUrl,
           width: DEFAULT_OG_IMAGE.width,
           height: DEFAULT_OG_IMAGE.height,
-          alt:
-            resolvedPage.routeVideo.imageAlt ??
-            resolvedPage.routeVideo.title ??
-            DEFAULT_OG_IMAGE.alt,
+          alt: imageAlt,
           type: "image/jpeg" as const,
         }
       : DEFAULT_OG_IMAGE
+    const ogImage = managedSocialImage ?? fallbackImage
 
     return {
       title,
@@ -139,6 +427,14 @@ function toMetadata(
         card: "summary_large_image" as const,
         site: "@JesusFilm",
         creator: "@JesusFilm",
+        title,
+        description: description || undefined,
+        images: [
+          {
+            url: ogImage.url,
+            alt: ogImage.alt,
+          },
+        ],
       },
       robots: resolvedPage.routeVideo.noIndex
         ? { index: false, follow: false }
@@ -158,12 +454,15 @@ function toMetadata(
   const fallbackTitle = options?.slug
     ? `${options.slug} ${TITLE_SUFFIX}`
     : "Watch | Jesus Film Project"
-  const title = cms?.title ?? fallbackTitle
-  const description =
+  const title = cms?.title ? withTitleSuffix(cms.title) : fallbackTitle
+  const description = truncateMetaDescription(
     cms?.description ??
-    "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages."
-  const ogTitle = cms?.ogTitle ?? title
-  const ogDescription = cms?.ogDescription ?? description
+      "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages.",
+  )
+  const ogTitle = cms?.ogTitle ? withTitleSuffix(cms.ogTitle) : title
+  const ogDescription = cms?.ogDescription
+    ? truncateMetaDescription(cms.ogDescription)
+    : description
   const ogImage = cms?.ogImage
     ? {
         url: cms.ogImage.url,
@@ -190,6 +489,14 @@ function toMetadata(
       card: "summary_large_image" as const,
       site: "@JesusFilm",
       creator: "@JesusFilm",
+      title: ogTitle,
+      description: ogDescription || undefined,
+      images: [
+        {
+          url: ogImage.url,
+          alt: ogImage.alt,
+        },
+      ],
     },
     // Explicit index/follow default. Without this, no <meta name="robots">
     // is emitted — Google still defaults to index,follow, but explicit is
@@ -208,6 +515,13 @@ export async function getWatchPageMetadata(
 ): Promise<Metadata> {
   const result = await resolveWatchPage(locale, options?.slug)
   return toMetadata(locale, result.data, options)
+}
+
+export function getWatchRouteFallbackMetadata(
+  locale: string,
+  options?: { slug?: string; pathLocale?: string },
+): Metadata {
+  return toMetadata(locale, null, options)
 }
 
 // Series-page metadata helper. Mirrors the shape `getWatchPageMetadata`
@@ -232,7 +546,9 @@ export function generateSeriesMetadata(
   const title =
     (series.title && `${series.title} ${TITLE_SUFFIX}`) ||
     `Watch ${TITLE_SUFFIX}`
-  const description = series.description ?? series.snippet ?? ""
+  const description = truncateMetaDescription(
+    series.description?.trim() || series.snippet || "",
+  )
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
   const ogImage = posterUrl
     ? {
@@ -260,6 +576,14 @@ export function generateSeriesMetadata(
       card: "summary_large_image" as const,
       site: "@JesusFilm",
       creator: "@JesusFilm",
+      title,
+      description: description || undefined,
+      images: [
+        {
+          url: ogImage.url,
+          alt: ogImage.alt,
+        },
+      ],
     },
     robots: series.noIndex
       ? { index: false, follow: false }

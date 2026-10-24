@@ -21,10 +21,13 @@ config.resolver.nodeModulesPaths = [
 // Apollo Client v4 can ship .cjs; ensure Metro resolves them
 config.resolver.sourceExts.push("cjs")
 
-// In a pnpm monorepo Metro can follow symlinks into .pnpm and resolve a
-// different copy of react (18.x from cms, 19.2.x from web's react-dom, etc).
-// Force every import of these packages to the single copy mobile owns.
-// Paths used by extraNodeModules; keys also drive the custom resolveRequest.
+// Bundled Bible books ship as files, not as JS modules (feat-553 KTD1).
+// A .json require would put all 8 MB of BSB into the bundle and every update.
+config.resolver.assetExts.push("bible")
+
+// pnpm symlinks let Metro resolve duplicate react copies via .pnpm; force these
+// to the single copy mobile owns. Paths feed extraNodeModules; keys also drive
+// the custom resolveRequest below.
 const singletonPkgs = {
   react: path.resolve(projectRoot, "node_modules/react"),
   "react-native": path.resolve(projectRoot, "node_modules/react-native"),

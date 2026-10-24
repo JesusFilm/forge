@@ -42,6 +42,7 @@ afterEach(() => {
   act(() => {
     root.unmount()
   })
+  vi.useRealTimers()
   container.remove()
 })
 
@@ -106,6 +107,29 @@ function makeStudyQuestions(values: string[]): WatchStudyQuestionsBlock {
 }
 
 describe("WatchBody — two-column layout", () => {
+  it("renders an optimistic title without replacing route-owned description", () => {
+    const block = makeBlock({ title: "Current Video" })
+
+    act(() => {
+      root.render(
+        <WatchBody
+          block={block}
+          studyQuestions={null}
+          onDownloadClick={vi.fn()}
+          optimisticTitle="Clicked Video"
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-body-title"]')?.textContent,
+    ).toBe("Clicked Video")
+    expect(
+      container.querySelector('[data-testid="watch-body-description"]')
+        ?.textContent,
+    ).toBe("A description.")
+  })
+
   it("happy path: video with 3 study questions + 5 downloads renders two columns, bullet list, and Download button", () => {
     const block = makeBlock({ downloadCount: 5 })
     const sq = makeStudyQuestions(["Q1?", "Q2?", "Q3?"])
@@ -149,20 +173,51 @@ describe("WatchBody — two-column layout", () => {
     const dl = container.querySelector('[data-testid="watch-download-button"]')
     expect(dl).not.toBeNull()
 
-    // Title and Download are grouped together. On mobile they stack so the
-    // title can use the full rail; md+ restores the side-by-side layout.
+    // Title and Download keep a top-aligned row by default so Download shares
+    // the same visual line as Ask Yours, then switch to a leading-aligned
+    // stack on landscape phones so long localized titles can use the full
+    // column width.
     const titleRow = container.querySelector(
       '[data-testid="watch-body-title-row"]',
     )
     expect(titleRow).not.toBeNull()
     expect(titleRow!.className).toContain("flex")
-    expect(titleRow!.className).toContain("flex-col")
+    expect(titleRow!.className).toContain("flex-nowrap")
     expect(titleRow!.className).toContain("items-start")
-    expect(titleRow!.className).toContain("md:flex-row")
-    expect(titleRow!.className).toContain("md:justify-between")
+    expect(titleRow!.className).not.toContain("items-center")
+    expect(titleRow!.className).toContain("justify-between")
+    expect(titleRow!.className).toContain("gap-3")
+    expect(titleRow!.className.split(" ")).not.toContain("flex-col")
+    expect(titleRow!.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:flex-col",
+    )
     const titleEl = container.querySelector('[data-testid="watch-body-title"]')
     expect(titleEl!.parentElement).toBe(titleRow)
+    expect(titleEl?.className).toContain("flex-1")
+    expect(titleEl?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:w-full",
+    )
+    expect(titleEl?.className).toContain("text-lg")
+    expect(titleEl?.className).toContain("sm:text-[27px]")
+    expect(titleEl?.className).toContain("md:text-4xl")
+    expect(titleEl?.className).toContain("xl:text-5xl")
+    expect(titleEl?.className).toContain("leading-[1.08]")
+    expect(titleEl?.className).toContain("font-semibold")
+    expect(titleEl?.className).not.toContain("text-3xl")
+    expect(titleEl?.className).not.toContain("font-bold")
     expect(dl!.closest('[data-testid="watch-body-title-row"]')).toBe(titleRow)
+    const downloadGroup = container.querySelector(
+      '[data-testid="watch-download-group"]',
+    )
+    expect(dl!.parentElement).toBe(downloadGroup)
+    expect(downloadGroup?.className).toContain("ml-auto")
+    expect(downloadGroup?.className).toContain("items-end")
+    expect(downloadGroup?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:ml-0",
+    )
+    expect(downloadGroup?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:items-start",
+    )
 
     // Right-column header top padding is alignment-critical: the right
     // header row should start flush with the title / Download row.
@@ -174,9 +229,26 @@ describe("WatchBody — two-column layout", () => {
     expect(studySection!.className).not.toContain("md:pt-")
     expect(studySection!.className).not.toContain("xl:pt-")
     const headerRow = studySection!.querySelector(
-      "div.mb-4.flex.flex-wrap.items-center.justify-between",
+      '[data-testid="watch-study-questions-header"]',
     )
     expect(headerRow).not.toBeNull()
+    expect(headerRow?.className).toContain("flex-wrap")
+    expect(headerRow?.className).toContain("items-center")
+    expect(headerRow?.className).toContain("justify-between")
+    expect(headerRow?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:flex-col",
+    )
+    expect(headerRow?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:items-start",
+    )
+    expect(headerRow?.className).toContain(
+      "[@media(max-width:1023px)_and_(orientation:landscape)]:gap-3",
+    )
+    expect(
+      headerRow?.querySelector(
+        '[data-testid="watch-study-questions-ask-yours"]',
+      ),
+    ).not.toBeNull()
     expect(
       container.querySelector("#watch-related-questions-heading")?.className,
     ).toContain(WATCH_SECTION_EYEBROW_CLASS)
@@ -196,6 +268,8 @@ describe("WatchBody — two-column layout", () => {
       '[data-testid="watch-body-description"]',
     )
     expect(description?.className).toContain("md:mt-6")
+    expect(description?.className).toContain("font-normal")
+    expect(description?.className).not.toContain("font-medium")
   })
 
   it("does not render the duplicated body label tag when present", () => {
@@ -301,6 +375,97 @@ describe("WatchBody — right column always renders (Ask Yours CTA is always rel
     ).not.toBeNull()
     // Ask Yours CTA must also render in the empty-array path; the null path
     // already pins this and the two cases should stay symmetric.
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-ask-yours"]',
+      ),
+    ).not.toBeNull()
+  })
+})
+
+describe("WatchBody — baked-in question numbering", () => {
+  function renderItems(values: string[]): string[] {
+    act(() => {
+      root.render(
+        <WatchBody
+          block={makeBlock({})}
+          studyQuestions={makeStudyQuestions(values)}
+          onDownloadClick={vi.fn()}
+        />,
+      )
+    })
+    return Array.from(
+      container.querySelectorAll('[data-testid="watch-study-questions-item"]'),
+    ).map((el) => el.textContent ?? "")
+  }
+
+  it("strips ordinals when the list is visibly numbered 1, 2, 3...", () => {
+    expect(
+      renderItems([
+        "1. Hasn't modern science disproved God?",
+        "2) Why does God allow suffering?",
+        "  3.  Padded ordinal?  ",
+        "Unnumbered half of a split item?",
+        "4. ",
+        "5. Ten-plus lists keep going?",
+      ]),
+    ).toEqual([
+      "Hasn't modern science disproved God?",
+      "Why does God allow suffering?",
+      "Padded ordinal?",
+      "Unnumbered half of a split item?",
+      "Ten-plus lists keep going?",
+    ])
+  })
+
+  it("strips two-digit ordinals in a long numbered list", () => {
+    const values = Array.from({ length: 12 }, (_, i) => `${i + 1}. Q${i + 1}?`)
+    expect(renderItems(values)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `Q${i + 1}?`),
+    )
+  })
+
+  it("keeps a lone leading number that is real content", () => {
+    expect(
+      renderItems(["2. Mose 3:14 – Was bedeutet dieser Vers?", "Warum Leid?"]),
+    ).toEqual(["2. Mose 3:14 – Was bedeutet dieser Vers?", "Warum Leid?"])
+  })
+
+  it("keeps real-content ordinals that are not a 1, 2, 3... run", () => {
+    expect(
+      renderItems(["2. Weltkrieg: war es Gottes Wille?", "3. Mose 19:18?"]),
+    ).toEqual(["2. Weltkrieg: war es Gottes Wille?", "3. Mose 19:18?"])
+  })
+
+  it("keeps a single numbered question (ambiguous with real content)", () => {
+    expect(renderItems(["1. Mose 1:1 – wer schuf alles?"])).toEqual([
+      "1. Mose 1:1 – wer schuf alles?",
+    ])
+  })
+
+  it("leaves other numbers untouched even in a numbered list", () => {
+    expect(
+      renderItems([
+        "1. Is 2 Peter 3:9 true? 1. maybe",
+        "2. 100. Not an ordinal",
+        "100. Not an ordinal either",
+        "3.Missing space stays",
+      ]),
+    ).toEqual([
+      "Is 2 Peter 3:9 true? 1. maybe",
+      "100. Not an ordinal",
+      "100. Not an ordinal either",
+      "3.Missing space stays",
+    ])
+  })
+
+  it("falls back to the placeholder row when every question is an empty ordinal", () => {
+    expect(renderItems(["1. ", "2) "])).toEqual([])
+    expect(
+      container.querySelector(
+        '[data-testid="watch-study-questions-placeholder"]',
+      ),
+    ).not.toBeNull()
     expect(
       container.querySelector(
         '[data-testid="watch-study-questions-ask-yours"]',
@@ -465,9 +630,15 @@ describe("WatchBody — modal trigger integration", () => {
       "https://issuesiface.com/talk?utm_source=jesusfilm-watch",
     )
     expect(ay!.getAttribute("target")).toBe("_blank")
+    expect(ay!.getAttribute("aria-label")).toBe("Ask yours")
+    expect(ay!.textContent).toContain("Ask yours")
     for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
       expect(ay!.className).toContain(token)
     }
+    expect(ay!.className).toContain("cursor-pointer")
+    expect(ay!.className).toContain("[&_*]:pointer-events-none")
+    expect(ay!.className).toContain("[&_*]:cursor-pointer")
+    expect(ay!.style.cursor).toBe("pointer")
     // noopener prevents window.opener access; noreferrer additionally
     // strips the Referer header on the cross-origin navigation.
     const rel = ay!.getAttribute("rel") ?? ""
@@ -495,6 +666,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
 
     const icon = trigger.querySelector("svg[viewBox='0 0 24 24']")
     expect(icon?.getAttribute("class")).toContain("size-6")
+    expect(icon?.getAttribute("class")).toContain("md:size-7")
+    expect(icon?.getAttribute("class")).toContain("mt-0")
     expect(icon?.getAttribute("class")).toContain("opacity-20")
 
     const question = trigger.querySelector("h3")
@@ -504,8 +677,9 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     expect(question?.className).not.toContain("sm:pr-4")
 
     const chevron = trigger.querySelector("span svg")
-    expect(chevron?.getAttribute("class")).toContain("size-4")
-    expect(chevron?.getAttribute("class")).toContain("translate-y-0.5")
+    expect(chevron?.getAttribute("class")).toContain("size-6")
+    expect(chevron?.getAttribute("class")).toContain("md:size-7")
+    expect(chevron?.getAttribute("class")).not.toContain("translate-y-0.5")
   })
 
   it("each prompt row carries a trigger button with aria-expanded=false by default", () => {
@@ -525,8 +699,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
       expect(trigger).not.toBeNull()
       expect(trigger!.tagName.toLowerCase()).toBe("button")
       expect(trigger!.getAttribute("aria-expanded")).toBe("false")
-      // Panel is unmounted while collapsed so closed rows stay free of
-      // fallback body text.
+      // Panel starts unmounted while collapsed so closed rows stay free of
+      // fallback body text until they have been opened once.
       expect(
         item.querySelector('[data-testid="watch-study-questions-item-panel"]'),
       ).toBeNull()
@@ -596,6 +770,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
   })
 
   it("only one row is open at a time — clicking a second row closes the first", () => {
+    vi.useFakeTimers()
+
     act(() => {
       root.render(<WatchStudyQuestions prompts={["First?", "Second?"]} />)
     })
@@ -618,9 +794,24 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
     const panels = container.querySelectorAll(
       '[data-testid="watch-study-questions-item-panel"]',
     )
-    expect(panels.length).toBe(1)
+    expect(panels.length).toBe(2)
     expect(triggers[0]?.getAttribute("aria-expanded")).toBe("false")
     expect(triggers[1]?.getAttribute("aria-expanded")).toBe("true")
+    expect(panels[0]?.getAttribute("aria-hidden")).toBe("true")
+    expect(panels[0]?.className).toContain("transition-[height]")
+    expect(panels[0]?.className).toContain("pointer-events-none")
+    expect((panels[0] as HTMLElement | undefined)?.style.height).toBe("0px")
+    expect(panels[1]?.getAttribute("aria-hidden")).toBe("false")
+    expect(panels[1]?.className).toContain("transition-[height]")
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    const settledPanels = container.querySelectorAll(
+      '[data-testid="watch-study-questions-item-panel"]',
+    )
+    expect(settledPanels.length).toBe(1)
+    expect(settledPanels[0]?.getAttribute("aria-hidden")).toBe("false")
   })
 
   it("resets openIndex when the prompts array reference changes — stale index never reveals a different question's panel", () => {
@@ -665,6 +856,8 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
   })
 
   it("clicking an open row's trigger again collapses it (toggle off)", () => {
+    vi.useFakeTimers()
+
     act(() => {
       root.render(<WatchStudyQuestions prompts={["A?"]} />)
     })
@@ -680,6 +873,23 @@ describe("WatchStudyQuestions — accordion expand with no-answer fallback", () 
       trigger.click()
     })
     expect(trigger.getAttribute("aria-expanded")).toBe("false")
+    const closingPanel = container.querySelector(
+      '[data-testid="watch-study-questions-item-panel"]',
+    )
+    expect(closingPanel).not.toBeNull()
+    expect(closingPanel?.getAttribute("aria-hidden")).toBe("true")
+    expect(closingPanel?.className).toContain("transition-[height]")
+    expect(closingPanel?.className).toContain("pointer-events-none")
+    expect((closingPanel as HTMLElement | null)?.style.height).toBe("0px")
+
+    const closingLinks = closingPanel!.querySelectorAll("a")
+    for (const link of closingLinks) {
+      expect(link.getAttribute("tabindex")).toBe("-1")
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
     expect(
       container.querySelector(
         '[data-testid="watch-study-questions-item-panel"]',
@@ -768,5 +978,42 @@ describe("DownloadButton — isolated render", () => {
     expect(btn).not.toBeNull()
     expect(btn.textContent).toContain("Save Video")
     expect(btn.getAttribute("aria-label")).toBe("Save Video")
+  })
+
+  it("renders a concrete fallback link when an href is supplied", () => {
+    const onClick = vi.fn()
+
+    act(() => {
+      root.render(
+        <DownloadButton
+          href="/watch/api/download?downloadId=dl-1&variantId=variant-1&videoSlug=jesus"
+          onClick={onClick}
+        />,
+      )
+    })
+
+    const link = container.querySelector(
+      '[data-testid="watch-download-button"]',
+    ) as HTMLAnchorElement
+    expect(link).not.toBeNull()
+    expect(link.tagName.toLowerCase()).toBe("a")
+    expect(link.getAttribute("href")).toContain("/watch/api/download?")
+    expect(link.getAttribute("href")).toContain("downloadId=dl-1")
+    expect(link.getAttribute("download")).toBe("")
+    expect(link.getAttribute("aria-label")).toBe("Download")
+    for (const token of WATCH_PILL_BUTTON_CLASS.split(" ")) {
+      expect(link.className).toContain(token)
+    }
+
+    const clickEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+    })
+    act(() => {
+      expect(link.dispatchEvent(clickEvent)).toBe(false)
+    })
+
+    expect(clickEvent.defaultPrevented).toBe(true)
+    expect(onClick).toHaveBeenCalledTimes(1)
   })
 })

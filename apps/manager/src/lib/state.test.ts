@@ -203,6 +203,50 @@ describe("admin job event publishing", () => {
     expect(publishJobEventMock).toHaveBeenCalledWith(updatedJob)
   })
 
+  it("normalizes admin-mode update variables before serialization", async () => {
+    adminUpdateJobMock.mockImplementation(
+      async (_id: string, updates: Record<string, unknown>) => ({
+        ...buildGraphqlJob("job-10"),
+        ...updates,
+      }),
+    )
+
+    await updateJob("job-10", {
+      status: "completed",
+      currentStep: undefined,
+      completedAt: undefined,
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: {
+            sourceLanguageId: "529",
+            sourceLanguageCode: "en",
+            resolvedTargetLanguageCodes: ["es"],
+          },
+        },
+      },
+    })
+
+    expect(adminUpdateJobMock).toHaveBeenCalledWith("job-10", {
+      status: "completed",
+      currentStep: null,
+      completedAt: null,
+      artifacts: {
+        materialization: {
+          kind: "metadata",
+          data: {
+            sourceLanguageId: "529",
+            sourceLanguageCode: "en",
+            resolvedTargetLanguageCodes: ["es"],
+          },
+        },
+      },
+      sourceLanguageId: "529",
+      sourceLanguageCode: "en",
+      resolvedTargetLanguageCodes: ["es"],
+    })
+  })
+
   it("publishes the merged job after mergeJobArtifacts succeeds", async () => {
     adminGetJobMock.mockResolvedValueOnce({
       ...buildGraphqlJob("job-11"),
@@ -285,6 +329,32 @@ describe("admin job event publishing", () => {
 })
 
 describe("toJobRecord", () => {
+  it("preserves current job discriminators alongside engine fencing metadata", () => {
+    const smartCrop = {
+      kind: "canonical",
+      assetId: "crop-1",
+      targetAspectRatio: "9:16",
+      cropMode: "auto",
+    }
+    const shorts = {
+      assetId: "short-1",
+      sourceMuxAssetId: "mux-1",
+      sourcePlaybackId: "play-1",
+      clip: { startSec: 0, endSec: 10 },
+      language: { bcp47: "en", whisper: "en" },
+    }
+    const record = toJobRecord({
+      ...buildGraphqlJob("job-1"),
+      options: { smartCrop, shorts, engine: "mastra", currentRunId: "run-1" },
+    } as unknown as Parameters<typeof toJobRecord>[0])
+    expect(record.options).toEqual({
+      smartCrop,
+      shorts,
+      engine: "mastra",
+      currentRunId: "run-1",
+    })
+  })
+
   it("keeps source titles when a job read includes the rich video shape", () => {
     expect(
       toJobRecord({
@@ -311,6 +381,182 @@ describe("toJobRecord", () => {
     ).toMatchObject({
       sourceMediaTitle: "Live title",
       sourceCollectionTitle: "Collection A, Collection B",
+    })
+  })
+
+  // Read-back contract for smart-crop render progress: admin-mode jobs round-
+  // trip step details through normalizeStepDetails, which must preserve
+  // progress/message (it used to strip everything except languageResults).
+  it("preserves step-detail progress and message on read-back", () => {
+    const record = toJobRecord({
+      documentId: "job-progress",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: [],
+      status: "running",
+      currentStep: "smart_crop_render",
+      retries: 0,
+      createdAt: "2026-06-09T00:00:00.000Z",
+      updatedAt: "2026-06-09T00:01:00.000Z",
+      startedAt: "2026-06-09T00:00:10.000Z",
+      completedAt: null,
+      artifacts: {},
+      errors: [],
+      steps: [
+        {
+          name: "smart_crop_render",
+          status: "running",
+          retries: 0,
+          startedAt: "2026-06-09T00:00:10.000Z",
+          finishedAt: null,
+          error: null,
+          details: { progress: 0.42, message: "Rendering segment 42 of 100" },
+        },
+        {
+          name: "smart_crop_mux_output",
+          status: "pending",
+          retries: 0,
+          startedAt: null,
+          finishedAt: null,
+          error: null,
+          details: { progress: "not-a-number", message: 7 },
+        },
+      ],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(record.steps[0]?.details).toEqual({
+      progress: 0.42,
+      message: "Rendering segment 42 of 100",
+    })
+    // Wrong-typed fields are dropped; an all-invalid payload reads back as
+    // undefined details.
+    expect(record.steps[1]?.details).toBeUndefined()
+  })
+
+  it("preserves allowlisted Mastra step diagnostics on read-back", () => {
+    const record = toJobRecord({
+      documentId: "job-mastra",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: [],
+      status: "running",
+      currentStep: "embeddings",
+      retries: 0,
+      createdAt: "2026-06-13T00:00:00.000Z",
+      updatedAt: "2026-06-13T00:01:00.000Z",
+      startedAt: "2026-06-13T00:00:10.000Z",
+      completedAt: null,
+      artifacts: {},
+      errors: [],
+      steps: [
+        {
+          name: "embeddings",
+          status: "completed",
+          retries: 0,
+          startedAt: "2026-06-13T00:00:10.000Z",
+          finishedAt: "2026-06-13T00:00:20.000Z",
+          error: null,
+          details: {
+            mastra: {
+              runId: "run-1",
+              status: "created",
+              provider: "openai",
+              model: "text-embedding-3-small",
+              chunks: 4,
+              totalTokens: 123,
+              sourceContentHash: "sha256:abc",
+              transcript: "must not round-trip",
+              requestBody: { secret: true },
+            },
+          },
+        },
+      ],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(record.steps[0]?.details).toEqual({
+      mastra: {
+        runId: "run-1",
+        status: "created",
+        provider: "openai",
+        model: "text-embedding-3-small",
+        chunks: 4,
+        totalTokens: 123,
+        sourceContentHash: "sha256:abc",
+      },
+    })
+  })
+
+  it("preserves subtitle validation summaries on read-back", () => {
+    const record = toJobRecord({
+      documentId: "job-validation",
+      muxAssetId: "asset-1",
+      muxPlaybackId: "playback-1",
+      languages: ["es"],
+      status: "completed",
+      currentStep: null,
+      retries: 0,
+      createdAt: "2026-06-16T00:00:00.000Z",
+      updatedAt: "2026-06-16T00:01:00.000Z",
+      startedAt: "2026-06-16T00:00:10.000Z",
+      completedAt: "2026-06-16T00:00:20.000Z",
+      artifacts: {},
+      errors: [],
+      steps: [
+        {
+          name: "translation",
+          status: "completed",
+          retries: 0,
+          startedAt: "2026-06-16T00:00:10.000Z",
+          finishedAt: "2026-06-16T00:00:20.000Z",
+          error: null,
+          details: {
+            subtitleValidation: {
+              highestVerdict: "needs_review",
+              languagesChecked: 1,
+              modelOnlyLanguages: ["es"],
+              unavailableLanguages: [],
+              warningCount: 0,
+              needsReviewCount: 1,
+              results: [
+                {
+                  lang: "es",
+                  verdict: "needs_review",
+                  basis: "model_knowledge",
+                  confidence: 0.72,
+                  checkedReferenceCount: 1,
+                  warningCount: 0,
+                  needsReviewCount: 1,
+                  fallbackReason: "provider_config_missing",
+                  unsafePassageText: "must not round-trip",
+                },
+              ],
+            },
+          },
+        },
+      ],
+    } as unknown as Parameters<typeof toJobRecord>[0])
+
+    expect(record.steps[0]?.details).toEqual({
+      subtitleValidation: {
+        highestVerdict: "needs_review",
+        languagesChecked: 1,
+        modelOnlyLanguages: ["es"],
+        unavailableLanguages: [],
+        warningCount: 0,
+        needsReviewCount: 1,
+        results: [
+          {
+            lang: "es",
+            verdict: "needs_review",
+            basis: "model_knowledge",
+            confidence: 0.72,
+            checkedReferenceCount: 1,
+            warningCount: 0,
+            needsReviewCount: 1,
+            fallbackReason: "provider_config_missing",
+          },
+        ],
+      },
     })
   })
 

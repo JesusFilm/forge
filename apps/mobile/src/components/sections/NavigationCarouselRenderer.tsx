@@ -1,12 +1,13 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 
-import { hexToRgba, TEXT_ON_OVERLAY } from "../../lib/color"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
-import { card, carousel, feedback, layout, text } from "../../styles/shared"
+import { useT } from "../../i18n/useT"
+import { card, carousel, layout, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
+import { PressableCard } from "../ui/PressableCard"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -33,8 +34,9 @@ export function NavigationCarouselRenderer({
   section,
 }: NavigationCarouselRendererProps) {
   const typography = useTypography()
+  const t = useT("Sections")
   const s = section as Record<string, unknown>
-  const heading = "Stories"
+  const heading = t("storiesHeading")
   const items = (s.items as NavItem[] | undefined) ?? []
 
   if (items.length === 0) return null
@@ -53,21 +55,17 @@ export function NavigationCarouselRenderer({
         contentContainerStyle={carousel.listContent}
         decelerationRate="fast"
         accessibilityRole="adjustable"
-        accessibilityLabel={`${items.length} navigation items`}
+        accessibilityLabel={t("navigationItemsAriaLabel", {
+          count: items.length,
+        })}
       >
         {items.map((item, index) => {
-          const imageUrl = resolveImageUrl(item.imageUrl ?? null)
+          const imageUrl = resolveThumbnailUrl(item.imageUrl)
           const bgColor = item.backgroundColor ?? "#292524"
 
           return (
-            <Pressable
+            <PressableCard
               key={`nav-${item.contentId}-${index}`}
-              style={({ pressed }) => [
-                card.base,
-                styles.localCard,
-                { backgroundColor: bgColor },
-                pressed && feedback.pressed,
-              ]}
               onPress={() => {
                 // TODO: scroll to section via contentId
                 if (__DEV__) {
@@ -77,22 +75,25 @@ export function NavigationCarouselRenderer({
                 }
               }}
               accessibilityLabel={`${item.category ?? ""} ${item.title}`.trim()}
-              accessibilityHint="Scrolls to this section"
+              accessibilityHint={t("scrollsToSectionAriaHint")}
+              style={[
+                card.base,
+                styles.localCard,
+                { backgroundColor: bgColor },
+              ]}
+              background={
+                imageUrl != null ? (
+                  <Image
+                    source={imageUrl}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    priority="low"
+                    recyclingKey={`nav-${item.contentId}`}
+                  />
+                ) : undefined
+              }
+              scrim="subtle"
             >
-              {imageUrl != null && (
-                <Image
-                  source={imageUrl}
-                  style={[StyleSheet.absoluteFill, styles.cardImage]}
-                  contentFit="cover"
-                  priority="low"
-                  recyclingKey={`nav-${item.contentId}`}
-                />
-              )}
-              <LinearGradient
-                colors={[hexToRgba("#000000", 0), hexToRgba("#000000", 0.7)]}
-                style={[StyleSheet.absoluteFill, styles.cardImage]}
-                pointerEvents="none"
-              />
               <View style={styles.cardContent}>
                 {item.category != null && (
                   <Text
@@ -109,7 +110,7 @@ export function NavigationCarouselRenderer({
                   {item.title}
                 </Text>
               </View>
-            </Pressable>
+            </PressableCard>
           )
         })}
       </ScrollView>
@@ -125,9 +126,6 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     minHeight: 48,
   },
-  cardImage: {
-    borderRadius: 12,
-  },
   cardContent: {
     flex: 1,
     justifyContent: "flex-end",
@@ -136,13 +134,13 @@ const styles = StyleSheet.create({
   category: {
     fontWeight: "700",
     color: "rgba(255, 255, 255, 0.8)",
-    fontFamily: "System",
-    letterSpacing: 0.5,
+    // All-caps text needs letter spacing of at least 5% of its font size.
+    // The other caption-size capitals already use 0.8.
+    letterSpacing: 0.8,
     marginBottom: 2,
   },
   title: {
     fontWeight: "700",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

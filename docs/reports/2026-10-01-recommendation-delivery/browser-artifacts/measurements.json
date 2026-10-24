@@ -1,0 +1,267 @@
+{
+  "method": "Headless agent-browser 0.38.1; Next.js development server; local synthetic player shell; real Web delivery route; 600ms controlled GraphQL upstream (5000ms transport-timeout scenario); unrelated profile route mocked.",
+  "scenarios": [
+    {
+      "scenario": "empty",
+      "timing": {
+        "playerShellMs": 210.5,
+        "hydratedMs": 759.8000000119209,
+        "requests": [
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 795.1000000238419,
+            "playerPresentAtStart": true,
+            "endMs": 1731,
+            "status": 200,
+            "delivery": {
+              "requestId": "browser-fixture-empty",
+              "result": "empty",
+              "reason": "no_candidates",
+              "requestedCount": 6,
+              "composedCount": 0,
+              "itemsCount": 0
+            },
+            "durationMs": 935.9
+          }
+        ]
+      },
+      "navigation": [
+        {
+          "domContentLoadedEventEnd": 422.69999998807907,
+          "loadEventEnd": 547.1000000238419,
+          "responseStart": 127.5
+        }
+      ],
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 492
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 492
+        }
+      ],
+      "playerVisible": true,
+      "recommendationHeadingCount": 0
+    },
+    {
+      "scenario": "admin_timeout",
+      "timing": {
+        "playerShellMs": 179.5,
+        "hydratedMs": 818.8000000119209,
+        "requests": [
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 859.6000000238419,
+            "playerPresentAtStart": true,
+            "endMs": 1564.199999988079,
+            "status": 200,
+            "delivery": {
+              "requestId": "browser-fixture-empty",
+              "result": "unavailable",
+              "reason": "retrieval_timeout",
+              "requestedCount": 6,
+              "composedCount": 0,
+              "itemsCount": 0
+            },
+            "durationMs": 704.6
+          }
+        ]
+      },
+      "navigation": [
+        {
+          "domContentLoadedEventEnd": 207.19999998807907,
+          "loadEventEnd": 554.6000000238419,
+          "responseStart": 130.5
+        }
+      ],
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 272
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 272
+        }
+      ],
+      "playerVisible": true,
+      "recommendationHeadingCount": 0
+    },
+    {
+      "scenario": "upstream_graphql_error",
+      "timing": {
+        "playerShellMs": 252.39999997615814,
+        "hydratedMs": 882.1999999880791,
+        "requests": [
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 995.1999999880791,
+            "playerPresentAtStart": true,
+            "endMs": 1702.8999999761581,
+            "status": 200,
+            "delivery": {
+              "requestId": null,
+              "result": "unavailable",
+              "reason": "delivery_unavailable",
+              "requestedCount": null,
+              "composedCount": null,
+              "itemsCount": 0
+            },
+            "durationMs": 707.7
+          },
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 2234.399999976158,
+            "playerPresentAtStart": true,
+            "endMs": 2929.599999964237,
+            "status": 200,
+            "delivery": {
+              "requestId": null,
+              "result": "unavailable",
+              "reason": "delivery_unavailable",
+              "requestedCount": null,
+              "composedCount": null,
+              "itemsCount": 0
+            },
+            "durationMs": 695.2
+          },
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 3446.599999964237,
+            "playerPresentAtStart": true,
+            "endMs": 4121.199999988079,
+            "status": 200,
+            "delivery": {
+              "requestId": null,
+              "result": "unavailable",
+              "reason": "delivery_unavailable",
+              "requestedCount": null,
+              "composedCount": null,
+              "itemsCount": 0
+            },
+            "durationMs": 674.6
+          }
+        ]
+      },
+      "navigation": [
+        {
+          "domContentLoadedEventEnd": 411.5999999642372,
+          "loadEventEnd": 782.1999999880791,
+          "responseStart": 174
+        }
+      ],
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 464
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 464
+        }
+      ],
+      "playerVisible": true,
+      "recommendationHeadingCount": 0
+    },
+    {
+      "scenario": "transport_timeout",
+      "timing": {
+        "playerShellMs": 231.5,
+        "hydratedMs": 755.8000000119209,
+        "requests": [
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 838.5,
+            "playerPresentAtStart": true,
+            "endMs": 4406.400000035763,
+            "status": 200,
+            "delivery": {
+              "requestId": null,
+              "result": "unavailable",
+              "reason": "delivery_unavailable",
+              "requestedCount": null,
+              "composedCount": null,
+              "itemsCount": 0
+            },
+            "durationMs": 3567.9
+          },
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 4924.400000035763,
+            "playerPresentAtStart": true,
+            "endMs": 8489.900000035763,
+            "status": 200,
+            "delivery": {
+              "requestId": null,
+              "result": "unavailable",
+              "reason": "delivery_unavailable",
+              "requestedCount": null,
+              "composedCount": null,
+              "itemsCount": 0
+            },
+            "durationMs": 3565.5
+          },
+          {
+            "path": "/watch/api/recommendations",
+            "startMs": 9000.600000023842,
+            "playerPresentAtStart": true,
+            "endMs": 12573.400000035763,
+            "status": 200,
+            "delivery": {
+              "requestId": null,
+              "result": "unavailable",
+              "reason": "delivery_unavailable",
+              "requestedCount": null,
+              "composedCount": null,
+              "itemsCount": 0
+            },
+            "durationMs": 3572.8
+          }
+        ]
+      },
+      "navigation": [
+        {
+          "domContentLoadedEventEnd": 315.4000000357628,
+          "loadEventEnd": 627.6000000238419,
+          "responseStart": 172.5
+        }
+      ],
+      "paint": [
+        {
+          "name": "first-paint",
+          "startTime": 344
+        },
+        {
+          "name": "first-contentful-paint",
+          "startTime": 344
+        }
+      ],
+      "playerVisible": true,
+      "recommendationHeadingCount": 0
+    }
+  ],
+  "separateEmptyReloadVitals": {
+    "ttfbMs": 248.8,
+    "fcpMs": 468.0,
+    "lcpMs": 468,
+    "cls": 0.0,
+    "hydrationDurationMs": 56.6,
+    "recommendationComponentHydrationDurationMs": 0.4
+  },
+  "browserPageErrors": [],
+  "browserConsoleWarningsAndErrors": [],
+  "upstreamOperationCounts": {
+    "SemanticRecommendationDelivery": 10,
+    "legacySceneOrCollectionCalls": 0
+  },
+  "beforeFirstDeliverySnapshot": {
+    "timing": {
+      "playerShellMs": 231.5,
+      "hydratedMs": 755.8000000119209,
+      "requests": []
+    },
+    "playerVisible": true
+  }
+}

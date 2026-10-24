@@ -1,7 +1,7 @@
 import type {
   PromoteSearchEvalCandidateInput,
   SearchEvalCandidateDecisionInput,
-} from "@/services/search-eval/candidates"
+} from "@/services/search-eval-candidates"
 
 import { badRequest } from "../review-route-helpers"
 

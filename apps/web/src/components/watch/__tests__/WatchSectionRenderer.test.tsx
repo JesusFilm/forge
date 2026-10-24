@@ -26,12 +26,17 @@ const {
   heroPlayerMock,
   siblingCarouselMock,
   watchBodyMock,
+  watchSemanticRecommendationsMock,
   watchStudyQuestionsMock,
   bibleQuotesSectionMock,
 } = vi.hoisted(() => ({
   experienceSectionRendererMock: vi.fn(
-    ({ section }: { section: { __typename?: string } }) =>
-      `STRAPI:${section.__typename ?? "unknown"}`,
+    ({
+      section,
+    }: {
+      section: { __typename?: string }
+      languageSlug?: string | null
+    }) => `STRAPI:${section.__typename ?? "unknown"}`,
   ),
   // U5 — `WatchSectionRenderer` now mounts the real `<HeroPlayer>` instead of
   // a `data-block-type="HeroPlayer"` placeholder div. We mock it here so this
@@ -40,6 +45,8 @@ const {
   heroPlayerMock: vi.fn(
     ({
       block,
+      optimisticVisual,
+      onShareClick,
     }: {
       block: {
         variant: {
@@ -48,6 +55,14 @@ const {
         }
         video: { documentId: string }
       }
+      optimisticVisual?: {
+        title: string | null
+        label: string | null
+        posterUrl: string | null
+        loading?: boolean
+        transitionKey?: string | null
+      } | null
+      onShareClick?: () => void
     }) => {
       // Mirror the original placeholder's data attributes so the renderer
       // contract assertions below (data-block-type + data-content JSON
@@ -56,10 +71,20 @@ const {
         videoDocumentId: block.video.documentId,
         playbackId: block.variant.muxVideo?.playbackId ?? null,
         hls: block.variant.hls ?? null,
+        optimisticVisual: optimisticVisual ?? null,
       })
       return (
         <div data-block-type="HeroPlayer" data-content={content}>
           HeroPlayer mock
+          {onShareClick ? (
+            <button
+              type="button"
+              data-testid="hero-player-share-proxy"
+              onClick={onShareClick}
+            >
+              Share
+            </button>
+          ) : null}
         </div>
       )
     },
@@ -72,6 +97,7 @@ const {
     ({
       block,
       languageSlug,
+      pendingNavigation,
     }: {
       block: {
         canonicalParent: {
@@ -81,12 +107,15 @@ const {
         currentVideoDocumentId: string
       }
       languageSlug?: string
+      pendingNavigation?: { targetVideoDocumentId: string } | null
     }) => {
       const content = JSON.stringify({
         parentSlug: block.canonicalParent.slug,
         currentVideoDocumentId: block.currentVideoDocumentId,
         childCount: (block.canonicalParent.children ?? []).length,
         languageSlug: languageSlug ?? null,
+        pendingTargetVideoDocumentId:
+          pendingNavigation?.targetVideoDocumentId ?? null,
       })
       return (
         <div data-block-type="SiblingCarousel" data-content={content}>
@@ -104,13 +133,16 @@ const {
     ({
       block,
       studyQuestions,
+      optimisticTitle,
     }: {
       block: { video: { documentId: string; title?: string | null } }
       studyQuestions: { studyQuestions: Array<unknown> } | null
+      optimisticTitle?: string | null
     }) => {
       const content = JSON.stringify({
         videoDocumentId: block.video.documentId,
         title: block.video.title ?? null,
+        optimisticTitle: optimisticTitle ?? null,
         studyQuestionCount: studyQuestions?.studyQuestions.length ?? 0,
       })
       return (
@@ -119,6 +151,16 @@ const {
         </div>
       )
     },
+  ),
+  watchSemanticRecommendationsMock: vi.fn(
+    ({ seedMediaId }: { seedMediaId: string }) => (
+      <div
+        data-block-type="SemanticRecommendations"
+        data-seed-media-id={seedMediaId}
+      >
+        Semantic recommendations mock
+      </div>
+    ),
   ),
   // U7 — WatchStudyQuestions has its own test file. Mocked here so the
   // dispatch test doesn't depend on its internal markup.
@@ -134,15 +176,15 @@ const {
   bibleQuotesSectionMock: vi.fn(
     ({
       bibleCitations,
-      youVersionPassages = [],
+      passages = [],
     }: {
       bibleCitations: Array<unknown>
       onShareClick: () => void
-      youVersionPassages?: Array<unknown>
+      passages?: Array<unknown>
     }) => {
       const content = JSON.stringify({
         count: bibleCitations.length,
-        youVersionPassageCount: youVersionPassages.length,
+        passageCount: passages.length,
       })
       return (
         <div data-block-type="BibleQuotes" data-content={content}>
@@ -152,6 +194,16 @@ const {
     },
   ),
 }))
+
+const { audienceFrameMock } = vi.hoisted(() => ({
+  audienceFrameMock: vi.fn((props: { languageSlug?: string }) => (
+    <div
+      data-testid="watch-audience-frame-mock"
+      data-language={props.languageSlug}
+    />
+  )),
+}))
+vi.mock("next/dynamic", () => ({ default: () => audienceFrameMock }))
 
 vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: experienceSectionRendererMock,
@@ -169,6 +221,10 @@ vi.mock("@/components/watch/WatchBody", () => ({
   WatchBody: watchBodyMock,
 }))
 
+vi.mock("@/components/recommendations/WatchSemanticRecommendations", () => ({
+  WatchSemanticRecommendations: watchSemanticRecommendationsMock,
+}))
+
 vi.mock("@/components/watch/WatchStudyQuestions", () => ({
   WatchStudyQuestions: watchStudyQuestionsMock,
 }))
@@ -180,6 +236,7 @@ vi.mock("@/components/watch/BibleQuotesSection", () => ({
 import {
   buildBibleQuotesBlock,
   buildHeroBlock,
+  buildSemanticRecommendationsBlock,
   buildShareBlock,
   buildSiblingCarouselBlock,
   buildStudyQuestionsBlock,
@@ -193,10 +250,12 @@ let container: HTMLDivElement
 let root: Root
 
 beforeEach(() => {
+  audienceFrameMock.mockClear()
   experienceSectionRendererMock.mockClear()
   heroPlayerMock.mockClear()
   siblingCarouselMock.mockClear()
   watchBodyMock.mockClear()
+  watchSemanticRecommendationsMock.mockClear()
   watchStudyQuestionsMock.mockClear()
   bibleQuotesSectionMock.mockClear()
   container = document.createElement("div")
@@ -263,6 +322,35 @@ function makeParent(childrenCount = 2) {
 }
 
 describe("WatchSectionRenderer — synthetic block dispatch", () => {
+  it("dispatches the route-owned semantic recommendation slot", () => {
+    const block = buildSemanticRecommendationsBlock(makeVideo())
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={[block]}
+          languageSlug="english"
+          locale="en"
+        />,
+      )
+    })
+
+    expect(watchSemanticRecommendationsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        seedMediaId: "video-1",
+        seedMediaSlug: "jesus",
+        locale: "en",
+        audioLanguageSlug: "english",
+      }),
+      undefined,
+    )
+    expect(
+      container
+        .querySelector('[data-block-type="SemanticRecommendations"]')
+        ?.getAttribute("data-seed-media-id"),
+    ).toBe("video-1")
+  })
+
   it("renders all 6 synthetic block-types with correct data-block-type attributes", () => {
     const video = makeVideo({
       studyQuestions: [{ documentId: "sq-1", value: "Q?", order: 1 }],
@@ -276,6 +364,18 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
           order: 1,
           osisId: "John.1.1",
           bibleBook: { documentId: "bb-1", name: "John" },
+          passage: {
+            citationDocumentId: "bc-1",
+            content: "Server passage text.",
+            copyright: "Required attribution.",
+            humanReference: "John 1:1",
+            provider: "youversion",
+            publisherUrl: null,
+            reference: "JHN.1.1",
+            versionAbbreviation: "BSB",
+            versionId: 3034,
+            versionTitle: "Berean Standard Bible",
+          },
         },
       ],
     })
@@ -291,20 +391,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
       )!,
       buildBibleQuotesBlock(
         (video as { bibleCitations?: unknown[] }).bibleCitations as never,
-        [
-          {
-            citationDocumentId: "bc-1",
-            content: "Server passage text.",
-            copyright: "Required attribution.",
-            humanReference: "John 1:1",
-            publisherUrl: null,
-            reference: "JHN.1.1",
-            versionAbbreviation: "BSB",
-            versionId: 3034,
-            versionTitle: "Berean Standard Bible",
-          },
-        ],
-      )!,
+      ),
       buildShareBlock(video),
     ]
 
@@ -345,6 +432,16 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     // here so a future refactor doesn't silently regress.
     const bodyZone = container.querySelector("[data-testid='watch-body-zone']")
     expect(bodyZone).not.toBeNull()
+    const bodyBackdrop = bodyZone!.querySelector(
+      "[data-testid='watch-body-backdrop']",
+    )
+    // Preserve the Firefox fallback hook. Browser-level proof covers rendering
+    // because jsdom cannot observe WebRender/compositor output.
+    expect(bodyBackdrop?.getAttribute("class")).toContain("watch-body-backdrop")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("w-full")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("overflow-visible")
+    expect(bodyBackdrop?.getAttribute("class")).toContain("md:overflow-hidden")
+    expect(bodyBackdrop?.getAttribute("class")).not.toContain("max-w-[1920px]")
     const siblingInsideBody = bodyZone!.querySelector(
       "[data-block-type='SiblingCarousel']",
     )
@@ -371,7 +468,7 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     )
     expect(bibleQuotesContent).toEqual({
       count: 1,
-      youVersionPassageCount: 1,
+      passageCount: 1,
     })
   })
 
@@ -381,7 +478,13 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     const block = buildHeroBlock(video, variant)
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={[block]} />)
+      root.render(
+        <WatchSectionRenderer
+          blocks={[block]}
+          hasSubtitleOptions
+          subtitleLanguageCode="ES"
+        />,
+      )
     })
 
     const heroEl = container.querySelector('[data-block-type="HeroPlayer"]')
@@ -390,6 +493,141 @@ describe("WatchSectionRenderer — synthetic block dispatch", () => {
     expect(content.playbackId).toBe("playback-id-123")
     expect(content.hls).toBe("https://cdn.example/jesus.m3u8")
     expect(content.videoDocumentId).toBe("video-1")
+    expect(heroPlayerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        hasSubtitleOptions: true,
+        subtitleLanguageCode: "ES",
+      }),
+      undefined,
+    )
+  })
+
+  it("passes page modal actions and pending-language cancellation to HeroPlayer", () => {
+    const openShare = vi.fn()
+    const openLanguage = vi.fn()
+    const cancelPendingLanguage = vi.fn()
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={[buildHeroBlock(makeVideo(), makeVariant())]}
+          modalCallbacks={{
+            closeModal: vi.fn(),
+            openDownload: vi.fn(),
+            openLanguage,
+            openShare,
+            cancelPendingLanguage,
+          }}
+        />,
+      )
+    })
+
+    const share = container.querySelector(
+      '[data-testid="hero-player-share-proxy"]',
+    ) as HTMLButtonElement
+    expect(share).not.toBeNull()
+    share.click()
+    expect(openShare).toHaveBeenCalledTimes(1)
+    expect(heroPlayerMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onLanguageClick: openLanguage,
+        onCancelLanguageOpen: cancelPendingLanguage,
+      }),
+      undefined,
+    )
+  })
+
+  it("passes a pending chapter projection to hero, carousel, and body surfaces", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const parent = makeParent(3)
+    const blocks: MergedWatchBlock[] = [
+      buildHeroBlock(video, variant),
+      buildSiblingCarouselBlock(parent, video)!,
+      buildWatchBodyBlock(video, variant),
+    ]
+    const pendingChapter = {
+      href: "/child-2.html/english.html",
+      languageSlug: "english",
+      sourceVideoDocumentId: "video-1",
+      targetVideoDocumentId: "child-2",
+      title: "Clicked Child",
+      slug: "child-2",
+      label: "SEGMENT",
+      posterUrl: "https://cdn.test/clicked.jpg",
+    }
+
+    act(() => {
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          languageSlug="english"
+          pendingChapter={pendingChapter}
+          onChapterNavigateIntent={vi.fn()}
+        />,
+      )
+    })
+
+    const heroContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="HeroPlayer"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+    const carouselContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="SiblingCarousel"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+    const bodyContent = JSON.parse(
+      container
+        .querySelector('[data-block-type="WatchBody"]')
+        ?.getAttribute("data-content") ?? "{}",
+    )
+
+    expect(heroContent.optimisticVisual).toEqual({
+      title: "Clicked Child",
+      label: "SEGMENT",
+      posterUrl: "https://cdn.test/clicked.jpg",
+      posterBlurDataUrl: null,
+      loading: true,
+      transitionKey: "child-2",
+    })
+    expect(carouselContent.pendingTargetVideoDocumentId).toBe("child-2")
+    expect(bodyContent.optimisticTitle).toBe("Clicked Child")
+    expect(bodyContent.title).toBe("Jesus")
+  })
+
+  it("skips the synthetic BibleQuotes section when the watch hide flag is active", () => {
+    const video = makeVideo({
+      bibleCitations: [
+        {
+          bibleBook: { documentId: "bb-john", name: "John" },
+          chapterEnd: null,
+          chapterStart: 1,
+          documentId: "bc-1",
+          order: 1,
+          osisId: "John.1.1",
+          verseEnd: null,
+          verseStart: 1,
+        },
+      ],
+    })
+    const blocks: MergedWatchBlock[] = [
+      buildBibleQuotesBlock(
+        (video as { bibleCitations?: unknown[] }).bibleCitations as never,
+      ),
+      buildShareBlock(video),
+    ]
+
+    act(() => {
+      root.render(<WatchSectionRenderer blocks={blocks} hideBibleQuotes />)
+    })
+
+    expect(bibleQuotesSectionMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-block-type="BibleQuotes"]'),
+    ).toBeNull()
+    expect(container.querySelector('[data-block-type="Share"]')).not.toBeNull()
   })
 })
 
@@ -401,12 +639,20 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     } as never
 
     act(() => {
-      root.render(<WatchSectionRenderer blocks={[promo]} />)
+      root.render(
+        <WatchSectionRenderer
+          blocks={[promo]}
+          languageSlug="spanish-castilian"
+        />,
+      )
     })
 
     expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
     expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.section).toBe(
       promo,
+    )
+    expect(experienceSectionRendererMock.mock.calls[0]?.[0]?.languageSlug).toBe(
+      "spanish-castilian",
     )
     // The mock returns a marker string we can find in the DOM.
     expect(container.textContent).toContain(
@@ -440,6 +686,46 @@ describe("WatchSectionRenderer — Strapi block delegation", () => {
     expect(experienceSectionRendererMock).toHaveBeenCalledTimes(1)
     expect(container.textContent).toContain(
       "STRAPI:ComponentSectionsPromoBanner",
+    )
+  })
+})
+
+describe("audience integration", () => {
+  it("adds the frame without moving authored blocks or remounting the player", () => {
+    const video = makeVideo()
+    const variant = makeVariant()
+    const blocks = [
+      buildHeroBlock(video, variant),
+      buildWatchBodyBlock(video, variant),
+    ]
+    act(() =>
+      root.render(
+        <WatchSectionRenderer blocks={blocks} languageSlug="spanish" />,
+      ),
+    )
+    const player = container.querySelector('[data-block-type="HeroPlayer"]')
+    expect(
+      container.querySelector('[data-testid="watch-audience-frame-mock"]'),
+    ).toBeNull()
+    act(() =>
+      root.render(
+        <WatchSectionRenderer
+          blocks={blocks}
+          audienceEnabled
+          languageSlug="spanish"
+        />,
+      ),
+    )
+    expect(container.querySelector('[data-block-type="HeroPlayer"]')).toBe(
+      player,
+    )
+    expect(
+      Array.from(container.querySelectorAll("[data-block-type]"), (element) =>
+        element.getAttribute("data-block-type"),
+      ),
+    ).toEqual(["HeroPlayer", "WatchBody"])
+    expect(audienceFrameMock.mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({ languageSlug: "spanish" }),
     )
   })
 })

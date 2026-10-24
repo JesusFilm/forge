@@ -12,8 +12,15 @@ export const adminPromoBannerFragment = adminGraphql(`
     ctaEnabled
     ctaLabel
     widthPercent
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
   }
 `)

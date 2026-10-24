@@ -14,6 +14,7 @@ describe("Auth operator access", () => {
   it("requires active membership", () => {
     expect(
       canAccessAuthOperator({
+        actorType: "HUMAN",
         membershipStatus: "SUSPENDED",
         nodeEnv: "production",
       }),
@@ -23,6 +24,7 @@ describe("Auth operator access", () => {
   it("is disabled in production until the developer console is an OAuth client", () => {
     expect(
       canAccessAuthOperator({
+        actorType: "HUMAN",
         membershipStatus: "ACTIVE",
         nodeEnv: "production",
       }),
@@ -32,9 +34,20 @@ describe("Auth operator access", () => {
   it("allows active users outside production for local development", () => {
     expect(
       canAccessAuthOperator({
+        actorType: "HUMAN",
         membershipStatus: "ACTIVE",
         nodeEnv: "development",
       }),
     ).toBe(true)
+  })
+
+  it("blocks agent users outside production", () => {
+    expect(
+      canAccessAuthOperator({
+        actorType: "AGENT",
+        membershipStatus: "ACTIVE",
+        nodeEnv: "development",
+      }),
+    ).toBe(false)
   })
 })

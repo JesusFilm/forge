@@ -125,15 +125,33 @@ describe("getWatchLocaleSegmentIndex", () => {
 })
 
 describe("SAFE_SLUG_PATTERN", () => {
-  it("accepts kebab-case ASCII slugs", () => {
+  it("accepts safe ASCII content slugs", () => {
     expect(SAFE_SLUG_PATTERN.test("english")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("spanish-castilian")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("arabic-modern-standard")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("magdalena-2")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("soccer_event_collection")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("kılıç")).toBe(true)
   })
 
-  it("rejects uppercase, dots, slashes, and host shapes", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])("accepts safe lowercase Latin slugs with diacritics: %s", (slug) => {
+    expect(SAFE_SLUG_PATTERN.test(slug)).toBe(true)
+  })
+
+  it("rejects uppercase, combining marks, dots, slashes, and host shapes", () => {
     expect(SAFE_SLUG_PATTERN.test("English")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ｊｅｓｕｓ")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ᴀlpha")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ʰome")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ɪesus")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ꜱcript")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ﬁlm")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("tu\u0308mlukden-nura")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("jesus.html")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("a/b")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("evil.com")).toBe(false)
@@ -152,7 +170,9 @@ describe("RESERVED_PREFIXES", () => {
     expect(RESERVED_PREFIXES.has("api")).toBe(true)
     expect(RESERVED_PREFIXES.has("_next")).toBe(true)
     expect(RESERVED_PREFIXES.has(".well-known")).toBe(true)
+    expect(RESERVED_PREFIXES.has("preview")).toBe(true)
     expect(RESERVED_PREFIXES.has("robots.txt")).toBe(true)
+    expect(RESERVED_PREFIXES.has("sitemap")).toBe(true)
     expect(RESERVED_PREFIXES.has("sitemap.xml")).toBe(true)
   })
 })

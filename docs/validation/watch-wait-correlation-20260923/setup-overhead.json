@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-09-23T00:34:31.773Z",
+  "description": "Two thousand measured ten-concurrent transactions comparing original and correlated setup SQL in ABBA order, with 100 additional warmup transactions before each phase. Includes begin/commit/transport and UUID generation, excludes runtime JSON/stdout and the external sampler. Shared-host measurements, not a production latency SLO.",
+  "results": [
+    {
+      "correlated": false,
+      "transactions": 500,
+      "p50Ms": 11.260921000000053,
+      "p95Ms": 15.948748000000023,
+      "p99Ms": 22.325954000000024,
+      "maxMs": 22.728522999999996
+    },
+    {
+      "correlated": true,
+      "transactions": 500,
+      "p50Ms": 9.206727,
+      "p95Ms": 12.551631000000043,
+      "p99Ms": 19.7573339999999,
+      "maxMs": 20.122965999999906
+    },
+    {
+      "correlated": true,
+      "transactions": 500,
+      "p50Ms": 8.04395599999998,
+      "p95Ms": 11.907358999999815,
+      "p99Ms": 30.350043999999798,
+      "maxMs": 30.358518000000004
+    },
+    {
+      "correlated": false,
+      "transactions": 500,
+      "p50Ms": 7.172325000000001,
+      "p95Ms": 12.5547260000003,
+      "p99Ms": 19.891744000000017,
+      "maxMs": 20.169498000000203
+    }
+  ]
+}

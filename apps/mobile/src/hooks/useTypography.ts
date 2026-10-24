@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 import { type TextStyle, useWindowDimensions } from "react-native"
 
+import { LINE_HEIGHT_REDUCTION } from "../lib/lineHeight"
+
 type TypographyToken = Required<Pick<TextStyle, "fontSize" | "lineHeight">>
 
 type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
@@ -46,7 +48,7 @@ export function computeTypographyScale(screenWidth: number): TypographyScale {
   // Math.round() all values — critical on Android to avoid sub-pixel blur.
   const scale = (token: TypographyToken): TypographyToken => ({
     fontSize: Math.round(token.fontSize * factor),
-    lineHeight: Math.round(token.lineHeight * factor),
+    lineHeight: Math.round(token.lineHeight * factor) - LINE_HEIGHT_REDUCTION,
   })
 
   return {
@@ -69,14 +71,9 @@ export function computeTypographyScale(screenWidth: number): TypographyScale {
 }
 
 /**
- * Returns responsive typography tokens scaled by screen width.
- *
- * Scaling is based on screen width relative to a 375px baseline (iPhone SE),
- * clamped between 0.85x and 1.15x. Math.round() is applied to all values
- * (critical on Android where sub-pixel font sizes cause blurry text).
- *
- * React Native's Text component applies allowFontScaling (default: true) on
- * top of these values, so accessibility scaling is preserved.
+ * Responsive typography tokens scaled by screen width vs a 375px baseline,
+ * clamped 0.85x-1.15x and Math.round()'d (Android sub-pixel sizes blur).
+ * Text's allowFontScaling still applies on top, preserving a11y scaling.
  */
 export function useTypography(): TypographyScale {
   const { width } = useWindowDimensions()

@@ -5,6 +5,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { prisma } from "@/db/client"
+import type { SyncPhaseProgress } from "@/services/core-sync/types"
 import type { SyncResult } from "@/services/core-sync/orchestrator"
 import type { CoreSyncTrigger } from "@/services/core-sync/job"
 
@@ -12,6 +13,7 @@ type WorkflowRunClient = Pick<PrismaClient, "workflowRun" | "coreSyncRun">
 export type WorkflowRunLogTrigger = CoreSyncTrigger | "system"
 
 export type WorkflowRunLogInput = {
+  id?: string
   workflowKey: string
   workflowName?: string
   runtimeRunId?: string
@@ -53,12 +55,40 @@ function totalPhaseStats(result: SyncResult) {
   )
 }
 
+function logCoreSyncRunFailure(
+  workflowRunId: string,
+  result: SyncResult,
+): void {
+  const failedPhases = result.phases
+    .filter((phase) => phase.errors > 0)
+    .map((phase) => ({
+      phase: phase.phase,
+      created: phase.created,
+      updated: phase.updated,
+      softDeleted: phase.softDeleted,
+      errors: phase.errors,
+      durationMs: phase.durationMs,
+    }))
+
+  console.error(
+    JSON.stringify({
+      event: "core-sync.run.failed",
+      workflowRunId,
+      incremental: result.incremental,
+      durationMs: result.durationMs,
+      totals: totalPhaseStats(result),
+      failedPhases,
+    }),
+  )
+}
+
 export async function createWorkflowRunLog(
   input: WorkflowRunLogInput,
   client: WorkflowRunClient = prisma,
 ) {
   return client.workflowRun.create({
     data: {
+      ...(input.id ? { id: input.id } : {}),
       workflowKey: input.workflowKey,
       workflowName: input.workflowName,
       runtimeRunId: input.runtimeRunId,
@@ -97,6 +127,21 @@ export async function markWorkflowRunStarted(
   })
 }
 
+export async function markWorkflowRunRuntimeStarted(
+  workflowRunId: string,
+  runtimeRunId: string,
+  client: WorkflowRunClient = prisma,
+) {
+  return client.workflowRun.update({
+    where: { id: workflowRunId },
+    data: {
+      runtimeRunId,
+      status: WorkflowRunStatus.RUNNING,
+      startedAt: new Date(),
+    },
+  })
+}
+
 export async function markWorkflowRunFailed(
   workflowRunId: string,
   error: unknown,
@@ -108,6 +153,36 @@ export async function markWorkflowRunFailed(
       status: WorkflowRunStatus.FAILED,
       finishedAt: new Date(),
       error: asErrorMessage(error),
+    },
+  })
+}
+
+export async function recordCoreSyncPhaseProgress(
+  workflowRunId: string,
+  progress: SyncPhaseProgress,
+  client: WorkflowRunClient = prisma,
+) {
+  const existing = await client.workflowRun.findUnique({
+    where: { id: workflowRunId },
+    select: { details: true },
+  })
+  const details =
+    existing?.details != null &&
+    typeof existing.details === "object" &&
+    !Array.isArray(existing.details)
+      ? { ...(existing.details as Record<string, Prisma.JsonValue>) }
+      : {}
+
+  return client.workflowRun.update({
+    where: { id: workflowRunId },
+    data: {
+      details: {
+        ...details,
+        coreSyncProgress: {
+          ...progress,
+          updatedAt: new Date().toISOString(),
+        },
+      },
     },
   })
 }
@@ -152,6 +227,10 @@ export async function recordCoreSyncRunResult(
         Prisma.JsonNull,
     },
   })
+
+  if (totals.errors > 0) {
+    logCoreSyncRunFailure(workflowRunId, result)
+  }
 
   return client.workflowRun.update({
     where: { id: workflowRunId },

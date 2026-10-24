@@ -44,8 +44,10 @@ function baselineArtifact(): BaselineArtifact {
       startedAt: "2026-05-27T00:00:00.000Z",
       finishedAt: "2026-05-27T00:00:00.000Z",
       baselineName: "default",
+      callerTrack: "public-watch",
       promptSetVersion: "seed/v1",
       adminSearchUrl: "https://admin.internal/api/internal/search-eval/search",
+      servingRevision: null,
       judgeModel: null,
       search: { limit: 20, mode: null, contentType: null },
     },
@@ -55,6 +57,7 @@ function baselineArtifact(): BaselineArtifact {
         locale: "en",
         queryText: "Jesus",
         source: "seed",
+        callerTrack: "public-watch",
         tags: ["core"],
         results: [resultA],
       },
@@ -72,6 +75,14 @@ function memoryStore(baseline?: BaselineArtifact): SearchEvalArtifactStore & {
     rootDir: "/tmp/search-eval",
     baselines,
     reports,
+    async writeBaselineCapture(next, report) {
+      baselines.push(next)
+      reports.push(report)
+      return {
+        baselinePath: `/tmp/search-eval/baselines/${next.name}.json`,
+        reportPath: `/tmp/search-eval/reports/${report.reportId}.json`,
+      }
+    },
     async writeBaseline(next) {
       baselines.push(next)
       return { path: `/tmp/search-eval/baselines/${next.name}.json` }
@@ -112,15 +123,18 @@ function memoryStore(baseline?: BaselineArtifact): SearchEvalArtifactStore & {
 describe("runOfflineSearchEval", () => {
   it("captures seed-only baselines while keeping generated candidates exploratory", async () => {
     const store = memoryStore()
-    const searchClient = vi.fn(async () => ({
-      ok: true as const,
-      result: {
-        results: [resultA],
-        hasMore: false,
-        query: "Jesus",
-        searchMode: "hybrid" as const,
-      },
-    }))
+    const searchClient = vi.fn(
+      async (_input: { payload: Record<string, unknown> }) => ({
+        ok: true as const,
+        result: {
+          results: [resultA],
+          hasMore: false,
+          query: "Jesus",
+          searchMode: "hybrid" as const,
+          revision: "serving-revision-1",
+        },
+      }),
+    )
     const candidateListClient = vi.fn(async () => ({
       ok: true as const,
       result: {
@@ -151,13 +165,16 @@ describe("runOfflineSearchEval", () => {
         mode: "capture-baseline",
         baselineName: "default",
         locales: ["en"],
+        searchMode: "keyword-first",
         includeGeneratedCandidates: true,
       },
       {
         runId: "run-1",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "serving-eval-key",
+        servingUrl:
+          "https://admin.internal/api/internal/search-eval/serving-search",
+        adminBearer: "shared-eval-key",
         candidateListUrl:
           "https://admin.internal/api/internal/search-eval/candidates",
         searchClient,
@@ -175,12 +192,176 @@ describe("runOfflineSearchEval", () => {
         entry.queryText.includes("generated"),
       ),
     ).toBe(false)
+    expect(store.baselines[0]?.metadata.servingRevision).toBe(
+      "serving-revision-1",
+    )
+    expect(
+      store.baselines[0]?.cases.every(
+        (entry) => entry.serverRevision === "serving-revision-1",
+      ),
+    ).toBe(true)
+    expect(store.baselines[0]?.cases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          caseId: "seed-french-route-english-who-is-jesus",
+          locale: "en",
+          languageSlug: "english",
+          websiteLocale: "fr",
+        }),
+      ]),
+    )
+    expect(searchClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://admin.internal/api/internal/search-eval/serving-search",
+        bearer: "serving-eval-key",
+        payload: expect.objectContaining({
+          query: "bible project",
+          locale: "en",
+          languageSlug: "english",
+          mode: "modern",
+        }),
+      }),
+    )
+    expect(candidateListClient).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://admin.internal/api/internal/search-eval/candidates",
+        bearer: "shared-eval-key",
+      }),
+    )
+    expect(
+      searchClient.mock.calls.every(
+        (call) => call[0]?.payload.mode === "modern",
+      ),
+    ).toBe(true)
+    expect(result.ok && result.report.metadata.search.mode).toBe(
+      "keyword-first",
+    )
+    for (const call of searchClient.mock.calls) {
+      expect(call[0]?.payload).not.toHaveProperty("websiteLocale")
+    }
     expect(result.ok && result.report.generatedCandidateBehavior).toMatchObject(
       {
         included: 1,
         searched: 1,
       },
     )
+  })
+
+  it("uses caller-track defaults for AI experience-generation captures", async () => {
+    const store = memoryStore()
+    const searchClient = vi.fn(
+      async (_input: { payload: Record<string, unknown> }) => ({
+        ok: true as const,
+        result: {
+          results: [resultA],
+          hasMore: false,
+          query: "agent query",
+          searchMode: "hybrid" as const,
+          revision: "serving-revision-ai",
+        },
+      }),
+    )
+
+    const result = await runOfflineSearchEval(
+      {
+        mode: "capture-baseline",
+        callerTrack: "ai-experience-generation",
+        locales: ["en"],
+      },
+      {
+        runId: "run-ai-track",
+        artifactStore: store,
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient,
+        now: () => new Date("2026-05-27T00:00:00.000Z"),
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      baselineName: "seed-baseline-ai-experience-generation",
+      report: {
+        metadata: {
+          callerTrack: "ai-experience-generation",
+          search: { mode: "hybrid" },
+        },
+        callerTrackMix: { "ai-experience-generation": expect.any(Number) },
+      },
+    })
+    expect(store.baselines[0]).toMatchObject({
+      name: "seed-baseline-ai-experience-generation",
+      metadata: { callerTrack: "ai-experience-generation" },
+    })
+    expect(
+      store.baselines[0]?.cases.every(
+        (entry) => entry.callerTrack === "ai-experience-generation",
+      ),
+    ).toBe(true)
+    expect(
+      searchClient.mock.calls.every(
+        (call) => call[0]?.payload.mode === "modern",
+      ),
+    ).toBe(true)
+    expect(result.ok && result.report.metadata.search.mode).toBe("hybrid")
+  })
+
+  it("rejects caller-track and search-mode combinations before Admin search", async () => {
+    const searchClient = vi.fn()
+    const result = await runOfflineSearchEval(
+      {
+        mode: "capture-baseline",
+        callerTrack: "ai-experience-generation",
+        searchMode: "keyword-first",
+        locales: ["en"],
+      },
+      {
+        runId: "run-invalid-track-mode",
+        artifactStore: memoryStore(),
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient,
+      },
+    )
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      adminReason:
+        "searchMode 'keyword-first' is not suitable for callerTrack 'ai-experience-generation'",
+    })
+    expect(searchClient).not.toHaveBeenCalled()
+  })
+
+  it("rejects comparing a baseline under a different caller track", async () => {
+    const searchClient = vi.fn()
+    const judgePair = vi.fn()
+    const result = await runOfflineSearchEval(
+      {
+        mode: "compare",
+        baselineName: "default",
+        callerTrack: "semantic-diagnostic",
+      },
+      {
+        runId: "run-wrong-track",
+        artifactStore: memoryStore(baselineArtifact()),
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
+        searchClient,
+        judge: { model: "judge", judgePair },
+      },
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      reason: "invalid_input",
+      retryable: false,
+      adminReason:
+        "baseline 'default' belongs to callerTrack 'public-watch', not 'semantic-diagnostic'",
+    })
+    expect(searchClient).not.toHaveBeenCalled()
+    expect(judgePair).not.toHaveBeenCalled()
   })
 
   it("compares seed baselines and keeps trace-derived candidates away from search and judge", async () => {
@@ -265,8 +446,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-compare",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         candidateListUrl:
           "https://admin.internal/api/internal/search-eval/candidates",
         searchClient,
@@ -316,6 +497,7 @@ describe("runOfflineSearchEval", () => {
         hasMore: false,
         query: "Jesus",
         searchMode: "hybrid" as const,
+        revision: "serving-revision-read-fail",
       },
     }))
     const candidateListClient = vi.fn(async () => ({
@@ -336,8 +518,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-read-fail",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient,
         candidateListClient,
         now: () => new Date("2026-05-27T00:00:00.000Z"),
@@ -366,8 +548,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-empty",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient: vi.fn(),
       },
     )
@@ -394,8 +576,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-partial-locale",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient,
         candidateListClient: vi.fn(),
       },
@@ -421,8 +603,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-missing",
         artifactStore: memoryStore(),
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         judge: { model: "judge", judgePair: vi.fn() },
         candidateListClient,
       },
@@ -449,8 +631,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-search-failed",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient: vi.fn(async () => ({
           ok: false as const,
           reason: "network_error" as const,
@@ -489,8 +671,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-seed-failure",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient,
       },
     )
@@ -502,39 +684,6 @@ describe("runOfflineSearchEval", () => {
       adminStatus: "503",
     })
     expect(searchClient).toHaveBeenCalledOnce()
-    expect(store.baselines).toEqual([])
-  })
-
-  it("does not publish a named baseline when report persistence fails", async () => {
-    const store = memoryStore()
-    store.writeReport = vi.fn(async () => {
-      throw new SearchEvalArtifactError("write_failed", "report write failed")
-    })
-
-    const result = await runOfflineSearchEval(
-      { mode: "capture-baseline", baselineName: "default", locales: ["en"] },
-      {
-        runId: "run-report-write-failure",
-        artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
-        searchClient: vi.fn(async () => ({
-          ok: true as const,
-          result: {
-            results: [resultA],
-            hasMore: false,
-            query: "Jesus",
-            searchMode: "hybrid" as const,
-          },
-        })),
-      },
-    )
-
-    expect(result).toEqual({
-      ok: false,
-      reason: "artifact_write_failed",
-      retryable: true,
-    })
     expect(store.baselines).toEqual([])
   })
 
@@ -567,8 +716,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-config-mismatch",
         artifactStore: memoryStore(baseline),
-        adminBearer: "eval-key",
-        searchUrl:
+        servingBearer: "eval-key",
+        servingUrl:
           "https://user:pass@admin.internal/api/internal/search-eval/search?token=secret",
         searchClient: vi.fn(async () => ({
           ok: true as const,
@@ -613,8 +762,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-calibration-fail",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient,
         judge: { model: "judge", judgePair },
       },
@@ -649,8 +798,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-calibration-disagreement",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         candidateListClient,
         searchClient,
         judge: { model: "judge", judgePair },
@@ -732,8 +881,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-malformed-generated",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         candidateListClient,
         searchClient,
         judge: { model: "judge", judgePair },
@@ -789,8 +938,8 @@ describe("runOfflineSearchEval", () => {
       {
         runId: "run-judge-fail",
         artifactStore: store,
-        adminBearer: "eval-key",
-        searchUrl: "https://admin.internal/api/internal/search-eval/search",
+        servingBearer: "eval-key",
+        servingUrl: "https://admin.internal/api/internal/search-eval/search",
         searchClient: vi.fn(async () => ({
           ok: true as const,
           result: {

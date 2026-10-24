@@ -1,19 +1,47 @@
 import type { ReactNode } from "react"
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
+import DatadogRum from "@/components/DatadogRum"
 import { AdminI18nProvider } from "@/i18n/client"
 import { getAdminI18n, getAdminMessages } from "@/i18n/server"
 
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
+const plexSans = localFont({
+  src: [
+    {
+      path: "./fonts/IBMPlexSans-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/IBMPlexSans-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "./fonts/IBMPlexSans-SemiBold.woff2",
+      weight: "600",
+      style: "normal",
+    },
+  ],
+  display: "swap",
   variable: "--font-plex-sans",
-  weight: ["400", "500", "600"],
 })
 
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
+const plexMono = localFont({
+  src: [
+    {
+      path: "./fonts/IBMPlexMono-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "./fonts/IBMPlexMono-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+  ],
+  display: "swap",
   variable: "--font-plex-mono",
-  weight: ["400", "500"],
 })
 
 export async function generateMetadata() {
@@ -38,6 +66,7 @@ export default async function RootLayout({
     >
       <body>
         <AdminI18nProvider locale={locale} messages={messages}>
+          <DatadogRum />
           {children}
         </AdminI18nProvider>
       </body>

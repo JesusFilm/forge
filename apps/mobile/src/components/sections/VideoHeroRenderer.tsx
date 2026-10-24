@@ -8,7 +8,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native"
-import { BlurView } from "expo-blur"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
@@ -25,12 +24,16 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { feedback } from "../../styles/shared"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { GlassSurface } from "../ui/GlassSurface"
+import { PlatformBlur } from "../ui/PlatformBlur"
+import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
-import { deriveMuxThumbnailUrl } from "../../lib/muxThumbnail"
+import { useT } from "../../i18n/useT"
 import type { AdminBlock } from "../../lib/queries"
 import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -60,22 +63,26 @@ export function VideoHeroRenderer({
   const subheading = s.subheading as string | null
   const ctaLabel = (s.ctaLabel as string | null)?.trim() ?? null
   const ctaLink = (s.ctaLink as string | null)?.trim() ?? null
-  const streamingUrl = s.streamingUrl as string | null
+  const streamingUrl = blockStreamingUrl(s)
   const sectionKey = s.sectionKey as string | null
   const videoId = s.videoId as string | null
 
   const resolvedThumb = useVideoThumbnail(videoId)
-  const thumbnailUrl = resolveImageUrl(
-    resolvedThumb ?? deriveMuxThumbnailUrl(streamingUrl),
-  )
+  const thumbnailUrl = resolveThumbnailUrl(resolvedThumb, streamingUrl)
   const hasValidStream = validateStreamingUrl(streamingUrl)
   const hasCta =
     ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
 
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
+  const t = useT("Sections")
+  const tCommon = useT("Common")
   const router = useRouter()
   const appActiveRef = useRef(true)
+  // R19 keeps this hero out of the mini player, but it still competes for the
+  // one decoder (R10), so it yields to a window that holds a live video.
+  const windowHoldsVideo = useMiniPlayerHoldsVideo()
+  const suspended = windowHoldsVideo || paused === true
 
   const [hasStarted, setHasStarted] = useState(false)
 
@@ -106,13 +113,16 @@ export function VideoHeroRenderer({
   }, [isPlaying, hasStarted])
 
   useEffect(() => {
-    if (paused == null) return
-    if (paused) {
-      player.pause()
-    } else if (appActiveRef.current) {
-      player.play()
+    try {
+      if (suspended) {
+        player.pause()
+      } else if (appActiveRef.current) {
+        player.play()
+      }
+    } catch {
+      // Native player already released
     }
-  }, [paused, player])
+  }, [suspended, player])
 
   useEffect(() => {
     player.muted = mutedProp
@@ -121,7 +131,7 @@ export function VideoHeroRenderer({
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       appActiveRef.current = nextState === "active"
-      if (appActiveRef.current && !paused) {
+      if (appActiveRef.current && !suspended) {
         player.play()
       } else {
         try {
@@ -132,7 +142,7 @@ export function VideoHeroRenderer({
       }
     })
     return () => subscription.remove()
-  }, [player, paused])
+  }, [player, suspended])
 
   const containerRef = useRef<View>(null)
   const muteButtonRef = useRef<View>(null)
@@ -167,19 +177,28 @@ export function VideoHeroRenderer({
     >
       {hasValidStream ? (
         <>
-          <VideoView
-            player={player}
-            style={StyleSheet.absoluteFill}
-            nativeControls={false}
-            contentFit="cover"
-          />
-          {!hasStarted && thumbnailUrl != null && (
+          {/* R10: a paused player keeps its surface, so the yield unmounts the
+              view and the thumbnail below takes the hero back. */}
+          {!windowHoldsVideo && (
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              nativeControls={false}
+              contentFit="cover"
+              // RN 0.86 Fabric: the default SurfaceView decodes but never
+              // composites under a layered hero stack — mirrors HomeHeroPager.
+              surfaceType={
+                Platform.OS === "android" ? "textureView" : undefined
+              }
+            />
+          )}
+          {(!hasStarted || windowHoldsVideo) && thumbnailUrl != null && (
             <Image
               source={thumbnailUrl}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
               recyclingKey="hero-thumb"
-              accessibilityLabel={heading ?? "Video thumbnail"}
+              accessibilityLabel={heading ?? tCommon("videoThumbnailAriaLabel")}
             />
           )}
         </>
@@ -189,7 +208,7 @@ export function VideoHeroRenderer({
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           recyclingKey="hero-img"
-          accessibilityLabel={heading ?? "Hero image"}
+          accessibilityLabel={heading ?? t("heroImageAriaLabel")}
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.fallback]} />
@@ -202,15 +221,7 @@ export function VideoHeroRenderer({
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
         >
-          {Platform.OS === "ios" ? (
-            <BlurView
-              intensity={50}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
-          )}
+          <PlatformBlur intensity={50} style={StyleSheet.absoluteFill} />
         </View>
       )}
 
@@ -231,16 +242,23 @@ export function VideoHeroRenderer({
               {heading}
             </Text>
             {hasValidStream && onMuteToggle != null && (
+              // CuratedHomeLayout's tap target copies this measured box, so
+              // the glass draws inside it and leaves its size alone.
               <View
+                testID="video-hero-mute"
                 ref={muteButtonRef}
                 onLayout={handleMuteButtonLayout}
-                style={styles.muteButton}
               >
-                <Ionicons
-                  name={mutedProp ? "volume-mute" : "volume-high"}
-                  size={20}
-                  color={TEXT_ON_OVERLAY}
-                />
+                <GlassSurface
+                  style={styles.muteButton}
+                  fallback={{ kind: "fill", style: styles.muteFill }}
+                >
+                  <Ionicons
+                    name={mutedProp ? "volume-mute" : "volume-high"}
+                    size={20}
+                    color={TEXT_ON_OVERLAY}
+                  />
+                </GlassSurface>
               </View>
             )}
           </View>
@@ -278,9 +296,6 @@ const styles = StyleSheet.create({
   fallback: {
     backgroundColor: BG_COLOR,
   },
-  androidDim: {
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-  },
   textContent: {
     paddingHorizontal: 16,
   },
@@ -294,20 +309,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontWeight: "700",
     color: TEXT_PRIMARY,
-    fontFamily: "System",
   },
   muteButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  muteFill: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   subheading: {
     fontWeight: "400",
     color: TEXT_SECONDARY,
-    fontFamily: "System",
     textTransform: "uppercase",
     letterSpacing: 2,
     marginTop: 4,
@@ -325,6 +340,5 @@ const styles = StyleSheet.create({
   ctaText: {
     fontWeight: "600",
     color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
   },
 })

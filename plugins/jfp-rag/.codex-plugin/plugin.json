@@ -1,0 +1,29 @@
+{
+  "name": "jfp-rag",
+  "version": "0.1.0",
+  "description": "Provider-neutral operator workflows for the Forge RAG service.",
+  "author": {
+    "name": "Jesus Film Project",
+    "url": "https://www.jesusfilm.org"
+  },
+  "repository": "https://github.com/JesusFilm/forge",
+  "license": "UNLICENSED",
+  "keywords": ["jesus-film", "rag", "operations", "evaluation"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "JFP RAG",
+    "shortDescription": "Operate Forge RAG slices, eval cases, and status artifacts.",
+    "longDescription": "JFP RAG provides guarded, resumable workflows for source lifecycle work, retrieval evaluation curation, and preparation of the committed public status dashboard.",
+    "developerName": "Jesus Film Project",
+    "category": "Developer Tools",
+    "capabilities": ["Interactive", "Write"],
+    "defaultPrompt": [
+      "Resume a Forge RAG source slice",
+      "Curate grounded retrieval evaluation cases",
+      "Prepare the RAG status dashboard"
+    ],
+    "websiteURL": "https://www.jesusfilm.org/",
+    "privacyPolicyURL": "https://www.jesusfilm.org/privacy-policy/",
+    "termsOfServiceURL": "https://www.jesusfilm.org/terms-of-use/"
+  }
+}

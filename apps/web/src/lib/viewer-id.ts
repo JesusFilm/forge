@@ -23,6 +23,7 @@
  */
 
 const VIEWER_ID_STORAGE_KEY = "forge.viewer_id"
+let volatileViewerId: string | null = null
 
 export function getViewerId(): string {
   // SSR guard — `localStorage` and `crypto.randomUUID` are not available on
@@ -37,7 +38,9 @@ export function getViewerId(): string {
     return fresh
   } catch {
     // Private browsing / disabled storage / quota errors — fall back to a
-    // per-call in-memory UUID so Mux Data still receives a non-empty value.
-    return crypto.randomUUID()
+    // page-session in-memory UUID so Mux Data still receives a stable
+    // non-empty value without persisting anything cross-page.
+    volatileViewerId ??= crypto.randomUUID()
+    return volatileViewerId
   }
 }

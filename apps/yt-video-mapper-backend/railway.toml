@@ -1,0 +1,22 @@
+# Railway only reads this file if the service's Config-as-code Path is set to
+# apps/yt-video-mapper-backend/railway.toml. Otherwise configure the same
+# commands in the Railway dashboard and treat that dashboard config as
+# canonical.
+
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/yt-video-mapper-backend build"
+watchPatterns = [
+  "/apps/yt-video-mapper-backend/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/turbo.json",
+]
+
+[deploy]
+startCommand = "pnpm --filter @forge/yt-video-mapper-backend db:migrate:deploy && pnpm --filter @forge/yt-video-mapper-backend start"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -38,6 +38,9 @@ vi.mock("next/link", () => ({
 }))
 
 vi.mock("lucide-react", () => ({
+  FolderOpen: ({ size }: { size?: number }) => (
+    <span data-testid="folder-open-icon" data-size={size} />
+  ),
   Play: ({ size }: { size?: number }) => (
     <span data-testid="play-icon" data-size={size} />
   ),
@@ -81,6 +84,8 @@ function makeEpisode(overrides: Partial<Episode> = {}): Episode {
       },
     ],
     durationSeconds: 120,
+    muxPlaybackId: null,
+    muxThumbnailBlurDataUrl: null,
   }
   return { ...base, ...overrides }
 }
@@ -89,6 +94,7 @@ function renderCard(props: {
   episode: Episode
   index?: number
   languageSlug?: string
+  parentSlug?: string
 }) {
   act(() => {
     root.render(
@@ -96,6 +102,7 @@ function renderCard(props: {
         episode={props.episode}
         index={props.index ?? 0}
         languageSlug={props.languageSlug ?? "english"}
+        parentSlug={props.parentSlug ?? "lumo-the-gospel-of-john"}
       />,
     )
   })
@@ -113,6 +120,29 @@ function getRuntimeText(): string | null {
   const runtime = spans.find((s) => !s.hasAttribute("data-testid"))
   return runtime?.textContent ?? null
 }
+
+describe("SeriesEpisodeCard interaction frame", () => {
+  it("uses the shared white hover and keyboard-focus thumbnail frame", () => {
+    renderCard({ episode: makeEpisode({}) })
+
+    const card = container.querySelector<HTMLElement>(
+      '[data-testid="series-episode-card"]',
+    )
+    const frame = container.querySelector<HTMLElement>(
+      '[data-testid="series-episode-card-hover-outline"]',
+    )
+    const frameClasses = frame?.className ?? ""
+
+    expect(card?.className).toContain("focus-visible:outline-none")
+    expect(card?.className).not.toContain("focus-visible:ring-amber")
+    expect(frameClasses).toContain("rounded-[inherit]")
+    expect(frameClasses).toContain("border-4")
+    expect(frameClasses).toContain("border-white")
+    expect(frameClasses).toContain("group-hover:opacity-100")
+    expect(frameClasses).toContain("group-focus-visible:opacity-100")
+    expect(frameClasses).not.toMatch(/red|amber|gradient|shadow/)
+  })
+})
 
 describe("SeriesEpisodeCard — formatRuntime via runtime pill", () => {
   it("collapses to icon-only for null duration", () => {
@@ -243,8 +273,21 @@ describe("SeriesEpisodeCard — resolveThumbnailUrl image priority", () => {
     expect(img?.getAttribute("src")).toContain("url.jpg")
   })
 
-  it("renders the stone-800 fallback div when no images are provided", () => {
-    renderCard({ episode: makeEpisode({ images: [] }) })
+  // The production shape for the newer vertical series: episodes ship with no
+  // video_image row at all, so before the Mux tier every card in the grid was
+  // an empty stone tile despite the episode being playable.
+  it("renders a Mux frame when the episode has no images but is playable", () => {
+    renderCard({
+      episode: makeEpisode({ images: [], muxPlaybackId: "mux-vertical-1" }),
+    })
+    const img = container.querySelector("img")
+    expect(img?.getAttribute("src")).toBe(
+      "https://image.mux.com/mux-vertical-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+  })
+
+  it("renders the stone-800 fallback div with neither images nor playback", () => {
+    renderCard({ episode: makeEpisode({ images: [], muxPlaybackId: null }) })
     expect(container.querySelector("img")).toBeNull()
     const fallback = container.querySelector(".bg-stone-800")
     expect(fallback).not.toBeNull()
@@ -263,17 +306,45 @@ describe("SeriesEpisodeCard — Episode N label", () => {
     const label = container.querySelector("span.uppercase")
     expect(label?.textContent).toBe("Episode 3")
   })
+
+  it("labels nested collections as collections instead of episodes", () => {
+    renderCard({
+      episode: makeEpisode({ label: "COLLECTION", slug: "nested-collection" }),
+    })
+
+    expect(container.querySelector("span.uppercase")?.textContent).toBe(
+      "Collection",
+    )
+    expect(
+      container.querySelector('[data-testid="folder-open-icon"]'),
+    ).not.toBeNull()
+    expect(container.querySelector('[data-testid="play-icon"]')).toBeNull()
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/nested-collection.html",
+    )
+  })
+
+  it("labels nested series as series instead of episodes", () => {
+    renderCard({
+      episode: makeEpisode({ label: "series", slug: "nested-series" }),
+    })
+
+    expect(container.querySelector("span.uppercase")?.textContent).toBe(
+      "Series",
+    )
+  })
 })
 
 describe("SeriesEpisodeCard — href", () => {
-  it("routes to the canonical /{slug}.html/{locale}.html shape", () => {
+  it("routes to the contextual /{series}.html/{episode}/{locale}.html shape", () => {
     renderCard({
       episode: makeEpisode({ slug: "wedding-in-cana" }),
       languageSlug: "english",
+      parentSlug: "lumo-the-gospel-of-john",
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/wedding-in-cana.html/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html",
     )
   })
 
@@ -284,8 +355,88 @@ describe("SeriesEpisodeCard — href", () => {
     })
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
-      "/the-birth-of-jesus.html/spanish-castilian.html",
+      "/lumo-the-gospel-of-john.html/the-birth-of-jesus/spanish-castilian.html",
     )
+  })
+
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])("links a playable child with the native slug %s", (slug) => {
+    renderCard({
+      episode: makeEpisode({ slug }),
+      languageSlug: "english",
+      parentSlug: "conversation-starters",
+    })
+
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      `/conversation-starters.html/${slug}.html`,
+    )
+  })
+
+  it("routes a nested collection to its standalone language page", () => {
+    renderCard({
+      episode: makeEpisode({
+        slug: "lumo-the-gospel-of-matthew",
+        label: "COLLECTION",
+      }),
+      languageSlug: "russian",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      "/lumo-the-gospel-of-matthew.html/russian.html",
+    )
+  })
+
+  it("routes a nested series without requiring a valid parent slug", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "nested-series", label: "SERIES" }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe("/nested-series.html")
+  })
+
+  it("keeps unlabeled children on the contextual route", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "unlabeled-child", label: null }),
+      languageSlug: "english",
+      parentSlug: "lumo",
+    })
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe("/lumo.html/unlabeled-child.html")
+  })
+
+  it("renders a plain div (no <a>) when the parent slug is malformed", () => {
+    renderCard({
+      episode: makeEpisode({
+        slug: "wedding-in-cana",
+        muxPlaybackId: "mux-preview-1",
+      }),
+      languageSlug: "english",
+      parentSlug: "Bad Parent!",
+    })
+    expect(container.querySelector("a")).toBeNull()
+    const card = container.querySelector('[data-testid="series-episode-card"]')
+    expect(card?.tagName).toBe("DIV")
+    expect(card?.className).not.toContain("group")
+    expect(card?.className).not.toContain("focus-visible:outline-none")
+    expect(
+      card?.querySelector('[data-testid="series-episode-card-hover-outline"]'),
+    ).toBeNull()
+    expect(card?.querySelector("svg")).toBeNull()
+
+    act(() => {
+      card?.dispatchEvent(new Event("pointerenter", { bubbles: false }))
+    })
+
+    expect(card?.querySelector('[data-testid="mux-hover-preview"]')).toBeNull()
+    expect(card?.querySelectorAll("img")).toHaveLength(1)
   })
 
   it("renders a plain div (no <a>) when the slug is malformed", () => {

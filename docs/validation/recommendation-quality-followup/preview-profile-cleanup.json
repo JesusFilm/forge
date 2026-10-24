@@ -1,0 +1,11 @@
+{
+  "capturedAt": "2026-09-16T02:16:01.498989+00:00",
+  "scope": "owned synthetic browser profile only",
+  "result": {
+    "choice": "session_only",
+    "erasureState": "pending",
+    "state": "session_only",
+    "status": 200
+  },
+  "verification": "Mode facets absent for both owned episodes on the subsequent read-only query; immutable playback facts retained. HTTP receipt reported pending asynchronous erasure."
+}

@@ -1,0 +1,51 @@
+[
+  [
+    {
+      "cohort": "cold_start",
+      "profile_count": 0,
+      "curated_count": 6,
+      "requests": "809",
+      "identifiable_profiles_via_projection": "0",
+      "linked_projections": "0",
+      "expired_projection_at_request": "0",
+      "future_projection_at_request": "0",
+      "median_contributions": null
+    },
+    {
+      "cohort": "returning",
+      "profile_count": 6,
+      "curated_count": 0,
+      "requests": "13",
+      "identifiable_profiles_via_projection": "9",
+      "linked_projections": "13",
+      "expired_projection_at_request": "0",
+      "future_projection_at_request": "0",
+      "median_contributions": 3
+    },
+    {
+      "cohort": "returning",
+      "profile_count": 0,
+      "curated_count": 6,
+      "requests": "2",
+      "identifiable_profiles_via_projection": "0",
+      "linked_projections": "0",
+      "expired_projection_at_request": "0",
+      "future_projection_at_request": "0",
+      "median_contributions": null
+    }
+  ],
+  [
+    {
+      "candidate_generator": "curated",
+      "cards": "4866",
+      "rendered": "4446",
+      "impressed": "167"
+    },
+    {
+      "candidate_generator": "multi-interest-profile",
+      "cards": "78",
+      "rendered": "72",
+      "impressed": "29"
+    }
+  ]
+]

@@ -9,8 +9,15 @@ export const adminRelatedQuestionsFragment = adminGraphql(`
     ctaEnabled
     ctaLabel
     ctaLink
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
     questions {
       question

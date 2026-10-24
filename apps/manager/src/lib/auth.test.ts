@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import type { ReviewerLanguageGrant } from "./reviewer-session"
 
 const sessionSecret = "manager-session-secret-change-me-000000"
 
@@ -85,6 +86,87 @@ describe("authenticateManagerOverrideRequest", () => {
     })
   })
 
+  it("keeps reviewer sessions out of every existing operator guard", async () => {
+    stubBaseEnv()
+    const { createManagerSessionCookie, MANAGER_SESSION_COOKIE } =
+      await import("./manager-session-cookie")
+    const reviewerGrant: ReviewerLanguageGrant = {
+      id: "grant-es",
+      languageId: "language-es",
+      languageSlug: "spanish-latin-america",
+      languageBcp47: "es-419",
+      permittedRubricDimensions: [
+        "MEANING_ACCURACY",
+        "NATURALNESS",
+        "TIMING_READABILITY",
+      ],
+      specialistCapabilities: { scripture: false, theology: false },
+    }
+    const token = await createManagerSessionCookie({
+      id: "reviewer-1",
+      subject: "auth-reviewer-1",
+      email: "reviewer@forge.test",
+      name: "Spanish Reviewer",
+      managerRole: "REVIEWER",
+      scopes: ["openid", "manager:access"],
+      reviewerLanguageGrants: [reviewerGrant],
+    })
+
+    const {
+      authenticateInteractiveManagerRequest,
+      authenticateInteractiveReviewerRequest,
+      authenticateManagerOverrideRequest,
+      authenticateRequest,
+      hasReviewerLanguageGrant,
+      verifyManagerSession,
+    } = await import("./auth")
+    const request = new Request("http://example.test", {
+      headers: { cookie: `${MANAGER_SESSION_COOKIE}=${token}` },
+    })
+
+    await expect(verifyManagerSession(token)).resolves.toBeNull()
+    const genericResult = await authenticateRequest(request)
+    expect(genericResult).toBeInstanceOf(Response)
+    if (!(genericResult instanceof Response)) {
+      throw new Error("reviewer admitted")
+    }
+    expect(genericResult.status).toBe(401)
+
+    const interactiveManagerResult =
+      await authenticateInteractiveManagerRequest(request)
+    expect(interactiveManagerResult).toBeInstanceOf(Response)
+    if (!(interactiveManagerResult instanceof Response)) {
+      throw new Error("reviewer admitted")
+    }
+    expect(interactiveManagerResult.status).toBe(401)
+
+    const overrideResult = await authenticateManagerOverrideRequest(request)
+    expect(overrideResult).toBeInstanceOf(Response)
+    if (!(overrideResult instanceof Response)) {
+      throw new Error("reviewer admitted")
+    }
+    expect(overrideResult.status).toBe(403)
+
+    const reviewer = await authenticateInteractiveReviewerRequest(request)
+    expect(reviewer).not.toBeInstanceOf(Response)
+    if (reviewer instanceof Response) throw new Error("reviewer denied")
+    expect(reviewer.session.reviewerLanguageGrants).toEqual([reviewerGrant])
+    expect(
+      hasReviewerLanguageGrant(
+        reviewer.session,
+        "language-es",
+        "spanish-latin-america",
+      ),
+    ).toBe(true)
+    expect(
+      hasReviewerLanguageGrant(
+        reviewer.session,
+        "language-es-other",
+        "spanish-latin-america",
+      ),
+    ).toBe(false)
+  })
+
   it("rejects a signed session cookie after Admin Manager membership is revoked", async () => {
     stubBaseEnv({
       mode: "admin",
@@ -159,10 +241,55 @@ describe("authenticateManagerOverrideRequest", () => {
     )
   })
 
-  it("validates real auth sessions even when only the data backend is mocked", async () => {
+  it("rejects a signed reviewer cookie after its final language grant is revoked", async () => {
     stubBaseEnv({
-      mode: "live",
-      backendMode: "mock",
+      mode: "admin",
+      authIssuerUrl: "https://auth.jesusfilm.org",
+      authManagerClientId: "jfp_manager_local",
+      adminGraphqlUrl: "https://admin.example/api/graphql",
+      adminManagerApiKey: "admin-manager-key",
+    })
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ allowed: false }), {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        }),
+    )
+    const { createManagerSessionCookie, MANAGER_SESSION_COOKIE } =
+      await import("./manager-session-cookie")
+    const token = await createManagerSessionCookie({
+      id: "reviewer-1",
+      subject: "auth-reviewer-1",
+      email: "reviewer@forge.test",
+      managerRole: "REVIEWER",
+      scopes: ["openid", "manager:access"],
+      reviewerLanguageGrants: [
+        {
+          id: "grant-es",
+          languageId: "language-es",
+          languageSlug: "spanish-latin-america",
+          permittedRubricDimensions: ["MEANING_ACCURACY"],
+          specialistCapabilities: { scripture: false, theology: false },
+        },
+      ],
+    })
+    const { authenticateInteractiveReviewerRequest, verifyReviewerSession } =
+      await import("./auth")
+    const request = new Request("http://example.test/subtitle-review", {
+      headers: { cookie: `${MANAGER_SESSION_COOKIE}=${token}` },
+    })
+
+    await expect(verifyReviewerSession(token)).resolves.toBeNull()
+    const denial = await authenticateInteractiveReviewerRequest(request)
+    expect(denial).toBeInstanceOf(Response)
+    expect((denial as Response).status).toBe(404)
+  })
+
+  it("revalidates against Admin when the backend override is admin", async () => {
+    stubBaseEnv({
+      mode: "mock",
+      backendMode: "admin",
       authIssuerUrl: "https://auth.jesusfilm.org",
       authManagerClientId: "jfp_manager_local",
       adminGraphqlUrl: "https://admin.example/api/graphql",
@@ -190,6 +317,31 @@ describe("authenticateManagerOverrideRequest", () => {
 
     await expect(verifyManagerSession(token)).resolves.toBeNull()
     expect(fetchMock).toHaveBeenCalled()
+  })
+
+  it("keeps local mock sessions local when the backend override is mock", async () => {
+    stubBaseEnv({ mode: "admin", backendMode: "mock" })
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+    const { createManagerSessionCookie } =
+      await import("./manager-session-cookie")
+    const token = await createManagerSessionCookie({
+      id: "admin-user-123",
+      subject: "auth-user-123",
+      email: "manager@forge.test",
+      name: "Manager User",
+      managerRole: "OPERATOR",
+      scopes: ["openid", "manager:access"],
+    })
+
+    const { verifyManagerSession } = await import("./auth")
+
+    await expect(verifyManagerSession(token)).resolves.toEqual({
+      id: "admin-user-123",
+      username: "Manager User",
+      email: "manager@forge.test",
+      role: { name: "Manager", type: "manager" },
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
 

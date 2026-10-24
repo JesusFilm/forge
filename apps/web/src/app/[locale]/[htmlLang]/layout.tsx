@@ -7,42 +7,26 @@ import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
 import {
   DEFAULT_LOCALE,
-  resolveWatchLocaleIdentity,
+  resolveWatchHtmlLangIdentity,
+  textDirectionForLocale,
   type UiLocale,
 } from "@/lib/locale"
 import { montserrat } from "@/lib/watch-font"
-import { FloatingSearchProvider } from "@/components/FloatingSearchProvider"
+import { WATCH_APP_METADATA } from "@/lib/watch-app-metadata"
+import DatadogRum from "@/components/DatadogRum"
+import GoogleAnalytics from "@/components/GoogleAnalytics"
+import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
+import { WatchModalActivityProvider } from "@/components/watch/WatchModalActivityProvider"
+import {
+  GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+  loadClientMessages,
+} from "@/i18n/client-messages"
 
 function boundedUiLocale(locale: string): UiLocale {
   return hasUiLocale(locale) ? (locale as UiLocale) : DEFAULT_LOCALE
 }
 
-export const metadata: Metadata = {
-  icons: {
-    icon: [
-      {
-        url: "/watch/images/favicon-32.png",
-        sizes: "32x32",
-        type: "image/png",
-      },
-      {
-        url: "/watch/images/favicon-180.png",
-        sizes: "192x192",
-        type: "image/png",
-      },
-    ],
-    apple: [
-      {
-        url: "/watch/images/favicon-180.png",
-        type: "image/png",
-      },
-    ],
-  },
-  other: {
-    "msapplication-TileImage": "/watch/images/favicon-180.png",
-    "apple-mobile-web-app-status-bar-style": "black",
-  },
-}
+export const metadata: Metadata = WATCH_APP_METADATA
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -63,18 +47,23 @@ export default async function RootLayout({
 }: RootLayoutProps) {
   const { locale: rawLocale, htmlLang: rawHtmlLang } = await params
   const locale = boundedUiLocale(rawLocale)
-  const htmlLangIdentity = resolveWatchLocaleIdentity(rawHtmlLang)
+  const htmlLangIdentity = resolveWatchHtmlLangIdentity(rawHtmlLang)
   const htmlLang =
     htmlLangIdentity.locale === locale ? htmlLangIdentity.htmlLang : locale
+  const textDirection = textDirectionForLocale(htmlLang)
   setRequestLocale(locale)
+  const messages = await loadClientMessages(
+    locale,
+    GLOBAL_CLIENT_MESSAGE_NAMESPACES,
+  )
   return (
     <html
       lang={htmlLang}
-      dir="ltr"
+      dir={textDirection}
       className={cn("overflow-x-clip bg-black font-sans", montserrat.variable)}
     >
       <head>
-        {/* Watch pages render <mux-player> as the hero. Establishing the
+        {/* Watch pages render MuxVideo as the hero. Establishing the
             TLS handshake to Mux's image + segment hosts in the document's
             first byte cuts the LCP element's discovery delay because the
             preconnect lands before page.tsx finishes its data fetch. */}
@@ -83,8 +72,11 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href="https://imagedelivery.net" />
       </head>
       <body className="overflow-x-clip bg-black">
-        <NextIntlClientProvider>
-          <FloatingSearchProvider>{children}</FloatingSearchProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <DatadogRum />
+          <GoogleAnalytics />
+          <RecommendationConsentShell />
+          <WatchModalActivityProvider>{children}</WatchModalActivityProvider>
         </NextIntlClientProvider>
       </body>
     </html>

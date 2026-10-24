@@ -3,7 +3,7 @@ import type {
   VideoDbBackupSchedulerInput,
   VideoDbBackupWorkflowInput,
 } from "@/services/video-db-backup/job"
-import type { VideoDbBackupJobResult } from "@/scripts/video-db-backup"
+import type { VideoDbBackupJobResult } from "@/services/video-db-backup/profiles"
 
 export async function runVideoDbBackup(
   input: VideoDbBackupWorkflowInput = {},

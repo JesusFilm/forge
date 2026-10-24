@@ -53,14 +53,18 @@ export function AccessRequestPageClient({
   }
 
   function continueWithAuth() {
+    window.location.assign(buildAdminLoginUrl(window.location.origin))
+  }
+
+  function signInAgain() {
     window.location.assign(
-      `/api/auth/login?returnTo=${encodeURIComponent(`${window.location.origin}/dashboard`)}`,
+      buildAdminLoginUrl(window.location.origin, { prompt: "login" }),
     )
   }
 
   function tryDifferentAccount() {
     window.location.assign(
-      `/api/auth/login?prompt=login&returnTo=${encodeURIComponent(`${window.location.origin}/dashboard`)}`,
+      buildAdminLoginUrl(window.location.origin, { prompt: "login" }),
     )
   }
 
@@ -173,7 +177,7 @@ export function AccessRequestPageClient({
             ) : (
               <button
                 type="button"
-                onClick={continueWithAuth}
+                onClick={signInAgain}
                 className="flex h-10 w-full items-center justify-center gap-2 rounded-sm bg-[var(--color-brand)] text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)]"
               >
                 {messages.login.actions.signInAgain}
@@ -193,4 +197,18 @@ export function AccessRequestPageClient({
       </section>
     </main>
   )
+}
+
+export function buildAdminLoginUrl(
+  origin: string,
+  options: { prompt?: "login" | "select_account" } = {},
+) {
+  const params = new URLSearchParams({
+    returnTo: `${origin}/dashboard`,
+  })
+  if (options.prompt) {
+    params.set("prompt", options.prompt)
+  }
+
+  return `/api/auth/login?${params.toString()}`
 }

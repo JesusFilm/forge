@@ -1,0 +1,239 @@
+{
+  "investigation": "feat-464 intermittent evidence failures",
+  "sourceRevision": "77eb63fbb325f6279955f34cffd1f8994f9281dd",
+  "window": {
+    "from": "2026-09-23T00:00:00Z",
+    "to": "2026-09-23T02:00:00Z",
+    "exclusions": 0
+  },
+  "http": {
+    "endpoints": {
+      "seeded": {
+        "200": 679,
+        "403": 545
+      },
+      "playback": {
+        "200": 6358,
+        "400": 9,
+        "401": 2,
+        "403": 609,
+        "409": 3
+      },
+      "evidence": {
+        "200": 2247,
+        "400": 24,
+        "401": 3,
+        "403": 485
+      },
+      "profile": {
+        "200": 1040,
+        "403": 1319
+      },
+      "select": {
+        "200": 13,
+        "400": 1
+      },
+      "forYou": {
+        "200": 3
+      },
+      "contentActions": {
+        "200": 2
+      }
+    },
+    "fiveXX": 0,
+    "total": 13342,
+    "playbackTotal": 6981
+  },
+  "delivery": {
+    "primaryRailwayRows": 1227,
+    "seededServed": 577,
+    "fallbacks": {
+      "no_candidates": 54,
+      "seed_embedding_unavailable": 42,
+      "cooldown": 5,
+      "session_hour": 1
+    },
+    "forYouServed": 3,
+    "unmatchedHttpOutcomesAfterPrimaryReconciliation": 0,
+    "datadogMissing": {
+      "seededHttp200": 2,
+      "seededHttp403": 2
+    }
+  },
+  "evidence": {
+    "slices": [
+      {
+        "from": "2026-09-23T00:00:00Z",
+        "to": "2026-09-23T00:30:00Z",
+        "returnedRows": 3416,
+        "capped": false
+      },
+      {
+        "from": "2026-09-23T00:30:00Z",
+        "to": "2026-09-23T01:00:00Z",
+        "returnedRows": 2186,
+        "capped": false
+      },
+      {
+        "from": "2026-09-23T01:00:00Z",
+        "to": "2026-09-23T01:30:00Z",
+        "returnedRows": 2910,
+        "capped": false
+      },
+      {
+        "from": "2026-09-23T01:30:00Z",
+        "to": "2026-09-23T02:00:00Z",
+        "returnedRows": 1242,
+        "capped": false
+      }
+    ],
+    "outcomes": [
+      {
+        "message": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "n": 384
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "n": 382
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "n": 2245
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "n": 485
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+        "n": 3
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "n": 24
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "n": 5582
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "n": 8
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+        "n": 10
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+        "n": 295
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+        "n": 314
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+        "n": 13
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=claim outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+        "n": 1
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=select outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "n": 1
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+        "n": 2
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=evidence outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+        "n": 2
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+        "n": 2
+      },
+      {
+        "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+        "n": 1
+      }
+    ]
+  },
+  "datadog": {
+    "acceptedAdminFactBatches": 5574,
+    "acceptedWebFactBatches": 5574,
+    "primaryWebAcceptedFactBatches": 5582,
+    "missingWebOutcomes": {
+      "acceptedFacts": 8,
+      "acceptedContext": 1,
+      "forbiddenPlayback403": 2
+    },
+    "busyAttemptObservations": {
+      "1": 75,
+      "2": 13,
+      "3": 2,
+      "4": 2,
+      "5": 1
+    },
+    "transactionExhaustionObservations": 0,
+    "limitation": "Retry attempts are not extra HTTP requests. Matching final outcomes for each individual retry were not correlated in this investigation."
+  },
+  "durableAudit": {
+    "scope": "committed_rejection",
+    "readOnly": true,
+    "statementTimeoutMs": 5000,
+    "rows": [
+      {
+        "reason": "delivery_timestamp_invalid",
+        "count": 18,
+        "firstAt": "2026-09-23T00:42:40.054Z",
+        "lastAt": "2026-09-23T01:39:37.241Z"
+      }
+    ],
+    "unclassifiedInitialEvidence400": 6,
+    "limitation": "Audit does not retain the rejected timestamp or clock provenance; no attribution of these 18 failures to device clocks was established."
+  },
+  "retrospectivePlayback": {
+    "from": "2026-09-22T14:00:00Z",
+    "to": "2026-09-23T02:00:00Z",
+    "http": {
+      "200": 42526,
+      "400": 24,
+      "401": 32,
+      "403": 3768,
+      "409": 14
+    },
+    "fiveXX": 0,
+    "indexedEvidence5xxRows": 0,
+    "limitation": "This does not erase known older deployment/Redis failures or prove future availability.",
+    "total": 46364
+  },
+  "deployedObservation": {
+    "liveAdminSshRevision": "4583c4ece1f1bba93660bd52d4f80cc618414fc8",
+    "latestAdminAndWorkerRevision": "77eb63fbb325f6279955f34cffd1f8994f9281dd",
+    "latestAdminAndWorkerStatus": "BUILDING",
+    "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+    "webStatus": "SUCCESS",
+    "limitation": "Latest build metadata is not proof of serving revision. Diagnostic window spans earlier deployments."
+  },
+  "localCharacterization": {
+    "adminTests": 75,
+    "webTests": 85,
+    "newTests": 11,
+    "productionBehaviorChanges": false,
+    "confirmed": [
+      "Valid capability plus client clock outside the signed event-time interval yields timestamp rejection.",
+      "Genuinely expired capability fails before timestamp audit.",
+      "Terminal synthetic evidence rejection is not retried by the component.",
+      "Production startup readiness can return 200 while Redis rate-limit store operations reject; connected/recovered control passes."
+    ],
+    "limits": [
+      "Redis availability test substitutes callback errors; no real Redis restart or complete Yoga mutation is executed.",
+      "Web clock test simulates the independently tested Admin timestamp predicate.",
+      "No full current-pointer audit, new production browser canary, or alert installation performed."
+    ]
+  }
+}

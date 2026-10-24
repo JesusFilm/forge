@@ -30,7 +30,19 @@ export type SearchTraceRetentionJobResult = {
   purgedCount: number
   purgedRawTraceCount: number
   purgedGeneratedCandidateCount: number
+  purgedWatchSearchEventCount: number
+  purgedQueryEmbeddingCacheCount: number
+  purgedSeoEvidenceObservationCount: number
+  purgedSeoTicketOutboxAttemptCount: number
+  purgedSeoApprovalNonceCount: number
+  purgedSeoWorkloadAssertionCount: number
+  purgedSeoLessonCount: number
+  redactedSeoProposalVersionCount: number
+  redactedSeoDecisionCount: number
+  redactedSeoExperimentCount: number
+  compactedSeoRunReportCount: number
   purgedBefore: string
+  redactedBefore: string
 }
 
 export type SearchTraceRetentionDispatchResult = {
@@ -126,7 +138,24 @@ export async function runSearchTraceRetentionJob(
             purgedCount: result.purgedCount,
             purgedRawTraceCount: result.purgedRawTraceCount,
             purgedGeneratedCandidateCount: result.purgedGeneratedCandidateCount,
+            purgedWatchSearchEventCount: result.purgedWatchSearchEventCount,
+            purgedQueryEmbeddingCacheCount:
+              result.purgedQueryEmbeddingCacheCount,
+            purgedSeoEvidenceObservationCount:
+              result.purgedSeoEvidenceObservationCount,
+            purgedSeoTicketOutboxAttemptCount:
+              result.purgedSeoTicketOutboxAttemptCount,
+            purgedSeoApprovalNonceCount: result.purgedSeoApprovalNonceCount,
+            purgedSeoWorkloadAssertionCount:
+              result.purgedSeoWorkloadAssertionCount,
+            purgedSeoLessonCount: result.purgedSeoLessonCount,
+            redactedSeoProposalVersionCount:
+              result.redactedSeoProposalVersionCount,
+            redactedSeoDecisionCount: result.redactedSeoDecisionCount,
+            redactedSeoExperimentCount: result.redactedSeoExperimentCount,
+            compactedSeoRunReportCount: result.compactedSeoRunReportCount,
             purgedBefore: result.purgedBefore,
+            redactedBefore: result.redactedBefore,
           } satisfies Prisma.InputJsonValue,
         },
       })

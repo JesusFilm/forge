@@ -1,0 +1,11 @@
+{
+  "measuredAt": "2026-09-28T22:49:06.646381+00:00",
+  "route": "/watch/nua-fresh-perspective.html",
+  "nativeObservation": {
+    "backdropFilter": "blur(40px) saturate(1.5)",
+    "focused": true,
+    "timedOutAfterMs": 2000,
+    "visibility": "visible"
+  },
+  "overrides": false
+}

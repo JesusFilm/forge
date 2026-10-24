@@ -1,31 +1,19 @@
-import { useEffect, useRef } from "react"
 import { Animated, StyleSheet, View } from "react-native"
 
 import { SURFACE_COLOR } from "../../lib/color"
+import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
+import {
+  SEARCH_CARD_GAP_X,
+  SEARCH_CARD_GAP_Y,
+  SEARCH_CARD_RADIUS,
+  SEARCH_CARD_TEXT_HEIGHT,
+  SEARCH_THUMB_ASPECT,
+} from "./searchCardLayout"
 
 const CARD_COUNT = 6
 
 export function SearchResultSkeleton() {
-  const shimmer = useRef(new Animated.Value(0.3)).current
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(shimmer, {
-          toValue: 0.7,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(shimmer, {
-          toValue: 0.3,
-          duration: 800,
-          useNativeDriver: true,
-        }),
-      ]),
-    )
-    animation.start()
-    return () => animation.stop()
-  }, [shimmer])
+  const shimmer = useShimmerOpacity()
 
   return (
     <View
@@ -35,7 +23,12 @@ export function SearchResultSkeleton() {
     >
       {Array.from({ length: CARD_COUNT }, (_, i) => (
         <View key={i} style={styles.cardWrapper}>
-          <Animated.View style={[styles.card, { opacity: shimmer }]} />
+          <Animated.View style={{ opacity: shimmer }}>
+            <View style={styles.thumb} />
+            <View style={styles.textBlock}>
+              <View style={styles.bar} />
+            </View>
+          </Animated.View>
         </View>
       ))}
     </View>
@@ -51,11 +44,25 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: "50%",
-    padding: 6,
+    paddingHorizontal: SEARCH_CARD_GAP_X,
+    paddingVertical: SEARCH_CARD_GAP_Y,
   },
-  card: {
-    aspectRatio: 4 / 3,
-    borderRadius: 16,
+  // Mirrors SearchResultCard's box exactly, so the grid does not
+  // reflow when real results replace the shimmer.
+  thumb: {
+    aspectRatio: SEARCH_THUMB_ASPECT,
+    width: "100%",
+    borderRadius: SEARCH_CARD_RADIUS,
+    backgroundColor: SURFACE_COLOR,
+  },
+  textBlock: {
+    height: SEARCH_CARD_TEXT_HEIGHT,
+    paddingTop: 8,
+  },
+  bar: {
+    width: "70%",
+    height: 10,
+    borderRadius: 5,
     backgroundColor: SURFACE_COLOR,
   },
 })

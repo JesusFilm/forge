@@ -15,10 +15,9 @@ export default defineConfig({
     // Default environment is `node` to keep existing server-only tests
     // (e.g. route handlers using `@t3-oss/env-nextjs` server vars) green.
     // Tests that need a DOM should add `// @vitest-environment jsdom` at
-    // the top of the test file (see
-    // src/components/watch/__tests__/MuxPlayerSpike.test.tsx for an example).
+    // the top of the test file.
     environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.mjs"],
     setupFiles: ["./vitest.setup.ts"],
   },
 })

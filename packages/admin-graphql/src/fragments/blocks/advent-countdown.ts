@@ -9,8 +9,15 @@ export const adminAdventCountdownFragment = adminGraphql(`
     scripture
     scriptureReference
     locale
-    imageUrl
     imageAssetId
+    imageAsset {
+      id
+      previewUrl
+      blurDataUrl
+      dominantColor
+      width
+      height
+    }
     backgroundColor
   }
 `)

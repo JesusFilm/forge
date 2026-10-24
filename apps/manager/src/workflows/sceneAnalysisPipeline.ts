@@ -20,6 +20,7 @@ export type SceneAnalysisPipelineInput = {
   subtitleUrl?: string
   videoLabel: string
   languageCode?: string
+  targetLocale?: string
   bibleVerses?: string[]
 }
 
@@ -42,16 +43,14 @@ export async function runSceneAnalysisPipeline(
     }),
   )
 
-  // Step 1: Fetch existing subtitle or generate/read Mux subtitles as fallback.
+  const inputLanguageBcp47 = input.targetLocale ?? input.languageCode ?? "auto"
+
+  // Step 1: Fetch existing target-language subtitle or transcribe the
+  // selected target-language Mux asset as fallback.
   const transcript = input.subtitleUrl
     ? await fetchSubtitleText(input.subtitleUrl)
-    : (
-        await transcribe(
-          input.assetId,
-          input.muxAssetId,
-          input.languageCode ?? "auto",
-        )
-      ).text
+    : (await transcribe(input.assetId, input.muxAssetId, inputLanguageBcp47))
+        .text
 
   if (!transcript || transcript.length < 10) {
     throw new Error(
@@ -81,6 +80,20 @@ export async function runSceneAnalysisPipeline(
     {
       videoLabel: input.videoLabel,
       bibleVerses: input.bibleVerses,
+      targetLocale: input.targetLocale,
+      inputLanguageBcp47,
+      muxAssetId: input.muxAssetId,
+      transcriptSource: input.subtitleUrl
+        ? {
+            kind: "subtitle-url",
+            languageBcp47: inputLanguageBcp47,
+            subtitleUrl: input.subtitleUrl,
+          }
+        : {
+            kind: "mux-transcription",
+            languageBcp47: inputLanguageBcp47,
+            muxAssetId: input.muxAssetId,
+          },
     },
   )
 

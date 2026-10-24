@@ -8,6 +8,7 @@
  */
 
 import { describe, expect, it, vi, beforeEach } from "vitest"
+import { CONTENT_EMBEDDING_CONTRACT_POINTER_ID } from "./content-embedding-contract"
 import {
   calculateVideoSemanticMixedScore,
   mixVideoSemanticEvidenceRows,
@@ -16,13 +17,20 @@ import {
   searchExperienceSemantic,
   searchExperienceKeyword,
 } from "./hybrid-search-retrievers"
+import { SearchTimingRecorder } from "./hybrid-search-timing"
 
 function mockPrisma() {
   const $queryRaw = vi.fn()
-  return {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const prisma: any = {
     $queryRaw,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any
+    $executeRaw: vi.fn(),
+    $executeRawUnsafe: vi.fn(),
+  }
+  prisma.$transaction = vi.fn(async (run: (tx: typeof prisma) => unknown) =>
+    run(prisma),
+  )
+  return prisma
 }
 
 function latestRawSql(prisma: ReturnType<typeof mockPrisma>): string {
@@ -32,7 +40,50 @@ function latestRawSql(prisma: ReturnType<typeof mockPrisma>): string {
 
 function latestRawValues(prisma: ReturnType<typeof mockPrisma>): unknown[] {
   const call = prisma.$queryRaw.mock.calls.at(-1)
-  return call?.slice(1) ?? []
+  return (call?.slice(1) ?? []).flatMap((value: unknown) => {
+    if (
+      value != null &&
+      typeof value === "object" &&
+      "values" in (value as Record<string, unknown>) &&
+      Array.isArray((value as { values: unknown }).values)
+    ) {
+      return [value, ...(value as { values: unknown[] }).values]
+    }
+    return [value]
+  })
+}
+
+/**
+ * Renders the full SQL of the latest `$queryRaw` call INCLUDING any
+ * interpolated `Prisma.raw(...)` fragments. `latestRawSql` above joins
+ * only the static template strings (`call[0]`); a `Prisma.raw` value is
+ * passed as an interpolated argument (in `call.slice(1)`), carrying its
+ * literal text on `.sql`. Provenance filters are interpolated fragments,
+ * so assertions that inspect those predicates fold the fragments back in.
+ */
+function latestRawSqlWithFragments(
+  prisma: ReturnType<typeof mockPrisma>,
+): string {
+  const strings = latestRawSql(prisma)
+  const fragments = latestRawValues(prisma)
+    .map((value) =>
+      value != null &&
+      typeof value === "object" &&
+      "sql" in (value as Record<string, unknown>) &&
+      typeof (value as { sql: unknown }).sql === "string"
+        ? (value as { sql: string }).sql
+        : "",
+    )
+    .join(" ")
+  return `${strings} ${fragments}`
+}
+
+function sqlBetween(sql: string, start: string, end: string): string {
+  const startIndex = sql.indexOf(start)
+  expect(startIndex).toBeGreaterThan(-1)
+  const endIndex = sql.indexOf(end, startIndex + start.length)
+  expect(endIndex).toBeGreaterThan(-1)
+  return sql.slice(startIndex, endIndex)
 }
 
 describe("searchVideoSemantic", () => {
@@ -46,6 +97,7 @@ describe("searchVideoSemantic", () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {
         video_id: "vid-1",
+        video_edition_id: "edition-scene-1",
         video_core_id: "1_Jesus",
         video_slug: "jesus",
         video_title: "Jesus",
@@ -71,6 +123,7 @@ describe("searchVideoSemantic", () => {
     expect(rows[0]).toMatchObject({
       resultType: "video",
       resultId: "vid-1",
+      videoEditionId: "edition-scene-1",
       videoCoreId: "1_Jesus",
       videoSlug: "jesus",
       videoTitle: "Jesus",
@@ -83,10 +136,35 @@ describe("searchVideoSemantic", () => {
     })
   })
 
+  it("records the semantic-video DB timing when a recorder is passed", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    const timing = new SearchTimingRecorder()
+
+    await searchVideoSemantic(
+      prisma,
+      {
+        queryEmbedding: "[0.1,0.2]",
+        locale: "en",
+        limit: 10,
+      },
+      timing,
+    )
+
+    expect(timing.snapshotDbTimings()).toEqual([
+      expect.objectContaining({
+        label: "semantic-video.query",
+        status: "fulfilled",
+        resultCount: 0,
+        elapsedMs: expect.any(Number),
+      }),
+    ])
+  })
+
   it("maps transcript evidence rows through the same semantic-video result shape", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([
       {
         video_id: "vid-transcript",
+        video_edition_id: "edition-transcript",
         video_core_id: "core-transcript",
         video_slug: "spoken-story",
         video_title: "Spoken Story",
@@ -111,6 +189,7 @@ describe("searchVideoSemantic", () => {
     expect(rows[0]).toMatchObject({
       resultType: "video",
       resultId: "vid-transcript",
+      videoEditionId: "edition-transcript",
       sceneDescription: "The exact spoken phrase from the transcript",
       startSeconds: 123.25,
       playbackId: "mux-transcript",
@@ -207,7 +286,7 @@ describe("searchVideoSemantic", () => {
     expect(rows[0]!.startSeconds).toBeNull()
   })
 
-  it("queries both scene and transcript embeddings inside one semantic-video retriever", async () => {
+  it("queries transcript embeddings only inside the semantic-video retriever", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
 
     await searchVideoSemantic(prisma, {
@@ -217,11 +296,11 @@ describe("searchVideoSemantic", () => {
     })
 
     const sql = latestRawSql(prisma)
-    expect(sql).toContain("WITH scene_source AS")
+    expect(sql).not.toContain("scene_source AS")
     expect(sql).toContain("transcript_source AS")
-    expect(sql).toContain("FROM video_scene_locale vsl")
+    expect(sql).not.toContain("FROM video_scene_locale")
     expect(sql).toContain("FROM video_transcript_chunk vtc")
-    expect(sql).toContain("UNION ALL")
+    expect(sql).not.toContain("UNION ALL")
     expect(sql).not.toContain("semantic-transcript-video")
   })
 
@@ -235,16 +314,70 @@ describe("searchVideoSemantic", () => {
     })
 
     const sql = latestRawSql(prisma)
-    expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(2)
-    expect((sql.match(/vl\.status = 'published'/g) ?? []).length).toBe(2)
-    expect(sql).toContain("vsl.embedding IS NOT NULL")
-    expect(sql).toContain("vsl.locale =")
-    expect(sql).toContain("vtc.embedding IS NOT NULL")
+    expect((sql.match(/v\.deleted_at IS NULL/g) ?? []).length).toBe(1)
+    expect((sql.match(/v\.no_index = false/g) ?? []).length).toBe(1)
+    expect((sql.match(/vl_visible\.status = 'published'/g) ?? []).length).toBe(
+      1,
+    )
+    expect((sql.match(/vl_display\.status = 'published'/g) ?? []).length).toBe(
+      1,
+    )
+    const sqlWithFragments = latestRawSqlWithFragments(prisma)
+    expect((sqlWithFragments.match(/IS NOT NULL/g) ?? []).length).toBe(1)
+    expect(sqlWithFragments).not.toContain("vsl.embedding")
+    expect(sqlWithFragments).toContain("vtc.embedding")
+    expect(sql).not.toContain("vsl.locale =")
     expect(sql).toContain("vtc.language =")
     expect(sql).toContain("vt.language =")
+    expect(sql).toContain("query_embedding AS MATERIALIZED")
+    expect(sql).toContain("requested_language AS MATERIALIZED")
+    expect(
+      latestRawValues(prisma).filter((value) => value === "[0.1,0.2]"),
+    ).toHaveLength(1)
+
+    const candidateWindow = sqlBetween(
+      sqlWithFragments,
+      "visible_semantic_candidates AS",
+      "requested_language AS MATERIALIZED",
+    )
+    const candidateLimitIndex = candidateWindow.lastIndexOf("LIMIT")
+    expect(candidateWindow.indexOf("v.deleted_at IS NULL")).toBeLessThan(
+      candidateLimitIndex,
+    )
+    expect(
+      candidateWindow.indexOf("vl_visible.status = 'published'"),
+    ).toBeLessThan(candidateLimitIndex)
+    expect(
+      candidateWindow.indexOf("vl_visible.deleted_at IS NULL"),
+    ).toBeLessThan(candidateLimitIndex)
+
+    const transcriptSource = sqlBetween(
+      sqlWithFragments,
+      "transcript_source AS",
+      "requested_language AS MATERIALIZED",
+    )
+    expect(transcriptSource).not.toContain("LATERAL")
+    expect(transcriptSource).not.toContain("embedding::text")
+
+    const hydratedTail = sqlWithFragments.slice(
+      sqlWithFragments.indexOf("requested_language AS MATERIALIZED"),
+    )
+    expect(hydratedTail).toContain("LEFT JOIN LATERAL")
+    expect(hydratedTail).toContain("JOIN LATERAL")
+    expect(hydratedTail).toContain("FROM video_locale vl_display")
+    expect(hydratedTail).toMatch(
+      /ORDER BY\s+vl_display\.language_core_id ASC NULLS LAST,\s+vl_display\.language_slug ASC NULLS LAST,\s+vl_display\.id ASC/,
+    )
+    expect(hydratedTail).toContain(
+      "vd.language_id IN (SELECT id FROM requested_language)",
+    )
+    expect(hydratedTail).toContain(
+      "ts.video_edition_id              AS video_edition_id",
+    )
+    expect(hydratedTail).toContain("vtc_final.embedding::text")
   })
 
-  it("selects best per-source evidence before bounding source windows", async () => {
+  it("selects best transcript evidence before bounding candidate windows", async () => {
     prisma.$queryRaw.mockResolvedValueOnce([])
 
     await searchVideoSemantic(prisma, {
@@ -253,13 +386,90 @@ describe("searchVideoSemantic", () => {
       limit: 5,
     })
 
-    const sql = latestRawSql(prisma)
-    expect(sql).toContain("SELECT DISTINCT ON (vs.video_id)")
+    const sql = latestRawSqlWithFragments(prisma)
+    expect(sql).not.toContain("SELECT DISTINCT ON (vs.video_id)")
     expect(sql).toContain("SELECT DISTINCT ON (vt.video_id)")
-    expect(sql).toContain("ORDER BY")
-    expect(sql).toContain("vs.video_id")
-    expect(sql).toContain("vt.video_id")
-    expect(sql).toContain("LIMIT")
+    expect(sql).not.toContain("WITH scene_nn AS MATERIALIZED")
+    expect(sql).not.toContain("transcript_nn AS MATERIALIZED")
+
+    const transcriptOrderIndex = sql.indexOf(
+      "ORDER BY",
+      sql.indexOf("SELECT DISTINCT ON (vt.video_id)"),
+    )
+    const preCandidateWindow = sqlBetween(
+      sql,
+      "best_transcript_per_video AS",
+      "transcript_source AS",
+    )
+    expect(preCandidateWindow).not.toContain("LIMIT")
+
+    const transcriptSource = sqlBetween(
+      sql,
+      "transcript_source AS",
+      "requested_language AS MATERIALIZED",
+    )
+    const transcriptCandidateLimitIndex = transcriptSource.indexOf("LIMIT")
+    expect(transcriptOrderIndex).toBeGreaterThan(-1)
+    expect(transcriptCandidateLimitIndex).toBeGreaterThan(
+      transcriptSource.indexOf("FROM visible_semantic_candidates"),
+    )
+  })
+
+  it("keeps locale visibility before the candidate limit and display selection after it", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 5,
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    const bestTranscript = sqlBetween(
+      sql,
+      "best_transcript_per_video AS",
+      "visible_semantic_candidates AS",
+    )
+    expect(bestTranscript).toContain("SELECT DISTINCT ON (vt.video_id)")
+    expect(bestTranscript).not.toContain("JOIN video v")
+    expect(bestTranscript).not.toContain("video_locale")
+
+    const visibleCandidates = sqlBetween(
+      sql,
+      "visible_semantic_candidates AS",
+      "transcript_source AS",
+    )
+    expect(visibleCandidates).toContain("JOIN video v")
+    expect(visibleCandidates).toContain("v.no_index = false")
+    expect(visibleCandidates).toContain("WHERE EXISTS")
+    expect(visibleCandidates).toContain("FROM video_locale vl_visible")
+    expect(visibleCandidates).toContain("vl_visible.status = 'published'")
+    expect(visibleCandidates).toContain("vl_visible.deleted_at IS NULL")
+    expect(visibleCandidates).not.toContain("JOIN LATERAL")
+    expect(visibleCandidates).not.toContain("vl_display")
+    expect(visibleCandidates).not.toContain("LIMIT")
+
+    const transcriptSource = sqlBetween(
+      sql,
+      "transcript_source AS",
+      "requested_language AS MATERIALIZED",
+    )
+    expect(transcriptSource).toContain("FROM visible_semantic_candidates")
+    expect(transcriptSource).not.toContain("video_locale")
+    expect(transcriptSource.indexOf("LIMIT")).toBeGreaterThan(
+      transcriptSource.indexOf("FROM visible_semantic_candidates"),
+    )
+
+    const hydratedTail = sql.slice(
+      sql.indexOf("requested_language AS MATERIALIZED"),
+    )
+    expect(hydratedTail).toContain("FROM video_locale vl_display")
+    expect(hydratedTail).toContain("vl_display.status = 'published'")
+    expect(hydratedTail).toContain("vl_display.deleted_at IS NULL")
+    expect(hydratedTail).toMatch(
+      /ORDER BY\s+vl_display\.language_core_id ASC NULLS LAST,\s+vl_display\.language_slug ASC NULLS LAST,\s+vl_display\.id ASC/,
+    )
+    expect(hydratedTail).toMatch(/LIMIT\s+1/)
   })
 
   it("uses bounded per-source candidate windows after per-video collapse", async () => {
@@ -272,12 +482,104 @@ describe("searchVideoSemantic", () => {
     })
 
     const values = latestRawValues(prisma)
-    expect(values).toContain(14)
+    expect(values.filter((value) => value === 14)).toHaveLength(1)
+  })
+
+  it("keeps HNSW-first windows out of the default semantic-video query", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1,0.2]",
+      locale: "en",
+      limit: 7,
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    expect(sql).not.toContain("nearest_transcript_chunks")
+    expect(sql).not.toContain("source_distance")
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+  })
+})
+
+describe("searchVideoSemantic embedding column selection", () => {
+  let prisma: ReturnType<typeof mockPrisma>
+
+  beforeEach(() => {
+    prisma = mockPrisma()
+  })
+
+  it("reads vtc.embedding and never scene or removed qwen columns", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1]",
+      locale: "en",
+      limit: 5,
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    expect(sql).not.toContain("vsl.embedding")
+    expect(sql).toContain("vtc.embedding")
+    expect(sql).not.toContain("vsl.embedding_provider")
+    expect(sql).toContain("vt.embedding_provider")
+    expect(sql).not.toContain("embedding_qwen")
+  })
+})
+
+describe("semantic retriever provenance gates", () => {
+  let prisma: ReturnType<typeof mockPrisma>
+
+  beforeEach(() => {
+    prisma = mockPrisma()
+  })
+
+  it("requires the approved Qwen-compatible content provenance for video semantic rows", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await searchVideoSemantic(prisma, {
+      queryEmbedding: "[0.1]",
+      locale: "en",
+      limit: 5,
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    const values = latestRawValues(prisma)
+    expect(sql).toContain("vt.embedding_provider")
+    expect(sql).toContain("vt.embedding_native_dimensions")
+    expect(sql).toContain("contract.storage_provider")
+    expect(sql).toContain("contract.storage_model")
+    expect(sql).toContain("contract.storage_dimensions")
+    expect(sql).toContain("contract.storage_native_dimensions")
+    expect(sql).toContain("vt.embedding_transform_version IS NULL")
+    expect(sql).not.toContain("vsl.embedding_provider")
+    expect(sql).not.toContain("video_scene_locale")
+    expect(values).toContain(CONTENT_EMBEDDING_CONTRACT_POINTER_ID)
+  })
+
+  it("requires the approved Qwen-compatible content provenance for experience semantic rows", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    await searchExperienceSemantic(prisma, {
+      queryEmbedding: "[0.1]",
+      locale: "en",
+      limit: 5,
+    })
+
+    const sql = latestRawSqlWithFragments(prisma)
+    const values = latestRawValues(prisma)
+    expect(sql).toContain("el.embedding_provider")
+    expect(sql).toContain("el.embedding_model")
+    expect(sql).toContain("el.embedding_dimensions")
+    expect(sql).toContain("el.embedding_native_dimensions")
+    expect(sql).toContain("contract.storage_provider")
+    expect(sql).toContain("contract.storage_model")
+    expect(sql).toContain("contract.storage_dimensions")
+    expect(sql).toContain("contract.storage_native_dimensions")
+    expect(sql).toContain("el.embedding_transform_version IS NULL")
+    expect(values).toContain(CONTENT_EMBEDDING_CONTRACT_POINTER_ID)
   })
 })
 
 describe("mixVideoSemanticEvidenceRows", () => {
   const base = {
+    video_edition_id: "edition-default",
     video_core_id: null,
     video_slug: "video",
     video_title: "Video",
@@ -325,6 +627,7 @@ describe("mixVideoSemanticEvidenceRows", () => {
       {
         ...base,
         video_id: "vid-1",
+        video_edition_id: "edition-scene",
         evidence_id: "scene-1",
         evidence_source: "scene",
         scene_description: "Scene evidence",
@@ -337,6 +640,7 @@ describe("mixVideoSemanticEvidenceRows", () => {
       {
         ...base,
         video_id: "vid-1",
+        video_edition_id: "edition-transcript",
         evidence_id: "chunk-1",
         evidence_source: "transcript",
         scene_description: "Transcript evidence",
@@ -353,6 +657,7 @@ describe("mixVideoSemanticEvidenceRows", () => {
       start_seconds: 15,
       playback_id: "transcript-playback",
       embedding_text: "[transcript]",
+      video_edition_id: "edition-transcript",
     })
   })
 
@@ -429,6 +734,33 @@ describe("mixVideoSemanticEvidenceRows", () => {
 
     expect(rows.map((row) => row.video_id)).toEqual(["a", "b"])
     expect(rows[0]!.scene_description).toBe("Scene A")
+  })
+
+  it("uses video id as the final public tie-breaker for otherwise equal winners", () => {
+    const rows = mixVideoSemanticEvidenceRows([
+      {
+        ...base,
+        video_id: "b",
+        evidence_id: "chunk-b",
+        evidence_source: "transcript",
+        scene_description: "Transcript B",
+        start_seconds: 3,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+      {
+        ...base,
+        video_id: "a",
+        evidence_id: "chunk-a",
+        evidence_source: "transcript",
+        scene_description: "Transcript A",
+        start_seconds: 3,
+        source_score: 0.8,
+        similarity: 0.8,
+      },
+    ])
+
+    expect(rows.map((row) => row.video_id)).toEqual(["a", "b"])
   })
 })
 

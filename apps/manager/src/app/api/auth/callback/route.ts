@@ -10,6 +10,7 @@ import {
   MANAGER_SESSION_COOKIE,
   managerSessionCookieOptions,
 } from "@/lib/manager-session-cookie"
+import { resolveRoleCompatibleManagerReturnToURL } from "@/lib/manager-route-access"
 import {
   exchangeManagerAuthorizationCode,
   getManagerOAuthConfig,
@@ -24,11 +25,9 @@ export async function GET(request: Request) {
   const cookieStore = await cookies()
   const expectedState = cookieStore.get(MANAGER_OAUTH_STATE_COOKIE)?.value
   const codeVerifier = cookieStore.get(MANAGER_OAUTH_VERIFIER_COOKIE)?.value
-  const returnTo = resolveManagerReturnToURL(
-    cookieStore.get(MANAGER_OAUTH_RETURN_TO_COOKIE)?.value,
-    `${config.managerBaseUrl.replace(/\/$/, "")}/dashboard/coverage`,
-    config.managerBaseUrl,
-  )
+  const requestedReturnTo = cookieStore.get(
+    MANAGER_OAUTH_RETURN_TO_COOKIE,
+  )?.value
 
   if (
     !code ||
@@ -37,7 +36,7 @@ export async function GET(request: Request) {
     state !== expectedState ||
     !codeVerifier
   ) {
-    return redirectToLogin(request, "invalid_state")
+    return redirectToLogin(config.managerBaseUrl, "invalid_state")
   }
 
   try {
@@ -59,9 +58,14 @@ export async function GET(request: Request) {
     })
 
     if (!adminSession) {
-      return redirectToLogin(request, "forbidden")
+      return redirectToLogin(config.managerBaseUrl, "forbidden")
     }
 
+    const returnTo = resolveRoleCompatibleManagerReturnToURL({
+      returnTo: requestedReturnTo,
+      role: adminSession.managerRole,
+      managerBaseUrl: config.managerBaseUrl,
+    })
     const response = NextResponse.redirect(new URL(returnTo, request.url))
     response.cookies.set(
       MANAGER_SESSION_COOKIE,
@@ -72,6 +76,7 @@ export async function GET(request: Request) {
         name: adminSession.user.name ?? verifiedToken.name,
         managerRole: adminSession.managerRole,
         scopes: verifiedToken.scopes,
+        reviewerLanguageGrants: adminSession.reviewerLanguageGrants,
       }),
       managerSessionCookieOptions(),
     )
@@ -87,13 +92,16 @@ export async function GET(request: Request) {
       message: error instanceof Error ? error.message : "unknown",
     })
 
-    return redirectToLogin(request, "callback_failed")
+    return redirectToLogin(config.managerBaseUrl, "callback_failed")
   }
 }
 
-function redirectToLogin(request: Request, reason: string) {
+function redirectToLogin(managerBaseUrl: string, reason: string) {
   const response = NextResponse.redirect(
-    new URL(`/login?error=${encodeURIComponent(reason)}`, request.url),
+    new URL(
+      `/login?error=${encodeURIComponent(reason)}`,
+      managerBaseUrl.replace(/\/$/, ""),
+    ),
   )
   response.cookies.delete(MANAGER_SESSION_COOKIE)
   response.cookies.delete(MANAGER_OAUTH_STATE_COOKIE)
@@ -101,21 +109,4 @@ function redirectToLogin(request: Request, reason: string) {
   response.cookies.delete(MANAGER_OAUTH_RETURN_TO_COOKIE)
   response.cookies.delete("strapi-jwt")
   return response
-}
-
-function resolveManagerReturnToURL(
-  returnTo: string | undefined,
-  fallbackURL: string,
-  managerBaseUrl: string,
-): string {
-  if (!returnTo) return fallbackURL
-
-  try {
-    const parsed = new URL(returnTo, fallbackURL)
-    return parsed.origin === new URL(managerBaseUrl).origin
-      ? parsed.toString()
-      : fallbackURL
-  } catch {
-    return fallbackURL
-  }
 }

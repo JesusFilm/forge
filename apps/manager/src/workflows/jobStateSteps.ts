@@ -5,6 +5,20 @@ import type {
   JobStepDetails,
 } from "@/types/job"
 
+function requirePersistedJob(
+  operation: string,
+  jobId: string,
+  job: JobRecord | null,
+): JobRecord {
+  if (!job) {
+    throw new Error(
+      `Workflow state write failed for job ${jobId} during ${operation}`,
+    )
+  }
+
+  return job
+}
+
 export async function stepGetJob(jobId: string): Promise<JobRecord | null> {
   "use step"
   const { getJob } = await import("@/lib/state")
@@ -29,7 +43,11 @@ export async function stepUpdateJob(
 ): Promise<JobRecord | null> {
   "use step"
   const { updateJob } = await import("@/lib/state")
-  return updateJob(jobId, updates)
+  return requirePersistedJob(
+    "updateJob",
+    jobId,
+    await updateJob(jobId, updates),
+  )
 }
 
 export async function stepMergeJobArtifacts(
@@ -38,7 +56,11 @@ export async function stepMergeJobArtifacts(
 ): Promise<JobRecord | null> {
   "use step"
   const { mergeJobArtifacts } = await import("@/lib/state")
-  return mergeJobArtifacts(jobId, artifacts)
+  return requirePersistedJob(
+    "mergeJobArtifacts",
+    jobId,
+    await mergeJobArtifacts(jobId, artifacts),
+  )
 }
 
 export async function stepUpdateStepStatus(
@@ -51,12 +73,24 @@ export async function stepUpdateStepStatus(
   "use step"
   const { updateStepStatus } = await import("@/lib/state")
   if (details !== undefined) {
-    return updateStepStatus(jobId, stepName, status, error, details)
+    return requirePersistedJob(
+      `updateStepStatus(${stepName})`,
+      jobId,
+      await updateStepStatus(jobId, stepName, status, error, details),
+    )
   }
 
   if (error !== undefined) {
-    return updateStepStatus(jobId, stepName, status, error)
+    return requirePersistedJob(
+      `updateStepStatus(${stepName})`,
+      jobId,
+      await updateStepStatus(jobId, stepName, status, error),
+    )
   }
 
-  return updateStepStatus(jobId, stepName, status)
+  return requirePersistedJob(
+    `updateStepStatus(${stepName})`,
+    jobId,
+    await updateStepStatus(jobId, stepName, status),
+  )
 }

@@ -1,5 +1,12 @@
-import { oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider"
+import { getOpenIdConfiguration } from "@/auth/openid-configuration"
 
-import { auth } from "@/auth/config"
+export const dynamic = "force-dynamic"
 
-export const GET = oauthProviderOpenIdConfigMetadata(auth)
+export function GET(_request: Request): Response {
+  return Response.json(getOpenIdConfiguration(), {
+    headers: {
+      "Cache-Control":
+        "public, max-age=15, stale-while-revalidate=15, stale-if-error=86400",
+    },
+  })
+}

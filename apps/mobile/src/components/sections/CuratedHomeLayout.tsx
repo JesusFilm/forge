@@ -12,6 +12,7 @@ import { useNavigation } from "expo-router"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { useT } from "../../i18n/useT"
 import type { AdminBlock } from "../../lib/queries"
 import { BG_COLOR, hexToRgba } from "../../lib/color"
 import { layout } from "../../styles/shared"
@@ -27,10 +28,18 @@ type FeedItem = {
   classification: "videoCard" | "standard"
 }
 
+type Props = {
+  // When true, suppresses the absolute HomeHeader (search/profile chrome).
+  // Use on routes that supply their own native navigation header (e.g.
+  // experience/[slug]) to avoid doubled safe-area offsets.
+  hideHeader?: boolean
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
-export function CuratedHomeLayout() {
+export function CuratedHomeLayout({ hideHeader = false }: Props) {
   const { experience } = useExperienceContext()
+  const t = useT("Sections")
   const { width: screenWidth } = useWindowDimensions()
   const heroHeight = screenWidth * 1.2
 
@@ -166,10 +175,12 @@ export function CuratedHomeLayout() {
         </View>
       )}
 
-      <HomeHeader
-        title={experience?.title ?? null}
-        titleOpacity={titleOpacity}
-      />
+      {!hideHeader && (
+        <HomeHeader
+          title={experience?.title ?? null}
+          titleOpacity={titleOpacity}
+        />
+      )}
 
       <FlashList
         data={feedItems}
@@ -199,8 +210,15 @@ export function CuratedHomeLayout() {
                 height: muteButtonRect.h,
               }}
               onPress={handleMuteToggle}
-              accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+              accessibilityLabel={
+                muted ? t("unmuteVideoAriaLabel") : t("muteVideoAriaLabel")
+              }
               accessibilityRole="button"
+              {...{
+                "dd-action-name": muted
+                  ? "section-hero-unmute"
+                  : "section-hero-mute",
+              }}
             />
           )}
         </View>
@@ -225,6 +243,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+    // The mute target draws at the hero's measured x (feat-695 KTD7), so
+    // React Native must not swap its `left` in a right-to-left app.
+    direction: "ltr",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),

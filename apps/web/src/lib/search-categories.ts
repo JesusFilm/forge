@@ -46,7 +46,6 @@ export const CATEGORIES = [
   },
 ] as const satisfies readonly SearchCategory[]
 
-// `searchTerm` is the stable identifier (used as the React key + the
-// search query); display-text fields like `title` are subject to copy
-// passes and rebrands and shouldn't be used as a structural key.
+// `searchTerm` is the stable structural identifier used for React keys,
+// icons, and test ids. Localized display text is submitted as the query.
 export type CategorySearchTerm = (typeof CATEGORIES)[number]["searchTerm"]

@@ -134,7 +134,6 @@ Each audit round explicitly scored dimensions and linked findings to specific fi
 
 - `docs/solutions/mobile/responsive-typography-hook.md` — The `useTypography` hook used throughout these components
 - `docs/solutions/mobile/typography-token-scope-shared-vs-purpose-specific.md` — Design decision on shared vs purpose-specific tokens
-- `docs/solutions/mobile/media-collection-overlay-carousel-pipeline.md` — Original MediaCollectionRenderer implementation
 - `docs/solutions/mobile/text-renderer-paragraph-type-mismatch.md` — Prior TextRenderer fix for contentParagraphs validation
 
 ## Files Changed

@@ -8,13 +8,16 @@ Scope: `apps/web`.
 
 ## Do
 
+- Preserve configured GA page views, navigation and Watch events, and Datadog RUM. Apply `docs/analytics-and-recommendation-policy.md`; recommendation or analytics changes must not introduce a consent prerequisite.
+
 - Use Next.js App Router patterns and default to Server Components.
 - Read data via `@forge/admin-graphql` operations only (admin's GraphQL surface).
 - Add `loading.tsx` for async routes and `error.tsx` at route segments.
 - Keep preview/revalidate endpoints token-gated.
 - Export route metadata where relevant.
-- For any user-visible `/watch` link in a button, card, carousel, modal, or component, build the URL with the public audio language slug (`english.html`, `spanish-castilian.html`, etc.). Use `variant.language.slug`, `languageSlug`, or `currentLanguageSlug` and the route builders in `src/lib/routes.ts`.
-- Keep search in the global modal surface. Do not add buttons, cards, or generated links to `/watch/search` or `/watch/search.html/search.html`; use the current page with `?q=` (or the root modal fallback) instead.
+- For any user-visible `/watch` link in a button, card, carousel, modal, or component, pass the public audio language slug to the route builders in `src/lib/routes.ts`. Eligible English content canonically omits `english.html`; non-English stays explicit. A content slug that is also a public language home stays explicit-English.
+- Keep search in the global modal surface. Do not add buttons, cards, or generated links to `/watch/search`, `/watch/search.html/search.html`, or query-driven search URLs; use the root modal fallback instead.
+- Treat `src/lib/watch-search-client.ts` as the single narrow exception to the generated-client rule: the global modal calls the public browser-safe GraphQL gateway directly, without an Admin bearer. Keep its operation and result mapping aligned with `src/lib/search.ts` through colocated parity tests; do not copy this pattern to other clients.
 
 ## Do not
 
@@ -22,4 +25,4 @@ Scope: `apps/web`.
 - Import server-only code into client component trees.
 - Import internals from other apps.
 - Handwrite API client logic duplicated from generated clients.
-- Do not use the internal message-catalog locale key (`en`, `es`, etc.) as a public `/watch` URL segment. Links like `/watch/foo.html/en.html` are wrong; the public audio slug form is `/watch/foo.html/english.html`.
+- Do not use the internal message-catalog locale key (`en`, `es`, etc.) as a public `/watch` URL segment. `/watch/foo.html/en.html` is wrong: eligible English is `/watch/foo.html`, while explicit compatibility/internal paths use `/watch/foo.html/english.html`.

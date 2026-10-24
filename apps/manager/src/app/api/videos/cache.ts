@@ -10,6 +10,7 @@ export type CmsVideoCoverage = {
   aiMetadata: boolean | null
   imageUrl: string | null
   parentDocumentIds: string[]
+  parentRelations?: Array<{ parentDocumentId: string; order: number | null }>
   coverage: {
     subtitles: { human: number; ai: number }
     audio: { human: number; ai: number }

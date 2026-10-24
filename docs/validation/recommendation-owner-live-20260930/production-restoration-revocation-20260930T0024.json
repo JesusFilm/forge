@@ -1,0 +1,29 @@
+{
+  "probe": "owner_release_revocation_point_read",
+  "expectedRuntimeCommit": "c4aa0f40ddfe9d35681e2cfb8a52caa4a9f0c4ed",
+  "readOnly": true,
+  "maxReleaseRows": 1,
+  "maxGraphRows": 1,
+  "maxPointerRows": 1,
+  "sqlSha256": "5fbe22fb1eb06fc7503732da855e65391c3c41877e0f3e41b63eaa12c7cdd947",
+  "executed": true,
+  "status": "read_complete",
+  "observedAt": "2026-09-30T00:24:44.311462+00:00",
+  "result": {
+    "revokedAt": "2026-09-30T00:22:59.967",
+    "approvedAt": "2026-09-30T00:17:30.164",
+    "graphFound": true,
+    "validUntil": "2026-10-01T00:16:49.581",
+    "releaseFound": true,
+    "cutoffNotFuture": true,
+    "revocationReason": "eligibility_changed",
+    "pointerGeneration": 5,
+    "graphInvalidatedAt": "2026-09-30T00:22:59.967",
+    "pointerOwnerApproved": true,
+    "graphInvalidationReason": "eligibility_changed",
+    "releasePointerGeneration": 5,
+    "pointerOwnerInfluenceFloor": 2,
+    "pointerStillSelectsRelease": true,
+    "secondsFromApprovalToRevocation": 329.803
+  }
+}

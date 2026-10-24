@@ -1,0 +1,113 @@
+{
+  "mode": "supported_deployed_readonly_preflight",
+  "declaredScope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "expectedRuntimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+  "attemptId": "e7beacd5-818b-4a8d-bcc0-dc6a29004df4",
+  "declaredAt": "2026-09-30T19:38:02.484904+00:00",
+  "publicationPermitted": false,
+  "activationPermitted": false,
+  "automaticRetryPermitted": false,
+  "sourceHashes": [
+    {
+      "path": "package.json",
+      "sha256": "9a3bc283c0ac282b72f9dd277c661527e391f6d4c6b151aad0ebc6e40469ec41"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "0ed867987b8fa3261892a56275fa23fe2ff04796479483c916144fca33670ad2"
+    },
+    {
+      "path": "apps/admin/package.json",
+      "sha256": "e99d449da75b522d4cfeca2dd8e4d91b9fb4240e104469a4d3718596498bfdc7"
+    },
+    {
+      "path": "apps/admin/tsconfig.json",
+      "sha256": "f29eb0c41cd752e4dcdf7382531c2ca240480d49ea09e8bd1894676e34098f4d"
+    },
+    {
+      "path": "apps/admin/src/scripts/rebuild-recommendation-cowatch-shadow.ts",
+      "sha256": "ffd1f2788d1fd5c7fd2a721f89af65310165399eee6903d7ca1aa100d4b5a8ce"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/cowatch/projection.service.ts",
+      "sha256": "d411b9ee4ce1c2cf88af560135859af20ecc73f9132b8b0f16d3b6329a4c7852"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/cowatch/graph.ts",
+      "sha256": "8404fb554edfa2fdfb56798b29b5c354af57b7af79f6159f0315c7290cd8fab2"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/cowatch/source-window.ts",
+      "sha256": "19a89842f6f796e0bc3e55217115f13e114c079fc9f63e59cfef77653609c0bf"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/promotion/owner-influence.ts",
+      "sha256": "ef44d4ebf0c50e11100a6a268b9674d3aef4bb718cc533c296515eb4597897ad"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/errors.ts",
+      "sha256": "76e4bc609a0dcca3ff94f786d31df4d1969a8dd285f68c42510db09a9e2ce70f"
+    },
+    {
+      "path": "apps/admin/src/services/recommendations/integrity-policy.ts",
+      "sha256": "efa4208978b537e7a4851bf6d03cc10a6cc048039fcc658186b77c2e28bdf5d2"
+    },
+    {
+      "path": "apps/admin/src/db/client.ts",
+      "sha256": "42162714140e4b876eb44159bb5d6f54ea38d75681de596d9b9044a891c0b1e8"
+    },
+    {
+      "path": "apps/admin/src/db/prisma-pool-config.ts",
+      "sha256": "e796117f14c014d1c815485edf41e3e1ef7ad957c9d2e32a63b873ace06d3cfb"
+    },
+    {
+      "path": "apps/admin/src/db/observed-pool.ts",
+      "sha256": "64c3fb94ee3ce1392b321119873a0fa8b622cb8f9e9a8c65e0c7162a35819527"
+    },
+    {
+      "path": "apps/admin/src/lib/recommendation-runtime-observation.ts",
+      "sha256": "c046f1275704d86d2f6cd06e5b9e30b2ad1295b79bff46fac8677e85f3c93998"
+    },
+    {
+      "path": "apps/admin/prisma/schema.prisma",
+      "sha256": "aa53190ca5d402eb5e11b326d9f3de2e3ba5a2d71e19e88e696fa7008c8dcc68"
+    }
+  ],
+  "remoteWrapperSha256": "2effef8c1d3340082a87185e2d8e58d84b7c52f7a062c9f3bceca141e290d70f",
+  "transportExitCode": 0,
+  "records": [
+    {
+      "probe": "forge_owner_post_stop_preflight_broker",
+      "status": "cli_refused",
+      "attemptId": "e7beacd5-818b-4a8d-bcc0-dc6a29004df4",
+      "runtimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+      "scopeSha256": "5adcdf6d376400d3f3353ee010a3be1ff21063f6a56c51ec7cc7c540bbf5b47b",
+      "dispatchExpiresAt": "2026-09-30T19:40:02.484Z",
+      "childExitCode": 1,
+      "timedOut": false,
+      "aggregateReceipt": {
+        "status": "failed",
+        "category": "database_timeout",
+        "code": "57014",
+        "diagnosticsRedacted": true
+      },
+      "rawStdoutWithheld": true,
+      "rawStderrWithheld": true,
+      "stdoutBytes": 245,
+      "stderrBytes": 0,
+      "stdoutCaptureTruncated": false,
+      "automaticRetryPermitted": false,
+      "activationPerformed": false,
+      "readOnlyPreflight": true,
+      "publicationPerformed": false,
+      "admissionFileCreated": false
+    }
+  ],
+  "rawTransportOutputRetained": false,
+  "completedAt": "2026-09-30T19:38:12.772850+00:00"
+}

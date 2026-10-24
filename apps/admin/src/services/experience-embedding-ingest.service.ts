@@ -8,10 +8,15 @@ import {
 } from "@/services/embedding-ingest-shared"
 import {
   buildExperienceEmbeddingSource,
-  EXPERIENCE_EMBEDDING_DIMENSIONS,
   writeExperienceEmbeddingPayloadInTransaction,
   type ExperienceEmbeddingGenerationMode,
 } from "@/services/embeddings.service"
+import {
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  type ContentEmbeddingContract,
+  type ContentEmbeddingTuple,
+} from "@/services/content-embedding-contract"
 
 const TargetSchema = z
   .object({
@@ -35,7 +40,9 @@ export const ExperienceEmbeddingIngestPayloadSchema = z
       .object({
         name: z.string().min(1),
         dimensions: z.number().int().positive(),
+        nativeDimensions: z.number().int().positive().optional(),
         provider: z.string().min(1).optional(),
+        transformVersion: z.string().min(1).optional(),
       })
       .strict(),
     generation: z
@@ -65,6 +72,9 @@ type ExistingExperienceEmbeddingSummary = {
   sourceSummary: string | null
   model: string | null
   dimensions: number | null
+  provider: string | null
+  nativeDimensions: number | null
+  transformVersion: string | null
 }
 
 export type ExperienceEmbeddingIngestStatus =
@@ -90,6 +100,7 @@ export class ExperienceEmbeddingIngestError extends Error {
       | "payload_invalid"
       | "target_not_found"
       | "target_unpublished"
+      | "contract_mismatch"
       | "dimension_mismatch"
       | "source_hash_mismatch"
       | "write_failed",
@@ -101,17 +112,55 @@ export class ExperienceEmbeddingIngestError extends Error {
   }
 }
 
-function validateEmbedding(payload: ExperienceEmbeddingIngestPayload): void {
-  if (payload.model.dimensions !== EXPERIENCE_EMBEDDING_DIMENSIONS) {
+function validateEmbedding(
+  payload: ExperienceEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
+): void {
+  if (payload.model.dimensions !== contract.storage.dimensions) {
     throw new ExperienceEmbeddingIngestError(
       "dimension_mismatch",
-      `payload dimensions=${payload.model.dimensions}; expected ${EXPERIENCE_EMBEDDING_DIMENSIONS}`,
+      `payload dimensions=${payload.model.dimensions}; expected ${contract.storage.dimensions}`,
     )
   }
   if (payload.embedding.length !== payload.model.dimensions) {
     throw new ExperienceEmbeddingIngestError(
       "dimension_mismatch",
       "embedding length does not match payload dimensions",
+    )
+  }
+}
+
+function payloadEmbeddingTuple(
+  payload: ExperienceEmbeddingIngestPayload,
+): ContentEmbeddingTuple | null {
+  if (
+    payload.model.provider == null ||
+    payload.model.nativeDimensions == null
+  ) {
+    return null
+  }
+
+  return {
+    provider: payload.model.provider,
+    model: payload.model.name,
+    nativeDimensions: payload.model.nativeDimensions,
+    dimensions: payload.model.dimensions,
+    transformVersion: payload.model.transformVersion ?? null,
+  }
+}
+
+function assertPayloadMatchesActiveContract(
+  payload: ExperienceEmbeddingIngestPayload,
+  contract: ContentEmbeddingContract,
+): void {
+  const payloadTuple = payloadEmbeddingTuple(payload)
+  if (
+    payloadTuple == null ||
+    !contentEmbeddingTupleMatches(contract.storage, payloadTuple)
+  ) {
+    throw new ExperienceEmbeddingIngestError(
+      "contract_mismatch",
+      `experience embedding payload does not match active content embedding contract ${contract.id}`,
     )
   }
 }
@@ -193,6 +242,9 @@ async function readExistingSummary(
       source_summary: string | null
       model: string | null
       dimensions: number | null
+      provider: string | null
+      native_dimensions: number | null
+      transform_version: string | null
     }>
   >`
     SELECT
@@ -200,7 +252,10 @@ async function readExistingSummary(
       embedding_source_content_hash AS source_content_hash,
       embedding_source_summary AS source_summary,
       embedding_model AS model,
-      embedding_dimensions AS dimensions
+      embedding_dimensions AS dimensions,
+      embedding_provider AS provider,
+      embedding_native_dimensions AS native_dimensions,
+      embedding_transform_version AS transform_version
     FROM experience_locale
     WHERE id = ${localeId}
   `
@@ -212,6 +267,9 @@ async function readExistingSummary(
     sourceSummary: row.source_summary,
     model: row.model,
     dimensions: row.dimensions,
+    provider: row.provider,
+    nativeDimensions: row.native_dimensions,
+    transformVersion: row.transform_version,
   }
 }
 
@@ -223,7 +281,11 @@ function existingMatches(
     existing.sourceContentHash === payload.source.contentHash &&
     existing.sourceSummary === payload.source.summary &&
     existing.model === payload.model.name &&
-    existing.dimensions === payload.model.dimensions
+    existing.dimensions === payload.model.dimensions &&
+    existing.provider === (payload.model.provider ?? null) &&
+    existing.nativeDimensions ===
+      (payload.model.nativeDimensions ?? existing.dimensions) &&
+    existing.transformVersion === (payload.model.transformVersion ?? null)
   )
 }
 
@@ -251,7 +313,10 @@ function isFirstExperienceEmbeddingWrite(
       existing.sourceContentHash == null &&
       existing.sourceSummary == null &&
       existing.model == null &&
-      existing.dimensions == null)
+      existing.dimensions == null &&
+      existing.provider == null &&
+      existing.nativeDimensions == null &&
+      existing.transformVersion == null)
   )
 }
 
@@ -283,6 +348,8 @@ async function writePayload(
         model: payload.model.name,
         dimensions: payload.model.dimensions,
         provider: payload.model.provider,
+        nativeDimensions: payload.model.nativeDimensions,
+        transformVersion: payload.model.transformVersion,
         generationMode: payload.generation.mode,
         mastraRunId: payload.generation.mastraRunId,
         generatedAt: payload.generation.generatedAt,
@@ -314,11 +381,13 @@ export async function ingestExperienceEmbedding(
   }
 
   const payload = parsed.data
-  validateEmbedding(payload)
   const mode = payload.generation.mode as ExperienceEmbeddingGenerationMode
 
   return prisma.$transaction(
     async (tx) => {
+      const contract = await resolveActiveContentEmbeddingContract(tx)
+      assertPayloadMatchesActiveContract(payload, contract)
+      validateEmbedding(payload, contract)
       await lockExperienceLocale(tx, payload.target.experienceLocaleId)
       const target = await resolveTargetAndValidateSource(tx, payload)
       const existing = await readExistingSummary(tx, target.experienceLocaleId)

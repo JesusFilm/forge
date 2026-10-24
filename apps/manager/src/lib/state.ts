@@ -14,6 +14,8 @@ import {
   resolveJobArtifactDescriptor,
 } from "@/lib/job-artifacts"
 import { buildInitialSteps, FORGE_WORKFLOW_STEPS } from "@/lib/workflow-steps"
+import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
+import { normalizeTranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import type {
   EnrichmentEngine,
   JobArtifactEntry,
@@ -22,6 +24,7 @@ import type {
   JobRecord,
   JobStatus,
   JobStepDetails,
+  MastraStepCorrelation,
   JobStepState,
   WorkflowStepName,
   StepStatus,
@@ -33,6 +36,29 @@ type JobListOptions = {
   limit?: number
   offset?: number
 }
+
+type JobUpdateFields = Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "startedAt"
+    | "completedAt"
+    | "retries"
+    | "steps"
+    | "options"
+    | "sourceCollectionTitle"
+    | "sourceMediaTitle"
+    | "requestedLanguageAbbreviations"
+    | "sourceLanguageId"
+    | "sourceLanguageCode"
+    | "sourceSelectionReason"
+    | "primaryRequestedTargetLanguageCode"
+    | "resolvedTargetLanguageCodes"
+  >
+>
 
 export type JobLookupResult =
   | {
@@ -202,6 +228,21 @@ function normalizeJobOptions(raw: unknown): JobOptions {
   }
   const candidate = raw as Record<string, unknown>
   const options: JobOptions = {}
+  // Preserve existing typed job discriminators alongside the parsed engine fence.
+  if (
+    candidate.smartCrop &&
+    typeof candidate.smartCrop === "object" &&
+    !Array.isArray(candidate.smartCrop)
+  ) {
+    options.smartCrop = candidate.smartCrop as JobOptions["smartCrop"]
+  }
+  if (
+    candidate.shorts &&
+    typeof candidate.shorts === "object" &&
+    !Array.isArray(candidate.shorts)
+  ) {
+    options.shorts = candidate.shorts as JobOptions["shorts"]
+  }
   if (typeof candidate.generateVoiceover === "boolean") {
     options.generateVoiceover = candidate.generateVoiceover
   }
@@ -451,23 +492,115 @@ function normalizeTranslationLanguageResult(
   }
 }
 
+function normalizeMastraStepCorrelation(
+  raw: unknown,
+): MastraStepCorrelation | undefined {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const candidate = raw as {
+    runId?: unknown
+    status?: unknown
+    reason?: unknown
+    retryable?: unknown
+    provider?: unknown
+    model?: unknown
+    chunks?: unknown
+    totalTokens?: unknown
+    sourceContentHash?: unknown
+    languages?: unknown
+  }
+
+  if (typeof candidate.runId !== "string" || candidate.runId.length === 0) {
+    return undefined
+  }
+
+  const languages = Array.isArray(candidate.languages)
+    ? candidate.languages.filter(
+        (language): language is string =>
+          typeof language === "string" && language.length > 0,
+      )
+    : []
+
+  return {
+    runId: candidate.runId,
+    ...(typeof candidate.status === "string"
+      ? { status: candidate.status }
+      : {}),
+    ...(typeof candidate.reason === "string"
+      ? { reason: candidate.reason }
+      : {}),
+    ...(typeof candidate.retryable === "boolean"
+      ? { retryable: candidate.retryable }
+      : {}),
+    ...(typeof candidate.provider === "string"
+      ? { provider: candidate.provider }
+      : {}),
+    ...(typeof candidate.model === "string" ? { model: candidate.model } : {}),
+    ...(typeof candidate.chunks === "number"
+      ? { chunks: candidate.chunks }
+      : {}),
+    ...(typeof candidate.totalTokens === "number"
+      ? { totalTokens: candidate.totalTokens }
+      : {}),
+    ...(typeof candidate.sourceContentHash === "string"
+      ? { sourceContentHash: candidate.sourceContentHash }
+      : {}),
+    ...(languages.length > 0 ? { languages } : {}),
+  }
+}
+
 function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
     return undefined
   }
 
-  const candidate = raw as { languageResults?: unknown }
+  const candidate = raw as {
+    languageResults?: unknown
+    subtitleValidation?: unknown
+    transcriptCorrection?: unknown
+    mastra?: unknown
+    progress?: unknown
+    message?: unknown
+  }
   const languageResults = Array.isArray(candidate.languageResults)
     ? candidate.languageResults
         .map(normalizeTranslationLanguageResult)
         .filter((result): result is TranslationLanguageResult => result != null)
     : []
+  const progress =
+    typeof candidate.progress === "number" ? candidate.progress : undefined
+  const message =
+    typeof candidate.message === "string" ? candidate.message : undefined
+  const mastra = normalizeMastraStepCorrelation(candidate.mastra)
+  const subtitleValidation = normalizeSubtitleValidationStepSummary(
+    candidate.subtitleValidation,
+  )
+  const transcriptCorrection =
+    normalizeTranscriptScriptureCorrectionStepSummary(
+      candidate.transcriptCorrection,
+    )
 
-  if (languageResults.length === 0) {
+  if (
+    languageResults.length === 0 &&
+    subtitleValidation === undefined &&
+    transcriptCorrection === undefined &&
+    mastra === undefined &&
+    progress === undefined &&
+    !message
+  ) {
     return undefined
   }
 
-  return { languageResults }
+  return {
+    ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation !== undefined ? { subtitleValidation } : {}),
+    ...(transcriptCorrection !== undefined ? { transcriptCorrection } : {}),
+    ...(mastra !== undefined ? { mastra } : {}),
+    ...(progress !== undefined ? { progress } : {}),
+    ...(message !== undefined ? { message } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -480,11 +613,22 @@ export async function createJob(
   languages: string[] = [],
   options?: {
     videoDocumentId?: string
+    sourceCollectionTitle?: string
+    sourceMediaTitle?: string
     initialArtifacts?: JobArtifactManifest
     engine?: EnrichmentEngine
+    // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
+    // custom step inventory (smart-crop jobs persist smart_crop_* steps
+    // instead of the enrichment FORGE_WORKFLOW_STEPS).
+    jobOptions?: JobRecord["options"]
+    steps?: JobStepState[]
   },
 ): Promise<JobRecord> {
-  const steps = buildInitialSteps()
+  const steps = options?.steps ?? buildInitialSteps()
+  const jobOptions = {
+    ...options?.jobOptions,
+    ...(options?.engine ? { engine: options.engine } : {}),
+  }
   const gateway = getCmsGateway()
   const mockState = await readMockCmsState(gateway)
 
@@ -518,7 +662,7 @@ export async function createJob(
       resolvedTargetLanguageCodes: languages,
       sourceCollectionTitle: sourceCollection?.title ?? undefined,
       sourceMediaTitle: sourceVideo?.title ?? undefined,
-      options: options?.engine ? { engine: options.engine } : {},
+      options: jobOptions,
       status: "pending",
       retries: 0,
       createdAt: now,
@@ -547,7 +691,9 @@ export async function createJob(
       muxPlaybackId,
       languages,
       videoDocumentId: options?.videoDocumentId,
-      options: options?.engine ? { engine: options.engine } : {},
+      sourceCollectionTitle: options?.sourceCollectionTitle,
+      sourceMediaTitle: options?.sourceMediaTitle,
+      options: jobOptions,
       artifacts: initialArtifacts,
       errors: [],
       steps,
@@ -694,19 +840,15 @@ export async function updateJob(
 
   if (gateway.mode === "admin") {
     try {
-      const adminUpdates =
+      const updatesWithDerivedFields =
         updates.artifacts !== undefined
           ? {
               ...updates,
               ...deriveMaterializationFields(updates.artifacts),
             }
           : updates
-      const job = await getAdminJobClient().updateJob(
-        id,
-        buildJobUpdateData(adminUpdates) as Parameters<
-          AdminGraphqlClient["updateJob"]
-        >[1],
-      )
+      const adminUpdates = buildJobUpdateData(updatesWithDerivedFields)
+      const job = await getAdminJobClient().updateJob(id, adminUpdates)
       if (job) {
         publishJobEvent(job)
       }
@@ -985,28 +1127,7 @@ export async function failMastraEnrichmentIfNoCallback(
 }
 
 export function buildJobUpdateData(
-  updates: Partial<
-    Pick<
-      JobRecord,
-      | "status"
-      | "currentStep"
-      | "artifacts"
-      | "errors"
-      | "startedAt"
-      | "completedAt"
-      | "retries"
-      | "steps"
-      | "options"
-      | "sourceLanguageId"
-      | "sourceLanguageCode"
-      | "sourceSelectionReason"
-      | "primaryRequestedTargetLanguageCode"
-      | "resolvedTargetLanguageCodes"
-      | "sourceCollectionTitle"
-      | "sourceMediaTitle"
-      | "requestedLanguageAbbreviations"
-    >
-  >,
+  updates: JobUpdateFields,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {}
 
@@ -1019,18 +1140,18 @@ export function buildJobUpdateData(
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
   if (updates.options !== undefined) data.options = updates.options
-  if ("sourceLanguageId" in updates) {
-    data.sourceLanguageId = updates.sourceLanguageId ?? null
+  if (updates.sourceLanguageId !== undefined) {
+    data.sourceLanguageId = updates.sourceLanguageId
   }
-  if ("sourceLanguageCode" in updates) {
-    data.sourceLanguageCode = updates.sourceLanguageCode ?? null
+  if (updates.sourceLanguageCode !== undefined) {
+    data.sourceLanguageCode = updates.sourceLanguageCode
   }
-  if ("sourceSelectionReason" in updates) {
-    data.sourceSelectionReason = updates.sourceSelectionReason ?? null
+  if (updates.sourceSelectionReason !== undefined) {
+    data.sourceSelectionReason = updates.sourceSelectionReason
   }
-  if ("primaryRequestedTargetLanguageCode" in updates) {
+  if (updates.primaryRequestedTargetLanguageCode !== undefined) {
     data.primaryRequestedTargetLanguageCode =
-      updates.primaryRequestedTargetLanguageCode ?? null
+      updates.primaryRequestedTargetLanguageCode
   }
   if (updates.resolvedTargetLanguageCodes !== undefined) {
     data.resolvedTargetLanguageCodes = updates.resolvedTargetLanguageCodes

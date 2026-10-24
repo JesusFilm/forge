@@ -5,9 +5,16 @@
 
 import type { Route } from "next"
 
+import {
+  DEFAULT_WATCH_LANGUAGE_SLUG,
+  buildCanonicalWatchVideoPath,
+  buildExplicitWatchVideoPath,
+} from "@forge/watch-url-policy/routes"
+
 import { env } from "@/env"
 
-import { LOCALE_RESOLVED_PARAM } from "./locale"
+import { tryResolveLanguageAlias } from "./language-aliases"
+import { LOCALE_RESOLVED_PARAM, isPublicWatchLanguageSlug } from "./locale"
 import {
   RESERVED_PREFIXES,
   appendHtmlSuffix,
@@ -20,14 +27,16 @@ declare const contentSlugBrand: unique symbol
 /** English-name kebab-case language identifier (e.g. `english`, `russian`, `portuguese-brazil`). NOT a bcp47 code. */
 export type LocaleSlug = string & { readonly [localeSlugBrand]: true }
 
-/** Watch-content URL segment (e.g. `jesus`, `lumo-the-gospel-of-john`). Lowercase ASCII slug shape. */
+/** Watch-content URL segment (e.g. `jesus`, `soccer_event_collection`, `jätku-leiba`). Lowercase letters/digits, hyphens, or underscores. */
 export type ContentSlug = string & { readonly [contentSlugBrand]: true }
 
-const SLUG_PATTERN = /^[a-z0-9-]+$/
+const LOCALE_SLUG_PATTERN = /^[a-z0-9-]+$/
+const CONTENT_SLUG_PATTERN =
+  /^(?:(?=\p{Ll})(?![\u0250-\u02FF\u1D00-\u1D7F\u2100-\u214F\uA700-\uA7FF\uFB00-\uFB4F\uFF00-\uFFEF])\p{Script=Latin}|[0-9_-])+$/u
 
 /** Throw-on-invalid `LocaleSlug` constructor. Use for pre-validated inputs (env vars, configured constants). Prefer `tryAsLocaleSlug` at user-input boundaries. */
 export function asLocaleSlug(value: string): LocaleSlug {
-  if (!SLUG_PATTERN.test(value)) {
+  if (!LOCALE_SLUG_PATTERN.test(value)) {
     throw new Error(`invalid LocaleSlug: ${value}`)
   }
   return value as LocaleSlug
@@ -35,7 +44,7 @@ export function asLocaleSlug(value: string): LocaleSlug {
 
 /** Throw-on-invalid `ContentSlug` constructor. Use for pre-validated inputs. Prefer `tryAsContentSlug` at user-input boundaries. */
 export function asContentSlug(value: string): ContentSlug {
-  if (!SLUG_PATTERN.test(value)) {
+  if (!CONTENT_SLUG_PATTERN.test(value) || value !== value.toLowerCase()) {
     throw new Error(`invalid ContentSlug: ${value}`)
   }
   return value as ContentSlug
@@ -43,12 +52,14 @@ export function asContentSlug(value: string): ContentSlug {
 
 /** Result-shape `LocaleSlug` constructor. Returns `null` if the input fails the slug regex — for use at page routes / agent boundaries where invalid input should `notFound()` instead of crash. */
 export function tryAsLocaleSlug(value: string): LocaleSlug | null {
-  return SLUG_PATTERN.test(value) ? (value as LocaleSlug) : null
+  return LOCALE_SLUG_PATTERN.test(value) ? (value as LocaleSlug) : null
 }
 
 /** Result-shape `ContentSlug` constructor. Returns `null` on invalid input. */
 export function tryAsContentSlug(value: string): ContentSlug | null {
-  return SLUG_PATTERN.test(value) ? (value as ContentSlug) : null
+  return CONTENT_SLUG_PATTERN.test(value) && value === value.toLowerCase()
+    ? (value as ContentSlug)
+    : null
 }
 
 // `reason` documents WHY a resync sentinel is set on the URL. Today the
@@ -61,10 +72,26 @@ export type BuildOptions = {
   t?: number
   autoplay?: boolean
   reason?: "locale-resolved"
+  subtitleLanguage?: LocaleSlug
 }
 
 const ONE_SHOT_TIMESTAMP_PARAM = "t"
 const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
+export const SUBTITLE_INTENT_PARAM = "subtitles"
+export const WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX = "__subtitle-"
+
+export function watchSubtitleIntentSegment(lang: LocaleSlug): string {
+  return `${WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX}${lang}`
+}
+
+export function parseWatchSubtitleIntentSegment(
+  segment: string,
+): LocaleSlug | null {
+  if (!segment.startsWith(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX)) return null
+  return tryAsLocaleSlug(
+    segment.slice(WATCH_SUBTITLE_INTENT_SEGMENT_PREFIX.length),
+  )
+}
 
 /**
  * Per-builder template-literal Route shapes. typedRoutes validates `<Link href>`
@@ -73,11 +100,24 @@ const ONE_SHOT_AUTOPLAY_PARAM = "autoplay"
  * the builder boundary is type-narrowing instead of type-laundering.
  */
 type LocalizedHomeRoute = `/${string}.html${"" | `?${string}`}`
-type WatchVideoRoute = `/${string}.html/${string}.html${"" | `?${string}`}`
-type WatchEpisodeRoute =
+type LanguageInventoryRoute = `/${string}.html/videos`
+type WatchVideoPathname = `/${string}.html` | `/${string}.html/${string}.html`
+type WatchVideoRoute = `${WatchVideoPathname}${"" | `?${string}`}`
+type WatchVideoExplicitLanguageRoute =
+  `/${string}.html/${string}.html${"" | `?${string}`}`
+type WatchUnavailableLanguageRoute = `/${string}.html/${string}.html`
+type WatchEpisodePathname =
+  | `/${string}.html/${string}.html`
+  | `/${string}.html/${string}/${string}.html`
+type WatchEpisodeRoute = `${WatchEpisodePathname}${"" | `?${string}`}`
+type WatchEpisodeExplicitLanguageRoute =
   `/${string}.html/${string}/${string}.html${"" | `?${string}`}`
-type VideosIndexRoute = "/videos"
-type SearchRoute = `/${"" | `?${string}`}`
+type LanguagesIndexRoute = "/languages"
+type WhatsNewRoute = "/whats-new"
+type LanguageVideosIndexRoute = `/${string}.html/videos`
+type LocalizedLanguagesRoute = `/${string}.html/languages`
+type LocalizedHistoryRoute = `/${string}.html/history`
+type SearchRoute = "/"
 
 function appendQueryString(path: string, opts?: BuildOptions): string {
   if (!opts) return path
@@ -85,6 +125,9 @@ function appendQueryString(path: string, opts?: BuildOptions): string {
   if (opts.t != null) params.set(ONE_SHOT_TIMESTAMP_PARAM, String(opts.t))
   if (opts.autoplay) params.set(ONE_SHOT_AUTOPLAY_PARAM, "1")
   if (opts.reason != null) params.set(LOCALE_RESOLVED_PARAM, "1")
+  if (opts.subtitleLanguage != null) {
+    params.set(SUBTITLE_INTENT_PARAM, opts.subtitleLanguage)
+  }
   const qs = params.toString()
   return qs ? `${path}?${qs}` : path
 }
@@ -97,48 +140,160 @@ export function localizedHomePath(
   return appendQueryString(path) as LocalizedHomeRoute & Route
 }
 
-/** Build the canonical two-segment watch path `/{slug}.html/{lang}.html`. */
+/** Build a localized inventory path `/{lang}.html/videos` (e.g. `/spanish-latin-american.html/videos`). */
+export function languageInventoryPath(
+  lang: LocaleSlug,
+): LanguageInventoryRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/videos` as LanguageInventoryRoute & Route
+}
+
+/**
+ * Build the canonical standalone watch path. Eligible English content uses
+ * `/{slug}.html`; non-English and one-segment collisions keep
+ * `/{slug}.html/{lang}.html`.
+ */
 export function watchVideoPath(
   slug: ContentSlug,
   lang: LocaleSlug,
   opts?: BuildOptions,
 ): WatchVideoRoute & Route {
-  const path = `/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(lang)}`
+  const path = buildCanonicalWatchVideoPath(slug, lang)
   return appendQueryString(path, opts) as WatchVideoRoute & Route
 }
 
-/** Build the three-segment series-episode path `/{series}.html/{episode}/{lang}.html` (episode segment is bare by production contract). */
+/** Build the explicit `/{slug}.html/{lang}.html` compatibility/internal path. */
+export function watchVideoExplicitLanguagePath(
+  slug: ContentSlug,
+  lang: LocaleSlug,
+  opts?: BuildOptions,
+): WatchVideoExplicitLanguageRoute & Route {
+  const path = buildExplicitWatchVideoPath(slug, lang)
+  return appendQueryString(path, opts) as WatchVideoExplicitLanguageRoute &
+    Route
+}
+
+/**
+ * Build the intentional public URL for known content that is unavailable in
+ * the requested language. This has the same wire shape as an explicit video
+ * route, but must never be treated as proof that the language is playable.
+ */
+export function watchUnavailableLanguagePath(
+  slug: ContentSlug,
+  requestedLanguage: LocaleSlug,
+): WatchUnavailableLanguageRoute & Route {
+  return `/${appendHtmlSuffix(slug)}/${appendHtmlSuffix(requestedLanguage)}` as WatchUnavailableLanguageRoute &
+    Route
+}
+
+/**
+ * Whether an English contextual episode can use the two-segment public form
+ * without colliding with the existing `/{video}.html/{language}.html` grammar.
+ */
+export function isLanguageLessWatchEpisodePathEligible(
+  episode: ContentSlug,
+): boolean {
+  return (
+    !isPublicWatchLanguageSlug(episode) &&
+    tryResolveLanguageAlias(episode) == null
+  )
+}
+
+/**
+ * Build the public series-episode path. Eligible English uses
+ * `/{series}.html/{episode}.html`; international and ambiguous English episode
+ * slugs keep `/{series}.html/{episode}/{lang}.html`.
+ */
 export function watchEpisodePath(
   series: ContentSlug,
   episode: ContentSlug,
   lang: LocaleSlug,
   opts?: BuildOptions,
 ): WatchEpisodeRoute & Route {
-  const path = `/${appendHtmlSuffix(series)}/${episode}/${appendHtmlSuffix(lang)}`
-  return appendQueryString(path, opts) as WatchEpisodeRoute & Route
-}
-
-/** Build the all-videos index path `/videos` (no `.html` suffix). */
-export function videosIndexPath(): VideosIndexRoute & Route {
-  return "/videos" as VideosIndexRoute & Route
-}
-
-/** Build the global search-modal path `/` with optional `?q=` query. */
-export function searchPath(q?: string): SearchRoute & Route {
-  if (!q) return "/" as SearchRoute & Route
-  const params = new URLSearchParams({ q })
-  return `/?${params.toString()}` as SearchRoute & Route
+  if (
+    lang === DEFAULT_WATCH_LANGUAGE_SLUG &&
+    isLanguageLessWatchEpisodePathEligible(episode)
+  ) {
+    const path = `/${appendHtmlSuffix(series)}/${appendHtmlSuffix(episode)}`
+    return appendQueryString(path, opts) as WatchEpisodeRoute & Route
+  }
+  return watchEpisodeExplicitLanguagePath(series, episode, lang, opts)
 }
 
 /**
- * Discriminated union returned by `parseWatchPath`. Eight kinds:
+ * Build the explicit `/{series}.html/{episode}/{lang}.html` contextual path
+ * used by compatibility URLs and internal rewrites.
+ */
+export function watchEpisodeExplicitLanguagePath(
+  series: ContentSlug,
+  episode: ContentSlug,
+  lang: LocaleSlug,
+  opts?: BuildOptions,
+): WatchEpisodeExplicitLanguageRoute & Route {
+  const path = `/${appendHtmlSuffix(series)}/${episode}/${appendHtmlSuffix(lang)}`
+  return appendQueryString(path, opts) as WatchEpisodeExplicitLanguageRoute &
+    Route
+}
+
+/** Build the all-languages index path `/languages` (no `.html` suffix). */
+export function languagesIndexPath(): LanguagesIndexRoute & Route {
+  return "/languages" as LanguagesIndexRoute & Route
+}
+
+/**
+ * Build the Watch product-update page path `/whats-new` (no `.html`
+ * suffix, no language segment). Single-segment utility route, same shape
+ * family as `/languages` and `/history`.
+ */
+export function whatsNewPath(): WhatsNewRoute & Route {
+  return "/whats-new" as WhatsNewRoute & Route
+}
+
+/** Build the language-bearing all-languages path `/{lang}.html/languages`. */
+export function localizedLanguagesPath(
+  lang: LocaleSlug,
+): LocalizedLanguagesRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/languages` as LocalizedLanguagesRoute &
+    Route
+}
+
+/** Build the language-bearing history path `/{lang}.html/history`. */
+export function localizedHistoryPath(
+  lang: LocaleSlug,
+): LocalizedHistoryRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/history` as LocalizedHistoryRoute & Route
+}
+
+/** @deprecated Use `languagesIndexPath()` for the canonical language index. */
+export function videosIndexPath(): LanguagesIndexRoute & Route {
+  return languagesIndexPath()
+}
+
+/** Build the language-scoped videos index path `/{lang}.html/videos`. */
+export function languageVideosIndexPath(
+  lang: LocaleSlug,
+): LanguageVideosIndexRoute & Route {
+  return `/${appendHtmlSuffix(lang)}/videos` as LanguageVideosIndexRoute & Route
+}
+
+/** Build the global search-modal fallback path `/`. */
+export function searchPath(): SearchRoute & Route {
+  return "/" as SearchRoute & Route
+}
+
+/**
+ * Discriminated union returned by `parseWatchPath`. Thirteen kinds:
  *
  * - `home` — `/` (English default home)
  * - `localized-home` — `/{lang}.html` (one segment)
- * - `video` — `/{slug}.html/{lang}.html` (two segments)
- * - `episode` — `/{series}.html/{episode}/{lang}.html` (three segments)
- * - `videos` — `/videos`
- * - `search` — deprecated inbound `/search?q=...` redirect shim
+ * - `video` — `/{slug}.html/{lang}.html` (two segments whose second token is a public language or legacy language alias)
+ * - `episode` — eligible English `/{series}.html/{episode}.html` or explicit `/{series}.html/{episode}/{lang}.html`
+ * - `languages` — `/languages`
+ * - `localized-languages` — `/{lang}.html/languages`
+ * - `whats-new` — `/whats-new`
+ * - `history` — `/history`
+ * - `localized-history` — `/{lang}.html/history`
+ * - `language-videos` — `/{lang}.html/videos`
+ * - `search` — deprecated inbound `/search` redirect shim
  * - `reserved` — first segment is in `RESERVED_PREFIXES` (api, _next, assets, etc.)
  * - `unknown` — none of the above (four-or-more segments, malformed)
  */
@@ -147,46 +302,22 @@ export type ParsedWatchPath =
   | { kind: "localized-home"; lang: string }
   | { kind: "video"; slug: string; lang: string }
   | { kind: "episode"; series: string; episode: string; lang: string }
-  | { kind: "videos" }
-  | { kind: "search"; q?: string }
+  | { kind: "languages" }
+  | { kind: "localized-languages"; lang: string }
+  | { kind: "whats-new" }
+  | { kind: "history" }
+  | { kind: "localized-history"; lang: string }
+  | { kind: "language-videos"; lang: string }
+  | { kind: "search" }
   | { kind: "reserved"; prefix: string }
   | { kind: "unknown"; raw: string }
-
-// Two callers with two shapes: proxy.ts hands us a URLSearchParams from
-// NextRequest.nextUrl.searchParams; Next 16 page routes hand us a plain
-// Record after awaiting their `searchParams: Promise<...>` prop. Accept both
-// here so callers don't repeat conversion ceremony at every site.
-export type SearchInput =
-  | URLSearchParams
-  | Record<string, string | string[] | undefined>
-
-function readSearchValue(
-  search: SearchInput | undefined,
-  key: string,
-): string | undefined {
-  if (!search) return undefined
-  if (search instanceof URLSearchParams) {
-    return search.get(key) ?? undefined
-  }
-  const value = search[key]
-  if (Array.isArray(value)) return value[0]
-  return value
-}
 
 /**
  * Classify a watch pathname (basePath-stripped) into a `ParsedWatchPath`.
  * Single source of truth — both page routes (Phase 2) and the canonicalizer
  * read this so the two halves can never silently drift.
- *
- * Accepts `search` in either Next 16 page-route shape (`Promise<Record>` after
- * await) or proxy.ts middleware shape (`URLSearchParams`). Returns plain JSON-
- * serializable objects so agent callers can branch on `kind` without type
- * narrowing helpers.
  */
-export function parseWatchPath(
-  pathname: string,
-  search?: SearchInput,
-): ParsedWatchPath {
+export function parseWatchPath(pathname: string): ParsedWatchPath {
   if (pathname === "" || pathname === "/") return { kind: "home" }
 
   const segments = pathname.split("/").filter(Boolean)
@@ -198,18 +329,53 @@ export function parseWatchPath(
   }
 
   if (segments.length === 1) {
-    if (first === "videos") return { kind: "videos" }
-    if (first === "search") {
-      return { kind: "search", q: readSearchValue(search, "q") }
+    if (first === "languages" || first === "videos") {
+      return { kind: "languages" }
     }
+    if (first === "whats-new") return { kind: "whats-new" }
+    if (first === "history") return { kind: "history" }
+    if (first === "search") return { kind: "search" }
     return { kind: "localized-home", lang: stripHtmlSuffix(first) }
   }
 
   if (segments.length === 2) {
+    if (segments[1] === "languages") {
+      return {
+        kind: "localized-languages",
+        lang: stripHtmlSuffix(segments[0]),
+      }
+    }
+    if (segments[1] === "history") {
+      return {
+        kind: "localized-history",
+        lang: stripHtmlSuffix(segments[0]),
+      }
+    }
+    if (segments[1] === "videos") {
+      return {
+        kind: "language-videos",
+        lang: stripHtmlSuffix(segments[0]),
+      }
+    }
+
+    const firstSegment = stripHtmlSuffix(segments[0])
+    const secondSegment = stripHtmlSuffix(segments[1])
+    if (
+      isPublicWatchLanguageSlug(secondSegment) ||
+      tryResolveLanguageAlias(secondSegment) != null
+    ) {
+      return {
+        kind: "video",
+        slug: firstSegment,
+        lang: secondSegment,
+      }
+    }
+
     return {
-      kind: "video",
-      slug: stripHtmlSuffix(segments[0]),
-      lang: stripHtmlSuffix(segments[1]),
+      kind: "episode",
+      series: firstSegment,
+      episode: secondSegment,
+      lang: DEFAULT_WATCH_LANGUAGE_SLUG,
     }
   }
 
@@ -225,20 +391,66 @@ export function parseWatchPath(
   return { kind: "unknown", raw: pathname }
 }
 
-// Consolidates SITE_BASE (lib/experience-metadata.ts) and
-// PUBLIC_SHARE_FALLBACK_ORIGIN (lib/share.ts). Single source of truth lives
-// in env.ts (Zod schema + soft host-allowlist + default). Reading the validated
-// env value here keeps the default-of-default consistent across the codebase
-// and preserves the boot-time misconfig warning the schema emits.
+// Environment-specific absolute origin for app-local absolute URL builders.
+// Single source of truth lives in env.ts (Zod schema + soft host-allowlist +
+// default). Public Share and SEO/social metadata resolve through
+// WATCH_PUBLIC_METADATA_ORIGIN when the configured origin is not public.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
-// Re-exported from the shared watch-base-path.mjs module that
-// next.config.mjs also imports. Single source of truth so a basePath
-// change in next.config can't desync from the URL builders here.
-import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
-export { WATCH_BASE_PATH }
+// Keep the public constants available through the established routes API.
+// The neutral module also serves browser helpers without route initialization.
+import {
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+} from "./watch-public-url"
+export { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN }
 
-/** Build the absolute canonical URL for a watch video (origin + basePath + 2-segment path). For share / OG / canonical metadata. */
+/**
+ * Validate the stored Admin target against the same canonical builder used by
+ * every authored Watch video link. Recommendation selection never accepts an
+ * arbitrary URL, query string, fragment, or non-canonical English form.
+ */
+export function isCanonicalWatchRecommendationHref(
+  value: unknown,
+): value is string {
+  if (
+    typeof value !== "string" ||
+    value.length > 512 ||
+    !value.startsWith(`${WATCH_BASE_PATH}/`) ||
+    value.startsWith("//")
+  ) {
+    return false
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(value, WATCH_CANONICAL_ORIGIN)
+  } catch {
+    return false
+  }
+  if (
+    parsed.origin !== new URL(WATCH_CANONICAL_ORIGIN).origin ||
+    parsed.search ||
+    parsed.hash ||
+    parsed.pathname !== value
+  ) {
+    return false
+  }
+
+  const relative = value.slice(WATCH_BASE_PATH.length)
+  const match = relative.match(
+    /^\/([a-z0-9_-]+)\.html(?:\/([a-z0-9-]+)\.html)?$/,
+  )
+  if (!match) return false
+  const content = tryAsContentSlug(match[1]!)
+  const language = tryAsLocaleSlug(match[2] ?? DEFAULT_WATCH_LANGUAGE_SLUG)
+  return (
+    content != null &&
+    language != null &&
+    `${WATCH_BASE_PATH}${watchVideoPath(content, language)}` === value
+  )
+}
+
+/** Build an environment-specific absolute URL for a canonical watch video. */
 export function watchVideoAbsolute(
   slug: ContentSlug,
   lang: LocaleSlug,
@@ -246,7 +458,7 @@ export function watchVideoAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(slug, lang)}`
 }
 
-/** Build the absolute canonical URL for a series episode (origin + basePath + 3-segment path). */
+/** Build an environment-specific absolute URL for a public series episode. */
 export function watchEpisodeAbsolute(
   series: ContentSlug,
   episode: ContentSlug,
@@ -255,7 +467,7 @@ export function watchEpisodeAbsolute(
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${watchEpisodePath(series, episode, lang)}`
 }
 
-/** Build the absolute canonical URL for a localized home (origin + basePath + 1-segment path). */
+/** Build an environment-specific absolute URL for a localized home (origin + basePath + 1-segment path). */
 export function localizedHomeAbsolute(lang: LocaleSlug): string {
   return `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}${localizedHomePath(lang)}`
 }

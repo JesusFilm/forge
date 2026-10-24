@@ -18,6 +18,8 @@ function statusForError(error: ExperienceEmbeddingIngestError): number {
     case "target_not_found":
     case "target_unpublished":
       return 404
+    case "contract_mismatch":
+      return 409
     case "write_failed":
       return 502
   }

@@ -97,6 +97,8 @@ useEffect(() => {
 
 Don't call `player.play()` unconditionally on foreground. The user may have manually paused.
 
+Note the `else` branch pauses on **either** `"inactive"` or `"background"` — fine for a mobile touch player, but do NOT copy it verbatim to a tvOS always-on backdrop that must survive Control Center/Siri: there, teardown must branch on `"background"` alone (see [`tvos-appstate-inactive-vs-background-video-teardown.md`](../ui-bugs/tvos-appstate-inactive-vs-background-video-teardown.md)).
+
 ```ts
 const wasPlayingRef = useRef(false)
 

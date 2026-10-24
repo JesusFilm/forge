@@ -12,8 +12,8 @@ import {
   MetricCard,
   OperatorRail,
   PageSection,
-  PrimaryButton,
   QueueList,
+  SecondaryButton,
   StatusPill,
 } from "@/components/admin-ui"
 import { loadDashboardOpsData } from "@/app/dashboard/ops-data"
@@ -30,10 +30,22 @@ export default async function DashboardPage() {
         title={page.title}
         description={page.description}
         action={
-          <PrimaryButton>
-            <RefreshCcw className="h-4 w-4" strokeWidth={1.5} />
-            {page.action}
-          </PrimaryButton>
+          <div className="flex flex-col items-start gap-1 md:items-end">
+            <SecondaryButton
+              disabled
+              title={page.actionUnavailable}
+              aria-describedby="dashboard-sync-action-unavailable"
+            >
+              <RefreshCcw className="h-4 w-4" strokeWidth={1.5} />
+              {page.action}
+            </SecondaryButton>
+            <span
+              id="dashboard-sync-action-unavailable"
+              className="font-mono text-[10px] text-[var(--color-text-muted)]"
+            >
+              {page.actionUnavailable}
+            </span>
+          </div>
         }
       />
 
@@ -73,10 +85,7 @@ export default async function DashboardPage() {
               </thead>
               <tbody>
                 {data.activity.map((entry) => (
-                  <tr
-                    key={entry.key}
-                    className="hairline-b h-10 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
-                  >
+                  <tr key={entry.key} className="hairline-b h-10">
                     <td className="px-4 text-[13px]">{entry.title}</td>
                     <td className="px-4">
                       <StatusPill tone={entry.statusTone}>
@@ -146,12 +155,8 @@ export default async function DashboardPage() {
                   </div>
                   <div className="mt-4 flex items-center justify-between">
                     <span className="label-text">
-                      {page.syncSection.drilldown}
+                      {messages.common.readOnly}
                     </span>
-                    <ArrowUpRight
-                      className="h-4 w-4 text-[var(--color-text-muted)]"
-                      strokeWidth={1.5}
-                    />
                   </div>
                 </div>
               ))}

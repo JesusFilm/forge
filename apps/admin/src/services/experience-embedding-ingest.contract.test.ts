@@ -1,4 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "./content-embedding-contract"
 
 import { buildExperienceEmbeddingSource } from "@/services/embeddings.service"
 import { ingestExperienceEmbedding } from "@/services/experience-embedding-ingest.service"
@@ -22,6 +32,8 @@ type StoredExperienceLocale = {
   embeddingModel: string | null
   embeddingDimensions: number | null
   embeddingProvider: string | null
+  embeddingNativeDimensions: number | null
+  embeddingTransformVersion: string | null
   embeddingGenerationMode: string | null
   embeddingMastraRunId: string | null
   embeddingGeneratedAt: Date | null
@@ -50,6 +62,8 @@ function buildContractLocale(): StoredExperienceLocale {
     embeddingModel: null,
     embeddingDimensions: null,
     embeddingProvider: null,
+    embeddingNativeDimensions: null,
+    embeddingTransformVersion: null,
     embeddingGenerationMode: null,
     embeddingMastraRunId: null,
     embeddingGeneratedAt: null,
@@ -59,6 +73,24 @@ function buildContractLocale(): StoredExperienceLocale {
 function buildContractPrisma(locale = buildContractLocale()) {
   const queryRaw = vi.fn(async (strings: TemplateStringsArray) => {
     const sql = strings.join(" ")
+    if (sql.includes("FROM content_embedding_contract_pointer")) {
+      return [
+        {
+          pointerId: CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+          contractId: ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+          queryProvider: ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+          queryModel: ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+          queryNativeDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryDimensions: ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+          queryTransformVersion: null,
+          storageProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+          storageModel: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+          storageNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+          storageTransformVersion: null,
+        },
+      ]
+    }
 
     if (sql.includes("pg_advisory_xact_lock")) {
       return []
@@ -72,6 +104,9 @@ function buildContractPrisma(locale = buildContractLocale()) {
           source_summary: locale.embeddingSourceSummary,
           model: locale.embeddingModel,
           dimensions: locale.embeddingDimensions,
+          provider: locale.embeddingProvider,
+          native_dimensions: locale.embeddingNativeDimensions,
+          transform_version: locale.embeddingTransformVersion,
         },
       ]
     }
@@ -106,6 +141,8 @@ function buildContractPrisma(locale = buildContractLocale()) {
         model: string,
         dimensions: number,
         provider: string | null,
+        nativeDimensions: number | null,
+        transformVersion: string | null,
         generationMode: string,
         mastraRunId: string,
         generatedAt: Date,
@@ -117,6 +154,8 @@ function buildContractPrisma(locale = buildContractLocale()) {
         locale.embeddingModel = model
         locale.embeddingDimensions = dimensions
         locale.embeddingProvider = provider
+        locale.embeddingNativeDimensions = nativeDimensions
+        locale.embeddingTransformVersion = transformVersion
         locale.embeddingGenerationMode = generationMode
         locale.embeddingMastraRunId = mastraRunId
         locale.embeddingGeneratedAt = generatedAt
@@ -152,9 +191,10 @@ function contractPayload(locale: StoredExperienceLocale) {
       summary: source.summary,
     },
     model: {
-      name: "openai/text-embedding-3-small",
-      provider: "openai",
-      dimensions: 1536,
+      name: ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      provider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      dimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      nativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
     },
     generation: {
       mode: "idempotent",
@@ -187,9 +227,11 @@ describe("Mastra experience ingest contract", () => {
     expect(locale).toMatchObject({
       embeddingSourceContentHash: contractPayload(locale).source.contentHash,
       embeddingSourceSummary: contractPayload(locale).source.summary,
-      embeddingModel: "openai/text-embedding-3-small",
-      embeddingDimensions: 1536,
-      embeddingProvider: "openai",
+      embeddingModel: "embeddings",
+      embeddingDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingProvider: ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      embeddingNativeDimensions: ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      embeddingTransformVersion: null,
       embeddingGenerationMode: "idempotent",
       embeddingMastraRunId: "mastra-run-contract",
     })

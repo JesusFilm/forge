@@ -14,18 +14,26 @@
 export type ProbeExpect = "ok" | "redirect" | "notfound" | "passthrough"
 
 export type WatchUrlFixture = {
-  /** Full path including the `/watch` basePath (e.g. `/watch/jesus.html/english.html`). */
+  /** Full path including the `/watch` basePath (e.g. `/watch/jesus.html`). */
   path: string
   /** §5 section label for grouped reporting. */
   group: string
   expect: ProbeExpect
+  /** Preview must answer this public path directly without any redirect hop. */
+  requireDirect?: boolean
+  /** Canonical, Open Graph, and page-level JSON-LD identity for key routes. */
+  expectedCanonicalPath?: string
+  /** The route must publish a page-level JSON-LD URL matching the canonical. */
+  requireStructuredDataCanonical?: boolean
+  /** Production may 404 because this fixture intentionally adds a public route. */
+  allowProductionNotFound?: boolean
 }
 
 const ROOTS: readonly string[] = [
   "/watch",
   // NOTE: `/watch/` (trailing slash) lives in REDIRECTS — it 308s to `/watch`
   // per §5.4, so it is probed as a redirect, not a root 200.
-  "/watch/videos",
+  "/watch/languages",
   "/watch/english.html",
   "/watch/russian.html",
   "/watch/portuguese-brazil.html",
@@ -44,8 +52,11 @@ const ROOTS: readonly string[] = [
   "/watch/swahili.html",
 ]
 
-const TWO_SEGMENT: readonly string[] = [
+const EXPLICIT_LANGUAGE: readonly string[] = [
+  // Explicit English remains a direct compatibility URL.
   "/watch/jesus.html/english.html",
+  "/watch/jesus.html/romanian.html",
+  "/watch/jesus.html/russian.html",
   "/watch/jesus.html/spanish-castilian.html",
   "/watch/jesus.html/spanish-latin-american.html",
   "/watch/jesus.html/portuguese-brazil.html",
@@ -60,6 +71,9 @@ const TWO_SEGMENT: readonly string[] = [
   "/watch/jesus.html/tamil.html",
   "/watch/jesus.html/zulu.html",
   "/watch/jesus.html/swahili.html",
+  "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/the-beginning.html/spanish-castilian.html",
   "/watch/magdalena-2.html/english.html",
   "/watch/magdalena.html/russian.html",
   "/watch/chosen-witness.html/english.html",
@@ -115,7 +129,15 @@ const EPISODES: readonly string[] = [
   "/watch/lumo-the-gospel-of-luke.html/birth-of-jesus/english.html",
   "/watch/lumo-the-gospel-of-luke.html/birth-of-jesus/spanish-castilian.html",
   "/watch/lumo-the-gospel-of-mark.html/jesus-baptism/english.html",
+  // Language-less contextual English is the preferred public form. The
+  // explicit English form remains a direct compatibility URL below.
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
   "/watch/jesus.html/the-beginning/english.html",
+  "/watch/jesus.html/the-beginning/romanian.html",
   "/watch/jesus.html/the-beginning/spanish-castilian.html",
   "/watch/jesus.html/the-beginning/russian.html",
 ]
@@ -123,6 +145,7 @@ const EPISODES: readonly string[] = [
 // §5.3 legacy 4-segment + §5.4 normalization — must REDIRECT (3xx), not 404.
 const REDIRECTS: readonly string[] = [
   "/watch/search",
+  "/watch/videos",
   "/watch/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
   "/watch/jesus/the-beginning.html/english.html",
   "/watch/",
@@ -135,15 +158,26 @@ const REDIRECTS: readonly string[] = [
 
 // §5.5 — query params / fragment must still 200 (same final content URL).
 const QUERY_PARAMS: readonly string[] = [
-  "/watch/jesus.html/english.html?t=120",
-  "/watch/jesus.html/english.html?autoplay=1",
-  "/watch/jesus.html/english.html?utm_source=campaign&utm_medium=email",
+  "/watch/jesus.html?t=120",
+  "/watch/jesus.html?autoplay=1",
+  "/watch/jesus.html?utm_source=campaign&utm_medium=email",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
+]
+
+const LANGUAGELESS_ENGLISH: readonly string[] = [
+  "/watch/jesus.html",
+  "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-john-1-35-2-22.html",
+  "/watch/magdalena-2.html",
+  "/watch/chosen-witness.html",
+  "/watch/wedding-in-cana.html",
+  "/watch/life-of-jesus-gospel-of-john.html",
+  "/watch/easter.html",
 ]
 
 // §5.6 — must STAY 404 (must NOT become 200 or 301).
 const EXPECTED_404S: readonly string[] = [
   "/watch/search.html/search.html",
-  "/watch/jesus.html",
   "/watch/JESUS.html/english.html",
   "/watch/jesus.html/fran%C3%A7ais.html",
   "/watch/.html",
@@ -169,13 +203,84 @@ function fixturesOf(
   group: string,
   expect: ProbeExpect,
 ): WatchUrlFixture[] {
-  return paths.map((path) => ({ path, group, expect }))
+  return paths.map((path) => ({
+    path,
+    group,
+    expect,
+    ...(WATCH_DIRECT_PATH_CONTRACTS.has(path) ? { requireDirect: true } : {}),
+    ...(WATCH_CANONICAL_PATH_CONTRACTS[path]
+      ? {
+          expectedCanonicalPath: WATCH_CANONICAL_PATH_CONTRACTS[path],
+          requireStructuredDataCanonical: true,
+        }
+      : {}),
+    ...(WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS.has(path)
+      ? { allowProductionNotFound: true }
+      : {}),
+  }))
 }
+
+const WATCH_PRODUCTION_NOT_FOUND_EXPANSIONS: ReadonlySet<string> = new Set([
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home",
+])
+
+const WATCH_CANONICAL_PATH_CONTRACTS: Readonly<Record<string, string>> = {
+  "/watch/jesus.html": "/watch/jesus.html",
+  "/watch/lumo-john-1-1-34.html": "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-john-1-35-2-22.html": "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-john-1-1-34.html/romanian.html":
+    "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-john-1-1-34.html/russian.html":
+    "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/the-beginning.html/spanish-castilian.html":
+    "/watch/the-beginning.html/spanish-castilian.html",
+  "/watch/jesus.html/english.html": "/watch/jesus.html",
+  "/watch/jesus.html/romanian.html": "/watch/jesus.html/romanian.html",
+  "/watch/jesus.html/russian.html": "/watch/jesus.html/russian.html",
+  "/watch/jesus.html/spanish-castilian.html":
+    "/watch/jesus.html/spanish-castilian.html",
+  "/watch/jesus.html/spanish-latin-american.html":
+    "/watch/jesus.html/spanish-latin-american.html",
+  "/watch/lumo-the-gospel-of-john.html/english.html":
+    "/watch/lumo-the-gospel-of-john.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html":
+    "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html":
+    "/watch/lumo-john-1-35-2-22.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html?autoplay=1&utm_source=home":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html":
+    "/watch/lumo-john-1-1-34.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html":
+    "/watch/lumo-john-1-1-34.html/romanian.html",
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html":
+    "/watch/lumo-john-1-1-34.html/russian.html",
+  "/watch/jesus.html/the-beginning/romanian.html":
+    "/watch/the-beginning.html/romanian.html",
+  "/watch/jesus.html/the-beginning/spanish-castilian.html":
+    "/watch/the-beginning.html/spanish-castilian.html",
+}
+
+// Keep hard direct-route assertions focused on the canonical contracts this
+// change owns. The wider legacy matrix intentionally contains language homes
+// that normalize to `/videos`, catalog-dependent aliases, and historical
+// samples that can be unavailable on both sides; those remain protected by
+// production-vs-preview status and final-path comparison.
+const WATCH_DIRECT_PATH_CONTRACTS: ReadonlySet<string> = new Set([
+  ...LANGUAGELESS_ENGLISH,
+  ...QUERY_PARAMS,
+  ...Object.keys(WATCH_CANONICAL_PATH_CONTRACTS),
+])
 
 /** The full §5 probe matrix. */
 export const WATCH_URL_FIXTURES: readonly WatchUrlFixture[] = [
   ...fixturesOf(ROOTS, "5.1 roots", "ok"),
-  ...fixturesOf(TWO_SEGMENT, "5.2 two-segment", "ok"),
+  ...fixturesOf(LANGUAGELESS_ENGLISH, "5.2 standalone videos", "ok"),
+  ...fixturesOf(EXPLICIT_LANGUAGE, "5.2 standalone videos", "ok"),
   ...fixturesOf(EPISODES, "5.3 episodes", "ok"),
   ...fixturesOf(REDIRECTS, "5.4 normalization redirects", "redirect"),
   ...fixturesOf(QUERY_PARAMS, "5.5 query params", "ok"),
@@ -191,8 +296,104 @@ export type ProbeResult = {
   finalPath: string
   redirectHops: number
   ms: number
+  structuredData?: {
+    scriptCount: number
+    types: string[]
+    parseErrors: string[]
+    pageUrls: string[]
+    videoObjects?: VideoObjectIdentity[]
+  }
+  documentIdentity?: {
+    canonicalUrl: string | null
+    canonicalUrls?: string[]
+    openGraphUrl: string | null
+  }
   /** Set when the request failed at the transport layer (DNS, timeout, etc.). */
   error?: string
+}
+
+export type StructuredDataContract = {
+  /** Exact number of each page-level entity required in the literal response HTML. */
+  required: Readonly<Record<string, number>>
+  /** Entity types that this route class must never publish. */
+  forbidden: readonly string[]
+}
+
+export type VideoObjectIdentity = {
+  name: string | null
+  url: string | null
+  contentUrl: string | null
+}
+
+export const WATCH_PRIMARY_VIDEO_IDENTITY_PAIRS = [
+  {
+    contextual: "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html",
+    standalone: "/watch/lumo-john-1-1-34.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/english.html",
+    standalone: "/watch/lumo-john-1-1-34.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/romanian.html",
+    standalone: "/watch/lumo-john-1-1-34.html/romanian.html",
+  },
+  {
+    contextual:
+      "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
+    standalone: "/watch/lumo-john-1-1-34.html/russian.html",
+  },
+  {
+    contextual: "/watch/jesus.html/the-beginning/spanish-castilian.html",
+    standalone: "/watch/the-beginning.html/spanish-castilian.html",
+  },
+  {
+    contextual: "/watch/lumo-the-gospel-of-john.html/wedding-in-cana.html",
+    standalone: "/watch/lumo-john-1-35-2-22.html",
+  },
+] as const
+
+/**
+ * Representative public routes whose schema is part of the cutover contract.
+ *
+ * This is deliberately a small matrix, rather than a requirement for every URL
+ * fixture: empty, noindex, and legacy redirect routes intentionally do not all
+ * publish the same JSON-LD. The selected routes cover root/localized homes,
+ * series, a standalone video, and a contextual episode.
+ */
+export const WATCH_STRUCTURED_DATA_CONTRACTS: Readonly<
+  Record<string, StructuredDataContract>
+> = {
+  "/watch": {
+    required: { CollectionPage: 1 },
+    forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/spanish-castilian.html": {
+    required: { CollectionPage: 1 },
+    forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-the-gospel-of-john.html/english.html": {
+    required: { CollectionPage: 1 },
+    forbidden: ["VideoObject", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/jesus.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-john-1-1-34.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
+  "/watch/lumo-the-gospel-of-john.html/lumo-john-1-1-34.html": {
+    required: { VideoObject: 1 },
+    forbidden: ["CollectionPage", "BreadcrumbList", "Clip", "FAQPage"],
+  },
 }
 
 export type ProbeOutcome =
@@ -216,6 +417,10 @@ const statusClass = (status: number): number => Math.floor(status / 100)
 type ClassifyFixture = {
   path: string
   expect: ProbeExpect
+  requireDirect?: boolean
+  expectedCanonicalPath?: string
+  requireStructuredDataCanonical?: boolean
+  allowProductionNotFound?: boolean
 }
 
 function passthroughViolation(
@@ -245,6 +450,59 @@ function isDeprecatedSearchFallback(
     statusClass(preview.status) === 2 &&
     preview.finalPath === "/watch"
   )
+}
+
+function pathnameFromUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+  try {
+    return new URL(value, "https://www.jesusfilm.org").pathname
+  } catch {
+    return null
+  }
+}
+
+function canonicalIdentityViolations(
+  result: ProbeResult,
+  fixture: ClassifyFixture,
+): string[] {
+  const expected = fixture.expectedCanonicalPath
+  if (!expected) return []
+
+  const expectedAbsolute = `https://www.jesusfilm.org${expected}`
+  const canonicalUrls =
+    result.documentIdentity?.canonicalUrls ??
+    (result.documentIdentity?.canonicalUrl
+      ? [result.documentIdentity.canonicalUrl]
+      : [])
+  const violations: string[] = []
+  if (canonicalUrls.length !== 1) {
+    violations.push(
+      `expected exactly 1 canonical link, found ${canonicalUrls.length}`,
+    )
+  }
+  if (canonicalUrls[0] !== expectedAbsolute) {
+    violations.push(
+      `canonical expected ${expectedAbsolute}, got ${canonicalUrls[0] ?? "missing"}`,
+    )
+  }
+  if (result.documentIdentity?.openGraphUrl !== expectedAbsolute) {
+    violations.push(
+      `og:url expected ${expectedAbsolute}, got ${result.documentIdentity?.openGraphUrl ?? "missing"}`,
+    )
+  }
+
+  const pageUrls = result.structuredData?.pageUrls ?? []
+  if (fixture.requireStructuredDataCanonical && pageUrls.length === 0) {
+    violations.push("page-level JSON-LD canonical URL missing")
+  }
+  for (const pageUrl of pageUrls) {
+    if (pageUrl !== expectedAbsolute) {
+      violations.push(
+        `page-level JSON-LD URL expected ${expectedAbsolute}, got ${pageUrl}`,
+      )
+    }
+  }
+  return violations
 }
 
 /**
@@ -278,6 +536,24 @@ export function classifyProbe(
     }
   }
 
+  if (
+    statusClass(preview.status) === 3 &&
+    preview.redirectHops >= MAX_REDIRECT_HOPS
+  ) {
+    return {
+      outcome: "hard-regression",
+      note: `REDIRECT LOOP: preview returned ${preview.status} after ${preview.redirectHops} hop(s) ending at ${preview.finalPath}`,
+    }
+  }
+
+  const malformedJsonLd = preview.structuredData?.parseErrors ?? []
+  if (malformedJsonLd.length > 0) {
+    return {
+      outcome: "hard-regression",
+      note: `MALFORMED JSON-LD: ${malformedJsonLd.join("; ")}`,
+    }
+  }
+
   if (fixture?.expect === "passthrough") {
     const previewViolation = passthroughViolation(
       "preview",
@@ -307,17 +583,53 @@ export function classifyProbe(
   const vc = statusClass(preview.status)
   const samePath = production.finalPath === preview.finalPath
 
-  if (vc === 3 && preview.redirectHops >= MAX_REDIRECT_HOPS) {
-    return {
-      outcome: "hard-regression",
-      note: `REDIRECT LOOP: preview returned ${preview.status} after ${preview.redirectHops} hop(s) ending at ${preview.finalPath}`,
-    }
-  }
-
   if (pc === 5) {
     return {
       outcome: "error",
       note: `production returned ${production.status}; cannot baseline`,
+    }
+  }
+
+  if (fixture?.requireDirect) {
+    const requestedPath = pathnameFromUrl(fixture.path)
+    if (
+      vc !== 2 ||
+      preview.redirectHops !== 0 ||
+      preview.finalPath !== requestedPath
+    ) {
+      return {
+        outcome: "hard-regression",
+        note:
+          "DIRECT ROUTE CONTRACT: " +
+          `expected direct 2xx at ${requestedPath}, got ${preview.status} after ` +
+          `${preview.redirectHops} hop(s) at ${preview.finalPath}`,
+      }
+    }
+  }
+
+  if (fixture?.expectedCanonicalPath) {
+    const violations = canonicalIdentityViolations(preview, fixture)
+    if (violations.length > 0) {
+      return {
+        outcome: "hard-regression",
+        note: `CANONICAL IDENTITY CONTRACT: ${violations.join("; ")}`,
+      }
+    }
+  }
+
+  const structuredDataContract = fixture
+    ? WATCH_STRUCTURED_DATA_CONTRACTS[fixture.path]
+    : undefined
+  if (structuredDataContract) {
+    const violations = validateStructuredDataContract(
+      preview.structuredData,
+      structuredDataContract,
+    )
+    if (violations.length > 0) {
+      return {
+        outcome: "hard-regression",
+        note: `JSON-LD CONTRACT: ${violations.join("; ")}`,
+      }
     }
   }
 
@@ -363,7 +675,21 @@ export function classifyProbe(
     }
   }
 
-  // pc === 4 — production 404 (or other 4xx). §5.6: must STAY 404.
+  // pc === 4 — production 404 (or other 4xx). Only an explicitly opted-in
+  // `ok` fixture may expand the public route surface, after its direct,
+  // canonical, and schema contracts above have passed. Every other fixture
+  // must preserve the 4xx baseline.
+  if (
+    fixture?.expect === "ok" &&
+    fixture.allowProductionNotFound === true &&
+    vc === 2
+  ) {
+    return {
+      outcome: "acceptable",
+      note: `intentional route expansion: prod ${production.status} → preview direct ${preview.status}`,
+    }
+  }
+
   if (vc === 4) {
     return { outcome: "match", note: `404 preserved (${preview.status})` }
   }
@@ -380,6 +706,220 @@ export const HARD_FAIL_OUTCOMES: ReadonlySet<ProbeOutcome> = new Set([
 
 export const MAX_REDIRECT_HOPS = 5
 const DEFAULT_TIMEOUT_MS = 10_000
+
+export function parseJsonLdScripts(html: string): {
+  scriptCount: number
+  types: string[]
+  parseErrors: string[]
+  pageUrls: string[]
+  videoObjects: VideoObjectIdentity[]
+} {
+  const scripts = Array.from(
+    html.matchAll(
+      /<script\b[^>]*\btype=(?:"application\/ld\+json"|'application\/ld\+json')[^>]*>([\s\S]*?)<\/script>/gi,
+    ),
+  )
+  const types: string[] = []
+  const parseErrors: string[] = []
+  const pageUrls: string[] = []
+  const videoObjects: VideoObjectIdentity[] = []
+
+  for (const [index, match] of scripts.entries()) {
+    try {
+      const parsed = JSON.parse(match[1] ?? "") as unknown
+      types.push(...collectJsonLdTypes(parsed))
+      pageUrls.push(...collectJsonLdPageUrls(parsed))
+      videoObjects.push(...collectJsonLdVideoObjects(parsed))
+    } catch (error) {
+      parseErrors.push(
+        `script ${index + 1}: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
+
+  return {
+    scriptCount: scripts.length,
+    types,
+    parseErrors,
+    pageUrls,
+    videoObjects,
+  }
+}
+
+function ownJsonLdTypes(record: Record<string, unknown>): string[] {
+  const type = record["@type"]
+  return typeof type === "string"
+    ? [type]
+    : Array.isArray(type)
+      ? type.filter((entry): entry is string => typeof entry === "string")
+      : []
+}
+
+function collectJsonLdTypes(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(collectJsonLdTypes)
+  }
+  if (typeof value !== "object" || value == null) return []
+
+  const record = value as Record<string, unknown>
+  return [
+    ...ownJsonLdTypes(record),
+    ...Object.values(record).flatMap((entry) => collectJsonLdTypes(entry)),
+  ]
+}
+
+function collectJsonLdPageUrls(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(collectJsonLdPageUrls)
+  if (typeof value !== "object" || value == null) return []
+
+  const record = value as Record<string, unknown>
+  const ownTypes = ownJsonLdTypes(record)
+  const ownUrl =
+    ownTypes.some(
+      (type) => type === "VideoObject" || type === "CollectionPage",
+    ) && typeof record.url === "string"
+      ? [record.url]
+      : []
+  return [
+    ...ownUrl,
+    ...Object.values(record).flatMap((entry) => collectJsonLdPageUrls(entry)),
+  ]
+}
+
+function collectJsonLdVideoObjects(value: unknown): VideoObjectIdentity[] {
+  if (Array.isArray(value)) return value.flatMap(collectJsonLdVideoObjects)
+  if (typeof value !== "object" || value == null) return []
+
+  const record = value as Record<string, unknown>
+  const identity = ownJsonLdTypes(record).includes("VideoObject")
+    ? [
+        {
+          name: typeof record.name === "string" ? record.name : null,
+          url: typeof record.url === "string" ? record.url : null,
+          contentUrl:
+            typeof record.contentUrl === "string" ? record.contentUrl : null,
+        },
+      ]
+    : []
+  return [
+    ...identity,
+    ...Object.values(record).flatMap(collectJsonLdVideoObjects),
+  ]
+}
+
+export function primaryVideoIdentityViolations(
+  contextual: ProbeResult,
+  standalone: ProbeResult,
+): string[] {
+  const contextualVideos = contextual.structuredData?.videoObjects ?? []
+  const standaloneVideos = standalone.structuredData?.videoObjects ?? []
+  const violations: string[] = []
+  if (contextualVideos.length !== 1) {
+    violations.push(
+      `contextual page expected exactly 1 VideoObject identity, found ${contextualVideos.length}`,
+    )
+  }
+  if (standaloneVideos.length !== 1) {
+    violations.push(
+      `standalone page expected exactly 1 VideoObject identity, found ${standaloneVideos.length}`,
+    )
+  }
+  const contextualVideo = contextualVideos[0]
+  const standaloneVideo = standaloneVideos[0]
+  if (!contextualVideo || !standaloneVideo) return violations
+
+  for (const field of ["name", "contentUrl"] as const) {
+    if (
+      !contextualVideo[field] ||
+      contextualVideo[field] !== standaloneVideo[field]
+    ) {
+      violations.push(
+        `primary video ${field} differs: contextual ${contextualVideo[field] ?? "missing"}, standalone ${standaloneVideo[field] ?? "missing"}`,
+      )
+    }
+  }
+  return violations
+}
+
+function htmlAttribute(tag: string, name: string): string | null {
+  const match = tag.match(
+    new RegExp(`\\b${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)'|([^\\s>]+))`, "i"),
+  )
+  const value = match?.[1] ?? match?.[2] ?? match?.[3]
+  if (value == null) return null
+  return value.replace(
+    /&(amp|quot|#39);/g,
+    (_entityReference, entity: string) => {
+      if (entity === "amp") return "&"
+      if (entity === "quot") return '"'
+      return "'"
+    },
+  )
+}
+
+export function parseDocumentIdentity(html: string): {
+  canonicalUrl: string | null
+  canonicalUrls: string[]
+  openGraphUrl: string | null
+} {
+  const linkTags = Array.from(html.matchAll(/<link\b[^>]*>/gi), ([tag]) => tag)
+  const canonicalUrls = linkTags.flatMap((tag) =>
+    (htmlAttribute(tag, "rel") ?? "")
+      .toLowerCase()
+      .split(/\s+/)
+      .includes("canonical")
+      ? [htmlAttribute(tag, "href")].filter(
+          (href): href is string => href != null,
+        )
+      : [],
+  )
+  const metaTags = Array.from(html.matchAll(/<meta\b[^>]*>/gi), ([tag]) => tag)
+  const openGraphTag = metaTags.find(
+    (tag) =>
+      (
+        htmlAttribute(tag, "property") ?? htmlAttribute(tag, "name")
+      )?.toLowerCase() === "og:url",
+  )
+
+  return {
+    canonicalUrl: canonicalUrls[0] ?? null,
+    canonicalUrls,
+    openGraphUrl: openGraphTag ? htmlAttribute(openGraphTag, "content") : null,
+  }
+}
+
+/**
+ * Returns the schema contract violations in a complete initial response.
+ * Missing HTML/JSON-LD is intentionally treated as zero entities, so a route
+ * that drops a required script cannot quietly pass the CLI gate.
+ */
+export function validateStructuredDataContract(
+  structuredData: ProbeResult["structuredData"],
+  contract: StructuredDataContract,
+): string[] {
+  const typeCounts = new Map<string, number>()
+  for (const type of structuredData?.types ?? []) {
+    typeCounts.set(type, (typeCounts.get(type) ?? 0) + 1)
+  }
+
+  const violations: string[] = []
+  for (const [type, expectedCount] of Object.entries(contract.required)) {
+    const actualCount = typeCounts.get(type) ?? 0
+    if (actualCount !== expectedCount) {
+      violations.push(
+        `expected exactly ${expectedCount} ${type}, found ${actualCount}`,
+      )
+    }
+  }
+  for (const type of contract.forbidden) {
+    const actualCount = typeCounts.get(type) ?? 0
+    if (actualCount > 0) {
+      violations.push(`forbidden ${type} found ${actualCount} time(s)`)
+    }
+  }
+
+  return violations
+}
 
 /**
  * Fetch `${origin}${path}`, manually following up to MAX_REDIRECT_HOPS
@@ -416,11 +956,18 @@ export async function probeUrl(
         continue
       }
 
+      const contentType = res.headers.get("content-type") ?? ""
+      const html = contentType.includes("text/html") ? await res.text() : null
+      const structuredData = html ? parseJsonLdScripts(html) : undefined
+      const documentIdentity = html ? parseDocumentIdentity(html) : undefined
+
       return {
         status: res.status,
         finalPath: new URL(currentUrl).pathname,
         redirectHops: hops,
         ms: Date.now() - start,
+        ...(structuredData && { structuredData }),
+        ...(documentIdentity && { documentIdentity }),
       }
     }
   } catch (err) {

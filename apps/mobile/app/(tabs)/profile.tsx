@@ -1,5 +1,5 @@
-import { PlaceholderScreen } from "../../src/components/ui/PlaceholderScreen"
+import { MyWatchScreen } from "../../src/components/profile/MyWatchScreen"
 
 export default function ProfileScreen() {
-  return <PlaceholderScreen title="Profile" />
+  return <MyWatchScreen />
 }

@@ -1,0 +1,33 @@
+{
+  "projectId": "example-short",
+  "expectedRevision": 4,
+  "idempotencyKey": "example-feedback-1",
+  "operations": [
+    {
+      "kind": "set-text",
+      "itemId": "hook-1",
+      "text": "Make room for kindness."
+    },
+    {
+      "kind": "set-speech",
+      "itemId": "hook-1",
+      "speech": {
+        "text": "Make a little room for kindness today.",
+        "role": "narrator",
+        "suppressed": false,
+        "voice": {
+          "assetId": "example-approved-voice",
+          "versionId": "example-approved-voice-v1",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "provider": "elevenlabs",
+        "model": "eleven_multilingual_v2",
+        "settings": {
+          "stability": 0.5,
+          "similarity_boost": 0.75
+        },
+        "pronunciation": null
+      }
+    }
+  ]
+}

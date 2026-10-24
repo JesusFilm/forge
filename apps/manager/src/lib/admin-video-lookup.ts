@@ -54,9 +54,16 @@ export type VideoForEnrichment = {
   id: string
   coreId: string
   label: string | null
+  targetLocale?: string | null
   primaryLanguageBcp47: string | null
+  languageBcp47?: string | null
   muxAssetId: string | null
   subtitleUrl: string | null
+}
+
+export type AdminVideoLookupRequest = {
+  coreId: string
+  targetLocale?: string | null
 }
 
 export type AdminVideoLookupEnvelope =
@@ -89,12 +96,14 @@ export type AdminVideoLookupEnvelope =
     }
 
 const VIDEOS_BY_CORE_IDS_QUERY = /* GraphQL */ `
-  query VideosByCoreIds($coreIds: [String!]!) {
-    videosByCoreIds(coreIds: $coreIds) {
+  query VideosByCoreIds($coreIds: [String!]!, $targetLocale: String) {
+    videosByCoreIds(coreIds: $coreIds, targetLocale: $targetLocale) {
       id
       coreId
       label
+      targetLocale
       primaryLanguageBcp47
+      languageBcp47
       muxAssetId
       subtitleUrl
     }
@@ -123,8 +132,9 @@ type LookupRowsResult =
  * same shape the previous Strapi lookup had).
  */
 export async function lookupVideosByCoreIdFromAdmin(
-  coreIds: readonly string[],
+  input: readonly string[] | readonly AdminVideoLookupRequest[],
 ): Promise<AdminVideoLookupEnvelope> {
+  const requests = normalizeLookupRequests(input)
   // Config check FIRST so a misconfigured environment surfaces as
   // `config_missing` even on degenerate empty input — masking the
   // misconfig behind a happy-path empty Map would hide a real
@@ -145,11 +155,11 @@ export async function lookupVideosByCoreIdFromAdmin(
   // Empty input is cheap to short-circuit after the config check —
   // skip the network round-trip but only once the operator has
   // confirmed env is wired.
-  if (coreIds.length === 0) {
+  if (requests.length === 0) {
     return { ok: true, data: new Map() }
   }
 
-  const restEnvelope = await lookupVideosByCoreIdFromAdminRest(coreIds, {
+  const restEnvelope = await lookupVideosByCoreIdFromAdminRest(requests, {
     adminGraphqlUrl,
     adminEmbedTriggerApiKey,
   })
@@ -161,7 +171,7 @@ export async function lookupVideosByCoreIdFromAdmin(
   // route exists, keep the original GraphQL contract working. Any other
   // REST failure should surface directly so operators see the typed
   // failure rather than hiding it behind a second request.
-  return lookupVideosByCoreIdFromAdminGraphql(coreIds, {
+  return lookupVideosByCoreIdFromAdminGraphql(requests, {
     adminGraphqlUrl,
     adminEmbedTriggerApiKey,
   })
@@ -182,7 +192,7 @@ function adminRestLookupUrl(adminGraphqlUrl: string): string {
 }
 
 async function lookupVideosByCoreIdFromAdminRest(
-  coreIds: readonly string[],
+  requests: readonly AdminVideoLookupRequest[],
   config: {
     adminGraphqlUrl: string
     adminEmbedTriggerApiKey: string
@@ -196,7 +206,15 @@ async function lookupVideosByCoreIdFromAdminRest(
         "content-type": "application/json",
         authorization: `Bearer ${config.adminEmbedTriggerApiKey}`,
       },
-      body: JSON.stringify({ coreIds }),
+      // Include legacy `coreIds` for Manager-first deploys against the
+      // already-existing Admin REST route. New Admin prefers `items`;
+      // old Admin ignores it and returns source-language rows keyed
+      // without targetLocale, so localized requests still fail closed
+      // as not_found instead of spoofing source artifacts.
+      body: JSON.stringify({
+        coreIds: requests.map((request) => request.coreId),
+        items: requests,
+      }),
       signal: AbortSignal.timeout(ADMIN_FETCH_TIMEOUT_MS),
     })
   } catch (error) {
@@ -272,12 +290,34 @@ async function lookupVideosByCoreIdFromAdminRest(
 }
 
 async function lookupVideosByCoreIdFromAdminGraphql(
-  coreIds: readonly string[],
+  requests: readonly AdminVideoLookupRequest[],
   config: {
     adminGraphqlUrl: string
     adminEmbedTriggerApiKey: string
   },
 ): Promise<AdminVideoLookupEnvelope> {
+  const rows: VideoForEnrichment[] = []
+  for (const group of groupLookupRequestsByTargetLocale(requests)) {
+    const envelope = await lookupVideosByCoreIdFromAdminGraphqlGroup(
+      group,
+      config,
+    )
+    if (!envelope.ok) return envelope
+    rows.push(...envelope.rows)
+  }
+  return { ok: true, data: rowsToMap(rows) }
+}
+
+async function lookupVideosByCoreIdFromAdminGraphqlGroup(
+  group: { targetLocale: string | null; coreIds: string[] },
+  config: {
+    adminGraphqlUrl: string
+    adminEmbedTriggerApiKey: string
+  },
+): Promise<
+  | { ok: true; rows: VideoForEnrichment[] }
+  | Exclude<AdminVideoLookupEnvelope, { ok: true }>
+> {
   let response: Response
   try {
     response = await fetch(config.adminGraphqlUrl, {
@@ -288,7 +328,10 @@ async function lookupVideosByCoreIdFromAdminGraphql(
       },
       body: JSON.stringify({
         query: VIDEOS_BY_CORE_IDS_QUERY,
-        variables: { coreIds },
+        variables: {
+          coreIds: group.coreIds,
+          targetLocale: group.targetLocale,
+        },
       }),
       signal: AbortSignal.timeout(ADMIN_FETCH_TIMEOUT_MS),
     })
@@ -350,13 +393,71 @@ async function lookupVideosByCoreIdFromAdminGraphql(
   const validatedRows = validateLookupRows(rows, "GraphQL", response.status)
   if (!validatedRows.ok) return validatedRows
 
-  return { ok: true, data: rowsToMap(validatedRows.rows) }
+  return {
+    ok: true,
+    rows: validatedRows.rows.map((row) => ({
+      ...row,
+      targetLocale: row.targetLocale ?? group.targetLocale,
+    })),
+  }
 }
 
 function rowsToMap(rows: readonly VideoForEnrichment[]) {
   const data = new Map<string, VideoForEnrichment>()
-  for (const row of rows) data.set(row.coreId, row)
+  for (const row of rows) {
+    data.set(videoLookupKey(row.coreId, row.targetLocale ?? null), row)
+  }
   return data
+}
+
+export function videoLookupKey(
+  coreId: string,
+  targetLocale: string | null | undefined,
+): string {
+  const normalizedTargetLocale = normalizeTargetLocale(targetLocale)
+  return normalizedTargetLocale
+    ? `${coreId}::${normalizedTargetLocale}`
+    : coreId
+}
+
+function normalizeLookupRequests(
+  input: readonly string[] | readonly AdminVideoLookupRequest[],
+): AdminVideoLookupRequest[] {
+  return input.map((item) =>
+    typeof item === "string"
+      ? { coreId: item, targetLocale: null }
+      : {
+          coreId: item.coreId,
+          targetLocale: normalizeTargetLocale(item.targetLocale),
+        },
+  )
+}
+
+function normalizeTargetLocale(
+  value: string | null | undefined,
+): string | null {
+  const normalized = value?.trim()
+  return normalized && normalized.length > 0 ? normalized.toLowerCase() : null
+}
+
+function groupLookupRequestsByTargetLocale(
+  requests: readonly AdminVideoLookupRequest[],
+): Array<{ targetLocale: string | null; coreIds: string[] }> {
+  const groups = new Map<
+    string,
+    { targetLocale: string | null; coreIds: string[] }
+  >()
+  for (const request of requests) {
+    const targetLocale = normalizeTargetLocale(request.targetLocale)
+    const key = targetLocale ?? ""
+    let group = groups.get(key)
+    if (!group) {
+      group = { targetLocale, coreIds: [] }
+      groups.set(key, group)
+    }
+    group.coreIds.push(request.coreId)
+  }
+  return [...groups.values()]
 }
 
 function validateLookupRows(
@@ -395,7 +496,9 @@ function isVideoForEnrichment(value: unknown): value is VideoForEnrichment {
     typeof row.id === "string" &&
     typeof row.coreId === "string" &&
     isNullableString(row.label) &&
+    (row.targetLocale === undefined || isNullableString(row.targetLocale)) &&
     isNullableString(row.primaryLanguageBcp47) &&
+    (row.languageBcp47 === undefined || isNullableString(row.languageBcp47)) &&
     isNullableString(row.muxAssetId) &&
     isNullableString(row.subtitleUrl)
   )

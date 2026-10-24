@@ -87,6 +87,14 @@ const WorkflowSuccessSchema = z
         locale: z.string(),
       })
       .strict(),
+    providerTokens: z.number().int().nonnegative(),
+    model: z.string(),
+    provider: z.string(),
+    dimensions: z.number().int().positive(),
+    nativeDimensions: z.number().int().positive().optional(),
+    transformVersion: z.string().optional(),
+    mastraRunId: z.string(),
+    sourceContentHash: z.string(),
   })
   .strict()
 
@@ -134,6 +142,8 @@ type PlannedRun = {
 type EmbeddedRun = PlannedRun & {
   embedding: number[]
   dimensions: number
+  nativeDimensions?: number
+  transformVersion?: string
   providerTokenCount: number
 }
 export type ExperienceEmbeddingWorkflowResult = z.infer<
@@ -355,6 +365,7 @@ export function planExperienceEmbeddingRun(
   },
 ): PlannedRun {
   const input = ExperienceEmbeddingWorkflowInputSchema.parse(rawInput)
+  const providerConfig = getExperienceEmbeddingProviderConfig()
   if (sha256Text(input.source.text) !== input.source.contentHash) {
     throw new Error("source hash mismatch")
   }
@@ -363,8 +374,8 @@ export function planExperienceEmbeddingRun(
     source: input.source,
     mode: input.mode,
     model: {
-      name: input.model?.name ?? env.EXPERIENCE_EMBEDDING_MODEL,
-      provider: input.model?.provider ?? env.EXPERIENCE_EMBEDDING_PROVIDER,
+      name: input.model?.name ?? providerConfig.model,
+      provider: input.model?.provider ?? providerConfig.provider,
     },
     generation: {
       generatedAt: options.generatedAt ?? new Date().toISOString(),
@@ -392,9 +403,13 @@ export async function embedPlannedExperience(
             model: planned.model.name,
             provider: planned.model.provider,
             expectedDimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
+            expectedNativeDimensions: providerConfig.expectedNativeDimensions,
+            truncateToDimensions: providerConfig.truncateToDimensions,
+            transformVersion: providerConfig.transformVersion,
+            userAgent: providerConfig.userAgent,
             context: "Experience embedding",
             itemLabel: "experience source",
-            timeoutMs: options.timeoutMs,
+            timeoutMs: options.timeoutMs ?? providerConfig.timeoutMs,
             fetchImpl: options.fetchImpl,
           })
       return validateEmbeddingProviderResult(rawResult, 1, {
@@ -411,6 +426,8 @@ export async function embedPlannedExperience(
     ...planned,
     embedding: result.embeddings[0]!,
     dimensions: EXPECTED_EXPERIENCE_EMBEDDING_DIMENSIONS,
+    nativeDimensions: result.nativeDimensions,
+    transformVersion: result.transformVersion,
     providerTokenCount: result.tokenCount,
   }
 }
@@ -428,6 +445,12 @@ function toAdminPayload(
       name: embedded.model.name,
       provider: embedded.model.provider,
       dimensions: embedded.dimensions,
+      ...(embedded.nativeDimensions
+        ? { nativeDimensions: embedded.nativeDimensions }
+        : {}),
+      ...(embedded.transformVersion
+        ? { transformVersion: embedded.transformVersion }
+        : {}),
     },
     generation: {
       mode: embedded.mode as ExperienceEmbeddingGenerationMode,
@@ -439,6 +462,7 @@ function toAdminPayload(
 }
 
 function successFromAdminResult(
+  embedded: EmbeddedRun,
   result: AdminExperienceEmbeddingIngestResult,
 ): ExperienceEmbeddingWorkflowResult {
   if (result.status === "rejected") {
@@ -453,6 +477,14 @@ function successFromAdminResult(
     ok: true,
     status: result.status,
     target: result.target,
+    providerTokens: embedded.providerTokenCount,
+    model: result.model,
+    provider: embedded.model.provider,
+    dimensions: result.dimensions,
+    nativeDimensions: embedded.nativeDimensions,
+    transformVersion: embedded.transformVersion,
+    mastraRunId: embedded.generation.mastraRunId,
+    sourceContentHash: embedded.source.contentHash,
   }
 }
 
@@ -477,7 +509,7 @@ export async function submitExperienceEmbeddingRun(
   )
 
   if (result.ok) {
-    return successFromAdminResult(result.result)
+    return successFromAdminResult(embedded, result.result)
   }
   if (result.reason === "config_missing") {
     return failure("admin_config_missing", {

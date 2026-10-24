@@ -3,7 +3,7 @@ id: "feat-127"
 title: "Manager durable admin-trigger job state for operator enrichment"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-19"
 duration: 2
 depends_on:
@@ -17,6 +17,16 @@ tags:
   - "operator-tools"
   - "reliability"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. Durable admin-trigger job state was not delivered;
+the current Manager trigger still uses process-local queue and in-flight state
+that disappears on restart. This ticket is being shelved because its primary
+consumer, the `feat-125` full-catalog operator surface, is also cancelled and
+scene enrichment was retired. If broad enrichment triggering returns, durable
+accepted-job state and restart semantics should be planned as part of that
+current workflow rather than revived from this design unchanged.
 
 ## Problem
 

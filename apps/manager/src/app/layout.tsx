@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import "./globals.css"
 import { GlobalShell } from "./global-shell"
+import { MANAGER_THEME_INITIALIZER } from "@/lib/manager-theme"
 
 export const metadata: Metadata = {
   title: "Studio",
@@ -17,7 +18,12 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: MANAGER_THEME_INITIALIZER }}
+        />
+      </head>
       <body>
         <GlobalShell>{children}</GlobalShell>
       </body>

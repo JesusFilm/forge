@@ -19,7 +19,7 @@ related:
   - "docs/solutions/platform/mastra-embedding-workflow-ownership-pattern.md"
   - "docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md"
   - "docs/solutions/platform/admin-scene-embeddings-indexer-pattern.md"
-  - "docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md"
+  - "docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md"
   - "docs/solutions/architecture-patterns/parity-bearer-narrow-carveout-pattern-20260513.md"
 date_learned: 2026-05-25
 ---
@@ -214,6 +214,6 @@ curl 'http://localhost:3003/api/search?q=ultimate%20coach%20game%20plan&locale=e
   documents the pre-Mastra vector-reuse migration. Treat it as historical for
   transcript generation, but its bulk pgvector writer and search-index notes are
   still relevant.
-- `docs/solutions/platform/admin-mixed-video-semantic-evidence-pattern-20260521.md`
-  documents why transcript evidence stays inside Admin's existing
-  `semantic-video` retriever.
+- `docs/solutions/architecture-patterns/admin-semantic-video-transcript-evidence-pattern.md`
+  documents why Admin keeps the public `semantic-video` retriever label while
+  backing it with enriched transcript chunks.

@@ -1,57 +1,115 @@
+import { signWatchSurfaceManifest } from "@/lib/watch-surface-manifest.server"
+import {
+  watchVideoSurfaceSources,
+  watchSeriesEpisodesSource,
+} from "@/lib/watch-surface-manifest.sources"
 import type { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
-import { setRequestLocale } from "next-intl/server"
+import { NextIntlClientProvider } from "next-intl"
+import { getTranslations, setRequestLocale } from "next-intl/server"
+import type { ReactNode } from "react"
+
+import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
 
 import { ExperienceEmpty } from "@/components/ExperienceEmpty"
 import { ExperienceError } from "@/components/ExperienceError"
 import { ExperienceSectionRenderer, type Section } from "@/components/sections"
+import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceRegistration"
+import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
+import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
+import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
+import { resolveDownloadSequence } from "@/components/watch/download-link"
 import {
   isSeriesRecord,
   isWatchPageMissingError,
   mergeWatchExperience,
-  resolveSeriesBySlug,
+  rankSelectableCarouselParents,
+  type CarouselParent,
+  type MergedWatchBlock,
   resolveSeriesEpisodeBySlug,
+  resolveWatchRouteBySlug,
   resolveWatchExperiencePage,
   resolveWatchPage,
-  resolveWatchVideoBySlug,
+  watchExperienceBlocks,
+  type WatchVariant,
+  type WatchVideoRecord,
 } from "@/lib/content"
 import {
+  buildWatchVideoMetadataModel,
   generateSeriesMetadata,
+  generateWatchVideoMetadata,
   getWatchPageMetadata,
+  getWatchRouteFallbackMetadata,
 } from "@/lib/experience-metadata"
+import { resolveWatchHome } from "@/lib/watch-home"
 import {
+  isWatchAudienceEnabled,
   isWatchCtaTextCopyEnabled,
+  isWatchHideBibleQuotesEnabled,
   isWatchQuestionPanelEnabled,
-  isWatchYouVersionBibleQuotesEnabled,
 } from "@/lib/feature-flags"
 import {
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  publicWatchAudioLanguageSlugForLocale,
   resolveWatchLocaleIdentity,
+  correctedBcp47,
+  slugToBcp47Tag,
   type UiLocale,
 } from "@/lib/locale"
 import {
+  languageVideosIndexPath,
+  localizedHomePath,
+  parseWatchSubtitleIntentSegment,
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  watchEpisodePath,
+  watchEpisodeExplicitLanguagePath,
   watchVideoPath,
 } from "@/lib/routes"
+import { SAFE_SLUG_PATTERN, stripHtmlSuffix } from "@/lib/url-shape"
 import {
-  isOneSegmentCollectionSlug,
-  SAFE_SLUG_PATTERN,
-  stripHtmlSuffix,
-} from "@/lib/url-shape"
-import { fetchYouVersionBibleQuotePassages } from "@/lib/youversion-passage"
+  watchHomeCollectionStructuredDataJson,
+  watchRelatedItemListStructuredDataJson,
+  watchSeriesCollectionStructuredDataJson,
+  watchVideoStructuredDataJson,
+} from "@/lib/watch-structured-data"
+import { projectWatchHomeVisibleContent } from "@/lib/watch-home-visible-content"
+import { logWatchServerEvent } from "@/lib/watch-observability"
+import {
+  getWatchRouteManifest,
+  getWatchNestedContainerAudioLanguageSlugs,
+  isWatchAudioLanguageSlug,
+  isWatchEpisodeRouteExactlyAdmittedByManifest,
+  isWatchNestedContainerRouteAdmittedByManifest,
+  isWatchRouteAdmittedByManifest,
+  type WatchRouteManifest,
+} from "@/lib/watch-route-manifest"
+import { resolveSeriesLanguageIdentity } from "@/lib/series-language"
+import { getInitialSubtitleTranscript } from "@/lib/watch-transcript"
+import {
+  loadClientMessages,
+  WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+} from "@/i18n/client-messages"
+import type { WatchRouteSurface } from "@/components/FloatingSearchContext"
 
-// ISR: pages cached for 60s. Cookie-driven language redirect lives in
+// ISR: pages cached for 1 hour. Cookie-driven language redirect lives in
 // apps/web/src/proxy.ts (middleware) — keeping cookies() out of this page
 // route preserves ISR for the majority of traffic without the preference
-// cookie. See docs/solutions/web/nextjs-headers-defeats-route-cache.md.
-export const revalidate = 60
+// cookie. Admin revalidation clears both route paths and tagged resolver data;
+// the route TTL is the fallback when a webhook or process-local invalidation is
+// missed. Subtitle intent is encoded by the proxy as a validated internal-only
+// trailing segment because Next empties searchParams under force-static.
+// Keep the build output clean so runtime ISR artifacts from old deploys cannot
+// be packaged as fresh pages. See
+// docs/solutions/web/nextjs-headers-defeats-route-cache.md.
+export const revalidate = 3600
 export const dynamic = "force-static"
 export const dynamicParams = true
 
@@ -63,12 +121,234 @@ export function generateStaticParams(): Array<{
   return []
 }
 
+function pruneWatchVideoForClient(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): WatchVideoRecord {
+  const selected =
+    video.variants.find(
+      (variant) => variant.documentId === selectedVariant.documentId,
+    ) ?? selectedVariant
+  return {
+    ...video,
+    parents: [],
+    children: [],
+    childDubLanguages: [],
+    variants: [pruneWatchVariantForClient(selected)],
+    studyQuestions: [],
+    bibleCitations: [],
+  }
+}
+
+function pruneWatchVariantForClient(variant: WatchVariant): WatchVariant {
+  return {
+    ...variant,
+    // `video.subtitles` is the canonical client-side subtitle list. Keeping
+    // the selected variant's full edition subtitle payload duplicates every
+    // track in the RSC stream and initial HTML.
+    videoEdition: null,
+  }
+}
+
+function pruneMergedWatchBlocksForClient(
+  blocks: MergedWatchBlock[],
+  selectedVariant: WatchVariant,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
+): MergedWatchBlock[] {
+  return blocks.map((block) => {
+    if (!("kind" in block)) return block
+    switch (block.kind) {
+      case "HeroPlayer":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+          variant: pruneWatchVariantForClient(block.variant),
+          audioLanguageCountLabel: languageCountLabel(
+            block.playableLanguageCount,
+            formatAvailabilityCounts.audio,
+          ),
+          subtitleLanguageCountLabel: languageCountLabel(
+            block.video.subtitles.length,
+            formatAvailabilityCounts.subtitles,
+          ),
+        }
+      case "WatchBody":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+          variant: pruneWatchVariantForClient(block.variant),
+        }
+      case "Share":
+        return {
+          ...block,
+          video: pruneWatchVideoForClient(block.video, selectedVariant),
+        }
+      default:
+        return block
+    }
+  })
+}
+
+type AvailabilityCountFormatters = {
+  audio: (count: number) => string
+  subtitles: (count: number) => string
+}
+
+function languageCountLabel(
+  count: number | null | undefined,
+  formatLanguageCount: (count: number) => string,
+): string | null {
+  return typeof count === "number" && Number.isFinite(count) && count > 0
+    ? formatLanguageCount(count)
+    : null
+}
+
+function withCompatibilityAdmittedCarouselChildren<T extends CarouselParent>(
+  parent: T,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): T {
+  // Preserve the existing fail-open behavior during a manifest outage. The
+  // manifest is the exact selected-language route contract when available;
+  // muxPlaybackId is not, because Admin may fall back to another language.
+  if (!manifest) return parent
+
+  const parentSlug = tryAsContentSlug(parent.slug ?? "")
+  const children = parentSlug
+    ? parent.children.filter((child) => {
+        const childSlug = tryAsContentSlug(child.slug ?? "")
+        return (
+          childSlug != null &&
+          isWatchRouteAdmittedByManifest(manifest, {
+            kind: "episode",
+            parentSlug,
+            childSlug,
+            audioLanguageSlug: languageSlug,
+          })
+        )
+      })
+    : []
+
+  return children.length === parent.children.length
+    ? parent
+    : { ...parent, children }
+}
+
+function withCompatibilityAdmittedVideoChildren(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): WatchVideoRecord {
+  const filteredParent = withCompatibilityAdmittedCarouselChildren(
+    {
+      documentId: video.documentId,
+      slug: video.slug,
+      title: video.title,
+      children: video.children,
+    },
+    languageSlug,
+    manifest,
+  )
+
+  return filteredParent.children === video.children
+    ? video
+    : { ...video, children: filteredParent.children }
+}
+
+function withStandaloneAdmittedVideoChildren(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): {
+  video: WatchVideoRecord
+  carouselVideo: WatchVideoRecord
+} {
+  if (!manifest) return { video, carouselVideo: video }
+
+  const parentSlug = tryAsContentSlug(video.slug ?? "")
+  const compatibilityChildren: WatchVideoRecord["children"] = []
+  const exactChildren: WatchVideoRecord["children"] = []
+
+  if (parentSlug) {
+    for (const child of video.children) {
+      const childSlug = tryAsContentSlug(child.slug ?? "")
+      if (!childSlug) continue
+
+      const route = {
+        kind: "episode" as const,
+        parentSlug,
+        childSlug,
+        audioLanguageSlug: languageSlug,
+      }
+      if (isWatchRouteAdmittedByManifest(manifest, route)) {
+        compatibilityChildren.push(child)
+      }
+      if (isWatchEpisodeRouteExactlyAdmittedByManifest(manifest, route)) {
+        exactChildren.push(child)
+      }
+    }
+  }
+
+  return {
+    video:
+      compatibilityChildren.length === video.children.length
+        ? video
+        : { ...video, children: compatibilityChildren },
+    carouselVideo:
+      exactChildren.length === video.children.length
+        ? video
+        : { ...video, children: exactChildren },
+  }
+}
+
+function selectableParentsForStandaloneVideo(
+  video: WatchVideoRecord,
+  languageSlug: string,
+  manifest: WatchRouteManifest | null,
+): CarouselParent[] {
+  if (!manifest) return []
+
+  return video.parents.flatMap((parent) => {
+    const parentSlug = tryAsContentSlug(parent.slug ?? "")
+    if (!parentSlug) return []
+
+    const filteredParent = withCompatibilityAdmittedCarouselChildren(
+      { ...parent, slug: parentSlug },
+      languageSlug,
+      manifest,
+    )
+    const { children } = filteredParent
+
+    if (
+      children.length < 2 ||
+      !children.some((child) => child.documentId === video.documentId)
+    ) {
+      return []
+    }
+
+    return [
+      {
+        documentId: filteredParent.documentId,
+        slug: parentSlug,
+        title: filteredParent.title,
+        children,
+        // Load-bearing, not decorative: `rankSelectableCarouselParents` reads
+        // this to open the carousel on the film/series a video is a chapter of
+        // rather than on whichever collection lists it earliest. Dropping it
+        // silently reverts to admin's VideoRelation.order.
+        label: filteredParent.label,
+      },
+    ]
+  })
+}
+
 // Catch-all dispatcher for the one-, two-, and three-segment watch URL shapes.
 // The proxy prepends internal /[locale]/[htmlLang] segments for static layout
 // params, but params.rest preserves the original public path verbatim:
 //
 //   rest.length === 1 → /{lang-or-collection}.html
-//   rest.length === 2 → /{slug}.html/{lang}.html
+//   rest.length === 2 → /{slug}.html/{lang}.html or
+//                       /{series}.html/{episode}.html (default English)
 //   rest.length === 3 → /{series}.html/{episode}/{lang}.html
 //
 // Any other length 404s before resolver calls so malformed paths don't mint
@@ -91,23 +371,89 @@ type Shape =
       episodeSlug: string
       rawLocale: string
       locale: UiLocale
+      implicitEnglish: boolean
     }
   | { kind: "unknown" }
 
 function stripSafeSegment(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    // Catch-all params can contain UTF-8 percent escapes after Next parses the
+    // internal rewrite. Keep encoded separators/reserved characters encoded so
+    // the safe slug grammar still rejects them.
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
-function classify(rest: string[], internalLocale: UiLocale): Shape {
+function routeIntentFromRest(rest: string[]) {
+  const lastSegment = rest.at(-1)
+  const subtitleLanguageSlug = lastSegment
+    ? parseWatchSubtitleIntentSegment(lastSegment)
+    : null
+  return subtitleLanguageSlug
+    ? { rest: rest.slice(0, -1), subtitleLanguageSlug }
+    : { rest, subtitleLanguageSlug: null }
+}
+
+function resolveWatchRouteWithSubtitleIntent(
+  slug: string,
+  audioLanguageSlug: string,
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+) {
+  return subtitleLanguageSlug
+    ? resolveWatchRouteBySlug(slug, audioLanguageSlug, subtitleLanguageSlug)
+    : resolveWatchRouteBySlug(slug, audioLanguageSlug)
+}
+
+function resolveEpisodeWithSubtitleIntent(
+  seriesSlug: string,
+  episodeSlug: string,
+  audioLanguageSlug: string,
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+) {
+  return subtitleLanguageSlug
+    ? resolveSeriesEpisodeBySlug(
+        seriesSlug,
+        episodeSlug,
+        audioLanguageSlug,
+        subtitleLanguageSlug,
+      )
+    : resolveSeriesEpisodeBySlug(seriesSlug, episodeSlug, audioLanguageSlug)
+}
+
+type WatchRouteManifestGetter = () => Promise<WatchRouteManifest | null>
+
+/**
+ * Segment-count dispatch. The manifest is consulted for exactly one decision:
+ * whether an ambiguous `.html` segment is an audio-language slug. It mirrors
+ * `classifyRewrite` in `src/proxy.ts`; the two must agree or a URL the proxy
+ * admitted as a video renders here as a failed implicit-English episode.
+ *
+ * The manifest is awaited ONLY when the compiled corpus does not already
+ * recognize the segment, so the common path never serializes content
+ * resolution behind the manifest request (the render branches start both
+ * concurrently). In production the proxy has just fetched it, so the await
+ * is normally served from the 60s in-process cache.
+ */
+async function classify(
+  rest: string[],
+  internalLocale: UiLocale,
+  getManifest: WatchRouteManifestGetter,
+): Promise<Shape> {
+  const isAudioLanguageSlug = async (slug: string): Promise<boolean> =>
+    isPublicWatchLanguageSlug(slug) ||
+    isWatchAudioLanguageSlug(slug, await getManifest())
   if (rest.length === 1) {
     const slug = stripSafeSegment(rest[0])
     if (!slug) return { kind: "unknown" }
     if (isLocale(slug)) return { kind: "unknown" }
     const isLanguageHome = isPublicWatchHomeLanguageSlug(slug)
-    if (!isLanguageHome && !isOneSegmentCollectionSlug(slug)) {
-      return { kind: "unknown" }
-    }
     return {
       kind: "one-segment",
       slug,
@@ -118,14 +464,23 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     }
   }
   if (rest.length === 2) {
-    const slug = stripSafeSegment(rest[0])
-    const rawLocale = stripSafeSegment(rest[1])
-    if (!slug || !rawLocale) return { kind: "unknown" }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    const firstSlug = stripSafeSegment(rest[0])
+    const secondSlug = stripSafeSegment(rest[1])
+    if (!firstSlug || !secondSlug) return { kind: "unknown" }
+    if (!(await isAudioLanguageSlug(secondSlug))) {
+      return {
+        kind: "episode",
+        seriesSlug: firstSlug,
+        episodeSlug: secondSlug,
+        rawLocale: DEFAULT_WATCH_LANGUAGE_SLUG,
+        locale: internalLocale,
+        implicitEnglish: true,
+      }
+    }
     return {
       kind: "video",
-      slug,
-      rawLocale,
+      slug: firstSlug,
+      rawLocale: secondSlug,
       // The message-catalog key is the prepended internal locale. The raw
       // audio slug stays in params.rest for variant selection and URLs.
       locale: internalLocale,
@@ -142,34 +497,47 @@ function classify(rest: string[], internalLocale: UiLocale): Shape {
     if (!seriesSlug || !episodeSlug || !rawLocale) {
       return { kind: "unknown" }
     }
-    if (!isPublicWatchLanguageSlug(rawLocale)) return { kind: "unknown" }
+    if (!(await isAudioLanguageSlug(rawLocale))) {
+      return { kind: "unknown" }
+    }
     return {
       kind: "episode",
       seriesSlug,
       episodeSlug,
       rawLocale,
       locale: internalLocale,
+      implicitEnglish: false,
     }
   }
   return { kind: "unknown" }
 }
 
-async function getDownloadButtonLabel(route: string): Promise<string> {
+function getRouteManifestForClassification(): Promise<WatchRouteManifest | null> {
+  return getWatchRouteManifest().catch(() => null)
+}
+
+function watchRouteSurfaceForShape(shape: Shape): WatchRouteSurface | null {
+  if (shape.kind === "one-segment") {
+    return shape.isLanguageHome ? "language-home" : "experience"
+  }
+  if (shape.kind === "video" && shape.rawLocale === "english") {
+    return "english-video"
+  }
+  return null
+}
+
+async function getDownloadButtonLabel(
+  route: string,
+  locale: UiLocale,
+): Promise<string | undefined> {
   const useUpdatedCtaCopy = await isWatchCtaTextCopyEnabled({
     custom: { route },
   })
-  return useUpdatedCtaCopy ? "Save Video" : "Download"
-}
+  if (!useUpdatedCtaCopy) return undefined
 
-async function getYouVersionBibleQuotePassages(
-  route: string,
-  bibleCitations: Parameters<typeof fetchYouVersionBibleQuotePassages>[0],
-) {
-  const enabled = await isWatchYouVersionBibleQuotesEnabled({
-    custom: { route },
-  })
-  if (!enabled) return []
-  return fetchYouVersionBibleQuotePassages(bibleCitations)
+  const messages = (await import(`../../../../../messages/${locale}.json`))
+    .default as { DownloadButton?: { saveVideo?: string } }
+  return messages.DownloadButton?.saveVideo ?? "Save Video"
 }
 
 async function getQuestionPanelEnabled(route: string): Promise<boolean> {
@@ -178,13 +546,35 @@ async function getQuestionPanelEnabled(route: string): Promise<boolean> {
   })
 }
 
+async function getHideBibleQuotesEnabled(route: string): Promise<boolean> {
+  return isWatchHideBibleQuotesEnabled({
+    custom: { route },
+  })
+}
+
+async function getInitialTranscriptForWatchVideo(
+  video: WatchVideoRecord,
+  selectedVariant: WatchVariant,
+): ReturnType<typeof getInitialSubtitleTranscript> {
+  if (video.subtitles.length === 0) return null
+  return getInitialSubtitleTranscript({
+    subtitles: video.subtitles,
+    audioSlug: selectedVariant.language?.slug ?? null,
+  })
+}
+
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { locale: rawInternalLocale, rest } = await params
+  const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(rest, internalLocale)
+  const shape = await classify(
+    routeIntent.rest,
+    internalLocale,
+    getRouteManifestForClassification,
+  )
   if (shape.kind !== "unknown") {
     setRequestLocale(shape.locale)
   }
@@ -201,24 +591,35 @@ export async function generateMetadata({
     // doesn't drop metadata entirely. Next silently skips metadata when
     // generateMetadata throws; the page body has its own error boundary.
     try {
-      const watchVideo = await resolveWatchVideoBySlug(slug, locale)
-      if (watchVideo && isSeriesRecord(watchVideo.video)) {
+      const routeModel = await resolveWatchRouteWithSubtitleIntent(
+        slug,
+        rawLocale,
+        routeIntent.subtitleLanguageSlug,
+      )
+      if (routeModel.kind === "series") {
         return generateSeriesMetadata(locale, {
-          series: watchVideo.video,
+          series: routeModel.video,
           pathLocale: rawLocale,
         })
       }
-      if (!watchVideo) {
-        const series = await resolveSeriesBySlug(slug, locale)
-        if (series) {
-          return generateSeriesMetadata(locale, {
-            series: series.video,
-            pathLocale: rawLocale,
-          })
-        }
+      if (routeModel.kind === "video") {
+        return generateWatchVideoMetadata(locale, {
+          video: routeModel.video,
+          selectedVariant: routeModel.selectedVariant,
+          routeSlug: slug,
+          pathLocale: rawLocale,
+        })
       }
-    } catch {
-      // Fall through to getWatchPageMetadata.
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.video.fallback", {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return getWatchRouteFallbackMetadata(locale, {
+        slug,
+        pathLocale: rawLocale,
+      })
     }
     return getWatchPageMetadata(locale, {
       slug,
@@ -227,9 +628,38 @@ export async function generateMetadata({
   }
 
   if (shape.kind === "episode") {
-    const { episodeSlug, rawLocale, locale } = shape
-    // The episode IS the playable video; OG/canonical metadata follows
-    // the episode's slug. Series-context enrichment is Phase 5 work.
+    const { seriesSlug, episodeSlug, rawLocale, locale } = shape
+    // The episode IS the playable Video. Preserve the verified parent for
+    // contextual rendering, but publish the standalone child as metadata
+    // identity when the series parent resolves.
+    try {
+      const resolved = await resolveEpisodeWithSubtitleIntent(
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+        routeIntent.subtitleLanguageSlug,
+      )
+      if (resolved) {
+        return generateWatchVideoMetadata(locale, {
+          video: resolved.video,
+          selectedVariant: resolved.selectedVariant,
+          routeSlug: episodeSlug,
+          pathLocale: rawLocale,
+          seriesSlug,
+        })
+      }
+    } catch (error) {
+      logWatchServerEvent("watch_metadata.episode.fallback", {
+        seriesSlug,
+        episodeSlug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      })
+      return getWatchRouteFallbackMetadata(locale, {
+        slug: episodeSlug,
+        pathLocale: rawLocale,
+      })
+    }
     return getWatchPageMetadata(locale, {
       slug: episodeSlug,
       pathLocale: rawLocale,
@@ -241,23 +671,71 @@ export async function generateMetadata({
 
 export default async function SlugRestPage({ params }: PageProps) {
   const { locale: rawInternalLocale, rest } = await params
+  const routeIntent = routeIntentFromRest(rest)
   const { locale: internalLocale } =
     resolveWatchLocaleIdentity(rawInternalLocale)
-  const shape = classify(rest, internalLocale)
+  const shape = await classify(
+    routeIntent.rest,
+    internalLocale,
+    getRouteManifestForClassification,
+  )
 
   if (shape.kind === "unknown") notFound()
 
   setRequestLocale(shape.locale)
 
+  const namespaces =
+    shape.kind === "one-segment" && shape.isLanguageHome
+      ? WATCH_HOME_CLIENT_MESSAGE_NAMESPACES
+      : WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES
+  const translateAvailabilityCountsPromise =
+    shape.kind === "one-segment"
+      ? null
+      : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
+  // Started early so it overlaps the message load, but it is only awaited after
+  // that load. Without a handler attached now, a rejection while the load is
+  // pending (or after the load rejects and the page has already thrown) is an
+  // unhandled rejection. This marks the rejection observed without changing
+  // it: the original promise is still awaited below and still throws there, and
+  // a loadClientMessages failure still wins because it is awaited first.
+  translateAvailabilityCountsPromise?.catch(() => {})
+  const messages = await loadClientMessages(shape.locale, namespaces)
+
+  let content: ReactNode
   if (shape.kind === "one-segment") {
-    return renderOneSegment(shape)
+    content = await renderOneSegment(shape)
+  } else {
+    const translateAvailabilityCounts =
+      await translateAvailabilityCountsPromise!
+    const formatAvailabilityCounts: AvailabilityCountFormatters = {
+      audio: (count) =>
+        translateAvailabilityCounts("audioTranslationCount", { count }),
+      subtitles: (count) =>
+        translateAvailabilityCounts("subtitleCount", { count }),
+    }
+    content =
+      shape.kind === "episode"
+        ? await renderEpisode(
+            shape,
+            routeIntent.subtitleLanguageSlug,
+            formatAvailabilityCounts,
+          )
+        : await renderVideo(
+            shape,
+            routeIntent.subtitleLanguageSlug,
+            formatAvailabilityCounts,
+          )
   }
+  const routeSurface = watchRouteSurfaceForShape(shape)
 
-  if (shape.kind === "episode") {
-    return renderEpisode(shape)
-  }
-
-  return renderVideo(shape)
+  return (
+    <NextIntlClientProvider locale={shape.locale} messages={messages}>
+      {routeSurface ? (
+        <WatchRouteSurfaceRegistration surface={routeSurface} />
+      ) : null}
+      {content}
+    </NextIntlClientProvider>
+  )
 }
 
 async function renderOneSegment(shape: {
@@ -267,9 +745,78 @@ async function renderOneSegment(shape: {
   isLanguageHome: boolean
 }) {
   const { slug, locale, isLanguageHome } = shape
-  const result = isLanguageHome
-    ? await resolveWatchPage(locale)
-    : await resolveWatchExperiencePage(locale, slug)
+  if (isLanguageHome) {
+    const [heroResult, pageResult] = await Promise.all([
+      resolveWatchHome(locale, slug),
+      resolveWatchPage(locale),
+    ])
+    if (isWatchPageMissingError(pageResult.error)) {
+      const languageSlug = tryAsLocaleSlug(slug)
+      if (!languageSlug) notFound()
+      redirect(languageVideosIndexPath(languageSlug))
+    }
+
+    if (heroResult.error) {
+      return <ExperienceError message={heroResult.error.message} />
+    }
+
+    const builderBlocks =
+      pageResult.data?.kind === "experience"
+        ? watchExperienceBlocks(pageResult.data.experience)
+        : []
+
+    if (
+      pageResult.error &&
+      !isWatchPageMissingError(pageResult.error) &&
+      process.env.NODE_ENV === "development"
+    ) {
+      console.warn("[watch-home] Unable to load builder-authored body.", {
+        error: pageResult.error.message,
+      })
+    }
+
+    if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
+      return <ExperienceEmpty />
+    }
+    const localeSlug = tryAsLocaleSlug(slug)
+    const visibleContent = projectWatchHomeVisibleContent({
+      model: heroResult.data,
+      blocks: builderBlocks,
+      languageSlug: slug,
+    })
+    const structuredData = localeSlug
+      ? watchHomeCollectionStructuredDataJson({
+          destinations: visibleContent.destinations,
+          canonicalUrl: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${localizedHomePath(localeSlug)}`,
+          inLanguage: slugToBcp47Tag(slug),
+          name: "Watch",
+        })
+      : null
+    return (
+      <>
+        <WatchStructuredData json={structuredData} />
+        <WatchHomeExperiencePage
+          audienceEnabled={await isWatchAudienceEnabled()}
+          heroModel={heroResult.data}
+          blocks={visibleContent.blocks}
+          languageSlug={slug}
+          publicDocumentPathname={
+            localeSlug
+              ? `${WATCH_BASE_PATH}${localizedHomePath(localeSlug)}`
+              : undefined
+          }
+          locale={locale}
+          legacyCategoryRailCompatibility={
+            pageResult.data?.kind === "experience" &&
+            pageResult.data.watchHomeCategoryRailCompatibility ===
+              "legacy-schema"
+          }
+        />
+      </>
+    )
+  }
+
+  const result = await resolveWatchExperiencePage(locale, slug)
 
   if (result.error) {
     if (isWatchPageMissingError(result.error)) {
@@ -302,6 +849,9 @@ async function renderOneSegment(shape: {
             key={key}
             section={block}
             routeVideo={routeVideo}
+            languageSlug={
+              publicWatchAudioLanguageSlugForLocale(locale) ?? "english"
+            }
           />
         )
       })}
@@ -309,19 +859,26 @@ async function renderOneSegment(shape: {
   )
 }
 
-async function renderEpisode(shape: {
-  kind: "episode"
-  seriesSlug: string
-  episodeSlug: string
-  rawLocale: string
-  locale: string
-}) {
-  const { seriesSlug, episodeSlug, rawLocale, locale } = shape
+async function renderEpisode(
+  shape: {
+    kind: "episode"
+    seriesSlug: string
+    episodeSlug: string
+    rawLocale: string
+    locale: UiLocale
+    implicitEnglish: boolean
+  },
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
+) {
+  const { seriesSlug, episodeSlug, rawLocale, locale, implicitEnglish } = shape
+  const routeManifestPromise = getWatchRouteManifest().catch(() => null)
 
-  const resolved = await resolveSeriesEpisodeBySlug(
+  const resolved = await resolveEpisodeWithSubtitleIntent(
     seriesSlug,
     episodeSlug,
     rawLocale,
+    subtitleLanguageSlug,
   )
   if (!resolved) notFound()
 
@@ -330,115 +887,159 @@ async function renderEpisode(shape: {
   // rawLocale; emit the canonical .html shape so the proxy doesn't
   // re-normalize through per-segment .html append.
   const actualSlug = resolved.selectedVariant.language?.slug ?? null
+  if (implicitEnglish && actualSlug !== DEFAULT_WATCH_LANGUAGE_SLUG) {
+    notFound()
+  }
   if (actualSlug && rawLocale !== actualSlug) {
     const seriesContentSlug = tryAsContentSlug(seriesSlug)
     const episodeContentSlug = tryAsContentSlug(episodeSlug)
     const localeSlug = tryAsLocaleSlug(actualSlug)
     if (seriesContentSlug && episodeContentSlug && localeSlug) {
       redirect(
-        watchEpisodePath(seriesContentSlug, episodeContentSlug, localeSlug, {
-          reason: "locale-resolved",
-        }),
+        watchEpisodeExplicitLanguagePath(
+          seriesContentSlug,
+          episodeContentSlug,
+          localeSlug,
+          {
+            reason: "locale-resolved",
+            subtitleLanguage: subtitleLanguageSlug ?? undefined,
+          },
+        ),
       )
     }
   }
 
   const route = `/watch/${seriesSlug}.html/${episodeSlug}/${rawLocale}.html`
-  const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
-    await Promise.all([
-      getDownloadButtonLabel(route),
+  const languageSlug = resolved.selectedVariant.language?.slug ?? rawLocale
+  const [
+    [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes],
+    routeManifest,
+    initialTranscript,
+  ] = await Promise.all([
+    Promise.all([
+      getDownloadButtonLabel(route, locale),
       getQuestionPanelEnabled(route),
-      getYouVersionBibleQuotePassages(route, resolved.video.bibleCitations),
-    ])
+      getHideBibleQuotesEnabled(route),
+    ]),
+    routeManifestPromise,
+    getInitialTranscriptForWatchVideo(resolved.video, resolved.selectedVariant),
+  ])
+  const carouselVideo = withCompatibilityAdmittedVideoChildren(
+    resolved.video,
+    languageSlug,
+    routeManifest,
+  )
+  const carouselSeries = withCompatibilityAdmittedCarouselChildren(
+    resolved.series,
+    languageSlug,
+    routeManifest,
+  )
   const mergedBlocks = mergeWatchExperience({
-    video: resolved.video,
+    video: carouselVideo,
     variant: resolved.selectedVariant,
-    canonicalParent: resolved.series,
-    youVersionPassages,
+    canonicalParent: carouselSeries,
   })
+  const clientVariant = pruneWatchVariantForClient(resolved.selectedVariant)
+  const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+    mergedBlocks,
+    resolved.selectedVariant,
+    formatAvailabilityCounts,
+  )
+  const downloadSequence = resolveDownloadSequence(
+    resolved.series,
+    resolved.video.documentId,
+  )
+  const clientVideo = pruneWatchVideoForClient(
+    resolved.video,
+    resolved.selectedVariant,
+  )
   if (!mergedBlocks.length) return <ExperienceEmpty />
-  const lcpPlaybackId = resolved.selectedVariant.muxVideo?.playbackId ?? null
+  const metadataModel = buildWatchVideoMetadataModel({
+    video: resolved.video,
+    selectedVariant: resolved.selectedVariant,
+    routeSlug: episodeSlug,
+    pathLocale: rawLocale,
+    seriesSlug,
+  })
+  const relatedItemsJson = metadataModel.noIndex
+    ? null
+    : watchRelatedItemListStructuredDataJson({
+        blocks: mergedBlocks,
+        languageSlug,
+      })
 
   return (
     <>
-      {lcpPlaybackId ? (
-        <link
-          rel="preload"
-          as="image"
-          href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
-          fetchPriority="high"
-        />
-      ) : null}
+      <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
+      <WatchStructuredData json={relatedItemsJson} />
       <WatchPageClient
+        audienceEnabled={await isWatchAudienceEnabled()}
         downloadButtonLabel={downloadButtonLabel}
-        mergedBlocks={mergedBlocks}
-        variant={resolved.selectedVariant}
-        video={resolved.video}
-        languageSlug={resolved.selectedVariant.language?.slug ?? rawLocale}
+        downloadSequence={downloadSequence}
+        mergedBlocks={clientMergedBlocks}
+        surfaceManifests={watchVideoSurfaceSources(
+          clientMergedBlocks,
+          languageSlug,
+        ).map((source) => signWatchSurfaceManifest(source))}
+        variant={clientVariant}
+        video={clientVideo}
+        languageSlug={languageSlug}
+        subtitleLanguageSlug={subtitleLanguageSlug}
+        collectionSlug={seriesSlug}
         locale={locale}
+        hideBibleQuotes={hideBibleQuotes}
         questionPanelEnabled={questionPanelEnabled}
+        initialTranscript={initialTranscript}
       />
+      <WatchHomeFooter />
     </>
   )
 }
 
-async function renderVideo(shape: {
-  kind: "video"
-  slug: string
-  rawLocale: string
-  locale: string
-}) {
+async function renderVideo(
+  shape: {
+    kind: "video"
+    slug: string
+    rawLocale: string
+    locale: UiLocale
+  },
+  subtitleLanguageSlug: ReturnType<typeof tryAsLocaleSlug>,
+  formatAvailabilityCounts: AvailabilityCountFormatters,
+) {
   const { slug, rawLocale, locale } = shape
   const route = `/watch/${slug}.html/${rawLocale}.html`
+  const routeManifestPromise = getWatchRouteManifest().catch(() => null)
 
-  // Experience-first precedence: when an editor curated an Experience at
-  // this slug, that's the intended landing — even when a slug-colliding
-  // Video (e.g. an `easter` Video alongside an `easter` Experience) exists.
-  // `resolveWatchPage` is React `cache()`-wrapped so the tail-end call
-  // for the video-template fallback is free.
-  const watchPage = await resolveWatchPage(locale, slug)
-  if (watchPage.data?.kind === "experience") {
-    const blocks = (watchPage.data.experience.blocks ?? []).filter(
-      (b): b is Section => b !== null,
-    )
-    if (blocks.length) {
-      const questionPanelEnabled = await getQuestionPanelEnabled(route)
-      return (
-        <main
-          className={`min-h-screen bg-stone-900 ${
-            questionPanelEnabled
-              ? "pb-[calc(5.75rem+env(safe-area-inset-bottom,0px))] sm:pb-0"
-              : ""
-          }`}
-        >
-          {blocks.map((block, i) => {
-            const key =
-              "id" in block && typeof block.id === "string"
-                ? block.id
-                : `block-${i}`
-            return (
-              <ExperienceSectionRenderer
-                key={key}
-                section={block}
-                routeVideo={null}
-              />
-            )
-          })}
-          {questionPanelEnabled ? (
-            <WatchQuestionPanel enabled={questionPanelEnabled} />
-          ) : null}
-        </main>
-      )
-    }
-    return <ExperienceEmpty />
-  }
-
-  // Video-by-slug second. Pass rawLocale (not the bcp47-normalised
+  // Video-by-slug first. Pass rawLocale (not the bcp47-normalised
   // `locale`) so the resolver matches either variant.language.slug OR
   // variant.language.bcp47 — slug-form URLs like /the-call/korean need to
-  // land in the resolver as "korean", not "en".
-  const watchVideo = await resolveWatchVideoBySlug(slug, rawLocale)
-  if (watchVideo) {
+  // land in the resolver as "korean", not "en". A same-slug Experience is
+  // only a fallback after video and series routes fail to render.
+  let routeModel: Awaited<ReturnType<typeof resolveWatchRouteBySlug>>
+  try {
+    routeModel = await resolveWatchRouteWithSubtitleIntent(
+      slug,
+      rawLocale,
+      subtitleLanguageSlug,
+    )
+  } catch (error) {
+    logWatchServerEvent(
+      "watch_route.video.resolve_failed",
+      {
+        slug,
+        rawLocale,
+        detail: error instanceof Error ? error : String(error),
+      },
+      { level: "error" },
+    )
+    return (
+      <ExperienceError
+        message={error instanceof Error ? error.message : String(error)}
+      />
+    )
+  }
+  if (routeModel.kind === "video") {
+    const watchVideo = routeModel
     const actualSlug = watchVideo.selectedVariant.language?.slug ?? null
     if (actualSlug && rawLocale !== actualSlug) {
       const contentSlug = tryAsContentSlug(slug)
@@ -447,76 +1048,235 @@ async function renderVideo(shape: {
         redirect(
           watchVideoPath(contentSlug, localeSlug, {
             reason: "locale-resolved",
+            subtitleLanguage: subtitleLanguageSlug ?? undefined,
           }),
         )
       }
     }
-    if (isSeriesRecord(watchVideo.video)) {
-      return (
-        <SeriesPageClient
-          series={watchVideo.video}
-          selectedVariant={watchVideo.selectedVariant}
-          locale={rawLocale}
-        />
-      )
-    }
-    const [downloadButtonLabel, questionPanelEnabled, youVersionPassages] =
-      await Promise.all([
-        getDownloadButtonLabel(route),
+    const [
+      [downloadButtonLabel, questionPanelEnabled, hideBibleQuotes],
+      routeManifest,
+      initialTranscript,
+    ] = await Promise.all([
+      Promise.all([
+        getDownloadButtonLabel(route, locale),
         getQuestionPanelEnabled(route),
-        getYouVersionBibleQuotePassages(route, watchVideo.video.bibleCitations),
-      ])
+        getHideBibleQuotesEnabled(route),
+      ]),
+      routeManifestPromise,
+      getInitialTranscriptForWatchVideo(
+        watchVideo.video,
+        watchVideo.selectedVariant,
+      ),
+    ])
+    const languageSlug = watchVideo.selectedVariant.language?.slug ?? rawLocale
+    const { video: videoWithAdmittedChildren, carouselVideo } =
+      withStandaloneAdmittedVideoChildren(
+        watchVideo.video,
+        languageSlug,
+        routeManifest,
+      )
+    const selectableParents =
+      carouselVideo.children.length >= 2
+        ? []
+        : selectableParentsForStandaloneVideo(
+            watchVideo.video,
+            languageSlug,
+            routeManifest,
+          )
     const mergedBlocks = mergeWatchExperience({
-      video: watchVideo.video,
+      video: videoWithAdmittedChildren,
+      carouselVideo,
       variant: watchVideo.selectedVariant,
-      canonicalParent: watchVideo.canonicalParent,
-      youVersionPassages,
+      canonicalParent: null,
+      selectableParents,
     })
-    const lcpPlaybackId =
-      watchVideo.selectedVariant.muxVideo?.playbackId ?? null
+    const clientVariant = pruneWatchVariantForClient(watchVideo.selectedVariant)
+    const clientMergedBlocks = pruneMergedWatchBlocksForClient(
+      mergedBlocks,
+      watchVideo.selectedVariant,
+      formatAvailabilityCounts,
+    )
+    // The filename prefix must be numbered inside the parent the viewer can
+    // actually see, or the page contradicts itself: the rail would read
+    // "Chapter 41 of 49" under the film while the saved file is named `05_...`
+    // from a collection. Two separate questions, and they take different
+    // sources:
+    //
+    //   WHICH parent — the ranked first entry of `selectableParents`, the same
+    //   manifest-filtered list the carousel opened on. Ranking the unfiltered
+    //   `video.parents` instead would pick a parent the rail may not be
+    //   showing: `selectableParents` is empty when the video's own children own
+    //   the rail, and it drops parents whose children this language cannot
+    //   route to.
+    //
+    //   WHOSE ORDER — that parent's unfiltered counterpart. Manifest filtering
+    //   removes siblings that still exist, and `resolveDownloadSequence`
+    //   derives `total` (and so the zero-padding width) from the child list.
+    //
+    // When no external parent owns the rail, keep the canonical parent.
+    const rankedCarouselParent =
+      rankSelectableCarouselParents(selectableParents)[0]
+    const downloadSequenceParent =
+      rankedCarouselParent == null
+        ? watchVideo.canonicalParent
+        : (watchVideo.video.parents.find(
+            (parent) => parent.documentId === rankedCarouselParent.documentId,
+          ) ?? rankedCarouselParent)
+    const downloadSequence = resolveDownloadSequence(
+      downloadSequenceParent,
+      watchVideo.video.documentId,
+    )
+    const clientVideo = pruneWatchVideoForClient(
+      watchVideo.video,
+      watchVideo.selectedVariant,
+    )
+    const metadataModel = buildWatchVideoMetadataModel({
+      video: watchVideo.video,
+      selectedVariant: watchVideo.selectedVariant,
+      routeSlug: slug,
+      pathLocale: rawLocale,
+    })
+    const relatedItemsJson = metadataModel.noIndex
+      ? null
+      : watchRelatedItemListStructuredDataJson({
+          blocks: mergedBlocks,
+          languageSlug,
+        })
     return (
       <>
-        {lcpPlaybackId ? (
-          <link
-            rel="preload"
-            as="image"
-            href={`https://image.mux.com/${lcpPlaybackId}/thumbnail.webp?width=1280`}
-            fetchPriority="high"
-          />
-        ) : null}
-        <WatchPageClient
-          downloadButtonLabel={downloadButtonLabel}
-          mergedBlocks={mergedBlocks}
-          variant={watchVideo.selectedVariant}
-          video={watchVideo.video}
-          languageSlug={watchVideo.selectedVariant.language?.slug ?? rawLocale}
-          locale={locale}
-          questionPanelEnabled={questionPanelEnabled}
+        <WatchStructuredData
+          json={watchVideoStructuredDataJson(metadataModel)}
         />
+        <WatchStructuredData json={relatedItemsJson} />
+        <WatchPageClient
+          audienceEnabled={await isWatchAudienceEnabled()}
+          downloadButtonLabel={downloadButtonLabel}
+          downloadSequence={downloadSequence}
+          mergedBlocks={clientMergedBlocks}
+          surfaceManifests={watchVideoSurfaceSources(
+            clientMergedBlocks,
+            languageSlug,
+          ).map((source) => signWatchSurfaceManifest(source))}
+          variant={clientVariant}
+          video={clientVideo}
+          languageSlug={languageSlug}
+          subtitleLanguageSlug={subtitleLanguageSlug}
+          locale={locale}
+          hideBibleQuotes={hideBibleQuotes}
+          questionPanelEnabled={questionPanelEnabled}
+          initialTranscript={initialTranscript}
+        />
+        <WatchHomeFooter />
       </>
     )
   }
 
-  const series = await resolveSeriesBySlug(slug, locale)
-  if (series) {
-    const actualSlug = series.selectedVariant?.language?.slug ?? null
-    if (actualSlug && rawLocale !== actualSlug) {
-      const contentSlug = tryAsContentSlug(slug)
-      const localeSlug = tryAsLocaleSlug(actualSlug)
-      if (contentSlug && localeSlug) {
-        redirect(
-          watchVideoPath(contentSlug, localeSlug, {
-            reason: "locale-resolved",
+  if (routeModel.kind === "series") {
+    const series = routeModel
+    const routeManifest = await routeManifestPromise
+    const contentSlug = tryAsContentSlug(slug)
+    const directLanguageOptions = (series.video.childDubLanguages ?? [])
+      .flatMap((language) =>
+        language?.slug
+          ? [
+              {
+                slug: language.slug,
+                bcp47: language.bcp47,
+                name: language.name ?? language.slug,
+              },
+            ]
+          : [],
+      )
+      .sort((a, b) => a.name.localeCompare(b.name))
+    const nestedLanguageOptions =
+      routeManifest && contentSlug
+        ? series.video.children.flatMap((child) => {
+            if (!isSeriesRecord(child) || !child.slug) return []
+            const childSlug = child.slug
+            return getWatchNestedContainerAudioLanguageSlugs(
+              routeManifest,
+              contentSlug,
+              childSlug,
+            ).map((nestedLanguageSlug) => ({
+              slug: nestedLanguageSlug,
+              bcp47: slugToBcp47Tag(nestedLanguageSlug),
+              name: nestedLanguageSlug,
+            }))
+          })
+        : []
+    const languageOptions = Array.from(
+      new Map(
+        [...nestedLanguageOptions, ...directLanguageOptions].map((language) => [
+          language.slug,
+          language,
+        ]),
+      ).values(),
+    ).sort((a, b) => a.name.localeCompare(b.name))
+    const seriesLanguage = resolveSeriesLanguageIdentity(
+      languageOptions,
+      rawLocale,
+    )
+    if (!seriesLanguage || seriesLanguage.slug !== rawLocale) notFound()
+    const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")
+    const visibleSeries = {
+      ...series.video,
+      childDubLanguages: languageOptions,
+      children: series.video.children.filter((child) => {
+        if (!isSeriesRecord(child)) return true
+        return Boolean(
+          routeManifest &&
+          contentSlug &&
+          child.slug &&
+          isWatchNestedContainerRouteAdmittedByManifest(routeManifest, {
+            parentSlug: contentSlug,
+            childSlug: child.slug,
+            audioLanguageSlug: seriesLanguage.slug,
           }),
         )
-      }
+      }),
     }
+    const canonicalUrl =
+      contentSlug && localeSlug
+        ? `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}${watchVideoPath(contentSlug, localeSlug)}`
+        : ""
+    const structuredData = watchSeriesCollectionStructuredDataJson({
+      series: visibleSeries,
+      languageSlug: seriesLanguage?.slug ?? "",
+      canonicalUrl,
+      inLanguage:
+        correctedBcp47(seriesLanguage?.slug, seriesLanguage?.bcp47) ??
+        slugToBcp47Tag(seriesLanguage?.slug ?? rawLocale),
+      routeManifest,
+    })
     return (
-      <SeriesPageClient
-        series={series.video}
-        selectedVariant={series.selectedVariant}
-        locale={rawLocale}
-      />
+      <>
+        <WatchStructuredData json={structuredData} />
+        <SeriesPageClient
+          series={visibleSeries}
+          surfaceManifest={
+            signWatchSurfaceManifest(
+              watchSeriesEpisodesSource(visibleSeries, seriesLanguage.slug),
+            ) ?? undefined
+          }
+          selectedVariant={
+            series.selectedVariant?.language?.slug === seriesLanguage.slug
+              ? series.selectedVariant
+              : null
+          }
+          locale={seriesLanguage?.slug ?? rawLocale}
+          subtitleLanguageSlug={subtitleLanguageSlug}
+          audioLanguageCountLabel={languageCountLabel(
+            languageOptions.length,
+            formatAvailabilityCounts.audio,
+          )}
+          subtitleLanguageCountLabel={languageCountLabel(
+            (series.video.subtitles ?? []).length,
+            formatAvailabilityCounts.subtitles,
+          )}
+        />
+        <WatchHomeFooter />
+      </>
     )
   }
 
@@ -558,6 +1318,7 @@ async function renderVideo(shape: {
             key={key}
             section={block}
             routeVideo={routeVideo}
+            languageSlug={rawLocale}
           />
         )
       })}

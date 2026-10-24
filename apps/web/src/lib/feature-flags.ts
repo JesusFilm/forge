@@ -15,30 +15,45 @@ export type WebFeatureFlagContextInput = Partial<FeatureFlagContext> & {
 const webFeatureFlagClient = createFeatureFlagClient({
   sdkKey: env.LAUNCHDARKLY_SDK_KEY,
   localEnv: {
+    FORGE_WATCH_AUDIENCE_DEFAULT: env.FORGE_WATCH_AUDIENCE_DEFAULT,
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
+      env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
     FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
       env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT ??
       String(env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION),
-    FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT:
-      env.FORGE_WATCH_HERO_MUX_VIDEO_DEFAULT ??
-      String(env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO),
     FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
     FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
       env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
-    FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT:
-      env.FORGE_WATCH_YOUVERSION_BIBLE_QUOTES_DEFAULT,
+    FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
+      env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
     FORGE_WATCH_QUESTION_PANEL_DEFAULT: env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
   },
   defaultValues: {
+    "forge.watch.audience": false,
     "forge.watch.playerMigration": env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
-    "forge.watch.heroMuxVideo": env.NEXT_PUBLIC_FORGE_WATCH_HERO_MUX_VIDEO,
     "forge.watch.ctaTextCopy": false,
     "forge.watch.downloadAccountGate": false,
-    "forge.watch.youVersionBibleQuotes": false,
+    "forge.watch.hideBibleQuotes": false,
     "forge.watch.questionPanel": false,
   },
   timeoutSeconds: 0.25,
   logger: console,
 })
+
+export async function isWatchHomepageRecommendationsEnabled(
+  context: WebFeatureFlagContextInput,
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchHomepageRecommendations,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export const watchDownloadAccountGateFlagContext = {
+  custom: {
+    surface: "watch-download",
+  },
+} satisfies WebFeatureFlagContextInput
 
 export function createWebFeatureFlagContext(
   input: WebFeatureFlagContextInput = {},
@@ -66,15 +81,6 @@ export async function isWatchPlayerMigrationEnabled(
   )
 }
 
-export async function isWatchHeroMuxVideoEnabled(
-  context: WebFeatureFlagContextInput = {},
-): Promise<boolean> {
-  return webFeatureFlagClient.booleanVariation(
-    featureFlags.watchHeroMuxVideo,
-    createWebFeatureFlagContext(context),
-  )
-}
-
 export async function isWatchCtaTextCopyEnabled(
   context: WebFeatureFlagContextInput = {},
 ): Promise<boolean> {
@@ -93,11 +99,11 @@ export async function isWatchDownloadAccountGateEnabled(
   )
 }
 
-export async function isWatchYouVersionBibleQuotesEnabled(
+export async function isWatchHideBibleQuotesEnabled(
   context: WebFeatureFlagContextInput = {},
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
-    featureFlags.watchYouVersionBibleQuotes,
+    featureFlags.watchHideBibleQuotes,
     createWebFeatureFlagContext(context),
   )
 }
@@ -107,6 +113,15 @@ export async function isWatchQuestionPanelEnabled(
 ): Promise<boolean> {
   return webFeatureFlagClient.booleanVariation(
     featureFlags.watchQuestionPanel,
+    createWebFeatureFlagContext(context),
+  )
+}
+
+export async function isWatchAudienceEnabled(
+  context: WebFeatureFlagContextInput = {},
+): Promise<boolean> {
+  return webFeatureFlagClient.booleanVariation(
+    featureFlags.watchAudience,
     createWebFeatureFlagContext(context),
   )
 }

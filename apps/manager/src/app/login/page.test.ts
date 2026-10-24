@@ -1,5 +1,5 @@
-import type React from "react"
-import { describe, expect, it, vi } from "vitest"
+import React from "react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const { studioAuthShellMock } = vi.hoisted(() => ({
   studioAuthShellMock: vi.fn(
@@ -13,6 +13,10 @@ const { redirectMock } = vi.hoisted(() => ({
   }),
 }))
 
+const { isLocalMockManagerLoginEnabledMock } = vi.hoisted(() => ({
+  isLocalMockManagerLoginEnabledMock: vi.fn(() => false),
+}))
+
 vi.mock("next/navigation", () => ({
   redirect: redirectMock,
 }))
@@ -22,6 +26,7 @@ vi.mock("@/features/shell/studio-auth-shell", () => ({
 }))
 
 vi.mock("@/lib/oauth-client", () => ({
+  getManagerBaseUrl: vi.fn(() => "http://localhost:3002"),
   getManagerOAuthConfig: vi.fn(() => ({
     issuerUrl: "https://auth.jesusfilm.org",
     clientId: "jfp_manager_local",
@@ -29,9 +34,19 @@ vi.mock("@/lib/oauth-client", () => ({
   })),
 }))
 
+vi.mock("@/lib/mock-manager-login", () => ({
+  isLocalMockManagerLoginEnabled: isLocalMockManagerLoginEnabledMock,
+}))
+
 import LoginPage from "./page"
 
 describe("login page", () => {
+  beforeEach(() => {
+    redirectMock.mockClear()
+    isLocalMockManagerLoginEnabledMock.mockReset()
+    isLocalMockManagerLoginEnabledMock.mockReturnValue(false)
+  })
+
   it("redirects directly into Manager OAuth login by default", async () => {
     await expect(
       LoginPage({
@@ -55,6 +70,20 @@ describe("login page", () => {
     )
   })
 
+  it("uses the local mock login route when mock Manager login is enabled", async () => {
+    isLocalMockManagerLoginEnabledMock.mockReturnValue(true)
+
+    await expect(
+      LoginPage({
+        searchParams: Promise.resolve({
+          returnTo: "/dashboard/smart-crop",
+        }),
+      }),
+    ).rejects.toThrow(
+      "NEXT_REDIRECT:http://localhost:3002/api/auth/mock-login?returnTo=%2Fdashboard%2Fsmart-crop",
+    )
+  })
+
   it("redirects expired sessions directly into Manager OAuth login", async () => {
     await expect(
       LoginPage({
@@ -69,8 +98,23 @@ describe("login page", () => {
     })
     expect(element.type).toBe(studioAuthShellMock)
     expect(element.props.title).toBe("Manager access unavailable")
-    expect(element.props.children.props.children.props.children).toBe(
+
+    const card = element.props.children
+    const [error, signOut] = React.Children.toArray(
+      card.props.children,
+    ) as React.ReactElement<{
+      children: React.ReactNode
+      href?: string
+    }>[]
+
+    expect(error.props.children).toBe(
       "This account is not approved for Manager access.",
     )
+    expect(signOut.props.href).toBe("/api/auth/logout")
+    expect(
+      React.Children.toArray(signOut.props.children).some(
+        (child) => child === "Sign out and try another account",
+      ),
+    ).toBe(true)
   })
 })

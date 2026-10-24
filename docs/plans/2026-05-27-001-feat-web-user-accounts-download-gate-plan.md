@@ -14,9 +14,8 @@ origin: user request - "Add user accounts on web app. Use the same Auth as other
 - Reuse standalone `apps/auth` as the Better Auth authority.
 - Keep watch pages public and cacheable; check auth only from client actions
   and route handlers.
-- Use shared server-side LaunchDarkly flag `forge.watch.downloadAccountGate`
-  with `FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT=false` for local/test and
-  explicit outage posture.
+- Require a signed-in Web session for watch download transfers directly;
+  download gating is no longer behind a LaunchDarkly rollout flag.
 - Use `WEB_AUTH_BASE_URL` for server-to-server session verification from
   `apps/web`.
 - Use `AUTH_COOKIE_DOMAIN=.jesusfilm.org` only where production web hosts need
@@ -33,10 +32,7 @@ origin: user request - "Add user accounts on web app. Use the same Auth as other
    - `apps/auth/src/auth/web-callback.ts`
    - `apps/auth/src/app/api/auth/[...all]/route.ts`
    - `apps/auth/src/app/login/*`
-2. Web server-side rollout/session helpers:
-   - `packages/feature-flags/src/registry.ts`
-   - `apps/web/src/lib/feature-flags.ts`
-   - `apps/web/src/lib/download-gate-flag.ts`
+2. Web server-side session helpers:
    - `apps/web/src/lib/auth-session.ts`
    - `apps/web/src/app/api/auth/session/route.ts`
 3. Download proxy enforcement:

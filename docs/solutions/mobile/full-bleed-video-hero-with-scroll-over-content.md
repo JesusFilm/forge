@@ -13,11 +13,13 @@ tags:
   - expo-video
 severity: medium
 affected_components:
-  - apps/mobile-v2/src/components/sections/CuratedHomeLayout.tsx
-  - apps/mobile-v2/src/components/sections/VideoHeroRenderer.tsx
+  - apps/mobile/src/components/sections/CuratedHomeLayout.tsx
+  - apps/mobile/src/components/sections/VideoHeroRenderer.tsx
 related_docs:
   - docs/solutions/integration-issues/expo-graphql-schema-drift-and-fragment-validation.md
   - docs/solutions/mobile/hero-mute-button-hybrid-overlay-touch-target.md
+  - docs/solutions/ui-bugs/paged-hero-overlay-chrome-touch-architecture.md
+last_updated: "2026-10-19"
 ---
 
 # Full-Bleed Video Hero with Scroll-Over Content
@@ -54,7 +56,9 @@ Passed a `MutableRefObject` from `FixedHeroLayout` to `VideoHeroRenderer`, writi
 
 ### Architecture
 
-> **Update (2026-04-08):** This two-layer pattern has been extended to a **three-layer** model in `apps/mobile-v2`. The third layer is an interactive overlay (zIndex 2, `pointerEvents="box-none"`) that hosts invisible touch targets for hero elements (e.g., mute button). See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md) for the full pattern.
+> **Update (2026-04-08):** This two-layer pattern has been extended to a **three-layer** model in `apps/mobile`. The third layer is an interactive overlay (zIndex 2, `pointerEvents="box-none"`) that hosts invisible touch targets for hero elements (e.g., mute button). See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md) for the full pattern.
+>
+> **Update (2026-06-11):** The invisible-touch-target variant is only valid for **non-paged** heroes — inside a paged FlatList, `measureLayout` rects carry the page offset and the targets drift off-screen past slide 0. Paged heroes (Home's hero pager) render visible chrome directly in the overlay and claim swipes via a capture-phase PanResponder. See [paged-hero-overlay-chrome-touch-architecture.md](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md).
 
 ```
 View (root, flex: 1, bg: #1c1917)
@@ -120,21 +124,35 @@ const handleScroll = useCallback(
     <View
       style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
       pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
     >
-      {Platform.OS === "ios" ? (
-        <BlurView intensity={50} tint="dark" style={StyleSheet.absoluteFill} />
-      ) : (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            { backgroundColor: "rgba(0,0,0,0.6)" },
-          ]}
-        />
-      )}
+      <PlatformBlur intensity={50} style={StyleSheet.absoluteFill} />
     </View>
   )
 }
 ```
+
+The inline `Platform.OS === "ios" ? <BlurView …> : <View dim />` split this doc
+originally carried now lives in one shared component,
+`apps/mobile/src/components/ui/PlatformBlur.tsx`. The behaviour is unchanged —
+real blur on iOS, a flat dim on Android — but the branch has one owner instead of
+one copy per hero.
+
+Note the wrapper: the blur sits under a `View` whose `opacity` is driven by
+scroll. That is exactly the ancestor shape that makes `expo-glass-effect`'s
+`GlassView` render nothing at all, which is why this surface uses `expo-blur` and
+not Liquid Glass — see
+[GlassView renders no material under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
+
+> **Updated 2026-10-16 by feat-705 (PR #2750)** (noted 2026-10-19). On
+> `expo-glass-effect` 57.0.4 the glass under this shape draws on some reveals
+> and not on others; it no longer draws nothing at all. The new glass fix, a
+> dissolve through `GlassSurface` (`visible`), does not fit this surface: the
+> dissolve is on or off, and this blur strength follows the scroll position. So
+> `PlatformBlur` stays correct here. The hero's mute button uses `GlassSurface`
+> as a sibling of this wrapper, not inside it. See
+> [GlassView fails under an animated-opacity ancestor](../best-practices/expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md).
 
 **Overscroll prevention (both platforms):**
 
@@ -150,7 +168,7 @@ Android's `VideoView` is a native surface that renders on top of all React Nativ
 
 ### Interactive Hero Elements (Three-Layer Pattern)
 
-FlashList/ScrollView intercepts all touches within its frame, including padding areas. If you need tappable elements in the hero area, use the **hybrid overlay pattern**: render the visual element in the hero layer (correct z-order) and an invisible `Pressable` touch target in a zIndex 2 overlay, positioned via `measureLayout`. See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md).
+FlashList/ScrollView intercepts all touches within its frame, including padding areas. If you need tappable elements in the hero area, use the **hybrid overlay pattern**: render the visual element in the hero layer (correct z-order) and an invisible `Pressable` touch target in a zIndex 2 overlay, positioned via `measureLayout`. See [hero-mute-button-hybrid-overlay-touch-target.md](hero-mute-button-hybrid-overlay-touch-target.md). **Non-paged heroes only** — for paged heroes the measured rects carry the page offset; render visible chrome directly in the overlay instead, per [paged-hero-overlay-chrome-touch-architecture.md](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md).
 
 ### Animated.Value.addListener Reliability
 
@@ -177,7 +195,8 @@ Always use `useWindowDimensions()` inside components, never `Dimensions.get("win
 
 ## Cross-References
 
-- [Hero mute button hybrid overlay touch target](hero-mute-button-hybrid-overlay-touch-target.md) — Three-layer extension with measureLayout overlay pattern (2026-04-08)
+- [Hero mute button hybrid overlay touch target](hero-mute-button-hybrid-overlay-touch-target.md) — Three-layer extension with measureLayout overlay pattern (2026-04-08; non-paged heroes)
+- [Paged hero overlay chrome touch architecture](../ui-bugs/paged-hero-overlay-chrome-touch-architecture.md) — Paged-hero variant: visible chrome in the overlay + capture-phase PanResponder swipes (2026-06-11)
 - [FlashList hero bleed-through feed background](flashlist-hero-bleed-through-feed-background.md) — Translucent feed wrapper and feather gradient
 - [ScrollView touch event z-index fix](react-native-scrollview-touch-event-z-index-fix.md) — Why zIndex siblings don't reliably receive touches
 - [GraphQL Schema Drift Fix](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — Documents the `Video.image` → `images[]` migration that affects `VideoHeroRenderer`'s thumbnail URL

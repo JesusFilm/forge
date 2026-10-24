@@ -104,4 +104,64 @@ describe("runSceneAnalysisPipeline", () => {
       transcriptText: "Generated mux subtitle transcript text.",
     })
   })
+
+  it("uses requested localized subtitle and provenance inputs for scene analysis", async () => {
+    await runSceneAnalysisPipeline({
+      videoId: 42,
+      assetId: "42",
+      muxAssetId: "mux-ES",
+      subtitleUrl: "https://stream.mux.com/es.vtt",
+      videoLabel: "shortFilm",
+      languageCode: "es",
+      targetLocale: "es",
+    })
+
+    expect(fetchSubtitleTextMock).toHaveBeenCalledWith(
+      "https://stream.mux.com/es.vtt",
+    )
+    expect(transcribeMock).not.toHaveBeenCalled()
+    expect(analyzeAllScenesMock).toHaveBeenCalledWith(
+      "42",
+      "playback-1",
+      [{ sceneIndex: 0, startSeconds: 0, endSeconds: 30 }],
+      expect.objectContaining({
+        targetLocale: "es",
+        inputLanguageBcp47: "es",
+        muxAssetId: "mux-ES",
+        transcriptSource: {
+          kind: "subtitle-url",
+          languageBcp47: "es",
+          subtitleUrl: "https://stream.mux.com/es.vtt",
+        },
+      }),
+    )
+  })
+
+  it("transcribes the requested localized mux asset when target subtitles are missing", async () => {
+    await runSceneAnalysisPipeline({
+      videoId: 42,
+      assetId: "42",
+      muxAssetId: "mux-AR",
+      videoLabel: "shortFilm",
+      languageCode: "ar",
+      targetLocale: "ar",
+    })
+
+    expect(transcribeMock).toHaveBeenCalledWith("42", "mux-AR", "ar")
+    expect(analyzeAllScenesMock).toHaveBeenCalledWith(
+      "42",
+      "playback-1",
+      [{ sceneIndex: 0, startSeconds: 0, endSeconds: 30 }],
+      expect.objectContaining({
+        targetLocale: "ar",
+        inputLanguageBcp47: "ar",
+        muxAssetId: "mux-AR",
+        transcriptSource: {
+          kind: "mux-transcription",
+          languageBcp47: "ar",
+          muxAssetId: "mux-AR",
+        },
+      }),
+    )
+  })
 })

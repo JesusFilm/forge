@@ -61,6 +61,8 @@ export function getWorkflowHeartbeatWorkerId() {
 }
 
 async function recordWorkflowWorkerHeartbeat(workerId: string) {
+  const details = JSON.stringify({ pid: process.pid, host: hostname() })
+
   await prisma.$executeRaw`
     INSERT INTO workflow_worker_heartbeat (
       worker_id,
@@ -76,7 +78,7 @@ async function recordWorkflowWorkerHeartbeat(workerId: string) {
       'online',
       now(),
       now(),
-      ${Prisma.sql`jsonb_build_object('pid', ${process.pid}, 'host', ${hostname()})`}
+      CAST(${details} AS jsonb)
     )
     ON CONFLICT (worker_id) DO UPDATE SET
       status = 'online',

@@ -10,56 +10,12 @@ import {
   EnrichmentCallbackSchema,
 } from "@/lib/enrichment-callback"
 
+import { callbackRateLimiter } from "@/lib/enrichment-callback-rate-limit"
+
 const CALLBACK_BODY_MAX_BYTES = 64 * 1024
-const CALLBACK_RATE_LIMIT_MAX_REQUESTS = 120
-const CALLBACK_RATE_LIMIT_WINDOW_MS = 60_000
-
-type CallbackRateLimitBucket = {
-  count: number
-  resetAt: number
-}
-
-const callbackRateLimitBuckets = new Map<string, CallbackRateLimitBucket>()
-
 type JsonBodyResult =
   | { ok: true; body: unknown }
   | { ok: false; status: 400 | 413; error: string }
-
-function readClientRateLimitKey(request: Request): string {
-  return (
-    request.headers.get("cf-connecting-ip")?.trim() ||
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    request.headers.get("x-real-ip")?.trim() ||
-    "unknown"
-  )
-}
-
-function checkCallbackRateLimit(
-  request: Request,
-  now = Date.now(),
-): { ok: true } | { ok: false; retryAfterSeconds: number; error: string } {
-  const key = readClientRateLimitKey(request)
-  const current = callbackRateLimitBuckets.get(key)
-
-  if (!current || current.resetAt <= now) {
-    callbackRateLimitBuckets.set(key, {
-      count: 1,
-      resetAt: now + CALLBACK_RATE_LIMIT_WINDOW_MS,
-    })
-    return { ok: true }
-  }
-
-  if (current.count >= CALLBACK_RATE_LIMIT_MAX_REQUESTS) {
-    return {
-      ok: false,
-      retryAfterSeconds: Math.max(1, Math.ceil((current.resetAt - now) / 1000)),
-      error: "Callback rate limit exceeded",
-    }
-  }
-
-  current.count += 1
-  return { ok: true }
-}
 
 async function readJsonBodyWithLimit(
   request: Request,
@@ -115,7 +71,10 @@ async function readJsonBodyWithLimit(
 }
 
 export async function POST(request: Request) {
-  const rateLimit = checkCallbackRateLimit(request)
+  const rateLimit = callbackRateLimiter.check(
+    request,
+    env.ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP === "true",
+  )
   if (!rateLimit.ok) {
     return NextResponse.json(
       { error: rateLimit.error },

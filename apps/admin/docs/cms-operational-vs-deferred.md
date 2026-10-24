@@ -11,7 +11,8 @@
 
 ## Operational But Still Read-Heavy
 
-- `/dashboard/videos`
+- `/dashboard/videos` — paginated browsing, labels, thumbnails, and public
+  watch-page handoff links are operational; editing remains deferred.
 - `/dashboard/media`
 - `/dashboard/embeddings`
 - `/dashboard/search`

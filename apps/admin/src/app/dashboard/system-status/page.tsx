@@ -2,8 +2,8 @@ import { Activity } from "lucide-react"
 import {
   DashboardPageHeader,
   PageSection,
-  PrimaryButton,
   QueueList,
+  SecondaryButton,
   StatusPill,
 } from "@/components/admin-ui"
 import { loadSystemStatusData } from "@/app/dashboard/ops-data"
@@ -11,6 +11,7 @@ import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
 import { getAdminMessages } from "@/i18n/server"
 import { CoreSyncTriggerButton } from "../workflows/core-sync-trigger-button"
+import { RecommendationRetentionTriggerButton } from "../workflows/recommendation-retention-trigger-button"
 
 function metricValue(
   metrics: Awaited<ReturnType<typeof loadSystemStatusData>>["metrics"],
@@ -62,10 +63,21 @@ export default async function SystemStatusPage() {
           canTriggerSync ? (
             <CoreSyncTriggerButton />
           ) : (
-            <PrimaryButton className="opacity-60">Read-only</PrimaryButton>
+            <SecondaryButton disabled>
+              {messages.common.readOnly}
+            </SecondaryButton>
           )
         }
       />
+
+      {canTriggerSync ? (
+        <section className="app-card p-4" aria-label="Recommendation retention">
+          <h2 className="mb-2 text-[14px] font-semibold">
+            Recommendation retention
+          </h2>
+          <RecommendationRetentionTriggerButton />
+        </section>
+      ) : null}
 
       <section className="app-card p-4">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -113,7 +125,7 @@ export default async function SystemStatusPage() {
               {data.matrix.map((row) => (
                 <tr
                   key={`${row.entity}-${row.source}`}
-                  className="hairline-b h-12 transition-all duration-[120ms] ease-out hover:bg-[var(--color-surface-raised)]"
+                  className="hairline-b h-12"
                 >
                   <td className="px-4 text-[13px] font-medium">{row.entity}</td>
                   <td className="px-4">

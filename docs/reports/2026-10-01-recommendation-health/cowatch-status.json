@@ -1,0 +1,499 @@
+[
+  [
+    {
+      "db_time": "2026-09-30T19:01:21.556Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "stage": "owner_approved",
+      "generation": 6,
+      "active_manifest_id": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+      "kill_switch_enabled": false,
+      "exposure_ceiling_bps": 10000,
+      "owner_influence_floor_generation": 2,
+      "updated_at": "2026-09-30T00:56:38.922Z",
+      "pointer_generation": 6,
+      "manifest_id": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+      "approved_at": "2026-09-30T00:56:38.915Z",
+      "qualified_at": "2026-09-30T00:56:38.889Z",
+      "valid_until": "2026-10-01T00:55:59.133Z",
+      "dependency_expires_at": "2026-10-21T19:00:53.714Z",
+      "revoked_at": "2026-09-30T03:07:39.005Z",
+      "revocation_reason": "eligibility_changed",
+      "published_at": "2026-09-30T00:55:59.133Z",
+      "invalidated_at": "2026-09-30T03:07:39.005Z",
+      "invalidation_reason": "eligibility_changed",
+      "source_count": 6680,
+      "contribution_count": 35632,
+      "edge_count": 9000,
+      "distinct_viewer_count": 2461,
+      "terminal_decision": "no_promotion",
+      "decision_reason": "controlled_evaluation_required_feat_505"
+    }
+  ],
+  [
+    {
+      "pointer_generation": 6,
+      "approved_at": "2026-09-30T00:56:38.915Z",
+      "valid_until": "2026-10-01T00:55:59.133Z",
+      "revoked_at": "2026-09-30T03:07:39.005Z",
+      "revocation_reason": "eligibility_changed"
+    },
+    {
+      "pointer_generation": 5,
+      "approved_at": "2026-09-30T00:17:30.164Z",
+      "valid_until": "2026-10-01T00:16:49.581Z",
+      "revoked_at": "2026-09-30T00:22:59.967Z",
+      "revocation_reason": "eligibility_changed"
+    },
+    {
+      "pointer_generation": 4,
+      "approved_at": "2026-09-29T23:00:26.412Z",
+      "valid_until": "2026-09-30T22:59:20.343Z",
+      "revoked_at": "2026-09-29T23:35:33.097Z",
+      "revocation_reason": "eligibility_changed"
+    }
+  ],
+  [
+    {
+      "published_at": "2026-09-30T00:55:59.133Z",
+      "source_count": 6680,
+      "contribution_count": 35632,
+      "edge_count": 9000,
+      "distinct_viewer_count": 2461,
+      "terminal_decision": "no_promotion",
+      "decision_reason": "controlled_evaluation_required_feat_505",
+      "invalidated_at": "2026-09-30T03:07:39.005Z",
+      "invalidation_reason": "eligibility_changed",
+      "expires_at": "2026-10-29T00:55:59.133Z"
+    },
+    {
+      "published_at": "2026-09-30T00:16:49.581Z",
+      "source_count": 6680,
+      "contribution_count": 35632,
+      "edge_count": 9000,
+      "distinct_viewer_count": 2461,
+      "terminal_decision": "no_promotion",
+      "decision_reason": "controlled_evaluation_required_feat_505",
+      "invalidated_at": "2026-09-30T00:22:59.967Z",
+      "invalidation_reason": "eligibility_changed",
+      "expires_at": "2026-10-29T00:16:49.581Z"
+    },
+    {
+      "published_at": "2026-09-29T22:59:20.343Z",
+      "source_count": 6680,
+      "contribution_count": 35632,
+      "edge_count": 9000,
+      "distinct_viewer_count": 2461,
+      "terminal_decision": "no_promotion",
+      "decision_reason": "controlled_evaluation_required_feat_505",
+      "invalidated_at": "2026-09-29T23:35:33.097Z",
+      "invalidation_reason": "eligibility_changed",
+      "expires_at": "2026-10-28T22:59:20.343Z"
+    }
+  ],
+  [
+    {
+      "column_name": "id"
+    },
+    {
+      "column_name": "request_id"
+    },
+    {
+      "column_name": "purpose"
+    },
+    {
+      "column_name": "context_version"
+    },
+    {
+      "column_name": "generator_version"
+    },
+    {
+      "column_name": "union_version"
+    },
+    {
+      "column_name": "eligibility_version"
+    },
+    {
+      "column_name": "ranker_version"
+    },
+    {
+      "column_name": "composer_version"
+    },
+    {
+      "column_name": "candidate_eligibility_parity"
+    },
+    {
+      "column_name": "ranker_parity"
+    },
+    {
+      "column_name": "baseline_digest"
+    },
+    {
+      "column_name": "platform_digest"
+    },
+    {
+      "column_name": "nominated_count"
+    },
+    {
+      "column_name": "canonicalized_count"
+    },
+    {
+      "column_name": "deduplicated_count"
+    },
+    {
+      "column_name": "rejected_count"
+    },
+    {
+      "column_name": "scored_count"
+    },
+    {
+      "column_name": "ordered_count"
+    },
+    {
+      "column_name": "composed_count"
+    },
+    {
+      "column_name": "evidence_complete"
+    },
+    {
+      "column_name": "fallback_reason"
+    },
+    {
+      "column_name": "created_at"
+    },
+    {
+      "column_name": "expires_at"
+    },
+    {
+      "column_name": "requested_count"
+    },
+    {
+      "column_name": "shortfall_reason"
+    },
+    {
+      "column_name": "trace_format_version"
+    },
+    {
+      "column_name": "trace_payload"
+    },
+    {
+      "column_name": "legacy_detail_retired_at"
+    }
+  ],
+  [
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "id"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "manifest_id"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "strategy_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "contract_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "surface_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "generator"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "serving_control_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "policy_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "outcome_policy_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "classifier_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "integrity_policy_version"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "manifest_digest"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "window_start"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "window_end"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "input_captured_at"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "request_watermark"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "impression_watermark"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "selection_watermark"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "outcome_watermark"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "mission_watermark"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "eligibility_watermark"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "input_digest"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "revision"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "supersedes_id"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "state"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "delivery_outcome"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "attribution_outcome"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "maturity_outcome"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "operational_outcome"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "mission_outcome"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "guardrail_outcome"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "evidence"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "rates"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "uncertainty"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "policy_configuration"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "reason_codes"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "explanation"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "purpose"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "identity_class"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "access_class"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "deletion_behavior"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "fallback_behavior"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "retention_days"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "evaluated_at"
+    },
+    {
+      "table_name": "recommendation_control_evaluation",
+      "column_name": "expires_at"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "id"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "family"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "policy_version"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "revision"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "window_start"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "window_end"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "episode_count"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "v2_summary_count"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "observed_count"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "partial_count"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "missing_count"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "ingestion_health"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "decision"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "reason_codes"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "reevaluation_condition"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "ranking_influence"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "input_digest"
+    },
+    {
+      "table_name": "recommendation_playback_signal_readiness",
+      "column_name": "created_at"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "id"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "enabled"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "manifest_id"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "emergency_revoked_kids"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "reason_code"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "version"
+    },
+    {
+      "table_name": "recommendation_serving_control",
+      "column_name": "updated_at"
+    }
+  ],
+  [
+    {
+      "database_size": "35 GB"
+    }
+  ],
+  [
+    {
+      "status": "succeeded",
+      "started_at": "2026-09-30T10:40:30.599Z",
+      "completed_at": "2026-09-30T10:40:30.598Z",
+      "roots_deleted": 81,
+      "oldest_expired_at_after": null,
+      "reason_code": null
+    },
+    {
+      "status": "succeeded",
+      "started_at": "2026-09-30T10:40:26.476Z",
+      "completed_at": "2026-09-30T10:40:26.475Z",
+      "roots_deleted": 500,
+      "oldest_expired_at_after": "2026-09-30T10:35:42.960Z",
+      "reason_code": null
+    },
+    {
+      "status": "succeeded",
+      "started_at": "2026-09-30T10:40:22.730Z",
+      "completed_at": "2026-09-30T10:40:22.728Z",
+      "roots_deleted": 500,
+      "oldest_expired_at_after": "2026-09-30T09:14:21.977Z",
+      "reason_code": null
+    }
+  ]
+]

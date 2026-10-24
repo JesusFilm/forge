@@ -9,6 +9,7 @@ const workflowRun = vi.hoisted(() => ({
 }))
 const queryRaw = vi.hoisted(() => vi.fn())
 const backup = vi.hoisted(() => ({
+  SCHEDULED_VIDEO_DB_BACKUP_PROFILES: ["video-core", "video-search"] as const,
   runScheduledVideoDbBackup: vi.fn(),
 }))
 
@@ -120,7 +121,7 @@ describe("video DB backup workflow job", () => {
     const { runVideoDbBackup } = await import("@/workflows/videoDbBackup")
 
     await expect(
-      dispatchVideoDbBackup({ trigger: "scheduled" }),
+      dispatchVideoDbBackup({ trigger: "scheduled", profile: "video-search" }),
     ).resolves.toEqual({
       workflow: "video-db-backup",
       runId: "runtime-run-1",
@@ -128,7 +129,11 @@ describe("video DB backup workflow job", () => {
       status: "queued",
     })
     dispatch.expectDispatched(runVideoDbBackup, [
-      { trigger: "scheduled", ledgerRunId: "ledger-run-1" },
+      {
+        trigger: "scheduled",
+        ledgerRunId: "ledger-run-1",
+        profile: "video-search",
+      },
     ])
     expect(workflowRun.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -137,6 +142,9 @@ describe("video DB backup workflow job", () => {
         trigger: "SCHEDULED",
         subjectType: "database",
         subjectId: "admin-video",
+        details: expect.objectContaining({
+          profile: "video-search",
+        }),
       }),
     })
   })
@@ -147,6 +155,9 @@ describe("video DB backup workflow job", () => {
       profile: "video-core",
       tables: 22,
       path: "/tmp/video.dump",
+      size: 12_345,
+      exportDurationMs: 4_000,
+      uploadDurationMs: 1_500,
       upload: {
         bucket: "admin-storage",
         key: "admin-video-db-backups/video-core/video.dump",
@@ -173,7 +184,140 @@ describe("video DB backup workflow job", () => {
         summary: expect.stringContaining("Backed up 22 table"),
         finishedAt: expect.any(Date),
         durationMs: expect.any(Number),
+        details: {
+          result: expect.objectContaining({
+            size: 12_345,
+            exportDurationMs: 4_000,
+            uploadDurationMs: 1_500,
+          }),
+        },
       }),
     })
+  })
+
+  it("marks missing scheduled bucket configuration as a failed ledger run", async () => {
+    backup.runScheduledVideoDbBackup.mockRejectedValueOnce(
+      new Error("RAILWAY_S3_BUCKET is required for scheduled video DB backups"),
+    )
+    const { runVideoDbBackupJob } = await import("./job")
+
+    await expect(
+      runVideoDbBackupJob({
+        trigger: "scheduled",
+        ledgerRunId: "ledger-run-1",
+        profile: "video-search",
+      }),
+    ).rejects.toThrow("RAILWAY_S3_BUCKET is required")
+
+    expect(workflowRun.update).toHaveBeenCalledWith({
+      where: { id: "ledger-run-1" },
+      data: expect.objectContaining({
+        status: "FAILED",
+        error: "RAILWAY_S3_BUCKET is required for scheduled video DB backups",
+        finishedAt: expect.any(Date),
+      }),
+    })
+  })
+
+  it("runs catalog and search snapshots from the scheduler", async () => {
+    workflowRun.create
+      .mockResolvedValueOnce({ id: "ledger-core" })
+      .mockResolvedValueOnce({ id: "ledger-search" })
+    backup.runScheduledVideoDbBackup
+      .mockResolvedValueOnce({
+        event: "video-db.backup.complete",
+        profile: "video-core",
+        tables: 22,
+        path: "/tmp/video-core.dump",
+        upload: {
+          bucket: "admin-storage",
+          key: "admin-video-db-backups/video-core/video.dump",
+        },
+      })
+      .mockResolvedValueOnce({
+        event: "video-db.backup.complete",
+        profile: "video-search",
+        tables: 26,
+        path: "/tmp/video-search.dump",
+        upload: {
+          bucket: "admin-storage",
+          key: "admin-video-db-backups/video-search/video.dump",
+        },
+      })
+    const { runVideoDbBackupFromScheduler } = await import("./job")
+
+    await expect(runVideoDbBackupFromScheduler()).resolves.toEqual([
+      expect.objectContaining({
+        ok: true,
+        ledgerRunId: "ledger-core",
+        result: expect.objectContaining({ profile: "video-core" }),
+      }),
+      expect.objectContaining({
+        ok: true,
+        ledgerRunId: "ledger-search",
+        result: expect.objectContaining({ profile: "video-search" }),
+      }),
+    ])
+
+    expect(workflowRun.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          details: expect.objectContaining({ profile: "video-core" }),
+        }),
+      }),
+    )
+    expect(workflowRun.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          details: expect.objectContaining({ profile: "video-search" }),
+        }),
+      }),
+    )
+    expect(backup.runScheduledVideoDbBackup).toHaveBeenNthCalledWith(
+      1,
+      "video-core",
+    )
+    expect(backup.runScheduledVideoDbBackup).toHaveBeenNthCalledWith(
+      2,
+      "video-search",
+    )
+  })
+
+  it("attempts video-search after video-core fails", async () => {
+    workflowRun.create
+      .mockResolvedValueOnce({ id: "ledger-core" })
+      .mockResolvedValueOnce({ id: "ledger-search" })
+    backup.runScheduledVideoDbBackup
+      .mockRejectedValueOnce(new Error("core upload timed out"))
+      .mockResolvedValueOnce({
+        event: "video-db.backup.complete",
+        profile: "video-search",
+        tables: 26,
+        path: "/tmp/video-search.dump",
+        upload: {
+          bucket: "admin-storage",
+          key: "admin-video-db-backups/video-search/video.dump",
+        },
+      })
+    const { runVideoDbBackupFromScheduler } = await import("./job")
+
+    await expect(runVideoDbBackupFromScheduler()).resolves.toEqual([
+      {
+        ok: false,
+        ledgerRunId: "ledger-core",
+        error: "core upload timed out",
+      },
+      expect.objectContaining({
+        ok: true,
+        ledgerRunId: "ledger-search",
+        result: expect.objectContaining({ profile: "video-search" }),
+      }),
+    ])
+    expect(backup.runScheduledVideoDbBackup).toHaveBeenNthCalledWith(
+      2,
+      "video-search",
+    )
   })
 })

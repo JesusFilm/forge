@@ -10,6 +10,7 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { dirname, join } from "node:path"
+import { addAbortSignal, Readable } from "node:stream"
 import { env } from "@/config/env"
 
 const useS3 = Boolean(env.RAILWAY_S3_BUCKET)
@@ -183,8 +184,8 @@ export async function writeArtifact(
  * future intra-admin artifact use case.
  *
  * **Do NOT use this helper to read manager-produced artifacts** —
- * scene-analysis.json and transcript.json live in manager's bucket,
- * not admin's. Use {@link readManagerArtifact} for those.
+ * manager-produced artifacts live in manager's bucket, not admin's.
+ * Use {@link readManagerArtifact} for those.
  */
 export async function readArtifact(
   assetId: string,
@@ -211,9 +212,8 @@ export async function readArtifact(
 // ---------------------------------------------------------------------------
 // Manager artifacts S3 backend — read-only by design.
 //
-// Admin's scene and transcript backfills read `{assetId}/scene-analysis.json`
-// and `{assetId}/transcript.json` produced by apps/manager. Those artifacts
-// live in manager's own
+// Admin's transcript backfill reads `{assetId}/transcript.json` produced by
+// apps/manager. Those artifacts live in manager's own
 // Railway bucket, NOT admin's RAILWAY_S3_* (cms-storage) bucket — admin's
 // reads must be routed there.
 //
@@ -348,14 +348,16 @@ export async function writeObject(
   key: string,
   body: Buffer | Uint8Array | string,
   contentType?: string,
+  signal?: AbortSignal,
 ): Promise<string> {
+  signal?.throwIfAborted()
   validateObjectKey(key)
   assertStorageConfiguredForProduction()
 
   if (!useS3) {
     const filePath = join(LOCAL_OBJECT_DIR, key)
     await mkdir(dirname(filePath), { recursive: true })
-    await writeFile(filePath, body)
+    await writeFile(filePath, body, { signal })
     return key
   }
 
@@ -369,6 +371,7 @@ export async function writeObject(
       Body: body,
       ContentType: contentType,
     }),
+    { abortSignal: signal },
   )
 
   console.log(
@@ -382,12 +385,16 @@ export async function writeObject(
   return key
 }
 
-export async function readObject(key: string): Promise<Uint8Array> {
+export async function readObject(
+  key: string,
+  signal?: AbortSignal,
+): Promise<Uint8Array> {
+  signal?.throwIfAborted()
   validateObjectKey(key)
   assertStorageConfiguredForProduction()
 
   if (!useS3) {
-    return readFile(join(LOCAL_OBJECT_DIR, key))
+    return readFile(join(LOCAL_OBJECT_DIR, key), { signal })
   }
 
   const { GetObjectCommand } = await import("@aws-sdk/client-s3")
@@ -398,10 +405,17 @@ export async function readObject(key: string): Promise<Uint8Array> {
       Bucket: env.RAILWAY_S3_BUCKET,
       Key: key,
     }),
+    { abortSignal: signal },
   )
 
   if (!response.Body) throw new Error(`Empty body for ${key}`)
-  return new Uint8Array(await response.Body.transformToByteArray())
+  // Smithy resolves at headers and clears request timeouts; own cancellation for
+  // the Node response stream until its body is consumed or destroyed.
+  if (signal && response.Body instanceof Readable)
+    addAbortSignal(signal, response.Body)
+  const bytes = await response.Body.transformToByteArray()
+  signal?.throwIfAborted()
+  return new Uint8Array(bytes)
 }
 
 /**

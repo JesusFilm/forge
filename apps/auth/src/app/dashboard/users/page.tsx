@@ -19,6 +19,7 @@ export default async function UsersPage() {
       name: true,
       email: true,
       membershipStatus: true,
+      actorType: true,
       emailVerified: true,
       createdAt: true,
       grants: {
@@ -51,6 +52,7 @@ export default async function UsersPage() {
             <tr>
               <DashboardTh>User</DashboardTh>
               <DashboardTh>Status</DashboardTh>
+              <DashboardTh>Actor</DashboardTh>
               <DashboardTh>Email</DashboardTh>
               <DashboardTh>Grants</DashboardTh>
               <DashboardTh>Created</DashboardTh>
@@ -64,6 +66,7 @@ export default async function UsersPage() {
                   <small className="block text-[#78716c]">{user.email}</small>
                 </DashboardTd>
                 <DashboardTd>{user.membershipStatus.toLowerCase()}</DashboardTd>
+                <DashboardTd>{user.actorType.toLowerCase()}</DashboardTd>
                 <DashboardTd>
                   {user.emailVerified ? "verified" : "unverified"}
                 </DashboardTd>

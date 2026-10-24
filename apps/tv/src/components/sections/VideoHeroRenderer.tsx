@@ -1,21 +1,23 @@
-import { useEffect } from "react"
+import { useCallback, useState } from "react"
 import { Dimensions, Pressable, StyleSheet, Text, View } from "react-native"
-import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { useFocusEffect } from "expo-router"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import type { VideoHeroBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
-import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
+import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { VideoBackdrop } from "../watch/VideoBackdrop"
+import { HERO_PEEK, WATCH_THEME } from "../watch/watchDetailTheme"
+import { useHeroOnScreen } from "./heroVisibility"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window")
-const HERO_HEIGHT = SCREEN_HEIGHT * 0.55
+// Full-bleed hero that stops short by HERO_PEEK so the next rail peeks above the
+// fold — mirrors the Video Details hero (was 0.55 * height).
+const HERO_HEIGHT = SCREEN_HEIGHT - HERO_PEEK
 
 /** Used by the silent-focus Pressable below — see its inline comment. */
 const noop = () => {}
@@ -23,126 +25,54 @@ const noop = () => {}
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type VideoHeroRendererProps = {
-  section: NormalizedBlock
+  section: VideoHeroBlockModel
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function VideoHeroRenderer({ section }: VideoHeroRendererProps) {
-  const { state: playerState } = useVideoPlayerContext()
-  const heading = section.heading as string | null
-  const subheading = section.subheading as string | null
-  const streamingUrl = section.streamingUrl as string | null | undefined
-
-  const video = section.video as
-    | {
-        documentId?: string
-        title?: string
-        slug?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }
-      }
-    | null
-    | undefined
+  const { state: playerState, decoderClaimed } = useVideoPlayerContext()
+  // Pauses the hero when it scrolls off-screen (R10). heroOnScreen is ONE shared
+  // top-anchored scalar assuming a single videoHero authored FIRST — see
+  // ExperienceRenderer's HERO_OFFSCREEN_THRESHOLD before adding a second hero.
+  const heroOnScreen = useHeroOnScreen()
+  // Screen-focus gate (R15): false on forward-nav/Back. The stacked screen stays
+  // mounted, so nav-away must release the decode slot (folded into overlayVisible
+  // below), not just pause. useFocusEffect + local state make it reactive.
+  const [isFocused, setIsFocused] = useState(true)
+  useFocusEffect(
+    useCallback(() => {
+      setIsFocused(true)
+      return () => setIsFocused(false)
+    }, []),
+  )
+  const heading = section.heading
+  const subheading = section.subheading
+  const streamingUrl = blockStreamingUrl(section)
 
   const hasValidStream =
     typeof streamingUrl === "string" && validateStreamingUrl(streamingUrl)
-  const thumbnailSource =
-    resolveImageUrl(pickThumbnailUrl(video?.images)) ??
-    getMuxThumbnailUrl(streamingUrl)
-
-  // Inline autoplay: muted, looping background video.
-  // Source is guaranteed stable per mount — the section data does not change
-  // after the initial render for a given experience detail screen.
-  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
-    p.muted = true
-    p.loop = true
-  })
-
-  // Auto-play on mount (separate effect — required for tvOS)
-  useEffect(() => {
-    if (hasValidStream) {
-      try {
-        player.play()
-      } catch {
-        // Native player already released
-      }
-    }
-  }, [player, hasValidStream])
-
-  // Pause inline player when full-screen overlay opens, resume when dismissed
-  useEffect(() => {
-    if (!hasValidStream) return
-    try {
-      if (playerState.isVisible) {
-        player.pause()
-      } else {
-        player.play()
-      }
-    } catch {
-      // Native player already released
-    }
-  }, [player, playerState.isVisible, hasValidStream])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause()
-      } catch {
-        // Native player already released
-      }
-    }
-  }, [player])
+  // The VideoHeroBlock fragment carries no image field, so the poster is always
+  // derived from the Mux stream (null when there is no usable stream).
+  const posterUrl = getMuxThumbnailUrl(streamingUrl) ?? null
 
   return (
     <View style={styles.container}>
-      {/* Background layer: VideoView when stream is available, else thumbnail.
-          All layers use pointerEvents="none" so the TV focus engine
-          traverses past the native video surface — the silent-focus
-          target is the Pressable below. */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        {hasValidStream ? (
-          <VideoView
-            player={player}
-            style={StyleSheet.absoluteFill}
-            nativeControls={false}
-            contentFit="cover"
-            focusable={false}
-          />
-        ) : thumbnailSource != null ? (
-          <Image
-            source={thumbnailSource}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={`video-hero-${section.kind}-${String(video?.documentId ?? "unknown")}`}
-            accessibilityLabel={video?.title ?? heading ?? "Video hero image"}
-          />
-        ) : (
-          <View style={[StyleSheet.absoluteFill, styles.fallbackBg]} />
-        )}
+      {/* Cinematic backdrop autoplaying WITH SOUND (R9). overlayVisible releases the
+          decode slot on overlay-open (R11), nav-away (so a pushed screen isn't starved),
+          or a Showcase Mode claim (KTD-1); active gates the scroll-off pause (R10). */}
+      <VideoBackdrop
+        streamingUrl={hasValidStream ? streamingUrl : null}
+        posterUrl={posterUrl}
+        overlayVisible={playerState.isVisible || !isFocused || decoderClaimed}
+        bottomFadeColor={WATCH_THEME.below}
+        muted={false}
+        active={heroOnScreen}
+      />
 
-        {/* Smooth gradient fade into background — matches mobile */}
-        <LinearGradient
-          colors={[hexToRgba(COLORS.surface, 0), COLORS.surface]}
-          locations={[0.4, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
-
-      {/* Silent-focus target: full-bleed invisible Pressable that
-          catches D-pad UP from the first block below. Focus landing
-          here lets the containing ScrollView scroll the hero into
-          view. This is an *intentional* deviation from
-          apps/tv/CLAUDE.md's "visible focus ring" rule — the product
-          decision is that the hero should look static even when
-          focused. `onPress` is a no-op handler (rather than
-          undefined) so pressing Select on the focused hero doesn't
-          visually flash with no behaviour; `android_ripple={null}`
-          suppresses Android TV's default ripple animation on press. */}
+      {/* Silent-focus target: as the topmost focusable it takes initial focus so
+          the hero owns the first paint (no on-mount scroll) and catches D-pad UP.
+          Not a play surface (noop press, no ring); the video opens via a rail card. */}
       <Pressable
         style={StyleSheet.absoluteFill}
         accessibilityLabel={heading ?? "Video hero"}
@@ -175,9 +105,6 @@ const styles = StyleSheet.create({
     height: HERO_HEIGHT,
     overflow: "hidden",
   },
-  fallbackBg: {
-    backgroundColor: COLORS.surfaceContainer,
-  },
   textContainer: {
     position: "absolute",
     bottom: scale(48),
@@ -186,16 +113,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: "System",
-    fontSize: scale(40),
-    fontWeight: "bold",
-    color: COLORS.text,
-    letterSpacing: -0.5,
+    fontSize: Math.round(scale(78)),
+    fontWeight: "800",
+    color: WATCH_THEME.text,
+    letterSpacing: -1,
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 12,
   },
   subtitle: {
     fontFamily: "System",
-    fontSize: scale(20),
+    fontSize: Math.round(scale(24)),
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text82,
     marginTop: scale(8),
   },
 })

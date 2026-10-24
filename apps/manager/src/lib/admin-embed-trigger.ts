@@ -1,10 +1,9 @@
-// Thin GraphQL proxy to apps/admin's embed-trigger mutations.
+// Thin GraphQL proxy to apps/admin's transcript embed-trigger mutation.
 //
 // Per plan 006: admin owns the embedding workflow + destination
 // Postgres schema; manager exposes operator-facing trigger surfaces
-// that forward to admin's `triggerSceneEmbeddingBackfill` /
-// `triggerTranscriptEmbeddingBackfill` GraphQL mutations using a
-// service-to-service bearer key.
+// that forward to admin's `triggerTranscriptEmbeddingBackfill` GraphQL
+// mutation using a service-to-service bearer key.
 //
 // Behaviour parity (single workflow, single source of truth) is
 // guaranteed by NOT duplicating the workflow on manager. Manager's
@@ -59,22 +58,6 @@ export type AdminTriggerEnvelope =
       retryable: true
     }
 
-type TriggerKind = "scene" | "transcript"
-
-const SCENE_OPERATION = /* GraphQL */ `
-  mutation TriggerSceneEmbeddingBackfill(
-    $mappingS3Key: String
-    $coreIds: [String!]
-    $locales: [String!]
-  ) {
-    triggerSceneEmbeddingBackfill(
-      mappingS3Key: $mappingS3Key
-      coreIds: $coreIds
-      locales: $locales
-    )
-  }
-`
-
 const TRANSCRIPT_OPERATION = /* GraphQL */ `
   mutation TriggerTranscriptEmbeddingBackfill(
     $mappingS3Key: String
@@ -89,25 +72,15 @@ const TRANSCRIPT_OPERATION = /* GraphQL */ `
   }
 `
 
-export type SceneTriggerVars = {
-  mappingS3Key?: string
-  coreIds?: string[]
-  locales?: string[]
-}
-
 export type TranscriptTriggerVars = {
   mappingS3Key?: string
   coreIds?: string[]
   languages?: string[]
 }
 
-const RESPONSE_FIELD: Record<TriggerKind, string> = {
-  scene: "triggerSceneEmbeddingBackfill",
-  transcript: "triggerTranscriptEmbeddingBackfill",
-}
+const TRANSCRIPT_RESPONSE_FIELD = "triggerTranscriptEmbeddingBackfill"
 
 async function postToAdmin(
-  kind: TriggerKind,
   query: string,
   variables: Record<string, unknown>,
 ): Promise<AdminTriggerEnvelope> {
@@ -180,8 +153,7 @@ async function postToAdmin(
     }
   }
 
-  const fieldName = RESPONSE_FIELD[kind]
-  const data = payload.data?.[fieldName]
+  const data = payload.data?.[TRANSCRIPT_RESPONSE_FIELD]
   // Treat both `undefined` (missing field) and `null` (mutation
   // returned null with no errors — not currently possible against
   // admin's JSON scalar return type, but defensive against future
@@ -191,7 +163,7 @@ async function postToAdmin(
       ok: false,
       reason: "graphql_error",
       messages: [
-        `admin GraphQL response missing data.${fieldName} (status ${response.status})`,
+        `admin GraphQL response missing data.${TRANSCRIPT_RESPONSE_FIELD} (status ${response.status})`,
       ],
       httpStatus: response.status,
       retryable: false,
@@ -201,14 +173,8 @@ async function postToAdmin(
   return { ok: true, data }
 }
 
-export async function triggerSceneEmbeddingBackfill(
-  vars: SceneTriggerVars,
-): Promise<AdminTriggerEnvelope> {
-  return postToAdmin("scene", SCENE_OPERATION, vars)
-}
-
 export async function triggerTranscriptEmbeddingBackfill(
   vars: TranscriptTriggerVars,
 ): Promise<AdminTriggerEnvelope> {
-  return postToAdmin("transcript", TRANSCRIPT_OPERATION, vars)
+  return postToAdmin(TRANSCRIPT_OPERATION, vars)
 }

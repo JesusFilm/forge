@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const {
   ensureGeneratedSubtitlesForAssetMock,
   retrieveAssetMock,
+  readArtifactMock,
   signPlaybackIdMock,
   transcribeViaElevenLabsMock,
   writeArtifactMock,
 } = vi.hoisted(() => ({
   ensureGeneratedSubtitlesForAssetMock: vi.fn(),
   retrieveAssetMock: vi.fn(),
+  readArtifactMock: vi.fn(),
   signPlaybackIdMock: vi.fn(),
   transcribeViaElevenLabsMock: vi.fn(),
   writeArtifactMock: vi.fn(),
@@ -34,6 +36,7 @@ vi.mock("@/services/mux", async (importOriginal) => {
 })
 
 vi.mock("@/services/storage", () => ({
+  readArtifact: readArtifactMock,
   writeArtifact: writeArtifactMock,
 }))
 
@@ -55,10 +58,12 @@ describe("transcription", () => {
   beforeEach(() => {
     ensureGeneratedSubtitlesForAssetMock.mockReset()
     retrieveAssetMock.mockReset()
+    readArtifactMock.mockReset()
     signPlaybackIdMock.mockReset()
     transcribeViaElevenLabsMock.mockReset()
     writeArtifactMock.mockReset()
     ensureGeneratedSubtitlesForAssetMock.mockResolvedValue(undefined)
+    readArtifactMock.mockResolvedValue(new Uint8Array([1, 2, 3]))
     writeArtifactMock.mockResolvedValue("artifact-key")
   })
 
@@ -380,6 +385,52 @@ describe("transcription", () => {
     })
   })
 
+  it("uses cleaned audio artifacts as the ElevenLabs transcription input", async () => {
+    transcribeViaElevenLabsMock.mockResolvedValue({
+      text: "Clean input transcript.",
+      segments: [{ start: 0, end: 1.2, text: "Clean input transcript." }],
+      language: "en",
+    })
+
+    const result = await transcribe("asset-1", "mux-asset-1", "en", {
+      requestedProvider: "automatic",
+      cleanedAudioArtifact: {
+        assetId: "asset-1",
+        artifactType: "cleaned-audio",
+        ext: "mp3",
+      },
+    })
+
+    expect(readArtifactMock).toHaveBeenCalledWith(
+      "asset-1",
+      "cleaned-audio",
+      "mp3",
+    )
+    expect(transcribeViaElevenLabsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isolatedAudio: expect.any(Blob),
+        languageCode: "en",
+      }),
+    )
+    expect(transcribeViaElevenLabsMock.mock.calls[0]?.[0]).not.toHaveProperty(
+      "sourceUrl",
+    )
+    expect(result).toMatchObject({
+      text: "Clean input transcript.",
+      language: "en",
+      resolvedProvider: "elevenlabs",
+      routingReport: {
+        finalProvider: "elevenlabs",
+        attempts: [
+          expect.objectContaining({
+            decisionReason:
+              "Automatic routing chose ElevenLabs for the resolved source language using cleaned audio from audio_cleanup.",
+          }),
+        ],
+      },
+    })
+  })
+
   it("uses Mux when automatic routing does not have a supported source language", async () => {
     retrieveAssetMock.mockResolvedValue({
       duration: 12,
@@ -498,7 +549,7 @@ describe("transcription", () => {
 
     expect(error).toMatchObject({
       message:
-        "ElevenLabs transcription requires a persisted source input URL.",
+        "ElevenLabs transcription requires a persisted source input URL or cleaned audio artifact.",
       routingReport: {
         attempts: [
           expect.objectContaining({
@@ -506,7 +557,7 @@ describe("transcription", () => {
             resolvedProvider: "elevenlabs",
             status: "failed",
             fallbackReason:
-              "ElevenLabs transcription requires a persisted source input URL.",
+              "ElevenLabs transcription requires a persisted source input URL or cleaned audio artifact.",
           }),
         ],
       },

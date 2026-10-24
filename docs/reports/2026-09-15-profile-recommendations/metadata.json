@@ -1,0 +1,13 @@
+{
+  "source": "Forge production Admin PostgreSQL",
+  "read_only": true,
+  "verified_at_utc": "2026-09-15T02:03:52.496Z",
+  "behavior_window_start_utc": "2026-09-08T01:45:00Z",
+  "behavior_window_end_utc": "2026-09-15T01:45:00Z",
+  "statement_timeout_ms": 25000,
+  "lock_timeout_ms": 2000,
+  "repeat_stage_diagnostic": "Latest 200 hybrid personalized requests before cutoff",
+  "broad_repeat_stage_queries_timed_out": 2,
+  "raw_viewer_identifiers_exported": false,
+  "raw_vectors_exported": false
+}

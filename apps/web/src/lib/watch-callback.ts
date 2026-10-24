@@ -1,7 +1,7 @@
 import {
   getDefaultWatchCallbackOrigins,
   resolveWatchCallbackURL as resolveSharedWatchCallbackURL,
-} from "@forge/watch-url-policy"
+} from "@forge/watch-url-policy/callbacks"
 
 export function resolveWatchCallbackURL(
   value: string | null | undefined,

@@ -1,7 +1,7 @@
 ---
 title: "Mastra offline search eval orchestration boundary pattern"
 date: "2026-05-27"
-last_updated: "2026-05-28"
+last_updated: "2026-06-02"
 category: "architecture-patterns"
 module: "apps/mastra, apps/admin"
 problem_type: "architecture_pattern"
@@ -30,6 +30,7 @@ related_features:
   - "feat-139"
   - "feat-140"
   - "feat-142"
+  - "feat-155"
 related:
   - "docs/solutions/platform/mastra-embedding-workflow-ownership-pattern.md"
   - "docs/solutions/platform/admin-search-trace-retention-pattern.md"
@@ -92,11 +93,10 @@ gates, or native Mastra Datasets before promotion.
 Make promotion an Admin-owned state transition, not a Mastra-side file write.
 The promoted row should carry sanitized query text, expected-result notes,
 sanitized source anchors, reviewer identity, review/promoted timestamps,
-sanitization status, and safe run context. Admin's regression loader should
-continue reading the hand-edited `apps/admin/eval/regressions.json` first, then
-append promoted DB rows as `source: "promoted"` when a Prisma client is
-available. Baseline schemas and rebaseline code must accept that promoted
-source, or the first promoted rebaseline will write a file that cannot load.
+sanitization status, and safe run context. Mastra should read promoted rows
+through Admin's candidate HTTP contract when building native eval datasets or
+offline baseline artifacts; Admin must not reintroduce file-backed regression
+truth under `apps/admin`.
 
 Keep user-submitted source payloads out of exposed candidate provenance.
 Submitting a prompt can store the prompt text as pending review input, but
@@ -107,14 +107,19 @@ context through the sanitized edit contract.
 
 Trace-derived generated candidates need an even stricter rule: they may
 contribute retained counts and redacted source-mix metadata, but they should
-not be searched, judged, or written with raw query text. Redact at both
-boundaries:
+not be searched, judged, serialized into reports, or promoted with raw query
+text. Admin may store raw trace query text only on generated `TRACE` candidate
+rows, bounded by the trace `retentionExpiresAt` and purge path, so reviewers can
+inspect and sanitize while the raw trace is still allowed to exist. Redact at
+both boundaries:
 
 - Admin candidate listing should null `queryText`, clear hint/anchor/judge
   metadata, and return only a redacted provenance marker for `TRACE` rows.
 - Mastra report serialization should keep trace-derived generated outcomes
   redacted, with no raw query, public/raw hash, source payload, vector, bearer,
   provider prompt, or scoring debug field.
+- Native Evaluation and baseline artifacts should receive only promoted,
+  sanitized text.
 
 Use Admin HTTP as the search execution primitive. Add internal, authenticated,
 bounded Admin routes when Mastra needs new read behavior:
@@ -132,6 +137,22 @@ bounded Admin routes when Mastra needs new read behavior:
   `/archive` move bad or duplicate rows to terminal non-gate states.
 - Existing trace and catalog context contracts remain Admin-owned and
   bearer-gated.
+
+When retiring the old Admin harness, separate implementation names from wire
+contracts. Delete file-backed runners, fixtures, baseline truth, judge helpers,
+and package scripts from Admin once Mastra owns offline eval execution. Keep
+surviving Admin services as flat HTTP-contract helpers instead of under a
+`search-eval/` harness directory. Do not rename existing unversioned response
+literals just to match new internal module names: for example, a catalog-context
+locale profile can continue returning `source: "harness"` until a versioned or
+dual-accepted contract moves every caller together.
+
+Rename optional harness-era environment variables only when the variable is
+scoped to the same deployable and tests lock the migration down. The Admin
+trace classifier can use a clearer `OPENROUTER_QUERY_CLASSIFIER_MODEL` because
+it is an Admin-local optional feature, while Mastra judge configuration remains
+Mastra-owned. Add negative regression tests for removed Admin keys and package
+scripts so the retired CLI cannot quietly reappear.
 
 Make report artifacts boring and strict. Store them under Mastra's configured
 artifact root, validate safe names and schema shape before read/write, enforce
@@ -314,11 +335,7 @@ while (true) {
   `apps/admin/src/app/api/internal/search-eval/candidates/route.ts` and
   `apps/admin/src/app/api/internal/search-eval/candidates/[id]/route.ts`,
   action routes under `candidates/[id]/`, and
-  `apps/admin/src/services/search-eval/candidates.ts`.
-- Admin regression truth loading:
-  `apps/admin/src/services/search-eval/regressions.ts`,
-  `apps/admin/src/services/search-eval/baseline.ts`, and
-  `apps/admin/src/scripts/eval-search.ts`.
+  `apps/admin/src/services/search-eval-candidates.ts`.
 - Trace sampling contract:
   `apps/admin/src/app/api/internal/search-traces/sample/route.ts`.
 

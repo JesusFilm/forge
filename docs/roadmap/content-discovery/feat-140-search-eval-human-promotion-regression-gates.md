@@ -20,6 +20,13 @@ tags:
   - "evals"
 ---
 
+## Historical Note
+
+This completed ticket references legacy Admin search-eval harness files that
+were removed by `feat-155`. Current promoted candidate review remains
+Admin-owned through internal HTTP contracts; baseline/report consumption is
+Mastra-owned.
+
 ## Problem
 
 Generated eval candidates are useful for scale, but they should not become
@@ -59,14 +66,14 @@ contracts for candidate reads and state changes.
    - generated candidate storage and promotion status.
 3. `docs/roadmap/content-discovery/feat-139-mastra-offline-search-eval-runner-reports.md`
    - Mastra eval report output to review.
-4. `apps/admin/eval/README.md`
-   - existing regression and calibration artifact guidance.
-5. `apps/admin/eval/regressions.json`
-   - current hand-edited regression case store.
-6. `apps/admin/src/services/search-eval/regressions.ts`
-   - regression loading and validation.
-7. `apps/admin/src/services/search-eval/reporter.ts`
+4. `apps/admin/src/services/search-eval-candidates.ts`
+   - generated candidate storage, review transitions, and redaction.
+5. `apps/admin/src/app/api/internal/search-eval/candidates/`
+   - current candidate list/detail/review HTTP contracts.
+6. `apps/mastra/src/services/offline-search-eval/report.ts`
    - report details that should support promotion decisions.
+7. `apps/mastra/src/services/offline-search-eval/native-evaluation.ts`
+   - native Evaluation sync after promotion.
 8. `apps/admin/src/app/dashboard/search/page.tsx`
    - existing Admin search/debug surface for result inspection and previewing.
 9. `apps/mastra/src/mastra/index.ts`
@@ -81,7 +88,7 @@ contracts for candidate reads and state changes.
 ## Grep These
 
 ```
-rg -n "regressions.json|loadRegressions|Regression|calibration" apps/admin/eval apps/admin/src/services/search-eval
+rg -n "SearchEvalCandidate|promotionStatus|promoteSearchEvalCandidate" apps/admin/src apps/admin/prisma
 rg -n "candidate|promotion|approved|sanitized|human" apps/admin/src apps/mastra/src docs/roadmap
 rg -n "dashboard/search|workflow reports|eval reports|registerApiRoute|studio|workflow" apps/admin/src/app apps/mastra/src
 rg -n "Dataset|Experiment|createScorer|startExperiment|scorerIds|targetType" apps/mastra/node_modules/@mastra/core/dist
@@ -118,8 +125,8 @@ rg -n "Dataset|Experiment|createScorer|startExperiment|scorerIds|targetType" app
 7. Add regression-gate loading so promoted evals can be used by Mastra offline
    eval runs, CI-sensitive search checks, and native Mastra Evaluation
    Datasets/Experiments.
-8. Preserve or migrate the existing hand-edited `apps/admin/eval/regressions.json`
-   flow so current regression cases are not lost.
+8. Preserve promoted regression truth through Admin candidate review and Mastra
+   native Evaluation datasets so current regression cases are not lost.
 9. Add clear rejection/archive states for low-quality, ambiguous, abusive, or
    unsanitized candidates.
 10. Document the review standards for seed baseline prompts, user-generated

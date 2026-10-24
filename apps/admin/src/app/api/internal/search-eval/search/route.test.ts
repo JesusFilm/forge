@@ -2,37 +2,70 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const rateLimitAuthRoute = vi.fn()
 const isValidSearchTraceSamplingBearer = vi.fn()
-const search = vi.fn()
-const recordSearchTraceSafely = vi.fn()
+const defaultSearch = vi.fn()
+const modernSearch = vi.fn()
+const enqueueWatchSearchTrace = vi.fn()
+const createTypesenseWatchSearchService = vi.fn()
+const prisma = {
+  video: { findMany: vi.fn() },
+}
 
 vi.mock("@/auth/rate-limit", () => ({ rateLimitAuthRoute }))
 vi.mock("@/auth/search-trace-bearer", () => ({
   isValidSearchTraceSamplingBearer,
 }))
-vi.mock("@/db/client", () => ({ prisma: {} }))
-vi.mock("@/services/search-trace.service", () => ({ recordSearchTraceSafely }))
-vi.mock("@/services/hybrid-search.service", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/services/hybrid-search.service")
-  >("@/services/hybrid-search.service")
-  return {
-    ...actual,
-    HybridSearchService: vi.fn(() => ({ search })),
-  }
-})
+vi.mock("@/db/client", () => ({ prisma }))
+vi.mock("@/services/watch-search.service", () => ({
+  WatchSearchService: vi.fn(() => ({ search: defaultSearch })),
+  WatchSearchValidationError: class WatchSearchValidationError extends Error {},
+}))
+vi.mock("@/services/typesense-watch-search.service", () => ({
+  createTypesenseWatchSearchService,
+  TypesenseWatchSearchUnavailableError: class TypesenseWatchSearchUnavailableError extends Error {},
+}))
+vi.mock("@/services/search-trace.service", () => ({
+  enqueueWatchSearchTrace,
+}))
 
-const { GET, POST } = await import("./route")
+const { POST } = await import("./route")
 
-function request(body: unknown, headers: HeadersInit = {}) {
+function request(body: unknown) {
   return new Request("http://admin.test/api/internal/search-eval/search", {
     method: "POST",
     headers: {
+      authorization: "Bearer trace-key",
       "content-type": "application/json",
-      authorization: "Bearer eval-key",
-      ...headers,
     },
     body: JSON.stringify(body),
   })
+}
+
+const response = {
+  query: "Jesus",
+  results: [
+    {
+      type: "video",
+      id: "video-1",
+      slug: "jesus",
+      title: "JESUS",
+      imageUrl: null,
+      snippet: "The story of Jesus.",
+      startSeconds: null,
+      playbackId: "mux-1",
+      score: 1,
+      label: "FEATURE_FILM",
+      durationSeconds: 120,
+      childCount: null,
+      languageSlug: "thai",
+    },
+  ],
+  hasMore: false,
+  searchMode: "watch-search-typesense",
+  requestId: "request-1",
+  degraded: false,
+  latencyMs: 42,
+  laneStatuses: [],
+  languageInterpretation: { targetLanguageSlug: "thai" },
 }
 
 describe("POST /api/internal/search-eval/search", () => {
@@ -40,178 +73,89 @@ describe("POST /api/internal/search-eval/search", () => {
     vi.clearAllMocks()
     rateLimitAuthRoute.mockResolvedValue({ allowed: true, source: "local" })
     isValidSearchTraceSamplingBearer.mockReturnValue(true)
-    search.mockResolvedValue({
+    createTypesenseWatchSearchService.mockReturnValue({ search: modernSearch })
+    modernSearch.mockResolvedValue(response)
+    defaultSearch.mockResolvedValue({
+      ...response,
+      searchMode: "watch-search",
+    })
+    prisma.video.findMany.mockResolvedValue([
+      { id: "video-1", coreId: "4_Jesus_16x9" },
+    ])
+    enqueueWatchSearchTrace.mockReturnValue(true)
+  })
+
+  it("runs MODERN through Admin and emits eval evidence plus normal analytics", async () => {
+    const result = await POST(
+      request({
+        query: "พระเยซูคือใคร",
+        locale: "th",
+        languageSlug: "thai",
+        mode: "modern",
+        clientRequestId: "eval-modern-0001",
+        contentType: "video",
+        limit: 10,
+      }),
+    )
+
+    expect(result.status).toBe(200)
+    await expect(result.json()).resolves.toEqual({
       results: [
-        {
-          type: "video",
+        expect.objectContaining({
           id: "video-1",
-          slug: "jesus",
-          title: "JESUS",
-          imageUrl: null,
-          snippet: "The story of Jesus.",
-          startSeconds: null,
-          playbackId: null,
-          score: 1,
-          label: "FEATURE_FILM",
-          durationSeconds: 120,
-          childCount: null,
-        },
+          canonicalVideoId: "core:4_jesus",
+          languageSlug: "thai",
+        }),
       ],
       hasMore: false,
       query: "Jesus",
-      searchMode: "hybrid",
+      searchMode: "watch-search-typesense",
+      requestId: "request-1",
+      degraded: false,
+      latencyMs: 42,
+      revision: null,
+      laneStatuses: [],
     })
-  })
-
-  it("runs Admin search for a valid internal eval bearer without recording a trace", async () => {
-    const response = await POST(
-      request({
-        query: "Jesus",
-        locale: "en",
-        limit: 10,
-        mode: "keyword-first",
-        contentType: "video",
-      }),
-    )
-
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toMatchObject({
-      results: [{ id: "video-1" }],
-      query: "Jesus",
-      searchMode: "hybrid",
-    })
-    expect(rateLimitAuthRoute).toHaveBeenCalledWith(
+    expect(modernSearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        route: "search-eval-search",
-        limit: 60,
-        windowMs: 60_000,
+        query: "พระเยซูคือใคร",
+        mode: "modern",
+        clientRequestId: "eval-modern-0001",
+        targetLanguageSlug: "thai",
+        queryLanguageSlug: "thai",
+        resultTypes: ["video"],
       }),
     )
-    expect(search).toHaveBeenCalledWith({
-      query: "Jesus",
-      locale: "en",
-      limit: 10,
-      offset: undefined,
-      mode: "keyword-first",
-      contentTypes: ["video"],
-    })
-    expect(recordSearchTraceSafely).not.toHaveBeenCalled()
+    expect(defaultSearch).not.toHaveBeenCalled()
+    expect(enqueueWatchSearchTrace).toHaveBeenCalledOnce()
   })
 
-  it("rejects missing bearer before parsing the body", async () => {
-    isValidSearchTraceSamplingBearer.mockReturnValue(false)
-    const text = vi.fn(async () => {
-      throw new Error("body should not be read")
-    })
+  it("keeps DEFAULT available for diagnostics", async () => {
+    const result = await POST(
+      request({ query: "Jesus", locale: "en", mode: "default" }),
+    )
 
-    const response = await POST({
-      headers: new Headers(),
-      text,
-    } as unknown as Request)
-
-    expect(response.status).toBe(401)
-    expect(text).not.toHaveBeenCalled()
-    expect(search).not.toHaveBeenCalled()
+    expect(result.status).toBe(200)
+    expect(defaultSearch).toHaveBeenCalledOnce()
+    expect(modernSearch).not.toHaveBeenCalled()
   })
 
-  it("returns 429 before auth or body parsing when rate-limited", async () => {
+  it("authenticates, rate-limits, and rejects malformed mode", async () => {
+    isValidSearchTraceSamplingBearer.mockReturnValueOnce(false)
+    await expect(
+      POST(request({ query: "Jesus", locale: "en", mode: "modern" })),
+    ).resolves.toHaveProperty("status", 401)
+
     rateLimitAuthRoute.mockResolvedValueOnce({
       allowed: false,
       source: "local",
     })
-    const text = vi.fn(async () => JSON.stringify({}))
-
-    const response = await POST({
-      headers: new Headers({ authorization: "Bearer eval-key" }),
-      body: new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode("{}"))
-          controller.close()
-        },
-      }),
-      text,
-    } as unknown as Request)
-
-    expect(response.status).toBe(429)
-    expect(response.headers.get("retry-after")).toBe("60")
-    expect(isValidSearchTraceSamplingBearer).not.toHaveBeenCalled()
-    expect(text).not.toHaveBeenCalled()
-  })
-
-  it("requires JSON, a bounded query, locale, and valid content type", async () => {
     await expect(
-      POST(
-        new Request("http://admin.test/api/internal/search-eval/search", {
-          method: "POST",
-          headers: { authorization: "Bearer eval-key" },
-          body: "{}",
-        }),
-      ),
-    ).resolves.toHaveProperty("status", 415)
+      POST(request({ query: "Jesus", locale: "en", mode: "modern" })),
+    ).resolves.toHaveProperty("status", 429)
 
-    for (const body of [
-      {},
-      { query: "", locale: "en" },
-      { query: "x".repeat(1025), locale: "en" },
-      { query: "Jesus" },
-      { query: "Jesus", locale: "en\ninjected" },
-      { query: "Jesus", locale: "x".repeat(33) },
-      { query: "Jesus", locale: "en", limit: 51 },
-      { query: "Jesus", locale: "en", offset: -1 },
-      { query: "Jesus", locale: "en", contentType: "bad" },
-    ]) {
-      const response = await POST(request(body))
-      expect(response.status).toBe(400)
-    }
-    expect(search).not.toHaveBeenCalled()
-  })
-
-  it("rejects chunked bodies after the byte cap without fully parsing", async () => {
-    const response = await POST({
-      headers: new Headers({
-        authorization: "Bearer eval-key",
-        "content-type": "application/json",
-      }),
-      body: new ReadableStream({
-        start(controller) {
-          controller.enqueue(new Uint8Array(4097))
-          controller.close()
-        },
-      }),
-    } as unknown as Request)
-
-    expect(response.status).toBe(413)
-    expect(search).not.toHaveBeenCalled()
-  })
-
-  it("rejects declared oversized bodies before search", async () => {
-    const response = await POST({
-      headers: new Headers({
-        authorization: "Bearer eval-key",
-        "content-type": "application/json",
-        "content-length": "4097",
-      }),
-      body: null,
-    } as unknown as Request)
-
-    expect(response.status).toBe(413)
-    expect(search).not.toHaveBeenCalled()
-  })
-
-  it("maps search failures to a 503 without leaking details", async () => {
-    search.mockRejectedValueOnce(new Error("provider secret leaked?"))
-
-    const response = await POST(request({ query: "Jesus", locale: "en" }))
-
-    expect(response.status).toBe(503)
-    await expect(response.json()).resolves.toEqual({
-      error: "Search is temporarily unavailable",
-    })
-  })
-})
-
-describe("GET /api/internal/search-eval/search", () => {
-  it("is closed", async () => {
-    await expect(GET()).resolves.toHaveProperty("status", 401)
+    await expect(
+      POST(request({ query: "Jesus", locale: "en", mode: "bad" })),
+    ).resolves.toHaveProperty("status", 400)
   })
 })

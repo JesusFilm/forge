@@ -5,36 +5,76 @@ import {
   WATCH_CANONICAL_ORIGIN,
   asContentSlug,
   asLocaleSlug,
+  languagesIndexPath,
+  localizedHistoryPath,
+  localizedLanguagesPath,
+  languageVideosIndexPath,
   localizedHomeAbsolute,
   localizedHomePath,
   parseWatchPath,
   searchPath,
+  isLanguageLessWatchEpisodePathEligible,
   tryAsContentSlug,
   tryAsLocaleSlug,
   videosIndexPath,
+  whatsNewPath,
   watchEpisodeAbsolute,
+  watchEpisodeExplicitLanguagePath,
   watchEpisodePath,
   watchVideoAbsolute,
+  watchVideoExplicitLanguagePath,
   watchVideoPath,
+  watchUnavailableLanguagePath,
 } from "./routes"
 
 const jesus = asContentSlug("jesus")
 const lumo = asContentSlug("lumo-the-gospel-of-john")
 const wedding = asContentSlug("wedding-in-cana")
 const english = asLocaleSlug("english")
+const romanian = asLocaleSlug("romanian")
 const russian = asLocaleSlug("russian")
+const spanishCastilian = asLocaleSlug("spanish-castilian")
 const portugueseBrazil = asLocaleSlug("portuguese-brazil")
 
 describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-liberté-de-l-interieur-freedom-within",
+    "la-búsqueda-the-search",
+    "jätku-leiba",
+  ])("accepts the reported Unicode content slug %s", (slug) => {
+    expect(tryAsContentSlug(slug)).toBe(slug)
+    expect(asContentSlug(slug)).toBe(slug)
+  })
+
   it("returns branded slug on valid input", () => {
     expect(tryAsContentSlug("jesus")).toBe("jesus")
+    expect(tryAsContentSlug("soccer_event_collection")).toBe(
+      "soccer_event_collection",
+    )
+    expect(tryAsContentSlug("kılıç")).toBe("kılıç")
+    expect(tryAsContentSlug("la-liberté-de-l-interieur-freedom-within")).toBe(
+      "la-liberté-de-l-interieur-freedom-within",
+    )
     expect(tryAsLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("keeps public language slugs kebab-case", () => {
+    expect(tryAsLocaleSlug("soccer_event_collection")).toBeNull()
   })
 
   it("returns null on uppercase", () => {
     expect(tryAsContentSlug("Jesus")).toBeNull()
     expect(tryAsLocaleSlug("English")).toBeNull()
   })
+
+  it.each(["ｊｅｓｕｓ", "ᴀlpha", "ʰome", "ɪesus", "ꜱcript", "ﬁlm"])(
+    "rejects lookalike Unicode content slug %s",
+    (slug) => {
+      expect(tryAsContentSlug(slug)).toBeNull()
+      expect(() => asContentSlug(slug)).toThrow()
+    },
+  )
 
   it("returns null on dot", () => {
     expect(tryAsContentSlug("jesus.html")).toBeNull()
@@ -56,7 +96,14 @@ describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
 describe("asContentSlug / asLocaleSlug guards", () => {
   it("accepts safe slug shape", () => {
     expect(asContentSlug("jesus")).toBe("jesus")
+    expect(asContentSlug("soccer_event_collection")).toBe(
+      "soccer_event_collection",
+    )
     expect(asLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
+  })
+
+  it("rejects underscores in locale slugs", () => {
+    expect(() => asLocaleSlug("soccer_event_collection")).toThrow()
   })
 
   it("rejects uppercase", () => {
@@ -89,25 +136,45 @@ describe("localizedHomePath", () => {
 })
 
 describe("watchVideoPath", () => {
-  it("returns canonical two-segment shape", () => {
-    expect(watchVideoPath(jesus, english)).toBe("/jesus.html/english.html")
+  it("omits English from the eligible canonical shape", () => {
+    expect(watchVideoPath(jesus, english)).toBe("/jesus.html")
+  })
+
+  it("keeps international routes language-explicit", () => {
+    expect(watchVideoPath(jesus, spanishCastilian)).toBe(
+      "/jesus.html/spanish-castilian.html",
+    )
+    expect(watchVideoPath(jesus, romanian)).toBe("/jesus.html/romanian.html")
+    expect(watchVideoPath(jesus, russian)).toBe("/jesus.html/russian.html")
+  })
+
+  it("keeps English explicit for a public language-home collision", () => {
+    expect(watchVideoPath(asContentSlug("russian"), english)).toBe(
+      "/russian.html/english.html",
+    )
+  })
+
+  it("keeps non-language one-segment Experiences eligible", () => {
+    expect(watchVideoPath(asContentSlug("easter"), english)).toBe(
+      "/easter.html",
+    )
   })
 
   it("appends t and autoplay one-shots", () => {
     expect(watchVideoPath(jesus, english, { t: 120, autoplay: true })).toBe(
-      "/jesus.html/english.html?t=120&autoplay=1",
+      "/jesus.html?t=120&autoplay=1",
     )
   })
 
   it("emits _lr=1 when reason is set", () => {
     expect(watchVideoPath(jesus, english, { reason: "locale-resolved" })).toBe(
-      "/jesus.html/english.html?_lr=1",
+      "/jesus.html?_lr=1",
     )
   })
 
   it("does not emit _lr=1 when reason is undefined", () => {
-    expect(watchVideoPath(jesus, english)).toBe("/jesus.html/english.html")
-    expect(watchVideoPath(jesus, english, {})).toBe("/jesus.html/english.html")
+    expect(watchVideoPath(jesus, english)).toBe("/jesus.html")
+    expect(watchVideoPath(jesus, english, {})).toBe("/jesus.html")
   })
 
   it("preserves t and autoplay alongside reason", () => {
@@ -117,41 +184,143 @@ describe("watchVideoPath", () => {
         autoplay: true,
         reason: "locale-resolved",
       }),
-    ).toBe("/jesus.html/english.html?t=42&autoplay=1&_lr=1")
+    ).toBe("/jesus.html?t=42&autoplay=1&_lr=1")
+  })
+
+  it("serializes subtitle intent after existing one-shot parameters", () => {
+    expect(
+      watchVideoPath(jesus, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+        subtitleLanguage: russian,
+      }),
+    ).toBe("/jesus.html?t=42&autoplay=1&_lr=1&subtitles=russian")
+  })
+})
+
+describe("watchVideoExplicitLanguagePath", () => {
+  it("always emits the language segment", () => {
+    expect(watchVideoExplicitLanguagePath(jesus, english)).toBe(
+      "/jesus.html/english.html",
+    )
+  })
+
+  it("serializes one-shot query options identically", () => {
+    expect(
+      watchVideoExplicitLanguagePath(jesus, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+        subtitleLanguage: russian,
+      }),
+    ).toBe("/jesus.html/english.html?t=42&autoplay=1&_lr=1&subtitles=russian")
+  })
+})
+
+describe("watchUnavailableLanguagePath", () => {
+  it("keeps the requested language explicit without claiming playability", () => {
+    expect(watchUnavailableLanguagePath(jesus, russian)).toBe(
+      "/jesus.html/russian.html",
+    )
   })
 })
 
 describe("watchEpisodePath", () => {
-  it("returns series.html/episode/lang.html shape (episode is bare)", () => {
+  it("omits English for an eligible contextual episode", () => {
     expect(watchEpisodePath(lumo, wedding, english)).toBe(
-      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html",
     )
   })
 
-  it("preserves bare episode segment even when locale options present", () => {
-    expect(watchEpisodePath(lumo, wedding, russian, { t: 10 })).toBe(
-      "/lumo-the-gospel-of-john.html/wedding-in-cana/russian.html?t=10",
+  it("keeps international contextual routes explicit with locale options", () => {
+    expect(
+      watchEpisodePath(lumo, wedding, russian, {
+        t: 10,
+        subtitleLanguage: spanishCastilian,
+      }),
+    ).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/russian.html?t=10&subtitles=spanish-castilian",
+    )
+    expect(watchEpisodePath(lumo, wedding, romanian)).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/romanian.html",
+    )
+    expect(watchEpisodePath(lumo, wedding, spanishCastilian)).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/spanish-castilian.html",
+    )
+  })
+
+  it("keeps English explicit for public-language and legacy-alias episode slugs", () => {
+    for (const episode of [
+      asContentSlug("russian"),
+      asContentSlug("chinese-mandarin"),
+    ]) {
+      expect(watchEpisodePath(lumo, episode, english)).toBe(
+        `/lumo-the-gospel-of-john.html/${episode}/english.html`,
+      )
+      expect(isLanguageLessWatchEpisodePathEligible(episode)).toBe(false)
+    }
+  })
+
+  it("serializes one-shot query options on the short form", () => {
+    expect(
+      watchEpisodePath(lumo, wedding, english, {
+        t: 42,
+        autoplay: true,
+        reason: "locale-resolved",
+      }),
+    ).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana.html?t=42&autoplay=1&_lr=1",
+    )
+  })
+})
+
+describe("watchEpisodeExplicitLanguagePath", () => {
+  it("always emits the explicit contextual language segment", () => {
+    expect(watchEpisodeExplicitLanguagePath(lumo, wedding, english)).toBe(
+      "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
 })
 
 describe("videosIndexPath", () => {
-  it("returns /videos (no .html)", () => {
-    expect(videosIndexPath()).toBe("/videos")
+  it("returns the canonical /languages path for compatibility", () => {
+    expect(videosIndexPath()).toBe("/languages")
+  })
+})
+
+describe("languagesIndexPath", () => {
+  it("returns /languages (no .html)", () => {
+    expect(languagesIndexPath()).toBe("/languages")
+  })
+})
+
+describe("localized utility paths", () => {
+  it("builds language-bearing all-languages and history paths", () => {
+    expect(localizedLanguagesPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/languages",
+    )
+    expect(localizedHistoryPath(russian)).toBe("/russian.html/history")
+  })
+})
+
+describe("whatsNewPath", () => {
+  it("returns /whats-new (no .html, no language segment)", () => {
+    expect(whatsNewPath()).toBe("/whats-new")
+  })
+})
+
+describe("languageVideosIndexPath", () => {
+  it("returns /lang.html/videos", () => {
+    expect(languageVideosIndexPath(portugueseBrazil)).toBe(
+      "/portuguese-brazil.html/videos",
+    )
   })
 })
 
 describe("searchPath", () => {
-  it("returns / when no q", () => {
+  it("returns the root modal fallback path", () => {
     expect(searchPath()).toBe("/")
-  })
-
-  it("returns /?q=... when q is provided", () => {
-    expect(searchPath("jesus")).toBe("/?q=jesus")
-  })
-
-  it("URL-encodes special characters in q", () => {
-    expect(searchPath("jesus & friends")).toBe("/?q=jesus+%26+friends")
   })
 })
 
@@ -165,13 +334,13 @@ describe("WATCH_CANONICAL_ORIGIN integration with env.ts", () => {
 describe("absolute URL builders", () => {
   it("watchVideoAbsolute prepends origin + basePath", () => {
     expect(watchVideoAbsolute(jesus, english)).toBe(
-      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/jesus.html/english.html`,
+      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/jesus.html`,
     )
   })
 
-  it("watchEpisodeAbsolute matches three-segment shape with origin", () => {
+  it("watchEpisodeAbsolute uses the short public English shape", () => {
     expect(watchEpisodeAbsolute(lumo, wedding, english)).toBe(
-      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/lumo-the-gospel-of-john.html/wedding-in-cana/english.html`,
+      `${WATCH_CANONICAL_ORIGIN}${WATCH_BASE_PATH}/lumo-the-gospel-of-john.html/wedding-in-cana.html`,
     )
   })
 
@@ -219,44 +388,55 @@ describe("parseWatchPath", () => {
       kind: "reserved",
       prefix: "favicon.ico",
     })
-  })
-
-  it("parses /videos as videos", () => {
-    expect(parseWatchPath("/videos")).toEqual({ kind: "videos" })
-  })
-
-  it("parses /search with q from URLSearchParams (proxy.ts caller)", () => {
-    expect(parseWatchPath("/search", new URLSearchParams("q=jesus"))).toEqual({
-      kind: "search",
-      q: "jesus",
+    expect(parseWatchPath("/manifest.webmanifest")).toEqual({
+      kind: "reserved",
+      prefix: "manifest.webmanifest",
     })
   })
 
-  it("parses /search with q from plain Record (Next 16 page-route caller)", () => {
-    expect(parseWatchPath("/search", { q: "jesus" })).toEqual({
-      kind: "search",
-      q: "jesus",
+  it("parses /languages as languages", () => {
+    expect(parseWatchPath("/languages")).toEqual({ kind: "languages" })
+  })
+
+  it("parses localized utility routes without treating them as videos", () => {
+    expect(parseWatchPath("/french.html/languages")).toEqual({
+      kind: "localized-languages",
+      lang: "french",
+    })
+    expect(parseWatchPath("/spanish-latin-american.html/history")).toEqual({
+      kind: "localized-history",
+      lang: "spanish-latin-american",
     })
   })
 
-  it("parses /search with array-valued q from plain Record (takes first)", () => {
-    expect(parseWatchPath("/search", { q: ["jesus", "ignored"] })).toEqual({
-      kind: "search",
-      q: "jesus",
+  it("parses /whats-new as the product-update page, not a localized home", () => {
+    expect(parseWatchPath("/whats-new")).toEqual({ kind: "whats-new" })
+  })
+
+  it("still parses a neighbouring one-segment slug as a localized home", () => {
+    // Falsifies the case above: without the explicit `whats-new` branch the
+    // route would fall through to this shape and the floating header would
+    // treat the page as an English video surface.
+    expect(parseWatchPath("/whats-old")).toEqual({
+      kind: "localized-home",
+      lang: "whats-old",
     })
   })
 
-  it("parses /search with undefined q from plain Record", () => {
-    expect(parseWatchPath("/search", { q: undefined })).toEqual({
-      kind: "search",
-      q: undefined,
+  it("parses legacy /videos as languages", () => {
+    expect(parseWatchPath("/videos")).toEqual({ kind: "languages" })
+  })
+
+  it("parses /spanish-latin-american.html/videos as language videos", () => {
+    expect(parseWatchPath("/spanish-latin-american.html/videos")).toEqual({
+      kind: "language-videos",
+      lang: "spanish-latin-american",
     })
   })
 
-  it("parses /search without q", () => {
+  it("parses deprecated /search without query state", () => {
     expect(parseWatchPath("/search")).toEqual({
       kind: "search",
-      q: undefined,
     })
   })
 
@@ -282,6 +462,30 @@ describe("parseWatchPath", () => {
     })
   })
 
+  it("parses a non-language two-segment path as an English episode", () => {
+    expect(
+      parseWatchPath("/lumo-the-gospel-of-john.html/wedding-in-cana.html"),
+    ).toEqual({
+      kind: "episode",
+      series: "lumo-the-gospel-of-john",
+      episode: "wedding-in-cana",
+      lang: "english",
+    })
+  })
+
+  it("preserves current and legacy language precedence in two segments", () => {
+    expect(parseWatchPath("/jesus.html/russian.html")).toEqual({
+      kind: "video",
+      slug: "jesus",
+      lang: "russian",
+    })
+    expect(parseWatchPath("/jesus.html/chinese-mandarin.html")).toEqual({
+      kind: "video",
+      slug: "jesus",
+      lang: "chinese-mandarin",
+    })
+  })
+
   it("parses three-segment as episode (with .html on first + third only)", () => {
     expect(
       parseWatchPath(
@@ -302,10 +506,19 @@ describe("parseWatchPath", () => {
     })
   })
 
-  it("inverts watchVideoPath: parse(emit) === { slug, lang }", () => {
+  it("keeps language-less canonical parsing syntax-only until admission", () => {
     const emitted = watchVideoPath(jesus, english)
     const parsed = parseWatchPath(emitted)
-    expect(parsed).toEqual({ kind: "video", slug: "jesus", lang: "english" })
+    expect(parsed).toEqual({ kind: "localized-home", lang: "jesus" })
+  })
+
+  it("inverts the explicit-language video path", () => {
+    const emitted = watchVideoExplicitLanguagePath(jesus, english)
+    expect(parseWatchPath(emitted)).toEqual({
+      kind: "video",
+      slug: "jesus",
+      lang: "english",
+    })
   })
 
   it("inverts watchEpisodePath", () => {
@@ -316,6 +529,25 @@ describe("parseWatchPath", () => {
       series: "lumo-the-gospel-of-john",
       episode: "wedding-in-cana",
       lang: "english",
+    })
+  })
+
+  it("inverts the explicit-language episode path", () => {
+    const emitted = watchEpisodeExplicitLanguagePath(lumo, wedding, english)
+    expect(parseWatchPath(emitted)).toEqual({
+      kind: "episode",
+      series: "lumo-the-gospel-of-john",
+      episode: "wedding-in-cana",
+      lang: "english",
+    })
+  })
+
+  it("inverts languageVideosIndexPath", () => {
+    const emitted = languageVideosIndexPath(portugueseBrazil)
+    const parsed = parseWatchPath(emitted)
+    expect(parsed).toEqual({
+      kind: "language-videos",
+      lang: "portuguese-brazil",
     })
   })
 })

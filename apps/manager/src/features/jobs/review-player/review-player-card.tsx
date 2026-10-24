@@ -320,12 +320,6 @@ export function ReviewPlayerCard({
                   {state.compare.muxSyncComparison?.status ?? "not compared"}
                 </p>
               </div>
-              <div>
-                <div className="small">Scene embeddings</div>
-                <p>
-                  {state.compare.sceneEmbeddingSync?.status ?? "not reported"}
-                </p>
-              </div>
             </div>
           </ReviewPanel>
         </>

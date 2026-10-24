@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { useTranslations } from "next-intl"
 import type {
   FragmentOf,
   LegacyFragmentValue,
@@ -10,8 +11,14 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import { Card } from "@/components/ui/card"
+import {
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
@@ -28,6 +35,14 @@ type NavItem = NonNullable<
   NonNullable<FragmentOf<typeof navigationCarouselFragment>["items"]>[number]
 >
 
+type ImageAssetBackedItem = NavItem & {
+  imageAsset?: { previewUrl?: string | null } | null
+}
+
+function blockImageAssetPreviewUrl(item: ImageAssetBackedItem) {
+  return item.imageAsset?.previewUrl ?? null
+}
+
 function handleNavigationClick(contentId: string) {
   const element = document.querySelector(
     `[data-section-key="${CSS.escape(contentId)}"]`,
@@ -36,7 +51,10 @@ function handleNavigationClick(contentId: string) {
 }
 
 function NavCard({ item, index }: { item: NavItem; index: number }) {
+  const t = useTranslations("WatchHome")
   const isFirst = index === 0
+  const imageUrl =
+    blockImageAssetPreviewUrl(item as ImageAssetBackedItem) ?? item.imageUrl
 
   return (
     <Card
@@ -51,47 +69,45 @@ function NavCard({ item, index }: { item: NavItem; index: number }) {
       }}
       tabIndex={0}
       role="button"
-      aria-label={`Scroll to ${item.title} video`}
+      aria-label={t("scrollToVideo", { title: item.title })}
       data-testid={`CarouselItem-${item.contentId.split("/")[0]}`}
     >
-      {isFirst && item.imageUrl ? (
+      {isFirst && imageUrl ? (
         <Image
           fill
           sizes="200px"
-          src={item.imageUrl}
+          src={imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
           data-testid="CarouselItemImage"
         />
-      ) : item.imageUrl ? (
+      ) : imageUrl ? (
         <Image
           fill
           sizes="200px"
-          src={item.imageUrl}
+          src={imageUrl}
           alt={item.title}
           className="absolute top-0 h-[150px] w-full object-cover mask-[linear-gradient(to_bottom,rgba(0,0,0,1)_50%,transparent_100%)] mask-cover"
           data-testid="CarouselItemImg"
         />
       ) : null}
       <div className="p-4">
-        <span
-          className="text-xs font-medium tracking-wider uppercase text-amber-100/60"
-          data-testid="CarouselItemCategory"
-        >
+        <VideoThumbnailEyebrow data-testid="CarouselItemCategory">
           {item.category}
-        </span>
-        <h3
-          className="line-clamp-3 text-base leading-tight font-bold text-white/90"
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle
+          lines={3}
           data-testid={`CarouselItemTitle-${item.contentId.split("/")[0]}`}
         >
           {item.title}
-        </h3>
+        </VideoThumbnailTitle>
       </div>
     </Card>
   )
 }
 
 export function NavigationCarousel({ data }: NavigationCarouselProps) {
+  const t = useTranslations("WatchHome")
   const items = data.items?.filter(
     (item: LegacyFragmentValue): item is NonNullable<typeof item> =>
       item != null,
@@ -125,6 +141,8 @@ export function NavigationCarousel({ data }: NavigationCarouselProps) {
             <div className={CAROUSEL_END_SPACER} />
           </CarouselItem>
         </CarouselContent>
+        <CarouselPrevious label={t("previousVideoPreview")} />
+        <CarouselNext label={t("nextVideoPreview")} />
       </Carousel>
     </div>
   )

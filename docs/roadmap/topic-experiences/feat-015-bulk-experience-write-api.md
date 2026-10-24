@@ -3,7 +3,7 @@ id: "feat-015"
 title: "Bulk Experience Write API"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-04-23"
 duration: 21
 depends_on:

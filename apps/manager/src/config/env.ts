@@ -5,11 +5,33 @@ const MOCK_SESSION_SECRET_SENTINEL = "__manager_mock_session_secret_required__"
 
 export const env = createEnv({
   server: {
+    STUDIO_ENVIRONMENT: z
+      .enum(["local", "preview", "production"])
+      .default("local"),
+    STUDIO_MCP_AUDIENCE: z.string().url().optional(),
+    STUDIO_MCP_CLIENT_IDS: z.string().optional(),
+    STUDIO_INTERACTIVE_KEY_ID: z.string().optional(),
+    STUDIO_INTERACTIVE_PRIVATE_KEY: z.string().optional(),
+    STUDIO_MUX_INGEST_ENABLED: z.enum(["true", "false"]).optional(),
+    STUDIO_RENDER_SERVICE_URL: z.string().url().optional(),
+    STUDIO_RENDER_PRIVATE_KEY: z.string().optional(),
+    STUDIO_RENDER_POOL_ENABLED: z.enum(["true", "false"]).default("false"),
+    STUDIO_RENDER_POOL_ID: z.string().optional(),
+    STUDIO_RENDER_WORKER_ID: z.string().optional(),
+    STUDIO_RENDER_WORKER_KEY: z.string().min(32).optional(),
+    STUDIO_RENDER_CAPABILITY_KEY: z.string().min(32).optional(),
+    STUDIO_PREVIEW_API_KEY: z.string().optional(),
+    STUDIO_PRODUCTION_RATE_CARD: z.string().optional(),
+    STUDIO_FFMPEG_PATH: z.string().optional(),
+    STUDIO_FFPROBE_PATH: z.string().optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
     MANAGER_DATA_MODE: z.enum(["admin", "mock"]).default("admin"),
     MANAGER_BACKEND_MODE: z.enum(["admin", "mock"]).optional(),
+    RAILWAY_GIT_COMMIT_SHA: z.string().trim().min(1).max(128).optional(),
+    GIT_COMMIT_SHA: z.string().trim().min(1).max(128).optional(),
 
     // Mux
     MUX_TOKEN_ID: z.string().min(1),
@@ -57,13 +79,27 @@ export const env = createEnv({
     AUTH_MANAGER_SERVICE_CLIENT_SECRET: z.string().min(1).optional(),
     ADMIN_MANAGER_API_KEY: z.string().min(1).optional(),
     ADMIN_MANAGER_SESSION_URL: z.string().url().optional(),
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .default("local"),
+    SUBTITLE_REVIEW_SESSION_KEY_ID: z.string().min(1).optional(),
+    SUBTITLE_REVIEW_SESSION_PRIVATE_KEY: z.string().min(1).optional(),
+
+    // SEO delegated approval proof (plan 2026-08-01-001). Optional at boot:
+    // the workspace remains read-only when no active private key is present.
+    // Admin verifies the matching public key from SEO_APPROVAL_PUBLIC_KEYS.
+    SEO_ASSERTION_ENVIRONMENT: z
+      .enum(["local", "preview", "staging", "production"])
+      .default("local"),
+    SEO_APPROVAL_KEY_ID: z.string().min(1).optional(),
+    SEO_APPROVAL_PRIVATE_KEY: z.string().min(1).optional(),
 
     // Admin embed-trigger proxy (plan 006) — manager exposes
-    // /api/admin-embeds/{scene,transcript} which forward to admin's
-    // GraphQL trigger mutations using the bearer key below. Both vars
-    // are optional at boot so manager keeps starting in environments
-    // that don't have the proxy configured; the route handlers throw
-    // a clean 500 with a clear message if invoked without these set.
+    // /api/admin-embeds/transcript, which forwards to admin's GraphQL
+    // trigger mutation using the bearer key below. Both vars are optional
+    // at boot so manager keeps starting in environments that don't have the
+    // proxy configured; the route handler throws a clean 500 with a clear
+    // message if invoked without these set.
     ADMIN_GRAPHQL_URL: z.string().url().optional(),
     ADMIN_EMBED_TRIGGER_API_KEY: z.string().min(1).optional(),
 
@@ -82,6 +118,23 @@ export const env = createEnv({
       .int()
       .positive()
       .default(120_000),
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(300_000),
+    MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(120_000),
+
+    // Smart Crop (plan 2026-06-09-002). All optional opt-in scaffolding —
+    // default deploys must not require these. The smart-crop job creation
+    // route returns 503 config_missing when invoked without them.
+    CROP_WORKER_BASE_URL: z.string().url().optional(),
+    CROP_WORKER_API_KEY: z.string().min(1).optional(),
+    MASTRA_SMART_CROP_TIMEOUT_MS: z.coerce.number().int().positive().optional(),
 
     // feat-119 PR2 — admin → manager outbound enrichment trigger.
     // Manager exposes /api/admin-trigger/{scene-analysis,transcript}
@@ -95,6 +148,11 @@ export const env = createEnv({
     // return 503 if invoked without this set.
     ADMIN_TRIGGER_API_KEYS: z.string().min(1).optional(),
     ENRICHMENT_CALLBACK_API_KEYS: z.string().min(1).optional(),
+    // Enable only behind an ingress that overwrites this header and blocks
+    // direct-origin bypass. Internal callers use the shared bucket by default.
+    ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP: z
+      .enum(["true", "false"])
+      .default("false"),
 
     // ElevenLabs transcription (optional unless ElevenLabs routing is used)
     ELEVENLABS_REQUEST_TIMEOUT_MS: z.coerce
@@ -113,9 +171,29 @@ export const env = createEnv({
   },
   skipValidation: !!process.env.CI,
   runtimeEnv: {
+    STUDIO_ENVIRONMENT: process.env.STUDIO_ENVIRONMENT,
+    STUDIO_MCP_AUDIENCE: process.env.STUDIO_MCP_AUDIENCE,
+    STUDIO_MCP_CLIENT_IDS: process.env.STUDIO_MCP_CLIENT_IDS,
+    STUDIO_INTERACTIVE_KEY_ID: process.env.STUDIO_INTERACTIVE_KEY_ID,
+    STUDIO_INTERACTIVE_PRIVATE_KEY: process.env.STUDIO_INTERACTIVE_PRIVATE_KEY,
+    STUDIO_MUX_INGEST_ENABLED: process.env.STUDIO_MUX_INGEST_ENABLED,
+    STUDIO_RENDER_SERVICE_URL: process.env.STUDIO_RENDER_SERVICE_URL,
+    STUDIO_RENDER_PRIVATE_KEY: process.env.STUDIO_RENDER_PRIVATE_KEY,
+    STUDIO_RENDER_POOL_ENABLED: process.env.STUDIO_RENDER_POOL_ENABLED,
+    STUDIO_RENDER_POOL_ID: process.env.STUDIO_RENDER_POOL_ID,
+    STUDIO_RENDER_WORKER_ID: process.env.STUDIO_RENDER_WORKER_ID,
+    STUDIO_RENDER_WORKER_KEY: process.env.STUDIO_RENDER_WORKER_KEY,
+    STUDIO_RENDER_CAPABILITY_KEY: process.env.STUDIO_RENDER_CAPABILITY_KEY,
+    STUDIO_PREVIEW_API_KEY: process.env.STUDIO_PREVIEW_API_KEY,
+    STUDIO_PRODUCTION_RATE_CARD: process.env.STUDIO_PRODUCTION_RATE_CARD,
+    STUDIO_FFMPEG_PATH: process.env.STUDIO_FFMPEG_PATH,
+    STUDIO_FFPROBE_PATH: process.env.STUDIO_FFPROBE_PATH,
+
     NODE_ENV: process.env.NODE_ENV,
     MANAGER_DATA_MODE: process.env.MANAGER_DATA_MODE ?? "admin",
     MANAGER_BACKEND_MODE: process.env.MANAGER_BACKEND_MODE,
+    RAILWAY_GIT_COMMIT_SHA: process.env.RAILWAY_GIT_COMMIT_SHA,
+    GIT_COMMIT_SHA: process.env.GIT_COMMIT_SHA,
     MUX_TOKEN_ID: process.env.MUX_TOKEN_ID,
     MUX_TOKEN_SECRET: process.env.MUX_TOKEN_SECRET,
     MUX_SIGNING_KEY: process.env.MUX_SIGNING_KEY,
@@ -150,6 +228,14 @@ export const env = createEnv({
       process.env.AUTH_MANAGER_SERVICE_CLIENT_SECRET,
     ADMIN_MANAGER_API_KEY: process.env.ADMIN_MANAGER_API_KEY,
     ADMIN_MANAGER_SESSION_URL: process.env.ADMIN_MANAGER_SESSION_URL,
+    SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT:
+      process.env.SUBTITLE_REVIEW_ASSERTION_ENVIRONMENT ?? "local",
+    SUBTITLE_REVIEW_SESSION_KEY_ID: process.env.SUBTITLE_REVIEW_SESSION_KEY_ID,
+    SUBTITLE_REVIEW_SESSION_PRIVATE_KEY:
+      process.env.SUBTITLE_REVIEW_SESSION_PRIVATE_KEY,
+    SEO_ASSERTION_ENVIRONMENT: process.env.SEO_ASSERTION_ENVIRONMENT ?? "local",
+    SEO_APPROVAL_KEY_ID: process.env.SEO_APPROVAL_KEY_ID,
+    SEO_APPROVAL_PRIVATE_KEY: process.env.SEO_APPROVAL_PRIVATE_KEY,
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     ADMIN_EMBED_TRIGGER_API_KEY: process.env.ADMIN_EMBED_TRIGGER_API_KEY,
     MASTRA_BASE_URL: process.env.MASTRA_BASE_URL,
@@ -159,8 +245,17 @@ export const env = createEnv({
       process.env.MASTRA_ENRICHMENT_DISPATCH_TIMEOUT_MS,
     MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS:
       process.env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+    MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS:
+      process.env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+    MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS:
+      process.env.MASTRA_TRANSCRIPT_SCRIPTURE_CORRECTION_TIMEOUT_MS,
+    CROP_WORKER_BASE_URL: process.env.CROP_WORKER_BASE_URL,
+    CROP_WORKER_API_KEY: process.env.CROP_WORKER_API_KEY,
+    MASTRA_SMART_CROP_TIMEOUT_MS: process.env.MASTRA_SMART_CROP_TIMEOUT_MS,
     ADMIN_TRIGGER_API_KEYS: process.env.ADMIN_TRIGGER_API_KEYS,
     ENRICHMENT_CALLBACK_API_KEYS: process.env.ENRICHMENT_CALLBACK_API_KEYS,
+    ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP:
+      process.env.ENRICHMENT_CALLBACK_TRUST_CF_CONNECTING_IP,
     ELEVENLABS_REQUEST_TIMEOUT_MS: process.env.ELEVENLABS_REQUEST_TIMEOUT_MS,
     ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS:
       process.env.ELEVENLABS_SOURCE_DOWNLOAD_TIMEOUT_MS,

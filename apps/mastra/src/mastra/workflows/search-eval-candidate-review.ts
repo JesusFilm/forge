@@ -167,7 +167,7 @@ const nativeDatasetItemShape = {
     source: "seed | generated_* | user_submitted | promoted",
     searchOptions: {
       contentType: "video | experience | all",
-      mode: "hybrid | keyword-first",
+      mode: "hybrid | keyword-first | semantic-only",
     },
   },
   groundTruth: {

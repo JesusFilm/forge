@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto"
+
 import { env } from "@/config/env"
-import type { TranscriptSourceArtifact } from "@/services/manager-artifacts.service"
+import { resolveMastraLaunchTimeoutMs } from "@/services/mastra-launch-timeout"
 
 export type MastraTranscriptEmbeddingMode =
   | "idempotent"
@@ -13,14 +15,30 @@ export type MastraTranscriptEmbeddingTarget = {
   coreId?: string
 }
 
+type MastraTranscriptEmbeddingSourceSegment = {
+  start: number
+  end: number
+  text: string
+}
+
 export type MastraTranscriptEmbeddingLaunchInput = {
   target: MastraTranscriptEmbeddingTarget
   language: string
   cmsVideoId: number
-  transcript: Pick<
-    TranscriptSourceArtifact,
-    "text" | "segments" | "resolvedProvider"
-  >
+  transcript: {
+    text: string
+    segments: readonly MastraTranscriptEmbeddingSourceSegment[]
+    artifactKey?: string
+    kind?: "subtitle" | "manager-transcript"
+    languageId?: string | null
+    languageSlug?: string | null
+    subtitleId?: string
+    format?: "vtt" | "srt"
+    url?: string
+    provider?: string
+    resolvedProvider?: string
+    generatedAt?: string
+  }
   mode?: MastraTranscriptEmbeddingMode
 }
 
@@ -62,6 +80,7 @@ export type LaunchMastraTranscriptEmbeddingOptions = {
   baseUrl?: string
   bearer?: string
   timeoutMs?: number
+  runId?: string
   fetchImpl?: typeof fetch
 }
 
@@ -89,7 +108,7 @@ const FAILURE_REASONS = new Set([
   "admin_ingest_failed",
 ])
 
-type TranscriptSourceSegment = TranscriptSourceArtifact["segments"][number]
+type TranscriptSourceSegment = MastraTranscriptEmbeddingSourceSegment
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -169,6 +188,38 @@ function normalizeSegments(
   }))
 }
 
+function summarizeBody(body: string | undefined): string | undefined {
+  const trimmed = body?.replace(/\s+/g, " ").trim()
+  if (!trimmed) return undefined
+  return trimmed.slice(0, 240)
+}
+
+function parseJsonBody(body: string | undefined): unknown {
+  if (!body) return undefined
+  try {
+    return JSON.parse(body)
+  } catch {
+    return undefined
+  }
+}
+
+function logMastraLaunchFailure(details: {
+  status: number
+  statusText: string
+  contentType: string | null
+  body: string | undefined
+}): void {
+  console.error(
+    JSON.stringify({
+      event: "mastra_transcript_embedding_launch_failed",
+      status: details.status,
+      statusText: details.statusText,
+      contentType: details.contentType,
+      body: summarizeBody(details.body),
+    }),
+  )
+}
+
 export async function launchMastraTranscriptEmbedding(
   input: MastraTranscriptEmbeddingLaunchInput,
   options: LaunchMastraTranscriptEmbeddingOptions = {},
@@ -179,7 +230,8 @@ export async function launchMastraTranscriptEmbedding(
     return { ok: false, reason: "config_missing", retryable: false }
   }
 
-  const body = {
+  const runId = options.runId ?? randomUUID()
+  const workflowInput = {
     target: {
       admin: input.target,
     },
@@ -187,11 +239,20 @@ export async function launchMastraTranscriptEmbedding(
     transcript: {
       text: input.transcript.text,
       segments: normalizeSegments(input.transcript.segments),
-      artifactKey: `${input.cmsVideoId}/transcript.json`,
-      provider: input.transcript.resolvedProvider,
+      artifactKey:
+        input.transcript.artifactKey ?? `${input.cmsVideoId}/transcript.json`,
+      kind: input.transcript.kind,
+      languageId: input.transcript.languageId ?? undefined,
+      languageSlug: input.transcript.languageSlug ?? undefined,
+      subtitleId: input.transcript.subtitleId,
+      format: input.transcript.format,
+      url: input.transcript.url,
+      provider: input.transcript.provider ?? input.transcript.resolvedProvider,
+      generatedAt: input.transcript.generatedAt,
     },
     mode: input.mode ?? "idempotent",
   }
+  const body = { runId, input: workflowInput }
 
   let response: Response
   try {
@@ -205,36 +266,65 @@ export async function launchMastraTranscriptEmbedding(
         },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(
-          options.timeoutMs ??
-            env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS ??
-            120_000,
+          resolveMastraLaunchTimeoutMs(
+            options.timeoutMs ?? env.MASTRA_TRANSCRIPT_EMBEDDING_TIMEOUT_MS,
+          ),
         ),
       },
     )
-  } catch {
-    return { ok: false, reason: "network_error", retryable: true }
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "mastra_transcript_embedding_launch_threw",
+        mastraRunId: runId,
+        name: error instanceof Error ? error.name : "unknown",
+        message:
+          error instanceof Error
+            ? error.message.slice(0, 240)
+            : String(error).slice(0, 240),
+      }),
+    )
+    return {
+      ok: false,
+      reason: "network_error",
+      retryable: true,
+      mastraRunId: runId,
+    }
   }
 
   if (response.status === 401) {
     return { ok: false, reason: "auth_failed", retryable: false }
   }
 
-  const result = parseWorkflowResult(
-    await response.json().catch(() => undefined),
-  )
+  const responseBody = await response.text().catch(() => undefined)
+  const result = parseWorkflowResult(parseJsonBody(responseBody))
   if (result) return result
 
   if (!response.ok) {
+    logMastraLaunchFailure({
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers.get("content-type"),
+      body: responseBody,
+    })
     return {
       ok: false,
       reason: "network_error",
       retryable: response.status >= 500 || response.status === 429,
+      mastraRunId:
+        response.status >= 500 || response.status === 429 ? runId : undefined,
     }
   }
 
-  return { ok: false, reason: "parse_error", retryable: true }
+  return {
+    ok: false,
+    reason: "parse_error",
+    retryable: true,
+    mastraRunId: runId,
+  }
 }
 
 export const _internals = {
   parseWorkflowResult,
+  resolveMastraLaunchTimeoutMs,
 }

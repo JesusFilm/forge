@@ -1,25 +1,25 @@
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+
+import {
+  AVAILABLE_UI_LOCALES,
+  DEFAULT_LOCALE,
+  hasUiLocale,
+  type UiLocale,
+} from "../i18n/generated-ui-locales"
 import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 
-export const DEFAULT_LOCALE = "en"
-
-// Internal type-narrowing tuple for `isLocale()`. The bcp47 primary
-// subtags of the UI-locale families web supports. Must stay aligned with
-// the filesystem-derived `AVAILABLE_UI_LOCALES` (apps/web/src/i18n/locales.ts):
-// when a new `messages/{locale}.json` lands, widen this tuple in the
-// same PR so `isLocale(locale)` recognizes it.
-//
-// Exported for the locale-parity test only — `apps/web/src/i18n/__tests__/messages-parity.test.ts`
-// asserts UI_LOCALE_FAMILIES ⊆ AVAILABLE_UI_LOCALES so a dropped catalog
-// fails CI. Outside the test, callers use `hasUiLocale` from
-// `@/i18n/locales` for catalog membership, or `isLocale` from this file
-// for bcp47 narrowing.
-export const UI_LOCALE_FAMILIES = ["en", "es", "fr", "pt", "de"] as const
-export type UiLocale = (typeof UI_LOCALE_FAMILIES)[number]
+export {
+  AVAILABLE_UI_LOCALES,
+  DEFAULT_LOCALE,
+  hasUiLocale,
+  type UiLocale,
+} from "../i18n/generated-ui-locales"
 
 /**
- * Query-param sentinel that signals "this URL's locale has already been
- * resolved server-side; do not re-apply the cookie-driven language
- * redirect for this request." Used as the contract between three sites:
+ * Query-param sentinel that marks a server-resolved language fallback so the
+ * client can remove the one-shot marker and analytics can classify the entry.
+ * It is not a cookie-routing bypass; Watch routing is URL-only. Used as the
+ * contract between three sites:
  *
  *   1. `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` — sets it
  *      on the server redirect when the requested audio slug has no matching
@@ -30,27 +30,19 @@ export type UiLocale = (typeof UI_LOCALE_FAMILIES)[number]
  *      — strips the param via `history.replaceState` after hydration
  *      so the user-visible URL stays clean.
  *
- * Renaming the param requires editing all four sites in lockstep;
+ * Renaming the param requires editing all three sites in lockstep;
  * exporting one constant makes the contract explicit and grep-able.
  */
 export const LOCALE_RESOLVED_PARAM = "_lr"
 
-export function isLocale(
-  param: string,
-): param is (typeof UI_LOCALE_FAMILIES)[number] {
-  return (UI_LOCALE_FAMILIES as readonly string[]).includes(param)
+export function isLocale(param: string): param is UiLocale {
+  return hasUiLocale(param)
 }
 
 /**
  * Bcp47-or-English-name-slug check for the watch URL space. Returns true
- * for both `en`/`es`/`fr` (bcp47, the UI template locales) AND English-name
- * kebab slugs (`russian`, `portuguese-brazil`, `spanish-castilian` — the
- * per-variant language slugs sourced from admin's `Language.slug` field).
- *
- * Today the kebab branch is a heuristic: any input containing a hyphen
- * with safe-slug characters is admitted. The full admin-corpus check
- * (Phase 4) will replace the heuristic with a precise enumeration once
- * the language list is wired through to the routing layer.
+ * for both generated UI catalog keys (`en`, `es`, `fr`) AND English-name
+ * kebab slugs (`portuguese-brazil`, `spanish-castilian`).
  *
  * Use this — not `isLocale` — at user-facing URL boundaries where a
  * legacy English-name slug must be recognized as a language identifier
@@ -71,36 +63,151 @@ export function isLocaleSlug(param: string): boolean {
   return /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/.test(param)
 }
 
-/** Parse the primary locale from an Accept-Language header value. */
+/** Resolve the highest-ranked language with a generated Watch UI catalog. */
 export function parseAcceptLanguage(
   acceptLanguage: string | null,
 ): UiLocale | null {
   if (!acceptLanguage) return null
-  const primary = acceptLanguage.split(",")[0]?.split("-")[0]?.trim()
-  if (primary && isLocale(primary)) return primary
+
+  const candidates = acceptLanguage
+    .split(",")
+    .map((entry, index) => {
+      const [tagPart, ...parameters] = entry.trim().split(";")
+      const tag = tagPart?.trim()
+      if (!tag || tag === "*") return null
+
+      let quality = 1
+      for (const parameter of parameters) {
+        const match = /^\s*q\s*=\s*(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)\s*$/i.exec(
+          parameter,
+        )
+        if (match) {
+          quality = Number(match[1])
+          break
+        }
+        if (/^\s*q\s*=/i.test(parameter)) return null
+      }
+      if (quality <= 0) return null
+      return { tag, quality, index }
+    })
+    .filter(
+      (candidate): candidate is NonNullable<typeof candidate> =>
+        candidate !== null,
+    )
+    .sort((a, b) => b.quality - a.quality || a.index - b.index)
+
+  for (const candidate of candidates) {
+    const normalizedTag = candidate.tag.toLowerCase()
+    const locale =
+      normalizedTag === "zh-tw" ||
+      normalizedTag.startsWith("zh-tw-") ||
+      normalizedTag === "zh-hk" ||
+      normalizedTag.startsWith("zh-hk-")
+        ? resolveUiLocale("zh-Hant")
+        : resolveUiLocale(candidate.tag)
+    if (locale) return locale
+  }
   return null
 }
 
+/**
+ * Slugs whose admin `Language.bcp47` (and so the generated
+ * `LANGUAGE_BCP47_MAP`) is not a valid tag. The generated map is overwritten
+ * by `generate:language-bcp47-map`, so the correction lives here and the
+ * source record should be fixed in Core.
+ *   - `kurmanji-standard` arrives as `ko-kmr` (not a valid tag; the `ko`
+ *     primary made Watch show Korean UI, a KO badge and a Korean name).
+ *
+ * `french-african` (`fra`, which BCP 47 replaces with `fr`) is deliberately
+ * NOT here: it only needs the HTML `lang` fix below, while its picker/badge
+ * code stays `FRA` so it remains distinguishable from French (`FR`).
+ */
+const LANGUAGE_TAG_CORRECTIONS: Readonly<Record<string, string>> =
+  Object.freeze({
+    "kurmanji-standard": "kmr",
+  })
+
+/**
+ * Return the corrected tag for a slug with a known-bad admin tag, else the
+ * tag as supplied. Use at every consumer that reads `bcp47` straight from
+ * admin data (picker rows, badges) rather than through `slugToBcp47Tag`.
+ */
+export function correctedBcp47(
+  slug: string | null | undefined,
+  bcp47: string | null | undefined,
+): string | null | undefined {
+  return slug && Object.hasOwn(LANGUAGE_TAG_CORRECTIONS, slug)
+    ? LANGUAGE_TAG_CORRECTIONS[slug]
+    : bcp47
+}
+
+/** Admin carries ISO 639-3 `fra`; BCP 47 canonicalizes it to `fr`. */
+const FRENCH_AFRICAN_HTML_LANG_OVERRIDE: Readonly<Record<string, string>> =
+  Object.freeze({ "french-african": "fr" })
+
+/**
+ * Slugs whose declared tag is corrected above but whose admin CONTENT locale
+ * must stay on admin's own key. Admin's broad copy layer matches
+ * `VideoLocale.locale`, which Core sync fills from the raw `bcp47`, so sending
+ * the corrected `kmr` / `fr` would pull fallback titles and study questions
+ * from other languages' rows (other Kurdish dialects, standard French)
+ * instead of falling back to English as before.
+ */
+const ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS: ReadonlySet<string> = new Set([
+  ...Object.keys(LANGUAGE_TAG_CORRECTIONS),
+  ...Object.keys(FRENCH_AFRICAN_HTML_LANG_OVERRIDE),
+])
+
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
-  // Admin's generated Language.bcp47 corpus does not currently include this
-  // public audio slug, but the URL contract does. Keep the raw dub slug in
-  // the path while allowing the static root layout to emit the regional SEO
-  // tag instead of collapsing <html lang> to plain "es".
+  ...LANGUAGE_TAG_CORRECTIONS,
+  ...FRENCH_AFRICAN_HTML_LANG_OVERRIDE,
+  // Admin currently exposes generic `eng` for this regional public audio
+  // slug. Keep the distinct British homepage on its actual regional identity
+  // so HTML language and sitemap hreflang signals agree.
+  "english-british": "en-GB",
+  // Admin exposes generic `es` for this regional public audio slug (and the
+  // generated corpus force-includes it via PUBLIC_WATCH_LANGUAGE_SLUG_OVERRIDES
+  // in lib/language-bcp47-map-codegen.ts). Keep the raw dub slug in the path
+  // while allowing the static root layout to emit the regional SEO tag
+  // instead of collapsing <html lang> to plain "es".
   "spanish-latin-american": "es-419",
 })
 
 const PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE: Readonly<
-  Record<UiLocale, string>
+  Record<string, string>
 > = Object.freeze({
   en: "english",
   es: "spanish-castilian",
   fr: "french",
   pt: "portuguese-brazil",
   de: "german-standard",
+  ar: "arabic-modern-standard",
+  id: "indonesian-isa",
+  ja: "japanese",
+  ko: "korean",
+  ms: "malay",
+  ne: "nepali",
+  ru: "russian",
+  th: "thai",
+  tl: "tagalog",
+  tr: "turkish",
+  vi: "vietnamese",
+  zh: "mandarin-china",
+  "zh-Hans": "chinese-simplified",
+  "zh-Hant": "chinese-traditional",
 })
 
 const BCP47_TAG_PATTERN = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i
 const PUBLIC_LANGUAGE_SLUG_PATTERN = /^[a-z0-9-]+$/
+
+const PUBLIC_WATCH_LANGUAGE_SLUG_ENTRIES: ReadonlyArray<
+  readonly [string, string]
+> = Object.freeze(
+  [
+    ...Object.entries(LANGUAGE_BCP47_MAP),
+    ...Object.entries(HTML_LANG_OVERRIDES),
+  ].sort(([a], [b]) => a.localeCompare(b)),
+)
 
 export function normalizeBcp47Tag(tag: string): string {
   return tag
@@ -114,6 +221,101 @@ export function normalizeBcp47Tag(tag: string): string {
       return part.toLowerCase()
     })
     .join("-")
+}
+
+function canonicalizeKnownBcp47Tag(tag: string): string {
+  let extensionStarted = false
+  return tag
+    .split("-")
+    .map((part, index) => {
+      const lower = part.toLowerCase()
+      if (index === 0 || extensionStarted) return lower
+      if (part.length === 1) {
+        extensionStarted = true
+        return lower
+      }
+      if (/^[a-z]{4}$/i.test(part)) {
+        return part[0]?.toUpperCase() + part.slice(1).toLowerCase()
+      }
+      if (/^[a-z]{2}$/i.test(part)) return part.toUpperCase()
+      return lower
+    })
+    .join("-")
+}
+
+type LocaleTextDirection = "ltr" | "rtl"
+
+type LocaleTextInfo = Readonly<{
+  direction: LocaleTextDirection
+}>
+
+type LocaleWithTextInfo = Intl.Locale & {
+  readonly textInfo?: LocaleTextInfo
+  getTextInfo?: () => LocaleTextInfo
+}
+
+export function textDirectionForLocale(locale: string): LocaleTextDirection {
+  try {
+    const resolvedLocale = new Intl.Locale(locale) as LocaleWithTextInfo
+    const textInfo =
+      typeof resolvedLocale.getTextInfo === "function"
+        ? resolvedLocale.getTextInfo()
+        : resolvedLocale.textInfo
+
+    return textInfo?.direction === "rtl" ? "rtl" : "ltr"
+  } catch {
+    const primaryLocale = locale.split("-")[0]
+    if (primaryLocale && primaryLocale !== locale) {
+      return textDirectionForLocale(primaryLocale)
+    }
+    return "ltr"
+  }
+}
+
+/**
+ * Tags this app is willing to DECLARE as a document language.
+ *
+ * `slugToBcp47Tag` is deliberately permissive — its third branch accepts any
+ * `BCP47_TAG_PATTERN`-shaped string so the internal `[htmlLang]` segment can be
+ * read back off a URL. That is the right contract for route matching and wrong
+ * for `<html lang>`, which must not assert a language we cannot stand behind.
+ *
+ * Two classes are excluded:
+ *
+ *   1. Tags admin emits that are not valid BCP-47 at all. The generated map
+ *      really does carry `hainanese: "nan-CN-46"`, `javanese-banten:
+ *      "jv-ID-BT"`, `huasteco-san-luis-potosi: "hus-MX-SLP"` and
+ *      `romani-kalderash-western: "rmy-kal"`; `new Intl.Locale(...)` throws
+ *      `RangeError` on each. Declaring one would put a string no user agent can
+ *      parse into `lang`, which is worse than the English fallback.
+ *   2. Shape-only matches that are not a tag this app knows. A public slug is
+ *      an English NAME (`bel`), and the generated map maps that name to an
+ *      unrelated tag (`bel: "gdd"`). If the corpus is stale and the map lookup
+ *      misses, the permissive branch would read the slug itself as a tag and
+ *      `bel` canonicalizes to Belarusian — a confident, wrong declaration.
+ *
+ * Anything excluded here falls back to the UI locale, which is the documented
+ * and honest degradation.
+ */
+const DECLARABLE_HTML_LANG_TAGS: ReadonlySet<string> = new Set(
+  [
+    ...Object.values(HTML_LANG_OVERRIDES),
+    ...Object.values(LANGUAGE_BCP47_MAP),
+    ...AVAILABLE_UI_LOCALES,
+  ]
+    .map((tag) => normalizeBcp47Tag(tag))
+    .filter((tag) => {
+      try {
+        new Intl.Locale(tag)
+        return true
+      } catch {
+        return false
+      }
+    }),
+)
+
+export function isDeclarableHtmlLangTag(tag: string): boolean {
+  return DECLARABLE_HTML_LANG_TAGS.has(normalizeBcp47Tag(tag))
 }
 
 export function slugToBcp47Tag(slug: string): string | null {
@@ -131,6 +333,21 @@ export function slugToBcp47Tag(slug: string): string | null {
 }
 
 /**
+ * The `locale` admin's content queries key on for a URL language segment.
+ * Same as `slugToBcp47Tag`, except slugs in
+ * `ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS` keep admin's raw tag (see there).
+ */
+export function slugToAdminContentLocale(slug: string): string | null {
+  if (
+    ADMIN_CONTENT_LOCALE_PRESERVED_SLUGS.has(slug) &&
+    Object.hasOwn(LANGUAGE_BCP47_MAP, slug)
+  ) {
+    return normalizeBcp47Tag(LANGUAGE_BCP47_MAP[slug])
+  }
+  return slugToBcp47Tag(slug)
+}
+
+/**
  * Resolve an English-name language slug (`spanish-castilian`,
  * `portuguese-brazil`) to its BCP-47 primary subtag (`es`, `pt`).
  *
@@ -139,11 +356,9 @@ export function slugToBcp47Tag(slug: string): string | null {
  *      full BCP-47 tag, e.g. `spanish-castilian → es-ES`.
  *   2. `split("-")[0]` → primary subtag per RFC 5646.
  *
- * Used at the watch route boundary to map a slug-form locale segment
- * (`/watch/jesus.html/spanish-castilian.html`) to a UI chrome locale
- * the rest of the app understands. Caller compares against
- * `UI_LOCALE_FAMILIES` and falls back to `DEFAULT_LOCALE` when the
- * primary subtag isn't one of the 5 UI template locales.
+ * This helper intentionally reports the audio/content language's BCP-47
+ * primary. UI catalog fallback is handled by `resolveUiLocale`, which
+ * checks generated message catalog availability before choosing chrome.
  *
  * Returns null when the slug isn't a recognized admin Language slug
  * (or when admin's row has no BCP-47 — 39 obscure languages today).
@@ -162,6 +377,19 @@ export function slugToBcp47Primary(slug: string): string | null {
 }
 
 /**
+ * Whether `slug` is SHAPED like a public watch language slug, independent of
+ * membership in any corpus or manifest.
+ *
+ * Membership checks that consult the live route manifest bypass the compiled
+ * corpus, and therefore bypass the pattern test below. Callers that reflect an
+ * admitted slug straight into a URL (a canonical link, an Open Graph URL) must
+ * apply this first so a malformed manifest entry cannot reach page head output.
+ */
+export function isPublicWatchLanguageSlugShape(slug: string): boolean {
+  return PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)
+}
+
+/**
  * Public watch content URLs accept English-name audio slugs only
  * (`english`, `spanish-castilian`, `swahili`), never BCP-47 route/catalog
  * keys (`en`, `pt-br`). This is deliberately narrower than
@@ -170,66 +398,122 @@ export function slugToBcp47Primary(slug: string): string | null {
  */
 export function isPublicWatchLanguageSlug(slug: string): boolean {
   if (!PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)) return false
-  return (
-    Object.hasOwn(LANGUAGE_BCP47_MAP, slug) ||
-    Object.hasOwn(HTML_LANG_OVERRIDES, slug)
-  )
+  return PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)
+}
+
+/**
+ * Shape-only check: could this string be an admin `Language.slug` at all
+ * (lowercase kebab, e.g. `toba`, `purepecha-western-highland`)? Says nothing
+ * about whether admin actually publishes it — pair with the compiled corpus
+ * or the live route manifest for admission.
+ */
+export function hasPublicWatchLanguageSlugShape(slug: string): boolean {
+  return PUBLIC_LANGUAGE_SLUG_PATTERN.test(slug)
 }
 
 export function isPublicWatchHomeLanguageSlug(slug: string): boolean {
   return isPublicWatchLanguageSlug(slug)
 }
 
-export function publicWatchAudioLanguageSlugForLocale(
-  locale: UiLocale,
-): string {
-  return PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE[locale]
+function inferredPublicWatchLanguageSlugForLocale(
+  locale: string,
+): string | null {
+  const normalizedLocale = normalizeBcp47Tag(locale)
+  for (const [slug, bcp47] of PUBLIC_WATCH_LANGUAGE_SLUG_ENTRIES) {
+    if (normalizeBcp47Tag(bcp47) === normalizedLocale) return slug
+  }
+  return null
 }
 
-export function publicWatchHomeLanguageSlugForLocale(locale: UiLocale): string {
+export function publicWatchAudioLanguageSlugForLocale(
+  locale: string,
+): string | null {
+  if (Object.hasOwn(PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE, locale)) {
+    return PUBLIC_WATCH_AUDIO_LANGUAGE_SLUG_BY_UI_LOCALE[locale]
+  }
+  return inferredPublicWatchLanguageSlugForLocale(locale)
+}
+
+export function publicWatchHomeLanguageSlugForLocale(
+  locale: string,
+): string | null {
   return publicWatchAudioLanguageSlugForLocale(locale)
 }
 
-// Narrow ISO 639-3 → ISO 639-1 fallback for the 5 UI_LOCALE_FAMILIES
-// families. Admin's Language.bcp47 sometimes carries the 3-letter ISO
-// 639-3 code instead of the 2-letter 639-1 (e.g. `french-african` → `fra`,
-// `english-african` → `eng`). Both encode the same UI-chrome language;
-// without this table, the family fallback would null-out for those slugs.
-// Only the UI_LOCALE_FAMILIES families need entries.
-const ISO_639_3_TO_UI_LOCALE: Readonly<
-  Record<string, (typeof UI_LOCALE_FAMILIES)[number]>
-> = Object.freeze({
+// Narrow ISO 639-3 → ISO 639-1 fallback for common UI catalog families.
+// Admin's Language.bcp47 sometimes carries the 3-letter ISO 639-3 code
+// instead of the 2-letter 639-1 (e.g. `french-african` → `fra`,
+// `english-african` → `eng`). Only return one of these aliases when that
+// catalog actually exists in the generated message list.
+const ISO_639_3_TO_UI_LOCALE: Readonly<Record<string, string>> = Object.freeze({
   eng: "en",
   spa: "es",
   fra: "fr",
   por: "pt",
   deu: "de",
   ger: "de", // legacy ISO 639-2/B alternative
+  fil: "tl",
+  tgl: "tl",
+  nep: "ne",
+  npi: "ne",
 })
 
+function bcp47FallbackCandidates(tag: string): string[] {
+  const parts = normalizeBcp47Tag(tag).split("-")
+  const candidates: string[] = []
+  for (let length = parts.length; length >= 1; length -= 1) {
+    candidates.push(parts.slice(0, length).join("-"))
+  }
+  return [...new Set(candidates)]
+}
+
 /**
- * Normalize a URL locale segment (slug-form OR bcp47) to a UI chrome
- * locale that `isLocale()` accepts. Returns null when the locale can't
- * be mapped to one of the 5 UI_LOCALE_FAMILIES — caller falls back to
- * DEFAULT_LOCALE.
+ * Testable catalog-driven resolver. Production calls `resolveUiLocale`,
+ * which supplies the generated message catalog list.
+ */
+export function resolveUiLocaleForCatalog(
+  localeSegment: string,
+  catalogs: readonly string[],
+): string | null {
+  const catalogSet = new Set(catalogs)
+  if (catalogSet.has(localeSegment)) return localeSegment
+
+  const tag = slugToBcp47Tag(localeSegment)
+  if (!tag) return null
+
+  for (const candidate of bcp47FallbackCandidates(tag)) {
+    if (catalogSet.has(candidate)) return candidate
+  }
+
+  const primary = tag.split("-")[0]?.toLowerCase()
+  if (primary && Object.hasOwn(ISO_639_3_TO_UI_LOCALE, primary)) {
+    const alias = ISO_639_3_TO_UI_LOCALE[primary]
+    if (alias && catalogSet.has(alias)) return alias
+  }
+
+  return null
+}
+
+/**
+ * Normalize a URL locale segment (slug-form OR bcp47) to an available UI
+ * message catalog. Returns null when no generated catalog matches; callers
+ * that render watch chrome fall back to `DEFAULT_LOCALE`.
  *
- * Examples:
+ * Examples with current catalogs:
  *   resolveUiLocale("spanish-castilian") → "es"
  *   resolveUiLocale("portuguese-mozambique") → "pt"
- *   resolveUiLocale("mandarin-china") → null  // zh not in UI_LOCALE_FAMILIES
- *   resolveUiLocale("en") → "en"
- *   resolveUiLocale("russian") → null  // ru not in UI_LOCALE_FAMILIES
+ *   resolveUiLocale("mandarin-china") → "zh"
+ *   resolveUiLocale("russian") → "ru"
+ *
+ * Languages without a matching generated catalog return null here; watch
+ * chrome callers fall back to `DEFAULT_LOCALE`.
  */
 export function resolveUiLocale(localeSegment: string): UiLocale | null {
-  if (isLocale(localeSegment)) return localeSegment
-  const primary = slugToBcp47Primary(localeSegment) ?? null
-  if (!primary) return null
-  if (isLocale(primary)) return primary
-  // ISO 639-3 → 639-1 fallback for the UI_LOCALE_FAMILIES families.
-  if (Object.hasOwn(ISO_639_3_TO_UI_LOCALE, primary)) {
-    return ISO_639_3_TO_UI_LOCALE[primary]
-  }
-  return null
+  const resolved = resolveUiLocaleForCatalog(
+    localeSegment,
+    AVAILABLE_UI_LOCALES,
+  )
+  return resolved && isLocale(resolved) ? resolved : null
 }
 
 export type WatchLocaleIdentity = {
@@ -239,14 +523,76 @@ export type WatchLocaleIdentity = {
   htmlLang: string
 }
 
+const WATCH_LOCALE_IDENTITY_OVERRIDES: Readonly<
+  Record<string, WatchLocaleIdentity>
+> = Object.freeze({
+  // Admin exposes Hassaniyya through the extlang-style `ar-mey` tag, while
+  // the UI inventory owns an explicit Latin-script catalog. Keep that
+  // intentional provisional catalog reachable instead of collapsing to `ar`.
+  "arabic-hassaniya": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+  "ar-mey": { locale: "mey-Latn", htmlLang: "mey-Latn" },
+})
+
 export function resolveWatchLocaleIdentity(
   localeSegment: string | null | undefined,
 ): WatchLocaleIdentity {
   if (!localeSegment) {
     return { locale: DEFAULT_LOCALE, htmlLang: DEFAULT_LOCALE }
   }
+  // `Object.hasOwn`, not a bare read: a bare bracket access resolves inherited
+  // Object members, so `resolveWatchLocaleIdentity("constructor")` would return
+  // the Object constructor through the truthiness check below and hand every
+  // caller an identity whose `locale` and `htmlLang` are both `undefined`.
+  // `slugToBcp47Tag` already guards its two tables the same way.
+  const override = Object.hasOwn(WATCH_LOCALE_IDENTITY_OVERRIDES, localeSegment)
+    ? WATCH_LOCALE_IDENTITY_OVERRIDES[localeSegment]
+    : undefined
+  if (override) return override
   const locale = resolveUiLocale(localeSegment) ?? DEFAULT_LOCALE
   const tag = slugToBcp47Tag(localeSegment)
-  const htmlLang = tag && resolveUiLocale(tag) === locale ? tag : locale
+  // `locale` and `htmlLang` answer different questions: `locale` picks the
+  // message catalog the CHROME renders in, `htmlLang` declares the language
+  // the CONTENT is in. Only 224 of 2,329 public language slugs ship a
+  // catalog, so requiring `resolveUiLocale(tag) === locale` here (FGE-170 /
+  // W-082) discarded a known tag for the other ~2,100 and declared pages of
+  // Najdi Arabic or Pashto as `lang="en" dir="ltr"`.
+  //
+  // Keeping the tag whenever we have one is safe because the two resolutions
+  // cannot disagree in any other way: `resolveUiLocale` derives its own tag
+  // from the same slug, so a catalog-backed slug always agrees with its tag's
+  // family (`english-british` → `en-GB`, `spanish-latin-american` → `es-419`),
+  // and the one deliberate exception — Hassaniyya's Latin-script catalog —
+  // returns from WATCH_LOCALE_IDENTITY_OVERRIDES above before reaching here.
+  //
+  // The tag is only DECLARED when this app can stand behind it — see
+  // `isDeclarableHtmlLangTag`. A slug with no resolvable tag (`german`), a tag
+  // admin emits that is not valid BCP-47 (`hainanese` → `nan-CN-46`), and a
+  // shape-only match on an unknown slug all fall back to `locale`.
+  const htmlLang = tag && isDeclarableHtmlLangTag(tag) ? tag : locale
   return { locale, htmlLang }
+}
+
+/**
+ * Resolve the internal [htmlLang] route segment as a known language tag.
+ * Public language slugs take precedence in `resolveWatchLocaleIdentity`, but
+ * an internal tag can also equal a public slug with a different mapping (for
+ * example `awa` is Awadhi's tag and the public slug for Awa (China)). Private-
+ * use tags such as `ble-x-Naga` also need to be accepted from the generated
+ * map even when they are not covered by the permissive tag-shape expression.
+ */
+export function resolveWatchHtmlLangIdentity(
+  htmlLangSegment: string | null | undefined,
+): WatchLocaleIdentity {
+  if (!htmlLangSegment) return resolveWatchLocaleIdentity(htmlLangSegment)
+
+  const tag = normalizeBcp47Tag(htmlLangSegment)
+  if (isDeclarableHtmlLangTag(tag)) {
+    const canonicalTag = canonicalizeKnownBcp47Tag(tag)
+    return {
+      locale: resolveUiLocale(canonicalTag) ?? DEFAULT_LOCALE,
+      htmlLang: canonicalTag,
+    }
+  }
+
+  return resolveWatchLocaleIdentity(htmlLangSegment)
 }

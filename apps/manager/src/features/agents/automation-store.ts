@@ -243,7 +243,6 @@ const dryRunReportSchema = z.object({
       "target_subtitles_missing",
       "metadata_missing",
       "transcript_embeddings_missing",
-      "scene_embeddings_missing",
     ]),
     refreshMode: z.enum(["missing_only", "refresh_ai_generated"]),
     targetLanguageIds: z.array(z.string()),

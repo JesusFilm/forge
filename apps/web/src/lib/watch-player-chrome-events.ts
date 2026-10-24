@@ -3,7 +3,10 @@ export const WATCH_PLAYER_CHROME_VISIBILITY_EVENT =
 
 export type WatchPlayerChromeVisibilityDetail = {
   visible: boolean
+  opacity?: number
 }
+
+export const WATCH_PLAYER_CHROME_REVEAL_EVENT = "watch-player-chrome-reveal"
 
 export const WATCH_PLAYER_PLAYBACK_STATE_EVENT =
   "watch-player-playback-state-change"
@@ -20,4 +23,15 @@ export const WATCH_HEADER_LANGUAGE_SWITCHER_EVENT =
 export type WatchHeaderLanguageSwitcherDetail = {
   visible: boolean
   onClick: (() => void) | null
+  /**
+   * Cancel pending language work on Search, even when only local subtitle
+   * controls are visible. Omit on mount cleanup so only its owner token clears.
+   */
+  cancelPendingOpen?: () => void
+  /** Active audio language code, including a compact variant suffix if present. */
+  languageCode?: string | null
+  /** Display name for the language represented by `languageCode`. */
+  languageName?: string | null
+  /** Stable mount token so stale cleanup cannot clear a newer registration. */
+  ownerToken?: symbol
 }

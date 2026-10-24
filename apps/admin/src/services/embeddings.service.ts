@@ -1,15 +1,26 @@
 import { createHash } from "node:crypto"
-import type { Prisma } from "@prisma/client"
+import type { Prisma, PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { canWriteDerived } from "@/auth/permissions"
 import type { Principal } from "@/auth/principal"
 import { env } from "@/config/env"
 import { BlockSchema } from "@/domain/blocks"
 import { toPgVector } from "@/db/pgvector"
+import {
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  contentEmbeddingTupleMatches,
+  resolveActiveContentEmbeddingContract,
+  type ContentEmbeddingTuple,
+} from "./content-embedding-contract"
 
-export const EXPERIENCE_EMBEDDING_DIMENSIONS = 1536
-export const OPENROUTER_EMBEDDING_MODEL = "openai/text-embedding-3-small"
-export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+export const EXPERIENCE_EMBEDDING_DIMENSIONS =
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS
+export const OPENROUTER_EMBEDDING_MODEL = "qwen/qwen3-embedding-8b"
+export const FIREWORKS_EMBEDDING_MODEL = ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL
+const OPENROUTER_EMBEDDING_PROVIDER = "SiliconFlow"
+const FIREWORKS_EMBEDDING_BASE_URL =
+  "https://api.fireworks.ai/inference/v1/embeddings"
 
 /**
  * Hard timeout for provider requests. Node's default fetch has no
@@ -18,9 +29,11 @@ export const OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
  * fans out across many scenes.
  */
 const EMBEDDING_REQUEST_TIMEOUT_MS = 30_000
+const SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS = 1_000
+const SINGLE_EMBEDDING_REQUEST_ATTEMPTS = 1
 
 const BLOCK_TEXT_IGNORE_KEY =
-  /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
+  /(?:^t$|url$|Url$|link$|Link$|Id$|Color$|variant$|orientation$|itemsSource$|iframeSrc$|sectionKey$|headingLevel$|locale$|icon$)/i
 
 const EmbeddingResponseSchema = z.object({
   data: z
@@ -71,6 +84,8 @@ export type ExperienceEmbeddingProvenance = {
   model: string
   dimensions: number
   provider?: string
+  nativeDimensions?: number
+  transformVersion?: string
   generationMode: ExperienceEmbeddingGenerationMode
   mastraRunId: string
   generatedAt: string
@@ -88,6 +103,8 @@ export class EmbeddingsBatchError extends Error {
     readonly code:
       | "empty_input"
       | "missing_credentials"
+      | "contract_mismatch"
+      | "contract_unavailable"
       | "request_failed"
       | "request_timed_out"
       | "validation_failed"
@@ -146,10 +163,6 @@ function collectBlockText(
   }
 }
 
-function embeddingEndpointFromBase(baseUrl: string): string {
-  return new URL("embeddings", `${baseUrl.replace(/\/$/, "")}/`).toString()
-}
-
 export function buildExperienceEmbeddingText(
   locale: ExperienceEmbeddingLocaleInput,
 ): string {
@@ -198,31 +211,260 @@ export function buildExperienceEmbeddingSource(
 }
 
 type EmbeddingProvider = {
+  id: "openrouter" | "fireworks"
   apiKey: string
   model: string
   url: string
+  dimensions?: number
+  routing?: {
+    only: string[]
+    allow_fallbacks: boolean
+    require_parameters: boolean
+  }
+}
+
+export type EmbeddingProviderIdentity = {
+  provider: EmbeddingProvider["id"]
+  model: string
+  nativeDimensions: number
+  dimensions: number
+  transformVersion: string | null
+}
+
+type EmbeddingProviderResult =
+  | {
+      ok: true
+      body: unknown
+    }
+  | {
+      ok: false
+      status: number
+    }
+
+function openRouterProvider(): EmbeddingProvider | null {
+  const openRouterApiKey = env.OPENROUTER_API_PAID_KEY ?? env.OPENROUTER_API_KEY
+  if (!openRouterApiKey) return null
+
+  return {
+    id: "openrouter",
+    apiKey: openRouterApiKey,
+    model: OPENROUTER_EMBEDDING_MODEL,
+    url: "https://openrouter.ai/api/v1/embeddings",
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    routing: {
+      only: [OPENROUTER_EMBEDDING_PROVIDER],
+      allow_fallbacks: false,
+      require_parameters: true,
+    },
+  }
+}
+
+function fireworksProvider(): EmbeddingProvider | null {
+  if (!env.FIREWORKS_API_KEY) return null
+
+  return {
+    id: "fireworks",
+    apiKey: env.FIREWORKS_API_KEY,
+    model: env.FIREWORKS_EMBEDDING_MODEL ?? FIREWORKS_EMBEDDING_MODEL,
+    url: env.FIREWORKS_EMBEDDING_BASE_URL ?? FIREWORKS_EMBEDDING_BASE_URL,
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+  }
 }
 
 function selectProvider(): EmbeddingProvider {
-  if (env.OPENROUTER_API_KEY) {
-    return {
-      apiKey: env.OPENROUTER_API_KEY,
-      model: OPENROUTER_EMBEDDING_MODEL,
-      url: "https://openrouter.ai/api/v1/embeddings",
-    }
+  const preferredProvider = env.QUERY_EMBEDDING_PROVIDER
+
+  if (preferredProvider === "fireworks") {
+    const provider = fireworksProvider()
+    if (provider) return provider
+    throw new EmbeddingsBatchError(
+      "missing_credentials",
+      "FIREWORKS_API_KEY is required when QUERY_EMBEDDING_PROVIDER=fireworks",
+    )
   }
-  if (env.OPENAI_API_KEY) {
-    return {
-      apiKey: env.OPENAI_API_KEY,
-      model: OPENAI_EMBEDDING_MODEL,
-      url: embeddingEndpointFromBase(
-        env.OPENAI_BASE_URL ?? "https://api.openai.com/v1",
-      ),
-    }
+
+  if (preferredProvider === "openrouter") {
+    const provider = openRouterProvider()
+    if (provider) return provider
+    throw new EmbeddingsBatchError(
+      "missing_credentials",
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required when QUERY_EMBEDDING_PROVIDER=openrouter",
+    )
   }
+
+  const openRouter = openRouterProvider()
+  if (openRouter) return openRouter
+
+  const fireworks = fireworksProvider()
+  if (fireworks) return fireworks
+
   throw new EmbeddingsBatchError(
     "missing_credentials",
-    "OPENROUTER_API_KEY or OPENAI_API_KEY is required for embedding generation",
+    "OPENROUTER_API_PAID_KEY, OPENROUTER_API_KEY, or FIREWORKS_API_KEY is required for embedding generation",
+  )
+}
+
+export function currentEmbeddingProviderIdentity(): EmbeddingProviderIdentity {
+  const provider = selectProvider()
+  return {
+    provider: provider.id,
+    model: provider.model,
+    nativeDimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    dimensions: EXPERIENCE_EMBEDDING_DIMENSIONS,
+    transformVersion: null,
+  }
+}
+
+function currentEmbeddingProviderTuple(): ContentEmbeddingTuple {
+  const identity = currentEmbeddingProviderIdentity()
+  return {
+    provider: identity.provider,
+    model: identity.model,
+    nativeDimensions: identity.nativeDimensions,
+    dimensions: identity.dimensions,
+    transformVersion: identity.transformVersion,
+  }
+}
+
+export async function currentContentQueryEmbeddingIdentity(
+  prisma: Pick<PrismaClient, "$queryRaw">,
+): Promise<EmbeddingProviderIdentity & { contractId: string }> {
+  let contract: Awaited<
+    ReturnType<typeof resolveActiveContentEmbeddingContract>
+  >
+  try {
+    contract = await resolveActiveContentEmbeddingContract(prisma)
+  } catch (error) {
+    throw new EmbeddingsBatchError(
+      "contract_unavailable",
+      "Active content embedding contract is unavailable",
+      error,
+    )
+  }
+
+  const identity = currentEmbeddingProviderIdentity()
+  if (
+    !contentEmbeddingTupleMatches(
+      contract.query,
+      currentEmbeddingProviderTuple(),
+    )
+  ) {
+    throw new EmbeddingsBatchError(
+      "contract_mismatch",
+      `Configured query embedding provider ${identity.provider}/${identity.model} does not match active content embedding contract ${contract.id}`,
+    )
+  }
+
+  return {
+    contractId: contract.id,
+    ...identity,
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError"
+}
+
+function embeddingTimeoutError(): Error {
+  const error = new Error("Embedding request timed out")
+  error.name = "AbortError"
+  return error
+}
+
+async function fetchEmbeddingResponse(
+  provider: EmbeddingProvider,
+  body: string,
+  signal: AbortSignal,
+): Promise<EmbeddingProviderResult> {
+  const response = await fetch(provider.url, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${provider.apiKey}`,
+      "content-type": "application/json",
+    },
+    body,
+    signal,
+  })
+
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+    }
+  }
+
+  return {
+    ok: true,
+    body: await response.json(),
+  }
+}
+
+async function fetchEmbeddingResponseWithDeadline(
+  provider: EmbeddingProvider,
+  body: string,
+  timeoutMs: number,
+): Promise<EmbeddingProviderResult> {
+  const controller = new AbortController()
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      fetchEmbeddingResponse(provider, body, controller.signal),
+      new Promise<EmbeddingProviderResult>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => {
+          controller.abort()
+          reject(embeddingTimeoutError())
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+    }
+  }
+}
+
+async function fetchSingleEmbeddingResponseWithRetry(
+  provider: EmbeddingProvider,
+  body: string,
+): Promise<EmbeddingProviderResult> {
+  let lastError: unknown
+
+  for (
+    let attempt = 0;
+    attempt < SINGLE_EMBEDDING_REQUEST_ATTEMPTS;
+    attempt += 1
+  ) {
+    try {
+      return await fetchEmbeddingResponseWithDeadline(
+        provider,
+        body,
+        SINGLE_EMBEDDING_REQUEST_TIMEOUT_MS,
+      )
+    } catch (error) {
+      lastError = error
+      if (!isAbortError(error)) {
+        throw error
+      }
+    }
+  }
+
+  throw lastError
+}
+
+async function fetchEmbeddingResponseWithTimeout(
+  provider: EmbeddingProvider,
+  body: string,
+  inputCount: number,
+): Promise<EmbeddingProviderResult> {
+  if (inputCount === 1) {
+    return fetchSingleEmbeddingResponseWithRetry(provider, body)
+  }
+
+  return fetchEmbeddingResponseWithDeadline(
+    provider,
+    body,
+    EMBEDDING_REQUEST_TIMEOUT_MS,
   )
 }
 
@@ -264,31 +506,25 @@ export async function generateExperienceEmbeddings(
 
   const provider = selectProvider()
 
-  const controller = new AbortController()
-  const timeoutHandle = setTimeout(
-    () => controller.abort(),
-    EMBEDDING_REQUEST_TIMEOUT_MS,
-  )
-  let response: Response
+  let response: EmbeddingProviderResult
+  const requestBody = JSON.stringify({
+    model: provider.model,
+    input: normalized,
+    encoding_format: "float",
+    ...(provider.dimensions ? { dimensions: provider.dimensions } : {}),
+    ...(provider.routing ? { provider: provider.routing } : {}),
+  })
   try {
-    response = await fetch(provider.url, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${provider.apiKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: provider.model,
-        input: normalized,
-        encoding_format: "float",
-      }),
-      signal: controller.signal,
-    })
+    response = await fetchEmbeddingResponseWithTimeout(
+      provider,
+      requestBody,
+      normalized.length,
+    )
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
+    if (isAbortError(error)) {
       throw new EmbeddingsBatchError(
         "request_timed_out",
-        `Embedding request timed out after ${EMBEDDING_REQUEST_TIMEOUT_MS}ms`,
+        "Embedding request timed out",
         error,
       )
     }
@@ -297,8 +533,6 @@ export async function generateExperienceEmbeddings(
       "Embedding request failed before response",
       error,
     )
-  } finally {
-    clearTimeout(timeoutHandle)
   }
 
   if (!response.ok) {
@@ -310,7 +544,7 @@ export async function generateExperienceEmbeddings(
     )
   }
 
-  const parsed = EmbeddingResponseSchema.safeParse(await response.json())
+  const parsed = EmbeddingResponseSchema.safeParse(response.body)
   if (!parsed.success) {
     throw new EmbeddingsBatchError(
       "validation_failed",
@@ -366,6 +600,28 @@ export async function generateExperienceEmbedding(
   }
 }
 
+export async function generateCurrentContentQueryEmbedding(
+  prisma: Pick<PrismaClient, "$queryRaw">,
+  text: string,
+): Promise<GeneratedEmbedding & { contractId: string }> {
+  const identity = await currentContentQueryEmbeddingIdentity(prisma)
+  const result = await generateExperienceEmbedding(text)
+  if (
+    result.dimensions !== identity.dimensions ||
+    result.embedding.length !== identity.dimensions
+  ) {
+    throw new EmbeddingsBatchError(
+      "dimension_mismatch",
+      `Query embedding returned ${result.embedding.length} dimensions; expected ${identity.dimensions}`,
+    )
+  }
+
+  return {
+    contractId: identity.contractId,
+    ...result,
+  }
+}
+
 export async function writeExperienceEmbeddingPayloadInTransaction(
   tx: Pick<Prisma.TransactionClient, "$executeRaw">,
   {
@@ -402,6 +658,8 @@ export async function writeExperienceEmbeddingPayloadInTransaction(
         embedding_model = ${provenance.model},
         embedding_dimensions = ${provenance.dimensions},
         embedding_provider = ${provenance.provider ?? null},
+        embedding_native_dimensions = ${provenance.nativeDimensions ?? null},
+        embedding_transform_version = ${provenance.transformVersion ?? null},
         embedding_generation_mode = ${provenance.generationMode},
         embedding_mastra_run_id = ${provenance.mastraRunId},
         embedding_generated_at = ${new Date(provenance.generatedAt)},

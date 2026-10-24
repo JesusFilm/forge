@@ -25,6 +25,7 @@ export { containerFragment }
 type ContainerProps = {
   data: FragmentOf<typeof containerFragment>
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }
 
 type ContainerData = FragmentOf<typeof containerFragment>
@@ -69,9 +70,11 @@ function slotSpanStyle(slot: Slot): SlotSpanStyles {
 function SlotContentRenderer({
   item,
   routeVideo,
+  languageSlug,
 }: {
   item: SlotContentItem
   routeVideo?: RouteVideo | null
+  languageSlug?: string | null
 }) {
   if (!item || item.__typename === "Error") return null
   // Cast to broader string so the admin typename cases below (which
@@ -100,6 +103,7 @@ function SlotContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "ComponentSectionsCta":
@@ -148,6 +152,7 @@ function SlotContentRenderer({
         <MediaCollection
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
+          languageSlug={languageSlug}
         />
       )
     case "CtaBlock":
@@ -229,7 +234,7 @@ type SlotGroup = {
   items: unknown[]
 }
 
-export function Container({ data, routeVideo }: ContainerProps) {
+export function Container({ data, routeVideo, languageSlug }: ContainerProps) {
   const id = (data as { id?: string | null }).id
   const legacySlots = (data as { slots?: readonly unknown[] | null }).slots
   const adminContent = (data as { content?: readonly unknown[] | null }).content
@@ -294,6 +299,7 @@ export function Container({ data, routeVideo }: ContainerProps) {
                 key={`slot-${idx}-${index}`}
                 item={item as SlotContentItem}
                 routeVideo={routeVideo}
+                languageSlug={languageSlug}
               />
             )
           })}

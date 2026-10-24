@@ -111,12 +111,19 @@ const MediaAssetUsageRef = builder
   .objectRef<MediaAssetUsageRow>("MediaAssetUsage")
   .implement({
     description:
-      "A structured reference to an experience metadata or block field that uses a media asset.",
+      "A structured reference to an experience or video locale field that uses a media asset.",
     fields: (t) => ({
-      experienceId: t.exposeString("experienceId"),
-      experienceLocaleId: t.exposeString("experienceLocaleId"),
+      experienceId: t.exposeString("experienceId", { nullable: true }),
+      experienceLocaleId: t.exposeString("experienceLocaleId", {
+        nullable: true,
+      }),
+      resourceType: t.exposeString("resourceType"),
+      resourceId: t.exposeString("resourceId"),
+      resourceLocaleId: t.exposeString("resourceLocaleId"),
       locale: t.exposeString("locale"),
       title: t.exposeString("title", { nullable: true }),
+      editUrl: t.exposeString("editUrl"),
+      recoverable: t.exposeBoolean("recoverable"),
       location: t.exposeString("location"),
       fieldPath: t.exposeString("fieldPath"),
       fieldName: t.exposeString("fieldName"),
@@ -234,7 +241,7 @@ builder.queryFields((t) => ({
     type: [MediaAssetUsageRef],
     authScopes: { hasPermission: "read:media-assets" },
     description:
-      "List experience metadata and block fields that currently reference a media asset.",
+      "List experience and video locale fields that currently reference a media asset.",
     args: {
       id: t.arg.id({ required: true }),
     },

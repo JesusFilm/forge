@@ -140,15 +140,19 @@ DB call. All three honor `OVERFETCH_FACTOR = 3` via the `limit` param.
 ## Branched orchestrator — `HybridSearchService.search()`
 
 ```
+if mode === "keyword-first" && wantsVideos:
+  start keyword-weighted-video + trigram-video + exact-title-video
+  attach Promise.allSettled immediately
+  ↓
 embed(query)
   ↓
-build retrievals[]:
+build final retrievals[]:
   if wantsVideos:
     push semantic-video                         (shared)
     if mode === "keyword-first":
-      push keyword-weighted-video
-      push trigram-video
-      push exact-title-video
+      push pre-started keyword-weighted-video
+      push pre-started trigram-video
+      push pre-started exact-title-video
     else:                                        (hybrid path UNCHANGED)
       push keyword-video                         (R4)
   if wantsExperiences:
@@ -164,6 +168,16 @@ return { results, hasMore, query, searchMode }
                                        ↑
                               UNCHANGED degradation signal
 ```
+
+The three keyword-first video lexical retrievers do not need the query
+embedding, so they may run while the embedding provider is in flight. Semantic
+retrievers remain embedding-gated. Reuse the early settled outcomes in the final
+retriever order; do not let async overlap change RRF list order or debug labels.
+
+Timing attribution follows
+`docs/solutions/performance-issues/admin-search-stage-db-timing-instrumentation-20260624.md`:
+`db_retrievals_ms` is active retriever time, while `retrieval_wait_ms` is the
+final await span. Overlapped stage timings are not additive.
 
 ## Semantic-dilution cap
 
@@ -236,8 +250,9 @@ and `dilutionCapApplied`. The retriever labels are explicitly
 - **Real-DB integration tests** gated on R0 (Core sync entity coverage):
   EXPLAIN-based GIN verification, Bible Project headline against seeded
   data, canary diff vs cms keyword-first.
-- **R8 cutover** — apps/web / mobile / tv keep calling cms's search
-  during the R3 → R8 window. R8 is a separate one-shot.
+- **Consumer opt-ins** — apps/web now opts into Admin keyword-first at
+  its shared search boundary; mobile and TV cutovers remain separate
+  consumer-surface decisions.
 - **Deprecating cms keyword-first** — happens at R8 alongside the rest
   of cms search deprecation. This work does NOT delete cms code.
 - **`statement_timeout` for SQL retrievers** — pre-existing R4 concern;
@@ -253,6 +268,7 @@ and `dilutionCapApplied`. The retriever labels are explicitly
 - `apps/cms` source-side: feat-109 (PR #852).
 - Plan: `docs/plans/2026-04-29-002-feat-search-cms-to-admin-keyword-first-port-plan.md`.
 - R4 sibling: `docs/solutions/platform/admin-hybrid-search-r4-pattern.md`.
+- Web consumer opt-in: `docs/solutions/web/web-search-admin-keyword-first-opt-in.md`.
 - Workflow miss this corrects:
   `docs/solutions/workflow-issues/check-migration-playbook-before-extending-source-side-20260429.md`.
 - Inherited-assumption discipline:
