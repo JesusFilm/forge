@@ -23,6 +23,7 @@ const manifest: WatchRouteManifest = {
   audioLanguageIndexesByContent: { jesus: [0] },
   audioLanguageIndexesByEpisode: { series: { "episode-1": [0] } },
   nestedContainerAudioLanguageIndexesByParent: {},
+  redirectSlugs: {},
 }
 
 describe("WatchRouteManifestStore", () => {

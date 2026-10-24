@@ -54,6 +54,7 @@ describe("WatchRouteManifestService.generate", () => {
           childSlug: "walking-with-jesus",
         },
       ])
+      .mockResolvedValueOnce([{ oldSlug: "old-jesus", currentSlug: "jesus" }])
 
     const service = new WatchRouteManifestService(prisma, {
       now: () => new Date("2026-05-29T12:00:00.000Z"),
@@ -97,6 +98,7 @@ describe("WatchRouteManifestService.generate", () => {
           childSlug: "walking-with-jesus",
         },
       ])
+      .mockResolvedValueOnce([{ oldSlug: "old-jesus", currentSlug: "jesus" }])
 
     const second = await service.generate()
 
@@ -124,6 +126,9 @@ describe("WatchRouteManifestService.generate", () => {
         discipleship: {
           "walking-with-jesus": [0],
         },
+      },
+      redirectSlugs: {
+        "old-jesus": "jesus",
       },
     })
     expect(first.version).toMatch(/^[a-f0-9]{64}$/)
@@ -166,6 +171,9 @@ describe("WatchRouteManifestService.generate", () => {
         },
       ])
       .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { oldSlug: "acts-of-the-apostles", currentSlug: "book-of-acts" },
+      ])
 
     const service = new WatchRouteManifestService(prisma)
     const manifest = await service.generate()
@@ -179,6 +187,7 @@ describe("WatchRouteManifestService.generate", () => {
       audioLanguageSlugs: 3,
       contentAudioLanguagePairs: 2,
       episodeAudioLanguagePairs: 3,
+      redirectSlugs: 1,
     })
     expect(JSON.stringify(manifest)).not.toContain("episode-1/english")
     expect(JSON.stringify(manifest)).not.toContain("episode-2/spanish")
@@ -217,6 +226,13 @@ describe("WatchRouteManifestService.generate", () => {
       "parent.label IN ('collection'::\"VideoLabel\", 'series'::\"VideoLabel\")",
     )
     expect(allSql).toContain('child.slug AS "childSlug"\n      FROM')
+    expect(allSql).toContain("alias_pairs")
+    expect(allSql).toContain('unnest(v."previous_slugs")')
+    expect(allSql).toContain("unambiguous_aliases")
+    expect(allSql).toContain('HAVING COUNT(DISTINCT "currentSlug") = 1')
+    expect(allSql).toContain(
+      '"oldSlug" NOT IN (SELECT slug FROM live_video_slugs)',
+    )
   })
 
   it("rejects malformed query rows instead of emitting a partial manifest", async () => {
