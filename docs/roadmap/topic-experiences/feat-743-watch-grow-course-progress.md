@@ -3,7 +3,7 @@ id: "feat-743"
 title: "Grow course story and durable account progress"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-17"
 duration: 10
 depends_on:
@@ -121,3 +121,41 @@ The linked plan governs all KTDs and R-IDs cited above. Preserve the original di
 ## Verification
 
 Use the linked Verification Contract and the unit-specific scenarios above. Record real behavior, cross-layer checks where applicable, and a page-load comparison against the preceding stack parent. Run formatter and applicable lint/typecheck/build/schema drift checks before PR publication. Update this ticket to in-progress when implementation starts and complete only after the scoped implementation and checks finish; completion does not claim deployment.
+
+## Learning token and erasure rollout
+
+Auth's `AUTH_WATCH_LEARNING_ERASURE_REQUIRED` defaults to false so parallel Auth/Admin deployments preserve account deletion against a legacy successful receiver. Explicit refusal, network failure and non-2xx responses still abort. After the additive Admin migration and learning-erasure acknowledgement receiver are verified, set the requirement to true before enabling saved learning. Configure Auth's `ADMIN_WATCH_PROGRESS_BASE_URL`/`ADMIN_WATCH_PROGRESS_API_KEY` against the receiver's existing `WATCH_PROGRESS_ADMIN_API_KEYS`; required mode rejects missing configuration before external side effects. Keep both the configuration and requirement active once learning data may exist, including after a public audience-flag rollback.
+
+Use Auth's dedicated `watch-user-data` resource for the same environment as the Web client (local: `http://localhost:3003/api/graphql`), derived from the Admin application registry. `AUTH_VALID_AUDIENCES` does not admit this flow. Link both the existing public Web PKCE client and a confidential Admin introspection client to it. Set Web's optional `WEB_AUTH_ADMIN_RESOURCE` to the same URI, plus Admin's existing introspection credentials, issuer, accepted client IDs and environment pin. Reuse `web:watch-events:write`; never make Web confidential or expose a browser bearer. Existing audienceless Web cookies need a fresh hosted sign-in. The audience rollout flag remains off by default; no production setting or data was changed by implementation.
+
+## Demonstrated local verification
+
+Isolated PostgreSQL integration, checked-token HTTP ownership/races/reset and real Auth deletion/erasure passed. All four Grow browser cases ran with genuine hosted Auth/PKCE identities (none skipped), including explicit save and a second device; additional browser checks passed for real conflict recovery, offline retry, reset, account switch, late-response discard and sign-out. Reflection text was absent from progress mutations. Web/Admin/Auth relevant tests, scoped lint/type checks, actual regenerated SDL/introspection and production Web build passed. Matched parent/candidate initial-load and deferred course/Story mount measurements passed at desktop/390px. Exact commands, logs, measurement corrections and the stage branch/base/head/file receipt are under `/home/lado/.local/share/forge-watch-stack-20261017/`. Parent owns final independent security/code review and shipping.
+
+## Aborted deletion recovery
+
+Admin erasure and Auth user-row deletion are separate transactions. An abort retains the Auth row but may already have erased progress and fenced further writes. Preserve the fence; never compensate automatically after a timeout. Follow `apps/auth/docs/watch-learning-erasure-recovery.md` for idempotent deletion retry or exceptional, quiesced recovery after withdrawal of the deletion request. The error and logs report uncertain Admin commit; regression proof preserves the fence and prevents user-row deletion on a lost response.
+
+## Review regression verification (2026-10-17)
+
+Review fixes: unresolved save/reset conflicts and failures stay disarmed through same-account rechecks until explicit choice/retry. POST/DELETE carry x-watch-learning-subject as a stale-session precondition, compared only with the verified server session; focus revalidation pauses writes. Token-less sessions report authenticated/unavailable progress and stale callbacks latch per subject. 89 focused cases and real equal-revision shared-cookie/delayed-session races passed. 35 Admin erasure tests, 53 Auth tests and 11 real progress DB cases passed. The learning DB CI suite enters at stage 5. Token-less browser loop proof uses exact response interception; production localhost legacy fallback is deliberately refused.
+
+Detailed commands, red/green logs, real runtime proof, limits and six-stage reassembly receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r1/`.
+
+## Round 2 review corrections (2026-10-17)
+
+R2 corrections: GET/POST/DELETE fail closed with private/no-store 404 before session/Admin when the audience gate is off or unreadable. Identity revalidation now holds writes without replacing loaded state or re-reading same-account progress. Pending resume intent survives hold/pagehide and shows Saving until acknowledged; conflicts and failed writes require an explicit choice, including late resume timers. Older GET revisions cannot overwrite newer saves. Session reads time out with honest retry. Real hosted-auth races and rollback transport checks passed; the erasure fence and manual recovery contract are unchanged.
+
+Exact red/green, integration, performance, stage replay and limitations receipts: `/home/lado/.local/share/forge-watch-stack-20261017/debug-review-r2/return-to-caller.json`. Parent owns final independent review and PR shipping.
+
+R2 validation limit: the ten-sample mobile-home LCP median was 14.65% above the matched control, with unchanged initial request count, near-identical transferred bytes, +0.02% player-shell readiness and unchanged CLS. The changed initial bootstrap is identical after normalizing deferred chunk references; course/story chunks are absent from initial entry. The overlapping poster-paint mode frequencies differ. This remains visible for parent final review; no causal performance-clearance claim or unrelated product change is made. Exact original and expanded samples are retained.
+
+## Round 3 concurrency repair (2026-10-17)
+
+An explicit reset held during identity revalidation survives passive resume updates and a preceding save failure or conflict. Only the acknowledged POST may advance its own queued continuation; external revisions, account changes and DELETE acknowledgements cannot authorize replay. New regressions first failed with POST replacing DELETE, discarded resume intent and a lost reset choice. The repaired client passes all 48 owning cases, including both acknowledgement/release orders and explicit recovery choices.
+
+The retained performance investigation clears frozen `0199bef` against both the R2 source control and immediate stage-5 parent with unchanged budgets. The original +14.65% mobile-home observation remains recorded; matched interleaving and React reveal traces establish unchanged scheduling modes, with pooled old/new +6.92%. These measurements do not claim to measure later repairs. Exact samples, interruptions, cache and attribution limits remain in `performance-r3/return-to-caller.json` under the external evidence root.
+
+## Final validation harness correction (2026-10-17)
+
+The course unit test waits for the lazy story DOM instead of sleeping 20ms. All existing story, account, resume, unsaved-state and focus assertions remain intact; product mount budgets are unchanged. The cold import exceeded the old arbitrary sleep under the parallel suite while the identical isolated test passed. The corrected 62 course/client cases and all 518 stage-5 Web cases pass. The external validation runner also uses the package's standard unit-test secrets, rather than injecting the live local preview secret into revalidation tests. No product authentication or runtime code changed.

@@ -7487,3 +7487,34 @@ model RecommendationPrecomputedBuildBudget {
 
   @@map("recommendation_precomputed_build_budget")
 }
+
+model WatchLearningProgress {
+  id                   String    @id @default(cuid())
+  /// Auth subject (ctx.user.id of a checked WEB_USER). Never a request argument.
+  userId               String    @map("user_id")
+  courseId             String    @map("course_id")
+  contentVersion       String    @map("content_version")
+  lessonId             String    @map("lesson_id")
+  completedMovementIds String[]  @default([]) @map("completed_movement_ids")
+  completedStepIds     String[]  @default([]) @map("completed_step_ids")
+  /// Explicit lesson completion only; null = not completed.
+  completedAt          DateTime? @map("completed_at")
+  resumeCardId         String?   @map("resume_card_id")
+  /// Server revision. 0 = no row; first save = 1; every save/reset +1.
+  revision             Int       @default(1)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([userId, courseId, contentVersion, lessonId], map: "watch_learning_progress_subject_course_version_lesson_key")
+  @@map("watch_learning_progress")
+}
+
+/// Account-deletion fence: sha256(subject) of an erased Auth account. A
+/// learning write for an erased subject is refused, so a request already
+/// in flight when the account was deleted cannot resurrect progress.
+model WatchLearningErasure {
+  subjectHash String   @id @map("subject_hash")
+  erasedAt    DateTime @default(now()) @map("erased_at")
+
+  @@map("watch_learning_erasures")
+}

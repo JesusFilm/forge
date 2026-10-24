@@ -60,23 +60,41 @@ export function watchAccountAuthUrl(
   return url.toString()
 }
 
+/**
+ * A read that has not answered by then locks as unavailable (with Try again),
+ * so a hung request cannot hold account-bound writes forever.
+ */
+export const SESSION_READ_TIMEOUT_MS = 10_000
+
 export async function readWatchAccountSession(
   signal?: AbortSignal,
 ): Promise<WatchAccountSession> {
   const url = new URL("/watch/api/auth/session", window.location.origin)
   url.searchParams.set("callbackURL", watchAccountReturnTo())
 
+  const controller = new AbortController()
+  const abortFromCaller = () => controller.abort(signal?.reason)
+  if (signal?.aborted) abortFromCaller()
+  else signal?.addEventListener("abort", abortFromCaller, { once: true })
+  const timeout = window.setTimeout(
+    () => controller.abort(),
+    SESSION_READ_TIMEOUT_MS,
+  )
+
   try {
     const response = await fetch(url.toString(), {
       cache: "no-store",
       credentials: "same-origin",
       headers: { accept: "application/json" },
-      signal,
+      signal: controller.signal,
     })
     if (!response.ok) return { status: "unavailable" }
     return parseSession(await response.json())
   } catch {
     return { status: "unavailable" }
+  } finally {
+    window.clearTimeout(timeout)
+    signal?.removeEventListener("abort", abortFromCaller)
   }
 }
 
@@ -115,10 +133,16 @@ export function useWatchAccountSession(): {
   session: WatchAccountSession
   /** Locks, then asks the server again. */
   retry: () => void
+  /**
+   * A focus or visibility re-read is pending. The session shown is still the
+   * last answer, so callers that write on its behalf should hold until then.
+   */
+  revalidating: boolean
 } {
   const [session, setSession] = useState<WatchAccountSession>({
     status: "checking",
   })
+  const [revalidating, setRevalidating] = useState(false)
   // Lazily minted per read: the newest read wins, an older one is aborted and
   // its answer discarded, so a slow signed-in response can never overwrite a
   // later signed-out one.
@@ -129,7 +153,9 @@ export function useWatchAccountSession(): {
     const controller = new AbortController()
     inFlight.current = controller
     void readWatchAccountSession(controller.signal).then((next) => {
-      if (!controller.signal.aborted) setSession(next)
+      if (controller.signal.aborted) return
+      setSession(next)
+      setRevalidating(false)
     })
   }, [])
 
@@ -138,7 +164,9 @@ export function useWatchAccountSession(): {
     // Expiry and sign-out elsewhere surface when the visitor comes back. The
     // events only trigger a read; they never decide the state themselves.
     const revalidate = () => {
-      if (document.visibilityState === "visible") refresh()
+      if (document.visibilityState !== "visible") return
+      setRevalidating(true)
+      refresh()
     }
     window.addEventListener("focus", revalidate)
     document.addEventListener("visibilitychange", revalidate)
@@ -155,5 +183,5 @@ export function useWatchAccountSession(): {
     refresh()
   }, [refresh])
 
-  return { session, retry }
+  return { session, retry, revalidating }
 }
