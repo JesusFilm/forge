@@ -166,6 +166,34 @@ export type LessonState = {
 }
 type ServerLesson = LessonState & { revision: number }
 
+/** Only touched fields are intent; an unchecked UI default is not a removal. */
+type LessonIntent = {
+  steps: Record<string, boolean>
+  completed?: boolean
+  resumeCardId?: string | null
+}
+
+function mergeIntent(previous: LessonIntent | null, next: LessonIntent) {
+  return { ...previous, ...next, steps: { ...previous?.steps, ...next.steps } }
+}
+
+function applyIntent(
+  lessonId: LessonId,
+  base: LessonState,
+  intent: LessonIntent | null,
+): LessonState {
+  return {
+    completedStepIds: SHAPES.get(lessonId)!.stepIds.filter(
+      (id) => intent?.steps[id] ?? base.completedStepIds.includes(id),
+    ),
+    completed: intent?.completed ?? base.completed,
+    resumeCardId:
+      intent?.resumeCardId === undefined
+        ? base.resumeCardId
+        : intent.resumeCardId,
+  }
+}
+
 export type LearningAccount =
   | { kind: "checking" }
   | { kind: "unavailable" }
@@ -218,7 +246,9 @@ type Entry = {
     reset: boolean
   } | null
   /** Reset owns pre-dispatch state; later edits wait for its acknowledgement. */
-  resetIntent: { after: LessonState | null } | null
+  resetIntent: { after: LessonIntent | null } | null
+  /** Deltas made before any authoritative read, scoped to their known owner. */
+  unreadIntent: { delta: LessonIntent; owner: string | null } | null
   timer: ReturnType<typeof setTimeout> | null
   /**
    * A write held while identity was re-checked, with the revision it was
@@ -340,12 +370,29 @@ export function createLearningProgressClient({
         operation: null,
         inFlight: null,
         resetIntent: null,
+        unreadIntent: null,
         timer: null,
         deferred: null,
       }
       entries.set(lessonId, found)
     }
     return found
+  }
+
+  function edit(lessonId: LessonId, item: Entry, intent: LessonIntent) {
+    if (item.resetIntent) {
+      item.resetIntent.after = mergeIntent(item.resetIntent.after, intent)
+      item.local = applyIntent(lessonId, EMPTY, item.resetIntent.after)
+    } else if (!item.server) {
+      item.unreadIntent ??= {
+        delta: { steps: {} },
+        owner: holder?.kind === "user" ? holder.id : null,
+      }
+      item.unreadIntent.delta = mergeIntent(item.unreadIntent.delta, intent)
+      item.local = applyIntent(lessonId, EMPTY, item.unreadIntent.delta)
+    } else {
+      item.local = applyIntent(lessonId, item.local ?? item.server, intent)
+    }
   }
 
   function build(): LearningSnapshot {
@@ -573,10 +620,30 @@ export function createLearningProgressClient({
       const read = found
         ? found.progress
         : { ...EMPTY, completedStepIds: [], revision: 0 }
+      const firstRead = item.server === null
       // Revisions only grow: a read answered before a concurrent save landed
       // must not move the lesson back to the older revision.
       if (!item.server || read.revision >= item.server.revision)
         item.server = read
+      if (firstRead && item.unreadIntent) {
+        const { delta, owner } = item.unreadIntent
+        item.unreadIntent = null
+        item.local = applyIntent(lesson.id, item.server, delta)
+        if (sameState(item.local, item.server)) item.local = null
+        if (item.local) {
+          // Unscoped drafts still need a fresh explicit account-save choice.
+          if (
+            !item.armed &&
+            owner !== (holder?.kind === "user" ? holder.id : null)
+          ) {
+            disarmReplay(item)
+            continue
+          }
+          // Once read, only already-stored lessons qualify for resume-only sync.
+          if (item.armed || (owner !== null && item.server.revision > 0))
+            defer(item)
+        }
+      }
       const pendingRevision =
         item.deferred?.revision ??
         (item.inFlight?.reset ? item.inFlight.revision : undefined)
@@ -772,7 +839,10 @@ export function createLearningProgressClient({
       item.server = incoming
       if (parsed.status === "conflict") {
         // Keep what the visitor did; an explicit choice decides what wins.
-        if (reset) item.local = resetIntent?.after ?? null
+        if (reset)
+          item.local = resetIntent?.after
+            ? applyIntent(lessonId, EMPTY, resetIntent.after)
+            : null
         item.armed = false
         item.status = "conflict"
         emit()
@@ -788,7 +858,9 @@ export function createLearningProgressClient({
       )
         item.deferred.revision = item.server.revision
       if (reset) {
-        item.local = resetIntent?.after ?? null
+        item.local = resetIntent?.after
+          ? applyIntent(lessonId, EMPTY, resetIntent.after)
+          : null
         item.resetIntent = null
         // Retry can retain later edits even after its old queue was disarmed.
         item.deferred = null
@@ -875,15 +947,18 @@ export function createLearningProgressClient({
       next: { completedStepIds: readonly string[]; completed: boolean },
     ) {
       const item = entry(lessonId)
-      const base = item.resetIntent
-        ? (item.resetIntent.after ?? EMPTY)
-        : (item.local ?? item.server ?? EMPTY)
-      item.local = {
-        completedStepIds: knownSteps(lessonId, [...next.completedStepIds]),
-        completed: next.completed,
-        resumeCardId: base.resumeCardId,
+      // Controls supply their displayed snapshot. Only differences from that
+      // visible state are edits; retained old/default fields are not intent.
+      const visible = item.local ?? item.server ?? EMPTY
+      const intent: LessonIntent = { steps: {} }
+      for (const id of SHAPES.get(lessonId)!.stepIds) {
+        const checked = next.completedStepIds.includes(id)
+        if (checked !== visible.completedStepIds.includes(id))
+          intent.steps[id] = checked
       }
-      if (item.resetIntent) item.resetIntent.after = item.local
+      if (next.completed !== visible.completed)
+        intent.completed = next.completed
+      edit(lessonId, item, intent)
       if (blocked(item)) {
         // Held with the open choice, whoever the session turns out to be.
         emit()
@@ -913,11 +988,10 @@ export function createLearningProgressClient({
       if (!isLessonCardId(lessonId, cardId)) return
       const item = entry(lessonId)
       const base = item.resetIntent
-        ? (item.resetIntent.after ?? EMPTY)
+        ? applyIntent(lessonId, EMPTY, item.resetIntent.after)
         : (item.local ?? item.server ?? EMPTY)
       if (base.resumeCardId === cardId) return
-      item.local = { ...base, resumeCardId: cardId }
-      if (item.resetIntent) item.resetIntent.after = item.local
+      edit(lessonId, item, { steps: {}, resumeCardId: cardId })
       const syncs =
         holder?.kind === "user" &&
         (item.armed || (item.server?.revision ?? 0) > 0) &&
@@ -966,6 +1040,7 @@ export function createLearningProgressClient({
       if (item.timer) clearTimeout(item.timer)
       item.timer = null
       item.resetIntent = null
+      item.unreadIntent = null
       item.local = null
       item.deferred = null
       item.armed = false

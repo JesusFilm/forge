@@ -2999,3 +2999,472 @@ describe("reset operation ownership", () => {
     })
   })
 })
+
+describe("explicit deltas before a baseline is acknowledged", () => {
+  it.each([false, true])(
+    "retains only changed post-reset fields (completed baseline=%s)",
+    async (completed) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [
+        lesson({ revision: 3, completedStepIds: ["back-how"], completed }),
+      ])
+      client.reset("lesson-1")
+      // Exactly what the enabled sheet checkbox emits from its displayed props.
+      client.change("lesson-1", {
+        completedStepIds: ["back-how", "back-carrying"],
+        completed,
+      })
+      calls[1]!.resolve({
+        status: 200,
+        body: { status: "saved", progress: lesson({ revision: 4 }) },
+      })
+      await flush()
+      expect(calls[2]!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 4,
+          completedStepIds: ["back-carrying"],
+          completed: false,
+        },
+      })
+    },
+  )
+
+  it.each([false, true])(
+    "initial read supplies untouched fields after a pre-load toggle (toggle-back=%s)",
+    async (toggleBack) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      client.change("lesson-1", {
+        completedStepIds: ["back-carrying"],
+        completed: false,
+      })
+      if (toggleBack)
+        client.change("lesson-1", { completedStepIds: [], completed: false })
+      calls[0]!.resolve({
+        status: 200,
+        body: {
+          authenticated: true,
+          userId: "user-a",
+          lessons: [
+            lesson({
+              revision: 3,
+              completedStepIds: ["back-how"],
+              completed: true,
+            }),
+          ],
+        },
+      })
+      await flush()
+      if (toggleBack) {
+        expect(calls).toHaveLength(1)
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saved",
+          completedStepIds: ["back-how"],
+          completed: true,
+        })
+      } else {
+        expect(calls[1]!.request).toMatchObject({
+          method: "POST",
+          body: {
+            expectedRevision: 3,
+            completedStepIds: ["back-how", "back-carrying"],
+            completed: true,
+          },
+        })
+      }
+    },
+  )
+})
+
+describe("intent and operation lineage matrix", () => {
+  const actions = [
+    "add",
+    "toggle-back",
+    "two-steps",
+    "complete",
+    "complete-back",
+    "resume",
+    "step-resume",
+  ] as const
+  const identities = ["signed-in", "checking", "unavailable"] as const
+  type Client = ReturnType<typeof createLearningProgressClient>
+  function visible(client: Client) {
+    const view = client.getSnapshot().lessons["lesson-1"]
+    return {
+      completedStepIds: view?.completedStepIds ?? [],
+      completed: view?.completed ?? false,
+      resumeCardId: view?.resumeCardId ?? null,
+    }
+  }
+  function step(client: Client, id = "back-carrying") {
+    const view = visible(client)
+    client.change("lesson-1", {
+      ...view,
+      completedStepIds: view.completedStepIds.includes(id)
+        ? view.completedStepIds.filter((value) => value !== id)
+        : [...view.completedStepIds, id],
+    })
+  }
+  function completion(client: Client) {
+    const view = visible(client)
+    client.change("lesson-1", { ...view, completed: !view.completed })
+  }
+  function perform(client: Client, action: string) {
+    if (["add", "toggle-back", "two-steps", "step-resume"].includes(action))
+      step(client)
+    if (action === "toggle-back") step(client)
+    if (action === "two-steps") step(client, "back-give")
+    if (action === "complete" || action === "complete-back") completion(client)
+    if (action === "complete-back") completion(client)
+    if (action === "resume" || action === "step-resume")
+      client.setResume("lesson-1", "up-watch")
+  }
+  function answer(call: Call, progress: ReturnType<typeof lesson>) {
+    expect(call.request.method).toBe("GET")
+    call.resolve({
+      status: 200,
+      body: { authenticated: true, userId: "user-a", lessons: [progress] },
+    })
+  }
+  function acknowledge(call: Call, progress: ReturnType<typeof lesson>) {
+    call.resolve({ status: 200, body: { status: "saved", progress } })
+  }
+  const initialCases = ["empty", "partial", "completed"].flatMap((baseline) =>
+    actions.flatMap((action) =>
+      identities.flatMap((identity) =>
+        [false, true].flatMap((readFails) =>
+          [false, true].map((releaseBeforeRead) => ({
+            baseline,
+            action,
+            identity,
+            readFails,
+            releaseBeforeRead,
+          })),
+        ),
+      ),
+    ),
+  )
+  it.each(initialCases)(
+    "applies only explicit unread deltas ($baseline, $action, $identity, failed=$readFails, releaseFirst=$releaseBeforeRead)",
+    async ({ baseline, action, identity, readFails, releaseBeforeRead }) => {
+      vi.useFakeTimers()
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      client.hold()
+      if (identity !== "signed-in") client.setAccount({ kind: identity })
+      perform(client, action)
+      if (identity !== "signed-in")
+        client.setAccount({ kind: "signed-in", userId: "user-a" })
+      if (readFails) {
+        calls.at(-1)!.resolve({ status: 503, body: null })
+        await flush()
+        expect(client.getSnapshot().load).toBe("error")
+        expect(calls.every((call) => call.request.method === "GET")).toBe(true)
+        client.retry("lesson-1")
+      }
+      const stored = lesson({
+        revision: baseline === "empty" ? 0 : 3,
+        completedStepIds:
+          baseline === "completed"
+            ? ["back-how", "back-carrying"]
+            : baseline === "partial"
+              ? ["back-how"]
+              : [],
+        completed: baseline === "completed",
+        resumeCardId: baseline === "empty" ? null : "back-how",
+      })
+      if (releaseBeforeRead) client.release()
+      answer(calls.at(-1)!, stored)
+      await flush()
+      if (!releaseBeforeRead) client.release()
+      const expectedSteps = new Set<string>(stored.completedStepIds)
+      if (["add", "two-steps", "step-resume"].includes(action))
+        expectedSteps.add("back-carrying")
+      if (action === "toggle-back") expectedSteps.delete("back-carrying")
+      if (action === "two-steps") expectedSteps.add("back-give")
+      const expected = {
+        completedStepIds: [...expectedSteps],
+        completed:
+          action === "complete"
+            ? true
+            : action === "complete-back"
+              ? false
+              : stored.completed,
+        resumeCardId:
+          action === "resume" || action === "step-resume"
+            ? "up-watch"
+            : stored.resumeCardId,
+      }
+      const differs =
+        JSON.stringify([...expectedSteps].sort()) !==
+          JSON.stringify([...stored.completedStepIds].sort()) ||
+        expected.completed !== stored.completed ||
+        expected.resumeCardId !== stored.resumeCardId
+      const shouldWrite =
+        differs && !(baseline === "empty" && action === "resume")
+      const writes = calls.filter((call) => call.request.method !== "GET")
+      expect(writes).toHaveLength(shouldWrite ? 1 : 0)
+      expect(visible(client)).toEqual(expected)
+      if (shouldWrite) {
+        expect(writes[0]!.request).toMatchObject({
+          method: "POST",
+          subject: "user-a",
+          body: { ...expected, expectedRevision: stored.revision },
+        })
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+        acknowledge(
+          writes[0]!,
+          lesson({ ...expected, revision: stored.revision + 1 }),
+        )
+        await flush()
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+      }
+      client.flush({ keepalive: true })
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(
+        calls.filter((call) => call.request.method !== "GET"),
+      ).toHaveLength(shouldWrite ? 1 : 0)
+    },
+  )
+
+  const resetCases = [false, true].flatMap((completed) =>
+    [...actions, "remove"].flatMap((action) =>
+      identities.flatMap((identity) =>
+        ["read-first", "ack-first", "release-first", "failure-retry"].map(
+          (order) => ({ completed, action, identity, order }),
+        ),
+      ),
+    ),
+  )
+  it.each(resetCases)(
+    "retains post-reset deltas only (completed=$completed, $action, $identity, $order)",
+    async ({ completed, action, identity, order }) => {
+      vi.useFakeTimers()
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      const stored = lesson({
+        revision: 3,
+        completedStepIds: ["back-how"],
+        completed,
+        resumeCardId: "end",
+      })
+      await signIn(client, calls, [stored])
+      client.reset("lesson-1")
+      client.hold()
+      if (identity !== "signed-in") client.setAccount({ kind: identity })
+      if (action === "remove") step(client, "back-how")
+      else perform(client, action)
+      // The first completion click is compared with what the visitor saw.
+      const expected = {
+        completedStepIds: ["add", "two-steps", "step-resume"].includes(action)
+          ? action === "two-steps"
+            ? ["back-carrying", "back-give"]
+            : ["back-carrying"]
+          : [],
+        completed:
+          action === "complete"
+            ? !completed
+            : action === "complete-back"
+              ? completed
+              : false,
+        resumeCardId:
+          action === "resume" || action === "step-resume" ? "up-watch" : null,
+      }
+      if (identity === "signed-in") client.refresh()
+      else client.setAccount({ kind: "signed-in", userId: "user-a" })
+      const get = calls.at(-1)!
+      if (order === "failure-retry") {
+        calls[1]!.resolve({ status: 503, body: null })
+        await flush()
+        answer(get, stored)
+        await flush()
+        client.release()
+        expect(
+          calls.filter((call) => call.request.method === "DELETE"),
+        ).toHaveLength(1)
+        client.retry("lesson-1")
+        expect(calls.at(-1)!.request).toMatchObject({
+          method: "DELETE",
+          body: { expectedRevision: 3 },
+        })
+        acknowledge(calls.at(-1)!, lesson({ revision: 4 }))
+      } else {
+        if (order === "release-first") client.release()
+        if (order !== "ack-first") {
+          answer(get, order === "read-first" ? lesson({ revision: 4 }) : stored)
+          await flush()
+        }
+        acknowledge(calls[1]!, lesson({ revision: 4 }))
+        await flush()
+        if (order === "ack-first") answer(get, stored)
+      }
+      await flush()
+      client.release()
+      await flush()
+      const posts = calls.filter((call) => call.request.method === "POST")
+      const shouldWrite =
+        expected.completedStepIds.length > 0 ||
+        expected.completed ||
+        expected.resumeCardId !== null
+      expect(posts).toHaveLength(shouldWrite ? 1 : 0)
+      expect(visible(client)).toEqual(expected)
+      if (shouldWrite) {
+        expect(posts[0]!.request).toMatchObject({
+          body: { ...expected, expectedRevision: 4 },
+        })
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+        acknowledge(posts[0]!, lesson({ ...expected, revision: 5 }))
+        await flush()
+      }
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+      const before = calls.length
+      client.flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(calls).toHaveLength(before)
+    },
+  )
+})
+
+describe("unread intent isolation and one-time adoption", () => {
+  const stored = () =>
+    lesson({ revision: 3, completedStepIds: ["back-how"], completed: true })
+  function read(call: Call, progress = stored(), userId = "user-a") {
+    call.resolve({
+      status: 200,
+      body: { authenticated: true, userId, lessons: [progress] },
+    })
+  }
+  function edit(client: ReturnType<typeof createLearningProgressClient>) {
+    client.change("lesson-1", {
+      completedStepIds: ["back-carrying"],
+      completed: false,
+    })
+    client.setResume("lesson-1", "up-watch")
+  }
+
+  it.each(["anonymous", "user-b"] as const)(
+    "discards unread account deltas and late reads on %s",
+    async (next) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      edit(client)
+      if (next === "anonymous") client.setAccount({ kind: "anonymous" })
+      else await signIn(client, calls, [], next)
+      read(calls[0]!)
+      await flush()
+      client.flush()
+      expect(calls.every((call) => call.request.method === "GET")).toBe(true)
+      expect(
+        client.getSnapshot().lessons["lesson-1"]?.completedStepIds ?? [],
+      ).toEqual([])
+      expect(
+        client.getSnapshot().lessons["lesson-1"]?.resumeCardId ?? null,
+      ).toBeNull()
+    },
+  )
+
+  it.each(["checking", "unavailable", "anonymous"] as const)(
+    "requires explicit recovery for an unscoped %s draft",
+    async (kind) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      client.setAccount({ kind })
+      edit(client)
+      await signIn(client, calls, [stored()])
+      expect(calls).toHaveLength(1)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "conflict",
+        completed: true,
+        completedStepIds: ["back-how", "back-carrying"],
+      })
+      client.keepMine("lesson-1")
+      expect(calls[1]!.request).toMatchObject({
+        method: "POST",
+        subject: "user-a",
+        body: {
+          expectedRevision: 3,
+          completed: true,
+          completedStepIds: ["back-how", "back-carrying"],
+          resumeCardId: "up-watch",
+        },
+      })
+    },
+  )
+
+  it.each(["checking", "unavailable"] as const)(
+    "never reapplies a consumed unread delta onto an independent revision (%s)",
+    async (kind) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      edit(client)
+      read(calls[0]!)
+      await flush()
+      expect(calls[1]!.request.method).toBe("POST")
+      client.hold()
+      client.setAccount({ kind })
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      read(calls[2]!, lesson({ revision: 5 }))
+      await flush()
+      client.release()
+      // The old successful save cannot acknowledge the independent empty rev5.
+      calls[1]!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: lesson({
+            revision: 4,
+            completed: true,
+            completedStepIds: ["back-how", "back-carrying"],
+            resumeCardId: "up-watch",
+          }),
+        },
+      })
+      await flush()
+      expect(calls).toHaveLength(3)
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("conflict")
+      client.useSaved("lesson-1")
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        completed: false,
+        completedStepIds: [],
+        resumeCardId: null,
+      })
+      client.refresh()
+      read(calls[3]!, lesson({ revision: 5 }))
+      await flush()
+      expect(calls).toHaveLength(4)
+      expect(
+        client.getSnapshot().lessons["lesson-1"]!.completedStepIds,
+      ).toEqual([])
+    },
+  )
+
+  it("ignores an obsolete initial GET after its replacement has consumed the delta", async () => {
+    const { calls, transport } = fakeTransport()
+    const client = createLearningProgressClient({ transport })
+    client.setAccount({ kind: "signed-in", userId: "user-a" })
+    edit(client)
+    client.refresh()
+    read(calls[1]!)
+    await flush()
+    read(calls[0]!, lesson({ revision: 0 }))
+    await flush()
+    expect(calls).toHaveLength(3)
+    expect(calls[2]!.request).toMatchObject({
+      method: "POST",
+      body: {
+        expectedRevision: 3,
+        completed: true,
+        completedStepIds: ["back-how", "back-carrying"],
+        resumeCardId: "up-watch",
+      },
+    })
+    expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+  })
+})

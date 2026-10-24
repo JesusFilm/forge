@@ -613,3 +613,96 @@ describe("WatchGrow integration", () => {
     vi.doUnmock("next/image")
   })
 })
+
+describe("explicit intent from rendered course controls", () => {
+  async function checkCarrying() {
+    await act(async () =>
+      container
+        .querySelector<HTMLInputElement>(
+          '[data-step-id="back-carrying"] input[type="checkbox"]',
+        )!
+        .click(),
+    )
+  }
+
+  it("does not copy displayed pre-reset completion into a later checkbox edit", async () => {
+    mount(sessionStore({ status: "signed-in", user: { id: "user-a" } }))
+    await answerRead([
+      lesson({ revision: 3, completedStepIds: ["back-how"], completed: true }),
+    ])
+    await click("Reset saved progress")
+    await click("Reset lesson")
+    expect(calls[1]!.request.method).toBe("DELETE")
+    await checkCarrying()
+    await act(async () =>
+      calls[1]!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: lesson({ revision: 4 }),
+        },
+      }),
+    )
+    expect(calls).toHaveLength(3)
+    expect(calls[2]!.request).toMatchObject({
+      method: "POST",
+      body: {
+        expectedRevision: 4,
+        completedStepIds: ["back-carrying"],
+        completed: false,
+      },
+    })
+    expect(text()).toContain("Saving…")
+    expect(text()).not.toContain("Saved to your account.")
+    await act(async () =>
+      calls[2]!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: lesson({
+            revision: 5,
+            completedStepIds: ["back-carrying"],
+          }),
+        },
+      }),
+    )
+    expect(firstCheckbox().checked).toBe(false)
+    expect(button("Mark lesson complete")).toBeTruthy()
+    expect(text()).toContain("Saved to your account.")
+  })
+
+  it("preserves unread saved steps and completion when a checkbox changes during initial GET", async () => {
+    mount(sessionStore({ status: "signed-in", user: { id: "user-a" } }))
+    await checkCarrying()
+    expect(calls).toHaveLength(1)
+    await answerRead([
+      lesson({ revision: 3, completedStepIds: ["back-how"], completed: true }),
+    ])
+    expect(calls).toHaveLength(2)
+    expect(calls[1]!.request).toMatchObject({
+      method: "POST",
+      body: {
+        expectedRevision: 3,
+        completedStepIds: ["back-how", "back-carrying"],
+        completed: true,
+      },
+    })
+    expect(firstCheckbox().checked).toBe(true)
+    expect(button("Mark lesson incomplete")).toBeTruthy()
+    expect(text()).toContain("Saving…")
+    await act(async () =>
+      calls[1]!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: lesson({
+            revision: 4,
+            completedStepIds: ["back-how", "back-carrying"],
+            completed: true,
+          }),
+        },
+      }),
+    )
+    expect(text()).toContain("Saved to your account.")
+  })
+})

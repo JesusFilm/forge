@@ -306,3 +306,62 @@ Durable ownership rule: a read is knowledge, not a mutation acknowledgement. A
 reset owns only its pre-dispatch intent; later updates belong to its empty
 successor and may continue only after the owning success or explicit recovery.
 Transport retirement, retry intent and post-reset edits have distinct lifetimes.
+
+### Independent review round 4: explicit intent versus displayed snapshots
+
+Scope at `fb9dc77af44baadb919df5205dbceecd24c7f722`: reproduce the two
+rendered-control blockers before editing the client. Record bounded per-field
+intent rather than full post-reset/pre-read UI snapshots. Untouched fields must
+inherit from the owning empty reset result or first authoritative read; later
+independent revisions still require explicit conflict recovery. Audit toggles,
+toggle-back, completion, resume, initial read failure/retry, reset ordering,
+identity changes and stale responses. Preserve the five prior fixes and keep
+this repair limited to the progress client, focused client/rendered tests and
+this note. The unrelated recommendation integration timeout is outside scope.
+
+The client now records bounded per-step/completion/resume deltas for the two
+contexts whose authoritative baseline has not arrived. A control snapshot is
+compared with its visible state to identify changed fields; unchanged checked
+steps and completion never become post-reset intent. The owning DELETE's empty
+result supplies untouched fields. Before the first GET, explicit deltas retain
+the known account owner and are applied once to that authoritative read,
+preserving unread steps, completion and resume. Explicit false/toggle-back
+values remain meaningful. Unscoped drafts require explicit recovery; subsequent
+independent revisions continue through the existing lineage/CAS conflict path.
+No request schema, server CAS or free-text handling changes.
+
+TDD reproduced six failures on the required base before the implementation,
+including both rendered checkbox repros. All 700 owning tests and 16 rendered
+course tests pass. The 456 new owning cases include a 252-case initial-read
+matrix and 192-case reset matrix over empty/partial/completed baselines,
+toggles/toggle-back, multiple steps, completion and resume, checking/unavailable
+identity, read failures/retry and read/acknowledgement/release orders. Added
+isolation cases pin account switch/sign-out, unscoped recovery, superseded GETs,
+and stale POSTs after a consumed first-read delta. All five historical blocker
+regressions remain green; existing reset retries, queued writes, conflict
+choices and stale DELETE ownership tests continue passing.
+
+Validation: 804 tests pass across the 11 progress/course/story/session/route
+files through the standard Web test entry point, including locale generation
+and all five Next cache-size guards. Full Web lint with `--max-warnings=0`, Web
+typecheck, scoped Prettier, patched-dependency guards/tests, hidden-roadmap-lane
+guards/tests, roadmap-ID/baseline tests and `git diff --check` pass. Active commit
+hooks additionally run staged ESLint/Prettier, full-repository `format:check`
+and conventional commit validation. Commands and evidence are retained in
+`/tmp/forge-2782-r4-final-validation.py` and
+`/tmp/forge-2782-r4-validation/`; heavy commands use `agent-io-guard`.
+
+The interleaved 50,000-load-per-version comparison against the exact base
+retains one GET and zero mutations per initial load. Median client initialization
+is 0.001255 ms before / 0.001278 ms after; minified size is 11,756 / 12,676 bytes
+(+920), gzip 4,075 / 4,354 bytes (+279). There are no new imports, rendering,
+hydration, routing, media or initialization scheduling changes. This is a
+client-resource/initialization comparison, not a browser LCP/CLS or production
+build measurement. Checks used available Node 24.19.0 (repo pin: 24.22.1). The
+unrelated recommendation DB integration timeout was not changed or rerun.
+
+Durable intent rule: a displayed snapshot includes inherited state, so it is
+not a delta. Record only explicit field changes until the owning baseline
+arrives; consume that delta once, then preserve its established revision
+lineage. Keep per-lesson intent bounded by known step IDs and release it on
+acknowledgement, explicit Use saved or account teardown.
