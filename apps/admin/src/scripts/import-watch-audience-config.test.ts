@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs"
+import { Client } from "pg"
 import type { PrismaClient } from "@prisma/client"
 import { WatchAudienceConfigurationSchema } from "@forge/experience-schema"
 import { describe, expect, it, vi } from "vitest"
@@ -10,6 +11,7 @@ import {
   importWatchAudienceConfig,
   parseArgs,
   planWatchAudienceImport,
+  runWatchAudienceImport,
 } from "./import-watch-audience-config"
 
 const configuration = WatchAudienceConfigurationSchema.parse(
@@ -39,6 +41,54 @@ describe("assertLocalDatabaseUrl", () => {
     "postgresql://forge@localhost/forge_admin?host=/var/run/postgresql",
   ])("accepts the local connection %s", (url) => {
     expect(() => assertLocalDatabaseUrl(url)).not.toThrow()
+  })
+
+  it("rejects both orders of duplicate host parameters, including encoded keys", () => {
+    for (const query of [
+      "host=/tmp&host=remote.example.invalid",
+      "host=remote.example.invalid&host=/tmp",
+      "host=/tmp&host=/tmp",
+      "host=/tmp&%68ost=remote.example.invalid",
+      "host=/tmp&Host=remote.example.invalid",
+      "host=/tmp&connectionString=postgresql%3A%2F%2Fremote.example.invalid%2Freview",
+    ]) {
+      expect(() =>
+        assertLocalDatabaseUrl(
+          `postgresql://test:test@localhost/review?${query}`,
+        ),
+      ).toThrow(/Refusing/)
+    }
+  })
+
+  it.each([
+    "postgresql://u@localhost/x?host=%2Ftmp",
+    "postgres://u@LOCALHOST/x?host=127.0.0.1",
+    "postgresql://u@localhost/x?host=%3A%3A1",
+    "postgresql://u@%6cocalhost/x",
+  ])("accepts an unambiguous encoded/local pg destination %s", (url) => {
+    expect(() => assertLocalDatabaseUrl(url)).not.toThrow()
+  })
+
+  it.each([
+    "https://localhost/review",
+    "file:///tmp/review",
+    "socket:/tmp?db=review",
+    "postgresql://localhost/review?host=",
+    "postgresql://localhost/review?host=%252Ftmp",
+    "postgresql://localhost/review?host=%2Ftmp%00remote",
+    "postgresql://localhost/review?host=remote.example.invalid",
+    "postgresql://localhost/review?hostaddr=203.0.113.1",
+    "postgresql://localhost/review?hostname=remote.example.invalid",
+    "postgresql://localhost/review?service=remote",
+    "postgresql://localhost/review?host=localhost,remote.example.invalid",
+    "postgresql://localhost.localdomain/review",
+    "postgresql://127.1/review",
+    "postgresql://2130706433/review",
+    "postgresql://[::ffff:203.0.113.1]/review",
+    "postgresql://%ZZ/review",
+    "postgresql://localhost/review#host=remote.example.invalid",
+  ])("refuses alternate or ambiguous destinations %s", (url) => {
+    expect(() => assertLocalDatabaseUrl(url)).toThrow()
   })
 
   it.each([
@@ -272,3 +322,60 @@ describe("importWatchAudienceConfig", () => {
     expect(service.updateLocaleDraft).not.toHaveBeenCalled()
   })
 })
+
+// Inspect the installed driver's destination without ever opening a socket.
+describe("pg destination contract", () => {
+  it.each([
+    ["postgresql://u@localhost/x", "localhost"],
+    ["postgresql://u@127.0.0.1/x", "127.0.0.1"],
+    ["postgresql://u@[::1]/x", "[::1]"],
+    ["postgresql://u@%6cocalhost/x", "localhost"],
+    ["postgresql://u@%2Ftmp/x", "/tmp"],
+    ["postgresql://u@localhost/x?host=%2Ftmp", "/tmp"],
+    ["postgresql://u@localhost/x?host=%3A%3A1", "::1"],
+  ])("admits only a local effective pg host for %s", (url, host) => {
+    assertLocalDatabaseUrl(url)
+    expect(new Client({ connectionString: url }).host).toBe(host)
+  })
+
+  it("reproduces the last-host driver rule and refuses the entire URL", () => {
+    const url =
+      "postgresql://test:test@localhost/review?host=/tmp&host=remote.example.invalid"
+    expect(new Client({ connectionString: url }).host).toBe(
+      "remote.example.invalid",
+    )
+    expect(() => assertLocalDatabaseUrl(url)).toThrow(/Refusing/)
+  })
+})
+
+describe.each([[], ["--apply"]])(
+  "CLI destination gate with args %j",
+  (...argv) => {
+    it.each([
+      "postgresql://test:test@localhost/review?host=/tmp&host=remote.example.invalid",
+      "postgresql://localhost/review?host=remote.example.invalid&host=/tmp",
+      "postgresql://localhost/review?host=/tmp&%68ost=remote.example.invalid",
+      "postgresql://localhost/review?connectionString=postgresql%3A%2F%2Fremote.example.invalid%2Fx",
+      "postgresql://localhost/review?hostaddr=203.0.113.1",
+      "postgresql://localhost/review?hostname=remote.example.invalid",
+      "postgresql://localhost/review?service=remote",
+      "postgresql://localhost/review?host=/tmp&Host=remote.example.invalid",
+      "postgresql://localhost/review?host=/tmp&host=/tmp",
+      "postgresql://localhost/review?host=%253A%253A1",
+      "postgresql://localhost/review?host=%3A%3Affff%3A203.0.113.1",
+      "postgresql://[2001:db8::1]/review",
+      "postgresql://remote.example.invalid/review",
+      "postgresql://localhost/review?host=",
+      "not a url",
+    ])(
+      "refuses before loading any database client: %s",
+      async (databaseUrl) => {
+        const loadPrisma = vi.fn<() => Promise<PrismaClient>>()
+        await expect(
+          runWatchAudienceImport({ argv, databaseUrl, loadPrisma }),
+        ).rejects.toThrow()
+        expect(loadPrisma).not.toHaveBeenCalled()
+      },
+    )
+  },
+)

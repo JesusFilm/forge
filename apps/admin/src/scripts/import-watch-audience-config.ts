@@ -49,24 +49,60 @@ const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "[::1]"])
 const OPERATOR: Principal = { id: null, role: "ADMIN" }
 
 /**
- * Allow-list, not deny-list: only a loopback host is accepted (a `host=` query
- * may only name a unix-socket directory), so a renamed or proxied production
- * host cannot pass.
+ * pg decodes the authority once and lets the LAST `host` query value override
+ * it. Reject ambiguity rather than choosing a different value from the driver.
+ * Both the authority and any explicit override must be local; an empty host
+ * must never fall through to PGHOST. Socket paths are local to this machine.
  */
 export function assertLocalDatabaseUrl(rawUrl: string | undefined): void {
   if (!rawUrl) throw new Error("DATABASE_URL is required.")
-  let parsed: URL
-  try {
-    parsed = new URL(rawUrl)
-  } catch {
-    throw new Error("Refusing to run: DATABASE_URL is not parseable.")
-  }
-  const socketHost = parsed.searchParams.get("host")
-  const local = LOCAL_HOSTS.has(parsed.hostname.toLowerCase())
-  if (!local || (socketHost !== null && !socketHost.startsWith("/"))) {
+  const refuse = () => {
     throw new Error(
-      "[import-watch-audience-config] Refusing to run: DATABASE_URL is not a local database connection.",
+      "[import-watch-audience-config] Refusing to run: DATABASE_URL is not an unambiguous local database connection.",
     )
+  }
+  try {
+    // pg repairs some malformed URLs before parsing. Do not admit inputs whose
+    // meaning depends on that repair, and never echo credentials in an error.
+    const hasControl = (value: string) =>
+      [...value].some((character) => {
+        const code = character.charCodeAt(0)
+        return code < 32 || code === 127
+      })
+    if (
+      hasControl(rawUrl) ||
+      rawUrl.includes(" ") ||
+      /%(?![\da-f]{2})/i.test(rawUrl)
+    )
+      refuse()
+    const parsed = new URL(rawUrl)
+    if (!["postgres:", "postgresql:"].includes(parsed.protocol) || parsed.hash)
+      refuse()
+    const localHost = (host: string) =>
+      !hasControl(host) &&
+      (LOCAL_HOSTS.has(host.toLowerCase()) || host.startsWith("/"))
+    if (!localHost(decodeURIComponent(parsed.hostname))) refuse()
+
+    for (const key of parsed.searchParams.keys()) {
+      // These alternate selectors are unnecessary for this local-only tool.
+      // Reject them rather than relying on a driver/version ignoring them.
+      if (
+        [
+          "hostaddr",
+          "hostname",
+          "connectionstring",
+          "service",
+          "servicefile",
+        ].includes(key.toLowerCase()) ||
+        (key.toLowerCase() === "host" && key !== "host")
+      )
+        refuse()
+    }
+    const hosts = parsed.searchParams.getAll("host")
+    if (hosts.length > 1 || (hosts.length === 1 && !localHost(hosts[0]!)))
+      refuse()
+  } catch {
+    refuse()
   }
 }
 
@@ -250,21 +286,28 @@ export function parseArgs(argv: readonly string[]): Options {
   return options
 }
 
-async function main(): Promise<void> {
-  const options = parseArgs(process.argv.slice(2))
-  assertLocalDatabaseUrl(process.env.DATABASE_URL)
+export async function runWatchAudienceImport({
+  argv,
+  databaseUrl,
+  loadPrisma = async () => (await import("@/db/client")).prisma,
+}: {
+  argv: readonly string[]
+  databaseUrl: string | undefined
+  loadPrisma?: () => Promise<PrismaClient>
+}): Promise<WatchAudienceImportReport> {
+  const options = parseArgs(argv)
+  assertLocalDatabaseUrl(databaseUrl)
   const configuration = WatchAudienceConfigurationSchema.parse(
     JSON.parse(readFileSync(options.config, "utf8")),
   )
-  const { prisma } = await import("@/db/client")
+  const prisma = await loadPrisma()
   try {
-    const report = await importWatchAudienceConfig({
+    return await importWatchAudienceConfig({
       prisma,
       configuration,
       locale: options.locale,
       apply: options.apply,
     })
-    process.stdout.write(JSON.stringify(report) + "\n")
   } finally {
     await prisma.$disconnect()
   }
@@ -276,10 +319,15 @@ const isDirectInvoke =
   fileURLToPath(import.meta.url) === resolve(process.argv[1])
 
 if (isDirectInvoke) {
-  main().catch((error) => {
-    process.stderr.write(
-      `[import-watch-audience-config] fatal: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
-    )
-    process.exit(1)
+  runWatchAudienceImport({
+    argv: process.argv.slice(2),
+    databaseUrl: process.env.DATABASE_URL,
   })
+    .then((report) => process.stdout.write(JSON.stringify(report) + "\n"))
+    .catch((error) => {
+      process.stderr.write(
+        `[import-watch-audience-config] fatal: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}\n`,
+      )
+      process.exit(1)
+    })
 }
