@@ -1,7 +1,7 @@
 ---
 title: "PR 1087 callback admission and integration correction"
 type: fix
-status: in-progress
+status: complete
 date: 2026-10-23
 related_feature: feat-788
 ---
@@ -28,9 +28,9 @@ S2 correction bounds header parsing, retained cardinality, and lazy expiry. Dumm
 
 The original Manager test suite reproduced a collection failure from the mock-mode enrich route importing the server-only engine resolver. Test-only resolver mocks preserve that production boundary; current-main reviewer denial tests also assert the resolver is never called on denial. Historical Actions logs had expired (HTTP 410), so the local reproduction diagnoses a concrete defect without claiming the archived failure text was recovered.
 
-Normal integration reconciles 14 conflict paths and retains main's custom job options, step inventory, source materialization omission semantics, Mastra registrations and dependency graph. Final full Manager, Mastra, and feature-flag tests, all three typechecks and strict lint passes, full repository formatting, and the Manager production build passed. The private packet records exact commands and remaining validation qualifications. Mastra's build CLI always installs generated output dependencies without a frozen lock and performs temporary directory moves; it was not run under this assignment's frozen-install/no-move constraints. No rendering, hydration, or client initialization changes remain relative to current main.
+Normal integration reconciles 14 conflict paths and retains main's custom job options, step inventory, source materialization omission semantics, Mastra registrations and dependency graph. R1 full Manager, Mastra, and feature-flag tests, all three typechecks and strict lint checks, full repository formatting, and the Manager production build passed; that build is inherited R1 evidence only. The private packet records exact commands and remaining validation qualifications. Mastra's build CLI always installs generated output dependencies without a frozen lock and performs temporary directory moves; it was not run under this assignment's frozen-install/no-move constraints. No rendering, hydration, or client initialization changes remain relative to current main.
 
-Implementation self-review is recorded; fresh independent acceptance remains pending. Keep feat-788 and this plan in progress until the parent review accepts the exact local candidate.
+Implementation self-review and both independent rounds are recorded. The parent accepted the independent R2 bounded source review of `567a83e8066028dc6c4ba0bd9065c1335331084f` (tree `8662e03f9d85c3e83fd625aa89e1386ea2708cb3`) on 2026-10-24. feat-788 and this repair plan are complete for that scope.
 
 ## Bounded correction round 2 — independent findings
 
@@ -41,4 +41,12 @@ Independent review rejected candidate `86d9dc7cc31aa2b5c70e062423bee2d3c51b354b`
 3. Align the local Mastra callback step inventory, including `structured_transcript`, with Manager using shared data fixtures and independent local schemas. Enumerate every step/status and strict invalid payloads without cross-app imports.
 4. Return retryable 503 without launch on null/error/mismatched engine restamping. Prove successful selected-engine persistence before launch and rollback stamp survival under concurrent old callbacks/watchdogs.
 
-Run focused regressions first, then full affected suites, typechecks/strict lint, format, hooks, commitlint and roadmap checks. Keep all new substantial evidence/cache/temp in private `1087-implementation-r2/`; reuse pinned Node/dependencies, no installs. Inspect supported safe Mastra build paths read-only; retain explicit unrun qualification if none meets constraints. Record a local code commit and exact-head review packet; no push or independent acceptance in this round. feat-788 stays in progress.
+Run focused regressions first, then full affected suites, typechecks/strict lint, format, hooks, commitlint and roadmap checks. Keep all new substantial evidence/cache/temp in private `1087-implementation-r2/`; reuse pinned Node/dependencies, no installs. Inspect supported safe Mastra build paths read-only; retain explicit unrun qualification if none meets constraints. Record a local code commit and exact-head review packet; no push or independent acceptance in this round. That round kept feat-788 in progress until parent acceptance.
+
+## Parent acceptance and publication boundary — 2026-10-24
+
+All four P2 findings are resolved. R2 implementation tests record Manager 1,457 passed/3 skipped, Mastra 3,915 passed/45 skipped, and feature flags 23 passed; independent R2 review ran 141 fresh focused checks. Parent-authorized normal publication obtains exact-head CI without further source changes or main integration.
+
+Merge readiness remains qualified until exact published-head CI/build checks are assessed. Manager needs a current-head production build; R1 build evidence is inherited. Mastra generated-output build remains locally UNRUN under the frozen-install/no-move constraints. Native-image PostgreSQL/DuckDB startup and existing DB/provider skip gates remain unverified. This is not blanket security clearance.
+
+Keep the Phase 1 graph explicitly unimplemented and the feature flag/ramp default-off. Before real callback traffic, require owner disposition of shared-bucket availability/throughput. Cloudflare address partition trust additionally requires verified header overwrite and no direct-origin bypass. No activation, merge, deployment, or production validation is included.

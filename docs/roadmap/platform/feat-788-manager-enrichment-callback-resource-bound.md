@@ -3,7 +3,7 @@ id: "feat-788"
 title: "Bound Manager enrichment callback admission state"
 owner: "vlad"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-23"
 duration: 1
 depends_on: []
@@ -38,12 +38,20 @@ Bound retained address length and cardinality, expire unused windows, and docume
 
 ## Independent correction round 2
 
-Candidate `86d9dc7cc31aa2b5c70e062423bee2d3c51b354b` was rejected on four P2 findings. Queue ownership-changing state writes with callbacks/watchdogs; atomically retire prior-run metadata on rerun reset; accept/preserve optional `videoTitle`; align the complete callback step vocabulary; and fail closed when selected engine persistence fails. See `docs/plans/2026-10-23-manager-callback-bounded-admission-plan.md` and the compound solution `docs/solutions/security-issues/manager-callback-bounded-pre-auth-admission.md`. Preserve original S2 bounds and the integrated main; keep this feature in progress pending new exact-head independent acceptance.
+Candidate `86d9dc7cc31aa2b5c70e062423bee2d3c51b354b` was rejected on four P2 findings. Queue ownership-changing state writes with callbacks/watchdogs; atomically retire prior-run metadata on rerun reset; accept/preserve optional `videoTitle`; align the complete callback step vocabulary; and fail closed when selected engine persistence fails. See `docs/plans/2026-10-23-manager-callback-bounded-admission-plan.md` and the compound solution `docs/solutions/security-issues/manager-callback-bounded-pre-auth-admission.md`. The corrective candidate `567a83e8066028dc6c4ba0bd9065c1335331084f` resolves all four findings and preserves original S2 bounds and integrated main. The independent R2 bounded source review accepted that exact candidate; the parent recorded acceptance on 2026-10-24.
 
 ## Constraints
 
-Local correction and dummy-only verification. No providers, production state, credentials, activation, push, or public PR mutation. Keep this ticket in progress until independent acceptance. Related broader pipeline work remains in `feat-031`.
+The completed scope is the bounded S2 repair, conflict integration, and four independent-review corrections. Local verification used dummy inputs. Parent-authorized normal branch publication obtains exact-head CI; completion does not establish merge or release readiness. No providers, production state, credentials, or activation were used. Related broader pipeline work remains in `feat-031`.
 
 ## Verification
 
 Run callback resource-bound and auth/job regression tests; full Manager tests; touched Mastra and feature-flag tests; Manager/Mastra typecheck and strict lint; format, roadmap, diff, and commitlint checks. Record exact heads, merge resolutions, logs, qualifications, and reviewer brief in the private implementation packet.
+
+## Acceptance and release gates — 2026-10-24
+
+Parent acceptance records the independent R2 review of candidate `567a83e8066028dc6c4ba0bd9065c1335331084f`, tree `8662e03f9d85c3e83fd625aa89e1386ea2708cb3`, with all four P2 findings resolved and 141 fresh focused reviewer checks passing. Implementation evidence records Manager 1,457 passed/3 skipped, Mastra 3,915 passed/45 skipped, and feature flags 23 passed. This is bounded source acceptance, not blanket security clearance.
+
+Exact published-head CI and actual build results remain required before assessing merge readiness. Manager production-build evidence is inherited from R1, not the accepted current head. Mastra generated-output build remains locally UNRUN because the supported CLI installs generated dependencies without a frozen output lock and may move temporary node_modules. Unit tests and typechecks do not close those build gaps. Native DuckDB/disposable PostgreSQL image startup, existing DB/provider skip gates, and production/edge behavior remain unverified.
+
+The Phase 1 graph remains explicitly unimplemented; keep the feature flag and Mastra ramp default-off. Before real callback traffic, the owner must disposition the demonstrated shared-bucket availability/throughput limit. Cloudflare address-partition opt-in additionally requires verified header overwrite and no direct-origin bypass. This completion authorizes no activation, merge, or deployment.
