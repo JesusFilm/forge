@@ -365,3 +365,79 @@ not a delta. Record only explicit field changes until the owning baseline
 arrives; consume that delta once, then preserve its established revision
 lineage. Keep per-lesson intent bounded by known step IDs and release it on
 acknowledgement, explicit Use saved or account teardown.
+
+### Independent review round 5: queued lineage and held reset presentation
+
+Scope at `70b2203b599e79c039db9229a89515458c0756ec`: inspect every
+production progress-refresh call path before reproducing a queued resume against
+an independent revision through the exported API. Reproduce confirming reset
+while a focus/session recheck holds writes through rendered controls. Reuse the
+revision-bound pending operation queue for debounced intent and make accepted
+held operations visibly pending. Audit read/timer/release ordering, identity
+teardown, failure/retry, conflict choices and stale responses; preserve all
+seven prior blocker regressions. Changes stay within the progress client,
+focused client/rendered tests and this existing repair note.
+
+Reachability audit: `WatchGrowProgressCourse.tsx` calls exported `refresh()`
+only from the failed-progress-load Try again control. Internal refreshes come
+from `setAccount()` when identity/load needs checking and from `retry()` after
+load failure. `useWatchAccountSession.ts` focus/visibility events set
+`revalidating`; the course holds writes, then a same-account success calls
+`setAccount()`/`release()` without a progress GET. A checking/unavailable
+transition already pauses debounce into revision-bound intent before its later
+GET. No production loaded-state caller reproducing the direct exported-refresh
+ordering was found. New rendered tests use the real session hook and browser
+focus events to prove both ordinary same-account behavior and unavailable /
+checking / successful-session recovery. The exported API nevertheless must
+preserve its contract and is now protected.
+
+Before any progress refresh, the client pauses debounce timers into the same
+revision-bound queue used for identity checks. An older/unchanged read can
+release that intent against its original revision; an independent newer read
+disarms it for explicit Keep mine / Use saved. An explicit refresh may release
+an unchanged resume as soon as its GET finishes rather than waiting out the
+remaining debounce; it sends at most one write. Ordinary successful focus still
+adds no progress GET. No new state slots, request fields or wire contracts were
+introduced.
+
+All dispatch waits now register pending lineage and publish Saving together,
+including a held reset without local checkbox changes. Queued resets retain
+their operation marker across predecessor POST acknowledgements and GETs. A
+failed GET is shown by load status; it cannot misclassify a not-yet-dispatched
+DELETE as a failed mutation and strand the queue behind an extra Retry.
+Unchanged-read recovery dispatches once; an independent revision still requires
+an explicit conflict choice. Actual DELETE errors retain normal reset Retry.
+
+TDD first reproduced three failures at the exact base: the exported queued
+resume sequence, the missing held-reset emission, and rendered confirmation
+during focus hold. Further tests reproduced two queued-reset ownership gaps
+and failed-GET retry stranding before those fixes. The final suite passes 797
+owning tests (+97), 20 rendered course tests (+4), and 905 total tests across the
+11 relevant Web files. Added coverage includes a 72-case debounce/read/release
+matrix, timers before/after GET, older/equal/own/newer revisions, edit + resume,
+real focus/session wiring, held reset success/error/retry, queued save + reset,
+failed GET recovery, Keep mine / Use saved, stale acknowledgements/GETs and
+account switch/sign-out. All seven historical blocker regressions remain green.
+
+Validation passes: standard Web test entry point with locale generation and all
+five Next cache-size guards; full Web lint with `--max-warnings=0`, Web typecheck,
+scoped Prettier, patched-dependency guards/tests, hidden-roadmap-lane
+guards/tests, roadmap-ID/baseline tests and `git diff --check`. Active commit
+hooks run staged ESLint/Prettier, full-repository `format:check` and conventional
+commit validation. Exact commands and evidence are in
+`/tmp/forge-2782-r5-final-validation.py` and
+`/tmp/forge-2782-r5-validation/`; heavy operations use `agent-io-guard`.
+
+Interleaved 50,000-load-per-version measurements against the exact base retain
+one GET and zero mutations per initialization. Median client initialization is
+0.001324 ms before / 0.001206 ms after. Minified module size is 12,676 / 12,718
+bytes (+42), gzip 4,354 / 4,373 (+19). These are client initialization/resource
+measurements, not browser LCP/CLS or a full production build; neither was rerun.
+Checks used available Node 24.19.0 (repo pin: 24.22.1). The unrelated old-head
+recommendation timeout and pending admin-schema-drift CI work are outside this
+repair; no configuration, flags, content or production data changed.
+
+Durable pending-operation rule: debounce is a queue, not permission to adopt a
+future read. Capture its revision before reading, and publish accepted queued
+intent as pending immediately. A read may update knowledge, but only the owning
+mutation or an explicit recovery choice can settle the pending operation.

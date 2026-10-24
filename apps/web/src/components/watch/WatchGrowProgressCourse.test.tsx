@@ -706,3 +706,151 @@ describe("explicit intent from rendered course controls", () => {
     expect(text()).toContain("Saved to your account.")
   })
 })
+
+describe("queued operations through course controls", () => {
+  it("keeps a confirmed reset pending while a focus/session recheck holds DELETE", async () => {
+    const session = sessionStore({
+      status: "signed-in",
+      user: { id: "user-a" },
+    })
+    mount(session)
+    await answerRead([
+      lesson({ revision: 5, completedStepIds: ["back-how"], completed: true }),
+    ])
+    await click("Reset saved progress")
+    session.revalidate()
+    await click("Reset lesson")
+    expect(calls).toHaveLength(1)
+    expect(text()).toContain("Saving…")
+    expect(text()).not.toContain("Saved to your account.")
+    session.set({ status: "signed-in", user: { id: "user-a" } })
+    expect(calls[1]!.request.method).toBe("DELETE")
+    await act(async () => calls[1]!.resolve({ status: 503, body: null }))
+    expect(text()).toContain("Not saved.")
+    await click("Retry")
+    expect(calls[2]!.request).toMatchObject({
+      method: "DELETE",
+      body: { expectedRevision: 5 },
+    })
+    await act(async () =>
+      calls[2]!.resolve({
+        status: 200,
+        body: { status: "saved", progress: lesson({ revision: 6 }) },
+      }),
+    )
+    expect(text()).toContain("Saved to your account.")
+    expect(firstCheckbox().checked).toBe(false)
+  })
+})
+
+describe("real focus/session revalidation", () => {
+  let sessionReads: ((response: Response) => void)[]
+  function mountWithSessionRoute() {
+    sessionReads = []
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () => new Promise<Response>((resolve) => sessionReads.push(resolve)),
+      ),
+    )
+    const client = createWatchGrowLearningClient({ transport, drafts })
+    act(() =>
+      root.render(<WatchGrowProgressCourse client={client} drafts={drafts} />),
+    )
+  }
+  async function answerSession(signedIn = true) {
+    await act(async () =>
+      sessionReads.at(-1)!(
+        signedIn
+          ? Response.json({
+              accountGateEnabled: true,
+              authenticated: true,
+              user: { id: "user-a" },
+            })
+          : new Response(null, { status: 503 }),
+      ),
+    )
+  }
+  afterEach(() => vi.unstubAllGlobals())
+
+  it.each(["same-account", "unavailable"] as const)(
+    "keeps queued resume lineage through real focus and $0 session response",
+    async (outcome) => {
+      mountWithSessionRoute()
+      await answerSession()
+      await answerRead([
+        lesson({
+          revision: 5,
+          completedStepIds: ["back-how"],
+          completed: true,
+          resumeCardId: "back-how",
+        }),
+      ])
+      await click("Read as story")
+      await waitForStory()
+      await click("Next")
+      act(() => window.dispatchEvent(new Event("focus")))
+      expect(sessionReads).toHaveLength(2)
+      expect(calls).toHaveLength(1)
+      expect(text()).toContain("Saving…")
+      await answerSession(outcome === "same-account")
+      if (outcome === "same-account") {
+        // Successful ordinary focus does not call progress.refresh(). The save
+        // still uses rev5; a real independent reset must be resolved by CAS.
+        expect(calls).toHaveLength(1)
+        await settle(1700)
+        expect(calls[1]!.request).toMatchObject({
+          method: "POST",
+          body: { expectedRevision: 5 },
+        })
+        await act(async () =>
+          calls[1]!.resolve({
+            status: 200,
+            body: { status: "conflict", progress: lesson({ revision: 6 }) },
+          }),
+        )
+      } else {
+        expect(text()).toContain("We could not confirm your account")
+        await click("Try again")
+        expect(text()).toContain("Checking your account")
+        await answerSession()
+        expect(calls.at(-1)!.request.method).toBe("GET")
+        await answerRead([lesson({ revision: 6 })])
+        await settle(1700)
+        expect(calls.map((call) => call.request.method)).toEqual(["GET", "GET"])
+      }
+      expect(text()).toContain("Your changes here are not saved")
+      expect(text()).not.toContain("Saved to your account.")
+      await click("Use saved version")
+      expect(firstCheckbox().checked).toBe(false)
+      expect(text()).toContain("Saved to your account.")
+    },
+  )
+
+  it("publishes Saving immediately when reset is confirmed during an actual focus read", async () => {
+    mountWithSessionRoute()
+    await answerSession()
+    await answerRead([
+      lesson({ revision: 5, completedStepIds: ["back-how"], completed: true }),
+    ])
+    await click("Reset saved progress")
+    act(() => window.dispatchEvent(new Event("focus")))
+    await click("Reset lesson")
+    expect(calls).toHaveLength(1)
+    expect(text()).toContain("Saving…")
+    expect(text()).not.toContain("Saved to your account.")
+    await answerSession()
+    expect(calls[1]!.request).toMatchObject({
+      method: "DELETE",
+      body: { expectedRevision: 5 },
+    })
+    await act(async () =>
+      calls[1]!.resolve({
+        status: 200,
+        body: { status: "saved", progress: lesson({ revision: 6 }) },
+      }),
+    )
+    expect(firstCheckbox().checked).toBe(false)
+    expect(text()).toContain("Saved to your account.")
+  })
+})

@@ -440,6 +440,9 @@ export function createLearningProgressClient({
     load = "error"
     // Edits waiting for the first read cannot be saved yet; say so plainly.
     for (const item of entries.values()) {
+      // The load error is shown separately. A failed GET has not refused a
+      // queued DELETE; keep its ownership until a read permits dispatch.
+      if (item.deferred?.reset) continue
       if (item.local && item.status === "saving" && !item.inFlight) {
         item.status = "error"
         item.error = error
@@ -517,19 +520,23 @@ export function createLearningProgressClient({
     }
   }
 
+  /** A pending debounce belongs to the revision preceding any new read. */
+  function pauseDebounced() {
+    for (const item of entries.values()) {
+      if (!item.timer) continue
+      clearTimeout(item.timer)
+      item.timer = null
+      defer(item)
+    }
+  }
+
   function setAccount(next: LearningAccount) {
     const previous = account
     account = next
     if (next.kind === "checking" || next.kind === "unavailable") {
       // Identity is unconfirmed: pause writes, hold everything, decide later.
       // A coalesced resume write waits with the revision it was built on.
-      for (const item of entries.values()) {
-        if (item.timer) {
-          clearTimeout(item.timer)
-          defer(item)
-        }
-        item.timer = null
-      }
+      pauseDebounced()
       emit()
       return
     }
@@ -570,6 +577,9 @@ export function createLearningProgressClient({
 
   async function refresh() {
     if (account.kind !== "signed-in") return
+    // Freeze queued intent before the GET can replace its baseline. Waiting
+    // until the timer fires would adopt the newly read revision implicitly.
+    pauseDebounced()
     const userId = account.userId
     loadController?.abort()
     const controller = new AbortController()
@@ -674,7 +684,7 @@ export function createLearningProgressClient({
       )
         continue
       item.error = null
-      item.operation = null
+      item.operation = item.deferred?.reset ? "reset" : null
       item.status = item.deferred
         ? "saving"
         : item.local
@@ -739,20 +749,16 @@ export function createLearningProgressClient({
     if (item.resetIntent && !item.inFlight) reset = true
     // Repeated reset clicks share the dispatched intent, including while held.
     if (reset && item.inFlight?.reset) return
-    if (!signedIn()) {
-      // A known account's edit must retain its pre-refresh lineage while
-      // identity or progress is being checked. Anonymous edits stay unarmed.
-      if (holder?.kind === "user") defer(item, { reset, explicit, choice })
-      return
-    }
-    if (held) {
-      // Even pagehide waits: the page may come back, and an unconfirmed
-      // account must not be written. Nothing reads as Saved meanwhile.
-      defer(item, { reset, explicit, choice })
-      return
-    }
-    if (item.inFlight) {
-      defer(item, { reset, explicit, choice })
+    if (!signedIn() || held || item.inFlight) {
+      // Accepted intent is pending regardless of why dispatch must wait.
+      // Record lineage and publish its status together, including a held
+      // reset that has no local edit to make the pending state visible.
+      if (holder?.kind === "user") {
+        defer(item, { reset, explicit, choice })
+        item.status = "saving"
+        item.error = null
+        emit()
+      }
       return
     }
     // An explicit save of a lesson the account has never stored still
@@ -871,7 +877,8 @@ export function createLearningProgressClient({
       ) {
         item.local = null
       }
-      item.operation = null
+      // This acknowledgement owns its mutation, not a queued successor reset.
+      item.operation = item.deferred?.reset ? "reset" : null
       if (item.deferred?.revision === item.server.revision) {
         // This also preserves a queued reset when the POST cleared local.
         item.status = "saving"
