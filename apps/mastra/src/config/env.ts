@@ -907,6 +907,12 @@ export const env = envSchema.parse({
   ADMIN_AGENT_TOOLS_API_KEY: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_API_KEY,
   ),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_URL: emptyToUndefined(
+    process.env.MANAGER_SUBTITLE_EVAL_RECOVERY_URL,
+  ),
+  MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY: emptyToUndefined(
+    process.env.MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY,
+  ),
   ADMIN_AGENT_TOOLS_TIMEOUT_MS: emptyToUndefined(
     process.env.ADMIN_AGENT_TOOLS_TIMEOUT_MS,
   ),

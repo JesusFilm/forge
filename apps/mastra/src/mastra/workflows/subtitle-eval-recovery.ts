@@ -3,15 +3,9 @@ import { z } from "zod"
 
 import { env } from "../../config/env"
 
-export const SubtitleEvalRecoveryInputSchema = z
-  .object({
-    /** Overrides for tests; production reads configuration from env. */
-    url: z.string().url().optional(),
-    apiKey: z.string().min(1).optional(),
-    timeoutMs: z.number().int().positive().optional(),
-    fetchImpl: z.custom<typeof fetch>().optional(),
-  })
-  .default({})
+// Registered workflow data is durable and caller-controlled. Transport and
+// credentials must never be fields in this schema, even as test overrides.
+export const SubtitleEvalRecoveryInputSchema = z.strictObject({}).default({})
 
 export const SubtitleEvalRecoveryOutputSchema = z.object({
   status: z.enum(["swept", "skipped", "failed"]),
@@ -47,11 +41,45 @@ const DEFAULT_TIMEOUT_MS = 240_000
  * not a response we should buffer into a shared process. */
 const MAX_RESPONSE_BYTES = 1_048_576
 
+// Code-only test seam: the registered execute callback never forwards input to
+// this argument. A supplied config replaces the whole pair, never half of env.
+type RecoveryDependencies = {
+  config?: { url?: string; apiKey?: string }
+  fetchImpl?: typeof fetch
+  timeoutMs?: number
+}
+
+// This is the public Manager origin documented by the deployment guides. The
+// recovery runbook documents no private Railway or local HTTP exception.
+const RECOVERY_ENDPOINT =
+  "https://manager.jesusfilm.org/api/scheduled/subtitle-eval-recovery"
+
+function isRecoveryEndpoint(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return (
+      !url.username &&
+      !url.password &&
+      !url.hash &&
+      !url.search &&
+      // Reject even empty query/fragment/userinfo and noncanonical spellings.
+      url.href === value &&
+      url.href === RECOVERY_ENDPOINT
+    )
+  } catch {
+    return false
+  }
+}
+
 export async function runSubtitleEvalRecovery(
-  input: z.infer<typeof SubtitleEvalRecoveryInputSchema> = {},
+  input: unknown = {},
+  dependencies: RecoveryDependencies = {},
 ): Promise<SubtitleEvalRecoveryOutput> {
-  const url = input.url ?? env.MANAGER_SUBTITLE_EVAL_RECOVERY_URL
-  const apiKey = input.apiKey ?? env.MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY
+  SubtitleEvalRecoveryInputSchema.parse(input)
+  const { url, apiKey } = dependencies.config ?? {
+    url: env.MANAGER_SUBTITLE_EVAL_RECOVERY_URL,
+    apiKey: env.MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY,
+  }
   const empty = { total: 0, raced: 0, unknown: 0 }
 
   // Unconfigured is the normal state until the Lab is turned on. Skip quietly
@@ -60,13 +88,18 @@ export async function runSubtitleEvalRecovery(
     return { status: "skipped", reason: "config_missing", ...empty }
   }
 
-  const doFetch = input.fetchImpl ?? fetch
+  if (!isRecoveryEndpoint(url)) {
+    return { status: "failed", reason: "config_invalid", ...empty }
+  }
+
+  const doFetch = dependencies.fetchImpl ?? fetch
   let response: Response
   try {
     response = await doFetch(url, {
       method: "POST",
+      redirect: "error",
       headers: { authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(input.timeoutMs ?? DEFAULT_TIMEOUT_MS),
+      signal: AbortSignal.timeout(dependencies.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     })
   } catch {
     // Never log the caught error: a transport failure can carry request detail.
@@ -151,7 +184,12 @@ const subtitleEvalRecoveryStep = createStep({
   id: "sweep-stale-subtitle-eval-runs",
   inputSchema: SubtitleEvalRecoveryInputSchema,
   outputSchema: SubtitleEvalRecoveryOutputSchema,
-  execute: ({ inputData }) => runSubtitleEvalRecovery(inputData),
+  execute: ({ inputData }) => {
+    // Revalidate direct step/time-travel input even if framework validation is
+    // disabled. Never pass inputData as code-only transport dependencies.
+    SubtitleEvalRecoveryInputSchema.parse(inputData)
+    return runSubtitleEvalRecovery()
+  },
 })
 
 export const subtitleEvalRecoveryWorkflow = createWorkflow({

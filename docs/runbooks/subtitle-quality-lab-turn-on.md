@@ -153,13 +153,21 @@ isolation rather than removing a dependency.
 Configure two variables on `@forge/mastra`:
 
 ```
-MANAGER_SUBTITLE_EVAL_RECOVERY_URL=https://<manager>/api/scheduled/subtitle-eval-recovery
+MANAGER_SUBTITLE_EVAL_RECOVERY_URL=https://manager.jesusfilm.org/api/scheduled/subtitle-eval-recovery
 MANAGER_SUBTITLE_EVAL_RECOVERY_API_KEY=<Manager's MANAGER_API_KEY>
 ```
 
 Both are optional. Unconfigured, the workflow returns `skipped` /
 `config_missing` rather than failing every five minutes — the correct state
 until the Lab is switched on.
+
+Only the exact HTTPS URL above is accepted. Alternate hosts, ports, paths,
+query strings, URL credentials and fragments fail with `config_invalid` before
+any request. This workflow has no private Railway or local HTTP exception.
+Redirects are refused; fix operator configuration rather than adding a redirect.
+Both the workflow and its first step accept only a strict empty object (omitted
+input defaults to `{}`); URL, key, fetch and timeout overrides are not workflow
+data. Test dependencies stay in a separate code-only argument.
 
 Each invocation lists runs stale by at least five minutes, reads at most four
 pages of 25, claims a 120-second run-recovery lease, refuses cells holding a
