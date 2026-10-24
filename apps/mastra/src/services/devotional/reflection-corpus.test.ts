@@ -39,7 +39,9 @@ const matthewHenry: ReflectionEntry[] = [
   },
 ]
 
-const corpora = { ryleMatthew, matthewHenry }
+// One pool, exactly as `addReflection` builds it: Ryle's per-pericope sections
+// and Henry's whole-chapter treatments together, ranked by specificity.
+const corpora = { commentary: [...ryleMatthew, ...matthewHenry] }
 
 describe("parseOsis", () => {
   it("parses the start of a range", () => {
@@ -100,7 +102,7 @@ describe("matchReflection", () => {
     )
   })
 
-  it("routes Mark/Luke/John to the Matthew Henry chapter", () => {
+  it("falls back to a whole-chapter treatment when no section covers", () => {
     expect(matchReflection("Luke.8.22-Luke.8.25", corpora)?.reference).toBe(
       "Luke 8",
     )
@@ -109,11 +111,76 @@ describe("matchReflection", () => {
     )
   })
 
-  it("returns null outside the Gospels", () => {
+  it("prefers the narrowest covering entry over a whole chapter", () => {
+    // The reason this pool exists: both entries cover Luke 19:1-10, and the
+    // pericope-level one is the better devotional source. Preference is span,
+    // not authorship — no rule here names Ryle.
+    const section: ReflectionEntry = {
+      source: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",
+      reference: "The Conversion of Zacchaeus, Luke 19:1-10",
+      osisRef: "Luke.19.1-Luke.19.10",
+      text: "Ryle on Zacchaeus.",
+    }
+    const chapter: ReflectionEntry = {
+      source: "Matthew Henry, Commentary on the Whole Bible",
+      reference: "Luke 19",
+      osisRef: "Luke.19",
+      text: "Henry on the whole of Luke 19.",
+    }
+
+    for (const commentary of [
+      [chapter, section],
+      [section, chapter],
+    ]) {
+      // Document order must not decide it: reconcile lists files alphabetically,
+      // which would otherwise put Henry first and silently win.
+      const m = matchReflection("Luke.19.1-Luke.19.10", { commentary })
+      expect(m?.osisRef).toBe("Luke.19.1-Luke.19.10")
+      expect(m?.source).toContain("Ryle")
+    }
+
+    // ...and the chapter entry still answers verses no section covers.
+    expect(
+      matchReflection("Luke.19.41", { commentary: [section, chapter] })
+        ?.osisRef,
+    ).toBe("Luke.19")
+  })
+
+  it("answers a chapter-wide passage with the chapter treatment", () => {
+    // A verse-less passage names the whole chapter, so the narrowest section
+    // would be an arbitrary slice of it.
+    const commentary: ReflectionEntry[] = [
+      {
+        source: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",
+        reference: "Luke 8:22-25",
+        osisRef: "Luke.8.22-Luke.8.25",
+        text: "Ryle on the storm.",
+      },
+      ...matthewHenry,
+    ]
+    expect(matchReflection("Luke.8", { commentary })?.reference).toBe("Luke 8")
+  })
+
+  it("keys servable books on the pool, not on a Gospel allowlist", () => {
+    // Nothing covers Romans here...
     expect(matchReflection("Rom.8.28", corpora)).toBeNull()
+    // ...but a pool that does covers it, with no code change. This is what lets
+    // the Genesis prologue become servable by adding a volume.
+    const genesis: ReflectionEntry = {
+      source: "Matthew Henry, Commentary on the Whole Bible",
+      reference: "Genesis 1",
+      osisRef: "Gen.1",
+      text: "Henry on Genesis 1.",
+    }
+    expect(
+      matchReflection("Gen.1.26-Gen.3.24", { commentary: [genesis] })
+        ?.reference,
+    ).toBe("Genesis 1")
   })
 
   it("returns null when no entry covers the passage", () => {
+    // Henry on Luke 8 must NOT answer a Luke 24 passage: a verse-less range end
+    // bounds at its own chapter rather than running open-ended.
     expect(matchReflection("Luke.24.1", corpora)).toBeNull()
   })
 })
@@ -148,7 +215,10 @@ describe("matchSpurgeonTheme", () => {
 })
 
 describe("selectReflection (rotation)", () => {
-  const full: ReflectionCorpora = { ryleMatthew, matthewHenry, spurgeon }
+  const full: ReflectionCorpora = {
+    commentary: [...ryleMatthew, ...matthewHenry],
+    spurgeon,
+  }
   const base = {
     passageOsis: "Luke.8.22-Luke.8.25",
     reference: "Luke 8:22-25",
