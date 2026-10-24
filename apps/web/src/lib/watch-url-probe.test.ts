@@ -12,6 +12,7 @@ import {
   probeUrl,
   validateStructuredDataContract,
   type ProbeResult,
+  type VideoObjectIdentity,
 } from "./watch-url-probe"
 
 const result = (over: Partial<ProbeResult> = {}): ProbeResult => ({
@@ -223,6 +224,18 @@ describe("classifyProbe", () => {
         types: ["VideoObject"],
         parseErrors: [],
         pageUrls: ["https://www.jesusfilm.org/watch/lumo-john-1-1-34.html"],
+        videoObjects: [
+          {
+            name: "Lumo John 1:1-34",
+            description: "The beginning of John's Gospel.",
+            url: "https://www.jesusfilm.org/watch/lumo-john-1-1-34.html",
+            contentUrl: "https://cdn.example/john.m3u8",
+            thumbnailUrls: ["https://cdn.example/john.jpg"],
+            uploadDate: "2026-06-01T00:00:00.000Z",
+            duration: "PT30S",
+            embedUrl: null,
+          },
+        ],
       },
     })
 
@@ -638,8 +651,50 @@ describe("parseJsonLdScripts", () => {
       types: ["VideoObject", "ItemList"],
       parseErrors: [],
       pageUrls: [],
-      videoObjects: [{ name: null, url: null, contentUrl: null }],
+      videoObjects: [
+        {
+          name: null,
+          description: null,
+          url: null,
+          contentUrl: null,
+          thumbnailUrls: [],
+          uploadDate: null,
+          duration: null,
+          embedUrl: null,
+        },
+      ],
     })
+  })
+
+  it("captures required VideoObject fields and normalizes thumbnail arrays", () => {
+    const videoObject = {
+      "@type": "VideoObject",
+      name: "The Beginning",
+      description: "A story",
+      url: "https://www.jesusfilm.org/watch/the-beginning.html",
+      contentUrl: "https://cdn.example/video.m3u8",
+      thumbnailUrl: ["https://cdn.example/poster.jpg", ""],
+      uploadDate: "2026-06-01T00:00:00.000Z",
+      duration: "PT30S",
+      embedUrl: "https://player.example/embed/video",
+    }
+
+    expect(
+      parseJsonLdScripts(
+        `<script type="application/ld+json">${JSON.stringify(videoObject)}</script>`,
+      ).videoObjects,
+    ).toEqual([
+      {
+        name: "The Beginning",
+        description: "A story",
+        url: "https://www.jesusfilm.org/watch/the-beginning.html",
+        contentUrl: "https://cdn.example/video.m3u8",
+        thumbnailUrls: ["https://cdn.example/poster.jpg", ""],
+        uploadDate: "2026-06-01T00:00:00.000Z",
+        duration: "PT30S",
+        embedUrl: "https://player.example/embed/video",
+      },
+    ])
   })
 
   it("reports malformed literal scripts", () => {
@@ -737,6 +792,103 @@ describe("validateStructuredDataContract", () => {
         videoContract,
       ),
     ).toEqual(["expected exactly 1 VideoObject, found 2"])
+  })
+
+  const completeVideo: VideoObjectIdentity = {
+    name: "JESUS",
+    description: "A film about Jesus",
+    url: "https://www.jesusfilm.org/watch/jesus.html",
+    contentUrl: "https://cdn.example/jesus.m3u8",
+    thumbnailUrls: ["https://cdn.example/poster.jpg"],
+    uploadDate: "2026-06-01T00:00:00.000Z",
+    duration: "PT1H30M",
+    embedUrl: null,
+  }
+  const invalidVideoCases: Array<
+    [string, Partial<typeof completeVideo>, string]
+  > = [
+    ["name", { name: " " }, "VideoObject missing name"],
+    ["description", { description: null }, "VideoObject missing description"],
+    ["url", { url: null }, "VideoObject missing url"],
+    [
+      "uploadDate",
+      { uploadDate: "1" },
+      "VideoObject missing or invalid uploadDate",
+    ],
+    [
+      "duration",
+      { duration: "P1DT" },
+      "VideoObject missing or invalid duration",
+    ],
+    [
+      "thumbnailUrl",
+      {
+        thumbnailUrls: [
+          "https://cdn.example/poster.jpg",
+          "http://cdn.example/invalid.jpg",
+        ],
+      },
+      "VideoObject missing valid HTTPS thumbnailUrl",
+    ],
+    [
+      "contentUrl",
+      { contentUrl: "https://cdn.example/jesus.m3u8?token=x" },
+      "VideoObject missing stable HTTPS contentUrl",
+    ],
+  ]
+
+  it("accepts a complete project-compliant VideoObject", () => {
+    expect(
+      validateStructuredDataContract(
+        {
+          scriptCount: 1,
+          types: ["VideoObject"],
+          parseErrors: [],
+          pageUrls: [completeVideo.url!],
+          videoObjects: [completeVideo],
+        },
+        videoContract,
+      ),
+    ).toEqual([])
+  })
+
+  it.each(invalidVideoCases)(
+    "reports an incomplete VideoObject field: %s",
+    (_field, change, violation) => {
+      expect(
+        validateStructuredDataContract(
+          {
+            scriptCount: 1,
+            types: ["VideoObject"],
+            parseErrors: [],
+            pageUrls: [],
+            videoObjects: [{ ...completeVideo, ...change }],
+          },
+          videoContract,
+        ),
+      ).toContain(violation)
+    },
+  )
+
+  it("does not accept a watch-page embedUrl instead of contentUrl", () => {
+    expect(
+      validateStructuredDataContract(
+        {
+          scriptCount: 1,
+          types: ["VideoObject"],
+          parseErrors: [],
+          pageUrls: [],
+          videoObjects: [
+            {
+              ...completeVideo,
+              contentUrl: null,
+              embedUrl: "https://www.jesusfilm.org/watch/jesus.html",
+            },
+          ],
+        },
+        videoContract,
+      ),
+    ).toContain("VideoObject missing stable HTTPS contentUrl")
   })
 
   it("fails forbidden schema on a collection sample", () => {
@@ -859,8 +1011,13 @@ describe("primaryVideoIdentityViolations", () => {
         videoObjects: [
           {
             name,
+            description: "A video description",
             contentUrl,
             url: "https://www.jesusfilm.org/watch/video.html",
+            thumbnailUrls: ["https://cdn.example/poster.jpg"],
+            uploadDate: "2026-06-01T00:00:00.000Z",
+            duration: "PT30S",
+            embedUrl: null,
           },
         ],
       },
@@ -882,8 +1039,13 @@ describe("primaryVideoIdentityViolations", () => {
     )
     standalone.structuredData?.videoObjects?.push({
       name: "Duplicate",
+      description: "A duplicate video",
       contentUrl: "https://cdn.example/duplicate.m3u8",
       url: "https://www.jesusfilm.org/watch/duplicate.html",
+      thumbnailUrls: ["https://cdn.example/duplicate.jpg"],
+      uploadDate: "2026-06-01T00:00:00.000Z",
+      duration: "PT30S",
+      embedUrl: null,
     })
 
     expect(primaryVideoIdentityViolations(contextual, standalone)).toEqual([
