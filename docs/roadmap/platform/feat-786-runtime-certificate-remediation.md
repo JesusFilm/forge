@@ -66,3 +66,13 @@ Actual-image CI checks runtime port, HTML metadata, shipped assets and gzip with
 no external network; synthetic operator authority must not appear in responses.
 Static SPA reads are not auth proof. Separate dashboard binding approval and
 current runtime/client/authorized Manager browser verification remain required.
+
+### Roadmap stage controlled build
+
+Stage now uses its own minimal `apps/roadmap/Dockerfile`, pinned to Node24.22.1,
+without importing main-only app code or the absent watch-url-policy workspace.
+`apps/roadmap/update-security-ca.sh` removes affected source roots and stale named
+PEM links before the first package download and after CA-package installation.
+Actual-image CI verifies native TLS, the bundle and both independent hashed
+directories, valid controls, home/dashboard/ticket/Markdown/static reads and 404s.
+The normal stage source release must still be measured on every current replica.

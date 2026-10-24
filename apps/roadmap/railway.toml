@@ -1,10 +1,10 @@
 [build]
-builder = "railpack"
-buildCommand = "corepack prepare pnpm@9.12.3 --activate && pnpm install --frozen-lockfile && pnpm --filter roadmap build"
-watchPatterns = ["apps/roadmap/**", "docs/roadmap/**"]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/roadmap/Dockerfile"
+watchPatterns = ["/.nvmrc", "/package.json", "/pnpm-lock.yaml", "/pnpm-workspace.yaml", "/patches/**", "/.dockerignore", "apps/roadmap/**", "docs/roadmap/**"]
 
 [deploy]
-startCommand = "cd apps/roadmap && npx next start -p ${PORT:-3100}"
+startCommand = "sh -c 'cd /app/apps/roadmap && exec node node_modules/next/dist/bin/next start -H 0.0.0.0 -p ${PORT:-3100}'"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
