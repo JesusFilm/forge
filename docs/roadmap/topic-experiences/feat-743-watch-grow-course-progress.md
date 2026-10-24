@@ -242,3 +242,67 @@ Durable extension: every updater that copies a whole lesson state must preserve
 its revision lineage, including passive navigation. A valid deferred resume is
 pending account work even when the lesson is unarmed; it must neither be
 silently rebased nor stranded behind an Unsaved/Saved status.
+
+### Independent review round 3: reset ownership
+
+Repair only the progress client, owning regressions and this note, based on
+`27a4d7ceea8a5bbc5f7c69d1cdf0ae99c5bd169c`. First reproduce GET erasing
+pending reset retry intent and DELETE acknowledging away later explicit edits.
+Keep a bounded reset intent separate from the transport lifetime: refresh may
+update server knowledge but must preserve active/failed operation ownership;
+only an owning reset success can reconcile edits made after its dispatch onto
+its acknowledged revision. Pre-dispatch intent remains superseded by reset.
+Audit read/acknowledgement/error/release ordering, queued operations, revision
+monotonicity, manual recovery and identity teardown. Retain structured-only
+payloads and all preceding lineage protections. Validate focused and adjacent
+Web suites, full Web lint/typecheck/format, CI guards, initialization requests
+and module size under `agent-io-guard` for heavy commands.
+
+The client now keeps a dispatched reset's intent separate from its transport
+slot. GET cannot clear its operation/retry marker or acknowledge later local
+edits; a failed parallel GET cannot invalidate a still-pending mutation either.
+A read of the reset's possible empty next revision waits for the owning DELETE
+response. Independently newer state disarms replay; late responses cannot take
+ownership back from explicit recovery. Retry retains DELETE, and repeated reset
+clicks coalesce. Use saved retires the transport, timer and reset intent.
+
+Updates after reset dispatch use its empty result as their base. The reset's
+success consumes only pre-dispatch intent, then queues the later structured
+edit/resume against its acknowledged revision. This includes navigation while
+identity is checking/unavailable and edits retained across reset failure/retry.
+They remain Saving until their own acknowledgement; old completion is never
+copied into a resume-only continuation. Queued writes now use the existing
+revision-bound operation queue instead of a generic send-again flag, preserving
+a queued DELETE behind POST in both held and ordinary sessions. The queue and
+reset intent each retain at most one state per lesson.
+
+TDD first reproduced seven failures on the exact base for the two reported
+sequences. All 244 owning tests pass, with 126 new cases including a 96-case
+read/acknowledgement/release matrix over both identity states, edit/resume/both,
+and older/same/possible-own/newer reads. Coverage also includes pre-dispatch
+intent, post-dispatch edits, retry/conflict choices, queued/repeated resets,
+failed GET, account switch/sign-out, stale/equal-inconsistent acknowledgements
+and recovery operation ownership. Five older expectations that discarded
+post-dispatch navigation now require its acknowledged position-only save; the
+three earlier blocker regressions remain passing.
+
+Validation passes: 346 tests across the 11 progress/course/story/session/route
+files through the standard Web test entry point; locale generation and all five
+Next cache-size guards; full Web lint with locale drift, Web typecheck, scoped
+and full-repository Prettier, staged checks/hooks and `git diff --check`. Exact
+commands and results are retained in `/tmp/forge-2782-r3-validation/` and
+`/tmp/forge-2782-r3-validation.py`. Heavy commands ran under `agent-io-guard`.
+
+An interleaved 50,000-load-per-version comparison against the required base
+retains one GET and zero writes per initial load. Median client initialization
+cost is 0.001467 ms before / 0.001409 ms after. The minified client module grows
+by 691 bytes, or 167 gzip bytes. No request/wire contract, server CAS, rendering,
+hydration, media, routing, import or initialization scheduling changes. These
+measurements cover client initialization/resources, not browser LCP/CLS or a
+full production build; those were not rerun for this state-machine-only repair.
+Checks used available Node 24.19.0; the repository pins 24.22.1.
+
+Durable ownership rule: a read is knowledge, not a mutation acknowledgement. A
+reset owns only its pre-dispatch intent; later updates belong to its empty
+successor and may continue only after the owning success or explicit recovery.
+Transport retirement, retry intent and post-reset edits have distinct lifetimes.

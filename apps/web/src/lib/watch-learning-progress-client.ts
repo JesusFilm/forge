@@ -212,8 +212,13 @@ type Entry = {
   status: LessonSyncStatus
   error: LessonSyncError | null
   operation: "save" | "reset" | null
-  inFlight: AbortController | null
-  again: boolean
+  inFlight: {
+    controller: AbortController
+    revision: number
+    reset: boolean
+  } | null
+  /** Reset owns pre-dispatch state; later edits wait for its acknowledgement. */
+  resetIntent: { after: LessonState | null } | null
   timer: ReturnType<typeof setTimeout> | null
   /**
    * A write held while identity was re-checked, with the revision it was
@@ -334,7 +339,7 @@ export function createLearningProgressClient({
         error: null,
         operation: null,
         inFlight: null,
-        again: false,
+        resetIntent: null,
         timer: null,
         deferred: null,
       }
@@ -370,7 +375,7 @@ export function createLearningProgressClient({
     loadController?.abort()
     loadController = null
     for (const item of entries.values()) {
-      item.inFlight?.abort()
+      item.inFlight?.controller.abort()
       if (item.timer) clearTimeout(item.timer)
     }
     entries = new Map()
@@ -388,7 +393,7 @@ export function createLearningProgressClient({
     load = "error"
     // Edits waiting for the first read cannot be saved yet; say so plainly.
     for (const item of entries.values()) {
-      if (item.local && item.status === "saving") {
+      if (item.local && item.status === "saving" && !item.inFlight) {
         item.status = "error"
         item.error = error
       }
@@ -427,10 +432,9 @@ export function createLearningProgressClient({
   ) {
     // Retire the invalidated operation before the visitor chooses recovery.
     // A new explicit request owns the slot even if the old response arrives.
-    item.inFlight?.abort()
+    item.inFlight?.controller.abort()
     item.inFlight = null
     item.armed = false
-    item.again = false
     item.deferred = null
     item.error = null
     item.operation = reset ? "reset" : item.local ? "save" : null
@@ -573,10 +577,26 @@ export function createLearningProgressClient({
       // must not move the lesson back to the older revision.
       if (!item.server || read.revision >= item.server.revision)
         item.server = read
-      if (item.deferred && item.deferred.revision !== item.server.revision) {
+      const pendingRevision =
+        item.deferred?.revision ??
+        (item.inFlight?.reset ? item.inFlight.revision : undefined)
+      // A GET may observe this DELETE's empty successor before its response.
+      // Keep waiting for the owner; the read alone grants no continuation.
+      const resetRead =
+        item.inFlight?.reset &&
+        item.server.revision === item.inFlight.revision + 1 &&
+        sameState(item.server, EMPTY)
+      if (
+        pendingRevision !== undefined &&
+        pendingRevision !== item.server.revision &&
+        !resetRead
+      ) {
         disarmReplay(item)
         continue
       }
+      // Reads update server knowledge, never acknowledge a mutation or its
+      // post-reset edits. Failures retain the same intent until explicit retry.
+      if (item.inFlight || item.resetIntent) continue
       if (item.local && sameState(item.local, item.server)) item.local = null
       // Still unresolved after the re-read: keep the choice it waits for.
       if (
@@ -648,6 +668,10 @@ export function createLearningProgressClient({
     // queued re-send or pagehide never answers it on their behalf.
     if (blocked(item) && !choice) return
     if (!item.server) return
+    // An explicit retry/save must finish the outstanding reset first.
+    if (item.resetIntent && !item.inFlight) reset = true
+    // Repeated reset clicks share the dispatched intent, including while held.
+    if (reset && item.inFlight?.reset) return
     if (!signedIn()) {
       // A known account's edit must retain its pre-refresh lineage while
       // identity or progress is being checked. Anonymous edits stay unarmed.
@@ -661,7 +685,7 @@ export function createLearningProgressClient({
       return
     }
     if (item.inFlight) {
-      item.again = true
+      defer(item, { reset, explicit, choice })
       return
     }
     // An explicit save of a lesson the account has never stored still
@@ -686,8 +710,9 @@ export function createLearningProgressClient({
     const subject = holder?.kind === "user" ? holder.id : ""
     const controller = new AbortController()
     const started = epoch
-    item.inFlight = controller
-    item.again = false
+    const mutation = { controller, revision: body.expectedRevision, reset }
+    const resetIntent = reset ? (item.resetIntent ??= { after: null }) : null
+    item.inFlight = mutation
     item.status = "saving"
     item.error = null
     item.operation = reset ? "reset" : "save"
@@ -708,7 +733,7 @@ export function createLearningProgressClient({
     if (
       started !== epoch ||
       controller.signal.aborted ||
-      item.inFlight !== controller
+      item.inFlight !== mutation
     )
       return
     item.inFlight = null
@@ -747,15 +772,15 @@ export function createLearningProgressClient({
       item.server = incoming
       if (parsed.status === "conflict") {
         // Keep what the visitor did; an explicit choice decides what wins.
-        if (reset) item.local = null
+        if (reset) item.local = resetIntent?.after ?? null
         item.armed = false
         item.status = "conflict"
-        item.again = false
         emit()
         return
       }
-      // Only this successful POST can advance its own held continuation.
-      // A newer external read, conflict or reset must still invalidate it.
+      // Only the owning success can advance its continuation. A reset's
+      // later edits are based on its empty result, never pre-reset completion.
+      // A newer independent read still fails the monotonic check above.
       if (
         !reset &&
         item.deferred?.revision === body.expectedRevision &&
@@ -763,7 +788,11 @@ export function createLearningProgressClient({
       )
         item.deferred.revision = item.server.revision
       if (reset) {
-        item.local = null
+        item.local = resetIntent?.after ?? null
+        item.resetIntent = null
+        // Retry can retain later edits even after its old queue was disarmed.
+        item.deferred = null
+        if (item.local) defer(item)
       } else if (
         item.local === sent ||
         (item.local && sameState(item.local, item.server))
@@ -771,14 +800,13 @@ export function createLearningProgressClient({
         item.local = null
       }
       item.operation = null
-      if (!reset && item.deferred?.revision === item.server.revision) {
+      if (item.deferred?.revision === item.server.revision) {
         // This also preserves a queued reset when the POST cleared local.
         item.status = "saving"
         emit()
         sendDeferred()
         return
       }
-      if (item.local && item.again) return void send(lessonId)
       item.status = item.local ? "unsaved" : "saved"
       if (item.local && item.armed) return void send(lessonId)
       emit()
@@ -810,7 +838,6 @@ export function createLearningProgressClient({
     // Pending changes stay visible and unsaved; only a retry sends them again.
     item.status = "error"
     item.error = error
-    item.again = false
     item.armed = false
     emit()
   }
@@ -848,12 +875,15 @@ export function createLearningProgressClient({
       next: { completedStepIds: readonly string[]; completed: boolean },
     ) {
       const item = entry(lessonId)
-      const base = item.local ?? item.server ?? EMPTY
+      const base = item.resetIntent
+        ? (item.resetIntent.after ?? EMPTY)
+        : (item.local ?? item.server ?? EMPTY)
       item.local = {
         completedStepIds: knownSteps(lessonId, [...next.completedStepIds]),
         completed: next.completed,
         resumeCardId: base.resumeCardId,
       }
+      if (item.resetIntent) item.resetIntent.after = item.local
       if (blocked(item)) {
         // Held with the open choice, whoever the session turns out to be.
         emit()
@@ -882,9 +912,12 @@ export function createLearningProgressClient({
     setResume(lessonId: LessonId, cardId: string) {
       if (!isLessonCardId(lessonId, cardId)) return
       const item = entry(lessonId)
-      const base = item.local ?? item.server ?? EMPTY
+      const base = item.resetIntent
+        ? (item.resetIntent.after ?? EMPTY)
+        : (item.local ?? item.server ?? EMPTY)
       if (base.resumeCardId === cardId) return
       item.local = { ...base, resumeCardId: cardId }
+      if (item.resetIntent) item.resetIntent.after = item.local
       const syncs =
         holder?.kind === "user" &&
         (item.armed || (item.server?.revision ?? 0) > 0) &&
@@ -928,8 +961,14 @@ export function createLearningProgressClient({
     /** Conflict choice: drop this tab's unsaved state for the saved one. */
     useSaved(lessonId: LessonId) {
       const item = entry(lessonId)
+      item.inFlight?.controller.abort()
+      item.inFlight = null
+      if (item.timer) clearTimeout(item.timer)
+      item.timer = null
+      item.resetIntent = null
       item.local = null
       item.deferred = null
+      item.armed = false
       item.error = null
       item.operation = null
       item.status = (item.server?.revision ?? 0) > 0 ? "saved" : "idle"

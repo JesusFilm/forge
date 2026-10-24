@@ -1514,7 +1514,7 @@ describe("focus re-check hold", () => {
     },
   )
 
-  it("lets its own DELETE acknowledgement supersede an older held resume", async () => {
+  it("saves resume navigation made after its own DELETE dispatch", async () => {
     vi.useFakeTimers()
     const { calls, transport } = fakeTransport()
     const client = createLearningProgressClient({ transport })
@@ -1532,12 +1532,25 @@ describe("focus re-check hold", () => {
     client.setAccount({ kind: "signed-in", userId: "user-a" })
     client.release()
     client.flush()
-    expect(calls.map((call) => call.request.method)).toEqual(["GET", "DELETE"])
+    expect(calls.map((call) => call.request.method)).toEqual([
+      "GET",
+      "DELETE",
+      "POST",
+    ])
+    expect(calls[2]!.request).toMatchObject({
+      method: "POST",
+      body: {
+        expectedRevision: 4,
+        completedStepIds: [],
+        completed: false,
+        resumeCardId: "back-give",
+      },
+    })
     expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
-      status: "saved",
+      status: "saving",
       completedStepIds: [],
       completed: false,
-      resumeCardId: null,
+      resumeCardId: "back-give",
     })
   })
 
@@ -2235,14 +2248,34 @@ describe("resume lineage across identity checks", () => {
         body: { status: "saved", progress: lesson({ revision: 5 }) },
       })
       await flush()
+      // Navigation after DELETE dispatch (including its failed attempt) is
+      // later intent. Retry resets first, then saves that position alone.
+      expect(calls.at(-1)!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 5,
+          completed: false,
+          completedStepIds: [],
+          resumeCardId: "end",
+        },
+      })
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+      calls.at(-1)!.resolve({
+        status: 200,
+        body: {
+          status: "saved",
+          progress: lesson({ revision: 6, resumeCardId: "end" }),
+        },
+      })
+      await flush()
       await vi.advanceTimersByTimeAsync(2000)
       client.flush()
-      expect(calls).toHaveLength(before + 4)
+      expect(calls).toHaveLength(before + 5)
       expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
         status: "saved",
         completed: false,
         completedStepIds: [],
-        resumeCardId: null,
+        resumeCardId: "end",
       })
     },
   )
@@ -2350,5 +2383,619 @@ describe("hosted sign-in return", () => {
         "https://watch.test/watch?as=grow&growLesson=lesson-1&growCard=end&auth=failed#steps",
       ),
     ).toBe("/watch?as=grow#steps")
+  })
+})
+
+describe("reset operation ownership", () => {
+  const stored = () =>
+    lesson({
+      completedStepIds: ["back-how"],
+      completed: true,
+      resumeCardId: "end",
+      revision: 3,
+    })
+  const orders = (["checking", "unavailable"] as const).flatMap((kind) =>
+    [false, true].flatMap((readBeforeError) =>
+      [false, true].map((releaseBeforeError) => ({
+        kind,
+        readBeforeError,
+        releaseBeforeError,
+      })),
+    ),
+  )
+  const read = (call: Call, progress = stored()) =>
+    call.resolve({
+      status: 200,
+      body: { authenticated: true, userId: "user-a", lessons: [progress] },
+    })
+  const ack = (call: Call, progress = lesson({ revision: 4 })) =>
+    call.resolve({ status: 200, body: { status: "saved", progress } })
+
+  it.each(orders)(
+    "retains DELETE Retry through GET (identity=$kind, readBeforeError=$readBeforeError, releaseBeforeError=$releaseBeforeError)",
+    async ({ kind, readBeforeError, releaseBeforeError }) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.hold()
+      client.setAccount({ kind })
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      if (readBeforeError) {
+        read(calls[2]!)
+        await flush()
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saving",
+          operation: "reset",
+        })
+      }
+      if (releaseBeforeError) client.release()
+      calls[1]!.resolve({ status: 503, body: null })
+      await flush()
+      if (!readBeforeError) {
+        read(calls[2]!)
+        await flush()
+      }
+      if (!releaseBeforeError) client.release()
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "error",
+        operation: "reset",
+        completed: true,
+      })
+      client.flush()
+      expect(calls).toHaveLength(3)
+      client.retry("lesson-1")
+      expect(calls).toHaveLength(4)
+      expect(calls[3]!.request).toMatchObject({
+        method: "DELETE",
+        body: { expectedRevision: 3 },
+      })
+      ack(calls[3]!)
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        completed: false,
+        completedStepIds: [],
+      })
+    },
+  )
+
+  it.each(["edit", "resume", "both"] as const)(
+    "acknowledges reset without consuming later %s intent",
+    async (intent) => {
+      vi.useFakeTimers()
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      if (intent !== "resume")
+        client.change("lesson-1", {
+          completedStepIds: ["up-watch"],
+          completed: false,
+        })
+      if (intent !== "edit") client.setResume("lesson-1", "up-watch")
+      ack(calls[1]!)
+      await flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(calls).toHaveLength(3)
+      expect(calls[2]!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 4,
+          completed: false,
+          completedStepIds: intent === "resume" ? [] : ["up-watch"],
+          resumeCardId: intent === "edit" ? null : "up-watch",
+        },
+      })
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+      ack(
+        calls[2]!,
+        lesson({
+          revision: 5,
+          completedStepIds: intent === "resume" ? [] : ["up-watch"],
+          resumeCardId: intent === "edit" ? null : "up-watch",
+        }),
+      )
+      await flush()
+      client.flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(calls).toHaveLength(3)
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+    },
+  )
+
+  const interleavings = (["checking", "unavailable"] as const).flatMap((kind) =>
+    ["edit", "resume", "both"].flatMap((intent) =>
+      ["older", "same", "own-reset", "newer"].flatMap((revision) =>
+        [false, true].flatMap((readBeforeAck) =>
+          [false, true].map((releaseBeforeAck) => ({
+            kind,
+            intent,
+            revision,
+            readBeforeAck,
+            releaseBeforeAck,
+          })),
+        ),
+      ),
+    ),
+  )
+  it.each(interleavings)(
+    "reconciles only owned post-reset intent (identity=$kind, intent=$intent, read=$revision, readBeforeAck=$readBeforeAck, releaseBeforeAck=$releaseBeforeAck)",
+    async ({ kind, intent, revision, readBeforeAck, releaseBeforeAck }) => {
+      vi.useFakeTimers()
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.hold()
+      client.setAccount({ kind })
+      const steps = intent === "resume" ? [] : ["up-watch"]
+      const resume = intent === "edit" ? null : "up-watch"
+      if (intent !== "resume")
+        client.change("lesson-1", { completedStepIds: steps, completed: false })
+      if (intent !== "edit") client.setResume("lesson-1", "up-watch")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      const get = calls[2]!
+      const progress =
+        revision === "own-reset"
+          ? lesson({ revision: 4 })
+          : revision === "newer"
+            ? lesson({ revision: 5 })
+            : { ...stored(), revision: revision === "older" ? 2 : 3 }
+      if (readBeforeAck) {
+        read(get, progress)
+        await flush()
+      }
+      if (releaseBeforeAck) client.release()
+      ack(calls[1]!)
+      await flush()
+      if (!readBeforeAck) {
+        read(get, progress)
+        await flush()
+      }
+      if (!releaseBeforeAck) client.release()
+      await flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      client.flush({ keepalive: true })
+      if (revision === "newer") {
+        expect(calls).toHaveLength(3)
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "conflict",
+          completed: false,
+          completedStepIds: steps,
+          resumeCardId: resume,
+        })
+        client.useSaved("lesson-1")
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saved",
+          completed: false,
+          completedStepIds: [],
+          resumeCardId: null,
+        })
+      } else {
+        expect(calls).toHaveLength(4)
+        expect(calls[3]!.request).toMatchObject({
+          method: "POST",
+          subject: "user-a",
+          body: {
+            expectedRevision: 4,
+            completed: false,
+            completedStepIds: steps,
+            resumeCardId: resume,
+          },
+        })
+        expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saving")
+        ack(
+          calls[3]!,
+          lesson({
+            revision: 5,
+            completedStepIds: steps,
+            resumeCardId: resume,
+          }),
+        )
+        await flush()
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saved",
+          completed: false,
+          completedStepIds: steps,
+          resumeCardId: resume,
+        })
+      }
+      client.release()
+      client.flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(calls).toHaveLength(revision === "newer" ? 3 : 4)
+    },
+  )
+
+  it.each(["checking", "unavailable"] as const)(
+    "keeps later edits through failed DELETE, re-read and Retry (%s)",
+    async (kind) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.change("lesson-1", {
+        completedStepIds: ["up-watch"],
+        completed: false,
+      })
+      calls[1]!.resolve({ status: 503, body: null })
+      await flush()
+      client.hold()
+      client.setAccount({ kind })
+      client.setResume("lesson-1", "up-watch")
+      client.setAccount({ kind: "signed-in", userId: "user-a" })
+      read(calls[2]!)
+      await flush()
+      client.release()
+      expect(calls).toHaveLength(3)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "error",
+        operation: "reset",
+      })
+      client.retry("lesson-1")
+      expect(calls[3]!.request.method).toBe("DELETE")
+      ack(calls[3]!)
+      await flush()
+      expect(calls).toHaveLength(5)
+      expect(calls[4]!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 4,
+          completed: false,
+          completedStepIds: ["up-watch"],
+          resumeCardId: "up-watch",
+        },
+      })
+      ack(
+        calls[4]!,
+        lesson({
+          revision: 5,
+          completedStepIds: ["up-watch"],
+          resumeCardId: "up-watch",
+        }),
+      )
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("saved")
+    },
+  )
+
+  it.each(["keepMine", "useSaved"] as const)(
+    "retains post-dispatch edits for explicit reset recovery via %s",
+    async (choice) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.change("lesson-1", {
+        completedStepIds: ["up-watch"],
+        completed: false,
+      })
+      calls[1]!.resolve({
+        status: 200,
+        body: {
+          status: "conflict",
+          progress: { ...stored(), revision: 4 },
+        },
+      })
+      await flush()
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "conflict",
+        operation: "reset",
+        completedStepIds: ["up-watch"],
+      })
+      client[choice]("lesson-1")
+      if (choice === "useSaved") {
+        expect(calls).toHaveLength(2)
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saved",
+          completed: true,
+          completedStepIds: ["back-how"],
+        })
+      } else {
+        expect(calls[2]!.request).toMatchObject({
+          method: "DELETE",
+          body: { expectedRevision: 4 },
+        })
+        ack(calls[2]!, lesson({ revision: 5 }))
+        await flush()
+        expect(calls[3]!.request).toMatchObject({
+          method: "POST",
+          body: {
+            expectedRevision: 5,
+            completedStepIds: ["up-watch"],
+            completed: false,
+          },
+        })
+      }
+    },
+  )
+
+  it.each(["anonymous", "user-b"] as const)(
+    "discards reset ownership and its later edits on transition to %s",
+    async (next) => {
+      vi.useFakeTimers()
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.change("lesson-1", {
+        completedStepIds: ["up-watch"],
+        completed: false,
+      })
+      client.setResume("lesson-1", "up-watch")
+      if (next === "anonymous") client.setAccount({ kind: "anonymous" })
+      else await signIn(client, calls, [], next)
+      ack(calls[1]!)
+      await flush()
+      await vi.advanceTimersByTimeAsync(2000)
+      client.release()
+      client.flush()
+      expect(calls).toHaveLength(next === "anonymous" ? 2 : 3)
+      expect(
+        client.getSnapshot().lessons["lesson-1"]?.completedStepIds ?? [],
+      ).toEqual([])
+    },
+  )
+
+  it.each([false, true])(
+    "retains a reset queued behind POST without replacing it with a save (hold=%s)",
+    async (hold) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.change("lesson-1", {
+        completedStepIds: ["back-give"],
+        completed: false,
+      })
+      if (hold) client.hold()
+      client.reset("lesson-1")
+      client.release()
+      ack(calls[1]!, lesson({ revision: 4, completedStepIds: ["back-give"] }))
+      await flush()
+      expect(calls).toHaveLength(3)
+      expect(calls[2]!.request).toMatchObject({
+        method: "DELETE",
+        body: { expectedRevision: 4 },
+      })
+      // A dispatch owns only the intent visible at that time.
+      client.change("lesson-1", {
+        completedStepIds: ["up-watch"],
+        completed: false,
+      })
+      ack(calls[2]!, lesson({ revision: 5 }))
+      await flush()
+      expect(calls[3]!.request).toMatchObject({
+        method: "POST",
+        body: { expectedRevision: 5, completedStepIds: ["up-watch"] },
+      })
+    },
+  )
+
+  it("coalesces repeated reset clicks without duplicating DELETE or losing a later edit", async () => {
+    const { calls, transport } = fakeTransport()
+    const client = createLearningProgressClient({ transport })
+    await signIn(client, calls, [stored()])
+    client.reset("lesson-1")
+    client.reset("lesson-1")
+    client.change("lesson-1", {
+      completedStepIds: ["up-watch"],
+      completed: false,
+    })
+    client.hold()
+    client.reset("lesson-1")
+    ack(calls[1]!)
+    await flush()
+    client.release()
+    expect(calls).toHaveLength(3)
+    expect(calls[2]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 4, completedStepIds: ["up-watch"] },
+    })
+  })
+
+  it("Use saved retires an active reset before a fresh edit and late acknowledgement", async () => {
+    const { calls, transport } = fakeTransport()
+    const client = createLearningProgressClient({ transport })
+    await signIn(client, calls, [stored()])
+    client.reset("lesson-1")
+    client.change("lesson-1", {
+      completedStepIds: ["up-watch"],
+      completed: false,
+    })
+    client.useSaved("lesson-1")
+    client.change("lesson-1", {
+      completedStepIds: ["back-give"],
+      completed: false,
+    })
+    expect(calls).toHaveLength(3)
+    ack(calls[1]!)
+    await flush()
+    expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+      status: "saving",
+      completedStepIds: ["back-give"],
+    })
+    calls[2]!.resolve({
+      status: 200,
+      body: { status: "conflict", progress: lesson({ revision: 4 }) },
+    })
+    await flush()
+    expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+      status: "conflict",
+      operation: "save",
+      completedStepIds: ["back-give"],
+    })
+    client.keepMine("lesson-1")
+    expect(calls[3]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 4, completedStepIds: ["back-give"] },
+    })
+  })
+
+  it("does not let a failed parallel GET invalidate DELETE success or strand its later edit", async () => {
+    const { calls, transport } = fakeTransport()
+    const client = createLearningProgressClient({ transport })
+    await signIn(client, calls, [stored()])
+    client.reset("lesson-1")
+    client.change("lesson-1", {
+      completedStepIds: ["up-watch"],
+      completed: false,
+    })
+    client.refresh()
+    calls[2]!.resolve({ status: 503, body: null })
+    await flush()
+    ack(calls[1]!)
+    await flush()
+    expect(calls).toHaveLength(3)
+    client.retry("lesson-1")
+    read(calls[3]!, lesson({ revision: 4 }))
+    await flush()
+    expect(calls).toHaveLength(5)
+    expect(calls[4]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 4, completedStepIds: ["up-watch"] },
+    })
+  })
+
+  it.each([false, true])(
+    "never reports Saved for pending reset after GET with no later edits (readBeforeAck=%s)",
+    async (readBeforeAck) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.refresh()
+      if (readBeforeAck) {
+        read(calls[2]!, lesson({ revision: 4 }))
+        await flush()
+        expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+          status: "saving",
+          operation: "reset",
+        })
+      }
+      ack(calls[1]!)
+      await flush()
+      if (!readBeforeAck) {
+        read(calls[2]!, stored())
+        await flush()
+      }
+      expect(calls).toHaveLength(3)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "saved",
+        completed: false,
+        completedStepIds: [],
+        resumeCardId: null,
+      })
+    },
+  )
+
+  it.each(["equal", "older"] as const)(
+    "rejects a %s inconsistent reset acknowledgement without authorizing its queued edit",
+    async (revision) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      client.change("lesson-1", {
+        completedStepIds: ["up-watch"],
+        completed: false,
+      })
+      ack(calls[1]!, lesson({ revision: revision === "equal" ? 3 : 2 }))
+      await flush()
+      expect(calls).toHaveLength(2)
+      expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+        status: "conflict",
+        operation: "reset",
+        completedStepIds: ["up-watch"],
+      })
+    },
+  )
+
+  it.each(["retry", "save"] as const)(
+    "retains reset kind when explicitly recovering via %s",
+    async (recovery) => {
+      const { calls, transport } = fakeTransport()
+      const client = createLearningProgressClient({ transport })
+      await signIn(client, calls, [stored()])
+      client.reset("lesson-1")
+      calls[1]!.resolve({ status: 503, body: null })
+      await flush()
+      client.change("lesson-1", {
+        completedStepIds: ["up-watch"],
+        completed: false,
+      })
+      client[recovery]("lesson-1")
+      expect(calls[2]!.request.method).toBe("DELETE")
+      ack(calls[2]!)
+      await flush()
+      expect(calls[3]!.request).toMatchObject({
+        method: "POST",
+        body: {
+          expectedRevision: 4,
+          completedStepIds: ["up-watch"],
+          completed: false,
+        },
+      })
+    },
+  )
+
+  it("supersedes edits and resume queued before reset dispatch without a duplicate save", async () => {
+    vi.useFakeTimers()
+    const { calls, transport } = fakeTransport()
+    const client = createLearningProgressClient({ transport })
+    await signIn(client, calls, [stored()])
+    client.hold()
+    client.change("lesson-1", {
+      completedStepIds: ["up-watch"],
+      completed: false,
+    })
+    client.setResume("lesson-1", "up-watch")
+    client.reset("lesson-1")
+    client.flush()
+    client.release()
+    expect(calls[1]!.request.method).toBe("DELETE")
+    ack(calls[1]!)
+    await flush()
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(calls).toHaveLength(2)
+    expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+      status: "saved",
+      completed: false,
+      completedStepIds: [],
+      resumeCardId: null,
+    })
+  })
+
+  it("does not let an obsolete DELETE take ownership from explicit recovery after a newer read", async () => {
+    const { calls, transport } = fakeTransport()
+    const client = createLearningProgressClient({ transport })
+    await signIn(client, calls, [stored()])
+    client.reset("lesson-1")
+    client.change("lesson-1", {
+      completedStepIds: ["up-watch"],
+      completed: false,
+    })
+    client.refresh()
+    read(calls[2]!, lesson({ revision: 5 }))
+    await flush()
+    expect(client.getSnapshot().lessons["lesson-1"]!.status).toBe("conflict")
+    client.keepMine("lesson-1")
+    expect(calls[3]!.request).toMatchObject({
+      method: "DELETE",
+      body: { expectedRevision: 5 },
+    })
+    ack(calls[1]!)
+    await flush()
+    expect(client.getSnapshot().lessons["lesson-1"]).toMatchObject({
+      status: "saving",
+      operation: "reset",
+      completedStepIds: ["up-watch"],
+    })
+    ack(calls[3]!, lesson({ revision: 6 }))
+    await flush()
+    expect(calls[4]!.request).toMatchObject({
+      method: "POST",
+      body: { expectedRevision: 6, completedStepIds: ["up-watch"] },
+    })
   })
 })
