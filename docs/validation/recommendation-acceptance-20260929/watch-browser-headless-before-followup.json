@@ -1,0 +1,150 @@
+{
+  "phase": "headless-before-followup",
+  "method": "Two sequential navigations per route; same isolated genuine headless Chromium session (crawler-excluded from telemetry),1280x800,no network/CPU emulation; first and warm cache mixed; load plus1500ms; host may have concurrent validation work",
+  "samples": [
+    {
+      "dclMs": 1512.100000023842,
+      "exposureRequests": [],
+      "fcpMs": 1304,
+      "firstPartyScriptCount": 28,
+      "firstPartyScriptEncodedBytes": 839151,
+      "headings": ["Watch free Christian videos, Bible stories, and films"],
+      "htmlEncodedBytes": 89260,
+      "lcpMs": 2916,
+      "loadMs": 1522,
+      "path": "/watch",
+      "resourceCount": 83,
+      "status": 200,
+      "title": "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+      "ttfbMs": 528.7999999523163,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "videoElements": 1,
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "sample": 1,
+      "measuredAt": "2026-09-28T22:56:27.848289+00:00"
+    },
+    {
+      "dclMs": 726.5,
+      "exposureRequests": [],
+      "fcpMs": 1000,
+      "firstPartyScriptCount": 28,
+      "firstPartyScriptEncodedBytes": 839151,
+      "headings": ["Watch free Christian videos, Bible stories, and films"],
+      "htmlEncodedBytes": 89641,
+      "lcpMs": 1900,
+      "loadMs": 727.1000000238419,
+      "path": "/watch",
+      "resourceCount": 93,
+      "status": 200,
+      "title": "Watch Free Jesus Movies & Bible Videos | Jesus Film Project",
+      "ttfbMs": 418.0999999642372,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "videoElements": 1,
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "sample": 2,
+      "measuredAt": "2026-09-28T22:56:30.383791+00:00"
+    },
+    {
+      "dclMs": 763.5,
+      "exposureRequests": [],
+      "fcpMs": 876,
+      "firstPartyScriptCount": 35,
+      "firstPartyScriptEncodedBytes": 915840,
+      "headings": ["JESUS"],
+      "htmlEncodedBytes": 123304,
+      "lcpMs": 876,
+      "loadMs": 946.2999999523164,
+      "path": "/watch/jesus.html",
+      "resourceCount": 70,
+      "status": 200,
+      "title": "Watch JESUS \u2014 Full Movie Free Online | Jesus Film Project",
+      "ttfbMs": 426.800000011921,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "videoElements": 0,
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "sample": 1,
+      "measuredAt": "2026-09-28T22:56:33.122997+00:00"
+    },
+    {
+      "dclMs": 733.1000000238419,
+      "exposureRequests": [],
+      "fcpMs": 688,
+      "firstPartyScriptCount": 35,
+      "firstPartyScriptEncodedBytes": 915840,
+      "headings": ["JESUS"],
+      "htmlEncodedBytes": 123435,
+      "lcpMs": 688,
+      "loadMs": 733.5,
+      "path": "/watch/jesus.html",
+      "resourceCount": 70,
+      "status": 200,
+      "title": "Watch JESUS \u2014 Full Movie Free Online | Jesus Film Project",
+      "ttfbMs": 454.4000000357628,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "videoElements": 0,
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "sample": 2,
+      "measuredAt": "2026-09-28T22:56:35.610534+00:00"
+    },
+    {
+      "dclMs": 872.2000000476837,
+      "exposureRequests": [],
+      "fcpMs": 952,
+      "firstPartyScriptCount": 35,
+      "firstPartyScriptEncodedBytes": 915840,
+      "headings": ["NUA: Fresh Perspective"],
+      "htmlEncodedBytes": 68083,
+      "lcpMs": 1420,
+      "loadMs": 1193.800000011921,
+      "path": "/watch/nua-fresh-perspective.html",
+      "resourceCount": 79,
+      "status": 200,
+      "title": "NUA: Fresh Perspective | Jesus Film Project",
+      "ttfbMs": 706.6999999880791,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "videoElements": 0,
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "sample": 1,
+      "measuredAt": "2026-09-28T22:56:38.540457+00:00"
+    },
+    {
+      "dclMs": 547.8999999761581,
+      "exposureRequests": [],
+      "fcpMs": 672,
+      "firstPartyScriptCount": 35,
+      "firstPartyScriptEncodedBytes": 915840,
+      "headings": ["NUA: Fresh Perspective"],
+      "htmlEncodedBytes": 67980,
+      "lcpMs": 672,
+      "loadMs": 548.1999999880791,
+      "path": "/watch/nua-fresh-perspective.html",
+      "resourceCount": 79,
+      "status": 200,
+      "title": "NUA: Fresh Perspective | Jesus Film Project",
+      "ttfbMs": 392,
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/154.0.0.0 Safari/537.36",
+      "videoElements": 0,
+      "viewport": {
+        "height": 800,
+        "width": 1280
+      },
+      "sample": 2,
+      "measuredAt": "2026-09-28T22:56:40.839188+00:00"
+    }
+  ]
+}

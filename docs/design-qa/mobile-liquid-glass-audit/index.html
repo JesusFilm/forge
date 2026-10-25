@@ -1,0 +1,1976 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Watch Liquid Glass Audit</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <style>
+      /* Layout: a review sheet. A summary table first, then one section per screen:
+   two phone drawings (today, with native glass) beside a feasibility verdict. */
+      :root {
+        --bg: #f5f4f4;
+        --panel: #ffffff;
+        --fg: #1c1918;
+        --muted: #5f5856;
+        --line: #e0dbda;
+        --accent: #b42a31;
+        --ok: #1d7448;
+        --ok-bg: #e2f2e9;
+        --spike: #8a5a00;
+        --spike-bg: #fbefd4;
+        --rework: #a8361c;
+        --rework-bg: #f9e3dc;
+        --keep: #565b63;
+        --keep-bg: #e8eaed;
+        --code-bg: #efeceb;
+        --display: "Schibsted Grotesk", "Helvetica Neue", Arial, sans-serif;
+        --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+        /* The app's own palette. The drawings are always the dark app, in both page themes. */
+        --app-ground: #1c1917;
+        --app-surface: #292524;
+        --app-text: #ffffff;
+        --app-muted: #a8a29e;
+        --app-red: #cb333b;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #12100f;
+          --panel: #1b1817;
+          --fg: #f1edeb;
+          --muted: #a69e9b;
+          --line: #2e2826;
+          --accent: #e5626a;
+          --ok: #6fd19d;
+          --ok-bg: #16301f;
+          --spike: #f0c068;
+          --spike-bg: #352710;
+          --rework: #f39478;
+          --rework-bg: #3a1c14;
+          --keep: #b7bcc4;
+          --keep-bg: #26292e;
+          --code-bg: #262120;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #12100f;
+        --panel: #1b1817;
+        --fg: #f1edeb;
+        --muted: #a69e9b;
+        --line: #2e2826;
+        --accent: #e5626a;
+        --ok: #6fd19d;
+        --ok-bg: #16301f;
+        --spike: #f0c068;
+        --spike-bg: #352710;
+        --rework: #f39478;
+        --rework-bg: #3a1c14;
+        --keep: #b7bcc4;
+        --keep-bg: #26292e;
+        --code-bg: #262120;
+        color-scheme: dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--body);
+        font-size: 15px;
+        line-height: 1.55;
+      }
+      .wrap {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding-inline: 20px;
+        padding-block: 40px 72px;
+        display: grid;
+        gap: 56px;
+      }
+      h1,
+      h2,
+      h3 {
+        font-family: var(--display);
+        text-wrap: balance;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      h1 {
+        font-size: clamp(30px, 5vw, 46px);
+        font-weight: 800;
+        line-height: 1.05;
+      }
+      h2 {
+        font-size: clamp(22px, 3vw, 28px);
+        font-weight: 700;
+        line-height: 1.15;
+      }
+      h3 {
+        font-size: 16px;
+        font-weight: 700;
+      }
+      p {
+        margin: 0;
+        max-width: 68ch;
+      }
+      code {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        background: var(--code-bg);
+        padding: 1px 5px;
+        border-radius: 4px;
+        overflow-wrap: anywhere;
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--accent);
+      }
+      .muted {
+        color: var(--muted);
+      }
+
+      /* Header */
+      .head {
+        display: grid;
+        gap: 16px;
+      }
+      .head .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 20px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        align-items: center;
+      }
+      .legend span.desc {
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+
+      /* Verdict chips */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 3px 9px 3px 7px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      .chip::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .ready {
+        color: var(--ok);
+        background: var(--ok-bg);
+      }
+      .spike {
+        color: var(--spike);
+        background: var(--spike-bg);
+      }
+      .rework {
+        color: var(--rework);
+        background: var(--rework-bg);
+      }
+      .keep {
+        color: var(--keep);
+        background: var(--keep-bg);
+      }
+
+      /* Summary table */
+      .table-box {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        min-width: 760px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        font-family: var(--mono);
+        font-size: 11.5px;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      tr:last-child td {
+        border-bottom: 0;
+      }
+      td.screen {
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      td a {
+        color: inherit;
+        text-decoration-color: var(--line);
+        text-underline-offset: 3px;
+      }
+      td a:hover {
+        text-decoration-color: var(--accent);
+      }
+
+      /* Screen sections */
+      .screen-sec {
+        display: grid;
+        gap: 22px;
+        padding-top: 28px;
+        border-top: 1px solid var(--line);
+        scroll-margin-top: 20px;
+      }
+      .sec-head {
+        display: grid;
+        gap: 8px;
+      }
+      .sec-body {
+        display: grid;
+        grid-template-columns: minmax(0, 540px) minmax(0, 1fr);
+        gap: 32px;
+        align-items: start;
+      }
+      @media (max-width: 900px) {
+        .sec-body {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .pair {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        justify-content: center;
+      }
+      .fig {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+        flex: 1 1 200px;
+        max-width: 250px;
+        min-width: 0;
+        margin: 0;
+      }
+      .fig figcaption {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--muted);
+        text-align: center;
+        letter-spacing: 0.02em;
+      }
+      .fig figcaption b {
+        color: var(--fg);
+        font-weight: 500;
+      }
+      .verdicts {
+        display: grid;
+        gap: 14px;
+        min-width: 0;
+      }
+      .verdict {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 14px 16px;
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+      }
+      .verdict .top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .verdict p {
+        font-size: 14px;
+      }
+      .verdict .how {
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+      .note {
+        font-size: 13.5px;
+        color: var(--muted);
+      }
+
+      /* ── Phone drawing ───────────────────────────────────────────────── */
+      .phone {
+        container-type: inline-size;
+        position: relative;
+        width: 100%;
+        aspect-ratio: 9 / 19.5;
+        border-radius: 13% / 6%;
+        background: #0b0a0a;
+        padding: 3.2%;
+        box-shadow:
+          0 0 0 1px #3a3634,
+          0 18px 40px -18px rgba(0, 0, 0, 0.55);
+      }
+      .scr {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        border-radius: 10.5% / 4.9%;
+        overflow: hidden;
+        background: var(--app-ground);
+        color: var(--app-text);
+        font-family: -apple-system, "SF Pro Text", var(--body);
+        font-size: 4.2cqw;
+        line-height: 1.25;
+      }
+      .abs {
+        position: absolute;
+      }
+      .status {
+        position: absolute;
+        inset: 0 0 auto 0;
+        height: 11cqw;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2.6cqw 8cqw 0;
+        font-weight: 600;
+        font-size: 4.1cqw;
+        z-index: 5;
+      }
+      .status .island {
+        position: absolute;
+        left: 50%;
+        top: 2.4cqw;
+        width: 27cqw;
+        height: 7.4cqw;
+        transform: translateX(-50%);
+        background: #000;
+        border-radius: 99px;
+      }
+      .status .bars {
+        display: flex;
+        gap: 1.2cqw;
+        align-items: center;
+      }
+      .status .bars i {
+        display: block;
+        width: 5.5cqw;
+        height: 2.6cqw;
+        border-radius: 1cqw;
+        background: currentColor;
+      }
+      .status .bars i:first-child {
+        width: 4cqw;
+        opacity: 0.85;
+      }
+      .ico {
+        width: 1em;
+        height: 1em;
+        display: block;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .ico.fill {
+        fill: currentColor;
+        stroke: none;
+      }
+
+      /* Surfaces as the app draws them today */
+      .flat35 {
+        background: rgba(0, 0, 0, 0.35);
+      }
+      .flat45 {
+        background: rgba(0, 0, 0, 0.45);
+      }
+      .flat50 {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .flat55 {
+        background: rgba(0, 0, 0, 0.55);
+      }
+      .flat75 {
+        background: rgba(0, 0, 0, 0.75);
+      }
+      .surf85 {
+        background: rgba(41, 37, 36, 0.85);
+      }
+      .solid {
+        background: var(--app-surface);
+      }
+      .blur {
+        background: rgba(30, 27, 26, 0.5);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+      }
+      /* An approximation of iOS 26 Liquid Glass: a light lens with a rim highlight. */
+      .glass {
+        background: linear-gradient(
+          150deg,
+          rgba(255, 255, 255, 0.26),
+          rgba(255, 255, 255, 0.07) 55%,
+          rgba(255, 255, 255, 0.14)
+        );
+        -webkit-backdrop-filter: blur(5px) saturate(185%) brightness(1.12);
+        backdrop-filter: blur(5px) saturate(185%) brightness(1.12);
+        box-shadow:
+          inset 0 0.35cqw 0 rgba(255, 255, 255, 0.55),
+          inset 0 -0.35cqw 0.6cqw rgba(255, 255, 255, 0.12),
+          inset 0 0 0 0.25cqw rgba(255, 255, 255, 0.22),
+          0 1.6cqw 4cqw rgba(0, 0, 0, 0.32);
+      }
+      .glass.dark {
+        background: linear-gradient(
+          150deg,
+          rgba(255, 255, 255, 0.16),
+          rgba(20, 18, 17, 0.42) 55%,
+          rgba(255, 255, 255, 0.08)
+        );
+      }
+      .circle {
+        width: 12cqw;
+        height: 12cqw;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-size: 5.6cqw;
+      }
+      .pill {
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 1.6cqw;
+      }
+      .label {
+        font-size: 3.4cqw;
+        font-weight: 600;
+        text-align: center;
+        text-shadow: 0 0.3cqw 1cqw rgba(0, 0, 0, 0.6);
+      }
+      .sheen {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+
+      /* Scenes: painted frames that stand in for video */
+      .scene-meadow {
+        background:
+          radial-gradient(
+            60% 34% at 72% 26%,
+            rgba(255, 214, 150, 0.95),
+            rgba(255, 170, 90, 0) 70%
+          ),
+          radial-gradient(90% 40% at 20% 78%, #3c5a2c, rgba(60, 90, 44, 0) 70%),
+          linear-gradient(
+            180deg,
+            #e9a86a 0%,
+            #c7795a 28%,
+            #6f4a52 46%,
+            #3f5b37 62%,
+            #263a24 100%
+          );
+      }
+      .scene-meadow::after {
+        content: "";
+        position: absolute;
+        inset: 40% 0 0 0;
+        background:
+          radial-gradient(
+            14% 9% at 18% 34%,
+            #f2c3d7,
+            rgba(242, 195, 215, 0) 70%
+          ),
+          radial-gradient(
+            10% 7% at 70% 44%,
+            #d8a1ff,
+            rgba(216, 161, 255, 0) 70%
+          ),
+          radial-gradient(
+            9% 6% at 44% 60%,
+            #ffd36b,
+            rgba(255, 211, 107, 0) 70%
+          ),
+          repeating-linear-gradient(
+            100deg,
+            rgba(20, 40, 18, 0) 0 3cqw,
+            rgba(20, 40, 18, 0.35) 3cqw 3.6cqw
+          );
+      }
+      .scene-dusk {
+        background:
+          radial-gradient(
+            40% 30% at 30% 40%,
+            rgba(255, 196, 120, 0.9),
+            rgba(255, 196, 120, 0) 70%
+          ),
+          radial-gradient(70% 50% at 80% 70%, #2b3d63, rgba(43, 61, 99, 0) 70%),
+          linear-gradient(
+            160deg,
+            #f0b27a 0%,
+            #b9586b 40%,
+            #3b2f57 72%,
+            #181a2e 100%
+          );
+      }
+      .scene-sea {
+        background:
+          radial-gradient(
+            50% 30% at 65% 20%,
+            rgba(255, 255, 255, 0.6),
+            rgba(255, 255, 255, 0) 70%
+          ),
+          repeating-linear-gradient(
+            175deg,
+            rgba(255, 255, 255, 0.06) 0 2cqw,
+            rgba(0, 0, 0, 0.08) 2cqw 4cqw
+          ),
+          linear-gradient(
+            180deg,
+            #8fb3c9 0%,
+            #4f7c97 40%,
+            #26475d 75%,
+            #12273a 100%
+          );
+      }
+      .dim::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 6;
+      }
+
+      /* Tab bar: already native glass on iOS 26 in both drawings */
+      .tabbar {
+        position: absolute;
+        left: 4.5cqw;
+        right: 4.5cqw;
+        bottom: 4cqw;
+        height: 15cqw;
+        border-radius: 99px;
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        padding: 0 2cqw;
+        font-size: 2.7cqw;
+        z-index: 4;
+      }
+      .tabbar .t {
+        display: grid;
+        justify-items: center;
+        gap: 0.6cqw;
+        color: rgba(255, 255, 255, 0.85);
+        padding: 1.4cqw 2.2cqw;
+        border-radius: 99px;
+      }
+      .tabbar .t svg {
+        width: 5.4cqw;
+        height: 5.4cqw;
+      }
+      .tabbar .t.on {
+        color: var(--app-red);
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .home-ind {
+        position: absolute;
+        left: 50%;
+        bottom: 1.6cqw;
+        width: 34cqw;
+        height: 1.2cqw;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.85);
+        transform: translateX(-50%);
+        z-index: 7;
+      }
+
+      /* Rows and text blocks inside screens */
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 3cqw;
+      }
+      .thumb {
+        border-radius: 2.4cqw;
+        flex: none;
+      }
+      .line {
+        height: 2.6cqw;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.85);
+      }
+      .line.m {
+        background: rgba(255, 255, 255, 0.45);
+      }
+      .title {
+        font-weight: 700;
+        font-size: 5.4cqw;
+        line-height: 1.15;
+      }
+      .small {
+        font-size: 3.4cqw;
+        color: var(--app-muted);
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .phone {
+          transition: transform 0.25s ease;
+        }
+        .fig:hover .phone {
+          transform: translateY(-3px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-play" viewBox="0 0 24 24">
+          <path d="M8 5.5v13l10.5-6.5z" />
+        </symbol>
+        <symbol id="i-pause" viewBox="0 0 24 24">
+          <path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
+        </symbol>
+        <symbol id="i-ff" viewBox="0 0 24 24">
+          <path d="M3 6.5v11l8-5.5zM12 6.5v11l8-5.5z" />
+        </symbol>
+        <symbol id="i-rw" viewBox="0 0 24 24">
+          <path d="M21 6.5v11l-8-5.5zM12 6.5v11l-8-5.5z" />
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 24 24">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </symbol>
+        <symbol id="i-back" viewBox="0 0 24 24">
+          <path d="M15 5l-7 7 7 7" />
+        </symbol>
+        <symbol id="i-down" viewBox="0 0 24 24">
+          <path d="M6 9l6 6 6-6" />
+        </symbol>
+        <symbol id="i-up" viewBox="0 0 24 24">
+          <path d="M6 15l6-6 6 6" />
+        </symbol>
+        <symbol id="i-vol" viewBox="0 0 24 24">
+          <path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" />
+          <path d="M15.5 9.5a3.5 3.5 0 010 5M18 7a7 7 0 010 10" />
+        </symbol>
+        <symbol id="i-mute" viewBox="0 0 24 24">
+          <path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z" />
+          <path d="M16 9.5l5 5M21 9.5l-5 5" />
+        </symbol>
+        <symbol id="i-share" viewBox="0 0 24 24">
+          <path d="M12 3.5v11M8 7.5l4-4 4 4" />
+          <path d="M6 11v8.5h12V11" />
+        </symbol>
+        <symbol id="i-cast" viewBox="0 0 24 24">
+          <path d="M3 7V5h18v14h-7" />
+          <path
+            d="M3 18.5a2.5 2.5 0 012.5 2.5M3 14.5A6.5 6.5 0 019.5 21M3 10.5A10.5 10.5 0 0113.5 21"
+          />
+        </symbol>
+        <symbol id="i-airplay" viewBox="0 0 24 24">
+          <path d="M6 17H3.5V4.5h17V17H18" />
+          <path d="M12 14l5 6.5H7z" />
+        </symbol>
+        <symbol id="i-gear" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3.2" />
+          <path
+            d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"
+          />
+        </symbol>
+        <symbol id="i-search" viewBox="0 0 24 24">
+          <circle cx="10.5" cy="10.5" r="6" />
+          <path d="M15 15l5 5" />
+        </symbol>
+        <symbol id="i-home" viewBox="0 0 24 24">
+          <path d="M4 11l8-6.5 8 6.5V20h-5.5v-5h-5v5H4z" />
+        </symbol>
+        <symbol id="i-explore" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8.5" />
+          <path d="M10 8.5v7l5.5-3.5z" />
+        </symbol>
+        <symbol id="i-book" viewBox="0 0 24 24">
+          <path d="M6 4h11v16H7.5A1.5 1.5 0 016 18.5z" />
+          <path d="M6 17.5A1.5 1.5 0 017.5 16H17" />
+        </symbol>
+        <symbol id="i-user" viewBox="0 0 24 24">
+          <circle cx="12" cy="8.5" r="3.6" />
+          <path d="M5 20a7 7 0 0114 0" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        </symbol>
+        <symbol id="i-dl" viewBox="0 0 24 24">
+          <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14" />
+        </symbol>
+        <symbol id="i-dots" viewBox="0 0 24 24">
+          <circle cx="6" cy="12" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="18" cy="12" r="1.6" />
+        </symbol>
+      </defs>
+    </svg>
+
+    <template id="tabs">
+      <div class="tabbar glass dark">
+        <div class="t" data-k="home">
+          <svg class="ico"><use href="#i-home" /></svg>Home
+        </div>
+        <div class="t" data-k="explore">
+          <svg class="ico"><use href="#i-explore" /></svg>Explore
+        </div>
+        <div class="t" data-k="search">
+          <svg class="ico"><use href="#i-search" /></svg>Search
+        </div>
+        <div class="t" data-k="bible">
+          <svg class="ico"><use href="#i-book" /></svg>Bible
+        </div>
+        <div class="t" data-k="watch">
+          <svg class="ico"><use href="#i-user" /></svg>My Watch
+        </div>
+      </div>
+    </template>
+
+    <main class="wrap">
+      <header class="head">
+        <div class="eyebrow">
+          apps/mobile · iOS 26 · read from code, 2026-10-14
+        </div>
+        <h1>Which parts of the Watch app could become native Liquid Glass</h1>
+        <p>
+          Five parts of the app already use native Liquid Glass on iOS 26: the
+          tab bar, the Home header, the floating back button, the Bible reader's
+          buttons, and the Downloads selection bar. This page draws every other
+          screen element from the audit twice: as the app draws it today, and as
+          it would look with native glass. Each screen ends with a verdict on
+          whether the change is practical, and why.
+        </p>
+        <p class="muted">
+          The drawings are CSS illustrations, not screenshots. The glass is an
+          approximation of Apple's material. The verdicts come from reading the
+          code on <code>Ur-imazing/mobile-app-polish</code> (main at
+          <code>45d20673e</code>), with <code>expo-glass-effect</code> 57.0.4
+          and <code>react-native-screens</code> 4.26.2. No change on this page
+          has been tried on a device yet.
+        </p>
+        <div class="legend" aria-label="Verdict key">
+          <span class="chip ready">Ready</span
+          ><span class="desc">No known blocker. A direct change.</span>
+          <span class="chip spike">Needs a spike</span
+          ><span class="desc"
+            >Probably works. One platform fact is unproven.</span
+          >
+          <span class="chip rework">Needs rework</span
+          ><span class="desc"
+            >A known blocker. The element must change how it shows or
+            hides.</span
+          >
+          <span class="chip keep">Leave as is</span
+          ><span class="desc">Not a control, or not possible.</span>
+        </div>
+      </header>
+
+      <section aria-labelledby="sum-h" style="display: grid; gap: 16px">
+        <h2 id="sum-h">Summary</h2>
+        <p>
+          The one rule behind most verdicts: <code>GlassView</code> draws
+          nothing inside a layer whose opacity animates, and it ignores a plain
+          <code>opacity</code> style too. This was proven in the watch player on
+          2026-08-13 with a 90% red tint that showed no change. An element that
+          fades must hide its glass another way.
+          <code>expo-glass-effect</code> 57 can do that:
+          <code>glassEffectStyle</code> takes <code>'none'</code> with
+          <code>animate: true</code>, so the material can dissolve natively
+          while only the icon fades.
+        </p>
+        <div class="table-box">
+          <table>
+            <thead>
+              <tr>
+                <th>Screen</th>
+                <th>Element</th>
+                <th>Today</th>
+                <th>Verdict</th>
+                <th>Main reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="screen"><a href="#explore">Explore</a></td>
+                <td>Mute, Share, Keep watching circles</td>
+                <td>Flat black 35%</td>
+                <td><span class="chip ready">Ready</span></td>
+                <td>The overlay has no fade.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#explore">Explore</a></td>
+                <td>Paused glyph, 2× cue, message pill</td>
+                <td>Flat black 45–70%</td>
+                <td><span class="chip ready">Ready</span></td>
+                <td>Each mounts and unmounts with no fade.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#explore">Explore</a></td>
+                <td>Scrub time pill</td>
+                <td>Flat black 75%</td>
+                <td><span class="chip spike">Needs a spike</span></td>
+                <td>
+                  It hides with <code>opacity: 0</code> until measured, and it
+                  moves with the finger.
+                </td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#watch">Watch</a></td>
+                <td>Cast, AirPlay, settings buttons</td>
+                <td><code>expo-blur</code> blur</td>
+                <td><span class="chip rework">Needs rework</span></td>
+                <td>
+                  They sit in the controls fade, where glass is proven to draw
+                  nothing.
+                </td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#watch">Watch</a></td>
+                <td>Skip-amount pill</td>
+                <td>Flat black 55%</td>
+                <td><span class="chip ready">Ready</span></td>
+                <td>It sits outside the controls fade.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#watch">Watch</a></td>
+                <td>Scroll-to-top button</td>
+                <td>Surface 85%</td>
+                <td><span class="chip rework">Needs rework</span></td>
+                <td>It fades with an animated opacity.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#watch">Watch</a></td>
+                <td>"Keep watching" offer card</td>
+                <td>Solid surface</td>
+                <td><span class="chip ready">Ready</span></td>
+                <td>No animation.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#home">Home</a></td>
+                <td>Hero mute button</td>
+                <td>Flat black 50%</td>
+                <td><span class="chip rework">Needs rework</span></td>
+                <td>The hero controls fade by scroll position.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#home">Home</a></td>
+                <td>Pager dots</td>
+                <td>Custom dots</td>
+                <td><span class="chip keep">Leave as is</span></td>
+                <td>A page indicator, not a control surface.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#mini">Mini player</a></td>
+                <td>Play/pause and close</td>
+                <td>Icons with a shadow</td>
+                <td><span class="chip spike">Needs a spike</span></td>
+                <td>
+                  The window shrinks and leaves with native-driven transforms.
+                </td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#search">Search</a></td>
+                <td>Search field</td>
+                <td>Custom <code>TextInput</code></td>
+                <td>
+                  <span class="chip ready">Ready</span>
+                  <span class="chip rework">Needs rework</span>
+                </td>
+                <td>
+                  A glass field is direct. The native search tab is a redesign.
+                </td>
+              </tr>
+              <tr>
+                <td class="screen">
+                  <a href="#downloads">Downloads, More, Account</a>
+                </td>
+                <td>Top bar back button</td>
+                <td>Opaque bar</td>
+                <td><span class="chip ready">Ready</span></td>
+                <td>Reuse the glass back button.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#downloads">Downloads</a></td>
+                <td>Snackbar</td>
+                <td>Solid <code>#292524</code></td>
+                <td><span class="chip rework">Needs rework</span></td>
+                <td>It fades in and out with an animated opacity.</td>
+              </tr>
+              <tr>
+                <td class="screen"><a href="#downloads">Downloads</a></td>
+                <td>Delete confirmation</td>
+                <td>Inline sheet</td>
+                <td><span class="chip ready">Ready</span></td>
+                <td>
+                  The native action sheet is glass, but it drops the custom
+                  layout.
+                </td>
+              </tr>
+              <tr>
+                <td class="screen">
+                  <a href="#native-sheets">Native sheets</a>
+                </td>
+                <td>Language, subtitle, download, feedback, reader sheets</td>
+                <td>Opaque, 16 pt corners</td>
+                <td><span class="chip spike">Needs a spike</span></td>
+                <td>They are real UIKit sheets that turn the glass off.</td>
+              </tr>
+              <tr>
+                <td class="screen">
+                  <a href="#js-sheets">JavaScript sheets</a>
+                </td>
+                <td>Player settings, player feedback, download sheet, quiz</td>
+                <td>Opaque panel in a <code>Modal</code></td>
+                <td><span class="chip spike">Needs a spike</span></td>
+                <td>
+                  A glass panel in the existing <code>Modal</code> is likely.
+                  Native routes are a rework.
+                </td>
+              </tr>
+              <tr>
+                <td class="screen">
+                  <a href="#sdui">SDUI video and collection</a>
+                </td>
+                <td>Header back button</td>
+                <td>Custom button in a native header</td>
+                <td><span class="chip keep">Leave as is</span></td>
+                <td>Probably glass already. Confirm on a device.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── Explore ─────────────────────────────────────────────────── -->
+      <section class="screen-sec" id="explore" aria-labelledby="explore-h">
+        <div class="sec-head">
+          <div class="eyebrow">
+            Explore tab · ClipOverlay.tsx, ClipProgressBar.tsx
+          </div>
+          <h2 id="explore-h">Explore clip feed</h2>
+          <p class="note">
+            Drawn on a full-screen portrait clip, during a 2× hold and a scrub
+            at the same time, so each element shows once. The paused glyph is
+            left out, because it never shows with the 2× cue. The 2× cue comes
+            from the Explore 2× hold, which on 2026-10-14 is uncommitted on the
+            <code>Ur-imazing/mobile-app-polish</code> branch and is not on main.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Explore today: flat dark circles and pills over the clip"
+              >
+                <div
+                  class="scr scene-meadow"
+                  data-screen="explore"
+                  data-mode="now"
+                ></div>
+              </div>
+              <figcaption><b>Today</b> · flat black fills</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Explore with native glass: glass circles and pills over the clip"
+              >
+                <div
+                  class="scr scene-meadow"
+                  data-screen="explore"
+                  data-mode="glass"
+                ></div>
+              </div>
+              <figcaption><b>With native glass</b></figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Mute, Share, Keep watching circles</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                Nothing in <code>ClipOverlay</code> animates its opacity, so a
+                <code>GlassView</code> in place of each
+                <code>railCircle</code> should render. The Keep watching circle
+                keeps its thumbnail and gets a glass rim only.
+              </p>
+              <p class="how">
+                Do not set <code>isInteractive</code> inside a
+                <code>Pressable</code>: it flashes (see
+                <code
+                  >docs/solutions/best-practices/expo-glass-effect-interactive-flash.md</code
+                >). On the first device run, check that the glass draws while
+                the pager moves the page with a native transform.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>2× cue, paused glyph, message pill</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                Each one mounts and unmounts with no fade. The message pill in
+                <code>ExploreStates.tsx</code> is static text.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Scrub time pill</h3>
+                <span class="chip spike">Needs a spike</span>
+              </div>
+              <p>
+                The pill hides with <code>opacity: 0</code> until it knows its
+                width, and glass ignores opacity, so an unmeasured glass blob
+                would show for one frame. Use
+                <code>glassEffectStyle: 'none'</code> until the width is known.
+                The pill also follows the finger with <code>translateX</code>;
+                check that the material keeps up.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Watch ───────────────────────────────────────────────────── -->
+      <section class="screen-sec" id="watch" aria-labelledby="watch-h">
+        <div class="sec-head">
+          <div class="eyebrow">
+            Watch page · PlayerControls.tsx, VideoPlayer.tsx,
+            app/watch/[slug].tsx
+          </div>
+          <h2 id="watch-h">Watch page and player</h2>
+          <p class="note">
+            Drawn with the player controls showing, a +10 s skip, the "Keep
+            watching" offer, and the page scrolled so that the scroll-to-top
+            button shows. The back button at the top left is native glass
+            already.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Watch page today: blurred route buttons, flat pills, solid offer card"
+              >
+                <div class="scr" data-screen="watch" data-mode="now"></div>
+              </div>
+              <figcaption>
+                <b>Today</b> · blur, flat fills, solid card
+              </figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Watch page with native glass"
+              >
+                <div class="scr" data-screen="watch" data-mode="glass"></div>
+              </div>
+              <figcaption><b>With native glass</b></figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Cast, AirPlay, settings buttons</h3>
+                <span class="chip rework">Needs rework</span>
+              </div>
+              <p>
+                These sit inside the layer that fades with
+                <code>controls.opacityAnim</code>
+                (<code>VideoPlayer.tsx</code>). On 2026-08-13 a
+                <code>GlassView</code> in that layer drew nothing, even with a
+                90% red tint, so the app uses <code>expo-blur</code> there
+                (<code>Frosted</code>, through <code>PlatformBlur</code>).
+              </p>
+              <p class="how">
+                Path: move the three buttons out of the fading layer. Show and
+                hide their material with
+                <code>glassEffectStyle: { style: 'none', animate: true }</code>,
+                and fade only the glyphs. Keep the tap area tied to the same
+                visibility rule. Android keeps the blur fallback, and its Cast
+                control stays the SDK's own button.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Skip-amount pill</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                It renders before the fading layers in
+                <code>VideoPlayer.tsx</code> and mounts with no fade.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Scroll-to-top button</h3>
+                <span class="chip rework">Needs rework</span>
+              </div>
+              <p>
+                It fades with <code>scrollTopOpacity</code>. Switch the fade to
+                the <code>'none'</code> style animation, as for the player
+                buttons.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>"Keep watching" offer card</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                <code>KeepWatchingOffer</code> has no animation. A glass card
+                over the page is direct. Check text contrast over bright episode
+                art.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Home ────────────────────────────────────────────────────── -->
+      <section class="screen-sec" id="home" aria-labelledby="home-h">
+        <div class="sec-head">
+          <div class="eyebrow">Home tab · HomeScreen.tsx</div>
+          <h2 id="home-h">Home hero</h2>
+          <p class="note">
+            The header buttons and the tab bar are native glass already in both
+            drawings. The red Watch Now button stays solid: it is the brand
+            action, not a glass control.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Home today: flat dark mute button on the hero"
+              >
+                <div class="scr" data-screen="home" data-mode="now"></div>
+              </div>
+              <figcaption><b>Today</b> · flat black 50% mute</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Home with a glass mute button"
+              >
+                <div class="scr" data-screen="home" data-mode="glass"></div>
+              </div>
+              <figcaption><b>With native glass</b></figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Hero mute button</h3>
+                <span class="chip rework">Needs rework</span>
+              </div>
+              <p>
+                The hero controls take <code>chromeOpacity</code>, which steps
+                down as the page scrolls. Glass ignores that opacity, so the
+                mute button would stay at full strength while Watch Now fades
+                beside it.
+              </p>
+              <p class="how">
+                Path: switch the mute button's glass to <code>'none'</code> at
+                the same scroll point where the controls stop taking touches
+                (opacity under 0.5).
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Pager dots</h3>
+                <span class="chip keep">Leave as is</span>
+              </div>
+              <p>
+                The dots show the position in the hero. They are not a button or
+                a bar, so glass gives them nothing to do.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Mini player ─────────────────────────────────────────────── -->
+      <section class="screen-sec" id="mini" aria-labelledby="mini-h">
+        <div class="sec-head">
+          <div class="eyebrow">Any tab · MiniPlayerWindow.tsx</div>
+          <h2 id="mini-h">Mini player window</h2>
+          <p class="note">
+            Drawn over Home, in its default corner above the tab bar.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Mini player today: icons with a text shadow over the video"
+              >
+                <div class="scr" data-screen="mini" data-mode="now"></div>
+              </div>
+              <figcaption><b>Today</b> · shadowed icons</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Mini player with small glass buttons"
+              >
+                <div class="scr" data-screen="mini" data-mode="glass"></div>
+              </div>
+              <figcaption><b>With native glass</b></figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Play/pause and close</h3>
+                <span class="chip spike">Needs a spike</span>
+              </div>
+              <p>
+                The buttons themselves do not fade; only the thumbnail
+                cross-fades. But the whole window shrinks and leaves through
+                native-driven transforms, and a drag writes its position with
+                <code>setValue</code>. No test has shown glass inside a scaling
+                layer in this app.
+              </p>
+              <p class="how">
+                The window is small, so two glass circles take much of the
+                frame. Ask the owner whether the window should show controls on
+                glass at all.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Search ──────────────────────────────────────────────────── -->
+      <section class="screen-sec" id="search" aria-labelledby="search-h">
+        <div class="sec-head">
+          <div class="eyebrow">Search tab · app/(tabs)/watch.tsx</div>
+          <h2 id="search-h">Search field</h2>
+          <p class="note">
+            The right-hand drawing shows the native iOS 26 search tab: the tab
+            bar shrinks to one button, and the search field docks at the bottom.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Search today: custom search field at the top"
+              >
+                <div class="scr" data-screen="search" data-mode="now"></div>
+              </div>
+              <figcaption><b>Today</b> · custom field</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Search with the native iOS 26 search tab"
+              >
+                <div class="scr" data-screen="search" data-mode="glass"></div>
+              </div>
+              <figcaption><b>With native glass</b> · search tab</figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Glass field in the same place</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                Wrap the existing <code>TextInput</code> in a
+                <code>GlassView</code>. The field keeps its place, its keyboard
+                handling, and its tests. It looks like glass, but it is not the
+                native search bar.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Native search tab</h3>
+                <span class="chip rework">Needs rework</span>
+              </div>
+              <p>
+                <code>NativeTabs</code> in <code>expo-router</code> 57 accepts
+                <code>role: "search"</code>. With a native search controller on
+                that tab's screen, iOS 26 docks the search field at the bottom,
+                beside a shrunken tab bar. That moves the field out of the
+                screen and into the bar. The Search screen's layout, its focus
+                handling, and its search telemetry would all change. Android
+                keeps the current field.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Downloads / More / Account ──────────────────────────────── -->
+      <section class="screen-sec" id="downloads" aria-labelledby="dl-h">
+        <div class="sec-head">
+          <div class="eyebrow">
+            Root screens · ScreenTopBar.tsx, Snackbar.tsx,
+            DeleteConfirmSheet.tsx
+          </div>
+          <h2 id="dl-h">Downloads, More and Account</h2>
+          <p class="note">
+            Drawn on Downloads, with the snackbar from an export showing. More
+            and Account use the same top bar.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Downloads today: opaque top bar and a solid snackbar"
+              >
+                <div class="scr" data-screen="downloads" data-mode="now"></div>
+              </div>
+              <figcaption><b>Today</b> · opaque bar, solid snackbar</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Downloads with a glass back button and a glass snackbar"
+              >
+                <div
+                  class="scr"
+                  data-screen="downloads"
+                  data-mode="glass"
+                ></div>
+              </div>
+              <figcaption><b>With native glass</b></figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Top bar back button</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                Use the same <code>GlassView</code> that
+                <code>FloatingBackButton</code> already uses, and let the list
+                scroll under the bar. A native header is the other route, and it
+                gets the system glass for free.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Snackbar</h3>
+                <span class="chip rework">Needs rework</span>
+              </div>
+              <p>
+                It slides in with <code>translateY</code> and fades with an
+                animated <code>opacity</code>. Keep the slide, drop the fade,
+                and dissolve the material with the <code>'none'</code> style
+                instead.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Delete confirmation</h3>
+                <span class="chip ready">Ready</span>
+              </div>
+              <p>
+                The native action sheet (<code>ActionSheetIOS</code>) is glass
+                on iOS 26. The cost is design: it cannot show the current
+                layout, such as the size that a delete frees. A glass panel
+                inside the current inline sheet keeps that layout.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Native sheets ───────────────────────────────────────────── -->
+      <section class="screen-sec" id="native-sheets" aria-labelledby="ns-h">
+        <div class="sec-head">
+          <div class="eyebrow">
+            app/watch/_layout.tsx, app/series/_layout.tsx, app/_layout.tsx
+          </div>
+          <h2 id="ns-h">Native sheets with the glass turned off</h2>
+          <p class="note">
+            Drawn as the audio language sheet at its first detent, over the
+            watch page. The same option set covers subtitles, download,
+            feedback, and the three Bible reader sheets.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Language sheet today: opaque dark sheet with 16 point corners"
+              >
+                <div class="scr" data-screen="nsheet" data-mode="now"></div>
+              </div>
+              <figcaption><b>Today</b> · opaque, 16 pt corners</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Language sheet as an iOS 26 glass sheet, inset from the edges"
+              >
+                <div class="scr" data-screen="nsheet" data-mode="glass"></div>
+              </div>
+              <figcaption><b>With native glass</b> · system sheet</figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>All form sheets</h3>
+                <span class="chip spike">Needs a spike</span>
+              </div>
+              <p>
+                These are real UIKit sheets (<code
+                  >presentation: "formSheet"</code
+                >). They show no glass because each stack sets an opaque
+                <code>contentStyle</code> background and a custom
+                <code>sheetCornerRadius: 16</code>. On iOS 26, removing both
+                should let UIKit draw its own glass sheet, inset at the partial
+                detent and opaque at the full one.
+              </p>
+              <p class="how">
+                The spike: on one sheet, make the screen background transparent
+                and drop the corner radius on iOS 26 only, then check on the
+                simulator that <code>react-native-screens</code> 4.26.2 lets the
+                system material show. Check list contrast over a bright video.
+                The Bible reader sheets follow the reader's own light, dark and
+                true dark themes, so glass there needs an owner decision.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── JS sheets ───────────────────────────────────────────────── -->
+      <section class="screen-sec" id="js-sheets" aria-labelledby="js-h">
+        <div class="sec-head">
+          <div class="eyebrow">
+            PlayerSettingsSheet.tsx, FeedbackModal.tsx, DownloadSheet.tsx,
+            QuizButtonRenderer.tsx
+          </div>
+          <h2 id="js-h">Sheets drawn in JavaScript</h2>
+          <p class="note">
+            Drawn as the player settings sheet over the watch page. The player
+            feedback sheet, the download sheet, and the quiz use the same
+            pattern: a panel and a scrim inside a React Native
+            <code>Modal</code>.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Player settings today: opaque panel over a dark scrim"
+              >
+                <div class="scr" data-screen="jsheet" data-mode="now"></div>
+              </div>
+              <figcaption><b>Today</b> · opaque panel</figcaption>
+            </figure>
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Player settings on a glass panel"
+              >
+                <div class="scr" data-screen="jsheet" data-mode="glass"></div>
+              </div>
+              <figcaption><b>With native glass</b> · glass panel</figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Glass panel in the existing Modal</h3>
+                <span class="chip spike">Needs a spike</span>
+              </div>
+              <p>
+                The settings and feedback sheets use
+                <code>animationType="none"</code> and slide their own panel; the
+                scrim fades on a separate layer. If the panel itself never takes
+                an opacity, a <code>GlassView</code> panel should render. The
+                download sheet and the quiz use the <code>Modal</code>'s own
+                slide, which moves the view without an opacity fade.
+              </p>
+            </div>
+            <div class="verdict">
+              <div class="top">
+                <h3>Move them to native sheet routes</h3>
+                <span class="chip rework">Needs rework</span>
+              </div>
+              <p>
+                This would give the system sheet, as in the section above. But
+                the settings sheet must open over the full-screen landscape
+                player, and the feedback sheet must mount only after the
+                settings sheet has left, in a later commit (see "Two RN Modals
+                from one player" in <code>apps/mobile/CLAUDE.md</code>). Routes
+                change both rules.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SDUI header ─────────────────────────────────────────────── -->
+      <section class="screen-sec" id="sdui" aria-labelledby="sdui-h">
+        <div class="sec-head">
+          <div class="eyebrow">
+            app/_layout.tsx · video/[sectionKey], collection/[sectionKey]
+          </div>
+          <h2 id="sdui-h">SDUI video and collection pages</h2>
+          <p class="note">
+            A correction to the earlier list. These pages use a native header
+            with a custom <code>HeaderBackButton</code> in
+            <code>headerLeft</code>. <code>react-native-screens</code> 4.26.2
+            puts that view in a <code>UIBarButtonItem</code>, and iOS 26 draws a
+            shared glass background behind it unless
+            <code>hidesSharedBackground</code> is set. The app does not set it.
+          </p>
+        </div>
+        <div class="sec-body">
+          <div class="pair">
+            <figure class="fig">
+              <div
+                class="phone"
+                role="img"
+                aria-label="Collection page with the back button on a glass backdrop"
+              >
+                <div class="scr" data-screen="sdui" data-mode="glass"></div>
+              </div>
+              <figcaption><b>Expected today on iOS 26</b></figcaption>
+            </figure>
+          </div>
+          <div class="verdicts">
+            <div class="verdict">
+              <div class="top">
+                <h3>Header back button</h3>
+                <span class="chip keep">Leave as is</span>
+              </div>
+              <p>
+                Probably glass already. Open one SDUI page on the iOS 26
+                simulator to confirm before any work here.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Not candidates ──────────────────────────────────────────── -->
+      <section class="screen-sec" aria-labelledby="out-h">
+        <div class="sec-head">
+          <h2 id="out-h">Not candidates</h2>
+        </div>
+        <div
+          class="verdicts"
+          style="
+            grid-template-columns: repeat(
+              auto-fit,
+              minmax(min(100%, 300px), 1fr)
+            );
+          "
+        >
+          <div class="verdict">
+            <div class="top">
+              <h3>Content, not controls</h3>
+              <span class="chip keep">Leave as is</span>
+            </div>
+            <p>
+              Card badges such as "61 episodes", the "now playing" badge,
+              captions, scrims, the hero scroll blurs, and the red Watch Now
+              button. Apple keeps Liquid Glass for the controls layer that
+              floats above content.
+            </p>
+          </div>
+          <div class="verdict">
+            <div class="top">
+              <h3>Cast dialogs</h3>
+              <span class="chip keep">Leave as is</span>
+            </div>
+            <p>
+              The Google Cast SDK draws them. The app can only set their colors
+              (<code>withCastUIStyle.js</code>,
+              <code>withAndroidCastTheme.js</code>).
+            </p>
+          </div>
+          <div class="verdict">
+            <div class="top">
+              <h3>Android and iOS before 26</h3>
+              <span class="chip keep">Not possible</span>
+            </div>
+            <p>
+              Android has no Liquid Glass. Every change on this page needs its
+              current look kept as the Android fallback, and as the fallback for
+              iOS versions without <code>isLiquidGlassAvailable()</code>.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      ;(function () {
+        "use strict"
+        const icon = (id, extra) =>
+          `<svg class="ico ${extra || ""}" aria-hidden="true"><use href="#i-${id}"/></svg>`
+        const status = `<div class="status"><span>9:41</span><span class="island"></span><span class="bars"><i></i><i></i></span></div>`
+        const tabs = (active) => {
+          const t = document
+            .getElementById("tabs")
+            .content.firstElementChild.cloneNode(true)
+          const on = t.querySelector(`[data-k="${active}"]`)
+          if (on) on.classList.add("on")
+          return t.outerHTML
+        }
+        const homeInd = `<div class="home-ind"></div>`
+        // A glass back button: native already, so it is glass in both drawings.
+        const back = (top) =>
+          `<div class="abs circle glass dark" style="left:5cqw;top:${top}cqw;width:10.5cqw;height:10.5cqw">${icon("back")}</div>`
+
+        const S = {
+          explore(m) {
+            const g = m === "glass"
+            const circle = g ? "glass" : "flat35"
+            const pill = g ? "glass" : "flat75"
+            const cue = g ? "glass" : "flat45"
+            return `${status}
+        <div class="abs pill ${cue}" style="left:50%;top:15cqw;transform:translateX(-50%);padding:1.6cqw 3.6cqw;font-weight:700;font-size:4cqw">2×${icon("ff", "fill")}</div>
+        <div class="abs" style="left:0;right:0;bottom:0;height:70cqw;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.62))"></div>
+        <div class="abs" style="right:3.5cqw;bottom:46cqw;display:grid;gap:3.2cqw;justify-items:center">
+          <div style="display:grid;justify-items:center;gap:1cqw"><div class="circle ${circle}">${icon("vol")}</div><div class="label">Mute</div></div>
+          <div style="display:grid;justify-items:center;gap:1cqw"><div class="circle ${circle}">${icon("share")}</div><div class="label">Share</div></div>
+          ${
+            g
+              ? `<div class="circle glass" style="padding:1cqw"><div style="width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#f1c27d,#8a4b3a 70%)">${icon("play", "fill")}</div></div>`
+              : `<div class="circle" style="background:radial-gradient(circle at 40% 35%,#f1c27d,#8a4b3a 70%)">${icon("play", "fill")}</div>`
+          }
+        </div>
+        <div class="abs" style="left:6cqw;right:24cqw;bottom:38cqw;display:grid;gap:1.4cqw">
+          <div class="title">Creation</div>
+          <div style="font-size:3.6cqw;opacity:.92">Because Jesus' story is part of a larger st… <b>more</b></div>
+        </div>
+        <div class="abs pill ${pill}" style="left:40cqw;bottom:31.5cqw;padding:1.2cqw 3cqw;font-size:3.3cqw;font-variant-numeric:tabular-nums;font-weight:600">0:12 / 0:48</div>
+        <div class="abs" style="left:6cqw;right:6cqw;bottom:27cqw;height:1.1cqw;border-radius:99px;background:rgba(255,255,255,.3)">
+          <div style="width:45%;height:100%;border-radius:99px;background:#fff"></div>
+          <div style="position:absolute;left:45%;top:50%;width:3.6cqw;height:3.6cqw;border-radius:50%;background:#fff;transform:translate(-50%,-50%)"></div>
+        </div>
+        ${tabs("explore")}${homeInd}`
+          },
+
+          watch(m) {
+            const g = m === "glass"
+            const route = g ? "glass dark" : "blur"
+            return `${status}
+        <div class="abs scene-sea" style="left:0;right:0;top:11cqw;height:56.25cqw">
+          <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,0) 35%,rgba(0,0,0,0) 65%,rgba(0,0,0,.35))"></div>
+          <div class="abs" style="right:4cqw;top:3cqw;display:flex;gap:2cqw">
+            <div class="circle ${route}" style="width:10.5cqw;height:10.5cqw;font-size:5cqw">${icon("cast")}</div>
+            <div class="circle ${route}" style="width:10.5cqw;height:10.5cqw;font-size:5cqw">${icon("airplay")}</div>
+            <div class="circle ${route}" style="width:10.5cqw;height:10.5cqw;font-size:5cqw">${icon("gear")}</div>
+          </div>
+          <div class="abs pill ${g ? "glass" : "flat55"}" style="right:12%;top:50%;transform:translateY(-50%);padding:2.2cqw 3.6cqw;font-weight:600;font-size:3.6cqw">${icon("ff", "fill")}10 s</div>
+          <div class="abs" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:11cqw">${icon("pause", "fill")}</div>
+          <div class="abs" style="left:4cqw;right:4cqw;bottom:3cqw;height:0.9cqw;border-radius:99px;background:rgba(255,255,255,.35)"><div style="width:30%;height:100%;border-radius:99px;background:var(--app-red)"></div></div>
+        </div>
+        ${back(14)}
+        <div class="abs" style="left:6cqw;right:6cqw;top:72cqw;display:grid;gap:2cqw">
+          <div class="title">The Birth of Jesus</div>
+          <div class="small">English · 1 h 4 min</div>
+        </div>
+        <div class="abs pill ${g ? "glass dark" : "solid"}" style="left:6cqw;right:6cqw;top:89cqw;border-radius:4cqw;padding:3cqw 3.6cqw;justify-content:space-between;font-size:3.6cqw">
+          <span>Resume at 12:42</span><span style="font-weight:700;color:${g ? "#fff" : "var(--app-text)"}">Resume</span>
+        </div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:108cqw;display:grid;gap:3.6cqw">
+          ${[
+            ["#8a6a4c", "#3b2c22"],
+            ["#4b6b7d", "#1f2e38"],
+            ["#7b5a7e", "#2d2232"],
+            ["#6d7b4b", "#2a3020"],
+            ["#8c5a4a", "#32211b"],
+          ]
+            .map(
+              ([a, b], i) => `
+            <div class="row"><div class="thumb" style="width:30cqw;height:17cqw;background:linear-gradient(135deg,${a},${b})"></div>
+            <div style="display:grid;gap:1.6cqw;flex:1"><div class="line" style="width:${86 - i * 6}%"></div><div class="line m" style="width:52%"></div></div></div>`,
+            )
+            .join("")}
+        </div>
+        <div class="abs circle ${g ? "glass dark" : "surf85"}" style="right:5cqw;bottom:9cqw;width:10.5cqw;height:10.5cqw;font-size:5cqw;z-index:4">${icon("up")}</div>
+        ${homeInd}`
+          },
+
+          home(m) {
+            const g = m === "glass"
+            return `${status}
+        <div class="abs scene-dusk" style="left:0;right:0;top:0;height:126cqw"></div>
+        <div class="abs" style="left:0;right:0;top:0;height:128cqw;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,var(--app-ground) 100%)"></div>
+        <div class="abs" style="left:5cqw;right:5cqw;top:13cqw;display:flex;justify-content:space-between;align-items:center;z-index:3">
+          <div class="pill glass dark" style="padding:2cqw 4cqw;font-weight:700;font-size:3.8cqw">Jesus Film</div>
+          <div class="circle glass dark" style="width:10.5cqw;height:10.5cqw;font-size:5cqw">${icon("dots")}</div>
+        </div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:80cqw;display:grid;gap:2.4cqw">
+          <div style="font-size:3cqw;letter-spacing:.2em;text-transform:uppercase;opacity:.8">Feature film</div>
+          <div class="title" style="font-size:7.4cqw">Life of Jesus (Gospel of John)</div>
+          <div class="row" style="justify-content:space-between;margin-top:1.6cqw">
+            <div class="pill" style="background:var(--app-red);padding:3cqw 7cqw;font-weight:700;font-size:4.4cqw">Watch Now</div>
+            <div class="circle ${g ? "glass dark" : "flat50"}">${icon("mute")}</div>
+          </div>
+          <div class="row" style="justify-content:center;gap:1.4cqw;margin-top:2cqw">
+            ${[0, 1, 2, 3, 4, 5].map((i) => `<i style="display:block;height:1.4cqw;border-radius:99px;width:${i === 1 ? 5 : 1.4}cqw;background:rgba(255,255,255,${i === 1 ? 0.9 : 0.4})"></i>`).join("")}
+          </div>
+        </div>
+        <div class="abs" style="left:6cqw;right:0;top:136cqw;display:flex;gap:3cqw">
+          ${[
+            ["#5e7c8f", "#26394a"],
+            ["#9b6a4f", "#3b261c"],
+            ["#6f8a5c", "#2c3a24"],
+          ]
+            .map(
+              ([a, b]) => `
+            <div style="display:grid;gap:1.6cqw;width:36cqw;flex:none"><div class="thumb" style="height:21cqw;background:linear-gradient(135deg,${a},${b})"></div><div class="line" style="width:80%"></div></div>`,
+            )
+            .join("")}
+        </div>
+        <div class="abs" style="left:6cqw;top:166cqw;font-weight:700;font-size:5cqw">Discover the full story</div>
+        ${tabs("home")}${homeInd}`
+          },
+
+          mini(m) {
+            const g = m === "glass"
+            const btn = (id) =>
+              g
+                ? `<div class="circle glass dark" style="width:9cqw;height:9cqw;font-size:4.4cqw">${icon(id, id === "play" || id === "pause" ? "fill" : "")}</div>`
+                : `<div style="width:9cqw;height:9cqw;display:grid;place-items:center;font-size:5cqw;filter:drop-shadow(0 .4cqw .8cqw rgba(0,0,0,.7))">${icon(id, id === "play" || id === "pause" ? "fill" : "")}</div>`
+            return `${status}
+        <div class="abs scene-dusk" style="left:0;right:0;top:0;height:110cqw"></div>
+        <div class="abs" style="left:0;right:0;top:0;height:112cqw;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,var(--app-ground) 100%)"></div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:78cqw"><div class="title" style="font-size:7cqw">Life of Jesus (Gospel of John)</div></div>
+        <div class="abs" style="left:6cqw;right:0;top:118cqw;display:flex;gap:3cqw">
+          ${[
+            ["#5e7c8f", "#26394a"],
+            ["#9b6a4f", "#3b261c"],
+            ["#6f8a5c", "#2c3a24"],
+          ]
+            .map(
+              ([a, b]) =>
+                `<div class="thumb" style="width:36cqw;height:21cqw;flex:none;background:linear-gradient(135deg,${a},${b})"></div>`,
+            )
+            .join("")}
+        </div>
+        <div class="abs scene-sea" style="right:4.5cqw;bottom:23cqw;width:52cqw;height:29.25cqw;border-radius:3.6cqw;overflow:hidden;box-shadow:0 2cqw 6cqw rgba(0,0,0,.55);z-index:5">
+          <div class="abs" style="inset:0;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,0) 40%,rgba(0,0,0,.25))"></div>
+          <div class="abs" style="right:2cqw;top:2cqw">${btn("x")}</div>
+          <div class="abs" style="left:50%;top:50%;transform:translate(-50%,-50%)">${btn("pause")}</div>
+          <div class="abs" style="left:0;right:0;bottom:0;height:0.9cqw;background:rgba(255,255,255,.3)"><div style="width:38%;height:100%;background:var(--app-red)"></div></div>
+        </div>
+        ${tabs("home")}${homeInd}`
+          },
+
+          search(m) {
+            const g = m === "glass"
+            const cards = `<div class="abs" style="left:6cqw;right:6cqw;top:${g ? 26 : 46}cqw;display:grid;grid-template-columns:1fr 1fr;gap:3cqw">
+          ${[
+            ["Jesus", "#7b4b3a", "#2c1b16"],
+            ["Christmas", "#3e5b78", "#18222e"],
+            ["Prayer", "#6a7b4b", "#262c1b"],
+            ["Hope", "#8a6a3a", "#32261a"],
+            ["Healing", "#5a4b7b", "#211b2c"],
+            ["Easter", "#7b3a4b", "#2c161b"],
+            ["Family", "#4b7b6a", "#1b2c26"],
+            ["Grace", "#7b6a4b", "#2c261b"],
+          ]
+            .map(
+              ([t, a, b]) => `
+            <div style="height:20cqw;border-radius:3cqw;padding:2.6cqw;display:flex;align-items:flex-end;font-weight:700;font-size:3.8cqw;background:linear-gradient(135deg,${a},${b})">${t}</div>`,
+            )
+            .join("")}
+        </div>`
+            if (!g) {
+              return `${status}
+          <div class="abs" style="left:6cqw;top:16cqw;font-weight:800;font-size:8cqw">Search</div>
+          <div class="abs pill solid" style="left:6cqw;right:6cqw;top:30cqw;border-radius:3cqw;padding:2.8cqw 3.6cqw;color:var(--app-muted);font-size:3.9cqw">${icon("search")}Videos, topics, people</div>
+          ${cards}${tabs("search")}${homeInd}`
+            }
+            return `${status}
+        <div class="abs" style="left:6cqw;top:14cqw;font-weight:800;font-size:8cqw">Search</div>
+        ${cards}
+        <div class="abs" style="left:0;right:0;bottom:0;height:40cqw;background:linear-gradient(180deg,rgba(28,25,23,0),rgba(28,25,23,.85))"></div>
+        <div class="abs circle glass dark" style="left:4.5cqw;bottom:4cqw;width:15cqw;height:15cqw;font-size:6cqw;z-index:4">${icon("home")}</div>
+        <div class="abs pill glass dark" style="left:22cqw;right:4.5cqw;bottom:4cqw;height:15cqw;padding:0 4.4cqw;color:rgba(255,255,255,.75);font-size:3.9cqw;z-index:4">${icon("search")}Videos, topics, people</div>
+        ${homeInd}`
+          },
+
+          downloads(m) {
+            const g = m === "glass"
+            const bar = g
+              ? `${back(14)}<div class="abs" style="left:6cqw;top:28cqw;font-weight:800;font-size:8cqw">Downloads</div>`
+              : `<div class="abs" style="left:0;right:0;top:0;height:27cqw;background:var(--app-ground);z-index:3"></div>
+           <div class="abs" style="left:4cqw;top:14cqw;font-size:6cqw;color:var(--app-red);z-index:4">${icon("back")}</div>
+           <div class="abs" style="left:0;right:0;top:15cqw;text-align:center;font-weight:700;font-size:4.6cqw;z-index:4">Downloads</div>`
+            const top = g ? 44 : 32
+            return `${status}${bar}
+        <div class="abs" style="left:6cqw;right:6cqw;top:${top}cqw;display:grid;gap:4cqw">
+          <div class="small" style="display:flex;justify-content:space-between"><span>6 downloads · 812 MB</span><span style="color:var(--app-red);font-weight:600">Select</span></div>
+          ${[
+            ["The Birth of Jesus", "#8a6a4c", "#3b2c22"],
+            ["LUMO · John 1", "#4b6b7d", "#1f2e38"],
+            ["Magdalena", "#7b5a7e", "#2d2232"],
+            ["JESUS", "#6d7b4b", "#2a3020"],
+            ["Considering Christmas", "#8c5a4a", "#32211b"],
+            ["The Hope", "#5a6d8c", "#1f2632"],
+          ]
+            .map(
+              ([t, a, b]) => `
+            <div class="row"><div class="thumb" style="width:28cqw;height:16cqw;background:linear-gradient(135deg,${a},${b})"></div>
+            <div style="display:grid;gap:1cqw;flex:1;min-width:0"><div style="font-weight:600;font-size:3.9cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</div><div class="small">English · 128 MB</div></div>
+            <div style="font-size:5cqw;color:var(--app-muted)">${icon("dots")}</div></div>`,
+            )
+            .join("")}
+        </div>
+        <div class="abs pill ${g ? "glass dark" : "solid"}" style="left:5cqw;right:5cqw;bottom:9cqw;border-radius:3.6cqw;padding:3.4cqw 4cqw;justify-content:space-between;font-size:3.8cqw;z-index:4">
+          <span>Saved to Files</span><span style="font-weight:700;color:${g ? "#fff" : "var(--app-red)"}">Open</span>
+        </div>
+        ${homeInd}`
+          },
+
+          nsheet(m) {
+            const g = m === "glass"
+            const langs = [
+              "English",
+              "Español (Latinoamérica)",
+              "Français",
+              "Kiswahili",
+              "हिन्दी",
+              "العربية",
+            ]
+            const sheetStyle = g
+              ? `left:2.2cqw;right:2.2cqw;bottom:2.2cqw;border-radius:11cqw;`
+              : `left:0;right:0;bottom:0;border-radius:5.3cqw 5.3cqw 0 0;background:var(--app-ground);`
+            return `${status}
+        <div class="abs scene-sea" style="left:0;right:0;top:11cqw;height:56.25cqw"></div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:72cqw;display:grid;gap:2cqw"><div class="title">The Birth of Jesus</div><div class="small">English · 1 h 4 min</div></div>
+        <div class="abs" style="inset:0;background:rgba(0,0,0,${g ? 0.18 : 0.4});z-index:5"></div>
+        <div class="abs ${g ? "glass dark" : ""}" style="${sheetStyle}height:132cqw;z-index:6;padding:3cqw 6cqw 0;overflow:hidden">
+          <div style="width:10cqw;height:1.2cqw;border-radius:99px;background:rgba(255,255,255,.4);margin:0 auto 4cqw"></div>
+          <div style="font-weight:700;font-size:5cqw;text-align:center;margin-bottom:4cqw">Audio language</div>
+          <div class="pill" style="width:100%;border-radius:3cqw;padding:2.6cqw 3.4cqw;margin-bottom:3cqw;color:var(--app-muted);font-size:3.8cqw;background:${g ? "rgba(255,255,255,.12)" : "var(--app-surface)"}">${icon("search")}Search languages</div>
+          ${langs.map((l, i) => `<div class="row" style="justify-content:space-between;padding:3cqw 0;border-bottom:1px solid rgba(255,255,255,${g ? 0.14 : 0.08});font-size:4cqw"><span>${l}</span>${i === 0 ? `<span style="color:var(--app-red);font-size:5cqw">${icon("check")}</span>` : ""}</div>`).join("")}
+        </div>`
+          },
+
+          jsheet(m) {
+            const g = m === "glass"
+            const rows = [
+              ["Playback speed", "Normal"],
+              ["Quality", "Auto"],
+              ["Report a problem with this video", ""],
+            ]
+            return `${status}
+        <div class="abs scene-meadow" style="left:0;right:0;top:11cqw;height:56.25cqw"></div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:72cqw;display:grid;gap:2cqw"><div class="title">Creation</div><div class="small">English · 4 min</div></div>
+        <div class="abs" style="inset:0;background:rgba(0,0,0,.5);z-index:5"></div>
+        <div class="abs ${g ? "glass dark" : ""}" style="${g ? "left:2.2cqw;right:2.2cqw;bottom:2.2cqw;border-radius:9cqw;" : "left:0;right:0;bottom:0;border-radius:5cqw 5cqw 0 0;background:var(--app-ground);"}z-index:6;padding:5cqw 6cqw 9cqw">
+          <div style="font-weight:700;font-size:5cqw;margin-bottom:3cqw">Settings</div>
+          ${rows.map(([a, b]) => `<div class="row" style="justify-content:space-between;padding:3.4cqw 0;border-bottom:1px solid rgba(255,255,255,${g ? 0.14 : 0.08});font-size:4cqw"><span>${a}</span><span class="small" style="font-size:3.8cqw">${b}${b ? " ›" : ""}</span></div>`).join("")}
+        </div>`
+          },
+
+          sdui() {
+            return `${status}
+        <div class="abs" style="left:0;right:0;top:11cqw;height:13cqw;background:var(--app-ground);z-index:3"></div>
+        <div class="abs circle glass dark" style="left:4cqw;top:12cqw;width:10.5cqw;height:10.5cqw;font-size:5.4cqw;color:var(--app-red);z-index:4">${icon("back")}</div>
+        <div class="abs scene-dusk" style="left:0;right:0;top:25cqw;height:56.25cqw"></div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:86cqw;display:grid;gap:2cqw"><div class="title">LUMO · The Gospel of John</div><div class="small">22 episodes</div></div>
+        <div class="abs" style="left:6cqw;right:6cqw;top:106cqw;display:grid;gap:3.6cqw">
+          ${[
+            ["#8a6a4c", "#3b2c22"],
+            ["#4b6b7d", "#1f2e38"],
+            ["#7b5a7e", "#2d2232"],
+            ["#6d7b4b", "#2a3020"],
+            ["#8c5a4a", "#32211b"],
+          ]
+            .map(
+              ([a, b], i) => `
+            <div class="row"><div class="thumb" style="width:30cqw;height:17cqw;background:linear-gradient(135deg,${a},${b})"></div>
+            <div style="display:grid;gap:1.6cqw;flex:1"><div class="line" style="width:${82 - i * 5}%"></div><div class="line m" style="width:48%"></div></div></div>`,
+            )
+            .join("")}
+        </div>
+        ${homeInd}`
+          },
+        }
+
+        document.querySelectorAll(".scr[data-screen]").forEach((el) => {
+          const draw = S[el.dataset.screen]
+          if (draw) el.innerHTML = draw(el.dataset.mode)
+        })
+      })()
+    </script>
+  </body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "productionSourceInvoked": false,
+  "port": 55439,
+  "exactForwardPid": 2484379,
+  "identityVerified": true,
+  "listenerAbsent": true,
+  "rootCause": "Railway SSH child created a separate process group, outside the original watchdog group"
+}

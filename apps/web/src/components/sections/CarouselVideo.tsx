@@ -2,12 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import videojs from "video.js"
-import type Player from "video.js/dist/types/player"
-import "video.js/dist/video-js.css"
-import type { FragmentOf } from "@forge/graphql"
+import MuxVideo from "@forge/video-player/mux-video"
+import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
+import { useTranslations } from "next-intl"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
+import { formatDuration } from "@/lib/format-duration"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
-import { VIDEO_JS_OPTIONS, formatTime } from "./Video"
 import {
   Carousel,
   CarouselContent,
@@ -16,10 +19,20 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel"
 import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { cn } from "@/lib/utils"
+import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoCarouselFragment }
 
@@ -31,91 +44,176 @@ type CarouselItemData = NonNullable<
   NonNullable<FragmentOf<typeof videoCarouselFragment>["items"]>[number]
 >
 
-function CarouselVideoPlayer({
+function FullscreenIcon({ isFullscreen }: { isFullscreen: boolean }) {
+  return isFullscreen ? (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+    </svg>
+  ) : (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+    </svg>
+  )
+}
+
+function MutedCenterIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-10 w-10"
+      aria-hidden
+    >
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  )
+}
+
+function VolumeOnIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-5 w-5"
+      aria-hidden
+    >
+      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+    </svg>
+  )
+}
+
+function PlayIcon({ isPlaying }: { isPlaying: boolean }) {
+  return isPlaying ? (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-6 w-6"
+      aria-hidden
+    >
+      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+    </svg>
+  ) : (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="h-6 w-6"
+      aria-hidden
+    >
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  )
+}
+
+function MuxBackedCarouselVideoPlayer({
   src,
   poster,
 }: {
   src: string
   poster?: string
 }) {
+  const t = useTranslations("HeroPlayerControls")
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<Player | null>(null)
+  const {
+    media: video,
+    mediaRef: videoRef,
+    setMediaRef: setVideoRef,
+  } = useWatchModalMediaRef<HTMLVideoElement>(src)
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
-  const durationRef = useRef(0)
-  const userPausedRef = useRef(false)
+  const lastAppliedSrcRef = useRef<string | null>(null)
 
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const formatTime = useCallback(
+    (seconds: number) =>
+      Number.isFinite(seconds) && seconds >= 0
+        ? formatDuration(seconds)
+        : "0:00",
+    [],
+  )
 
+  const syncPlaybackUi = useCallback(() => {
+    const video = videoRef.current
+    if (!video) return
+    const currentTime = video.currentTime ?? 0
+    const duration = Number.isFinite(video.duration) ? video.duration : 0
+    if (sliderRef.current) {
+      sliderRef.current.max = String(duration)
+      sliderRef.current.value = String(currentTime)
+    }
+    if (timeRef.current) {
+      timeRef.current.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`
+    }
+  }, [formatTime, videoRef])
+
+  // Mirror media events to local state.
   useEffect(() => {
-    if (!videoRef.current) return
-
-    const player = videojs(videoRef.current, {
-      ...VIDEO_JS_OPTIONS,
-      poster,
-    })
-    playerRef.current = player
-
-    player.ready(() => {
-      void player.src({ type: "application/x-mpegURL", src })
-
-      player.on("durationchange", () => {
-        const dur = player.duration() ?? 0
-        durationRef.current = dur
-        if (sliderRef.current) sliderRef.current.max = String(dur)
-      })
-
-      player.on("play", () => setIsPlaying(true))
-      player.on("pause", () => setIsPlaying(false))
-      player.on("volumechange", () => setIsMuted(player.muted() ?? true))
-    })
-
+    if (!video) return
+    const onPlay = () => setIsPlaying(true)
+    const onPause = () => setIsPlaying(false)
+    const onVolume = () => setIsMuted(video.muted)
+    const onTime = () => syncPlaybackUi()
+    const onDuration = () => syncPlaybackUi()
+    video.addEventListener("play", onPlay)
+    video.addEventListener("pause", onPause)
+    video.addEventListener("volumechange", onVolume)
+    video.addEventListener("timeupdate", onTime)
+    video.addEventListener("durationchange", onDuration)
     return () => {
-      if (playerRef.current) {
-        playerRef.current.dispose()
-        playerRef.current = null
-      }
+      video.removeEventListener("play", onPlay)
+      video.removeEventListener("pause", onPause)
+      video.removeEventListener("volumechange", onVolume)
+      video.removeEventListener("timeupdate", onTime)
+      video.removeEventListener("durationchange", onDuration)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- initialize once on mount
-  }, [])
+  }, [syncPlaybackUi, video])
 
+  // Auto-play on src change (preserves the videojs path's
+  // `playOnSourceChange: true`).
   useEffect(() => {
-    const p = playerRef.current
-    if (!p || !src) return
-    p.src({ type: "application/x-mpegURL", src })
-    if (sliderRef.current) sliderRef.current.value = "0"
-    if (timeRef.current) timeRef.current.textContent = "0:00 / 0:00"
-    durationRef.current = 0
-    void p.play()
-  }, [src])
-
-  useEffect(() => {
-    let rafId: number
-    const tick = () => {
-      const p = playerRef.current
-      if (p && !p.paused()) {
-        const t = p.currentTime() ?? 0
-        const d = p.duration() ?? durationRef.current
-        if (sliderRef.current) sliderRef.current.value = String(t)
-        if (timeRef.current) {
-          timeRef.current.textContent = `${formatTime(t)} / ${formatTime(d)}`
-        }
-      }
-      rafId = requestAnimationFrame(tick)
-    }
-    if (isPlaying) {
-      rafId = requestAnimationFrame(tick)
-    }
-    return () => cancelAnimationFrame(rafId)
-  }, [isPlaying])
+    if (!video) return
+    if (lastAppliedSrcRef.current === src) return
+    lastAppliedSrcRef.current = src
+    void video.play().catch(() => {
+      /* ignore — autoplay may be blocked */
+    })
+  }, [src, video])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      const el = containerRef.current
-      setIsFullscreen(el != null && document.fullscreenElement === el)
+      const element = containerRef.current
+      setIsFullscreen(element != null && document.fullscreenElement === element)
     }
     document.addEventListener("fullscreenchange", handleFullscreenChange)
     return () =>
@@ -123,37 +221,41 @@ function CarouselVideoPlayer({
   }, [])
 
   const handlePlayPause = useCallback(() => {
-    const p = playerRef.current
-    if (!p) return
-    if (p.paused()) {
-      userPausedRef.current = false
-      void p.play()
-    } else {
-      userPausedRef.current = true
-      p.pause()
+    const video = videoRef.current
+    if (!video) return
+    if (video.paused) {
+      void video.play().catch(() => {
+        /* ignore */
+      })
+      return
     }
-  }, [])
+    video.pause()
+  }, [videoRef])
 
   const handleMuteToggle = useCallback(() => {
-    const p = playerRef.current
-    if (!p) return
-    p.muted(!p.muted())
-  }, [])
+    const video = videoRef.current
+    if (!video) return
+    video.muted = !video.muted
+  }, [videoRef])
 
-  const handleSeek = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = playerRef.current
-    if (!p) return
-    p.currentTime(Number(e.target.value))
-  }, [])
+  const handleSeek = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const video = videoRef.current
+      if (!video) return
+      video.currentTime = Number(event.target.value)
+      syncPlaybackUi()
+    },
+    [syncPlaybackUi, videoRef],
+  )
 
   const handleFullscreen = useCallback(() => {
-    const el = containerRef.current
-    if (!el) return
-    if (document.fullscreenElement === el) {
+    const element = containerRef.current
+    if (!element) return
+    if (document.fullscreenElement === element) {
       void document.exitFullscreen()
-    } else {
-      void el.requestFullscreen()
+      return
     }
+    void element.requestFullscreen()
   }, [])
 
   return (
@@ -170,12 +272,19 @@ function CarouselVideoPlayer({
               handlePlayPause()
             }
           }}
-          aria-label={isPlaying ? "Pause video" : "Play video"}
+          aria-label={isPlaying ? t("pause") : t("play")}
         >
-          <video
-            className="video-js vjs-fluid vjs-default-skin absolute inset-0 h-full w-full object-cover"
-            ref={videoRef}
+          <MuxVideo
+            ref={setVideoRef}
+            src={src}
+            poster={poster}
+            muted
             playsInline
+            // Carousel inline player excluded from full Mux Data v1 (cost
+            // control). Default applied in MuxVideo wrapper; restated here
+            // for clarity at the call site.
+            disableTracking
+            className="absolute inset-0 h-full w-full object-cover"
           />
         </div>
 
@@ -183,37 +292,9 @@ function CarouselVideoPlayer({
           type="button"
           onClick={handleFullscreen}
           className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
         >
-          {isFullscreen ? (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden
-            >
-              <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-            </svg>
-          ) : (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-              aria-hidden
-            >
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-            </svg>
-          )}
+          <FullscreenIcon isFullscreen={isFullscreen} />
         </button>
 
         {isMuted && (
@@ -221,23 +302,9 @@ function CarouselVideoPlayer({
             type="button"
             onClick={handleMuteToggle}
             className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
-            aria-label="Unmute video"
+            aria-label={t("unmute")}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-10 w-10"
-              aria-hidden
-            >
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-              <line x1="23" y1="9" x2="17" y2="15" />
-              <line x1="17" y1="9" x2="23" y2="15" />
-            </svg>
+            <MutedCenterIcon />
           </button>
         )}
 
@@ -246,17 +313,9 @@ function CarouselVideoPlayer({
             type="button"
             onClick={handleMuteToggle}
             className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-            aria-label="Mute video"
+            aria-label={t("mute")}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="h-5 w-5"
-              aria-hidden
-            >
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-            </svg>
+            <VolumeOnIcon />
           </button>
         )}
 
@@ -265,29 +324,9 @@ function CarouselVideoPlayer({
             type="button"
             onClick={handlePlayPause}
             className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
-            aria-label={isPlaying ? "Pause video" : "Play video"}
+            aria-label={isPlaying ? t("pause") : t("play")}
           >
-            {isPlaying ? (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6"
-                aria-hidden
-              >
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            ) : (
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="h-6 w-6"
-                aria-hidden
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
+            <PlayIcon isPlaying={isPlaying} />
           </button>
 
           <input
@@ -299,12 +338,12 @@ function CarouselVideoPlayer({
             step="any"
             onChange={handleSeek}
             className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label="Video progress"
+            aria-label={t("seek")}
           />
 
           <span
             ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
+            className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
           >
             0:00 / 0:00
           </span>
@@ -312,6 +351,16 @@ function CarouselVideoPlayer({
       </div>
     </div>
   )
+}
+
+function CarouselVideoPlayer({
+  src,
+  poster,
+}: {
+  src: string
+  poster?: string
+}) {
+  return <MuxBackedCarouselVideoPlayer src={src} poster={poster} />
 }
 
 function ThumbnailCard({
@@ -323,6 +372,8 @@ function ThumbnailCard({
   isSelected: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("WatchHome")
+  const videoLabels = useTranslations("VideoLabels")
   const imageUrl = item.imageUrl ?? item.video?.images?.[0]?.url
   const title = item.titleOverride ?? item.video?.title ?? ""
 
@@ -337,10 +388,11 @@ function ThumbnailCard({
           onClick()
         }
       }}
-      aria-label={`Play ${title}`}
-      className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
-        isSelected ? "outline-4 outline-white" : ""
-      }`}
+      aria-label={t("showVideo", { title })}
+      className={cn(
+        "group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
       style={{
         backgroundColor: item.backgroundColor ?? "#1a1a1a",
       }}
@@ -355,7 +407,7 @@ function ThumbnailCard({
         />
       )}
 
-      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-red-500">
+      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-brand-red">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-20 w-20"
@@ -367,22 +419,28 @@ function ThumbnailCard({
         </svg>
       </div>
 
+      <VideoThumbnailInteractionFrame
+        data-testid="carousel-video-thumbnail-frame"
+        interactive={!isSelected}
+        visible={isSelected}
+      />
+
       <div className="p-4">
-        <span className="text-xs font-medium tracking-wider text-white/60 uppercase">
-          Short Video
-        </span>
-        <h3 className="line-clamp-3 text-base leading-tight font-bold text-white/90">
-          {title}
-        </h3>
+        <VideoThumbnailEyebrow>
+          {videoLabels("shortFilm")}
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle lines={3}>{title}</VideoThumbnailTitle>
       </div>
     </div>
   )
 }
 
 export function CarouselVideo({ data }: CarouselVideoProps) {
+  const t = useTranslations("WatchHome")
   const { title, subtitle, carouselDescription, items } = data
   const validItems = items?.filter(
-    (item): item is NonNullable<typeof item> => item != null,
+    (item: LegacyFragmentValue): item is NonNullable<typeof item> =>
+      item != null,
   )
 
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -401,9 +459,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
   return (
     <div className="flex w-full flex-col gap-8">
       {(subtitle || title || carouselDescription) && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1" data-testid="carousel-copy">
           {subtitle && (
-            <h4 className="mb-0 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <h4 className="mb-0 text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </h4>
           )}
@@ -421,9 +479,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         </div>
       )}
 
-      {selectedItem.streamingUrl && (
+      {resolvedBlockStreamingUrl(selectedItem) && (
         <CarouselVideoPlayer
-          src={selectedItem.streamingUrl}
+          src={resolvedBlockStreamingUrl(selectedItem) as string}
           poster={posterUrl}
         />
       )}
@@ -437,7 +495,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           className="w-full"
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validItems.map((item, index) => (
+            {validItems.map((item: LegacyFragmentValue, index: number) => (
               <CarouselItem
                 key={item.id ?? index}
                 className="max-w-[200px] pl-5"
@@ -453,12 +511,8 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
-          {validItems.length > 3 && (
-            <>
-              <CarouselPrevious className="hidden md:flex" />
-              <CarouselNext className="hidden md:flex" />
-            </>
-          )}
+          <CarouselPrevious label={t("previousVideoPreview")} />
+          <CarouselNext label={t("nextVideoPreview")} />
         </Carousel>
       </div>
     </div>

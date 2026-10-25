@@ -1,0 +1,2 @@
+manifest_id,scope,state,current_pointers,unexpired,empty,with_durable_interests,with_session_intent,oldest_published,newest_published
+multi-interest-profile-shadow-v1,durable,published,118301,118301,117094,1170,55,2026-08-31T13:35:09.613Z,2026-09-15T02:03:52.536Z

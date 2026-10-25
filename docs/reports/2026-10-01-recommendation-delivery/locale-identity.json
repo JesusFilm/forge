@@ -1,0 +1,175 @@
+[
+  [],
+  [
+    {
+      "slug": "gbii",
+      "bcp47": "ggb",
+      "iso3": "ggb",
+      "english_name": "Gbii"
+    },
+    {
+      "slug": "kwanyama",
+      "bcp47": "kj",
+      "iso3": "kua",
+      "english_name": "Kwanyama"
+    },
+    {
+      "slug": "mandarin-china",
+      "bcp47": "zh",
+      "iso3": "cmn",
+      "english_name": "Mandarin, China"
+    },
+    {
+      "slug": "romanian",
+      "bcp47": "ro",
+      "iso3": "ron",
+      "english_name": "Romanian"
+    },
+    {
+      "slug": "telugu",
+      "bcp47": "te",
+      "iso3": "tel",
+      "english_name": "Telugu"
+    }
+  ],
+  [
+    {
+      "locale": "ar",
+      "language_slug": "arabic-modern-standard",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "bn",
+      "language_slug": "bangla-2",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "de",
+      "language_slug": "german-standard",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "en",
+      "language_slug": "english",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "es",
+      "language_slug": "spanish-latin-american",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "fa",
+      "language_slug": "farsi-western",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "fil",
+      "language_slug": "tagalog",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "fr",
+      "language_slug": "french",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "he",
+      "language_slug": "hebrew",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "hi",
+      "language_slug": "hindi",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "id",
+      "language_slug": "indonesian-yesus",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "ja",
+      "language_slug": "japanese",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "kk",
+      "language_slug": "kazakh",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "ko",
+      "language_slug": "korean",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "mn",
+      "language_slug": "mongolian-halh",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "pt",
+      "language_slug": "portuguese-brazil",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "ru",
+      "language_slug": "russian",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "th",
+      "language_slug": "thai",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "tr",
+      "language_slug": "turkish",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "ur",
+      "language_slug": "urdu",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "vi",
+      "language_slug": "vietnamese",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "zh-hans",
+      "language_slug": "chinese-simplified",
+      "status": "published",
+      "rows": "1"
+    },
+    {
+      "locale": "zh-hant",
+      "language_slug": "chinese-traditional",
+      "status": "published",
+      "rows": "1"
+    }
+  ]
+]

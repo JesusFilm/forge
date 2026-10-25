@@ -1,37 +1,52 @@
-// CMS HTTP client — shared helper for calling Strapi REST endpoints.
-// Authenticated with STRAPI_API_TOKEN. Used by backfill services.
+export type CmsTokenScope = "default" | "embedding_sync" | "embedding_override"
 
-import { env } from "@/config/env"
-
-export async function cmsGet<T>(path: string): Promise<T> {
-  const response = await fetch(`${env.STRAPI_URL}/api${path}`, {
-    headers: { Authorization: `Bearer ${env.STRAPI_API_TOKEN}` },
-    signal: AbortSignal.timeout(30_000),
-  })
-
-  if (!response.ok) {
-    const body = (await response.text()).slice(0, 500)
-    throw new Error(`CMS GET ${path} returned ${response.status}: ${body}`)
-  }
-
-  return response.json() as Promise<T>
+export type CmsRequestOptions = {
+  token?: string
+  tokenScope?: CmsTokenScope
 }
 
-export async function cmsPost<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${env.STRAPI_URL}/api${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${env.STRAPI_API_TOKEN}`,
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60_000),
-  })
-
-  if (!response.ok) {
-    const body = (await response.text()).slice(0, 500)
-    throw new Error(`CMS POST ${path} returned ${response.status}: ${body}`)
+export class CmsHttpError extends Error {
+  constructor(
+    readonly method: "GET" | "POST",
+    readonly path: string,
+    readonly status: number,
+    readonly bodyText: string,
+    readonly responseData?: unknown,
+  ) {
+    super(`CMS ${method} ${path} returned ${status}: ${bodyText}`)
+    this.name = "CmsHttpError"
   }
+}
 
-  return response.json() as Promise<T>
+export class CmsConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "CmsConfigurationError"
+  }
+}
+
+async function cmsRequest<T>(
+  method: "GET" | "POST",
+  path: string,
+  _body?: unknown,
+  _options?: CmsRequestOptions,
+): Promise<T> {
+  throw new CmsConfigurationError(
+    `The Strapi CMS HTTP client has been removed; cannot ${method} ${path}`,
+  )
+}
+
+export async function cmsGet<T>(
+  path: string,
+  options?: CmsRequestOptions,
+): Promise<T> {
+  return cmsRequest<T>("GET", path, undefined, options)
+}
+
+export async function cmsPost<T>(
+  path: string,
+  body: unknown,
+  options?: CmsRequestOptions,
+): Promise<T> {
+  return cmsRequest<T>("POST", path, body, options)
 }

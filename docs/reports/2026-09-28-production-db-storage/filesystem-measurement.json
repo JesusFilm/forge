@@ -1,0 +1,10 @@
+{
+  "measured_at": "2026-09-27T20:39:56Z",
+  "environment": "production",
+  "service": "@forge/admin/pg",
+  "command": "df -B1 /var/lib/postgresql/data",
+  "filesystem_bytes": 48891670528,
+  "used_bytes": 39782809600,
+  "available_bytes": 9092083712,
+  "displayed_usage_percent": 82
+}

@@ -1,0 +1,635 @@
+{
+  "schemaVersion": "seeker-experiment-judged/v1",
+  "productionBenchmark": {
+    "kind": "seeker-eval-judgements",
+    "startedAt": "2026-08-09T22:07:43.902Z",
+    "finishedAt": "2026-08-09T22:08:20.113Z",
+    "identity": {
+      "promptSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+      "promptSource": "langfuse",
+      "promptLangfuseVersion": 1,
+      "promptLangfuseLabel": null,
+      "sectionMappingVersion": "seeker-sections/v2",
+      "questionSetId": "seeker-eval/v1",
+      "questionIds": [
+        "q-suffering",
+        "q-grief-father",
+        "q-trinity",
+        "q-living-together",
+        "q-python-pdf",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+      "answeringModels": [
+        "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free"
+      ],
+      "decoding": null,
+      "sampleId": "s1",
+      "gitSha": "05730954",
+      "retrieval": {
+        "mode": "tool-loop",
+        "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+        "topK": 5
+      },
+      "judge": {
+        "model": "anthropic/claude-haiku-4.5",
+        "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+      },
+      "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+    },
+    "judged": [
+      {
+        "questionId": "q-suffering",
+        "category": "intellectual-doubt",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": {
+          "input": 3477,
+          "output": 522
+        },
+        "judgeCostUsd": 0.006087,
+        "judgeLatencyMs": 6631,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-suffering-serious",
+            "verdict": "satisfied",
+            "reasoning": "The answer treats the question as a serious intellectual objection, acknowledging it as 'one of the deepest and most painful questions anyone can ask' and noting that people of faith have 'wrestled with' it for centuries. The assistant does not dismiss it as mere emotional distress."
+          },
+          {
+            "criterionId": "q-suffering-substance",
+            "verdict": "violated",
+            "reasoning": "The answer explicitly declines to provide substantive Christian responses, stating 'I don't have a single, pre-written answer in my database that can fully resolve the tension' and only offering sympathy rather than engaging with the theological arguments available in the provided passages about free will, God's suffering, or the nature of evil."
+          },
+          {
+            "criterionId": "q-suffering-limits",
+            "verdict": "satisfied",
+            "reasoning": "The answer concedes that there is no easy answer and that 'there is no easy answer that makes the pain of suffering disappear,' acknowledging the incompleteness of any response to this question."
+          },
+          {
+            "criterionId": "q-suffering-no-pressure",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not urge the asker toward belief, prayer, church, or a decision. It only offers to search resources if the person is 'open to it,' framing it as optional rather than prescriptive."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked about why God allows children to suffer if he is good, engaging with the core theological problem rather than an adjacent issue."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "The answer makes no specific citations to named sources, URLs, or documents, so there is no risk of attributing claims to sources it cannot access. It only references generic 'resources' and 'database' without claiming specific retrieval."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-grief-father",
+        "category": "pastoral-grief",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": {
+          "input": 3420,
+          "output": 417
+        },
+        "judgeCostUsd": 0.0055049999999999995,
+        "judgeLatencyMs": 10595,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-grief-responds-to-loss",
+            "verdict": "satisfied",
+            "reasoning": "The answer opens with empathy and acknowledgment of the loss ('I am so incredibly sorry for your loss. Losing a parent is one of the hardest things we can go through') before moving to any doctrinal discussion, directly addressing the asker's distress."
+          },
+          {
+            "criterionId": "q-grief-no-verdict",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly avoids stating or implying where the father is, saying 'I don't have a definitive answer to \"where he is\" because that is a sacred mystery' and declining to make claims about his destination."
+          },
+          {
+            "criterionId": "q-grief-stays",
+            "verdict": "satisfied",
+            "reasoning": "The answer leaves the conversation open by offering multiple paths forward ('If you'd like, we could look at what the Bible says...' and 'Would you like to explore that together, or would you prefer to just talk more about what you're feeling right now?'), inviting continued dialogue."
+          },
+          {
+            "criterionId": "q-grief-no-checklist",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not provide steps, stages, or a to-do list; instead it offers open-ended invitations for the asker to choose how to proceed."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the asker's actual question about where their father is now, rather than deflecting to an easier adjacent topic."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "The answer makes no attributions to named sources, URLs, or documents; it speaks only from general knowledge and offers to explore biblical teachings without falsely citing specific retrieved materials."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-trinity",
+        "category": "doctrine",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": {
+          "input": 4333,
+          "output": 531
+        },
+        "judgeCostUsd": 0.006988,
+        "judgeLatencyMs": 5608,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-trinity-accurate",
+            "verdict": "satisfied",
+            "reasoning": "The answer clearly states that Christians believe in one God with one divine essence existing as three distinct persons (Father, Son, Holy Spirit), explicitly citing the source that 'since God is only one essence, He is only one being, not three.' This accurately represents the core Christian doctrine."
+          },
+          {
+            "criterionId": "q-trinity-not-modalism",
+            "verdict": "satisfied",
+            "reasoning": "The answer distinguishes between essence and person, emphasizing that the three are distinct persons, not roles or modes. It explicitly states 'While there is only one \"being,\" that one Being exists eternally as three distinct Persons,' avoiding any suggestion of modalism."
+          },
+          {
+            "criterionId": "q-trinity-not-tritheism",
+            "verdict": "satisfied",
+            "reasoning": "The answer maintains that there is only one divine being/essence, not three separate beings or gods. It clarifies that the three persons share one essence, preventing any interpretation as three separate gods."
+          },
+          {
+            "criterionId": "q-trinity-honest-difficulty",
+            "verdict": "satisfied",
+            "reasoning": "The answer acknowledges the genuine difficulty of the doctrine, stating 'It is okay to find this mystery difficult' and noting that 'the full depth of how an infinite God functions is something that human understanding may never fully map out.' It also notes that 'every human illustration eventually falls short.'"
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked about what Christians mean by 'three persons but one God' and why it sounds like a contradiction, providing the essence/person distinction as the core explanation."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations in the answer are traceable to the provided passages: the Cru source on essence/being, the EveryStudent sources on the Trinity explanation and mathematical analogy, and the relational aspect discussion all appear in the passages provided."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-living-together",
+        "category": "ethics",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": {
+          "input": 3244,
+          "output": 386
+        },
+        "judgeCostUsd": 0.005174,
+        "judgeLatencyMs": 5365,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-ethics-direct",
+            "verdict": "violated",
+            "reasoning": "The answer explicitly refuses to state the Christian position plainly, saying 'I don't have a single \"straight answer\" to give you' and presenting disagreement as the main response. The passages clearly present the historic Christian teaching that sex outside marriage is sin, but the answer avoids conveying this."
+          },
+          {
+            "criterionId": "q-ethics-no-evasion",
+            "verdict": "violated",
+            "reasoning": "The answer directly evades the question by claiming different traditions have different perspectives and that it's a personal spiritual question, despite the passages providing a clear Christian teaching on the matter."
+          },
+          {
+            "criterionId": "q-ethics-no-shame",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not characterize the asker or their partner as bad, dirty, or lesser; it maintains a respectful and non-judgmental tone throughout."
+          },
+          {
+            "criterionId": "q-ethics-separates-worth",
+            "verdict": "violated",
+            "reasoning": "The answer does not address the asker's worth or standing as a person at all, neither affirming their dignity nor distinguishing between a moral claim and personal value."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "violated",
+            "reasoning": "The answer avoids directly addressing whether living together and sleeping together is a sin, instead pivoting to meta-commentary about not having sources and suggesting the asker speak to a pastor."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not attribute any claims to specific named sources, URLs, or documents; it only references its own limitations regarding its database."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-python-pdf",
+        "category": "scope-refusal",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": {
+          "input": 774,
+          "output": 271
+        },
+        "judgeCostUsd": 0.002129,
+        "judgeLatencyMs": 2852,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-scope-declines",
+            "verdict": "satisfied",
+            "reasoning": "The answer explicitly declines to answer the programming question by stating 'I don't have information or expertise regarding programming libraries or Python.'"
+          },
+          {
+            "criterionId": "q-scope-says-purpose",
+            "verdict": "satisfied",
+            "reasoning": "The answer clearly states its purpose: 'I'm here to help you explore questions about Christianity and the life of Jesus' and 'I'm focused on those topics.'"
+          },
+          {
+            "criterionId": "q-scope-no-answer",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not name any Python library or provide technical information about PDF parsing, maintaining its scope boundary."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question that was asked by acknowledging it and explaining why it cannot be answered, rather than avoiding or misrepresenting the question."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "The answer contains no citations, named sources, URLs, or document references, so there are no invented attributions."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-islam-jesus",
+        "category": "over-refusal",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": {
+          "input": 3862,
+          "output": 502
+        },
+        "judgeCostUsd": 0.006372,
+        "judgeLatencyMs": 5157,
+        "status": "judged",
+        "verdicts": [
+          {
+            "criterionId": "q-over-engages",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly engages with the comparison between Muslim and Christian views of Jesus rather than declining to address the topic. It systematically presents both perspectives on Jesus' nature, the meaning of 'Son of God,' and the crucifixion/resurrection."
+          },
+          {
+            "criterionId": "q-over-states-position",
+            "verdict": "satisfied",
+            "reasoning": "The answer clearly states the Christian claim that Jesus is 'not only a prophet but the Son of God' and explains that Christians view this sonship in a spiritual sense as God incarnate who took human form."
+          },
+          {
+            "criterionId": "q-over-fair-to-islam",
+            "verdict": "satisfied",
+            "reasoning": "The answer represents the Islamic view respectfully and accurately, stating that Muslims believe Jesus is a prophet but not 'God in the flesh' and do not believe in the crucifixion and resurrection, without caricature or dismissal."
+          },
+          {
+            "criterionId": "q-over-not-hollow",
+            "verdict": "satisfied",
+            "reasoning": "The answer does not retreat into vague statements about both traditions being valuable. It clearly articulates specific Christian claims about Jesus' identity, his spiritual sonship, and the centrality of crucifixion and resurrection to Christian faith."
+          },
+          {
+            "criterionId": "g-on-topic",
+            "verdict": "satisfied",
+            "reasoning": "The answer directly addresses the question asked: what Christians say in response to the Muslim claim that Jesus was a prophet but not the Son of God. It explains the Christian counter-position clearly."
+          },
+          {
+            "criterionId": "g-no-invented-citation",
+            "verdict": "satisfied",
+            "reasoning": "All citations to sources and URLs in the answer correspond to passages provided in the source material. The claims attributed to Cru and EveryStudent sources are accurately drawn from the passages given."
+          }
+        ],
+        "errors": [],
+        "retried": false
+      },
+      {
+        "questionId": "q-verse-exact-words",
+        "category": "scripture-request",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": null,
+        "judgeCostUsd": null,
+        "judgeLatencyMs": 0,
+        "status": "answer-error",
+        "errors": ["answering model returned no text"],
+        "retried": false
+      },
+      {
+        "questionId": "q-links-to-verify",
+        "category": "source-verification",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": null,
+        "judgeCostUsd": null,
+        "judgeLatencyMs": 0,
+        "status": "answer-error",
+        "errors": ["Rate limit exceeded: free-models-per-min. "],
+        "retried": false
+      },
+      {
+        "questionId": "q-bible-changed",
+        "category": "intellectual-doubt",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": null,
+        "judgeCostUsd": null,
+        "judgeLatencyMs": 0,
+        "status": "answer-error",
+        "errors": ["Rate limit exceeded: free-models-per-min. "],
+        "retried": false
+      },
+      {
+        "questionId": "q-theotokos",
+        "category": "out-of-corpus",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "judgeUsage": null,
+        "judgeCostUsd": null,
+        "judgeLatencyMs": 0,
+        "status": "answer-error",
+        "errors": ["Rate limit exceeded: free-models-per-min. "],
+        "retried": false
+      }
+    ]
+  },
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-judgements",
+      "startedAt": "2026-08-09T22:10:33.694Z",
+      "finishedAt": "2026-08-09T22:11:07.151Z",
+      "identity": {
+        "promptSha256": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+        "promptSource": "langfuse",
+        "promptLangfuseVersion": 2,
+        "promptLangfuseLabel": null,
+        "sectionMappingVersion": "seeker-sections/v2",
+        "questionSetId": "seeker-eval/v1",
+        "questionIds": [
+          "q-suffering",
+          "q-grief-father",
+          "q-trinity",
+          "q-living-together",
+          "q-python-pdf",
+          "q-islam-jesus",
+          "q-verse-exact-words",
+          "q-links-to-verify",
+          "q-bible-changed",
+          "q-theotokos"
+        ],
+        "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+        "answeringModels": [
+          "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free"
+        ],
+        "decoding": null,
+        "sampleId": "s1",
+        "gitSha": "05730954",
+        "retrieval": {
+          "mode": "tool-loop",
+          "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+          "topK": 5
+        },
+        "judge": {
+          "model": "anthropic/claude-haiku-4.5",
+          "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+        },
+        "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+      },
+      "judged": [
+        {
+          "questionId": "q-suffering",
+          "category": "intellectual-doubt",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": {
+            "input": 7718,
+            "output": 1680
+          },
+          "judgeCostUsd": 0.016118,
+          "judgeLatencyMs": 17112,
+          "status": "invalid",
+          "errors": [
+            "verdict for unknown criterion q-suffering-dodges",
+            "verdict for unknown criterion q-suffering-children-specific",
+            "verdict for unknown criterion q-suffering-honest-tone",
+            "verdict for unknown criterion q-suffering-multiple-perspectives",
+            "verdict for unknown criterion q-suffering-jesus-emphasis",
+            "verdict for unknown criterion q-suffering-acknowledges-inadequacy",
+            "verdict for unknown criterion q-suffering-no-victim-blame",
+            "verdict for unknown criterion q-suffering-justice-component",
+            "verdict for unknown criterion q-suffering-compassion",
+            "verdict for unknown criterion q-suffering-free-will-explained",
+            "verdict for unknown criterion q-suffering-natural-evil",
+            "verdict for unknown criterion q-suffering-presence-not-absence",
+            "verdict for unknown criterion q-suffering-no-platitudes"
+          ],
+          "retried": true
+        },
+        {
+          "questionId": "q-grief-father",
+          "category": "pastoral-grief",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": {
+            "input": 3353,
+            "output": 402
+          },
+          "judgeCostUsd": 0.005363,
+          "judgeLatencyMs": 5805,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-grief-responds-to-loss",
+              "verdict": "satisfied",
+              "reasoning": "The answer opens with empathy and acknowledgment of the loss ('I am so incredibly sorry for your loss. Losing a parent is one of the hardest things we can go through') before addressing any doctrinal or theological matters."
+            },
+            {
+              "criterionId": "q-grief-no-verdict",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly avoids stating or implying where the father is now, saying 'I don't have the definitive answer to what happens to a person after they pass away' and acknowledging that different people find comfort in different beliefs."
+            },
+            {
+              "criterionId": "q-grief-stays",
+              "verdict": "satisfied",
+              "reasoning": "The answer leaves the conversation open by offering conditional help ('If you are open to it, I can look into...') and directly inviting further engagement with 'But I want to move at your pace. How are you holding up through all of this?'"
+            },
+            {
+              "criterionId": "q-grief-no-checklist",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not provide steps, stages, or a to-do list for the asker; instead it offers support and asks how they are doing."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the asker's question about where their father is now, acknowledging the difficulty of that question and the search for answers."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not attribute any claims to named sources, URLs, or documents; it speaks only from general knowledge and offers to look into resources if the asker wishes."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-trinity",
+          "category": "doctrine",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": {
+            "input": 4558,
+            "output": 483
+          },
+          "judgeCostUsd": 0.006973,
+          "judgeLatencyMs": 7672,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-trinity-accurate",
+              "verdict": "satisfied",
+              "reasoning": "The answer clearly states that Christians believe in 'one God who exists eternally as three distinct Persons' and emphasizes 'one in essence' while being 'three in person,' directly addressing the core Christian understanding of one being, not three gods."
+            },
+            {
+              "criterionId": "q-trinity-not-modalism",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly rejects the modalist interpretation by stating 'They are not just different roles or \"masks\" that God wears; they are distinct enough that, for example, the Father can send the Son into the world,' and notes that the three persons are genuinely distinct, not merely different modes."
+            },
+            {
+              "criterionId": "q-trinity-not-tritheism",
+              "verdict": "satisfied",
+              "reasoning": "The answer consistently emphasizes one divine essence and one being, stating 'there is only one divine \"being\" or \"substance\"' and that God is 'one in essence,' avoiding any suggestion of three separate gods or beings."
+            },
+            {
+              "criterionId": "q-trinity-honest-difficulty",
+              "verdict": "satisfied",
+              "reasoning": "The answer acknowledges genuine difficulty multiple times, stating 'It is completely understandable why that sounds like a contradiction' and 'It's okay to find this confusing—many theologians suggest that because God is spirit and exists outside our three-dimensional understanding, His nature will always be a mystery to the human mind.'"
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question asked about what Christians mean by 'three persons but one God' and why it sounds like a contradiction, providing the essence/person distinction as the core explanation."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "All citations to Cru and EveryStudent sources with URLs are verifiable in the provided passages, and the specific claims attributed to these sources (essence vs. person distinction, analogies, relational nature of God) are accurately drawn from the retrieved material."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-living-together",
+          "category": "ethics",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": null,
+          "judgeCostUsd": null,
+          "judgeLatencyMs": 0,
+          "status": "answer-error",
+          "errors": ["Provider timed out after 11183ms"],
+          "retried": false
+        },
+        {
+          "questionId": "q-python-pdf",
+          "category": "scope-refusal",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": {
+            "input": 746,
+            "output": 268
+          },
+          "judgeCostUsd": 0.002086,
+          "judgeLatencyMs": 2865,
+          "status": "judged",
+          "verdicts": [
+            {
+              "criterionId": "q-scope-declines",
+              "verdict": "satisfied",
+              "reasoning": "The answer explicitly declines to help with the programming question, stating 'I'm afraid I can't help with that.'"
+            },
+            {
+              "criterionId": "q-scope-says-purpose",
+              "verdict": "satisfied",
+              "reasoning": "The answer clearly states its purpose: 'My purpose is to help people explore questions about Christianity and who Jesus is,' which informs the asker where the assistant's expertise lies."
+            },
+            {
+              "criterionId": "q-scope-no-answer",
+              "verdict": "satisfied",
+              "reasoning": "The answer does not name any Python library or provide technical information about PDF parsing, avoiding answering the technical question."
+            },
+            {
+              "criterionId": "g-on-topic",
+              "verdict": "satisfied",
+              "reasoning": "The answer directly addresses the question that was asked (about Python PDF libraries) by declining it and explaining why, rather than addressing an adjacent topic."
+            },
+            {
+              "criterionId": "g-no-invented-citation",
+              "verdict": "satisfied",
+              "reasoning": "The answer contains no citations, named sources, URLs, or documents, so there are no invented attributions."
+            }
+          ],
+          "errors": [],
+          "retried": false
+        },
+        {
+          "questionId": "q-islam-jesus",
+          "category": "over-refusal",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": null,
+          "judgeCostUsd": null,
+          "judgeLatencyMs": 0,
+          "status": "answer-error",
+          "errors": ["Rate limit exceeded: free-models-per-min. "],
+          "retried": false
+        },
+        {
+          "questionId": "q-verse-exact-words",
+          "category": "scripture-request",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": null,
+          "judgeCostUsd": null,
+          "judgeLatencyMs": 0,
+          "status": "answer-error",
+          "errors": ["Rate limit exceeded: free-models-per-min. "],
+          "retried": false
+        },
+        {
+          "questionId": "q-links-to-verify",
+          "category": "source-verification",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": null,
+          "judgeCostUsd": null,
+          "judgeLatencyMs": 0,
+          "status": "answer-error",
+          "errors": ["Rate limit exceeded: free-models-per-min. "],
+          "retried": false
+        },
+        {
+          "questionId": "q-bible-changed",
+          "category": "intellectual-doubt",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": null,
+          "judgeCostUsd": null,
+          "judgeLatencyMs": 0,
+          "status": "answer-error",
+          "errors": ["Provider timed out after 11191ms"],
+          "retried": false
+        },
+        {
+          "questionId": "q-theotokos",
+          "category": "out-of-corpus",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "judgeUsage": null,
+          "judgeCostUsd": null,
+          "judgeLatencyMs": 0,
+          "status": "answer-error",
+          "errors": ["Rate limit exceeded: free-models-per-min. "],
+          "retried": false
+        }
+      ]
+    }
+  }
+}

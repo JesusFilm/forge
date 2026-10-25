@@ -1,0 +1,211 @@
+{
+  "bundles": {
+    "baseline": {
+      "bytes": 207516,
+      "gzipBytes": 64611
+    },
+    "current": {
+      "bytes": 210072,
+      "gzipBytes": 65297
+    }
+  },
+  "runs": [
+    {
+      "name": "baseline",
+      "iteration": 0,
+      "dcl": 37.70000004768371,
+      "load": 37.90000003576279,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 1,
+      "dcl": 29.400000035762787,
+      "load": 29.5,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 2,
+      "dcl": 24.899999976158146,
+      "load": 25.599999964237213,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 3,
+      "dcl": 32.89999997615814,
+      "load": 33.09999996423721,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "baseline",
+      "iteration": 4,
+      "dcl": 25.100000023841854,
+      "load": 25.69999998807907,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 0,
+      "dcl": 27.399999976158146,
+      "load": 27.600000023841854,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 1,
+      "dcl": 25.900000035762787,
+      "load": 26.600000023841854,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 2,
+      "dcl": 28.899999976158146,
+      "load": 29.19999998807907,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 3,
+      "dcl": 29.5,
+      "load": 30.200000047683716,
+      "longTasks": [],
+      "resources": 3
+    },
+    {
+      "name": "current",
+      "iteration": 4,
+      "dcl": 27,
+      "load": 27.69999998807907,
+      "longTasks": [],
+      "resources": 3
+    }
+  ],
+  "checks": {
+    "bfcacheSuspendWithoutTerminal": true,
+    "prestart": [
+      {
+        "kind": "playback_attempt",
+        "payload": {
+          "initiation": "manual"
+        }
+      },
+      {
+        "kind": "playback_observation",
+        "payload": {
+          "version": "playback-observations-v1",
+          "elapsedMilliseconds": 397,
+          "visibility": "visible",
+          "playerState": "paused",
+          "startObserved": false,
+          "errorObserved": false,
+          "seekCount": 0,
+          "navigationCount": 0,
+          "qoeCount": 0
+        }
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "route_exit",
+          "positionSeconds": 0,
+          "durationSeconds": 120,
+          "progress": 0,
+          "completed": false
+        }
+      }
+    ],
+    "terminalsAfterRerender": 0,
+    "played": [
+      {
+        "kind": "playback_attempt",
+        "payload": {
+          "initiation": "manual"
+        }
+      },
+      {
+        "kind": "playback_qoe",
+        "payload": {
+          "action": "waiting",
+          "cause": "unknown",
+          "positionSeconds": 0
+        }
+      },
+      {
+        "kind": "playback_qoe",
+        "payload": {
+          "action": "buffering_end",
+          "cause": "unknown",
+          "positionSeconds": 0
+        }
+      },
+      {
+        "kind": "playback_start",
+        "payload": {
+          "positionSeconds": 0
+        }
+      },
+      {
+        "kind": "playback_active_visible_playing",
+        "payload": {
+          "activeMilliseconds": 868,
+          "coverage": "complete"
+        }
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "route_exit",
+          "positionSeconds": 0.839458,
+          "durationSeconds": 150,
+          "progress": 0.005596386666666667,
+          "completed": false
+        }
+      },
+      {
+        "kind": "playback_observation",
+        "payload": {
+          "version": "playback-observations-v1",
+          "elapsedMilliseconds": 1279,
+          "visibility": "visible",
+          "playerState": "playing",
+          "startObserved": true,
+          "errorObserved": false,
+          "seekCount": 0,
+          "navigationCount": 0,
+          "qoeCount": 2
+        }
+      },
+      {
+        "kind": "playback_end",
+        "payload": {
+          "reason": "route_exit",
+          "positionSeconds": 0.839458,
+          "durationSeconds": 150,
+          "progress": 0.005596386666666667,
+          "completed": false
+        }
+      }
+    ]
+  },
+  "summary": {
+    "baseline": {
+      "medianDcl": 29.400000035762787,
+      "maxLongTask": 0
+    },
+    "current": {
+      "medianDcl": 27.399999976158146,
+      "maxLongTask": 0
+    }
+  }
+}

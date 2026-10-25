@@ -1,0 +1,32 @@
+{
+  "projectId": "example-short",
+  "expectedRevision": 0,
+  "idempotencyKey": "example-create-1",
+  "document": {
+    "version": 1,
+    "title": "A small act of kindness",
+    "language": "english",
+    "runtimeVersion": "studio-proof-1/remotion-4.0.475/react-19.2.4/sucrase-3.35.1/hls-1.6.16",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "durationInFrames": 450,
+    "tracks": [
+      {
+        "id": "visual-1",
+        "kind": "visual"
+      },
+      {
+        "id": "caption-1",
+        "kind": "caption"
+      },
+      {
+        "id": "audio-1",
+        "kind": "audio"
+      }
+    ],
+    "components": [],
+    "items": [],
+    "packRevisionIds": []
+  }
+}

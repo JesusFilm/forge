@@ -1,0 +1,375 @@
+{
+  "capturedAt": "2026-09-16T02:21:13.408178+00:00",
+  "variant": "after-cold-diagnostic",
+  "samples": [
+    {
+      "frames": [
+        {
+          "blockingDuration": 65.3,
+          "duration": 126.19999998807909,
+          "scripts": [
+            {
+              "duration": 5,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1187
+            },
+            {
+              "duration": 111.69999998807909,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1192.2000000476835
+            }
+          ],
+          "start": 1186.9000000357628
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1007.6999999880792,
+          "scripts": [],
+          "start": 4520.400000035763
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1013.7000000476836,
+          "scripts": [],
+          "start": 8580.5
+        },
+        {
+          "blockingDuration": 197.4,
+          "duration": 333.89999997615814,
+          "scripts": [
+            {
+              "duration": 6.099999964237213,
+              "function": "",
+              "invoker": "/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495",
+              "invokerType": "module-script",
+              "source": "/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495",
+              "start": 840.7000000476837
+            }
+          ],
+          "start": 769.7000000476837
+        },
+        {
+          "blockingDuration": 22.9,
+          "duration": 996.399999976158,
+          "scripts": [
+            {
+              "duration": 5.199999988079071,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1485.800000011921
+            },
+            {
+              "duration": 53.60000002384186,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1492.300000011921
+            },
+            {
+              "duration": 63.69999998807907,
+              "function": "",
+              "invoker": "/gtag/js",
+              "invokerType": "classic-script",
+              "source": "/gtag/js",
+              "start": 1552.4000000357628
+            },
+            {
+              "duration": 5.400000035762787,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1618.5
+            },
+            {
+              "duration": 48.5,
+              "function": "",
+              "invoker": "TimerHandler:setTimeout",
+              "invokerType": "user-callback",
+              "source": "/gtag/js",
+              "start": 1625
+            },
+            {
+              "duration": 5,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 1677.7000000476835
+            },
+            {
+              "duration": 12.199999988079073,
+              "function": "",
+              "invoker": "CookieStore.set.then",
+              "invokerType": "resolve-promise",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 1695.100000023842
+            },
+            {
+              "duration": 6,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0cbyyzcg4-zw~.js",
+              "start": 1765.4000000357628
+            }
+          ],
+          "start": 1484.100000023842
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1007.5,
+          "scripts": [],
+          "start": 2487.800000011921
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1020,
+          "scripts": [
+            {
+              "duration": 6.399999976158142,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 3559.600000023842
+            },
+            {
+              "duration": 8.700000047683716,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 3569
+            }
+          ],
+          "start": 3496.600000023842
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 1014.5,
+          "scripts": [],
+          "start": 7564.100000023842
+        },
+        {
+          "blockingDuration": 46.5,
+          "duration": 386.800000011921,
+          "scripts": [
+            {
+              "duration": 5.200000047683716,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9595
+            },
+            {
+              "duration": 94.9000000357628,
+              "function": "",
+              "invoker": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "invokerType": "classic-script",
+              "source": "/watch/_next/static/chunks/0jrax7kzi70dm.js",
+              "start": 9648
+            },
+            {
+              "duration": 25.69999998807907,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9902.200000047684
+            },
+            {
+              "duration": 8.799999952316284,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9934.700000047684
+            },
+            {
+              "duration": 7,
+              "function": "O",
+              "invoker": "MessagePort.onmessage",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0akrpge3m_7zx.js",
+              "start": 9949.600000023842
+            }
+          ],
+          "start": 9595
+        },
+        {
+          "blockingDuration": 0,
+          "duration": 115.5,
+          "scripts": [
+            {
+              "duration": 8,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 10838.900000035765
+            },
+            {
+              "duration": 7.5,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 10884
+            },
+            {
+              "duration": 7.900000035762787,
+              "function": "a",
+              "invoker": "XMLHttpRequest.onreadystatechange",
+              "invokerType": "event-listener",
+              "source": "/watch/_next/static/chunks/0eexbq3o5b17q.js",
+              "start": 10930.30000001192
+            }
+          ],
+          "start": 10824.400000035765
+        }
+      ],
+      "lcp": 9984,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 9984,
+          "size": 88480,
+          "tag": "H1",
+          "time": 9984
+        }
+      ],
+      "longTasks": 7,
+      "longestTask": 229,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.265314
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 846.9000000357628,
+          "load": 1311.800000011921,
+          "ttfb": 732.4000000357628
+        }
+      ],
+      "slowResources": [
+        {
+          "bytes": 4056,
+          "duration": 998.5,
+          "host": "www.jesusfilm.org",
+          "start": 2556.7000000476837,
+          "type": "fetch"
+        },
+        {
+          "bytes": 438,
+          "duration": 730.6999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 3577.300000011921,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 699.6999999880791,
+          "host": "www.googletagmanager.com",
+          "start": 763.3000000119209,
+          "type": "link"
+        },
+        {
+          "bytes": 439,
+          "duration": 666.1000000238419,
+          "host": "www.jesusfilm.org",
+          "start": 3574.800000011921,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 662,
+          "host": "www.jesusfilm.org",
+          "start": 3576,
+          "type": "fetch"
+        },
+        {
+          "bytes": 438,
+          "duration": 661,
+          "host": "www.jesusfilm.org",
+          "start": 3573.600000023842,
+          "type": "fetch"
+        },
+        {
+          "bytes": 437,
+          "duration": 653.3000000119209,
+          "host": "www.jesusfilm.org",
+          "start": 3572.300000011921,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 649.3000000119209,
+          "host": "www.jesusfilm.org",
+          "start": 3570.900000035763,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 647.1000000238419,
+          "host": "inferred.litix.io",
+          "start": 9933,
+          "type": "fetch"
+        },
+        {
+          "bytes": 1068,
+          "duration": 639.6000000238419,
+          "host": "www.jesusfilm.org",
+          "start": 3072,
+          "type": "fetch"
+        },
+        {
+          "bytes": 541,
+          "duration": 585.2999999523163,
+          "host": "www.jesusfilm.org",
+          "start": 784.2000000476837,
+          "type": "link"
+        },
+        {
+          "bytes": 626,
+          "duration": 571,
+          "host": "www.jesusfilm.org",
+          "start": 2495,
+          "type": "fetch"
+        },
+        {
+          "bytes": 6849,
+          "duration": 506.60000002384186,
+          "host": "www.jesusfilm.org",
+          "start": 3072.800000011921,
+          "type": "fetch"
+        },
+        {
+          "bytes": 585,
+          "duration": 503.5999999642372,
+          "host": "www.jesusfilm.org",
+          "start": 3072.400000035763,
+          "type": "fetch"
+        }
+      ],
+      "syntheticProfileCleanup": {
+        "status": 200
+      }
+    }
+  ]
+}

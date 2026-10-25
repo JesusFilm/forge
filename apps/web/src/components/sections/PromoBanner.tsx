@@ -1,4 +1,5 @@
-import type { FragmentOf } from "@forge/graphql"
+import type { FragmentOf } from "@/lib/legacy-fragment-types"
+import { useTranslations } from "next-intl"
 import { promoBannerFragment } from "@/lib/fragments/promo-banner"
 
 export { promoBannerFragment }
@@ -8,6 +9,7 @@ type PromoBannerProps = {
 }
 
 export function PromoBanner({ data }: PromoBannerProps) {
+  const t = useTranslations("BibleQuotes")
   const {
     id,
     promoHeading: heading,
@@ -19,7 +21,7 @@ export function PromoBanner({ data }: PromoBannerProps) {
     <section id={id} className="bg-blue-50 py-12">
       <div className="container mx-auto px-4 text-center">
         {intro && (
-          <p className="mb-2 text-sm uppercase tracking-wide text-blue-600">
+          <p className="mb-2 text-base sm:text-sm uppercase tracking-wide text-blue-600">
             {intro}
           </p>
         )}
@@ -31,7 +33,7 @@ export function PromoBanner({ data }: PromoBannerProps) {
             rel="noopener noreferrer"
             className="inline-block rounded bg-blue-600 px-6 py-3 font-medium text-white hover:bg-blue-700"
           >
-            Learn more
+            {t("learnMore")}
           </a>
         )}
       </div>

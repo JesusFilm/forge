@@ -34,6 +34,7 @@ related_docs:
   - docs/plans/2026-04-08-feat-add-separate-metadata-embedding-plan.md
   - docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md
   - docs/roadmap/content-discovery/feat-009-pgvector-embedding-indexing.md
+  - docs/solutions/best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md
 ---
 
 # Manager embeddings: transcript-aware chunking with additive metadata artifact contract
@@ -103,6 +104,7 @@ One caveat from local smoke testing: the real run that exercised fallback did no
 3. Treat metadata enrichment as optional. Transcript embeddings are the required output; metadata vectors should fail open.
 4. Inspect the artifact itself during local validation. Overall job failure can still happen later in `metadata` or `chapters` even when `embeddings` succeeded.
 5. Preserve deterministic chunk planning and provider-response validation together. One without the other makes regressions harder to diagnose.
+6. Keep CMS storage decisions separate from artifact evolution. `metadataEmbedding` can stay artifact-only until the retrieval strategy justifies a dedicated CMS table or video profile vector.
 
 ## Related References
 
@@ -113,3 +115,4 @@ One caveat from local smoke testing: the real run that exercised fallback did no
 - [Plan: add separate metadata embedding](../../plans/2026-04-08-feat-add-separate-metadata-embedding-plan.md)
 - [Roadmap: AI Video Enrichment Pipeline](../../roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md)
 - [Roadmap: pgvector embedding indexing](../../roadmap/content-discovery/feat-009-pgvector-embedding-indexing.md)
+- [Vector embedding storage scope and PR sequencing](../best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md)

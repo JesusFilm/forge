@@ -3,13 +3,14 @@ id: "feat-074"
 title: "TV App — Home Screen (Hero + Experiences Rail)"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-15"
 duration: 5
 depends_on:
   - "feat-073"
 blocks:
   - "feat-076"
+  - "feat-106"
 tags:
   - "tv"
 ---

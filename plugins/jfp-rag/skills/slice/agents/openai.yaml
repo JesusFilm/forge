@@ -1,0 +1,6 @@
+interface:
+  display_name: "RAG Source Slice"
+  short_description: "Run or resume one Forge RAG source slice"
+  default_prompt: "Use $slice to run or resume one source through the Forge RAG pipeline."
+policy:
+  allow_implicit_invocation: false

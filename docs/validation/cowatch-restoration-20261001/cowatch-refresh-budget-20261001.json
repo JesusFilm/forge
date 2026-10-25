@@ -1,0 +1,28 @@
+{
+  "publicationLimits": {
+    "rawSourceCount": 50000,
+    "sourceCount": 8500,
+    "attemptedPairCount": 60000,
+    "contributionCount": 51000,
+    "edgeCount": 11500,
+    "publicationRowCount": 71001,
+    "graphRowJsonBytes": {
+      "sources": {
+        "maximum": 907,
+        "total": 6921144
+      },
+      "contributions": {
+        "maximum": 569,
+        "total": 26419552
+      },
+      "edges": {
+        "maximum": 533,
+        "total": 5501087
+      }
+    }
+  },
+  "publicationReserveBytes": 100663296,
+  "maxRetainedGraphBytes": 6300000000,
+  "maxRetainedGenerations": 64,
+  "maxDatabaseBytes": 44500000000
+}

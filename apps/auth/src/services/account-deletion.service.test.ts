@@ -1,0 +1,514 @@
+import { describe, expect, it, vi } from "vitest"
+
+import {
+  AccountDeletionSideEffectError,
+  buildAccountDeletionHooks,
+  type AccountDeletionDeps,
+} from "./account-deletion.service"
+
+const APPLE_CONFIG = {
+  bundleId: "org.jesusfilm.forgewatch",
+  clientSecret: "apple-native-secret",
+}
+
+const ERASURE_CONFIG = {
+  baseUrl: "https://admin.example.org",
+  apiKey: "erasure-key",
+}
+
+function buildDeps(overrides: Partial<AccountDeletionDeps> = {}) {
+  const log = vi.fn()
+  const deps: AccountDeletionDeps = {
+    findAppleAccount: vi.fn(async () => null),
+    getAppleConfig: () => null,
+    getAdminErasureConfig: () => null,
+    log,
+    ...overrides,
+  }
+  return { deps, log }
+}
+
+// What a current admin answers: erasure succeeded and covered learning
+// progress (feat-731).
+function erasedBody() {
+  return JSON.stringify({
+    deletedCount: 0,
+    deletedWatchEventCount: 0,
+    deletedLearningProgressCount: 0,
+    learningProgressErased: true,
+  })
+}
+
+function ok() {
+  return vi.fn(
+    async () => new Response(erasedBody(), { status: 200 }),
+  ) as unknown as typeof fetch
+}
+
+describe("beforeDelete — Apple revocation", () => {
+  it("revokes the stored Apple refresh token when config and token exist", async () => {
+    const revokeFetch = ok()
+    const { deps, log } = buildDeps({
+      findAppleAccount: vi.fn(async () => ({ refreshToken: "apple-refresh" })),
+      getAppleConfig: () => ({ ...APPLE_CONFIG, fetchImpl: revokeFetch }),
+    })
+
+    await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+
+    expect(revokeFetch).toHaveBeenCalledTimes(1)
+    expect(log).not.toHaveBeenCalledWith(
+      expect.stringContaining("apple_revocation_failed"),
+    )
+  })
+
+  it("aborts the deletion when Apple revocation fails (strict)", async () => {
+    // Completing here would delete the account while leaving live the Apple
+    // grant Apple's own deletion guidance requires revoking — invisible to
+    // the user and unrecoverable by them.
+    const revokeFetch = vi.fn(
+      async () => new Response(null, { status: 400 }),
+    ) as unknown as typeof fetch
+
+    const { deps, log } = buildDeps({
+      findAppleAccount: vi.fn(async () => ({ refreshToken: "apple-refresh" })),
+      getAppleConfig: () => ({ ...APPLE_CONFIG, fetchImpl: revokeFetch }),
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).rejects.toThrow(/apple_revocation_failed/)
+
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("account_deletion_apple_revocation_failed"),
+    )
+  })
+
+  it("does not erase watch data when Apple revocation aborted first", async () => {
+    // Ordering is the point: erasing before an abort loses history on a
+    // deletion that did not happen.
+    const revokeFetch = vi.fn(
+      async () => new Response(null, { status: 400 }),
+    ) as unknown as typeof fetch
+    const erasureFetch = ok()
+
+    const { deps } = buildDeps({
+      findAppleAccount: vi.fn(async () => ({ refreshToken: "apple-refresh" })),
+      getAppleConfig: () => ({ ...APPLE_CONFIG, fetchImpl: revokeFetch }),
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).rejects.toThrow()
+
+    expect(erasureFetch).not.toHaveBeenCalled()
+  })
+
+  it("skips revocation quietly when there is no Apple account or token", async () => {
+    const { deps, log } = buildDeps({
+      findAppleAccount: vi.fn(async () => ({ refreshToken: null })),
+      getAppleConfig: () => APPLE_CONFIG,
+    })
+
+    await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+
+    expect(log).not.toHaveBeenCalledWith(
+      expect.stringContaining("apple_revocation_failed"),
+    )
+  })
+
+  it("propagates account-row read failures so deletion aborts with the account intact", async () => {
+    const { deps } = buildDeps({
+      findAppleAccount: vi.fn(async () => {
+        throw new Error("db unavailable")
+      }),
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).rejects.toThrow("db unavailable")
+  })
+})
+
+describe("beforeDelete — admin watch-data erasure", () => {
+  it("erases admin-side watch data through the internal route", async () => {
+    const erasureFetch = vi.fn(
+      async (url: RequestInfo | URL, init?: RequestInit) => {
+        expect(String(url)).toBe(
+          "https://admin.example.org/api/internal/watch-progress",
+        )
+        expect(init?.method).toBe("DELETE")
+        expect((init?.headers as Record<string, string>).Authorization).toBe(
+          "Bearer erasure-key",
+        )
+        return new Response(erasedBody(), { status: 200 })
+      },
+    ) as unknown as typeof fetch
+
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+
+    expect(erasureFetch).toHaveBeenCalledTimes(1)
+    expect(log).not.toHaveBeenCalled()
+  })
+
+  it("names itself as the caller, since apps/web clears history the same way", async () => {
+    // Both callers send {userId} to this route, so admin cannot otherwise
+    // tell an account deletion from a user clearing their own history.
+    let body: unknown
+    const erasureFetch = vi.fn(
+      async (_url: RequestInfo | URL, init?: RequestInit) => {
+        body = JSON.parse(String(init?.body))
+        return new Response(erasedBody(), { status: 200 })
+      },
+    ) as unknown as typeof fetch
+
+    const { deps } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+
+    expect(body).toEqual({ userId: "user-1", reason: "account-deleted" })
+  })
+
+  it("still allows deletion when erasure env config is absent", async () => {
+    // The vars are `.optional()`, so an environment that never provisioned
+    // them must not lose the ability to delete accounts.
+    const { deps, log } = buildDeps()
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).resolves.toBeUndefined()
+
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("account_deletion_admin_erasure_skipped"),
+    )
+  })
+
+  it("aborts the deletion when a configured admin rejects the erasure (strict)", async () => {
+    // Completing here would orphan watch history under a user id that no
+    // longer exists in auth — retained data after a deletion request.
+    const erasureFetch = vi.fn(
+      async () => new Response(null, { status: 500 }),
+    ) as unknown as typeof fetch
+
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).rejects.toThrow(/admin_erasure_rejected:500/)
+
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("account_deletion_admin_erasure_failed"),
+    )
+  })
+
+  it("aborts the deletion when admin is unreachable (strict)", async () => {
+    const erasureFetch = vi.fn(async () => {
+      throw new TypeError("fetch failed")
+    }) as unknown as typeof fetch
+
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).rejects.toThrow(/admin_erasure_unreachable/)
+
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("reason=network_error"),
+    )
+  })
+
+  it("reports a possibly committed erasure and preserves its fence when deletion aborts", async () => {
+    // Admin committed, but Auth lost its response. There is no distributed
+    // rollback: claiming an intact account or removing the fence is unsafe.
+    const fences = new Set<string>()
+    const deleteAccount = vi.fn()
+    const erasureFetch = vi.fn(async () => {
+      fences.add("user-1")
+      throw new TypeError("response lost after commit")
+    }) as unknown as typeof fetch
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    let failure: unknown
+    try {
+      await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+      deleteAccount()
+    } catch (error) {
+      failure = error
+    }
+
+    expect(failure).toBeInstanceOf(AccountDeletionSideEffectError)
+    expect(failure).toMatchObject({
+      reason: "admin_erasure_unreachable",
+      adminErasureMayHaveCommitted: true,
+    })
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("adminErasureMayHaveCommitted=true"),
+    )
+    expect(deleteAccount).not.toHaveBeenCalled()
+    expect(fences.has("user-1")).toBe(true)
+    // No automatic compensating request can race a late Admin commit.
+    expect(erasureFetch).toHaveBeenCalledTimes(1)
+  })
+
+  const LEGACY_BODY = JSON.stringify({
+    deletedCount: 1,
+    deletedWatchEventCount: 0,
+  })
+
+  it.each([
+    ["an admin that predates learning erasure", LEGACY_BODY],
+    [
+      "an explicit non-acknowledgement",
+      JSON.stringify({ learningProgressErased: false }),
+    ],
+    ["an empty body", null],
+    ["a non-JSON body", "ok"],
+  ])(
+    "aborts the deletion when required and %s does not acknowledge learning erasure",
+    async (_label, body) => {
+      // A 2xx alone is not proof the account's learning progress is gone.
+      const erasureFetch = vi.fn(
+        async () => new Response(body, { status: 200 }),
+      ) as unknown as typeof fetch
+
+      const { deps, log } = buildDeps({
+        getAdminErasureConfig: () => ERASURE_CONFIG,
+        isLearningErasureRequired: () => true,
+        fetchImpl: erasureFetch,
+      })
+
+      await expect(
+        buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+      ).rejects.toThrow(/admin_erasure_incomplete:learning_progress/)
+      expect(log).toHaveBeenCalledWith(
+        expect.stringContaining("reason=learning_progress_unacknowledged"),
+      )
+    },
+  )
+
+  it("completes when required and admin acknowledges learning erasure", async () => {
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      isLearningErasureRequired: () => true,
+      fetchImpl: ok(),
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).resolves.toBeUndefined()
+    expect(log).not.toHaveBeenCalled()
+  })
+
+  describe("before the receiver-first rollout setting is enabled", () => {
+    // Auth may deploy before Admin's learning receiver. A legacy 2xx still
+    // erased watch history; requiring the new acknowledgement here would
+    // fail every deletion until Admin is live.
+    it.each([
+      ["omits the acknowledgement field", LEGACY_BODY],
+      ["sends an empty body", null],
+      ["sends a non-JSON body", "ok"],
+    ])(
+      "completes the deletion when a legacy admin %s",
+      async (_label, body) => {
+        let sent: unknown
+        const erasureFetch = vi.fn(
+          async (_url: RequestInfo | URL, init?: RequestInit) => {
+            sent = JSON.parse(String(init?.body))
+            return new Response(body, { status: 200 })
+          },
+        ) as unknown as typeof fetch
+        const { deps, log } = buildDeps({
+          getAdminErasureConfig: () => ERASURE_CONFIG,
+          fetchImpl: erasureFetch,
+        })
+
+        await expect(
+          buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+        ).resolves.toBeUndefined()
+        // The erasure reason is sent regardless of the setting.
+        expect(sent).toEqual({ userId: "user-1", reason: "account-deleted" })
+        expect(log).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "account_deletion_learning_erasure_unacknowledged required=false",
+          ),
+        )
+      },
+    )
+
+    it("still aborts on an explicit learning-erasure refusal", async () => {
+      const erasureFetch = vi.fn(
+        async () =>
+          new Response(JSON.stringify({ learningProgressErased: false }), {
+            status: 200,
+          }),
+      ) as unknown as typeof fetch
+      const { deps } = buildDeps({
+        getAdminErasureConfig: () => ERASURE_CONFIG,
+        fetchImpl: erasureFetch,
+      })
+
+      await expect(
+        buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+      ).rejects.toThrow(/admin_erasure_incomplete:learning_progress/)
+    })
+
+    it.each([
+      [
+        "rejects the erasure",
+        () => new Response(null, { status: 500 }),
+        /admin_erasure_rejected:500/,
+      ],
+      [
+        "is unreachable",
+        () => {
+          throw new TypeError("fetch failed")
+        },
+        /admin_erasure_unreachable/,
+      ],
+    ])(
+      "keeps strict abort when a configured admin %s",
+      async (_label, respond, error) => {
+        const erasureFetch = vi.fn(async () =>
+          respond(),
+        ) as unknown as typeof fetch
+        const { deps } = buildDeps({
+          getAdminErasureConfig: () => ERASURE_CONFIG,
+          fetchImpl: erasureFetch,
+        })
+
+        await expect(
+          buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+        ).rejects.toThrow(error)
+      },
+    )
+  })
+
+  it.each([
+    [
+      "rejects the erasure",
+      () => new Response(null, { status: 503 }),
+      /admin_erasure_rejected:503/,
+    ],
+    [
+      "is unreachable",
+      () => {
+        throw new TypeError("fetch failed")
+      },
+      /admin_erasure_unreachable/,
+    ],
+  ])(
+    "keeps strict abort when required and a configured admin %s",
+    async (_label, respond, error) => {
+      const erasureFetch = vi.fn(async () =>
+        respond(),
+      ) as unknown as typeof fetch
+      const { deps } = buildDeps({
+        getAdminErasureConfig: () => ERASURE_CONFIG,
+        isLearningErasureRequired: () => true,
+        fetchImpl: erasureFetch,
+      })
+
+      await expect(
+        buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+      ).rejects.toThrow(error)
+    },
+  )
+
+  it("bounds the erasure call so a hung admin cannot wedge deletion", async () => {
+    let signal: AbortSignal | null | undefined
+    const erasureFetch = vi.fn(
+      async (_url: RequestInfo | URL, init?: RequestInit) => {
+        signal = init?.signal
+        return new Response(erasedBody(), { status: 200 })
+      },
+    ) as unknown as typeof fetch
+
+    const { deps } = buildDeps({
+      getAdminErasureConfig: () => ERASURE_CONFIG,
+      fetchImpl: erasureFetch,
+    })
+
+    await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+
+    expect(signal).toBeInstanceOf(AbortSignal)
+  })
+})
+
+describe("beforeDelete — required learning erasure without config", () => {
+  it("aborts before any side effect when the endpoint is not configured", async () => {
+    const revokeFetch = vi.fn(async () => new Response(null, { status: 200 }))
+    const findAppleAccount = vi.fn(async () => ({ refreshToken: "apple" }))
+    const { deps, log } = buildDeps({
+      findAppleAccount,
+      getAppleConfig: () => ({
+        ...APPLE_CONFIG,
+        fetchImpl: revokeFetch as unknown as typeof fetch,
+      }),
+      getAdminErasureConfig: () => null,
+      isLearningErasureRequired: () => true,
+    })
+
+    let failure: unknown
+    try {
+      await buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" })
+    } catch (error) {
+      failure = error
+    }
+
+    expect(failure).toBeInstanceOf(AccountDeletionSideEffectError)
+    expect(failure).toMatchObject({
+      reason: "admin_erasure_not_configured:learning_progress",
+      adminErasureMayHaveCommitted: false,
+    })
+    // Nothing external ran: the Apple grant and all data stay intact.
+    expect(findAppleAccount).not.toHaveBeenCalled()
+    expect(revokeFetch).not.toHaveBeenCalled()
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("reason=not_configured required=true"),
+    )
+  })
+
+  it("keeps the legacy skip when the setting is off", async () => {
+    const { deps, log } = buildDeps({
+      getAdminErasureConfig: () => null,
+      isLearningErasureRequired: () => false,
+    })
+
+    await expect(
+      buildAccountDeletionHooks(deps).beforeDelete({ id: "user-1" }),
+    ).resolves.toBeUndefined()
+    expect(log).toHaveBeenCalledWith(
+      expect.stringContaining("account_deletion_admin_erasure_skipped"),
+    )
+  })
+})
+
+describe("hook surface", () => {
+  it("exposes no afterDelete — a post-delete failure cannot abort anything", async () => {
+    const hooks = buildAccountDeletionHooks(buildDeps().deps) as Record<
+      string,
+      unknown
+    >
+
+    expect(hooks.afterDelete).toBeUndefined()
+    expect(typeof hooks.beforeDelete).toBe("function")
+  })
+})

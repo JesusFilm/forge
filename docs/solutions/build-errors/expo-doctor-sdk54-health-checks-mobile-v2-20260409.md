@@ -70,6 +70,8 @@ After:
 config.watchFolders = [...(config.watchFolders || []), monorepoRoot]
 ```
 
+> **Note:** Spreading `monorepoRoot` fixes the expo-doctor check but watches the entire repo — any file change in any app triggers Fast Refresh. For apps with few workspace dependencies, scope to only the packages you import (e.g., `path.resolve(monorepoRoot, "packages/graphql")`) instead of the full root. See [Metro watchFolders scoping](../developer-experience/metro-watchfolders-monorepo-refresh-storm-20260415.md).
+
 **Fix 3 — Missing peer deps required by expo-router**
 
 ```bash
@@ -98,7 +100,7 @@ After all fixes: `expo-doctor` passes 17/17.
 ## Prevention
 
 - **Always use `npx expo install`** (not `pnpm add`) for Expo ecosystem packages — it resolves SDK-compatible versions.
-- **Always spread existing Metro config arrays** rather than replacing them: `config.watchFolders = [...(config.watchFolders || []), addition]`.
+- **Always spread existing Metro config arrays** rather than replacing them: `config.watchFolders = [...(config.watchFolders || []), addition]`. Prefer scoping `addition` to specific workspace packages rather than `monorepoRoot` — see [watchFolders scoping](../developer-experience/metro-watchfolders-monorepo-refresh-storm-20260415.md).
 - **Add `.expo/` to `.gitignore` at project creation time**, before the first commit.
 - **Run `npx expo-doctor` locally** before pushing after dependency changes in `apps/mobile-v2/`.
 - The Expo Doctor CI job now catches regressions automatically — keep it green.

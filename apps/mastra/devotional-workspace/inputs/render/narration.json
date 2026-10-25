@@ -1,0 +1,38 @@
+{
+  "months": [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ],
+  "weekdays": [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+  ],
+  "templates": {
+    "coverWithDate": "It's {{date}}. And today's devotional: {{hook}}",
+    "coverWithoutDate": "Today's devotional. {{hook}}",
+    "scripture": "Here's today's scripture. {{reference}}{{verse}} Let's watch.",
+    "reflectionOpen": "Reflect on this. {{chunk}}",
+    "questionsLead": "Here's something to sit with."
+  },
+  "coverVoiceSettings": {
+    "stability": 0.7,
+    "similarity_boost": 0.85,
+    "style": 0,
+    "use_speaker_boost": true
+  }
+}

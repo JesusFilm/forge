@@ -41,3 +41,7 @@ export function getMuxEnvironmentTooltip(environment: MuxEnvironment): string {
     ? "Staging Mux environment"
     : "Production Mux environment"
 }
+
+export function getMuxEnvironmentLabel(environment: MuxEnvironment): string {
+  return environment === "staging" ? "stage" : "prod"
+}

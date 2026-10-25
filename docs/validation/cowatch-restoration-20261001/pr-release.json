@@ -1,0 +1,147 @@
+{
+  "recordedAt": "2026-10-01T02:41:24.836539+00:00",
+  "pullRequest": {
+    "headRefOid": "9c7feed109818ac908b9c6d34fe2287c3f70a81b",
+    "mergeCommit": {
+      "oid": "63511a87ff949e36885488346edf7fafb7566c27"
+    },
+    "mergedAt": "2026-10-01T02:40:44Z",
+    "state": "MERGED",
+    "url": "https://github.com/JesusFilm/forge/pull/2529"
+  },
+  "checks": [
+    {
+      "bucket": "pass",
+      "name": "ci-gate",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "build (@forge/admin)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "admin-schema-drift",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "test (@forge/admin)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "lint (@forge/admin)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "skipping",
+      "name": "rag-postgres-integration",
+      "state": "SKIPPED"
+    },
+    {
+      "bucket": "skipping",
+      "name": "web-redis-integration",
+      "state": "SKIPPED"
+    },
+    {
+      "bucket": "skipping",
+      "name": "admin-graphql-generate",
+      "state": "SKIPPED"
+    },
+    {
+      "bucket": "skipping",
+      "name": "expo-doctor",
+      "state": "SKIPPED"
+    },
+    {
+      "bucket": "skipping",
+      "name": "rag-portal-allowlist",
+      "state": "SKIPPED"
+    },
+    {
+      "bucket": "skipping",
+      "name": "auth-postgres-integration",
+      "state": "SKIPPED"
+    },
+    {
+      "bucket": "pass",
+      "name": "CodeQL",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "Analyze (javascript-typescript)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "roadmap-id-collisions-advisory",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "format",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "Analyze (python)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "Analyze (actions)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "affected",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "experiment-ledger",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "dev-port-contract",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "hidden-roadmap-lanes",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "patched-deps-guard",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "pr-label",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "Analyze (c-cpp)",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "pass",
+      "name": "commit-lint",
+      "state": "SUCCESS"
+    },
+    {
+      "bucket": "skipping",
+      "name": "issue-label",
+      "state": "SKIPPED"
+    }
+  ],
+  "workflowDiffAgainstBase": [],
+  "nativeCIWiringFollowUp": "feat-591",
+  "productionServingVerified": false
+}

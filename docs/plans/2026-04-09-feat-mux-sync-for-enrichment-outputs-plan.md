@@ -1,50 +1,38 @@
 ---
-title: "feat: Sync enrichment outputs back to Mux when appropriate"
+title: "feat: Sync translated subtitles back to Mux"
 type: feat
-status: active
+status: completed
 date: 2026-04-09
 roadmap:
   - /docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md
 ---
 
-# feat: Sync enrichment outputs back to Mux when appropriate
+# feat: Sync translated subtitles back to Mux
 
 ## Overview
 
 Add a post-enrichment Mux sync phase that:
 
 - pushes generated translated subtitles into Mux as first-class text tracks when that language is missing on the target asset
-- pushes generated AI metadata into Mux only where Mux has a real first-class metadata field
-- explains in the job details when Forge did not sync because Mux already had data, or because Mux has no first-class sink for that artifact type
-- shows generated output side by side with the current Mux-side data when a sync was skipped because data already exists
-- allows an operator to override the Mux-side data with the newly generated data for supported artifact types
+- explains in the job details when Forge did not sync because Mux already had a subtitle track for that language
+- shows generated subtitle output side by side with the current Mux subtitle track when sync was skipped because data already exists
+- allows an operator to override an existing Mux subtitle track with the newly generated subtitle
 
-This plan is intentionally capability-aware. Based on current Mux docs and the current branch:
-
-- translated subtitles map cleanly to Mux text tracks
-- asset metadata maps only partially to Mux asset `meta`
-- chapters are supported by Mux Player at playback time, but are not stored as first-class asset-side records in the Video API
-- embeddings do not have a Mux-native first-class storage target
-
-So the implementation must separate:
-
-- artifacts that can be truly synced into Mux
-- artifacts that can only be explained, compared, and retained in Forge-managed storage
+This plan is intentionally subtitles-only. It does not sync metadata, chapters, embeddings, or any other enrichment artifact back to Mux.
 
 ## Problem Frame
 
-Today Forge creates and uses a stage Mux asset, but finished enrichment outputs remain Forge-managed artifacts:
+Today Forge creates and uses a stage Mux asset, but translated subtitle outputs remain Forge-managed artifacts:
 
 - translated subtitles are written to Forge artifact storage, not to Mux text tracks
-- metadata is written to Forge artifacts, not to Mux asset metadata
-- chapters are written to Forge artifacts and rendered from the job page only
-- embeddings are written to Forge artifacts only
+- when Mux already has a subtitle track for the same language, Forge does not persist comparison state explaining why sync was skipped
+- there is no operator flow to review generated subtitle output against the current Mux subtitle track and intentionally replace it
 
-That leaves three operator problems:
+The product outcome for this work is operational parity between Forge-generated translated subtitles and the Mux asset surface that playback and delivery tooling already reads. In v1, that means:
 
-1. Enrichment results are not reflected in Mux even when Mux has a native destination.
-2. When Mux already has data, Forge has no durable comparison state explaining why sync was skipped.
-3. There is no operator affordance to review generated output against current Mux-side state and force an overwrite when desired.
+- translated subtitle tracks become visible in Mux without a second manual upload path
+- operators can see exactly why Forge did or did not sync a subtitle track
+- operators can intentionally replace an existing Mux subtitle track after review
 
 ## Capability Reality
 
@@ -52,99 +40,78 @@ That leaves three operator problems:
 
 Relevant current code:
 
-- [mux.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/mux.ts)
-- [transcription.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/transcription.ts)
-- [subtitleTranslation/index.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/subtitleTranslation/index.ts)
-- [storage.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/storage.ts)
-- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
-- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
+- [mux.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/mux.ts)
+- [transcription.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/transcription.ts)
+- [subtitleTranslation/index.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/subtitleTranslation/index.ts)
+- [storage.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/storage.ts)
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/workflows/videoEnrichment.ts)
+- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
 
 Current behavior:
 
 - Forge creates a Mux asset and may request generated source subtitles
-- Forge stores generated artifacts locally or in Railway S3-compatible storage
-- the `mux_upload` workflow step exists in the job vocabulary and UI copy, but this branch does not yet implement a real sync phase for enrichment outputs
+- Forge stores generated subtitle artifacts locally or in Railway S3-compatible storage
+- the `mux_upload` workflow step exists in the job vocabulary and UI copy, but this branch does not yet implement a real sync phase for translated subtitles
 
 ### Current Mux capability constraints
 
 Current official Mux docs support:
 
 - subtitle tracks as asset text tracks via create-asset input or create-asset-track API
-- asset metadata fields `title`, `creator_id`, and `external_id`
-- chapters as Mux Player input, not as first-class asset-side persisted records
-- AI chaptering and embeddings workflows via `@mux/ai`, but not a first-class Mux Video write target for embeddings
+- track inspection on the asset so Forge can determine whether a target language already exists
 
 Sources:
 
 - [Add subtitles/captions to videos | Mux](https://support-agent.mux.com/docs/guides/add-subtitles-to-your-videos)
-- [Add metadata to your videos | Mux](https://www.mux.com/docs/guides/add-metadata-to-your-videos)
-- [Advanced usage of Mux Player | Mux](https://www.mux.com/docs/guides/player-advanced-usage)
-- [AI-generated chapters for your videos with Mux Player | Mux](https://www.mux.com/blog/ai-generated-chapters-for-your-videos-with-mux-player/)
-- [Use Mux in AI Workflows | Mux](https://www.mux.com/docs/integrations/ai-workflows)
 
 ### Implication
 
-The user-facing feature request needs one strategic adjustment:
+This plan only addresses the one enrichment artifact type that maps cleanly to a first-class Mux Video write target:
 
 - **Subtitles:** true native Mux sync
-- **Metadata:** partial native Mux sync only for fields Mux actually stores
-- **Chapters:** no true Mux asset-side sync today; compare/explain only unless product later accepts a Forge-managed playback layer
-- **Embeddings:** no Mux-native sync target; compare/explain only
 
-The plan below treats that as a product truth to surface clearly in the job UI, not something to hide.
+Everything else stays out of scope for this plan.
 
 ## Requirements Trace
 
-- R1. After enrichment completes, Forge must inspect the target Mux asset before attempting any write.
+- R1. After enrichment completes, Forge must inspect the target Mux asset before attempting any subtitle write.
 - R2. Forge must sync translated subtitle tracks into Mux only when the target language is missing on Mux.
-- R3. Forge must sync metadata only for fields that map to real Mux asset metadata fields.
-- R4. When Mux already has a supported destination populated, Forge must skip the write, persist the reason, and expose generated-vs-existing comparison data in the job details.
-- R5. Job details must include an explicit operator action to override Mux-side data with newly generated Forge data for supported artifact types.
-- R6. For artifact types that Mux does not support as first-class persisted asset data, job details must explain that no native sync target exists.
-- R7. The sync decision and comparison result must be durable in job state so the page does not recompute everything ad hoc on each refresh.
-- R8. The workflow and UI must distinguish:
+- R3. When Mux already has a subtitle track for that language, Forge must skip the write, persist the reason, and expose generated-vs-existing comparison data in the job details.
+- R4. Job details must include an explicit operator action to override an existing Mux subtitle track with the newly generated subtitle.
+- R5. The subtitle sync decision and comparison result must be durable in job state so the page does not recompute everything ad hoc on each refresh.
+- R6. The workflow and UI must distinguish:
   - `synced`
   - `skipped_missing_generated_data`
   - `skipped_existing_mux_data`
-  - `unsupported_mux_target`
   - `override_applied`
   - `failed`
-- R9. All new behavior must be added with red/green tests before implementation.
+- R7. All new behavior must be added with red/green tests before implementation.
 
 ## Scope Boundaries
 
 In scope:
 
-- a real post-enrichment `mux_upload` step
-- Mux asset inspection and sync decision logic
-- durable sync/comparison state on jobs
-- job details UI for explanation, side-by-side comparison, and override actions
+- a real post-enrichment `mux_upload` step for translated subtitles
+- Mux asset inspection and subtitle sync decision logic
+- durable subtitle sync/comparison state on jobs
+- job details UI for explanation, side-by-side subtitle comparison, and subtitle override actions
 - translated subtitle sync into Mux text tracks
-- mapped metadata sync into Mux asset metadata
-
-In scope with explicit limitation:
-
-- metadata only where the field has a real Mux destination
-- chapters and embeddings explanation/comparison state, not a fake native sync
 
 Out of scope:
 
-- redefining Mux’s API surface
-- pretending chapters or embeddings are first-class Mux asset records when they are not
+- metadata sync of any kind
+- chapters sync of any kind
+- embeddings sync of any kind
+- any generic “sync all enrichment outputs” abstraction
 - replacing Forge artifact storage as the system of record
 - adopting `@mux/ai` as part of this plan
 - CMS write-back or player-side rollout outside the manager job detail flow
 
 ## Product Decisions
 
-### 1. Treat syncability per artifact type, not as one global yes/no
+### 1. Subtitle sync is the only supported artifact type
 
-The job UI and workflow should not say “uploaded to Mux” as a blanket claim. It should report per artifact type:
-
-- what Forge generated
-- whether Mux has a native destination
-- whether Mux already had data
-- whether Forge synced it
+The job UI and workflow should not imply broader Mux sync coverage. This plan is only about translated subtitle tracks.
 
 ### 2. Subtitle sync is the first-class happy path
 
@@ -154,41 +121,9 @@ For each generated `subtitles-<lang>` artifact:
 - if Mux already has a track for that language, skip and persist comparison state
 - operator can force an override later
 
-### 3. Metadata sync is field-mapped, not artifact-shaped
+### 3. Existing Mux subtitle data wins by default
 
-Forge metadata artifacts currently contain richer structure than Mux asset metadata supports. Current Mux asset metadata fields are:
-
-- `title`
-- `creator_id`
-- `external_id`
-
-So this feature must decide an explicit mapping policy. Recommended initial policy:
-
-- sync generated `title` into Mux `meta.title`
-- do **not** overwrite `creator_id` or `external_id` with AI-generated content
-- treat generated `description`, `topics`, `speakers`, and `tags` as Forge-only for now, with an explanation that Mux has no equivalent first-class asset metadata field
-
-This keeps the sync honest and avoids abusing `creator_id` or `external_id`.
-
-### 4. Chapters are compare-only unless product later accepts a Forge playback layer
-
-Mux Player supports chapters passed into the player, but Mux Video does not expose a first-class asset-side persisted chapter record comparable to text tracks or asset meta.
-
-So for this plan:
-
-- show generated chapters in the job
-- show explanation that Mux has no first-class persisted chapter target on the asset
-- do not implement a fake “sync to Mux” step for chapters
-- do not expose an override button for chapters in v1
-
-### 5. Embeddings are compare/explain only
-
-Embeddings remain Forge-managed and should continue to live outside Mux.
-
-For this plan:
-
-- explain that Mux has no first-class embedding storage target
-- do not expose override-to-Mux for embeddings in v1
+Automatic sync should never overwrite an existing Mux subtitle track. Replacement requires an explicit operator action after review.
 
 ## Proposed User Flow
 
@@ -213,34 +148,24 @@ For this plan:
    - current Mux subtitle preview
 7. Operator can click `Override Mux data` to replace the existing French track.
 
-### Unsupported target path
-
-1. Workflow generates chapters and embeddings.
-2. `mux_upload` evaluates these artifact types.
-3. Forge marks them as `unsupported_mux_target`.
-4. Job details explain:
-   - chapters: `Mux Player supports chapters at playback time, but Mux Video has no first-class persisted chapter record on the asset`
-   - embeddings: `Mux has no native embedding storage target`
-
 ## Technical Approach
 
 ## Durable sync model
 
-Add a dedicated metadata artifact or expanded job-step details object to persist a `muxSyncReport`, for example:
+Persist a single canonical `muxSyncReport` in job artifacts, for example:
 
 ```ts
 type MuxSyncStatus =
   | "synced"
   | "skipped_existing_mux_data"
   | "skipped_missing_generated_data"
-  | "unsupported_mux_target"
   | "override_applied"
   | "failed"
 
 type MuxSyncComparison = {
   artifactKey: string
-  muxTargetType: "text_track" | "asset_meta_field" | "unsupported"
-  muxTargetKey?: string
+  muxTargetType: "text_track"
+  muxTargetKey: string
   status: MuxSyncStatus
   explanation: string
   generatedPreview?: unknown
@@ -251,39 +176,41 @@ type MuxSyncComparison = {
 
 Recommended storage location:
 
-- new `artifacts.muxSync` metadata entry for the cross-artifact report
-- additive `details` on the `mux_upload` step for high-level summary counts
+- `artifacts.muxSync` metadata entry as the canonical durable report
+- `mux_upload.details` may contain a derived summary only if the UI truly needs it, but it must be treated as a projection, not a second source of truth
 
 This keeps:
 
 - the full compare data durable and queryable
-- the step table concise
+- the step table concise without creating persistence drift
+
+Preview payload rules:
+
+- persist truncated subtitle previews only, never full subtitle bodies
+- preview payloads must be safe for the existing manager job-detail audience
+- if a preview cannot be safely truncated, persist a lightweight summary plus a link to the existing subtitle artifact instead
 
 ## Service boundaries
 
-Recommended new service layers:
+Recommended v1 service shape:
 
-- `services/mux-sync/read.ts`
-  - inspect current Mux text tracks and asset metadata
-- `services/mux-sync/plan.ts`
-  - compare generated artifacts against current Mux state
-  - produce the durable sync plan/report
-- `services/mux-sync/write.ts`
-  - apply missing writes
-  - apply override writes
-- `services/mux-sync/preview.ts`
-  - produce safe UI preview payloads for side-by-side compare
+- `services/mux-sync/index.ts`
+  - read current Mux subtitle tracks
+  - compare generated subtitle artifacts against current Mux state
+  - produce the canonical sync report
+  - apply missing subtitle writes and subtitle override writes
+- optional small helpers only where they clearly reduce duplication, for example preview shaping or Mux track normalization
 
-This avoids burying comparison logic directly inside [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts).
+This keeps v1 implementation right-sized while still avoiding burying comparison logic directly inside [videoEnrichment.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/workflows/videoEnrichment.ts).
 
 ## Job detail UI changes
 
 Recommended UI additions:
 
 - extend the step table or job detail page with a dedicated `Mux Sync` section
-- render per-artifact cards showing:
+- render compare cards for translated subtitle tracks that have generated-vs-Mux comparison data:
   - artifact name
-  - target type
+  - language
   - sync status
   - explanation
   - generated preview
@@ -292,126 +219,124 @@ Recommended UI additions:
 
 Likely entry points:
 
-- [live-job-detail-header.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-detail-header.tsx)
-- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
-- [app/dashboard/jobs/[id]/page.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/app/dashboard/jobs/[id]/page.tsx)
+- [live-job-detail-header.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-detail-header.tsx)
+- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
+- [app/dashboard/jobs/[id]/page.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/app/dashboard/jobs/[id]/page.tsx)
 
 ## Override action
 
 Recommended operator flow:
 
-- add a protected manager API endpoint to apply an override for a single supported target
-- require job id + artifact key + target descriptor
+- add a protected manager API endpoint to apply an override for a single subtitle target
+- require job id + artifact key + target language
+- authorize the endpoint to a narrow manager role that already has access to mutate enrichment outcomes
+- verify tenant/job ownership server-side before writing to Mux
 - endpoint re-reads Mux state before writing to avoid stale compare decisions
-- endpoint updates `muxSync` metadata and the `mux_upload` step details afterward
+- endpoint records an audit event for each override attempt
+- endpoint updates the canonical `muxSync` artifact report afterward
 
 Supported v1 override targets:
 
 - subtitle text tracks by language
-- `meta.title`
-
-Not supported in v1:
-
-- chapters
-- embeddings
-- AI-generated `description`, `topics`, `speakers`, `tags` into Mux, because there is no first-class destination
 
 ## Red/Green TDD Units
 
-- [ ] **Unit 1: Model current Mux state and sync decisions**
+- [x] **Unit 1: Model current Mux subtitle state and sync decisions**
 
-  **Goal:** Build a deterministic comparison layer before writing any Mux data.
+  **Goal:** Build a deterministic subtitle comparison layer before writing any Mux data.
 
   **Files:**
-  - Add: [apps/manager/src/services/mux-sync/read.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/mux-sync/read.ts)
-  - Add: [apps/manager/src/services/mux-sync/plan.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/mux-sync/plan.ts)
-  - Add tests for both
+  - Add: [apps/manager/src/services/mux-sync/index.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/mux-sync/index.ts)
+  - Add tests
 
   **Red**
   - failing tests for subtitle-track comparison:
     - missing track -> `synced` candidate
     - existing track -> `skipped_existing_mux_data`
-  - failing tests for metadata-field comparison:
-    - missing title -> `synced` candidate
-    - existing title -> `skipped_existing_mux_data`
-  - failing tests for chapters and embeddings:
-    - always `unsupported_mux_target`
+  - failing tests for missing generated subtitle data:
+    - missing artifact -> `skipped_missing_generated_data`
+  - failing tests proving preview payloads are truncated before persistence
 
   **Green**
-  - implement Mux-state reader and sync planner
-  - normalize Mux asset tracks and asset metadata into a stable compare model
+  - implement Mux subtitle-track reading, comparison, and report shaping
+  - normalize Mux subtitle track data into a stable compare model
 
   **Refactor**
   - keep comparison payloads compact enough for durable job storage
 
-- [ ] **Unit 2: Persist sync report into job state**
+- [x] **Unit 2: Persist subtitle sync report into job state**
 
-  **Goal:** Make sync decisions durable and visible on refresh.
+  **Goal:** Make subtitle sync decisions durable and visible on refresh.
 
   **Files:**
-  - [apps/manager/src/types/job.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/types/job.ts)
-  - [apps/manager/src/lib/state.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/lib/state.ts)
+  - [apps/manager/src/types/job.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/types/job.ts)
+  - [apps/manager/src/lib/state.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/lib/state.ts)
   - job/state tests
 
   **Red**
   - failing tests proving `muxSync` report round-trips through job reads
-  - failing tests proving `mux_upload` step details can summarize per-artifact results
+  - failing tests proving any derived `mux_upload` summary is computed from the canonical artifact report
+  - failing tests proving non-translation step details do not get dropped during hydration
 
   **Green**
-  - add durable job metadata shape and hydration
+  - add durable job metadata shape and hydration for `artifacts.muxSync`
+  - widen `JobStepDetails` only if a derived summary is required by the current UI
   - keep backwards compatibility for existing jobs without sync data
 
   **Refactor**
   - centralize the promoted fields so read-model drift does not recur
 
-- [ ] **Unit 3: Implement workflow-side sync for supported targets**
+- [x] **Unit 3: Implement workflow-side subtitle sync**
 
-  **Goal:** Make `mux_upload` a real workflow phase.
+  **Goal:** Make `mux_upload` a real subtitle workflow phase.
 
   **Files:**
-  - [apps/manager/src/workflows/videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
-  - Add: `apps/manager/src/services/mux-sync/write.ts`
+  - [apps/cms/src/components/enrichment/job-step.json](/Users/o/.codex/worktrees/f618/forge/apps/cms/src/components/enrichment/job-step.json)
+  - regenerated GraphQL artifacts for the added CMS step enum
+  - [apps/manager/src/lib/workflow-steps.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/lib/workflow-steps.ts)
+  - [apps/manager/src/workflows/videoEnrichment.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/workflows/videoEnrichment.ts)
+  - [apps/manager/src/services/mux-sync/index.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/mux-sync/index.ts)
   - workflow tests
 
   **Red**
+  - failing test proving `mux_upload` exists as a persisted CMS-backed step for new jobs
   - failing workflow test for missing subtitle track leading to Mux write
   - failing workflow test for existing subtitle track leading to skip + explanation
-  - failing workflow test for metadata title sync
-  - failing workflow test for unsupported chapter/embedding targets producing explanations instead of fake writes
+  - failing workflow test for missing generated subtitle artifact leading to `skipped_missing_generated_data`
 
   **Green**
-  - insert `mux_upload` after artifact generation
+  - insert `mux_upload` after subtitle artifact generation
   - persist compare report before and after writes
   - mark step `completed` only after report persistence succeeds
 
   **Refactor**
   - keep sync behavior idempotent so reruns do not duplicate text tracks
 
-- [ ] **Unit 4: Add job detail compare UI**
+- [x] **Unit 4: Add job detail subtitle compare UI**
 
-  **Goal:** Let operators understand why data was or was not synced.
+  **Goal:** Let operators understand why subtitle data was or was not synced.
 
   **Files:**
-  - [apps/manager/src/features/jobs/live-job-detail-header.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-detail-header.tsx)
-  - [apps/manager/src/features/jobs/live-job-steps-table.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
-  - [apps/manager/src/app/globals.css](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/app/globals.css)
+  - [apps/manager/src/features/jobs/live-job-detail-header.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-detail-header.tsx)
+  - [apps/manager/src/features/jobs/live-job-steps-table.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
+  - [apps/manager/src/app/globals.css](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/app/globals.css)
   - UI tests
 
   **Red**
   - failing test for existing-data explanation rendering
-  - failing test for generated-vs-mux side-by-side preview rendering
-  - failing test that unsupported targets show explanation and no override button
+  - failing test for generated-vs-mux side-by-side subtitle preview rendering
+  - failing test that override appears only for subtitle tracks with replaceable Mux data
 
   **Green**
-  - render the compare cards and status copy
-  - wire download/view affordances for generated artifacts
+  - render compare cards for translated subtitle tracks
+  - wire download/view affordances for generated subtitle artifacts
 
   **Refactor**
   - keep the section readable on both small and wide layouts
 
-- [ ] **Unit 5: Add override action for supported targets**
+- [x] **Unit 5: Add subtitle override action**
 
-  **Goal:** Allow an operator to replace Mux-side data after review.
+  **Goal:** Allow an operator to replace a Mux subtitle track after review.
 
   **Files:**
   - Add manager override route, likely under `/api/jobs/:id/mux-sync/override`
@@ -420,8 +345,8 @@ Not supported in v1:
 
   **Red**
   - failing test for overriding an existing subtitle text track
-  - failing test for overriding `meta.title`
-  - failing test proving unsupported targets cannot be overridden
+  - failing test proving unauthorized roles cannot invoke override
+  - failing test proving override events are audited
 
   **Green**
   - implement override endpoint
@@ -433,37 +358,27 @@ Not supported in v1:
 
 ## Risks and Mitigations
 
-- **Risk: product language says “sync everything to Mux” but Mux does not support that uniformly.**
-  - Mitigation: encode per-artifact capability and explanation in the job model and UI.
-
-- **Risk: metadata sync silently abuses `creator_id` or `external_id`.**
-  - Mitigation: restrict v1 sync to `meta.title` unless a separate product decision explicitly redefines those fields.
-
 - **Risk: subtitle override duplicates tracks instead of replacing the intended one.**
   - Mitigation: implement explicit target selection and replacement semantics in the writer layer; do not rely on naive append-only behavior.
 
 - **Risk: compare payload becomes too large for durable job state.**
-  - Mitigation: persist compact previews only, not full artifact bodies; rely on existing artifact endpoints for the full generated output.
+  - Mitigation: persist compact previews only, not full subtitle bodies; rely on existing artifact endpoints for the full generated output.
 
-- **Risk: UI claims chapters or embeddings are “on Mux” when they are not.**
-  - Mitigation: require exact target-type labels and unsupported copy in tests.
+- **Risk: override writes expand the mutation surface without clear access control.**
+  - Mitigation: require narrow role-based authorization, tenant/job ownership checks, and audit logging for every override attempt.
 
 ## Acceptance Criteria
 
-- [ ] Enrichment jobs run a real `mux_upload` phase after artifact generation.
-- [ ] Missing translated subtitle tracks are pushed into Mux as text tracks.
-- [ ] Existing translated subtitle tracks are not overwritten automatically.
-- [ ] Job details explain when subtitle sync was skipped because Mux already had data.
-- [ ] Job details show generated subtitle preview side by side with current Mux subtitle preview before override.
-- [ ] Operators can override an existing Mux subtitle track with the newly generated subtitle.
-- [ ] Generated metadata sync only writes to fields that Mux natively supports.
-- [ ] Existing Mux metadata fields are not overwritten automatically.
-- [ ] Job details explain which metadata fields were syncable and which were Forge-only because Mux has no equivalent field.
-- [ ] Chapters are explicitly marked as having no first-class Mux asset sync target.
-- [ ] Embeddings are explicitly marked as having no first-class Mux sync target.
-- [ ] Unsupported targets do not show misleading override affordances.
-- [ ] Sync decisions survive page refresh and job polling because they are persisted in job state.
-- [ ] All new sync behavior is covered with red/green tests before implementation.
+- [x] Enrichment jobs run a real `mux_upload` phase after subtitle artifact generation.
+- [x] Missing translated subtitle tracks are pushed into Mux as text tracks.
+- [x] Existing translated subtitle tracks are not overwritten automatically.
+- [x] Missing generated subtitle artifacts are reported as `skipped_missing_generated_data`.
+- [x] Job details explain when subtitle sync was skipped because Mux already had data.
+- [x] Job details show generated subtitle preview side by side with current Mux subtitle preview before override.
+- [x] Operators can override an existing Mux subtitle track with the newly generated subtitle when authorized.
+- [x] Override writes require explicit authorization and are audit logged.
+- [x] Sync decisions survive page refresh and job polling because they are persisted in job state.
+- [x] All new subtitle sync behavior is covered with red/green tests before implementation.
 
 ## Verification
 
@@ -482,19 +397,15 @@ Focused manual QA:
 4. Run the same language again.
 5. Confirm the second job shows `skipped_existing_mux_data` with side-by-side comparison and no automatic overwrite.
 6. Trigger override and confirm the Mux-side track updates.
-7. Run a job with generated metadata where Mux has no title.
-8. Confirm `meta.title` syncs and Forge-only metadata fields are clearly labeled as unsupported by Mux.
-9. Confirm chapters and embeddings always show explanation-only state, never fake sync success.
+7. Run a job where the translated subtitle artifact is missing and confirm the job records `skipped_missing_generated_data`.
+8. Confirm an unauthorized operator cannot invoke override.
+9. Confirm successful override attempts are audit logged.
 
 ## References
 
-- [feat-031 AI Video Enrichment Pipeline](/Users/o/.codex/worktrees/1ec2/forge/docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md)
-- [mux.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/mux.ts)
-- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
-- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
-- [live-job-detail-header.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-detail-header.tsx)
+- [feat-031 AI Video Enrichment Pipeline](/Users/o/.codex/worktrees/f618/forge/docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md)
+- [mux.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/services/mux.ts)
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/workflows/videoEnrichment.ts)
+- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
+- [live-job-detail-header.tsx](/Users/o/.codex/worktrees/f618/forge/apps/manager/src/features/jobs/live-job-detail-header.tsx)
 - [Add subtitles/captions to videos | Mux](https://support-agent.mux.com/docs/guides/add-subtitles-to-your-videos)
-- [Add metadata to your videos | Mux](https://www.mux.com/docs/guides/add-metadata-to-your-videos)
-- [Advanced usage of Mux Player | Mux](https://www.mux.com/docs/guides/player-advanced-usage)
-- [AI-generated chapters for your videos with Mux Player | Mux](https://www.mux.com/blog/ai-generated-chapters-for-your-videos-with-mux-player/)
-- [Use Mux in AI Workflows | Mux](https://www.mux.com/docs/integrations/ai-workflows)

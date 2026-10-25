@@ -1,0 +1,76 @@
+{
+  "capturedAt": "2026-09-16T02:17:00.223236+00:00",
+  "variant": "after",
+  "url": "https://www.jesusfilm.org/watch/1-the-simple-gospel.html",
+  "samples": [
+    {
+      "navigation": [
+        {
+          "ttfb": 1327.699999988079,
+          "dcl": 1454.1000000238419,
+          "load": 1916.800000011921,
+          "transferBytes": 54593
+        }
+      ],
+      "lcp": 9940,
+      "longTasks": 8,
+      "longestTask": 208,
+      "media": [
+        {
+          "tag": "VIDEO",
+          "paused": false,
+          "muted": true,
+          "seconds": 4.256007
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "navigation": [
+        {
+          "ttfb": 444.60000002384186,
+          "dcl": 694.8000000119209,
+          "load": 695.5,
+          "transferBytes": 55137
+        }
+      ],
+      "lcp": 688,
+      "longTasks": 1,
+      "longestTask": 70,
+      "media": [
+        {
+          "tag": "VIDEO",
+          "paused": false,
+          "muted": true,
+          "seconds": 4.806107
+        }
+      ],
+      "watchNow": true
+    },
+    {
+      "navigation": [
+        {
+          "ttfb": 529.3000000119209,
+          "dcl": 725.6000000238419,
+          "load": 726.2000000476837,
+          "transferBytes": 55260
+        }
+      ],
+      "lcp": 776,
+      "longTasks": 1,
+      "longestTask": 66,
+      "media": [
+        {
+          "tag": "VIDEO",
+          "paused": false,
+          "muted": true,
+          "seconds": 4.812209
+        }
+      ],
+      "watchNow": true
+    }
+  ],
+  "syntheticProfileCleanup": {
+    "status": 200
+  }
+}

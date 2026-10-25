@@ -1,0 +1,62 @@
+{
+  "probe": "forge_owner_ledger_0119_verification",
+  "executed": true,
+  "expectedRuntimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+  "sqlSha256": "eee67b1e0e9da432c2b1f0f6a9f34cd836379107b441c14d581836ed91dcc577",
+  "specSha256": "76902cba040bd4f0418420ae5cfcb5b6c1dd932fa7fa5594bd2d3751751e0693",
+  "expectedMigrationChecksums": [
+    {
+      "name": "0119_core_watch_delivery",
+      "checksum": "9ff07221fd73ac295e911baa2b915117324d75ab4dbb1759c797487bbf288ada"
+    }
+  ],
+  "transport": "RailwaySSHAdmin",
+  "statementTimeoutMs": 3000,
+  "lockTimeoutMs": 1000,
+  "nodeWallTimeoutMs": 15000,
+  "transportWallTimeoutMs": 20000,
+  "activationNotPerformed": true,
+  "environment": "production",
+  "startedAt": "2026-09-29T22:42:02.945116+00:00",
+  "transportExitCode": 0,
+  "unparsedStdoutLinesWithheld": 0,
+  "rawStderrWithheld": true,
+  "stderrLineCount": 1,
+  "status": "metadata_pass",
+  "runtimeCommit": "4455fa50e18902d326b64ec4abcd8285ab0574de",
+  "revisionSource": "RailwayAdminEnvironment",
+  "checks": {
+    "migrationChecksumExact": true,
+    "noUnfinishedMigrations": true,
+    "readOnly": true,
+    "expectedRuntimeCommit": true,
+    "statementTimeout": true,
+    "lockTimeout": true
+  },
+  "receipt": {
+    "probe": "forge_owner_migration_ledger_0119",
+    "checks": {
+      "migrationChecksumExact": true,
+      "noUnfinishedMigrations": true,
+      "readOnly": true,
+      "expectedRuntimeCommit": true,
+      "statementTimeout": true,
+      "lockTimeout": true
+    },
+    "ledgerOnly": true,
+    "migrations": [
+      {
+        "ok": true,
+        "name": "0119_core_watch_delivery"
+      }
+    ],
+    "lockTimeout": "1s",
+    "statementTimeout": "3s",
+    "sourceRowsQueried": false,
+    "transactionReadOnly": "on",
+    "activationNotPerformed": true,
+    "schemaShapeNotEvaluated": true,
+    "servingReadinessNotEvaluated": true
+  },
+  "endedAt": "2026-09-29T22:42:06.967536+00:00"
+}

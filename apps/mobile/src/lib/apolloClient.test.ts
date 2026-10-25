@@ -1,0 +1,667 @@
+// Guards R9: the Datadog attribution merge must NEVER clobber the Search consumer
+// bearer (see docs/solutions/architecture-patterns/
+// fleet-client-bearer-must-be-operation-scoped-not-global.md / PR #1226).
+jest.mock("../env", () => ({
+  env: {
+    EXPO_PUBLIC_ADMIN_GRAPHQL_URL: "https://admin.jesusfilm.org/api/graphql",
+    EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN: "test-token",
+    EXPO_PUBLIC_DATADOG_CLIENT_TOKEN: "ct",
+    EXPO_PUBLIC_DATADOG_APPLICATION_ID: "app",
+    EXPO_PUBLIC_DATADOG_SITE: undefined,
+    EXPO_PUBLIC_DATADOG_ENV: undefined,
+    EXPO_PUBLIC_DATADOG_VERSION: undefined,
+    EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE: undefined,
+    EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE: undefined,
+  },
+}))
+
+jest.mock("./viewer-id", () => ({ getViewerId: () => "vid-123" }))
+
+// Partial mock: config.ts still resolves through the real module, but the
+// unreachable latch is one-shot per module instance, so the emit is spied
+// rather than exercised here (its own behaviour is pinned in adminEndpoint).
+jest.mock("./adminEndpoint", () => ({
+  ...jest.requireActual("./adminEndpoint"),
+  noteAdminEndpointUnreachable: jest.fn(),
+}))
+
+jest.mock("@datadog/mobile-react-native", () => ({
+  DdLogs: {
+    info: jest.fn().mockResolvedValue(undefined),
+    warn: jest.fn().mockResolvedValue(undefined),
+    error: jest.fn().mockResolvedValue(undefined),
+  },
+  DdRum: {
+    addError: jest.fn().mockResolvedValue(undefined),
+    startView: jest.fn().mockResolvedValue(undefined),
+    addTiming: jest.fn().mockResolvedValue(undefined),
+  },
+  ErrorSource: { SOURCE: "SOURCE" },
+  PropagatorType: { TRACECONTEXT: "tracecontext" },
+  RumActionType: { CUSTOM: "custom" },
+  DATADOG_GRAPH_QL_OPERATION_NAME_HEADER: "x-dd-graph-ql-operation-name",
+  DATADOG_GRAPH_QL_OPERATION_TYPE_HEADER: "x-dd-graph-ql-operation-type",
+}))
+
+import {
+  ApolloClient,
+  ApolloLink,
+  gql,
+  InMemoryCache,
+  Observable,
+} from "@apollo/client"
+import type { DocumentNode } from "graphql"
+import { DdLogs, DdRum } from "@datadog/mobile-react-native"
+import {
+  CombinedGraphQLErrors,
+  ServerError,
+  ServerParseError,
+} from "@apollo/client/errors"
+import { env } from "../env"
+import { noteAdminEndpointUnreachable } from "./adminEndpoint"
+import {
+  ClientAbortError,
+  createErrorLink,
+  createRequestChain,
+  createUserJwtLink,
+  fetchWithTimeout,
+  isUnreachableEndpointError,
+  reportGraphqlOperationError,
+} from "./apolloClient"
+
+const mockEnv = env as unknown as Record<string, string | undefined>
+const mockWarn = DdLogs.warn as jest.Mock
+const mockAddError = DdRum.addError as jest.Mock
+
+// Terminating link captures the composed headers as the request reaches the
+// transport slot; the chain runs synchronously so no network is involved.
+function headersThroughChain(
+  query: DocumentNode,
+): Record<string, string> | undefined {
+  let captured: Record<string, string> | undefined
+  const terminal = new ApolloLink((operation) => {
+    captured = operation.getContext().headers as Record<string, string>
+    return new Observable<ApolloLink.Result>((subscriber) =>
+      subscriber.complete(),
+    )
+  })
+  const client = new ApolloClient({
+    cache: new InMemoryCache(),
+    link: ApolloLink.empty(),
+  })
+  ApolloLink.execute(
+    createRequestChain().concat(terminal),
+    { query },
+    { client },
+  ).subscribe({ error: () => undefined })
+  return captured
+}
+
+beforeEach(() => {
+  mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = "ct"
+  mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = "app"
+  jest.clearAllMocks()
+  mockWarn.mockResolvedValue(undefined)
+  mockAddError.mockResolvedValue(undefined)
+})
+
+describe("createRequestChain (auth + Datadog header composition)", () => {
+  it("delivers the WatchSearch bearer + viewer-id AND the attribution headers together", () => {
+    const headers = headersThroughChain(gql`
+      query WatchSearch {
+        __typename
+      }
+    `)
+    expect(headers).toMatchObject({
+      Authorization: "Bearer test-token",
+      "x-viewer-id": "vid-123",
+      "x-dd-graph-ql-operation-name": "WatchSearch",
+      "x-dd-graph-ql-operation-type": "query",
+    })
+  })
+
+  it("keeps public operations bearer-free while still attributing them", () => {
+    const headers = headersThroughChain(gql`
+      query GetVideoBySlug {
+        __typename
+      }
+    `)
+    expect(headers?.Authorization).toBeUndefined()
+    expect(headers?.["x-viewer-id"]).toBeUndefined()
+    expect(headers?.["x-dd-graph-ql-operation-name"]).toBe("GetVideoBySlug")
+  })
+
+  it("skips the attribution link when unprovisioned, but keeps the WatchSearch bearer", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = undefined
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = undefined
+    const headers = headersThroughChain(gql`
+      query WatchSearch {
+        __typename
+      }
+    `)
+    expect(headers?.Authorization).toBe("Bearer test-token")
+    expect(headers?.["x-dd-graph-ql-operation-name"]).toBeUndefined()
+  })
+})
+
+describe("fetchWithTimeout (client-timeout-abort marker, R12)", () => {
+  const realFetch = globalThis.fetch
+
+  afterEach(() => {
+    jest.useRealTimers()
+    globalThis.fetch = realFetch
+  })
+
+  it("emits the client_timeout_abort marker when the 15s deadline fires", () => {
+    jest.useFakeTimers()
+    // A never-resolving fetch so only the timeout can settle the abort path.
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql")
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "anonymous",
+    })
+  })
+
+  // feat-268: the marker must say WHICH operation blew the budget. One test
+  // per header shape so each read branch is the only way to pass (META law).
+  it("attributes the marker from a plain-object headers init", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: { "x-dd-graph-ql-operation-name": "GetVideoBySlug" },
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "GetVideoBySlug",
+    })
+  })
+
+  it("attributes the marker from a Headers-instance init (get() branch)", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    // get()-bearing shape: only the Headers-instance branch can read this —
+    // there is no matching own-key for the plain-object scan to find.
+    const headersInstance = {
+      get: (name: string) =>
+        name.toLowerCase() === "x-dd-graph-ql-operation-name" ? "Search" : null,
+    }
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: headersInstance as unknown as Headers,
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "Search",
+    })
+  })
+
+  it("degrades to 'anonymous' when the header read throws", () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest.fn(
+      () => new Promise<Response>(() => {}),
+    ) as unknown as typeof fetch
+    const hostileHeaders = {
+      get: () => {
+        throw new Error("exotic headers shape")
+      },
+    }
+    void fetchWithTimeout("https://admin.jesusfilm.org/api/graphql", {
+      headers: hostileHeaders as unknown as Headers,
+    })
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).toHaveBeenCalledWith("graphql.client_timeout_abort", {
+      budget_ms: 15_000,
+      operation: "anonymous",
+    })
+  })
+
+  it("does not emit the marker on a normal (fast) settle", async () => {
+    jest.useFakeTimers()
+    globalThis.fetch = jest
+      .fn()
+      .mockResolvedValue({ ok: true } as Response) as unknown as typeof fetch
+    await fetchWithTimeout("https://admin.jesusfilm.org/api/graphql")
+    jest.advanceTimersByTime(15_000)
+    expect(mockWarn).not.toHaveBeenCalledWith(
+      "graphql.client_timeout_abort",
+      expect.anything(),
+    )
+  })
+})
+
+describe("reportGraphqlOperationError (HTTP-200 GraphQL + network errors, R13)", () => {
+  it("reports a GraphQL-in-200 error keyed by operation + code", () => {
+    const err = new CombinedGraphQLErrors({
+      errors: [
+        { message: "rate limited", extensions: { code: "RATE_LIMITED" } },
+      ],
+    })
+    reportGraphqlOperationError(err, "Search")
+    expect(mockAddError).toHaveBeenCalledWith(
+      expect.any(String),
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_error", operation: "Search", code: "RATE_LIMITED" },
+    )
+  })
+
+  it("falls back to 'unknown' code when the error has no extensions.code", () => {
+    const err = new CombinedGraphQLErrors({ errors: [{ message: "boom" }] })
+    reportGraphqlOperationError(err, "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalledWith(
+      expect.any(String),
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_error", operation: "GetVideoBySlug", code: "unknown" },
+    )
+  })
+
+  it("reports a network error under the network origin", () => {
+    reportGraphqlOperationError(
+      new Error("socket hang up"),
+      "GetWatchHomeVideos",
+    )
+    expect(mockAddError).toHaveBeenCalledWith(
+      "socket hang up",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
+    )
+  })
+
+  it("no-ops when unprovisioned", () => {
+    mockEnv.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN = undefined
+    mockEnv.EXPO_PUBLIC_DATADOG_APPLICATION_ID = undefined
+    reportGraphqlOperationError(new Error("x"), "Search")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // Client-initiated aborts (15s fetchWithTimeout, unmount/supersede teardown)
+  // are noise, not failures — 390 "Aborted" RUM errors in one week of dev/preview
+  // sessions. The timeout case already has its own Logs marker (R12).
+  it("skips the real RN abort shape (DOMException('Aborted', 'AbortError'))", () => {
+    const abort = new Error("Aborted")
+    abort.name = "AbortError"
+    reportGraphqlOperationError(abort, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // Isolates the name branch: message wording drift must not defeat the skip.
+  it("skips an abort by name alone, regardless of message wording", () => {
+    const abort = new Error("The operation was aborted")
+    abort.name = "AbortError"
+    reportGraphqlOperationError(abort, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // Message text alone never suppresses (AWS-NoSuchKey law). RN's real abort
+  // does lack the name, but fetchWithTimeout converts it from the signal first,
+  // so a bare message-only "Aborted" reaching here is a genuine error.
+  it("still reports a message-only 'Aborted' error (no AbortError name)", () => {
+    reportGraphqlOperationError(new Error("Aborted"), "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalledWith(
+      "Aborted",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetVideoBySlug" },
+    )
+  })
+
+  it("skips the typed ClientAbortError from fetchWithTimeout", () => {
+    reportGraphqlOperationError(new ClientAbortError(), "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  // An unbounded walk lets a cause CYCLE throw RangeError out of this reporter,
+  // which has no safeDatadogCall wrapper and would escape into the error link.
+  it("does not throw on a cause cycle", () => {
+    const a = new Error("a") as Error & { cause?: unknown }
+    const b = new Error("b") as Error & { cause?: unknown }
+    a.cause = b
+    b.cause = a
+    expect(() => reportGraphqlOperationError(a, "GetVideoBySlug")).not.toThrow()
+    expect(mockAddError).toHaveBeenCalled()
+  })
+
+  it("stops looking past the cause depth bound", () => {
+    const deep = new Error("l0") as Error & { cause?: unknown }
+    let tip = deep
+    for (let i = 1; i <= 5; i++) {
+      const next = new Error(`l${i}`) as Error & { cause?: unknown }
+      tip.cause = next
+      tip = next
+    }
+    ;(tip as { isClientAbort?: boolean }).isClientAbort = true
+    reportGraphqlOperationError(deep, "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalled()
+  })
+
+  it("skips an abort Apollo wrapped one level deep (cause chain)", () => {
+    const wrapped = new Error("Network request failed")
+    wrapped.cause = new ClientAbortError()
+    reportGraphqlOperationError(wrapped, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+})
+
+// The production contract, not the branch shape: prod RUM carried 400 errors as
+// name "Error" / message "Aborted", which a name-only check can never suppress.
+// Drives that REAL shape through fetchWithTimeout to the suppressed reporter.
+describe("client abort classification (prod shape, end-to-end)", () => {
+  const realFetch = globalThis.fetch
+  afterEach(() => {
+    jest.useRealTimers()
+    globalThis.fetch = realFetch
+  })
+
+  it("converts RN's name-less Error('Aborted') into a suppressed ClientAbortError", async () => {
+    // RN's actual rejection shape: a plain Error whose name is "Error".
+    globalThis.fetch = jest.fn((_input, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(new Error("Aborted")),
+        )
+      })
+    }) as unknown as typeof fetch
+
+    const external = new AbortController()
+    const pending = fetchWithTimeout(
+      "https://admin.jesusfilm.org/api/graphql",
+      {
+        signal: external.signal,
+      },
+    )
+    external.abort()
+
+    const caught: unknown = await pending.catch((e: unknown) => e)
+    expect(caught).toBeInstanceOf(ClientAbortError)
+
+    reportGraphqlOperationError(caught, "GetVideoBySlug")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  it("leaves a genuine network failure unconverted and reported", async () => {
+    globalThis.fetch = jest.fn(() =>
+      Promise.reject(new Error("socket hang up")),
+    ) as unknown as typeof fetch
+
+    const caught: unknown = await fetchWithTimeout(
+      "https://admin.jesusfilm.org/api/graphql",
+    ).catch((e: unknown) => e)
+    expect(caught).not.toBeInstanceOf(ClientAbortError)
+
+    reportGraphqlOperationError(caught, "GetVideoBySlug")
+    expect(mockAddError).toHaveBeenCalledWith(
+      "socket hang up",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetVideoBySlug" },
+    )
+  })
+
+  // Guard-vs-typed-branch precedence: a server error whose message collides
+  // with the abort sentinel must still report through the GraphQL branch.
+  it("still reports a CombinedGraphQLErrors whose message is exactly 'Aborted'", () => {
+    const err = new CombinedGraphQLErrors({ errors: [{ message: "Aborted" }] })
+    reportGraphqlOperationError(err, "Search")
+    expect(mockAddError).toHaveBeenCalledWith(
+      expect.any(String),
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_error", operation: "Search", code: "unknown" },
+    )
+  })
+
+  it("still reports RN's real network-failure shape (TypeError)", () => {
+    reportGraphqlOperationError(
+      new TypeError("Network request failed"),
+      "GetWatchHomeVideos",
+    )
+    expect(mockAddError).toHaveBeenCalledWith(
+      "Network request failed",
+      "SOURCE",
+      expect.any(String),
+      { origin: "graphql_network_error", operation: "GetWatchHomeVideos" },
+    )
+  })
+
+  // KTD6 exemption: anonymous event mutations accept per-IP rate shedding, so a
+  // shed RecordWatchSearchEvent must not file a RUM error. One test per error
+  // shape — a shed arrives as GraphQL-in-200 RATE_LIMITED, a drop as a network
+  // error — and the "still reports" cases above are the anti-vacuous contrast.
+  it("skips the exempted event op on the GraphQL-in-200 branch (rate shed)", () => {
+    const err = new CombinedGraphQLErrors({
+      errors: [
+        { message: "rate limited", extensions: { code: "RATE_LIMITED" } },
+      ],
+    })
+    reportGraphqlOperationError(err, "RecordWatchSearchEvent")
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+
+  it("skips the exempted event op on the network-error branch", () => {
+    reportGraphqlOperationError(
+      new Error("socket hang up"),
+      "RecordWatchSearchEvent",
+    )
+    expect(mockAddError).not.toHaveBeenCalled()
+  })
+})
+
+describe("unreachable admin endpoint (R12)", () => {
+  const noteMock = noteAdminEndpointUnreachable as jest.Mock
+
+  // Drives the REAL error link, so the wiring — not just the classifier — is
+  // what these assertions depend on.
+  function driveErrorLink(error: unknown): void {
+    const terminal = new ApolloLink(
+      () =>
+        new Observable<ApolloLink.Result>((subscriber) =>
+          subscriber.error(error),
+        ),
+    )
+    const client = new ApolloClient({
+      cache: new InMemoryCache(),
+      link: ApolloLink.empty(),
+    })
+    ApolloLink.execute(
+      createErrorLink().concat(terminal),
+      {
+        query: gql`
+          query GetVideoBySlug {
+            __typename
+          }
+        `,
+      },
+      { client },
+    ).subscribe({ error: () => undefined })
+  }
+
+  it("classifies a bare network failure as unreachable", () => {
+    expect(
+      isUnreachableEndpointError(new TypeError("Network request failed")),
+    ).toBe(true)
+  })
+
+  it("does not classify a GraphQL error inside an HTTP 200 body", () => {
+    const err = new CombinedGraphQLErrors({ errors: [{ message: "boom" }] })
+    expect(isUnreachableEndpointError(err)).toBe(false)
+  })
+
+  it("does not classify a client-initiated abort", () => {
+    expect(isUnreachableEndpointError(new ClientAbortError())).toBe(false)
+  })
+
+  // An HTTP status is proof the endpoint answered, so the notice's
+  // "Nothing answered / Start local admin" copy would misdiagnose it.
+  it("does not classify an HTTP error response as unreachable", () => {
+    const response = { status: 500, statusText: "Server Error" } as Response
+    expect(
+      isUnreachableEndpointError(
+        new ServerError("failed", { response, bodyText: "boom" }),
+      ),
+    ).toBe(false)
+    expect(
+      isUnreachableEndpointError(
+        new ServerParseError(new Error("bad json"), {
+          response,
+          bodyText: "<html>502</html>",
+        }),
+      ),
+    ).toBe(false)
+  })
+
+  it("notes the resolved endpoint when the network fails outright", () => {
+    driveErrorLink(new TypeError("Network request failed"))
+    expect(noteMock).toHaveBeenCalledWith(
+      "https://admin.jesusfilm.org/api/graphql",
+    )
+  })
+
+  it("stays quiet for a GraphQL error inside an HTTP 200 body", () => {
+    driveErrorLink(new CombinedGraphQLErrors({ errors: [{ message: "boom" }] }))
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  it("stays quiet for a client-initiated abort", () => {
+    driveErrorLink(new ClientAbortError())
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  it("stays quiet for a live endpoint returning an HTTP error", () => {
+    driveErrorLink(
+      new ServerError("failed", {
+        response: { status: 500, statusText: "Server Error" } as Response,
+        bodyText: "boom",
+      }),
+    )
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  // __DEV__ is a bundler-injected global with no ambient type here.
+  const devFlag = globalThis as unknown as { __DEV__: boolean }
+
+  function asReleaseBundle(run: () => void): void {
+    const previous = devFlag.__DEV__
+    devFlag.__DEV__ = false
+    try {
+      run()
+    } finally {
+      devFlag.__DEV__ = previous
+    }
+  }
+
+  // This handler is in the link chain of EVERY build, so the release gate has
+  // to be structural in the source, not merely asserted here.
+  it("stays quiet in a release bundle", () => {
+    asReleaseBundle(() =>
+      driveErrorLink(new TypeError("Network request failed")),
+    )
+    expect(noteMock).not.toHaveBeenCalled()
+  })
+
+  it("still reports GraphQL errors to Datadog in a release bundle", () => {
+    asReleaseBundle(() =>
+      driveErrorLink(new CombinedGraphQLErrors({ errors: [{ message: "x" }] })),
+    )
+    expect(mockAddError).toHaveBeenCalled()
+  })
+})
+
+// KTD10 guard: the user JWT rides ONLY progress operations. The async link
+// must leave public operations untouched (and synchronous) even with a live
+// session able to mint a token.
+describe("createUserJwtLink (operation-scoped user JWT)", () => {
+  function headersThroughJwtLink(
+    query: DocumentNode,
+    getJwt: () => Promise<string | null>,
+  ): Promise<Record<string, string> | undefined> {
+    return new Promise((resolve) => {
+      let captured: Record<string, string> | undefined
+      const terminal = new ApolloLink((operation) => {
+        captured = operation.getContext().headers as Record<string, string>
+        return new Observable<ApolloLink.Result>((subscriber) =>
+          subscriber.complete(),
+        )
+      })
+      const client = new ApolloClient({
+        cache: new InMemoryCache(),
+        link: ApolloLink.empty(),
+      })
+      ApolloLink.execute(
+        createUserJwtLink(getJwt).concat(terminal),
+        { query },
+        { client },
+      ).subscribe({
+        complete: () => resolve(captured),
+        error: () => resolve(captured),
+      })
+    })
+  }
+
+  it("public operations with a live session get NO user header — the guard that matters most", async () => {
+    const getJwt = jest.fn(async () => "user-jwt")
+    const headers = await headersThroughJwtLink(
+      gql`
+        query WatchSearch {
+          __typename
+        }
+      `,
+      getJwt,
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+    // The link must not even consult the session for public traffic.
+    expect(getJwt).not.toHaveBeenCalled()
+  })
+
+  it("progress operations carry the freshly minted JWT", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        query MyWatchProgress {
+          __typename
+        }
+      `,
+      async () => "user-jwt",
+    )
+
+    expect(headers?.Authorization).toBe("Bearer user-jwt")
+  })
+
+  it("forwards without the header when the mint fails (fail-open)", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        mutation UpsertMyWatchProgress {
+          __typename
+        }
+      `,
+      async () => {
+        throw new Error("mint failed")
+      },
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+  })
+
+  it("forwards without the header when signed out", async () => {
+    const headers = await headersThroughJwtLink(
+      gql`
+        mutation UpsertMyWatchProgress {
+          __typename
+        }
+      `,
+      async () => null,
+    )
+
+    expect(headers?.Authorization).toBeUndefined()
+  })
+})

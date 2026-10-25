@@ -8,6 +8,14 @@ dependencies: []
 
 # Fix manager job type comment after cms_notify removal
 
+> **Superseded 2026-10-24 (feat-796, PR #709):** The April comment review below
+> is historical. Current job types describe an adapted persisted Admin contract,
+> including modern Smart Crop and historical Shorts options/steps. `cms_notify`
+> remains a legacy read-compatibility literal used by the strict runtime parser;
+> retaining it does not execute a notification. The unused typed `notifyCms`
+> declaration is removed while opaque stored options retain old keys. The
+> current comment does not claim verbatim upstream parity or a five-step limit.
+
 ## Problem Statement
 
 The header comment in `apps/manager/src/types/job.ts` no longer matches the code beneath it after the `cms_notify` cleanup.

@@ -1,0 +1,124 @@
+{
+  "date": "2026-09-23",
+  "kind": "local-controlled-fault-injection",
+  "revision": "77eb63fbb325f6279955f34cffd1f8994f9281dd",
+  "productionChanges": false,
+  "runtime": {
+    "redis": "8.10.2",
+    "redisImage": "redis:8.10.2-alpine",
+    "redisImageDigest": "sha256:72cedd9603038893af961e90ac5e1a1a0d8377d5e338dbdad8fe284ea25de18f",
+    "ioredis": "5.10.1",
+    "envelopRateLimiter": "10.0.1"
+  },
+  "observations": [
+    {
+      "redisVersion": "8.10.2"
+    },
+    {
+      "scenario": "restart",
+      "round": 1,
+      "failures": [
+        {
+          "status": 500,
+          "elapsedMs": 14
+        },
+        {
+          "status": 500,
+          "elapsedMs": 121
+        },
+        {
+          "status": 500,
+          "elapsedMs": 328
+        }
+      ],
+      "recoveryMs": 517,
+      "facts": 1
+    },
+    {
+      "scenario": "restart",
+      "round": 2,
+      "failures": [
+        {
+          "status": 500,
+          "elapsedMs": 7
+        },
+        {
+          "status": 500,
+          "elapsedMs": 112
+        },
+        {
+          "status": 500,
+          "elapsedMs": 321
+        }
+      ],
+      "recoveryMs": 1272,
+      "facts": 1
+    },
+    {
+      "scenario": "restart",
+      "round": 3,
+      "failures": [
+        {
+          "status": 500,
+          "elapsedMs": 7
+        },
+        {
+          "status": 500,
+          "elapsedMs": 111
+        },
+        {
+          "status": 500,
+          "elapsedMs": 315
+        }
+      ],
+      "recoveryMs": 476,
+      "facts": 1
+    },
+    {
+      "scenario": "short-stall",
+      "elapsedMs": 1097,
+      "facts": 1
+    },
+    {
+      "scenario": "aborted-stall",
+      "callerElapsedMs": 3009
+    },
+    {
+      "scenario": "lost-ack",
+      "facts": 1,
+      "receipt": "replay"
+    }
+  ],
+  "assertions": {
+    "restartFailuresPreventResolverExecution": true,
+    "restartFailuresWriteNoFacts": true,
+    "healthStill200DuringDisconnect": true,
+    "reconnectNeedsNoAdminRestart": true,
+    "postRecoveryAcceptedAndReplayKeepOneFact": true,
+    "pausedRedisSocketRemainsReady": true,
+    "callerAbortCanPrecedeDurableCommit": true,
+    "postCommitSocketLossReplayKeepsOneFact": true
+  },
+  "browserComponent": {
+    "substrate": "jsdom and fake timers; real recorder with mocked HTTP",
+    "fast503AttemptTimesMs": [0, 100, 300],
+    "recoveryAtMs": 1000,
+    "exhaustedFactsRetriedAfterRecovery": false,
+    "newFactsAcceptedAfterRecovery": true
+  },
+  "validation": {
+    "adminFocusedTests": 65,
+    "webFocusedTests": 97,
+    "realDependencyTests": 7,
+    "adminTypecheck": "passed",
+    "webTypecheck": "passed",
+    "changedTestLint": "passed"
+  },
+  "limitations": [
+    "Minimal Yoga schema, synthetic consumer principal and real service/storage; not full Next auth or browser-to-Web-to-Admin deployment.",
+    "Historical production trace confirms sampled Redis failure, not every failed request or fact loss.",
+    "Recovery times include Docker start and local scheduler delay; not a production latency prediction.",
+    "Silent-stall late commit is reproduced locally, not attributed to production failures.",
+    "Timestamp rejections and separately owned database latency remain unresolved populations."
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-09-29T03:33:46.688471Z",
+  "targetDeployment": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+  "serviceInstance": {
+    "activeDeployments": [
+      {
+        "deploymentStopped": false,
+        "id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+        "instances": [
+          {
+            "id": "aa88ecb4-dc1e-4406-9811-81d05dbe85b4",
+            "status": "REMOVED"
+          },
+          {
+            "id": "7862f68c-ce0c-4e02-8c66-ea5583bed10e",
+            "status": "RUNNING"
+          }
+        ],
+        "status": "SUCCESS"
+      }
+    ],
+    "latestDeployment": {
+      "createdAt": "2026-09-29T03:28:01.503Z",
+      "id": "3c7abf21-c6f9-46a7-90be-3b32e2d3fbf7",
+      "status": "SUCCESS",
+      "statusUpdatedAt": "2026-09-29T03:33:41.130Z",
+      "commitHash": "2233e06a2edc0b98457b4967c197141e4ba3e172"
+    }
+  },
+  "targetStatus": "SUCCESS",
+  "healthHttpStatus": 200
+}

@@ -1,0 +1,74 @@
+{
+  "observedAt": "2026-10-01T03:08:21.199348+00:00",
+  "services": [
+    {
+      "service": "@forge/admin",
+      "deployments": [
+        {
+          "id": "9a65c564-bf39-465d-b23c-8df43b631866",
+          "status": "SUCCESS",
+          "createdAt": "2026-10-01T02:46:25.175Z",
+          "commit": "58cf00928a083156414618988f42c02545b4b1e6"
+        },
+        {
+          "id": "125c4cc5-eec5-4cc2-8609-8b59e9f9cd5b",
+          "status": "REMOVED",
+          "createdAt": "2026-10-01T02:40:47.107Z",
+          "commit": "63511a87ff949e36885488346edf7fafb7566c27"
+        },
+        {
+          "id": "bfa8713c-6f55-4172-a7e0-dfa5e27f4363",
+          "status": "REMOVED",
+          "createdAt": "2026-09-30T19:50:33.043Z",
+          "commit": "3748973331e8ab78187de3c67bfbaf890bae37a4"
+        }
+      ]
+    },
+    {
+      "service": "@forge/admin/worker",
+      "deployments": [
+        {
+          "id": "1c762f1d-0338-459c-b956-444b02f62d9a",
+          "status": "SUCCESS",
+          "createdAt": "2026-10-01T02:46:24.602Z",
+          "commit": "58cf00928a083156414618988f42c02545b4b1e6"
+        },
+        {
+          "id": "d99eb69d-a286-4b92-aa29-dba3f22ff705",
+          "status": "REMOVED",
+          "createdAt": "2026-10-01T02:40:46.427Z",
+          "commit": "63511a87ff949e36885488346edf7fafb7566c27"
+        },
+        {
+          "id": "0842c8b1-bae7-4ffd-a6ef-6290b39c0966",
+          "status": "REMOVED",
+          "createdAt": "2026-09-30T19:50:32.227Z",
+          "commit": "3748973331e8ab78187de3c67bfbaf890bae37a4"
+        }
+      ]
+    },
+    {
+      "service": "@forge/web",
+      "deployments": [
+        {
+          "id": "9f467019-fa25-49d6-8a59-144d7d5c83eb",
+          "status": "SUCCESS",
+          "createdAt": "2026-10-01T02:46:24.708Z",
+          "commit": "58cf00928a083156414618988f42c02545b4b1e6"
+        },
+        {
+          "id": "d24b2af1-e875-40ea-ad3a-49bfccfa4a24",
+          "status": "SKIPPED",
+          "createdAt": "2026-10-01T02:40:47.330Z",
+          "commit": "63511a87ff949e36885488346edf7fafb7566c27"
+        },
+        {
+          "id": "fd06dc4d-ebdd-4a24-bbee-9c5c9eeadd3d",
+          "status": "SKIPPED",
+          "createdAt": "2026-09-30T19:50:33.312Z",
+          "commit": "3748973331e8ab78187de3c67bfbaf890bae37a4"
+        }
+      ]
+    }
+  ]
+}

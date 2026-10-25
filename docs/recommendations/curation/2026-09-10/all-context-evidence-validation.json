@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "exhaustiveDistinctContexts": 521325,
+  "losslessGroupedMatrixComparisons": 521325,
+  "priorEnglishAudioContextsCompared": 2317,
+  "webDefaultContextProjectionsCompared": 2317,
+  "officialServiceEquivalenceChecks": 18,
+  "fullCsvSha256": "8d7e8aa5108f3be7878bb4bab1337966b31f101e08f80237feb5f7e043a628a7"
+}

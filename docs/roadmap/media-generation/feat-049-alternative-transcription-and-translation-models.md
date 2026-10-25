@@ -3,7 +3,7 @@ id: "feat-049"
 title: "Alternative Transcription and Translation Models"
 owner: "vlad"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-13"
 duration: 18
 depends_on:
@@ -11,6 +11,7 @@ depends_on:
 blocks:
   - "feat-065"
   - "feat-066"
+  - "feat-397"
 tags:
   - "manager"
   - "ai-pipeline"

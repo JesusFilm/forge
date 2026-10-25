@@ -1,0 +1,321 @@
+{
+  "client": "codex-cli 0.150.0-alpha.12.2",
+  "authentication": "Existing ChatGPT subscription login; local test-issuer MCP bearer",
+  "session": "01a0cc79-3848-7a60-bc2b-a9dbd0281321",
+  "limits": [
+    "Local issuer, not Auth OAuth consent/browser login",
+    "Actual Manager/Admin handlers over HTTP; no Next UI",
+    "No renderer or paid provider called"
+  ],
+  "calls": [
+    {
+      "transcript": "client-transcript.jsonl",
+      "tool": "shorts.projects",
+      "arguments": {
+        "limit": 1
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projects": [
+            {
+              "projectId": "01f73fa9-7241-45c1-97fc-b7a27fa0ea6a",
+              "revision": 1,
+              "lifecycle": "DRAFT",
+              "title": "Contended terminal state",
+              "width": 320,
+              "height": 180,
+              "durationInFrames": 30,
+              "fps": 30,
+              "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/01f73fa9-7241-45c1-97fc-b7a27fa0ea6a?revision=1"
+            }
+          ],
+          "nextCursor": "01f73fa9-7241-45c1-97fc-b7a27fa0ea6a"
+        }
+      }
+    },
+    {
+      "transcript": "client-transcript.jsonl",
+      "tool": "shorts.create",
+      "arguments": {
+        "projectId": "codex-local-proof-542",
+        "idempotencyKey": "codex-local-create-542",
+        "expectedRevision": 0,
+        "document": {
+          "version": 1,
+          "title": "Codex local MCP qualification",
+          "language": "en",
+          "runtimeVersion": "studio-test",
+          "width": 1080,
+          "height": 1920,
+          "fps": 30,
+          "durationInFrames": 300,
+          "tracks": [],
+          "items": [],
+          "components": [],
+          "packRevisionIds": []
+        }
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projectId": "codex-local-proof-542",
+          "revision": 1,
+          "outcome": "ACCEPTED",
+          "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=1"
+        }
+      }
+    },
+    {
+      "transcript": "client-transcript.jsonl",
+      "tool": "shorts.read",
+      "arguments": {
+        "projectId": "codex-local-proof-542"
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projectId": "codex-local-proof-542",
+          "revision": 1,
+          "sourceVideoDubId": null,
+          "lifecycle": "DRAFT",
+          "firstPublishedAt": null,
+          "document": {
+            "version": 1,
+            "title": "Codex local MCP qualification",
+            "language": "en",
+            "runtimeVersion": "studio-test",
+            "width": 1080,
+            "height": 1920,
+            "fps": 30,
+            "durationInFrames": 300,
+            "tracks": [],
+            "components": [],
+            "items": [],
+            "packRevisionIds": []
+          },
+          "actor": {
+            "kind": "human",
+            "id": "shorts-local-qualification",
+            "authority": "delegated",
+            "clientId": "codex-local-qualification"
+          },
+          "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=1"
+        }
+      }
+    },
+    {
+      "transcript": "client-transcript.jsonl",
+      "tool": "shorts.apply",
+      "arguments": {
+        "projectId": "codex-local-proof-542",
+        "expectedRevision": 1,
+        "idempotencyKey": "codex-local-edit-542",
+        "operations": [
+          {
+            "op": "replace",
+            "path": "/title",
+            "value": "Codex revised draft"
+          }
+        ]
+      },
+      "status": "failed",
+      "error": {
+        "message": "tool call error: tool call failed for `shorts/shorts.apply`\n\nCaused by:\n    Transport send error: Transport [codex_rmcp_client::event_notification_transport::EventNotificationTransport<rmcp::transport::worker::WorkerTransport<rmcp::transport::streamable_http_client::StreamableHttpClientWorker<codex_rmcp_client::http_client_adapter::StreamableHttpClientAdapter>>>] error: unexpected server response: HTTP 400: {\"error\":\"Invalid MCP request\"}"
+      },
+      "result": null
+    },
+    {
+      "transcript": "client-reconnect-transcript.jsonl",
+      "tool": "shorts.read",
+      "arguments": {
+        "projectId": "codex-local-proof-542"
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projectId": "codex-local-proof-542",
+          "revision": 1,
+          "sourceVideoDubId": null,
+          "lifecycle": "DRAFT",
+          "firstPublishedAt": null,
+          "document": {
+            "version": 1,
+            "title": "Codex local MCP qualification",
+            "language": "en",
+            "runtimeVersion": "studio-test",
+            "width": 1080,
+            "height": 1920,
+            "fps": 30,
+            "durationInFrames": 300,
+            "tracks": [],
+            "components": [],
+            "items": [],
+            "packRevisionIds": []
+          },
+          "actor": {
+            "kind": "human",
+            "id": "shorts-local-qualification",
+            "authority": "delegated",
+            "clientId": "codex-local-qualification"
+          },
+          "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=1"
+        }
+      }
+    },
+    {
+      "transcript": "client-reconnect-transcript.jsonl",
+      "tool": "shorts.apply",
+      "arguments": {
+        "projectId": "codex-local-proof-542",
+        "expectedRevision": 1,
+        "idempotencyKey": "codex-local-edit-542",
+        "operations": [
+          {
+            "kind": "set-metadata",
+            "title": "Codex revised draft"
+          }
+        ]
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projectId": "codex-local-proof-542",
+          "revision": 2,
+          "outcome": "ACCEPTED",
+          "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=2"
+        }
+      }
+    },
+    {
+      "transcript": "client-reconnect-transcript.jsonl",
+      "tool": "shorts.apply",
+      "arguments": {
+        "projectId": "codex-local-proof-542",
+        "expectedRevision": 1,
+        "idempotencyKey": "codex-local-edit-542",
+        "operations": [
+          {
+            "kind": "set-metadata",
+            "title": "Codex revised draft"
+          }
+        ]
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projectId": "codex-local-proof-542",
+          "revision": 2,
+          "outcome": "ACCEPTED",
+          "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=2"
+        }
+      }
+    },
+    {
+      "transcript": "client-reconnect-transcript.jsonl",
+      "tool": "shorts.history",
+      "arguments": {
+        "projectId": "codex-local-proof-542"
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": [
+          {
+            "revision": 2,
+            "document": {
+              "version": 1,
+              "title": "Codex revised draft",
+              "language": "en",
+              "runtimeVersion": "studio-test",
+              "width": 1080,
+              "height": 1920,
+              "fps": 30,
+              "durationInFrames": 300,
+              "tracks": [],
+              "components": [],
+              "items": [],
+              "packRevisionIds": []
+            },
+            "actor": {
+              "kind": "human",
+              "id": "shorts-local-qualification",
+              "authority": "delegated",
+              "clientId": "codex-local-qualification"
+            },
+            "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=2"
+          },
+          {
+            "revision": 1,
+            "document": {
+              "version": 1,
+              "title": "Codex local MCP qualification",
+              "language": "en",
+              "runtimeVersion": "studio-test",
+              "width": 1080,
+              "height": 1920,
+              "fps": 30,
+              "durationInFrames": 300,
+              "tracks": [],
+              "components": [],
+              "items": [],
+              "packRevisionIds": []
+            },
+            "actor": {
+              "kind": "human",
+              "id": "shorts-local-qualification",
+              "authority": "delegated",
+              "clientId": "codex-local-qualification"
+            },
+            "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=1"
+          }
+        ]
+      }
+    },
+    {
+      "transcript": "client-reconnect-transcript.jsonl",
+      "tool": "shorts.resolveProject",
+      "arguments": {
+        "url": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=2"
+      },
+      "status": "completed",
+      "error": null,
+      "result": {
+        "result": {
+          "projectId": "codex-local-proof-542",
+          "revision": 2,
+          "sourceVideoDubId": null,
+          "lifecycle": "DRAFT",
+          "firstPublishedAt": null,
+          "document": {
+            "version": 1,
+            "title": "Codex revised draft",
+            "language": "en",
+            "runtimeVersion": "studio-test",
+            "width": 1080,
+            "height": 1920,
+            "fps": 30,
+            "durationInFrames": 300,
+            "tracks": [],
+            "components": [],
+            "items": [],
+            "packRevisionIds": []
+          },
+          "actor": {
+            "kind": "human",
+            "id": "shorts-local-qualification",
+            "authority": "delegated",
+            "clientId": "codex-local-qualification"
+          },
+          "reviewUrl": "http://127.0.0.1:55471/dashboard/shorts/codex-local-proof-542?revision=2"
+        }
+      }
+    }
+  ]
+}

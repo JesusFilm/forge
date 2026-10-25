@@ -1,0 +1,17 @@
+> Historical validation summary. Raw artifact paths and original checksum inventories below refer to the [preserved archive](../../STUDIO-ARCHIVE.md); they are not a current checkout file inventory. Test fixtures remain in Git.
+
+# Durable Watch delivery — interim verification
+
+Publication and permanent revocation are the atomic durable work records. The new append-only `studio_watch_delivery` table records successful delivery of each release phase. Missing current-phase acknowledgement remains pending across restart; an old publish response cannot acknowledge revocation.
+
+The worker rebuilds the existing canonical global route manifest and stores it under a bounded database transaction. This bootstraps a missing global snapshot and admits later releases while preserving existing Core routes. The normal Core/experience refresh shares the same advisory lock, preventing a delayed older rebuild from overwriting a newer Studio rebuild. Manifest and video invalidation requests run outside that transaction. Media authorization does not depend on these acknowledgements.
+
+Real owned-database coverage verifies failed delivery, manifest success followed by video failure, restart retries, concurrent/repeated delivery, unpublish during delivery, canonical route removal, and preservation of an existing Core route. The first Core fixture omitted its mandatory dub Core ID; that harness error was corrected before the passing run. Existing refresh tests: 10 pass.
+
+The receiver originally returned HTTP 200 even after tag failure, and ignored the Cloudflare adapter's `failed` result. Three failure-first tests reproduced this. Studio now requests `requireComplete`; the receiver returns a versioned complete/incomplete receipt in headers and JSON. Tag or configured edge-purge failure returns 503. The emitter rejects legacy 200 responses lacking the receipt. Legacy callers retain existing response behavior. `skipped` is explicit when edge purge is unconfigured; the existing adapter also withholds live edge-cache headers in that state. This does not claim every external cache was purged.
+
+The native chain harness hosts the actual Web `POST` receiver on owned loopback 34674, injects failure at the Next cache primitive and Cloudflare adapter, and launches a separate Admin subprocess using the actual webhook emitter and database reconciliation. Tag failure leaves work pending; manifest 200 plus video 503 leaves it pending; complete receipts acknowledge it; a subsequent restart is idle with no new requests. This is real HTTP and database coverage with controlled cache failures, not an actual Cloudflare operation. Receiver suite: 25 pass. Emitter suite: 12 pass.
+
+No provider, production database or infrastructure mutation was performed. Local browser publication/Watch checks are recorded separately. Final full suites, fresh migration replay, reviews and deployed cache configuration evidence remain required. Strict receiver deployment must precede strict sender delivery; an old receiver fails closed and remains pending.
+
+The retained receiver harness later received explicit type annotations for normal hooks. TypeScript erasure with identifier minification disabled yields byte-identical JavaScript; final-checks/receiver-chain-type-equivalence.log records that comparison.

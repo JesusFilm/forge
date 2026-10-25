@@ -3,7 +3,7 @@ id: "feat-072"
 title: "TV App — Expo TV Toolchain Spike"
 owner: "urim"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-04-10"
 duration: 2
 depends_on: []

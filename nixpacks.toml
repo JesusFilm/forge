@@ -1,0 +1,11 @@
+[phases.setup]
+# Install the exact supported Node distribution instead of the builder's old
+# Nix Node package. Keep FFmpeg for Crop Worker and the shared build tools.
+nixPkgs = ["ffmpeg", "curl", "gnutar", "xz", "coreutils"]
+cmds = ["sh scripts/install-security-node.sh"]
+paths = ["/opt/forge-node/bin"]
+
+# Development dependencies are required by lifecycle scripts and TS builds,
+# including services that set NODE_ENV=production in their runtime environment.
+[phases.install]
+cmds = ["NODE_ENV=development pnpm install --frozen-lockfile"]

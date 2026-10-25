@@ -1,0 +1,36 @@
+# Railway only reads this file if the service's Config-as-code Path is set to
+# apps/shorts-worker/railway.toml. Otherwise configure the same settings in
+# the Railway dashboard and treat that dashboard config as canonical
+# (railway-dashboard-override-shadows-railway-toml).
+#
+# First Dockerfile-built app in the worker fleet (crop-worker uses NIXPACKS).
+# The image bakes ffmpeg, Chromium and the retained devotional bundle.
+# The separate Studio renderer has its own deployment and acceptance gates.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/shorts-worker/Dockerfile"
+watchPatterns = [
+  "/apps/shorts-worker/**",
+  "/packages/devotional-workspace/**",
+  "/packages/shorts-compositions/**",
+  "/packages/studio-contracts/**",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+]
+
+[deploy]
+# Single replica REQUIRED — the job registry/lanes are in-memory
+# (src/jobs.ts). A second replica round-robins manager's GET /jobs/{id}
+# polls onto replicas that never saw the POST, producing spurious 404s that
+# manager classifies as job_lost (bounded resubmit, then terminal failure)
+# while orphaned renders keep burning CPU. Scale per-lane throughput via
+# SHORTS_WORKER_QUEUE_LIMIT, not replicas. Railway only honors this file
+# when the service's Config-as-code Path is set — keep the dashboard replica
+# setting at 1 as well.
+numReplicas = 1
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3

@@ -8,6 +8,14 @@ dependencies: []
 
 # Reconcile completed cms_notify todo narrative
 
+> **Superseded 2026-10-24 (feat-796, PR #709):** The April narrative and results
+> below remain historical. Todo 019 now carries a dated current-Admin note:
+> the dead form and unused option declaration are removed, while `cms_notify`
+> remains readable for persisted legacy jobs with truthful static copy and no
+> execution inventory entry. Old option keys remain opaque stored data. April
+> validation is not evidence for the current candidate, and its CMS-sync planning
+> language does not authorize new work. Current validation belongs to feat-796.
+
 ## Problem Statement
 
 The completed cleanup todo for `cms_notify` is internally inconsistent.

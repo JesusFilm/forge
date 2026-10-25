@@ -1,0 +1,112 @@
+diff --git a/dist/handlers/redis-strings.cjs b/dist/handlers/redis-strings.cjs
+index 4c8149b085da88204cc9814ccc1955a2be8776ac..a7cd1b557fdbb4b97a28364efdea4050ae0f7b03 100644
+--- a/dist/handlers/redis-strings.cjs
++++ b/dist/handlers/redis-strings.cjs
+@@ -171,6 +171,19 @@ function createHandler({
+       );
+     }
+   }
++  // Keep shared Redis responsive while cleaning large cache metadata hashes.
++  // A single production HDEL exceeded 250 ms with more than 430,000 fields.
++  async function deleteEntries(keys, fields) {
++    const boundedClient = client.withAbortSignal(AbortSignal.timeout(timeoutMs));
++    for (let offset = 0; offset < fields.length; offset += 500) {
++      const batch = fields.slice(offset, offset + 500);
++      await Promise.all([
++        boundedClient.unlink(keys.slice(offset, offset + 500)),
++        boundedClient.hDel(keyPrefix + sharedTagsKey, batch),
++        boundedClient.hDel(keyPrefix + sharedTagsTtlKey, batch)
++      ]);
++    }
++  }
+   async function revalidateTag(tag) {
+     assertClientIsReady();
+     if (isImplicitTag(tag)) {
+@@ -201,14 +214,7 @@ function createHandler({
+     if (keysToDelete.length === 0) {
+       return;
+     }
+-    const deleteKeysOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).unlink(keysToDelete);
+-    const updateTagsOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsKey, tagsToDelete);
+-    const updateTtlOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsTtlKey, tagsToDelete);
+-    await Promise.all([
+-      deleteKeysOperation,
+-      updateTtlOperation,
+-      updateTagsOperation
+-    ]);
++    await deleteEntries(keysToDelete, tagsToDelete);
+   }
+   async function revalidateSharedKeys() {
+     assertClientIsReady();
+@@ -233,14 +239,7 @@ function createHandler({
+     if (tagsAndTtlToDelete.length === 0) {
+       return;
+     }
+-    const deleteKeysOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).unlink(keysToDelete);
+-    const updateTtlOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsTtlKey, tagsAndTtlToDelete);
+-    const updateTagsOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsKey, tagsAndTtlToDelete);
+-    await Promise.all([
+-      deleteKeysOperation,
+-      updateTagsOperation,
+-      updateTtlOperation
+-    ]);
++    await deleteEntries(keysToDelete, tagsAndTtlToDelete);
+   }
+   return {
+     name: "redis-strings",
+diff --git a/dist/handlers/redis-strings.js b/dist/handlers/redis-strings.js
+index 7c2ac7c1a902c754706ecf38e54cce5f5117fe15..9c5b08b0446dcc013387704e201a068227a8e5fc 100644
+--- a/dist/handlers/redis-strings.js
++++ b/dist/handlers/redis-strings.js
+@@ -144,6 +144,19 @@ function createHandler({
+       );
+     }
+   }
++  // Keep shared Redis responsive while cleaning large cache metadata hashes.
++  // A single production HDEL exceeded 250 ms with more than 430,000 fields.
++  async function deleteEntries(keys, fields) {
++    const boundedClient = client.withAbortSignal(AbortSignal.timeout(timeoutMs));
++    for (let offset = 0; offset < fields.length; offset += 500) {
++      const batch = fields.slice(offset, offset + 500);
++      await Promise.all([
++        boundedClient.unlink(keys.slice(offset, offset + 500)),
++        boundedClient.hDel(keyPrefix + sharedTagsKey, batch),
++        boundedClient.hDel(keyPrefix + sharedTagsTtlKey, batch)
++      ]);
++    }
++  }
+   async function revalidateTag(tag) {
+     assertClientIsReady();
+     if (isImplicitTag(tag)) {
+@@ -174,14 +187,7 @@ function createHandler({
+     if (keysToDelete.length === 0) {
+       return;
+     }
+-    const deleteKeysOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).unlink(keysToDelete);
+-    const updateTagsOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsKey, tagsToDelete);
+-    const updateTtlOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsTtlKey, tagsToDelete);
+-    await Promise.all([
+-      deleteKeysOperation,
+-      updateTtlOperation,
+-      updateTagsOperation
+-    ]);
++    await deleteEntries(keysToDelete, tagsToDelete);
+   }
+   async function revalidateSharedKeys() {
+     assertClientIsReady();
+@@ -206,14 +212,7 @@ function createHandler({
+     if (tagsAndTtlToDelete.length === 0) {
+       return;
+     }
+-    const deleteKeysOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).unlink(keysToDelete);
+-    const updateTtlOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsTtlKey, tagsAndTtlToDelete);
+-    const updateTagsOperation = client.withAbortSignal(AbortSignal.timeout(timeoutMs)).hDel(keyPrefix + sharedTagsKey, tagsAndTtlToDelete);
+-    await Promise.all([
+-      deleteKeysOperation,
+-      updateTagsOperation,
+-      updateTtlOperation
+-    ]);
++    await deleteEntries(keysToDelete, tagsAndTtlToDelete);
+   }
+   return {
+     name: "redis-strings",

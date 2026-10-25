@@ -1,9 +1,24 @@
+# Services without this config path remain dashboard canonical.
 [build]
-builder = "NIXPACKS"
-buildCommand = "pnpm install --frozen-lockfile && pnpm --filter @forge/manager... build && cp -r apps/manager/.next/static apps/manager/.next/standalone/apps/manager/.next/static"
+builder = "DOCKERFILE"
+dockerfilePath = "apps/manager/Dockerfile"
+watchPatterns = [
+  "/apps/manager/**",
+  "/packages/admin-graphql/**",
+  "/packages/shorts-compositions/**",
+  "/packages/studio-contracts/**",
+  "/packages/studio-server/**",
+  "/packages/video-player/**",
+  "/packages/watch-url-policy/**",
+  "/scripts/update-security-ca.sh",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/patches/**",
+]
 
 [deploy]
-startCommand = "HOSTNAME=0.0.0.0 node apps/manager/.next/standalone/apps/manager/server.js"
+startCommand = "node /app/apps/manager/.next/standalone/apps/manager/server.js"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

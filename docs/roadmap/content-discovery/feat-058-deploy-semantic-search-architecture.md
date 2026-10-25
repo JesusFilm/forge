@@ -10,8 +10,7 @@ depends_on:
   - "feat-011"
   - "feat-012"
   - "feat-045"
-blocks:
-  - "feat-063"
+blocks: []
 tags:
   - "search"
   - "infrastructure"

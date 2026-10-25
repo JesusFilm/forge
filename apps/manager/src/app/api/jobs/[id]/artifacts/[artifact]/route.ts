@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { resolveJobArtifactDescriptor } from "@/lib/job-artifacts"
+import {
+  getJobArtifactStorageAssetId,
+  resolveJobArtifactDescriptor,
+} from "@/lib/job-artifacts"
+import { hasValidMuxArtifactAccessSignature } from "@/lib/mux-artifact-access"
 import { getJob } from "@/lib/state"
 import { readArtifact } from "@/services/storage"
 
@@ -8,17 +12,27 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string; artifact: string }> },
 ) {
-  const authError = await authenticateRequest(request)
-  if (authError) return authError
-
   const { id, artifact } = await params
+  const logicalKey = decodeURIComponent(artifact)
+  const url = new URL(request.url)
+  const hasMuxSignature = hasValidMuxArtifactAccessSignature({
+    jobId: id,
+    artifactKey: logicalKey,
+    expiresAt: url.searchParams.get("muxExpiresAt"),
+    signature: url.searchParams.get("muxSignature"),
+  })
+
+  if (!hasMuxSignature) {
+    const authError = await authenticateRequest(request)
+    if (authError) return authError
+  }
+
   const job = await getJob(id)
 
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 })
   }
 
-  const logicalKey = decodeURIComponent(artifact)
   const entry = job.artifacts[logicalKey]
   if (!entry || entry.kind !== "downloadable") {
     return NextResponse.json({ error: "Artifact not found" }, { status: 404 })
@@ -32,19 +46,26 @@ export async function GET(
     )
   }
 
+  // Smart-crop jobs store artifacts under options.smartCrop.assetId, which may
+  // differ from the job's muxAssetId. Enrichment jobs keep muxAssetId.
   const body = await readArtifact(
-    job.muxAssetId,
+    getJobArtifactStorageAssetId(job),
     descriptor.artifactType,
     descriptor.ext,
   )
-  const responseBody = new Uint8Array(body.byteLength)
-  responseBody.set(body)
 
-  return new NextResponse(responseBody, {
-    headers: {
-      "Content-Type": descriptor.contentType,
-      "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
-      "Cache-Control": "private, no-store",
+  return new NextResponse(
+    new Blob([body as Uint8Array<ArrayBuffer>], {
+      type: descriptor.contentType,
+    }),
+    {
+      headers: {
+        "Content-Type": descriptor.contentType,
+        "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
+        "Cache-Control": hasMuxSignature
+          ? "private, max-age=60"
+          : "private, no-store",
+      },
     },
-  })
+  )
 }

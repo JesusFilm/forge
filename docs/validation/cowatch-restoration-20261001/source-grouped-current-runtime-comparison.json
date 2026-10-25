@@ -1,0 +1,58 @@
+{
+  "expectedRuntimeCommit": "3748973331e8ab78187de3c67bfbaf890bae37a4",
+  "expectedGraphSha256": "8404fb554edfa2fdfb56798b29b5c354af57b7af79f6159f0315c7290cd8fab2",
+  "declaredAt": "2026-09-30T20:16:37.314Z",
+  "scope": {
+    "version": "episode-event-window-v1",
+    "windowStart": "2026-09-23T12:00:00.000Z",
+    "windowEnd": "2026-09-30T12:00:00.000Z",
+    "evaluationAsOf": "2026-09-30T19:00:00.000Z"
+  },
+  "readOnly": true,
+  "isolation": "repeatable read",
+  "statementTimeoutMs": 5000,
+  "transactionTimeoutMs": 30000,
+  "queryLabels": [
+    "first optimized retained matches",
+    "grouped retained ownership and identity"
+  ],
+  "lockTimeoutMs": 1000,
+  "jit": false,
+  "sourceSqlSha256": [
+    "4536f47ab7314cd0b7124e7ef1aca1ecfe8fa75c1e20cf979f28c7d5152ea396",
+    "2fab15b17a260b98c22f30c6a775f42091a6b492dc476cc1f5b03b28568d1b0f"
+  ],
+  "publicationPerformed": false,
+  "transportExitCode": 0,
+  "records": [
+    {
+      "status": "compared",
+      "readOnly": true,
+      "sourceMs": [2292.752564, 2686.711213],
+      "rawRowCounts": [40605, 40605],
+      "changedRows": 0,
+      "changedFieldCounts": {},
+      "orderEqual": true,
+      "graphGenerations": [
+        "16c18057501c5eae7961a35e89aafb0ee76fc7c50784eefca6768e5e83b1742b",
+        "16c18057501c5eae7961a35e89aafb0ee76fc7c50784eefca6768e5e83b1742b"
+      ],
+      "graphCounts": [
+        {
+          "sourceCount": 6841,
+          "attemptedPairCount": 46663,
+          "contributionCount": 39961,
+          "edgeCount": 9123
+        },
+        {
+          "sourceCount": 6841,
+          "attemptedPairCount": 46663,
+          "contributionCount": 39961,
+          "edgeCount": 9123
+        }
+      ],
+      "runtimeCommit": "3748973331e8ab78187de3c67bfbaf890bae37a4"
+    }
+  ],
+  "rawTransportOutputRetained": false
+}

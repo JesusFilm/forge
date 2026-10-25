@@ -1,0 +1,125 @@
+import {
+  signWatchHomeHeroManifestCatalog,
+  signWatchSurfaceManifest,
+} from "@/lib/watch-surface-manifest.server"
+import { watchHomeHeroSource } from "@/lib/watch-surface-manifest.sources"
+import { watchSurfaceSource } from "@/lib/watch-surface-manifest"
+import Image from "next/image"
+import { useTranslations } from "next-intl"
+import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
+import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
+import { WatchHomePromo } from "@/components/home/WatchHomePromo"
+import { WatchHomeSection } from "@/components/home/WatchHomeSection"
+import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
+import type { WatchHomeModel } from "@/lib/watch-home"
+
+type WatchHomePageProps = {
+  model: WatchHomeModel
+}
+
+function findBackdropImage(model: WatchHomeModel): {
+  url: string
+  alt: string
+} | null {
+  const card =
+    model.heroSlides.find((slide) => slide.imageUrl) ??
+    model.sections
+      .flatMap((section) => section.cards)
+      .find((sectionCard) => sectionCard.imageUrl)
+
+  return card?.imageUrl ? { url: card.imageUrl, alt: card.imageAlt } : null
+}
+
+export function WatchHomePage({ model }: WatchHomePageProps) {
+  const t = useTranslations("WatchHome")
+  const backdrop = findBackdropImage(model)
+
+  return (
+    <main
+      // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
+      // axis to `auto`, which makes this element the scroll container and
+      // silently stops the hero below from sticking. Clip does not establish a
+      // scroll container, so the pin survives.
+      className="min-h-screen overflow-x-clip bg-black text-white"
+    >
+      <div
+        className="relative font-sans text-white"
+        style={{ minHeight: "100svh" }}
+      >
+        <div className="sticky top-0 z-[1] mx-auto h-screen max-w-[1920px] overflow-hidden bg-black/10">
+          {backdrop ? (
+            <Image
+              src={backdrop.url}
+              alt={backdrop.alt}
+              fill
+              priority
+              sizes="100vw"
+              className="scale-110 object-cover opacity-45 blur-sm"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="h-full w-full bg-[linear-gradient(135deg,#020617,#3f1d2b_50%,#14332c)]"
+            />
+          )}
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-black/10"
+            style={{ backdropFilter: "brightness(.6) blur(40px)" }}
+          />
+          <div aria-hidden className="absolute inset-0 bg-black/35" />
+        </div>
+
+        {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
+            rail to the viewport edges. `html`/`body` already clip the page,
+            so nothing gains a horizontal scrollbar. */}
+        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
+          <h1 className="sr-only">{t("pageTitle")}</h1>
+          <WatchHomeTvCarousel
+            heroManifestCatalog={
+              signWatchHomeHeroManifestCatalog(watchHomeHeroSource(model)) ??
+              undefined
+            }
+            slides={model.heroSlides}
+            sequence={model.carousel}
+          />
+          <WatchHomeBodyZone>
+            {model.sections.map((section) => (
+              <WatchExposureBoundary
+                key={section.id}
+                manifest={
+                  signWatchSurfaceManifest(
+                    watchSurfaceSource(
+                      {
+                        surface: "watch-home",
+                        block: "collections",
+                        presentation:
+                          section.layout === "grid" ? "grid" : "carousel",
+                        placement: section.id,
+                      },
+                      [
+                        section.cards.find((card) => card.href)?.href,
+                        ...section.cards.map((card) => card.href),
+                      ],
+                    ),
+                  ) ?? undefined
+                }
+                config={{
+                  surface: "watch-home",
+                  block: "collections",
+                  presentation: section.layout === "grid" ? "grid" : "carousel",
+                  placement: section.id,
+                }}
+              >
+                <WatchHomeSection section={section} />
+              </WatchExposureBoundary>
+            ))}
+            <WatchHomePromo />
+            <WatchHomeFooter />
+          </WatchHomeBodyZone>
+        </div>
+      </div>
+    </main>
+  )
+}

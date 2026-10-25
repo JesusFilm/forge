@@ -1,0 +1,439 @@
+{
+  "event": "run-embeds.complete",
+  "pipeline": "transcript",
+  "wallClockMs": 309576,
+  "reports": {
+    "transcript": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 28,
+      "languageFilter": ["en"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o6l0x1mqsl313qbd4l1",
+            "videoEditionId": "cmoqa8fdj20heqsl3bm09sed1",
+            "coreId": "11_Advent0104",
+            "cmsVideoId": 528,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10059
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o6l0x1mqsl313qbd4l1",
+            "videoEditionId": "cmoqa7o6z0x23qsl3qlmqkhfh",
+            "coreId": "11_Advent0104",
+            "cmsVideoId": 528,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10117
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o6l0x1mqsl313qbd4l1",
+            "videoEditionId": "cmoqa8fde20h0qsl3doxb4e26",
+            "coreId": "11_Advent0104",
+            "cmsVideoId": 528,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9359
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o720x2bqsl3sxi1rvir",
+            "videoEditionId": "cmoqa8fiw20xuqsl3brp0js2e",
+            "coreId": "11_Advent0204",
+            "cmsVideoId": 529,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9889
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o720x2bqsl3sxi1rvir",
+            "videoEditionId": "cmoqa7o7e0x2qqsl3sqwxcjan",
+            "coreId": "11_Advent0204",
+            "cmsVideoId": 529,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10124
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o720x2bqsl3sxi1rvir",
+            "videoEditionId": "cmoqa8fir20xgqsl3z8533hir",
+            "coreId": "11_Advent0204",
+            "cmsVideoId": 529,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9948
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o7h0x2yqsl34w7d3xbb",
+            "videoEditionId": "cmoqa7o7w0x3dqsl35uj8uyx4",
+            "coreId": "11_Advent0304",
+            "cmsVideoId": 530,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10202
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o7h0x2yqsl34w7d3xbb",
+            "videoEditionId": "cmoqa8fpg21dwqsl3muh3kc5k",
+            "coreId": "11_Advent0304",
+            "cmsVideoId": 530,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9834
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o7h0x2yqsl34w7d3xbb",
+            "videoEditionId": "cmoqa8fpm21eaqsl3j2npyqua",
+            "coreId": "11_Advent0304",
+            "cmsVideoId": 530,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9909
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o7y0x3lqsl3i8ostpv7",
+            "videoEditionId": "cmoqa8fux21uqqsl3qdxh6ldj",
+            "coreId": "11_Advent0404",
+            "cmsVideoId": 531,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9937
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o7y0x3lqsl3i8ostpv7",
+            "videoEditionId": "cmoqa7o8c0x40qsl3jbztu53t",
+            "coreId": "11_Advent0404",
+            "cmsVideoId": 531,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9879
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o7y0x3lqsl3i8ostpv7",
+            "videoEditionId": "cmoqa8fus21ucqsl3n08jmvn6",
+            "coreId": "11_Advent0404",
+            "cmsVideoId": 531,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9925
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o8p0x4hqsl3gva8z0hm",
+            "videoEditionId": "cmoqa7o8v0x52qsl3nhw7hfnd",
+            "coreId": "11_ReadBible1901",
+            "cmsVideoId": 533,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10080
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o8x0x57qsl38bx62wvk",
+            "videoEditionId": "cmoqa7o940x5qqsl35ywh02tf",
+            "coreId": "11_ReadBible1902",
+            "cmsVideoId": 534,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9765
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o960x5vqsl3zdba0arp",
+            "videoEditionId": "cmoqa7o9a0x6aqsl3ju6tcokz",
+            "coreId": "11_ReadBible1903",
+            "cmsVideoId": 535,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10328
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o9c0x6fqsl37gwecjsj",
+            "videoEditionId": "cmoqa7o9k0x6uqsl3swyrblu9",
+            "coreId": "11_ReadBible1904",
+            "cmsVideoId": 536,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9899
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o9m0x6zqsl33984e988",
+            "videoEditionId": "cmoqa7o9s0x7kqsl3tdwp6gos",
+            "coreId": "11_ReadBible1905",
+            "cmsVideoId": 537,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10412
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7oa60x8xqsl3o1dn3z7x",
+            "videoEditionId": "cmoqa7oaf0x9kqsl3ebe9diqj",
+            "coreId": "11_ReadBible1907",
+            "cmsVideoId": 539,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13291
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7oah0x9pqsl3c3ka9g7w",
+            "videoEditionId": "cmoqa7oar0xawqsl330c88m19",
+            "coreId": "11_ReadBible1908",
+            "cmsVideoId": 540,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13525
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7oat0xb1qsl36cvbf2lh",
+            "videoEditionId": "cmoqa7oaz0xbiqsl3o87vbsm3",
+            "coreId": "11_ReadBible1909",
+            "cmsVideoId": 541,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10006
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7ob10xbnqsl3o8m6j2u9",
+            "videoEditionId": "cmoqa7ob90xceqsl3xxn2o19c",
+            "coreId": "11_ReadBible1910",
+            "cmsVideoId": 542,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10237
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7obb0xcjqsl3empuddyv",
+            "videoEditionId": "cmoqa7obg0xcwqsl3zxhdlpj7",
+            "coreId": "11_ReadBible1911",
+            "cmsVideoId": 543,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13335
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7obi0xd1qsl3crizpgve",
+            "videoEditionId": "cmoqa7obu0xecqsl3jp7wcs1d",
+            "coreId": "11_ReadBible1912",
+            "cmsVideoId": 544,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9790
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7obw0xehqsl3ynngx3qg",
+            "videoEditionId": "cmoqa7oc10xewqsl3tgtxfasc",
+            "coreId": "11_ReadBible1913",
+            "cmsVideoId": 545,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13033
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7oc30xf1qsl3rol80me3",
+            "videoEditionId": "cmoqa7oca0xfqqsl31fceq2ee",
+            "coreId": "11_ReadBible1914",
+            "cmsVideoId": 546,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 9927
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7occ0xfvqsl3fp546bhi",
+            "videoEditionId": "cmoqa7oco0xh4qsl3jwktiz7s",
+            "coreId": "11_ReadBible1915",
+            "cmsVideoId": 547,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10218
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7ocq0xh9qsl3wgfchohj",
+            "videoEditionId": "cmoqa7ocz0xi6qsl3ef4u4opq",
+            "coreId": "11_ReadBible1916",
+            "cmsVideoId": 548,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10315
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7od10xibqsl3gmsjpuxk",
+            "videoEditionId": "cmoqa7od90xj2qsl3byasyrv9",
+            "coreId": "11_ReadBible1917",
+            "cmsVideoId": 549,
+            "language": "en"
+          },
+          "language": "en",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10357
+        }
+      ],
+      "succeeded": 28,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": []
+    }
+  },
+  "contentBackfillGateBypass": null
+}

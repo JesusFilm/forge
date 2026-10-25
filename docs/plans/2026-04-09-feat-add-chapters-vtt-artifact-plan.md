@@ -1,7 +1,7 @@
 ---
 title: "feat: Add derived WebVTT chapters artifact"
 type: feat
-status: active
+status: completed
 date: 2026-04-09
 roadmap:
   - /docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md
@@ -11,7 +11,7 @@ roadmap:
 
 ## Overview
 
-Add a second chapters artifact, `chapters.vtt`, derived from the existing canonical `chapters.json` output.
+Add a second timing-backed chapters export derived from the existing canonical `chapters.json` output.
 
 The current chapter pipeline already produces structured chapter data with:
 
@@ -26,28 +26,30 @@ That is enough to generate a standards-compatible WebVTT chapters track for:
 - native `<track kind="chapters">`
 - simple exports to downstream players
 
-The goal is to keep `chapters.json` as the canonical structured artifact while adding `chapters.vtt` as a portable playback artifact.
+The goal is to keep `chapters.json` as the canonical structured artifact while exposing a downloadable WebVTT chapter track under manager's existing logical-key model as `chapters-vtt` (`chapters-vtt.vtt` on download).
 
 ## Problem Statement / Motivation
 
 Today manager stores chapters only as JSON:
 
-- [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts) writes `chapters.json`
-- [job-artifacts.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/lib/job-artifacts.ts) treats chapters as a single downloadable JSON artifact
-- job UI can download/view the chapter JSON, but playback-oriented consumers still need to transform it themselves
+- [chapters.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.ts) writes `chapters.json`
+- [job-artifacts.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.ts) treats chapters as a single downloadable JSON artifact
+- job UI can download/view the chapter JSON, but operators and downstream experiments cannot download a ready-made chapter track from a timing-backed enrichment job
 
-That is fine for internal workflow logic, but it leaves a gap for player interoperability:
+That is fine for internal workflow logic, but it leaves a gap in the current manager export surface:
 
-- `Mux Player` wants an array shape such as `{ startTime, endTime?, value }`
-- `video.js` and native HTML video chapter tracks typically want a WebVTT file with timed chapter cues
+- native/video.js-style chapter-track consumers typically want a WebVTT file with timed chapter cues
+- manager jobs already expose downloadable subtitle `.vtt` artifacts, so chapter exports are the inconsistent outlier
 
 Because we already compute `endSeconds`, the missing piece is not semantics. It is just artifact packaging.
 
-Adding a derived `chapters.vtt` artifact gives us:
+Adding a derived WebVTT chapter export gives us:
 
-- a stable playback export format
+- a concrete operator-facing outcome: a downloadable chapter-track artifact on timing-backed enrichment jobs
 - parity with how subtitles are already stored as downloadable `.vtt`
-- less repeated transformation work in future player integrations
+- a standard export artifact for downstream experiments without changing the canonical JSON contract
+
+This plan is intentionally enablement work for manager QA/download flows and downstream experiments. It does not claim to change playback UX by itself.
 
 ## Found Brainstorm
 
@@ -57,29 +59,41 @@ No relevant recent brainstorm was found for this exact feature. Proceeding from 
 
 ### Relevant current code
 
-- [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts)
+- [chapters.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.ts)
   - generates normalized chapters
   - already derives `endSeconds`
+  - can still produce a final `endSeconds: null` when called without transcript segments
   - currently writes only `chapters.json`
-- [job-artifacts.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/lib/job-artifacts.ts)
+- [job-artifacts.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.ts)
   - controls logical artifact keys, file extensions, content types, and step artifact linking
-- [storage.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/storage.ts)
+- [artifacts route](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/app/api/jobs/[id]/artifacts/[artifact]/route.ts)
+  - uses the logical artifact key as the download filename prefix
+  - means `chapters-vtt` will download as `chapters-vtt.vtt` unless the route contract is expanded
+- [storage.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/storage.ts)
   - already supports writing arbitrary artifact types with `.vtt`
-- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
+- [vtt.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/vtt.ts)
+  - already provides shared WebVTT timestamp formatting utilities
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/videoEnrichment.ts)
+  - passes timing-backed transcript segments into `generateChapters(...)`
   - merges artifact keys returned by `generateChapters(...)`
-- [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
+- [sceneAnalysisPipeline.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/sceneAnalysisPipeline.ts)
+  - calls `generateChapters(...)` with plain transcript text only
+  - should remain JSON-only in this plan
+- [chapters.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.test.ts)
   - already covers chapter normalization and artifact writing behavior
-- [videoEnrichment.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.test.ts)
+- [job-artifacts.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.test.ts)
+  - already covers descriptor lookup and per-step artifact mapping
+- [videoEnrichment.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/videoEnrichment.test.ts)
   - already covers chapter artifact manifest persistence
 
 ### Institutional learnings
 
-- [2026-04-02-fix-manager-job-artifact-links-plan.md](/Users/o/.codex/worktrees/1ec2/forge/docs/plans/2026-04-02-fix-manager-job-artifact-links-plan.md)
+- [2026-04-02-fix-manager-job-artifact-links-plan.md](/Users/o/.codex/worktrees/6179/forge/docs/plans/2026-04-02-fix-manager-job-artifact-links-plan.md)
   - established the pattern that step services return `artifactKeys` and the workflow/job UI should rely on those keys rather than hardcoded assumptions
-- [2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md](/Users/o/.codex/worktrees/1ec2/forge/docs/plans/2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md)
+- [2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md](/Users/o/.codex/worktrees/6179/forge/docs/plans/2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md)
   - intentionally kept the artifact contract at `chapters.json` during the chapter-quality work
   - this new plan deliberately expands that contract in a focused, additive way
-- [optional-railway-s3-local-fallback.md](/Users/o/.codex/worktrees/1ec2/forge/docs/solutions/platform/optional-railway-s3-local-fallback.md)
+- [optional-railway-s3-local-fallback.md](/Users/o/.codex/worktrees/6179/forge/docs/solutions/platform/optional-railway-s3-local-fallback.md)
   - confirms artifacts should remain portable across local `.tmp` storage and Railway S3 object storage
 
 ### External research decision
@@ -88,52 +102,56 @@ Skipped. The repo already contains the needed chapter semantics, and WebVTT chap
 
 ## Requirements Trace
 
-- R1. `chapters.json` must remain the canonical chapter artifact.
-- R2. The chapters step must also write a derived `chapters.vtt` artifact.
-- R3. The derived VTT must be generated from normalized chapter data, not from raw model output.
-- R4. VTT cue ordering must match normalized chapter ordering.
-- R5. VTT cue start/end times must be deterministic and valid even when the last chapter has `endSeconds: null`.
-- R6. The job artifact manifest and job detail UI must expose both chapter artifacts.
-- R7. Existing chapter consumers that rely on `chapters.json` must continue working unchanged.
-- R8. The implementation must follow red/green TDD.
+- R1. `chapters` / `chapters.json` must remain the canonical chapter artifact and existing contract.
+- R2. `generateChapters(...)` must also write a second downloadable artifact under logical key `chapters-vtt` whenever `input.segments` is non-empty, `getLastTranscriptSecond(input.segments)` returns a bounded duration, and all normalized chapters have bounded `endSeconds`. In the current repo, video enrichment is the only caller that satisfies that invariant.
+- R3. `chapters-vtt` must be generated from normalized chapter data, not from raw model output.
+- R4. `chapters-vtt` cue ordering must match normalized chapter ordering.
+- R5. `chapters-vtt` may only be emitted when every cue has an explicit start and end time. Concretely, that means `input.segments` is non-empty, the derived transcript duration is bounded, and every normalized chapter has non-null `endSeconds`.
+- R6. Transcript-only callers of `generateChapters(...)` remain supported and unchanged; they continue to return only `chapters`.
+- R7. The manager artifact surface must expose both `chapters` and `chapters-vtt` for completed timing-backed chapter steps, while older manifests with only `chapters` continue to render safely.
+- R8. The manager download contract for the new artifact is `chapters-vtt.vtt`. This plan does not add a separate display filename or route remapping layer.
+- R9. The implementation must follow red/green TDD.
 
 ## Scope Boundaries
 
 In scope:
 
 - adding a chapters-to-WebVTT formatter
-- writing `chapters.vtt` alongside `chapters.json`
-- updating artifact descriptors and job-step links so both chapter artifacts appear in the UI
+- writing `chapters-vtt.vtt` alongside `chapters.json` for timing-backed enrichment runs
+- updating artifact descriptors and chapter-step artifact mapping so both chapter artifacts appear through the existing job artifact surface
 - additive test coverage for service, artifact routing, and workflow persistence
 
 Out of scope:
 
 - replacing `chapters.json`
 - changing the chapter generation prompt or normalization logic
+- changing transcript-only scene analysis to preserve VTT timing data
 - changing subtitle artifacts
 - building a player integration in the same change
+- changing manager artifact routes so logical key and download filename can differ
 - changing Mux sync behavior
 
 ## Proposed Solution
 
-Keep the chapter generation pipeline exactly where it is today:
+Keep the chapter generation pipeline exactly where it is today, but make the VTT export conditional on timing-backed input:
 
 1. generate raw chapters from the transcript
 2. normalize them into the canonical `Chapter[]` shape
 3. write `chapters.json`
-4. derive `chapters.vtt` from the normalized `Chapter[]`
-5. return both artifact keys so the workflow and UI expose both
+4. when `input.segments` is non-empty, the derived transcript duration is bounded, and every normalized chapter has a bounded `endSeconds`, derive `chapters-vtt.vtt` from the normalized `Chapter[]`
+5. return `["chapters", "chapters-vtt"]` only for that timing-backed success path
+6. keep transcript-only callers on `["chapters"]`
 
-Desired artifact model after this change:
+Desired manager artifact model after this change:
 
-- `chapters.json` — canonical structured artifact for internal workflows and rich UI
-- `chapters.vtt` — portable chapter track for playback and export
+- `chapters` -> `chapters.json` — canonical structured artifact for internal workflows and richer transforms
+- `chapters-vtt` -> `chapters-vtt.vtt` — downloadable WebVTT chapter-track export for timing-backed enrichment jobs
 
 ## Key Technical Decisions
 
 ### 1. JSON remains canonical
 
-Do not invert the source of truth. `chapters.vtt` should be derived from normalized JSON data, not the other way around.
+Do not invert the source of truth. `chapters-vtt` should be derived from normalized JSON data, not the other way around.
 
 Why:
 
@@ -141,7 +159,22 @@ Why:
 - JSON is easier for comparison, editing, and future transforms
 - the current scene-analysis pipeline already consumes `Chapter[]`
 
-### 2. Derive VTT after normalization, not before
+### 2. Scope VTT writing to timing-backed enrichment runs
+
+`generateChapters(...)` is shared by:
+
+- the video enrichment workflow, which passes transcript segments with bounded timing
+- the scene-analysis pipeline, which passes plain transcript text only
+
+In the current repo, only the first path satisfies the `chapters-vtt` eligibility rule. Transcript-only callers remain JSON-only.
+
+Why:
+
+- the current normalization logic can leave the final chapter with `endSeconds: null` when no transcript segments are provided
+- the enrichment workflow already provides the timing data needed for valid WebVTT cues
+- keeping transcript-only callers unchanged is the smallest implementation-ready change
+
+### 3. Derive VTT after normalization, not before
 
 The VTT builder should run only after:
 
@@ -152,105 +185,144 @@ The VTT builder should run only after:
 
 That ensures the VTT export exactly matches the job’s final canonical chapter outline.
 
-### 3. Use an additive artifact key
+### 4. Use an additive artifact key and manager-native filename contract
 
 Recommended logical key:
 
 - `chapters-vtt`
 
-Why this is preferred over overloading `chapters`:
+Downloaded filename:
+
+- `chapters-vtt.vtt`
+
+Why this is preferred over overloading `chapters` or introducing a route change:
 
 - avoids ambiguity about extension/content type
 - matches the existing per-artifact-key manifest pattern
 - keeps JSON and VTT independently addressable in job details
+- matches the current route contract, which uses `logicalKey + "." + ext` for the filename
 
-### 4. Last cue end-time policy must be deterministic
+### 5. Final cue policy is strict: bounded end times only
 
-Recommended policy:
+Required policy:
 
-- when `endSeconds` is present, use it
-- when `endSeconds` is `null`, omit the final cue end time only if the chosen VTT helper explicitly supports that
-- otherwise require the builder to use the next known boundary or a final known duration from the normalized chapter data path
+- when a normalized chapter has a concrete `endSeconds`, use it
+- when any normalized chapter has `endSeconds: null`, do not emit `chapters-vtt`
+- do not omit cue end times
+- do not invent a second fallback policy inside the VTT layer
 
-Because raw WebVTT cues normally require explicit start and end timing, the implementation should likely prefer emitting only cues with concrete end times. If the last normalized chapter has `endSeconds: null`, the builder should use the same bounded duration logic already used in normalization rather than inventing a new fallback in the VTT layer.
+This keeps the VTT formatter deterministic and makes the timing-backed scope explicit.
+
+### 6. Reuse shared VTT time formatting, but keep chapter serialization lean
+
+Chapter-track generation should reuse `formatVTTTime(...)` from [vtt.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/vtt.ts) rather than duplicating timestamp formatting logic.
+
+Do not reuse `segmentsToVTT(...)` directly:
+
+- subtitle VTT serialization is segment-oriented and adds subtitle-specific `NOTE` metadata
+- chapter-track VTT only needs `WEBVTT`, timed cues, and chapter titles
+- keeping chapter cue serialization local to [chapters.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.ts) keeps the change small while still sharing the core time formatter
+
+### 7. Write order favors canonical JSON and accepts current job-failure behavior
+
+Required write order:
+
+1. serialize normalized chapters
+2. write `chapters`
+3. write `chapters-vtt` only if the timing-backed guard passes
+4. return `chapters-vtt` in `artifactKeys` only after its write succeeds
+
+If chapter extraction fails, neither artifact is written. If the VTT write fails after the JSON write succeeds, the chapters step should fail, the enrichment workflow should fail the overall job under current behavior, and no `chapters-vtt` manifest entry should be returned. This plan does not add storage rollback behavior for already-written objects or introduce JSON-only degradation for VTT write failures.
 
 ## SpecFlow Analysis
 
 Important behavior branches:
 
-1. **Normal chapter export**
+1. **Timing-backed enrichment export**
    - multiple chapters
    - concrete `endSeconds`
-   - VTT writes cleanly and appears in the job manifest
+   - `chapters` and `chapters-vtt` both write cleanly and appear in the job manifest
 
-2. **Single-chapter video**
+2. **Timing-backed single-chapter video**
    - still produces one valid VTT cue
    - no invalid zero-length cue
 
-3. **Last chapter duration edge case**
-   - last chapter remains valid if normalization returns a bounded end
-   - no malformed cue with a missing end
+3. **Transcript-only caller**
+   - normalized chapters still write to `chapters`
+   - no `chapters-vtt` write is attempted
+   - scene-analysis behavior remains unchanged
 
-4. **Failure path**
-   - if chapter extraction fails, neither `chapters.json` nor `chapters.vtt` should be written
+4. **Unbounded final chapter guard**
+   - if normalization leaves any chapter with `endSeconds: null`
+   - `chapters-vtt` is skipped for that call
+   - the caller still gets canonical JSON output
 
-5. **UI artifact listing**
-   - completed chapter step shows both JSON and VTT links
+5. **Failure path**
+   - if chapter extraction fails, neither chapter artifact is written
+   - if the VTT write fails after JSON succeeds, the step fails and no `chapters-vtt` key is persisted in the manifest
+
+6. **Existing artifact listing**
+   - completed enrichment chapter step shows both JSON and VTT links through the existing artifact table behavior
    - older jobs with only `chapters` still render safely
 
 ## Implementation Units
 
-- [ ] **Unit 1: Add a pure chapters-to-VTT formatter**
+- [x] **Unit 1: Add a private pure chapters-to-VTT formatter**
 
   **Goal:** Create a deterministic formatter from canonical `Chapter[]` into WebVTT text.
 
   **Files:**
-  - Add or update chapter utility code under [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts) or a small adjacent helper
-  - Modify: [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
+  - Modify: [chapters.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.ts)
+  - Modify: [chapters.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.test.ts)
 
   **Red**
   - add failing tests for:
     - multi-chapter VTT generation
     - proper timestamp formatting
     - cue text using chapter title
-    - final cue handling
+    - refusal to emit VTT when any chapter end time is unbounded
 
   **Green**
   - implement the formatter
   - keep output valid `WEBVTT`
+  - reuse `formatVTTTime(...)` from [vtt.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/vtt.ts)
 
   **Refactor**
-  - keep the formatter pure and reusable by future player integrations
+  - keep chapter cue serialization as a private pure function in `chapters.ts` unless a second in-repo caller appears during implementation
 
-- [ ] **Unit 2: Write `chapters.vtt` alongside `chapters.json`**
+- [x] **Unit 2: Emit `chapters-vtt` when timing invariants hold**
 
-  **Goal:** Expand the chapter step to emit both artifacts from the same normalized data.
+  **Goal:** Expand the shared chapter service so callers with non-empty bounded transcript segments emit both artifacts while transcript-only callers remain JSON-only.
 
   **Files:**
-  - Modify: [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts)
-  - Modify: [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
+  - Modify: [chapters.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.ts)
+  - Modify: [chapters.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.test.ts)
 
   **Red**
   - add failing tests proving:
-    - both writes happen on success
-    - returned `artifactKeys` include both chapter artifacts
+    - timing-backed success writes both artifacts
+    - returned `artifactKeys` include `chapters-vtt` only when `input.segments` is non-empty, duration is bounded, and normalized chapters are fully bounded
+    - transcript-only callers still return only `chapters`
     - no VTT write happens when chapter extraction fails
+    - no VTT write happens when normalized chapters are unbounded
+    - no VTT write happens when `input.segments` is empty
 
   **Green**
-  - write `chapters.vtt`
-  - return both artifact keys
+  - write `chapters` first
+  - write `chapters-vtt` only when the timing-backed guard passes
+  - return the correct artifact keys for each caller path
 
   **Refactor**
   - avoid duplicating serialization logic inside the service body
 
-- [ ] **Unit 3: Teach the artifact layer and job UI about the new chapter artifact**
+- [x] **Unit 3: Register the new chapter artifact contract**
 
-  **Goal:** Make the new VTT downloadable and visible.
+  **Goal:** Make the new artifact downloadable and visible through the existing artifact surface.
 
   **Files:**
-  - Modify: [job-artifacts.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/lib/job-artifacts.ts)
-  - Modify: related tests
-  - Optionally adjust [live-job-steps-table.tsx](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx) only if link ordering or labels need refinement
+  - Modify: [job-artifacts.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.ts)
+  - Modify: [job-artifacts.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.test.ts)
+  - Do not modify [live-job-steps-table.tsx](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx) unless failing tests or manual QA prove a rendering issue
 
   **Red**
   - add failing tests proving:
@@ -265,42 +337,51 @@ Important behavior branches:
   **Refactor**
   - keep the artifact lookup logic additive and backward-compatible
 
-- [ ] **Unit 4: Verify workflow persistence stays correct**
+- [x] **Unit 4: Verify workflow persistence stays additive**
 
-  **Goal:** Ensure the enrichment workflow carries the new artifact through job state.
+  **Goal:** Ensure the enrichment workflow carries the new artifact through job state without requiring production workflow changes beyond the current failure policy.
 
   **Files:**
-  - Modify: [videoEnrichment.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.test.ts)
+  - Modify: [videoEnrichment.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/videoEnrichment.test.ts)
+  - Do not modify [videoEnrichment.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/videoEnrichment.ts) unless the tests prove the current artifact merge flow is insufficient
 
   **Red**
-  - add failing workflow tests proving chapter step results persist both artifact keys
+  - add failing workflow tests proving the timing-backed chapter step persists both artifact keys
+  - add a failing workflow test proving a `chapters-vtt` write failure still fails the overall job under current workflow behavior
 
   **Green**
-  - adjust any expectations needed for the new manifest shape
+  - adjust only the expectations needed for the new manifest shape
 
   **Refactor**
-  - keep workflow changes minimal; the service return contract should do most of the work
+  - keep workflow changes at zero if the service return contract is sufficient
 
 ## Acceptance Criteria
 
-- [ ] Chapter generation still produces `chapters.json` as the canonical artifact.
-- [ ] The chapter step also writes `chapters.vtt`.
-- [ ] `chapters.vtt` is derived from normalized chapter data, not raw LLM output.
-- [ ] The chapter job step exposes downloadable links for both JSON and VTT artifacts.
-- [ ] Existing jobs that only have `chapters.json` continue rendering without breakage.
-- [ ] Chapter extraction failures do not leave behind orphaned or partial `chapters.vtt` artifacts.
-- [ ] All new behavior is covered with red/green tests before implementation.
+- [x] Chapter generation still produces `chapters` / `chapters.json` as the canonical artifact.
+- [x] Calls that provide non-empty bounded transcript segments also write `chapters-vtt` / `chapters-vtt.vtt`. In the current repo, that means timing-backed enrichment runs.
+- [x] `chapters-vtt` is derived from normalized chapter data, not raw LLM output.
+- [x] Transcript-only callers remain JSON-only and continue working unchanged.
+- [x] The chapter job step exposes downloadable links for both `chapters` and `chapters-vtt` through the existing artifact surface.
+- [x] Existing jobs that only have `chapters` continue rendering without breakage.
+- [x] If chapter extraction fails, neither chapter artifact is written. If the VTT write fails, the chapters step and current enrichment job fail, and no `chapters-vtt` manifest entry is returned.
+- [x] All new behavior is covered with red/green tests before implementation.
 
 ## Risks & Mitigations
 
-- **Risk:** artifact-key drift breaks existing assumptions that “chapters” is singular.
-  - **Mitigation:** keep `chapters` unchanged and add a second explicit key rather than renaming the original artifact.
+- **Risk:** artifact-name drift confuses logical keys, stored artifact types, and downloaded filenames.
+  - **Mitigation:** standardize on `chapters` for JSON and `chapters-vtt` for WebVTT throughout the manager contract.
 
-- **Risk:** malformed VTT if end times are not bounded correctly.
-  - **Mitigation:** derive VTT only from normalized `Chapter[]` with tested timestamp formatting.
+- **Risk:** transcript-only callers produce unbounded final chapters.
+  - **Mitigation:** scope `chapters-vtt` to timing-backed enrichment runs and leave transcript-only callers JSON-only.
 
-- **Risk:** future player integrations start depending on VTT and ignore the richer JSON source.
-  - **Mitigation:** document that `chapters.json` remains canonical and `chapters.vtt` is an export artifact.
+- **Risk:** `segments` is present but empty, which looks timing-backed at the workflow level but is still insufficient for bounded VTT cues.
+  - **Mitigation:** define the guard in terms of non-empty `input.segments`, bounded derived duration, and fully bounded normalized chapters.
+
+- **Risk:** future downstream consumers expect the filename `chapters.vtt`.
+  - **Mitigation:** document that the current manager contract is `chapters-vtt.vtt`; any filename remapping belongs in a later route/consumer-specific change.
+
+- **Risk:** VTT write failure leaves storage state ahead of manifest state.
+  - **Mitigation:** write canonical JSON first, accept current job-failure behavior on VTT write failure, and rely on the artifact manifest as the user-visible source of truth.
 
 ## Verification
 
@@ -312,19 +393,27 @@ Important behavior branches:
 Manual QA:
 
 1. Run a local enrich job that completes the chapters step.
-2. Open the job page and confirm the chapters step shows both:
-   - `chapters`
-   - `chapters-vtt`
-3. Open the VTT artifact and confirm it begins with `WEBVTT`.
+2. Open the job page and confirm the chapters step renders two downloadable artifact links/icons instead of one.
+3. Open `/api/jobs/<job-id>/artifacts/chapters-vtt` and confirm:
+   - `Content-Type` is `text/vtt; charset=utf-8`
+   - `Content-Disposition` uses `chapters-vtt.vtt`
+   - the body begins with `WEBVTT`
 4. Confirm cues are ordered and titled correctly.
-5. Confirm older jobs that only have `chapters` still render normally.
+5. Confirm an older job that only has `chapters` still renders normally.
+6. Confirm the scene-analysis pipeline path remains unchanged in tests and still relies on JSON chapters only.
+7. Confirm a simulated `chapters-vtt` write failure still fails the job in workflow tests, matching the documented current behavior.
 
 ## References
 
-- [feat-031 AI Video Enrichment Pipeline](/Users/o/.codex/worktrees/1ec2/forge/docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md)
-- [chapters.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.ts)
-- [chapters.test.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/services/chapters.test.ts)
-- [job-artifacts.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/lib/job-artifacts.ts)
-- [videoEnrichment.ts](/Users/o/.codex/worktrees/1ec2/forge/apps/manager/src/workflows/videoEnrichment.ts)
-- [2026-04-02-fix-manager-job-artifact-links-plan.md](/Users/o/.codex/worktrees/1ec2/forge/docs/plans/2026-04-02-fix-manager-job-artifact-links-plan.md)
-- [2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md](/Users/o/.codex/worktrees/1ec2/forge/docs/plans/2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md)
+- [feat-031 AI Video Enrichment Pipeline](/Users/o/.codex/worktrees/6179/forge/docs/roadmap/media-generation/feat-031-ai-video-enrichment-pipeline.md)
+- [chapters.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.ts)
+- [chapters.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/services/chapters.test.ts)
+- [job-artifacts.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.ts)
+- [job-artifacts.test.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/job-artifacts.test.ts)
+- [vtt.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/lib/vtt.ts)
+- [videoEnrichment.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/videoEnrichment.ts)
+- [sceneAnalysisPipeline.ts](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/workflows/sceneAnalysisPipeline.ts)
+- [artifacts route](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/app/api/jobs/[id]/artifacts/[artifact]/route.ts)
+- [live-job-steps-table.tsx](/Users/o/.codex/worktrees/6179/forge/apps/manager/src/features/jobs/live-job-steps-table.tsx)
+- [2026-04-02-fix-manager-job-artifact-links-plan.md](/Users/o/.codex/worktrees/6179/forge/docs/plans/2026-04-02-fix-manager-job-artifact-links-plan.md)
+- [2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md](/Users/o/.codex/worktrees/6179/forge/docs/plans/2026-04-08-feat-improve-chapters-with-mux-ai-patterns-plan.md)

@@ -64,7 +64,7 @@ const PRINCIPLES = [
 
 export default function AboutPage() {
   return (
-    <div className="mx-auto max-w-4xl space-y-20 pb-20">
+    <div className="space-y-20 pb-20">
       {/* Hero */}
       <section className="space-y-6 pt-8 text-center">
         <img

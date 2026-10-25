@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "seeker-experiment-gates/v1",
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-gate-report",
+      "verdict": "refused",
+      "refusedOn": [
+        "current coverage: only 3/10 grid cells judged (1 invalid, 6 answer-error) — cannot gate on partial evidence",
+        "baseline coverage: only 6/10 grid cells judged (0 invalid, 4 answer-error) — cannot gate on partial evidence"
+      ],
+      "promptChanged": null,
+      "newHardFails": [],
+      "carriedKnownFails": [],
+      "toolSkipDeltas": [],
+      "toolSkipPooled": {
+        "baselineCount": 0,
+        "currentCount": 0,
+        "regression": false
+      },
+      "formatDeltas": [],
+      "groundingFlips": [],
+      "triageFlips": [],
+      "confirmedGroundingFlips": [],
+      "unconfirmedGroundingFlips": [],
+      "scoreDelta": {
+        "baseline": null,
+        "current": null,
+        "delta": null,
+        "tolerance": 0.05,
+        "beyondTolerance": false
+      },
+      "invalidCells": {
+        "baseline": 0,
+        "current": 1
+      },
+      "answerErrorCells": {
+        "baseline": 4,
+        "current": 6
+      },
+      "fixturesCorpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738"
+    }
+  }
+}

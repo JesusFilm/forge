@@ -1,0 +1,516 @@
+{
+  "kind": "owned-local-query-plan-summary",
+  "productionEvidence": false,
+  "planner": "PostgreSQL default planner, no enable_seqscan override",
+  "fixtureCounts": [
+    {
+      "sources": 899,
+      "graphs": 58,
+      "episodes": 1355,
+      "runs": 33
+    }
+  ],
+  "cases": [
+    {
+      "kind": "graph",
+      "planningMs": 2.2,
+      "executionMs": 2.533,
+      "access": [
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_experiment_assignment",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_request",
+          "Index Name": "recommendation_request_experiment_assignment_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Index Only Scan",
+          "Relation Name": "recommendation_profile_session_link",
+          "Index Name": "recommendation_profile_session_generation_key",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_profile_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Actual Rows": 15,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_cowatch_source_media_idx",
+          "Actual Rows": 15,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_profile_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_session_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_outcome_request_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_outcome_episode_id_key",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Actual Rows": 899,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_playback_episode",
+          "Index Name": "recommendation_episode_finalization_due_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 1355,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_playback_episode",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_episode_session_created_idx",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 1355,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Actual Rows": 899,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_shadow_run",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_eligibility_decision",
+          "Actual Rows": 1355,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 45,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_observation",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        }
+      ]
+    },
+    {
+      "kind": "profile",
+      "planningMs": 3.79,
+      "executionMs": 2.89,
+      "access": [
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_experiment_assignment",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_request",
+          "Index Name": "recommendation_request_experiment_assignment_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Index Only Scan",
+          "Relation Name": "recommendation_profile_session_link",
+          "Index Name": "recommendation_profile_session_generation_key",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_profile_idx",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_media_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_profile_idx",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_session_idx",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_outcome_request_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_outcome_episode_id_key",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 1,
+          "Actual Loops": 2
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_playback_episode",
+          "Index Name": "recommendation_episode_finalization_due_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Index Name": "recommendation_outcome_revision_pkey",
+          "Actual Rows": 1,
+          "Actual Loops": 2
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_playback_episode",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_episode_session_created_idx",
+          "Actual Rows": 2,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 1355,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 1,
+          "Actual Loops": 2
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_shadow_run",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_eligibility_decision",
+          "Actual Rows": 1355,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 45,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_observation",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        }
+      ]
+    },
+    {
+      "kind": "request",
+      "planningMs": 2.079,
+      "executionMs": 0.498,
+      "access": [
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_experiment_assignment",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_request",
+          "Index Name": "recommendation_request_experiment_assignment_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Index Only Scan",
+          "Relation Name": "recommendation_profile_session_link",
+          "Index Name": "recommendation_profile_session_generation_key",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_profile_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_media_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_profile_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_session_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_outcome_request_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_outcome_episode_id_key",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_playback_episode",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_episode_request_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_episode_finalization_due_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Index Name": "recommendation_outcome_revision_pkey",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Bitmap Heap Scan",
+          "Relation Name": "recommendation_playback_episode",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Bitmap Index Scan",
+          "Index Name": "recommendation_episode_session_created_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_outcome_revision",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_cowatch_source_contribution",
+          "Index Name": "recommendation_cowatch_source_outcome_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_shadow_run",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Index Scan",
+          "Relation Name": "recommendation_eligibility_decision",
+          "Index Name": "recommendation_eligibility_outcome_current_idx",
+          "Actual Rows": 0,
+          "Actual Loops": 0
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 45,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_observation",
+          "Actual Rows": 1,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        },
+        {
+          "Node Type": "Seq Scan",
+          "Relation Name": "recommendation_composition_protocol",
+          "Actual Rows": 0,
+          "Actual Loops": 1
+        }
+      ]
+    }
+  ],
+  "limits": "Small populated fixture; does not establish maximum-size query latency or production workload clearance."
+}

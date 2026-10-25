@@ -1,0 +1,263 @@
+import { WATCH_PROGRESS_QUEUE_STORAGE_KEY } from "../queue"
+import { WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY } from "../snapshot"
+import {
+  attachProgressLifecycle,
+  type ProgressLifecycleDeps,
+} from "../lifecycle"
+
+function flushMicrotasks() {
+  return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+function buildDeps(initialAccountId: string | null = null) {
+  let accountId = initialAccountId
+  const listeners = new Set<() => void>()
+  const calls: string[] = []
+  const deps: ProgressLifecycleDeps = {
+    getAccountId: () => accountId,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    hydrateFromSnapshot: jest.fn(async () => {
+      calls.push("snapshot")
+    }),
+    hydrateFromServer: jest.fn(async () => {
+      calls.push("server")
+    }),
+    flushQueue: jest.fn(async () => {
+      calls.push("flush")
+    }),
+    resetStore: jest.fn(() => {
+      calls.push("reset")
+    }),
+    clearLastWatched: jest.fn(async () => {
+      calls.push("clearLastWatched")
+    }),
+    removeStorageItem: jest.fn(async (key: string) => {
+      calls.push(`remove:${key}`)
+    }),
+  }
+  return {
+    deps,
+    calls,
+    setAccount(next: string | null) {
+      accountId = next
+      for (const listener of listeners) listener()
+    },
+  }
+}
+
+describe("attachProgressLifecycle", () => {
+  it("hydrates snapshot → server → queue flush on sign-in", async () => {
+    const { deps, calls, setAccount } = buildDeps(null)
+    attachProgressLifecycle(deps)
+
+    setAccount("user-1")
+    await flushMicrotasks()
+
+    expect(calls).toEqual(["snapshot", "server", "flush"])
+  })
+
+  it("runs the signed-in path immediately for a cold launch with a session", async () => {
+    const { deps, calls } = buildDeps("user-1")
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+
+    expect(calls).toEqual(["snapshot", "server", "flush"])
+  })
+
+  it("sign-out clears the store, the record, the snapshot, and the queue (the U8 integration)", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      "clearLastWatched",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    ])
+    expect(deps.clearLastWatched).toHaveBeenCalledTimes(1)
+  })
+
+  it("removes only the two progress keys — the record's key is the store's own", async () => {
+    // The record stays authoritative in MEMORY until the process restarts, so
+    // its clear is a call into the store, never a key removal from here.
+    const { deps, setAccount } = buildDeps("user-1")
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+
+    setAccount(null)
+    await flushMicrotasks()
+
+    expect(jest.mocked(deps.removeStorageItem).mock.calls).toEqual([
+      [WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY],
+      [WATCH_PROGRESS_QUEUE_STORAGE_KEY],
+    ])
+  })
+
+  it("clears the record even when account deletion is the signed-out transition", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    // Deleting the account ends the session; the lifecycle sees only that.
+    setAccount(null)
+    await flushMicrotasks()
+
+    expect(deps.clearLastWatched).toHaveBeenCalledTimes(1)
+  })
+
+  it("an account switch clears the old account before hydrating the new one", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount("user-2")
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      "clearLastWatched",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+      "snapshot",
+      "server",
+      "flush",
+    ])
+  })
+
+  it("waits for the record clear to land", async () => {
+    // The record's key is the only one of the three whose removal a sign-out
+    // did not wait for, so a removal that never landed left the previous
+    // account's video on disk for the next launch to read back.
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    let landClear: () => void = () => {}
+    deps.clearLastWatched = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          landClear = () => {
+            calls.push("clearLastWatched")
+            resolve()
+          }
+        }),
+    )
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    await flushMicrotasks()
+    expect(calls).toEqual(["reset"])
+
+    landClear()
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      "clearLastWatched",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    ])
+  })
+
+  it("still removes both progress keys when the record clear rejects", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    deps.clearLastWatched = jest.fn(async () => {
+      throw new Error("record store exploded")
+    })
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    ])
+  })
+
+  it("still removes both progress keys when the record clear throws", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    deps.clearLastWatched = jest.fn(() => {
+      throw new Error("record store exploded")
+    })
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    await flushMicrotasks()
+
+    expect(calls).toEqual([
+      "reset",
+      `remove:${WATCH_PROGRESS_SNAPSHOT_STORAGE_KEY}`,
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    ])
+  })
+
+  it("ignores same-identity notifications", async () => {
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount("user-1")
+    await flushMicrotasks()
+
+    expect(calls).toEqual([])
+  })
+
+  it("detaches cleanly", async () => {
+    const { deps, calls, setAccount } = buildDeps(null)
+    const detach = attachProgressLifecycle(deps)
+    detach()
+
+    setAccount("user-1")
+    await flushMicrotasks()
+
+    expect(calls).toEqual([])
+  })
+})
+
+describe("transition serialization", () => {
+  it("finishes a sign-out's cleanup before a different sign-in starts", async () => {
+    // The race: handleTransition set knownAccountId=null on sign-out, so the
+    // following sign-in saw previous===null and took the un-chained branch —
+    // account A's storage removals then ran against account B's writes.
+    const { deps, calls, setAccount } = buildDeps("user-1")
+    let releaseRemoval: () => void = () => {}
+    const pendingRemoval = new Promise<void>((resolve) => {
+      releaseRemoval = resolve
+    })
+    deps.removeStorageItem = jest.fn(async (key: string) => {
+      await pendingRemoval
+      calls.push(`remove:${key}`)
+    })
+    attachProgressLifecycle(deps)
+    await flushMicrotasks()
+    calls.length = 0
+
+    setAccount(null)
+    setAccount("user-2")
+    releaseRemoval()
+    await flushMicrotasks()
+    await flushMicrotasks()
+
+    const lastRemoval = calls.lastIndexOf(
+      `remove:${WATCH_PROGRESS_QUEUE_STORAGE_KEY}`,
+    )
+    expect(lastRemoval).toBeGreaterThan(-1)
+    expect(calls.indexOf("snapshot")).toBeGreaterThan(lastRemoval)
+  })
+})

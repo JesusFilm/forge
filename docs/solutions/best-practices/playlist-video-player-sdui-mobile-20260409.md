@@ -97,6 +97,8 @@ useEffect(() => {
 
 Don't call `player.play()` unconditionally on foreground. The user may have manually paused.
 
+Note the `else` branch pauses on **either** `"inactive"` or `"background"` — fine for a mobile touch player, but do NOT copy it verbatim to a tvOS always-on backdrop that must survive Control Center/Siri: there, teardown must branch on `"background"` alone (see [`tvos-appstate-inactive-vs-background-video-teardown.md`](../ui-bugs/tvos-appstate-inactive-vs-background-video-teardown.md)).
+
 ```ts
 const wasPlayingRef = useRef(false)
 
@@ -116,6 +118,8 @@ useEffect(() => {
   return () => sub.remove()
 }, [player])
 ```
+
+**On TV, additionally**: the foreground branch must set a **one-shot `hasTVPreferredFocus` flag** on the control you want focused after resume. Touch UX auto-restores focus; tvOS `UIFocusEngine` does not ([react-native-tvos#852](https://github.com/react-native-tvos/react-native-tvos/issues/852)) — without an explicit flag, focus is orphaned. See [`docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md`](../design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md#pattern-4--on-foreground-resume-set-a-one-shot-hastvpreferredfocus-flag-yourself--dont-rely-on-the-focus-engines-default-restoration) (Pattern 4) for the state-flag + clearing-`useEffect` shape on TV.
 
 ### 6. `FlatList.scrollToIndex` requires `getItemLayout`
 
@@ -182,6 +186,7 @@ The complete implementation lives in:
 
 ## Related
 
+- `docs/solutions/design-patterns/rntvos-video-overlay-async-native-event-patterns-2026-04-23.md` -- TV companion: the same `useRef`-over-state discipline and `subscription.remove()` cleanup pattern, extended with the stale-closure ref-mirror rule and `Animated.CompositeAnimation` handle capture specific to TV overlay state machines. Pattern 4 is the TV extension of Section 5's `wasPlayingRef`.
 - `docs/solutions/mobile/android-lazy-section-viewport-gating-oom-fix.md` -- Android decoder budget, visibility-gated playback
 - `docs/solutions/mobile/video-detail-audit-ui-polish-fixes.md` -- Stack screen blur listener origin
 - `docs/solutions/mobile/sdui-experience-provider-block-index-parent-child-loss.md` -- ExperienceProvider indexing architecture

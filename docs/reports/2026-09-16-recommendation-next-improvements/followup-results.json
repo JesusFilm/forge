@@ -1,0 +1,332 @@
+{
+  "capturedAt": "2026-09-15T22:37:20.641Z",
+  "results": [
+    {
+      "name": "request_funnel_by_position",
+      "milliseconds": 2005,
+      "rows": [
+        {
+          "execution_mode": "hybrid_personalized",
+          "position": 0,
+          "cards": "984",
+          "rendered": "894",
+          "impressions": "87",
+          "matched_selections": "11",
+          "selections": "12",
+          "starts": "6",
+          "qualified": "4"
+        },
+        {
+          "execution_mode": "hybrid_personalized",
+          "position": 1,
+          "cards": "982",
+          "rendered": "893",
+          "impressions": "85",
+          "matched_selections": "4",
+          "selections": "4",
+          "starts": "1",
+          "qualified": "1"
+        },
+        {
+          "execution_mode": "hybrid_personalized",
+          "position": 2,
+          "cards": "978",
+          "rendered": "889",
+          "impressions": "78",
+          "matched_selections": "3",
+          "selections": "3",
+          "starts": "0",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "hybrid_personalized",
+          "position": 3,
+          "cards": "969",
+          "rendered": "881",
+          "impressions": "51",
+          "matched_selections": "3",
+          "selections": "3",
+          "starts": "2",
+          "qualified": "1"
+        },
+        {
+          "execution_mode": "hybrid_personalized",
+          "position": 4,
+          "cards": "959",
+          "rendered": "871",
+          "impressions": "44",
+          "matched_selections": "4",
+          "selections": "4",
+          "starts": "2",
+          "qualified": "1"
+        },
+        {
+          "execution_mode": "hybrid_personalized",
+          "position": 5,
+          "cards": "952",
+          "rendered": "864",
+          "impressions": "39",
+          "matched_selections": "2",
+          "selections": "2",
+          "starts": "2",
+          "qualified": "2"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "position": 0,
+          "cards": "7679",
+          "rendered": "2102",
+          "impressions": "383",
+          "matched_selections": "22",
+          "selections": "22",
+          "starts": "13",
+          "qualified": "8"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "position": 1,
+          "cards": "6957",
+          "rendered": "2059",
+          "impressions": "368",
+          "matched_selections": "8",
+          "selections": "8",
+          "starts": "7",
+          "qualified": "4"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "position": 2,
+          "cards": "6279",
+          "rendered": "2015",
+          "impressions": "315",
+          "matched_selections": "5",
+          "selections": "5",
+          "starts": "1",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "position": 3,
+          "cards": "5593",
+          "rendered": "1996",
+          "impressions": "232",
+          "matched_selections": "8",
+          "selections": "8",
+          "starts": "6",
+          "qualified": "2"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "position": 4,
+          "cards": "4869",
+          "rendered": "1969",
+          "impressions": "216",
+          "matched_selections": "6",
+          "selections": "6",
+          "starts": "5",
+          "qualified": "3"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "position": 5,
+          "cards": "4341",
+          "rendered": "1938",
+          "impressions": "195",
+          "matched_selections": "2",
+          "selections": "3",
+          "starts": "1",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "position": 0,
+          "cards": "12",
+          "rendered": "4",
+          "impressions": "0",
+          "matched_selections": "0",
+          "selections": "0",
+          "starts": "0",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "position": 1,
+          "cards": "9",
+          "rendered": "4",
+          "impressions": "0",
+          "matched_selections": "0",
+          "selections": "0",
+          "starts": "0",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "position": 2,
+          "cards": "9",
+          "rendered": "4",
+          "impressions": "0",
+          "matched_selections": "0",
+          "selections": "0",
+          "starts": "0",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "position": 3,
+          "cards": "9",
+          "rendered": "4",
+          "impressions": "0",
+          "matched_selections": "0",
+          "selections": "0",
+          "starts": "0",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "position": 4,
+          "cards": "6",
+          "rendered": "2",
+          "impressions": "0",
+          "matched_selections": "0",
+          "selections": "0",
+          "starts": "0",
+          "qualified": "0"
+        },
+        {
+          "execution_mode": "semantic_fallback",
+          "position": 5,
+          "cards": "5",
+          "rendered": "2",
+          "impressions": "0",
+          "matched_selections": "0",
+          "selections": "0",
+          "starts": "0",
+          "qualified": "0"
+        }
+      ]
+    },
+    {
+      "name": "selected_episode_missingness",
+      "milliseconds": 633,
+      "rows": [
+        {
+          "execution_mode": "hybrid_personalized",
+          "selections": "28",
+          "missing_episode": "0",
+          "unclaimed": "0",
+          "claimed_no_facts": "15",
+          "attempt_without_start": "0",
+          "no_start_error": "0",
+          "no_start_ended": "0",
+          "no_start_observed": "0",
+          "starts": "13"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "selections": "52",
+          "missing_episode": "0",
+          "unclaimed": "2",
+          "claimed_no_facts": "17",
+          "attempt_without_start": "0",
+          "no_start_error": "0",
+          "no_start_ended": "0",
+          "no_start_observed": "0",
+          "starts": "33"
+        }
+      ]
+    },
+    {
+      "name": "latest_200_personalized_request_repeat_diagnostic_new_web_20minutes",
+      "milliseconds": 1021,
+      "rows": [
+        {
+          "candidate_generator": "multi-interest-profile",
+          "learned_outside_recommendations": true,
+          "learned_from_recommendation": false,
+          "repeat_cards": "3",
+          "affected_requests": "2",
+          "suppression_recorded": "3",
+          "refill_or_movement_recorded": "3"
+        }
+      ]
+    },
+    {
+      "name": "latest_200_personalized_request_sample_size",
+      "milliseconds": 435,
+      "rows": [
+        {
+          "sample_requests": "21"
+        }
+      ]
+    },
+    {
+      "name": "settled_bounded_candidate_suppression",
+      "milliseconds": 438,
+      "rows": [
+        {
+          "stage": "canonicalized",
+          "evidence_entries": "1072",
+          "requests_with_entries": "21",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "composed",
+          "evidence_entries": "125",
+          "requests_with_entries": "21",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "107"
+        },
+        {
+          "stage": "deduplicated",
+          "evidence_entries": "853",
+          "requests_with_entries": "21",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "nominated",
+          "evidence_entries": "1072",
+          "requests_with_entries": "21",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "ordered",
+          "evidence_entries": "853",
+          "requests_with_entries": "21",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "rejected",
+          "evidence_entries": "152",
+          "requests_with_entries": "19",
+          "recent_start_entries": "23",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "149",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "scored",
+          "evidence_entries": "853",
+          "requests_with_entries": "21",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "productionExecuted": true,
+  "published": false,
+  "activated": false,
+  "measuredAt": "2026-09-29T20:24:31.657584354Z",
+  "sourceWindow": {
+    "evaluationAsOf": "2026-09-29T19:00:00.000Z",
+    "version": "episode-event-window-v1",
+    "windowEnd": "2026-09-29T19:00:00.000Z",
+    "windowStart": "2026-09-22T19:00:00.000Z"
+  },
+  "aggregate": {
+    "attemptedPairCount": 42060,
+    "contributionCount": 35632,
+    "decisionReason": "complete_bounded_population_preflight",
+    "edgeCount": 9000,
+    "generation": "43e7dddd36592d3882dd38f7edf828c3dd80c040d7995fea06cecebf628a1c4b",
+    "graphRowJsonBytes": {
+      "contributions": {
+        "maximum": 541,
+        "total": 18780438
+      },
+      "edges": {
+        "maximum": 507,
+        "total": 4398778
+      },
+      "sources": {
+        "maximum": 863,
+        "total": 5462027
+      }
+    },
+    "publicationRowCount": 51313,
+    "publishedAt": null,
+    "rawSourceCount": 39551,
+    "rawSourceCountIsLowerBound": false,
+    "sourceCount": 6680,
+    "sourceWindow": {
+      "evaluationAsOf": "2026-09-29T19:00:00.000Z",
+      "version": "episode-event-window-v1",
+      "windowEnd": "2026-09-29T19:00:00.000Z",
+      "windowStart": "2026-09-22T19:00:00.000Z"
+    },
+    "status": "ready",
+    "supportedEdgeCount": 613,
+    "terminalDecision": "no_promotion"
+  },
+  "elapsedSeconds": 10.493,
+  "peakContainerBytes": 572698624,
+  "containerRemoved": true,
+  "tunnelCleanupVerified": true,
+  "sourceQueries": 1,
+  "dataMutations": 0,
+  "notes": [
+    "Fixed complete seven-day population; no favorable-window search.",
+    "Read-only validation is not publication, activation or causal usefulness evidence.",
+    "No source identities or payloads retained."
+  ]
+}

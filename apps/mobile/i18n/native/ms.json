@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Aplikasi ini menggunakan rangkaian setempat anda untuk mencari peranti penghantaran supaya anda boleh memainkan video di TV anda."
+  }
+}

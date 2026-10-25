@@ -1,0 +1,30 @@
+[
+  {
+    "name": "release_migrations",
+    "sql": "SELECT migration_name,finished_at,rolled_back_at FROM _prisma_migrations WHERE migration_name LIKE '0097_%' OR migration_name LIKE '0098_%' ORDER BY migration_name"
+  },
+  {
+    "name": "mode_evidence_health",
+    "sql": "SELECT count(*) episodes,count(DISTINCT evidence.profile_id) profiles,count(*) FILTER(WHERE sound_off_qualified) qualified_sound_off_episodes,count(*) FILTER(WHERE sound_on_qualified) qualified_sound_on_episodes,count(*) FILTER(WHERE preview_milliseconds>0) preview_episodes,count(*) FILTER(WHERE profile.state<>'active' OR profile.privacy_generation<>evidence.privacy_generation) invalid_current_identity_rows,count(*) FILTER(WHERE episode.conflict_count>0) conflict_rows,count(*) FILTER(WHERE evidence.expires_at<>episode.expires_at) mismatched_retention_rows,min(evidence.observed_at) first_observed_at,max(evidence.observed_at) latest_observed_at FROM recommendation_viewing_mode_evidence evidence JOIN recommendation_profile profile ON profile.id=evidence.profile_id JOIN recommendation_playback_episode episode ON episode.id=evidence.episode_id"
+  },
+  {
+    "name": "mode_independent_candidate_availability",
+    "sql": "WITH x AS (SELECT media_id,count(DISTINCT profile_id) profiles FROM recommendation_viewing_mode_evidence WHERE sound_off_milliseconds>=3000 AND expires_at>now() GROUP BY media_id) SELECT count(*) videos,count(*) FILTER(WHERE profiles>=20) videos_reaching_raw_minimum,max(profiles) maximum_profiles_per_video FROM x"
+  },
+  {
+    "name": "mode_facts_health_1h",
+    "sql": "SELECT kind,count(*) facts,count(DISTINCT episode_id) episodes,count(*) FILTER(WHERE late) late_facts FROM recommendation_playback_fact WHERE received_at>now()-interval '1 hour' AND kind IN ('playback_viewing_mode','playback_error') GROUP BY kind"
+  },
+  {
+    "name": "execution_modes_30m",
+    "sql": "SELECT execution_mode,lane,reason_code,count(*) requests,avg(request.retrieval_latency_ms) retrieval_mean_ms,max(request.retrieval_latency_ms) retrieval_max_ms FROM recommendation_personalization_decision decision JOIN recommendation_request request ON request.id=decision.request_id WHERE request.created_at>now()-interval '30 minutes' GROUP BY 1,2,3 ORDER BY requests DESC"
+  },
+  {
+    "name": "curated_fallback_invariants_30m",
+    "sql": "WITH requests AS MATERIALIZED (SELECT request.id,request.seed_media_id,request.locale,request.expected_item_count,decision.lane,decision.interest_count,decision.projection_generation_id FROM recommendation_request request JOIN recommendation_personalization_decision decision ON decision.request_id=request.id WHERE request.created_at>now()-interval '30 minutes' AND decision.execution_mode='curated_fallback'), slates AS (SELECT requests.*,count(item.id) cards,count(DISTINCT item.target_media_id) distinct_videos,count(*) FILTER(WHERE item.target_media_id=requests.seed_media_id) seed_items FROM requests LEFT JOIN recommendation_served_item item ON item.request_id=requests.id GROUP BY requests.id,requests.seed_media_id,requests.locale,requests.expected_item_count,requests.lane,requests.interest_count,requests.projection_generation_id) SELECT count(*) requests,sum(cards) cards,count(*) FILTER(WHERE cards<>distinct_videos) duplicate_slates,sum(seed_items) current_video_items,count(*) FILTER(WHERE lane<>'semantic_fallback' OR interest_count<>0 OR projection_generation_id IS NOT NULL) invalid_profile_claims,count(*) FILTER(WHERE cards<>expected_item_count) item_count_mismatches FROM slates"
+  },
+  {
+    "name": "approved_curated_pool_coverage",
+    "sql": "SELECT pool.locale,pool.audio_language_slug,count(*) pools,sum(cardinality(pool.video_ids)) catalog_entries FROM recommendation_curated_pointer pointer JOIN recommendation_curated_pool pool ON pool.generation_id=pointer.generation_id GROUP BY 1,2 ORDER BY 1,2"
+  }
+]

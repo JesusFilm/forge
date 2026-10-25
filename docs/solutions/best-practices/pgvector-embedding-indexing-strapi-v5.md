@@ -32,11 +32,14 @@ related:
   - "docs/solutions/performance-issues/strapi-language-cache-raw-sql-bypass-cms-manager-20260403.md"
   - "docs/solutions/platform/multimodal-scene-analysis-pipeline.md"
   - "docs/solutions/best-practices/pgvector-recommendation-query-locale-graphql-strapi-v5.md"
+  - "docs/solutions/best-practices/vector-embedding-storage-scope-sequencing-2026-04-11.md"
+  - "docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md"
+last_updated: "2026-04-15"
 ---
 
 ## Problem
 
-Strapi v5's ORM does not support pgvector's `vector(1536)` column type, but the video content vectorization pipeline requires storing and querying high-dimensional embeddings in PostgreSQL with HNSW indexes. Two tables are needed: `video_embeddings` (transcript chunks) and `scene_embeddings` (multimodal scene analysis with metadata arrays).
+Strapi v5's ORM does not support pgvector's `vector(1536)` column type, but the video content vectorization pipeline requires storing and querying high-dimensional embeddings in PostgreSQL with HNSW indexes. Two tables are needed: `transcript_embeddings` (transcript chunks) and `scene_embeddings` (multimodal scene analysis with metadata arrays).
 
 ## What Didn't Work
 
@@ -58,7 +61,7 @@ One INSERT per row, one round-trip per iteration:
 ```typescript
 // WRONG — 500 round-trips for 500 chunks
 for (const chunk of chunks) {
-  await trx.raw(`INSERT INTO video_embeddings ... VALUES (?, ?, ?)`, [...])
+  await trx.raw(`INSERT INTO transcript_embeddings ... VALUES (?, ?, ?)`, [...])
 }
 ```
 
@@ -87,7 +90,7 @@ try {
 }
 
 try {
-  await knex.raw(`CREATE TABLE IF NOT EXISTS video_embeddings (...)`)
+  await knex.raw(`CREATE TABLE IF NOT EXISTS transcript_embeddings (...)`)
   await knex.raw(`CREATE TABLE IF NOT EXISTS scene_embeddings (...)`)
   // HNSW indexes, B-tree indexes
 } catch (err) {
@@ -127,7 +130,7 @@ for (let offset = 0; offset < chunks.length; offset += BATCH_SIZE) {
   }
 
   await trx.raw(
-    `INSERT INTO video_embeddings (...) VALUES ${placeholders.join(", ")}`,
+    `INSERT INTO transcript_embeddings (...) VALUES ${placeholders.join(", ")}`,
     bindings,
   )
 }
@@ -194,6 +197,8 @@ Controllers should reject invalid data before touching the database. Check: embe
 
 HNSW doesn't require periodic rebuilds. IVFFlat index quality degrades as data is added without rebuilding.
 
+**Caveat — filtered queries**: a global HNSW index works only for _unfiltered_ nearest-neighbour queries. The moment you add `WHERE column = ?` on the indexed table (e.g., `WHERE locale = ?`), pgvector's planner cost model gets the answer wrong and silently picks Seq Scan + Top-N Sort instead of HNSW. The fix is per-locale (or per-filter-value) **partial HNSW indexes** plus the `hnsw.iterative_scan = relaxed_order` GUC at connection level. See [pgvector HNSW index bypassed by planner when WHERE filter on indexed table](../performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md) for the empirical comparison and the production fix shipped in PR #777.
+
 ### 6. Both embedding tables need FK CASCADE
 
 `video_id REFERENCES videos(id) ON DELETE CASCADE` on both tables prevents orphaned embeddings when videos are deleted.
@@ -201,3 +206,7 @@ HNSW doesn't require periodic rebuilds. IVFFlat index quality degrades as data i
 ### 7. See the query-time companion doc for read patterns
 
 This doc covers the **write** side (bootstrap, indexing, batch INSERT). For **read** patterns (cosine similarity queries, locale-aware filtering, DISTINCT ON dedup, parent-child exclusion, custom GraphQL resolvers), see [pgvector Recommendation Query API](pgvector-recommendation-query-locale-graphql-strapi-v5.md).
+
+### 8. Keep storage scope aligned with retrieval grain
+
+For PR sequencing and table naming decisions across transcript, scene, and future video profile vectors, see [Vector embedding storage scope and PR sequencing](vector-embedding-storage-scope-sequencing-2026-04-11.md).

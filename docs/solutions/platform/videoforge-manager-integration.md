@@ -38,9 +38,11 @@ Ported VideoForge as `apps/manager` (`@forge/manager`) — a Next.js App Router 
 
 3. **Zod validation at all boundaries**: Request bodies, JSON-shaped LLM output (via shared `createStructuredOpenrouterOutput(...)` in `src/services/openrouter.ts`), env vars (via `@t3-oss/env-nextjs`).
 
-4. **`after()` for background workflow**: Next.js `after()` API keeps the runtime alive after the response, replacing the original fire-and-forget detached promise.
+4. **Shared launcher + `start()` for workflow dispatch**: manager routes now dispatch through `src/workflows/launchVideoEnrichment.ts`, which calls `start(runVideoEnrichment, [input])` from `workflow/api`. The workflow runtime owns execution durability; the route keeps ownership of validation, job creation, and the immediate 201/202 response.
 
-5. **Mux transcription only** (no OpenRouter fallback): OpenRouter doesn't expose Whisper. The original fallback asked an LLM to "generate a transcript" with no audio — producing hallucinated text. Replaced with actual VTT parsing from Mux subtitle tracks.
+5. **Workflow-safe import boundaries matter once durability is real**: enabling `withWorkflow(...)` in `next.config.ts` makes `"use workflow"` / `"use step"` real, but it also means the build rejects Node-only imports pulled into the workflow body. Manager's workflow-safe pattern is: keep orchestration/state updates in the workflow, and move Mux/audio cleanup/storage/embedding-sync/scene-analysis work behind explicit `"use step"` helpers.
+
+6. **Mux transcription only** (no OpenRouter fallback): OpenRouter doesn't expose Whisper. The original fallback asked an LLM to "generate a transcript" with no audio — producing hallucinated text. Replaced with actual VTT parsing from Mux subtitle tracks.
 
 ### Code Review Findings (14 issues found, 13 fixed)
 
@@ -70,16 +72,18 @@ The multi-agent review (`/ce:review`) caught critical issues before deployment:
 
 4. **Strapi Users & Permissions JWTs don't expire by default.** Configure `plugins.js` → `users-permissions.config.jwt.expiresIn` if needed.
 
-5. **`after()` import** is from `next/server` (not `next/headers`). Available in Next.js 15+.
+5. **`withWorkflow(...)` is required** for durable execution. Without the build plugin, `"use workflow"` / `"use step"` are just inert string directives.
 
-6. **No root config changes needed** for new apps — `apps/*` workspace glob covers it automatically.
+6. **Dispatch via `start()` from `workflow/api`** — not by calling the workflow function directly. Body-only tests won't catch this; dispatch-site tests are required.
+
+7. **No root config changes needed** for new apps — `apps/*` workspace glob covers it automatically.
 
 ## Prevention
 
 - Always validate external data (request bodies, LLM output, file-based state) with Zod — it's already a dependency via `@t3-oss/env-nextjs`.
 - Use a shared client module for any SDK instantiated in multiple services (OpenAI, Mux, S3).
 - Run `/ce:review` before `/ce:compound` to catch issues while context is fresh.
-- For background work in Next.js route handlers, use `after()` — never fire-and-forget promises.
+- For workflow-backed background work in Next.js route handlers, dispatch through `start()` from `workflow/api` and keep Node-only service imports inside `"use step"` functions.
 - When adding a new app, follow `docs/solutions/platform/adding-new-apps.md`.
 
 ## Cross-References

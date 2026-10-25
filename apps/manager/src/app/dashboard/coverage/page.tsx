@@ -1,45 +1,32 @@
 import type { Metadata } from "next"
 import { CoverageReportClient } from "@/features/coverage/coverage-report-client"
+import {
+  resolveRequestedLanguageIds,
+  type CoverageLanguageSearchParams,
+} from "@/features/coverage/language-selection"
 
 export const dynamic = "force-dynamic"
 
 export const metadata: Metadata = {
-  title: "Coverage -- Forge Manager",
-}
-
-type CoveragePageSearchParams = {
-  languageId?: string
-  languageIds?: string
-}
-
-function parseRequestedLanguageIds(raw: string | undefined): string[] {
-  if (!raw) return []
-  return [
-    ...new Set(
-      raw
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean),
-    ),
-  ]
+  title: "Coverage -- Studio",
 }
 
 export default async function CoveragePage({
   searchParams,
 }: {
-  searchParams?: Promise<CoveragePageSearchParams | undefined>
+  searchParams?: Promise<CoverageLanguageSearchParams | undefined>
 }) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined
-  const requestedLanguageIds = parseRequestedLanguageIds(
-    resolvedSearchParams?.languageIds ?? resolvedSearchParams?.languageId,
-  )
+  const requestedLanguageIds = resolveRequestedLanguageIds(resolvedSearchParams)
 
   return (
-    <CoverageReportClient
-      gatewayConfigured={true}
-      initialLanguages={[]}
-      initialSelectedLanguageIds={requestedLanguageIds}
-      initialErrorMessage={null}
-    />
+    <div className="studio-page studio-page--coverage">
+      <CoverageReportClient
+        gatewayConfigured={true}
+        initialLanguages={[]}
+        initialSelectedLanguageIds={requestedLanguageIds}
+        initialErrorMessage={null}
+      />
+    </div>
   )
 }

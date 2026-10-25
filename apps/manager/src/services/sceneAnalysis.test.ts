@@ -27,6 +27,8 @@ vi.mock("@/services/mux", () => ({
 import { beforeEach } from "vitest"
 import {
   buildDescription,
+  sceneAnalysisArtifactKey,
+  sceneAnalysisArtifactType,
   analyzeScene,
   analyzeAllScenes,
 } from "./sceneAnalysis"
@@ -327,10 +329,19 @@ describe("analyzeAllScenes", () => {
     expect(result.totalOutputTokens).toBe(1600)
   })
 
-  it("stores artifact via writeArtifact", async () => {
+  it("stores source artifacts with source provenance via writeArtifact", async () => {
     const { writeArtifact } = await import("@/services/storage")
 
-    await analyzeAllScenes("asset456", "playback456", boundaries, metadata)
+    await analyzeAllScenes("asset456", "playback456", boundaries, {
+      ...metadata,
+      inputLanguageBcp47: "en",
+      muxAssetId: "mux-source",
+      transcriptSource: {
+        kind: "mux-transcription",
+        languageBcp47: "en",
+        muxAssetId: "mux-source",
+      },
+    })
 
     expect(writeArtifact).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -338,6 +349,75 @@ describe("analyzeAllScenes", () => {
         artifactType: "scene-analysis",
         ext: "json",
       }),
+    )
+    const body = JSON.parse(
+      String(vi.mocked(writeArtifact).mock.calls[0]?.[0].body),
+    ) as {
+      provenance?: {
+        generationMode?: string
+        mediaSource?: { muxAssetId?: string }
+        transcriptSource?: { muxAssetId?: string }
+      }
+    }
+    expect(body.provenance).toMatchObject({
+      generationMode: "source",
+      mediaSource: { muxAssetId: "mux-source" },
+      transcriptSource: { muxAssetId: "mux-source" },
+    })
+  })
+
+  it("stores localized artifacts separately with raw localized provenance", async () => {
+    const { writeArtifact } = await import("@/services/storage")
+
+    const result = await analyzeAllScenes(
+      "asset789",
+      "playback789",
+      boundaries,
+      {
+        videoLabel: "shortFilm",
+        targetLocale: "es",
+        inputLanguageBcp47: "es",
+        muxAssetId: "mux-ES",
+        transcriptSource: {
+          kind: "subtitle-url",
+          languageBcp47: "es",
+          subtitleUrl: "https://stream.mux.com/es.vtt",
+        },
+      },
+    )
+
+    expect(writeArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assetId: "asset789",
+        artifactType: "scene-analysis-es",
+        ext: "json",
+      }),
+    )
+    expect(result.provenance).toMatchObject({
+      artifactKey: "asset789/scene-analysis-es.json",
+      generationMode: "raw-localized",
+      requestedLocale: "es",
+      inputLanguageBcp47: "es",
+      mediaSource: {
+        kind: "mux",
+        muxAssetId: "mux-ES",
+        playbackId: "playback789",
+      },
+      transcriptSource: {
+        kind: "subtitle-url",
+        languageBcp47: "es",
+        subtitleUrl: "https://stream.mux.com/es.vtt",
+      },
+    })
+  })
+})
+
+describe("scene analysis artifact keys", () => {
+  it("keeps source artifacts legacy and localizes requested targets", () => {
+    expect(sceneAnalysisArtifactType(null)).toBe("scene-analysis")
+    expect(sceneAnalysisArtifactType("es-MX")).toBe("scene-analysis-es-mx")
+    expect(sceneAnalysisArtifactKey("42", "es")).toBe(
+      "42/scene-analysis-es.json",
     )
   })
 })

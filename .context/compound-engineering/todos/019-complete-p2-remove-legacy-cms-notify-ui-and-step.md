@@ -8,6 +8,19 @@ dependencies: []
 
 # Remove legacy CMS notify UI and step
 
+> **Superseded 2026-10-24 (feat-796, PR #709):** The April investigation and
+> implementation log below are historical, including their Strapi storage,
+> five-step workflow, enum-removal and future CMS-sync statements. Current
+> canonical job persistence uses Admin contracts; source artifacts remain
+> separately stored. `cms_notify` is intentionally retained in the strict
+> persisted-job parser and description map so legacy detail records and mixed
+> lists remain readable. It is absent from workflow execution inventories and
+> no CMS notification runs. Only the unreachable form and unused typed
+> `notifyCms` declaration are removed; opaque old option keys remain readable.
+> The legacy row now says `Legacy persisted step; no CMS notification is executed.`
+> Future CMS sync is not commissioned by this cleanup. No production legacy-row
+> occurrence has been established. The April work log is preserved verbatim.
+
 ## Problem Statement
 
 Before this cleanup, the branch still exposed legacy CMS notification concepts that were not part of the live enrichment flow:

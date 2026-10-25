@@ -1,0 +1,4 @@
+interface:
+  display_name: "Push Campaign Drafts"
+  short_description: "Draft push campaigns in several languages through JFP Admin."
+  default_prompt: "Draft a push campaign in several languages"

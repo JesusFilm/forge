@@ -1,0 +1,18 @@
+{
+  "name": "[forge] Recognized crawler evidence accepted",
+  "type": "log alert",
+  "query": "logs(\"service:forge-web (env:prod OR @env:prod) \\\"event=recommendation.evidence\\\" \\\"crawler=recognized\\\" (\\\"httpStatus=200\\\" OR \\\"httpStatus=202\\\")\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "Stop human evidence admission for recognized machine traffic. Preserve original facts; reconcile only roots proven by trusted provenance.\n\nRunbook: docs/operations/recommendation-evidence-transport.md. Configure the approved notification destination before installation.",
+  "tags": ["team:forge", "env:prod", "feature:feat-464"],
+  "priority": 2,
+  "options": {
+    "thresholds": {
+      "critical": 1
+    },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": false,
+    "include_tags": true
+  }
+}

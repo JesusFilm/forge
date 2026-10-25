@@ -1,0 +1,15 @@
+{
+  "id": "org.jesusfilm.app.webosdemo",
+  "title": "Watch TV Demo",
+  "main": "index.html",
+  "icon": "icon.png",
+  "type": "web",
+  "vendor": "Jesus Film Project",
+  "version": "1.0.0",
+  "appDescription": "A simple remote-friendly Watch TV demo",
+  "resolution": "1280x720",
+  "disableBackHistoryAPI": true,
+  "accessibility": {
+    "supportsAudioGuidance": true
+  }
+}

@@ -1,0 +1,31 @@
+---
+title: Watch exposure slice verification
+feature: feat-373
+---
+
+## Coverage and interpretation
+
+The finite registry covers ten Watch surface/presentation entries. The two signed recommendation entries have request-owned served, rendered, eligible, and selection evidence. Eight anonymous entries send rendered, eligible, and selection facts with random block-window UUIDs. Their server-issued served denominator remains unknown; the Admin table and gap list say so. This slice leaves feat-373 in progress.
+
+The anonymous record stores a public Watch item path, surface labels, position, kind, visibility capability, timestamps, and random event/window IDs for measurement and replay detection. It has no account, viewer, session, or cookie identity. Web ingress checks origin, human admission, payload bounds, and mutation admission before the Admin service validates the finite registry. Existing Admin dashboard authorization gates inspection. A bounded retention sweep deletes rows after 29 days. Failure to record is best effort and does not block the player or navigation. Rolling back the Web sender stops new facts; the Admin table then shows historical evidence until expiry. Signed impression capability uses existing request-owned retention.
+
+| Record                                      | Purpose and identity                                                                         | Access and ingestion health                                                                                                                                                                                                                                                                                                 | Retention and fallback                                                                                                                          |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Anonymous Watch exposure                    | Exposure measurement; random event/window UUIDs and public target path, no viewer linkage    | Protected Web proxy to Admin; authorized Admin aggregate inspection. Admission failures have existing bounded diagnostics; the dashboard exposes missing coverage and withholds counts if aggregation fails. Client delivery failures can still produce missing facts, so an empty period alone cannot prove zero exposure. | Expiry sweep after 29 days; disable the Web sender to stop new writes, retain existing facts until expiry, and keep Watch navigation available. |
+| Signed recommendation impression visibility | Capability label for eligibility interpretation, attached to existing request-owned evidence | Existing signed evidence admission and authorized Admin aggregate; visibility unknown when observer V2 is unavailable                                                                                                                                                                                                       | Existing request-owned 29-day purge; evidence failure does not block serving or playback.                                                       |
+
+CTR in this slice means selections preceded by an eligible impression in the same exposure window divided by eligible impressions. Selection before eligibility is shown separately. A transport replay is separate from a new event ID repeating the same card fact. Anonymous replay rate is cumulative for facts in the chosen window and can include later retries. Signed replay rate is unavailable because the existing audit mixes render and impression attempts; the dashboard shows its count only.
+
+## Local browser probe
+
+A temporary 70-card fixture exercised the real Watch exposure boundary in the local Next dev server. It was removed after the probe. Telemetry POSTs were mocked because the local canonical origin differed from the fixture origin. This validates browser eligibility and client scheduling, not production delivery or a server ingestion path.
+
+- After scrolling below-fold cards into view and waiting 1.4 seconds, eligible events appeared for positions 36, 37, 38, 39, 41, 42, and 43. Another wait produced no duplicate eligible events.
+- A fast click on card 65 produced a selected event before any eligible event for it. Its eligible event arrived after the dwell interval.
+- Card 50 stayed ineligible through a hidden-tab interval over 1.2 seconds and became eligible after returning to the visible tab for one second.
+- In a browser with IntersectionObserver V2, an opaque overlay blocked card 30 for over 1.3 seconds. Removing it allowed an eligible event labelled occlusion-aware.
+- Three warm 70-card dev-page samples without the boundary had DCL 198/181/132 ms and FCP 220/204/168 ms; with the boundary, DCL 153/156/136 ms and FCP 172/180/148 ms. These small, noisy local samples showed no observed regression. They are not a production performance claim.
+
+The real PostgreSQL regression inserts exposure facts on both sides of a reporting cutoff and runs the aggregate SQL. It verifies that an impression from the prior window is not counted in the current eligible denominator, early selection stays anomalous, repeat facts are separate from replay attempts, and CTR is based on the current window.
+
+Five fresh 64-card ingestion batches against disposable local PostgreSQL took 41, 24, 22, 24, and 22 ms in the service test, with two exposure-table queries per batch. This measures local database work before Web/Admin network hops and is not a production latency claim. A concurrent same-event replay yielded one acceptance and one replay with `duplicate_count = 1`; the same test checks conflicting payloads, natural repeats, and repeated IDs within a batch.

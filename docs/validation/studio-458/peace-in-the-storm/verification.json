@@ -1,0 +1,50 @@
+{
+  "width": 1080,
+  "height": 1920,
+  "fps": 30.0,
+  "durationSeconds": 60.053333,
+  "decodedFrames": 1800,
+  "audioDurationSeconds": 60.053333333333335,
+  "audioPeak": 0.8322176933288574,
+  "narrationMatches": [
+    {
+      "segment": 1,
+      "expectedStartSeconds": 0,
+      "matchedStartSeconds": 0.042666666666666665,
+      "correlation": 0.8869862813071048
+    },
+    {
+      "segment": 2,
+      "expectedStartSeconds": 10,
+      "matchedStartSeconds": 10.042666666666667,
+      "correlation": 0.9232600554399527
+    },
+    {
+      "segment": 3,
+      "expectedStartSeconds": 20,
+      "matchedStartSeconds": 20.042666666666666,
+      "correlation": 0.9028578621164618
+    },
+    {
+      "segment": 4,
+      "expectedStartSeconds": 30,
+      "matchedStartSeconds": 30.042666666666666,
+      "correlation": 0.9321184573290706
+    },
+    {
+      "segment": 5,
+      "expectedStartSeconds": 40,
+      "matchedStartSeconds": 40.04266666666667,
+      "correlation": 0.9610859497970269
+    },
+    {
+      "segment": 6,
+      "expectedStartSeconds": 50,
+      "matchedStartSeconds": 50.04266666666667,
+      "correlation": 0.9255557371320499
+    }
+  ],
+  "attemptId": "cmtygwngq0522s40s9lv22qdt",
+  "revision": 16,
+  "outputSha256": "273c7ab6f5493187a4c811030ff76a749e8aded22d71ebdeb911924e35a17911"
+}

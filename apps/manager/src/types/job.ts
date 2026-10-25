@@ -1,10 +1,16 @@
-// Job types — adapted from the original VideoForge repo.
-// Forge extension: muxPlaybackId added to JobRecord (stored at job creation).
-// Forge executes only 5 workflow steps (transcription, translation, chapters,
-// metadata, embeddings), but it still keeps the remaining intentionally
-// supported legacy step vocabulary needed by existing manager UI components.
+// Job types adapted from VideoForge for Forge's persisted Admin job contract.
+// Step names include current workflows and legacy values required by job readers.
+// Execution inventories are defined separately in @/lib/workflow-steps.
 
 export type JobStatus = "pending" | "running" | "completed" | "failed"
+
+import type {
+  SubtitleValidationBasis,
+  SubtitleValidationLanguageSummary,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
+} from "@/lib/subtitle-validation"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 
 export type StepStatus =
   | "pending"
@@ -13,22 +19,154 @@ export type StepStatus =
   | "failed"
   | "skipped"
 
-export type WorkflowStepName =
-  | "download_video"
-  | "transcription"
-  | "structured_transcript"
-  | "subtitle_post_process"
-  | "chapters"
-  | "metadata"
-  | "embeddings"
-  | "translation"
-  | "voiceover"
-  | "artifact_upload"
-  | "mux_upload"
+export const WORKFLOW_STEP_NAMES = [
+  "download_video",
+  "transcription",
+  "structured_transcript",
+  "subtitle_post_process",
+  "chapters",
+  "metadata",
+  "embeddings",
+  "translation",
+  "audio_cleanup",
+  "voiceover",
+  "artifact_upload",
+  "mux_upload",
+  "theology_validation_bible_quotes",
+  "seo_improvements",
+  // Legacy persisted read compatibility only; no notification is executed.
+  "cms_notify",
+  "smart_crop_fingerprint",
+  "smart_crop_plan",
+  "smart_crop_align",
+  "smart_crop_preview_render",
+  "smart_crop_qa",
+  "smart_crop_render",
+  "smart_crop_mux_output",
+  "shorts_prepare",
+  "shorts_render",
+  "shorts_mux_output",
+] as const
+
+export type WorkflowStepName = (typeof WORKFLOW_STEP_NAMES)[number]
+
+export type SmartCropKind = "canonical" | "localized"
+
+export type SmartCropCropMode =
+  | "auto"
+  | "speaker"
+  | "group"
+  | "object"
+  | "slide_aware"
+
+// Job options discriminator for Smart Crop jobs (plan 2026-06-09-002).
+// `assetId` is the operator-facing storage-key prefix; smart-crop artifacts
+// live under this id, which MAY differ from the job's muxAssetId. The
+// artifact download route resolves the storage prefix from this field.
+export type SmartCropJobOptions = {
+  kind: SmartCropKind
+  assetId: string
+  targetAspectRatio: "9:16"
+  cropMode: SmartCropCropMode
+  canonicalAssetId?: string
+  language?: string
+  model?: string
+  force?: boolean
+}
+
+// Historical Shorts job options retained for generic read/filter and artifact
+// identity consumers. No active Shorts creation or execution path remains.
+// `assetId` is the per-short storage-key prefix ("{muxAssetId}-short-{suffix}",
+// plan decision 1) — shorts artifacts live under this id, NOT the job's
+// muxAssetId. `language.whisper` is the pre-resolved whisper ISO-639-1 code
+// (null = unsupported → worker skips transcription with the
+// transcription_unsupported_language annotation).
+export type ShortsJobOptions = {
+  assetId: string
+  sourceMuxAssetId: string
+  sourcePlaybackId: string
+  sourceCoreId?: string
+  sourceSlug?: string
+  sourceTitle?: string
+  clip: { startSec: number; endSec: number }
+  language: { bcp47: string | null; whisper: string | null }
+  requestedBy?: string
+}
 
 export interface JobOptions {
   generateVoiceover?: boolean
   uploadMux?: boolean
+  smartCrop?: SmartCropJobOptions
+  shorts?: ShortsJobOptions
+}
+
+// ---------------------------------------------------------------------------
+// Smart Crop metadata artifact entry (plan 2026-06-09-002 "Job options
+// discriminator"): live phase data mirrored into the `smartCrop` metadata
+// artifact entry for the UI.
+// ---------------------------------------------------------------------------
+
+export type SmartCropPhase =
+  | "queued"
+  | "fingerprint"
+  | "plan"
+  | "align"
+  | "preview_render"
+  | "qa"
+  | "render"
+  | "mux_output"
+  | "completed"
+  | "failed"
+
+export type SmartCropQaVerdict = "pass" | "needs_repair" | "fail"
+
+export type SmartCropAlignmentSummary = {
+  overallConfidence: number
+  unmappedDurationPercent: number
+  gatePassed: boolean
+}
+
+export type SmartCropPlanSummary = {
+  segmentCount: number
+  approved: boolean
+}
+
+export type SmartCropOutputSummary = {
+  muxAssetId: string
+  playbackId?: string
+}
+
+export type SmartCropUsageSummary = {
+  inputTokens: number
+  outputTokens: number
+}
+
+export type SmartCropAttemptsSummary = {
+  latestAttemptIndex: number
+  selectedAttemptIndex?: number
+  maxRepairAttempts: number
+  repairCount: number
+  manifestDigest?: string
+}
+
+// `qa` carries either a real verdict or the reason the QA step was skipped
+// as advisory (mastra config gap such as frame_host_not_allowed — a config
+// problem, not a content verdict).
+export type SmartCropQaSummary = {
+  verdict?: SmartCropQaVerdict
+  unavailableReason?: string
+}
+
+export type SmartCropJobReport = {
+  domain: "smart_crop"
+  kind: SmartCropKind
+  phase: SmartCropPhase
+  alignment?: SmartCropAlignmentSummary
+  qa?: SmartCropQaSummary
+  plan?: SmartCropPlanSummary
+  attempts?: SmartCropAttemptsSummary
+  output?: SmartCropOutputSummary
+  usage?: SmartCropUsageSummary
 }
 
 export type TranslationLanguageResult = {
@@ -37,8 +175,117 @@ export type TranslationLanguageResult = {
   error?: string
 }
 
+export type {
+  SubtitleValidationBasis,
+  SubtitleValidationLanguageSummary,
+  SubtitleValidationStepSummary,
+  SubtitleValidationVerdict,
+}
+
+export type MastraStepCorrelation = {
+  runId: string
+  status?: string
+  reason?: string
+  retryable?: boolean
+  provider?: string
+  model?: string
+  chunks?: number
+  totalTokens?: number
+  sourceContentHash?: string
+  languages?: string[]
+}
+
+export type MuxSyncStatus =
+  | "synced"
+  | "skipped_existing_mux_data"
+  | "skipped_missing_generated_data"
+  | "override_pending"
+  | "override_applied"
+  | "reconciliation_required"
+  | "failed"
+
+export type MuxSyncComparison = {
+  artifactKey: string
+  targetLanguage: string
+  muxTargetType: "text_track"
+  muxTargetKey: string
+  status: MuxSyncStatus
+  explanation: string
+  generatedPreview?: string
+  muxPreview?: string
+  muxTrackId?: string
+  canOverride?: boolean
+  updatedAt?: string
+}
+
+export type MuxSyncOverrideAuditEntry = {
+  artifactKey: string
+  targetLanguage: string
+  at: string
+  action: "override_subtitle_track"
+}
+
+export type MuxSyncReport = {
+  comparisons: MuxSyncComparison[]
+  overrideHistory?: MuxSyncOverrideAuditEntry[]
+  updatedAt: string
+}
+
+export type RequestedTranscriptionProvider = "automatic" | "elevenlabs" | "mux"
+
+export type ResolvedTranscriptionProvider = "elevenlabs" | "mux"
+
+export type TranscriptionAttemptStatus =
+  | "running"
+  | "completed"
+  | "failed"
+  | "fallback_completed"
+
+export type TranscriptionDiarizationSegment = {
+  speakerId: string
+  start: number
+  end: number
+  text?: string
+}
+
+export type TranscriptionDiarizationSummary = {
+  speakerCount?: number
+  segments?: TranscriptionDiarizationSegment[]
+}
+
+export type TranscriptionAttempt = {
+  attemptId: string
+  requestedProvider: RequestedTranscriptionProvider
+  resolvedProvider: ResolvedTranscriptionProvider
+  status: TranscriptionAttemptStatus
+  sourceLanguageCode?: string
+  decisionReason?: string
+  fallbackFromProvider?: "elevenlabs"
+  fallbackReason?: string
+  startedAt: string
+  finishedAt?: string
+}
+
+export type TranscriptionRoutingReport = {
+  sourceInputUrl?: string
+  sourceInputHost?: string
+  currentAttemptId?: string
+  attempts: TranscriptionAttempt[]
+  finalProvider?: ResolvedTranscriptionProvider
+  finalSourceLanguageCode?: string
+  fallbackReason?: string
+  diarization?: TranscriptionDiarizationSummary
+}
+
 export type JobStepDetails = {
   languageResults?: TranslationLanguageResult[]
+  subtitleValidation?: SubtitleValidationStepSummary
+  transcriptCorrection?: TranscriptScriptureCorrectionStepSummary
+  mastra?: MastraStepCorrelation
+  // Live crop-worker render progress (0..1) + human-readable message,
+  // written throttled by the smart-crop workflow steps.
+  progress?: number
+  message?: string
 }
 
 export interface JobStepState {
@@ -79,6 +326,7 @@ export interface JobRecord {
   id: string
   muxAssetId: string
   muxPlaybackId: string // Forge extension — stored at job creation
+  videoDocumentId?: string
   languages: string[]
   sourceLanguageId?: string
   sourceLanguageCode?: string

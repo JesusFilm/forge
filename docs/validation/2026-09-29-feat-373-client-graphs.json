@@ -1,0 +1,56 @@
+{
+  "feature": "feat-373",
+  "method": "Independent memory-only esbuild browser module-graph check after source freeze",
+  "esbuildVersion": "0.27.3",
+  "options": {
+    "bundle": true,
+    "platform": "browser",
+    "format": "esm",
+    "treeShaking": true,
+    "minify": false,
+    "write": false,
+    "metafile": true,
+    "nodeEnv": "production"
+  },
+  "roots": [
+    {
+      "name": "watch-search-client",
+      "unminifiedBytes": 665294,
+      "parsedModules": 101,
+      "sharedManifestBytes": 2243,
+      "rootBytes": 12949
+    },
+    {
+      "name": "dynamic-collection-contract",
+      "unminifiedBytes": 627423,
+      "parsedModules": 91,
+      "sharedManifestBytes": 1215,
+      "rootBytes": 6985
+    },
+    {
+      "name": "shared-exported-helpers",
+      "unminifiedBytes": 621489,
+      "parsedModules": 91,
+      "sharedManifestBytes": 2552
+    }
+  ],
+  "excludedFromEveryGraph": [
+    "watch-surface-manifest.sources.ts",
+    "watch-surface-manifest.server.ts",
+    "server-only",
+    "react-markdown",
+    "unified",
+    "remark",
+    "micromark",
+    "mdast"
+  ],
+  "limitations": [
+    "Export-preserving root bundles are not final Next chunks or transfer sizes.",
+    "No baseline bundle comparison or full Next build was performed.",
+    "No application execution, performance rerun, database query or production call was performed."
+  ],
+  "sourceHashes": {
+    "sharedManifest": "ff3cec08397ae071c70bf922832bb01bc12965e36f252b036e13c4c5216b05f0",
+    "serverSources": "9d4dc3f797339ca76711d52230ba24e7f799a918092936a43f4633af5908fa31"
+  }
+}

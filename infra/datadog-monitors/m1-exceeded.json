@@ -1,0 +1,23 @@
+{
+  "name": "[forge-admin] fleet_ceiling.exceeded — fleet key over search ceiling",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin \\\"event=fleet_ceiling.exceeded\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "A fleet key crossed its per-minute search ceiling (event=fleet_ceiling.exceeded).\n\nIf FLEET_SEARCH_CEILING_ENFORCE=false (current default): this is a \"would-have-blocked\" calibration signal — confirm it is legitimate fleet load and consider whether FLEET_SEARCH_GLOBAL_CEILING_PER_MIN is sized right.\nIf enforce=true: search is being 429'd for this key — investigate abuse vs. an under-sized ceiling.\n\nThe key is fleetKeyId=<12-hex> (non-secret; distinguishes TV from mobile). Runbook: docs/handoffs/2026-07-15-feat-240-241-operator-command-sheet.md section 8.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:feat-240",
+    "area:fleet-search"
+  ],
+  "priority": 2,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 60,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

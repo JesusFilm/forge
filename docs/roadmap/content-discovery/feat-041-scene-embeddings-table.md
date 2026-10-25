@@ -13,6 +13,7 @@ blocks:
   - "feat-042"
   - "feat-044"
   - "feat-045"
+  - "feat-131"
 tags:
   - "cms"
   - "pgvector"
@@ -20,7 +21,7 @@ tags:
 
 ## Problem
 
-Scene descriptions need to be embedded and stored in pgvector for similarity queries. This requires a new `scene_embeddings` table (separate from feat-009's `video_embeddings`) and an indexing service.
+Scene descriptions need to be embedded and stored in pgvector for similarity queries. This requires a new `scene_embeddings` table (separate from feat-009's `transcript_embeddings`) and an indexing service.
 
 ## Entry Points — Read These First
 
@@ -30,7 +31,7 @@ Scene descriptions need to be embedded and stored in pgvector for similarity que
 
 ## Grep These
 
-- `video_embeddings` in `apps/cms/src/` — feat-009 table creation pattern to follow
+- `transcript_embeddings` in `apps/cms/src/` — feat-009 table creation pattern to follow
 - `strapi.db.connection.raw` in `apps/cms/src/` — raw SQL execution pattern
 
 ## What To Build

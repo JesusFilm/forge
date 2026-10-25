@@ -1,0 +1,20 @@
+{
+  "boundary": "Projects initial SSR loading state, actual React/Next Link/lucide rendering; 100 warmup and 500 alternating samples. studioCall rejects if invoked during SSR.",
+  "before": {
+    "htmlBytes": 636,
+    "gzipBytes": 395,
+    "medianRenderMs": 0.4470209999999497
+  },
+  "after": {
+    "htmlBytes": 740,
+    "gzipBytes": 450,
+    "medianRenderMs": 0.472438000000011
+  },
+  "additionalFetchesFromNewAnchor": 0,
+  "anchor": "<a href=\"/shorts-creator.zip\" download=\"\">Download Claude / Codex skill</a>",
+  "limitations": [
+    "Server-render microbenchmark, not end-to-end browser navigation or LCP.",
+    "No new imports, hydration hooks, prefetch, media or scripts; ZIP loads only on explicit download. Existing project-list fetch and rendering remain unchanged.",
+    "Timing changes below one millisecond are measurement noise, not claimed speed improvement."
+  ]
+}

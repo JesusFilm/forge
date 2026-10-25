@@ -1,0 +1,26 @@
+[
+  {
+    "name": "capture",
+    "sql": "SELECT transaction_timestamp() AS captured_at"
+  },
+  {
+    "name": "promotion",
+    "sql": "SELECT active_manifest_id, last_known_good_manifest_id, stage, exposure_ceiling_bps, generation, kill_switch_enabled, reason_code, active_approval_id IS NOT NULL AS has_approval FROM recommendation_promotion_pointer"
+  },
+  {
+    "name": "experiments",
+    "sql": "SELECT id, experiment_version, control_manifest_id, challenger_manifest_id, assignment_policy_version, outcome_policy_version, evaluation_policy_version, state, generation, challenger_probability, starts_at, ends_at FROM recommendation_experiment ORDER BY created_at DESC LIMIT 12"
+  },
+  {
+    "name": "shadow_decisions",
+    "sql": "SELECT e.manifest_id,e.generator_version,d.decision,d.reason_code,d.reevaluation_condition,d.decided_at,d.expires_at FROM recommendation_shadow_decision d JOIN recommendation_shadow_evaluation e ON e.id=d.evaluation_id ORDER BY d.decided_at DESC LIMIT 12"
+  },
+  {
+    "name": "shadow_counts",
+    "sql": "SELECT e.manifest_id,e.generator_version,e.state,count(r.id) runs,count(r.id) FILTER(WHERE r.state='published') published FROM recommendation_shadow_evaluation e LEFT JOIN recommendation_shadow_run r ON r.evaluation_id=e.id WHERE e.created_at>now()-interval '7 days' GROUP BY 1,2,3 ORDER BY 1,2,3"
+  },
+  {
+    "name": "assignment_counts",
+    "sql": "SELECT experiment_id,unit_kind,state,count(*) units FROM recommendation_experiment_assignment GROUP BY 1,2,3 ORDER BY 1,2,3"
+  }
+]

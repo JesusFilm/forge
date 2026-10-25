@@ -1,0 +1,112 @@
+{
+  "capturedAt": "2026-09-16T01:59:03.278000+00:00",
+  "syntheticProbe": true,
+  "pages": [
+    {
+      "cardCount": 6,
+      "deliveries": [
+        {
+          "generators": ["semantic"],
+          "itemCount": 6,
+          "mode": "semantic_fallback",
+          "reason": "candidate_pool_stale",
+          "result": "fallback"
+        }
+      ],
+      "errors": 0,
+      "explanation": "Recommended videos\nDay 1: Beginnings\n\nBut as he raised his knife to kill his son, the angel of the Lord stopped him. He saw that Abraham feared God and was willing to obey him. Then Abraham saw a ram caught by its h...\n\nDay 2: Miraculous Birth\n\nDay 2 - Miraculous Birth \"I am writing to you, dear Theophilus, an orderly account of the things that have taken place among us, so that you may know the absolute truth about ev...\n\nDay 31: Jesus' Authority\n\nDay 31, Jesus's Authority Tell us, what right do you have to say these things? Who gave you such right? Now let me ask you a question. Tell me, did John's right to baptize, come...\n\nThe Story of Jesus for Children\n\nBut from now on, the Son of Man will be seated at the right side of Almighty God. Are you then the Son of God? You say that I am. God, I'm so proud of you. Who gives him the aut...\n\nDay 2: Live Jesus' Teachings\n\nDay 2 Live Jesus' Teachings Blessed are you poor, for yours is the kingdom of God. Blessed are you who hunger now, for you shall be filled. Blessed are you who weep now, for you...\n\nTeaching About Prayer and Faith\n\nAsk and you will receive; seek and you will find; knock, and the door will be opened to you. For everyone who asks will receive, and he who seeks will find, and the door will be...\n\nRecommended from what you're watching now while personalization is unavailable.\n\nWant to change how recommendations are personalized? Open cookie settings\n\nShowing contextual recommendations.",
+      "path": "/watch/jesus.html",
+      "requests": [
+        {
+          "milliseconds": 907,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 1882,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 660,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 1393,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        }
+      ],
+      "title": "Watch JESUS \u2014 Full Movie Free Online | Jesus Film Project"
+    },
+    {
+      "cardCount": 6,
+      "deliveries": [
+        {
+          "generators": ["curated"],
+          "itemCount": 6,
+          "mode": "curated_fallback",
+          "reason": "seed_embedding_unavailable",
+          "result": "fallback"
+        }
+      ],
+      "errors": 0,
+      "explanation": "Recommended videos\n9:25\nChosen Witness\n\nAn unlikely woman's life is dramatically transformed by a man who will soon change the world forever. In this animated short film, experience the life of Jesus through the eyes of one of his followers, Mary Magdalene.\n\n8:00\nBrothers\n\nThis modern retelling of the Prodigal Son parable explores the unconditional love of a father who forgives a son's betrayal and financial ruin. The film highlights themes of grace and redemption as it contrasts the resentment of the \"good\" son with the father's unwavering commitment to restore his family.\n\n8:11\nWhat Makes You Happy?\n\nThis episode explores our ongoing tendency to search for fulfillment and purpose in our lives. Can anything truly make us happy?\n\n4:46\n1.3 What Does This Life Mean?\n\nThis short film asks the questions, \"What does this life mean?\" and \"What is behind the longings and desires of the human heart?\"\n\n1:24\nDelight\n\nA baker lovingly crafts the perfect cake ... and his baby girl smashes it. His response is a powerful illustration of the love our Heavenly Father has for us.\n\n2:07:54\nJESUS\n\nJesus constantly surprises and confounds people, from His miraculous birth to His rise from the grave. Follow His life through excerpts from the Book of Luke, all the miracles, the teachings, and the passion.\n\nSelected videos to explore.\n\nWant to change how recommendations are personalized? Open cookie settings\n\nShowing saved recommendations.",
+      "path": "/watch/life-of-jesus-gospel-of-john.html",
+      "requests": [
+        {
+          "milliseconds": 441,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 1237,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 477,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 612,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 617,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 626,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 649,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 747,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 748,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 423,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        }
+      ],
+      "title": "Life of Jesus (Gospel of John) | Jesus Film Project"
+    }
+  ]
+}
