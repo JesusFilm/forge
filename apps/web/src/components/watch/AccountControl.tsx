@@ -9,6 +9,7 @@ import {
   clearDatadogRumUser,
   identifyDatadogRumUser,
 } from "@/components/DatadogRum"
+import { publishWatchAccountSessionSignal } from "@/lib/watch-account-session-signal"
 
 type AccountUser = {
   id?: string
@@ -75,6 +76,9 @@ export function AccountControl() {
       })
       .then((session) => {
         if (cancelled) return
+        publishWatchAccountSessionSignal({
+          status: session.authenticated ? "authenticated" : "unauthenticated",
+        })
         if (session.authenticated) {
           identifyDatadogRumUser(session.user)
         } else {
@@ -90,6 +94,7 @@ export function AccountControl() {
       })
       .catch(() => {
         if (!cancelled) {
+          publishWatchAccountSessionSignal({ status: "unavailable" })
           clearDatadogRumUser()
           setState({ status: "hidden" })
         }

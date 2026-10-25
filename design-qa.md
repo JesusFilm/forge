@@ -50,9 +50,7 @@
 
 ## Result
 
-final result: passed
-
----
+## final result: passed
 
 # Design QA: Watch home beveled video controls
 
@@ -198,4 +196,54 @@ layout is required to keep the complete overlay clear of the header.
 Long localized download labels are constrained to the available pill width and
 truncate visually when necessary; the button's full translated accessible name
 remains unchanged.
+final result: passed
+
+---
+
+# Watch SEO light workspace — design QA
+
+- Source visual truth: `/home/lado/.t3/userdata/browser-artifacts/browser-screenshot-127-0-0-1-mvct2oxf-20bcbed3.png`
+- Implementation screenshot: `/home/lado/.t3/userdata/browser-artifacts/browser-screenshot-localhost-mvct61ws-bcdd88ac.png`
+- Combined comparison: `/home/lado/.t3/userdata/browser-artifacts/seo-white-design-comparison.png`
+- Desktop viewport: 1280 × 800 CSS px at device scale factor 1; source and implementation are both 1280 × 800 px.
+- Mobile evidence: `/home/lado/.t3/userdata/browser-artifacts/browser-screenshot-localhost-mvct7tgv-21547d6d.png`, 390 × 844 CSS px captured at device scale factor 2 (780 × 1688 px).
+- State: Watch page with `seoAdminPreview=1`, SEO & Marketing tab selected, seeded evidence loaded.
+
+## Full-view comparison evidence
+
+The implementation carries the approved warm-white workspace into the real Watch page while preserving the dark Watch shell. White evidence cards, fine stone borders, near-black typography, muted secondary copy, restrained semantic badges, and the pale ranking bands align with the source direction. The production page intentionally uses its real page width, navigation, copy, and seeded evidence rather than the standalone mockup's frame and sample values.
+
+## Focused region comparison evidence
+
+The above-the-fold title, section index, KPI strip, ranking header, availability badge, and warnings panel were compared in the combined image. Typography hierarchy, card density, border treatment, and semantic color balance are consistent with the source. No additional crop was needed because these details remain legible at the equal-size desktop comparison.
+
+## Required fidelity surfaces
+
+- Fonts and typography: Uses the Watch page's existing font stack and weights; display, body, metadata, and numeric hierarchy remain legible on the light surface.
+- Spacing and layout rhythm: Existing production grid and responsive spacing are preserved. Light surfaces do not introduce clipping or horizontal page overflow; the section index scrolls within its own row on mobile.
+- Colors and visual tokens: Workspace is `#f8f7f3`; cards are white; stone borders and dark text replace the former dark-card palette. Red remains the primary accent, and status colors were shifted to accessible light-background variants.
+- Image quality and asset fidelity: Existing real Watch imagery and preview images are unchanged. No visual assets were replaced or approximated.
+- Copy and content: Production labels, evidence values, warnings, provenance, and actions are unchanged.
+
+## Findings
+
+No actionable P0, P1, or P2 mismatch remains. The dark surrounding Watch shell is intentional product context, not design drift.
+
+## Interaction and runtime checks
+
+- Section anchor navigation changed the URL hash to the expected Audience target.
+- Desktop and iPhone 12 Pro responsive layouts were rendered and inspected.
+- A fresh browser snapshot reported no console errors.
+- Focused component suite: 28 tests passed.
+
+## Comparison history
+
+- Initial implementation used dark cards and dark chart surfaces, which conflicted with the selected light reference.
+- Updated the workspace, cards, ranking chart, preview widgets, video-retention card, warnings, and opportunity actions to the light palette.
+- Post-fix desktop and mobile captures show the light treatment applied consistently with no remaining P0/P1/P2 issue.
+
+## Follow-up polish
+
+No blocking follow-up. The user may still choose to adjust the warm-white tone or card contrast after hands-on review.
+
 final result: passed

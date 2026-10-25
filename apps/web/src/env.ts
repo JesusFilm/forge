@@ -255,6 +255,10 @@ export const env = createEnv({
     // local development falls back to WEB_ADMIN_API_KEYS until the dedicated
     // secret is provisioned in the target environment.
     WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Dedicated service credential for the private Watch SEO read boundary.
+    // It intentionally has no fallback to WEB_ADMIN_API_KEYS: without a
+    // separately provisioned key the admin-only feature stays disabled.
+    WATCH_SEO_API_KEYS: z.string().min(1).optional(),
     // Optional native-feedback integration. These remain server-only and
     // optional so environments can deploy before Linear is provisioned.
     WEB_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
@@ -340,7 +344,10 @@ export const env = createEnv({
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
-    // Public Admin GraphQL endpoint used by client-side Watch search reads.
+    // Public Admin GraphQL endpoint used by client-side Watch search reads
+    // and the Watch SEO confirmation origin. This must be the actual public
+    // Admin host, independent of ADMIN_GRAPHQL_URL's private transport.
+    // Watch SEO navigation requires HTTPS in production.
     // Admin's `watchSearch` query is public; production Admin must allow the
     // Web origin in `CORS_ALLOWED_ORIGINS` before browser-direct calls work.
     NEXT_PUBLIC_ADMIN_GRAPHQL_URL: z
@@ -431,6 +438,7 @@ export const env = createEnv({
     ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
     WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
     WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
+    WATCH_SEO_API_KEYS: process.env.WATCH_SEO_API_KEYS,
     WEB_FEEDBACK_LINEAR_API_KEY: process.env.WEB_FEEDBACK_LINEAR_API_KEY,
     WEB_FEEDBACK_LINEAR_TEAM_ID: process.env.WEB_FEEDBACK_LINEAR_TEAM_ID,
     WEB_FEEDBACK_LINEAR_PROJECT_ID: process.env.WEB_FEEDBACK_LINEAR_PROJECT_ID,

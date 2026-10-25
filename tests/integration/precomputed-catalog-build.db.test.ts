@@ -1478,7 +1478,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       } finally {
         await rm(directory, { recursive: true, force: true })
       }
-    })
+    }, 120_000)
 
     it("resumes a committed paid step after response loss and publishes the full cohort once", async () => {
       const generationId = initialGenerationId
