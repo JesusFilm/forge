@@ -9,7 +9,8 @@ import { getLoadedWatchGrow, loadWatchGrow } from "./watch-grow-loader"
  * Grow has no server-rendered role content on these statically cached pages.
  * Commit the intent-loaded module directly instead of suspending/revealing it:
  * React's nested lazy reveal throttle otherwise delays a cold lesson return
- * even after all required chunks have arrived. No curriculum is eager here.
+ * even after all required chunks have arrived. The pending host stays visible
+ * while that parallel return import resolves. No curriculum is eager here.
  */
 export function WatchGrowLoader(props: WatchGrowProps) {
   const [Grow, setGrow] = useState(getLoadedWatchGrow)
@@ -30,5 +31,16 @@ export function WatchGrowLoader(props: WatchGrowProps) {
     }
   }, [Grow])
   if (error) throw error
-  return Grow ? <Grow {...props} /> : null
+  return Grow ? (
+    <Grow {...props} />
+  ) : (
+    <p
+      role="status"
+      lang="en"
+      dir="ltr"
+      className="pt-12 text-[15px] text-white/70 md:pt-16"
+    >
+      Loading the nine lessons…
+    </p>
+  )
 }

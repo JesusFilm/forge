@@ -11,6 +11,8 @@
 // default shape.
 
 import {
+  Component,
+  type ReactNode,
   lazy,
   Suspense,
   useEffect,
@@ -36,6 +38,8 @@ import { WatchGrowSteps } from "@/components/watch/WatchGrowSteps"
 import { WatchGrowVerse } from "@/components/watch/WatchGrowVerse"
 
 export type WatchGrowProps = {
+  /** Route, selected language and published configuration identity. */
+  optionalContentKey?: string
   citations?: WatchBibleQuotesBlock["bibleCitations"]
   filmTitle?: string
   seriesTitle?: string | null
@@ -74,6 +78,7 @@ const WatchGrowPrayer = lazy(() =>
 )
 
 export function WatchGrow({
+  optionalContentKey,
   citations = NO_CITATIONS,
   filmTitle = "Jesus Film Project",
   seriesTitle = null,
@@ -104,9 +109,13 @@ export function WatchGrow({
         <DeferredCourse {...courseProps} />
         <WatchGrowSteps />
         <WatchGrowPlans />
-        <Suspense fallback={null}>
-          <WatchGrowPrayer />
-        </Suspense>
+        <OptionalPrayerBoundary
+          key={JSON.stringify([optionalContentKey, filmTitle, citations])}
+        >
+          <Suspense fallback={null}>
+            <WatchGrowPrayer />
+          </Suspense>
+        </OptionalPrayerBoundary>
         <p className="mt-10 text-[13px] text-white/45">
           <a
             href="?as=grow"
@@ -201,4 +210,38 @@ function DeferredCourse(props: WatchGrowProgressCourseProps) {
       )}
     </section>
   )
+}
+
+// Suspense handles pending imports, not rejected imports or render failures.
+// Keep this optional shelf's failure inside its own slot. React.lazy caches
+// rejected imports, so a prayer retry button would misleadingly rethrow the
+// same rejection even when the bundler permits a new chunk request.
+// A new content scope resets render errors; a fresh navigation can
+// fetch a failed chunk again without sacrificing the usable lesson controls.
+class OptionalPrayerBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <p
+          role="status"
+          lang="en"
+          dir="ltr"
+          className="mt-12 text-[15px] text-white/70"
+        >
+          The prayer guide is unavailable. You can continue with the lessons and
+          plans.
+        </p>
+      )
+    }
+    return this.props.children
+  }
 }

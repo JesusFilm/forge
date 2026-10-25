@@ -197,7 +197,17 @@ export function WatchNextSteps({
               <Suspense fallback={null}>
                 {mode !== "explore" ? (
                   <div lang="en" dir="ltr">
-                    {mode === "grow" ? <WatchGrowLoader {...growFilm} /> : null}
+                    {mode === "grow" ? (
+                      <WatchGrowLoader
+                        {...growFilm}
+                        optionalContentKey={JSON.stringify([
+                          shareFilm?.slug,
+                          languageSlug,
+                          locale,
+                          config,
+                        ])}
+                      />
+                    ) : null}
 
                     {mode === "share" ? (
                       <WatchShareIdeas

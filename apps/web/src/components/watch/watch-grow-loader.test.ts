@@ -104,6 +104,10 @@ it("commits a return's ready controls in the import-completion act turn", async 
     })
     await started
     expect(container.querySelector('[data-testid="resolved-grow"]')).toBeNull()
+    const status = container.querySelector('[role="status"]')
+    expect(status?.textContent).toBe("Loading the nine lessons…")
+    expect(status?.getAttribute("lang")).toBe("en")
+    expect(status?.getAttribute("dir")).toBe("ltr")
     await act(async () => {
       release()
       await pending
@@ -111,6 +115,7 @@ it("commits a return's ready controls in the import-completion act turn", async 
     expect(
       container.querySelector('[data-testid="resolved-grow"]')?.textContent,
     ).toBe("Grow ready")
+    expect(container.querySelector('[role="status"]')).toBeNull()
   } finally {
     act(() => root.unmount())
     container.remove()
@@ -163,3 +168,24 @@ it.each([
     }
   },
 )
+
+it("does not flash a loading status when Grow and its course are already cached", async () => {
+  window.history.replaceState(null, "", "/watch?as=grow&growLesson=lesson-1")
+  const loader = await import("./watch-grow-loader")
+  release()
+  await loader.loadWatchGrow()
+  const { WatchGrowLoader } = await import("./WatchGrowLoader")
+  const container = document.createElement("div")
+  document.body.append(container)
+  const root = createRoot(container)
+  try {
+    act(() => root.render(createElement(WatchGrowLoader)))
+    expect(
+      container.querySelector('[data-testid="resolved-grow"]')?.textContent,
+    ).toBe("Grow ready")
+    expect(container.querySelector('[role="status"]')).toBeNull()
+  } finally {
+    act(() => root.unmount())
+    container.remove()
+  }
+})
