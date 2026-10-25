@@ -168,9 +168,18 @@ export function WatchShareIdeas({
           You don&rsquo;t need a script.
         </h2>
         <p className="mt-3 text-base leading-relaxed text-white/70">
-          {film
-            ? `${film.title}${minutes ? ` is ${minutes} long. That is a small thing to send someone.` : " is a small thing to send someone."}`
-            : "A short film is a small thing to send someone."}{" "}
+          {film ? (
+            <>
+              <span lang="" dir="auto">
+                {film.title}
+              </span>
+              {minutes
+                ? ` is ${minutes} long. That is a small thing to send someone.`
+                : " is a small thing to send someone."}
+            </>
+          ) : (
+            "A short film is a small thing to send someone."
+          )}{" "}
           What makes it land is not the wording — it is these few habits.
         </p>
       </header>

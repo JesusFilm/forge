@@ -193,6 +193,8 @@ export function WatchShareKit({
           <p className={WATCH_SECTION_EYEBROW_CLASS}>Film kit</p>
           <h3
             id={headingId}
+            lang=""
+            dir="auto"
             ref={headingRef}
             tabIndex={-1}
             className="mt-2 text-2xl leading-tight font-semibold text-balance outline-none sm:text-3xl"

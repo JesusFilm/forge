@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
+import { expect, test } from "./watch-audience-test"
 
 const film = process.env.WATCH_AUDIENCE_TEST_FILM_SLUG ?? "jesus-feature-film"
 const video = (language: string, full = false) =>
@@ -26,6 +27,133 @@ async function trapFocus(page: Page, dialog: Locator) {
 for (const width of [1280, 390]) {
   test.describe(`audience content languages at ${width}px`, () => {
     test.use({ viewport: { width, height: 844 }, hasTouch: width < 768 })
+
+    test("local media retains decoded playback with external telemetry blocked", async ({
+      page,
+    }) => {
+      test.skip(
+        !process.env.WATCH_AUDIENCE_TEST_MEDIA_DIR,
+        "Requires deterministic local HLS/poster fixtures",
+      )
+      await page.goto(video("english"))
+      await page.getByRole("button", { name: "Watch now", exact: true }).click()
+      const media = page.locator('[data-testid="hero-player-wrapper"] video')
+      await expect
+        .poll(() =>
+          media.evaluate((node: HTMLVideoElement) => ({
+            ready: node.readyState >= 2,
+            error: node.error?.code ?? null,
+          })),
+        )
+        .toEqual({ ready: true, error: null })
+      await expect
+        .poll(() =>
+          media.evaluate((node: HTMLVideoElement) => node.currentTime),
+        )
+        .toBeGreaterThan(0)
+    })
+
+    for (const [language, seriesTitle, nextTitle, direction, currentTitle] of [
+      [
+        "arabic-modern-standard",
+        "مسيرة المسيح",
+        "بداية الخدمة",
+        "rtl",
+        "البدء",
+      ],
+      [
+        "english",
+        "The Life of Jesus",
+        "Ministry begins",
+        "ltr",
+        "The beginning",
+      ],
+      // A real Urdu dub with English-only title fallback. Title DTOs lack
+      // source-locale metadata, so neither title may inherit the Urdu document.
+      ["urdu", "The Life of Jesus", "Ministry begins", "ltr", "The beginning"],
+    ]) {
+      test(`${language} continuation and Share titles isolate content from English labels`, async ({
+        page,
+      }) => {
+        const series =
+          process.env.WATCH_AUDIENCE_TEST_SERIES_SLUG ?? "r4-title-series"
+        const path = `/watch/${series}.html/r4-title-first/${language}.html`
+        await page.goto(`${path}?as=grow`)
+        const documentLang =
+          language === "arabic-modern-standard"
+            ? "ar"
+            : language === "urdu"
+              ? "ur"
+              : "en"
+        await languageBoundary(
+          page.locator("html"),
+          documentLang,
+          documentLang === "en" ? "ltr" : "rtl",
+        )
+        const card = page.getByTestId("watch-grow-continue")
+        const heading = card.getByRole("heading", {
+          name: `Tomorrow: ${nextTitle}`,
+          exact: true,
+        })
+        const title = heading.locator("span")
+        await languageBoundary(title, "", "auto")
+        await expect(title).toHaveCSS("direction", direction)
+        const eyebrow = card.locator("p").first()
+        await expect(eyebrow).toHaveText(`${seriesTitle} · 1 of 2`)
+        await languageBoundary(eyebrow.locator("span"), "", "auto")
+        await expect(eyebrow.locator("span")).toHaveCSS("direction", direction)
+        for (const label of [
+          heading,
+          eyebrow,
+          card.getByRole("img", { name: "Episode 1 of 2" }),
+        ]) {
+          expect(
+            await label.evaluate((node) =>
+              node.closest("[lang]")?.getAttribute("lang"),
+            ),
+          ).toBe("en")
+          await expect(label).toHaveCSS("direction", "ltr")
+        }
+        const next = card.getByRole("link", {
+          name: "Watch it now",
+          exact: true,
+        })
+        await next.focus()
+        await expect(next).toBeFocused()
+        await page.keyboard.press("Enter")
+        const destination =
+          language === "english"
+            ? `/watch/${series}.html/r4-title-second.html`
+            : `/watch/${series}.html/r4-title-second/${language}.html`
+        await expect(page).toHaveURL(new URL(destination, page.url()).href)
+
+        await page.goto(`${path}?as=share`)
+        const share = page.getByTestId("watch-share-ideas")
+        const introduction = share.locator("header > p").last()
+        await expect(introduction).toContainText(`${currentTitle} is`)
+        await languageBoundary(introduction.locator("span"), "", "auto")
+        await expect(introduction.locator("span")).toHaveCSS(
+          "direction",
+          direction,
+        )
+        await expect(introduction).toHaveCSS("direction", "ltr")
+        const launcher = page.getByTestId("watch-share-kit-launcher")
+        await launcher.click()
+        const kit = page.getByTestId("watch-share-kit")
+        const kitTitle = kit.getByRole("heading", {
+          name: currentTitle,
+          exact: true,
+        })
+        await languageBoundary(kitTitle, "", "auto")
+        await expect(kitTitle).toHaveCSS("direction", direction)
+        await expect(
+          kit.getByRole("button", { name: "Close film kit", exact: true }),
+        ).toHaveCSS("direction", "ltr")
+        await page.keyboard.press("Escape")
+        await expect(kit).toHaveCount(0)
+        await expect(launcher).toBeFocused()
+      })
+    }
 
     for (const [language, documentLang, passageLang, direction, content] of [
       [

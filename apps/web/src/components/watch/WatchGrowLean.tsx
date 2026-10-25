@@ -142,7 +142,13 @@ function ContinueCard({
       {/* episodeIndex is this film's place in the series, not viewing
           history: nothing here claims an episode was watched. */}
       <p className={WATCH_SECTION_EYEBROW_CLASS}>
-        {seriesTitle ?? "Keep going"}
+        {seriesTitle != null ? (
+          <span lang="" dir="auto">
+            {seriesTitle}
+          </span>
+        ) : (
+          "Keep going"
+        )}
         {episodeIndex && episodeCount
           ? ` · ${episodeIndex} of ${episodeCount}`
           : ""}
@@ -151,7 +157,10 @@ function ContinueCard({
         id="watch-grow-continue-heading"
         className="mt-3 text-3xl leading-[1.08] font-semibold text-balance sm:text-4xl"
       >
-        Tomorrow: {nextEpisode.title}
+        Tomorrow:{" "}
+        <span lang="" dir="auto">
+          {nextEpisode.title}
+        </span>
       </h2>
 
       {episodeCount > 1 && episodeIndex ? (

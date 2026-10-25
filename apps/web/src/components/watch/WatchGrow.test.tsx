@@ -142,6 +142,63 @@ it("shows the film's place in its series without claiming episodes were watched"
 })
 
 it.each([
+  ["مسيرة المسيح", "بداية الخدمة"],
+  ["The Life of Jesus", "Ministry begins"],
+  [null, "Title without locale metadata"],
+])(
+  "isolates continuation titles %s from surrounding English labels",
+  (seriesTitle, title) => {
+    document.documentElement.lang = "ar"
+    document.documentElement.dir = "rtl"
+    try {
+      window.history.replaceState(null, "", "/watch?as=grow")
+      act(() =>
+        root.render(
+          <div lang="en" dir="ltr">
+            <WatchGrow
+              seriesTitle={seriesTitle}
+              episodeCount={3}
+              episodeIndex={1}
+              nextEpisode={{ title, minutes: 4, href: "/watch/next.html" }}
+            />
+          </div>,
+        ),
+      )
+      const card = container.querySelector(
+        '[data-testid="watch-grow-continue"]',
+      )!
+      const heading = card.querySelector("h2")!
+      expect(heading.textContent).toBe(`Tomorrow: ${title}`)
+      const selectedTitle = heading.querySelector("span")!
+      expect(selectedTitle?.textContent).toBe(title)
+      expect(selectedTitle?.getAttribute("lang")).toBe("")
+      expect(selectedTitle?.getAttribute("dir")).toBe("auto")
+      const eyebrow = card.querySelector("p")!
+      if (seriesTitle) {
+        expect(eyebrow.querySelector("span")?.textContent).toBe(seriesTitle)
+        expect(eyebrow.querySelector("span")?.getAttribute("lang")).toBe("")
+        expect(eyebrow.querySelector("span")?.getAttribute("dir")).toBe("auto")
+      } else {
+        expect(eyebrow.textContent).toBe("Keep going · 1 of 3")
+        expect(eyebrow.querySelector("span")).toBeNull()
+      }
+      for (const label of [
+        heading,
+        eyebrow,
+        card.querySelector("a")!,
+        card.querySelector('[role="img"]')!,
+      ]) {
+        expect(label.closest("[lang]")?.getAttribute("lang")).toBe("en")
+        expect(label.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
+      }
+    } finally {
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)
+
+it.each([
   [
     "arabic-modern-standard",
     "ar",

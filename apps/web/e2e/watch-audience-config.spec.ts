@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from "@playwright/test"
+import type { Locator, Page } from "@playwright/test"
+import { expect, test } from "./watch-audience-test"
 import { WatchAudienceConfigurationSchema } from "@forge/experience-schema"
 
 import {
@@ -9,7 +10,8 @@ import {
 } from "../src/lib/watch-audience-config"
 
 // Real Admin publication and real Web/Auth session contracts: no intercepted
-// routes, fabricated cookies or client-side auth bypass. The disposable preview
+// auth/publication routes, fabricated cookies or client-side auth bypass. External
+// telemetry is blocked and media may use local fixtures. The disposable preview
 // owns published fixtures plus an UNPUBLISHED draft containing the sentinel.
 const adminUrl =
   process.env.WATCH_AUDIENCE_ADMIN_GRAPHQL_URL ??

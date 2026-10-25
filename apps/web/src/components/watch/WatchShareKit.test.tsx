@@ -52,6 +52,20 @@ function render(
   )
 }
 
+it.each(["بداية الخدمة", "English fallback", "Title without metadata"])(
+  "isolates the inline selected title %s without changing English controls",
+  (title) => {
+    render({ title })
+    const heading = byTestId("watch-share-kit")!.querySelector("h3")!
+    expect(heading.textContent).toBe(title)
+    expect(heading.getAttribute("lang")).toBe("")
+    expect(heading.getAttribute("dir")).toBe("auto")
+    expect(byTestId("watch-share-kit-close")!.getAttribute("aria-label")).toBe(
+      "Close film kit",
+    )
+  },
+)
+
 function byTestId<T extends HTMLElement>(
   id: string,
   scope: ParentNode = document,
