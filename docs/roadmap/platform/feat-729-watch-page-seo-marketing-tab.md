@@ -194,6 +194,24 @@ Production-shaped PostgreSQL query plans, URL-normalization smoke tests, and
 before/after browser timing remain deployment gates tracked by `feat-728`.
 No provider integration or generated GraphQL contract was widened.
 
+## Bounded evidence correction — 2026-10-24
+
+- Replaced the unsupported first-page ranking heading and reporting-window
+  claim with neutral, source-accurate copy. Daily history remains unavailable.
+- Preserved never-run, failed, stale, and otherwise unavailable route-warning
+  coverage through controlled query-free notices in the existing Web DTO.
+  Only fresh monitored-empty coverage displays no recorded route warnings.
+- Enforced `redirect: "error"` after the Admin fetch init spread. Mocked policy
+  and synthetic transport-rejection tests cover the preventive hardening; no
+  credentialed redirect runtime or exploit test was performed.
+- Focused projection, presentation, helper, private route, and deferred-boundary
+  tests pass. Static composition and initialization remain unchanged. Actual
+  application request/resource/hydration and browser loading proof remains
+  unqualified under `feat-728`; fixture timing does not substitute for it.
+- This bounded correction requires a new independent exact-candidate review.
+  Known main conflicts, current visual acceptance and CI/CodeQL remain separate
+  gates. Implementation completion does not enable the feature.
+
 The local production build could not complete in this managed environment:
 Turbopack cannot bind its internal worker port, and the Webpack fallback reaches
 compilation but fails on the pre-existing `node:crypto` import in

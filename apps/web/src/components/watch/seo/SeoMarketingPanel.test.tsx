@@ -74,9 +74,47 @@ describe("Watch SEO presentation", () => {
     const ui = renderPanel(data).querySelector('[data-seo-family="rankings"]')!
     expect(ui.textContent).toContain("Unavailable")
     expect(ui.textContent).toContain("selection snapshots")
+    expect(ui.textContent).toContain("Search rankings")
+    expect(ui.textContent).not.toMatch(/first page|first-page/i)
+    expect(ui.textContent).not.toContain(
+      "Average search position over the supplied reporting window",
+    )
     expect(ui.querySelector("svg")).toBeNull()
     expect(ui.querySelector("[data-metric]")).toBeNull()
   })
+
+  it.each([
+    "The route monitor has not run.",
+    "Route warning coverage could not be read.",
+    "Route warning coverage is stale.",
+    null,
+  ])(
+    "distinguishes incomplete warning coverage from monitored empty (%s)",
+    (detail) => {
+      const data = sampleData()
+      data.alerts = detail
+        ? [
+            {
+              id: "route-coverage",
+              severity: "warning",
+              title: "Route warning coverage is incomplete",
+              detail,
+            },
+          ]
+        : []
+      const ui = renderPanel(data).querySelector("aside")!
+      if (detail) {
+        expect(ui.textContent).toContain(detail)
+        expect(ui.textContent).not.toContain("0 items")
+        expect(ui.textContent).not.toMatch(
+          /No (active|recorded route) warnings/,
+        )
+      } else {
+        expect(ui.textContent).toContain("No recorded route warnings.")
+        expect(ui.textContent).toContain("0 items")
+      }
+    },
+  )
 
   it("masks the complete panel and exposes its parent-owned tab relationship", () => {
     const panel = renderPanel().querySelector('[role="tabpanel"]')!

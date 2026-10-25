@@ -290,8 +290,8 @@ export function SeoMarketingPanel({
           >
             <SeoFamily
               name="rankings"
-              title="Usually visible on Google’s first page"
-              description="Average search position over the supplied reporting window."
+              title="Search rankings"
+              description="Ranking evidence where available. Retained selection snapshots do not establish daily page-ranking history."
               family={data.rankings}
               className="border-stone-200 bg-white"
             >
@@ -338,7 +338,7 @@ export function SeoMarketingPanel({
                 ))
               ) : (
                 <p className="p-4 text-xs text-stone-600">
-                  No active warnings.
+                  No recorded route warnings.
                 </p>
               )}
             </aside>

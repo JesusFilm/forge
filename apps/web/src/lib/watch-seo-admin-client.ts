@@ -34,6 +34,8 @@ export async function fetchWatchSeoAdmin(
       ...init,
       method: init.method ?? "POST",
       cache: "no-store",
+      // Both credentials are scoped to the configured Admin endpoint.
+      redirect: "error",
       headers,
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     })

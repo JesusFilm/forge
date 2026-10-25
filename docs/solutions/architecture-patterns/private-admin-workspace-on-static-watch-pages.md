@@ -108,6 +108,22 @@ rolling GSC selection snapshots, but the Watch projection currently exposes
 rankings as unavailable and does not derive daily history from those snapshots
 (`apps/web/src/lib/watch-seo-read-model-adapter.ts:163-170`).
 
+Keep presentation conclusions within the same evidence boundary: an unavailable
+ranking family needs a neutral heading, even when its chart and totals are
+correctly absent. Preserve route-warning coverage when flattening sections into
+notices. Only a fresh, successfully monitored empty ledger may say there are no
+recorded route warnings. A never-run, failed, stale, or otherwise unavailable
+source needs a controlled coverage warning, without copying upstream reason or
+caveat prose into Watch. The warning list counts displayed notices, including
+coverage notices; it does not measure route events.
+
+The credentialed Web-to-Admin transport must enforce `redirect: "error"` after
+the caller's init spread. Both credentials belong to the configured endpoint;
+following a redirect must not depend on runtime-specific header stripping.
+Transport failure already maps to a closed response. Mocked policy assertions
+and synthetic rejection tests verify this preventive boundary, but do not prove
+an exploit or qualify the deployed runtime and edge.
+
 The Web projection must be stricter than the retained Admin model. In
 particular, Watch should receive query-free opportunity summaries rather than
 raw search phrases. Retention is enforced at read time as well as by background

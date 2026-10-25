@@ -127,6 +127,37 @@ function readModel() {
 }
 
 describe("adaptWatchSeoReadModel", () => {
+  it.each([
+    ["unavailable", "monitor_not_run", null, "has not run"],
+    ["unavailable", "read_failed", null, "could not be read"],
+    ["stale", null, { alerts: [] }, "is stale"],
+    ["available", null, null, "is unavailable"],
+  ])(
+    "preserves unknown warning coverage (%s, %s)",
+    (state, reason, data, message) => {
+      const wire = readModel()
+      Object.assign(wire.sections.routeAlerts, {
+        state,
+        reason,
+        data,
+        caveats: ["private query must not cross the coverage projection"],
+      })
+      const result = adaptWatchSeoReadModel(wire)
+      expect(result?.alerts).toHaveLength(1)
+      expect(result?.alerts[0]).toMatchObject({
+        id: "route-coverage",
+        severity: "warning",
+        title: "Route warning coverage is incomplete",
+      })
+      expect(result?.alerts[0].detail).toContain(message)
+      expect(JSON.stringify(result)).not.toContain("private query")
+    },
+  )
+
+  it("keeps fresh successfully monitored empty warnings empty", () => {
+    expect(adaptWatchSeoReadModel(readModel())?.alerts).toEqual([])
+  })
+
   it("turns retained Admin evidence into the presentation contract without inventing absent metrics", () => {
     const result = adaptWatchSeoReadModel(readModel())
 

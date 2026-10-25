@@ -203,19 +203,42 @@ export function adaptWatchSeoReadModel(
       }
     : null
 
-  const alerts = (sections.routeAlerts.data?.alerts ?? []).map(
-    (alert, index) => ({
-      id: `route-${index}`,
-      severity:
-        alert.severity.toLowerCase() === "error"
-          ? ("error" as const)
-          : alert.severity.toLowerCase() === "warning"
-            ? ("warning" as const)
-            : ("info" as const),
-      title: `Route ${alert.verdict}`,
-      detail: `${alert.lifecycle}; ${alert.latestCount} recent event${alert.latestCount === 1 ? "" : "s"}${alert.lastHttpStatus == null ? "" : `; last HTTP ${alert.lastHttpStatus}`}.`,
-    }),
-  )
+  const alerts: WatchSeoMarketingData["alerts"] = (
+    sections.routeAlerts.data?.alerts ?? []
+  ).map((alert, index) => ({
+    id: `route-${index}`,
+    severity:
+      alert.severity.toLowerCase() === "error"
+        ? ("error" as const)
+        : alert.severity.toLowerCase() === "warning"
+          ? ("warning" as const)
+          : ("info" as const),
+    title: `Route ${alert.verdict}`,
+    detail: `${alert.lifecycle}; ${alert.latestCount} recent event${alert.latestCount === 1 ? "" : "s"}${alert.lastHttpStatus == null ? "" : `; last HTTP ${alert.lastHttpStatus}`}.`,
+  }))
+
+  // An empty ledger is meaningful only after successful fresh monitoring.
+  // Use controlled copy, never upstream reason/caveat prose, on Watch.
+  if (
+    sections.routeAlerts.state !== "available" ||
+    !sections.routeAlerts.data
+  ) {
+    const coverage = sections.routeAlerts
+    const detail =
+      coverage.reason === "monitor_not_run"
+        ? "The route monitor has not run."
+        : coverage.reason === "read_failed"
+          ? "Route warning coverage could not be read."
+          : coverage.state === "stale"
+            ? "Route warning coverage is stale."
+            : "Route warning coverage is unavailable."
+    alerts.unshift({
+      id: "route-coverage",
+      severity: "warning",
+      title: "Route warning coverage is incomplete",
+      detail: `${detail} Current route warning status is unknown.`,
+    })
+  }
 
   const opportunityData = sections.proposals.data
     ? {

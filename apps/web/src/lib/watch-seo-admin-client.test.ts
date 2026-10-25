@@ -15,6 +15,32 @@ import { watchSeoAdminOrigin } from "./watch-seo-admin-origin"
 afterEach(() => vi.unstubAllGlobals())
 
 describe("Watch SEO transport and navigation", () => {
+  it.each(["follow", "manual", "error"] as const)(
+    "enforces no redirects even when init requests %s",
+    async (redirect) => {
+      const fetchMock = vi.fn().mockResolvedValue(Response.json({}))
+      vi.stubGlobal("fetch", fetchMock)
+      await fetchWatchSeoAdmin("capability", "user-token", { redirect })
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(fetchMock.mock.calls[0][1]).toMatchObject({
+        redirect: "error",
+        cache: "no-store",
+      })
+    },
+  )
+
+  it("fails closed on a synthetic redirect transport rejection", async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError("fetch failed"))
+    vi.stubGlobal("fetch", fetchMock)
+    expect(
+      await fetchWatchSeoAdmin("read-model", "user-token", {
+        method: "GET",
+      }),
+    ).toBeNull()
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(fetchMock.mock.calls[0][1].redirect).toBe("error")
+  })
+
   it("keeps Railway private transport separate from public Admin confirmation", async () => {
     const fetchMock = vi.fn().mockResolvedValue(Response.json({}))
     vi.stubGlobal("fetch", fetchMock)
@@ -30,6 +56,7 @@ describe("Watch SEO transport and navigation", () => {
       "http://forgeadmin.railway.internal:8080/api/watch-seo/read-model?slug=jesus&language=english",
     )
     expect(init.cache).toBe("no-store")
+    expect(init.redirect).toBe("error")
     const headers = new Headers(init.headers)
     expect(headers.get("authorization")).toBe("Bearer watch-service-key")
     expect(headers.get("x-watch-user-authorization")).toBe("Bearer user-token")
