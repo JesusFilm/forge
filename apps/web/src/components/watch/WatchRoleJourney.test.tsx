@@ -452,22 +452,36 @@ it("keeps a localized question, selected Scripture and English resources in inde
       },
     })
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      // Grow is a real next/dynamic import behind Suspense. Wait for its
+      // module graph, not a wall-clock guess that races cold CI transforms.
+      await vi.dynamicImportSettled()
     })
-    const question = container.querySelector(
-      '[data-testid="watch-role-journey"]',
-    )!
-    expect(question.getAttribute("lang")).toBe("ar")
-    expect(question.getAttribute("dir")).toBe("rtl")
-    expect(question.textContent).toContain("ما هي خطوتك التالية؟")
-    const quote = container.querySelector("blockquote")!
-    expect(quote.getAttribute("lang")).toBe("ar")
-    expect(quote.getAttribute("dir")).toBe("rtl")
+    const question = [...container.querySelectorAll("h3")].find(
+      (node) => node.textContent === "ما هي خطوتك التالية؟",
+    )
+    expect(question, "authored Arabic question heading").toBeDefined()
+    const journey = question?.closest("section")
+    expect(journey?.getAttribute("lang")).toBe("ar")
+    expect(journey?.getAttribute("dir")).toBe("rtl")
     const heading = [...container.querySelectorAll("h2")].find(
       (node) => node.textContent === "One line to carry.",
-    )!
-    expect(heading.closest("[lang]")?.getAttribute("lang")).toBe("en")
-    expect(heading.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
+    )
+    expect(heading, "English Scripture resource heading").toBeDefined()
+    const resource = heading?.closest("section")
+    expect(resource, "named Scripture resource section").toBeInstanceOf(
+      HTMLElement,
+    )
+    expect(resource?.getAttribute("aria-labelledby")).toBe(heading?.id)
+    const quote = resource?.querySelector("blockquote")
+    expect(
+      quote,
+      "selected Scripture in the named resource section",
+    ).toBeInstanceOf(HTMLElement)
+    expect(quote?.textContent).toBe("لأَنَّهُ هكَذَا أَحَبَّ اللهُ الْعَالَمَ.")
+    expect(quote?.getAttribute("lang")).toBe("ar")
+    expect(quote?.getAttribute("dir")).toBe("rtl")
+    expect(heading?.closest("[lang]")?.getAttribute("lang")).toBe("en")
+    expect(heading?.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
   } finally {
     document.documentElement.removeAttribute("lang")
     document.documentElement.removeAttribute("dir")
