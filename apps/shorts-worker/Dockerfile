@@ -31,6 +31,7 @@ COPY apps/shorts-worker/certificates /usr/local/share/devotional-worker/distrust
 COPY apps/shorts-worker/install-browser-distrust.sh /usr/local/bin/install-devotional-browser-distrust
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+      libbrotli1 \
       libnss3 \
       libnss3-tools \
       libdbus-1-3 \
@@ -51,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ffmpeg \
       ca-certificates \
       curl \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.0.9-2+deb12u1 \
     && sh /usr/local/bin/install-devotional-browser-distrust \
     && rm -rf /var/lib/apt/lists/*
 
