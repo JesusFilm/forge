@@ -204,7 +204,11 @@ export function WatchHomeRoleBand({
   const idBase = useId()
   const frame = watchAudienceFrame(audience)
   const lang = tryAsLocaleSlug(languageSlug)
-  useRegisterWatchAudiencePresence(frame && lang ? frame.config : null, lang)
+  useRegisterWatchAudiencePresence(
+    frame && lang ? frame.config : null,
+    lang,
+    frame?.sourceLocale ?? null,
+  )
   if (!frame || !lang) return null
 
   const c = roleContent(lang)[role]

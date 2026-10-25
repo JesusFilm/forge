@@ -133,7 +133,7 @@ export function WatchNextSteps({
   const idBase = tabsIdBase ?? ownIdBase
   const definition = getWatchAudienceRole(config, mode)
   const language = languageSlug ? tryAsLocaleSlug(languageSlug) : null
-  useRegisterWatchAudiencePresence(config, language)
+  useRegisterWatchAudiencePresence(config, language, questionnaireLocale)
   const actions = (definition?.actions ?? []).flatMap((action) => {
     const destination = resolveWatchAudienceDestination(
       action.target,

@@ -13,6 +13,8 @@ import type { WatchAudienceConfig } from "@/lib/watch-audience-config"
 export type WatchAudiencePresence = {
   config: WatchAudienceConfig
   languageSlug: string | null
+  /** Published copy provenance, independent of the film's audio language. */
+  sourceLocale: string | null
 }
 
 const listeners = new Set<() => void>()
@@ -42,18 +44,19 @@ function getServerSnapshot(): WatchAudiencePresence | null {
 export function useRegisterWatchAudiencePresence(
   config: WatchAudienceConfig | null,
   languageSlug: string | null,
+  sourceLocale: string | null = null,
 ) {
   useEffect(() => {
     if (!config) return
     const id = nextId++
-    entries.push({ id, presence: { config, languageSlug } })
+    entries.push({ id, presence: { config, languageSlug, sourceLocale } })
     notify()
     return () => {
       const index = entries.findIndex((entry) => entry.id === id)
       if (index !== -1) entries.splice(index, 1)
       notify()
     }
-  }, [config, languageSlug])
+  }, [config, languageSlug, sourceLocale])
 }
 
 export function useWatchAudiencePresence(): WatchAudiencePresence | null {
