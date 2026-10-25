@@ -229,7 +229,11 @@ export function WatchHomeRoleBand({
         lang={frame.sourceLocale}
         dir={textDirectionForLocale(frame.sourceLocale)}
       >
-        <WatchRoleTabs idBase={idBase} config={frame.config} />
+        <WatchRoleTabs
+          idBase={idBase}
+          config={frame.config}
+          locale={frame.sourceLocale}
+        />
       </div>
 
       <div

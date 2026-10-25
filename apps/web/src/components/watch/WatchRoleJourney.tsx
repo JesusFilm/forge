@@ -310,7 +310,12 @@ export function WatchRoleJourney({
 
           {/* answered trail */}
           {answers.length > 0 ? (
-            <ol className="mt-7 flex flex-wrap gap-2" aria-label="Your answers">
+            <ol
+              lang="en"
+              dir="ltr"
+              className="mt-7 flex flex-wrap gap-2"
+              aria-label="Your answers"
+            >
               {answers.map((id, i) => {
                 const q = journey.questions[i]
                 const o = q.options.find((x) => x.id === id)!
@@ -326,6 +331,8 @@ export function WatchRoleJourney({
                         setDir(-1)
                         setAnswers((a) => a.slice(0, i))
                       }}
+                      lang="en"
+                      dir="ltr"
                       title="Change this answer"
                       className="group inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/[0.06] py-1.5 pr-3 pl-2 text-[13px] text-white/85 transition-colors hover:border-white/40 hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
                     >
@@ -333,7 +340,9 @@ export function WatchRoleJourney({
                         <Check aria-hidden className="size-3" />
                       </span>
                       <OptionIcon aria-hidden className="size-3.5 opacity-70" />
-                      {o.label}
+                      <span lang={locale} dir={textDirectionForLocale(locale)}>
+                        {o.label}
+                      </span>
                     </button>
                   </li>
                 )

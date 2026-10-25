@@ -262,7 +262,12 @@ export function WatchNextSteps({
         panel
       ) : (
         <>
-          <WatchRoleTabs className="mt-2" idBase={idBase} config={config} />
+          <WatchRoleTabs
+            className="mt-2"
+            idBase={idBase}
+            config={config}
+            locale={questionnaireLocale}
+          />
           {/* Standalone frame: it owns the page's one finder host (Grow opens it). */}
           {language && locale ? (
             <WatchFindFlowHost languageSlug={language} locale={locale} />

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises"
 import { join } from "node:path"
-import { test as base, expect } from "@playwright/test"
+import { test as base, expect, type Response } from "@playwright/test"
 
 // Audience integration previews use loopback Web/Admin/hosted Auth. Never send
 // test traffic to telemetry (including Mux Data), or an external write endpoint.
@@ -11,29 +11,39 @@ export const test = base.extend<{ audienceNetworkBoundary: void }>({
     async ({ context }, use, info) => {
       // Production action IDs come from the actual build, never a guessed hash.
       // Only Watch event telemetry is blocked; auth/publication actions stay real.
-      const manifest = JSON.parse(
-        await readFile(
-          join(process.cwd(), ".next/server/server-reference-manifest.json"),
-          "utf8",
+      const manifestPaths = [
+        join(process.cwd(), ".next/server/server-reference-manifest.json"),
+        // Negative tests may target a separately built exact parent. Its action
+        // IDs use a different build salt and need the same telemetry fence.
+        ...(process.env.WATCH_AUDIENCE_TEST_REFERENCE_MANIFEST
+          ? [process.env.WATCH_AUDIENCE_TEST_REFERENCE_MANIFEST]
+          : []),
+      ]
+      const manifests = await Promise.all(
+        manifestPaths.map(
+          async (path) =>
+            JSON.parse(await readFile(path, "utf8")) as {
+              node: Record<string, { filename?: string; exportedName?: string }>
+            },
         ),
-      ) as {
-        node: Record<string, { filename?: string; exportedName?: string }>
-      }
+      )
       const telemetryActions = new Set(
-        Object.entries(manifest.node)
-          .filter(
-            ([, action]) =>
-              action.filename?.endsWith("/watch-event-actions.ts") &&
-              action.exportedName?.startsWith("record"),
-          )
-          .map(([id]) => id),
+        manifests.flatMap((manifest) =>
+          Object.entries(manifest.node)
+            .filter(
+              ([, action]) =>
+                action.filename?.endsWith("/watch-event-actions.ts") &&
+                action.exportedName?.startsWith("record"),
+            )
+            .map(([id]) => id),
+        ),
       )
       expect(telemetryActions.size).toBeGreaterThan(0)
       const blocked: { host: string; path: string; method: string }[] = []
       const media: { host: string; path: string; method: string }[] = []
       const externalPeers: { host: string; method: string }[] = []
       const responseChecks: Promise<void>[] = []
-      context.on("response", (response) => {
+      const checkResponse = (response: Response) => {
         const host = new URL(response.url()).hostname
         if (["localhost", "127.0.0.1", "[::1]"].includes(host)) return
         responseChecks.push(
@@ -42,6 +52,20 @@ export const test = base.extend<{ audienceNetworkBoundary: void }>({
               externalPeers.push({ host, method: response.request().method() })
           })(),
         )
+      }
+      context.on("response", checkResponse)
+      await context.routeWebSocket("**/*", (socket) => {
+        const url = new URL(socket.url())
+        if (["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) {
+          socket.connectToServer()
+        } else {
+          blocked.push({
+            host: url.hostname,
+            path: url.pathname,
+            method: "WEBSOCKET",
+          })
+          socket.close()
+        }
       })
       await context.route("**/*", async (route) => {
         const request = route.request()
@@ -103,6 +127,9 @@ export const test = base.extend<{ audienceNetworkBoundary: void }>({
         await route.abort("blockedbyclient")
       })
       await use()
+      // Stop collecting before context teardown, then drain every inspection.
+      // A late synthetic media response must not create an orphaned promise.
+      context.off("response", checkResponse)
       await Promise.all(responseChecks)
       await info.attach("audience network boundary", {
         body: JSON.stringify({

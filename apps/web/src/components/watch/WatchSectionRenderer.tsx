@@ -353,6 +353,7 @@ export function WatchSectionRenderer({
                       className="mt-2"
                       idBase={audienceIdBase}
                       config={personaBand.config}
+                      locale={personaBand.sourceLocale}
                     />
                   </div>
                   {/* The page's one finder host; the Grow lean button opens it. */}
