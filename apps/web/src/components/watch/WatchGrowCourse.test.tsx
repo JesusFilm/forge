@@ -40,6 +40,21 @@ afterEach(() => {
 })
 
 describe("the original nine-lesson block", () => {
+  it("uses one native radio group and preserves selection through progress rerenders without writes", () => {
+    render()
+    const radios = [
+      ...container.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+    ]
+    expect(radios).toHaveLength(3)
+    expect(new Set(radios.map((radio) => radio.name)).size).toBe(1)
+    expect(radios.map((radio) => radio.checked)).toEqual([true, false, false])
+    act(() => radios[1]!.click())
+    render({ progressStatus: <p>Still unsaved</p> })
+    expect(radios.map((radio) => radio.checked)).toEqual([false, true, false])
+    expect(radios[1]!.labels?.[0]?.textContent).toContain("In a group")
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("shows the cover, nine lesson cards and honest unsaved status without completing anything", () => {
     const changed = vi.fn()
     render({ onProgressChange: changed })

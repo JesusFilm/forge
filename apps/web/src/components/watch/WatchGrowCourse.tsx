@@ -37,7 +37,14 @@ import {
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import Link from "next/link"
-import { useEffect, useReducer, useRef, useState, type ReactNode } from "react"
+import {
+  useEffect,
+  useId,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
 
 import {
   Carousel,
@@ -336,6 +343,7 @@ export function WatchGrowCourse({
   renderStory,
 }: WatchGrowCourseProps) {
   const initial = LESSONS.find((l) => l.id === initialLessonId) ?? LESSONS[0]!
+  const modeName = useId()
   const [mode, setMode] = useState<Mode>("solo")
   const [open, setOpen] = useState<number | null>(() =>
     initialOpen || (initialStory && renderStory) ? initial.n : null,
@@ -499,27 +507,33 @@ export function WatchGrowCourse({
             <span className="text-[13px] text-white/45">I am doing this</span>
             <div
               role="radiogroup"
+              lang="en"
+              dir="ltr"
               aria-label="How you are using the guide"
               className="inline-flex items-center rounded-full border border-white/12 bg-white/[0.04] p-1"
             >
               {MODES.map(({ id, label, icon: Icon }) => (
-                <button
+                <label
                   key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={mode === id}
-                  data-testid={`watch-grow-course-mode-${id}`}
-                  onClick={() => setMode(id)}
                   className={cn(
-                    "inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors focus-visible:outline-none",
+                    "inline-flex cursor-pointer items-center gap-2 rounded-full px-4 py-2 text-[13px] font-semibold transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-white",
                     mode === id
                       ? "bg-white text-stone-900"
                       : "text-white/60 hover:text-white",
                   )}
                 >
+                  <input
+                    type="radio"
+                    name={modeName}
+                    value={id}
+                    checked={mode === id}
+                    data-testid={`watch-grow-course-mode-${id}`}
+                    className="sr-only"
+                    onChange={() => setMode(id)}
+                  />
                   <Icon aria-hidden className="size-3.5" />
                   {label}
-                </button>
+                </label>
               ))}
             </div>
           </div>

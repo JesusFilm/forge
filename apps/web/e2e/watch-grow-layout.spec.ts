@@ -248,8 +248,9 @@ for (const width of [1280, 390]) {
         await control.evaluate((element) =>
           element.scrollIntoView({ block: "center" }),
         )
-        await control.click()
-        await expect(control).toHaveAttribute("aria-checked", "true")
+        await control.focus()
+        await page.keyboard.press("Space")
+        await expect(control).toBeChecked()
         await boundedGrow(page)
         await expect(
           course.getByRole("button", {

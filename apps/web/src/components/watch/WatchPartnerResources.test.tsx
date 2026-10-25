@@ -32,6 +32,7 @@ vi.mock("@/components/ui/carousel", () => {
 import { WATCH_PARTNER_RESOURCES } from "@/lib/watch-partner-resources"
 
 import { PARTNER_RESOURCES } from "./partner-resources"
+import { WatchGrowPlans } from "./WatchGrowPlans"
 import { WatchPartnerResources } from "./WatchPartnerResources"
 
 let container: HTMLDivElement
@@ -98,3 +99,40 @@ describe("WatchPartnerResources (original presentation)", () => {
     )
   })
 })
+
+for (const Component of [WatchGrowPlans, WatchPartnerResources]) {
+  it(`${Component.name} automatically activates one roving tab and labels its filtered panel`, () => {
+    act(() => root.render(<Component />))
+    const tabs = [
+      ...container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    ]
+    const navigate = (key: string) =>
+      act(() =>
+        document.activeElement!.dispatchEvent(
+          new KeyboardEvent("keydown", {
+            key,
+            bubbles: true,
+            cancelable: true,
+          }),
+        ),
+      )
+    tabs[0]!.focus()
+    for (const [key, index] of [
+      ["ArrowRight", 1],
+      ["End", tabs.length - 1],
+      ["ArrowRight", 0],
+      ["ArrowLeft", tabs.length - 1],
+      ["Home", 0],
+    ] as const) {
+      navigate(key)
+      expect(document.activeElement).toBe(tabs[index])
+      expect(tabs.filter((tab) => tab.tabIndex === 0)).toEqual([tabs[index]])
+      expect(tabs[index]!.getAttribute("aria-selected")).toBe("true")
+      const panel = container.querySelector('[role="tabpanel"]')!
+      expect(panel.id).toBe(tabs[index]!.getAttribute("aria-controls"))
+      expect(panel.getAttribute("aria-labelledby")).toBe(tabs[index]!.id)
+      expect(panel.querySelectorAll("li").length).toBeGreaterThan(0)
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+}

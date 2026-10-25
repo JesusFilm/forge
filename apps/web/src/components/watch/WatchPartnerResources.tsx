@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import Image from "next/image"
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ComponentProps } from "react"
 
 import {
   Carousel,
@@ -33,6 +33,8 @@ import {
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import { CAROUSEL_END_SPACER } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
+
+import { useWatchResourceTabs } from "./use-watch-resource-tabs"
 
 const CAROUSEL_OPTS = {
   dragFree: true,
@@ -63,6 +65,12 @@ const withPdf = PARTNER_RESOURCES.filter(
 
 export function WatchPartnerResources() {
   const [kind, setKind] = useState<PartnerResourceKind | "all">("all")
+
+  const tabs = useWatchResourceTabs<PartnerResourceKind | "all">(
+    ["all", ...KIND_ORDER],
+    kind,
+    setKind,
+  )
 
   const grid = useMemo(() => {
     const ordered = [...PARTNER_RESOURCES].sort(
@@ -135,11 +143,13 @@ export function WatchPartnerResources() {
         <div
           role="tablist"
           aria-label="Filter resources"
+          lang="en"
+          dir="ltr"
           className="flex flex-wrap items-center gap-2"
         >
           <FilterChip
             selected={kind === "all"}
-            onClick={() => setKind("all")}
+            tabProps={tabs.tabProps("all")}
             label="All"
             count={PARTNER_RESOURCES.length}
           />
@@ -147,7 +157,7 @@ export function WatchPartnerResources() {
             <FilterChip
               key={k}
               selected={kind === k}
-              onClick={() => setKind(k)}
+              tabProps={tabs.tabProps(k)}
               label={KIND_SHORT[k]}
               count={counts.get(k) ?? 0}
             />
@@ -155,16 +165,18 @@ export function WatchPartnerResources() {
         </div>
       </div>
 
-      <ul
-        data-testid="watch-partner-grid"
-        className="mt-6 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-      >
-        {grid.map((r) => (
-          <li key={r.id} className="min-w-0">
-            <ResourceTile resource={r} />
-          </li>
-        ))}
-      </ul>
+      <div {...tabs.panelProps}>
+        <ul
+          data-testid="watch-partner-grid"
+          className="mt-6 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {grid.map((r) => (
+            <li key={r.id} className="min-w-0">
+              <ResourceTile resource={r} />
+            </li>
+          ))}
+        </ul>
+      </div>
 
       {/* ---------------- 3. prayer guides ---------------- */}
       <div className="mt-14 min-w-0 rounded-3xl border border-white/10 bg-white/[0.04] p-6 md:p-8">
@@ -265,21 +277,19 @@ export function WatchPartnerResources() {
 
 function FilterChip({
   selected,
-  onClick,
+  tabProps,
   label,
   count,
 }: {
   selected: boolean
-  onClick: () => void
+  tabProps: ComponentProps<"button">
   label: string
   count: number
 }) {
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={selected}
-      onClick={onClick}
+      {...tabProps}
       className={cn(
         "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none",
         selected

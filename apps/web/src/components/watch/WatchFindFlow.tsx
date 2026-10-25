@@ -16,7 +16,7 @@
 import { ArrowLeft, Check, Laptop, Play, Smartphone, Tv, X } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 
 import {
   Carousel,
@@ -775,26 +775,33 @@ function RadioList({
   selected: string
   onSelect: (id: string) => void
 }) {
+  const name = useId()
   return (
     <ul
       role="radiogroup"
       aria-label="How much time"
+      lang="en"
+      dir="ltr"
       className="grid min-w-0 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10"
     >
       {options.map((o) => {
         const on = selected === o.id
         return (
           <li key={o.id} className="min-w-0">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => onSelect(o.id)}
+            <label
               className={cn(
-                "flex w-full min-w-0 cursor-pointer items-center gap-4 px-5 py-4 text-left transition-colors focus-visible:outline-none",
+                "flex w-full min-w-0 cursor-pointer items-center gap-4 px-5 py-4 text-left transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-inset has-[:focus-visible]:ring-white",
                 on ? "bg-white/[0.14]" : "bg-stone-950 hover:bg-white/[0.06]",
               )}
             >
+              <input
+                type="radio"
+                className="sr-only"
+                name={name}
+                value={o.id}
+                checked={on}
+                onChange={() => onSelect(o.id)}
+              />
               <span
                 className={cn(
                   "grid size-5 shrink-0 place-items-center rounded-full border transition-colors",
@@ -808,7 +815,7 @@ function RadioList({
               <span className="min-w-0 text-[15px] md:text-base">
                 {o.label}
               </span>
-            </button>
+            </label>
           </li>
         )
       })}

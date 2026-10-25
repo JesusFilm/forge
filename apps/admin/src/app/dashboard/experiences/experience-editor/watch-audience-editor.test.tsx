@@ -10,6 +10,7 @@ import { WatchAudienceEditor } from "./watch-audience-editor"
 function setup() {
   const container = document.createElement("div")
   document.body.appendChild(container)
+  let changes = 0
   let current = createWatchAudienceConfiguration()
   function Harness() {
     const [value, setValue] = useState(current)
@@ -17,6 +18,7 @@ function setup() {
       <WatchAudienceEditor
         configuration={value}
         onChange={(next) => {
+          changes++
           current = next
           setValue(next)
         }}
@@ -27,6 +29,9 @@ function setup() {
   act(() => root.render(<Harness />))
   return {
     container,
+    get changeCount() {
+      return changes
+    },
     get value() {
       return current
     },
@@ -55,6 +60,61 @@ function input(container: HTMLElement, label: string, value: string) {
   })
 }
 describe("Watch audience editor", () => {
+  it("automatically activates roving tabs without modifying the authored configuration", () => {
+    const f = setup()
+    try {
+      const before = structuredClone(f.value)
+      const tabs = [
+        ...f.container.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+      ]
+      const press = (key: string) =>
+        act(() =>
+          document.activeElement!.dispatchEvent(
+            new KeyboardEvent("keydown", {
+              key,
+              bubbles: true,
+              cancelable: true,
+            }),
+          ),
+        )
+      tabs[0]!.focus()
+      expect(tabs.map((tab) => tab.tabIndex)).toEqual([0, -1, -1, -1])
+      for (const [key, index] of [
+        ["ArrowRight", 1],
+        ["End", 3],
+        ["ArrowRight", 0],
+        ["ArrowLeft", 3],
+        ["Home", 0],
+      ] as const) {
+        press(key)
+        expect(document.activeElement).toBe(tabs[index])
+        expect(tabs.map((tab) => tab.getAttribute("aria-selected"))).toEqual(
+          tabs.map((_, i) => String(i === index)),
+        )
+        const panel = document.getElementById(
+          tabs[index]!.getAttribute("aria-controls")!,
+        )!
+        expect(panel.getAttribute("role")).toBe("tabpanel")
+        expect(panel.getAttribute("aria-labelledby")).toBe(tabs[index]!.id)
+        expect(panel.querySelector("legend")?.textContent).toBe(
+          `${tabs[index]!.textContent} copy`,
+        )
+      }
+      expect(f.value).toEqual(before)
+      expect(f.changeCount).toBe(0)
+      input(f.container, "explore heading", "Retained authored heading")
+      press("ArrowRight")
+      press("Home")
+      expect(
+        f.container.querySelector<HTMLInputElement>(
+          '[aria-label="explore heading"]',
+        )?.value,
+      ).toBe("Retained authored heading")
+    } finally {
+      f.cleanup()
+    }
+  })
+
   it("edits all role copy without changing other roles", () => {
     const f = setup()
     try {

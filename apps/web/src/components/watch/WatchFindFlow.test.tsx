@@ -95,6 +95,13 @@ function button(label: string) {
   expect(match, label).toBeDefined()
   return match!
 }
+function radio(label: string) {
+  const input = [
+    ...document.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+  ].find((input) => input.labels?.[0]?.textContent?.trim() === label)
+  expect(input, label).toBeDefined()
+  return input!
+}
 async function click(label: string) {
   await act(async () => button(label).click())
   await settle()
@@ -179,10 +186,18 @@ describe("original phased finder on live data", () => {
     expect(document.body.textContent).toContain(
       "How much time do you have right now?",
     )
-    await act(async () => button("A few minutes").click())
+    expect(radio("Ten or twenty minutes").checked).toBe(true)
+    expect(
+      new Set(
+        [
+          ...document.querySelectorAll<HTMLInputElement>('input[type="radio"]'),
+        ].map((input) => input.name),
+      ).size,
+    ).toBe(1)
+    await act(async () => radio("A few minutes").click())
     await settle()
     expect(query().get("duration")).toBe("SHORT")
-    await act(async () => button("As long as it takes").click())
+    await act(async () => radio("As long as it takes").click())
     await settle()
     expect(query().get("duration")).toBe("ANY")
     // Skipped lanes mean every lane, as in the prototype.
@@ -331,11 +346,11 @@ describe("original phased finder on live data", () => {
     await click("Next")
     await click("Next")
     await click("Next") // time
-    await act(async () => button("A few minutes").click())
+    await act(async () => radio("A few minutes").click())
     await settle()
     expect(continuation.aborted).toBe(true)
     expect(query().get("duration")).toBe("SHORT")
-    await act(async () => button("Ten or twenty minutes").click())
+    await act(async () => radio("Ten or twenty minutes").click())
     await settle()
     // A's late continuation answer is ignored.
     await act(async () =>
@@ -381,7 +396,7 @@ describe("original phased finder on live data", () => {
     await click("Next")
     await click("Next") // time — first request in flight with MEDIUM
     const signal = fetchMock.mock.calls[0][1]!.signal!
-    await act(async () => button("A few minutes").click())
+    await act(async () => radio("A few minutes").click())
     await settle()
     expect(signal.aborted).toBe(true)
     await act(async () =>

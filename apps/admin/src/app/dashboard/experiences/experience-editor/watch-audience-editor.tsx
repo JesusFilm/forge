@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useRef, useState } from "react"
 import {
   WatchAudienceConfigurationSchema,
   WATCH_AUDIENCE_COPY_LIMITS,
@@ -106,6 +106,8 @@ export function WatchAudienceEditor({ configuration, onChange }: Props) {
       WatchAudienceConfigurationSchema.safeParse(configuration).data ??
       createWatchAudienceConfiguration(),
   )
+  const tabId = useId()
+  const tabs = useRef(new Map<string, HTMLButtonElement>())
   const [roleId, setRoleId] =
     useState<(typeof WATCH_AUDIENCE_ROLE_IDS)[number]>("explore")
   const [raw, setRaw] = useState("")
@@ -181,392 +183,426 @@ export function WatchAudienceEditor({ configuration, onChange }: Props) {
           </ul>
         </div>
       )}
-      <div role="tablist" aria-label="Audience roles">
-        {WATCH_AUDIENCE_ROLE_IDS.map((id) => (
+      {/* This editor's role chrome is English even when authored copy is localized.
+          Automatic activation is immediate/local and never saves a definition. */}
+      <div role="tablist" aria-label="Audience roles" lang="en" dir="ltr">
+        {WATCH_AUDIENCE_ROLE_IDS.map((id, index) => (
           <button
             key={id}
             type="button"
             role="tab"
+            id={`${tabId}-tab-${id}`}
+            aria-controls={`${tabId}-panel`}
+            tabIndex={roleId === id ? 0 : -1}
+            ref={(node) => {
+              if (node) tabs.current.set(id, node)
+              else tabs.current.delete(id)
+            }}
+            onKeyDown={(event) => {
+              const count = WATCH_AUDIENCE_ROLE_IDS.length
+              const next =
+                event.key === "ArrowRight"
+                  ? (index + 1) % count
+                  : event.key === "ArrowLeft"
+                    ? (index - 1 + count) % count
+                    : event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? count - 1
+                        : null
+              if (next === null) return
+              event.preventDefault()
+              const nextId = WATCH_AUDIENCE_ROLE_IDS[next]!
+              setRoleId(nextId)
+              tabs.current.get(nextId)?.focus()
+            }}
             aria-selected={roleId === id}
-            className={buttonClass}
+            className={`${buttonClass} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-text-primary)]`}
             onClick={() => setRoleId(id)}
           >
             {id}
           </button>
         ))}
       </div>
-      <fieldset className="grid gap-2 md:grid-cols-2">
-        <legend>{roleId} copy</legend>
-        {roleCopy.map((key) => (
-          <TextField
-            key={key}
-            label={`${roleId} ${key}`}
-            value={role[key]}
-            max={WATCH_AUDIENCE_COPY_LIMITS[key]}
-            onChange={(value) =>
-              update((r) => {
-                r[key] = value
-              })
-            }
-          />
-        ))}
-      </fieldset>
-      <fieldset className="space-y-3">
-        <legend>Actions (authored order breaks score ties)</legend>
-        {role.actions.map((action, ai) => (
-          <div key={ai} className="space-y-2 rounded border p-3">
+      <div
+        id={`${tabId}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${tabId}-tab-${roleId}`}
+        className="space-y-4"
+      >
+        <fieldset className="grid gap-2 md:grid-cols-2">
+          <legend>{roleId} copy</legend>
+          {roleCopy.map((key) => (
             <TextField
-              label={`Action ${ai + 1} ID`}
-              value={action.id}
-              max={64}
+              key={key}
+              label={`${roleId} ${key}`}
+              value={role[key]}
+              max={WATCH_AUDIENCE_COPY_LIMITS[key]}
               onChange={(value) =>
                 update((r) => {
-                  r.actions[ai]!.id = value
+                  r[key] = value
                 })
               }
             />
-            <TextField
-              label={`Action ${ai + 1} title`}
-              value={action.title}
-              max={WATCH_AUDIENCE_COPY_LIMITS.title}
-              onChange={(v) =>
-                update((r) => {
-                  r.actions[ai]!.title = v
-                })
-              }
-            />
-            <TextField
-              label={`Action ${ai + 1} body`}
-              value={action.body}
-              max={WATCH_AUDIENCE_COPY_LIMITS.body}
-              onChange={(v) =>
-                update((r) => {
-                  r.actions[ai]!.body = v
-                })
-              }
-            />
-            <label className="block text-xs">
-              Action kind
-              <select
-                aria-label={`Action ${ai + 1} kind`}
-                className={inputClass}
-                value={action.target.kind}
-                onChange={(e) =>
-                  update((r) => {
-                    r.actions[ai]!.target = targetFor(
-                      e.target.value as WatchAudienceActionTarget["kind"],
-                    )
-                  })
-                }
-              >
-                {actionTargets.map((kind) => (
-                  <option key={kind}>{kind}</option>
-                ))}
-              </select>
-            </label>
-            {action.target.kind === "video" && (
+          ))}
+        </fieldset>
+        <fieldset className="space-y-3">
+          <legend>Actions (authored order breaks score ties)</legend>
+          {role.actions.map((action, ai) => (
+            <div key={ai} className="space-y-2 rounded border p-3">
               <TextField
-                label={`Action ${ai + 1} video slug`}
-                value={action.target.slug}
-                max={100}
-                onChange={(slug) =>
+                label={`Action ${ai + 1} ID`}
+                value={action.id}
+                max={64}
+                onChange={(value) =>
                   update((r) => {
-                    r.actions[ai]!.target = { kind: "video", slug }
+                    r.actions[ai]!.id = value
                   })
                 }
               />
-            )}
-            {action.target.kind === "resource" && (
               <TextField
-                label={`Action ${ai + 1} HTTPS URL`}
-                value={action.target.url}
-                max={500}
-                onChange={(url) =>
+                label={`Action ${ai + 1} title`}
+                value={action.title}
+                max={WATCH_AUDIENCE_COPY_LIMITS.title}
+                onChange={(v) =>
                   update((r) => {
-                    r.actions[ai]!.target = { kind: "resource", url }
+                    r.actions[ai]!.title = v
                   })
                 }
               />
-            )}
-            {action.target.kind === "current-video" && (
-              <label>
-                Current video control
+              <TextField
+                label={`Action ${ai + 1} body`}
+                value={action.body}
+                max={WATCH_AUDIENCE_COPY_LIMITS.body}
+                onChange={(v) =>
+                  update((r) => {
+                    r.actions[ai]!.body = v
+                  })
+                }
+              />
+              <label className="block text-xs">
+                Action kind
                 <select
-                  aria-label={`Action ${ai + 1} video control`}
-                  value={action.target.target}
+                  aria-label={`Action ${ai + 1} kind`}
+                  className={inputClass}
+                  value={action.target.kind}
                   onChange={(e) =>
                     update((r) => {
-                      r.actions[ai]!.target = {
-                        kind: "current-video",
-                        target: e.target.value as
-                          | "share"
-                          | "download"
-                          | "bible-quotes"
-                          | "next-episode",
-                      }
-                    })
-                  }
-                >
-                  {["share", "download", "bible-quotes", "next-episode"].map(
-                    (target) => (
-                      <option key={target}>{target}</option>
-                    ),
-                  )}
-                </select>
-              </label>
-            )}
-            <div className="flex gap-2">
-              <button
-                className={buttonClass}
-                type="button"
-                aria-label={`Move action ${ai + 1} up`}
-                disabled={ai === 0}
-                onClick={() =>
-                  update((r, scoreIds) => {
-                    r.actions = move(r.actions, ai, -1)
-                    scoreIds.splice(
-                      0,
-                      scoreIds.length,
-                      ...move(scoreIds, ai, -1),
-                    )
-                  })
-                }
-              >
-                Up
-              </button>
-              <button
-                className={buttonClass}
-                type="button"
-                aria-label={`Move action ${ai + 1} down`}
-                disabled={ai === role.actions.length - 1}
-                onClick={() =>
-                  update((r, scoreIds) => {
-                    r.actions = move(r.actions, ai, 1)
-                    scoreIds.splice(
-                      0,
-                      scoreIds.length,
-                      ...move(scoreIds, ai, 1),
-                    )
-                  })
-                }
-              >
-                Down
-              </button>
-              <button
-                className={buttonClass}
-                type="button"
-                aria-label={`Remove action ${ai + 1}`}
-                disabled={role.actions.length <= 1}
-                onClick={() =>
-                  update((r, scoreIds) => {
-                    r.actions.splice(ai, 1)
-                    const removedId = scoreIds.splice(ai, 1)[0]!
-                    for (const q of r.questions)
-                      for (const o of q.options)
-                        o.scores = o.scores.filter(
-                          (s) => s.actionId !== removedId,
-                        )
-                  })
-                }
-              >
-                Remove action
-              </button>
-            </div>
-          </div>
-        ))}
-        <button
-          className={buttonClass}
-          type="button"
-          disabled={role.actions.length >= WATCH_AUDIENCE_MAX_ACTIONS}
-          onClick={() =>
-            update((r, scoreIds) => {
-              r.actions.push({
-                id: freshId("action", [
-                  ...r.actions.map((a) => a.id),
-                  ...scoreIds,
-                ]),
-                title: "New action",
-                body: "Describe this next step",
-                target: { kind: "languages" },
-              })
-              scoreIds.push(r.actions.at(-1)!.id)
-            })
-          }
-        >
-          Add action
-        </button>
-      </fieldset>
-      <fieldset className="space-y-4">
-        <legend>Exactly three questions</legend>
-        {role.questions.map((question, qi) => (
-          <div key={qi} className="space-y-2 rounded border p-3">
-            <h4>Question {qi + 1}</h4>
-            <TextField
-              label={`Question ${qi + 1} ID`}
-              value={question.id}
-              max={64}
-              onChange={(v) =>
-                update((r) => {
-                  r.questions[qi]!.id = v
-                })
-              }
-            />
-            <TextField
-              label={`Question ${qi + 1} prompt`}
-              value={question.prompt}
-              max={WATCH_AUDIENCE_COPY_LIMITS.prompt}
-              onChange={(v) =>
-                update((r) => {
-                  r.questions[qi]!.prompt = v
-                })
-              }
-            />
-            <button
-              className={buttonClass}
-              type="button"
-              aria-label={`Move question ${qi + 1} up`}
-              disabled={qi === 0}
-              onClick={() =>
-                update((r) => {
-                  r.questions = move(r.questions, qi, -1)
-                })
-              }
-            >
-              Move question up
-            </button>
-            <button
-              className={buttonClass}
-              type="button"
-              aria-label={`Move question ${qi + 1} down`}
-              disabled={qi === WATCH_AUDIENCE_QUESTION_COUNT - 1}
-              onClick={() =>
-                update((r) => {
-                  r.questions = move(r.questions, qi, 1)
-                })
-              }
-            >
-              Move question down
-            </button>
-            {question.options.map((option, oi) => (
-              <div key={oi} className="space-y-2 border-l pl-3">
-                {(["id", "label", "hint", "reason"] as const).map((key) => (
-                  <TextField
-                    key={key}
-                    label={`Question ${qi + 1} option ${oi + 1} ${key}`}
-                    value={option[key] ?? ""}
-                    max={key === "id" ? 64 : WATCH_AUDIENCE_COPY_LIMITS[key]}
-                    onChange={(v) =>
-                      update((r) => {
-                        const o = r.questions[qi]!.options[oi]!
-                        if (key === "hint" && !v) delete o.hint
-                        else o[key] = v
-                      })
-                    }
-                  />
-                ))}
-                <p className="text-xs">
-                  Scores: 0 omits an action; 1–10 ranks it. Reason completes
-                  “Because …”.
-                </p>
-                {role.actions.map((action, ai) => (
-                  <label key={ai} className="block text-xs">
-                    {action.title}
-                    <input
-                      className={inputClass}
-                      type="number"
-                      min={0}
-                      max={WATCH_AUDIENCE_MAX_WEIGHT}
-                      step={1}
-                      aria-label={`Question ${qi + 1} option ${oi + 1} score ${action.id}`}
-                      value={
-                        option.scores.find(
-                          (s) => s.actionId === actionScoreIds[ai],
-                        )?.weight ?? 0
-                      }
-                      onChange={(e) =>
-                        update((r) => {
-                          const o = r.questions[qi]!.options[oi]!
-                          o.scores = o.scores.filter(
-                            (s) => s.actionId !== actionScoreIds[ai],
-                          )
-                          const weight = Number(e.target.value)
-                          if (weight !== 0)
-                            o.scores.push({
-                              actionId: actionScoreIds[ai]!,
-                              weight,
-                            })
-                        })
-                      }
-                    />
-                  </label>
-                ))}
-                <button
-                  className={buttonClass}
-                  type="button"
-                  aria-label={`Move question ${qi + 1} option ${oi + 1} up`}
-                  disabled={oi === 0}
-                  onClick={() =>
-                    update((r) => {
-                      r.questions[qi]!.options = move(
-                        r.questions[qi]!.options,
-                        oi,
-                        -1,
+                      r.actions[ai]!.target = targetFor(
+                        e.target.value as WatchAudienceActionTarget["kind"],
                       )
                     })
                   }
                 >
-                  Move option up
+                  {actionTargets.map((kind) => (
+                    <option key={kind}>{kind}</option>
+                  ))}
+                </select>
+              </label>
+              {action.target.kind === "video" && (
+                <TextField
+                  label={`Action ${ai + 1} video slug`}
+                  value={action.target.slug}
+                  max={100}
+                  onChange={(slug) =>
+                    update((r) => {
+                      r.actions[ai]!.target = { kind: "video", slug }
+                    })
+                  }
+                />
+              )}
+              {action.target.kind === "resource" && (
+                <TextField
+                  label={`Action ${ai + 1} HTTPS URL`}
+                  value={action.target.url}
+                  max={500}
+                  onChange={(url) =>
+                    update((r) => {
+                      r.actions[ai]!.target = { kind: "resource", url }
+                    })
+                  }
+                />
+              )}
+              {action.target.kind === "current-video" && (
+                <label>
+                  Current video control
+                  <select
+                    aria-label={`Action ${ai + 1} video control`}
+                    value={action.target.target}
+                    onChange={(e) =>
+                      update((r) => {
+                        r.actions[ai]!.target = {
+                          kind: "current-video",
+                          target: e.target.value as
+                            | "share"
+                            | "download"
+                            | "bible-quotes"
+                            | "next-episode",
+                        }
+                      })
+                    }
+                  >
+                    {["share", "download", "bible-quotes", "next-episode"].map(
+                      (target) => (
+                        <option key={target}>{target}</option>
+                      ),
+                    )}
+                  </select>
+                </label>
+              )}
+              <div className="flex gap-2">
+                <button
+                  className={buttonClass}
+                  type="button"
+                  aria-label={`Move action ${ai + 1} up`}
+                  disabled={ai === 0}
+                  onClick={() =>
+                    update((r, scoreIds) => {
+                      r.actions = move(r.actions, ai, -1)
+                      scoreIds.splice(
+                        0,
+                        scoreIds.length,
+                        ...move(scoreIds, ai, -1),
+                      )
+                    })
+                  }
+                >
+                  Up
                 </button>
                 <button
                   className={buttonClass}
                   type="button"
-                  aria-label={`Remove question ${qi + 1} option ${oi + 1}`}
-                  disabled={
-                    question.options.length <= WATCH_AUDIENCE_MIN_OPTIONS
-                  }
+                  aria-label={`Move action ${ai + 1} down`}
+                  disabled={ai === role.actions.length - 1}
                   onClick={() =>
-                    update((r) => {
-                      r.questions[qi]!.options.splice(oi, 1)
+                    update((r, scoreIds) => {
+                      r.actions = move(r.actions, ai, 1)
+                      scoreIds.splice(
+                        0,
+                        scoreIds.length,
+                        ...move(scoreIds, ai, 1),
+                      )
                     })
                   }
                 >
-                  Remove option
+                  Down
+                </button>
+                <button
+                  className={buttonClass}
+                  type="button"
+                  aria-label={`Remove action ${ai + 1}`}
+                  disabled={role.actions.length <= 1}
+                  onClick={() =>
+                    update((r, scoreIds) => {
+                      r.actions.splice(ai, 1)
+                      const removedId = scoreIds.splice(ai, 1)[0]!
+                      for (const q of r.questions)
+                        for (const o of q.options)
+                          o.scores = o.scores.filter(
+                            (s) => s.actionId !== removedId,
+                          )
+                    })
+                  }
+                >
+                  Remove action
                 </button>
               </div>
-            ))}
-            <button
-              className={buttonClass}
-              type="button"
-              aria-label={`Add question ${qi + 1} option`}
-              disabled={question.options.length >= WATCH_AUDIENCE_MAX_OPTIONS}
-              onClick={() =>
-                update((r) => {
-                  const options = r.questions[qi]!.options
-                  options.push({
-                    id: freshId(
-                      "option",
-                      options.map((o) => o.id),
-                    ),
-                    label: "New option",
-                    reason: "this next step fits you",
-                    scores: [],
-                  })
+            </div>
+          ))}
+          <button
+            className={buttonClass}
+            type="button"
+            disabled={role.actions.length >= WATCH_AUDIENCE_MAX_ACTIONS}
+            onClick={() =>
+              update((r, scoreIds) => {
+                r.actions.push({
+                  id: freshId("action", [
+                    ...r.actions.map((a) => a.id),
+                    ...scoreIds,
+                  ]),
+                  title: "New action",
+                  body: "Describe this next step",
+                  target: { kind: "languages" },
                 })
-              }
-            >
-              Add option
-            </button>
-          </div>
-        ))}
-      </fieldset>
-      <details>
-        <summary>Try questionnaire preview</summary>
-        {parsed.success ? (
-          <WatchAudiencePreview key={roleId} role={role} />
-        ) : (
-          <p>Correct validation errors to preview this definition.</p>
-        )}
-      </details>
+                scoreIds.push(r.actions.at(-1)!.id)
+              })
+            }
+          >
+            Add action
+          </button>
+        </fieldset>
+        <fieldset className="space-y-4">
+          <legend>Exactly three questions</legend>
+          {role.questions.map((question, qi) => (
+            <div key={qi} className="space-y-2 rounded border p-3">
+              <h4>Question {qi + 1}</h4>
+              <TextField
+                label={`Question ${qi + 1} ID`}
+                value={question.id}
+                max={64}
+                onChange={(v) =>
+                  update((r) => {
+                    r.questions[qi]!.id = v
+                  })
+                }
+              />
+              <TextField
+                label={`Question ${qi + 1} prompt`}
+                value={question.prompt}
+                max={WATCH_AUDIENCE_COPY_LIMITS.prompt}
+                onChange={(v) =>
+                  update((r) => {
+                    r.questions[qi]!.prompt = v
+                  })
+                }
+              />
+              <button
+                className={buttonClass}
+                type="button"
+                aria-label={`Move question ${qi + 1} up`}
+                disabled={qi === 0}
+                onClick={() =>
+                  update((r) => {
+                    r.questions = move(r.questions, qi, -1)
+                  })
+                }
+              >
+                Move question up
+              </button>
+              <button
+                className={buttonClass}
+                type="button"
+                aria-label={`Move question ${qi + 1} down`}
+                disabled={qi === WATCH_AUDIENCE_QUESTION_COUNT - 1}
+                onClick={() =>
+                  update((r) => {
+                    r.questions = move(r.questions, qi, 1)
+                  })
+                }
+              >
+                Move question down
+              </button>
+              {question.options.map((option, oi) => (
+                <div key={oi} className="space-y-2 border-l pl-3">
+                  {(["id", "label", "hint", "reason"] as const).map((key) => (
+                    <TextField
+                      key={key}
+                      label={`Question ${qi + 1} option ${oi + 1} ${key}`}
+                      value={option[key] ?? ""}
+                      max={key === "id" ? 64 : WATCH_AUDIENCE_COPY_LIMITS[key]}
+                      onChange={(v) =>
+                        update((r) => {
+                          const o = r.questions[qi]!.options[oi]!
+                          if (key === "hint" && !v) delete o.hint
+                          else o[key] = v
+                        })
+                      }
+                    />
+                  ))}
+                  <p className="text-xs">
+                    Scores: 0 omits an action; 1–10 ranks it. Reason completes
+                    “Because …”.
+                  </p>
+                  {role.actions.map((action, ai) => (
+                    <label key={ai} className="block text-xs">
+                      {action.title}
+                      <input
+                        className={inputClass}
+                        type="number"
+                        min={0}
+                        max={WATCH_AUDIENCE_MAX_WEIGHT}
+                        step={1}
+                        aria-label={`Question ${qi + 1} option ${oi + 1} score ${action.id}`}
+                        value={
+                          option.scores.find(
+                            (s) => s.actionId === actionScoreIds[ai],
+                          )?.weight ?? 0
+                        }
+                        onChange={(e) =>
+                          update((r) => {
+                            const o = r.questions[qi]!.options[oi]!
+                            o.scores = o.scores.filter(
+                              (s) => s.actionId !== actionScoreIds[ai],
+                            )
+                            const weight = Number(e.target.value)
+                            if (weight !== 0)
+                              o.scores.push({
+                                actionId: actionScoreIds[ai]!,
+                                weight,
+                              })
+                          })
+                        }
+                      />
+                    </label>
+                  ))}
+                  <button
+                    className={buttonClass}
+                    type="button"
+                    aria-label={`Move question ${qi + 1} option ${oi + 1} up`}
+                    disabled={oi === 0}
+                    onClick={() =>
+                      update((r) => {
+                        r.questions[qi]!.options = move(
+                          r.questions[qi]!.options,
+                          oi,
+                          -1,
+                        )
+                      })
+                    }
+                  >
+                    Move option up
+                  </button>
+                  <button
+                    className={buttonClass}
+                    type="button"
+                    aria-label={`Remove question ${qi + 1} option ${oi + 1}`}
+                    disabled={
+                      question.options.length <= WATCH_AUDIENCE_MIN_OPTIONS
+                    }
+                    onClick={() =>
+                      update((r) => {
+                        r.questions[qi]!.options.splice(oi, 1)
+                      })
+                    }
+                  >
+                    Remove option
+                  </button>
+                </div>
+              ))}
+              <button
+                className={buttonClass}
+                type="button"
+                aria-label={`Add question ${qi + 1} option`}
+                disabled={question.options.length >= WATCH_AUDIENCE_MAX_OPTIONS}
+                onClick={() =>
+                  update((r) => {
+                    const options = r.questions[qi]!.options
+                    options.push({
+                      id: freshId(
+                        "option",
+                        options.map((o) => o.id),
+                      ),
+                      label: "New option",
+                      reason: "this next step fits you",
+                      scores: [],
+                    })
+                  })
+                }
+              >
+                Add option
+              </button>
+            </div>
+          ))}
+        </fieldset>
+        <details>
+          <summary>Try questionnaire preview</summary>
+          {parsed.success ? (
+            <WatchAudiencePreview key={roleId} role={role} />
+          ) : (
+            <p>Correct validation errors to preview this definition.</p>
+          )}
+        </details>
+      </div>
       <details>
         <summary>Import configuration JSON / repair stored definition</summary>
         <textarea
