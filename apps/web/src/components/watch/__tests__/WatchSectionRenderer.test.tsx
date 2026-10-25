@@ -233,6 +233,10 @@ vi.mock("@/components/watch/BibleQuotesSection", () => ({
   BibleQuotesSection: bibleQuotesSectionMock,
 }))
 
+vi.mock("@/components/watch/WatchSeoAdminBoundary", () => ({
+  WatchSeoAdminBoundary: () => <div data-testid="watch-seo-boundary" />,
+}))
+
 import {
   buildBibleQuotesBlock,
   buildHeroBlock,
@@ -322,34 +326,71 @@ function makeParent(childrenCount = 2) {
 }
 
 describe("WatchSectionRenderer — synthetic block dispatch", () => {
-  it("dispatches the route-owned semantic recommendation slot", () => {
-    const block = buildSemanticRecommendationsBlock(makeVideo())
+  it.each([false, true])(
+    "keeps SEO after recommendations with audienceEnabled=%s",
+    (audienceEnabled) => {
+      const block = buildSemanticRecommendationsBlock(makeVideo())
 
-    act(() => {
-      root.render(
-        <WatchSectionRenderer
-          blocks={[block]}
-          languageSlug="english"
-          locale="en"
-        />,
+      act(() => {
+        root.render(
+          <WatchSectionRenderer
+            blocks={[block]}
+            audienceEnabled={audienceEnabled}
+            languageSlug="english"
+            locale="en"
+            seoContext={{
+              videoSlug: "jesus",
+              languageSlug: "english",
+              locale: "en",
+            }}
+          />,
+        )
+      })
+
+      expect(watchSemanticRecommendationsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          seedMediaId: "video-1",
+          seedMediaSlug: "jesus",
+          locale: "en",
+          audioLanguageSlug: "english",
+        }),
+        undefined,
       )
-    })
-
-    expect(watchSemanticRecommendationsMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        seedMediaId: "video-1",
-        seedMediaSlug: "jesus",
-        locale: "en",
-        audioLanguageSlug: "english",
-      }),
-      undefined,
-    )
-    expect(
-      container
-        .querySelector('[data-block-type="SemanticRecommendations"]')
-        ?.getAttribute("data-seed-media-id"),
-    ).toBe("video-1")
-  })
+      expect(
+        container
+          .querySelector('[data-block-type="SemanticRecommendations"]')
+          ?.getAttribute("data-seed-media-id"),
+      ).toBe("video-1")
+      const recommendations = container.querySelector(
+        '[data-block-type="SemanticRecommendations"]',
+      )
+      const seoBoundary = container.querySelector(
+        '[data-testid="watch-seo-boundary"]',
+      )
+      expect(recommendations).not.toBeNull()
+      expect(seoBoundary).not.toBeNull()
+      expect(
+        recommendations && seoBoundary
+          ? recommendations.compareDocumentPosition(seoBoundary) &
+              Node.DOCUMENT_POSITION_FOLLOWING
+          : 0,
+      ).toBeTruthy()
+      const audience = container.querySelector(
+        '[data-testid="watch-audience-frame-mock"]',
+      )
+      if (audienceEnabled) {
+        expect(audience).not.toBeNull()
+        expect(
+          seoBoundary && audience
+            ? seoBoundary.compareDocumentPosition(audience) &
+                Node.DOCUMENT_POSITION_FOLLOWING
+            : 0,
+        ).toBeTruthy()
+      } else {
+        expect(audience).toBeNull()
+      }
+    },
+  )
 
   it("renders all 6 synthetic block-types with correct data-block-type attributes", () => {
     const video = makeVideo({

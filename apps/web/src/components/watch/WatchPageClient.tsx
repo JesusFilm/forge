@@ -921,6 +921,16 @@ export function WatchPageClient({
         coverBlackoutKey={coverBlackoutKey}
         coverBlackoutPhase={coverBlackoutPhase}
         onChapterNavigateIntent={handleChapterNavigateIntent}
+        seoContext={
+          videoSlug && currentLanguageSlug
+            ? {
+                videoSlug,
+                locale: locale ?? "en",
+                languageSlug: currentLanguageSlug,
+                contextualParentSlug: collectionSlug,
+              }
+            : undefined
+        }
       />
 
       <WatchEventRecorder

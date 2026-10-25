@@ -455,6 +455,70 @@ script, it refuses production-like `DATABASE_URL` hosts (`*.railway.app`,
 `*.jesusfilm.org`, and unparseable URLs) so operators do not accidentally mutate
 production snapshots from a workstation.
 
+### Watch SEO admin-only REST surface (feat-712)
+
+Admin owns two private, no-store REST endpoints behind the admin-only
+`SEO & Marketing` tab on Watch video pages. The GraphQL schema,
+`packages/admin-graphql`, `WEB_ADMIN_API_KEYS`, and the consumer bearer are
+untouched; this surface is REST-owned.
+
+- `GET /api/watch-seo/capability` answers only `{ "canViewWatchSeo": boolean }`.
+  Every denial is a byte-identical `403 {"canViewWatchSeo":false}`; the closed
+  reason enum is logged as `[watch-seo] event=denied route=… reason=…` and
+  never put on the wire.
+- `GET /api/watch-seo/read-model?slug=&language=[&parent=]` returns the typed
+  `watch-seo-read-model/v1` DTO (`src/services/watch-seo/contract.ts`).
+  Order is rate limit → dual authorization → input validation → read, so an
+  outsider cannot learn the contract or the catalog.
+- **Dual authorization** (`src/services/watch-seo/authorization.ts`): a
+  dedicated `WATCH_SEO_API_KEYS` service key in `Authorization: Bearer` (proves
+  the caller is Web's adapter, checked first so an unauthenticated caller never
+  spends an Auth introspection), THEN the delegated Web user's access token in
+  `X-Watch-User-Authorization: Bearer`, THEN a live Admin read: the user the
+  token `sub` is bound to in `admin_auth_subject_binding`, and that user's
+  `role === ADMIN`, re-read on every request. The verified Admin OAuth callback
+  records the binding (`src/auth/admin-subject-binding.ts`) before it writes
+  the user row. Both columns are unique, so a sign-in that would move a subject
+  to another user, or give a bound user a second subject, is refused; to
+  resolve a real identity move, delete the stale binding row. An unbound legacy
+  user whose `User.id` IS the subject still resolves until that user is bound.
+  No email fallback, no Manager membership, no cached role.
+- **Token rules** (`src/auth/watch-seo-user-token.ts`, deliberately not
+  `resolveWebUserPrincipalFromToken`): active introspection, exact issuer,
+  unexpired, non-empty `sub`, a `jfp_web_*` client id only (TV and every other
+  client is refused, even if listed in `AUTH_WEB_USER_CLIENT_IDS`), and the
+  environment claim must equal `AUTH_WEB_USER_TOKEN_ENVIRONMENT`. In
+  production an unset `AUTH_WEB_USER_TOKEN_ENVIRONMENT` fails the surface
+  closed. Absent introspection credentials or `WATCH_SEO_API_KEYS` also fail
+  closed.
+- `WATCH_SEO_API_KEYS` is optional at boot and joins the
+  `assertBearerCsvsDisjoint` invariant. Deploy order: Admin (with the CSV
+  set) first, then Web's key.
+- **Rate limits** use a 600/min shared-IP abuse ceiling before auth, then
+  120/min capability and 60/min read quotas keyed by a SHA-256 digest of the
+  verified Web subject. A single user cannot consume every Admin's normal
+  feature quota; the live Admin role is still read on every admitted request.
+- **Read model** reads only retained data and never calls a provider: page
+  metadata (`VideoLocale`), the Watch SEO manifest snapshot (jsonb path
+  lookup), retained GSC selection decisions in completed `SeoRun` reports
+  (filtered by `VideoLocale.id` inside Postgres, last 8 runs, 29-day strict
+  window), stored Firecrawl/direct-page observations scoped to the canonical
+  URL (markdown never selected), the Watch route-alert ledger, and
+  proposals/versions/decisions/materializations/experiments/evaluations.
+  Each section carries a source, a window, caveats, and a `state`:
+  `available | partial | stale | compacted | unavailable | not_connected`. GA4 page/CTA,
+  watch depth, AI referrals, bot visits, and cache history have no durable
+  per-page source and are explicit `not_connected` sections, never numeric
+  zero. Retained decisions are a thresholded subset, so absence from the
+  query list is unknown, not zero. The raw JSON reads each run in a short
+  transaction under `SET LOCAL statement_timeout = '2500ms'`, so Postgres
+  cancels a slow read; the JS section race alone does not. Terminal-run
+  lookups use native enum literals so `seo_run_status_completed_at_idx`
+  applies. The SQL JSON-path filters and the index choice are covered by
+  SQL-shape tests only; before enabling, run one real-database smoke plus an
+  `EXPLAIN (ANALYZE, BUFFERS)` of the search query and confirm an index scan on
+  `seo_run_status_completed_at_idx`.
+
 ### Video database backup and clone
 
 Production backup is automated only. Do not add or use an operator

@@ -1,3 +1,4 @@
+import type { UserRole } from "@prisma/client"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
@@ -17,6 +18,10 @@ import {
   getAdminOAuthConfig,
   verifyAdminIdToken,
 } from "@/auth/oauth-client"
+import {
+  type AdminSubjectBindingConflict,
+  recordAdminSubjectBinding,
+} from "@/auth/admin-subject-binding"
 import { prisma } from "@/db/client"
 
 export async function GET(request: Request) {
@@ -61,11 +66,22 @@ export async function GET(request: Request) {
       accessToken: tokenResponse.access_token,
       scope: tokenResponse.scope,
     })
-    const user = await resolveAdminUser({
+    const resolution = await resolveAdminUser({
       subject: verifiedToken.subject,
       email: verifiedToken.email,
       name: verifiedToken.name,
     })
+
+    if (resolution.kind === "binding_conflict") {
+      // Never log the subject or email; the closed reason is enough to route
+      // an operator to the binding table.
+      console.warn("admin.oauth.callback.forbidden", {
+        reason: "subject_binding_conflict",
+        conflict: resolution.reason,
+      })
+      return await redirectToAccessRequest(config)
+    }
+    const user = resolution.kind === "user" ? resolution.user : null
 
     if (!user || user.role === "VIEWER") {
       return await redirectToAccessRequest(config, {
@@ -113,6 +129,17 @@ async function redirectToAccessRequest(
   return response
 }
 
+type AdminUserResolution =
+  | { kind: "user"; user: { id: string; role: UserRole } }
+  | { kind: "none" }
+  | { kind: "binding_conflict"; reason: AdminSubjectBindingConflict }
+
+/**
+ * Resolves the existing Admin user for a verified Auth identity (email first,
+ * then the subject as id), records the durable subject → user binding, and
+ * only then refreshes the profile columns. A binding conflict rejects the
+ * sign-in before any user row is written.
+ */
 async function resolveAdminUser({
   subject,
   email,
@@ -121,44 +148,40 @@ async function resolveAdminUser({
   subject: string
   email?: string
   name?: string
-}) {
+}): Promise<AdminUserResolution> {
   const resolvedEmail = email ?? `${subject}@auth.local`
   const resolvedName = name ?? email ?? "Auth user"
 
-  if (email) {
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true, role: true },
-    })
-
-    if (existingUser) {
-      return prisma.user.update({
-        where: { id: existingUser.id },
-        data: {
-          name: resolvedName,
-          emailVerified: true,
-        },
+  const byEmail = email
+    ? await prisma.user.findUnique({
+        where: { email },
         select: { id: true, role: true },
       })
-    }
-  }
+    : null
+  const candidate =
+    byEmail ??
+    (await prisma.user.findUnique({
+      where: { id: subject },
+      select: { id: true, role: true },
+    }))
+  if (!candidate) return { kind: "none" }
 
-  const existingUser = await prisma.user.findUnique({
-    where: { id: subject },
+  const binding = await recordAdminSubjectBinding(prisma, {
+    subject,
+    userId: candidate.id,
+  })
+  if (!binding.ok) return { kind: "binding_conflict", reason: binding.reason }
+
+  const user = await prisma.user.update({
+    where: { id: candidate.id },
+    data: byEmail
+      ? { name: resolvedName, emailVerified: true }
+      : {
+          email: resolvedEmail,
+          name: resolvedName,
+          emailVerified: Boolean(email),
+        },
     select: { id: true, role: true },
   })
-
-  if (existingUser) {
-    return prisma.user.update({
-      where: { id: existingUser.id },
-      data: {
-        email: resolvedEmail,
-        name: resolvedName,
-        emailVerified: Boolean(email),
-      },
-      select: { id: true, role: true },
-    })
-  }
-
-  return null
+  return { kind: "user", user }
 }
