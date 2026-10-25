@@ -14,6 +14,7 @@
 [build]
 builder = "RAILPACK"
 buildCommand = "export DD_VERSION=\"${DD_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" NEXT_PUBLIC_DATADOG_VERSION=\"${NEXT_PUBLIC_DATADOG_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" DATADOG_RELEASE_VERSION=\"${DATADOG_RELEASE_VERSION:-$RAILWAY_GIT_COMMIT_SHA}\" && pnpm install --frozen-lockfile && pnpm --filter @forge/web build && pnpm --filter @forge/web datadog:sourcemaps"
+# Shared runtime trust inputs must trigger a Web release alongside app changes.
 watchPatterns = [
   "/.nvmrc",
   "/railpack.json",

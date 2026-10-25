@@ -145,3 +145,7 @@ volume, variables, startup and networking, and verify recovery snapshots before
 restarting one service at a time. Exact live binary, trust and health readback
 remains required; image CI alone does not close these rows. No database upgrade,
 restore, indexing, import or model invocation is part of this work.
+
+## Managed Node image legacy-directory hardening
+
+The final Railway JFOF source release proves the managed-builder correction: install libatomic1 before the last CA cleanup, suppress duplicate step outputs and later deploy apt layers, and replace the two excluded root payloads with non-PEM distrust markers. Apply the same two-file config/helper to the root Node Railpack path so surviving lower-layer aliases cannot restore trust. Keep real Web content builds and dashboard commands; no private build credential moves. Independently verify every Web replica after the normal PR-to-main release. Keep this ticket in progress for remaining audit rows.
