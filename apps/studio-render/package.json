@@ -17,8 +17,8 @@
   "devDependencies": {
     "@forge/shorts-compositions": "workspace:*",
     "@remotion/bundler": "4.0.475",
-    "esbuild": "0.27.3",
+    "esbuild": "0.28.2",
     "tsx": "^4.21.0",
-    "vitest": "3.2.4"
+    "vitest": "5.0.5"
   }
 }
