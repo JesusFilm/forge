@@ -101,6 +101,6 @@ describe("WatchRoleTabs", () => {
     expect(selected.querySelector("svg")?.getAttribute("class")).toContain(
       "text-brand-red",
     )
-    expect(container.innerHTML).not.toMatch(/blue-/)
+    expect(selected.className).toContain("focus-visible:outline-[#2563eb]")
   })
 })

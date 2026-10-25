@@ -18,6 +18,8 @@ import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceReg
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeExperiencePage } from "@/components/home/WatchHomeExperiencePage"
 import { SeriesPageClient } from "@/components/watch/SeriesPageClient"
+import { WatchGrowReturnPreload } from "@/components/watch/WatchGrowReturnPreload"
+import { watchAudienceFrame } from "@/lib/watch-audience-config"
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
 import { WatchQuestionPanel } from "@/components/watch/WatchQuestionPanel"
 import { WatchStructuredData } from "@/components/watch/WatchStructuredData"
@@ -984,6 +986,9 @@ async function renderEpisode(
     <>
       <WatchStructuredData json={watchVideoStructuredDataJson(metadataModel)} />
       <WatchStructuredData json={relatedItemsJson} />
+      {audienceEnabled && watchAudienceFrame(audience) ? (
+        <WatchGrowReturnPreload />
+      ) : null}
       <WatchPageClient
         audienceEnabled={audienceEnabled}
         audience={audience}
@@ -1167,6 +1172,9 @@ async function renderVideo(
           json={watchVideoStructuredDataJson(metadataModel)}
         />
         <WatchStructuredData json={relatedItemsJson} />
+        {audienceEnabled && watchAudienceFrame(audience) ? (
+          <WatchGrowReturnPreload />
+        ) : null}
         <WatchPageClient
           audienceEnabled={audienceEnabled}
           audience={audience}

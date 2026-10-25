@@ -24,6 +24,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react"
+import styles from "./WatchGrowFocus.module.css"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import { createPortal } from "react-dom"
@@ -286,7 +287,10 @@ export function WatchGrowStory({
       dir="ltr"
       aria-modal="true"
       aria-label={`Lesson ${lesson.n} as a story`}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      className={cn(
+        styles.controls,
+        "fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm",
+      )}
       onTouchStart={(e) => {
         const t = e.touches[0]
         touch.current = t ? { x: t.clientX, y: t.clientY } : null

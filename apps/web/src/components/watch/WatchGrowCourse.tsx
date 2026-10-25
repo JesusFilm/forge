@@ -34,6 +34,7 @@ import {
   User,
   X,
 } from "lucide-react"
+import styles from "./WatchGrowFocus.module.css"
 import Image from "next/image"
 import dynamic from "next/dynamic"
 import Link from "next/link"
@@ -447,7 +448,10 @@ export function WatchGrowCourse({
     <section
       data-testid="watch-grow-course"
       aria-labelledby="watch-grow-course-heading"
-      className="w-full min-w-0 pt-12 text-white md:pt-16"
+      className={cn(
+        styles.controls,
+        "w-full min-w-0 pt-12 text-white md:pt-16",
+      )}
     >
       {/* ONE block: the guide's cover treatment at the top, the nine lessons
           riding along the middle, the open lesson sitting inside the same card. */}

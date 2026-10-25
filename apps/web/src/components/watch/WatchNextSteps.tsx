@@ -20,10 +20,12 @@ import {
   type WatchAudienceConfig,
   type WatchAudienceCurrentVideoTarget,
 } from "@/lib/watch-audience-config"
+import { hasWatchGrowReturnIntent } from "@/lib/watch-grow-return-intent"
 import { textDirectionForLocale } from "@/lib/locale"
 import { cn } from "@/lib/utils"
 import { useRegisterWatchAudiencePresence } from "./watch-audience-presence"
 import type { WatchGrowFilmContext } from "./watch-grow-film-context"
+import { WatchGrowLoader } from "./WatchGrowLoader"
 import {
   resolveWatchAudienceDestination,
   watchAudienceActionIcon,
@@ -40,10 +42,6 @@ const WatchShareIdeas = dynamic(() =>
 
 const WatchPartnerPanel = dynamic(() =>
   import("./WatchPartnerPanel").then((module) => module.WatchPartnerPanel),
-)
-
-const WatchGrow = dynamic(() =>
-  import("./WatchGrow").then((module) => module.WatchGrow),
 )
 
 export type WatchNextStepsProps = {
@@ -162,7 +160,11 @@ export function WatchNextSteps({
       data-mode={mode}
       data-role={mode}
       className={cn(
-        "w-full py-6 text-stone-100 transition-opacity duration-300 md:py-8",
+        "w-full py-6 text-stone-100 md:py-8",
+        // Returning to an active lesson should paint its controls immediately,
+        // rather than waiting for the introductory persona fade to finish.
+        !(hydrated && hasWatchGrowReturnIntent()) &&
+          "transition-opacity duration-300",
         hydrated ? "opacity-100" : "opacity-0",
       )}
     >
@@ -195,7 +197,7 @@ export function WatchNextSteps({
               <Suspense fallback={null}>
                 {mode !== "explore" ? (
                   <div lang="en" dir="ltr">
-                    {mode === "grow" ? <WatchGrow {...growFilm} /> : null}
+                    {mode === "grow" ? <WatchGrowLoader {...growFilm} /> : null}
 
                     {mode === "share" ? (
                       <WatchShareIdeas

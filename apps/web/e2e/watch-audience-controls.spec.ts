@@ -217,9 +217,22 @@ for (const width of [390, 1280]) {
           await tabs.nth(1).tap()
           await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true")
           await page.keyboard.press("ArrowRight")
-          expect(
-            await tabs.nth(2).evaluate((el) => getComputedStyle(el).boxShadow),
-          ).toContain("2px")
+          if (role === "grow") {
+            await expect(tabs.nth(2)).toBeFocused()
+            await expect(tabs.nth(2)).toHaveCSS("outline-style", "solid")
+            await expect(tabs.nth(2)).toHaveCSS("outline-width", "3px")
+            await expect(tabs.nth(2)).toHaveCSS(
+              "outline-color",
+              "rgb(37, 99, 235)",
+            )
+            await expect(tabs.nth(2)).toHaveCSS("outline-offset", "-4px")
+          } else {
+            expect(
+              await tabs
+                .nth(2)
+                .evaluate((el) => getComputedStyle(el).boxShadow),
+            ).toContain("2px")
+          }
           const panel = page
             .locator('[role="tabpanel"]')
             .filter({ hasNot: page.getByTestId("watch-role-journey") })
@@ -227,10 +240,16 @@ for (const width of [390, 1280]) {
           await expect(panel).toBeFocused()
           await page.keyboard.press("Shift+Tab")
           await expect(tabs.nth(2)).toBeFocused()
-          await tabs.nth(1).focus()
+          // These tabs activate automatically on arrow navigation. Reach the
+          // next target through that real roving flow, rather than imperatively
+          // focusing an unselected, untabbable button outside the user pattern.
+          await page.keyboard.press("ArrowLeft")
           await expect(tabs.nth(1)).toBeFocused()
-          await page.keyboard.press("Space")
           await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true")
+          await page.keyboard.press("Space")
+          await expect(tabs.nth(1)).toBeFocused()
+          await expect(tabs.nth(1)).toHaveAttribute("aria-selected", "true")
+          await expect(group.locator('[tabindex="0"]')).toHaveCount(1)
         }
       })
     })

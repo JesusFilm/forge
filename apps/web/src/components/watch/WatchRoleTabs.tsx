@@ -122,7 +122,7 @@ export function WatchRoleTabs({
               // hairline on its RIGHT (same colour as the Related Questions rows).
               // Plus a top hairline across the strip and a left edge on the first tab of
               // each row, so the strip is closed on both sides. No bottom border.
-              "group relative flex min-h-[56px] cursor-pointer items-center justify-center gap-2.5 border-t border-r border-stone-500/20 px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 md:min-h-[64px] md:gap-4 md:px-4 lg:gap-5 [&:nth-child(2n+1)]:border-l md:[&:nth-child(2n+1)]:border-l-0 md:[&:nth-child(4n+1)]:border-l",
+              "group relative flex min-h-[56px] cursor-pointer items-center justify-center gap-2.5 border-t border-r border-stone-500/20 px-3 py-3 text-left transition-colors focus-visible:outline-3 focus-visible:-outline-offset-4 focus-visible:outline-[#2563eb] focus-visible:shadow-[inset_0_0_0_1px_white] md:min-h-[64px] md:gap-4 md:px-4 lg:gap-5 [&:nth-child(2n+1)]:border-l md:[&:nth-child(2n+1)]:border-l-0 md:[&:nth-child(4n+1)]:border-l",
               selected
                 ? // Selected: solid white with a small white tail pointing into the content below.
                   "z-10 border-t-white border-l-white bg-white text-stone-900 after:absolute after:top-full after:left-1/2 after:-translate-x-1/2 after:border-[9px] after:border-transparent after:border-t-white after:content-['']"

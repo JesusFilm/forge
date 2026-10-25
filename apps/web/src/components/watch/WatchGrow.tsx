@@ -11,21 +11,26 @@
 // default shape.
 
 import {
+  lazy,
+  Suspense,
   useEffect,
   useState,
   useSyncExternalStore,
-  type ComponentType,
 } from "react"
 
+import styles from "./WatchGrowFocus.module.css"
 import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { hasWatchGrowReturnIntent } from "@/lib/watch-grow-return-intent"
+import {
+  getLoadedWatchGrowCourse,
+  loadWatchGrowCourse,
+} from "./watch-grow-loader"
 import { BWJ_SOURCE_PDF } from "@/components/watch/grow-resources"
 import {
   WatchGrowLean,
   type NextEpisode,
 } from "@/components/watch/WatchGrowLean"
 import { WatchGrowPlans } from "@/components/watch/WatchGrowPlans"
-import { WatchGrowPrayer } from "@/components/watch/WatchGrowPrayer"
 import type { WatchGrowProgressCourseProps } from "@/components/watch/WatchGrowProgressCourse"
 import { WatchGrowSteps } from "@/components/watch/WatchGrowSteps"
 import { WatchGrowVerse } from "@/components/watch/WatchGrowVerse"
@@ -60,6 +65,14 @@ function isFullFromUrl(): boolean {
 
 const NO_CITATIONS: WatchBibleQuotesBlock["bibleCitations"] = []
 
+// The optional monthly shelf has its own loading boundary: its rich layout
+// must not hold up the returned lesson's actual controls and first text paint.
+const WatchGrowPrayer = lazy(() =>
+  import("./WatchGrowPrayer").then((module) => ({
+    default: module.WatchGrowPrayer,
+  })),
+)
+
 export function WatchGrow({
   citations = NO_CITATIONS,
   filmTitle = "Jesus Film Project",
@@ -85,13 +98,15 @@ export function WatchGrow({
       <div
         data-testid="watch-grow"
         data-shape="full"
-        className="w-full min-w-0"
+        className={`${styles.controls} w-full min-w-0`}
       >
         <WatchGrowVerse citations={citations} filmTitle={filmTitle} />
         <DeferredCourse {...courseProps} />
         <WatchGrowSteps />
         <WatchGrowPlans />
-        <WatchGrowPrayer />
+        <Suspense fallback={null}>
+          <WatchGrowPrayer />
+        </Suspense>
         <p className="mt-10 text-[13px] text-white/45">
           <a
             href="?as=grow"
@@ -105,7 +120,11 @@ export function WatchGrow({
   }
 
   return (
-    <div data-testid="watch-grow" data-shape="lean" className="w-full min-w-0">
+    <div
+      data-testid="watch-grow"
+      data-shape="lean"
+      className={`${styles.controls} w-full min-w-0`}
+    >
       <WatchGrowLean
         citations={citations}
         filmTitle={filmTitle}
@@ -124,19 +143,16 @@ export function WatchGrow({
    a plain line in the course's own position, never a fake course.
 --------------------------------------------------------------------------- */
 
-let loadedCourse: ComponentType<WatchGrowProgressCourseProps> | null = null
-
 function DeferredCourse(props: WatchGrowProgressCourseProps) {
-  const [Course, setCourse] = useState(() => loadedCourse)
+  const [Course, setCourse] = useState(getLoadedWatchGrowCourse)
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (Course) return
     let cancelled = false
-    void import("./WatchGrowProgressCourse").then(
-      (module) => {
-        loadedCourse = module.WatchGrowProgressCourse
-        if (!cancelled) setCourse(() => module.WatchGrowProgressCourse)
+    void loadWatchGrowCourse().then(
+      (component) => {
+        if (!cancelled) setCourse(() => component)
       },
       () => {
         if (!cancelled) setFailed(true)

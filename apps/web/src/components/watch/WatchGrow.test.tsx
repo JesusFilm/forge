@@ -89,7 +89,11 @@ it("omits film modules honestly when the film has no series or passage", async (
 
 it("shows the long shelf in the original order and loads the course there", async () => {
   render("/watch?as=grow&grow=full")
-  await settle()
+  await act(async () => {
+    const { loadWatchGrowCourse } = await import("./watch-grow-loader")
+    await loadWatchGrowCourse()
+    await import("./WatchGrowPrayer")
+  })
   const grow = container.querySelector('[data-testid="watch-grow"]')!
   expect(grow.getAttribute("data-shape")).toBe("full")
   const order = [

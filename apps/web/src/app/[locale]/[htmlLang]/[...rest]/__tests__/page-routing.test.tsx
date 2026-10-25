@@ -129,6 +129,10 @@ vi.mock("@/components/sections", () => ({
   ExperienceSectionRenderer: vi.fn(() => null),
 }))
 
+const returnPreloadMock = vi.hoisted(() => vi.fn(() => null))
+vi.mock("@/components/watch/WatchGrowReturnPreload", () => ({
+  WatchGrowReturnPreload: returnPreloadMock,
+}))
 const resolveWatchAudienceMock = vi.hoisted(() => vi.fn())
 vi.mock("@/lib/watch-audience-content", async () => ({
   ...(await vi.importActual<typeof import("@/lib/watch-audience-content")>(
@@ -172,6 +176,7 @@ let root: Root
 
 beforeEach(() => {
   vi.mocked(isWatchAudienceEnabled).mockResolvedValue(false)
+  returnPreloadMock.mockClear()
   resolveWatchAudienceMock.mockReset()
   resolveWatchAudienceMock.mockResolvedValue({ kind: "absent" })
   resolveWatchRouteBySlugMock.mockReset()
@@ -3816,6 +3821,7 @@ describe("published audience configuration", () => {
     resolveWatchAudienceMock.mockResolvedValue(authored)
     mockRouteVideo(makeWatchVideoResult("featureFilm"))
     await render2Seg("jesus", "english")
+    expect(returnPreloadMock).toHaveBeenCalledTimes(1)
     expect(resolveWatchAudienceMock).toHaveBeenCalledTimes(1)
     expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
@@ -3828,6 +3834,7 @@ describe("published audience configuration", () => {
     resolveWatchAudienceMock.mockResolvedValue(authored)
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
     await render3Seg("lumo-the-gospel-of-john", "wedding-in-cana", "english")
+    expect(returnPreloadMock).toHaveBeenCalledTimes(1)
     expect(resolveWatchAudienceMock).toHaveBeenCalledWith("en")
     expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({ audienceEnabled: true, audience: authored }),
@@ -3867,9 +3874,21 @@ describe("published audience configuration", () => {
     )
   })
 
+  it.each(["rejected", "unavailable"])(
+    "omits the return entry for a %s audience",
+    async (kind) => {
+      vi.mocked(isWatchAudienceEnabled).mockResolvedValue(true)
+      resolveWatchAudienceMock.mockResolvedValue({ kind })
+      mockRouteVideo(makeWatchVideoResult("featureFilm"))
+      await render2Seg("jesus", "english")
+      expect(returnPreloadMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("never loads the configuration while the rollout is off", async () => {
     mockRouteVideo(makeWatchVideoResult("featureFilm"))
     await render2Seg("jesus", "english")
+    expect(returnPreloadMock).not.toHaveBeenCalled()
     expect(resolveWatchAudienceMock).not.toHaveBeenCalled()
     const props = watchPageClientMock.mock.calls[0]?.[0] as Record<
       string,
