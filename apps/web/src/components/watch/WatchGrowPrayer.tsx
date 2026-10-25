@@ -554,6 +554,8 @@ function PrayerSubscribeCta() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
+          lang="en"
+          dir="ltr"
           data-testid="watch-grow-prayer-subscribe"
           data-available="false"
           finalFocus={triggerRef}
@@ -790,6 +792,8 @@ function PrayerMentorCta() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
+          lang="en"
+          dir="ltr"
           data-testid="watch-grow-prayer-mentor"
           data-available="false"
           finalFocus={triggerRef}

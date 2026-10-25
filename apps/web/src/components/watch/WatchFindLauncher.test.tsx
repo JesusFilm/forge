@@ -115,3 +115,23 @@ describe("Finder pending shell after a chunk failure", () => {
     expect(window.location.search).toBe("")
   })
 })
+
+it.each([
+  ["ar", "rtl"],
+  ["es", "ltr"],
+])(
+  "keeps English portal content independent of a %s document",
+  async (lang, dir) => {
+    document.documentElement.lang = lang
+    document.documentElement.dir = dir
+    try {
+      await openFailed()
+      expect(dialog()!.getAttribute("lang")).toBe("en")
+      expect(dialog()!.getAttribute("dir")).toBe("ltr")
+      expect(dialog()!.contains(document.activeElement)).toBe(true)
+    } finally {
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)

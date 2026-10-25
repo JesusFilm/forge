@@ -1,6 +1,7 @@
 import type { ErrorLike } from "@apollo/client"
 import type { SearchLanguageOption } from "@/lib/search-language"
 import { cache } from "react"
+import { visit } from "graphql"
 import { unstable_cache } from "next/cache"
 import {
   adminGraphql,
@@ -330,6 +331,8 @@ export type WatchStudyQuestion = {
 }
 
 export type WatchBibleCitationPassage = {
+  /** Selected Bible version's content language; old snapshots may omit it. */
+  languageSlug?: string | null
   citationDocumentId: string
   content: string
   copyright: string
@@ -981,6 +984,7 @@ type AdminBibleCitationRaw = {
   osisId?: string | null
   bibleBook?: { documentId: string | null; name?: unknown } | null
   passage?: {
+    languageSlug?: string | null
     content?: string | null
     copyright?: string | null
     humanReference?: string | null
@@ -1481,6 +1485,7 @@ function normalizeAdminVideo(raw: AdminVideoRaw): WatchVideoRecord | null {
             c.passage.versionId
               ? {
                   citationDocumentId: c.documentId,
+                  languageSlug: c.passage.languageSlug ?? null,
                   content: c.passage.content,
                   copyright: c.passage.copyright,
                   humanReference: c.passage.humanReference,
@@ -2202,6 +2207,32 @@ function isRequestedLanguageSchemaLag(result: {
   )
 }
 
+// Passage metadata is independently additive: an older producer may still
+// support requestedLanguage. Strip only the passage child selection and retry
+// only exact schema validation failures, preserving that existing repair.
+let passageLanguageSnapshotRetryAfter = 0
+function isPassageLanguageSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[]
+}): boolean {
+  const errors = graphqlErrorsFromResult(result)
+  const passage = (message: unknown) =>
+    typeof message === "string" &&
+    /^Cannot query field "languageSlug" on type "Passage"\./.test(message)
+  return (
+    errors.some((entry) => passage(entry.message)) &&
+    errors.every(
+      (entry) =>
+        isValidationShaped(entry) &&
+        (passage(entry.message) ||
+          (typeof entry.message === "string" &&
+            /^Cannot query field "requestedLanguage" on type "WatchRouteSnapshot"\./.test(
+              entry.message,
+            ))),
+    )
+  )
+}
+
 async function queryWatchVideoRouteSnapshotBySlug(
   videoSlug: string,
   variables: {
@@ -2218,14 +2249,54 @@ async function queryWatchVideoRouteSnapshotBySlug(
       : {}),
     videoSlug,
   }
-  const query = (legacy: boolean) =>
-    client.query({
-      query: legacy
-        ? getLegacyWatchVideoRouteSnapshotBySlugOperation
-        : getWatchVideoRouteSnapshotBySlugOperation,
-      variables: queryVariables,
-      fetchPolicy: "no-cache",
-    })
+  const query = async (legacy: boolean) => {
+    const operation = legacy
+      ? getLegacyWatchVideoRouteSnapshotBySlugOperation
+      : getWatchVideoRouteSnapshotBySlugOperation
+    const withoutPassageLanguage = () =>
+      visit(operation, {
+        Field: (node, _key, _parent, _path, ancestors) =>
+          node.name.value === "languageSlug" &&
+          ancestors.some(
+            (ancestor) =>
+              "kind" in ancestor &&
+              ancestor.kind === "Field" &&
+              ancestor.name.value === "passage",
+          )
+            ? null
+            : undefined,
+      })
+    const run = (omitMetadata: boolean) =>
+      client.query({
+        query: omitMetadata ? withoutPassageLanguage() : operation,
+        variables: queryVariables,
+        fetchPolicy: "no-cache",
+      })
+    const omitMetadata = Date.now() < passageLanguageSnapshotRetryAfter
+    const noteLag = () => {
+      passageLanguageSnapshotRetryAfter = Date.now() + 60_000
+      logWatchServerEvent("watch_route_snapshot.passage_language_schema_lag", {
+        videoSlug,
+      })
+    }
+    let response
+    try {
+      response = await run(omitMetadata)
+    } catch (error) {
+      if (
+        omitMetadata ||
+        !isPassageLanguageSchemaLag({ error: error as ErrorLike })
+      )
+        throw error
+      noteLag()
+      return run(true)
+    }
+    if (!omitMetadata && isPassageLanguageSchemaLag(response)) {
+      noteLag()
+      return run(true)
+    }
+    return response
+  }
   const useLegacy = Date.now() < requestedLanguageSnapshotRetryAfter
   let result
   try {

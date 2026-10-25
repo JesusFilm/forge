@@ -282,6 +282,8 @@ export function WatchGrowStory({
       data-card-id={card.id}
       data-card-kind={card.kind}
       role="dialog"
+      lang="en"
+      dir="ltr"
       aria-modal="true"
       aria-label={`Lesson ${lesson.n} as a story`}
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm"

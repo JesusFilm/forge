@@ -140,3 +140,86 @@ it("shows the film's place in its series without claiming episodes were watched"
   expect(bar.querySelectorAll(".bg-brand-red")).toHaveLength(1)
   expect(bar.children[2]!.className).toContain("bg-brand-red")
 })
+
+it.each([
+  [
+    "arabic-modern-standard",
+    "ar",
+    "rtl",
+    "لأَنَّهُ هكَذَا أَحَبَّ اللهُ الْعَالَمَ.",
+  ],
+  [
+    "spanish-latin-american",
+    "es-419",
+    "ltr",
+    "Porque de tal manera amó Dios al mundo.",
+  ],
+  ["english", "en", "ltr", "For God so loved the world."],
+  [undefined, "", "auto", "Text without language metadata."],
+  ["unmapped-language", "", "auto", "Text with unknown language metadata."],
+])(
+  "isolates %s Scripture in both Grow shapes from English resources on an Arabic document",
+  async (languageSlug, lang, dir, content) => {
+    document.documentElement.lang = "ar"
+    document.documentElement.dir = "rtl"
+    try {
+      for (const shape of ["lean", "full"]) {
+        window.history.replaceState(
+          null,
+          "",
+          `/watch?as=grow${shape === "full" ? "&grow=full" : ""}`,
+        )
+        const localized = [
+          {
+            passage: {
+              content,
+              languageSlug,
+              humanReference: "Localized reference",
+              versionAbbreviation: "VERSION",
+            },
+          },
+        ] as never
+        await act(async () =>
+          root.render(
+            <div lang="en" dir="ltr">
+              <WatchGrow citations={localized} />
+            </div>,
+          ),
+        )
+        await settle()
+        const quote = container.querySelector("blockquote")!
+        expect(quote.textContent).toBe(content)
+        expect(quote.getAttribute("lang")).toBe(lang)
+        expect(quote.getAttribute("dir")).toBe(dir)
+        const credit = container.querySelector("figcaption")!
+        const reference = credit.querySelector("[lang]") ?? credit
+        expect(reference.getAttribute("lang")).toBe(lang)
+        expect(reference.getAttribute("dir")).toBe(dir)
+        const copy = [...container.querySelectorAll("button")].find((button) =>
+          button.textContent?.includes("Copy"),
+        )!
+        expect(copy.closest("[lang]")?.getAttribute("lang")).toBe("en")
+        expect(copy.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
+        if (shape === "lean") {
+          await act(async () =>
+            [...container.querySelectorAll("button")]
+              .find((button) =>
+                button.textContent?.includes("Read the whole passage"),
+              )!
+              .click(),
+          )
+          const expanded = [...container.querySelectorAll("p")].find(
+            (p) => p.textContent === content,
+          )!
+          expect(expanded.getAttribute("lang")).toBe(lang)
+          expect(expanded.getAttribute("dir")).toBe(dir)
+        }
+        // Reset the full-shape latch before the next case/shape.
+        await act(async () => root.render(null))
+      }
+    } finally {
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)

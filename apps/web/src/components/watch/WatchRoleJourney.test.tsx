@@ -420,3 +420,56 @@ describe("shared role journey", () => {
     }
   })
 })
+
+it("keeps a localized question, selected Scripture and English resources in independent boundaries", async () => {
+  const config = structuredClone(WATCH_AUDIENCE_CODE_CONFIG)
+  config.roles.find((role) => role.id === "grow")!.questions[0].prompt =
+    "ما هي خطوتك التالية؟"
+  document.documentElement.lang = "ar"
+  document.documentElement.dir = "rtl"
+  window.history.replaceState(null, "", "/watch?as=grow")
+  try {
+    renderFrame({
+      config,
+      questionnaireLocale: "ar",
+      languageSlug: "arabic-modern-standard",
+      locale: "ar",
+      growFilm: {
+        citations: [
+          {
+            passage: {
+              content: "لأَنَّهُ هكَذَا أَحَبَّ اللهُ الْعَالَمَ.",
+              languageSlug: "arabic-modern-standard",
+              humanReference: "يوحنا ٣:١٦",
+            },
+          },
+        ] as never,
+        filmTitle: "Film",
+        seriesTitle: null,
+        episodeCount: 0,
+        episodeIndex: null,
+        nextEpisode: null,
+      },
+    })
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100))
+    })
+    const question = container.querySelector(
+      '[data-testid="watch-role-journey"]',
+    )!
+    expect(question.getAttribute("lang")).toBe("ar")
+    expect(question.getAttribute("dir")).toBe("rtl")
+    expect(question.textContent).toContain("ما هي خطوتك التالية؟")
+    const quote = container.querySelector("blockquote")!
+    expect(quote.getAttribute("lang")).toBe("ar")
+    expect(quote.getAttribute("dir")).toBe("rtl")
+    const heading = [...container.querySelectorAll("h2")].find(
+      (node) => node.textContent === "One line to carry.",
+    )!
+    expect(heading.closest("[lang]")?.getAttribute("lang")).toBe("en")
+    expect(heading.closest("[dir]")?.getAttribute("dir")).toBe("ltr")
+  } finally {
+    document.documentElement.removeAttribute("lang")
+    document.documentElement.removeAttribute("dir")
+  }
+})

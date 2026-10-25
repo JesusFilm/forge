@@ -2250,6 +2250,10 @@ type Passage {
   content: String
   copyright: String
   humanReference: String
+  """
+  Content language of the selected Bible version, including English fallback; absent in older snapshots.
+  """
+  languageSlug: String
   provider: String
   publisherUrl: String
   reference: String

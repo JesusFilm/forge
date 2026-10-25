@@ -193,6 +193,8 @@ function PendingShell({
       data-testid="watch-find-flow"
       className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-stone-950 text-white outline-none"
       role="dialog"
+      lang="en"
+      dir="ltr"
       aria-modal="true"
       aria-label="Find films for you"
       aria-busy={!failed}

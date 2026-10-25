@@ -15,6 +15,7 @@ import type { WatchBibleQuotesBlock } from "@/lib/content"
 import { buttonVariants } from "@/components/ui/button-variants"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import { cn } from "@/lib/utils"
+import { watchPassageTextProps } from "./watch-passage-language"
 
 type Citation = WatchBibleQuotesBlock["bibleCitations"][number]
 
@@ -168,11 +169,14 @@ export function WatchGrowVerse({
 
       <figure className="mt-6 min-w-0 rounded-3xl border border-white/10 bg-white/[0.06] p-6 md:p-8">
         <Quote aria-hidden className="size-6 text-brand-red" />
-        <blockquote className="mt-3 text-xl leading-snug font-medium text-balance md:text-2xl">
+        <blockquote
+          {...watchPassageTextProps(today.passage)}
+          className="mt-3 text-xl leading-snug font-medium text-balance md:text-2xl"
+        >
           {text}
         </blockquote>
         <figcaption className="mt-4 text-[14px] text-white/55">
-          {reference}
+          <span {...watchPassageTextProps(today.passage)}>{reference}</span>
           {version ? ` · ${version}` : ""}
         </figcaption>
 

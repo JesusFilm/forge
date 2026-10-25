@@ -325,3 +325,53 @@ describe("WatchShareKit dismissal", () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 })
+
+it.each([
+  ["ar", "rtl"],
+  ["es", "ltr"],
+])(
+  "keeps English portal content independent of a %s document",
+  async (lang, dir) => {
+    document.documentElement.lang = lang
+    document.documentElement.dir = dir
+    try {
+      render()
+      const node = byTestId("watch-share-kit-print-document")!
+      expect(node.getAttribute("lang")).toBe("en")
+      expect(node.getAttribute("dir")).toBe("ltr")
+    } finally {
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)
+
+it("does not mark authored questions with missing locale metadata as English in the printed portal", () => {
+  document.documentElement.lang = "ar"
+  document.documentElement.dir = "rtl"
+  try {
+    render({ studyQuestions: ["ما الذي لفت انتباهك؟"] })
+    const print = byTestId("watch-share-kit-print-document")!
+    const lists = [...document.querySelectorAll("li")].filter(
+      (node) => node.textContent === "ما الذي لفت انتباهك؟",
+    )
+    expect(lists).toHaveLength(2)
+    for (const node of lists) {
+      expect(node.closest("[lang]")?.getAttribute("lang")).toBe("")
+      expect(node.closest("[dir]")?.getAttribute("dir")).toBe("auto")
+    }
+    expect(print.getAttribute("lang")).toBe("en")
+    expect(print.getAttribute("dir")).toBe("ltr")
+  } finally {
+    document.documentElement.removeAttribute("lang")
+    document.documentElement.removeAttribute("dir")
+  }
+})
+
+it("keeps the authored film title neutral inside the English print portal", () => {
+  render({ title: "يسوع" })
+  const title = byTestId("watch-share-kit-print-document")!.querySelector("h1")!
+  expect(title.textContent).toBe("يسوع")
+  expect(title.getAttribute("lang")).toBe("")
+  expect(title.getAttribute("dir")).toBe("auto")
+})

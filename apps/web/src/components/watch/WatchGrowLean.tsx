@@ -34,6 +34,7 @@ import { WatchFindButton } from "@/components/watch/WatchFindLauncher"
 import { WatchGrowPlanRail } from "@/components/watch/WatchGrowPlanRail"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
 import { cn } from "@/lib/utils"
+import { watchPassageTextProps } from "./watch-passage-language"
 
 export type NextEpisode = {
   title: string
@@ -287,15 +288,23 @@ function VerseCard({
 
       <figure className="mt-6 min-w-0 rounded-3xl border border-white/10 bg-white/[0.06] p-6 md:p-8">
         <Quote aria-hidden className="size-6 text-brand-red" />
-        <blockquote className="mt-3 font-serif text-2xl leading-snug text-balance md:text-3xl">
+        <blockquote
+          {...watchPassageTextProps(first.passage)}
+          className="mt-3 font-serif text-2xl leading-snug text-balance md:text-3xl"
+        >
           {line}
         </blockquote>
         <figcaption className="mt-4 text-[14px] text-white/55">
-          {credit}
+          From{" "}
+          <span {...watchPassageTextProps(first.passage)}>{reference}</span>
+          {version ? ` · ${version}` : ""}
         </figcaption>
 
         {showFull ? (
-          <p className="mt-5 border-t border-white/10 pt-5 text-[15px] leading-relaxed text-white/70">
+          <p
+            {...watchPassageTextProps(first.passage)}
+            className="mt-5 border-t border-white/10 pt-5 text-[15px] leading-relaxed text-white/70"
+          >
             {full}
           </p>
         ) : null}

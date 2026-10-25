@@ -131,3 +131,52 @@ it("pauses the page player through the shared modal owner while either dialog is
     expect(seen.active).toBe(false)
   }
 })
+
+it.each([
+  ["ar", "rtl"],
+  ["es", "ltr"],
+])(
+  "keeps English portal content independent of a %s document",
+  async (lang, dir) => {
+    document.documentElement.lang = lang
+    document.documentElement.dir = dir
+    const { setRequestLocale } = await import("next-intl/server")
+    setRequestLocale(lang)
+    try {
+      render()
+      for (const kind of ["subscribe", "mentor"]) {
+        await act(async () =>
+          container
+            .querySelector<HTMLButtonElement>(
+              `[data-testid="watch-grow-prayer-${kind}-open"]`,
+            )!
+            .click(),
+        )
+        const node = document.querySelector(
+          `[data-testid="watch-grow-prayer-${kind}"]`,
+        )!
+        expect(node.getAttribute("lang")).toBe("en")
+        expect(node.getAttribute("dir")).toBe("ltr")
+        expect(node.getAttribute("aria-labelledby")).toBeTruthy()
+        const close = node.querySelector<HTMLButtonElement>(
+          '[data-testid="dialog-close-button"]',
+        )!
+        expect(close.getAttribute("lang")).toBe(lang)
+        expect(close.getAttribute("dir")).toBe(dir)
+        if (lang === "ar")
+          expect(close.getAttribute("aria-label")).not.toBe("Close")
+        await act(async () =>
+          node
+            .querySelector<HTMLButtonElement>(
+              '[data-testid="dialog-close-button"]',
+            )!
+            .click(),
+        )
+      }
+    } finally {
+      setRequestLocale("en")
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)

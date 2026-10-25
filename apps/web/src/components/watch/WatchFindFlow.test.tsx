@@ -453,3 +453,41 @@ describe("launcher", () => {
     )
   })
 })
+
+it.each([
+  ["ar", "rtl"],
+  ["es", "ltr"],
+])(
+  "keeps English portal content independent of a %s document",
+  async (lang, dir) => {
+    document.documentElement.lang = lang
+    document.documentElement.dir = dir
+    try {
+      await renderFlow()
+      const node = document.querySelector('[role="dialog"]')!
+      expect(node.getAttribute("lang")).toBe("en")
+      expect(node.getAttribute("dir")).toBe("ltr")
+      expect(node.getAttribute("aria-label")).toBe("Find films for you")
+      expect(
+        node.querySelector("button")?.closest("[lang]")?.getAttribute("lang"),
+      ).toBe("en")
+    } finally {
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)
+
+it("keeps a localized result title neutral inside the English Finder portal", async () => {
+  fetchMock.mockResolvedValue(response([card("localized", "kids", "يسوع")]))
+  await renderFlow()
+  await toWorking()
+  await settle(1700)
+  const title = document
+    .querySelector('[data-testid="watch-find-film"]')!
+    .querySelector("span[lang]")!
+  expect(title?.textContent).toBe("يسوع")
+  expect(title?.getAttribute("lang")).toBe("")
+  expect(title?.getAttribute("dir")).toBe("auto")
+  expect(title?.closest('[role="dialog"]')?.getAttribute("lang")).toBe("en")
+})

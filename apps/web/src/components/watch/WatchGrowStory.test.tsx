@@ -139,3 +139,28 @@ it("contains keyboard focus in the story and isolates the page behind it", () =>
   expect(props.showSheet).not.toHaveBeenCalled()
   page.remove()
 })
+
+it.each([
+  ["ar", "rtl"],
+  ["es", "ltr"],
+])(
+  "keeps English portal content independent of a %s document",
+  async (lang, dir) => {
+    document.documentElement.lang = lang
+    document.documentElement.dir = dir
+    try {
+      render()
+      const node = story()
+      expect(node.parentElement).toBe(document.body)
+      expect(node.getAttribute("lang")).toBe("en")
+      expect(node.getAttribute("dir")).toBe("ltr")
+      expect(node.getAttribute("aria-label")).toBe("Lesson 1 as a story")
+      expect(
+        node.querySelector("button")?.closest("[lang]")?.getAttribute("lang"),
+      ).toBe("en")
+    } finally {
+      document.documentElement.removeAttribute("lang")
+      document.documentElement.removeAttribute("dir")
+    }
+  },
+)

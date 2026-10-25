@@ -515,6 +515,8 @@ export function WatchFindFlow({ languageSlug, onClose }: WatchFindFlowProps) {
       data-step={shownStep}
       className="fixed inset-0 z-[80] overflow-y-auto overscroll-contain bg-stone-950 text-white outline-none"
       role="dialog"
+      lang="en"
+      dir="ltr"
       aria-modal="true"
       aria-label="Find films for you"
     >
@@ -1088,7 +1090,11 @@ function FilmCard({ film }: { film: WatchFilmFinderCard }) {
           className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"
         />
         <span className="absolute inset-x-0 bottom-0 block p-3">
-          <span className="block text-[14px] leading-tight font-semibold">
+          <span
+            lang=""
+            dir="auto"
+            className="block text-[14px] leading-tight font-semibold"
+          >
             {film.title}
           </span>
           {film.durationSeconds !== null ? (
