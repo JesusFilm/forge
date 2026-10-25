@@ -356,6 +356,58 @@ export function WatchGrowCourse({
     initialStory && renderStory ? initial.n : null,
   )
   const sheetRef = useRef<HTMLDivElement | null>(null)
+  const [scrollRequest, setScrollRequest] = useState<{
+    lesson: number
+    focus: Element | null
+  } | null>(null)
+  useEffect(() => {
+    const container = sheetRef.current
+    const sheet = container?.firstElementChild
+    if (!scrollRequest || open !== scrollRequest.lesson || !container || !sheet)
+      return
+
+    // The request belongs to this committed lesson, not its persistent wrapper.
+    // A newer focus/navigation owns the viewport even if the lesson stays open.
+    const cancel = () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener("focusin", focusChanged)
+      document.removeEventListener("click", navigate, true)
+      for (const event of ["popstate", "hashchange", "pagehide"])
+        window.removeEventListener(event, cancel)
+    }
+    const focusChanged = () => {
+      if (document.activeElement !== scrollRequest.focus) cancel()
+    }
+    const navigate = (event: MouseEvent) => {
+      if (event.target instanceof Element && event.target.closest("a[href]"))
+        cancel()
+    }
+    const frame = window.requestAnimationFrame(() => {
+      cancel()
+      const focus = document.activeElement
+      const openerRemoved =
+        !scrollRequest.focus?.isConnected && focus === document.body
+      if (
+        !sheet.isConnected ||
+        sheetRef.current !== container ||
+        container.firstElementChild !== sheet ||
+        (focus !== scrollRequest.focus && !openerRemoved)
+      )
+        return
+      container.scrollIntoView({
+        behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+          .matches
+          ? "instant"
+          : "smooth",
+        block: "start",
+      })
+    })
+    document.addEventListener("focusin", focusChanged)
+    document.addEventListener("click", navigate, true)
+    for (const event of ["popstate", "hashchange", "pagehide"])
+      window.addEventListener(event, cancel)
+    return cancel
+  }, [open, scrollRequest])
   const storyButton = useRef<HTMLButtonElement | null>(null)
   // Closing the story removes the focused control; hand focus back to the
   // button that opened it. Armed only by the close action, never on mount.
@@ -431,15 +483,8 @@ export function WatchGrowCourse({
       at ?? MOVEMENTS.find((m) => !st.thirds.includes(m.id))?.id ?? "back"
     setOpen(n)
     setThird(start)
+    setScrollRequest({ lesson: n, focus: document.activeElement })
     onLessonChange?.(lessonByN(n).id)
-    window.setTimeout(
-      () =>
-        sheetRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        }),
-      70,
-    )
   }
 
   const lesson = LESSONS.find((l) => l.n === open) ?? null

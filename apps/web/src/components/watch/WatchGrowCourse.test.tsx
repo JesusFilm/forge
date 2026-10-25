@@ -155,3 +155,157 @@ describe("the original nine-lesson block", () => {
     expect(document.activeElement).toBe(q("watch-grow-course-play-story"))
   })
 })
+
+describe("committed lesson scrolling", () => {
+  let laterPlan: HTMLAnchorElement
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+      window.setTimeout(() => callback(performance.now()), 16),
+    )
+    vi.stubGlobal("cancelAnimationFrame", (id: number) =>
+      window.clearTimeout(id),
+    )
+    laterPlan = document.createElement("a")
+    laterPlan.href = "#reading-plan-7"
+    laterPlan.textContent = "Seventh reading plan"
+    document.body.append(laterPlan)
+  })
+  afterEach(() => {
+    act(() => root.render(null))
+    laterPlan.remove()
+    vi.clearAllTimers()
+    vi.useRealTimers()
+  })
+  const flushScroll = () => act(() => vi.advanceTimersByTime(100))
+  const closeLesson = () =>
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>(
+          'button[aria-label="Close the lesson"]',
+        )!
+        .click(),
+    )
+  const open = () => {
+    const start = q<HTMLButtonElement>("watch-grow-course-start")!
+    start.focus()
+    act(() => start.click())
+  }
+
+  it("never scrolls an empty wrapper after open/close and later keyboard focus", () => {
+    render()
+    open()
+    closeLesson()
+    laterPlan.focus()
+    flushScroll()
+    expect(q("watch-grow-course-sheet")).toBeNull()
+    expect(document.activeElement).toBe(laterPlan)
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it("scrolls the still-active committed lesson exactly once across rerenders", () => {
+    render()
+    open()
+    const wrapper = q("watch-grow-course-sheet")!.parentElement
+    render({ progressStatus: <p>Refreshed status</p> })
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      behavior: "smooth",
+      block: "start",
+    })
+    expect(vi.mocked(Element.prototype.scrollIntoView).mock.instances).toEqual([
+      wrapper,
+    ])
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+  })
+
+  it("only scrolls the newest lesson when A is replaced by B", () => {
+    render()
+    open()
+    const cards = container.querySelectorAll<HTMLButtonElement>(
+      '[data-testid="watch-grow-course-card"]',
+    )
+    cards[1]!.focus()
+    act(() => cards[1]!.click())
+    flushScroll()
+    expect(q("watch-grow-course-sheet")!.dataset.lesson).toBe("2")
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+  })
+
+  it("coalesces repeated opens of the same lesson", () => {
+    render()
+    open()
+    open()
+    open()
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1)
+  })
+
+  it("invalidates scrolling after repeated toggles and unmount", () => {
+    render()
+    for (let i = 0; i < 5; i++) {
+      open()
+      closeLesson()
+    }
+    open()
+    act(() => root.render(null))
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it("yields to a newer focus even while the lesson remains open", () => {
+    render()
+    open()
+    laterPlan.focus()
+    flushScroll()
+    expect(q("watch-grow-course-sheet")).not.toBeNull()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it("does not revive canceled work when focus returns to the opener", () => {
+    render()
+    open()
+    laterPlan.focus()
+    q<HTMLButtonElement>("watch-grow-course-start")!.focus()
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  for (const event of ["popstate", "hashchange", "pagehide"]) {
+    it(`cancels pending scrolling on ${event} navigation`, () => {
+      render()
+      open()
+      window.dispatchEvent(new Event(event))
+      flushScroll()
+      expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+    })
+  }
+
+  it("cancels a pending scroll when a link starts soft navigation", () => {
+    render()
+    open()
+    laterPlan.addEventListener("click", (event) => event.preventDefault())
+    laterPlan.click()
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it("does not add an automatic scroll to direct lesson returns", () => {
+    render({ initialOpen: true })
+    flushScroll()
+    expect(q("watch-grow-course-sheet")).not.toBeNull()
+    expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it("respects reduced motion for an active lesson", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: true }))
+    render()
+    open()
+    flushScroll()
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledExactlyOnceWith({
+      behavior: "instant",
+      block: "start",
+    })
+  })
+})
