@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 import { GROW_PLANS } from "@/lib/watch-grow-content"
 import { WatchGrowPlans } from "./WatchGrowPlans"
+
 let root: Root
 let container: HTMLDivElement
 beforeEach(() => {
@@ -20,29 +21,31 @@ it("offers all real external plans without an account or enrollment request", ()
   const request = vi.fn()
   vi.stubGlobal("fetch", request)
   act(() => root.render(<WatchGrowPlans />))
+  expect(container.textContent).toContain(
+    "A plan written for your week, not just your beliefs.",
+  )
   expect(
     [...container.querySelectorAll("a")].map((a) => a.getAttribute("href")),
   ).toEqual(GROW_PLANS.map((plan) => plan.url))
-  expect(container.textContent).not.toMatch(
-    /all.*Jesus Film Project|sign in|subscrib/i,
-  )
   expect(request).not.toHaveBeenCalled()
 })
-it("filters the editorial lane grouping and restores all plans", () => {
+it("filters by lane with counts and restores all plans", () => {
   act(() => root.render(<WatchGrowPlans />))
-  const choose = (text: string) =>
-    [...container.querySelectorAll("button")].find(
-      (button) => button.textContent === text,
+  const chip = (label: string) =>
+    [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.firstChild?.textContent === label,
     )!
-  act(() => choose("Women").click())
+  act(() => chip("Women").click())
   expect(
-    [...container.querySelectorAll("a")].map((a) => a.textContent),
+    [...container.querySelectorAll("a")].map(
+      (a) => a.querySelector("span span")?.textContent,
+    ),
   ).toEqual(
     GROW_PLANS.filter((plan) => plan.lane === "Women").map(
       (plan) => plan.title,
     ),
   )
-  expect(choose("Women").getAttribute("aria-pressed")).toBe("true")
-  act(() => choose("All plans").click())
-  expect(container.querySelectorAll("a")).toHaveLength(15)
+  expect(chip("Women").getAttribute("aria-selected")).toBe("true")
+  act(() => chip("All").click())
+  expect(container.querySelectorAll("a")).toHaveLength(GROW_PLANS.length)
 })

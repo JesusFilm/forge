@@ -1,64 +1,141 @@
 "use client"
 
-import { useId, useState } from "react"
-import { GROW_PLANS, GROW_PLAN_LANES } from "@/lib/watch-grow-content"
+// Ported from the read-only prototype. G2: the fifteen Jesus Film Project reading plans that
+// already exist on YouVersion, presented the way they were actually written —
+// as life lanes, not Bible topics. Titles, ids and links are real; the lane
+// each plan sits in is our grouping.
+
+import { ArrowUpRight, CalendarDays } from "lucide-react"
+import { useState, type ComponentProps } from "react"
+
+import {
+  GROW_PLANS,
+  GROW_PLAN_LANES,
+  type GrowPlan,
+} from "@/components/watch/grow-resources"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import { cn } from "@/lib/utils"
+
+import { useWatchResourceTabs } from "./use-watch-resource-tabs"
 
 export function WatchGrowPlans() {
-  const titleId = useId()
   const [lane, setLane] = useState<string | null>(null)
-  const plans = lane
-    ? GROW_PLANS.filter((plan) => plan.lane === lane)
+  const tabs = useWatchResourceTabs([null, ...GROW_PLAN_LANES], lane, setLane)
+  const shown: GrowPlan[] = lane
+    ? GROW_PLANS.filter((p) => p.lane === lane)
     : GROW_PLANS
+
   return (
-    <section aria-labelledby={titleId} className="mt-10 min-w-0 text-white">
-      <h3 id={titleId} className="text-2xl font-semibold">
-        A reading plan for your week
-      </h3>
-      <p className="mt-2 max-w-prose text-sm leading-relaxed text-white/70">
-        Explore plans on YouVersion. Topics are grouped here to help you choose;
-        each source page credits its author.
+    <section
+      data-testid="watch-grow-plans"
+      aria-labelledby="watch-grow-plans-heading"
+      className="w-full min-w-0 pt-12 text-white md:pt-16"
+    >
+      <p className={WATCH_SECTION_EYEBROW_CLASS}>
+        {GROW_PLANS.length} plans · free in the Bible app
       </p>
-      <div
-        className="mt-5 flex flex-wrap gap-2"
-        role="group"
-        aria-label="Reading plan topics"
+      <h2
+        id="watch-grow-plans-heading"
+        className="mt-3 text-3xl leading-[1.08] font-semibold text-balance sm:text-4xl"
       >
-        {[null, ...GROW_PLAN_LANES].map((item) => (
-          <button
-            key={item ?? "all"}
-            type="button"
-            aria-pressed={lane === item}
-            onClick={() => setLane(item)}
-            className={`min-h-11 cursor-pointer rounded-full border px-4 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${lane === item ? "border-white bg-white text-stone-950" : "border-white/25 text-white/80 hover:bg-white/10"}`}
-          >
-            {item ?? "All plans"}
-          </button>
+        A plan written for your week, not just your beliefs.
+      </h2>
+      <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-white/70">
+        We wrote these for the job you actually do. Pick the one that sounds
+        like your life.
+      </p>
+
+      <div
+        role="tablist"
+        aria-label="Who the plan is for"
+        lang="en"
+        dir="ltr"
+        className="mt-6 flex min-w-0 flex-wrap gap-2"
+      >
+        <LaneChip
+          label="All"
+          count={GROW_PLANS.length}
+          selected={lane === null}
+          tabProps={tabs.tabProps(null)}
+        />
+        {GROW_PLAN_LANES.map((l) => (
+          <LaneChip
+            key={l}
+            label={l}
+            count={GROW_PLANS.filter((p) => p.lane === l).length}
+            selected={lane === l}
+            tabProps={tabs.tabProps(l)}
+          />
         ))}
       </div>
-      <p role="status" className="mt-4 text-sm text-white/60">
-        Showing {plans.length} of {GROW_PLANS.length} plans
-      </p>
-      <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {plans.map((plan) => (
-          <li
-            key={plan.id}
-            className="flex min-w-0 flex-col rounded-2xl border border-white/15 bg-white/5 p-5"
-          >
-            <p className="text-sm text-white/60">
-              {plan.lane}
-              {plan.days ? ` · ${plan.days} days` : ""}
-            </p>
-            <a
-              href={plan.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-flex min-h-11 items-center text-lg font-semibold underline decoration-white/30 underline-offset-4 hover:decoration-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-            >
-              {plan.title}
-            </a>
-          </li>
-        ))}
-      </ul>
+
+      <div {...tabs.panelProps}>
+        <ul className="mt-6 grid min-w-0 gap-2.5 md:grid-cols-2">
+          {shown.map((p) => (
+            <li key={p.id} className="min-w-0">
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex h-full min-w-0 items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 transition-colors hover:border-white hover:bg-white hover:text-stone-900 focus-visible:border-white focus-visible:bg-white focus-visible:text-stone-900 focus-visible:outline-none md:p-5"
+              >
+                <CalendarDays
+                  aria-hidden
+                  className="mt-0.5 size-5 shrink-0 text-white/60 group-hover:text-brand-red"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] leading-tight font-semibold">
+                    {p.title}
+                  </span>
+                  <span className="mt-1.5 block text-[12px] text-white/45 group-hover:text-stone-500">
+                    {p.lane}
+                    {p.days ? ` · ${p.days} days` : ""}
+                  </span>
+                </span>
+                <ArrowUpRight
+                  aria-hidden
+                  className="size-4 shrink-0 text-white/35 group-hover:text-stone-500"
+                />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
+  )
+}
+
+function LaneChip({
+  label,
+  count,
+  selected,
+  tabProps,
+}: {
+  label: string
+  count: number
+  selected: boolean
+  tabProps: ComponentProps<"button">
+}) {
+  return (
+    <button
+      type="button"
+      {...tabProps}
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none",
+        selected
+          ? "border-white bg-white text-stone-900"
+          : "border-white/15 bg-transparent text-white/70 hover:border-white/40 hover:text-white",
+      )}
+    >
+      {label}
+      <span
+        className={cn(
+          "text-[11px] tabular-nums",
+          selected ? "text-stone-500" : "text-white/40",
+        )}
+      >
+        {count}
+      </span>
+    </button>
   )
 }

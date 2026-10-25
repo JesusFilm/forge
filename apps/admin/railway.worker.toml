@@ -33,6 +33,7 @@ watchPatterns = [
   "/scripts/update-security-ca.sh",
   "/apps/admin/**",
   "/packages/experience-schema/**",
+  "/packages/feature-flags/**",
   "/package.json",
   "/pnpm-lock.yaml",
   "/pnpm-workspace.yaml",

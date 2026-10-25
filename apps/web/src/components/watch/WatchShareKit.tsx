@@ -193,6 +193,8 @@ export function WatchShareKit({
           <p className={WATCH_SECTION_EYEBROW_CLASS}>Film kit</p>
           <h3
             id={headingId}
+            lang=""
+            dir="auto"
             ref={headingRef}
             tabIndex={-1}
             className="mt-2 text-2xl leading-tight font-semibold text-balance outline-none sm:text-3xl"
@@ -355,7 +357,11 @@ export function WatchShareKit({
         <p className="text-sm text-white/65">
           {promptSourceNote(prompts.source)}
         </p>
-        <ul className="grid list-disc gap-2 pl-5 text-[15px] leading-snug text-white/85">
+        <ul
+          lang={prompts.source === "editorial" ? "en" : ""}
+          dir={prompts.source === "editorial" ? "ltr" : "auto"}
+          className="grid list-disc gap-2 pl-5 text-[15px] leading-snug text-white/85"
+        >
           {prompts.prompts.map((prompt) => (
             <li key={prompt}>{prompt}</li>
           ))}
@@ -442,9 +448,12 @@ function ShareKitPrintDocument({
     <article
       data-testid="watch-share-kit-print-document"
       lang="en"
+      dir="ltr"
       className="mx-auto max-w-2xl p-8 text-base leading-relaxed"
     >
-      <h1 className="text-3xl font-semibold">{film.title}</h1>
+      <h1 lang="" dir="auto" className="text-3xl font-semibold">
+        {film.title}
+      </h1>
       <p>Film kit from Jesus Film Project · Audio language: {audio}</p>
       <h2 className="mt-6 text-xl font-semibold">Link</h2>
       <p className="break-all">{link}</p>
@@ -452,7 +461,11 @@ function ShareKitPrintDocument({
       <p className="break-words">{invitation}</p>
       <h2 className="mt-6 text-xl font-semibold">Conversation prompts</h2>
       <p>{promptSourceNote(prompts.source)}</p>
-      <ul className="list-disc pl-6">
+      <ul
+        lang={prompts.source === "editorial" ? "en" : ""}
+        dir={prompts.source === "editorial" ? "ltr" : "auto"}
+        className="list-disc pl-6"
+      >
         {prompts.prompts.map((prompt) => (
           <li key={prompt}>{prompt}</li>
         ))}

@@ -68,6 +68,27 @@ afterEach(() => {
 })
 
 describe("WatchShareIdeas", () => {
+  it.each(["بداية الخدمة", "English fallback", "Title without metadata"])(
+    "isolates the selected title %s inside its English introduction",
+    (title) => {
+      act(() =>
+        root.render(
+          <div lang="en" dir="ltr">
+            <WatchShareIdeas film={{ ...film, title }} onShareClick={vi.fn()} />
+          </div>,
+        ),
+      )
+      const introduction = byTestId("watch-share-ideas")!.querySelector(
+        "header > p:last-child",
+      )!
+      const authored = introduction.querySelector("span")!
+      expect(authored?.textContent).toBe(title)
+      expect(authored?.getAttribute("lang")).toBe("")
+      expect(authored?.getAttribute("dir")).toBe("auto")
+      expect(introduction.textContent).toContain(`${title} is 4 minutes long.`)
+      expect(introduction.closest("[lang]")?.getAttribute("lang")).toBe("en")
+    },
+  )
   it("shows the existing collection, not a kit, until a film is selected", () => {
     act(() =>
       root.render(

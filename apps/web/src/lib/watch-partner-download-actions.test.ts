@@ -2,13 +2,52 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/admin-client", () => ({ default: { query: vi.fn() } }))
+vi.mock("@/lib/feature-flags", () => ({ isWatchAudienceEnabled: vi.fn() }))
 
 import client from "@/lib/admin-client"
+import { isWatchAudienceEnabled } from "@/lib/feature-flags"
 import { loadWatchPartnerDownloadCollection } from "./watch-partner-download-actions"
 
 const query = vi.mocked(client.query)
+const audienceEnabled = vi.mocked(isWatchAudienceEnabled)
 
-beforeEach(() => vi.clearAllMocks())
+beforeEach(() => {
+  vi.clearAllMocks()
+  audienceEnabled.mockResolvedValue(true)
+})
+
+describe("Partner collection metadata release gate", () => {
+  const input = {
+    collectionSlug: "rivka",
+    languageSlug: "english",
+    locale: "en",
+  }
+
+  it("is unavailable before any Admin work while the audience flag is off", async () => {
+    audienceEnabled.mockResolvedValueOnce(false)
+    expect(await loadWatchPartnerDownloadCollection(input)).toEqual({
+      ok: false,
+      reason: "unavailable",
+    })
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it("fails closed when the flag read throws", async () => {
+    audienceEnabled.mockRejectedValueOnce(new Error("flag client down"))
+    expect(await loadWatchPartnerDownloadCollection(input)).toEqual({
+      ok: false,
+      reason: "unavailable",
+    })
+    expect(query).not.toHaveBeenCalled()
+  })
+
+  it("reaches Admin once the audience flag is on", async () => {
+    query.mockResolvedValueOnce({ data: { videoBySlug: null } } as never)
+    await loadWatchPartnerDownloadCollection(input)
+    expect(audienceEnabled).toHaveBeenCalledTimes(1)
+    expect(query).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe("Partner collection metadata", () => {
   it("preserves canonical relation order and exposes metadata without media URLs", async () => {

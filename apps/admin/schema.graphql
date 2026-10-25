@@ -307,7 +307,7 @@ type Experience {
 """
 Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
 """
-union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchAudienceBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
 
 """
 Which saved version of each source locale a duplicate copies. Unsaved editor state is never copied.
@@ -407,9 +407,17 @@ type ExperiencePreview {
   """
   homepageLayout: Boolean!
   """
+  Whether this draft belongs to the non-archived route template selected by public Watch settings (createdAt then id). Only that template publishes a Watch audience questionnaire.
+  """
+  isDefaultTemplate: Boolean!
+  """
   Live homepage assignment carried by this draft. A homepage duplicate is false here and true on homepageLayout.
   """
   isHomepage: Boolean!
+  """
+  Whether the parent Experience is a route template. Multiple Experiences may be route templates.
+  """
+  isTemplate: Boolean!
   locale: String!
   localeId: ID!
   metaDescription: String
@@ -2242,6 +2250,10 @@ type Passage {
   content: String
   copyright: String
   humanReference: String
+  """
+  Content language of the selected Bible version, including English fallback; absent in older snapshots.
+  """
+  languageSlug: String
   provider: String
   publisherUrl: String
   reference: String
@@ -3517,6 +3529,25 @@ type VideoTranscriptChunk {
 }
 
 """
+Top-level audience questionnaire. Definitions use the shared published WatchSetting projection on public surfaces.
+"""
+type WatchAudienceBlock {
+  configurationJson: String!
+  sectionKey: String
+  t: String
+}
+
+"""
+Published default-template audience definition. Null configJson with rejected=true preserves authored presence; consumers must not substitute baked-in copy.
+"""
+type WatchAudienceConfiguration {
+  configJson: String
+  rejected: Boolean!
+  sourceBlockId: String!
+  sourceLocale: String!
+}
+
+"""
 Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.
 """
 type WatchCollectionFeed {
@@ -4164,6 +4195,10 @@ type WatchSetting {
   Published ExperienceLocale flagged isHomepage for the requested locale.
   """
   homepageExperience: ExperienceLocale
+  """
+  Shared audience configuration from the same published default template. Requested locale only (STRICT NULL); an omitted locale uses watchSetting's locale. Never reads homepage configuration or drafts.
+  """
+  watchAudience(locale: String): WatchAudienceConfiguration
 }
 
 type WatchSurfaceExposureReceipt {
