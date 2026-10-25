@@ -14,7 +14,8 @@ for ((i=0;i<60;i++));do
   printf 'HEALTH_RESPONSE\n%s\n' "$response"
   collections=$(request /collections)
   printf 'EMPTY_COLLECTIONS_RESPONSE\n%s\n' "$collections"
-  [[ "$collections" == *'200 OK'* ]] && [[ "$collections" == *'[]'* ]]
+  [[ "$collections" == *'200 OK'* ]] || exit 1
+  [[ "$collections" == *'[]'* ]] || exit 1
   exit 0
  fi
  kill -0 "$server" || { cat /tmp/server.log; exit 1; }
