@@ -1,9 +1,6 @@
 {
   "$schema": "https://schema.railpack.com",
-  "buildAptPackages": [
-    "...",
-    "ca-certificates"
-  ],
+  "buildAptPackages": ["...", "ca-certificates"],
   "steps": {
     "build": {
       "variables": {
