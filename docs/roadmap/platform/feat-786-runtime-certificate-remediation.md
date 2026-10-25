@@ -125,3 +125,7 @@ metadata/static reads, deterministic smoke and service/lane/default-off denials;
 no model or workflow execution. Dashboard binding and exact current-image
 verification remain separate owner decisions. Native framework routes retain
 existing gateway/network containment; the proposal adds no public exposure.
+
+## Brotli decoder follow-up (CVE-2026-111497)
+
+Node22.23.4/24.22.1 already include the bundled decoder fix, but the current Crop and retained devotional worker images carry separate system `libbrotli1=1.0.9-2+b6`. Explicitly install and require Debian bookworm security revision `1.0.9-2+deb12u1` or newer in both runtime bases. Preserve media/browser versions, queue, authentication, storage and process contracts. Required actual-image acceptance checks the distro security revision as well as existing TLS/media/browser/HTTP tests; exact replacement replicas need fresh package/runtime and serving proof. Static/browser Brotli copies require their own vendor provenance and are not established by the Debian check. Keep this fleet ticket in progress for remaining owner-blocked targets.
