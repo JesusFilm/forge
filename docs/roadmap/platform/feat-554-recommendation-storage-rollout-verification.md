@@ -29,9 +29,33 @@ failures. The full nine-test native standalone suite and 94 focused unit,
 scheduler, job and diagnostic tests pass locally. This is not proof of the SQL
 behind October 25–26 P2028 errors or of a production repair.
 
-Release review, normal deployment and observed production results remain
-pending. Keep this ticket in progress, retain October 23's one accepted cycle,
-and keep manual drain on HOLD until fresh reviewed admission gates permit it.
+Independent exact-head review and all applicable PR checks passed before normal
+merge `ce23241a9` on October 26 at 22:54:20 UTC. Main CI, production image and all
+four CodeQL analyses passed. The [release receipt](https://github.com/JesusFilm/forge/pull/2920#issuecomment-6429275387)
+records actual HTTP at 23:15:00.760 UTC and worker at 23:08:28.256 UTC, both on
+that exact revision with matching retention source hashes, health 200/ok,
+compact mode and the correct runner roles. These separate observations verify
+deployment; the finite observed ledger window contains zero attempts and does
+not establish post-release cleanup behavior.
+
+At 23:15:49 UTC, all 26 current health families contained 39,404 expired rows
+and zero over 24 hours overdue. The fixed 23:15:00.760 cohort had 39,390 rows at
+its separate read; the successful expiry cutoff remained 21:45:44.183 and
+includes manual success. Other cleanup categories, including owner releases and
+old retention-run ledgers, were not remeasured. The
+normal scheduler remained RUNNING without error, next wake October 27 at
+10:30 UTC. Historical unfinished ledgers were preserved. Separate 23:16 reads
+found PGDATA free 8,025,223,168 bytes and WAL 167,772,160, with no lock waiters or
+long transactions; no physical reclamation or whole-backlog completion follows.
+
+The user-requested GPT-6 Astra task owns the active repair and backlog follow-up;
+the previous storage task retains the existing daily read-only monitor. Manual
+drain remains HOLD from the 23:08 worker memory reading of 4,573,614,080 bytes,
+above the 4 GB gate; no second admission sample or manual pass followed. Bounded
+memory diagnosis continues without weakening that guard. Keep this ticket in
+progress and retain October 23's one accepted cycle; manual work supplies no
+ordinary-cycle credit. The [active closeout plan](../../plans/2026-10-02-002-recommendation-roadmap-final-closeout-plan.md#october-27-retention-repair-and-astra-handoff)
+records the superseding backlog authorization and unchanged admission limits.
 
 ## October 26 follow-up: continuing deletion with failures
 

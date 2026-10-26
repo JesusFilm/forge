@@ -38,21 +38,24 @@ not override these explicit current decisions.
 
 ## Ownership and review
 
-Only the coordinating chat delegates and merges. All execution owners use
-GPT-6 Sol and isolated worktrees without further delegation. Existing co-watch
-and storage owners retain shared-operation responsibility. Production publication
-uses reviewed PR-to-main releases. The original dirty checkout is preserved.
+Only the coordinating chat delegates and merges. Execution owners use GPT-6 Sol,
+except for the retention repair owner explicitly requested on GPT-6 Astra on
+October 27. Owners use isolated worktrees without further delegation. The
+existing storage task retains daily read-only observation; Astra owns the active
+retention repair and coordinated manual cleanup. Production publication uses
+reviewed PR-to-main releases. The original dirty checkout is preserved.
 
-| Area        | Owner chat                             |
-| ----------- | -------------------------------------- |
-| root        | `01a0f9a4-577b-7332-9fea-7db1660861fa` |
-| cowatch     | `01a0f3c7-3cf2-7540-a991-748579724e60` |
-| storage     | `01a0e490-2d64-7013-8a95-a4f4015e26e0` |
-| fixtures    | `01a0f9a9-8860-7982-8c12-d9f495f42c93` |
-| watch       | `01a0f9a9-8e25-7fd1-8ec1-7a279f5cf85f` |
-| clients     | `01a0f9a9-93e1-7911-8334-9cd812ba9b47` |
-| measurement | `01a0f9a9-99cd-7a90-823c-c709b9687f5c` |
-| roadmap     | `01a0f9aa-e1ef-7831-a7d0-973ebc15fcf8` |
+| Area             | Owner chat                             |
+| ---------------- | -------------------------------------- |
+| root             | `01a0f9a4-577b-7332-9fea-7db1660861fa` |
+| cowatch          | `01a0f3c7-3cf2-7540-a991-748579724e60` |
+| storage          | `01a17a53-3d0b-7b51-806c-78af8d6cfc3c` |
+| storage observer | `01a0e490-2d64-7013-8a95-a4f4015e26e0` |
+| fixtures         | `01a0f9a9-8860-7982-8c12-d9f495f42c93` |
+| watch            | `01a0f9a9-8e25-7fd1-8ec1-7a279f5cf85f` |
+| clients          | `01a0f9a9-93e1-7911-8334-9cd812ba9b47` |
+| measurement      | `01a0f9a9-99cd-7a90-823c-c709b9687f5c` |
+| roadmap          | `01a0f9aa-e1ef-7831-a7d0-973ebc15fcf8` |
 
 Independent documentation review belongs to chat
 `01a0f9b3-2420-7013-816d-13a36bd03adc`; fixture/CI and roadmap code review to
@@ -661,6 +664,83 @@ claim is made. The receipt retains sample caps, source-definition provenance
 limits and the upcoming Watch expiry-wave obligation. Keep feat-554 open with
 one qualifying cycle and the existing daily monitor active. The expired outage
 monitor remains paused; this release grants no new daily-cycle credit.
+
+### October 27 exhausted-budget correction and cleanup handoff
+
+The owner explicitly requested a dedicated GPT-6 Astra task to fix cleanup and
+clear the stored-expired backlog. The preceding storage task stopped edits and
+manual invocations; its existing daily monitor remains read-only. Parent retains
+independent review, normal merges and shared production coordination. These
+later cleanup requests authorize bounded expired-only recovery, subject to fresh
+admission evidence; the historical one-pass-only restrictions above do not
+cancel that authorization.
+
+[PR #2920](https://github.com/JesusFilm/forge/pull/2920) fixes a reproduced
+pre-work boundary defect: zero or negative remaining budget previously threw
+before the nonterminal safe-yield guard. Yield finalization now uses a separately
+bounded ledger-only transaction with RUNNING-state compare-and-set and durable
+counter validation. A result is yielded only after commit acknowledgement;
+genuine operation, transaction and bookkeeping errors remain failures. An
+uncertain acknowledgement cannot overwrite a committed terminal ledger. The
+five-second cleanup budget remains unchanged.
+
+The exact [reviewed head](https://github.com/JesusFilm/forge/pull/2920#issuecomment-6429116796)
+`da3104825` passed 94 focused tests, nine native PostgreSQL 18 tests, Admin lint,
+typecheck, full format and normal hooks. The native regression fails on the
+unmodified base. All applicable PR checks passed, including the actual native
+retention steps, production image and all four CodeQL analyses; seven unrelated
+scope/event jobs were expected skips. Normal squash merge `ce23241a9` completed
+October 26 at 22:54:20 UTC with the same reviewed tree. Main forge-ci, production
+image and all four CodeQL analyses subsequently passed. The [release receipt](https://github.com/JesusFilm/forge/pull/2920#issuecomment-6429275387)
+records actual HTTP verification at 23:15:00.760 UTC and worker verification at
+23:08:28.256 UTC, both on exact `ce23241a9` with matching retention source hashes,
+health 200/ok, compact mode and the correct runner roles. These are separate
+recorded observations, not a simultaneous sample.
+This correction does not identify the SQL behind the historical P2028 failures.
+
+Two earlier authorized manual invocations committed 200 request roots in total;
+the second yielded safely. The last completed drainage window still had 35,168
+rows in its fixed expired cohort and 35,730 currently expired rows at different
+measurement times. These counts do not establish whole-backlog clearance or
+physical disk recovery. The later read-only release snapshot at 23:15:49 UTC
+found 39,404 currently expired rows across all 26 current retention-health
+families and zero over 24 hours overdue; its separately measured fixed
+23:15:00.760 cohort contained 39,390 rows. Other expiry categories outside these
+26 families were not remeasured, including owner-release and old retention-run
+ledger cleanup categories, so no global backlog claim is supported.
+
+Both bounded ledgers contained zero attempts in the observed window from the
+worker's first verification at 23:04:57.764 through 23:15:41.021866 UTC; caps were
+not reached. Most of that window precedes final HTTP verification. There is no
+observed post-release deletion behavior. The successful expiry cutoff remained
+21:45:44.183, includes manual success and is not execution completion or daily
+cycle credit. The existing scheduler ledger and runtime remained RUNNING without
+error, with next wake October 27 at 10:30 UTC. Historical unfinished entries
+(23 durable and three wrappers) were preserved without replay or rewriting.
+
+At the separate 23:16 capacity readings, PGDATA had 8,025,223,168 free bytes,
+WAL 167,772,160 bytes, and lock waiters and long transactions were zero. Watch
+exposure had zero expired rows in the backlog snapshot and an 8,300,552,192-byte
+relation, with first stored expiry October 27 at 01:54:46.228 UTC. These are
+dated observations, not a disk-reclamation or future-capacity forecast.
+
+Admission remains on HOLD from the 23:08:28 worker reading: 4,573,614,080 bytes
+of 8 GB exceeds the existing 4 GB gate despite health 200/ok and zero OOM kills.
+The HTTP rollout was incomplete at that admission snapshot and verified later;
+memory remains the unresolved guard. No second admission sample or manual pass
+followed. The release verification made no production mutations. Astra continues
+a bounded investigation of the memory blocker without widening the guard.
+
+Resume only after reviewed actual-release and fresh admission evidence, keeping
+the existing memory, health, concurrency, lock and PGDATA guards. Reconcile each
+bounded expired-only pass and stop on failure, yield, uncertainty or an unsafe
+guard. Do not delete ahead of stored expiry or widen timeouts. The October 27
+Watch expiry wave and capacity proof remain separate requirements. October 23
+still supplies the only accepted ordinary loaded failure-free cycle; manual
+passes add no credit. Keep feat-554 and feat-756 open, the daily monitor active
+and the expired outage monitor paused. The scope remains 11 complete,
+25 cancelled and four open; accepted coverage and unmeasured usefulness are
+unchanged.
 
 ## Dependencies, indexes and older PRs
 
