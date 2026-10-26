@@ -216,6 +216,11 @@ repair one only through the authoring session, never with `maestro` itself:
 3. `node apps/mobile/release-check/cli.mjs session down` runs the log check and
    stops the device and the server.
 
+Before you write a journey, read
+`docs/solutions/developer-experience/maestro-journey-authoring-traps-mobile-release-check.md`.
+It names the Maestro traps that cost failed tries, for example text that must
+match in full, iOS 26 taps outside a sheet, and the iPad sheet edge.
+
 Each journey follows these rules. `check-lists` checks most of them, and `run`,
 `record-search`, and `session try` refuse a journey file that breaks one of
 those checks:

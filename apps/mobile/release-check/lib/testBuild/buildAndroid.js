@@ -14,6 +14,7 @@ const ANDROID_ARTIFACT = path.join("android", "app-release.apk")
 
 const GRADLE_ARGS = Object.freeze([
   "--no-daemon",
+  // A cold release build ran out of Metaspace with the generated default limits.
   "-Dorg.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=2g",
   ":app:assembleRelease",
   "-PreactNativeArchitectures=arm64-v8a",
