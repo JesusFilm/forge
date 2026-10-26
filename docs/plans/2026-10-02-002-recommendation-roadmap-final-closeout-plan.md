@@ -241,13 +241,24 @@ independently reviewed: the fixed daily-start cohorts were clear across 26
 families, but 26,194 newly expired rows remained, with zero over 24 hours overdue.
 PGDATA had 7,503,618,048 free bytes; separate probe times and capped/missing
 surfaces limit inference. Preserve those limits in the linked checkpoint.
-Continue with the minimal logging-envelope and consumer correction for the
-confirmed repository format mismatch. PR #2900
+The minimal logging-envelope and consumer correction for the confirmed format
+mismatch merged as reviewed, green PR #2915 (`f27980447`); actual Admin HTTP and
+worker samples on descendant `63a1ccc40` were verified healthy/compact with
+correct runner roles at 20:59:48.987-20:59:53.009 UTC. PR #2900
 deployed diagnostics, not a timeout fix; worker log transport and the original
 timeout cause remain unproved. The transient worker 503 recovered on two health
 samples, with cause and child process/container continuity still unverified.
 No fault injection, timeout widening, direct deployment or manual cleanup is
-authorized. Require independent exact-head review, green checks and normal
-release verification for the logging change, without treating that release as
-retention acceptance. Preserve the daily monitor, separate October 27 Watch
-expiry-wave verification and unresolved HNSW fixture work.
+authorized. The independently accepted [release bundle](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-diagnostic-format-release)
+found zero new natural attempts at its 21:00:15 ledger snapshot and zero phase
+events in the separate bounded log window, so it does not prove production
+failure-log transport, loaded execution or retention acceptance. Continue the
+existing daily monitor with the new parser and actual release. Preserve the
+separate October 27 Watch expiry-wave verification
+and unresolved HNSW fixture work. The later Co-watch PR #2916 reopened feat-573;
+current scope is 40 paths, **11 complete, 25 cancelled and four open**. Its owner
+remains the existing Co-watch release task; do not duplicate its work or treat
+its separate statement-timeout change as a retention change. Replacement main
+CI, production image and all four CodeQL analyses passed; the cancelled older
+merge jobs remain cancelled. One further qualifying ordinary loaded cycle is
+required, with fresh genuine failures routed to bounded diagnosis.
