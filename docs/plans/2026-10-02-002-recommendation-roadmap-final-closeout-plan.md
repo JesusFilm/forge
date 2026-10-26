@@ -50,7 +50,8 @@ hidden in a successor ticket.
 ## Verification and sequencing
 
 Audit before edits; each implementer records a scoped plan before runtime changes.
-Independent areas use separate GPT-6 Sol chats, with no further delegation.
+Independent areas use separate GPT-6 Sol chats, with no further delegation;
+the October 27 user-requested retention handoff uses GPT-6 Astra.
 Shared production operations and merges belong to the coordinating owner.
 Children own their ticket files and evidence; root owns the consolidated record,
 policy, global index and cross-ticket dependency reconciliation.
@@ -262,3 +263,51 @@ its separate statement-timeout change as a retention change. Replacement main
 CI, production image and all four CodeQL analyses passed; the cancelled older
 merge jobs remain cancelled. One further qualifying ordinary loaded cycle is
 required, with fresh genuine failures routed to bounded diagnosis.
+
+### October 27 retention repair and Astra handoff
+
+The user explicitly authorized clearing the remaining stored-expired backlog,
+repairing cleanup failures and transferring that work to GPT-6 Astra task
+`01a17a53-3d0b-7b51-806c-78af8d6cfc3c`. The previous storage owner stopped edits
+and manual operations and retains only its existing daily read-only monitor.
+Parent continues independent review assignments, exact-head merges and shared
+production coordination. No duplicate task, scheduler or monitor is required.
+
+The [current correction and handoff](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-exhausted-budget-correction-and-cleanup-handoff)
+records PR #2920's reproduced pre-work exhaustion defect, 94 focused and nine
+native PostgreSQL tests, independent exact-head approval and green normal merge
+`ce23241a9`. Preserve the five-second cleanup budget, committed counters, unknown
+backlog on yield, unchanged success watermark and actual-error semantics.
+Historical P2028 SQL remains unproved. Both actual Admin roles were verified on
+exact `ce23241a9` with matching source hashes, health, compact mode and correct
+runner roles at separate 23:08 worker and 23:15 HTTP observations. Main CI,
+production image and all four CodeQL analyses passed. The finite ledger window
+contained zero attempts; the release establishes no loaded deletion behavior.
+
+Retain the read-only release receipt and continue observing both ledgers, all 26
+current retention-health families, expiry cohorts, success watermark and
+capacity through the existing daily monitor. The latest snapshot has 39,404
+expired rows across those families and zero over 24 hours overdue; no global
+clearance or disk-recovery claim is justified. Investigate the memory blocker
+with bounded saved evidence and cheap aggregate diagnostics before selecting
+any corrective change. After a meaningful state change, prepare fresh manual
+admission evidence. Require the
+same healthy worker process at two roughly 30-second-separated readings at or
+below 4 GB of 8 GB, no rising burst and zero OOM kills, PGDATA above 5 GB, and no
+competing cleanup, lock waiter or long transaction. The 23:08 admission reading of 4.574 GB
+does not pass. Do not repeatedly probe an unchanged failed guard.
+
+The later explicit backlog request supersedes the older no-further-manual-work
+instructions in the dated checkpoints above. A parent-reviewed admitted window
+may run at most five individually reconciled deployed expired-only passes or
+five minutes; stop on failure, yield, uncertainty, unsafe guards or no progress.
+Use the reviewed exclusive-attempt recorder, preserve expected exit-3 payloads
+and never replay an uncertain invocation. No manual pass is authorized merely
+by the read-only verification assignment or the existing daily heartbeat.
+
+Keep feat-554 in progress until one further qualifying ordinary loaded,
+failure-free cycle supplements October 23. Preserve the Watch exposure wave,
+HNSW fixture and separate Co-watch work without claiming them closed. Update
+release receipts and the same daily monitor with actual deployed evidence;
+keep the expired outage monitor paused and the scope at 11 complete,
+25 cancelled and four open until new acceptance evidence supports a change.
