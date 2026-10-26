@@ -40,8 +40,39 @@ cutoffs are not execution completion timestamps or current-backlog proof.
 deployed phase diagnostics after the October 24 incident. It is not a timeout
 fix. Static review found the leading-JSON log shape conflicts with the repository
 Railway logging convention; historical request-handler transport evidence does
-not prove loss from the scheduled worker. A bounded logging-envelope/consumer
-correction is in progress, with budgets, expiry and error semantics preserved.
+not prove loss from the scheduled worker. The bounded logging-envelope/consumer
+correction merged as [PR #2915](https://github.com/JesusFilm/forge/pull/2915),
+`f27980447bef1bc24c815553698501afb9f6bc2e`, after independent exact-head review
+and 28 terminal PR checks: 20 success and eight expected scope skips. The
+reviewer independently passed 44 unit/CLI tests, including malformed input and
+bounded stream parsing; applicable native PostgreSQL retention steps passed in
+CI. Budgets, expiry, error/yield classification and committed counters are
+unchanged. The [independently reviewed actual release receipt](https://github.com/JesusFilm/forge/pull/2915#issuecomment-6427366581)
+verified both Admin roles on descendant `63a1ccc40` at 20:59:48.987-20:59:53.009
+UTC, healthy/compact with correct runner roles and unchanged retention source.
+Replacement main CI, production image and all four CodeQL analyses passed;
+earlier main jobs cancelled by the later Co-watch push are not counted as green.
+This is not a timeout fix or another qualifying cycle.
+
+At 21:00:15, each independent ledger contained zero new attempts from 20:59:53,
+below its 10,001 cap. Its future 02:00 query bound does not extend the observation.
+A separate worker log window through 21:01:56 returned zero events; no loaded
+throughput or production failure-log execution/transport is proved. Scheduler
+ledger/runtime were RUNNING without error, next ordinary wake October 27 10:30
+UTC. The pre-release success cutoff remains 12:17:30.484.
+
+The 21:00-21:01 snapshots found **32,024 currently expired rows** across 26
+families, zero over 24 hours overdue, with both fixed daily-start cohorts clear.
+Eight additional fixed-expiry probes were zero; a separate pending-erasure
+probe found one request from 20:10:34.6 without an expiry guard, not an overdue
+eligibility result. Guarded baseline/experiment parents were eligible/held zero;
+generation-proof eligibility remains unmeasured. PGDATA free was 8,080,678,912
+bytes, WAL 184,549,376, with no lock waiters or long transactions. The first old
+Watch exposure expiry remains October 27 01:54:46.228 UTC; its capped recent
+sample does not prove the full distribution or the upcoming wave's throughput.
+No physical-reclamation or exhaustion forecast follows from these snapshots.
+The retained SQL definitions match the aggregate output, but prepared/not-executed
+headers mean the saved bundle alone does not prove exact invocation provenance.
 
 The worker separately returned 503 at 19:19:58 UTC, then 200/ok on two follow-ups
 on the same deployed revision/ID `605ff68e38`. Its initial response body was not
