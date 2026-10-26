@@ -1094,7 +1094,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
               fixtureCpus: 2,
               fixtureMemoryGiB: 2,
               publishers: 1,
-              statementMs: 5_000,
+              statementMs: null,
               lockMs: 1_000,
               transactionMs: 30_000,
             },

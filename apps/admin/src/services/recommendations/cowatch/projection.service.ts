@@ -366,9 +366,11 @@ export async function preflightCowatchShadowGeneration(
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SET TRANSACTION READ ONLY`
-      await tx.$executeRaw`SET LOCAL statement_timeout = '5000ms'`
+      // The source read can exceed five seconds; the read-only transaction
+      // still has a 30-second deadline.
+      await tx.$executeRaw`SET LOCAL statement_timeout = 0`
       await tx.$executeRaw`SET LOCAL lock_timeout = '1000ms'`
-      // Compilation must not consume the bounded source read's five-second budget.
+      // Keep query compilation inside the transaction's deadline.
       await tx.$executeRaw`SET LOCAL jit = off`
       const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
       return {
@@ -460,7 +462,9 @@ export async function publishCowatchShadowGeneration(
       : parseCowatchPublicationAdmission(admission, now, sourceWindow)
   return prisma.$transaction(
     async (tx) => {
-      await tx.$executeRaw(Prisma.sql`SET LOCAL statement_timeout = '5000ms'`)
+      // Publication repeats the preflight source read in its own bounded
+      // transaction; do not reintroduce the five-second statement limit here.
+      await tx.$executeRaw(Prisma.sql`SET LOCAL statement_timeout = 0`)
       await tx.$executeRaw(Prisma.sql`SET LOCAL lock_timeout = '1000ms'`)
       await tx.$executeRaw(Prisma.sql`SET LOCAL jit = off`)
       // One publisher across all scopes bounds concurrent write amplification.
