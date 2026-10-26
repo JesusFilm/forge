@@ -114,7 +114,10 @@ devices, binds local ports, and writes under
    Firebase Analytics is turned off for good in the native settings.
 4. **Check the build.** It reads each built app and stops the run when it finds
    a Datadog token, a listed Mux Data key, the production update channel, or a
-   missing Firebase off setting, or when the server address is missing.
+   missing Firebase off setting, or when the server address is missing. The
+   Mux Data key check finds nothing while `muxDataEnvKeyDigests` in
+   `config/test-settings.json` is empty. The mobile owner adds the digest of
+   each production key before the first full release run.
 5. **Probe and journeys.** The settings probe runs first on each device, and a
    failed probe stops the run. Then each journey runs on every device of each
    platform that shows its screens, from cleared app data. A failed journey
@@ -266,7 +269,9 @@ The runner home is `~/Library/Caches/forge-release-check`, or
 
 - `runs/<run id>/`: one folder for each run, with the report. The newest 5
   stay, and `latest.json` names the newest.
-- `builds/<commit>/`: the test builds. The newest 2 stay.
+- `builds/<commit>/`: the test builds. After each build, the build of the
+  current commit and the newest other build stay, and the runner deletes the
+  rest. So `--reuse-build` finds only those two.
 - `worktrees/`: the runner's own git worktree for the builds.
 - `cache/`: the iOS build cache (about 3 GB), so a later build is faster.
 - `sessions/` and `records/`: the authoring sessions and the search records.

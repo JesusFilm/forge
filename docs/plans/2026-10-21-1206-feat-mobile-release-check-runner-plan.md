@@ -741,7 +741,7 @@ Considered and not built:
 - Covers AE11. Exit 2 for dirty inputs, a held lock, a commit mismatch, and a missing tool, and the stubbed build, device, and server layers record zero calls.
 - A journey selection that matches nothing is a refusal, never exit 0.
 - Covers AE12. SIGTERM during the stubbed journeys phase gives `summary.json` with `stopReason: "aborted"` and stop calls for owned devices and the server only.
-- A lock whose pid is dead shows as stale in `plan` and does not block the next run.
+- A lock whose pid is dead shows as stale in `plan`. A stale run, session, or `record-search` lock blocks the next run, `session up`, `setup`, and `record-search` with `STALE_RUN_LOCK` until `recover` (or `session down` for a session) cleans up, so the crashed run keeps its report and its leftover devices stop first (owner decision, 2026-10-27).
 - A port that a test listener holds at consent time makes a refusal before any build call.
 - `--detach` returns with a run ID while the child keeps running, and the child writes `summary.json` at the end.
 - A time limit on the journeys phase ends the run with `stopReason: "timeout"`.
