@@ -9,6 +9,7 @@ import { nominations } from "./composition/test-helpers"
 import { COWATCH_SHADOW_GENERATOR_KEY } from "./cowatch/graph"
 import { COWATCH_MMR_TRIAL_MANIFEST } from "./promotion/manifest"
 import { lockRetentionRoots } from "./retention-locks"
+import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   RECOMMENDATION_RETENTION_BATCH_SIZE,
@@ -573,7 +574,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         logged.mockRestore()
       }
       expect(diagnosticLog).toHaveLength(1)
-      const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
+      const diagnostic = parseRetentionPhaseFailureLog(
+        String(diagnosticLog[0]?.[0]),
+      )
+      expect(diagnostic).not.toBeNull()
       expect(diagnostic).toMatchObject({
         event: "recommendation_retention_phase_failure",
         errors: {
@@ -585,7 +589,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         fallbackLedger: { outcome: "succeeded" },
       })
       expect(
-        diagnostic.precedingCompleted.some(
+        diagnostic?.precedingCompleted.some(
           (phase: { label: string }) => phase.label === "delete_request_roots",
         ),
       ).toBe(true)
@@ -879,14 +883,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         logged.mockRestore()
       }
       expect(diagnosticLog).toHaveLength(1)
-      const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
-      expect(diagnostic.failed[0]).toMatchObject({
+      const diagnostic = parseRetentionPhaseFailureLog(
+        String(diagnosticLog[0]?.[0]),
+      )
+      expect(diagnostic?.failed[0]).toMatchObject({
         label: "delete_request_roots",
         stage: "commit_acknowledgement",
         commitAcknowledgementMs: null,
       })
-      expect(diagnostic.failed[0].counterUpdateMs).not.toBeNull()
-      expect(diagnostic.fallbackLedger.outcome).toBe("succeeded")
+      expect(diagnostic?.failed[0].counterUpdateMs).not.toBeNull()
+      expect(diagnostic?.fallbackLedger.outcome).toBe("succeeded")
       expect(JSON.stringify(diagnostic)).not.toContain(
         "lost commit acknowledgement",
       )
