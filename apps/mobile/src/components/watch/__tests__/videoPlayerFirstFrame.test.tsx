@@ -1,4 +1,4 @@
-// feat-787 KTD19: the release check times the first video frame by waiting
+// feat-798 KTD19: the release check times the first video frame by waiting
 // for `player-first-frame`, so the view must appear only once playback
 // starts, not when the autostart veil lifts for another reason.
 

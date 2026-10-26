@@ -1010,7 +1010,7 @@ Considered and not built:
 | Abort                 | `stop` during a partial run                                                                                                                    | U6          | Report with `aborted`; only owned devices stopped    |
 | Agent parity          | A new Claude session uses `.claude/commands/release-check.md` for a one-journey partial run                                                    | U12         | Its counts equal `summary.json`; no release decision |
 | Full release run      | The command with a yes, on the mobile owner's Mac                                                                                              | U13         | Success Criteria hold                                |
-| Roadmap ID            | Scan every origin branch for `feat-787` again before the push                                                                                  | PR          | No other file claims `feat-787`                      |
+| Roadmap ID            | Scan every origin branch for `feat-798` again before the push                                                                                  | PR          | No other file claims `feat-798`                      |
 
 ---
 
@@ -1021,5 +1021,5 @@ Considered and not built:
 - No file in `apps/admin`, `app.json`, `eas.json`, `apps/mobile/plugins/`, or the `scripts` block of `apps/mobile/package.json` changed.
 - The developer's checkout shows no change after a full run.
 - Spike code, temporary scripts, and abandoned attempts are not in the diff.
-- `docs/roadmap/platform/feat-787-mobile-release-check-runner.md` is set to `in-progress` when work starts and `complete` when U13 passes.
+- `docs/roadmap/platform/feat-798-mobile-release-check-runner.md` is set to `in-progress` when work starts and `complete` when U13 passes.
 - After the merge, a `ce-compound` write-up records the Maestro setup and the release-build recipe in `docs/solutions/`, so QA engineers' sessions can find them.

@@ -242,7 +242,7 @@ describe("known bugs", () => {
     devices: ["iphone-se"],
     step: "Home shows the hero",
     check: "assertion_failed",
-    ticket: "feat-787",
+    ticket: "feat-798",
   }
 
   it("accepts a complete entry", () => {

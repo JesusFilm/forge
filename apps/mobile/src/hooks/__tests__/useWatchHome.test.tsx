@@ -324,7 +324,7 @@ describe("useWatchHome — the model and the insert index land in one state writ
   })
 })
 
-// ── feat-787 KTD5: the body source the release check's probe reads ─────────
+// ── feat-798 KTD5: the body source the release check's probe reads ─────────
 
 describe("useWatchHome — bodySource follows the body that painted", () => {
   let sources: (string | null)[] = []

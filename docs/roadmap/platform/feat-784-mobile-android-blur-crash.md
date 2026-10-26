@@ -14,7 +14,7 @@ tags:
 
 ## Problem
 
-The Android app can crash when the Search tab opens. The release check (feat-787) found it on 2026-10-22 at 19:46:39Z, on the `android-phone` emulator (API 35), in the `search-open-result` journey at the step "Search shows". On 2026-10-22 the release check counted 1 crash in 12 Search-tab opens on `android-phone`, 0 in 2 on `android-tablet`, and 0 in 14 on the iOS devices. Each open starts from cleared app data, so each one decodes the images again.
+The Android app can crash when the Search tab opens. The release check (feat-798) found it on 2026-10-22 at 19:46:39Z, on the `android-phone` emulator (API 35), in the `search-open-result` journey at the step "Search shows". On 2026-10-22 the release check counted 1 crash in 12 Search-tab opens on `android-phone`, 0 in 2 on `android-tablet`, and 0 in 14 on the iOS devices. Each open starts from cleared app data, so each one decodes the images again.
 
 The crash is a native `SIGTRAP` on a Glide thread (`glide-source-th`), so no JavaScript error handler sees it:
 
@@ -50,7 +50,7 @@ Mechanism (confirmed by a `javap` reading of `glide-transformations` 4.3.0 on 20
    - `TopicCard`: Android shows the thumbnail with no blur. Keep the label readable over the brightest real thumbnail: measure the label's contrast against the scrim on the device, and change the scrim or the image opacity only if the measurement needs it.
    - `WatchAmbient`: apply the same rule if two of its blurs can decode at the same time. Otherwise, write down why one blur at a time is safe, in the PR.
 2. Add a jest guard that fails when a `blurRadius` value can reach Android. Falsify it once.
-3. In a separate change on the feat-787 branch, remove the `feat-784` Known-Bug entries when this fix is on `main`.
+3. In a separate change on the feat-798 branch, remove the `feat-784` Known-Bug entries when this fix is on `main`.
 
 ## Constraints
 
@@ -77,4 +77,4 @@ The release check runner ran a probe on the `android-phone` emulator: launch, op
 
 - The probe did not reproduce the crash without the fix. At about 1 crash in 12 opens, 20 clean tries happen by chance about 18% of the time. So the main proof is structural: with no `blurRadius`, `ExpoImageModule.kt` keeps the prop null, `ExpoImageViewWrapper.kt` adds no `BlurTransformation`, and `RSBlur.blur` cannot run.
 - The first round showed sharp topic thumbnails and soft vertical streaks in the ambient wash. The final round uses `stretchedDecodeStyle` (`src/lib/stretchedDecode.ts`): the topic cards use a shrink of 15, and the wash uses 64. On device screenshots, the topic cards match the old blurred look (mean luma gradient 1.097 against 1.133 with the old blur), the corners stay clipped, and the wash shows no streaks and no seam.
-- Follow-up on the feat-787 branch: remove the five `feat-784` Known-Bug entries in `apps/mobile/release-check/config/known-bugs.json` after this fix is on `main`.
+- Follow-up on the feat-798 branch: remove the five `feat-784` Known-Bug entries in `apps/mobile/release-check/config/known-bugs.json` after this fix is on `main`.

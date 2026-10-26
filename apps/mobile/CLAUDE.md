@@ -297,7 +297,7 @@ full env (and the fallback on a fresh solo clone with no other checkout) is
 BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
 change made after boot needs a Metro restart to take effect.
 
-## Release check (feat-787)
+## Release check (feat-798)
 
 `apps/mobile/release-check/` holds the release check runner. It builds the app
 from the current commit, runs fixed Maestro journeys on its own five test
