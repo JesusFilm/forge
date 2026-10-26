@@ -256,6 +256,24 @@ const STORIES: Record<
     ],
     out: "Jairus's Daughter",
   },
+  "lumo-luke-15-lost": {
+    // No setting: the card starts on 15:1, which is itself the setting (the
+    // tax collectors gather, the Pharisees mutter); the salt saying (14:34-35)
+    // before it is outside the card.
+    terms: [
+      "Shepherd",
+      "Sheep",
+      "Wilderness",
+      "Publican",
+      "Pharisees",
+      "Scribes",
+      "Candle",
+      "Lamp",
+      "Repentance",
+      "THE THREE PARABLES OF THE GOSPEL: OF THE RECOVERY OF THE LOST - OF THE LOST SHEEP, THE LOST DRACHM, THE LOST SON.",
+    ],
+    out: "Lost Sheep",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the

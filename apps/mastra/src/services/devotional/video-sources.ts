@@ -373,6 +373,36 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-8-jairus.ru.vtt" },
     },
   },
+  {
+    // The Lost Sheep and the Lost Coin. The scene closes segment 2615 (Luke
+    // 14:1-15:10): "Whoever has ears to hear" (14:35) ends at 346.1 and 15:1
+    // starts speaking at 349.3; "over one sinner who repents" ends at 453.95.
+    // The segment runs to 456.4 under a sung line (454.4-456.4) that is not
+    // part of the scene, so the window stops before it (whisper per speech
+    // burst, 2026-10-26). Cue 13/14 (15:7) were timed by hand from a
+    // word-level pass: the burst tool lost "I tell you that".
+    key: "lumo-luke-15-lost",
+    index: 1012,
+    mediaComponentId: "6_GOLuke2615",
+    title: "The Lost Sheep and the Lost Coin",
+    film: "lumo",
+    passage: { reference: "Luke 15:1-10", osisRef: "Luke.15.1-Luke.15.10" },
+    window: { startSec: 349.2, lengthSec: 105.4 },
+    // RU «Послушать Иисуса» starts at 348.05; «грешнике» ends at 451.75 and
+    // the same sung line starts at 452.2.
+    windowByLang: { ru: { startSec: 347.6, lengthSec: 104.6 } },
+    // ~105s ×1.05 → ~100s on screen, plus a breath.
+    maxVideoCardSec: 103,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-15-lost.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-15-lost.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))
