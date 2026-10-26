@@ -17,6 +17,174 @@ tags:
   - "operations"
 ---
 
+## October 26 follow-up: continuing deletion with failures
+
+The independently reviewed [October 26 ledger receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6425467086)
+adds **no qualifying cycle**. At 19:27:51 UTC, the separate ledgers recorded:
+
+| Ordinary cycle (UTC)       | Durable ledger                                             | Scheduled wrapper ledger | Elapsed first start to last finish | Mean completed wrapper duration, including failures |
+| -------------------------- | ---------------------------------------------------------- | ------------------------ | ---------------------------------- | --------------------------------------------------- |
+| October 25                 | 270 succeeded, 381 budget yields, 37 failed                | 651 succeeded, 37 failed | 6h40m33s                           | 4.380s                                              |
+| October 26, as of snapshot | 191 succeeded, 52 budget yields, 8 failed, 1 stale RUNNING | 243 succeeded, 9 failed  | 1h46m52s                           | 4.005s                                              |
+
+Each ledger returned 940 rows below its 20,001 cap. The October 25 window spans
+10:30 UTC to the next 10:30; the October 26 query ends at 21:00, later than the
+snapshot, so it is only as-of evidence. All wrappers were scheduled. Successful
+wrappers include safe durable yields; there is no shared key for pairing the
+two ledgers. Both cycles committed loaded deletion, including descendants, but
+their failures permanently exclude them from failure-free acceptance. The last
+success expiry cutoffs were October 25 17:11:15.884 and October 26 12:17:30.484;
+cutoffs are not execution completion timestamps or current-backlog proof.
+
+[PR #2900](https://github.com/JesusFilm/forge/pull/2900#issuecomment-6385131395)
+deployed phase diagnostics after the October 24 incident. It is not a timeout
+fix. Static review found the leading-JSON log shape conflicts with the repository
+Railway logging convention; historical request-handler transport evidence does
+not prove loss from the scheduled worker. The bounded logging-envelope/consumer
+correction merged as [PR #2915](https://github.com/JesusFilm/forge/pull/2915),
+`f27980447bef1bc24c815553698501afb9f6bc2e`, after independent exact-head review
+and 28 terminal PR checks: 20 success and eight expected scope skips. The
+reviewer independently passed 44 unit/CLI tests, including malformed input and
+bounded stream parsing; applicable native PostgreSQL retention steps passed in
+CI. Budgets, expiry, error/yield classification and committed counters are
+unchanged. The [independently reviewed actual release receipt](https://github.com/JesusFilm/forge/pull/2915#issuecomment-6427366581)
+verified both Admin roles on descendant `63a1ccc40` at 20:59:48.987-20:59:53.009
+UTC, healthy/compact with correct runner roles and unchanged retention source.
+Replacement main CI, production image and all four CodeQL analyses passed;
+earlier main jobs cancelled by the later Co-watch push are not counted as green.
+This is not a timeout fix or another qualifying cycle.
+
+At 21:00:15, each independent ledger contained zero new attempts from 20:59:53,
+below its 10,001 cap. Its future 02:00 query bound does not extend the observation.
+A separate worker log window through 21:01:56 returned zero events; no loaded
+throughput or production failure-log execution/transport is proved. Scheduler
+ledger/runtime were RUNNING without error, next ordinary wake October 27 10:30
+UTC. The pre-release success cutoff remains 12:17:30.484.
+
+The 21:00-21:01 snapshots found **32,024 currently expired rows** across 26
+families, zero over 24 hours overdue, with both fixed daily-start cohorts clear.
+Eight additional fixed-expiry probes were zero; a separate pending-erasure
+probe found one request from 20:10:34.6 without an expiry guard, not an overdue
+eligibility result. Guarded baseline/experiment parents were eligible/held zero;
+generation-proof eligibility remains unmeasured. PGDATA free was 8,080,678,912
+bytes, WAL 184,549,376, with no lock waiters or long transactions. The first old
+Watch exposure expiry remains October 27 01:54:46.228 UTC; its capped recent
+sample does not prove the full distribution or the upcoming wave's throughput.
+No physical-reclamation or exhaustion forecast follows from these snapshots.
+The retained SQL definitions match the aggregate output, but prepared/not-executed
+headers mean the saved bundle alone does not prove exact invocation provenance.
+
+The worker separately returned 503 at 19:19:58 UTC, then 200/ok on two follow-ups
+on the same deployed revision/ID `605ff68e38`. Its initial response body was not
+captured. Child process/container continuity and the cause remain unverified;
+neither Redis nor retention is established as the cause.
+
+A separate independently reviewed read-only bundle at 19:31-19:33 UTC found both
+roles healthy, compact and correctly assigned. The 26-family backlog was
+**26,194 currently expired rows**, zero over 24 hours overdue; oldest expiry
+12:17:35.988 followed the latest success cutoff. Fixed October 25/26 10:30 cohorts
+were zero across those 26 families. Nine extra fixed categories and checked
+precomputed parent guards were also zero without hitting their caps. Exact
+fixed-cohort predicate SQL was not in the audited bundle, and precomputed-generation
+proof eligibility was not sampled; this is not clearance of all expired rows.
+The service health endpoint is not a live retention-health result. Current
+retention-health source scans 26 expiry families; the older 21-type shorthand
+must not be carried forward.
+
+At separate snapshots, PGDATA had 7,503,618,048 free bytes of 48,891,670,528;
+WAL was 771,751,936 bytes, with stage rows, lock waiters and long transactions
+zero. No growth forecast or physical recovery is established. The Watch sample
+found no expired exposure and first stored expiry October 27 01:54:46.228 UTC,
+but reached its 1,001-row cap; it cannot prove the full expiry distribution or
+absence of early deletion globally. Three bounded filtered worker log windows
+returned zero phase-event matches; asserted unfiltered controls were not retained
+in the audited set. The log-transport limitation remains unresolved.
+
+October 23 remains **one** accepted ordinary loaded cycle; one more failure-free
+completed cycle is required. The scheduler snapshot was RUNNING without a
+recorded error, next wake October 27 10:30 UTC. Keep the daily monitor active,
+the temporary outage monitor paused, and this ticket in progress. No manual
+cleanup, stale-ledger replay or timeout widening is authorized by this receipt.
+
+## October 24 failure after one qualifying daily cycle
+
+The ordinary October 23 cycle qualifies as **one** loaded, failure-free cycle.
+Independent review accepted all 85 scheduled passes: zero failures or yields,
+84 full batches and a final drain. They cleared the fixed October 23 10:24:08 UTC
+cohort from 12,129 expired rows across 26 families to zero, with the nine extra
+expiry categories and expired precomputed parent guards also clear. The last
+success watermark was 10:51:19.463 UTC, and the scheduler returned to its next
+daily wake. Mean wrapper duration was 3.61 seconds; elapsed catch-up time was
+20 minutes 4 seconds. No manual purge launched. The [reviewed production receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6363320357)
+retains both ledgers, descendants, backlog and capacity. The 95 newly expired
+tracked/session-link rows in the final snapshot all expired after that watermark;
+this was not a claim that production remained globally empty.
+
+The October 24 cycle does **not** qualify. A bounded 12:49-12:50 UTC snapshot
+recorded 308 durable successes, 91 safe budget yields, seven failures and one
+stale RUNNING entry; the wrapper ledger separately recorded 399 successes and
+eight failures. There is no shared per-attempt key between these ledgers, so
+their entries must not be paired by proximity. A later bounded failure read
+captured a ninth failed scheduled wrapper, started at 12:50:22 UTC. Five wrapper
+errors reported expired/closed interactive transactions, two reported the batch
+deadline, one reported a generic transaction error and one a terminated
+connection. Reported operations do not establish which SQL consumed the budget.
+The exact cause remains under investigation; no timeout correction is claimed.
+
+The fixed October 24 10:30 UTC cohort was clear across the 26 monitored families
+at the 12:50 snapshot; 1,196 currently expired rows remained across those families,
+with zero over 24 hours overdue, plus 31 expired profile-session links. The
+scheduler was still running bounded catch-up. Both actual
+Admin roles ran healthy, compact `6360b78ca`, a descendant of `85e97f521` with
+unchanged retention code. PGDATA had 9,684,131,840 free bytes of 48,891,670,528,
+WAL was 201,326,592 bytes, and no lock waiters or long transactions were observed.
+These dated observations do not erase the failures or prove physical reclamation.
+Sanitized evidence is retained under the storage owner's
+`outputs/heartbeats/20261024T-diagnostic/` and the parent incident checkpoint.
+
+Keep this ticket in progress: **one further ordinary loaded, failure-free cycle
+is required**. The October 23 credit remains valid. Continue bounded diagnosis
+and the existing daily read-only monitor; do not replay orphaned attempts,
+widen timeouts or manufacture acceptance with manual cleanup. A safe yield may
+precede a genuinely completed cycle; yield-only progress is not completion.
+
+## October 23 daily automation verification
+
+The owner requested automatic daily deletion of rows whose stored expiry has
+passed. Main `64bb087209128e8cca6a8bbd79475aafff180a42` already implements this
+through the Admin worker's durable recommendation-retention scheduler: a daily
+10:30 UTC wake (23:30 NZDT), bounded passes and 60-second continuation when
+more expired work is reported. No duplicate scheduler or change to persisted
+expiry is needed. The operational details and live verification procedure are
+in `docs/operations/semantic-recommendation-tracer.md`.
+
+At October 23 06:36:15 UTC, a bounded read-only join of `workflow_run` to
+`workflow.workflow_runs` confirmed both the scheduler ledger and its actual
+persisted workflow runtime were `running`, without recorded errors. The next
+daily wake was October 23 10:30 UTC. This proves the stored runtime state,
+not an actively executing step or a future successful cycle. The storage-owner
+receipt is `outputs/heartbeats/20261023T0417-drain-audit/scheduler-runtime-sql.json`.
+The expired-row accumulation between daily wakes is compatible with the
+schedule; it does not by itself prove the preceding cycle stopped early.
+The parent verified 46 existing workflow/job tests covering daily scheduling,
+bounded continuation, yields, failures and singleton startup. The tests do not
+replace actual runtime and production deletion evidence.
+
+The strict manual cleanup repair in [#2878](https://github.com/JesusFilm/forge/pull/2878)
+merged as `85e97f521`. Both actual Admin roles ran that revision with correct
+runner roles, compact mode and health 200 at 09:03:53 UTC. At 09:12:17, the
+scheduler ledger and deployed durable runtime were again verified RUNNING
+without errors, with the next wake at 10:30 UTC. The [release receipt](../../reports/2026-10-23-watch-exposure-fortnight-rollout.md#strict-stored-expiry-release)
+preserves exact review, test, deployment, interrupted-window and scope evidence.
+The ordinary scheduler is unchanged; this is not a clean daily-cycle receipt.
+
+The separately authorized manual catch-up remains owned by the storage task.
+Manual deletion receipts give no credit toward the two ordinary loaded,
+failure-free daily cycles. October 22 still contains genuine failed attempts;
+its eventual recovery does not qualify it. Keep this ticket in progress until
+later ordinary cycles meet the existing throughput, complete-backlog, lock,
+watermark and capacity gates.
+
 ## October 6 eligibility-source unlink failure
 
 The first ordinary loaded cycle on the phase-admission release is **not

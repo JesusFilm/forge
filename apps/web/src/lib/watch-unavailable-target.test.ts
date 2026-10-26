@@ -116,6 +116,47 @@ describe("unavailable target requested language and schema lag", () => {
     ).toBeNull()
   })
 
+  it.each(["returned", "thrown", "combined"])(
+    "keeps requested-language recovery while tolerating %s passage metadata lag",
+    async (mode) => {
+      const error = {
+        errors: [
+          {
+            message: 'Cannot query field "languageSlug" on type "Passage".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+          ...(mode === "combined"
+            ? [
+                {
+                  message:
+                    'Cannot query field "requestedLanguage" on type "WatchRouteSnapshot".',
+                  extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+                },
+              ]
+            : []),
+        ],
+      }
+      if (mode === "thrown") queryMock.mockRejectedValueOnce(error)
+      else queryMock.mockResolvedValueOnce(error)
+      if (mode === "combined")
+        queryMock.mockResolvedValueOnce({ errors: [error.errors[1]] })
+      queryMock.mockResolvedValue({
+        data: { watchVideoRouteSnapshotBySlug: snapshot },
+      })
+      const { resolveWatchUnavailableRecoveryTarget } =
+        await import("./content")
+      await resolveWatchUnavailableRecoveryTarget("jesus", "french-african")
+      const expectedCalls = mode === "combined" ? 3 : 2
+      expect(queryMock).toHaveBeenCalledTimes(expectedCalls)
+      const fallback = print(queryMock.mock.calls[expectedCalls - 1]?.[0].query)
+      expect(fallback).not.toMatch(/passage\([^)]*\)\s*\{\s*languageSlug/)
+      expect(fallback).toContain("languageSlug: $languageSlug")
+      expect(fallback.includes("requestedLanguage {")).toBe(mode !== "combined")
+      await resolveWatchUnavailableRecoveryTarget("jesus", "french-african")
+      expect(queryMock).toHaveBeenCalledTimes(expectedCalls + 1)
+    },
+  )
+
   it("retries only the additive-field validation failure and cools down probes", async () => {
     const legacySnapshot = { ...snapshot, requestedLanguage: undefined }
     queryMock
@@ -182,25 +223,31 @@ describe("unavailable target requested language and schema lag", () => {
     }
   })
 
-  it("does not hide a mixed schema-validation and server failure", async () => {
-    queryMock.mockResolvedValue({
-      errors: [
-        {
-          message:
-            'Cannot query field "requestedLanguage" on type "WatchRouteSnapshot".',
-        },
-        {
-          message: "Database unavailable",
-          path: ["watchVideoRouteSnapshotBySlug"],
-        },
-      ],
-    })
-    const { resolveWatchUnavailableRecoveryTarget } = await import("./content")
-    await expect(
-      resolveWatchUnavailableRecoveryTarget("jesus", "french-african"),
-    ).rejects.toThrow("Database unavailable")
-    expect(queryMock).toHaveBeenCalledTimes(1)
-  })
+  it.each([
+    ["requestedLanguage", "WatchRouteSnapshot"],
+    ["languageSlug", "Passage"],
+  ])(
+    "does not hide a mixed %s validation and server failure",
+    async (field, type) => {
+      queryMock.mockResolvedValue({
+        errors: [
+          {
+            message: `Cannot query field "${field}" on type "${type}".`,
+          },
+          {
+            message: "Database unavailable",
+            path: ["watchVideoRouteSnapshotBySlug"],
+          },
+        ],
+      })
+      const { resolveWatchUnavailableRecoveryTarget } =
+        await import("./content")
+      await expect(
+        resolveWatchUnavailableRecoveryTarget("jesus", "french-african"),
+      ).rejects.toThrow("Database unavailable")
+      expect(queryMock).toHaveBeenCalledTimes(1)
+    },
+  )
 
   it("does not retry unrelated server or validation errors", async () => {
     queryMock.mockResolvedValue({

@@ -9,6 +9,7 @@ import {
   DEFAULT_PROBE_TIMEOUT_MS,
   defaultRunCommand,
   sourceProtocolWhitelist,
+  sourceTlsOptions,
   type RunCommand,
 } from "./ffmpeg.js"
 import { probeSource, type ProbeResult } from "./ffmpeg.js"
@@ -183,6 +184,7 @@ export async function runFingerprint({
     await runCommand(
       "ffmpeg",
       [
+        ...sourceTlsOptions(sourceUrl),
         "-protocol_whitelist",
         protocolWhitelist,
         "-i",
@@ -221,6 +223,7 @@ export async function runFingerprint({
     await runCommand(
       "ffmpeg",
       [
+        ...sourceTlsOptions(sourceUrl),
         "-protocol_whitelist",
         protocolWhitelist,
         "-i",

@@ -27,8 +27,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 FROM secure-node AS runtime-base
 
+COPY apps/shorts-worker/certificates /usr/local/share/devotional-worker/distrust
+COPY apps/shorts-worker/install-browser-distrust.sh /usr/local/bin/install-devotional-browser-distrust
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
+      libbrotli1 \
       libnss3 \
+      libnss3-tools \
       libdbus-1-3 \
       libatk1.0-0 \
       libasound2 \
@@ -47,6 +52,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       ffmpeg \
       ca-certificates \
       curl \
+    && dpkg --compare-versions "$(dpkg-query -W -f='${Version}' libbrotli1)" ge 1.0.9-2+deb12u1 \
+    && sh /usr/local/bin/install-devotional-browser-distrust \
     && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
@@ -139,6 +146,7 @@ COPY packages/devotional-workspace /app/packages/devotional-workspace
 COPY packages/shorts-compositions /app/packages/shorts-compositions
 COPY packages/studio-contracts /app/packages/studio-contracts
 COPY apps/shorts-worker/package.json /app/apps/shorts-worker/package.json
+COPY apps/shorts-worker/verify-image-trust.sh /usr/local/bin/verify-devotional-image-trust
 COPY --from=build /app/devotional-bundle /app/devotional-bundle
 COPY --from=build /app/apps/shorts-worker/dist /app/apps/shorts-worker/dist
 

@@ -660,3 +660,19 @@ worker is drained and disabled. The demand watcher remains retired;
 `/api/shorts/render-demand` and `STUDIO_RENDER_DEMAND_KEY` remain removed.
 Normal `/api/shorts/render-pool` polling and canonical leases remain unchanged.
 Read `docs/plans/2026-10-19-studio-always-on-ai.md` for current operating guidance.
+
+## Controlled image proposal
+
+`Dockerfile` filters OS trust before downloads and builds the existing Next
+standalone server with frozen filtered workspace dependencies. Public/static
+packaging and the workflow plugin remain. Its general media toolchain builds
+FFmpeg 7.1.5 with native TLS verification enabled by default, including nested
+HLS reads, and retains `libmp3lame` for audio cleanup. Explicitly configured
+`STUDIO_FFMPEG_PATH` / `STUDIO_FFPROBE_PATH` proof artifacts retain their own
+contract; the general binary is not a claim to reproduce those proofs.
+
+The source Railway configuration selects Docker; services without that config
+path continue to use dashboard settings until their owner approves a binding.
+Image acceptance covers actual startup, access denials, shipped assets and
+synthetic media extraction. It does not invoke providers or execute production
+content, renders or publication work.

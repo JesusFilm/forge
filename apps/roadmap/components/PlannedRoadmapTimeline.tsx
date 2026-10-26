@@ -107,12 +107,24 @@ function weekWidthPct(spanWeeks: number): number {
 }
 
 function formatCalendarRange(startIsoDate: string, endIsoDate: string): string {
-  const startDate = new Date(`${startIsoDate}T00:00:00`)
-  const endDate = new Date(`${endIsoDate}T00:00:00`)
-  const startMonth = startDate.toLocaleDateString("en-US", { month: "short" })
-  const startDay = startDate.toLocaleDateString("en-US", { day: "numeric" })
-  const endMonth = endDate.toLocaleDateString("en-US", { month: "short" })
-  const endDay = endDate.toLocaleDateString("en-US", { day: "numeric" })
+  const startDate = new Date(`${startIsoDate}T00:00:00Z`)
+  const endDate = new Date(`${endIsoDate}T00:00:00Z`)
+  const startMonth = startDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const startDay = startDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
+  const endMonth = endDate.toLocaleDateString("en-US", {
+    month: "short",
+    timeZone: "UTC",
+  })
+  const endDay = endDate.toLocaleDateString("en-US", {
+    day: "numeric",
+    timeZone: "UTC",
+  })
 
   if (startMonth === endMonth) {
     return `${startMonth} ${startDay} - ${endDay}`
@@ -129,8 +141,8 @@ function getPhaseCalendarRangeLabel(phase: PlannedPhase): string {
     return phase.rangeLabel
   }
 
-  const endDate = new Date(`${endWeek.isoDate}T00:00:00`)
-  endDate.setDate(endDate.getDate() + 6)
+  const endDate = new Date(`${endWeek.isoDate}T00:00:00Z`)
+  endDate.setUTCDate(endDate.getUTCDate() + 6)
 
   return `${phase.badge} | ${formatCalendarRange(
     startWeek.isoDate,

@@ -16,3 +16,18 @@ An Admin operator needs a way to start the existing retention job without waitin
 ## Limits
 
 The first old Watch exposure expiry is October 27, 2026 in the October 23 production read. A manual pass before that date cannot delete those rows. This action does not replace the normal catch-up scheduler, bypass retention, issue `VACUUM FULL`, or qualify a manual run for feat-554's two ordinary clean loaded cycles.
+
+## October 23 operator receipt correction
+
+The first production operator command committed one capped, successful pass, but
+its Railway SSH connection stayed open until the client timed out. Both ledgers
+independently proved the result. A separate review found that a successful
+full batch could also print `continuationRequired: false`, because the CLI did
+not fall back to `batchLimitReached` as the scheduler does. Correct the CLI and
+workflow receipt to apply the scheduler's existing continuation order, expose
+the bounded batch/oldest-expiry signals, and terminate the one-shot process
+after its aggregate output has flushed and Prisma has disconnected. Prove the
+full-batch receipt with focused tests and required CI. An operator may then
+start a separately reviewed finite group of existing one-pass invocations,
+reconciling both ledgers and fresh stored-expiry backlog between groups. No
+uncertain transport result authorizes an automatic replay.

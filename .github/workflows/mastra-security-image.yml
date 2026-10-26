@@ -1,0 +1,65 @@
+name: Mastra production image
+on:
+  pull_request:
+    paths:
+      [
+        "apps/mastra/**",
+        "packages/devotional-workspace/**",
+        "packages/experience-schema/**",
+        "packages/watch-url-policy/**",
+        "packages/studio-contracts/**",
+        "packages/studio-server/**",
+        "scripts/update-security-ca.sh",
+        ".github/workflows/mastra-security-image.yml",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "patches/**",
+      ]
+  push:
+    branches: [main]
+    paths:
+      [
+        "apps/mastra/**",
+        "packages/devotional-workspace/**",
+        "packages/experience-schema/**",
+        "packages/watch-url-policy/**",
+        "packages/studio-contracts/**",
+        "packages/studio-server/**",
+        "scripts/update-security-ca.sh",
+        ".github/workflows/mastra-security-image.yml",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "patches/**",
+      ]
+permissions:
+  contents: read
+jobs:
+  production-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build actual Mastra runtime and Studio image with filtered dependency trust
+        run: docker build -f apps/mastra/Dockerfile -t mastra-security-ci .
+      - name: Verify independent native, OS and installed transport trust
+        run: docker run --rm --entrypoint sh mastra-security-ci /app/apps/mastra/verify-image-trust.sh
+      - name: Verify actual production command with isolated PostgreSQL and no external network
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker rm -f mastra-security-db >/dev/null 2>&1 || true
+            docker network rm mastra-security-ci >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker pull pgvector/pgvector:pg18-trixie >/dev/null
+          docker network create --internal mastra-security-ci >/dev/null
+          docker run -d --name mastra-security-db --network mastra-security-ci -e POSTGRES_USER=forge -e POSTGRES_PASSWORD=synthetic-only-image-password -e POSTGRES_DB=forge_mastra_image pgvector/pgvector:pg18-trixie >/dev/null
+          for attempt in {1..60}; do
+            if docker exec mastra-security-db pg_isready -U forge -d forge_mastra_image >/dev/null; then break; fi
+            sleep 1
+          done
+          docker exec mastra-security-db pg_isready -U forge -d forge_mastra_image >/dev/null
+          docker run --rm --network mastra-security-ci -e MASTRA_IMAGE_FIXTURE=isolated -e DATABASE_URL=postgresql://forge:synthetic-only-image-password@mastra-security-db:5432/forge_mastra_image --entrypoint node mastra-security-ci /app/apps/mastra/verify-production-image.mjs

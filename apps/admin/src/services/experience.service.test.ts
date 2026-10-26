@@ -10,6 +10,8 @@ import {
   localeDraftRevision,
 } from "./experience.service"
 import { refreshWatchRouteManifest } from "./watch-route-manifest-refresh.service"
+import { WatchAudienceAuthoringDisabledError } from "./watch-audience-write-gate"
+import { createWatchAudienceConfiguration } from "@forge/experience-schema"
 import { EXPERIENCE_EDITOR_MAX_AUTHORED_DUB_SELECTORS } from "@/domain/experience-editor-dub-selectors"
 
 // Override only `after` so the service's manifest-refresh scheduling is
@@ -18,6 +20,11 @@ vi.mock("next/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next/server")>()
   return { ...actual, after: vi.fn() }
 })
+
+const watchAudienceFlag = vi.hoisted(() => vi.fn(async () => false))
+vi.mock("@/lib/feature-flags", () => ({
+  isWatchAudienceEnabled: watchAudienceFlag,
+}))
 
 vi.mock("./watch-route-manifest-refresh.service", () => ({
   refreshWatchRouteManifest: vi.fn().mockResolvedValue({ status: "refreshed" }),
@@ -745,6 +752,89 @@ describe("ExperienceService", () => {
       expect(stagedDrafts()[0]).toMatchObject({ entityId: "copy-en" })
     })
 
+    describe("Watch Audience write gate", () => {
+      const audience = () => ({
+        t: "watchAudience" as const,
+        sectionKey: "audience",
+        configuration: createWatchAudienceConfiguration(),
+      })
+      function audienceDraft() {
+        const changed = audience()
+        changed.configuration.roles[0]!.questions[0]!.prompt = "Draft B?"
+        return {
+          id: "rev-template",
+          entityId: "loc-en",
+          snapshot: {
+            v: 1,
+            data: { slug: "template", title: "Template", blocks: [changed] },
+          },
+          revisedAt: new Date("2026-10-14T00:00:00.000Z"),
+          revisedBy: "bob",
+          reason: "Locale draft saved from admin editor",
+        }
+      }
+      function templateSource() {
+        return source(
+          [
+            sourceLocale({
+              slug: "template",
+              blocks: [audience()],
+              status: "PUBLISHED",
+              publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+            }),
+          ],
+          { isTemplate: true },
+        )
+      }
+
+      it("refuses an EFFECTIVE copy that carries a questionnaire while the flag is off", async () => {
+        watchAudienceFlag.mockReset().mockResolvedValue(false)
+        prisma.experience.findFirst.mockResolvedValueOnce(templateSource())
+        prisma.contentRevision.findMany.mockResolvedValueOnce([audienceDraft()])
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        await expect(
+          service.duplicate({
+            input: { id: "exp-source", sourceVersion: "EFFECTIVE" },
+            user: ADMIN,
+          }),
+        ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+        expect(prisma.experience.create).not.toHaveBeenCalled()
+        expect(stagedDrafts()).toHaveLength(0)
+      })
+
+      it("allows the same copy once the flag is on", async () => {
+        watchAudienceFlag.mockReset().mockResolvedValue(true)
+        prisma.experience.findFirst.mockResolvedValueOnce(templateSource())
+        prisma.contentRevision.findMany.mockResolvedValueOnce([audienceDraft()])
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        await service.duplicate({
+          input: { id: "exp-source", sourceVersion: "EFFECTIVE" },
+          user: ADMIN,
+        })
+        expect(prisma.experience.create).toHaveBeenCalledTimes(1)
+      })
+
+      it("keeps ordinary duplication working without reading the flag", async () => {
+        watchAudienceFlag.mockReset().mockResolvedValue(false)
+        prisma.experience.findFirst.mockResolvedValueOnce(
+          source([sourceLocale()], { isTemplate: true }),
+        )
+        prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+        echoCreatedExperience()
+
+        await service.duplicate({
+          input: { id: "exp-source", sourceVersion: "CANONICAL" },
+          user: ADMIN,
+        })
+        expect(prisma.experience.create).toHaveBeenCalledTimes(1)
+        expect(watchAudienceFlag).not.toHaveBeenCalled()
+      })
+    })
+
     it("copies only canonical rows for CANONICAL and never reads drafts", async () => {
       prisma.experience.findFirst.mockResolvedValueOnce(
         source([
@@ -1194,6 +1284,279 @@ describe("ExperienceService", () => {
         service.publishLocale({ input: { id: "copy-en" }, user: EDITOR_ALICE }),
       ).rejects.toBeInstanceOf(ExperienceHomepageLayoutPublishError)
       expectNothingPublished()
+    })
+  })
+
+  // Release gate on authoring WRITES (not only the editor UI): every service
+  // write path that can introduce or change a watchAudience block refuses
+  // while forge.watch.audience is off; identical existing blocks still save.
+  describe("Watch Audience authoring write gate", () => {
+    const audienceBlock = () => ({
+      t: "watchAudience" as const,
+      sectionKey: "audience",
+      configuration: createWatchAudienceConfiguration(),
+    })
+    const textBlock = {
+      t: "text" as const,
+      sectionKey: "text-1",
+      heading: "Hi",
+    }
+    function templateRow(blocks: unknown[], status = "PUBLISHED") {
+      return {
+        id: "tpl-en",
+        experienceId: "tpl",
+        locale: "en",
+        slug: "template",
+        isHomepage: false,
+        homepageLayout: false,
+        pathSegment: null,
+        status,
+        title: "Template",
+        metaDescription: null,
+        ogTitle: null,
+        ogDescription: null,
+        ogImageUrl: null,
+        blocks,
+        publishedAt: null,
+        createdAt: new Date("2026-10-15T00:00:00.000Z"),
+        updatedAt: new Date("2026-10-15T00:00:00.000Z"),
+        experience: { ownerId: "alice", archivedAt: null, isTemplate: true },
+      }
+    }
+    // Postgres jsonb returns keys in its own order.
+    function jsonbRoundTrip<T>(value: T): T {
+      const reorder = (v: unknown): unknown =>
+        Array.isArray(v)
+          ? v.map(reorder)
+          : v && typeof v === "object"
+            ? Object.fromEntries(
+                Object.keys(v)
+                  .reverse()
+                  .map((k) => [k, reorder((v as Record<string, unknown>)[k])]),
+              )
+            : v
+      return reorder(value) as T
+    }
+
+    beforeEach(() => {
+      watchAudienceFlag.mockReset().mockResolvedValue(false)
+    })
+
+    it("refuses a save that adds a questionnaire while the flag is off", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([textBlock]),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.updateLocale({
+          input: { id: "tpl-en", blocks: [textBlock, audienceBlock()] },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("refuses a save that changes an existing questionnaire while off", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([audienceBlock()]),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+      const changed = audienceBlock()
+      changed.configuration.roles[0]!.questions[0]!.prompt = "Changed?"
+
+      await expect(
+        service.updateLocale({
+          input: { id: "tpl-en", blocks: [changed] },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("saves unrelated edits that keep the stored questionnaire identical, without reading the flag", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow(jsonbRoundTrip([audienceBlock(), textBlock])),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await service.updateLocale({
+        input: {
+          id: "tpl-en",
+          title: "Edited",
+          blocks: [audienceBlock(), { ...textBlock, heading: "Edited" }],
+        },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+      expect(watchAudienceFlag).not.toHaveBeenCalled()
+    })
+
+    it("lets an editor remove a questionnaire while the flag is off", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([audienceBlock(), textBlock]),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await service.updateLocale({
+        input: { id: "tpl-en", blocks: [textBlock] },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+    })
+
+    it("allows adding a questionnaire once the flag is on", async () => {
+      watchAudienceFlag.mockResolvedValue(true)
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([textBlock]),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await service.updateLocale({
+        input: { id: "tpl-en", blocks: [textBlock, audienceBlock()] },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+    })
+
+    it("gates the AI chat / MCP mutation path the same way", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([textBlock]),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce(null)
+
+      await expect(
+        service.applyChatMutation({
+          input: { id: "tpl-en", blocks: [textBlock, audienceBlock()] },
+          user: EDITOR_ALICE,
+          reason: "chat",
+        }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("refuses to create an Experience or locale carrying a questionnaire while off", async () => {
+      await expect(
+        service.create({
+          input: {
+            locale: "en",
+            slug: "new-template",
+            isTemplate: true,
+            blocks: [audienceBlock()],
+          },
+          user: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.experience.create).not.toHaveBeenCalled()
+
+      prisma.experience.findUniqueOrThrow.mockResolvedValueOnce({
+        ownerId: "alice",
+        archivedAt: null,
+      })
+      await expect(
+        service.createLocale({
+          input: {
+            experienceId: "tpl",
+            locale: "es",
+            slug: "plantilla",
+            blocks: [audienceBlock()],
+          },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.experienceLocale.create).not.toHaveBeenCalled()
+    })
+
+    function publishDraft(blocks: unknown[]) {
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "rev-tpl",
+        entityType: "ExperienceLocale",
+        entityId: "tpl-en",
+        status: "DRAFT",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: "template",
+            isHomepage: false,
+            homepageLayout: false,
+            pathSegment: null,
+            title: "Template",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks,
+          },
+        },
+        revisedAt: new Date("2026-10-15T00:00:00.000Z"),
+      })
+    }
+
+    // A duplicate's canonical row holds the copied (never published) content
+    // with status DRAFT. Comparing the draft against it would be B -> B.
+    it("treats a never-published canonical row as an empty baseline when publishing", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([audienceBlock()], "DRAFT"),
+      )
+      publishDraft([audienceBlock()])
+
+      await expect(
+        service.publishLocale({ input: { id: "tpl-en" }, user: EDITOR_ALICE }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
+    })
+
+    it("republishes an unchanged questionnaire on a published row while off, without reading the flag", async () => {
+      const row = templateRow(jsonbRoundTrip([audienceBlock()]))
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(row)
+      publishDraft([audienceBlock(), textBlock])
+      prisma.experienceLocale.update.mockResolvedValueOnce({
+        ...row,
+        blocks: [audienceBlock(), textBlock],
+      })
+
+      await service.publishLocale({
+        input: { id: "tpl-en" },
+        user: EDITOR_ALICE,
+      })
+      expect(prisma.experienceLocale.update).toHaveBeenCalledTimes(1)
+      expect(watchAudienceFlag).not.toHaveBeenCalled()
+    })
+
+    it("refuses to publish a draft whose questionnaire differs from the published one while off", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(
+        templateRow([textBlock]),
+      )
+      prisma.contentRevision.findFirst.mockResolvedValueOnce({
+        id: "rev-tpl",
+        entityType: "ExperienceLocale",
+        entityId: "tpl-en",
+        status: "DRAFT",
+        snapshot: {
+          v: 1,
+          data: {
+            slug: "template",
+            isHomepage: false,
+            homepageLayout: false,
+            pathSegment: null,
+            title: "Template",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [textBlock, audienceBlock()],
+          },
+        },
+        revisedAt: new Date("2026-10-15T00:00:00.000Z"),
+      })
+
+      await expect(
+        service.publishLocale({ input: { id: "tpl-en" }, user: EDITOR_ALICE }),
+      ).rejects.toBeInstanceOf(WatchAudienceAuthoringDisabledError)
+      expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
     })
   })
 

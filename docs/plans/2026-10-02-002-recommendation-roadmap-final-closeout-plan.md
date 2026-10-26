@@ -184,3 +184,81 @@ in-progress; no runtime fix or production retrieval defect is claimed. Parent
 reconciles the generated index and consolidated release record; the existing
 daily storage monitor retains feat-554's two later ordinary clean, loaded cycles.
 The expired temporary outage monitor stays paused.
+
+### October 23 continuation
+
+The current scope is 40 paths: 12 complete, 25 cancelled and three open after adding the directly related platform feat-756. The historical original-scope counts above remain dated. The current [rollout checkpoint](../reports/2026-10-23-watch-exposure-fortnight-rollout.md#strict-stored-expiry-release) supersedes the earlier deployment wait and pending strict-mode repair. Both actual Admin roles ran `85e97f521` at 09:03:53, and the existing daily 10:30 UTC worker scheduler and durable runtime were reverified at 09:12:17 without error. #2877 records its 46 focused tests; no duplicate scheduler was added.
+
+Continue in this order:
+
+1. **Complete:** #2878 enforces stored-expiry scope in both manual entry paths, including previously persisted workflow inputs. It retains guarded expired-proof cleanup and required expired-visit reporting, while excluding unrelated age/status maintenance. Scheduled policy is unchanged. Exact published head `b81fa7356` passed independent review, 80 unit plus 12 native PostgreSQL tests, normal validation/hooks and PR CI before normal merge and actual deployment.
+2. **Release verified; incident preserved:** keep window 37's interrupted RUNNING ledgers and partial committed counts without replay or terminal rewriting. Twelve samples proved actual Next process continuity but did not pass the old literal non-rising memory rule. Independent review conditionally accepted a distinct one-pass recovery with two fresh 30-second-separated readings at or below 4 GB of 8 GB, stable identity, health and refreshed process/DB/expiry/capacity gates. Parent owns the launch decision. Do not infer OOM causation or an unbounded leak from these receipts.
+3. Resume only authorized stored-expired cleanup when safe, then reconcile both ledgers, all retained families and additional expiry categories, counters, watermark, locks, WAL and free bytes. Windows 01–36 deleted 8,509 request roots; the 09:05:27 read still found 8,369 expired rows across 26 types and a separately capped session-link backlog. No zero-backlog claim is justified. The two historical manual profile-erasure counters retain unknown expiry eligibility and a possible scope breach; the new release does not retroactively clear that uncertainty.
+4. Keep feat-554 open for two later ordinary loaded failure-free daily cycles and feat-756 open for the October 27 historical exposure wave/capacity evidence. Manual work and budget yields do not manufacture daily-cycle credit. The existing daily monitor remains read-only and active.
+5. Keep feat-609 open: #2878 main CI's HNSW failure followed by one unchanged failed-job retry establishes no correction. Bounded local experiments and CI environment comparison found no supported fixture/runtime fix. The next discriminator requires a naturally failing original-geometry index retained before teardown. Do not weaken the assertion, repeat blind CI retries or confuse this with the historical hosted-runner outage.
+
+The window 38 admission was held without launch at 09:18:15 after worker memory rose above 4 GB. No new cleanup command or attempt was issued, and no further manual retry is authorized by this plan. Preserve the backlog as unresolved and let the existing daily monitor verify ordinary scheduled progress, errors, memory and capacity. The production daily scheduler remains enabled; do not confuse this manual hold with disabling automation.
+
+Parent merged the earlier evidence PR #2868 and owns this later release record, review/merge and final inventory. The storage owner retains coordinated production operations and daily read-only monitoring. No duplicate automation, direct deployment, manual restart, early Watch expiry or capacity purchase is authorized.
+
+### October 24 continuation
+
+This checkpoint supersedes the October 23 pre-cycle backlog and zero-credit
+state above. The independently reviewed October 23 ordinary cycle completed
+85 successful passes without failures or yields and cleared its fixed expired
+cohort. It earns one feat-554 cycle; no manual cleanup launched. The [current
+closeout checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-24-checkpoint)
+and feat-554 ticket retain the final watermark, descendant/backlog and capacity
+evidence. One further qualifying cycle is needed.
+
+October 24 recorded genuine failures and earns no credit, even though its fixed
+10:30 UTC cohort was clear in the 12:50 snapshot. The nine observed wrapper
+failures include expired transactions, explicit batch deadlines, a generic
+transaction error and a terminated connection. The exact expensive operation
+and connection-failure cause remain unproved. Keep both ledgers independent;
+do not replay or rewrite stale RUNNING entries.
+
+The storage owner continues bounded diagnosis using the captured evidence and
+owned local fixtures. Require a causal explanation and discriminating test
+before claiming a runtime fix, then independent review, green required checks,
+normal PR-to-main release and actual deployment verification. Preserve the
+five-second budget and truthful failure/yield classification. The already
+enabled daily scheduler and separate read-only daily monitor remain active;
+do not start manual cleanup or revive the expired outage monitor. Keep the
+October 27 exposure wave and the unresolved HNSW fixture separate from feat-554.
+
+### October 26 continuation
+
+The [current evidence checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-current-checkpoint)
+records 37 failed scheduled wrappers on October 25 and nine on October 26.
+Independent review accepts no new cycle credit: October 23 remains one proved
+ordinary loaded, failure-free cycle. Keep the separate ledgers independent and
+do not rewrite or replay the stale RUNNING row. The October 26 query is as of
+19:27:51 UTC; its later upper bound does not establish future-window completeness.
+
+The existing storage owner's bounded read-only incident bundle is complete and
+independently reviewed: the fixed daily-start cohorts were clear across 26
+families, but 26,194 newly expired rows remained, with zero over 24 hours overdue.
+PGDATA had 7,503,618,048 free bytes; separate probe times and capped/missing
+surfaces limit inference. Preserve those limits in the linked checkpoint.
+The minimal logging-envelope and consumer correction for the confirmed format
+mismatch merged as reviewed, green PR #2915 (`f27980447`); actual Admin HTTP and
+worker samples on descendant `63a1ccc40` were verified healthy/compact with
+correct runner roles at 20:59:48.987-20:59:53.009 UTC. PR #2900
+deployed diagnostics, not a timeout fix; worker log transport and the original
+timeout cause remain unproved. The transient worker 503 recovered on two health
+samples, with cause and child process/container continuity still unverified.
+No fault injection, timeout widening, direct deployment or manual cleanup is
+authorized. The independently accepted [release bundle](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-diagnostic-format-release)
+found zero new natural attempts at its 21:00:15 ledger snapshot and zero phase
+events in the separate bounded log window, so it does not prove production
+failure-log transport, loaded execution or retention acceptance. Continue the
+existing daily monitor with the new parser and actual release. Preserve the
+separate October 27 Watch expiry-wave verification
+and unresolved HNSW fixture work. The later Co-watch PR #2916 reopened feat-573;
+current scope is 40 paths, **11 complete, 25 cancelled and four open**. Its owner
+remains the existing Co-watch release task; do not duplicate its work or treat
+its separate statement-timeout change as a retention change. Replacement main
+CI, production image and all four CodeQL analyses passed; the cancelled older
+merge jobs remain cancelled. One further qualifying ordinary loaded cycle is
+required, with fresh genuine failures routed to bounded diagnosis.

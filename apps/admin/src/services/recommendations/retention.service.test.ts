@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import type { Prisma } from "@prisma/client"
+import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -335,6 +336,69 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
 }
 
 describe("recommendation retention service", () => {
+  it("manual stored-expiry mode keeps age-only cleanup out of an expired-root pass", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+
+    await expect(
+      purgeExpiredRecommendationRequests(
+        prisma as never,
+        now,
+        2,
+        "stored-expiry-only",
+      ),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      rootsDeleted: 2,
+      rowCounts: { expiredContentActions: 1 },
+    })
+    expect(transaction.recommendationRequest.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ["request-1", "request-2"] } },
+    })
+    const sql = [
+      ...transaction.$executeRaw.mock.calls,
+      ...transaction.$queryRaw.mock.calls,
+    ]
+      .map(([query]) => rawSqlText(query))
+      .join("\n")
+    expect(sql).not.toContain("recommendation_profile_vector_snapshot")
+    expect(sql).not.toContain("recommendation_precomputed_generation g")
+    expect(sql).not.toContain("recommendation_cowatch_refresh_attempt")
+    expect(transaction.recommendationProfile.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          erasureState: "PENDING",
+          expiresAt: { lte: now },
+        }),
+      }),
+    )
+    expect(transaction.recommendationProfile.deleteMany).not.toHaveBeenCalled()
+  })
+
+  it("continues a strict manual pass when the guarded proof page is full", async () => {
+    const { prisma, transaction } = buildPrisma()
+    transaction.recommendationRequest.findMany.mockResolvedValueOnce([])
+    transaction.recommendationContentAction.findMany.mockResolvedValueOnce([])
+    transaction.$executeRaw.mockImplementation(async (query: unknown) =>
+      rawSqlText(query).includes(
+        "DELETE FROM recommendation_precomputed_generation_retention_proof",
+      )
+        ? 100
+        : 0,
+    )
+
+    await expect(
+      purgeExpiredRecommendationRequests(
+        prisma as never,
+        new Date("2026-09-17T00:00:00.000Z"),
+        2,
+        "stored-expiry-only",
+      ),
+    ).resolves.toMatchObject({
+      batchLimitReached: true,
+      rowCounts: { precomputedGenerationProofsExpired: 100 },
+    })
+  })
   it("unlinks push rows for an expired viewer before deleting the viewer", async () => {
     const { prisma, transaction } = buildPrisma()
     const digests = ["c".repeat(64), "d".repeat(64)]
@@ -838,10 +902,31 @@ describe("recommendation retention service", () => {
     prisma.recommendationRetentionRun.update.mockRejectedValueOnce(
       new Error("skip ledger unavailable"),
     )
-
-    await expect(
-      purgeExpiredRecommendationRequests(prisma as never),
-    ).rejects.toThrow("skip ledger unavailable")
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    let diagnosticLog: unknown[][] = []
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toThrow("skip ledger unavailable")
+    } finally {
+      diagnosticLog = [...logged.mock.calls]
+      logged.mockRestore()
+    }
+    expect(diagnosticLog).toHaveLength(1)
+    const diagnostic = parseRetentionPhaseFailureLog(
+      String(diagnosticLog[0]?.[0]),
+    )
+    expect(diagnostic?.errors).toEqual({
+      phase: {
+        class: "RecommendationConflictError",
+        prismaCode: null,
+        sqlstate: null,
+      },
+      terminal: null,
+      fallbackLedger: { class: "Error", prismaCode: null, sqlstate: null },
+    })
+    expect(diagnostic?.fallbackLedger.outcome).toBe("failed")
+    expect(JSON.stringify(diagnostic)).not.toContain("skip ledger unavailable")
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
 
@@ -850,6 +935,7 @@ describe("recommendation retention service", () => {
     let clock = 0
     let lockAttempts = 0
     const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
     transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
       if (query.sql.includes("pg_try_advisory_xact_lock")) {
         if (++lockAttempts === 1) clock = 4_600
@@ -882,8 +968,32 @@ describe("recommendation retention service", () => {
           }),
         }),
       )
+      expect(logged).not.toHaveBeenCalled()
     } finally {
       now.mockRestore()
+      logged.mockRestore()
+    }
+  })
+
+  it("preserves the original failure and failed ledger when the diagnostic logger throws", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const original = new Error("owned phase failure")
+    transaction.recommendationRequest.findMany.mockRejectedValueOnce(original)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {
+      throw new Error("logger unavailable")
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toBe(original)
+      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+      expect(logged).toHaveBeenCalledTimes(1)
+    } finally {
+      logged.mockRestore()
     }
   })
 
@@ -891,6 +1001,7 @@ describe("recommendation retention service", () => {
     const { prisma, transaction } = buildPrisma()
     let clock = 0
     const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
     prisma.$transaction
       .mockImplementationOnce(async (callback) => {
         clock = 4_600
@@ -906,8 +1017,29 @@ describe("recommendation retention service", () => {
           data: expect.objectContaining({ status: "FAILED" }),
         }),
       )
+      expect(logged).toHaveBeenCalledTimes(1)
+      const diagnostic = parseRetentionPhaseFailureLog(
+        String(logged.mock.calls[0]?.[0]),
+      )
+      expect(diagnostic).toMatchObject({
+        errors: {
+          phase: { class: "Error" },
+          terminal: { class: "Error" },
+          fallbackLedger: null,
+        },
+        failed: [
+          { label: "select_request_roots" },
+          { label: "terminal_budget_yield" },
+        ],
+        terminal: { label: "terminal_budget_yield" },
+        fallbackLedger: { outcome: "succeeded" },
+      })
+      expect(JSON.stringify(diagnostic)).not.toContain(
+        "terminal write timed out",
+      )
     } finally {
       now.mockRestore()
+      logged.mockRestore()
     }
   })
 

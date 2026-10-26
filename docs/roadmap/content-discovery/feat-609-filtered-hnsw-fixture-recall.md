@@ -39,6 +39,82 @@ retrieval source, fixture assertion or scan setting was changed for Studio.
 Railway skipped Manager's deployment after the failed main check, requiring a
 fresh normal PR/main delivery after the relevant checks pass.
 
+October 23 recurrence during #2876 CI: [run 39901723572, job 120245057538](https://github.com/JesusFilm/forge/actions/runs/39901723572/job/120245057538) failed `delivery-retriever.db.test.ts:1899` with ANN zero against the six-card minimum; the exact diagnostic found 96 chunks and 12 eligible videos. Settings included pgvector 0.8.7, strict iterative scan, 20,000 scan tuples and `ef_search=40`. A bounded unchanged-head retry passed. No retrieval behavior or assertion changed, and that pass is not a fix or evidence of a production retrieval defect. This ticket remains in progress.
+
+October 23 isolated follow-up on main `a11746ac3`, PostgreSQL 18.6 / pgvector
+0.8.7: ten complete-file runs with the unchanged original fixture passed (15
+executed, one expected skip per run). On one preserved passing original index,
+the production retrieval passed, but an additional HNSW probe filtering only
+two target chunk IDs returned zero under `strict_order`; `relaxed_order` and an
+exact scan returned both. This narrow probe demonstrates that the synthetic
+graph can under-return for a selective filter; it does not reproduce the
+production-shaped assertion failure on that index.
+
+A temporary experiment with eight distinct seed directions failed the full
+native test: ANN returned zero, exact diagnostics found 96 chunks and 12
+eligible videos, and the actual HNSW scan returned zero over eight loops.
+Vacuuming before its index build did not prevent another failure, and an
+explicit `VACUUM (ANALYZE)` on that same failing index/data did not restore
+recall. Rebuilding that _experimental_ index with `ef_construction=200`
+returned 96 nearest chunks in an isolated query, suggesting sensitivity to
+graph construction but not proving a correction for the original fixture.
+The experimental vector geometry was discarded.
+
+One controlled full-file run restored the original geometry and disabled
+autovacuum only on its owned fixture table. It passed (15 executed, one
+expected skip); afterward that table reported `autovacuum_enabled=false`,
+587 estimated dead tuples, and no autovacuum. Dead tuples alone therefore do
+not explain the failure, and the earlier same-index recovery observed near an
+autovacuum was not a reliable causal result. No fixture or retrieval change
+passed the causal bar; the assertion and runtime settings remain unchanged.
+The next useful experiment is on a naturally failing **original-geometry**
+index: retain it and compare the captured production-shaped statement and
+plan against that same index after one controlled index rebuild, with the
+original 1.5-second bound and exact eligible count held constant. Keep these
+fixture observations separate from production delivery reliability.
+
+October 23 environment comparison after the #2878 cleanup merge:
+[passing PR job 120316228230](https://github.com/JesusFilm/forge/actions/runs/39923992470/job/120316228230)
+at `b81fa7356` ran the same 16-case deterministic file successfully (15
+passed, one expected skip; HNSW case 656ms). [Original main job
+120321189312](https://github.com/JesusFilm/forge/actions/runs/39925498078/job/120321189312)
+at `85e97f521` failed only the HNSW six-card assertion at 08:40:12 UTC after
+the preceding native suites passed. ANN and its diagnostic rerun returned
+zero; exact diagnostics found 96 chunks and 12 eligible videos. The actual
+HNSW scan had eight loops, zero rows and 150 filter removals per loop;
+`force_custom_plan`, `strict_order`, 20,000 scan tuples, `ef_search=40`,
+scan-memory multiplier 1 and `work_mem=4MB` were recorded. Doubling scan
+memory in a separate bounded run still returned zero.
+
+Both CI job logs identify Ubuntu 24.04.5, runner image
+`ubuntu-24.04` version `20261012.334.1`, runner agent 2.338.0, Docker API
+1.48, Node 24.22.1 x64, pnpm 9.12.3, Vitest 3.2.4, and a pull of
+`pgvector/pgvector:pg18-trixie` at the same digest
+`sha256:9d9c930220cb9bf2f956d10a8f909cf9973d9672ca0278aef2c1e6facccad2e0`.
+Their PostgreSQL service logs report 18.6 on `x86_64-pc-linux-gnu` from the
+same Debian package/compiler string. The failed job measured pgvector 0.8.7;
+the passing job did not print the extension version, but used the same pulled
+image digest. Both set `RECOMMENDATION_DB_TEST=1` and
+`RECOMMENDATION_DELIVERY_DB_FIXTURE=deterministic`. The delivery test,
+retriever, and CI workflow files did not differ between those commits.
+Observed runner regions differed (`eastus2` for pass, `eastus` for failure),
+but neither log records runner CPU model, instruction flags, host kernel or
+resolved container image ID. The `ubuntu-latest` migration notice does not
+explain this pair: both actual jobs ran Ubuntu 24.04, not 26.
+
+The owned local test host was Linux x86_64 (Xeon Platinum 8268; Linux
+7.0.0-38), with Node 24.16.0 and Docker API 1.55. Its inspected local
+`pgvector/pgvector:pg18-trixie` image was Linux amd64 at the same digest;
+its test diagnostics measured PostgreSQL 18.6 and pgvector 0.8.7. Those
+version/digest matches do not establish identical CI host instruction sets.
+No observed image/version change separates the passing and failing CI jobs,
+and the environment comparison does not identify the recall cause. A next
+discriminating experiment needs a naturally failing **original-geometry**
+index preserved before teardown: rerun the identical bounded statement on
+that index, rebuild only that index against unchanged rows, and compare the
+same statement, plan and exact eligible count. A changed result would
+implicate graph construction rather than the observed runner image label.
+
 ## Entry Points — Read These First
 
 1. `apps/admin/src/services/recommendations/delivery-retriever.db.test.ts` — `fills a six-card slate through HNSW despite nearer incompatible vectors`, `installIndexedContractSkew`, and its failure diagnostic.

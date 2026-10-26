@@ -1,8 +1,16 @@
 # Manual recommendation retention
 
-Open Admin **System Status** as an Admin and select **Run expired-data cleanup**. The action queues one bounded pass of the same workflow the normal scheduler uses. It has no date, table, or batch-size override. It deletes only records whose persisted expiry has passed and records the operator in `workflow_run` with trigger `manual`; the separate `recommendation_retention_run` records committed counts and any failure or yield. The scheduler remains active.
+Open Admin **System Status** as an Admin and select **Run expired-data cleanup**. The action queues one bounded manual pass. It has no date, table, or batch-size override. Manual mode selects rows whose stored expiry has passed, plus necessary dependent children of expired roots; it keeps the guarded expired precomputed-proof page but skips the scheduler's age/status-only precomputed generation, object-store, orphan-vector, refresh-metadata and retired-profile cleanup. It finalizes a concluded baseline report only when its run or a child visit has reached stored expiry. It records the operator in `workflow_run` with trigger `manual`; the separate `recommendation_retention_run` records committed counts and any failure or yield. The ordinary scheduler keeps its full maintenance behavior and cadence.
 
 An operator with access to the **deployed Admin image** can instead run `pnpm --filter @forge/admin retention:run-once --expired-only` through Railway SSH. This command invokes the same bounded job once and writes a manual workflow ledger. It does not use source from an unmerged local checkout. Run one path, then reconcile it before another invocation.
+
+The command emits one aggregate JSON result after the database connection is
+closed, then exits. A successful full batch reports
+`continuationRequired: true` from `batchLimitReached` even if no rows are yet
+overdue. A skipped or budget-yielded pass exits nonzero for operator review;
+earlier committed row counts can still be nonzero. An absent response or
+transport timeout is uncertain, not evidence that the pass failed or rolled
+back. The durable ledgers and fresh backlog are authoritative.
 
 Before using it in production, verify the actual Admin HTTP and worker revisions, health and runner roles. Read aggregate expired backlog, all retention-health types, both ledgers, PostgreSQL relation allocation, WAL, and direct PGDATA free bytes. If a pass is already running, the advisory lock makes the manual pass skip. If the browser returns an error or loses its response, reconcile the manual ledger and runtime before pressing the button again. Do not assume that a queued response means rows were deleted.
 
