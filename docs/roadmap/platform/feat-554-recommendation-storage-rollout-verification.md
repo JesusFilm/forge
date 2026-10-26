@@ -17,6 +17,64 @@ tags:
   - "operations"
 ---
 
+## October 26 follow-up: continuing deletion with failures
+
+The independently reviewed [October 26 ledger receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6425467086)
+adds **no qualifying cycle**. At 19:27:51 UTC, the separate ledgers recorded:
+
+| Ordinary cycle (UTC)       | Durable ledger                                             | Scheduled wrapper ledger | Elapsed first start to last finish | Mean completed wrapper duration, including failures |
+| -------------------------- | ---------------------------------------------------------- | ------------------------ | ---------------------------------- | --------------------------------------------------- |
+| October 25                 | 270 succeeded, 381 budget yields, 37 failed                | 651 succeeded, 37 failed | 6h40m33s                           | 4.380s                                              |
+| October 26, as of snapshot | 191 succeeded, 52 budget yields, 8 failed, 1 stale RUNNING | 243 succeeded, 9 failed  | 1h46m52s                           | 4.005s                                              |
+
+Each ledger returned 940 rows below its 20,001 cap. The October 25 window spans
+10:30 UTC to the next 10:30; the October 26 query ends at 21:00, later than the
+snapshot, so it is only as-of evidence. All wrappers were scheduled. Successful
+wrappers include safe durable yields; there is no shared key for pairing the
+two ledgers. Both cycles committed loaded deletion, including descendants, but
+their failures permanently exclude them from failure-free acceptance. The last
+success expiry cutoffs were October 25 17:11:15.884 and October 26 12:17:30.484;
+cutoffs are not execution completion timestamps or current-backlog proof.
+
+[PR #2900](https://github.com/JesusFilm/forge/pull/2900#issuecomment-6385131395)
+deployed phase diagnostics after the October 24 incident. It is not a timeout
+fix. Static review found the leading-JSON log shape conflicts with the repository
+Railway logging convention; historical request-handler transport evidence does
+not prove loss from the scheduled worker. A bounded logging-envelope/consumer
+correction is in progress, with budgets, expiry and error semantics preserved.
+
+The worker separately returned 503 at 19:19:58 UTC, then 200/ok on two follow-ups
+on the same deployed revision/ID `605ff68e38`. Its initial response body was not
+captured. Child process/container continuity and the cause remain unverified;
+neither Redis nor retention is established as the cause.
+
+A separate independently reviewed read-only bundle at 19:31-19:33 UTC found both
+roles healthy, compact and correctly assigned. The 26-family backlog was
+**26,194 currently expired rows**, zero over 24 hours overdue; oldest expiry
+12:17:35.988 followed the latest success cutoff. Fixed October 25/26 10:30 cohorts
+were zero across those 26 families. Nine extra fixed categories and checked
+precomputed parent guards were also zero without hitting their caps. Exact
+fixed-cohort predicate SQL was not in the audited bundle, and precomputed-generation
+proof eligibility was not sampled; this is not clearance of all expired rows.
+The service health endpoint is not a live retention-health result. Current
+retention-health source scans 26 expiry families; the older 21-type shorthand
+must not be carried forward.
+
+At separate snapshots, PGDATA had 7,503,618,048 free bytes of 48,891,670,528;
+WAL was 771,751,936 bytes, with stage rows, lock waiters and long transactions
+zero. No growth forecast or physical recovery is established. The Watch sample
+found no expired exposure and first stored expiry October 27 01:54:46.228 UTC,
+but reached its 1,001-row cap; it cannot prove the full expiry distribution or
+absence of early deletion globally. Three bounded filtered worker log windows
+returned zero phase-event matches; asserted unfiltered controls were not retained
+in the audited set. The log-transport limitation remains unresolved.
+
+October 23 remains **one** accepted ordinary loaded cycle; one more failure-free
+completed cycle is required. The scheduler snapshot was RUNNING without a
+recorded error, next wake October 27 10:30 UTC. Keep the daily monitor active,
+the temporary outage monitor paused, and this ticket in progress. No manual
+cleanup, stale-ledger replay or timeout widening is authorized by this receipt.
+
 ## October 24 failure after one qualifying daily cycle
 
 The ordinary October 23 cycle qualifies as **one** loaded, failure-free cycle.
