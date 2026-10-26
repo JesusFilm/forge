@@ -113,11 +113,76 @@ describe("createDevotionalLlm", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
+  it("does not start another attempt once the caller cancels", async () => {
+    // The backoff between attempts is up to 30s. A cancelled workflow must not
+    // sit in it, and must not fire the next request when it ends.
+    const controller = new AbortController()
+    const fetchImpl = vi.fn(async () => {
+      controller.abort()
+      return chatResponse("", 503)
+    })
+    const llm = makeLlm(fetchImpl)
+    await expect(
+      llm.complete({ ...complete, abortSignal: controller.signal }),
+    ).rejects.toMatchObject({ code: "transport" })
+    // One request, not three: the retry loop saw the cancellation.
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses before the first request when already cancelled", async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const fetchImpl = vi.fn(async () => chatResponse("{}"))
+    const llm = makeLlm(fetchImpl)
+    await expect(
+      llm.complete({ ...complete, abortSignal: controller.signal }),
+    ).rejects.toMatchObject({ code: "transport" })
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
   it("throws request_failed on a non-retryable 4xx", async () => {
     const llm = makeLlm(async () => chatResponse("", 400))
     await expect(llm.complete(complete)).rejects.toMatchObject({
       code: "request_failed",
     })
+  })
+
+  // This client OWNS the attempt budget, and callers used to re-derive
+  // retryability from `code` alone. `request_failed` covers both a permanent 400
+  // and a 429 that already exhausted these retries, so a caller retrying on the
+  // code retried a deterministic failure and doubled a spent budget — three
+  // critics each adding one retry made a worst case of eighteen requests. The
+  // status is what distinguishes them, and it has to survive the throw.
+  it("carries the status of a permanent 4xx, and spends only one attempt", async () => {
+    const fetchImpl = vi.fn(async () => chatResponse("", 400))
+    const llm = makeLlm(fetchImpl)
+    await expect(llm.complete(complete)).rejects.toMatchObject({
+      code: "request_failed",
+      status: 400,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it("carries the status of a FINAL 429, after spending the whole budget", async () => {
+    const fetchImpl = vi.fn(async () => chatResponse("", 429))
+    const llm = makeLlm(fetchImpl)
+    await expect(llm.complete(complete)).rejects.toMatchObject({
+      code: "request_failed",
+      status: 429,
+    })
+    // Three attempts, not one: the same code as the 400 above, reached a totally
+    // different way. Only `status` plus the call count tell them apart.
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  })
+
+  it("leaves status undefined on a malformed 200, which is not an HTTP failure", async () => {
+    const fetchImpl = vi.fn(async () => chatResponse("not json at all"))
+    const llm = makeLlm(fetchImpl)
+    await expect(llm.complete(complete)).rejects.toMatchObject({
+      code: "validation",
+      status: undefined,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 
   it("throws validation when the response has no text content", async () => {
