@@ -633,8 +633,17 @@ function Tools({
               <p>
                 Asking your browser to start file {run.initiated.length + 1} of{" "}
                 {run.total}
-                {run.active ? `: ${run.active.title}` : ""}. Started so far:{" "}
-                {run.initiated.length}.
+                {run.active ? (
+                  <>
+                    :{" "}
+                    <span lang="" dir="auto">
+                      {run.active.title}
+                    </span>
+                  </>
+                ) : (
+                  ""
+                )}
+                . Started so far: {run.initiated.length}.
               </p>
               <div>
                 <button
@@ -667,7 +676,10 @@ function Tools({
                   >
                     {run.pending.map(({ item }) => (
                       <li key={item.id} data-queue-id={item.id}>
-                        {nameOf(languageOfQueueId(item.id))}: {item.title}
+                        {nameOf(languageOfQueueId(item.id))}:{" "}
+                        <span lang="" dir="auto">
+                          {item.title}
+                        </span>
                       </li>
                     ))}
                   </ul>

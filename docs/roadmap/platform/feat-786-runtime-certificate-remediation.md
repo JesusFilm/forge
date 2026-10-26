@@ -129,3 +129,23 @@ existing gateway/network containment; the proposal adds no public exposure.
 ## Brotli decoder follow-up (CVE-2026-111497)
 
 Node22.23.4/24.22.1 already include the bundled decoder fix, but the current Crop and retained devotional worker images carry separate system `libbrotli1=1.0.9-2+b6`. Explicitly install and require Debian bookworm security revision `1.0.9-2+deb12u1` or newer in both runtime bases. Preserve media/browser versions, queue, authentication, storage and process contracts. Required actual-image acceptance checks the distro security revision as well as existing TLS/media/browser/HTTP tests; exact replacement replicas need fresh package/runtime and serving proof. Static/browser Brotli copies require their own vendor provenance and are not established by the Debian check. Keep this fleet ticket in progress for remaining owner-blocked targets.
+
+## Database and search CA-only maintenance
+
+`infra/security-ca/images.json` maps seven digest-pinned vendor images to dedicated
+Docker contexts. Each context refreshes only certificate trust, retains the vendor
+server and entrypoint, and installs non-PEM distrust markers plus a managed CA
+directory. `.github/workflows/infrastructure-ca-images.yml` compares original
+runtime configuration and binary hashes, exercises bundle/default-directory/managed-directory
+TLS controls, and starts the unchanged server against empty isolated storage.
+
+The approved maintenance covers 25 PostgreSQL services and one Typesense service.
+Release through reviewed main source, retain each service's matching vendor base,
+volume, variables, startup and networking, and verify recovery snapshots before
+restarting one service at a time. Exact live binary, trust and health readback
+remains required; image CI alone does not close these rows. No database upgrade,
+restore, indexing, import or model invocation is part of this work.
+
+## Managed Node image legacy-directory hardening
+
+The final Railway JFOF source release proves the managed-builder correction: install libatomic1 before the last CA cleanup, suppress duplicate step outputs and later deploy apt layers, and replace the two excluded root payloads with non-PEM distrust markers. Apply the same two-file config/helper to the root Node Railpack path so surviving lower-layer aliases cannot restore trust. Keep real Web content builds and dashboard commands; no private build credential moves. Independently verify every Web replica after the normal PR-to-main release. Keep this ticket in progress for remaining audit rows.

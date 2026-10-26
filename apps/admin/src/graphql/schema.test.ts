@@ -431,6 +431,8 @@ describe("GraphQL schema — Unit 4 content types", () => {
     const preview = schema.getType("ExperiencePreview") as GraphQLObjectType
     expect(String(preview.getFields().isHomepage!.type)).toBe("Boolean!")
     expect(String(preview.getFields().homepageLayout!.type)).toBe("Boolean!")
+    // Lets Web restrict the audience questionnaire preview to the template.
+    expect(String(preview.getFields().isTemplate!.type)).toBe("Boolean!")
     const effective = schema.getType(
       "ExperienceLocaleEffective",
     ) as GraphQLObjectType

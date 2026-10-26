@@ -21,12 +21,14 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches patches
 COPY apps/admin/package.json apps/admin/package.json
 COPY packages/experience-schema/package.json packages/experience-schema/package.json
+COPY packages/feature-flags/package.json packages/feature-flags/package.json
 COPY packages/studio-contracts/package.json packages/studio-contracts/package.json
 COPY packages/studio-server/package.json packages/studio-server/package.json
 COPY packages/watch-url-policy/package.json packages/watch-url-policy/package.json
 RUN NODE_ENV=development pnpm install --frozen-lockfile --ignore-scripts --filter @forge/admin...
 COPY apps/admin apps/admin
 COPY packages/experience-schema packages/experience-schema
+COPY packages/feature-flags packages/feature-flags
 COPY packages/studio-contracts packages/studio-contracts
 COPY packages/studio-server packages/studio-server
 COPY packages/watch-url-policy packages/watch-url-policy

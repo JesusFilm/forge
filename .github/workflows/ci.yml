@@ -199,6 +199,16 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
           WATCH_LEARNING_PROGRESS_DB_TEST: "1"
         run: pnpm --filter @forge/admin test -- src/services/watch-learning-progress.service.db.test.ts --no-file-parallelism
+      - name: Exercise audience publication and importer against isolated PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_audience_test
+          WATCH_AUDIENCE_DB_TEST: "1"
+          WATCH_AUDIENCE_IMPORT_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/watch-audience-publication.db.test.ts
+          src/scripts/import-watch-audience-config.db.test.ts
+          --no-file-parallelism
       - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres

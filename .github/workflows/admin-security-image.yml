@@ -4,6 +4,7 @@ on:
     paths:
       - "apps/admin/**"
       - "packages/experience-schema/**"
+      - "packages/feature-flags/**"
       - "packages/studio-contracts/**"
       - "packages/studio-server/**"
       - "packages/watch-url-policy/**"
@@ -19,6 +20,7 @@ on:
     paths:
       - "apps/admin/**"
       - "packages/experience-schema/**"
+      - "packages/feature-flags/**"
       - "packages/studio-contracts/**"
       - "packages/studio-server/**"
       - "packages/watch-url-policy/**"
@@ -36,6 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - name: Verify transitive workspace packaging and image triggers
+        run: node --test apps/admin/scripts/docker-workspace-packaging.test.mjs
       - name: Build actual image with filtered package trust and PostgreSQL18 clients
         run: docker build -f apps/admin/Dockerfile -t admin-security-ci .
       - name: Verify independent runtime and OS trust contexts

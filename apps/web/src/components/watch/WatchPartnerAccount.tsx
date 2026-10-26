@@ -19,6 +19,31 @@ export type WatchPartnerAccountProps = {
   children: (account: { user?: WatchAccountUser }) => ReactNode
 }
 
+/**
+ * The hosted login/logout URL for the Partner tab, returning to this page with
+ * Partner open. Call at click time: the page may have changed since render.
+ */
+export function watchPartnerAuthHref(
+  kind: "login" | "logout",
+  loginUrl?: string,
+): string {
+  const auth = new URL(
+    watchAccountAuthUrl(kind, loginUrl),
+    window.location.origin,
+  )
+  const returned = new URL(
+    auth.searchParams.get("returnTo") ?? window.location.href,
+    window.location.origin,
+  )
+  returned.searchParams.set("partnerPanel", "account")
+  returned.searchParams.set("as", "partner")
+  auth.searchParams.set(
+    "returnTo",
+    returned.pathname + returned.search + returned.hash,
+  )
+  return auth.href
+}
+
 const ACTION_CLASS =
   "inline-flex min-h-11 cursor-pointer items-center justify-center rounded-full border border-white/40 px-5 py-2 text-sm font-semibold text-white transition-colors hover:border-white hover:bg-white hover:text-stone-900 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none"
 
@@ -42,21 +67,7 @@ export function WatchPartnerAccount({ children }: WatchPartnerAccountProps) {
     loginUrl?: string,
   ) => {
     // The page may have changed since the session was read.
-    const auth = new URL(
-      watchAccountAuthUrl(kind, loginUrl),
-      window.location.origin,
-    )
-    const returned = new URL(
-      auth.searchParams.get("returnTo") ?? window.location.href,
-      window.location.origin,
-    )
-    returned.searchParams.set("partnerPanel", "account")
-    returned.searchParams.set("as", "partner")
-    auth.searchParams.set(
-      "returnTo",
-      returned.pathname + returned.search + returned.hash,
-    )
-    event.currentTarget.href = auth.href
+    event.currentTarget.href = watchPartnerAuthHref(kind, loginUrl)
   }
 
   return (

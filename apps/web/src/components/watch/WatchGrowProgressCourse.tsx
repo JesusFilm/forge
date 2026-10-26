@@ -2,6 +2,8 @@
 
 import {
   useEffect,
+  useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
   type ComponentType,
@@ -37,8 +39,8 @@ import {
 import type { WatchGrowStoryProps } from "./WatchGrowStory"
 
 // The course with honest account progress (feat-731 U10). WatchGrow loads this
-// module only after the course-open intent, inside its Dialog, so the session
-// read and the progress read happen only for visitors who open the course.
+// module only on the long Grow shelf (or a sign-in return to a lesson), so the
+// session read and the progress read happen only for visitors who go there.
 //
 // Anonymous progress lives in this page only and says so. Saving to an
 // account is an explicit request that goes through the existing hosted sign-in
@@ -59,6 +61,8 @@ export type WatchGrowProgressCourseProps = WatchGrowCourseProps & {
 
 let pageClient: LearningProgressClient | null = null
 const staleIdentity = { retry: () => {} }
+/** Who to tell when a client confirms the visitor is now someone else. */
+const identityListeners = new WeakMap<LearningProgressClient, Set<() => void>>()
 
 /** The page's progress client, wired to the shared drafts and session retry. */
 export function createWatchGrowLearningClient({
@@ -68,12 +72,40 @@ export function createWatchGrowLearningClient({
   transport?: LearningTransport
   drafts?: WatchLearningDraftStore
 } = {}) {
-  return createLearningProgressClient({
+  const listeners = new Set<() => void>()
+  const client = createLearningProgressClient({
     transport,
-    // Reflections typed by one person must not appear for another.
-    onAccountCleared: () => drafts.clear(),
+    // Reflections typed by one person must not appear for another — neither
+    // in the store nor in any input still holding them (see the fence below).
+    onAccountCleared: () => {
+      drafts.clear()
+      for (const listener of listeners) listener()
+    },
     onStaleIdentity: () => staleIdentity.retry(),
   })
+  identityListeners.set(client, listeners)
+  return client
+}
+
+/**
+ * A draft store that stops accepting writes the moment its identity ends. The
+ * course keeps uncommitted text in its own inputs (committed on blur) and runs
+ * timers that write on completion; once the client confirms another visitor,
+ * any such late write from the old generation is dropped instead of landing in
+ * the cleared store.
+ */
+function fenceDrafts(
+  store: WatchLearningDraftStore,
+  isCurrent: () => boolean,
+): WatchLearningDraftStore {
+  return {
+    get: store.get,
+    subscribe: store.subscribe,
+    clear: store.clear,
+    set: (key, value) => {
+      if (isCurrent()) store.set(key, value)
+    },
+  }
 }
 
 /** One client per page, so closing and re-opening keeps unsaved state honest. */
@@ -97,11 +129,36 @@ export function WatchGrowProgressCourse({
   client: injected,
   useSession = useWatchAccountSession,
   initialLessonId,
+  initialOpen,
   initialStory,
   ...courseProps
 }: WatchGrowProgressCourseProps) {
   const [client] = useState(() => injected ?? defaultClient())
   const { session, retry, revalidating = false } = useSession()
+  // One generation per confirmed visitor. A change closes the old generation's
+  // draft fence synchronously (inside the client's clear) and remounts the
+  // course, so no private input state — typed-but-uncommitted text, names,
+  // pending timers — outlives the identity that produced it. Same-account
+  // focus re-checks and save writes never fire this.
+  const identity = useRef(0)
+  const [generation, setGeneration] = useState(0)
+  useEffect(() => {
+    const listeners = identityListeners.get(client)
+    if (!listeners) return
+    const next = () => {
+      identity.current += 1
+      setGeneration(identity.current)
+    }
+    listeners.add(next)
+    return () => {
+      listeners.delete(next)
+    }
+  }, [client])
+  const baseDrafts = courseProps.drafts ?? watchLearningDrafts
+  const drafts = useMemo(
+    () => fenceDrafts(baseDrafts, () => identity.current === generation),
+    [baseDrafts, generation],
+  )
   const snapshot = useSyncExternalStore(
     client.subscribe,
     client.getSnapshot,
@@ -116,6 +173,7 @@ export function WatchGrowProgressCourse({
     key: 0,
     lessonId: returned?.lessonId ?? initialLessonId ?? "lesson-1",
     cardId: returned?.cardId ?? null,
+    open: Boolean(returned) || Boolean(initialOpen),
     story: Boolean(returned?.cardId) || Boolean(initialStory),
   }))
   const [lessonId, setLessonId] = useState<LessonId>(launch.lessonId)
@@ -199,6 +257,12 @@ export function WatchGrowProgressCourse({
           )
           context.showSheet()
         }}
+        finish={() => {
+          setPosition((previous) =>
+            previous ? { ...previous, inStory: false } : null,
+          )
+          context.finish()
+        }}
       />
     )
   }
@@ -209,12 +273,13 @@ export function WatchGrowProgressCourse({
 
   return (
     <WatchGrowCourse
-      key={launch.key}
+      key={`${launch.key}:${generation}`}
       {...courseProps}
       initialLessonId={launch.lessonId}
+      initialOpen={launch.open}
       initialStory={launch.story}
       progress={progress}
-      drafts={courseProps.drafts ?? watchLearningDrafts}
+      drafts={drafts}
       onProgressChange={(change) =>
         client.change(change.lessonId, change.progress)
       }
@@ -223,6 +288,15 @@ export function WatchGrowProgressCourse({
         courseProps.onLessonChange?.(next)
       }}
       renderStory={renderStory}
+      onStartOver={
+        snapshot.account === "anonymous"
+          ? () => {
+              // Nothing here is saved; clearing it touches only this page.
+              for (const id of Object.keys(snapshot.lessons) as LessonId[])
+                client.change(id, { completedStepIds: [], completed: false })
+            }
+          : undefined
+      }
       progressStatus={
         <ProgressStatus
           lessonId={lessonId}
@@ -240,6 +314,7 @@ export function WatchGrowProgressCourse({
               key: previous.key + 1,
               lessonId: target.lessonId,
               cardId: target.cardId,
+              open: true,
               story: true,
             }))
           }}
@@ -292,7 +367,7 @@ function DeferredStory(props: WatchGrowStoryProps) {
   if (Story) return <Story {...props} />
   if (failed) {
     return (
-      <div role="alert" className="mt-6">
+      <div role="alert" className="mt-6 text-white/70">
         <p>The story view could not load. The lesson sheet still works.</p>
         <div className="mt-3 flex flex-wrap gap-3">
           <button
@@ -306,14 +381,14 @@ function DeferredStory(props: WatchGrowStoryProps) {
             Try again
           </button>
           <button type="button" className={ACTION} onClick={props.showSheet}>
-            Back to lesson sheet
+            Back to the lesson
           </button>
         </div>
       </div>
     )
   }
   return (
-    <p role="status" className="mt-6">
+    <p role="status" className="mt-6 text-white/45">
       Opening the story…
     </p>
   )
@@ -324,9 +399,11 @@ function DeferredStory(props: WatchGrowStoryProps) {
 --------------------------------------------------------------------------- */
 
 const ACTION =
-  "min-h-11 cursor-pointer rounded-full border border-current/25 px-4 py-2 text-sm font-semibold hover:bg-black/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+  "min-h-11 cursor-pointer rounded-full border border-current/25 px-4 py-2 text-sm font-semibold hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
+// The status sits on the course's dark cover, so its one link is the pill the
+// rest of that block uses.
 const LINK =
-  "inline-flex min-h-11 items-center rounded-full bg-stone-950 px-4 py-2 text-sm font-semibold text-white hover:bg-stone-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+  "inline-flex min-h-11 items-center rounded-full bg-white px-4 py-2 text-sm font-semibold text-stone-900 hover:bg-white/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
 
 const ERROR_TEXT: Record<NonNullable<LessonView["error"]>, string> = {
   network: "Not saved. You appear to be offline.",
@@ -401,7 +478,7 @@ function ProgressStatus({
             open.
           </p>
           {asking ? (
-            <div className="mt-3 rounded-xl border border-stone-400/60 p-4">
+            <div className="mt-3 rounded-xl border border-white/15 p-4">
               <p>
                 Signing in leaves this page and brings you back to Lesson{" "}
                 {lesson.n}
