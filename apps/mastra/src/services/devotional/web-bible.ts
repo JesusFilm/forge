@@ -3,7 +3,9 @@ import { z } from "zod"
 /**
  * World English Bible (WEB, public domain) verse lookup — so devotional
  * scripture is the EXACT verse text, not model-recalled. Verses are keyed osis
- * (e.g. "Luke.8.24") in `devo/corpus/web-bible.json` (Gospels + Acts).
+ * (e.g. "Luke.8.24") in the Workspace at `/inputs/scripture/web-bible.json`
+ * (Gospels + Acts). The repository copy under `devotional-workspace/` is the
+ * migration seed for that path, not a runtime fallback.
  *
  * Pure parsing/lookup. Workspace discovery and verified reads are injected by
  * the attempt repository; there is no process-local cache or repo fallback.
