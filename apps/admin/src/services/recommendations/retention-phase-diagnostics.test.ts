@@ -4,7 +4,9 @@ import {
   boundedRetentionMilliseconds,
   createRetentionDiagnosticLogLimiter,
   createRetentionPhaseRecorder,
+  formatRetentionPhaseFailureLog,
   normalizedRetentionError,
+  parseRetentionPhaseFailureLog,
   type RetentionPhaseTiming,
 } from "./retention-phase-diagnostics"
 
@@ -145,5 +147,43 @@ describe("retention phase diagnostics", () => {
       emit: true,
       suppressedPriorMinute: 2,
     })
+  })
+
+  it("formats a single-line provider-friendly envelope and parses only the bounded schema", () => {
+    const recorder = createRetentionPhaseRecorder()
+    recorder.failed(timing(1))
+    const diagnostic = {
+      ...recorder.diagnostic(
+        "scheduled",
+        { phase: new Error("private viewer and SQL") },
+        { outcome: "succeeded", elapsedMs: 17 },
+      ),
+      suppressedPriorMinute: 2,
+    }
+    const line = formatRetentionPhaseFailureLog(diagnostic)
+    expect(line).toMatch(
+      /^\[recommendations\] event=recommendation_retention_phase_failure payload=\{/,
+    )
+    expect(line).not.toMatch(/\n|private viewer|SQL/)
+    expect(parseRetentionPhaseFailureLog(line)).toEqual(diagnostic)
+    expect(parseRetentionPhaseFailureLog(JSON.stringify(diagnostic))).toBeNull()
+    expect(
+      parseRetentionPhaseFailureLog(JSON.stringify(diagnostic), {
+        allowLegacyJson: true,
+      }),
+    ).toEqual(diagnostic)
+    expect(
+      parseRetentionPhaseFailureLog(
+        line.replace(
+          '"suppressedPriorMinute":2',
+          '"requestId":"private","suppressedPriorMinute":2',
+        ),
+      ),
+    ).toBeNull()
+    expect(
+      parseRetentionPhaseFailureLog(
+        line.replace('"label":"delete_request_roots"', '"label":"private"'),
+      ),
+    ).toBeNull()
   })
 })

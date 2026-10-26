@@ -115,6 +115,17 @@ const SQLSTATES: ReadonlySet<string> = new Set([
   "57014", // statement cancelled
   "P0001", // raised exception
 ])
+const ERROR_CLASSES: ReadonlySet<string> = new Set([
+  "PrismaClientKnownRequestError",
+  "PrismaClientUnknownRequestError",
+  "PrismaClientInitializationError",
+  "PrismaClientValidationError",
+  "RecommendationConflictError",
+  "Error",
+  "Unknown",
+])
+const LOG_PREFIX =
+  "[recommendations] event=recommendation_retention_phase_failure payload="
 
 export function boundedRetentionMilliseconds(value: number): number | null {
   return Number.isFinite(value) && value >= 0
@@ -294,6 +305,143 @@ export function createRetentionDiagnosticLogLimiter(limit = LOGS_PER_MINUTE) {
       return { emit: true, suppressedPriorMinute }
     },
   }
+}
+
+export type RetentionPhaseFailureLog = ReturnType<
+  ReturnType<typeof createRetentionPhaseRecorder>["diagnostic"]
+> & { suppressedPriorMinute: number }
+
+export function formatRetentionPhaseFailureLog(
+  diagnostic: RetentionPhaseFailureLog,
+): string {
+  return `${LOG_PREFIX}${JSON.stringify(diagnostic)}`
+}
+
+function exactKeys(
+  value: unknown,
+  keys: readonly string[],
+): value is Record<string, unknown> {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === keys.length &&
+    keys.every((key) => Object.hasOwn(value, key))
+  )
+}
+
+function safeMilliseconds(value: unknown): boolean {
+  return (
+    value === null ||
+    (typeof value === "number" && Number.isSafeInteger(value) && value >= 0)
+  )
+}
+
+function safeError(value: unknown): boolean {
+  return (
+    exactKeys(value, ["class", "prismaCode", "sqlstate"]) &&
+    typeof value.class === "string" &&
+    ERROR_CLASSES.has(value.class) &&
+    (value.prismaCode === null ||
+      (typeof value.prismaCode === "string" &&
+        PRISMA_CODES.has(value.prismaCode))) &&
+    (value.sqlstate === null ||
+      (typeof value.sqlstate === "string" && SQLSTATES.has(value.sqlstate)))
+  )
+}
+
+const TIMING_KEYS = [
+  "label",
+  "ordinal",
+  "stage",
+  "remainingBudgetMs",
+  "admittedBudgetMs",
+  "acquisitionMs",
+  "advisoryLockMs",
+  "configurationMs",
+  "operationMs",
+  "counterUpdateMs",
+  "commitAcknowledgementMs",
+  "incompleteStageElapsedMs",
+  "totalMs",
+] as const
+
+function safePhaseTiming(value: unknown): boolean {
+  return (
+    exactKeys(value, TIMING_KEYS) &&
+    typeof value.label === "string" &&
+    PHASE_LABEL_SET.has(value.label) &&
+    typeof value.ordinal === "number" &&
+    Number.isSafeInteger(value.ordinal) &&
+    value.ordinal >= 0 &&
+    typeof value.stage === "string" &&
+    PHASE_STAGE_SET.has(value.stage) &&
+    TIMING_KEYS.slice(3).every((key) => safeMilliseconds(value[key]))
+  )
+}
+
+// Accept only the code-owned diagnostic schema. A Railway log line can carry
+// arbitrary request data outside this envelope; callers must never forward it.
+export function parseRetentionPhaseFailureLog(
+  line: string,
+  { allowLegacyJson = false }: { allowLegacyJson?: boolean } = {},
+): RetentionPhaseFailureLog | null {
+  const payload = line.startsWith(LOG_PREFIX)
+    ? line.slice(LOG_PREFIX.length)
+    : allowLegacyJson && line.startsWith("{")
+      ? line
+      : null
+  if (payload === null || payload.length > 8192) return null
+  let value: unknown
+  try {
+    value = JSON.parse(payload)
+  } catch {
+    return null
+  }
+  if (
+    !exactKeys(value, [
+      "event",
+      "version",
+      "mode",
+      "errors",
+      "precedingCompleted",
+      "slowestCompleted",
+      "failed",
+      "terminal",
+      "fallbackLedger",
+      "suppressedPriorMinute",
+    ]) ||
+    value.event !== "recommendation_retention_phase_failure" ||
+    value.version !== 1 ||
+    (value.mode !== "scheduled" && value.mode !== "stored-expiry-only") ||
+    !exactKeys(value.errors, ["phase", "terminal", "fallbackLedger"]) ||
+    !safeError(value.errors.phase) ||
+    !(value.errors.terminal === null || safeError(value.errors.terminal)) ||
+    !(
+      value.errors.fallbackLedger === null ||
+      safeError(value.errors.fallbackLedger)
+    ) ||
+    !Array.isArray(value.precedingCompleted) ||
+    value.precedingCompleted.length > HISTORY_LIMIT ||
+    !value.precedingCompleted.every(safePhaseTiming) ||
+    !(
+      value.slowestCompleted === null || safePhaseTiming(value.slowestCompleted)
+    ) ||
+    !Array.isArray(value.failed) ||
+    value.failed.length > 2 ||
+    !value.failed.every(safePhaseTiming) ||
+    !(value.terminal === null || safePhaseTiming(value.terminal)) ||
+    !exactKeys(value.fallbackLedger, ["outcome", "elapsedMs"]) ||
+    !["succeeded", "failed", "not_attempted"].includes(
+      String(value.fallbackLedger.outcome),
+    ) ||
+    !safeMilliseconds(value.fallbackLedger.elapsedMs) ||
+    typeof value.suppressedPriorMinute !== "number" ||
+    !Number.isSafeInteger(value.suppressedPriorMinute) ||
+    value.suppressedPriorMinute < 0
+  )
+    return null
+  return value as RetentionPhaseFailureLog
 }
 
 // The durable ledger still records every failure. This only bounds log volume
