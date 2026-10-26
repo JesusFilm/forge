@@ -56,6 +56,22 @@ function retentionQuery(
 function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
   const requestIds = [{ id: "request-1" }, { id: "request-2" }]
   const count = () => vi.fn(async () => 0)
+  let committedRoots = 0
+  let committedCounts: Record<string, number> = {}
+  let committedStatus = "RUNNING"
+  const durable = () => ({
+    status: committedStatus,
+    rootsDeleted: committedRoots,
+    rowCounts: { ...committedCounts },
+  })
+  const conditionalUpdate = (args: {
+    where: { status: string }
+    data: { status: string }
+  }) => {
+    if (committedStatus !== args.where.status) return { count: 0 }
+    committedStatus = args.data.status
+    return { count: 1 }
+  }
   const transaction = {
     $executeRaw: vi.fn(async (query: unknown) => {
       const sql = rawSqlText(query)
@@ -270,7 +286,16 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
         .mockResolvedValueOnce({ count: 1 }),
     },
     recommendationRetentionRun: {
-      update: vi.fn(async (args) => args),
+      update: vi.fn(async (args) => {
+        if (typeof args.data.rootsDeleted === "number")
+          committedRoots = args.data.rootsDeleted
+        if (args.data.rowCounts != null)
+          committedCounts = { ...args.data.rowCounts }
+        if (args.data.status != null) committedStatus = args.data.status
+        return durable()
+      }),
+      updateMany: vi.fn(async (args) => conditionalUpdate(args)),
+      findUniqueOrThrow: vi.fn(async () => durable()),
       deleteMany: vi.fn(async () => ({ count: 0 })),
     },
     pushAttribution: { deleteMany: vi.fn(async () => ({ count: 1 })) },
@@ -288,7 +313,9 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
     ),
     recommendationRetentionRun: {
       create: vi.fn(async () => ({ id: "retention-run-1" })),
-      update: vi.fn(async (args) => args),
+      updateMany: vi.fn(async (args) => conditionalUpdate(args)),
+      findUnique: vi.fn(async () => durable()),
+      findUniqueOrThrow: vi.fn(async () => durable()),
       findFirst: vi.fn(),
     },
     recommendationViewer: {
@@ -899,7 +926,7 @@ describe("recommendation retention service", () => {
   it("propagates an ordinary lock-skip ledger failure", async () => {
     const { prisma, transaction } = buildPrisma()
     transaction.$queryRaw.mockReset().mockResolvedValueOnce([{ locked: false }])
-    prisma.recommendationRetentionRun.update.mockRejectedValueOnce(
+    prisma.recommendationRetentionRun.updateMany.mockRejectedValueOnce(
       new Error("skip ledger unavailable"),
     )
     const logged = vi.spyOn(console, "error").mockImplementation(() => {})
@@ -958,7 +985,7 @@ describe("recommendation retention service", () => {
       expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
       expect(prisma.$transaction).toHaveBeenCalledTimes(2)
       expect(
-        transaction.recommendationRetentionRun.update,
+        transaction.recommendationRetentionRun.updateMany,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
@@ -975,6 +1002,246 @@ describe("recommendation retention service", () => {
     }
   })
 
+  it("yields after acknowledged root deletion when the next phase starts at the deadline", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    prisma.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(transaction)
+      if (transaction.recommendationRequest.deleteMany.mock.calls.length > 0)
+        clock = 5_000
+      return result
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).resolves.toMatchObject({
+        status: "yielded",
+        rootsDeleted: 2,
+        oldestExpiredAtAfter: null,
+        overdueAfterRun: null,
+        continuationRequired: true,
+      })
+      expect(transaction.recommendationRequest.deleteMany).toHaveBeenCalled()
+      expect(
+        transaction.recommendationTraceAccessAudit.deleteMany,
+      ).not.toHaveBeenCalled()
+      expect(
+        transaction.recommendationRetentionRun.updateMany,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "SKIPPED",
+            reasonCode: "budget_yield",
+            oldestExpiredAtAfter: null,
+          }),
+        }),
+      )
+      expect(
+        prisma.recommendationRetentionRun.updateMany,
+      ).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("yields when the lock wait exhausts the deadline before operation", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
+      if (query.sql.includes("pg_try_advisory_xact_lock")) {
+        clock = 5_000
+        return [{ locked: true }]
+      }
+      return []
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).resolves.toMatchObject({
+        status: "yielded",
+        rootsDeleted: 0,
+        oldestExpiredAtAfter: null,
+        continuationRequired: true,
+      })
+      expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
+      expect(
+        transaction.recommendationRetentionRun.updateMany,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "SKIPPED",
+            reasonCode: "budget_yield",
+          }),
+        }),
+      )
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("yields when nonterminal admission is already past the deadline", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    prisma.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(transaction)
+      clock = 5_001
+      return result
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).resolves.toMatchObject({
+        status: "yielded",
+        rootsDeleted: 0,
+        oldestExpiredAtAfter: null,
+        continuationRequired: true,
+      })
+      expect(transaction.recommendationRequest.findMany).toHaveBeenCalledTimes(
+        1,
+      )
+      expect(
+        transaction.recommendationRequest.deleteMany,
+      ).not.toHaveBeenCalled()
+      expect(
+        prisma.recommendationRetentionRun.updateMany,
+      ).not.toHaveBeenCalled()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("keeps a rejected phase commit failed at the same deadline boundary", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const commitError = new Error("acknowledged commit unavailable")
+    prisma.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(transaction)
+      if (transaction.recommendationRequest.deleteMany.mock.calls.length > 0) {
+        clock = 5_000
+        throw commitError
+      }
+      return result
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toBe(commitError)
+      expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+      const fallback =
+        prisma.recommendationRetentionRun.updateMany.mock.calls.at(-1)?.[0]
+      expect(fallback?.data).not.toHaveProperty("rowCounts")
+      expect(fallback?.data).not.toHaveProperty("rootsDeleted")
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("does not overwrite a budget-yield ledger when its commit acknowledgement is lost", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const acknowledgementError = new Error("terminal acknowledgement lost")
+    prisma.$transaction
+      .mockImplementationOnce(async (callback) => {
+        const result = await callback(transaction)
+        clock = 5_000
+        return result
+      })
+      .mockImplementationOnce(async (callback) => {
+        await callback(transaction)
+        throw acknowledgementError
+      })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toBe(acknowledgementError)
+      expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "retention-run-1", status: "RUNNING" },
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+      expect(
+        await prisma.recommendationRetentionRun.findUnique(),
+      ).toMatchObject({
+        status: "SKIPPED",
+        rootsDeleted: 0,
+      })
+      expect(prisma.recommendationRetentionRun.findUnique).toHaveBeenCalled()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("does not overwrite a succeeded ledger when success COMMIT acknowledgement is lost", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const acknowledgementError = new Error("success acknowledgement lost")
+    prisma.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(transaction)
+      if (
+        transaction.recommendationRetentionRun.update.mock.calls.some(
+          ([args]) => args?.data.status === "SUCCEEDED",
+        )
+      )
+        throw acknowledgementError
+      return result
+    })
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never),
+    ).rejects.toBe(acknowledgementError)
+    expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "retention-run-1", status: "RUNNING" },
+        data: expect.objectContaining({ status: "FAILED" }),
+      }),
+    )
+    expect(await prisma.recommendationRetentionRun.findUnique()).toMatchObject({
+      status: "SUCCEEDED",
+      rootsDeleted: 2,
+    })
+  })
+
+  it("keeps an admitted operation rejection failed with 751 ms remaining", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const operationError = new Error("admitted query failed")
+    transaction.recommendationRequest.findMany.mockRejectedValueOnce(
+      operationError,
+    )
+    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
+      if (query.sql.includes("pg_try_advisory_xact_lock")) {
+        clock = 4_249
+        return [{ locked: true }]
+      }
+      return []
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toBe(operationError)
+      expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   it("preserves the original failure and failed ledger when the diagnostic logger throws", async () => {
     const { prisma, transaction } = buildPrisma()
     const original = new Error("owned phase failure")
@@ -986,7 +1253,7 @@ describe("recommendation retention service", () => {
       await expect(
         purgeExpiredRecommendationRequests(prisma as never),
       ).rejects.toBe(original)
-      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+      expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ status: "FAILED" }),
         }),
@@ -1004,7 +1271,7 @@ describe("recommendation retention service", () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {})
     prisma.$transaction
       .mockImplementationOnce(async (callback) => {
-        clock = 4_600
+        clock = 5_000
         return callback(transaction)
       })
       .mockRejectedValueOnce(new Error("terminal write timed out"))
@@ -1012,7 +1279,7 @@ describe("recommendation retention service", () => {
       await expect(
         purgeExpiredRecommendationRequests(prisma as never),
       ).rejects.toThrow("terminal write timed out")
-      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+      expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ status: "FAILED" }),
         }),
@@ -1043,33 +1310,27 @@ describe("recommendation retention service", () => {
     }
   })
 
-  it("does not report a lock-busy terminal yield as a benign skip when fallback persistence fails", async () => {
+  it("does not report failed budget-yield terminal persistence as a benign skip", async () => {
     const { prisma, transaction } = buildPrisma()
     let clock = 0
-    let lockAttempts = 0
     const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
-    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
-      if (query.sql.includes("pg_try_advisory_xact_lock")) {
-        if (++lockAttempts === 1) {
-          clock = 4_600
-          return [{ locked: true }]
-        }
-        return [{ locked: false }]
-      }
-      return []
-    })
-    prisma.recommendationRetentionRun.update.mockRejectedValueOnce(
+    prisma.$transaction
+      .mockImplementationOnce(async (callback) => {
+        clock = 5_000
+        return callback(transaction)
+      })
+      .mockRejectedValueOnce(new Error("terminal ledger unavailable"))
+    prisma.recommendationRetentionRun.updateMany.mockRejectedValueOnce(
       new Error("fallback ledger unavailable"),
     )
     try {
       await expect(
         purgeExpiredRecommendationRequests(prisma as never),
       ).rejects.toThrow("fallback ledger unavailable")
-      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+      expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
-            status: "SKIPPED",
-            reasonCode: "lock_not_acquired",
+            status: "FAILED",
           }),
         }),
       )
@@ -1088,7 +1349,7 @@ describe("recommendation retention service", () => {
     await expect(
       purgeExpiredRecommendationRequests(prisma as never),
     ).rejects.toThrow("oldest scan timed out")
-    expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+    expect(prisma.recommendationRetentionRun.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: "FAILED" }),
       }),

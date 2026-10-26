@@ -47,6 +47,9 @@ const RECOMMENDATION_RETENTION_LOCK_ID = 368_000_001
 const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
 // An admitted phase may still exhaust the deadline; that remains a failure.
 const RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS = 750
+// Only the ledger can be finalized after a pre-work yield. No cleanup runs here.
+const RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS = 1_000
+const RECOMMENDATION_RETENTION_YIELD_LEDGER_MAX_WAIT_MS = 500
 const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
 const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 25
 const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_MIN_PROGRESS = 5
@@ -268,18 +271,18 @@ export async function purgeExpiredRecommendationRequests(
       incompleteStageElapsedMs: null,
       totalMs: null,
     }
-    if (remaining <= 0) {
-      diagnostics.failed(timing, options.terminal)
-      throw new RecommendationConflictError(
-        "Recommendation retention batch deadline exceeded",
-      )
-    }
     if (
       !options.terminal &&
       remaining <= RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
     ) {
       diagnostics.failed(timing)
       throw new RetentionBudgetYield()
+    }
+    if (remaining <= 0) {
+      diagnostics.failed(timing, options.terminal)
+      throw new RecommendationConflictError(
+        "Recommendation retention batch deadline exceeded",
+      )
     }
     const before = { ...rowCounts }
     timing.stage = "acquire"
@@ -304,15 +307,15 @@ export async function purgeExpiredRecommendationRequests(
             )
           const admittedRemaining = deadline - Date.now()
           timing.admittedBudgetMs = admittedRemaining
-          if (admittedRemaining <= 0)
-            throw new RecommendationConflictError(
-              "Recommendation retention batch deadline exceeded",
-            )
           if (
             !options.terminal &&
             admittedRemaining <= RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
           )
             throw new RetentionBudgetYield()
+          if (admittedRemaining <= 0)
+            throw new RecommendationConflictError(
+              "Recommendation retention batch deadline exceeded",
+            )
           timing.stage = "configure_timeout"
           stageStarted = performance.now()
           await tx.$queryRaw(
@@ -1429,33 +1432,123 @@ export async function purgeExpiredRecommendationRequests(
     if (failure instanceof RetentionBudgetYield) {
       try {
         // Every earlier phase committed its counters with its own mutations.
-        // This phase was refused before work, so the remaining backlog is
-        // deliberately unknown and the scheduler must continue immediately.
-        await phase(
-          "terminal_budget_yield",
-          (tx) =>
-            tx.recommendationRetentionRun.update({
-              where: { id: run.id },
-              data: {
-                status: RecommendationRetentionRunStatus.SKIPPED,
-                rootsDeleted: rowCounts.requests ?? 0,
-                rowCounts: rowCounts satisfies Prisma.InputJsonValue,
-                oldestExpiredAtAfter: null,
-                reasonCode: "budget_yield",
-                completedAt: now,
-              },
-            }),
-          { terminal: true },
-        )
+        // The cleanup deadline may already have passed. A fresh, bounded
+        // ledger-only transaction confirms SKIPPED without starting work,
+        // taking the cleanup lock, or rewriting committed counters.
+        const terminalStarted = performance.now()
+        const terminalTiming: RetentionPhaseTiming = {
+          label: "terminal_budget_yield",
+          ordinal: ++phaseOrdinal,
+          stage: "acquire",
+          remainingBudgetMs: deadline - Date.now(),
+          admittedBudgetMs: RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS,
+          acquisitionMs: null,
+          advisoryLockMs: null,
+          configurationMs: null,
+          operationMs: null,
+          counterUpdateMs: null,
+          commitAcknowledgementMs: null,
+          incompleteStageElapsedMs: null,
+          totalMs: null,
+        }
+        let stageStarted = terminalStarted
+        let durable: {
+          status: RecommendationRetentionRunStatus
+          rootsDeleted: number
+          rowCounts: Record<string, number>
+        }
+        try {
+          durable = await prisma.$transaction(
+            async (tx) => {
+              terminalTiming.acquisitionMs = performance.now() - stageStarted
+              terminalTiming.stage = "configure_timeout"
+              stageStarted = performance.now()
+              await tx.$queryRaw(
+                Prisma.sql`SELECT set_config('statement_timeout', ${String(RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS)}, true), set_config('transaction_timeout', ${String(RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS)}, true)`,
+              )
+              terminalTiming.configurationMs = performance.now() - stageStarted
+              terminalTiming.stage = "operation"
+              stageStarted = performance.now()
+              const changed = await tx.recommendationRetentionRun.updateMany({
+                where: {
+                  id: run.id,
+                  status: RecommendationRetentionRunStatus.RUNNING,
+                },
+                data: {
+                  status: RecommendationRetentionRunStatus.SKIPPED,
+                  oldestExpiredAtAfter: null,
+                  reasonCode: "budget_yield",
+                  completedAt: now,
+                },
+              })
+              if (changed.count !== 1)
+                throw new RecommendationConflictError(
+                  "Recommendation retention budget-yield ledger was not running",
+                )
+              const result =
+                await tx.recommendationRetentionRun.findUniqueOrThrow({
+                  where: { id: run.id },
+                  select: {
+                    status: true,
+                    rootsDeleted: true,
+                    rowCounts: true,
+                  },
+                })
+              if (
+                result.status !== RecommendationRetentionRunStatus.SKIPPED ||
+                !Number.isSafeInteger(result.rootsDeleted) ||
+                result.rootsDeleted < 0 ||
+                result.rowCounts == null ||
+                typeof result.rowCounts !== "object" ||
+                Array.isArray(result.rowCounts) ||
+                Object.values(result.rowCounts).some(
+                  (value) =>
+                    typeof value !== "number" ||
+                    !Number.isSafeInteger(value) ||
+                    value < 0,
+                )
+              )
+                throw new RecommendationConflictError(
+                  "Recommendation retention budget-yield ledger was not confirmed",
+                )
+              const committedCounts = Object.fromEntries(
+                Object.entries(result.rowCounts) as Array<[string, number]>,
+              )
+              if ((committedCounts.requests ?? 0) !== result.rootsDeleted)
+                throw new RecommendationConflictError(
+                  "Recommendation retention budget-yield counters were not confirmed",
+                )
+              terminalTiming.operationMs = performance.now() - stageStarted
+              terminalTiming.stage = "commit_acknowledgement"
+              stageStarted = performance.now()
+              return { ...result, rowCounts: committedCounts }
+            },
+            {
+              timeout: RECOMMENDATION_RETENTION_YIELD_LEDGER_TIMEOUT_MS,
+              maxWait: RECOMMENDATION_RETENTION_YIELD_LEDGER_MAX_WAIT_MS,
+            },
+          )
+          terminalTiming.commitAcknowledgementMs =
+            performance.now() - stageStarted
+          terminalTiming.stage = "complete"
+          terminalTiming.totalMs = performance.now() - terminalStarted
+          diagnostics.completed(terminalTiming, true)
+        } catch (terminalError) {
+          terminalTiming.incompleteStageElapsedMs =
+            performance.now() - stageStarted
+          terminalTiming.totalMs = performance.now() - terminalStarted
+          diagnostics.failed(terminalTiming, true)
+          throw terminalError
+        }
+        // The remaining backlog is deliberately unknown; continuation is
+        // required even if no page-selection cap was reached.
         return {
           status: "yielded",
           runId: run.id,
-          rootsDeleted: rowCounts.requests ?? 0,
-          rowCounts,
+          rootsDeleted: durable.rootsDeleted,
+          rowCounts: durable.rowCounts,
           oldestExpiredAtAfter: null,
           overdueAfterRun: null,
-          // Older scheduler steps only know this continuation bit. A budget
-          // yield is incomplete even when no row-count cap was reached.
           batchLimitReached: true,
           continuationRequired: true,
           profileVectorSweepSkipped,
@@ -1469,7 +1562,7 @@ export async function purgeExpiredRecommendationRequests(
     const fallbackStarted = performance.now()
     const emitFailure = (
       fallbackError: unknown | undefined,
-      outcome: "succeeded" | "failed",
+      outcome: "succeeded" | "failed" | "not_attempted",
     ) => {
       if (lockBusy && outcome === "succeeded") return
       try {
@@ -1496,10 +1589,13 @@ export async function purgeExpiredRecommendationRequests(
         // Diagnostics cannot replace the original failure or affect cleanup.
       }
     }
-    let durable
+    let changed
     try {
-      durable = await prisma.recommendationRetentionRun.update({
-        where: { id: run.id },
+      changed = await prisma.recommendationRetentionRun.updateMany({
+        where: {
+          id: run.id,
+          status: RecommendationRetentionRunStatus.RUNNING,
+        },
         data: {
           status: lockBusy
             ? RecommendationRetentionRunStatus.SKIPPED
@@ -1518,21 +1614,46 @@ export async function purgeExpiredRecommendationRequests(
       emitFailure(terminalError, "failed")
       throw terminalError
     }
+    if (changed.count !== 1) {
+      // A terminal write may have committed before its acknowledgement was
+      // lost. Observe the durable state, but never overwrite or claim it here.
+      try {
+        await prisma.recommendationRetentionRun.findUnique({
+          where: { id: run.id },
+          select: { status: true, rootsDeleted: true, rowCounts: true },
+        })
+      } catch (readError) {
+        emitFailure(readError, "failed")
+        throw readError
+      }
+      emitFailure(undefined, "not_attempted")
+      throw failure
+    }
     if (lockBusy) {
-      const counts = durable?.rowCounts
-      const committedCounts =
-        counts != null && typeof counts === "object" && !Array.isArray(counts)
-          ? Object.fromEntries(
-              Object.entries(counts).filter(
-                (entry): entry is [string, number] =>
-                  typeof entry[1] === "number",
-              ),
-            )
-          : rowCounts
+      let durable
+      try {
+        durable = await prisma.recommendationRetentionRun.findUniqueOrThrow({
+          where: { id: run.id },
+          select: { rootsDeleted: true, rowCounts: true },
+        })
+      } catch (readError) {
+        emitFailure(readError, "failed")
+        throw readError
+      }
+      const counts = durable.rowCounts
+      if (counts == null || typeof counts !== "object" || Array.isArray(counts))
+        throw new RecommendationConflictError(
+          "Recommendation retention skip counters were not confirmed",
+        )
+      const committedCounts = Object.fromEntries(
+        Object.entries(counts).filter(
+          (entry): entry is [string, number] => typeof entry[1] === "number",
+        ),
+      )
       return {
         status: "skipped",
         runId: run.id,
-        rootsDeleted: durable?.rootsDeleted ?? committedCounts.requests ?? 0,
+        rootsDeleted: durable.rootsDeleted,
         rowCounts: committedCounts,
         oldestExpiredAtAfter: null,
         overdueAfterRun: false,
