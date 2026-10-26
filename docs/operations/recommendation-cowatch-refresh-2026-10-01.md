@@ -17,8 +17,11 @@ receipts live in `docs/validation/cowatch-restoration-20261001/`.
 - Source hydration preaggregates retained ownership and preferred identities by
   session/episode instead of multiplying every raw row by every retained receipt.
   Exact-row/graph equivalence and a 60-generation owned stress fixture preserve
-  semantics and the five-second read budget. Transaction-local JIT is disabled
-  only for bounded preflight/publication transactions.
+  semantics. The original five-second read budget is removed by the October 27
+  follow-up after repeated preflight refusals; the 30-second transaction bound
+  remains.
+  Transaction-local JIT is disabled only for bounded preflight/publication
+  transactions.
 - `RecommendationCowatchRefreshService` uses an explicit recent-auth human-owner
   grant tied to the active direct release, exact manifest/configuration and owner
   influence floor. The worker records that grant in activation audit instead of
@@ -45,7 +48,9 @@ receipts live in `docs/validation/cowatch-restoration-20261001/`.
 2. Declare the whole source window and cutoff before reading. Run the deployed
    `cowatch:shadow:rebuild` CLI with `--window-start`, `--window-end`,
    `--evaluation-as-of`. Its default mode is read-only preflight. Preserve the
-   five-second statement, one-second lock and 30-second transaction limits.
+   one-second lock and 30-second transaction limits. Graph preflight and
+   publication have no separate per-statement deadline with the October 27
+   follow-up; read-only monitoring queries still use five-second limits.
 3. Record raw/eligible sources, pairs, contributions, edges, row JSON bytes and
    exact generation. Recheck actual graph allocation, database bytes, filesystem
    free bytes, resident WAL, replication slots, transactions/lock waiters and

@@ -3,7 +3,7 @@ id: "feat-573"
 title: "Sustain live co-watch with bounded graph refresh"
 owner: "nisal"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-10-01"
 duration: 3
 depends_on:
@@ -140,3 +140,20 @@ support the current envelope; future attempts still apply admission and may
 refuse. Ordinary recommendation delivery falls back when graph authority is
 unavailable. The next natural attempt and actual co-watch contribution remain
 subjects for the existing scheduled follow-up, not claims of this closeout.
+
+## October 27 preflight follow-up
+
+The earlier lifecycle acceptance remains historical. A fresh read-only production
+audit found the G9 graph/release invalidated on October 7 by an eligibility
+decision change, followed by repeated refused automatic replacements. During
+October 19–26 UTC, 13 attempts recorded `refresh_preflight_unavailable` and one
+recorded `refresh_source_overflow`; none published a release. The unavailable
+attempts ended near the preflight's five-second statement limit, but their
+generic reason does not retain the underlying exception. This fresh operational
+evidence reopens the bounded refresh task. This follow-up removes the
+five-second graph statement limit to test whether it is responsible. Both
+preflight and publication repeat the source read, so the change covers both
+while preserving the separate transaction, lock, source-size and admission
+bounds.
+
+Plan: `docs/plans/2026-10-27-001-cowatch-preflight-timeout-plan.md`.
