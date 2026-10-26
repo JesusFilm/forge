@@ -17,6 +17,22 @@ tags:
   - "operations"
 ---
 
+## October 27 pre-work deadline correction
+
+An isolated PostgreSQL regression reproduced an additional boundary bug: after
+an acknowledged root commit exhausts the cleanup budget, the next nonterminal
+admission throws before its safe-yield guard. The correction includes zero and
+negative budgets in that guard and finalizes only the ledger in a separate
+bounded transaction. It preserves committed counters and terminal states after
+uncertain acknowledgements; genuine operation and transaction failures remain
+failures. The full nine-test native standalone suite and 94 focused unit,
+scheduler, job and diagnostic tests pass locally. This is not proof of the SQL
+behind October 25–26 P2028 errors or of a production repair.
+
+Release review, normal deployment and observed production results remain
+pending. Keep this ticket in progress, retain October 23's one accepted cycle,
+and keep manual drain on HOLD until fresh reviewed admission gates permit it.
+
 ## October 26 follow-up: continuing deletion with failures
 
 The independently reviewed [October 26 ledger receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6425467086)

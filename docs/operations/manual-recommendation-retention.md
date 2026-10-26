@@ -12,6 +12,16 @@ earlier committed row counts can still be nonzero. An absent response or
 transport timeout is uncertain, not evidence that the pass failed or rolled
 back. The durable ledgers and fresh backlog are authoritative.
 
+A nonterminal phase refused before work yields even when the five-second
+cleanup deadline has already elapsed. Finalizing that yield uses a separate
+ledger-only transaction with a one-second transaction limit and a separate
+500 ms acquisition limit. These are not a combined wall-clock guarantee. It
+performs no cleanup or backlog scan and does not extend the cleanup budget.
+The transaction changes only a RUNNING ledger and returns its committed counts.
+The service reports a yield only after commit acknowledgement. Genuine query,
+transaction, commit and ledger failures still propagate; fallback persistence
+never overwrites an already terminal ledger after an uncertain acknowledgement.
+
 Before using it in production, verify the actual Admin HTTP and worker revisions, health and runner roles. Read aggregate expired backlog, all retention-health types, both ledgers, PostgreSQL relation allocation, WAL, and direct PGDATA free bytes. If a pass is already running, the advisory lock makes the manual pass skip. If the browser returns an error or loses its response, reconcile the manual ledger and runtime before pressing the button again. Do not assume that a queued response means rows were deleted.
 
 The browser request carries a unique operation key. Repeating the same request cannot start another workflow; it returns the existing workflow receipt. A dispatch transport failure may leave a queued ledger with an uncertain runtime outcome. Inspect that ledger and the independent retention ledger before making a new request. The one-pass workflow does not automatically retry a failed purge.

@@ -52,3 +52,24 @@ Test a genuine slow in-transaction timeout as well as the safe yield. Keep the
 same deadline and deletion order; reducing the page or increasing a timeout
 would answer a different question. After release, verify actual Admin roles and
 two ordinary failure-free loaded cycles before calling retention reliable.
+
+## October 27: exhausted pre-work budget and terminal acknowledgement
+
+The admission guard must include zero and negative remaining time. Checking
+`remaining <= 0` and throwing before the nonterminal minimum-budget guard made
+an acknowledged committed prefix fail at the next phase boundary. A native
+PostgreSQL regression delays return from a committed root transaction by 5.1
+seconds: current main fails at admission, while the correction durably yields
+with the root deleted, the projection tail untouched, exact committed counters
+and no new success watermark. This isolates a boundary bug; it does not identify
+the SQL responsible for historical production transaction-expiry errors.
+
+The exhausted cleanup deadline cannot also fund yield finalization. Use a
+separate one-second ledger-only transaction with a 500 ms acquisition wait,
+positive database timeouts and no cleanup advisory lock. Compare-and-set the
+RUNNING status, read and validate durable counters inside the transaction, and
+report yield only after commit acknowledgement. A rejected acknowledgement
+still propagates; a conditional failure fallback preserves any terminal state
+already committed. Unit coverage includes lost acknowledgements for both yield
+and success. The native suite also proves genuine in-transaction timeouts remain
+failed while preserving earlier committed work.
