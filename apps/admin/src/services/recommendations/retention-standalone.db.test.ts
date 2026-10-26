@@ -8,6 +8,7 @@ import { compositionGraphFixture } from "./composition/graph.test-fixture"
 import { compositionDigest } from "./composition/policy"
 import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "./integrity-policy"
 import { COWATCH_MMR_TRIAL_MANIFEST } from "./promotion/manifest"
+import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -834,22 +835,24 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           logged.mockRestore()
         }
         expect(diagnosticLog).toHaveLength(1)
-        const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
-        expect(diagnostic.failed[0]).toMatchObject({
+        const diagnostic = parseRetentionPhaseFailureLog(
+          String(diagnosticLog[0]?.[0]),
+        )
+        expect(diagnostic?.failed[0]).toMatchObject({
           label: "projection_run_page",
           stage: "operation",
           operationMs: null,
         })
-        expect(diagnostic.failed[0].incompleteStageElapsedMs).toBeGreaterThan(
+        expect(diagnostic?.failed[0].incompleteStageElapsedMs).toBeGreaterThan(
           4_000,
         )
         expect(
-          diagnostic.precedingCompleted.some(
+          diagnostic?.precedingCompleted.some(
             (phase: { label: string }) =>
               phase.label === "delete_request_roots",
           ),
         ).toBe(true)
-        expect(diagnostic.fallbackLedger.outcome).toBe("succeeded")
+        expect(diagnostic?.fallbackLedger.outcome).toBe("succeeded")
         expect(JSON.stringify(diagnostic)).not.toContain(requestId)
         const failed = await db.recommendationRetentionRun.findFirstOrThrow({
           orderBy: { startedAt: "desc" },

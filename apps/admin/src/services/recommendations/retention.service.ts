@@ -27,6 +27,7 @@ import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 import {
   createRetentionPhaseRecorder,
+  formatRetentionPhaseFailureLog,
   retentionDiagnosticLogLimiter,
   type RetentionPhaseLabel,
   type RetentionPhaseTiming,
@@ -1475,7 +1476,7 @@ export async function purgeExpiredRecommendationRequests(
         const permit = retentionDiagnosticLogLimiter.allow()
         if (!permit.emit) return
         console.error(
-          JSON.stringify({
+          formatRetentionPhaseFailureLog({
             ...diagnostics.diagnostic(
               mode,
               {

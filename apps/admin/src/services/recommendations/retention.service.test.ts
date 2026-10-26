@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import type { Prisma } from "@prisma/client"
+import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -912,8 +913,10 @@ describe("recommendation retention service", () => {
       logged.mockRestore()
     }
     expect(diagnosticLog).toHaveLength(1)
-    const diagnostic = JSON.parse(String(diagnosticLog[0]?.[0]))
-    expect(diagnostic.errors).toEqual({
+    const diagnostic = parseRetentionPhaseFailureLog(
+      String(diagnosticLog[0]?.[0]),
+    )
+    expect(diagnostic?.errors).toEqual({
       phase: {
         class: "RecommendationConflictError",
         prismaCode: null,
@@ -922,7 +925,7 @@ describe("recommendation retention service", () => {
       terminal: null,
       fallbackLedger: { class: "Error", prismaCode: null, sqlstate: null },
     })
-    expect(diagnostic.fallbackLedger.outcome).toBe("failed")
+    expect(diagnostic?.fallbackLedger.outcome).toBe("failed")
     expect(JSON.stringify(diagnostic)).not.toContain("skip ledger unavailable")
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
@@ -972,6 +975,28 @@ describe("recommendation retention service", () => {
     }
   })
 
+  it("preserves the original failure and failed ledger when the diagnostic logger throws", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const original = new Error("owned phase failure")
+    transaction.recommendationRequest.findMany.mockRejectedValueOnce(original)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {
+      throw new Error("logger unavailable")
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toBe(original)
+      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+      expect(logged).toHaveBeenCalledTimes(1)
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
   it("keeps a terminal write timeout failed after a safe pre-work yield", async () => {
     const { prisma, transaction } = buildPrisma()
     let clock = 0
@@ -993,7 +1018,9 @@ describe("recommendation retention service", () => {
         }),
       )
       expect(logged).toHaveBeenCalledTimes(1)
-      const diagnostic = JSON.parse(String(logged.mock.calls[0]?.[0]))
+      const diagnostic = parseRetentionPhaseFailureLog(
+        String(logged.mock.calls[0]?.[0]),
+      )
       expect(diagnostic).toMatchObject({
         errors: {
           phase: { class: "Error" },
