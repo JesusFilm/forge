@@ -207,7 +207,7 @@ This checkpoint supersedes the October 23 pre-cycle backlog and zero-credit
 state above. The independently reviewed October 23 ordinary cycle completed
 85 successful passes without failures or yields and cleared its fixed expired
 cohort. It earns one feat-554 cycle; no manual cleanup launched. The [current
-closeout checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-24-current-checkpoint)
+closeout checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-24-checkpoint)
 and feat-554 ticket retain the final watermark, descendant/backlog and capacity
 evidence. One further qualifying cycle is needed.
 
@@ -226,3 +226,28 @@ five-second budget and truthful failure/yield classification. The already
 enabled daily scheduler and separate read-only daily monitor remain active;
 do not start manual cleanup or revive the expired outage monitor. Keep the
 October 27 exposure wave and the unresolved HNSW fixture separate from feat-554.
+
+### October 26 continuation
+
+The [current evidence checkpoint](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-current-checkpoint)
+records 37 failed scheduled wrappers on October 25 and nine on October 26.
+Independent review accepts no new cycle credit: October 23 remains one proved
+ordinary loaded, failure-free cycle. Keep the separate ledgers independent and
+do not rewrite or replay the stale RUNNING row. The October 26 query is as of
+19:27:51 UTC; its later upper bound does not establish future-window completeness.
+
+The existing storage owner's bounded read-only incident bundle is complete and
+independently reviewed: the fixed daily-start cohorts were clear across 26
+families, but 26,194 newly expired rows remained, with zero over 24 hours overdue.
+PGDATA had 7,503,618,048 free bytes; separate probe times and capped/missing
+surfaces limit inference. Preserve those limits in the linked checkpoint.
+Continue with the minimal logging-envelope and consumer correction for the
+confirmed repository format mismatch. PR #2900
+deployed diagnostics, not a timeout fix; worker log transport and the original
+timeout cause remain unproved. The transient worker 503 recovered on two health
+samples, with cause and child process/container continuity still unverified.
+No fault injection, timeout widening, direct deployment or manual cleanup is
+authorized. Require independent exact-head review, green checks and normal
+release verification for the logging change, without treating that release as
+retention acceptance. Preserve the daily monitor, separate October 27 Watch
+expiry-wave verification and unresolved HNSW fixture work.

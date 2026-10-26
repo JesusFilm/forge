@@ -104,7 +104,7 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 | [docs/roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md](../roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                 | cowatch     | Complete: bounded refresh/revocation/throttle lifecycle verified; next natural post-revocation replacement remains unobserved.                                                                     | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
 | [docs/roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md](../roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)           | fixtures    | Complete: fixed historical timestamps and current-schema fixture isolation, retaining production constraints and migrations.                                                                       | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
 | [docs/roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md](../roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | fixtures    | Open, in-progress: intermittent HNSW fixture failure remains unexplained; bounded local passes and failure diagnostics do not establish a fix.                                                     | [2595](https://github.com/JesusFilm/forge/pull/2595). Native PostgreSQL investigation and failure-only plan/settings evidence.                                                                                                                             |
-| [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: two real failure-free loaded daily retention cycles still required; zero qualifying cycles in the latest audit.                                                                 | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
+| [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: October 23 is one accepted loaded failure-free cycle; October 24–26 failed, and one further qualifying cycle is required.                                                       | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
 | [docs/roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md](../roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md)                                     | storage     | Complete before this closeout: restrictive legacy-stage retirement and measured physical reclamation retained.                                                                                     | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
 | [docs/roadmap/platform/feat-574-recommendation-storage-efficiency.md](../roadmap/platform/feat-574-recommendation-storage-efficiency.md)                                                 | storage     | Complete: U1–U3 storage implementation, production representation checks and measured fixture savings verified.                                                                                    | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
 | [docs/roadmap/platform/feat-575-early-legacy-recommendation-retirement.md](../roadmap/platform/feat-575-early-legacy-recommendation-retirement.md)                                       | storage     | Complete before this closeout: authorized early legacy-detail retirement and physical disposal verified.                                                                                           | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
@@ -540,7 +540,7 @@ Feat-554 still requires two later ordinary loaded failure-free cycles; the Octob
 
 The distinct window 38 admission was held without launch at 09:18:15: worker memory rose above the revised 4 GB admission limit, despite unchanged actual process identity, health 200 and zero OOM kills. No cleanup command or new attempt was issued. The normal daily scheduler remains enabled, the manual backlog remains uncleared, and any later manual recovery needs a fresh separate decision. The rollout report retains the exact readings and separate capacity snapshot.
 
-### October 24 current checkpoint
+### October 24 checkpoint
 
 The [October 23 ordinary-cycle receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6363320357)
 supersedes the unresolved backlog in the pre-cycle checkpoint above. Independent
@@ -572,6 +572,49 @@ records the dated evidence and acceptance limits. One further qualifying cycle
 is required; feat-756 and feat-609 retain their separate unresolved requirements.
 The scope stays 12 complete, 25 cancelled and three open. The daily monitor stays
 active and the expired temporary outage monitor stays paused.
+
+### October 26 current checkpoint
+
+The independently reviewed [two-cycle receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6425467086)
+records genuine scheduled failures on October 25 and 26: 37 and nine failed
+wrappers respectively. The durable ledger independently records 37 and eight
+failures, with one stale RUNNING entry on October 26. No per-attempt pairing is
+inferred. Both cycles deleted loaded data; neither supplies another failure-free
+cycle. October 23 remains one accepted cycle, and feat-554 remains in progress.
+
+Each bounded ledger scan returned 940 rows without reaching its 20,001 cap.
+October 26 evidence is only as of 19:27:51 UTC despite the query's later 21:00
+upper bound. Across all completed scheduled wrappers, including failures,
+passes averaged 4.380 seconds on October 25 and 4.005 seconds on October 26;
+elapsed first-start-to-last-finish spans were 6h40m33s and 1h46m52s. These spans
+and committed counters do not prove current backlog clearance. The scheduler
+snapshot retained the daily next wake at October 27 10:30 UTC.
+
+[PR #2900's actual release](https://github.com/JesusFilm/forge/pull/2900#issuecomment-6385131395)
+installed phase diagnostics after the October 24 failure. It did not fix a proven
+timeout cause. A newly confirmed static logging-format/consumer mismatch is
+being corrected separately; historical Railway request-handler evidence does
+not establish missing worker records. A transient worker 503 at 19:19:58 recovered
+to 200/ok on two checks of the same deployed revision/ID, but the uncaptured
+initial body and absent child identity leave cause and process/container
+continuity unverified. No Redis/retention causality is claimed.
+
+The subsequent independently reviewed 19:31-19:33 UTC incident bundle found
+both roles healthy/compact with correct runner roles, **26,194 newly expired
+rows** across 26 monitored families, and zero over 24 hours overdue. The fixed
+October 25/26 daily-start cohorts were clear across those families. Current
+backlog remains nonzero; additional proof eligibility was not sampled. PGDATA
+free space was 7,503,618,048 bytes, WAL 771,751,936, with no lock waiters or long
+transactions. These are separate snapshots, not a growth forecast or physical
+reclamation proof. The capped Watch sample found no expired exposure before
+the first stored expiry at October 27 01:54:46.228 UTC; the old-wave throughput
+and capacity requirement remains open. A service health response is not a
+retention-health result, and missing filtered phase logs do not prove no errors.
+The [feat-554 checkpoint](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md#october-26-follow-up-continuing-deletion-with-failures)
+retains the probe/cap, acceptance and transport limits. Scope remains **12 complete,
+25 cancelled and three open**; feat-756 and feat-609 retain their separate
+requirements. Keep the daily monitor active and the expired outage monitor
+paused. No manual cleanup or direct deployment follows from this receipt.
 
 ## Dependencies, indexes and older PRs
 
