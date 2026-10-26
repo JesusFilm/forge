@@ -432,8 +432,9 @@ export function parseRetentionPhaseFailureLog(
     !value.failed.every(safePhaseTiming) ||
     !(value.terminal === null || safePhaseTiming(value.terminal)) ||
     !exactKeys(value.fallbackLedger, ["outcome", "elapsedMs"]) ||
+    typeof value.fallbackLedger.outcome !== "string" ||
     !["succeeded", "failed", "not_attempted"].includes(
-      String(value.fallbackLedger.outcome),
+      value.fallbackLedger.outcome,
     ) ||
     !safeMilliseconds(value.fallbackLedger.elapsedMs) ||
     typeof value.suppressedPriorMinute !== "number" ||

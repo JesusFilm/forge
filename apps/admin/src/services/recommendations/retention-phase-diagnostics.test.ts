@@ -185,5 +185,19 @@ describe("retention phase diagnostics", () => {
         line.replace('"label":"delete_request_roots"', '"label":"private"'),
       ),
     ).toBeNull()
+    for (const malformedOutcome of [["succeeded"], { toString: null }, 1]) {
+      const malformed = {
+        ...diagnostic,
+        fallbackLedger: {
+          ...diagnostic.fallbackLedger,
+          outcome: malformedOutcome,
+        },
+      }
+      const malformedLine =
+        line.slice(0, line.indexOf("payload=") + "payload=".length) +
+        JSON.stringify(malformed)
+      expect(() => parseRetentionPhaseFailureLog(malformedLine)).not.toThrow()
+      expect(parseRetentionPhaseFailureLog(malformedLine)).toBeNull()
+    }
   })
 })
