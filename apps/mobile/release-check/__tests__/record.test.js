@@ -199,6 +199,8 @@ async function recordHarness({
   adminUrl,
   createEmulator = fakeHandle,
   extraJourneys = {},
+  afterLock = null,
+  duringBuild = null,
 }) {
   const home = tempDir("release-check-record-")
   const configDir = tempDir("release-check-record-config-")
@@ -248,6 +250,7 @@ async function recordHarness({
   const out = []
   const err = []
   const ran = []
+  const flows = []
   const deps = createRecordDeps({
     home,
     configDir,
@@ -268,7 +271,10 @@ async function recordHarness({
       show: async () => ADMIN_SCHEMA_SDL,
     },
     build: {
-      checkArtifact: async () => ({ findings: [] }),
+      checkArtifact: async () => {
+        if (duringBuild) duringBuild(journeysDir)
+        return { findings: [] }
+      },
       buildTestApps: async () => {
         throw new Error("no build expected")
       },
@@ -279,6 +285,10 @@ async function recordHarness({
     runChild: async () => ({ code: 0, stdout: "", stderr: "" }),
     runMaestro: async (options) => {
       ran.push({ platform: options.platform, deviceRef: options.deviceRef })
+      flows.push({
+        file: options.flowFile,
+        source: fs.readFileSync(options.flowFile, "utf8"),
+      })
       const port =
         options.platform === "ios" ? ports.hostIos : ports.hostAndroidPhone
       for (const query of appSearches) {
@@ -295,6 +305,14 @@ async function recordHarness({
         createReadOnlyServer({ ...options, upstreamUrl: production.url }),
     },
   })
+  if (afterLock) {
+    const acquire = deps.lock.acquire
+    deps.lock.acquire = async (options) => {
+      const taken = await acquire(options)
+      afterLock(journeysDir)
+      return taken
+    }
+  }
   const command = {
     mode: "record-search",
     subcommand: null,
@@ -307,6 +325,7 @@ async function recordHarness({
     out,
     err,
     ran,
+    flows,
     journeysDir,
     answersFile: path.join(configDir, "search-answers.json"),
     run: () => recordSearchCommand(command, deps),
@@ -423,6 +442,77 @@ describe("record-search refusals before the lock", () => {
       `stopped the runner's devices. Run ${dead.runId} left no run.json`,
     )
     expect(fs.existsSync(lockPath(harness.home))).toBe(false)
+  })
+})
+
+const RULE_BREAKING_JOURNEY = [
+  "appId: org.jesusfilm.forgewatch",
+  "name: search-open-result",
+  "tags:",
+  "  - search",
+  "---",
+  "- launchApp:",
+  "    permissions:",
+  "      notifications: deny",
+  "- runScript: post.js",
+  "",
+].join("\n")
+
+describe("record-search runs the journey copy that it checked", () => {
+  it("runs the checked copy when the checkout changes during the build", async () => {
+    const harness = await recordHarness({
+      local: await fakeLocalAdmin({
+        creation: [{ type: "VIDEO", slug: "creation" }],
+      }),
+      production: await fakeProduction({ videos: { creation: { id: "v1" } } }),
+      appSearches: ["creation"],
+      duringBuild: (journeysDir) =>
+        fs.writeFileSync(
+          path.join(journeysDir, "search-open-result.yaml"),
+          RULE_BREAKING_JOURNEY,
+        ),
+    })
+
+    expect(await harness.run()).toBe(0)
+
+    const { recordDir } = JSON.parse(harness.out.at(-1))
+    expect(harness.flows.map((flow) => flow.file)).toEqual([
+      path.join(recordDir, "journeys", "search-open-result.yaml"),
+      path.join(recordDir, "journeys", "search-open-result.yaml"),
+    ])
+    for (const flow of harness.flows) {
+      expect(flow.source).toContain("label: Launch the app")
+      expect(flow.source).not.toContain("runScript")
+    }
+  })
+
+  it("fails before the build and runs nothing when the copy breaks a rule", async () => {
+    const harness = await recordHarness({
+      local: await fakeLocalAdmin({}),
+      production: await fakeProduction(),
+      appSearches: ["creation"],
+      afterLock: (journeysDir) =>
+        fs.writeFileSync(
+          path.join(journeysDir, "search-open-result.yaml"),
+          RULE_BREAKING_JOURNEY,
+        ),
+    })
+    const before = fs.readFileSync(harness.answersFile, "utf8")
+
+    expect(await harness.run()).toBe(1)
+
+    const printed = JSON.parse(harness.out.at(-1))
+    expect(printed.problems).toEqual([
+      expect.stringContaining(
+        "JOURNEY_RULES: the journey rules of `check-lists` refuse these journeys, so no journey runs:",
+      ),
+    ])
+    expect(printed.problems[0]).toContain(
+      `${path.join(printed.recordDir, "journeys", "search-open-result.yaml")}: line 9 runs runScript`,
+    )
+    expect(harness.ran).toEqual([])
+    expect(fs.existsSync(lockPath(harness.home))).toBe(false)
+    expect(fs.readFileSync(harness.answersFile, "utf8")).toBe(before)
   })
 })
 

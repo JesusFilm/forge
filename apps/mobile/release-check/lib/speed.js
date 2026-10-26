@@ -11,11 +11,11 @@ const { createSimulator } = require("./devices/ios")
 const { APP_ID } = require("./journeys/phases")
 const { runMaestro } = require("./journeys/maestro")
 const { pruneDeviceLogs, readAttemptOutput } = require("./journeys/results")
-const { JOURNEYS_DIR } = require("./lists")
+const { JOURNEYS_COPY_DIR } = require("./lists")
 const { abortableSleep, run: runProc } = require("./proc")
 
 const SAMPLES = 3
-const FLOWS_DIR = path.join(JOURNEYS_DIR, "_speed")
+const FLOWS_FOLDER = "_speed"
 const COLD_LAUNCH_FLOW = "speed-cold-launch.yaml"
 const FIRST_FRAME_FLOW = "speed-first-frame.yaml"
 const FIRST_FRAME_ANDROID_FLOW = "speed-first-frame-android.yaml"
@@ -164,7 +164,7 @@ function deviceEntry(deviceId, samples, peakKb, failures) {
 }
 
 function createSpeedPhase(options = {}) {
-  const flowsDir = options.flowsDir ?? FLOWS_DIR
+  const flowsDir = options.flowsDir ?? null
   const runChild = options.runChild ?? runProc
   const maestro = options.runMaestro ?? runMaestro
   const pollMs = options.memoryPollMs ?? MEMORY_POLL_MS
@@ -518,7 +518,11 @@ function createSpeedPhase(options = {}) {
     }
   }
 
+  // The run checked its own copy of the journeys hours before this pass, and
+  // the checkout can change after that check.
   function copyFlows(ctx) {
+    const from =
+      flowsDir ?? path.join(ctx.runDir, JOURNEYS_COPY_DIR, FLOWS_FOLDER)
     const to = path.join(ctx.runDir, "speed", "flows")
     fs.mkdirSync(to, { recursive: true })
     for (const file of [
@@ -526,7 +530,7 @@ function createSpeedPhase(options = {}) {
       FIRST_FRAME_FLOW,
       FIRST_FRAME_ANDROID_FLOW,
     ]) {
-      fs.copyFileSync(path.join(flowsDir, file), path.join(to, file))
+      fs.copyFileSync(path.join(from, file), path.join(to, file))
     }
   }
 

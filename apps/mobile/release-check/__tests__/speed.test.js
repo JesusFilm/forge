@@ -12,7 +12,13 @@ const { getOperationAST, print } = require("graphql")
 
 const { parseArgs } = require("../lib/contract")
 const { createDeps, runCommand } = require("../lib/lifecycle")
-const { CONFIG_DIR, REPO_ROOT, readJson } = require("../lib/lists")
+const {
+  CONFIG_DIR,
+  JOURNEYS_DIR,
+  REPO_ROOT,
+  copyJourneys,
+  readJson,
+} = require("../lib/lists")
 const { createReadOnlyServer } = require("../lib/server/server")
 const {
   createSpeedPhase,
@@ -46,6 +52,15 @@ function tempDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "release-check-speed-"))
   tempDirs.push(dir)
   return dir
+}
+
+const SPEED_FLOWS = path.join(JOURNEYS_DIR, "_speed")
+
+// A run folder that holds the run's checked copy of the speed flows.
+function runDirWithCopy() {
+  const runDir = tempDir()
+  copyJourneys(SPEED_FLOWS, path.join(runDir, "journeys", "_speed"))
+  return runDir
 }
 
 function deviceOf(id) {
@@ -466,7 +481,7 @@ describe("the speed phase", () => {
     })
     const result = await phase({
       signal: new AbortController().signal,
-      runDir: tempDir(),
+      runDir: runDirWithCopy(),
       env: { PATH: process.env.PATH, HOME: process.env.HOME },
       selection: {
         devices: [deviceOf("iphone-se"), deviceOf("android-phone")],
@@ -497,6 +512,74 @@ describe("the speed phase", () => {
     expect(released).toEqual(["iphone-se", "android-phone"])
   })
 
+  function phaseContext(runDir) {
+    return {
+      signal: new AbortController().signal,
+      runDir,
+      env: { PATH: process.env.PATH, HOME: process.env.HOME },
+      selection: { devices: [deviceOf("android-phone")] },
+      settings: SETTINGS,
+      devicesConfig: DEVICES,
+      artifacts: { android: "/builds/android/app-release.apk" },
+      server: { setLaneDevice: () => {} },
+      gate: { admit: async () => ({ admitted: true }), release: () => {} },
+      event: () => {},
+    }
+  }
+
+  function androidPhase() {
+    return createSpeedPhase({
+      createEmulator: fakeEmulator,
+      runChild: fakeChildren({
+        amStart: [2100, 2000, 2050].map((ms) => childResult(amStartOutput(ms))),
+      }).run,
+      runMaestro: fakeMaestro().run,
+      memoryPollMs: 5,
+      now: () => LINK_SENT_AT,
+      linkLeadMs: 0,
+    })
+  }
+
+  it("runs the speed flows of the run's checked copy, not of the checkout", async () => {
+    const runDir = runDirWithCopy()
+    const copied = path.join(
+      runDir,
+      "journeys",
+      "_speed",
+      "speed-cold-launch.yaml",
+    )
+    fs.appendFileSync(copied, "# the checked copy\n")
+
+    const result = await androidPhase()(phaseContext(runDir))
+
+    expect(result.devices[0]).toMatchObject({
+      deviceId: "android-phone",
+      failures: [],
+    })
+    expect(
+      fs.readFileSync(
+        path.join(runDir, "speed", "flows", "speed-cold-launch.yaml"),
+        "utf8",
+      ),
+    ).toBe(fs.readFileSync(copied, "utf8"))
+  })
+
+  it("measures nothing when the run has no checked copy of the speed flows", async () => {
+    const result = await androidPhase()(phaseContext(tempDir()))
+
+    expect(result.devices).toEqual([
+      expect.objectContaining({
+        deviceId: "android-phone",
+        coldLaunchMs: null,
+        failures: [
+          expect.stringMatching(
+            /^Not measured: the speed flows cannot be read: ENOENT/,
+          ),
+        ],
+      }),
+    ])
+  })
+
   it("does not stop an emulator whose serial another session holds", async () => {
     const stops = []
     const released = []
@@ -521,7 +604,7 @@ describe("the speed phase", () => {
     })
     const result = await phase({
       signal: new AbortController().signal,
-      runDir: tempDir(),
+      runDir: runDirWithCopy(),
       env: { PATH: process.env.PATH, HOME: process.env.HOME },
       selection: { devices: [deviceOf("android-phone")] },
       settings: SETTINGS,
@@ -559,7 +642,7 @@ describe("the Android first frame", () => {
     })
     const result = await phase({
       signal: new AbortController().signal,
-      runDir: tempDir(),
+      runDir: runDirWithCopy(),
       env: { PATH: process.env.PATH, HOME: process.env.HOME },
       selection: { devices: [deviceOf("android-phone")] },
       settings: SETTINGS,
@@ -618,6 +701,7 @@ describe("the speed pass in a run", () => {
       meminfo: [307200, 409600, 307200, 307200, 307200, 307200],
     })
     const speed = createSpeedPhase({
+      flowsDir: SPEED_FLOWS,
       createEmulator: fakeEmulator,
       runChild: children.run,
       runMaestro: fakeMaestro().run,
@@ -710,6 +794,7 @@ describe("the speed pass in a run", () => {
           return passingJourneys(ctx)
         },
         speed: createSpeedPhase({
+          flowsDir: SPEED_FLOWS,
           listInventory: ownedSimulators,
           createSimulator: fakeSimulator,
           runChild: fakeChildren().run,

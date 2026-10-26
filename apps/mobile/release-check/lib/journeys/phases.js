@@ -13,10 +13,11 @@ const { createEmulator } = require("../devices/android")
 const { createSimulator } = require("../devices/ios")
 const {
   CONFIG_DIR,
+  JOURNEYS_COPY_DIR,
   JOURNEYS_DIR,
   LIST_FILES,
   MOBILE_DIR,
-  SKIPPED_FOLDERS,
+  copyJourneys,
   journeyRulesRefusal,
   readJson,
   screenInventory,
@@ -63,19 +64,6 @@ class JourneyPhaseError extends Error {
   }
 }
 
-// The journey rules do not read these folders, so the run does not copy them.
-function copyJourneys(from, to) {
-  fs.mkdirSync(to, { recursive: true })
-  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
-    const source = path.join(from, entry.name)
-    if (SKIPPED_FOLDERS.includes(entry.name)) continue
-    if (entry.isDirectory()) copyJourneys(source, path.join(to, entry.name))
-    else if (/\.ya?ml$/.test(entry.name)) {
-      fs.copyFileSync(source, path.join(to, entry.name))
-    }
-  }
-}
-
 function lanesOf(devices) {
   const lanes = new Map()
   for (const device of devices) {
@@ -106,7 +94,7 @@ function createJourneyPhases(options = {}) {
   // The run reads its own copy of the journeys, so each attempt follows the
   // same steps even when the checkout changes during the run (R20, KTD2).
   function startRun(ctx) {
-    const snapshot = path.join(ctx.runDir, "journeys")
+    const snapshot = path.join(ctx.runDir, JOURNEYS_COPY_DIR)
     copyJourneys(journeysDir, snapshot)
     // The checkout can change after the preflight check, so check the copy.
     const rules = journeyRulesRefusal(snapshot)

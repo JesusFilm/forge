@@ -14,7 +14,9 @@ const { EXIT, refuseMode } = require("../contract")
 const { planJourneys, readJourneys } = require("../journeys/screens")
 const {
   ADMIN_SCHEMA_PATH,
+  JOURNEYS_COPY_DIR,
   MOBILE_DIR,
+  copyJourneys,
   currentWatchSearchDigest,
   journeyRulesRefusal,
   readJson,
@@ -454,8 +456,7 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
   }
   const rules = journeyRulesRefusal(deps.journeysDir)
   if (rules) return refuseMode(deps, rules)
-  const journeys = searchJourneys(deps)
-  if (journeys.length === 0) {
+  if (searchJourneys(deps).length === 0) {
     return refuseMode(
       deps,
       `no top-level journey has the \`${SEARCH_TAG}\` tag`,
@@ -488,7 +489,7 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
     now: deps.now,
   })
   const run = {
-    journeys,
+    journeys: [],
     recordDir,
     logPath: path.join(recordDir, runFolder.SERVER_LOG),
     signal: abort.signal,
@@ -506,6 +507,13 @@ async function recordSearchCommand(command, deps = createRecordDeps()) {
   let failure = null
   let checks = { checked: 0, refusals: [] }
   try {
+    // The build takes minutes and the checkout can change, so the record runs
+    // the copy that it checked, as a run does.
+    const copy = path.join(recordDir, JOURNEYS_COPY_DIR)
+    copyJourneys(deps.journeysDir, copy)
+    const copyRules = journeyRulesRefusal(copy)
+    if (copyRules) throw new RecordRefusal("JOURNEY_RULES", copyRules)
+    run.journeys = searchJourneys({ ...deps, journeysDir: copy })
     const devices = firstDevicePerPlatform(deps.config.devices)
     run.build = await session.checkedBuild(deps, {
       platforms: devices.map((device) => device.platform),

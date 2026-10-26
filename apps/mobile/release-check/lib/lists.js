@@ -62,6 +62,8 @@ const PORT_NAMES = [
 const ROUTE_EXTENSION = /\.(tsx|ts|jsx|js)$/
 const PLATFORM_SUFFIX = /\.(ios|android|native|web)$/
 const SKIPPED_FOLDERS = Object.freeze(["node_modules", "__tests__"])
+// The folder in a run or a record that holds its checked copy of the journeys.
+const JOURNEYS_COPY_DIR = "journeys"
 
 class ListSourceError extends Error {
   constructor(message) {
@@ -658,6 +660,19 @@ function journeyFiles(journeysDir = JOURNEYS_DIR) {
   return sourceFiles(journeysDir, (name) => /\.ya?ml$/.test(name)).sort()
 }
 
+// The journey rules do not read these folders, so a copy leaves them out.
+function copyJourneys(from, to) {
+  fs.mkdirSync(to, { recursive: true })
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    const source = path.join(from, entry.name)
+    if (SKIPPED_FOLDERS.includes(entry.name)) continue
+    if (entry.isDirectory()) copyJourneys(source, path.join(to, entry.name))
+    else if (/\.ya?ml$/.test(entry.name)) {
+      fs.copyFileSync(source, path.join(to, entry.name))
+    }
+  }
+}
+
 // YAML starts a comment at a `#` that begins the line or follows a space,
 // outside quotes. A `#` inside a link is part of the link.
 function withoutYamlComment(line) {
@@ -861,6 +876,7 @@ function checkListsCommand(command, options = {}) {
 module.exports = {
   ADMIN_SCHEMA_PATH,
   CONFIG_DIR,
+  JOURNEYS_COPY_DIR,
   JOURNEYS_DIR,
   LIST_FILES,
   ListSourceError,
@@ -873,6 +889,7 @@ module.exports = {
   checkListsCommand,
   classifyCoordinate,
   classifyEnvKeys,
+  copyJourneys,
   currentWatchSearchDigest,
   documentDigest,
   envKeysFromSource,
