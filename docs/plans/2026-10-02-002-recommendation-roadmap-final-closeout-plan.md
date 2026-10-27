@@ -350,10 +350,11 @@ Parent owns normal deployment verification and production coordination with the
 separate Web event-recording repair. All three main workflows passed, and both
 actual Admin roles were verified on `50cb6a3e` at 03:18–03:19 UTC with healthy
 responses, compact mode and correct runner roles; the worker retains 16 GB.
-No cleanup has run on this repair yet. Independent review accepted the exact
+At that release snapshot, cleanup had not yet resumed. Independent review
+accepted the exact
 historical unfinished set as nonresumable, preserving its records and requiring
-fresh overlap checks for new work. Coordinate the Web rollout before the next
-bounded window.
+fresh overlap checks for new work. The coordinated Web rollout and subsequent
+cleanup windows are recorded below.
 No direct deploy/redeploy or local-code publication is authorized.
 Underlying SQL/client cost and historical failure causation remain unproved,
 and a yield-only sequence does not prove completion.
@@ -380,3 +381,20 @@ HNSW fixture and separate Co-watch work without claiming them closed. Update
 release receipts and the same daily monitor with actual deployed evidence;
 keep the expired outage monitor paused and the scope at 11 complete,
 25 cancelled and four open until new acceptance evidence supports a change.
+
+### October 27 root-delete failure after resumed cleanup
+
+The [resumed cleanup receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-resumed-cleanup-and-root-delete-failure)
+preserves 350 newly committed request roots and 5,000 Watch rows across two
+windows on `50cb6a3e`. The second window failed after a partial root deletion;
+the authoritative total includes that committed work. Later windows were
+cancelled without replay. The cumulative manual root total is 850, with zero
+ordinary-cycle credit. The original failed postcheck and separate later
+healthy read-only observation remain distinct.
+
+Astra owns bounded root-delete diagnosis and repair with representative local
+work measurements and preservation of nonexpired rows, privacy and committed
+failure accounting. Parent owns independent review, normal merge/deployment,
+shared rollout coordination and any new manual dispatch. Do not substitute
+higher timeouts, arbitrary admission floors or memory reserves for a measured
+repair. Keep the daily scheduler and observer enabled, and feat-554 in progress.
