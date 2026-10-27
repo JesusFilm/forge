@@ -1,5 +1,11 @@
 "use client"
-import { useEffect, useEffectEvent, useRef, type PointerEvent } from "react"
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  type PointerEvent,
+} from "react"
 
 export function NumberField({
   label,
@@ -33,7 +39,9 @@ export function NumberField({
   const displayValue = format(value)
   const input = useRef<HTMLInputElement>(null)
   const preview = useRef(onPreview)
-  preview.current = onPreview
+  useLayoutEffect(() => {
+    preview.current = onPreview
+  }, [onPreview])
   const frame = useRef<number | null>(null)
   const drag = useRef<{
     pointerId: number
