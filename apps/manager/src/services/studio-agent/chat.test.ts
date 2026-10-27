@@ -28,7 +28,6 @@ const project = studioProjectSchema.parse({
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   },
 })
 const caller = {

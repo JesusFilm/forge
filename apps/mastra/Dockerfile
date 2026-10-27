@@ -30,4 +30,5 @@ RUN NODE_ENV=development MASTRA_STORAGE_BACKEND=memory CI=true \
 ENV NODE_ENV=production
 ENV MASTRA_STUDIO_PATH=/app/apps/mastra/.mastra/output/studio
 WORKDIR /app/apps/mastra
+ENV NODE_OPTIONS="--import=/app/apps/mastra/startup-security.mjs"
 CMD ["node", "/app/apps/mastra/.mastra/output/index.mjs"]

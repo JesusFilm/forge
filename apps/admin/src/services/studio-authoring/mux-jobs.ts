@@ -14,7 +14,6 @@ import { ForbiddenError } from "../errors"
 import { StudioCommandError } from "./errors"
 import { StudioAssetService } from "./assets"
 import { studioActor, lockProject, assertEditable } from "./state"
-import { resolveStudioPackSources } from "./packs"
 import { resolveStudioDocumentSources } from "./sources"
 
 function worker(user: Principal | null) {
@@ -160,7 +159,6 @@ export class StudioMuxJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       return tx.shortMuxJob.create({
         data: {
@@ -191,7 +189,6 @@ export class StudioMuxJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       const dispatchId = randomUUID()
       await tx.shortMuxJob.update({
@@ -286,7 +283,6 @@ export class StudioMuxJobs {
         },
       })
       const document = studioDocumentSchema.parse(revision.document)
-      await resolveStudioPackSources(tx, document.packRevisionIds)
       await resolveStudioDocumentSources(tx, document)
       return job
     })

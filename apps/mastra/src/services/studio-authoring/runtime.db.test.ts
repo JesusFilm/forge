@@ -207,7 +207,6 @@ test.skipIf(!url)(
           tracks: [],
           items: [],
           components: [],
-          packRevisionIds: [],
         },
       })
       const input = {

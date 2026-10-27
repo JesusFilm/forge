@@ -134,8 +134,20 @@ describe("recommendation retention job", () => {
       expect.any(Date),
       undefined,
       "stored-expiry-only",
+      "manual-cli",
     )
     expect(start).not.toHaveBeenCalled()
+  })
+
+  it("identifies the scheduled entry point independently of retention mode", async () => {
+    await runRecommendationRetentionFromScheduler()
+    expect(purgeExpiredRecommendationRequests).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.any(Date),
+      undefined,
+      "scheduled",
+      "scheduled-job",
+    )
   })
 
   it("keeps the scheduled job on ordinary retention", async () => {
@@ -145,6 +157,7 @@ describe("recommendation retention job", () => {
       expect.any(Date),
       undefined,
       "scheduled",
+      "worker-job",
     )
   })
 

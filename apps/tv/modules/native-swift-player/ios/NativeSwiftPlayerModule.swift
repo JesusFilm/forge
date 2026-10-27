@@ -84,6 +84,12 @@ public final class NativeSwiftPlayerModule: Module {
       Prop("feedbackReference") { (view, value: String?) in
         view.feedbackReference = value
       }
+      Prop("feedbackSimulator") { (view, value: Bool?) in
+        view.feedbackSimulator = value ?? false
+      }
+      Prop("feedbackHostedSimulator") { (view, value: Bool?) in
+        view.feedbackHostedSimulator = value ?? false
+      }
       Prop("feedbackLoading") { (view, value: Bool?) in
         view.feedbackLoading = value ?? false
       }

@@ -15,6 +15,10 @@ vi.mock("@/features/shell/manager-shell", () => ({
   ManagerDashboardShell: managerDashboardShellMock,
 }))
 
+vi.mock("next/headers", () => ({
+  cookies: vi.fn(async () => ({ get: () => undefined })),
+}))
+
 vi.mock("@/lib/require-auth", () => ({
   requireAuth: requireAuthMock,
 }))

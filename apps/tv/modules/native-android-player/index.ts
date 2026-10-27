@@ -68,6 +68,8 @@ export type NativeAndroidPlayerViewProps = ViewProps & {
   feedbackVisible?: boolean
   feedbackRows?: string[]
   feedbackReference?: string
+  feedbackSimulator?: boolean
+  feedbackHostedSimulator?: boolean
   feedbackLoading?: boolean
   feedbackError?: boolean
   onFeedbackOpen: () => void

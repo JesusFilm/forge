@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
-import type { Prisma } from "@prisma/client"
-import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
+import { Prisma } from "@prisma/client"
+import {
+  parseRetentionPhaseFailureLog,
+  retentionDiagnosticLogLimiter,
+} from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -688,6 +691,43 @@ describe("recommendation retention service", () => {
     )
   })
 
+  it("unlinks exact expired projection run references and keeps a full page continuing", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+    const selected = Array.from({ length: 100 }, (_, n) => ({
+      id: `run-${n}`,
+      projectionId: "generation-1",
+    }))
+    transaction.recommendationRequest.findMany.mockReset().mockResolvedValue([])
+    const fallback = retentionQuery()
+    transaction.$queryRaw.mockImplementation(async (query) => {
+      if (
+        query.sql.includes("WITH parents AS MATERIALIZED") &&
+        query.sql.includes("FROM recommendation_profile_projection_run")
+      )
+        return selected
+      return fallback(query)
+    })
+    transaction.recommendationProfileProjectionRun.updateMany.mockResolvedValue(
+      { count: 100 },
+    )
+    const result = await purgeExpiredRecommendationRequests(
+      prisma as never,
+      now,
+      100,
+      "stored-expiry-only",
+    )
+    expect(
+      transaction.recommendationProfileProjectionRun.updateMany,
+    ).toHaveBeenCalledWith({
+      where: { OR: selected, projection: { is: { expiresAt: { lte: now } } } },
+      data: { projectionId: null },
+    })
+    expect(result.rootsDeleted).toBe(0)
+    expect(result.rowCounts.expiredProjectionRunLinksUnlinked).toBe(100)
+    expect(result.batchLimitReached).toBe(true)
+  })
+
   it("erases a newly expired profile before an older pending backlog", async () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-09-17T00:00:00.000Z")
@@ -955,6 +995,129 @@ describe("recommendation retention service", () => {
     expect(diagnostic?.fallbackLedger.outcome).toBe("failed")
     expect(JSON.stringify(diagnostic)).not.toContain("skip ledger unavailable")
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { priorMs: 0, remainingMs: 750, chunks: 0, delay: "none" },
+    { priorMs: 0, remainingMs: 853, chunks: 2, delay: "none" },
+    { priorMs: 500, remainingMs: 750, chunks: 1, delay: "none" },
+    { priorMs: 500, remainingMs: 751, chunks: 2, delay: "none" },
+    { priorMs: 1_387, remainingMs: 853, chunks: 1, delay: "none" },
+    { priorMs: 1_387, remainingMs: 1_387, chunks: 1, delay: "none" },
+    { priorMs: 1_387, remainingMs: 1_388, chunks: 2, delay: "none" },
+    {
+      priorMs: 1_387,
+      remainingMs: 1_487,
+      chunks: 1,
+      delay: "pg_try_advisory_xact_lock",
+    },
+    { priorMs: 1_387, remainingMs: 1_487, chunks: 1, delay: "set_config" },
+  ])(
+    "admits root chunks using prior elapsed $priorMs ms and remaining $remainingMs ms",
+    async ({ priorMs, remainingMs, chunks, delay }) => {
+      const { prisma, transaction } = buildPrisma()
+      const roots = Array.from({ length: 100 }, (_, i) => ({ id: `root-${i}` }))
+      transaction.recommendationRequest.findMany
+        .mockResolvedValueOnce(roots)
+        .mockResolvedValueOnce(roots.slice(0, 50))
+        .mockResolvedValueOnce(roots.slice(50))
+      let clock = 0
+      const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      const elapsed = vi
+        .spyOn(performance, "now")
+        .mockImplementation(() => clock)
+      transaction.watchSurfaceExposure.findMany.mockImplementation(async () => {
+        clock = 5_000 - priorMs - remainingMs
+        return []
+      })
+      let deleted = 0
+      let delayed = false
+      const query = transaction.$queryRaw.getMockImplementation()!
+      transaction.$queryRaw.mockImplementation(async (sql) => {
+        if (deleted === 1 && !delayed && sql.sql.includes(delay)) {
+          delayed = true
+          clock += 100
+        }
+        return query(sql)
+      })
+      transaction.recommendationRequest.deleteMany.mockImplementation(
+        async () => {
+          if (deleted === 0) clock += priorMs
+          deleted += 1
+          return { count: 50 }
+        },
+      )
+      try {
+        const result = await purgeExpiredRecommendationRequests(prisma as never)
+        expect(deleted).toBe(chunks)
+        expect(result.rootsDeleted).toBe(chunks * 50)
+        if (chunks < 2) {
+          expect(result).toMatchObject({
+            status: "yielded",
+            oldestExpiredAtAfter: null,
+            overdueAfterRun: null,
+            continuationRequired: true,
+          })
+          expect(
+            transaction.recommendationRequest.findMany,
+          ).toHaveBeenCalledTimes(chunks + 1)
+          expect(
+            transaction.recommendationRetentionRun.updateMany,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              data: expect.objectContaining({
+                status: "SKIPPED",
+                reasonCode: "budget_yield",
+              }),
+            }),
+          )
+        }
+      } finally {
+        now.mockRestore()
+        elapsed.mockRestore()
+      }
+    },
+  )
+
+  it("keeps a more expensive next root chunk failed after a cheap committed chunk", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const roots = Array.from({ length: 100 }, (_, i) => ({ id: `root-${i}` }))
+    transaction.recommendationRequest.findMany
+      .mockResolvedValueOnce(roots)
+      .mockResolvedValueOnce(roots.slice(0, 50))
+      .mockResolvedValueOnce(roots.slice(50))
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const elapsed = vi.spyOn(performance, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    transaction.recommendationRequest.deleteMany
+      .mockImplementationOnce(async () => {
+        clock += 100
+        return { count: 50 }
+      })
+      .mockImplementationOnce(async () => {
+        clock += 4_901
+        throw new Error("modeled expensive second chunk")
+      })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toThrow("modeled expensive second chunk")
+      expect(
+        transaction.recommendationRequest.deleteMany,
+      ).toHaveBeenCalledTimes(2)
+      expect(
+        await prisma.recommendationRetentionRun.findUniqueOrThrow(),
+      ).toMatchObject({
+        status: "FAILED",
+        rootsDeleted: 50,
+        rowCounts: { requests: 50 },
+      })
+    } finally {
+      now.mockRestore()
+      elapsed.mockRestore()
+      logged.mockRestore()
+    }
   })
 
   it.each([4_250, 5_000, 5_001])(
@@ -1331,6 +1494,103 @@ describe("recommendation retention service", () => {
     }
   })
 
+  it.each(["select", "update", "commit"] as const)(
+    "attributes a decision %s failure without changing committed counters",
+    async (boundary) => {
+      const { prisma, transaction } = buildPrisma()
+      const original = new Prisma.PrismaClientKnownRequestError("private SQL", {
+        code: "P2028",
+        clientVersion: "test",
+      })
+      const query = transaction.$queryRaw.getMockImplementation()!
+      transaction.$queryRaw.mockImplementation(async (sql) => {
+        if (sql.sql.includes("FROM recommendation_personalization_decision")) {
+          if (boundary === "select") throw original
+          return [
+            {
+              requestId: "private-request",
+              projectionGenerationId: "private-generation",
+            },
+          ]
+        }
+        return query(sql)
+      })
+      if (boundary === "update")
+        transaction.recommendationPersonalizationDecision.updateMany.mockRejectedValueOnce(
+          original,
+        )
+      else
+        transaction.recommendationPersonalizationDecision.updateMany.mockResolvedValueOnce(
+          { count: 1 },
+        )
+      if (boundary === "commit") {
+        const transact = prisma.$transaction.getMockImplementation()!
+        prisma.$transaction.mockImplementation(async (callback) => {
+          const result = await transact(callback)
+          if (
+            transaction.recommendationPersonalizationDecision.updateMany.mock
+              .calls.length
+          )
+            throw original
+          return result
+        })
+      }
+      const permit = vi
+        .spyOn(retentionDiagnosticLogLimiter, "allow")
+        .mockReturnValue({ emit: true, suppressedPriorMinute: 0 })
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(
+            prisma as never,
+            new Date(),
+            100,
+            "stored-expiry-only",
+            "manual-cli",
+          ),
+        ).rejects.toBe(original)
+        expect(
+          prisma.recommendationRetentionRun.updateMany,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ status: "FAILED" }),
+          }),
+        )
+        const event = parseRetentionPhaseFailureLog(
+          String(logged.mock.calls[0]?.[0]),
+        )
+        expect(event).toMatchObject({
+          version: 2,
+          errors: { phase: { prismaCode: "P2028" } },
+          decisionOperation: {
+            executionContext: "manual-cli",
+            boundary: boundary === "commit" ? "complete" : boundary,
+          },
+          failed: [
+            {
+              label: "projection_decision_unlink_page",
+              stage:
+                boundary === "commit" ? "commit_acknowledgement" : "operation",
+            },
+          ],
+        })
+        const durable = await prisma.recommendationRetentionRun.findUnique()
+        expect(durable?.rootsDeleted).toBe(2)
+        // The commit case deliberately loses acknowledgement after the mock's
+        // durable commit. Never overwrite that committed count on fallback.
+        expect(durable?.rowCounts.expiredProjectionDecisionLinksUnlinked).toBe(
+          boundary === "commit" ? 1 : undefined,
+        )
+        expect(JSON.stringify(event)).not.toMatch(
+          /private|requestId|projectionGenerationId/,
+        )
+      } finally {
+        logged.mockRestore()
+        permit.mockRestore()
+      }
+    },
+  )
+
   it("preserves the original failure and failed ledger when the diagnostic logger throws", async () => {
     const { prisma, transaction } = buildPrisma()
     const original = new Error("owned phase failure")
@@ -1348,6 +1608,11 @@ describe("recommendation retention service", () => {
         }),
       )
       expect(logged).toHaveBeenCalledTimes(1)
+      const beforeDecision = parseRetentionPhaseFailureLog(
+        String(logged.mock.calls[0]?.[0]),
+      )
+      expect(beforeDecision?.version).toBe(1)
+      expect(beforeDecision).not.toHaveProperty("decisionOperation")
     } finally {
       logged.mockRestore()
     }

@@ -82,14 +82,26 @@ or exhaustive catalogue absence. HTTP 200 does not excuse internal errors.
 
 ## Execution state
 
+The [October 27 ordinary-cycle review](../reports/2026-10-27-recommendation-retention-cycle.md)
+accepts the second loaded failure-free scheduled cycle, alongside October 23.
+The cycle-count gate is met; manual work earns no credit. Feat-554 remains open
+for continued operational margin, and feat-756 remains open for the larger Watch
+expiry wave's drainage/capacity. The measured horizon contains 876,967 rows
+through October 29 10:30 UTC, with 7.478 GB of PGDATA free at the dated check.
+The next existing daily observation must assess actual drainage, oldest/overdue
+backlog and relation/PGDATA/WAL headroom, or prompt evidence-backed capacity
+protection if needed. No new fixed number of clean days or arbitrary memory gate
+is introduced. Current scope remains 11 complete, 25 cancelled and four open.
+The active plan and daily storage observer remain active.
+
 The implementation and scope decisions are integrated through PRs 2538, 2539,
 2540, 2543, 2544, 2545 and 2546. Root PR 2541 reconciles the dated ledger,
 bidirectional dependencies, generated index and guidance. Independent reviews
 and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
-The retention track stays active for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2, 3, 4, 5 and 6 failed and
+At the historical October 6 checkpoint, platform feat-554 still required two
+normal failure-free loaded daily retention cycles. October 2, 3, 4, 5 and 6 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,
@@ -337,12 +349,25 @@ profile-session links and one pending profile erasure outside that total.
 
 Current diagnostics localize the failure to admitted projection-decision
 selection: 796 ms at admission, 808 ms in the operation, and 3 ms each for
-acquisition, lock and configuration. Astra owns a targeted efficiency repair,
-with representative scan/work measurements, full-drain correctness and
-nonexpired preservation. Parent owns independent review, merge and subsequent
-production coordination. No further manual invocation follows this stopped
-window before a reviewed correction is normally deployed. The normal deployment
-is required; no direct deploy/redeploy or local-code publication is authorized.
+acquisition, lock and configuration. The
+[selection repair receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-decision-selection-repair)
+records PR #2926's existing-index rewrite, guarded unlink and local work
+measurements. Independent exact-head review, 80 focused tests, 37 PostgreSQL
+tests, full Admin typecheck and all applicable PR checks passed before normal
+merge `50cb6a3e`. The initial composition timeout is retained alongside its
+unchanged fresh isolated passing rerun. Empty-parent probes remain linear, and
+local backend CPU does not prove production CPU per committed root.
+
+Parent owns normal deployment verification and production coordination with the
+separate Web event-recording repair. All three main workflows passed, and both
+actual Admin roles were verified on `50cb6a3e` at 03:18–03:19 UTC with healthy
+responses, compact mode and correct runner roles; the worker retains 16 GB.
+At that release snapshot, cleanup had not yet resumed. Independent review
+accepted the exact
+historical unfinished set as nonresumable, preserving its records and requiring
+fresh overlap checks for new work. The coordinated Web rollout and subsequent
+cleanup windows are recorded below.
+No direct deploy/redeploy or local-code publication is authorized.
 Underlying SQL/client cost and historical failure causation remain unproved,
 and a yield-only sequence does not prove completion.
 
@@ -368,3 +393,165 @@ HNSW fixture and separate Co-watch work without claiming them closed. Update
 release receipts and the same daily monitor with actual deployed evidence;
 keep the expired outage monitor paused and the scope at 11 complete,
 25 cancelled and four open until new acceptance evidence supports a change.
+
+### October 27 root-delete failure after resumed cleanup
+
+The [resumed cleanup receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-resumed-cleanup-and-root-delete-failure)
+preserves 350 newly committed request roots and 5,000 Watch rows across two
+windows on `50cb6a3e`. The second window failed after a partial root deletion;
+the authoritative total includes that committed work. Later windows were
+cancelled without replay. The cumulative manual root total is 850, with zero
+ordinary-cycle credit. The original failed postcheck and separate later
+healthy read-only observation remain distinct.
+
+Astra owns bounded root-delete diagnosis and repair with representative local
+work measurements and preservation of nonexpired rows, privacy and committed
+failure accounting. Parent owns independent review, normal merge/deployment,
+shared rollout coordination and any new manual dispatch. Do not substitute
+higher timeouts, arbitrary admission floors or memory reserves for a measured
+repair. Keep the daily scheduler and observer enabled, and feat-554 in progress.
+
+### October 27 root-chunk cost admission release
+
+The [root-chunk admission repair](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-root-chunk-cost-admission-repair)
+merged as `e25a0a7d` (PR #2930) after independent exact-head review and all
+relevant PR checks. It avoids admitting another root chunk with less time than
+the preceding acknowledged chunk consumed, while preserving the initial
+750 ms floor and five-second deadline. The native counterfactual proves the
+modeled admission correction, not production CPU or query efficiency.
+
+Astra verified all main checks and both actual Admin roles on the reviewed
+merge, with healthy responses, correct runner roles and compact mode. The
+release-bound operator amendment and fresh historical execution proof passed
+independent review. The first new bounded window completed three normal yields,
+committing 300 roots, 3,000 Watch exposures and, in its third pass, 100 projection
+runs and 100 contributions. Both ledgers and all postchecks matched. This brought
+the manual root total to 1,150 at that window's close, with unresolved backlog
+and no daily credit.
+Parent owns continued bounded dispatches and shared rollout coordination.
+Keep the prior failed partial work and revoked
+windows distinct; do not reuse an old release binding or claim a yield-only
+sequence establishes completion. Preserve October 23's accepted daily cycle,
+the remaining ordinary-cycle requirement and the additional expiry inventories.
+
+### October 27 later unlink failure and next scoped repair
+
+The [later projection unlink failure](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-later-projection-unlink-failure-and-stopped-continuation)
+stopped the next finite continuation after 400 additional committed roots:
+250 from window 02 and 150 from window 03, including 100 retained by its failed
+second attempt. The known manual total was 1,550 at reconciliation, with four
+failed partial attempts retained and historical 301 separate. Windows 04–07
+were revoked without attempts; no cleanup remains authorized by that series.
+
+The new failure is `projection_run_unlink_page` with `P2028`, outside the
+root-only guard. A read-only selection analogue shows a large ID-ordered
+run scan for one eligible row; an expiry/reference-index candidate avoids
+that scan but is not a causal production comparison. Astra owns the targeted
+selector/helper, captured-reference and current-expiry guards, meaningful
+PostgreSQL regressions and comparable local measurements. Parent owns the
+consolidated records, independent review, normal merge/deployment and any fresh
+cleanup dispatch. Do not substitute timeout widening, arbitrary admission or
+memory floors, or a successful health response for the required repair evidence.
+
+### October 27 projection-run selector repair
+
+The [projection-run selector repair](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-run-selector-repair)
+merged normally as `e2a06589` (PR #2932) after independent exact-head review,
+91 focused tests, 44 PostgreSQL tests, full Admin typecheck and all applicable
+PR checks. Existing expiry/reference indexes replace the broad run scan, with
+captured-reference and current-expiry guards before unlinking. The root admission
+guard, five-second deadline and committed failure accounting remain unchanged.
+
+Sparse and high-fan-out local SELECT fixtures improve, while the 100,000-empty-parent
+fixture regresses from 153.544 to 303.414 ms. Parent probes remain linear; these
+measurements do not establish full-invocation or production CPU improvement, or
+prove that the observed P2028 cannot recur. All main workflows passed and both
+actual roles were verified on the exact merge with all source hashes, compact
+mode, correct runner roles and healthy responses. The release-bound operator
+amendment and fresh historical-execution proof passed independent review. Parent
+authorized one new bounded window with fresh per-pass checks; the revoked earlier
+windows remain revoked. Preserve the 1,550-root dated manual
+baseline, all four failed partial attempts, historical 301 separately and zero
+manual daily-cycle credit. Feat-554 retains its ordinary-cycle requirement.
+
+The [first-window outcome](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-unlink-recurrence-after-projection-run-repair)
+stopped on a decision-unlink P2028 after two attempts committed 200 additional
+roots. The known manual total is 1,750, with five failed partial attempts retained.
+Pass one recorded positive run-link and decision-link progress; the failure in
+pass two does not identify SELECT versus UPDATE. Original postchecks passed,
+memory stayed below the actual limit without OOM or throttling, and the fixed
+cohort fell to 34,340. Backlog remains and no further cleanup is dispatched.
+Astra owns bounded read-only/local investigation of the common late-phase budget
+pattern and actual operation cost before a supported correction. Parent owns
+independent review, normal release and any fresh cleanup dispatch; the daily
+scheduler and read-only monitor remain enabled.
+
+### October 27 decision-operation diagnostics
+
+The [decision-operation diagnostics](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-operation-diagnostics)
+merged normally as `b78fa7a6` (PR #2934) after independent final-head review,
+113 focused tests, 44 native tests, full Admin typechecking and green PR checks.
+The bounded investigation did not reproduce the failed production operation;
+this release records actual SELECT/guarded UPDATE progress and process-wide
+observations without changing cleanup behavior. Manual CLI observations must
+come from that short-lived process, not the worker's long-lived Next process.
+Tentative operation counts are not committed deletions, and an unavailable
+event-loop histogram does not prove absence of a stall.
+
+The new recorder/parser bundle and exact-identity amendment passed independent
+offline review. All main checks and actual both-role release verification passed,
+including matching source/dependency pins, health and the full inventory snapshot.
+A fresh independent source/process historical review accounts for 26 ledger
+records, not 26 distinct invocations. Parent issued one new bounded ordinary
+diagnostic cleanup window after verifying the final bound operator bundle.
+Use its outcome to support a correction; do not call the diagnostics a timeout
+fix. Preserve the stopped 1,750-root baseline, all five failed partial attempts,
+historical 301 separately, the removed memory gates and enabled daily scheduler.
+Feat-554 remains in progress with one further qualifying ordinary cycle required.
+
+The [diagnostic observation window](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-diagnostic-window-stopped-before-cleanup)
+stopped in its initial read-only fixed-cohort helper before any cleanup invocation.
+Original postchecks passed; both window ledgers are empty and the baseline is
+unchanged. The discarded helper error prevents causal attribution. Astra owns
+a bounded local failure-reporting amendment; parent owns independent review and
+any new dispatch. This is an operator evidence gap, not a proven cleanup defect.
+
+### October 27 successful passes and collector recovery
+
+The [next diagnostic window](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-successful-diagnostic-passes-and-collection-stop)
+ran two successful cleanup invocations after the local helper-reporting amendment
+passed independent review. Both ledgers reconcile 200 additional roots, bringing
+the known manual total to 1,950 with five prior failed partial attempts unchanged.
+Original postchecks and all memory samples passed. Before a third invocation,
+nested Railway collection failed without an actual role frame or verifier result.
+The exact cause remains unknown; no further cleanup or replay followed.
+
+Astra owns a local stage-specific collector receipt and one bounded read-only
+collection recovery within the existing deadline. Never retry cleanup or negative
+health/identity/source results. Parent owns independent review and any new window;
+the remaining ordinary-cycle requirement and extra expiry inventory stay explicit.
+
+That amendment passed independent review and the next bounded window completed
+three successful 100-root passes, raising the known manual total to 2,250 with
+original checks intact and no collection retry needed. Parent issued a finite
+ten-window continuation on the unchanged reviewed operator after independent
+evidence and plan review. Every window retains fresh checks and the five-pass,
+300-second bounds; the first genuine failure, unknown outcome or no progress
+stops the sequence. New readiness stops at 10:05 UTC and dispatch authority
+expires at 10:15 UTC, ahead of ordinary cleanup at 10:30 UTC. No clearance or
+manual daily-cycle credit is implied.
+
+The [finite continuation](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-finite-cleanup-continuation)
+completed eight successful passes across its first three windows, adding 800
+request roots for a cumulative manual total of 3,050. All original checks passed.
+The fourth window stopped on a read-only helper failure before any cleanup;
+all remaining window authority is revoked. Its original SQL and health
+postchecks failed; the passing memory observation does not replace them. The
+series evidence is sealed. Astra owns a separate bounded read-only collection
+outage diagnosis; parent owns independent review and the existing daily observer
+handoff. Its one separate account control confirmed Railway API HTTP 429 with
+an 850-second backoff, conservatively until 09:55:27 UTC; the next control was
+skipped. Honor that interval and coordinate future API request volume without
+replacing missing original postchecks or renewing manual authority.
+Ordinary daily cleanup remains enabled. No backlog
+clearance, historical timeout repair or manual-cycle acceptance is claimed.

@@ -17,6 +17,138 @@ tags:
   - "operations"
 ---
 
+## October 27 second qualifying ordinary cycle
+
+The [independently reviewed ordinary-cycle report](../../reports/2026-10-27-recommendation-retention-cycle.md)
+accepts October 27 alongside October 23: the two-cycle requirement is met.
+There were 240 durable successes and two safe budget yields, zero failures,
+242 successful scheduled wrappers, 6,111 committed request roots and 74,558
+Watch deletions. The scheduler returned to the next daily wake. All 26 health
+families had zero more-than-24-hour expiry, and their oldest current expiry was
+after the final successful cutoff. Nine extra inventories and capped counts
+remain separate. Manual cleanup still earns no cycle credit.
+
+Current Admin roles are healthy with the same 13 tracked retention source pins
+on a later deployment, but exact process/revision attribution during the cycle
+is unavailable. Independent review accepted the observed ordinary-cycle result
+without inventing a continuous-process gate or replacing older failed checks.
+
+Keep this ticket in progress for its own continued operational-margin obligation.
+The separate Watch probe found 876,967 stored expiries through October 29
+10:30 UTC and 7,478,304,768 bytes of free PGDATA. First-wave deletion does not
+establish capacity for that larger wave. Use the next ordinary observation to
+verify actual drainage, oldest/overdue backlog and relation/PGDATA/WAL headroom,
+or coordinate evidence-backed protection if margin is inadequate. No additional
+fixed number of clean days, obsolete nominal 75 GB buffer, literal legacy-overlap
+duration, arbitrary memory gate or Datadog prerequisite is required. This
+capacity obligation has not been moved into feat-756. The daily observer stays
+active; the older dated cycle requirements below are superseded by this entry.
+
+## October 27 finite cleanup continuation
+
+The [finite cleanup continuation](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-finite-cleanup-continuation)
+completed eight successful passes, adding 800 request roots and bringing the
+known manual total to 3,050. Every original postcheck and memory observation
+passed. The fixed expired cohort fell to 28,086; current 26-family expiry was
+101,863 at the last completed window, with nine additional inventories separate.
+The next window stopped on a read-only helper failure before cleanup. All
+remaining manual window authority is revoked. Its original SQL and health
+postchecks failed; a passing memory observation does not replace them. The
+series evidence is sealed and collection-outage diagnosis remains separate
+from cleanup-runtime failure. A separate account control confirmed Railway API
+rate limiting with an 850-second backoff; no further control or cleanup followed.
+Daily cleanup stays enabled. This ticket remains
+in progress: one further loaded failure-free ordinary cycle is required, and
+these manual passes earn no cycle credit.
+
+## October 27 successful diagnostic passes
+
+The [next diagnostic window](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-successful-diagnostic-passes-and-collection-stop)
+completed two successful cleanup invocations and committed 200 request roots,
+with both ledgers and all counters matching. The known manual total is 1,950,
+including five earlier failed partial attempts; historical 301 remain separate.
+The fixed cohort fell to 33,201 and current 26-family expiry to 106,832, with
+additional expiry inventories outside that total. Original postchecks and all
+300 memory samples passed without OOM or process changes.
+
+A collection helper failed before a third invocation, without a saved original
+role frame or verifier result. No third cleanup or replay occurred. Independent
+review accepted the stopped-window evidence. A bounded local collector-reporting
+and read-recovery amendment was prepared; it must not retry cleanup or
+negative health/identity/source results. Keep this ticket in progress with the
+same ordinary-cycle requirement, enabled daily scheduler and zero manual credit.
+
+The reviewed collector amendment then supported three more successful passes,
+bringing the known manual total to 2,250. All original checks passed; no collection
+retry was needed. Fixed expiry fell to 31,770 and current 26-family expiry to
+107,285; success cutoff advanced to 08:58:53.688 UTC. Parent issued a finite
+continuation of the unchanged bounded operator, with the whole sequence stopping
+on failure or uncertainty and all dispatches expiring before ordinary cleanup.
+Backlog and the remaining ordinary-cycle requirement are still open.
+
+## October 27 decision-operation diagnostics
+
+The [decision-operation diagnostics](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-operation-diagnostics)
+merged normally as `b78fa7a6` (PR #2934) with independent exact-head review,
+113 focused tests, 44 native tests and green PR checks. Bounded investigation
+did not reproduce the last production timeout. The new envelope separates
+SELECT, guarded UPDATE and later failures while measuring the actual invocation
+process; it preserves all cleanup behavior and is not a timeout fix.
+
+The revised recorder/parser and exact release identity passed independent
+offline review. All main checks, actual both-role release and fresh historical
+execution verification passed. The snapshot still found 104,646 stored-expired
+rows across 26 health families, fixed cohort 34,340 and nine additional inventory
+frames outside that total. Parent issued one new bounded diagnostic observation.
+At dispatch, the preceding stopped window accounts for 1,750 manual roots and five failed partial attempts,
+with historical 301 separate. Direct memory tracking continues without the
+removed 4 GB or no-rising-memory gates. Keep this ticket in progress: October 23
+provides one accepted ordinary loaded failure-free cycle, one further cycle
+is required, and manual work earns no credit.
+
+The [new diagnostic window](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-diagnostic-window-stopped-before-cleanup)
+stopped before any cleanup invocation when an initial read-only inventory helper
+failed. Original postchecks passed and both window ledgers remain empty; no new
+failed partial attempt is counted. The original error was discarded, so its cause
+is unknown. A local operator failure-reporting amendment is being prepared before
+any new parent dispatch. The daily scheduler remains enabled.
+
+## October 27 projection-run selector repair
+
+The [projection-run selector repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-run-selector-repair)
+merged normally as `e2a06589` (PR #2932) after independent exact-head review,
+91 focused tests, 44 PostgreSQL tests, full Admin typechecking and green PR checks.
+Existing expiry/reference indexes and captured-reference/current-expiry guards
+replace the broad run scan while preserving the page bound, five-second deadline,
+root admission guard and real failure accounting.
+
+Local sparse and high-fan-out SELECT fixtures improve; 100,000 empty parents
+regress from 153.544 to 303.414 ms and probes remain linear. This is not production
+CPU or full-invocation efficiency proof, or proof that P2028 cannot recur.
+All main workflows passed and both actual Admin roles were verified on the exact
+merge, with matching source hashes, compact mode, expected runner roles and
+healthy responses. The 16 GB worker had no OOM or limit events. The dated snapshot
+still found 87,166 expired rows across 26 health families, fixed cohort 35,203
+and additional expiry categories outside that total. No clearance follows.
+The release-bound operator amendment and new historical-execution proof passed
+independent review before one new parent-coordinated bounded window was authorized.
+The earlier continuation remains revoked, with 1,550
+known manual roots, four failed partial attempts and historical 301 separate at
+the last reconciliation. Keep this ticket in progress: October 23 supplies one
+accepted ordinary loaded failure-free cycle, one further cycle is required, and
+manual work earns no credit.
+
+The [first cleanup window on this release](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-unlink-recurrence-after-projection-run-repair)
+committed 200 additional request roots, then stopped on a decision-unlink P2028.
+The known manual total is 1,750, including five failed partial attempts. Pass one
+had positive run-link and decision-link progress; the later failed operation
+does not identify SELECT versus guarded UPDATE. Original postchecks passed and
+300 memory samples peaked at 6,038,208,512 bytes of 16 GB without OOM or throttling.
+The fixed cohort fell to 34,340 and current 26-family expiry to 85,529, with extra
+inventories separate. No retry or further window is authorized. Bounded read-only
+and local diagnosis continues; the daily scheduler and observer remain enabled.
+Keep the ticket in progress with no manual daily-cycle credit.
+
 ## October 27 capacity increase and resumed cleanup
 
 The user removed the operator-imposed 4 GB and no-rising-memory admission rules
@@ -90,6 +222,93 @@ Worker limits, sleeps, lower concurrency or longer timeouts alone do not prove
 efficiency. Keep shared-process measurements and the distinct profile
 reconciliation maintenance path clearly identified; no CPU-spike attribution
 is established.
+
+The [selection repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-decision-selection-repair)
+merged normally as `50cb6a3e` (PR #2926) after independent exact-head review,
+80 focused tests, 37 PostgreSQL tests, full Admin typecheck and all applicable
+PR checks. It uses existing expiry/reference indexes and guards the captured
+reference and current expiry before unlinking. The local sparse-match fixture
+reduced decision heap rows examined from 182,895 to seven, but empty-parent
+probes remain linear; this is not a global work bound or production CPU claim.
+The initial broader test timeout is retained alongside its unchanged isolated
+passing rerun. All three main workflows passed, and both actual Admin roles
+were verified on the exact merged revision at 03:18–03:19 UTC, with healthy
+responses, compact mode and correct runner roles. The worker retains 16 GB
+with no recorded OOM or limit events. Cleanup had not resumed at that snapshot;
+subsequent windows and the stop are recorded below. The then-current 26-family
+inventory was 65,913, including 17,593 expired Watch
+exposures; the fixed cohort remains 37,442. Extra expired session links remain
+at least 1,001, while the one pending erasure is not stored-expired eligible.
+Keep this ticket in progress with the same ordinary-cycle requirement and
+remaining inventory.
+
+## October 27 resumed cleanup failure
+
+The [resumed cleanup and root-delete failure](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-resumed-cleanup-and-root-delete-failure)
+records 350 new request roots and 5,000 expired Watch rows across two windows
+on the selection repair. The second window's third pass failed after 50
+committed roots; its 150-root total preserves that partial commit. Later
+windows were cancelled without replay. Today's known manual root total is
+850, including three failed partial attempts. All manual work still earns
+zero daily-cycle credit, and the historical 301 roots remain separate.
+
+The root-delete operation failed with an unknown Prisma request error at
+855 ms after admission with 853 ms; exact SQL/client/CPU cause remains
+unproved. Astra is investigating this distinct early phase. Neither window
+establishes that the rewritten projection selector ran. Keep the original
+missing post-health/filesystem check separate from the later healthy
+read-only follow-up. No memory gate was reinstated. Further manual cleanup
+requires a reviewed correction and a new coordinated window; the ordinary
+daily scheduler remains enabled and this ticket remains in progress.
+
+## October 27 root-chunk cost admission repair
+
+The [root-chunk cost admission release](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-root-chunk-cost-admission-repair)
+merged as `e25a0a7d` (PR #2930), with independent exact-head review, 94 focused
+tests, 38 native PostgreSQL tests, full Admin typecheck and all applicable PR
+checks. The next root chunk must have more time than the preceding acknowledged
+chunk consumed, with the existing 750 ms baseline and five-second deadline
+unchanged. The modeled regression proves avoided underfunded dispatch; a later
+more expensive chunk can still fail. Production query/CPU improvement and the
+historical production SQLSTATE remain unproved.
+
+All main workflows passed, and both actual roles were verified on the merged
+revision at 05:10–05:11 UTC with compact mode, correct runners and healthy
+responses. The moving 26-family expired count was 81,944 and the fixed cohort
+36,997; additional expiry categories remain separate. The source-bound
+operator amendment and fresh historical execution proof passed independent
+review. The first new bounded window, `r2930-w01`, completed three normal yields
+with matching ledgers and postchecks: 300 roots, 3,000 Watch exposures and
+100 expired projection runs plus 100 contributions in the third pass. The
+manual root total reached 1,150 at this window's close, retaining three earlier failed partial attempts;
+historical 301 remain separate. The moving 26-family count ended at 79,905,
+the fixed cohort at 36,431 and the watermark unchanged. This demonstrates
+progress, including some later-phase work, but neither selector/guard-specific
+causality nor production CPU improvement or backlog completion.
+Keep this ticket in progress, preserve October 23's one accepted ordinary
+loaded failure-free cycle and require one further qualifying cycle. Manual
+work adds no credit and neither the 26-family health inventory nor root
+progress alone establishes clearance of every stored-expired category.
+
+## October 27 later projection unlink failure
+
+The [stopped continuation receipt](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-later-projection-unlink-failure-and-stopped-continuation)
+records 400 additional roots and 5,000 Watch exposures across windows 02–03.
+The last attempt failed after 100 committed roots; the series preserves that
+partial work, its failure and a known manual total of 1,550 at reconciliation.
+Four failed partial attempts remain failed, historical 301 are separate, and
+windows 04–07 were revoked without attempts. Original postchecks passed; the
+moving 26-family inventory ended at 76,825 and the fixed cohort at 35,203.
+
+The later `projection_run_unlink_page` operation reported `P2028` with no
+SQLSTATE, outside the root-only guard. Exact failed SELECT-versus-UPDATE and
+timer attribution remain unknown. Read-only plans support a targeted
+expiry/reference-index selection investigation; sequential timings do not
+prove production CPU improvement. Astra owns the scoped query repair and
+local/native validation. Keep manual cleanup stopped pending reviewed normal
+release and fresh verification, retain the daily scheduler and observer, and
+preserve October 23 plus one further required ordinary loaded failure-free
+cycle. This ticket remains in progress.
 
 ## October 27 pre-work deadline correction
 
