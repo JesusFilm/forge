@@ -82,14 +82,26 @@ or exhaustive catalogue absence. HTTP 200 does not excuse internal errors.
 
 ## Execution state
 
+The [October 27 ordinary-cycle review](../reports/2026-10-27-recommendation-retention-cycle.md)
+accepts the second loaded failure-free scheduled cycle, alongside October 23.
+The cycle-count gate is met; manual work earns no credit. Feat-554 remains open
+for continued operational margin, and feat-756 remains open for the larger Watch
+expiry wave's drainage/capacity. The measured horizon contains 876,967 rows
+through October 29 10:30 UTC, with 7.478 GB of PGDATA free at the dated check.
+The next existing daily observation must assess actual drainage, oldest/overdue
+backlog and relation/PGDATA/WAL headroom, or prompt evidence-backed capacity
+protection if needed. No new fixed number of clean days or arbitrary memory gate
+is introduced. Current scope remains 11 complete, 25 cancelled and four open.
+The active plan and daily storage observer remain active.
+
 The implementation and scope decisions are integrated through PRs 2538, 2539,
 2540, 2543, 2544, 2545 and 2546. Root PR 2541 reconciles the dated ledger,
 bidirectional dependencies, generated index and guidance. Independent reviews
 and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
-The retention track stays active for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2, 3, 4, 5 and 6 failed and
+At the historical October 6 checkpoint, platform feat-554 still required two
+normal failure-free loaded daily retention cycles. October 2, 3, 4, 5 and 6 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,

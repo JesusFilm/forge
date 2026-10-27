@@ -17,6 +17,33 @@ tags:
   - "operations"
 ---
 
+## October 27 second qualifying ordinary cycle
+
+The [independently reviewed ordinary-cycle report](../../reports/2026-10-27-recommendation-retention-cycle.md)
+accepts October 27 alongside October 23: the two-cycle requirement is met.
+There were 240 durable successes and two safe budget yields, zero failures,
+242 successful scheduled wrappers, 6,111 committed request roots and 74,558
+Watch deletions. The scheduler returned to the next daily wake. All 26 health
+families had zero more-than-24-hour expiry, and their oldest current expiry was
+after the final successful cutoff. Nine extra inventories and capped counts
+remain separate. Manual cleanup still earns no cycle credit.
+
+Current Admin roles are healthy with the same 13 tracked retention source pins
+on a later deployment, but exact process/revision attribution during the cycle
+is unavailable. Independent review accepted the observed ordinary-cycle result
+without inventing a continuous-process gate or replacing older failed checks.
+
+Keep this ticket in progress for its own continued operational-margin obligation.
+The separate Watch probe found 876,967 stored expiries through October 29
+10:30 UTC and 7,478,304,768 bytes of free PGDATA. First-wave deletion does not
+establish capacity for that larger wave. Use the next ordinary observation to
+verify actual drainage, oldest/overdue backlog and relation/PGDATA/WAL headroom,
+or coordinate evidence-backed protection if margin is inadequate. No additional
+fixed number of clean days, obsolete nominal 75 GB buffer, literal legacy-overlap
+duration, arbitrary memory gate or Datadog prerequisite is required. This
+capacity obligation has not been moved into feat-756. The daily observer stays
+active; the older dated cycle requirements below are superseded by this entry.
+
 ## October 27 finite cleanup continuation
 
 The [finite cleanup continuation](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-finite-cleanup-continuation)
