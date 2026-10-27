@@ -284,26 +284,46 @@ runner roles at separate 23:08 worker and 23:15 HTTP observations. Main CI,
 production image and all four CodeQL analyses passed. The finite ledger window
 contained zero attempts; the release establishes no loaded deletion behavior.
 
-Retain the read-only release receipt and continue observing both ledgers, all 26
-current retention-health families, expiry cohorts, success watermark and
-capacity through the existing daily monitor. The latest snapshot has 39,404
-expired rows across those families and zero over 24 hours overdue; no global
-clearance or disk-recovery claim is justified. Investigate the memory blocker
-with bounded saved evidence and cheap aggregate diagnostics before selecting
-any corrective change. After a meaningful state change, prepare fresh manual
-admission evidence. Require the
-same healthy worker process at two roughly 30-second-separated readings at or
-below 4 GB of 8 GB, no rising burst and zero OOM kills, PGDATA above 5 GB, and no
-competing cleanup, lock waiter or long transaction. The 23:08 admission reading of 4.574 GB
-does not pass. Do not repeatedly probe an unchanged failed guard.
+The user's later October 27 instruction removes the operator-imposed 4 GB
+admission threshold and no-rising-memory rule. Those rules in earlier dated
+receipts are historical, not current prerequisites. Do not replace them with an
+arbitrary reserve. Datadog access and a completed memory root-cause diagnosis are
+also not prerequisites. Track actual container memory, its enforced limit and
+OOM events directly, alongside service health, correct deployed revision/roles,
+PGDATA above 5 GB and no competing cleanup, lock waiter or long transaction.
+
+The user authorized additional headroom or a dedicated worker. The existing
+production worker was increased from 8 to 16 GB with CPU unchanged at 8, within
+the verified 24 GB plan allowance. API readback and the running container's
+actual limit both confirmed 16,000,000,000 bytes. The same PID 1, process start
+and deployment remained; no restart or redeploy was issued. The first subsequent
+pass committed 50 expired request roots and yielded safely, with matching
+durable counts and a successful manual wrapper. See the
+[capacity and deletion receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-worker-capacity-and-resumed-deletion).
 
 The later explicit backlog request supersedes the older no-further-manual-work
 instructions in the dated checkpoints above. A parent-reviewed admitted window
 may run at most five individually reconciled deployed expired-only passes or
-five minutes; stop on failure, yield, uncertainty, unsafe guards or no progress.
+five minutes. A committed positive-progress budget yield may continue into a
+distinct next pass after both ledgers reconcile; this supersedes the earlier
+stop-on-any-yield operator rule. Stop on an actual error, uncertainty, mismatched
+counts, unhealthy service or OOM/limit events, competing execution, unsafe
+database/capacity conditions or no progress.
 Use the reviewed exclusive-attempt recorder, preserve expected exit-3 payloads
 and never replay an uncertain invocation. No manual pass is authorized merely
 by the read-only verification assignment or the existing daily heartbeat.
+
+The next window stopped on its first pass at 00:21 UTC: both ledgers failed
+after 100 further committed roots, with an expired transaction reporting
+854 ms allowed versus 870 ms elapsed. No second pass or replay followed.
+Astra owns bounded local investigation and correction of that genuine failure;
+parent coordinates review, normal release and the next manual window. Do not
+reclassify this failure as a safe yield or a memory-admission hold.
+
+Continue observing both ledgers, all 26 current retention-health families,
+expiry cohorts, success watermark and capacity. Those 26 families do not cover
+every cleanup category, so neither their count nor a yield-only sequence proves
+global clearance. Keep memory diagnosis separate from the active drain.
 
 Keep feat-554 in progress until one further qualifying ordinary loaded,
 failure-free cycle supplements October 23. Preserve the Watch exposure wave,

@@ -724,23 +724,85 @@ exposure had zero expired rows in the backlog snapshot and an 8,300,552,192-byte
 relation, with first stored expiry October 27 at 01:54:46.228 UTC. These are
 dated observations, not a disk-reclamation or future-capacity forecast.
 
-Admission remains on HOLD from the 23:08:28 worker reading: 4,573,614,080 bytes
-of 8 GB exceeds the existing 4 GB gate despite health 200/ok and zero OOM kills.
+Admission was held at the 23:08:28 worker reading: 4,573,614,080 bytes
+of 8 GB exceeded the then-current 4 GB gate despite health 200/ok and zero OOM kills.
 The HTTP rollout was incomplete at that admission snapshot and verified later;
-memory remains the unresolved guard. No second admission sample or manual pass
-followed. The release verification made no production mutations. Astra continues
-a bounded investigation of the memory blocker without widening the guard.
+No second admission sample or manual pass followed in that release-verification
+window, which made no production mutations. The subsequent user decision below
+supersedes this operator-imposed memory gate.
 
-Resume only after reviewed actual-release and fresh admission evidence, keeping
-the existing memory, health, concurrency, lock and PGDATA guards. Reconcile each
-bounded expired-only pass and stop on failure, yield, uncertainty or an unsafe
-guard. Do not delete ahead of stored expiry or widen timeouts. The October 27
+Reconcile each bounded expired-only pass under the current operating policy
+below. Do not delete ahead of stored expiry or widen timeouts. The October 27
 Watch expiry wave and capacity proof remain separate requirements. October 23
 still supplies the only accepted ordinary loaded failure-free cycle; manual
 passes add no credit. Keep feat-554 and feat-756 open, the daily monitor active
 and the expired outage monitor paused. The scope remains 11 complete,
 25 cancelled and four open; accepted coverage and unmeasured usefulness are
 unchanged.
+
+### October 27 worker capacity and resumed deletion
+
+The [independently reviewed operating receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6430556334)
+records the user's removal of the 4 GB and no-rising-memory admission rules and
+authorization of additional worker headroom or a dedicated worker. No arbitrary
+replacement reserve applies. Direct container memory and OOM measurements are
+sufficient for operational tracking; Datadog and a completed allocation
+diagnosis are optional. Earlier holds remain dated history.
+
+The existing production `@forge/admin/worker` limit changed from 8 to 16 GB,
+with CPU unchanged at 8 and the plan's 24 GB allowance verified first. Both the
+API and actual container confirmed 16,000,000,000 bytes. At 00:13:45.045 UTC,
+the worker used 6,014,173,184 bytes with zero OOM kills; PID 1/start time and
+deployment were unchanged. No restart, redeploy, new service or heap-setting
+change was issued. Actual HTTP and worker remained healthy, compact, on
+`ce23241a9` with the expected source hash and correct runner roles.
+
+The first authorized pass started at 00:14:39.167 UTC and committed **50 request
+roots**, then returned expected CLI exit 3 with continuation required. Its
+durable ledger recorded `SKIPPED/budget_yield`; every deletion counter matched
+the CLI. The sole manual wrapper succeeded without an error in 4,510 ms. This
+is committed partial deletion, not complete cleanup or a new success watermark.
+The fixed October 26 23:15:00.760 cohort fell from 39,390 to 39,299 eligible
+rows across the 26 measured families. That inventory differs from deletion
+counter coverage. Rolling expired inventory was 41,761 at its later read,
+including newly expired arrivals, with zero more than 24 hours overdue.
+
+Ninety direct one-second container samples had a sampled peak of 4,322,250,752
+bytes, the same worker process and a 16 GB enforced limit, with no OOM or limit
+events. This is sampled whole-container memory, not isolated CLI allocation or
+a continuous maximum. Post-pass checks found both roles healthy, no lock waiters
+or long transactions, and 8,030,261,248 free PGDATA bytes. No disk-reclamation
+claim follows. Immutable evidence is retained under the Astra task's
+`outputs/capacity`, `outputs/release/actual-capacity16verified.json` and
+`outputs/onepass20261027`; the latter's 34-file manifest was independently
+verified by the parent.
+
+Parent authorized continuation in windows of at most five distinct passes or
+five minutes, with exclusive attempt recording and both-ledger reconciliation
+after each. A matching committed positive-progress yield permits the next
+distinct pass. Actual errors, uncertainty, mismatched counts, no progress,
+unhealthy service/OOM/limit events, competing cleanup or unsafe database/capacity
+conditions stop the window. The removed memory rules do not reappear as gates.
+
+The next window stopped after its first distinct invocation at 00:21 UTC.
+Both ledgers record a real failure after **100 further committed request roots**,
+plus 100 each of profile projection runs, contributions and interests. The
+manual wrapper failed in 5,102 ms. The saved error reports an already expired
+transaction: 854 ms allowed versus 870 ms elapsed; it does not retain an explicit
+Prisma error code or failing phase. The recorder did not retain failed CLI
+stdout/stderr, so the exact statement is unproved. No second pass or replay
+followed. The fixed cohort fell from 39,299 to 38,861; rolling current expiry
+was 41,548 at its later read, with zero over 24 hours overdue. Both services
+remained healthy on the same release/process, worker memory was 4.702 GB of
+16 GB with zero OOM kills, and PGDATA had approximately 8.044 GB free. This is
+a database transaction failure requiring investigation, not reinstatement of a
+removed memory rule. Astra owns the residual transaction-expiry repair; no
+further manual invocation is currently authorized until reconciliation and
+parent coordination of the correction.
+
+The normal daily scheduler remains enabled at 10:30 UTC; the existing daily
+monitor remains read-only. Manual passes earn zero ordinary-cycle credit, so
+feat-554 remains in progress and global expired-backlog clearance is unproved.
 
 ## Dependencies, indexes and older PRs
 
