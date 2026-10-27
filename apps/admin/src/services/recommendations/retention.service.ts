@@ -250,11 +250,19 @@ export async function purgeExpiredRecommendationRequests(
   const deadline = Date.now() + RECOMMENDATION_RETENTION_TIMEOUT_MS
   const diagnostics = createRetentionPhaseRecorder()
   let phaseOrdinal = 0
+  let lastCompletedRootPhaseMs = 0
   const phase = async <T>(
     label: RetentionPhaseLabel,
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
     options: { terminal?: boolean } = {},
   ): Promise<T> => {
+    // Only acknowledged root work informs the next root chunk. This is a
+    // lower bound from the previous observation, not a prediction that a
+    // different (possibly more expensive) chunk will fit.
+    const minimumAdmissionMs = Math.max(
+      RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS,
+      label === "delete_request_roots" ? lastCompletedRootPhaseMs : 0,
+    )
     const remaining = deadline - Date.now()
     const started = performance.now()
     const timing: RetentionPhaseTiming = {
@@ -272,10 +280,7 @@ export async function purgeExpiredRecommendationRequests(
       incompleteStageElapsedMs: null,
       totalMs: null,
     }
-    if (
-      !options.terminal &&
-      remaining <= RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
-    ) {
+    if (!options.terminal && remaining <= minimumAdmissionMs) {
       diagnostics.failed(timing)
       throw new RetentionBudgetYield()
     }
@@ -308,10 +313,7 @@ export async function purgeExpiredRecommendationRequests(
             )
           const admittedRemaining = deadline - Date.now()
           timing.admittedBudgetMs = admittedRemaining
-          if (
-            !options.terminal &&
-            admittedRemaining <= RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
-          )
+          if (!options.terminal && admittedRemaining <= minimumAdmissionMs)
             throw new RetentionBudgetYield()
           if (admittedRemaining <= 0)
             throw new RecommendationConflictError(
@@ -326,11 +328,7 @@ export async function purgeExpiredRecommendationRequests(
 
           timing.stage = "post_configuration_admission"
           stageStarted = performance.now()
-          if (
-            !options.terminal &&
-            deadline - Date.now() <=
-              RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
-          )
+          if (!options.terminal && deadline - Date.now() <= minimumAdmissionMs)
             throw new RetentionBudgetYield()
 
           timing.stage = "operation"
@@ -357,6 +355,8 @@ export async function purgeExpiredRecommendationRequests(
       timing.stage = "complete"
       timing.totalMs = performance.now() - started
       diagnostics.completed(timing, options.terminal)
+      if (label === "delete_request_roots")
+        lastCompletedRootPhaseMs = timing.totalMs
       return result
     } catch (error) {
       timing.incompleteStageElapsedMs = performance.now() - stageStarted

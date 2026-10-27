@@ -957,6 +957,129 @@ describe("recommendation retention service", () => {
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
 
+  it.each([
+    { priorMs: 0, remainingMs: 750, chunks: 0, delay: "none" },
+    { priorMs: 0, remainingMs: 853, chunks: 2, delay: "none" },
+    { priorMs: 500, remainingMs: 750, chunks: 1, delay: "none" },
+    { priorMs: 500, remainingMs: 751, chunks: 2, delay: "none" },
+    { priorMs: 1_387, remainingMs: 853, chunks: 1, delay: "none" },
+    { priorMs: 1_387, remainingMs: 1_387, chunks: 1, delay: "none" },
+    { priorMs: 1_387, remainingMs: 1_388, chunks: 2, delay: "none" },
+    {
+      priorMs: 1_387,
+      remainingMs: 1_487,
+      chunks: 1,
+      delay: "pg_try_advisory_xact_lock",
+    },
+    { priorMs: 1_387, remainingMs: 1_487, chunks: 1, delay: "set_config" },
+  ])(
+    "admits root chunks using prior elapsed $priorMs ms and remaining $remainingMs ms",
+    async ({ priorMs, remainingMs, chunks, delay }) => {
+      const { prisma, transaction } = buildPrisma()
+      const roots = Array.from({ length: 100 }, (_, i) => ({ id: `root-${i}` }))
+      transaction.recommendationRequest.findMany
+        .mockResolvedValueOnce(roots)
+        .mockResolvedValueOnce(roots.slice(0, 50))
+        .mockResolvedValueOnce(roots.slice(50))
+      let clock = 0
+      const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      const elapsed = vi
+        .spyOn(performance, "now")
+        .mockImplementation(() => clock)
+      transaction.watchSurfaceExposure.findMany.mockImplementation(async () => {
+        clock = 5_000 - priorMs - remainingMs
+        return []
+      })
+      let deleted = 0
+      let delayed = false
+      const query = transaction.$queryRaw.getMockImplementation()!
+      transaction.$queryRaw.mockImplementation(async (sql) => {
+        if (deleted === 1 && !delayed && sql.sql.includes(delay)) {
+          delayed = true
+          clock += 100
+        }
+        return query(sql)
+      })
+      transaction.recommendationRequest.deleteMany.mockImplementation(
+        async () => {
+          if (deleted === 0) clock += priorMs
+          deleted += 1
+          return { count: 50 }
+        },
+      )
+      try {
+        const result = await purgeExpiredRecommendationRequests(prisma as never)
+        expect(deleted).toBe(chunks)
+        expect(result.rootsDeleted).toBe(chunks * 50)
+        if (chunks < 2) {
+          expect(result).toMatchObject({
+            status: "yielded",
+            oldestExpiredAtAfter: null,
+            overdueAfterRun: null,
+            continuationRequired: true,
+          })
+          expect(
+            transaction.recommendationRequest.findMany,
+          ).toHaveBeenCalledTimes(chunks + 1)
+          expect(
+            transaction.recommendationRetentionRun.updateMany,
+          ).toHaveBeenCalledWith(
+            expect.objectContaining({
+              data: expect.objectContaining({
+                status: "SKIPPED",
+                reasonCode: "budget_yield",
+              }),
+            }),
+          )
+        }
+      } finally {
+        now.mockRestore()
+        elapsed.mockRestore()
+      }
+    },
+  )
+
+  it("keeps a more expensive next root chunk failed after a cheap committed chunk", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const roots = Array.from({ length: 100 }, (_, i) => ({ id: `root-${i}` }))
+    transaction.recommendationRequest.findMany
+      .mockResolvedValueOnce(roots)
+      .mockResolvedValueOnce(roots.slice(0, 50))
+      .mockResolvedValueOnce(roots.slice(50))
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const elapsed = vi.spyOn(performance, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    transaction.recommendationRequest.deleteMany
+      .mockImplementationOnce(async () => {
+        clock += 100
+        return { count: 50 }
+      })
+      .mockImplementationOnce(async () => {
+        clock += 4_901
+        throw new Error("modeled expensive second chunk")
+      })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toThrow("modeled expensive second chunk")
+      expect(
+        transaction.recommendationRequest.deleteMany,
+      ).toHaveBeenCalledTimes(2)
+      expect(
+        await prisma.recommendationRetentionRun.findUniqueOrThrow(),
+      ).toMatchObject({
+        status: "FAILED",
+        rootsDeleted: 50,
+        rowCounts: { requests: 50 },
+      })
+    } finally {
+      now.mockRestore()
+      elapsed.mockRestore()
+      logged.mockRestore()
+    }
+  })
+
   it.each([4_250, 5_000, 5_001])(
     "yields before domain work when successful configuration consumes %i ms",
     async (elapsed) => {
