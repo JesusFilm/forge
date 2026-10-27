@@ -70,3 +70,49 @@ Zacchaeus, Persistent Widow, Rich Fool, Ten Lepers, Good Samaritan, Martha).
 EN: Also in Matthew 20:29–34 and Mark 10:46–52.
 RU: Эта история есть также у Матфея (20:29–34) и Марка (10:46–52).
 ```
+
+## Search rules for long-form titles, descriptions and covers (from 2026-10-27)
+
+Lyuba's decision via Analytics, 2026-10-27. Search brought 25% of EN views in
+the week of Oct 20 (up from 7% lifetime), but long forms get few views because
+people search the story's common name, not our hook. The content stays the
+same; only the words around it change. Applies to EN and RU long forms.
+
+1. **Find the search phrase.** Type the story name into YouTube search and take
+   the most common autocomplete phrase that honestly describes our video. Skip
+   phrases about songs, The Chosen, kids' cartoons or other people. Analytics
+   can run this check for any story on request.
+   Seen Oct 23: "woman with the issue of blood", "jairus daughter", "peter
+   denies jesus 3 times", "why did peter deny jesus", "parable of the lost
+   sheep", "faith of the centurion"; RU «исцеление кровоточивой женщины»,
+   «иисус воскрешает дочь иаира», «отречение петра», «вера сотника»,
+   «от луки 8 глава».
+2. **Title** = `<search phrase + our hook> | <passage>`, with the phrase in the
+   first ~40 characters (phone cut-off). If the phrase is itself a question
+   ("Why did Peter deny Jesus"), the title is that question. Every word must be
+   literally true to the passage, and the video must answer what the title
+   asks. RU passage as «От Луки 8:43–48».
+   - EN: never "devotional" in the title (search reads it as songs); never
+     "The Chosen".
+   - RU: never start with «Почему Пётр…» (search goes to Peter the Great);
+     never «сотник» without «вера/слуга сотника».
+   ```
+   EN: The Woman with the Issue of Blood: Why Jesus Stopped | Luke 8:43–48
+   EN: Why Did Peter Deny Jesus Three Times? | Luke 22:54–62
+   EN: The Faith of the Centurion That Amazed Jesus | Luke 7:1–10
+   RU: Отречение Петра: почему он отрёкся трижды | От Луки 22:54–62
+   RU: Вера сотника, которой удивился Иисус | От Луки 7:1–10
+   ```
+3. **First two description lines** (after the full-film Watch link): the search
+   phrase, other common names of the story, the passage, then the
+   parallel-passages line. RU must include «Евангелие от Луки, глава N».
+   Use "explained" / «толкование» only if the video actually explains the
+   passage. No keyword lists.
+   ```
+   EN: The woman with the issue of blood (the bleeding woman in the Bible) touched the hem of Jesus' garment and was healed. A 5-minute reflection on Luke 8:43–48 with the LUMO film.
+       Also in Matthew 9:20–22 and Mark 5:25–34.
+   RU: Исцеление кровоточивой женщины: она коснулась края одежды Иисуса и исцелилась. Пятиминутное размышление над Евангелием от Луки, глава 8 (8:43–48), по фильму LUMO.
+       Эта история есть также у Матфея (9:20–22) и Марка (5:25–34).
+   ```
+4. **Cover text** is for recognition, not search: 2–4 words, does not repeat
+   the title, the passage label stays.
