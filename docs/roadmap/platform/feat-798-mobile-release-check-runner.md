@@ -3,7 +3,7 @@ id: "feat-798"
 title: "Mobile release check runner on five local test devices"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-21"
 duration: 10
 depends_on: []
@@ -67,3 +67,13 @@ Follow the plan's Requirements. In short:
 - The read-only server log of a full run shows no write and no search request sent to production (R18).
 - The screen list check fails a run when a screen with no journey is added, and passes when that screen goes on the Not-Tested List (AE4).
 - Two runs of the same commit give the same result for each journey, apart from journeys labeled "flaky".
+
+## Results
+
+2026-10-28: U13, the first full release run, is done, and the mobile owner accepted it.
+
+- Full run `2026-10-27T21-18-29Z-2569` at commit `87dd478d2`: result `fail`, with 133 pass, 5 new, and 5 flaky. The 5 new failures were `bible-sheets` on each device. PR #2867 added testament tabs to the passage picker, and the journey did not tap "Old Testament" before "Genesis". The build check, the log check, and the settings probe passed. The server log showed no forwarded write and no forwarded search (R18).
+- Flaky in that run, with no ticket yet: `bible-verse-select` (Android phone), `experience-deep-link` (Android tablet), and `more-and-feedback`, `open-video-a-then-b`, and `play-video` (iPhone SE).
+- Commit `2a9304bb4` repaired the journey. Partial run `2026-10-27T23-24-25Z-8526` (`bible-sheets` on the five devices, no speed pass) passed 10 of 10.
+- Production sets no Mux Data key, so the test settings need no Mux Data key digests.
+- Not verified yet: setup and a full run from a fresh clone (the first QA engineer's pilot does this), and two runs of one commit with the same result.
