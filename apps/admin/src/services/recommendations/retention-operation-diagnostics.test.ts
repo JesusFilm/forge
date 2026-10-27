@@ -134,6 +134,26 @@ describe("retention decision observations", () => {
     }
   })
 
+  it("reports an immediate synchronous stall without pretending an unsampled histogram saw it", () => {
+    const observation = createRetentionDecisionObservation("manual-cli")
+    // No await or event-loop turn primes or flushes the 20ms histogram.
+    observation.record("select")
+    const until = performance.now() + 65
+    while (performance.now() < until) {
+      /* owned test-process stall */
+    }
+    observation.record("selected", 0)
+    const result = observation.finish(true)
+    expect(result.selectMs).toBeGreaterThanOrEqual(60)
+    expect(result.elapsedMs).toBeGreaterThanOrEqual(60)
+    expect(result.loopDelayMaxMs).toBeNull()
+    expect(result).toMatchObject({
+      gcAttribution: "unmeasured",
+      operationTiming: "prisma-await-wall-time",
+      countScope: "tentative-operation-counts",
+    })
+  })
+
   it("does not invent a zero delay when no histogram sample exists", () => {
     const observation = createRetentionDecisionObservation("worker-job")
     expect(observation.finish(true).loopDelayMaxMs).toBeNull()

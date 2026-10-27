@@ -50,7 +50,7 @@ Run focused/native tests, full Admin typecheck/lint, formatting and normal hooks
 
 ## Validation and limits
 
-112 focused tests cover operation/commit failure attribution, current-process
+113 focused tests cover operation/commit failure attribution, current-process
 context, actual local event-loop delay, observer disposal, privacy, maximum-size
 envelopes, version-one compatibility and the real CLI flush/exit path. The 44
 existing native PostgreSQL retention/link tests passed on fresh owned loopback
@@ -61,3 +61,16 @@ load hook. Lint found a test-only prefer-const issue, corrected before rerun.
 This ticket completes the diagnostic implementation, not the runtime timeout
 repair or remaining ordinary daily-cycle acceptance. Cause and production CPU
 efficiency remain unknown; a new deployed observation needs separate approval.
+
+Eight alternating local pairs on the same 100-link helper fixture measured a
+0.665 ms median paired wall-time difference with observation enabled. Median
+Node process CPU was 9.290 ms without observation and 10.205 ms with it; observed
+helper wall times ranged from 18.639 to 51.310 ms. Cache, dead-tuple evolution and
+host noise remain, and one paired wall difference was 17.096 ms. These results
+neither establish zero overhead nor guarantee admission with 750–800 ms left.
+They are not whole-invocation, PostgreSQL CPU or production efficiency proof.
+
+Pre-decision failures retain version one. Only an available decision operation
+uses version two. An immediate local stall without another event-loop turn
+records Prisma-await elapsed time but null histogram delay, proving that an
+undersampled histogram cannot be treated as evidence of no stall.

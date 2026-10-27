@@ -16,6 +16,8 @@ export type RetentionDecisionObserver = (
 export type RetentionDecisionObservation = {
   executionContext: RetentionExecutionContext
   scope: "executing-process-wide-decision-operation"
+  operationTiming: "prisma-await-wall-time"
+  countScope: "tentative-operation-counts"
   gcAttribution: "unmeasured"
   boundary: "select" | "update" | "complete" | "unavailable"
   selectedCount: number | null
@@ -87,6 +89,8 @@ export function createRetentionDecisionObservation(
       ? executionContext
       : "unspecified",
     scope: "executing-process-wide-decision-operation",
+    operationTiming: "prisma-await-wall-time",
+    countScope: "tentative-operation-counts",
     gcAttribution: "unmeasured",
     boundary: "unavailable",
     selectedCount: null,
@@ -199,10 +203,12 @@ export function isRetentionDecisionObservation(
     return false
   const v = value as Record<string, unknown>
   return (
-    Object.keys(v).length === NUMBER_KEYS.length + 4 &&
+    Object.keys(v).length === NUMBER_KEYS.length + 6 &&
     typeof v.executionContext === "string" &&
     CONTEXTS.has(v.executionContext) &&
     v.scope === "executing-process-wide-decision-operation" &&
+    v.operationTiming === "prisma-await-wall-time" &&
+    v.countScope === "tentative-operation-counts" &&
     v.gcAttribution === "unmeasured" &&
     typeof v.boundary === "string" &&
     ["select", "update", "complete", "unavailable"].includes(v.boundary) &&
@@ -230,6 +236,8 @@ export function safeRetentionDecisionObservation(
       [
         "executionContext",
         "scope",
+        "operationTiming",
+        "countScope",
         "gcAttribution",
         "boundary",
         ...NUMBER_KEYS,

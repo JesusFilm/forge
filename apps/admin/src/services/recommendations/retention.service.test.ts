@@ -1608,6 +1608,11 @@ describe("recommendation retention service", () => {
         }),
       )
       expect(logged).toHaveBeenCalledTimes(1)
+      const beforeDecision = parseRetentionPhaseFailureLog(
+        String(logged.mock.calls[0]?.[0]),
+      )
+      expect(beforeDecision?.version).toBe(1)
+      expect(beforeDecision).not.toHaveProperty("decisionOperation")
     } finally {
       logged.mockRestore()
     }

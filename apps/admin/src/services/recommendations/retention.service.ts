@@ -1583,7 +1583,7 @@ export async function purgeExpiredRecommendationRequests(
                 outcome,
                 elapsedMs: performance.now() - fallbackStarted,
               },
-              decisionOperation,
+              decisionOperation ?? undefined,
             ),
             suppressedPriorMinute: permit.suppressedPriorMinute,
           }),

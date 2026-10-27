@@ -29,7 +29,7 @@ work. Heap growth, event-loop delay and process CPU alone do not prove GC.
 
 `retention-operation-diagnostics.ts` owns a short-lived histogram and bounded
 start/end runtime observations for decision unlink. The helper reports SELECT
-and UPDATE boundaries without changing either query. Its `complete` boundary
+and UPDATE boundaries and Prisma-await wall times without changing either query. Its `complete` boundary
 means the helper returned; the existing phase envelope separately identifies
 counter-update or commit-acknowledgement failure. Selected/unlinked observations
 are tentative operation counts, not committed counts; durable ledgers remain
@@ -40,7 +40,7 @@ Telemetry failures must not replace the operation's original exception or alter
 ledger rollback/terminalization. Never serialize errors, SQL, parameters, business
 IDs or process arguments. Keep the code-owned enum/numeric schema, four-entry
 phase history, existing limiter and 8 KiB parser cap. The version-two parser also
-accepts old version-one evidence; frozen operator/parser bundles require their
+accepts old version-one evidence, and pre-decision failures remain version one; frozen operator/parser bundles require their
 own later review before consuming a changed deployed diagnostic schema.
 
 The real CLI flushes stderr after a failed pass before `process.exit`. Test that
