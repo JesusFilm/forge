@@ -677,6 +677,12 @@ Image acceptance covers actual startup, access denials, shipped assets and
 synthetic media extraction. It does not invoke providers or execute production
 content, renders or publication work.
 
+For a Railway `frontend grpc server closed unexpectedly` failure before any
+Dockerfile build step, compare the deployment log with the same commit's Manager
+production-image CI before changing application code. See
+`docs/roadmap/media-generation/feat-887-release-shorts-editor-to-production.md`
+for the observed build-stage failure and release evidence.
+
 ### Studio timeline waveforms
 
 `src/services/studio-waveform.ts` uses `STUDIO_FFMPEG_PATH` (or `ffmpeg` on
