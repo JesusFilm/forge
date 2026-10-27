@@ -17,6 +17,48 @@ tags:
   - "operations"
 ---
 
+## October 27 finite cleanup continuation
+
+The [finite cleanup continuation](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-finite-cleanup-continuation)
+completed eight successful passes, adding 800 request roots and bringing the
+known manual total to 3,050. Every original postcheck and memory observation
+passed. The fixed expired cohort fell to 28,086; current 26-family expiry was
+101,863 at the last completed window, with nine additional inventories separate.
+The next window stopped on a read-only helper failure before cleanup. All
+remaining manual window authority is revoked. Its original SQL and health
+postchecks failed; a passing memory observation does not replace them. The
+series evidence is sealed and collection-outage diagnosis remains separate
+from cleanup-runtime failure. A separate account control confirmed Railway API
+rate limiting with an 850-second backoff; no further control or cleanup followed.
+Daily cleanup stays enabled. This ticket remains
+in progress: one further loaded failure-free ordinary cycle is required, and
+these manual passes earn no cycle credit.
+
+## October 27 successful diagnostic passes
+
+The [next diagnostic window](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-successful-diagnostic-passes-and-collection-stop)
+completed two successful cleanup invocations and committed 200 request roots,
+with both ledgers and all counters matching. The known manual total is 1,950,
+including five earlier failed partial attempts; historical 301 remain separate.
+The fixed cohort fell to 33,201 and current 26-family expiry to 106,832, with
+additional expiry inventories outside that total. Original postchecks and all
+300 memory samples passed without OOM or process changes.
+
+A collection helper failed before a third invocation, without a saved original
+role frame or verifier result. No third cleanup or replay occurred. Independent
+review accepted the stopped-window evidence. A bounded local collector-reporting
+and read-recovery amendment was prepared; it must not retry cleanup or
+negative health/identity/source results. Keep this ticket in progress with the
+same ordinary-cycle requirement, enabled daily scheduler and zero manual credit.
+
+The reviewed collector amendment then supported three more successful passes,
+bringing the known manual total to 2,250. All original checks passed; no collection
+retry was needed. Fixed expiry fell to 31,770 and current 26-family expiry to
+107,285; success cutoff advanced to 08:58:53.688 UTC. Parent issued a finite
+continuation of the unchanged bounded operator, with the whole sequence stopping
+on failure or uncertainty and all dispatches expiring before ordinary cleanup.
+Backlog and the remaining ordinary-cycle requirement are still open.
+
 ## October 27 decision-operation diagnostics
 
 The [decision-operation diagnostics](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-operation-diagnostics)

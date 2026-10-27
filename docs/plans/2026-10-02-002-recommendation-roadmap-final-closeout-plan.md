@@ -503,3 +503,43 @@ Original postchecks passed; both window ledgers are empty and the baseline is
 unchanged. The discarded helper error prevents causal attribution. Astra owns
 a bounded local failure-reporting amendment; parent owns independent review and
 any new dispatch. This is an operator evidence gap, not a proven cleanup defect.
+
+### October 27 successful passes and collector recovery
+
+The [next diagnostic window](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-successful-diagnostic-passes-and-collection-stop)
+ran two successful cleanup invocations after the local helper-reporting amendment
+passed independent review. Both ledgers reconcile 200 additional roots, bringing
+the known manual total to 1,950 with five prior failed partial attempts unchanged.
+Original postchecks and all memory samples passed. Before a third invocation,
+nested Railway collection failed without an actual role frame or verifier result.
+The exact cause remains unknown; no further cleanup or replay followed.
+
+Astra owns a local stage-specific collector receipt and one bounded read-only
+collection recovery within the existing deadline. Never retry cleanup or negative
+health/identity/source results. Parent owns independent review and any new window;
+the remaining ordinary-cycle requirement and extra expiry inventory stay explicit.
+
+That amendment passed independent review and the next bounded window completed
+three successful 100-root passes, raising the known manual total to 2,250 with
+original checks intact and no collection retry needed. Parent issued a finite
+ten-window continuation on the unchanged reviewed operator after independent
+evidence and plan review. Every window retains fresh checks and the five-pass,
+300-second bounds; the first genuine failure, unknown outcome or no progress
+stops the sequence. New readiness stops at 10:05 UTC and dispatch authority
+expires at 10:15 UTC, ahead of ordinary cleanup at 10:30 UTC. No clearance or
+manual daily-cycle credit is implied.
+
+The [finite continuation](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-finite-cleanup-continuation)
+completed eight successful passes across its first three windows, adding 800
+request roots for a cumulative manual total of 3,050. All original checks passed.
+The fourth window stopped on a read-only helper failure before any cleanup;
+all remaining window authority is revoked. Its original SQL and health
+postchecks failed; the passing memory observation does not replace them. The
+series evidence is sealed. Astra owns a separate bounded read-only collection
+outage diagnosis; parent owns independent review and the existing daily observer
+handoff. Its one separate account control confirmed Railway API HTTP 429 with
+an 850-second backoff, conservatively until 09:55:27 UTC; the next control was
+skipped. Honor that interval and coordinate future API request volume without
+replacing missing original postchecks or renewing manual authority.
+Ordinary daily cleanup remains enabled. No backlog
+clearance, historical timeout repair or manual-cycle acceptance is claimed.
