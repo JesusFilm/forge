@@ -1327,6 +1327,140 @@ deadline and true failure accounting; do not substitute arbitrary admission or
 memory floors, timeout widening or unreviewed production code. The daily scheduler
 and observer remain enabled, and no manual cycle earns feat-554 credit.
 
+### October 27 decision-operation diagnostics
+
+PR [#2934](https://github.com/JesusFilm/forge/pull/2934) merged normally as
+`b78fa7a6c181546fd9683be8b521e043b69c48cc` at 07:43:29 UTC after independent
+review of head `c640d382`. All 31 PR contexts completed with 21 successes and
+ten expected skips. The 13-file patch preserves the selector SQL, expiry and
+captured-reference guards, page bounds, admission policy and five-second deadline.
+It adds diagnostics; it does not establish a timeout repair.
+
+The preceding bounded investigation did not reproduce the 816 ms production
+operation. The current failed-cutoff SELECT returned 100 rows in 7.430 ms and
+an exact guarded-UPDATE predicate expressed as SELECT took 46.031 ms. The real
+helper and UPDATE took 18–28 ms in six local fixture trials. Production UPDATE
+was explained without ANALYZE or writes. These observations do not identify
+the failed SELECT, UPDATE, client delay or commit as the cause, and do not
+justify another speculative selector rewrite or a wider timeout.
+
+The new bounded envelope separates awaited decision selection, guarded update
+and helper completion from subsequent counter or commit failure. It observes
+heap, process CPU and event-loop timing in the actual executing cleanup process,
+with explicit manual CLI, scheduled-job and generic worker-job contexts. Manual
+cleanup uses a separate short-lived CLI process inside the worker container;
+the long-lived Next process's heap flags and RSS do not describe an exited
+cleanup invocation. Measurements cover the helper's process-wide interval,
+not isolated database time or demonstrated garbage-collection causality.
+
+Pre-decision failures retain the v1 envelope; decision observations use v2.
+Strict parsing retains the 8,192-byte cap and rejects malformed or oversized
+input. Await timings are labeled Prisma wall time and operation counts remain
+tentative rather than committed deletions. A short synchronous stall can leave
+the event-loop histogram unavailable; null does not mean no stall. Observer
+failures cannot replace the original retention error. All 113 focused tests,
+44 native tests, full Admin typechecking, lint, formatting and normal hooks
+passed. Eight alternating local helper pairs measured a median added wall time
+of 0.665 ms, ranging from −9.330 to +17.096 ms; the noisy sample neither proves
+zero overhead nor guarantees that an operation fits the late-phase budget.
+
+Parent verified the 46-artifact final evidence manifest SHA256
+`fd07a33fa9c810d514b90b192599e8c0dab470ee3ef0dc0f003db7350fd3f822`
+and independent final review
+`9b1aa39eefce95d3b79166b2177aca09b1ea63df9f8a2460a660433f9d538ef2`.
+The actual merged tree is `34ff6e9c7bf154463d7ae9ef4ba3e90cb7a9d745`;
+the only additions beyond the reviewed runtime tree are the three parent
+documents from preceding PR #2933.
+
+All three main workflows passed: forge-ci `40468837966`, production image
+`40468837977` and dynamic CodeQL `40468837438`. Parent verified all 25 jobs
+and their steps, retaining the eight expected skipped jobs and six conditional
+other-app test steps separately. The main verification receipt SHA256 is
+`b7d1eddf131990a7d5bd092cb7404e42df4a437964df12cff30a8744c45c3c8c`.
+The normal rollout reached HTTP deployment
+`50a8b869-fff9-4884-979b-93ffdb72f9a4` and worker deployment
+`39051d65-bdc7-4586-8846-2876091dc5f2`. At 08:00:27–08:00:31 UTC both actual
+roles matched all 13 source/dependency pins, compact mode and runner false/true,
+with HTTP 200/body `ok`. Direct worker cgroup memory was 3,710,930,944 bytes
+of 16 GB, CPU quota 8, without OOM, limit events or throttling. These shared
+container measurements and health probes do not prove cleanup efficiency.
+
+The operator/parser update independently passed 62 offline guards, four actual
+service-emitted fixture cases and 14 recorder/parser cases. It pins the local
+parser's four-file dependency closure and 13 source/dependency files in both
+deployed roles. The immutable offline review is
+`6bd6bbd92d396566a295b0f0594deffc78ad1a41503788f77da8efef14e0ec1a`;
+the exact merge/run identity amendment review is
+`748c4ee37fe76d3afeff28b63c22ca84d541a04a14a39ce8298c86d4b2c2d702`.
+A fresh independent historical-execution review binds the actual current source
+and process generations to the same 23 durable records and three wrappers,
+with zero unresolved or resumable records. The changed job source adds five
+diagnostic context lines; it is not byte-identical to the prior release.
+The corrected immutable review receipt is
+`9d133c29f599676c754849bbc93724300f1ced99e0d6c80887e89a5f753a2d02`.
+The 26 records do not establish 26 distinct process invocations: wrapper and
+durable records can describe the same invocation. This clarification also applies
+to earlier historical-review descriptions in this report. Fresh full-set and
+process checks remain required; the historical proof grants no cleanup authority.
+Full release readiness passed at 08:10 UTC, including a fresh both-role source,
+process and health observation. The worker then used 4,654,411,776 bytes of
+16 GB without OOM, limit events or throttling; the removed no-rising-memory
+rule is not reinstated. The snapshot found 104,646 stored-expired rows across
+26 health families, fixed cohort 34,340 and zero measured more than 24 hours
+overdue. Nine extra inventory frames remain separate. The success watermark
+was unchanged at October 26 21:45:44.183 UTC; PGDATA available bytes were
+7,722,225,664, WAL 117,440,512 and lock waiters/long transactions zero.
+
+Parent verified all 82 final release artifacts against manifest SHA256
+`6ee58dcb9bda33492909bce40a8b7d00a2f2c49fdd174c5a9272c404063029aa`
+and receipt
+`6057449ef0220605566d1fbf79a5807082a545049740fa5ae58a4dff31bb8405`.
+All 42 final operator artifacts match manifest
+`57e196de3da9e08f1b1a8b624af87fc91cadf9e6cc31fc4fa148fc9559ef688c`;
+all 22 operator code files remain byte-identical to the approved identity bundle.
+The pre-correction proof and seals remain preserved as superseded evidence.
+Parent then issued one fresh ordinary diagnostic cleanup window, bounded to
+five passes and 300 seconds with fresh per-pass checks and stop-on-failure
+accounting. At dispatch the manual baseline remains 1,750 roots, with five failed
+partial attempts, historical 301 separate and zero manual ordinary-cycle credit.
+
+### October 27 diagnostic window stopped before cleanup
+
+Window `r2934-w01` stopped at 08:12:51 UTC when its initial read-only
+fixed-cohort helper failed after the 26-family backlog query succeeded. No cleanup
+invocation or pass directory was created, and the window ledgers contain zero
+durable and zero wrapper records. The manual baseline remains 1,750 roots and
+five failed partial attempts; this preflight failure is not a failed cleanup
+attempt or a new partial commit. No replay or second window followed.
+
+Original postchecks passed, including the identical fixed-cohort SQL, which
+still counted 34,340 expired rows. That query also matched the successful release
+snapshot. The failed helper interval was at most 4.245 seconds, below its existing
+ten-second statement limit; this does not exclude a lock, transport, parser or
+other failure. The approved wrapper discarded the failed helper's stdout,
+stderr and exit code, and the nested read-only probe suppressed remote stderr.
+The exact original error is unavailable. A bounded existing PostgreSQL log read
+returned no matching error, which does not establish the absence of a database
+failure. No retention runtime defect or transport cause is established.
+
+All 300 original memory samples passed, peaking at 4,375,871,488 bytes of
+16 GB without OOM or limit events. Current 26-family expiry changed from 105,815
+to 105,820 during the window; measured more-than-24-hour expiry remained zero.
+The fixed-cohort prelaunch value is unavailable, not zero; postcheck value is
+34,340. The local reconciliation explicitly retains that missing value and
+does not infer deletion progress from unrelated inventory changes.
+Parent verified the 92-artifact stopped-window manifest SHA256
+`4d27462b3c776f737b3b91f46d50a348fa90563275c050d656e7e1ca76654d12`
+and closeout receipt
+`8155f7bc06a034aa89fffebde51d6ac053bb8191c3c42bbd8ddd62e0d6ff25aa`.
+
+Astra owns a narrow local operator amendment to preserve safe bounded failure
+classification before another independently reviewed, parent-coordinated window.
+It must retain nonzero failures, original postchecks, expiry and identity checks,
+existing bounds and no uncertain replay. The amendment does not change production
+cleanup code or query timeouts. The daily scheduler and observer remain enabled;
+feat-554 retains one further qualifying ordinary-cycle requirement.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
