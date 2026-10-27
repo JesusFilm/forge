@@ -3,52 +3,82 @@ import type {
   StudioTimelineItem,
 } from "@forge/studio-contracts"
 
-import { isTextComponent } from "./item-presentation"
+export type TimelineGroup = "Visual" | "Audio"
+export const timelineGroups: TimelineGroup[] = ["Visual", "Audio"]
+export const groupTrackKind = { Visual: "visual", Audio: "audio" } as const
+export const itemGroup = (item: StudioTimelineItem): TimelineGroup =>
+  item.kind === "audio" ? "Audio" : "Visual"
 
-export type TimelineGroup = "Video" | "Audio" | "Text"
-export const timelineGroups: TimelineGroup[] = ["Video", "Audio", "Text"]
-export const groupTrackKind = {
-  Video: "visual",
-  Audio: "audio",
-  Text: "caption",
-} as const
-export const itemGroup = (
-  item: StudioTimelineItem,
-  document?: StudioDocument,
-): TimelineGroup =>
-  item.kind === "audio"
-    ? "Audio"
-    : item.kind === "text" || isTextComponent(item, document)
-      ? "Text"
-      : "Video"
+function itemsByTrack(document: StudioDocument) {
+  const result = new Map<string, StudioTimelineItem[]>()
+  for (const item of document.items) {
+    const members = result.get(item.trackId)
+    if (members) members.push(item)
+    else result.set(item.trackId, [item])
+  }
+  return result
+}
+
+function orderedTracks(
+  document: StudioDocument,
+  group: TimelineGroup,
+  items: Map<string, StudioTimelineItem[]>,
+) {
+  const tracks = document.tracks.filter((track) => {
+    const members = items.get(track.id)
+    return members?.length
+      ? members.some((item) => itemGroup(item) === group)
+      : group === "Visual"
+        ? track.kind === "visual" || track.kind === "caption"
+        : track.kind === "audio"
+  })
+  return group === "Visual" ? tracks.reverse() : tracks
+}
+
+/** Composition paints later tracks/items on top. Display foreground first. */
+export function tracksForGroup(document: StudioDocument, group: TimelineGroup) {
+  return orderedTracks(document, group, itemsByTrack(document))
+}
 
 export type TimelineRow = {
   id: string
   trackId: string | null
   group: TimelineGroup
   items: StudioTimelineItem[]
+  linkedSourceAudio?: boolean
 }
+
+const overlaps = (a: StudioTimelineItem, b: StudioTimelineItem) =>
+  a.startFrame < b.startFrame + b.durationInFrames &&
+  b.startFrame < a.startFrame + a.durationInFrames
 
 /** Presentation lanes only: never reorder stored tracks or composited items. */
 export function timelineRows(document: StudioDocument): TimelineRow[] {
-  return timelineGroups.flatMap((group) => {
+  const items = itemsByTrack(document)
+  const allRows = timelineGroups.flatMap((group) => {
     const rows: TimelineRow[] = []
-    for (const track of document.tracks) {
-      const items = document.items.filter((i) => i.trackId === track.id)
-      const members = items.filter((i) => itemGroup(i, document) === group)
-      if (
-        !members.length &&
-        (items.length || track.kind !== groupTrackKind[group])
+    for (const track of orderedTracks(document, group, items)) {
+      const members = (items.get(track.id) ?? []).filter(
+        (item) => itemGroup(item) === group,
       )
-        continue
+      if (group === "Visual") members.reverse()
       const lanes: StudioTimelineItem[][] = [[]]
       for (const item of members) {
-        let lane = lanes.find((items) =>
-          items.every(
-            (other) =>
-              item.startFrame >= other.startFrame + other.durationInFrames ||
-              other.startFrame >= item.startFrame + item.durationInFrames,
-          ),
+        // A lower visual must stay below every overlapping foreground item.
+        const minimumLane =
+          group === "Visual"
+            ? lanes.reduce(
+                (minimum, items, index) =>
+                  items.some((other) => overlaps(item, other))
+                    ? index + 1
+                    : minimum,
+                0,
+              )
+            : 0
+        let lane = lanes.find(
+          (items, index) =>
+            index >= minimumLane &&
+            items.every((other) => !overlaps(item, other)),
         )
         if (!lane) {
           lane = []
@@ -67,4 +97,24 @@ export function timelineRows(document: StudioDocument): TimelineRow[] {
     }
     return rows.length ? rows : [{ id: group, trackId: null, group, items: [] }]
   })
+  const visuals = allRows.filter((row) => row.group === "Visual")
+  const sourceAudio: TimelineRow[] = visuals.flatMap((row) => {
+    const videos = row.items.filter((item) => item.kind === "video")
+    return videos.length
+      ? [
+          {
+            id: `source-audio:${row.id}`,
+            trackId: null,
+            group: "Audio",
+            linkedSourceAudio: true,
+            items: videos,
+          },
+        ]
+      : []
+  })
+  return [
+    ...visuals,
+    ...sourceAudio,
+    ...allRows.filter((row) => row.group === "Audio"),
+  ]
 }

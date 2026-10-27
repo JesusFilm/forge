@@ -5564,34 +5564,6 @@ model ShortAssetVersion {
   @@map("short_asset_version")
 }
 
-model ContentPack {
-  id              String                @id
-  currentRevision Int                   @map("current_revision")
-  revisions       ContentPackRevision[]
-
-  @@map("content_pack")
-}
-
-model ContentPackRevision {
-  calendarSlots     ShortPlanSlot[]
-  calendarWeeks     ShortPlanWeek[]
-  catalogReferences ShortPack[]
-
-  id             String      @id @default(cuid())
-  packId         String      @map("pack_id")
-  pack           ContentPack @relation(fields: [packId], references: [id], onDelete: Restrict)
-  number         Int
-  document       Json
-  actor          Json
-  idempotencyKey String      @map("idempotency_key")
-  inputHash      String      @map("input_hash")
-  createdAt      DateTime    @default(now()) @map("created_at")
-
-  @@unique([packId, number])
-  @@unique([packId, idempotencyKey])
-  @@map("content_pack_revision")
-}
-
 model ShortAssetUsage {
   ownerType String            @map("owner_type")
   ownerId   String            @map("owner_id")
@@ -5692,7 +5664,6 @@ model ShortRelease {
   projectRevision        ShortRevision                @relation(fields: [projectId, revision], references: [projectId, number], onDelete: Restrict, onUpdate: NoAction)
   attempt                ShortAttempt                 @relation(fields: [renderAttemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   derivations            ShortDerivation[]
-  packs                  ShortPack[]
 
   @@unique([projectId, idempotencyKey])
   @@map("short_release")
@@ -5711,16 +5682,6 @@ model ShortDerivation {
 
   @@id([releaseId, itemId])
   @@map("short_derivation")
-}
-
-model ShortPack {
-  releaseId      String              @map("release_id")
-  packRevisionId String              @map("pack_revision_id")
-  release        ShortRelease        @relation(fields: [releaseId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  packRevision   ContentPackRevision @relation(fields: [packRevisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-
-  @@id([releaseId, packRevisionId])
-  @@map("short_pack")
 }
 
 model ShortProductionRun {
@@ -5914,8 +5875,6 @@ model ShortPlanSlot {
   title          String                       @default("") @db.VarChar(300)
   theme          String                       @default("")
   manual         Boolean                      @default(false)
-  packRevisionId String?                      @map("pack_revision_id")
-  packRevision   ContentPackRevision?         @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
   projectId      String?                      @map("project_id") @db.VarChar(128)
   project        Short?                       @relation(fields: [projectId], references: [id], onDelete: Restrict)
   provenance     Json?
@@ -5930,8 +5889,6 @@ model ShortPlanWeek {
   calendarId     String               @map("calendar_id") @db.VarChar(128)
   calendar       ShortCalendar        @relation(fields: [calendarId], references: [id], onDelete: Restrict)
   startDate      String               @map("start_date") @db.VarChar(10)
-  packRevisionId String?              @map("pack_revision_id")
-  packRevision   ContentPackRevision? @relation(fields: [packRevisionId], references: [id], onDelete: Restrict)
   theme          String
   provenance     Json?
 

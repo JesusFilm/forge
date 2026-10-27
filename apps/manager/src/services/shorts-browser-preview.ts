@@ -1,3 +1,4 @@
+import { sourceAdmissionDocument } from "./studio-source-admission"
 import { z } from "zod"
 import { studioDocumentSchema } from "@forge/studio-contracts"
 import { studioAssetVersionSchema } from "@forge/studio-contracts/assets"
@@ -34,7 +35,12 @@ export async function prepareBrowserPreview(
       .array(
         z.object({ itemId: z.string(), snapshot: studioSourceSnapshotSchema }),
       )
-      .parse(await call("preview-sources", { projectId, document }))
+      .parse(
+        await call("preview-sources", {
+          projectId,
+          document: sourceAdmissionDocument(document),
+        }),
+      )
     const media: StudioPreview["media"] = {},
       code: StudioPreview["code"] = {}
     const urls: Record<string, string> = {}

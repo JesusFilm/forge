@@ -12,7 +12,6 @@ it("trims a slowed clip using source time while preserving its playback rate", (
     fps: 30,
     durationInFrames: 300,
     tracks: [{ id: "main", kind: "visual" }],
-    packRevisionIds: [],
     components: [],
     items: [
       {
