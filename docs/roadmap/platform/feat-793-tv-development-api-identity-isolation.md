@@ -57,3 +57,7 @@ The local Desktop launcher now starts against production by default, refreshes
 the feedback link independently, and stops the old Metro/app processes before
 editing environment values to avoid Fast Refresh races. Store artifacts remain
 unchanged. Local evidence is in `.local-tools/tv-staging-playback-20261027/`.
+
+Portable teammate/AI onboarding is documented in
+`apps/tv/SIMULATOR-TESTING.md`, including native build fallbacks, separated API
+configuration, signed-link renewal and acceptance limits.

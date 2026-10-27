@@ -1,5 +1,8 @@
 # TV configuration and feature switches
 
+For a teammate or AI agent building local Apple TV and Android TV test apps,
+start with [Simulator testing setup](SIMULATOR-TESTING.md).
+
 Use this guide to decide what to enable, where to change it, and how to check it.
 Verified against the local integration branch on October 14, 2026. Source links
 below are authoritative if this guide and a later implementation disagree.
