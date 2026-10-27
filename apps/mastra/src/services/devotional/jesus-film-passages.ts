@@ -256,6 +256,28 @@ export const JESUS_FILM_PASSAGES: ChapterPassage[] = [
     clipLengthSec: 67,
   }, // Jesus Feeds 5,000. Opens on Peter's request (47.5s) → "you give them to eat" → the blessing → the miracle → "It's a miracle! Unbelievable!" (~114s). (whisper-verified, RU+EN)
   {
+    index: 22,
+    // The chapter shows Luke 9:18-22 only (the cross-bearing sayings, 9:23-27,
+    // are not in it), so the passage stops at 9:22: Ryle's "Peter's
+    // confession" section, and nothing the viewer never sees.
+    osisRef: "Luke.9.18-Luke.9.22",
+    reference: "Luke 9:18-22",
+    mood: "hope",
+    themes: ["identity", "faith", "confession", "suffering", "messiah"],
+    // Subtitle- and frame-verified (Arclight EN + RU tracks, 2026-10-27).
+    // Jesus prays alone by the lake from 0s with the disciples sitting behind
+    // him (Luke 9:18 "praying in private"); seeded at 10s, a few seconds of
+    // prayer before he turns to them (~11s). First line "Who do the crowds
+    // say I am?" 21.8s; the 7.8s pause before Peter's "You are God's
+    // Messiah" (39.4-47.2s) stays (under the 10s gap floor) and is the
+    // scene's beat. "Raised to life" ends 66.7s; the disciples walk off and
+    // the card ends at 71s, before the credits (~75s). The RU dub keeps the
+    // same clock (its track matches to 0.02s).
+    clipStartSec: 10,
+    clipLengthSec: 61,
+    maxVideoCardSec: 62,
+  }, // Peter Declares Jesus to be the Christ. Jesus prays alone → "Who do the crowds say I am?" → "Who do you say I am?" → the pause → "You are God's Messiah" → "tell no one" → suffer, be killed, raised on the third day → they walk on (~71s). (subtitle-verified)
+  {
     index: 31,
     // Tightened from 10:25-37: Ryle splits this into two DISTINCT sections —
     // 10:25-28 is the lawyer's lead-in question ("The Rule of Faith"), 10:29-37

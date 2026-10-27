@@ -297,6 +297,26 @@ const STORIES: Record<
     ],
     out: "Bartimaeus",
   },
+  "jesus-22": {
+    // No setting: the card opens on Jesus praying alone with the disciples
+    // near, which is 9:18 itself; the feeding of the five thousand before it
+    // is a different chapter.
+    terms: [
+      "Peter",
+      "Christ",
+      "Messiah",
+      "Anoint",
+      "Anointing",
+      "Elijah",
+      "Elias",
+      "John the Baptist",
+      "Prophet",
+      "Son of man",
+      "Caesarea Philippi",
+      "THE GREAT CONFESSION - THE GREAT COMMISSION - THE GREAT INSTRUCTION - THE GREAT TEMPTATION - THE GREAT DECISION.",
+    ],
+    out: "Peter's Confession",
+  },
   "jesus-45": {
     // No setting: the card opens on Peter following Jesus into the courtyard,
     // which is 22:54 itself; the arrest before it is not shown.
