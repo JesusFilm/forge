@@ -957,6 +957,95 @@ describe("recommendation retention service", () => {
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
 
+  it.each([4_250, 5_000, 5_001])(
+    "yields before domain work when successful configuration consumes %i ms",
+    async (elapsed) => {
+      const { prisma, transaction } = buildPrisma()
+      let clock = 0
+      const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
+        if (query.sql.includes("pg_try_advisory_xact_lock"))
+          return [{ locked: true }]
+        if (query.sql.includes("set_config")) clock = elapsed
+        return []
+      })
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(prisma as never),
+        ).resolves.toMatchObject({
+          status: "yielded",
+          rootsDeleted: 0,
+          rowCounts: {},
+          oldestExpiredAtAfter: null,
+          overdueAfterRun: null,
+          batchLimitReached: true,
+          continuationRequired: true,
+        })
+        expect(
+          transaction.recommendationRequest.findMany,
+        ).not.toHaveBeenCalled()
+        expect(
+          transaction.recommendationRequest.deleteMany,
+        ).not.toHaveBeenCalled()
+        expect(
+          transaction.recommendationRetentionRun.updateMany,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({
+              status: "SKIPPED",
+              reasonCode: "budget_yield",
+              oldestExpiredAtAfter: null,
+            }),
+          }),
+        )
+        expect(logged).not.toHaveBeenCalled()
+      } finally {
+        now.mockRestore()
+        logged.mockRestore()
+      }
+    },
+  )
+
+  it.each(["configure", "operation"])(
+    "keeps a real %s rejection failed at the configuration boundary",
+    async (stage) => {
+      const { prisma, transaction } = buildPrisma()
+      let clock = 0
+      const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      const error = new Error("owned database failure")
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
+        if (query.sql.includes("pg_try_advisory_xact_lock"))
+          return [{ locked: true }]
+        if (query.sql.includes("set_config")) {
+          clock = stage === "configure" ? 5_001 : 4_249
+          if (stage === "configure") throw error
+        }
+        return []
+      })
+      transaction.recommendationRequest.findMany.mockRejectedValueOnce(error)
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(prisma as never),
+        ).rejects.toBe(error)
+        expect(
+          transaction.recommendationRequest.findMany,
+        ).toHaveBeenCalledTimes(stage === "operation" ? 1 : 0)
+        expect(
+          prisma.recommendationRetentionRun.updateMany,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ status: "FAILED" }),
+          }),
+        )
+      } finally {
+        now.mockRestore()
+        logged.mockRestore()
+      }
+    },
+  )
+
   it("rechecks budget after admission delay and yields without claiming a health scan", async () => {
     const { prisma, transaction } = buildPrisma()
     let clock = 0
