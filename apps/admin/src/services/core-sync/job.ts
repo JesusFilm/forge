@@ -30,6 +30,12 @@ export type CoreSyncWorkflowInput = {
   incremental?: boolean
   trigger?: CoreSyncTrigger
   ledgerRunId?: string
+  /**
+   * Retry the same day (up to 3 times, 15m apart) if the sync lock is held
+   * when the workflow starts. Only `runCoreSyncFromScheduler` sets this —
+   * the manual/GraphQL/cron-route callers keep today's single attempt.
+   */
+  retryOnLockSkip?: boolean
 }
 
 export type CoreSyncSchedulerInput = {
@@ -179,6 +185,7 @@ export async function dispatchCoreSync(
     incremental: normalized.incremental,
     trigger: normalized.trigger,
     ledgerRunId: ledgerRun.id,
+    retryOnLockSkip: input.retryOnLockSkip,
   }
   try {
     const run = await start(runCoreSyncQueued, [runInput])
@@ -228,6 +235,7 @@ export async function runCoreSyncFromScheduler(): Promise<CoreSyncSchedulerRunRe
     const dispatch = await dispatchCoreSync({
       incremental: true,
       trigger: "scheduled",
+      retryOnLockSkip: true,
     })
     return { ok: true, dispatch }
   } catch (error) {

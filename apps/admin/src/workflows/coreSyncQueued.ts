@@ -9,13 +9,41 @@ import type { SyncPhase } from "@/services/core-sync/types"
 
 type StartedJob = Exclude<CoreSyncJobStart, { skipped: true }>
 
+const MAX_LOCK_SKIP_RETRIES = 3
+
 // Keep the original coreSync workflow for already-dispatched executions.
 // New runs only perform bounded enqueue/observe steps over the native worker.
 export async function runCoreSyncQueued(
   input: CoreSyncWorkflowInput = {},
 ): Promise<CoreSyncJobResult> {
   "use workflow"
-  const started = await startJob(input)
+  let started = await startJob(input)
+
+  if (started.skipped && input.retryOnLockSkip) {
+    for (let attempt = 1; attempt <= MAX_LOCK_SKIP_RETRIES; attempt++) {
+      console.log(
+        JSON.stringify({
+          event: "core-sync.scheduled.retry",
+          attempt,
+          service: "forge-admin",
+        }),
+      )
+      await sleep("15m")
+      started = await startJob(input)
+      if (!started.skipped) break
+    }
+
+    if (started.skipped) {
+      console.log(
+        JSON.stringify({
+          event: "core-sync.scheduled.skip-exhausted",
+          attempts: MAX_LOCK_SKIP_RETRIES,
+          service: "forge-admin",
+        }),
+      )
+    }
+  }
+
   if (started.skipped) return started.result
   const phases: PhaseResult[] = []
   try {

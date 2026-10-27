@@ -1,0 +1,22 @@
+{
+  "name": "[forge-admin] Core Sync run failed",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin env:prod @event:core-sync.run.failed\").index(\"*\").rollup(\"count\").last(\"1d\") >= 1",
+  "message": "A Core Sync run finished with at least one phase error. Core Sync writes this JSON log from `recordCoreSyncRunResult` whenever any phase's `errors` count is above zero, which is also the condition that blocks Watch catalog publication for that run (see `src/services/watch-catalog-publication.ts`).\n\nInspect `/dashboard/workflows` for the failing `core-sync` run's `failedPhases` and `totals`, and check admin logs for `core-sync.*.page.error` lines around the same time to find the underlying Core GraphQL failure. A re-run is safe and idempotent; soft-delete only fires on a clean full run, so a partial run never decimates the catalogue on its own.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:core-sync"
+  ],
+  "priority": 1,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 120,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

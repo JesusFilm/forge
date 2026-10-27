@@ -198,6 +198,27 @@ describe("core sync job", () => {
     )
   })
 
+  it("sets retryOnLockSkip only for the scheduler's own dispatch, not a plain scheduled trigger", async () => {
+    start.mockResolvedValue({
+      runId: "run-core-sync-1",
+      returnValue: Promise.resolve(undefined),
+    })
+    const { runCoreSyncFromScheduler, dispatchCoreSync } = await import("./job")
+
+    await runCoreSyncFromScheduler()
+    expect(start).toHaveBeenLastCalledWith(runCoreSyncQueued, [
+      expect.objectContaining({
+        trigger: "scheduled",
+        retryOnLockSkip: true,
+      }),
+    ])
+
+    await dispatchCoreSync({ trigger: "scheduled" })
+    expect(start).toHaveBeenLastCalledWith(runCoreSyncQueued, [
+      expect.not.objectContaining({ retryOnLockSkip: true }),
+    ])
+  })
+
   it("calculates the next daily UTC Core Sync time", async () => {
     const { nextCoreSyncRunAt } = await import("./job")
 
@@ -325,6 +346,7 @@ describe("core sync job", () => {
         incremental: true,
         trigger: "scheduled",
         ledgerRunId: "ledger-run-1",
+        retryOnLockSkip: true,
       },
     ])
     expect(workflowRun.update).toHaveBeenCalledWith({

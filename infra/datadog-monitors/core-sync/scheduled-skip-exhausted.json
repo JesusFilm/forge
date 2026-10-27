@@ -1,0 +1,22 @@
+{
+  "name": "[forge-admin] Core Sync scheduled retries exhausted",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin env:prod @event:core-sync.scheduled.skip-exhausted\").index(\"*\").rollup(\"count\").last(\"1d\") >= 1",
+  "message": "The daily 07:00 UTC Core Sync scheduler found the sync lock held on every attempt, including its same-day retries (`core-sync.scheduled.retry`, 15 minutes apart, up to 3 times), and gave up. No Core Sync run happened today.\n\nThis almost always means a prior run is still holding the lock past its 15-minute stale window (an unusually long-running sync, or a worker that died without releasing the lock). Check `/dashboard/workflows` for the currently-held `core-sync` lock and whichever run is holding it, and consider a manual `core-sync:run` once the stuck run is resolved.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:core-sync"
+  ],
+  "priority": 2,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "renotify_interval": 120,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

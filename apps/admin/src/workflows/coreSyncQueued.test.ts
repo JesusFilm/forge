@@ -54,4 +54,49 @@ describe("bounded Core sync Workflow", () => {
     await expect(runCoreSyncQueued()).resolves.toEqual({ skipped: true })
     expect(mocks.observe).not.toHaveBeenCalled()
   })
+
+  it("retries a lock-skipped scheduled run the same day and proceeds once it starts", async () => {
+    const started = { skipped: false, scope: ["videos"] }
+    const videos = { phase: "videos", errors: 0, updated: 1 }
+    mocks.start
+      .mockResolvedValueOnce({ skipped: true, result: { skipped: true } })
+      .mockResolvedValueOnce({ skipped: true, result: { skipped: true } })
+      .mockResolvedValueOnce(started)
+    mocks.observe.mockResolvedValueOnce(videos)
+    mocks.finish.mockResolvedValue({ phases: [videos] })
+
+    await expect(runCoreSyncQueued({ retryOnLockSkip: true })).resolves.toEqual(
+      { phases: [videos] },
+    )
+
+    expect(mocks.start).toHaveBeenCalledTimes(3)
+    expect(mocks.sleep).toHaveBeenCalledTimes(2)
+    expect(mocks.sleep).toHaveBeenCalledWith("15m")
+    expect(mocks.finish).toHaveBeenCalledWith(started, [videos])
+  })
+
+  it("gives up after 3 retries and returns skipped once exhausted", async () => {
+    const skippedResult = { skipped: true }
+    mocks.start.mockResolvedValue({ skipped: true, result: skippedResult })
+
+    await expect(runCoreSyncQueued({ retryOnLockSkip: true })).resolves.toEqual(
+      skippedResult,
+    )
+
+    expect(mocks.start).toHaveBeenCalledTimes(4)
+    expect(mocks.sleep).toHaveBeenCalledTimes(3)
+    expect(mocks.observe).not.toHaveBeenCalled()
+  })
+
+  it("does not retry a lock-skipped scheduled trigger without the opt-in flag", async () => {
+    const skippedResult = { skipped: true }
+    mocks.start.mockResolvedValue({ skipped: true, result: skippedResult })
+
+    await expect(runCoreSyncQueued({ trigger: "scheduled" })).resolves.toEqual(
+      skippedResult,
+    )
+
+    expect(mocks.start).toHaveBeenCalledTimes(1)
+    expect(mocks.sleep).not.toHaveBeenCalled()
+  })
 })
