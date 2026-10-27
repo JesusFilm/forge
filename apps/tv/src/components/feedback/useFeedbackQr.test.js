@@ -143,7 +143,7 @@ test.each(["ios", "android"])(
   async (os) => {
     mockPlatform.OS = os
     const token = `header.payload.${"a".repeat(86)}`
-    process.env.EXPO_PUBLIC_TV_FEEDBACK_URL = `https://web-staging-920a.up.railway.app/tv/simulator#token=${token}`
+    process.env.EXPO_PUBLIC_TV_FEEDBACK_URL = `https://web-staging-7801.up.railway.app/tv/simulator#token=${token}`
     await mount()
     expect(current.mode).toBe("signed-simulator")
     expect(current.verified).toBeNull()
@@ -160,7 +160,7 @@ test.each(["ios", "android"])(
 test.each(["release", "physical", "non-tv", "flag-off"])(
   "signed receiver fails closed for %s even with a token",
   async (guard) => {
-    process.env.EXPO_PUBLIC_TV_FEEDBACK_URL = `https://web-staging-920a.up.railway.app/tv/simulator#token=header.payload.${"a".repeat(86)}`
+    process.env.EXPO_PUBLIC_TV_FEEDBACK_URL = `https://web-staging-7801.up.railway.app/tv/simulator#token=header.payload.${"a".repeat(86)}`
     if (guard === "release") globalThis.__DEV__ = false
     if (guard === "physical") mockNativeSimulator.mockReturnValue(false)
     if (guard === "non-tv") mockPlatform.isTV = false

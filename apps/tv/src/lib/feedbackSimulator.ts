@@ -8,7 +8,7 @@ export const HOSTED_SIMULATOR_FEEDBACK_DESCRIPTION =
   "Simulator test — feedback goes to the TV beta team. Scan with your phone to send a report."
 
 const HOSTED_SIMULATOR_BASE =
-  "https://web-staging-920a.up.railway.app/tv/simulator"
+  "https://web-staging-7801.up.railway.app/tv/simulator"
 const MAX_SIMULATOR_TOKEN_LENGTH = 2048
 const MAX_SIMULATOR_URL_LENGTH = 2400
 

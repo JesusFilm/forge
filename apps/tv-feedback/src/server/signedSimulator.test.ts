@@ -12,7 +12,7 @@ import {
   verifySimulatorToken,
 } from "./signedSimulator"
 
-const audience = "https://web-staging-920a.up.railway.app"
+const audience = "https://web-staging-7801.up.railway.app"
 const { privateKey, publicKey } = generateKeyPairSync("ed25519")
 const kid = createHash("sha256")
   .update(publicKey.export({ type: "spki", format: "der" }))

@@ -169,7 +169,7 @@ On the **feedback staging service only**, configure:
 
 ```ini
 FEEDBACK_SIMULATOR_SIGNED_ENABLED=true
-FEEDBACK_SIMULATOR_AUDIENCE=https://web-staging-920a.up.railway.app
+FEEDBACK_SIMULATOR_AUDIENCE=https://web-staging-7801.up.railway.app
 FEEDBACK_SIMULATOR_PUBLIC_KEY=<complete public.pem contents, including newlines>
 ```
 

@@ -11,7 +11,7 @@ import fs from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 
-export const AUDIENCE = "https://web-staging-920a.up.railway.app"
+export const AUDIENCE = "https://web-staging-7801.up.railway.app"
 const SERVICE = "org.jesusfilm.forge.tv.feedback-simulator.signing"
 const ACCOUNT = "simulator-issuer-v1"
 

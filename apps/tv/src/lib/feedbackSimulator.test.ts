@@ -96,7 +96,7 @@ describe("local feedback destination", () => {
 })
 
 describe("signed staging feedback destination", () => {
-  const receiver = "https://web-staging-920a.up.railway.app/tv/simulator"
+  const receiver = "https://web-staging-7801.up.railway.app/tv/simulator"
   const token = `eyJhbGciOiJFZERTQSJ9.eyJzY29wZSI6InRlc3QifQ.${"a".repeat(86)}`
   it("preserves the bearer fragment and sanitizes context without claiming verification", () => {
     const result = simulatorFeedbackUrl(`${receiver}#token=${token}`, {
@@ -112,7 +112,7 @@ describe("signed staging feedback destination", () => {
     ).toBeNull()
   })
   it.each([
-    `http://web-staging-920a.up.railway.app/tv/simulator#token=${token}`,
+    `http://web-staging-7801.up.railway.app/tv/simulator#token=${token}`,
     `https://different.example/tv/simulator#token=${token}`,
     `${receiver}?token=${token}`,
     `${receiver}#grant=${token}`,

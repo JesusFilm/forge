@@ -14,7 +14,7 @@ Roadmap: `docs/roadmap/platform/feat-756-tv-simulator-feedback.md`.
 ## Hosted signed-link extension
 
 The owner subsequently requested signed simulator links on the existing feedback
-staging service, `https://web-staging-920a.up.railway.app`, so phones can use any
+staging service, `https://web-staging-7801.up.railway.app`, so phones can use any
 network. The owner also removed simulator test-report/QR daily quotas. Normal
 verified-device quotas remain unchanged; per-upload size/content validation,
 per-report bounds, token expiry and idempotency still apply.

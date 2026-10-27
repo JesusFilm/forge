@@ -15,7 +15,7 @@ vi.mock("@/server/feedbackState", () => ({
 }))
 import { GET, POST } from "./route"
 
-const origin = "https://web-staging-920a.up.railway.app"
+const origin = "https://web-staging-7801.up.railway.app"
 const keys = generateKeyPairSync("ed25519")
 const kid = createHash("sha256")
   .update(keys.publicKey.export({ type: "spki", format: "der" }))

@@ -1,5 +1,16 @@
 # Watch TV beta feedback deployment gates
 
+## Staging recovery — 27 October 2026
+
+The previous web service was deleted on 25 October. The owner approved recreating
+`web` in the existing `watch-tv-feedback` staging environment. New service ID:
+`9e0904a0-664c-454f-a1c1-fbf788e30b27`; new hostname:
+`https://web-staging-7801.up.railway.app`. Deployment and runtime verification are
+in progress. Historical evidence below refers to the former service and hostname.
+Existing release builds have not been rebuilt or repointed by this recovery.
+
+## Historical deployment evidence
+
 Simulator receiving, developer key setup and the separate signed staging entry
 are documented in [LOCAL-FEEDBACK.md](LOCAL-FEEDBACK.md). The signed entry is off
 by default and uses only a dedicated public verification key on the server.

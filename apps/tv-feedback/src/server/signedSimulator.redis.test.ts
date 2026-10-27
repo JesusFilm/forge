@@ -91,11 +91,11 @@ describe.skipIf(!process.env.FEEDBACK_TEST_REDIS_BINARY)(
       )
       vi.stubEnv(
         "FEEDBACK_SIMULATOR_AUDIENCE",
-        "https://web-staging-920a.up.railway.app",
+        "https://web-staging-7801.up.railway.app",
       )
       vi.stubEnv(
         "FEEDBACK_BASE_URL",
-        "https://web-staging-920a.up.railway.app/tv",
+        "https://web-staging-7801.up.railway.app/tv",
       )
       keyId = signedSimulatorConfig()!.keyId
     }, 10000)
