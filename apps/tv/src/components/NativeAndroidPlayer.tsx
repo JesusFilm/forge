@@ -331,6 +331,8 @@ export function NativeAndroidPlayer({
         row.map((cell) => (cell ? "1" : "0")).join(""),
       )}
       feedbackReference={feedback.verified?.referenceCode}
+      feedbackSimulator={feedback.mode !== "verified"}
+      feedbackHostedSimulator={feedback.mode === "signed-simulator"}
       feedbackLoading={feedback.loading}
       feedbackError={feedback.error}
       onFeedbackOpen={() => {

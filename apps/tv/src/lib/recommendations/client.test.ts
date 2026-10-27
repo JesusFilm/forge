@@ -1,4 +1,10 @@
 import { parse } from "graphql"
+import { recommendationIdentityStorageKey } from "./identityStorageKey"
+
+const mockIdentityKey = recommendationIdentityStorageKey(
+  "https://admin.example.test/api/graphql",
+  true,
+)
 
 const mockStorage = new Map<string, string>()
 let mockEventId = 0
@@ -129,9 +135,7 @@ it("requests exactly six cards in English UI metadata and the chosen audio, with
     count: 6,
   })
   expect(request?.variables).not.toHaveProperty("sessionDigest")
-  expect(mockStorage.get("tv.recommendations.identity.v1")).toContain(
-    viewer.viewerToken,
-  )
+  expect(mockStorage.get(mockIdentityKey)).toContain(viewer.viewerToken)
 })
 it("preserves an unavailable language result, without requesting a fallback dub", async () => {
   const client = jest.requireActual<typeof import("./client")>("./client")
@@ -242,7 +246,7 @@ it("grants and withdraws explicitly, preserving the installation handle", async 
 it("recovers a missing server handle once, while retaining the off choice", async () => {
   mockStorage.set("tv.recommendations.choice.v1", "false")
   mockStorage.set(
-    "tv.recommendations.identity.v1",
+    mockIdentityKey,
     JSON.stringify({
       ...viewer,
       viewerToken: "o".repeat(43),
@@ -440,4 +444,27 @@ it("retires an in-flight selection retry when recommendation authority changes",
   } finally {
     jest.useRealTimers()
   }
+})
+
+it("does not send the prior unscoped fixture identity to a development backend", async () => {
+  mockStorage.set(
+    "tv.recommendations.identity.v1",
+    JSON.stringify({
+      ...viewer,
+      viewerToken: "f".repeat(43),
+      lastActivity: Date.now(),
+    }),
+  )
+  const client = jest.requireActual<typeof import("./client")>("./client")
+  await client.fetchForYou("english")
+  expect(requests[0].operationName).toBe("CreateRecommendationViewer")
+  expect(
+    requests.some(
+      (request) => request.variables.viewerToken === "f".repeat(43),
+    ),
+  ).toBe(false)
+  expect(mockStorage.get("tv.recommendations.identity.v1")).toContain(
+    "f".repeat(43),
+  )
+  expect(mockStorage.get(mockIdentityKey)).toContain(viewer.viewerToken)
 })
