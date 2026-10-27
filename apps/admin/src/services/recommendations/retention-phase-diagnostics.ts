@@ -63,6 +63,7 @@ export type RetentionPhaseStage =
   | "advisory_lock"
   | "post_lock_admission"
   | "configure_timeout"
+  | "post_configuration_admission"
   | "operation"
   | "counter_update"
   | "commit_acknowledgement"
@@ -94,6 +95,7 @@ const PHASE_STAGE_SET: ReadonlySet<string> = new Set([
   "advisory_lock",
   "post_lock_admission",
   "configure_timeout",
+  "post_configuration_admission",
   "operation",
   "counter_update",
   "commit_acknowledgement",

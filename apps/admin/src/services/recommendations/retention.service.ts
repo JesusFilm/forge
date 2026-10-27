@@ -323,6 +323,15 @@ export async function purgeExpiredRecommendationRequests(
           )
           timing.configurationMs = performance.now() - stageStarted
 
+          timing.stage = "post_configuration_admission"
+          stageStarted = performance.now()
+          if (
+            !options.terminal &&
+            deadline - Date.now() <=
+              RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
+          )
+            throw new RetentionBudgetYield()
+
           timing.stage = "operation"
           stageStarted = performance.now()
           const result = await operation(tx)

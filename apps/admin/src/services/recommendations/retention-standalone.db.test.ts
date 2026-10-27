@@ -135,6 +135,97 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       await db.$disconnect()
     })
 
+    it("yields before domain work after configuration acknowledgement outlives the native transaction", async () => {
+      const now = new Date()
+      const priorHealth = await readRecommendationRetentionHealth(db, now)
+      const priorSuccesses = await db.recommendationRetentionRun.count({
+        where: { status: "SUCCEEDED" },
+      })
+      let delayed = false
+      let domainReads = 0
+      const delayedTransaction = <T>(
+        callback: (tx: Prisma.TransactionClient) => Promise<T>,
+        options?: { maxWait?: number; timeout?: number },
+      ): Promise<T> =>
+        db.$transaction(
+          (tx) =>
+            callback(
+              new Proxy(tx, {
+                get(target, property, receiver) {
+                  if (property === "$queryRaw")
+                    return async (sql: Prisma.Sql) => {
+                      const result = await target.$queryRaw(sql)
+                      if (
+                        !delayed &&
+                        sql.sql.includes("set_config('statement_timeout'")
+                      ) {
+                        delayed = true
+                        // Let the actual Prisma transaction expire after successful SQL
+                        // configuration, before its acknowledgement reaches the service.
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 5_100),
+                        )
+                      }
+                      return result
+                    }
+                  if (property === "recommendationRequest")
+                    return new Proxy(target.recommendationRequest, {
+                      get(model, method, modelReceiver) {
+                        if (method === "findMany")
+                          return (
+                            ...args: Parameters<typeof model.findMany>
+                          ) => {
+                            domainReads++
+                            return model.findMany(...args)
+                          }
+                        return Reflect.get(model, method, modelReceiver)
+                      },
+                    })
+                  return Reflect.get(target, property, receiver)
+                },
+              }),
+            ),
+          options,
+        )
+      const delayedDb = new Proxy(db, {
+        get(target, property, receiver) {
+          return property === "$transaction"
+            ? delayedTransaction
+            : Reflect.get(target, property, receiver)
+        },
+      })
+      const result = await purgeExpiredRecommendationRequests(delayedDb, now)
+      expect(delayed).toBe(true)
+      expect(domainReads).toBe(0)
+      expect(result).toMatchObject({
+        status: "yielded",
+        rootsDeleted: 0,
+        rowCounts: {},
+        oldestExpiredAtAfter: null,
+        overdueAfterRun: null,
+        continuationRequired: true,
+      })
+      expect(
+        await db.recommendationRetentionRun.findUniqueOrThrow({
+          where: { id: result.runId },
+        }),
+      ).toMatchObject({
+        status: "SKIPPED",
+        reasonCode: "budget_yield",
+        rootsDeleted: 0,
+        rowCounts: {},
+        oldestExpiredAtAfter: null,
+      })
+      expect(
+        await db.recommendationRetentionRun.count({
+          where: { status: "SUCCEEDED" },
+        }),
+      ).toBe(priorSuccesses)
+      expect(await readRecommendationRetentionHealth(db, now)).toEqual(
+        priorHealth,
+      )
+    })
+
     it("reaches expired request roots while a loaded standalone backlog continues", async () => {
       const pageSize = 25
       const now = new Date()

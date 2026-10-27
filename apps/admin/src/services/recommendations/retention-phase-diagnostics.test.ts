@@ -74,6 +74,29 @@ describe("retention phase diagnostics", () => {
     expect(JSON.stringify(diagnostic)).not.toMatch(/secret|sensitive|raw-sql/)
   })
 
+  it("round-trips the post-configuration admission stage", () => {
+    const recorder = createRetentionPhaseRecorder()
+    recorder.failed({
+      ...timing(1),
+      stage: "post_configuration_admission",
+      operationMs: null,
+    })
+    const diagnostic = recorder.diagnostic(
+      "stored-expiry-only",
+      { phase: new Error("terminal failure after yield") },
+      { outcome: "succeeded", elapsedMs: 1 },
+    )
+    const parsed = parseRetentionPhaseFailureLog(
+      formatRetentionPhaseFailureLog({
+        ...diagnostic,
+        suppressedPriorMinute: 0,
+      }),
+    )
+    expect(parsed?.failed).toMatchObject([
+      { stage: "post_configuration_admission", operationMs: null },
+    ])
+  })
+
   it("never serializes arbitrary error text, codes or metadata", () => {
     const error = new Prisma.PrismaClientKnownRequestError("private request", {
       code: "P2028",
