@@ -3,6 +3,7 @@ import React, { act, createRef, StrictMode } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 
 const { fetchWithRetry } = vi.hoisted(() => ({
   fetchWithRetry: vi.fn(
@@ -228,6 +229,7 @@ describe("WatchExposureBoundary", () => {
       0,
     )
     act(() => vi.advanceTimersByTime(500))
+    await drain()
     expect(bodies().filter((event) => event.kind === "rendered")).toHaveLength(
       2,
     )
@@ -438,11 +440,10 @@ describe("WatchExposureBoundary", () => {
     expect(
       bodies().every((event) => event.policyVersion === "watch-exposure-v1"),
     ).toBe(true)
-    // FGE-188 / feat-687 deliberately leaves the exposure browser deadline at
-    // its existing 700 ms literal; feat-688 owns any change to it.
+    // Departure telemetry still uses the bounded exposure deadline.
     expect(fetchWithRetry.mock.calls.length).toBeGreaterThan(0)
     expect(fetchWithRetry.mock.calls.map((call) => call[2])).toEqual(
-      fetchWithRetry.mock.calls.map(() => 700),
+      fetchWithRetry.mock.calls.map(() => 3_000),
     )
   })
 
@@ -582,6 +583,7 @@ describe("WatchExposureBoundary", () => {
     act(() => {
       for (let i = 0; i < 260; i++) container.querySelector("a")!.click()
     })
+    await drain()
     expect(bodies().filter((event) => event.kind === "selected")).toHaveLength(
       260,
     )
@@ -596,6 +598,111 @@ describe("WatchExposureBoundary", () => {
     expect(bodies().filter((event) => event.kind === "selected")).toHaveLength(
       261,
     )
+  })
+
+  it("retains a failed exposure batch and retries its original event ID after backoff", async () => {
+    const sent: Array<Array<{ eventId: string }>> = []
+    fetchWithRetry.mockImplementation(async (url, init) => {
+      if (url.endsWith("surface-delivery")) return new Response("{}")
+      const batch = JSON.parse(String(init.body)) as Array<{ eventId: string }>
+      sent.push(batch)
+      if (sent.length === 1) throw new Error("upstream unavailable")
+      return new Response(
+        JSON.stringify({
+          receipts: batch.map(({ eventId }) => ({ eventId, status: "replay" })),
+        }),
+      )
+    })
+    act(() =>
+      root.render(
+        <WatchExposureBoundary config={config}>
+          <a href="/watch/first.html">first</a>
+        </WatchExposureBoundary>,
+      ),
+    )
+    await drain()
+    await act(async () => vi.advanceTimersByTimeAsync(120))
+    expect(sent).toHaveLength(1)
+    await act(async () => vi.advanceTimersByTimeAsync(1_000))
+    expect(sent).toHaveLength(1)
+    await act(async () => vi.advanceTimersByTimeAsync(1_000))
+    expect(sent).toHaveLength(2)
+    expect(sent[1]).toEqual(sent[0])
+  })
+
+  it("does not retry a definitive rejected exposure", async () => {
+    fetchWithRetry.mockRejectedValue(
+      new RecommendationRuntimeError("request_failed", 400),
+    )
+    act(() =>
+      root.render(
+        <WatchExposureBoundary config={config}>
+          <a href="/watch/first.html">first</a>
+        </WatchExposureBoundary>,
+      ),
+    )
+    await drain()
+    await act(async () => vi.advanceTimersByTimeAsync(30_000))
+    expect(fetchWithRetry).toHaveBeenCalledTimes(1)
+    expect(
+      container
+        .querySelector("[data-watch-exposure-coverage]")
+        ?.getAttribute("data-watch-exposure-coverage"),
+    ).toBe("delivery-rejected")
+  })
+
+  it("serializes exposure batches while an acknowledgement is pending", async () => {
+    let acknowledge!: (response: Response) => void
+    const sent: Array<Array<{ eventId: string }>> = []
+    fetchWithRetry.mockImplementation((_url, init) => {
+      const batch = JSON.parse(String(init.body)) as Array<{ eventId: string }>
+      sent.push(batch)
+      if (sent.length === 1)
+        return new Promise<Response>((resolve) => {
+          acknowledge = resolve
+        })
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            receipts: batch.map(({ eventId }) => ({
+              eventId,
+              status: "accepted",
+            })),
+          }),
+        ),
+      )
+    })
+    act(() =>
+      root.render(
+        <WatchExposureBoundary config={config}>
+          <a
+            href="/watch/first.html"
+            onClick={(event) => event.preventDefault()}
+          >
+            first
+          </a>
+        </WatchExposureBoundary>,
+      ),
+    )
+    await drain()
+    await act(async () => vi.advanceTimersByTimeAsync(120))
+    act(() => container.querySelector("a")!.click())
+    await act(async () => vi.advanceTimersByTimeAsync(120))
+    expect(sent).toHaveLength(1)
+    await act(async () =>
+      acknowledge(
+        new Response(
+          JSON.stringify({
+            receipts: sent[0].map(({ eventId }) => ({
+              eventId,
+              status: "accepted",
+            })),
+          }),
+        ),
+      ),
+    )
+    expect(sent).toHaveLength(2)
+    expect(sent[1][0].eventId).not.toBe(sent[0][0].eventId)
   })
 
   it("maps repeated paths to distinct positions and unknown paths to v1", async () => {
@@ -787,6 +894,7 @@ describe("WatchExposureBoundary", () => {
         ?.getAttribute("data-watch-exposure-coverage"),
     ).toBe("buffer-overflow")
     act(() => window.dispatchEvent(new PageTransitionEvent("pagehide")))
+    await drain()
     expect(bodies()).toHaveLength(256)
     expect(
       bodies().every(
@@ -797,7 +905,7 @@ describe("WatchExposureBoundary", () => {
     ).toBe(true)
   })
 
-  it("batches many rendered cards and retains an early selection anomaly", () => {
+  it("batches many rendered cards and retains an early selection anomaly", async () => {
     act(() => {
       root.render(
         <WatchExposureBoundary config={config}>
@@ -814,12 +922,14 @@ describe("WatchExposureBoundary", () => {
       )
     })
     act(() => vi.advanceTimersByTime(120))
+    await drain()
     expect(fetchWithRetry).toHaveBeenCalledTimes(2)
     expect(bodies().filter((event) => event.kind === "rendered")).toHaveLength(
       70,
     )
     const first = container.querySelector("a")!
     act(() => first.click())
+    await drain()
     expect(bodies().filter((event) => event.kind === "selected")).toHaveLength(
       1,
     )
@@ -868,7 +978,7 @@ describe("WatchExposureBoundary", () => {
     expect(bodies().map((event) => event.kind)).toContain("selected")
   })
 
-  it("splits long valid paths below the server's 48 KiB body limit", () => {
+  it("splits long valid paths below the server's 48 KiB body limit", async () => {
     const prefix = "a".repeat(155)
     act(() => {
       root.render(
@@ -885,6 +995,7 @@ describe("WatchExposureBoundary", () => {
       )
     })
     act(() => vi.advanceTimersByTime(120))
+    await drain()
     expect(fetchWithRetry.mock.calls.length).toBeGreaterThan(1)
     expect(bodies()).toHaveLength(64)
     for (const call of fetchWithRetry.mock.calls) {

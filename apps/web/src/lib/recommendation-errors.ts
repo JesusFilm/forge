@@ -35,7 +35,10 @@ const MESSAGE_BY_CODE: Record<RecommendationRuntimeErrorCode, string> = {
 }
 
 export class RecommendationRuntimeError extends Error {
-  constructor(readonly code: RecommendationRuntimeErrorCode) {
+  constructor(
+    readonly code: RecommendationRuntimeErrorCode,
+    readonly status?: number,
+  ) {
     super(MESSAGE_BY_CODE[code])
     this.name = "RecommendationRuntimeError"
   }

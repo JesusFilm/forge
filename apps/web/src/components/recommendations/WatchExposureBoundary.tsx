@@ -11,6 +11,11 @@ import {
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "./useEligibleRecommendationImpression"
 import { recommendationFetchWithRetry } from "@/lib/recommendation-browser"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import {
+  RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS,
+  RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS,
+} from "@/lib/recommendation-timeouts"
 import { waitForRecommendationActivation } from "@/lib/recommendation-activation"
 import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 import { watchPath } from "@/lib/watch-paths"
@@ -39,7 +44,9 @@ type Card = { path: string; position: number; issuedPosition?: number }
 type Fact = Record<string, unknown>
 const DELIVERY_ENDPOINT = watchPath("/api/recommendations/surface-delivery")
 const MAX_BUFFERED_EVENTS = 256
+const MAX_PENDING_EVENTS = 1024
 const MAX_BUFFER_AGE_MS = 2_000
+const MAX_RETRY_AGE_MS = 4 * 60_000
 const ENDPOINT = watchPath("/api/recommendations/surface-exposure")
 const WATCH_ITEM_PATH =
   /^\/watch\/[a-zA-Z0-9_-]+\.html(?:\/[a-zA-Z0-9_-]+\.html){0,2}$/
@@ -95,6 +102,10 @@ function ExposureWindow({
   const rendered = useRef(new Set<string>())
   const pending = useRef<Array<Record<string, unknown>>>([])
   const flushTimer = useRef<number | null>(null)
+  const retryTimer = useRef<number | null>(null)
+  const sending = useRef(false)
+  const inFlightCount = useRef(0)
+  const retryCount = useRef(0)
   const [windowId, setWindowId] = useState(() => crypto.randomUUID())
   const { surface, block, presentation, placement } = config
   const descriptor =
@@ -127,53 +138,111 @@ function ExposureWindow({
     ageTimer: null as number | null,
   })
 
-  const flush = useCallback(() => {
+  const flush = useCallback((departing = false) => {
     if (flushTimer.current != null) {
       window.clearTimeout(flushTimer.current)
       flushTimer.current = null
     }
-    if (!lifecycle.current.ready) return
-    while (pending.current.length > 0) {
-      const batch: Array<Record<string, unknown>> = []
-      while (batch.length < 64 && pending.current.length > 0) {
-        const candidate = pending.current[0]
-        if (
-          batch.length > 0 &&
-          encoder.encode(JSON.stringify([...batch, candidate])).byteLength >
-            MAX_BATCH_BYTES
-        )
-          break
-        batch.push(pending.current.shift()!)
-      }
-      const body = JSON.stringify(batch)
-      void recommendationFetchWithRetry(
-        ENDPOINT,
-        {
-          method: "POST",
-          cache: "no-store",
-          credentials: "same-origin",
-          keepalive: true,
-          headers: { "content-type": "application/json" },
-          body,
-        },
-        700,
-      ).catch(() => undefined)
+    if (departing && retryTimer.current != null) {
+      window.clearTimeout(retryTimer.current)
+      retryTimer.current = null
     }
+    if (!lifecycle.current.ready) return
+    if (
+      sending.current ||
+      retryTimer.current != null ||
+      !pending.current.length
+    )
+      return
+    const batch: Array<Record<string, unknown>> = []
+    let batchBytes = 2 // JSON array brackets
+    for (const candidate of pending.current) {
+      if (batch.length >= 64) break
+      const candidateBytes = encoder.encode(
+        JSON.stringify(candidate),
+      ).byteLength
+      const separatorBytes = batch.length > 0 ? 1 : 0
+      if (
+        batch.length > 0 &&
+        batchBytes + separatorBytes + candidateBytes > MAX_BATCH_BYTES
+      )
+        break
+      batch.push(candidate)
+      batchBytes += separatorBytes + candidateBytes
+    }
+    sending.current = true
+    inFlightCount.current = batch.length
+    void (async () => {
+      try {
+        await recommendationFetchWithRetry(
+          ENDPOINT,
+          {
+            method: "POST",
+            cache: "no-store",
+            credentials: "same-origin",
+            keepalive: true,
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(batch),
+          },
+          RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS,
+          { attempts: 1 },
+        )
+        // Web returns 200 only after Admin returns a non-null mutation result.
+        // The same event IDs make a retry after a lost acknowledgement safe.
+        pending.current.splice(0, batch.length)
+        retryCount.current = 0
+      } catch (error) {
+        const oldest = Date.parse(String(batch[0].occurredAt))
+        const rejected =
+          error instanceof RecommendationRuntimeError &&
+          error.status != null &&
+          [400, 401, 403, 404, 409, 410, 422].includes(error.status)
+        if (
+          rejected ||
+          !Number.isFinite(oldest) ||
+          Date.now() - oldest >= MAX_RETRY_AGE_MS
+        ) {
+          pending.current.splice(0, batch.length)
+          retryCount.current = 0
+          coverageRoot.current?.setAttribute(
+            "data-watch-exposure-coverage",
+            rejected ? "delivery-rejected" : "delivery-failed",
+          )
+        } else {
+          retryCount.current += 1
+          retryTimer.current = window.setTimeout(
+            () => {
+              retryTimer.current = null
+              flush()
+            },
+            Math.min(30_000, 1_000 * 2 ** retryCount.current),
+          )
+        }
+      } finally {
+        sending.current = false
+        inFlightCount.current = 0
+        if (retryTimer.current == null && pending.current.length > 0) flush()
+      }
+    })()
   }, [])
 
   const enqueue = useCallback(
     (fact: Fact) => {
-      // A page whose load never completes must not retain an unbounded legacy
-      // fallback queue. Prefer selections; overflow remains unknown coverage.
+      // Bound both a never-loaded fallback queue and a prolonged outage. Once
+      // sending starts, allow a larger buffer so a burst of selections is not
+      // dropped merely because batches now wait for their acknowledgements.
       if (
-        !lifecycle.current.ready &&
-        pending.current.length >= MAX_BUFFERED_EVENTS
+        pending.current.length >=
+        (lifecycle.current.ready ? MAX_PENDING_EVENTS : MAX_BUFFERED_EVENTS)
       ) {
         const discard = pending.current.findIndex(
-          (event) => event.kind !== "selected",
+          (event, index) =>
+            index >= inFlightCount.current && event.kind !== "selected",
         )
+        const fallback = pending.current.length - 1
         if (discard < 0 && fact.kind !== "selected") return
-        pending.current.splice(discard < 0 ? 0 : discard, 1)
+        if (discard < 0 && fallback < inFlightCount.current) return
+        pending.current.splice(discard < 0 ? fallback : discard, 1)
         coverageRoot.current?.setAttribute(
           "data-watch-exposure-coverage",
           "buffer-overflow",
@@ -312,7 +381,7 @@ function ExposureWindow({
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ descriptor, attemptId }),
           },
-          700,
+          RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS,
         )
         const receipt = await response.json()
         if (
@@ -352,7 +421,7 @@ function ExposureWindow({
         // Departure telemetry cannot contend with the departing player/page.
         state.ready = state.activated
         settleBuffered()
-        flush()
+        flush(true)
       })
     }
   }, [descriptor, windowId, settleBuffered, flush])
@@ -466,7 +535,7 @@ function ExposureWindow({
     const restore = (event: PageTransitionEvent) => {
       if (!event.persisted) return
       settleBuffered()
-      flush()
+      flush(true)
       lifecycle.current.receipt = null
       lifecycle.current.waiting = !!descriptor
       lifecycle.current.attemptId = crypto.randomUUID()
@@ -477,7 +546,7 @@ function ExposureWindow({
     const hide = () => {
       lifecycle.current.ready = lifecycle.current.activated
       settleBuffered()
-      flush()
+      flush(true)
     }
     window.addEventListener("pagehide", hide)
     return () => {

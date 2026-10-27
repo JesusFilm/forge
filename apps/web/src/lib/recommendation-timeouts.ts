@@ -29,6 +29,13 @@ export const RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS = 5_000
 export const RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 900
 export const RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS = 1_500
 
-// Surface exposure keeps its own original Admin budget. Its browser deadline is
-// still the 700 ms literal in WatchExposureBoundary.tsx (tracked by feat-688).
-export const RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS = 900
+// On 27 Oct successful Admin surface writes had sampled p95 1.63 seconds.
+// Allow the write to finish without encouraging an immediate ambiguous retry.
+// Admission can take up to 500 ms; the browser leaves another 500 ms for Web
+// work and transit. These budgets do not block page or player navigation.
+export const RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS = 2_000
+export const RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS = 3_000
+
+// Issuing a served-surface window uses the 3-second evidence upstream budget.
+// Keep the browser boundary after that budget and admission/transit headroom.
+export const RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS = 4_500
