@@ -804,6 +804,109 @@ The normal daily scheduler remains enabled at 10:30 UTC; the existing daily
 monitor remains read-only. Manual passes earn zero ordinary-cycle credit, so
 feat-554 remains in progress and global expired-backlog clearance is unproved.
 
+### October 27 post-configuration admission repair
+
+A [later distinct manual pass](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6430999381)
+committed another 100 request roots with matching durable counters and a
+successful 4,535 ms wrapper, then yielded. The fixed cohort fell to 38,431 and
+rolling current expiry measured 42,068 across 26 families, with zero more than
+24 hours overdue. This brought post-resize committed roots to 250 across three
+invocations, including the earlier failed partial attempt. Both roles remained
+healthy, the worker enforced 16 GB with no OOM/limit events, and PGDATA had
+8,030,769,152 bytes free. The successful expiry cutoff did not advance; manual
+work earns zero ordinary-cycle credit.
+
+The initial query/index experiment was excluded from release. Its extreme-skew
+fixture improved with a composite index, but a catalog-like distribution ran
+both query shapes in approximately 3.3 ms using the existing index. One bounded
+production `EXPLAIN` without `ANALYZE` confirmed the request-order scan shape,
+not actual rows scanned, timing or the cause of the earlier failure. No index
+migration, production `ANALYZE` or fault injection followed.
+
+[PR #2923](https://github.com/JesusFilm/forge/pull/2923) instead fixes a separately
+reproduced admission boundary: after successful timeout configuration, a
+nonterminal phase now rechecks the existing 750 ms floor before starting its
+domain operation. The five-second budget and actual-error semantics remain
+unchanged. A native PostgreSQL 18/Prisma 6.19.3 regression adds a local 5,100 ms
+client acknowledgement delay. Against exact base `054c24b38`, it attempts the
+domain read on an expired transaction and fails; with the final code, no domain
+read begins, the ledger commits `SKIPPED/budget_yield`, backlog remains unknown
+and the success cutoff is unchanged. This proves the missing boundary, not the
+cause of the historical production 854/870 ms failure.
+
+Independent review approved exact head `03b9788a` and its five-file scope.
+Fifty-seven focused tests, ten native tests, full Admin typecheck, normal hooks
+and all applicable PR checks passed, including the actual native retention
+steps, production image and all four CodeQL analyses. Normal squash merge
+`742f25c2` completed at 01:18:13 UTC with the identical reviewed tree. Actual
+HTTP at 01:26:39.874 and worker at 01:26:43.858 both ran that exact revision with
+matching runtime and diagnostics source hashes, health 200/ok, compact mode and
+correct runner roles. The normal rollout changed process identities; the worker
+retained its actual 16 GB limit and had zero OOM kills. Main CI `40431771400`,
+image `40431771567` and CodeQL `40431770882` all passed: 17 required jobs
+succeeded and eight conditional jobs were expected skips. The actual native
+retention and production migration/startup steps succeeded. Fresh actual-role
+checks at 01:35:40–44 UTC confirmed the same release before cleanup. The parent
+verified the release's 23-artifact manifest. The reviewed local recorder
+preserves safe failure diagnostics and stops on incomplete capture without replay.
+
+The subsequent window attempted exactly three distinct expired-only passes.
+The first two yielded with matching CLI/durable counters, committing 50 and
+100 request roots with successful wrappers in 4,404 and 4,623 ms. The third
+failed in 5,087 ms after another **100 committed roots**; its durable counters
+remain authoritative despite the absent success payload. Total committed roots
+for this window are **250**, bringing the post-resize total to **500 across six
+attempts**. The two failed partial attempts remain failures. No fourth pass or
+replay followed, and no outcome is unknown. The parent verified all 80 window
+artifacts; reconciliation SHA-256 is
+`47e7b7475b16ae010bde54528686d7e41d340ad8ccc55b3c7f6f5d59ba078e27`.
+
+The safe phase event records P2028 in `projection_decision_unlink_page`:
+796 ms at admission, 808 ms in the incomplete operation, and 3 ms each for
+acquisition, advisory lock and configuration. The bounded wrapper classifier
+identifies `recommendationPersonalizationDecision.findMany` and an expired
+transaction with 802 ms allowed versus 812 ms elapsed. The slowest completed
+operation was root deletion at 971 ms. This localizes the new failure to
+admitted operation work; it does not establish SQL execution cost, query-plan
+cause, database CPU or the historical 854/870 ms failure's cause. The new
+configuration guard correctly leaves this genuine failure classified as failed.
+
+The fixed October 26 23:15:00.760 cohort fell from **38,431 to 37,442** eligible
+rows. Current expiry fell from **44,345 to 43,474** across 26 health families,
+with zero more than 24 hours overdue at those reads. Inventory coverage differs
+from deletion-counter coverage. Separate bounded probes found **at least 1,001
+expired profile-session links** (cap reached) and **one pending profile erasure**;
+the other seven extra categories measured zero. Those extras are outside the
+26-family total. Watch exposures had not yet reached their first stored expiry
+at the 01:38 UTC observation. Neither inventory establishes global clearance.
+
+Three hundred one-second samples from 01:36:06.951 to 01:41:06.249 UTC kept the
+same worker process and 16 GB limit, with a sampled peak of 7,391,711,232 bytes
+and zero OOM, memory-limit events or CPU-quota throttled periods/time. Both roles
+remained healthy on the exact release, PGDATA had 7,956,422,656 bytes free, and
+there were no lock waiters, long transactions or overlapping cleanup. Per-pass
+bracketed shared-worker CPU was 3.957, 9.490 and 1.771 CPU-seconds; this includes
+other worker activity and is not isolated retention CPU. Row mixes differed and
+the last pass failed, so these observations do not prove an efficiency gain.
+
+Astra owns the targeted selection/operation repair with representative work
+measurements and preservation of full-drain correctness. Parent coordinates
+review, merge and the next manual window after normal deployment. The removed
+memory rules remain removed. Keep feat-554 open, the daily observer active and
+the temporary outage monitor paused. Manual work supplies zero ordinary-cycle
+credit and these yields/failures do not advance the success watermark.
+
+The user clarified that deletion efficiency means reducing CPU and database
+work per committed expired row, with useful drain progress. The capacity
+increase and admission correction do not prove that outcome. A CPU cap,
+additional delay, reduced concurrency, smaller final result limit or increased
+timeout alone is not an efficiency improvement. Future claims need comparable
+workload measurements of committed rows, elapsed time, attributable CPU and
+live-request latency, guided by measured expensive phases. Shared-worker CPU
+and health-probe timing remain contextual proxies. Separate profile eligibility
+reconciliation failures from retention failures; neither path has been proved
+to cause the originally reported CPU spike.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
