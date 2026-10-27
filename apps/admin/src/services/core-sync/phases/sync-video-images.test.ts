@@ -365,4 +365,126 @@ describe("syncVideoImages", () => {
     expect(stats.errors).toBeGreaterThanOrEqual(1)
     errorSpy.mockRestore()
   })
+
+  it("retries the soft-delete updateMany when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videos: [
+          {
+            id: "video-core-1",
+            images: [
+              {
+                id: "image-1",
+                updatedAt: "2026-05-07T00:00:00.000Z",
+                aspectRatio: "16:9",
+                url: "https://example.com/image.jpg",
+                mobileCinematicHigh: null,
+                mobileCinematicLow: null,
+                mobileCinematicVeryLow: null,
+                thumbnail: null,
+                videoStill: null,
+              },
+            ],
+          },
+        ],
+      },
+    } as never)
+
+    const tx = {
+      videoImage: {
+        upsert: vi.fn().mockResolvedValue({ id: "image-admin-1" }),
+      },
+    }
+    const prisma = {
+      video: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "video-admin-1", coreId: "video-core-1" }]),
+      },
+      $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
+        fn(tx),
+      ),
+      videoImage: {
+        updateMany: vi
+          .fn()
+          .mockImplementationOnce(() => {
+            throw Object.assign(new Error("pool exhausted"), {
+              code: "P2024",
+            })
+          })
+          .mockResolvedValueOnce({ count: 1 }),
+      },
+    }
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoImages({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.videoImage.updateMany).toHaveBeenCalledTimes(2)
+    expect(stats.softDeleted).toBe(1)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout soft-delete error", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videos: [
+          {
+            id: "video-core-1",
+            images: [
+              {
+                id: "image-1",
+                updatedAt: "2026-05-07T00:00:00.000Z",
+                aspectRatio: "16:9",
+                url: "https://example.com/image.jpg",
+                mobileCinematicHigh: null,
+                mobileCinematicLow: null,
+                mobileCinematicVeryLow: null,
+                thumbnail: null,
+                videoStill: null,
+              },
+            ],
+          },
+        ],
+      },
+    } as never)
+
+    const tx = {
+      videoImage: {
+        upsert: vi.fn().mockResolvedValue({ id: "image-admin-1" }),
+      },
+    }
+    const prisma = {
+      video: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "video-admin-1", coreId: "video-core-1" }]),
+      },
+      $transaction: vi.fn(async (fn: (trx: typeof tx) => Promise<void>) =>
+        fn(tx),
+      ),
+      videoImage: {
+        updateMany: vi.fn().mockImplementationOnce(() => {
+          throw new Error("some other failure")
+        }),
+      },
+    }
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoImages({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.videoImage.updateMany).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
 })

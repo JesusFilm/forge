@@ -593,14 +593,18 @@ export async function syncVideoSubtitles({
   }
 
   try {
-    const result = await prisma.$executeRaw`
-      UPDATE "video_subtitle"
-      SET "deleted_at" = NOW()
-      WHERE "source" = 'core'::"SourceTier"
-        AND "deleted_at" IS NULL
-        AND "core_id" IS NOT NULL
-        AND NOT ("core_id" = ANY(${toPgArray(Array.from(inventory.ids))}::text[]))
-    `
+    const result = await withPrismaPoolTimeoutRetry(
+      () =>
+        prisma.$executeRaw`
+          UPDATE "video_subtitle"
+          SET "deleted_at" = NOW()
+          WHERE "source" = 'core'::"SourceTier"
+            AND "deleted_at" IS NULL
+            AND "core_id" IS NOT NULL
+            AND NOT ("core_id" = ANY(${toPgArray(Array.from(inventory.ids))}::text[]))
+        `,
+      { operation: "core-sync.video-subtitles.soft-delete" },
+    )
     stats.softDeleted += Number(result)
   } catch (err) {
     stats.errors++

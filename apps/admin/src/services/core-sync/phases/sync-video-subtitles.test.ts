@@ -472,4 +472,60 @@ describe("syncVideoSubtitles", () => {
     expect(stats.errors).toBeGreaterThanOrEqual(1)
     errorSpy.mockRestore()
   })
+
+  it("retries the soft-delete $executeRaw when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+    const { prisma } = harness({
+      activeCoreIds: [["subtitle-core-1"]],
+      deleteCount: 2,
+    })
+    prisma.$executeRaw = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+      })
+      .mockResolvedValueOnce(2)
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(2)
+    expect(stats.softDeleted).toBe(2)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout soft-delete error", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+    const { prisma } = harness({
+      activeCoreIds: [["subtitle-core-1"]],
+      deleteCount: 2,
+    })
+    prisma.$executeRaw = vi.fn().mockImplementationOnce(() => {
+      throw new Error("some other failure")
+    })
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(prisma.$executeRaw).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
 })

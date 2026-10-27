@@ -130,15 +130,29 @@ export async function syncVideoOrigins({
   }
 
   if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
-    const result = await prisma.videoOrigin.updateMany({
-      where: {
-        source: "CORE",
-        coreId: { notIn: [...seenCoreIds] },
-        deletedAt: null,
-      },
-      data: { deletedAt: new Date() },
-    })
-    stats.softDeleted += result.count
+    try {
+      const result = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.videoOrigin.updateMany({
+            where: {
+              source: "CORE",
+              coreId: { notIn: [...seenCoreIds] },
+              deletedAt: null,
+            },
+            data: { deletedAt: new Date() },
+          }),
+        { operation: "core-sync.video-origins.soft-delete" },
+      )
+      stats.softDeleted += result.count
+    } catch (err) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video-origin.soft-delete.error",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      )
+    }
   }
 
   return stats

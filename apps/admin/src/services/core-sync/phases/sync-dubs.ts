@@ -577,14 +577,18 @@ export async function syncDubs({
 
   if (!since && stats.errors === 0) {
     try {
-      const result = await prisma.videoDub.updateMany({
-        where: {
-          source: "CORE",
-          deletedAt: null,
-          OR: [{ syncedAt: null }, { syncedAt: { lt: phaseStartedAt } }],
-        },
-        data: { deletedAt: new Date() },
-      })
+      const result = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.videoDub.updateMany({
+            where: {
+              source: "CORE",
+              deletedAt: null,
+              OR: [{ syncedAt: null }, { syncedAt: { lt: phaseStartedAt } }],
+            },
+            data: { deletedAt: new Date() },
+          }),
+        { operation: "core-sync.video-dubs.soft-delete" },
+      )
       stats.softDeleted += result.count
     } catch (err) {
       stats.errors++
