@@ -54,6 +54,70 @@ type CoreVideoWithImages = {
   }>
 }
 
+const CORE_IMAGE_IDS_QUERY = `
+  query CoreImageIds($offset: Int!, $limit: Int!) {
+    videos(offset: $offset, limit: $limit) {
+      id
+      images {
+        id
+      }
+    }
+  }
+`
+
+type CoreVideoWithImageIds = {
+  id: string
+  images: Array<{ id: string }>
+}
+
+class VideoImageInventoryError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "VideoImageInventoryError"
+  }
+}
+
+/**
+ * Walks Core's full `videos { id images { id } }` surface and returns the
+ * complete set of Core image ids. Used by the coverage audit (#2912), not by
+ * this sync phase. Throws rather than returning a partial set: a page error
+ * or an empty walk means the inventory is not trustworthy.
+ */
+export async function fetchCoreImageIdSet(): Promise<{ ids: Set<string> }> {
+  const ids = new Set<string>()
+  let offset = 0
+
+  while (true) {
+    const result = await coreQuery<{ videos: CoreVideoWithImageIds[] }>(
+      CORE_IMAGE_IDS_QUERY,
+      { offset, limit: PAGE_SIZE },
+    )
+    const rawVideos = result.data?.videos
+    if (!rawVideos) {
+      throw new VideoImageInventoryError(
+        `Core image inventory page at offset ${offset} returned no data`,
+      )
+    }
+
+    for (const video of rawVideos) {
+      for (const image of video.images) {
+        ids.add(image.id)
+      }
+    }
+
+    if (rawVideos.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
+  }
+
+  if (ids.size === 0) {
+    throw new VideoImageInventoryError(
+      "Core image inventory walk returned no images",
+    )
+  }
+
+  return { ids }
+}
+
 export async function syncVideoImages({
   prisma,
   progress,
@@ -67,9 +131,27 @@ export async function syncVideoImages({
   const phaseStartedAt = new Date()
 
   const videos = await prisma.video.findMany({
-    select: { id: true, coreId: true },
+    select: {
+      id: true,
+      coreId: true,
+      images: {
+        where: { deletedAt: null },
+        select: { coreId: true, coreUpdatedAt: true },
+      },
+    },
   })
   const videoMap = new Map(videos.map((video) => [video.coreId, video.id]))
+  // Keyed by the image's Core id. Only active (non-deleted) rows are
+  // represented — a missing entry means "no active row", which always
+  // triggers an upsert (covers both brand-new images and reviving a
+  // soft-deleted one).
+  const existingCoreUpdatedAtMap = new Map<string, Date | null>()
+  for (const video of videos) {
+    for (const image of video.images ?? []) {
+      if (image.coreId)
+        existingCoreUpdatedAtMap.set(image.coreId, image.coreUpdatedAt)
+    }
+  }
 
   let offset = 0
   let firstPageWasEmpty = false
@@ -89,12 +171,11 @@ export async function syncVideoImages({
         {
           offset,
           limit: PAGE_SIZE,
-          // Filter by parent-video updatedAt. Edge: an image touched after
-          // its parent video was last touched won't be picked up by an
-          // incremental sync until the next full sync. Acceptable trade-off
-          // for the coverage win — full sync (no `since`) refreshes
-          // everything regardless.
-          where: since ? { updatedAt: { gte: since } } : undefined,
+          // No `where` filter — every run (incremental or full) walks the
+          // full catalogue. Filtering by the parent video's `updatedAt`
+          // missed images edited after their parent video was last touched;
+          // per-image freshness is now decided below via `coreUpdatedAt`.
+          where: undefined,
         },
       )
       rawVideos = result.data?.videos ?? []
@@ -168,6 +249,18 @@ export async function syncVideoImages({
           }
           seenCoreIds.add(image.id)
 
+          // Upsert only when Admin has no active row for this image, or the
+          // stored `coreUpdatedAt` is null or older than Core's `updatedAt`.
+          // Unchanged rows cost a Core read but no DB write.
+          const hasActiveRow = existingCoreUpdatedAtMap.has(image.id)
+          const existingCoreUpdatedAt = existingCoreUpdatedAtMap.get(image.id)
+          const incomingCoreUpdatedAt = new Date(image.updatedAt)
+          const shouldUpsert =
+            !hasActiveRow ||
+            existingCoreUpdatedAt == null ||
+            existingCoreUpdatedAt < incomingCoreUpdatedAt
+          if (!shouldUpsert) continue
+
           await tx.videoImage.upsert({
             where: { coreId: image.id },
             create: {
@@ -180,6 +273,7 @@ export async function syncVideoImages({
               mobileCinematicVeryLow: image.mobileCinematicVeryLow,
               thumbnail: image.thumbnail,
               videoStill: image.videoStill,
+              coreUpdatedAt: incomingCoreUpdatedAt,
               syncedAt: new Date(),
             },
             update: {
@@ -191,6 +285,7 @@ export async function syncVideoImages({
               mobileCinematicVeryLow: image.mobileCinematicVeryLow,
               thumbnail: image.thumbnail,
               videoStill: image.videoStill,
+              coreUpdatedAt: incomingCoreUpdatedAt,
               syncedAt: new Date(),
               deletedAt: null,
             },
