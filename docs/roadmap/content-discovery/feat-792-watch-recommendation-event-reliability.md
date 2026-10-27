@@ -16,8 +16,9 @@ tags:
 
 ## Problem
 
-During 25 Oct 18:40–26 Oct 18:40 UTC, Watch recommendation event routes
-returned 7,108 HTTP 503s. The affected routes record surface exposure,
+The supplied telemetry review reports that during 25 Oct 18:40–26 Oct 18:40
+UTC, Watch recommendation event routes returned 7,108 HTTP 503s. The affected
+routes record surface exposure,
 playback, profile transitions and selection; these responses do not establish
 that video playback failed. A sampled playback request reached Web's 3-second
 Admin deadline while Admin's write was still running. Successful Admin exposure
@@ -52,7 +53,8 @@ both repeat writes and lose event coverage.
 - Order the surface exposure and surface delivery browser deadlines after their
   Web upstream budgets, using measured Admin write latency and bounded transit
   headroom.
-- Keep each exposure batch and its stable event IDs until Web acknowledges it;
+- Keep each exposure batch and its stable event IDs until Web returns matching
+  accepted, repeat or replay receipts; report conflicts as coverage failures;
   serialize sends, retry transient failures with bounded backoff and preserve
   duplicate-safe Admin receipts. Avoid a burst of parallel writes when a page
   emits many facts.

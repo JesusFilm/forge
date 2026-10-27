@@ -10,7 +10,10 @@ import {
 } from "react"
 import { useEligibleRecommendationImpression } from "./useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "./useEligibleRecommendationImpression"
-import { recommendationFetchWithRetry } from "@/lib/recommendation-browser"
+import {
+  recommendationFetchWithRetry,
+  withinRecommendationDeadline,
+} from "@/lib/recommendation-browser"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import {
   RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS,
@@ -174,21 +177,55 @@ function ExposureWindow({
     inFlightCount.current = batch.length
     void (async () => {
       try {
-        await recommendationFetchWithRetry(
-          ENDPOINT,
-          {
-            method: "POST",
-            cache: "no-store",
-            credentials: "same-origin",
-            keepalive: true,
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(batch),
-          },
+        const result: unknown = await withinRecommendationDeadline(
+          undefined,
           RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS,
-          { attempts: 1 },
+          async (signal) => {
+            const response = await recommendationFetchWithRetry(
+              ENDPOINT,
+              {
+                method: "POST",
+                cache: "no-store",
+                credentials: "same-origin",
+                keepalive: true,
+                signal,
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(batch),
+              },
+              RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS,
+              { attempts: 1 },
+            )
+            return response.json()
+          },
         )
-        // Web returns 200 only after Admin returns a non-null mutation result.
-        // The same event IDs make a retry after a lost acknowledgement safe.
+        // A 200 can still contain per-event conflicts. Treat a partial or
+        // malformed receipt as ambiguous and replay the same event IDs.
+        const receipts =
+          result && typeof result === "object" && "receipts" in result
+            ? result.receipts
+            : null
+        if (!Array.isArray(receipts) || receipts.length !== batch.length)
+          throw new Error("Invalid Watch exposure acknowledgement")
+        let conflicted = false
+        for (const [index, value] of receipts.entries()) {
+          if (!value || typeof value !== "object")
+            throw new Error("Invalid Watch exposure acknowledgement")
+          const receipt = value as Record<string, unknown>
+          if (
+            receipt.eventId !== batch[index].eventId ||
+            typeof receipt.status !== "string" ||
+            !["accepted", "repeat", "replay", "conflict"].includes(
+              receipt.status,
+            )
+          )
+            throw new Error("Invalid Watch exposure acknowledgement")
+          if (receipt.status === "conflict") conflicted = true
+        }
+        if (conflicted)
+          coverageRoot.current?.setAttribute(
+            "data-watch-exposure-coverage",
+            "conflict",
+          )
         pending.current.splice(0, batch.length)
         retryCount.current = 0
       } catch (error) {
@@ -371,19 +408,26 @@ function ExposureWindow({
       flush()
       if (!descriptor) return
       try {
-        const response = await recommendationFetchWithRetry(
-          DELIVERY_ENDPOINT,
-          {
-            method: "POST",
-            cache: "no-store",
-            credentials: "same-origin",
-            signal: controller.signal,
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ descriptor, attemptId }),
-          },
+        const receipt = await withinRecommendationDeadline(
+          controller.signal,
           RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS,
+          async (signal) => {
+            const response = await recommendationFetchWithRetry(
+              DELIVERY_ENDPOINT,
+              {
+                method: "POST",
+                cache: "no-store",
+                credentials: "same-origin",
+                signal,
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ descriptor, attemptId }),
+              },
+              RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS,
+              { attempts: 1 },
+            )
+            return response.json()
+          },
         )
-        const receipt = await response.json()
         if (
           controller.signal.aborted ||
           !state.active ||

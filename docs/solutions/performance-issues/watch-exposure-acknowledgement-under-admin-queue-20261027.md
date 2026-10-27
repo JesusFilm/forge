@@ -20,8 +20,9 @@ tags:
 
 ## Confirmed failure chain
 
-In the 25 Oct 18:40–26 Oct 18:40 UTC window, recommendation event routes
-returned 7,108 HTTP 503s, including 4,368 surface-exposure responses. A
+The supplied telemetry review reports that in the 25 Oct 18:40–26 Oct 18:40
+UTC window, recommendation event routes returned 7,108 HTTP 503s, including
+4,368 surface-exposure responses. A
 retained playback trace shows Web's 3-second Admin deadline ending while Admin
 is still executing its write. This is an event-recording failure, not evidence
 that video playback failed. The write may have committed despite the failed
@@ -46,25 +47,31 @@ retention cleanup job or prove production recovery.
 - Order each browser deadline after Web's upstream deadline plus bounded
   admission/transit headroom. Exposure uses 2 seconds upstream and 3 seconds
   browser-side, based on the sampled 1.63-second Admin p95. Surface delivery
-  retains its 3-second upstream budget and gets a 4.5-second browser deadline;
-  sampled successful Admin issuance p95 was 2.287 seconds during the incident.
+  retains its 3-second upstream budget and gets one 4.5-second browser attempt;
+  sampled successful Admin issuance p95 was 2.287 seconds during the separate
+  26 Oct 06:00–18:40 UTC APM diagnostic slice. Both browser deadlines include
+  response-body parsing, not only receipt of response headers.
 - Send one exposure batch at a time and keep it in the pending queue until Web
-  returns 200. Retry ambiguous failures with the exact same event IDs and
-  bounded exponential backoff; Admin's unique `event_id` classifies a replay
-  without creating a second row. Do not retry definitive 4xx rejections.
+  returns matching accepted, repeat or replay receipts. Retry missing or
+  malformed receipts and other ambiguous failures with the exact same event
+  IDs and bounded exponential backoff; Admin's unique `event_id` classifies a
+  replay without creating a second row. Mark per-event conflicts as a
+  definitive coverage gap, and do not retry definitive 4xx rejections.
 - Preserve navigation and playback independence: emission happens after load,
   fetches use `keepalive`, and neither click nor player waits for telemetry.
 
 The bounded in-memory queue is still best-effort across a hard browser exit.
 It drops stale facts before Admin's five-minute timestamp gate and marks the
-coverage gap. A 200 acknowledges that Web obtained a non-null Admin mutation
-result; it does not guarantee that a conflicting event ID was accepted.
+coverage gap. HTTP 200 alone is insufficient: a missing or partial receipt
+causes a stable-ID retry, while a conflict receipt is recorded as a coverage
+failure and retired.
 
 ## Verification and next evidence
 
 Focused tests cover failed acknowledgement with stable-ID replay, serialized
-batches, definitive rejection, deadline ordering, and the existing page-load,
-BFCache, selection and bounded-batch behavior. Local tests and typecheck prove
+batches, definitive rejection, partial/conflicting receipts, pending response
+bodies, deadline ordering, and the existing page-load, BFCache, selection and
+bounded-batch behavior. Local tests and typecheck prove
 the client mechanics, not a production latency reduction. After rollout compare
 population Web 503 counts, Admin mutation latency and pool wait distributions,
 and retry/duplicate counts in matched traffic windows. Keep the common
