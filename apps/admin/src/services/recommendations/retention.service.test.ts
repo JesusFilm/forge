@@ -688,6 +688,43 @@ describe("recommendation retention service", () => {
     )
   })
 
+  it("unlinks exact expired projection run references and keeps a full page continuing", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+    const selected = Array.from({ length: 100 }, (_, n) => ({
+      id: `run-${n}`,
+      projectionId: "generation-1",
+    }))
+    transaction.recommendationRequest.findMany.mockReset().mockResolvedValue([])
+    const fallback = retentionQuery()
+    transaction.$queryRaw.mockImplementation(async (query) => {
+      if (
+        query.sql.includes("WITH parents AS MATERIALIZED") &&
+        query.sql.includes("FROM recommendation_profile_projection_run")
+      )
+        return selected
+      return fallback(query)
+    })
+    transaction.recommendationProfileProjectionRun.updateMany.mockResolvedValue(
+      { count: 100 },
+    )
+    const result = await purgeExpiredRecommendationRequests(
+      prisma as never,
+      now,
+      100,
+      "stored-expiry-only",
+    )
+    expect(
+      transaction.recommendationProfileProjectionRun.updateMany,
+    ).toHaveBeenCalledWith({
+      where: { OR: selected, projection: { is: { expiresAt: { lte: now } } } },
+      data: { projectionId: null },
+    })
+    expect(result.rootsDeleted).toBe(0)
+    expect(result.rowCounts.expiredProjectionRunLinksUnlinked).toBe(100)
+    expect(result.batchLimitReached).toBe(true)
+  })
+
   it("erases a newly expired profile before an older pending backlog", async () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-09-17T00:00:00.000Z")
