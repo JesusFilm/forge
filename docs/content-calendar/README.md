@@ -148,6 +148,14 @@ The story session then acts and removes or updates the todo item; it may set
 `status: "done"`. Lyuba triggers delivery by saying "проверь заметки" to the Calendar
 session; the morning "План на день" task also passes on anything still `new`.
 
+## RU morning test (Oct 28 – Nov 11)
+
+Lyuba approved on 2026-10-27, via Analytics: on RU long-form days (Wed Oct 28, Fri Oct 30,
+Mon Nov 2, Wed Nov 4, Fri Nov 6, Mon Nov 9, Wed Nov 11) the RU long form goes out at 08:00 and
+the RU intro Short at 08:30 (Kyiv = Sofia time), instead of 13:00 / 21:00. EN unchanged, other
+RU Shorts unchanged. These yt-ru rows carry the note "RU morning test"; new rows for those days
+get the same times and note.
+
 ## Facebook slot
 
 At most one Facebook post a day (from 2026-10-19). Which Short gets it (Lyuba,
