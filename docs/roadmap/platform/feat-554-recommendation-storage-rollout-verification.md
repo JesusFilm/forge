@@ -17,6 +17,42 @@ tags:
   - "operations"
 ---
 
+## October 27 projection-run selector repair
+
+The [projection-run selector repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-run-selector-repair)
+merged normally as `e2a06589` (PR #2932) after independent exact-head review,
+91 focused tests, 44 PostgreSQL tests, full Admin typechecking and green PR checks.
+Existing expiry/reference indexes and captured-reference/current-expiry guards
+replace the broad run scan while preserving the page bound, five-second deadline,
+root admission guard and real failure accounting.
+
+Local sparse and high-fan-out SELECT fixtures improve; 100,000 empty parents
+regress from 153.544 to 303.414 ms and probes remain linear. This is not production
+CPU or full-invocation efficiency proof, or proof that P2028 cannot recur.
+All main workflows passed and both actual Admin roles were verified on the exact
+merge, with matching source hashes, compact mode, expected runner roles and
+healthy responses. The 16 GB worker had no OOM or limit events. The dated snapshot
+still found 87,166 expired rows across 26 health families, fixed cohort 35,203
+and additional expiry categories outside that total. No clearance follows.
+The release-bound operator amendment and new historical-execution proof passed
+independent review before one new parent-coordinated bounded window was authorized.
+The earlier continuation remains revoked, with 1,550
+known manual roots, four failed partial attempts and historical 301 separate at
+the last reconciliation. Keep this ticket in progress: October 23 supplies one
+accepted ordinary loaded failure-free cycle, one further cycle is required, and
+manual work earns no credit.
+
+The [first cleanup window on this release](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-unlink-recurrence-after-projection-run-repair)
+committed 200 additional request roots, then stopped on a decision-unlink P2028.
+The known manual total is 1,750, including five failed partial attempts. Pass one
+had positive run-link and decision-link progress; the later failed operation
+does not identify SELECT versus guarded UPDATE. Original postchecks passed and
+300 memory samples peaked at 6,038,208,512 bytes of 16 GB without OOM or throttling.
+The fixed cohort fell to 34,340 and current 26-family expiry to 85,529, with extra
+inventories separate. No retry or further window is authorized. Bounded read-only
+and local diagnosis continues; the daily scheduler and observer remain enabled.
+Keep the ticket in progress with no manual daily-cycle credit.
+
 ## October 27 capacity increase and resumed cleanup
 
 The user removed the operator-imposed 4 GB and no-rising-memory admission rules

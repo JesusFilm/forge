@@ -1202,6 +1202,131 @@ remains stopped until reviewed normal release and fresh verification; the
 ordinary daily scheduler and read-only observer remain enabled, and feat-554
 still needs one further qualifying cycle after October 23.
 
+### October 27 projection-run selector repair
+
+[PR #2932](https://github.com/JesusFilm/forge/pull/2932) merged normally as
+`e2a0658938e14eaec37fc8a521889b874e18fa21` at 06:12:24 UTC. The targeted helper
+uses existing expiry-parent/reference indexes to select at most 100 run/reference
+pairs, then rechecks the exact captured reference and current parent expiry before
+unlinking. It preserves live parents and concurrently reassigned references.
+Paging and continuation remain active when a full unlink page is the only work;
+the root-only admission guard, five-second deadline and real failure accounting
+are unchanged. Selection is not globally oldest-first across parents, and empty
+parent probes remain linear rather than having a fixed work bound.
+
+Independent review approved exact head `50738a49` and all 36 sealed local evidence
+artifacts. The final validation passed 91 focused tests, 44 PostgreSQL tests,
+full Admin typechecking, lint, formatting and normal hooks. The earlier test-mode
+argument typecheck error was corrected and the initial failure retained. Native
+coverage includes sparse/live references, 100,000 empty parents, high fan-out,
+committed paging and concurrent reassignment. CI adds the new native suite to
+the existing invocation; no validation is removed. All 29 PR contexts completed
+with 21 successes and eight expected skips, and parent inspected the individual
+jobs and validation steps before merging.
+
+Across six alternating local SELECT trials per fixture, median elapsed time fell
+from 135.099 to 4.855 ms for sparse matches and 139.758 to 6.821 ms for high fan-out.
+Run heap visits fell from 50,007 to seven and 50,100 to 100 respectively. The
+100,000-empty-parent fixture regressed from 153.544 to 303.414 ms. These are
+SELECT-only local comparisons, not UPDATE or full-invocation measurements,
+production CPU per committed row, or proof of the exact historical failed SQL.
+Large empty-parent populations can still consume the existing deadline.
+
+The final independent review receipt SHA256 is
+`1b5866795aa59b733dc319b6f89ccb9bb27d7c52503ac8cad2ffd09eb8d74623`;
+the local evidence manifest is
+`00e71ad0467412fd8c21e7f6b098caca4888f9e2127079261748f0f9ca80a456`.
+Parent verified the merged tree `df1030fbb89a92a698c699dffe30aec2df525d2a`:
+the reviewed six-file runtime patch plus only the three parent documents from
+preceding PR #2931. The exact reviewed runtime head was retained under the
+repository's existing branch rules, with no check bypass.
+
+All main workflows passed: forge-ci `40459720665`, production image
+`40459720655` and CodeQL `40459719477`. Parent inspected individual jobs and
+validation steps and sealed receipt SHA256
+`62244ff4e5426e81a8dc97bab5e6fba2df5e29a4c185bc62778e172d9b312d77`.
+The normal rollout reached HTTP deployment
+`9c5bd004-252c-421f-9271-a35ba1148472` and worker deployment
+`8944e9cc-ad3a-4dc3-8d64-bab9c49cb1b1`. At 06:33 UTC both actual roles matched
+the exact merge and all five source hashes, with compact traces, runner
+false/true and HTTP 200/body `ok`. Their current processes were verified and
+recorded. Worker memory was 6,948,261,888 bytes of its enforced 16 GB limit,
+with CPU quota 8 and zero OOM or limit events; HTTP capacity is separate.
+
+The full snapshot found 87,166 stored-expired rows across 26 health families,
+fixed cohort 35,203 and zero measured more than 24 hours overdue. Nine extra
+expiry inventory frames remain outside that total. The success watermark was
+unchanged at October 26 21:45:44.183 UTC. PGDATA available bytes were
+7,862,411,264, WAL 117,440,512, and lock waiters/long transactions zero.
+These are dated observations, not whole-inventory clearance or physical
+reclamation. Parent verified the 69-artifact release manifest SHA256
+`5feb7e60a9e9ec8dc83267e81b6d4683fef806fc2660fc663883bcae12c89b85`
+and release receipt
+`2f441264f7805a92acf96b185e974ebaec3deadb1511868a4cbb273fc105fb57`.
+
+The operator's minimal release-binding amendment passed 49 offline checks and
+independent review without changing the frozen recorder/parser, five-pass and
+300-second window bounds, or restored memory policy. A new independent proof
+bound to this source and process generation adjudicated the same 23 durable and
+three wrapper historical records as terminal or nonresumable; all 26 underlying
+executions were accounted for, with no resumable or unresolved execution. It
+preserves those records and their historical 301 roots, and requires fresh full
+set, identity, health and lock checks for each window. The proof SHA256 is
+`781f0d45b19aa08089ec103b2d471814bf91bc2255e77d9f4be5a8e86090668b`.
+
+At release verification, the dated manual baseline remained 1,550 request roots
+including four failed partial attempts. Parent authorized one fresh bounded
+window after verifying the release; previous windows remain revoked. The daily
+scheduler and observer remain enabled, and manual work earns no ordinary-cycle
+credit. Feat-554 remains in progress with one further qualifying cycle required
+after October 23. Production CPU improvement and live-request reliability do
+not follow from local benchmarks or health probes.
+
+### October 27 decision-unlink recurrence after projection-run repair
+
+The first new window, `r2932-w01`, stopped after two attempts. Pass one committed
+100 request roots and yielded normally. Pass two committed another 100 roots,
+then failed in `projection_decision_unlink_page`. Exactly two durable records
+and two wrappers reconcile those outcomes; the second wrapper remains failed
+with one error. The known manual total is now 1,750 roots, including five failed
+partial attempts. Historical 301 roots remain separate, unknown outcome is false,
+and no third pass, retry or second window followed. Both passes also committed
+1,000 expired Watch exposures each; dependent counters are not added to roots as
+distinct top-level deletions.
+
+Pass one committed one projection-run link unlink and 100 decision-link unlinks,
+demonstrating positive execution of both selectors. Each pass committed 100
+expired projection runs, contributions and interests. In pass two the preceding
+run-unlink phase completed in 59 ms, including 30 ms of operation time, with zero
+links unlinked. The later decision-unlink operation failed at ordinal 31 with
+Prisma `P2028`: 803 ms remaining, 796 ms admitted, 816 ms of incomplete operation
+time and 827 ms total. Fallback ledger terminalization succeeded in 117 ms.
+The diagnostic encloses both SELECT and guarded UPDATE; it does not establish
+which statement failed or the underlying database/client cause. Positive earlier
+link work does not establish causal production CPU improvement or erase the
+later failure.
+
+All original postchecks passed on the expected release and process identities,
+with unchanged historical full sets and no overlap. The 300 direct memory samples
+peaked at 6,038,208,512 bytes of 16 GB, with no OOM, limit event, throttling or
+process reset. The fixed cohort fell from 35,203 to 34,340, and the current
+26-family inventory from 87,910 to 85,529; measured more-than-24-hour expiry
+remained zero and nine extra inventories were retained separately. The success
+watermark did not advance. Shared-worker CPU measurements include other work and
+cannot isolate retention CPU per row.
+
+Parent verified the 91-artifact stopped-window manifest SHA256
+`b250ee32a055de16667e864effe411f20669dad511ab8eb7288aa942872b9ea4`,
+with closeout receipt
+`0c771d6f65bbe1fd9937cf6a315b52bf1053cda89c469b7b4be357b463c37da1`.
+Manual cleanup is stopped. Astra owns bounded read-only and local investigation
+of the recurring late-phase failure, including transaction budgeting and actual
+decision SELECT versus guarded UPDATE work. A further selector rewrite is not
+presumed to solve it. Preserve stored expiry, captured references, the five-second
+deadline and true failure accounting; do not substitute arbitrary admission or
+memory floors, timeout widening or unreviewed production code. The daily scheduler
+and observer remain enabled, and no manual cycle earns feat-554 credit.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
