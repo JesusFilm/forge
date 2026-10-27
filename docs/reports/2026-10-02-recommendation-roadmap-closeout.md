@@ -1046,6 +1046,162 @@ and a new parent-coordinated window. The daily production scheduler remains
 enabled. Preserve the stopped series, partial commits, separate failed
 postcheck and truthful feat-554 acceptance.
 
+### October 27 root-chunk cost admission repair
+
+[PR #2930](https://github.com/JesusFilm/forge/pull/2930) merged normally at
+04:51:01 UTC as `e25a0a7d92bfbb0ae76ed1ed8a2d10294410f77f`. Its tree matches
+the independently reviewed head `a760e359`; all 29 PR checks completed with
+21 successes and eight expected skips. The parent inspected the individual
+jobs and validation steps, including the PostgreSQL retention suite.
+
+The repair remembers the last acknowledged root chunk's total elapsed time
+within the current invocation. At each of the three admission boundaries,
+the next root chunk needs more remaining time than the larger of that observed
+duration and the existing 750 ms baseline. The first chunk and other phases
+retain their existing floor. The five-second deadline, 50-root chunks,
+stored-expiry/live-row guards and accounting are unchanged. A pre-work yield
+preserves committed counts, unknown backlog and continuation without advancing
+the success watermark. A genuinely slower admitted chunk can still fail and
+must retain its failure and partial commits.
+
+Local checks passed 94 focused tests, 38 PostgreSQL tests and full Admin
+typechecking over 1,678 source roots, 757 test roots and four shards, plus lint,
+format and normal hooks. A strengthened native fixture made the old code fail
+on its second root deletion after committing 50 roots; the corrected code
+yielded before that deletion, preserved the success watermark and live root,
+and removed the remaining 50 expired roots in a fresh invocation. The fixture
+models post-commit acknowledgement and conditional second-chunk latency. Its
+local SQLSTATE is not evidence of the production SQLSTATE.
+
+The investigation did not establish a missing-index or defective-cascade
+cause. Read-only dependency discovery took about 9 ms, while a lookup-only FK
+analogue measured cold indexed heap reads without timing an actual deletion.
+An alternating local comparison rejected bulk leaf predeletion because it was
+slower than the existing cascade. This repair avoids work already known to
+be underfunded; it does not establish production query or CPU efficiency.
+
+All three main workflows passed: forge-ci `40451994499`, production image
+`40451994429` and CodeQL `40451994524`. At 05:10–05:11 UTC both actual Admin
+roles were verified on the merged revision and reviewed source hashes, with
+compact mode, correct runner roles and healthy responses. Worker memory was
+4.242 GB against its enforced 16 GB limit, with zero OOM or limit events;
+PGDATA had 7,896,555,520 bytes available. No lock waiter or long transaction
+was observed. The separate Web rollout was active on `ac88a7c3` with two
+healthy replicas before this verification.
+
+The fixed cohort was still 36,997; the moving 26-family expired inventory was
+81,944, with zero more than 24 hours overdue. Nine extra expiry inventory
+frames were collected separately, including at least 1,001 expired session
+links and one expired co-watch suppression. One pending profile erasure was
+not stored-expired eligible. The success watermark remained October 26 at
+21:45:44.183 UTC. No cleanup had run on the new release at that snapshot;
+the known manual total remained 850 roots, including three failed partial
+attempts, with the historical 301 separate.
+
+The [release receipt](https://github.com/JesusFilm/forge/pull/2930#issuecomment-6434391172)
+and [root receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6434391507)
+record the dated verification. Parent verified all 63 release artifacts against manifest SHA256
+`ff1f7a95644f978c955221a7cbde7b35062c0feb50d9690b83aae8b109000853`.
+The new source-bound operator bundle preserves the frozen recorder and existing
+checks, pins the reviewed merge and main workflow identities, and passed 47
+offline checks plus independent review. Fresh individual and full-set hashes
+for the 23 durable records and three wrappers matched the preserved historical
+set. The independently reviewed new source/process proof found no resumable or
+unresolved execution in that exact set; its SHA256 is
+`dc60300255e8a099150992ec99e6c607b38b5d9814715764ce40705dbba76fc4`.
+It does not mutate the old records or waive fresh live checks. Parent dispatched
+one new bounded window, `r2930-w01`; old windows 03–07 remain revoked.
+The daily scheduler remains enabled. Feat-554 retains October 23 as its one
+accepted ordinary loaded failure-free cycle and requires one further cycle;
+today's manual recovery earns no additional credit.
+
+### October 27 first cleanup window after root admission repair
+
+The new `r2930-w01` window was reconciled at 05:22 UTC after three distinct passes, each committing
+100 expired request roots and returning a normal budget yield. Both ledgers
+matched every counter, with no failed or unknown outcome. The window committed
+**300 request roots and 3,000 expired Watch exposures**. The third pass also
+deleted 100 expired profile projection runs and 100 expired contributions,
+demonstrating some later-phase progress. These per-family counters are not
+additive counts of unique rows, and they do not establish that the rewritten
+decision-unlink selector did work or that the new guard caused each yield.
+Successful phase timings and guard-specific reasons were unavailable in the
+unchanged recorder; production CPU/query efficiency remains unproved.
+
+All postchecks passed on the same actual release and process identities.
+The 300 memory samples peaked at 6,700,867,584 bytes against the 16 GB limit,
+with no OOM/limit events, throttling or CPU-counter reset. The fixed cohort
+fell from 36,997 to 36,431; the moving 26-family count fell from 83,096 to
+79,905, with zero measured more than 24 hours overdue. Additional expiry
+categories remain separately recorded. The success watermark did not advance.
+At this window's close, today's known manual total was **1,150 roots**, including the three earlier
+failed partial attempts, whose failure statuses remain unchanged. Historical
+301 roots are still separate. The first window is useful verified progress;
+the backlog and ordinary-cycle acceptance remain open.
+
+Independent review accepted the corrected all-pass assessment, preserving
+the third pass's projection progress and the measurement limits above. Parent
+verified the final 112-artifact manifest SHA256
+`05a6092aef4eef63a0422a135cd97a35af1d7070b357a19da7419d1820a77657`;
+the dated review receipt is
+`cb73cd59c384c6f5a4d8e185203557a4c405cc1bd5ac3cd1ca0a7334a2a17941`.
+Further bounded windows require fresh live checks and separate reconciliation;
+this dated receipt does not report their outcome.
+
+### October 27 later projection unlink failure and stopped continuation
+
+The authorized continuation completed `r2930-w02` with three normal yields
+and 250 committed roots plus 3,000 Watch exposures. In `r2930-w03`, the first
+pass yielded after 50 roots; the second **failed after another 100 committed
+roots**. The stopped window therefore retains 150 roots and 2,000 Watch
+exposures. Both ledgers preserve the real failure and exact partial counters,
+with no unknown outcome. The two-window series added 400 roots, taking the
+known manual total to **1,550 at its 05:39 UTC reconciliation**, including four
+failed partial attempts today. The historical 301 roots remain separate.
+Windows 04–07 were revoked without attempts despite their later authorization
+expiry. No retry or replay followed the failure.
+
+The fresh diagnostic identifies `projection_run_unlink_page`, ordinal 29,
+operation stage, with Prisma `P2028` and no SQLSTATE: 892 ms remained before
+admission, 881 ms was admitted, the incomplete operation used 899 ms and the
+phase total was 914 ms. The failed operation contains a SELECT and an UPDATE;
+neither the exact failing statement nor server-versus-client timer attribution
+is established. Fallback ledger terminalization succeeded in 57 ms. The prior
+acknowledged root phase took 791 ms; this later phase is outside PR #2930's
+root-only observed-cost guard. Blindly copying that prior root cost would not
+have prohibited this admission either.
+
+All original window postchecks passed on the expected release and processes,
+with the same historical active set and no overlapping execution. Window 03's
+300 memory samples peaked at 5,473,046,528 bytes of 16 GB, with no OOM or limit
+event or CPU-counter reset. Its fixed cohort fell 35,722 to 35,203 and the
+moving 26-family count fell 78,799 to 76,825, with zero measured more than
+24 hours overdue. Additional expiry categories remain separate. The series
+also records 300 projection runs and 300 contributions across its passes;
+the later failed unlink is distinct from that committed work. Health and
+partial deletion do not clear the failed attempt or the remaining backlog.
+
+A bounded read-only SELECT analogue scanned 43,725 projection-run rows and
+1,788 generation cache misses to return one eligible row, taking 564.191 ms
+with 45,686 shared buffers. A same-cutoff candidate using existing expiry and
+reference indexes examined 1,476 expired-parent probes and returned one row
+in 12.046 ms with 4,287 shared buffers. These sequential SELECT-only plans
+have different ordering and cache states; they are query-work evidence, not
+the captured failed SQL or a causal production speedup/CPU comparison. Empty
+parent probes remain a work consideration.
+
+Parent verified the 230-artifact stopped-series manifest SHA256
+`88679794f694e18cb52354fe4f7446b023ee944a8db6c3ac90b7f0a1f392a95c`.
+Independent dated evidence review is sealed at
+`439d8a1b9cde2bd35b1cca764a9068dc7e66e5e5eebb707291641a6ba8787b38`.
+Astra owns a targeted selector repair with exact captured-reference and current
+expiry rechecks, sparse/empty-parent/high-fan-out/live-reference PostgreSQL
+regressions and comparable local work measurements. Preserve the 100-row bound,
+five-second deadline, live guards and real failure accounting. Manual cleanup
+remains stopped until reviewed normal release and fresh verification; the
+ordinary daily scheduler and read-only observer remain enabled, and feat-554
+still needs one further qualifying cycle after October 23.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
