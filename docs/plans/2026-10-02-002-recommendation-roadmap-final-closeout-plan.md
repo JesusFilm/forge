@@ -473,3 +473,33 @@ Astra owns bounded read-only/local investigation of the common late-phase budget
 pattern and actual operation cost before a supported correction. Parent owns
 independent review, normal release and any fresh cleanup dispatch; the daily
 scheduler and read-only monitor remain enabled.
+
+### October 27 decision-operation diagnostics
+
+The [decision-operation diagnostics](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-operation-diagnostics)
+merged normally as `b78fa7a6` (PR #2934) after independent final-head review,
+113 focused tests, 44 native tests, full Admin typechecking and green PR checks.
+The bounded investigation did not reproduce the failed production operation;
+this release records actual SELECT/guarded UPDATE progress and process-wide
+observations without changing cleanup behavior. Manual CLI observations must
+come from that short-lived process, not the worker's long-lived Next process.
+Tentative operation counts are not committed deletions, and an unavailable
+event-loop histogram does not prove absence of a stall.
+
+The new recorder/parser bundle and exact-identity amendment passed independent
+offline review. All main checks and actual both-role release verification passed,
+including matching source/dependency pins, health and the full inventory snapshot.
+A fresh independent source/process historical review accounts for 26 ledger
+records, not 26 distinct invocations. Parent issued one new bounded ordinary
+diagnostic cleanup window after verifying the final bound operator bundle.
+Use its outcome to support a correction; do not call the diagnostics a timeout
+fix. Preserve the stopped 1,750-root baseline, all five failed partial attempts,
+historical 301 separately, the removed memory gates and enabled daily scheduler.
+Feat-554 remains in progress with one further qualifying ordinary cycle required.
+
+The [diagnostic observation window](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-diagnostic-window-stopped-before-cleanup)
+stopped in its initial read-only fixed-cohort helper before any cleanup invocation.
+Original postchecks passed; both window ledgers are empty and the baseline is
+unchanged. The discarded helper error prevents causal attribution. Astra owns
+a bounded local failure-reporting amendment; parent owns independent review and
+any new dispatch. This is an operator evidence gap, not a proven cleanup defect.

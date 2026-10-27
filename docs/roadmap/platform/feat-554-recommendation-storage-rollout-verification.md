@@ -17,6 +17,33 @@ tags:
   - "operations"
 ---
 
+## October 27 decision-operation diagnostics
+
+The [decision-operation diagnostics](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-operation-diagnostics)
+merged normally as `b78fa7a6` (PR #2934) with independent exact-head review,
+113 focused tests, 44 native tests and green PR checks. Bounded investigation
+did not reproduce the last production timeout. The new envelope separates
+SELECT, guarded UPDATE and later failures while measuring the actual invocation
+process; it preserves all cleanup behavior and is not a timeout fix.
+
+The revised recorder/parser and exact release identity passed independent
+offline review. All main checks, actual both-role release and fresh historical
+execution verification passed. The snapshot still found 104,646 stored-expired
+rows across 26 health families, fixed cohort 34,340 and nine additional inventory
+frames outside that total. Parent issued one new bounded diagnostic observation.
+At dispatch, the preceding stopped window accounts for 1,750 manual roots and five failed partial attempts,
+with historical 301 separate. Direct memory tracking continues without the
+removed 4 GB or no-rising-memory gates. Keep this ticket in progress: October 23
+provides one accepted ordinary loaded failure-free cycle, one further cycle
+is required, and manual work earns no credit.
+
+The [new diagnostic window](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-diagnostic-window-stopped-before-cleanup)
+stopped before any cleanup invocation when an initial read-only inventory helper
+failed. Original postchecks passed and both window ledgers remain empty; no new
+failed partial attempt is counted. The original error was discarded, so its cause
+is unknown. A local operator failure-reporting amendment is being prepared before
+any new parent dispatch. The daily scheduler remains enabled.
+
 ## October 27 projection-run selector repair
 
 The [projection-run selector repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-run-selector-repair)
