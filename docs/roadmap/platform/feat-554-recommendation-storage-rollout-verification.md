@@ -46,7 +46,50 @@ record 100 further committed roots and a transaction-expiry failure (854 ms
 allowed, 870 ms elapsed); the exact failing statement is not retained. The
 fixed cohort then measured 38,861 and rolling current expiry 41,548. Services
 remained healthy on 16 GB capacity without OOM events. No second pass or replay
-followed; Astra is investigating the residual transaction-budget defect.
+followed in that window. A later distinct pass committed another 100 roots and
+yielded safely, bringing post-resize committed roots to 250. The fixed cohort
+then measured 38,431 and rolling current expiry 42,068; no global clearance or
+ordinary-cycle credit follows.
+
+The [post-configuration admission repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-post-configuration-admission-repair)
+merged normally as `742f25c2` (PR #2923) after independent exact-head review,
+57 focused and ten native tests, full Admin typecheck and green PR checks. It
+rechecks the existing 750 ms floor after successful configuration and before
+nonterminal work, retaining the five-second budget and genuine failures. The
+exact-base native regression fails and final code passes with no domain read
+after a local configuration delay. The earlier production failure's cause is
+still unproved; the speculative query/index change was excluded. Both actual
+roles now run the merged revision with matching source hashes and health;
+worker capacity remains 16 GB. All main CI, image and CodeQL checks passed,
+including the actual native retention and production-startup steps.
+
+The next bounded window committed another 250 roots across three passes:
+50 and 100 in acknowledged yields, then 100 before an actual third-pass
+failure. Post-resize committed roots therefore total 500 across six attempts;
+both failed partial attempts remain failures. The fixed cohort fell from
+38,431 to 37,442, and current expiry from 44,345 to 43,474 across 26 families.
+Separate bounded inventory also found at least 1,001 expired profile-session
+links and one pending profile erasure; these are outside that 26-family total.
+There is no global-clearance claim or additional ordinary-cycle credit.
+
+The safe failure receipt identifies `projection_decision_unlink_page`:
+796 ms remained at admission and the operation consumed 808 ms; acquisition,
+advisory lock and configuration each took 3 ms. The wrapper identifies
+`recommendationPersonalizationDecision.findMany` and an expired transaction
+(802 ms allowed, 812 ms elapsed). This localizes the current failure to an
+admitted operation, not configuration exhaustion; the underlying SQL/client
+cost and historical failure cause remain unproved. No fourth pass or replay
+followed. Astra owns the targeted efficiency repair before another coordinated
+manual window. Both services stayed healthy; 300 one-second samples found no
+OOM, memory-limit events or CPU-quota throttling on the 16 GB worker.
+
+The user's efficiency objective is separate from this correctness and capacity
+evidence: demonstrate less CPU/database work per committed expired row under a
+comparable workload, with useful progress and live-request-latency effects.
+Worker limits, sleeps, lower concurrency or longer timeouts alone do not prove
+efficiency. Keep shared-process measurements and the distinct profile
+reconciliation maintenance path clearly identified; no CPU-spike attribution
+is established.
 
 ## October 27 pre-work deadline correction
 

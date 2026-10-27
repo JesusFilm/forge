@@ -316,14 +316,51 @@ by the read-only verification assignment or the existing daily heartbeat.
 The next window stopped on its first pass at 00:21 UTC: both ledgers failed
 after 100 further committed roots, with an expired transaction reporting
 854 ms allowed versus 870 ms elapsed. No second pass or replay followed.
-Astra owns bounded local investigation and correction of that genuine failure;
-parent coordinates review, normal release and the next manual window. Do not
-reclassify this failure as a safe yield or a memory-admission hold.
+A later distinct pass committed another 100 roots and yielded safely; total
+post-resize committed roots are 250 across three invocations. Do not reclassify
+the earlier failure as a safe yield or a memory-admission hold.
+
+The [post-configuration repair receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-post-configuration-admission-repair)
+records separately proven missing admission logic, native exact-base RED/final
+GREEN, independent review and green normal merge `742f25c2` (PR #2923). The
+speculative query/index migration was excluded. Both actual roles now run that
+revision with matching source hashes, health and correct configuration; the
+worker retained 16 GB through the normal rollout. All main CI, image and CodeQL
+checks passed, including actual native retention and production-startup steps.
+The next bounded window committed another 250 roots across three attempts:
+two acknowledged yields (50 and 100), then a genuine failure after 100 further
+committed roots. Post-resize committed roots total 500; neither failed partial
+attempt is reclassified. No fourth pass or replay followed. The fixed cohort
+fell from 38,431 to 37,442, and current expiry from 44,345 to 43,474 across 26
+families; additional bounded inventory found at least 1,001 expired
+profile-session links and one pending profile erasure outside that total.
+
+Current diagnostics localize the failure to admitted projection-decision
+selection: 796 ms at admission, 808 ms in the operation, and 3 ms each for
+acquisition, lock and configuration. Astra owns a targeted efficiency repair,
+with representative scan/work measurements, full-drain correctness and
+nonexpired preservation. Parent owns independent review, merge and subsequent
+production coordination. No further manual invocation follows this stopped
+window before a reviewed correction is normally deployed. The normal deployment
+is required; no direct deploy/redeploy or local-code publication is authorized.
+Underlying SQL/client cost and historical failure causation remain unproved,
+and a yield-only sequence does not prove completion.
 
 Continue observing both ledgers, all 26 current retention-health families,
 expiry cohorts, success watermark and capacity. Those 26 families do not cover
 every cleanup category, so neither their count nor a yield-only sequence proves
 global clearance. Keep memory diagnosis separate from the active drain.
+
+The user's later efficiency objective requires less CPU and database work per
+committed expired row while making useful drain progress. Added capacity and
+the admission-boundary correction are separate outcomes, not efficiency proof.
+Measure costly selection scans, joins, FK/cascade work, waits and repeated or
+rolled-back work before choosing an optimization. Compare committed rows per
+elapsed time and CPU under comparable workloads, with effects on live request
+latency. Shared-worker CPU and health-probe latency are contextual measurements,
+not isolated deletion cost or live-request latency. Profile eligibility
+reconciliation is a separate maintenance path; do not attribute its failures or
+the reported CPU spike to retention without evidence.
 
 Keep feat-554 in progress until one further qualifying ordinary loaded,
 failure-free cycle supplements October 23. Preserve the Watch exposure wave,
