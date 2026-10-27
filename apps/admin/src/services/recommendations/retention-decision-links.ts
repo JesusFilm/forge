@@ -1,4 +1,8 @@
 import { Prisma } from "@prisma/client"
+import {
+  recordRetentionDecisionOperation,
+  type RetentionDecisionObserver,
+} from "./retention-operation-diagnostics"
 
 /** Select a page through expiry/reference indexes, not the request-ID index.
  * Empty expired parents must not consume the parent page: they may still have
@@ -44,8 +48,12 @@ export async function unlinkExpiredDecisionLinks(
   tx: Prisma.TransactionClient,
   now: Date,
   batchSize: number,
+  observer?: RetentionDecisionObserver,
 ): Promise<{ selectedCount: number; unlinkedCount: number }> {
+  recordRetentionDecisionOperation(observer, "select")
   const rows = await selectExpiredDecisionLinks(tx, now, batchSize)
+  recordRetentionDecisionOperation(observer, "selected", rows.length)
+  if (rows.length) recordRetentionDecisionOperation(observer, "update")
   const unlinkedCount = rows.length
     ? (
         await tx.recommendationPersonalizationDecision.updateMany({
@@ -60,5 +68,7 @@ export async function unlinkExpiredDecisionLinks(
         })
       ).count
     : 0
+  if (rows.length)
+    recordRetentionDecisionOperation(observer, "updated", unlinkedCount)
   return { selectedCount: rows.length, unlinkedCount }
 }
