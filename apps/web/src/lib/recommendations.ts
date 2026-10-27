@@ -92,7 +92,10 @@ function hasRecommendationGraphqlCode(
 // envelopes for compatible callers without relying on human-readable messages.
 async function withRecommendationDomainErrors<T>(
   operation: Promise<T>,
-  invalidInputCode: "playback_request_invalid" | "evidence_request_invalid",
+  invalidInputCode:
+    | "playback_request_invalid"
+    | "evidence_request_invalid"
+    | "exposure_request_invalid",
 ): Promise<T> {
   let result: T
   try {
@@ -558,14 +561,17 @@ export async function recordRecommendationContentAction(
 export async function recordWatchSurfaceExposure(
   events: Record<string, unknown>[],
 ) {
-  const result = await client.mutate({
-    mutation: adminRecordWatchSurfaceExposureOperation,
-    variables: { events },
-    fetchPolicy: "no-cache",
-    context: upstreamContext(
-      RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
-    ),
-  })
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminRecordWatchSurfaceExposureOperation,
+      variables: { events },
+      fetchPolicy: "no-cache",
+      context: upstreamContext(
+        RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
+      ),
+    }),
+    "exposure_request_invalid",
+  )
   if (result.error || !result.data?.recordWatchSurfaceExposure) {
     throw new RecommendationRuntimeError("evidence_failed")
   }
