@@ -4,7 +4,7 @@ Admin runs Core Sync through the useworkflow runtime. The sync engine remains
 `runSync()`; the recurring path dispatches `runCoreSyncQueued`, which hands
 each sync phase to the native phase worker
 (`executeNextCoreSyncPhase` in `src/services/core-sync/phase-execution.ts`),
-and that worker calls `runSync(syncPrisma, ...)`.
+and that worker calls `runSyncPhase(syncPrisma, ...)`.
 
 ## Required Env
 
