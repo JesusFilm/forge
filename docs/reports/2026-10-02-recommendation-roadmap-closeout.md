@@ -907,6 +907,91 @@ and health-probe timing remain contextual proxies. Separate profile eligibility
 reconciliation failures from retention failures; neither path has been proved
 to cause the originally reported CPU spike.
 
+### October 27 projection-decision selection repair
+
+[PR #2926](https://github.com/JesusFilm/forge/pull/2926) changes only the expired
+projection-decision selection path, its guarded unlink, native regressions and
+the existing CI test invocation. Selection now starts from expired generations
+with referenced decisions, using the existing expiry and projection-reference
+indexes. Updates match the captured request/reference pair and recheck expiry,
+preserving a concurrent repoint or expiry extension. No index migration,
+timeout increase, higher admission threshold, sleep or CPU cap was introduced.
+
+A local stale-statistics fixture reproduced the previously observed estimated
+request-primary-key/Memoize plan shape. The original query examined 182,895
+decision heap rows to return seven late eligible links, taking 1,112.029 ms and
+212,194 local buffer accesses. The final helper took 57.553 ms, 2,771 buffer
+accesses and seven decision heap rows on that fixture. The previously reported
+267 ms result belonged to an intermediate candidate. High-fan-out and live-only
+skew fixtures also avoided the unrelated decision scan. This establishes local
+work reduction, not the cause of the historical production timeout or CPU spike.
+
+The parent search is not globally work-bounded: retained expired generations
+without matching decisions still require existence probes. A 100,000-parent
+late-link fixture took about 383 ms; 259,122 parents with late links took
+1,093.567 ms. Native tests retain the large empty-prefix case and finite-drain
+checks. Exact parameterized SQL under forced custom and generic server plans
+retained the tested existing-index paths; this does not certify automatic
+Prisma prepared-session reuse for every parameter distribution.
+
+Five matched local select/guarded-unlink trials affected 35 rows in each
+variant. PostgreSQL backend CPU measured 497 ticks/4.97 seconds for the original
+and 17 ticks/0.17 seconds for the candidate at 100 ticks/second. The benchmark
+uses a raw guarded update rather than Prisma's exact OR-pair update, runs the
+original trials first and rolls back outside measurement. It is directional
+local evidence, not application CPU, committed production throughput or CPU
+per committed request root. Live-request-latency effects remain unproved.
+
+Independent review approved exact head `b0c74dc4`, with all four source files
+matching the frozen reviewed snapshot. Local checks passed: 80 focused tests,
+37 PostgreSQL tests, full Admin typecheck over 1,678 roots/four shards and
+normal hooks. An initial composition run timed out at its existing 30-second
+test deadline and left two dependent skipped-status failures. A fresh isolated
+rerun passed all 14 tests with unchanged code, assertions and deadlines; the
+30-pass scenario took 27.789 seconds. The failure and rerun are both retained.
+
+All 29 PR contexts finished: 21 success and eight expected skips, including
+actual native retention/precomputed steps, production startup and all four
+CodeQL analyses. Normal squash merge `50cb6a3e` at 02:53:42 UTC preserves the
+exact reviewed tree. Main forge-ci `40441066194`, production image `40441066146`
+and CodeQL `40441065908` completed successfully, including required job and
+validation-step inspection. Read-only verification at 03:18–03:19 UTC found both
+actual Admin roles on that exact revision with the reviewed service/helper and
+diagnostic hashes, compact mode, correct runner roles and health 200/ok. The
+worker enforced 16 GB, used about 3.592 GB at that sample and recorded zero OOM
+or memory-limit events. Health probes do not establish live-request reliability.
+
+No cleanup has run on this repair yet; the latest committed total remains 500
+roots across six post-resize attempts, including two failed partial attempts.
+The fixed October 26 cohort remains 37,442. The moving inventory now contains
+65,913 expired rows across the 26 health families, including 17,593 Watch
+exposures whose stored expiry has passed; none was over 24 hours overdue at
+that read. Additional inventory has at least 1,001 expired profile-session
+links. The one pending profile erasure is not stored-expired eligible; the
+other seven extra categories are zero. PGDATA available space is
+7,949,406,208 bytes, with no lock waiters or long transactions. The success
+watermark is unchanged. These observations do not prove whole-inventory
+clearance, physical reclamation or production CPU efficiency.
+
+Independent review accepted the source and execution-lifecycle evidence for
+exactly the 23 historical unfinished durable rows and three wrappers. The old
+process generations have ended; the two scheduled wrappers and one direct-CLI
+wrapper do not resume those records, and retries create new records. The 301
+historical committed roots remain preserved and are not new deletions. The
+exception is bound to the reviewed identities and state fingerprints; fresh
+per-pass overlap checks still cover new work from the live daily scheduler.
+Parent coordinates the next bounded window with the separate Web rollout.
+Keep feat-554 in progress with its ordinary-cycle requirement.
+
+The [normal release receipt](https://github.com/JesusFilm/forge/pull/2926#issuecomment-6433027360)
+and [root receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6433027727)
+retain the dated release and inventory observations. Parent verified all 106
+release artifacts against manifest SHA256
+`74c70cd03e2049dcdaf19301bbaa2f4fb9a60e6fecd00b95b52de37cb830e399`.
+The subsequent historical execution review is bound to receipt SHA256
+`ea8da655385f2969aa10dcff602b95e7802b6086912448fd8b753c6b6d326207`;
+it does not mutate old records or grant ordinary-cycle credit.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
