@@ -3,7 +3,7 @@ id: "feat-887"
 title: "Release the recovered Shorts editor to production"
 owner: "tataihono"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-28"
 duration: 1
 depends_on: []
@@ -80,3 +80,31 @@ inferred. Release evidence and the Manager troubleshooting pointer are submitted
 through a normal PR-to-main merge to obtain another watched Manager deployment.
 The original frontend deployment remains unpromoted; completion requires a
 successful replacement and public health verification.
+
+## Production verification
+
+The Shorts editor release is live. PR
+[#2939](https://github.com/JesusFilm/forge/pull/2939) merged the evidence and
+Manager troubleshooting pointer as `98e61e8337d08ff896cb9e6237aa66dd3737f0b5`.
+All main CI, Manager production-image and CodeQL checks passed. Its replacement
+Manager build passed the previously failing Docker frontend stage without any
+application code change, then promoted successfully. The original failed
+Manager deployment never promoted.
+
+Verified successful Railway production deployments:
+
+| Service       | Deployment                             | Source commit                              |
+| ------------- | -------------------------------------- | ------------------------------------------ |
+| Manager       | `f96f57f2-f573-4840-8b50-79cff20c44b7` | `98e61e8337d08ff896cb9e6237aa66dd3737f0b5` |
+| Admin         | `53dabaf7-83ef-4564-bf28-6542d7475de5` | `9f39bd8686ff4303ccd59f85c74a9f53c2995c35` |
+| Admin worker  | `16cf3efd-f70b-47d2-a3e5-77d505eb6711` | `9f39bd8686ff4303ccd59f85c74a9f53c2995c35` |
+| Mastra        | `9d350155-0cef-4384-b768-f21972459c62` | `9f39bd8686ff4303ccd59f85c74a9f53c2995c35` |
+| Shorts worker | `cdc425be-eac9-4991-a9b2-b0b34451e24e` | `9f39bd8686ff4303ccd59f85c74a9f53c2995c35` |
+| Roadmap       | `e52a85b1-b74a-426c-92d2-1a11f7b1bd21` | `98e61e8337d08ff896cb9e6237aa66dd3737f0b5` |
+| Datadog agent | `09d7a23b-cd16-4b83-aaea-5288b3deeaea` | `98e61e8337d08ff896cb9e6237aa66dd3737f0b5` |
+
+After Manager promotion, both `https://manager.jesusfilm.org/api/health` and
+`https://admin.jesusfilm.org/api/health` returned HTTP 200 with
+`{"status":"ok"}`. The production render supervisor remained active with its
+verified immutable render/verify images and no pending release operation.
+The owned local PostgreSQL verification server was stopped after testing.
