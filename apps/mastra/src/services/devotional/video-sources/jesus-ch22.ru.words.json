@@ -1,17 +1,17 @@
 {
-  "note": "Per-cue word start times (s): whisper small DTW -0.12s where heard (35/56 words), spread by length inside the cue where not. Cue spans: Arclight 1_jf6122-0-0 track. 2026-10-27.",
+  "note": "Per-cue word start times (s): whisper small DTW -0.12s where heard (35/56 words), spread by length inside the cue where not. Cue spans: Arclight 1_jf6122-0-0 track. 2026-10-27. Hand-nudged after check-film-sync on the first render: cues 3, 4 and 11 start ~0.5 s later (the dub speaks after the Arclight line start).",
   "cues": [
     [21.83, 21.94, 22.12, 22.45, 22.76],
     [23.89, 24.29, 24.63, 24.8, 25.3],
-    [26.66, 26.76, 27.01, 28.0, 28.3],
-    [29.43, 29.61, 29.8, 30.68, 30.88, 31.14, 31.27, 31.71],
+    [27.21, 27.31, 27.56, 28.55, 28.85],
+    [29.9, 30.05, 30.25, 30.68, 30.88, 31.14, 31.27, 31.71],
     [32.53, 33.16, 33.34, 33.97, 34.2],
     [35.6, 35.66, 35.72, 36.21],
     [37.64, 38.61],
     [47.14, 47.56, 48.55],
     [53.72, 53.87, 53.93, 54.12, 54.18],
     [56.68, 56.92, 57.72, 58.68, 58.77, 59.26],
-    [60.16, 60.39, 61.31],
+    [60.8, 60.95, 61.31],
     [63.62, 63.69, 63.76, 64.0, 64.17]
   ]
 }
