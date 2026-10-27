@@ -1368,7 +1368,10 @@
   // Working name of a long form: the story, plus LUMO for the LUMO cut.
   function workName(p) {
     const s = p.story || parseId(p).story
-    const name = s.replace(/-/g, " ").replace(/\b\w/g, (x) => x.toUpperCase())
+    // Capitalise word starts only, not the letter after an apostrophe ("Peter's", not "Peter'S").
+    const name = s
+      .replace(/-/g, " ")
+      .replace(/(^|\s)\w/g, (x) => x.toUpperCase())
     return /lumo/i.test(p.id) ? name + " LUMO" : name
   }
   function urlFor(p, k) {
