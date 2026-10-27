@@ -6,6 +6,7 @@ import { coreQuery } from "../core-client"
 import { CoreVideoOriginSchema } from "../schemas/video-origin"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 
 const PAGE_SIZE = 10000
 
@@ -78,28 +79,30 @@ export async function syncVideoOrigins({
     progress.setTotal(offset + origins.length)
 
     try {
-      let updated = 0
-      await prisma.$transaction(async (tx) => {
-        for (const origin of origins) {
-          await tx.videoOrigin.upsert({
-            where: { coreId: origin.id },
-            create: {
-              coreId: origin.id,
-              name: origin.name,
-              description: origin.description,
-              syncedAt: new Date(),
-            },
-            update: {
-              name: origin.name,
-              description: origin.description,
-              syncedAt: new Date(),
-              deletedAt: null,
-            },
-          })
-          updated++
-        }
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += updated
+      await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            for (const origin of origins) {
+              await tx.videoOrigin.upsert({
+                where: { coreId: origin.id },
+                create: {
+                  coreId: origin.id,
+                  name: origin.name,
+                  description: origin.description,
+                  syncedAt: new Date(),
+                },
+                update: {
+                  name: origin.name,
+                  description: origin.description,
+                  syncedAt: new Date(),
+                  deletedAt: null,
+                },
+              })
+            }
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-origins.page.${offset}` },
+      )
+      stats.updated += origins.length
     } catch (err) {
       stats.errors++
       console.error(

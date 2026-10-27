@@ -115,4 +115,109 @@ describe("syncDubDownloads", () => {
     )
     expect(prisma.videoDubDownload.updateMany).not.toHaveBeenCalled()
   })
+
+  it("retries a page transaction when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoVariantDownloads: [
+          {
+            id: "download-1",
+            updatedAt: "2026-05-07T00:00:00.000Z",
+            videoVariantId: "variant-1",
+            quality: "fhd",
+            size: 1000,
+            height: 1080,
+            width: 1920,
+            bitrate: 1200,
+            url: "download.mp4",
+          },
+        ],
+      },
+    } as never)
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: { videoVariantDownloads: [] },
+    } as never)
+
+    const tx = { $executeRaw: vi.fn().mockResolvedValue(1) }
+    const prisma = {
+      videoDub: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "dub-1", coreId: "variant-1" }]),
+      },
+      $transaction: vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+        })
+        .mockImplementationOnce(async (fn: (trx: typeof tx) => Promise<void>) =>
+          fn(tx),
+        ),
+      videoDubDownload: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncDubDownloads({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(stats.updated).toBe(1)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout transaction error", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoVariantDownloads: [
+          {
+            id: "download-1",
+            updatedAt: "2026-05-07T00:00:00.000Z",
+            videoVariantId: "variant-1",
+            quality: "fhd",
+            size: 1000,
+            height: 1080,
+            width: 1920,
+            bitrate: 1200,
+            url: "download.mp4",
+          },
+        ],
+      },
+    } as never)
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: { videoVariantDownloads: [] },
+    } as never)
+
+    const prisma = {
+      videoDub: {
+        findMany: vi
+          .fn()
+          .mockResolvedValue([{ id: "dub-1", coreId: "variant-1" }]),
+      },
+      $transaction: vi.fn().mockImplementationOnce(() => {
+        throw new Error("some other failure")
+      }),
+      videoDubDownload: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncDubDownloads({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
 })

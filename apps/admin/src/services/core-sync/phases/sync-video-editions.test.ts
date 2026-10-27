@@ -75,4 +75,81 @@ describe("syncVideoEditions", () => {
     )
     warnSpy.mockRestore()
   })
+
+  it("retries a page transaction when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoEditions: [
+          {
+            id: "edition-1",
+            name: "Standard",
+            updatedAt: "2026-05-06T00:00:00.000Z",
+          },
+        ],
+      },
+    } as never)
+
+    const tx = { $executeRaw: vi.fn().mockResolvedValue(1) }
+    const prisma = {
+      $transaction: vi
+        .fn()
+        .mockImplementationOnce(() => {
+          throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+        })
+        .mockImplementationOnce(async (fn: (trx: typeof tx) => Promise<void>) =>
+          fn(tx),
+        ),
+      videoEdition: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoEditions({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(stats.updated).toBe(1)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout transaction error", async () => {
+    mockedCoreQuery.mockResolvedValueOnce({
+      data: {
+        videoEditions: [
+          {
+            id: "edition-1",
+            name: "Standard",
+            updatedAt: "2026-05-06T00:00:00.000Z",
+          },
+        ],
+      },
+    } as never)
+
+    const prisma = {
+      $transaction: vi.fn().mockImplementationOnce(() => {
+        throw new Error("some other failure")
+      }),
+      videoEdition: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+      },
+    }
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoEditions({
+      prisma: prisma as never,
+      progress: { setTotal: vi.fn(), increment: vi.fn() },
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
 })

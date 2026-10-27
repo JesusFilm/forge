@@ -419,4 +419,57 @@ describe("syncVideoSubtitles", () => {
     expect(stats.errors).toBe(1)
     expect(prisma.$executeRaw).not.toHaveBeenCalled()
   })
+
+  it("retries a page transaction when Prisma reports P2024 pool pressure", async () => {
+    mockedCoreQuery
+      .mockResolvedValueOnce(coreRowsPage([coreSubtitle()]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+      .mockResolvedValueOnce(inventoryPage(["subtitle-core-1"]) as never)
+    const { prisma, tx } = harness({
+      activeCoreIds: [["subtitle-core-1"]],
+    })
+    prisma.$transaction = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw Object.assign(new Error("pool exhausted"), { code: "P2024" })
+      })
+      .mockImplementationOnce(async (fn: (trx: typeof tx) => Promise<void>) =>
+        fn(tx),
+      )
+    const warnSpy = vi
+      .spyOn(console, "warn")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+    expect(stats.updated).toBe(1)
+    expect(stats.errors).toBe(0)
+    warnSpy.mockRestore()
+  })
+
+  it("does not retry a non-pool-timeout transaction error", async () => {
+    mockedCoreQuery.mockResolvedValueOnce(
+      coreRowsPage([coreSubtitle()]) as never,
+    )
+    const { prisma } = harness()
+    prisma.$transaction = vi.fn().mockImplementationOnce(() => {
+      throw new Error("some other failure")
+    })
+    const errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined)
+
+    const stats = await syncVideoSubtitles({
+      prisma: prisma as never,
+      progress: progress(),
+    })
+
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    expect(stats.errors).toBeGreaterThanOrEqual(1)
+    errorSpy.mockRestore()
+  })
 })

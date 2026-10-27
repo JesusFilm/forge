@@ -9,6 +9,7 @@ import { coreQuery } from "../core-client"
 import { CoreVideoEditionSchema } from "../schemas/video-edition"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 const VIDEO_EDITIONS_QUERY = `
@@ -154,9 +155,13 @@ export async function syncVideoEditions({
         name: edition.name ?? "",
       }))
 
-      await prisma.$transaction(async (tx) => {
-        await bulkUpsertVideoEditions(tx, writes)
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
+      await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            await bulkUpsertVideoEditions(tx, writes)
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-editions.page.${offset}` },
+      )
       stats.updated += writes.length
     } catch (err) {
       stats.errors++

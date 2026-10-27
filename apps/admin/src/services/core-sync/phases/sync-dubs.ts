@@ -11,6 +11,7 @@ import { coreQuery, CoreGraphQLError } from "../core-client"
 import { CoreDubSchema } from "../schemas/dub"
 import { emptySyncStats } from "../types"
 import { CORE_SYNC_TRANSACTION_OPTIONS } from "../transaction-options"
+import { withPrismaPoolTimeoutRetry } from "../pool-timeout-retry"
 import { assertParallelArrayLengthsMatch, toPgArray } from "@/db/pgvector"
 
 // Page size sized to Core's resolver fan-out budget, not to client-side
@@ -377,111 +378,123 @@ export async function syncDubs({
     progress.setTotal(pageOffset + variants.length)
 
     try {
-      let pageUpdated = 0
-      let pageSkippedMissingVideo = 0
-      const missingVideoSamples: Array<{ dubId: string; videoId: string }> = []
-      await prisma.$transaction(async (tx) => {
-        const existingCoreDubs = await tx.videoDub.findMany({
-          where: { coreId: { in: variants.map((variant) => variant.id) } },
-          select: { coreId: true, source: true },
-        })
-        const managerOwnedCoreIds = new Set(
-          existingCoreDubs
-            .filter((dub) => dub.source === "MANAGER")
-            .map((dub) => dub.coreId),
-        )
-        const pageMuxVideos = new Map<
-          string,
-          {
-            id: string
-            coreId: string
-            assetId: string | null
-            playbackId: string | null
-          }
-        >()
+      const pageResult = await withPrismaPoolTimeoutRetry(
+        () =>
+          prisma.$transaction(async (tx) => {
+            let pageSkippedMissingVideo = 0
+            const missingVideoSamples: Array<{
+              dubId: string
+              videoId: string
+            }> = []
 
-        for (const variant of variants) {
-          if (variant.muxVideo) {
-            pageMuxVideos.set(variant.muxVideo.id, {
-              id: randomUUID(),
-              coreId: variant.muxVideo.id,
-              assetId: variant.muxVideo.assetId,
-              playbackId: variant.muxVideo.playbackId,
+            const existingCoreDubs = await tx.videoDub.findMany({
+              where: { coreId: { in: variants.map((variant) => variant.id) } },
+              select: { coreId: true, source: true },
             })
-          }
-        }
-        const muxVideoIdByCoreId = await bulkUpsertMuxVideos(
-          tx,
-          Array.from(pageMuxVideos.values()),
-        )
-        const pageDubs: DubWrite[] = []
+            const managerOwnedCoreIds = new Set(
+              existingCoreDubs
+                .filter((dub) => dub.source === "MANAGER")
+                .map((dub) => dub.coreId),
+            )
+            const pageMuxVideos = new Map<
+              string,
+              {
+                id: string
+                coreId: string
+                assetId: string | null
+                playbackId: string | null
+              }
+            >()
 
-        for (const variant of variants) {
-          const videoId = videoMap.get(variant.videoId)
-          if (!videoId) {
-            pageSkippedMissingVideo++
-            if (missingVideoSamples.length < 5) {
-              missingVideoSamples.push({
-                dubId: variant.id,
-                videoId: variant.videoId,
+            for (const variant of variants) {
+              if (variant.muxVideo) {
+                pageMuxVideos.set(variant.muxVideo.id, {
+                  id: randomUUID(),
+                  coreId: variant.muxVideo.id,
+                  assetId: variant.muxVideo.assetId,
+                  playbackId: variant.muxVideo.playbackId,
+                })
+              }
+            }
+            const muxVideoIdByCoreId = await bulkUpsertMuxVideos(
+              tx,
+              Array.from(pageMuxVideos.values()),
+            )
+            const pageDubs: DubWrite[] = []
+
+            for (const variant of variants) {
+              const videoId = videoMap.get(variant.videoId)
+              if (!videoId) {
+                pageSkippedMissingVideo++
+                if (missingVideoSamples.length < 5) {
+                  missingVideoSamples.push({
+                    dubId: variant.id,
+                    videoId: variant.videoId,
+                  })
+                }
+                continue
+              }
+
+              if (managerOwnedCoreIds.has(variant.id)) {
+                continue
+              }
+
+              const languageId = variant.language
+                ? (langMap.get(variant.language.id) ?? null)
+                : null
+              const videoEditionId = variant.videoEdition
+                ? editionMap.get(variant.videoEdition.id)
+                : undefined
+              const muxVideoId = variant.muxVideo
+                ? muxVideoIdByCoreId.get(variant.muxVideo.id)
+                : undefined
+
+              const updatedAt = variant.updatedAt
+                ? new Date(variant.updatedAt)
+                : new Date()
+
+              pageDubs.push({
+                id: randomUUID(),
+                coreId: variant.id,
+                videoId,
+                slug: variant.slug,
+                duration: String(variant.duration),
+                lengthInMilliseconds: variant.lengthInMilliseconds
+                  ? String(variant.lengthInMilliseconds)
+                  : null,
+                hls: variant.hls,
+                dash: variant.dash,
+                share: variant.share,
+                downloadable: String(variant.downloadable),
+                published: String(variant.published),
+                brightcoveId: variant.brightcoveId,
+                languageId,
+                videoEditionId: videoEditionId ?? null,
+                muxVideoId: muxVideoId ?? null,
+                updatedAt: updatedAt.toISOString(),
               })
             }
-            continue
-          }
 
-          if (managerOwnedCoreIds.has(variant.id)) {
-            continue
-          }
+            await bulkUpsertDubs(tx, pageDubs, {
+              refreshUnchangedRows: !since,
+            })
 
-          const languageId = variant.language
-            ? (langMap.get(variant.language.id) ?? null)
-            : null
-          const videoEditionId = variant.videoEdition
-            ? editionMap.get(variant.videoEdition.id)
-            : undefined
-          const muxVideoId = variant.muxVideo
-            ? muxVideoIdByCoreId.get(variant.muxVideo.id)
-            : undefined
-
-          const updatedAt = variant.updatedAt
-            ? new Date(variant.updatedAt)
-            : new Date()
-
-          pageDubs.push({
-            id: randomUUID(),
-            coreId: variant.id,
-            videoId,
-            slug: variant.slug,
-            duration: String(variant.duration),
-            lengthInMilliseconds: variant.lengthInMilliseconds
-              ? String(variant.lengthInMilliseconds)
-              : null,
-            hls: variant.hls,
-            dash: variant.dash,
-            share: variant.share,
-            downloadable: String(variant.downloadable),
-            published: String(variant.published),
-            brightcoveId: variant.brightcoveId,
-            languageId,
-            videoEditionId: videoEditionId ?? null,
-            muxVideoId: muxVideoId ?? null,
-            updatedAt: updatedAt.toISOString(),
-          })
-        }
-
-        await bulkUpsertDubs(tx, pageDubs, {
-          refreshUnchangedRows: !since,
-        })
-        pageUpdated += pageDubs.length
-      }, CORE_SYNC_TRANSACTION_OPTIONS)
-      stats.updated += pageUpdated
-      if (pageSkippedMissingVideo > 0) {
+            return {
+              pageUpdated: pageDubs.length,
+              pageSkippedMissingVideo,
+              missingVideoSamples,
+            }
+          }, CORE_SYNC_TRANSACTION_OPTIONS),
+        { operation: `core-sync.video-dubs.page.${pageOffset}` },
+      )
+      stats.updated += pageResult.pageUpdated
+      if (pageResult.pageSkippedMissingVideo > 0) {
         console.warn(
           JSON.stringify({
             event: "core-sync.video-dub.skipped-missing-videos",
             offset: pageOffset,
-            count: pageSkippedMissingVideo,
-            samples: missingVideoSamples,
+            count: pageResult.pageSkippedMissingVideo,
+            samples: pageResult.missingVideoSamples,
           }),
         )
       }
