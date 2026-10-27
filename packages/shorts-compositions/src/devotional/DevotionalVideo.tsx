@@ -2691,17 +2691,21 @@ function ClipIntro({
     // that eases as the contrast begins, and gone once the film has the frame.
     // With WATCH over the muted last shot (not the teaser), a lighter dim
     // holds until the film is heard.
+    // One spoken line before "Let's watch" makes starts[1] the watch line
+    // itself; ease to the lighter dim halfway there instead (a range that
+    // repeats a point throws).
+    const eased = starts.length > 2 ? starts[1]! : Math.min(2, watchAt / 2)
     const scrim =
       !cta && L - watchAt >= 1
         ? interpolate(
             t,
-            [0, starts[1] ?? 2, watchAt, L - 0.2, L + 0.5],
+            [0, eased, watchAt, L - 0.2, L + 0.5],
             [0.42, 0.26, 0.26, 0.2, 0],
             clampBoth,
           )
         : interpolate(
             t,
-            [0, starts[1] ?? 2, watchAt, watchAt + 0.8],
+            [0, eased, watchAt, watchAt + 0.8],
             [0.42, 0.26, 0.26, 0],
             clampBoth,
           )
