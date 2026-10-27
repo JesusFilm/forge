@@ -19,6 +19,29 @@ Baseline: main `b01e0ddca`, including
 [2533](https://github.com/JesusFilm/forge/pull/2533) and
 [2537](https://github.com/JesusFilm/forge/pull/2537).
 
+## October 27 current storage acceptance
+
+The [ordinary-cycle and capacity report](2026-10-27-recommendation-retention-cycle.md)
+records independent acceptance of the second loaded failure-free scheduled
+cycle, alongside October 23. Its 240 durable successes and two safe yields
+committed 6,111 request roots and 74,558 Watch exposures, with no recorded
+failures and a return to the next daily wake. All 26 families had zero
+more-than-24-hour expiry and their oldest current expiry was after the success
+cutoff. Aggregate ledger agreement does not imply per-attempt linkage, and nine
+extra inventory categories remain separate. Exact cycle-process attribution is
+unavailable; later healthy roles with unchanged tracked retention source do not
+replace missing historical observations.
+
+The two-cycle gate is met. Feat-554's continued operational-margin obligation
+and feat-756's larger-wave drainage/capacity obligation remain open: 876,967
+Watch rows were already expired or due through October 29 10:30 UTC, with
+7.478 GB free at the dated capacity check. First-wave deletion does not establish
+physical recovery or capacity for the larger horizon. The next existing daily
+observation will reconcile actual drainage, backlog age and relation/PGDATA/WAL
+headroom, or prompt evidence-backed protection if necessary. No extra fixed
+number of clean days, arbitrary memory gate or Datadog prerequisite is added.
+The four open scoped tickets and daily observer remain active.
+
 ## Current scope decision
 
 Retain bounded semantic/profile recommendations, approved co-watch/MMR,
@@ -111,7 +134,7 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 | [docs/roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md](../roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                 | cowatch     | Open, in-progress: fresh preflight-unavailable refusals reopened refresh verification in #2916; prior lifecycle acceptance remains historical.                                                     | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
 | [docs/roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md](../roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)           | fixtures    | Complete: fixed historical timestamps and current-schema fixture isolation, retaining production constraints and migrations.                                                                       | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
 | [docs/roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md](../roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | fixtures    | Open, in-progress: intermittent HNSW fixture failure remains unexplained; bounded local passes and failure diagnostics do not establish a fix.                                                     | [2595](https://github.com/JesusFilm/forge/pull/2595). Native PostgreSQL investigation and failure-only plan/settings evidence.                                                                                                                             |
-| [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: October 23 is one accepted loaded failure-free cycle; October 24–26 failed, and one further qualifying cycle is required.                                                       | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
+| [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: October 23 and 27 satisfy the two-cycle requirement; continued capacity margin under the larger approaching Watch expiry wave remains unproved.                                 | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
 | [docs/roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md](../roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md)                                     | storage     | Complete before this closeout: restrictive legacy-stage retirement and measured physical reclamation retained.                                                                                     | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
 | [docs/roadmap/platform/feat-574-recommendation-storage-efficiency.md](../roadmap/platform/feat-574-recommendation-storage-efficiency.md)                                                 | storage     | Complete: U1–U3 storage implementation, production representation checks and measured fixture savings verified.                                                                                    | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
 | [docs/roadmap/platform/feat-575-early-legacy-recommendation-retirement.md](../roadmap/platform/feat-575-early-legacy-recommendation-retirement.md)                                       | storage     | Complete before this closeout: authorized early legacy-detail retirement and physical disposal verified.                                                                                           | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
@@ -120,9 +143,9 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 
 The directly related October 23 addition brings the current inventory to 40 paths:
 
-| Ticket path                                                                                                                                | Owner   | Disposition and remaining work                                                                                                                                            | PR and evidence                                                                                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [docs/roadmap/platform/feat-756-watch-exposure-fortnight-retention.md](../roadmap/platform/feat-756-watch-exposure-fortnight-retention.md) | storage | Open, in-progress: new anonymous exposure expiry and reporting are deployed; the old stored-expiry cohort begins October 27 and still needs throughput/capacity evidence. | [October 23 rollout report](2026-10-23-watch-exposure-fortnight-rollout.md), PRs #2859–#2865 and #2876. No old-expiry backfill or physical recovery claimed. |
+| Ticket path                                                                                                                                | Owner   | Disposition and remaining work                                                                                                                          | PR and evidence                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [docs/roadmap/platform/feat-756-watch-exposure-fortnight-retention.md](../roadmap/platform/feat-756-watch-exposure-fortnight-retention.md) | storage | Open, in-progress: first-wave deletion of 74,558 Watch rows is verified; the larger 876,967-row due horizon still needs drainage and capacity evidence. | [October 23 rollout report](2026-10-23-watch-exposure-fortnight-rollout.md), PRs #2859–#2865 and #2876. No old-expiry backfill or physical recovery claimed. |
 
 ## Delivery, coverage, usage and lifecycle
 
