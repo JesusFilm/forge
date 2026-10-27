@@ -337,12 +337,24 @@ profile-session links and one pending profile erasure outside that total.
 
 Current diagnostics localize the failure to admitted projection-decision
 selection: 796 ms at admission, 808 ms in the operation, and 3 ms each for
-acquisition, lock and configuration. Astra owns a targeted efficiency repair,
-with representative scan/work measurements, full-drain correctness and
-nonexpired preservation. Parent owns independent review, merge and subsequent
-production coordination. No further manual invocation follows this stopped
-window before a reviewed correction is normally deployed. The normal deployment
-is required; no direct deploy/redeploy or local-code publication is authorized.
+acquisition, lock and configuration. The
+[selection repair receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-decision-selection-repair)
+records PR #2926's existing-index rewrite, guarded unlink and local work
+measurements. Independent exact-head review, 80 focused tests, 37 PostgreSQL
+tests, full Admin typecheck and all applicable PR checks passed before normal
+merge `50cb6a3e`. The initial composition timeout is retained alongside its
+unchanged fresh isolated passing rerun. Empty-parent probes remain linear, and
+local backend CPU does not prove production CPU per committed root.
+
+Parent owns normal deployment verification and production coordination with the
+separate Web event-recording repair. All three main workflows passed, and both
+actual Admin roles were verified on `50cb6a3e` at 03:18–03:19 UTC with healthy
+responses, compact mode and correct runner roles; the worker retains 16 GB.
+No cleanup has run on this repair yet. Independent review accepted the exact
+historical unfinished set as nonresumable, preserving its records and requiring
+fresh overlap checks for new work. Coordinate the Web rollout before the next
+bounded window.
+No direct deploy/redeploy or local-code publication is authorized.
 Underlying SQL/client cost and historical failure causation remain unproved,
 and a yield-only sequence does not prove completion.
 

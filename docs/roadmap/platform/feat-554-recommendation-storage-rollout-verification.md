@@ -91,6 +91,24 @@ efficiency. Keep shared-process measurements and the distinct profile
 reconciliation maintenance path clearly identified; no CPU-spike attribution
 is established.
 
+The [selection repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-decision-selection-repair)
+merged normally as `50cb6a3e` (PR #2926) after independent exact-head review,
+80 focused tests, 37 PostgreSQL tests, full Admin typecheck and all applicable
+PR checks. It uses existing expiry/reference indexes and guards the captured
+reference and current expiry before unlinking. The local sparse-match fixture
+reduced decision heap rows examined from 182,895 to seven, but empty-parent
+probes remain linear; this is not a global work bound or production CPU claim.
+The initial broader test timeout is retained alongside its unchanged isolated
+passing rerun. All three main workflows passed, and both actual Admin roles
+were verified on the exact merged revision at 03:18–03:19 UTC, with healthy
+responses, compact mode and correct runner roles. The worker retains 16 GB
+with no recorded OOM or limit events. No cleanup has yet run on this repair.
+The current 26-family inventory is 65,913, including 17,593 now-expired Watch
+exposures; the fixed cohort remains 37,442. Extra expired session links remain
+at least 1,001, while the one pending erasure is not stored-expired eligible.
+Keep this ticket in progress with the same ordinary-cycle requirement and
+remaining inventory.
+
 ## October 27 pre-work deadline correction
 
 An isolated PostgreSQL regression reproduced an additional boundary bug: after
