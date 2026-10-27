@@ -10,6 +10,7 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
+import { unlinkExpiredDecisionLinks } from "./retention-decision-links"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
 import { suppressCowatchForProfiles } from "./cowatch/privacy"
 import { purgeExpiredCowatchRefreshMetadata } from "./cowatch/refresh-retention"
@@ -691,25 +692,9 @@ export async function purgeExpiredRecommendationRequests(
     const expiredDecisionLinkPage = await phase(
       "projection_decision_unlink_page",
       async (tx) => {
-        const rows = await tx.recommendationPersonalizationDecision.findMany({
-          where: {
-            projectionGeneration: { is: { expiresAt: { lte: now } } },
-          },
-          orderBy: { requestId: "asc" },
-          take: batchSize,
-          select: { requestId: true },
-        })
-        rowCounts.expiredProjectionDecisionLinksUnlinked = rows.length
-          ? (
-              await tx.recommendationPersonalizationDecision.updateMany({
-                where: {
-                  requestId: { in: rows.map(({ requestId }) => requestId) },
-                },
-                data: { projectionGenerationId: null },
-              })
-            ).count
-          : 0
-        return rows.length
+        const page = await unlinkExpiredDecisionLinks(tx, now, batchSize)
+        rowCounts.expiredProjectionDecisionLinksUnlinked = page.unlinkedCount
+        return page.selectedCount
       },
     )
     const expiredGenerationPage = await phase(
