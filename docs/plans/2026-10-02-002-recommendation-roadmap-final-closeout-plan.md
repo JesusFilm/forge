@@ -440,3 +440,36 @@ PostgreSQL regressions and comparable local measurements. Parent owns the
 consolidated records, independent review, normal merge/deployment and any fresh
 cleanup dispatch. Do not substitute timeout widening, arbitrary admission or
 memory floors, or a successful health response for the required repair evidence.
+
+### October 27 projection-run selector repair
+
+The [projection-run selector repair](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-projection-run-selector-repair)
+merged normally as `e2a06589` (PR #2932) after independent exact-head review,
+91 focused tests, 44 PostgreSQL tests, full Admin typecheck and all applicable
+PR checks. Existing expiry/reference indexes replace the broad run scan, with
+captured-reference and current-expiry guards before unlinking. The root admission
+guard, five-second deadline and committed failure accounting remain unchanged.
+
+Sparse and high-fan-out local SELECT fixtures improve, while the 100,000-empty-parent
+fixture regresses from 153.544 to 303.414 ms. Parent probes remain linear; these
+measurements do not establish full-invocation or production CPU improvement, or
+prove that the observed P2028 cannot recur. All main workflows passed and both
+actual roles were verified on the exact merge with all source hashes, compact
+mode, correct runner roles and healthy responses. The release-bound operator
+amendment and fresh historical-execution proof passed independent review. Parent
+authorized one new bounded window with fresh per-pass checks; the revoked earlier
+windows remain revoked. Preserve the 1,550-root dated manual
+baseline, all four failed partial attempts, historical 301 separately and zero
+manual daily-cycle credit. Feat-554 retains its ordinary-cycle requirement.
+
+The [first-window outcome](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-decision-unlink-recurrence-after-projection-run-repair)
+stopped on a decision-unlink P2028 after two attempts committed 200 additional
+roots. The known manual total is 1,750, with five failed partial attempts retained.
+Pass one recorded positive run-link and decision-link progress; the failure in
+pass two does not identify SELECT versus UPDATE. Original postchecks passed,
+memory stayed below the actual limit without OOM or throttling, and the fixed
+cohort fell to 34,340. Backlog remains and no further cleanup is dispatched.
+Astra owns bounded read-only/local investigation of the common late-phase budget
+pattern and actual operation cost before a supported correction. Parent owns
+independent review, normal release and any fresh cleanup dispatch; the daily
+scheduler and read-only monitor remain enabled.
