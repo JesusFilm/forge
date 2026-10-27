@@ -39,3 +39,11 @@ export const RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS = 3_000
 // Issuing a served-surface window uses the 3-second evidence upstream budget.
 // Keep the browser boundary after that budget and admission/transit headroom.
 export const RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS = 4_500
+
+// A selection click waits at most 800 ms before navigating to the trusted
+// href. Its keepalive request may finish later, so Admin can acknowledge a
+// normal slow write without holding navigation or retrying a different event.
+// Leave admission and transit headroom beyond the Web-to-Admin timeout.
+export const RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS = 800
+export const RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS = 2_000
+export const RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS = 3_000

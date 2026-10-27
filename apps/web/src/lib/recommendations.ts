@@ -26,13 +26,13 @@ import {
   RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
 } from "@/lib/recommendation-timeouts"
 
 // Keep Admin delivery bounded below the browser's 12-second deadline, leaving
 // room for admission, serialization, network transit, and bounded retries.
 const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
-const SELECTION_UPSTREAM_TIMEOUT_MS = 700
 
 export async function issueWatchSurfaceDelivery(
   variables: AdminVariablesOf<typeof adminIssueWatchSurfaceDeliveryOperation>,
@@ -456,7 +456,7 @@ export async function selectSemanticRecommendation(
       mutation: adminSelectSemanticRecommendationOperation,
       variables,
       fetchPolicy: "no-cache",
-      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+      context: upstreamContext(RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS),
     }),
     "evidence_request_invalid",
   )
@@ -476,7 +476,7 @@ export async function selectPrivatePrecomputedRecommendation(
       mutation: adminSelectPrivatePrecomputedRecommendationOperation,
       variables,
       fetchPolicy: "no-cache",
-      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+      context: upstreamContext(RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS),
     }),
     "evidence_request_invalid",
   )

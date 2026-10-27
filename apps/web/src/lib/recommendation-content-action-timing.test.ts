@@ -5,6 +5,9 @@ import {
   RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS,
   RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS,
+  RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS,
+  RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_SURFACE_DELIVERY_BROWSER_DEADLINE_MS,
   RECOMMENDATION_SURFACE_EXPOSURE_BROWSER_DEADLINE_MS,
   RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
@@ -26,7 +29,8 @@ vi.mock("@/lib/recommendation-mutation-admission", () => ({
 const { POST } = await import("@/app/api/recommendations/content-actions/route")
 const { recordWatchShareAction } =
   await import("./recommendation-content-actions")
-const { recordWatchSurfaceExposure } = await import("./recommendations")
+const { recordWatchSurfaceExposure, selectSemanticRecommendation } =
+  await import("./recommendations")
 
 // Production content-action admission is a worker with a hard budget of
 // COMMAND_TIMEOUT_MS (connect) + COMMAND_TIMEOUT_MS (commands); see
@@ -182,6 +186,33 @@ describe("content-action timeout budgets", () => {
         RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS +
         TRANSIT_RESERVE_MS,
     )
+  })
+
+  it("keeps navigation short while the selection request can acknowledge a 900 ms Admin write", async () => {
+    expect(RECOMMENDATION_SELECTION_NAVIGATION_DEADLINE_MS).toBe(800)
+    expect(RECOMMENDATION_SELECTION_REQUEST_DEADLINE_MS).toBeGreaterThanOrEqual(
+      ADMISSION_BUDGET_MS +
+        RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS +
+        TRANSIT_RESERVE_MS,
+    )
+    mutate.mockImplementationOnce(
+      () =>
+        new Promise((resolve) =>
+          setTimeout(
+            () =>
+              resolve({
+                data: {
+                  selectSemanticRecommendation: { status: "accepted" },
+                },
+              }),
+            900,
+          ),
+        ),
+    )
+    const selection = selectSemanticRecommendation({} as never)
+    await vi.advanceTimersByTimeAsync(900)
+    await expect(selection).resolves.toEqual({ status: "accepted" })
+    expect(timeoutArgs).toEqual([RECOMMENDATION_SELECTION_UPSTREAM_TIMEOUT_MS])
   })
 
   it.each([
