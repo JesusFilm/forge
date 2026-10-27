@@ -1,8 +1,10 @@
 # Core Sync Recurring Job
 
 Admin runs Core Sync through the useworkflow runtime. The sync engine remains
-`runSync()`; the recurring path dispatches `runCoreSync` and the workflow step
-calls `runSync(syncPrisma, ...)`.
+`runSync()`; the recurring path dispatches `runCoreSyncQueued`, which hands
+each sync phase to the native phase worker
+(`executeNextCoreSyncPhase` in `src/services/core-sync/phase-execution.ts`),
+and that worker calls `runSync(syncPrisma, ...)`.
 
 ## Required Env
 
