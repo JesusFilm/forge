@@ -17,6 +17,121 @@ tags:
   - "operations"
 ---
 
+## October 27 capacity increase and resumed cleanup
+
+The user removed the operator-imposed 4 GB and no-rising-memory admission rules
+and authorized additional worker headroom. The existing production worker's
+memory limit was increased from 8 to 16 GB, with CPU unchanged at 8. Actual
+container enforcement and the API agree; the same process and deployment
+continued without restart or redeploy. Direct memory/OOM tracking replaces any
+Datadog prerequisite; no arbitrary replacement reserve applies.
+
+The first pass on the reviewed `ce23241a9` runtime committed 50 expired request
+roots, then yielded. All durable counters matched the CLI, and the manual wrapper
+succeeded without an error in 4,510 ms. Post-pass services were healthy, with
+zero OOM events, no lock waiters or long transactions and 8,030,261,248 free
+PGDATA bytes. The measured fixed cohort fell from 39,390 to 39,299; the later
+rolling expired inventory was 41,761 across 26 families. These inventories do
+not cover every cleanup category and do not prove complete drainage.
+
+The [current receipt and continuation policy](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-worker-capacity-and-resumed-deletion)
+supersede the old memory and stop-on-any-yield operator rules. Bounded distinct
+passes may continue after positive committed progress and matching ledgers;
+actual errors or uncertain results stop the window. The daily scheduler remains
+enabled. Keep this ticket in progress: October 23 supplies the only accepted
+ordinary loaded failure-free cycle, and manual passes add zero credit.
+
+The next window stopped after one failed pass at 00:21 UTC. Both ledgers
+record 100 further committed roots and a transaction-expiry failure (854 ms
+allowed, 870 ms elapsed); the exact failing statement is not retained. The
+fixed cohort then measured 38,861 and rolling current expiry 41,548. Services
+remained healthy on 16 GB capacity without OOM events. No second pass or replay
+followed in that window. A later distinct pass committed another 100 roots and
+yielded safely, bringing post-resize committed roots to 250. The fixed cohort
+then measured 38,431 and rolling current expiry 42,068; no global clearance or
+ordinary-cycle credit follows.
+
+The [post-configuration admission repair](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-post-configuration-admission-repair)
+merged normally as `742f25c2` (PR #2923) after independent exact-head review,
+57 focused and ten native tests, full Admin typecheck and green PR checks. It
+rechecks the existing 750 ms floor after successful configuration and before
+nonterminal work, retaining the five-second budget and genuine failures. The
+exact-base native regression fails and final code passes with no domain read
+after a local configuration delay. The earlier production failure's cause is
+still unproved; the speculative query/index change was excluded. Both actual
+roles now run the merged revision with matching source hashes and health;
+worker capacity remains 16 GB. All main CI, image and CodeQL checks passed,
+including the actual native retention and production-startup steps.
+
+The next bounded window committed another 250 roots across three passes:
+50 and 100 in acknowledged yields, then 100 before an actual third-pass
+failure. Post-resize committed roots therefore total 500 across six attempts;
+both failed partial attempts remain failures. The fixed cohort fell from
+38,431 to 37,442, and current expiry from 44,345 to 43,474 across 26 families.
+Separate bounded inventory also found at least 1,001 expired profile-session
+links and one pending profile erasure; these are outside that 26-family total.
+There is no global-clearance claim or additional ordinary-cycle credit.
+
+The safe failure receipt identifies `projection_decision_unlink_page`:
+796 ms remained at admission and the operation consumed 808 ms; acquisition,
+advisory lock and configuration each took 3 ms. The wrapper identifies
+`recommendationPersonalizationDecision.findMany` and an expired transaction
+(802 ms allowed, 812 ms elapsed). This localizes the current failure to an
+admitted operation, not configuration exhaustion; the underlying SQL/client
+cost and historical failure cause remain unproved. No fourth pass or replay
+followed. Astra owns the targeted efficiency repair before another coordinated
+manual window. Both services stayed healthy; 300 one-second samples found no
+OOM, memory-limit events or CPU-quota throttling on the 16 GB worker.
+
+The user's efficiency objective is separate from this correctness and capacity
+evidence: demonstrate less CPU/database work per committed expired row under a
+comparable workload, with useful progress and live-request-latency effects.
+Worker limits, sleeps, lower concurrency or longer timeouts alone do not prove
+efficiency. Keep shared-process measurements and the distinct profile
+reconciliation maintenance path clearly identified; no CPU-spike attribution
+is established.
+
+## October 27 pre-work deadline correction
+
+An isolated PostgreSQL regression reproduced an additional boundary bug: after
+an acknowledged root commit exhausts the cleanup budget, the next nonterminal
+admission throws before its safe-yield guard. The correction includes zero and
+negative budgets in that guard and finalizes only the ledger in a separate
+bounded transaction. It preserves committed counters and terminal states after
+uncertain acknowledgements; genuine operation and transaction failures remain
+failures. The full nine-test native standalone suite and 94 focused unit,
+scheduler, job and diagnostic tests pass locally. This is not proof of the SQL
+behind October 25–26 P2028 errors or of a production repair.
+
+Independent exact-head review and all applicable PR checks passed before normal
+merge `ce23241a9` on October 26 at 22:54:20 UTC. Main CI, production image and all
+four CodeQL analyses passed. The [release receipt](https://github.com/JesusFilm/forge/pull/2920#issuecomment-6429275387)
+records actual HTTP at 23:15:00.760 UTC and worker at 23:08:28.256 UTC, both on
+that exact revision with matching retention source hashes, health 200/ok,
+compact mode and the correct runner roles. These separate observations verify
+deployment; the finite observed ledger window contains zero attempts and does
+not establish post-release cleanup behavior.
+
+At 23:15:49 UTC, all 26 current health families contained 39,404 expired rows
+and zero over 24 hours overdue. The fixed 23:15:00.760 cohort had 39,390 rows at
+its separate read; the successful expiry cutoff remained 21:45:44.183 and
+includes manual success. Other cleanup categories, including owner releases and
+old retention-run ledgers, were not remeasured. The
+normal scheduler remained RUNNING without error, next wake October 27 at
+10:30 UTC. Historical unfinished ledgers were preserved. Separate 23:16 reads
+found PGDATA free 8,025,223,168 bytes and WAL 167,772,160, with no lock waiters or
+long transactions; no physical reclamation or whole-backlog completion follows.
+
+The user-requested GPT-6 Astra task owns the active repair and backlog follow-up;
+the previous storage task retains the existing daily read-only monitor. Manual
+drain was held at the 23:08 worker memory reading of 4,573,614,080 bytes,
+above the former 4 GB gate; no second sample or pass followed in that window.
+The later user decision and capacity/deletion receipt above supersede that hold.
+Keep this ticket in
+progress and retain October 23's one accepted cycle; manual work supplies no
+ordinary-cycle credit. The [active closeout plan](../../plans/2026-10-02-002-recommendation-roadmap-final-closeout-plan.md#october-27-retention-repair-and-astra-handoff)
+records the superseding backlog authorization and current operating policy.
+
 ## October 26 follow-up: continuing deletion with failures
 
 The independently reviewed [October 26 ledger receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6425467086)
@@ -40,8 +155,39 @@ cutoffs are not execution completion timestamps or current-backlog proof.
 deployed phase diagnostics after the October 24 incident. It is not a timeout
 fix. Static review found the leading-JSON log shape conflicts with the repository
 Railway logging convention; historical request-handler transport evidence does
-not prove loss from the scheduled worker. A bounded logging-envelope/consumer
-correction is in progress, with budgets, expiry and error semantics preserved.
+not prove loss from the scheduled worker. The bounded logging-envelope/consumer
+correction merged as [PR #2915](https://github.com/JesusFilm/forge/pull/2915),
+`f27980447bef1bc24c815553698501afb9f6bc2e`, after independent exact-head review
+and 28 terminal PR checks: 20 success and eight expected scope skips. The
+reviewer independently passed 44 unit/CLI tests, including malformed input and
+bounded stream parsing; applicable native PostgreSQL retention steps passed in
+CI. Budgets, expiry, error/yield classification and committed counters are
+unchanged. The [independently reviewed actual release receipt](https://github.com/JesusFilm/forge/pull/2915#issuecomment-6427366581)
+verified both Admin roles on descendant `63a1ccc40` at 20:59:48.987-20:59:53.009
+UTC, healthy/compact with correct runner roles and unchanged retention source.
+Replacement main CI, production image and all four CodeQL analyses passed;
+earlier main jobs cancelled by the later Co-watch push are not counted as green.
+This is not a timeout fix or another qualifying cycle.
+
+At 21:00:15, each independent ledger contained zero new attempts from 20:59:53,
+below its 10,001 cap. Its future 02:00 query bound does not extend the observation.
+A separate worker log window through 21:01:56 returned zero events; no loaded
+throughput or production failure-log execution/transport is proved. Scheduler
+ledger/runtime were RUNNING without error, next ordinary wake October 27 10:30
+UTC. The pre-release success cutoff remains 12:17:30.484.
+
+The 21:00-21:01 snapshots found **32,024 currently expired rows** across 26
+families, zero over 24 hours overdue, with both fixed daily-start cohorts clear.
+Eight additional fixed-expiry probes were zero; a separate pending-erasure
+probe found one request from 20:10:34.6 without an expiry guard, not an overdue
+eligibility result. Guarded baseline/experiment parents were eligible/held zero;
+generation-proof eligibility remains unmeasured. PGDATA free was 8,080,678,912
+bytes, WAL 184,549,376, with no lock waiters or long transactions. The first old
+Watch exposure expiry remains October 27 01:54:46.228 UTC; its capped recent
+sample does not prove the full distribution or the upcoming wave's throughput.
+No physical-reclamation or exhaustion forecast follows from these snapshots.
+The retained SQL definitions match the aggregate output, but prepared/not-executed
+headers mean the saved bundle alone does not prove exact invocation provenance.
 
 The worker separately returned 503 at 19:19:58 UTC, then 200/ok on two follow-ups
 on the same deployed revision/ID `605ff68e38`. Its initial response body was not

@@ -50,7 +50,8 @@ hidden in a successor ticket.
 ## Verification and sequencing
 
 Audit before edits; each implementer records a scoped plan before runtime changes.
-Independent areas use separate GPT-6 Sol chats, with no further delegation.
+Independent areas use separate GPT-6 Sol chats, with no further delegation;
+the October 27 user-requested retention handoff uses GPT-6 Astra.
 Shared production operations and merges belong to the coordinating owner.
 Children own their ticket files and evidence; root owns the consolidated record,
 policy, global index and cross-ticket dependency reconciliation.
@@ -241,13 +242,129 @@ independently reviewed: the fixed daily-start cohorts were clear across 26
 families, but 26,194 newly expired rows remained, with zero over 24 hours overdue.
 PGDATA had 7,503,618,048 free bytes; separate probe times and capped/missing
 surfaces limit inference. Preserve those limits in the linked checkpoint.
-Continue with the minimal logging-envelope and consumer correction for the
-confirmed repository format mismatch. PR #2900
+The minimal logging-envelope and consumer correction for the confirmed format
+mismatch merged as reviewed, green PR #2915 (`f27980447`); actual Admin HTTP and
+worker samples on descendant `63a1ccc40` were verified healthy/compact with
+correct runner roles at 20:59:48.987-20:59:53.009 UTC. PR #2900
 deployed diagnostics, not a timeout fix; worker log transport and the original
 timeout cause remain unproved. The transient worker 503 recovered on two health
 samples, with cause and child process/container continuity still unverified.
 No fault injection, timeout widening, direct deployment or manual cleanup is
-authorized. Require independent exact-head review, green checks and normal
-release verification for the logging change, without treating that release as
-retention acceptance. Preserve the daily monitor, separate October 27 Watch
-expiry-wave verification and unresolved HNSW fixture work.
+authorized. The independently accepted [release bundle](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-26-diagnostic-format-release)
+found zero new natural attempts at its 21:00:15 ledger snapshot and zero phase
+events in the separate bounded log window, so it does not prove production
+failure-log transport, loaded execution or retention acceptance. Continue the
+existing daily monitor with the new parser and actual release. Preserve the
+separate October 27 Watch expiry-wave verification
+and unresolved HNSW fixture work. The later Co-watch PR #2916 reopened feat-573;
+current scope is 40 paths, **11 complete, 25 cancelled and four open**. Its owner
+remains the existing Co-watch release task; do not duplicate its work or treat
+its separate statement-timeout change as a retention change. Replacement main
+CI, production image and all four CodeQL analyses passed; the cancelled older
+merge jobs remain cancelled. One further qualifying ordinary loaded cycle is
+required, with fresh genuine failures routed to bounded diagnosis.
+
+### October 27 retention repair and Astra handoff
+
+The user explicitly authorized clearing the remaining stored-expired backlog,
+repairing cleanup failures and transferring that work to GPT-6 Astra task
+`01a17a53-3d0b-7b51-806c-78af8d6cfc3c`. The previous storage owner stopped edits
+and manual operations and retains only its existing daily read-only monitor.
+Parent continues independent review assignments, exact-head merges and shared
+production coordination. No duplicate task, scheduler or monitor is required.
+
+The [current correction and handoff](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-exhausted-budget-correction-and-cleanup-handoff)
+records PR #2920's reproduced pre-work exhaustion defect, 94 focused and nine
+native PostgreSQL tests, independent exact-head approval and green normal merge
+`ce23241a9`. Preserve the five-second cleanup budget, committed counters, unknown
+backlog on yield, unchanged success watermark and actual-error semantics.
+Historical P2028 SQL remains unproved. Both actual Admin roles were verified on
+exact `ce23241a9` with matching source hashes, health, compact mode and correct
+runner roles at separate 23:08 worker and 23:15 HTTP observations. Main CI,
+production image and all four CodeQL analyses passed. The finite ledger window
+contained zero attempts; the release establishes no loaded deletion behavior.
+
+The user's later October 27 instruction removes the operator-imposed 4 GB
+admission threshold and no-rising-memory rule. Those rules in earlier dated
+receipts are historical, not current prerequisites. Do not replace them with an
+arbitrary reserve. Datadog access and a completed memory root-cause diagnosis are
+also not prerequisites. Track actual container memory, its enforced limit and
+OOM events directly, alongside service health, correct deployed revision/roles,
+PGDATA above 5 GB and no competing cleanup, lock waiter or long transaction.
+
+The user authorized additional headroom or a dedicated worker. The existing
+production worker was increased from 8 to 16 GB with CPU unchanged at 8, within
+the verified 24 GB plan allowance. API readback and the running container's
+actual limit both confirmed 16,000,000,000 bytes. The same PID 1, process start
+and deployment remained; no restart or redeploy was issued. The first subsequent
+pass committed 50 expired request roots and yielded safely, with matching
+durable counts and a successful manual wrapper. See the
+[capacity and deletion receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-worker-capacity-and-resumed-deletion).
+
+The later explicit backlog request supersedes the older no-further-manual-work
+instructions in the dated checkpoints above. A parent-reviewed admitted window
+may run at most five individually reconciled deployed expired-only passes or
+five minutes. A committed positive-progress budget yield may continue into a
+distinct next pass after both ledgers reconcile; this supersedes the earlier
+stop-on-any-yield operator rule. Stop on an actual error, uncertainty, mismatched
+counts, unhealthy service or OOM/limit events, competing execution, unsafe
+database/capacity conditions or no progress.
+Use the reviewed exclusive-attempt recorder, preserve expected exit-3 payloads
+and never replay an uncertain invocation. No manual pass is authorized merely
+by the read-only verification assignment or the existing daily heartbeat.
+
+The next window stopped on its first pass at 00:21 UTC: both ledgers failed
+after 100 further committed roots, with an expired transaction reporting
+854 ms allowed versus 870 ms elapsed. No second pass or replay followed.
+A later distinct pass committed another 100 roots and yielded safely; total
+post-resize committed roots are 250 across three invocations. Do not reclassify
+the earlier failure as a safe yield or a memory-admission hold.
+
+The [post-configuration repair receipt](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-post-configuration-admission-repair)
+records separately proven missing admission logic, native exact-base RED/final
+GREEN, independent review and green normal merge `742f25c2` (PR #2923). The
+speculative query/index migration was excluded. Both actual roles now run that
+revision with matching source hashes, health and correct configuration; the
+worker retained 16 GB through the normal rollout. All main CI, image and CodeQL
+checks passed, including actual native retention and production-startup steps.
+The next bounded window committed another 250 roots across three attempts:
+two acknowledged yields (50 and 100), then a genuine failure after 100 further
+committed roots. Post-resize committed roots total 500; neither failed partial
+attempt is reclassified. No fourth pass or replay followed. The fixed cohort
+fell from 38,431 to 37,442, and current expiry from 44,345 to 43,474 across 26
+families; additional bounded inventory found at least 1,001 expired
+profile-session links and one pending profile erasure outside that total.
+
+Current diagnostics localize the failure to admitted projection-decision
+selection: 796 ms at admission, 808 ms in the operation, and 3 ms each for
+acquisition, lock and configuration. Astra owns a targeted efficiency repair,
+with representative scan/work measurements, full-drain correctness and
+nonexpired preservation. Parent owns independent review, merge and subsequent
+production coordination. No further manual invocation follows this stopped
+window before a reviewed correction is normally deployed. The normal deployment
+is required; no direct deploy/redeploy or local-code publication is authorized.
+Underlying SQL/client cost and historical failure causation remain unproved,
+and a yield-only sequence does not prove completion.
+
+Continue observing both ledgers, all 26 current retention-health families,
+expiry cohorts, success watermark and capacity. Those 26 families do not cover
+every cleanup category, so neither their count nor a yield-only sequence proves
+global clearance. Keep memory diagnosis separate from the active drain.
+
+The user's later efficiency objective requires less CPU and database work per
+committed expired row while making useful drain progress. Added capacity and
+the admission-boundary correction are separate outcomes, not efficiency proof.
+Measure costly selection scans, joins, FK/cascade work, waits and repeated or
+rolled-back work before choosing an optimization. Compare committed rows per
+elapsed time and CPU under comparable workloads, with effects on live request
+latency. Shared-worker CPU and health-probe latency are contextual measurements,
+not isolated deletion cost or live-request latency. Profile eligibility
+reconciliation is a separate maintenance path; do not attribute its failures or
+the reported CPU spike to retention without evidence.
+
+Keep feat-554 in progress until one further qualifying ordinary loaded,
+failure-free cycle supplements October 23. Preserve the Watch exposure wave,
+HNSW fixture and separate Co-watch work without claiming them closed. Update
+release receipts and the same daily monitor with actual deployed evidence;
+keep the expired outage monitor paused and the scope at 11 complete,
+25 cancelled and four open until new acceptance evidence supports a change.

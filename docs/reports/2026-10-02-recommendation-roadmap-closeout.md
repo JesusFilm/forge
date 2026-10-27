@@ -1,9 +1,13 @@
 # Recommendation roadmap closeout
 
 Owner authorization: October 2, 2026 (Pacific/Auckland). The reconciled scope is
-**12 complete, 25 cancelled and three open** across 40 ticket paths. The October 23 addition is platform feat-756, the directly related fortnightly Watch exposure retention rollout; it does not replace feat-554. The original
-38-path scope still has only platform feat-554 open for retention repair and
-future daily-cycle evidence.
+**11 complete, 25 cancelled and four open** across 40 ticket paths. The October 23
+addition is platform feat-756, the directly related fortnightly Watch exposure
+retention rollout; it does not replace feat-554. The separate October 27 NZDT
+Co-watch follow-up in [#2916](https://github.com/JesusFilm/forge/pull/2916) reopened
+feat-573 after fresh preflight-unavailable refusals. The original 38-path scope
+now has feat-554 and feat-573 open; coverage acceptance and cancellations are
+unchanged.
 The newly discovered intermittent HNSW CI failure is tracked separately in
 content-discovery feat-609; no feat-554 acceptance was moved to that ticket.
 The record and final dependency/index reconciliation
@@ -34,21 +38,24 @@ not override these explicit current decisions.
 
 ## Ownership and review
 
-Only the coordinating chat delegates and merges. All execution owners use
-GPT-6 Sol and isolated worktrees without further delegation. Existing co-watch
-and storage owners retain shared-operation responsibility. Production publication
-uses reviewed PR-to-main releases. The original dirty checkout is preserved.
+Only the coordinating chat delegates and merges. Execution owners use GPT-6 Sol,
+except for the retention repair owner explicitly requested on GPT-6 Astra on
+October 27. Owners use isolated worktrees without further delegation. The
+existing storage task retains daily read-only observation; Astra owns the active
+retention repair and coordinated manual cleanup. Production publication uses
+reviewed PR-to-main releases. The original dirty checkout is preserved.
 
-| Area        | Owner chat                             |
-| ----------- | -------------------------------------- |
-| root        | `01a0f9a4-577b-7332-9fea-7db1660861fa` |
-| cowatch     | `01a0f3c7-3cf2-7540-a991-748579724e60` |
-| storage     | `01a0e490-2d64-7013-8a95-a4f4015e26e0` |
-| fixtures    | `01a0f9a9-8860-7982-8c12-d9f495f42c93` |
-| watch       | `01a0f9a9-8e25-7fd1-8ec1-7a279f5cf85f` |
-| clients     | `01a0f9a9-93e1-7911-8334-9cd812ba9b47` |
-| measurement | `01a0f9a9-99cd-7a90-823c-c709b9687f5c` |
-| roadmap     | `01a0f9aa-e1ef-7831-a7d0-973ebc15fcf8` |
+| Area             | Owner chat                             |
+| ---------------- | -------------------------------------- |
+| root             | `01a0f9a4-577b-7332-9fea-7db1660861fa` |
+| cowatch          | `01a0f3c7-3cf2-7540-a991-748579724e60` |
+| storage          | `01a17a53-3d0b-7b51-806c-78af8d6cfc3c` |
+| storage observer | `01a0e490-2d64-7013-8a95-a4f4015e26e0` |
+| fixtures         | `01a0f9a9-8860-7982-8c12-d9f495f42c93` |
+| watch            | `01a0f9a9-8e25-7fd1-8ec1-7a279f5cf85f` |
+| clients          | `01a0f9a9-93e1-7911-8334-9cd812ba9b47` |
+| measurement      | `01a0f9a9-99cd-7a90-823c-c709b9687f5c` |
+| roadmap          | `01a0f9aa-e1ef-7831-a7d0-973ebc15fcf8` |
 
 Independent documentation review belongs to chat
 `01a0f9b3-2420-7013-816d-13a36bd03adc`; fixture/CI and roadmap code review to
@@ -101,7 +108,7 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 | [docs/roadmap/content-discovery/feat-564-cached-watch-public-navigation-authority.md](../roadmap/content-discovery/feat-564-cached-watch-public-navigation-authority.md)                 | watch       | Cancelled: optional cached public-navigation alias coverage is not selected; ambiguous manifests/denominators remain withheld.                                                                     | [2538](https://github.com/JesusFilm/forge/pull/2538). Ticket contains dated scope and 353 focused-test results.                                                                                                                                            |
 | [docs/roadmap/content-discovery/feat-565-implemented-shadow-recommendation-promotion.md](../roadmap/content-discovery/feat-565-implemented-shadow-recommendation-promotion.md)           | cowatch     | Complete: direct co-watch/MMR authority and supported fallback verified independently of any study.                                                                                                | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
 | [docs/roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md](../roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md)                   | measurement | Cancelled: nine historical evidence gaps reviewed individually; extra forensic/correlation campaign retired, causes unrecovered and fresh errors still actionable.                                 | [2539](https://github.com/JesusFilm/forge/pull/2539). Ticket-specific D1–D9 dispositions and [historical evidence gaps](../operations/recommendation-evidence-closeout-decisions-2026-09-29.md).                                                           |
-| [docs/roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md](../roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                 | cowatch     | Complete: bounded refresh/revocation/throttle lifecycle verified; next natural post-revocation replacement remains unobserved.                                                                     | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
+| [docs/roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md](../roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                 | cowatch     | Open, in-progress: fresh preflight-unavailable refusals reopened refresh verification in #2916; prior lifecycle acceptance remains historical.                                                     | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
 | [docs/roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md](../roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)           | fixtures    | Complete: fixed historical timestamps and current-schema fixture isolation, retaining production constraints and migrations.                                                                       | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
 | [docs/roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md](../roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | fixtures    | Open, in-progress: intermittent HNSW fixture failure remains unexplained; bounded local passes and failure diagnostics do not establish a fix.                                                     | [2595](https://github.com/JesusFilm/forge/pull/2595). Native PostgreSQL investigation and failure-only plan/settings evidence.                                                                                                                             |
 | [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: October 23 is one accepted loaded failure-free cycle; October 24–26 failed, and one further qualifying cycle is required.                                                       | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
@@ -592,9 +599,9 @@ snapshot retained the daily next wake at October 27 10:30 UTC.
 
 [PR #2900's actual release](https://github.com/JesusFilm/forge/pull/2900#issuecomment-6385131395)
 installed phase diagnostics after the October 24 failure. It did not fix a proven
-timeout cause. A newly confirmed static logging-format/consumer mismatch is
-being corrected separately; historical Railway request-handler evidence does
-not establish missing worker records. A transient worker 503 at 19:19:58 recovered
+timeout cause. The newly confirmed logging-format/consumer mismatch was corrected in #2915,
+with the actual release recorded below; historical Railway request-handler
+evidence does not establish missing worker records. A transient worker 503 at 19:19:58 recovered
 to 200/ok on two checks of the same deployed revision/ID, but the uncaptured
 initial body and absent child identity leave cause and process/container
 continuity unverified. No Redis/retention causality is claimed.
@@ -611,10 +618,294 @@ the first stored expiry at October 27 01:54:46.228 UTC; the old-wave throughput
 and capacity requirement remains open. A service health response is not a
 retention-health result, and missing filtered phase logs do not prove no errors.
 The [feat-554 checkpoint](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md#october-26-follow-up-continuing-deletion-with-failures)
-retains the probe/cap, acceptance and transport limits. Scope remains **12 complete,
-25 cancelled and three open**; feat-756 and feat-609 retain their separate
-requirements. Keep the daily monitor active and the expired outage monitor
-paused. No manual cleanup or direct deployment follows from this receipt.
+retains the probe/cap, acceptance and transport limits. Subsequent #2916 reopened
+feat-573, bringing the current scope to **11 complete, 25 cancelled and four
+open**. Feat-756 and feat-609 retain their separate requirements. Keep the daily
+monitor active and the expired outage monitor paused. No manual cleanup or
+direct deployment follows from this receipt.
+
+### October 26 diagnostic-format release
+
+[PR #2915](https://github.com/JesusFilm/forge/pull/2915#issuecomment-6426563731)
+merged normally at 20:25:18 UTC as `f27980447bef1bc24c815553698501afb9f6bc2e`.
+Its exact reviewed head `5964d4806` passed all 28 PR checks: 20 success and eight
+expected scope skips, including executed native PostgreSQL retention steps.
+Independent review passed 44 focused unit/CLI tests and a split UTF-8/oversized
+line check. The repair makes bounded sanitized failure logs consumable without
+changing retention expiry, transaction/pass budgets, ledgers or error semantics.
+It does not establish the production timeout cause or earn cycle credit.
+
+The later Co-watch merge `63a1ccc40` preserves the retention service, diagnostic
+formatter, parser, scheduler and job byte-for-byte. Its push cancelled two
+unfinished `f27980447` main-CI jobs under the existing concurrency rule; those
+jobs are not passing validation. Replacement forge-ci `40396568321`, including
+the native retention steps, production-image `40396568323`, and all four CodeQL
+analyses in `40396566760` passed. No retry or direct deployment was used to force
+convergence. Co-watch's
+separate graph-statement budget change does not authorize changing retention's
+guards.
+
+The [independently accepted actual release](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6427367206)
+sampled both Admin roles on `63a1ccc40` at 20:59:48.987-20:59:53.009 UTC, health
+200/ok, compact and correct HTTP/worker runner roles. At 21:00:15 both independent
+ledgers had zero new attempts from 20:59:53; a future query bound is not future
+evidence. The separate log window through 21:01:56 had zero phase events. These
+observations do not establish loaded cleanup or execution/transport of the new
+error-log path in that window. The
+scheduler returned to its ordinary October 27 10:30 UTC wake, with the success
+cutoff still predating release.
+
+Current expiry was 32,024 rows across 26 families, zero over 24 hours overdue;
+the fixed daily-start cohorts were clear. A separate pending-erasure probe
+returned one recent request without a stored-expiry guard, and generation-proof
+eligibility remains unmeasured. PGDATA free was 8,080,678,912 bytes and WAL
+184,549,376 at separate measurement times; no global-empty or physical-recovery
+claim is made. The receipt retains sample caps, source-definition provenance
+limits and the upcoming Watch expiry-wave obligation. Keep feat-554 open with
+one qualifying cycle and the existing daily monitor active. The expired outage
+monitor remains paused; this release grants no new daily-cycle credit.
+
+### October 27 exhausted-budget correction and cleanup handoff
+
+The owner explicitly requested a dedicated GPT-6 Astra task to fix cleanup and
+clear the stored-expired backlog. The preceding storage task stopped edits and
+manual invocations; its existing daily monitor remains read-only. Parent retains
+independent review, normal merges and shared production coordination. These
+later cleanup requests authorize bounded expired-only recovery, subject to fresh
+admission evidence; the historical one-pass-only restrictions above do not
+cancel that authorization.
+
+[PR #2920](https://github.com/JesusFilm/forge/pull/2920) fixes a reproduced
+pre-work boundary defect: zero or negative remaining budget previously threw
+before the nonterminal safe-yield guard. Yield finalization now uses a separately
+bounded ledger-only transaction with RUNNING-state compare-and-set and durable
+counter validation. A result is yielded only after commit acknowledgement;
+genuine operation, transaction and bookkeeping errors remain failures. An
+uncertain acknowledgement cannot overwrite a committed terminal ledger. The
+five-second cleanup budget remains unchanged.
+
+The exact [reviewed head](https://github.com/JesusFilm/forge/pull/2920#issuecomment-6429116796)
+`da3104825` passed 94 focused tests, nine native PostgreSQL 18 tests, Admin lint,
+typecheck, full format and normal hooks. The native regression fails on the
+unmodified base. All applicable PR checks passed, including the actual native
+retention steps, production image and all four CodeQL analyses; seven unrelated
+scope/event jobs were expected skips. Normal squash merge `ce23241a9` completed
+October 26 at 22:54:20 UTC with the same reviewed tree. Main forge-ci, production
+image and all four CodeQL analyses subsequently passed. The [release receipt](https://github.com/JesusFilm/forge/pull/2920#issuecomment-6429275387)
+records actual HTTP verification at 23:15:00.760 UTC and worker verification at
+23:08:28.256 UTC, both on exact `ce23241a9` with matching retention source hashes,
+health 200/ok, compact mode and the correct runner roles. These are separate
+recorded observations, not a simultaneous sample.
+This correction does not identify the SQL behind the historical P2028 failures.
+
+Two earlier authorized manual invocations committed 200 request roots in total;
+the second yielded safely. The last completed drainage window still had 35,168
+rows in its fixed expired cohort and 35,730 currently expired rows at different
+measurement times. These counts do not establish whole-backlog clearance or
+physical disk recovery. The later read-only release snapshot at 23:15:49 UTC
+found 39,404 currently expired rows across all 26 current retention-health
+families and zero over 24 hours overdue; its separately measured fixed
+23:15:00.760 cohort contained 39,390 rows. Other expiry categories outside these
+26 families were not remeasured, including owner-release and old retention-run
+ledger cleanup categories, so no global backlog claim is supported.
+
+Both bounded ledgers contained zero attempts in the observed window from the
+worker's first verification at 23:04:57.764 through 23:15:41.021866 UTC; caps were
+not reached. Most of that window precedes final HTTP verification. There is no
+observed post-release deletion behavior. The successful expiry cutoff remained
+21:45:44.183, includes manual success and is not execution completion or daily
+cycle credit. The existing scheduler ledger and runtime remained RUNNING without
+error, with next wake October 27 at 10:30 UTC. Historical unfinished entries
+(23 durable and three wrappers) were preserved without replay or rewriting.
+
+At the separate 23:16 capacity readings, PGDATA had 8,025,223,168 free bytes,
+WAL 167,772,160 bytes, and lock waiters and long transactions were zero. Watch
+exposure had zero expired rows in the backlog snapshot and an 8,300,552,192-byte
+relation, with first stored expiry October 27 at 01:54:46.228 UTC. These are
+dated observations, not a disk-reclamation or future-capacity forecast.
+
+Admission was held at the 23:08:28 worker reading: 4,573,614,080 bytes
+of 8 GB exceeded the then-current 4 GB gate despite health 200/ok and zero OOM kills.
+The HTTP rollout was incomplete at that admission snapshot and verified later;
+No second admission sample or manual pass followed in that release-verification
+window, which made no production mutations. The subsequent user decision below
+supersedes this operator-imposed memory gate.
+
+Reconcile each bounded expired-only pass under the current operating policy
+below. Do not delete ahead of stored expiry or widen timeouts. The October 27
+Watch expiry wave and capacity proof remain separate requirements. October 23
+still supplies the only accepted ordinary loaded failure-free cycle; manual
+passes add no credit. Keep feat-554 and feat-756 open, the daily monitor active
+and the expired outage monitor paused. The scope remains 11 complete,
+25 cancelled and four open; accepted coverage and unmeasured usefulness are
+unchanged.
+
+### October 27 worker capacity and resumed deletion
+
+The [independently reviewed operating receipt](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6430556334)
+records the user's removal of the 4 GB and no-rising-memory admission rules and
+authorization of additional worker headroom or a dedicated worker. No arbitrary
+replacement reserve applies. Direct container memory and OOM measurements are
+sufficient for operational tracking; Datadog and a completed allocation
+diagnosis are optional. Earlier holds remain dated history.
+
+The existing production `@forge/admin/worker` limit changed from 8 to 16 GB,
+with CPU unchanged at 8 and the plan's 24 GB allowance verified first. Both the
+API and actual container confirmed 16,000,000,000 bytes. At 00:13:45.045 UTC,
+the worker used 6,014,173,184 bytes with zero OOM kills; PID 1/start time and
+deployment were unchanged. No restart, redeploy, new service or heap-setting
+change was issued. Actual HTTP and worker remained healthy, compact, on
+`ce23241a9` with the expected source hash and correct runner roles.
+
+The first authorized pass started at 00:14:39.167 UTC and committed **50 request
+roots**, then returned expected CLI exit 3 with continuation required. Its
+durable ledger recorded `SKIPPED/budget_yield`; every deletion counter matched
+the CLI. The sole manual wrapper succeeded without an error in 4,510 ms. This
+is committed partial deletion, not complete cleanup or a new success watermark.
+The fixed October 26 23:15:00.760 cohort fell from 39,390 to 39,299 eligible
+rows across the 26 measured families. That inventory differs from deletion
+counter coverage. Rolling expired inventory was 41,761 at its later read,
+including newly expired arrivals, with zero more than 24 hours overdue.
+
+Ninety direct one-second container samples had a sampled peak of 4,322,250,752
+bytes, the same worker process and a 16 GB enforced limit, with no OOM or limit
+events. This is sampled whole-container memory, not isolated CLI allocation or
+a continuous maximum. Post-pass checks found both roles healthy, no lock waiters
+or long transactions, and 8,030,261,248 free PGDATA bytes. No disk-reclamation
+claim follows. Immutable evidence is retained under the Astra task's
+`outputs/capacity`, `outputs/release/actual-capacity16verified.json` and
+`outputs/onepass20261027`; the latter's 34-file manifest was independently
+verified by the parent.
+
+Parent authorized continuation in windows of at most five distinct passes or
+five minutes, with exclusive attempt recording and both-ledger reconciliation
+after each. A matching committed positive-progress yield permits the next
+distinct pass. Actual errors, uncertainty, mismatched counts, no progress,
+unhealthy service/OOM/limit events, competing cleanup or unsafe database/capacity
+conditions stop the window. The removed memory rules do not reappear as gates.
+
+The next window stopped after its first distinct invocation at 00:21 UTC.
+Both ledgers record a real failure after **100 further committed request roots**,
+plus 100 each of profile projection runs, contributions and interests. The
+manual wrapper failed in 5,102 ms. The saved error reports an already expired
+transaction: 854 ms allowed versus 870 ms elapsed; it does not retain an explicit
+Prisma error code or failing phase. The recorder did not retain failed CLI
+stdout/stderr, so the exact statement is unproved. No second pass or replay
+followed. The fixed cohort fell from 39,299 to 38,861; rolling current expiry
+was 41,548 at its later read, with zero over 24 hours overdue. Both services
+remained healthy on the same release/process, worker memory was 4.702 GB of
+16 GB with zero OOM kills, and PGDATA had approximately 8.044 GB free. This is
+a database transaction failure requiring investigation, not reinstatement of a
+removed memory rule. Astra owns the residual transaction-expiry repair; no
+further manual invocation is currently authorized until reconciliation and
+parent coordination of the correction.
+
+The normal daily scheduler remains enabled at 10:30 UTC; the existing daily
+monitor remains read-only. Manual passes earn zero ordinary-cycle credit, so
+feat-554 remains in progress and global expired-backlog clearance is unproved.
+
+### October 27 post-configuration admission repair
+
+A [later distinct manual pass](https://github.com/JesusFilm/forge/pull/2541#issuecomment-6430999381)
+committed another 100 request roots with matching durable counters and a
+successful 4,535 ms wrapper, then yielded. The fixed cohort fell to 38,431 and
+rolling current expiry measured 42,068 across 26 families, with zero more than
+24 hours overdue. This brought post-resize committed roots to 250 across three
+invocations, including the earlier failed partial attempt. Both roles remained
+healthy, the worker enforced 16 GB with no OOM/limit events, and PGDATA had
+8,030,769,152 bytes free. The successful expiry cutoff did not advance; manual
+work earns zero ordinary-cycle credit.
+
+The initial query/index experiment was excluded from release. Its extreme-skew
+fixture improved with a composite index, but a catalog-like distribution ran
+both query shapes in approximately 3.3 ms using the existing index. One bounded
+production `EXPLAIN` without `ANALYZE` confirmed the request-order scan shape,
+not actual rows scanned, timing or the cause of the earlier failure. No index
+migration, production `ANALYZE` or fault injection followed.
+
+[PR #2923](https://github.com/JesusFilm/forge/pull/2923) instead fixes a separately
+reproduced admission boundary: after successful timeout configuration, a
+nonterminal phase now rechecks the existing 750 ms floor before starting its
+domain operation. The five-second budget and actual-error semantics remain
+unchanged. A native PostgreSQL 18/Prisma 6.19.3 regression adds a local 5,100 ms
+client acknowledgement delay. Against exact base `054c24b38`, it attempts the
+domain read on an expired transaction and fails; with the final code, no domain
+read begins, the ledger commits `SKIPPED/budget_yield`, backlog remains unknown
+and the success cutoff is unchanged. This proves the missing boundary, not the
+cause of the historical production 854/870 ms failure.
+
+Independent review approved exact head `03b9788a` and its five-file scope.
+Fifty-seven focused tests, ten native tests, full Admin typecheck, normal hooks
+and all applicable PR checks passed, including the actual native retention
+steps, production image and all four CodeQL analyses. Normal squash merge
+`742f25c2` completed at 01:18:13 UTC with the identical reviewed tree. Actual
+HTTP at 01:26:39.874 and worker at 01:26:43.858 both ran that exact revision with
+matching runtime and diagnostics source hashes, health 200/ok, compact mode and
+correct runner roles. The normal rollout changed process identities; the worker
+retained its actual 16 GB limit and had zero OOM kills. Main CI `40431771400`,
+image `40431771567` and CodeQL `40431770882` all passed: 17 required jobs
+succeeded and eight conditional jobs were expected skips. The actual native
+retention and production migration/startup steps succeeded. Fresh actual-role
+checks at 01:35:40–44 UTC confirmed the same release before cleanup. The parent
+verified the release's 23-artifact manifest. The reviewed local recorder
+preserves safe failure diagnostics and stops on incomplete capture without replay.
+
+The subsequent window attempted exactly three distinct expired-only passes.
+The first two yielded with matching CLI/durable counters, committing 50 and
+100 request roots with successful wrappers in 4,404 and 4,623 ms. The third
+failed in 5,087 ms after another **100 committed roots**; its durable counters
+remain authoritative despite the absent success payload. Total committed roots
+for this window are **250**, bringing the post-resize total to **500 across six
+attempts**. The two failed partial attempts remain failures. No fourth pass or
+replay followed, and no outcome is unknown. The parent verified all 80 window
+artifacts; reconciliation SHA-256 is
+`47e7b7475b16ae010bde54528686d7e41d340ad8ccc55b3c7f6f5d59ba078e27`.
+
+The safe phase event records P2028 in `projection_decision_unlink_page`:
+796 ms at admission, 808 ms in the incomplete operation, and 3 ms each for
+acquisition, advisory lock and configuration. The bounded wrapper classifier
+identifies `recommendationPersonalizationDecision.findMany` and an expired
+transaction with 802 ms allowed versus 812 ms elapsed. The slowest completed
+operation was root deletion at 971 ms. This localizes the new failure to
+admitted operation work; it does not establish SQL execution cost, query-plan
+cause, database CPU or the historical 854/870 ms failure's cause. The new
+configuration guard correctly leaves this genuine failure classified as failed.
+
+The fixed October 26 23:15:00.760 cohort fell from **38,431 to 37,442** eligible
+rows. Current expiry fell from **44,345 to 43,474** across 26 health families,
+with zero more than 24 hours overdue at those reads. Inventory coverage differs
+from deletion-counter coverage. Separate bounded probes found **at least 1,001
+expired profile-session links** (cap reached) and **one pending profile erasure**;
+the other seven extra categories measured zero. Those extras are outside the
+26-family total. Watch exposures had not yet reached their first stored expiry
+at the 01:38 UTC observation. Neither inventory establishes global clearance.
+
+Three hundred one-second samples from 01:36:06.951 to 01:41:06.249 UTC kept the
+same worker process and 16 GB limit, with a sampled peak of 7,391,711,232 bytes
+and zero OOM, memory-limit events or CPU-quota throttled periods/time. Both roles
+remained healthy on the exact release, PGDATA had 7,956,422,656 bytes free, and
+there were no lock waiters, long transactions or overlapping cleanup. Per-pass
+bracketed shared-worker CPU was 3.957, 9.490 and 1.771 CPU-seconds; this includes
+other worker activity and is not isolated retention CPU. Row mixes differed and
+the last pass failed, so these observations do not prove an efficiency gain.
+
+Astra owns the targeted selection/operation repair with representative work
+measurements and preservation of full-drain correctness. Parent coordinates
+review, merge and the next manual window after normal deployment. The removed
+memory rules remain removed. Keep feat-554 open, the daily observer active and
+the temporary outage monitor paused. Manual work supplies zero ordinary-cycle
+credit and these yields/failures do not advance the success watermark.
+
+The user clarified that deletion efficiency means reducing CPU and database
+work per committed expired row, with useful drain progress. The capacity
+increase and admission correction do not prove that outcome. A CPU cap,
+additional delay, reduced concurrency, smaller final result limit or increased
+timeout alone is not an efficiency improvement. Future claims need comparable
+workload measurements of committed rows, elapsed time, attributable CPU and
+live-request latency, guided by measured expensive phases. Shared-worker CPU
+and health-probe timing remain contextual proxies. Separate profile eligibility
+reconciliation failures from retention failures; neither path has been proved
+to cause the originally reported CPU spike.
 
 ## Dependencies, indexes and older PRs
 
