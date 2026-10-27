@@ -26,6 +26,6 @@ jobs:
             "typesense",
           ]
     steps:
-      - uses: actions/checkout@v7.0.1
+      - uses: actions/checkout@v7
       - name: Build and verify the CA-only image
         run: python3 infra/security-ca/verify-image.py "${{ matrix.image }}"

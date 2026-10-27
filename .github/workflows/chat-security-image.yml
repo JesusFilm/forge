@@ -29,7 +29,7 @@ jobs:
   production-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build the actual production image with filtered package trust
         run: docker build -f apps/chat/Dockerfile -t chat-security-ci .
       - name: Verify independent runtime and OS trust contexts

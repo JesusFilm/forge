@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Build actual Mastra runtime and Studio image with filtered dependency trust
         run: docker build -f apps/mastra/Dockerfile -t mastra-security-ci .
       - name: Test startup rejection and sanitized evidence contracts
