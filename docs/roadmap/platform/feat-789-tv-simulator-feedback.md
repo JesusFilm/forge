@@ -1,13 +1,14 @@
 ---
-id: "feat-756"
+id: "feat-789"
 title: "Simulator feedback QR with signed staging links and local capture"
 owner: "ekkasit"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-21"
 duration: 2
 depends_on: []
-blocks: []
+blocks:
+  - "feat-790"
 tags:
   - tv
   - feedback
@@ -61,3 +62,30 @@ Linear before issue and selected evidence delivery are confirmed.
 Follow the plan's deterministic, native, UI, QR decoding, persistence and
 release-exclusion checks. Keep simulator, phone/browser, mocked delivery and
 authorized live Linear evidence explicitly separate.
+
+## Completion — 27 October 2026
+
+Implemented local capture and optional confirmed Linear forwarding, development-only
+native QR guards, signed staging authorization and Keychain issuer instructions.
+The one approved local report with annotated image was verified as TV-7.
+
+The original staging web service was deleted on 25 October. With explicit owner
+approval, recreated web in the same staging project and deployed to
+`https://web-staging-7801.up.railway.app`. Deployment
+`064a0a89-d9d4-498a-86ca-216b1f014aad` is successful. Twenty-five live checks
+passed using the URLs decoded from the actual Apple TV and Android TV simulators.
+Both opened authorized sessions; invalid/cross-origin requests and cross-session
+upload access were denied. Apple Menu/Home/Feedback and Android Back/focus/reopen
+were verified. Phone-size UI checks cover photo selection, annotation and review;
+no new Linear issue or media upload was submitted during the recovery.
+
+Validation: 84 feedback tests including isolated Redis, 68 focused TV tests,
+four issuer tests, typechecks, lint and local/Railway production builds passed.
+TV and feedback CI jobs passed; an unrelated Admin integration assertion failed
+in run 40431538451. The feature ID was renumbered from 756 because current main
+allocated that ID to a different feature.
+
+Follow-ups: feat-790 covers the existing release artifacts' old hostname and
+physical-device verification; feat-791 covers a production build-tracing warning.
+Neither is established by simulator results. Preserve all local evidence in
+`.local-tools/feedback-staging-20261027/`; never commit bearer QR files.

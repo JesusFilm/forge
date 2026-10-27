@@ -9,7 +9,7 @@ step to the existing TV Beta Feedback Linear project. Live Linear test delivery
 awaits the user's answer; local implementation and tests can proceed.
 
 Branch: `codex/tv-feedback-simulator`, based on main `4fe360bf6`.
-Roadmap: `docs/roadmap/platform/feat-756-tv-simulator-feedback.md`.
+Roadmap: `docs/roadmap/platform/feat-789-tv-simulator-feedback.md`.
 
 ## Hosted signed-link extension
 
