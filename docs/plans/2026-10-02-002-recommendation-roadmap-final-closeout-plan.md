@@ -398,3 +398,26 @@ failure accounting. Parent owns independent review, normal merge/deployment,
 shared rollout coordination and any new manual dispatch. Do not substitute
 higher timeouts, arbitrary admission floors or memory reserves for a measured
 repair. Keep the daily scheduler and observer enabled, and feat-554 in progress.
+
+### October 27 root-chunk cost admission release
+
+The [root-chunk admission repair](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-root-chunk-cost-admission-repair)
+merged as `e25a0a7d` (PR #2930) after independent exact-head review and all
+relevant PR checks. It avoids admitting another root chunk with less time than
+the preceding acknowledged chunk consumed, while preserving the initial
+750 ms floor and five-second deadline. The native counterfactual proves the
+modeled admission correction, not production CPU or query efficiency.
+
+Astra verified all main checks and both actual Admin roles on the reviewed
+merge, with healthy responses, correct runner roles and compact mode. The
+release-bound operator amendment and fresh historical execution proof passed
+independent review. The first new bounded window completed three normal yields,
+committing 300 roots, 3,000 Watch exposures and, in its third pass, 100 projection
+runs and 100 contributions. Both ledgers and all postchecks matched. This brought
+the manual root total to 1,150 at that window's close, with unresolved backlog
+and no daily credit.
+Parent owns continued bounded dispatches and shared rollout coordination.
+Keep the prior failed partial work and revoked
+windows distinct; do not reuse an old release binding or claim a yield-only
+sequence establishes completion. Preserve October 23's accepted daily cycle,
+the remaining ordinary-cycle requirement and the additional expiry inventories.

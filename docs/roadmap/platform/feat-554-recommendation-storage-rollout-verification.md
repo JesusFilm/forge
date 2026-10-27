@@ -129,6 +129,35 @@ read-only follow-up. No memory gate was reinstated. Further manual cleanup
 requires a reviewed correction and a new coordinated window; the ordinary
 daily scheduler remains enabled and this ticket remains in progress.
 
+## October 27 root-chunk cost admission repair
+
+The [root-chunk cost admission release](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-root-chunk-cost-admission-repair)
+merged as `e25a0a7d` (PR #2930), with independent exact-head review, 94 focused
+tests, 38 native PostgreSQL tests, full Admin typecheck and all applicable PR
+checks. The next root chunk must have more time than the preceding acknowledged
+chunk consumed, with the existing 750 ms baseline and five-second deadline
+unchanged. The modeled regression proves avoided underfunded dispatch; a later
+more expensive chunk can still fail. Production query/CPU improvement and the
+historical production SQLSTATE remain unproved.
+
+All main workflows passed, and both actual roles were verified on the merged
+revision at 05:10–05:11 UTC with compact mode, correct runners and healthy
+responses. The moving 26-family expired count was 81,944 and the fixed cohort
+36,997; additional expiry categories remain separate. The source-bound
+operator amendment and fresh historical execution proof passed independent
+review. The first new bounded window, `r2930-w01`, completed three normal yields
+with matching ledgers and postchecks: 300 roots, 3,000 Watch exposures and
+100 expired projection runs plus 100 contributions in the third pass. The
+manual root total reached 1,150 at this window's close, retaining three earlier failed partial attempts;
+historical 301 remain separate. The moving 26-family count ended at 79,905,
+the fixed cohort at 36,431 and the watermark unchanged. This demonstrates
+progress, including some later-phase work, but neither selector/guard-specific
+causality nor production CPU improvement or backlog completion.
+Keep this ticket in progress, preserve October 23's one accepted ordinary
+loaded failure-free cycle and require one further qualifying cycle. Manual
+work adds no credit and neither the 26-family health inventory nor root
+progress alone establishes clearance of every stored-expired category.
+
 ## October 27 pre-work deadline correction
 
 An isolated PostgreSQL regression reproduced an additional boundary bug: after
