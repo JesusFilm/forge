@@ -421,3 +421,22 @@ Keep the prior failed partial work and revoked
 windows distinct; do not reuse an old release binding or claim a yield-only
 sequence establishes completion. Preserve October 23's accepted daily cycle,
 the remaining ordinary-cycle requirement and the additional expiry inventories.
+
+### October 27 later unlink failure and next scoped repair
+
+The [later projection unlink failure](../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-later-projection-unlink-failure-and-stopped-continuation)
+stopped the next finite continuation after 400 additional committed roots:
+250 from window 02 and 150 from window 03, including 100 retained by its failed
+second attempt. The known manual total was 1,550 at reconciliation, with four
+failed partial attempts retained and historical 301 separate. Windows 04–07
+were revoked without attempts; no cleanup remains authorized by that series.
+
+The new failure is `projection_run_unlink_page` with `P2028`, outside the
+root-only guard. A read-only selection analogue shows a large ID-ordered
+run scan for one eligible row; an expiry/reference-index candidate avoids
+that scan but is not a causal production comparison. Astra owns the targeted
+selector/helper, captured-reference and current-expiry guards, meaningful
+PostgreSQL regressions and comparable local measurements. Parent owns the
+consolidated records, independent review, normal merge/deployment and any fresh
+cleanup dispatch. Do not substitute timeout widening, arbitrary admission or
+memory floors, or a successful health response for the required repair evidence.

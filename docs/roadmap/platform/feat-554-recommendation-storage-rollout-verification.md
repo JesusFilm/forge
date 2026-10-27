@@ -158,6 +158,26 @@ loaded failure-free cycle and require one further qualifying cycle. Manual
 work adds no credit and neither the 26-family health inventory nor root
 progress alone establishes clearance of every stored-expired category.
 
+## October 27 later projection unlink failure
+
+The [stopped continuation receipt](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-later-projection-unlink-failure-and-stopped-continuation)
+records 400 additional roots and 5,000 Watch exposures across windows 02–03.
+The last attempt failed after 100 committed roots; the series preserves that
+partial work, its failure and a known manual total of 1,550 at reconciliation.
+Four failed partial attempts remain failed, historical 301 are separate, and
+windows 04–07 were revoked without attempts. Original postchecks passed; the
+moving 26-family inventory ended at 76,825 and the fixed cohort at 35,203.
+
+The later `projection_run_unlink_page` operation reported `P2028` with no
+SQLSTATE, outside the root-only guard. Exact failed SELECT-versus-UPDATE and
+timer attribution remain unknown. Read-only plans support a targeted
+expiry/reference-index selection investigation; sequential timings do not
+prove production CPU improvement. Astra owns the scoped query repair and
+local/native validation. Keep manual cleanup stopped pending reviewed normal
+release and fresh verification, retain the daily scheduler and observer, and
+preserve October 23 plus one further required ordinary loaded failure-free
+cycle. This ticket remains in progress.
+
 ## October 27 pre-work deadline correction
 
 An isolated PostgreSQL regression reproduced an additional boundary bug: after

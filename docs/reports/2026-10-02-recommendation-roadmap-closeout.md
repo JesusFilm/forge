@@ -1148,6 +1148,60 @@ the dated review receipt is
 Further bounded windows require fresh live checks and separate reconciliation;
 this dated receipt does not report their outcome.
 
+### October 27 later projection unlink failure and stopped continuation
+
+The authorized continuation completed `r2930-w02` with three normal yields
+and 250 committed roots plus 3,000 Watch exposures. In `r2930-w03`, the first
+pass yielded after 50 roots; the second **failed after another 100 committed
+roots**. The stopped window therefore retains 150 roots and 2,000 Watch
+exposures. Both ledgers preserve the real failure and exact partial counters,
+with no unknown outcome. The two-window series added 400 roots, taking the
+known manual total to **1,550 at its 05:39 UTC reconciliation**, including four
+failed partial attempts today. The historical 301 roots remain separate.
+Windows 04–07 were revoked without attempts despite their later authorization
+expiry. No retry or replay followed the failure.
+
+The fresh diagnostic identifies `projection_run_unlink_page`, ordinal 29,
+operation stage, with Prisma `P2028` and no SQLSTATE: 892 ms remained before
+admission, 881 ms was admitted, the incomplete operation used 899 ms and the
+phase total was 914 ms. The failed operation contains a SELECT and an UPDATE;
+neither the exact failing statement nor server-versus-client timer attribution
+is established. Fallback ledger terminalization succeeded in 57 ms. The prior
+acknowledged root phase took 791 ms; this later phase is outside PR #2930's
+root-only observed-cost guard. Blindly copying that prior root cost would not
+have prohibited this admission either.
+
+All original window postchecks passed on the expected release and processes,
+with the same historical active set and no overlapping execution. Window 03's
+300 memory samples peaked at 5,473,046,528 bytes of 16 GB, with no OOM or limit
+event or CPU-counter reset. Its fixed cohort fell 35,722 to 35,203 and the
+moving 26-family count fell 78,799 to 76,825, with zero measured more than
+24 hours overdue. Additional expiry categories remain separate. The series
+also records 300 projection runs and 300 contributions across its passes;
+the later failed unlink is distinct from that committed work. Health and
+partial deletion do not clear the failed attempt or the remaining backlog.
+
+A bounded read-only SELECT analogue scanned 43,725 projection-run rows and
+1,788 generation cache misses to return one eligible row, taking 564.191 ms
+with 45,686 shared buffers. A same-cutoff candidate using existing expiry and
+reference indexes examined 1,476 expired-parent probes and returned one row
+in 12.046 ms with 4,287 shared buffers. These sequential SELECT-only plans
+have different ordering and cache states; they are query-work evidence, not
+the captured failed SQL or a causal production speedup/CPU comparison. Empty
+parent probes remain a work consideration.
+
+Parent verified the 230-artifact stopped-series manifest SHA256
+`88679794f694e18cb52354fe4f7446b023ee944a8db6c3ac90b7f0a1f392a95c`.
+Independent dated evidence review is sealed at
+`439d8a1b9cde2bd35b1cca764a9068dc7e66e5e5eebb707291641a6ba8787b38`.
+Astra owns a targeted selector repair with exact captured-reference and current
+expiry rechecks, sparse/empty-parent/high-fan-out/live-reference PostgreSQL
+regressions and comparable local work measurements. Preserve the 100-row bound,
+five-second deadline, live guards and real failure accounting. Manual cleanup
+remains stopped until reviewed normal release and fresh verification; the
+ordinary daily scheduler and read-only observer remain enabled, and feat-554
+still needs one further qualifying cycle after October 23.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
