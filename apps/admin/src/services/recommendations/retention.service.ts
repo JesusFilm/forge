@@ -10,6 +10,11 @@ import {
   type PrismaClient,
 } from "@prisma/client"
 import { unlinkPushViewerIdentities } from "@/services/push/identity-unlink.service"
+import {
+  createRetentionDecisionObservation,
+  type RetentionDecisionObservation,
+  type RetentionExecutionContext,
+} from "./retention-operation-diagnostics"
 import { unlinkExpiredDecisionLinks } from "./retention-decision-links"
 import { unlinkExpiredProjectionRunLinks } from "./retention-projection-run-links"
 import { RECOMMENDATION_RETENTION_PROPAGATION_HOURS } from "./contracts"
@@ -228,6 +233,7 @@ export async function purgeExpiredRecommendationRequests(
   now: Date = new Date(),
   batchSize = RECOMMENDATION_RETENTION_BATCH_SIZE,
   mode: RecommendationRetentionMode = "scheduled",
+  executionContext: RetentionExecutionContext = "unspecified",
 ): Promise<RecommendationPurgeResult> {
   if (
     !Number.isInteger(batchSize) ||
@@ -250,6 +256,7 @@ export async function purgeExpiredRecommendationRequests(
   let profileVectorSweepSkipped = false
   const deadline = Date.now() + RECOMMENDATION_RETENTION_TIMEOUT_MS
   const diagnostics = createRetentionPhaseRecorder()
+  let decisionOperation: RetentionDecisionObservation | null = null
   let phaseOrdinal = 0
   let lastCompletedRootPhaseMs = 0
   const phase = async <T>(
@@ -681,9 +688,21 @@ export async function purgeExpiredRecommendationRequests(
     const expiredDecisionLinkPage = await phase(
       "projection_decision_unlink_page",
       async (tx) => {
-        const page = await unlinkExpiredDecisionLinks(tx, now, batchSize)
-        rowCounts.expiredProjectionDecisionLinksUnlinked = page.unlinkedCount
-        return page.selectedCount
+        const observation = createRetentionDecisionObservation(executionContext)
+        let completed = false
+        try {
+          const page = await unlinkExpiredDecisionLinks(
+            tx,
+            now,
+            batchSize,
+            observation.record,
+          )
+          rowCounts.expiredProjectionDecisionLinksUnlinked = page.unlinkedCount
+          completed = true
+          return page.selectedCount
+        } finally {
+          decisionOperation = observation.finish(completed)
+        }
       },
     )
     const expiredGenerationPage = await phase(
@@ -1564,6 +1583,7 @@ export async function purgeExpiredRecommendationRequests(
                 outcome,
                 elapsedMs: performance.now() - fallbackStarted,
               },
+              decisionOperation,
             ),
             suppressedPriorMinute: permit.suppressedPriorMinute,
           }),

@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
-import type { Prisma } from "@prisma/client"
-import { parseRetentionPhaseFailureLog } from "./retention-phase-diagnostics"
+import { Prisma } from "@prisma/client"
+import {
+  parseRetentionPhaseFailureLog,
+  retentionDiagnosticLogLimiter,
+} from "./retention-phase-diagnostics"
 import {
   purgeExpiredRecommendationRequests,
   readRecommendationRetentionHealth,
@@ -1490,6 +1493,103 @@ describe("recommendation retention service", () => {
       now.mockRestore()
     }
   })
+
+  it.each(["select", "update", "commit"] as const)(
+    "attributes a decision %s failure without changing committed counters",
+    async (boundary) => {
+      const { prisma, transaction } = buildPrisma()
+      const original = new Prisma.PrismaClientKnownRequestError("private SQL", {
+        code: "P2028",
+        clientVersion: "test",
+      })
+      const query = transaction.$queryRaw.getMockImplementation()!
+      transaction.$queryRaw.mockImplementation(async (sql) => {
+        if (sql.sql.includes("FROM recommendation_personalization_decision")) {
+          if (boundary === "select") throw original
+          return [
+            {
+              requestId: "private-request",
+              projectionGenerationId: "private-generation",
+            },
+          ]
+        }
+        return query(sql)
+      })
+      if (boundary === "update")
+        transaction.recommendationPersonalizationDecision.updateMany.mockRejectedValueOnce(
+          original,
+        )
+      else
+        transaction.recommendationPersonalizationDecision.updateMany.mockResolvedValueOnce(
+          { count: 1 },
+        )
+      if (boundary === "commit") {
+        const transact = prisma.$transaction.getMockImplementation()!
+        prisma.$transaction.mockImplementation(async (callback) => {
+          const result = await transact(callback)
+          if (
+            transaction.recommendationPersonalizationDecision.updateMany.mock
+              .calls.length
+          )
+            throw original
+          return result
+        })
+      }
+      const permit = vi
+        .spyOn(retentionDiagnosticLogLimiter, "allow")
+        .mockReturnValue({ emit: true, suppressedPriorMinute: 0 })
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(
+            prisma as never,
+            new Date(),
+            100,
+            "stored-expiry-only",
+            "manual-cli",
+          ),
+        ).rejects.toBe(original)
+        expect(
+          prisma.recommendationRetentionRun.updateMany,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ status: "FAILED" }),
+          }),
+        )
+        const event = parseRetentionPhaseFailureLog(
+          String(logged.mock.calls[0]?.[0]),
+        )
+        expect(event).toMatchObject({
+          version: 2,
+          errors: { phase: { prismaCode: "P2028" } },
+          decisionOperation: {
+            executionContext: "manual-cli",
+            boundary: boundary === "commit" ? "complete" : boundary,
+          },
+          failed: [
+            {
+              label: "projection_decision_unlink_page",
+              stage:
+                boundary === "commit" ? "commit_acknowledgement" : "operation",
+            },
+          ],
+        })
+        const durable = await prisma.recommendationRetentionRun.findUnique()
+        expect(durable?.rootsDeleted).toBe(2)
+        // The commit case deliberately loses acknowledgement after the mock's
+        // durable commit. Never overwrite that committed count on fallback.
+        expect(durable?.rowCounts.expiredProjectionDecisionLinksUnlinked).toBe(
+          boundary === "commit" ? 1 : undefined,
+        )
+        expect(JSON.stringify(event)).not.toMatch(
+          /private|requestId|projectionGenerationId/,
+        )
+      } finally {
+        logged.mockRestore()
+        permit.mockRestore()
+      }
+    },
+  )
 
   it("preserves the original failure and failed ledger when the diagnostic logger throws", async () => {
     const { prisma, transaction } = buildPrisma()
