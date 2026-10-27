@@ -175,13 +175,6 @@ type ContainerSlotSpans {
   xs: Int
 }
 
-type ContentPackRevision {
-  document: JSON
-  id: ID
-  number: Int
-  packId: ID
-}
-
 """A continent synced from Core."""
 type Continent {
   coreId: String
@@ -2211,7 +2204,6 @@ type Mutation {
   updateMediaFolder(id: ID!, name: String!): MediaFolder
   updateRecommendationViewer(action: String!, sessionToken: String!, viewerToken: String!): RecommendationViewerStatus!
   upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
-  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
@@ -2421,8 +2413,6 @@ type Query {
   shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
   shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
   shortsCatalogRelease(id: ID!): ShortsCatalogRelease
-  shortsContentPackRevision(id: ID!): ContentPackRevision
-  shortsContentPacks(input: JSON): [ContentPackRevision!]
   shortsExperiment(id: ID!): JSON
   shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
   shortsNarrationIdentity(language: String!, speech: JSON!): JSON

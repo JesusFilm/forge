@@ -26,7 +26,6 @@ suite("Short-owned authoring records", () => {
     tracks: [],
     items: [],
     components: [],
-    packRevisionIds: [],
   }
   beforeAll(() => {
     if (env.STUDIO_TEST_DATABASE_URL !== SHORTS_MODEL_TEST_DATABASE_URL)

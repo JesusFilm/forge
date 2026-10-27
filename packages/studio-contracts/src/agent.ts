@@ -124,8 +124,6 @@ export const studioDelegatedActions = [
   "create",
   "delete",
   "assets",
-  "packs",
-  "pack",
   "sources",
   "eligibility",
   "request",
