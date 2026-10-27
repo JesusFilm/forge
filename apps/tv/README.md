@@ -276,3 +276,17 @@ preferences and native manifests. Record accepted values, missing-value behavior
 platform restrictions, saved-choice precedence and whether reload or rebuild is
 needed. Keep code constants separate from environment flags. Never paste a full
 local environment file into AI output to audit a few boolean flags.
+
+### Development catalogue and feedback separation
+
+`EXPO_PUBLIC_GRAPHQL_URL` selects the catalogue/playback backend independently of
+`EXPO_PUBLIC_TV_FEEDBACK_URL`. A simulator can use the real production catalogue
+while its development-only feedback URL remains a signed staging link. Use the
+configured consumer fleet key for that catalogue; never use an admin credential.
+Restart Metro and the apps after changing either setting.
+
+Development recommendation identities are stored separately for each normalized
+GraphQL endpoint. The former unscoped identity is deliberately not migrated, so
+a synthetic fixture identity cannot be reused against a real service. Release
+builds retain their existing identity key, and personalization choices remain
+unchanged. Generating a new feedback QR only updates feedback settings.
