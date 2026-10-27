@@ -43,6 +43,10 @@ name: bible-sheets
       id: screen-reader-passage
     timeout: 10000
     label: The passage picker shows
+# The book list opens on the testament of the current book, John.
+- tapOn:
+    text: Old Testament
+    label: Show the Old Testament books
 - tapOn:
     text: Genesis
     label: Pick Genesis
