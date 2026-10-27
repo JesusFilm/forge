@@ -1461,6 +1461,167 @@ existing bounds and no uncertain replay. The amendment does not change productio
 cleanup code or query timeouts. The daily scheduler and observer remain enabled;
 feat-554 retains one further qualifying ordinary-cycle requirement.
 
+### October 27 successful diagnostic passes and collection stop
+
+The independently reviewed local helper-reporting amendment preserved cleanup
+queries, timeouts, bounds and admission checks. Its 25 controlled telemetry tests
+and 62 existing guards passed. Failure receipts contain fixed classifications,
+captured-output byte counts and hashes, without raw output. Parent then issued
+the distinct window `r2934-w02` with a fresh release and readiness binding.
+
+Two cleanup invocations succeeded and reconciled every counter against both
+ledgers, committing 200 additional request roots. The known manual total is
+1,950 roots, with five earlier failed partial attempts unchanged and historical
+301 separate. Additional durable categories include 9,321 expired profile-session
+links, 2,000 Watch exposures, 200 decision-link unlinks, and 200 each of expired
+projection runs, contributions, interests and generations. These dependent and
+unlink categories are not summed as unique top-level deletions.
+
+The fixed cohort fell from 34,340 to 33,201; current expiry across 26 health
+families fell from 109,380 to 106,832, with measured more-than-24-hour expiry zero
+and nine extra inventory frames separate. Original postchecks and all 300 memory
+samples passed, peaking at 3,654,791,168 bytes of 16 GB without OOM, limit events
+or process changes. The shared cgroup CPU and wrapper-duration measurements are
+not controlled evidence of retention efficiency.
+The original 08:34:47 UTC backlog postcheck records a success expiry cutoff
+of October 27 08:34:16.965 UTC, advanced by successful work. It does not establish
+whole-inventory clearance or ordinary-cycle credit for these manual invocations.
+
+Before a third cleanup invocation, the release-probe collector failed on a
+nested Railway command returning nonzero. The helper receipt contains exit 1,
+zero stdout bytes and 51 stderr bytes; the stderr hash exactly matches the
+source's fixed nonzero-command message. No original pass-three role frame or
+verifier result survived. This establishes the collection boundary, not which
+status/HTTP/worker command failed or whether the cause was network or remote
+process behavior. A later healthy postcheck does not replace the missing
+original observation. There was no third cleanup, replay or unknown durable
+outcome. Both successful invocations emitted no v2 failure frame, so the
+historical timeout stage remains unproved.
+
+Parent verified all 201 final artifacts against manifest SHA256
+`4f4a0725c2a7bd6a34f2498b0962321e0a486d4ba4a53999ada5ce4cbe2762d4`
+and closeout receipt
+`f716b68bae47efb02b3d92df51987ee7049410edcebcc8c0c3e144d25d1bafa0`.
+Independent stopped-window review accepted the original checks and accounting:
+`2ed371974231c555ad4073484432910e5bc7baceb1177193765a6ad0f5370d62`.
+Authority from this window has ended. Astra owns a local collector-stage
+reporting amendment and at most one read-only collection retry within the
+existing deadline. Original failures must remain recorded. Cleanup, mutations,
+malformed completed output, negative health/source/identity observations and
+verifier rejections must never be retried. Independent review and a new parent
+dispatch precede production use. Daily cleanup and observation remain enabled;
+manual work earns no feat-554 cycle credit and backlog remains.
+
+The collector amendment then passed 38 collection checks, 25 existing telemetry
+checks and 62 guards, plus independent review
+`53dcf90ca9225d71b4bca08ef40b376f3924c0e94c73941bbcafdbac7749a53b`.
+It permits one extra read-only command across an entire role collection only
+after retaining the original failure and finding zero captured stdout with
+remaining explicit admission time. The 25-second command and 65-second caller
+caps remain, with a 60-second internal deadline. Completed negative/malformed
+observations, verifier rejection, SQL and cleanup cannot be retried. The driver
+only forwards its existing deadline and readiness file; original remote code,
+queries, cleanup and postchecks remain unchanged.
+
+The distinct `r2934-w03` completed three successful 100-root passes, with every
+counter and both ledgers matching. It ended normally when insufficient admission
+reserve remained for a fourth pass; `BOUNDED_WINDOW_COMPLETE` does not mean the
+backlog is clear. The known manual total is 2,250 roots, against the separately
+verified 1,950-root starting baseline. Five earlier failed partial attempts and
+historical 301 remain separate. Seven complete role collections used 21 commands,
+all first attempts, with no collection failure or recovery. The successful passes
+emitted no v2 failure frames, leaving historical timeout attribution unproved.
+
+Original postchecks and all 300 memory samples passed, peaking at 3,736,748,032
+bytes of 16 GB without OOM, limit events or process changes. Fixed expiry fell
+33,201 to 31,770 and current 26-family expiry 111,366 to 107,285; measured overdue
+expiry stayed zero. The success cutoff advanced to October 27 08:58:53.688 UTC.
+These manual successes do not earn ordinary-cycle credit. Parent verified the
+241-artifact manifest
+`4798107a3fd6835aeee98412c53f6eae85c7a7cb0a1bb978c7881ae7fc8bb9ac`
+and closeout
+`9aaab78636a55f9797d2e93bd26b4b5b55872ecd5d5f61bd483243b119fe10b0`.
+The unchanged reconciler's older 1,750-root historical reference is not used as
+the current baseline; fresh cumulative ledgers and the dispatch establish 2,250.
+Independent review accepted the complete window evidence in receipt
+`13e8645eaec275bc967fa73ca4d3256d36e235c1cec2f59db928a781d5914810`.
+Parent then issued a finite continuation of at most ten distinct windows,
+`r2934-w04` through `r2934-w13`, following independent plan review
+`8fd37b07c5f30bb5b3360f84a92712cdac9d44b8f076adb3c0467dff32c93908`.
+Each retains the existing five-pass/300-second maximum and all fresh checks.
+Prior original postchecks, memory evidence and committed counters must reconcile
+before the next window. Any real failure, unknown outcome or lack of progress
+stops the whole sequence. No new readiness may start after 10:05 UTC, and all
+dispatches expire at 10:15 UTC, before ordinary daily cleanup at 10:30 UTC.
+This is a dated parent dispatch, not continuing authority supplied by this report.
+
+### October 27 finite cleanup continuation
+
+The first three windows of that continuation completed successfully on deployed
+revision `b78fa7a6c181546fd9683be8b521e043b69c48cc`. Every original postcheck,
+300-sample memory observation and committed counter reconciled. Fresh cumulative
+ledgers establish the 2,250-root starting baseline and these additional roots:
+
+| Window      | Successful passes | Added request roots | Cumulative manual roots | Fixed expired cohort after | Current 26-family expiry after |
+| ----------- | ----------------- | ------------------- | ----------------------- | -------------------------- | ------------------------------ |
+| `r2934-w04` | 3                 | 300                 | 2,550                   | 30,389                     | 105,994                        |
+| `r2934-w05` | 2                 | 200                 | 2,750                   | 29,467                     | 104,565                        |
+| `r2934-w06` | 3                 | 300                 | 3,050                   | 28,086                     | 101,863                        |
+
+The fixed cohort fell from 31,770 to 28,086 over these windows. Current expiry is
+measured at each window's postcheck and can grow between windows as more rows
+expire. Nine additional inventory frames remain outside the 26-family total.
+Measured more-than-24-hour expiry was zero; this is not whole-inventory clearance.
+The success cutoff advanced to October 27 09:27:57.896 UTC. The highest observed
+memory use across these windows was 6,037,544,960 bytes of 16 GB, with no OOM,
+hard-limit event or process change. There were 19 complete role collections and
+57 commands, all first attempts, with no collection recovery. Shared worker CPU
+and wrapper timing remain proxy measurements, not controlled efficiency proof.
+
+`r2934-w07` then stopped on a read-only helper failure before any cleanup
+invocation. That stopped the entire sequence and revoked all unstarted windows
+`r2934-w08` through `r2934-w13`; no replay is authorized. All seven original SQL
+postchecks failed. The original health collection also failed at its status
+command, including its one permitted read-only retry. Original post-ledger,
+expiry, capacity and actual-role observations are unavailable. All 300 original
+memory samples passed, peaking at 3,273,777,152 bytes, but they do not replace
+those missing checks. Zero cleanup invocations establish zero window mutation;
+the unavailable post-ledgers are not represented as observed empty ledgers.
+Later diagnostic controls cannot replace the failed original observations.
+
+Parent verified the 149-artifact stopped-window manifest
+`d2fd45712b99e8d95ad4a52f6896a8aee74d2de0e983a5ea26744597395cc25b`
+and final series receipt
+`e45abce05b3ddcf27a37e2d478931227a9543563d0034bdcfd74deddee252245`.
+Independent review of the three completed windows is recorded in
+`5a4a474482aaf595d227e79fbc19c9a918b75d8d460df3e3ccaf5b946b5df63c`.
+The review also preserves a w05 preflight observation of one retention advisory
+lock: the holder is unknown, and the mandatory gates before both cleanup passes
+and the postcheck observed zero. No cleanup overlap was evidenced. The w04
+receipt's no-replay wording applies to that individual window; later windows
+used their distinct pre-issued authorizations, now all terminated.
+
+The acknowledged manual total remains
+3,050 roots, five prior failed partial cleanup attempts and historical 301
+separate. Manual work earns no daily-cycle credit. The ordinary daily scheduler
+remains enabled at 10:30 UTC, and one further loaded failure-free ordinary cycle
+is still required for feat-554.
+
+A separately authorized account API control at 09:41:16 UTC returned HTTP 429
+with `Retry-After: 850`. This directly establishes Railway management-API rate
+limiting at the control time. Parent verified all six diagnosis artifacts against
+manifest `ae1c2e5f072f06231406f42f1bf2f6f1855dc78f98bbe8f9b9f2de66f875ed2a`
+and receipt `5ccd73612de127e635eca32a9436c585eb3e2ef6952015a8ca40599585d0f119`.
+The planned project-status control was skipped after that response; there was
+no retry, cleanup or other mutation. The conservative API not-before time is
+09:55:27 UTC, following the provider's
+[documented rate-limit behavior](https://docs.railway.com/integrations/api).
+Future management-API access needs a coordinated request budget. This later
+control does not identify the exact cause of the original 09:32 command failures,
+replace missing postchecks or renew manual cleanup authority. The daily worker
+scheduler code is unchanged; its execution does not use this local Railway
+management-API collector.
+
 ## Dependencies, indexes and older PRs
 
 The 25 tickets cancelled in this closeout have no active dependency edges. References to their IDs are
