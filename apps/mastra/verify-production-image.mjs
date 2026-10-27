@@ -40,11 +40,18 @@ const request = (path, token, body) =>
   })
 for (const enabled of [false, true]) {
   const [command, ...args] = start.split(" ")
+  const requireAttestation = process.env.MASTRA_IMAGE_ATTESTATION === "required"
   const child = spawn(command, args, {
     cwd: "/app/apps/mastra",
     detached: true,
     env: {
       PATH: process.env.PATH,
+      ...(requireAttestation
+        ? {
+            NODE_OPTIONS: "--import=/app/apps/mastra/startup-security.mjs",
+            RAILWAY_DEPLOYMENT_ID: "isolated-production-image-ci",
+          }
+        : {}),
       HOME: "/tmp",
       NODE_ENV: "production",
       PORT: "4130",
@@ -69,7 +76,11 @@ for (const enabled of [false, true]) {
       ADMIN_TRANSCRIPT_INGEST_URL: "https://admin.example.invalid/transcript",
       ...(enabled ? { SEEKER_ROUTE_ENABLED: "true" } : {}),
     },
-    stdio: ["ignore", "ignore", "pipe"],
+    stdio: ["ignore", "pipe", "pipe"],
+  })
+  let output = ""
+  child.stdout.on("data", (chunk) => {
+    output = (output + chunk).slice(-100000)
   })
   let errors = ""
   child.stderr.on("data", (chunk) => {
@@ -88,6 +99,27 @@ for (const enabled of [false, true]) {
       await new Promise((resolve) => setTimeout(resolve, 500))
     }
     assert.ok(ready, errors)
+    if (requireAttestation) {
+      const proof = output
+        .split("\n")
+        .filter((line) => line.startsWith("{"))
+        .map((line) => {
+          try {
+            return JSON.parse(line)
+          } catch {
+            return null
+          }
+        })
+        .find((row) => row?.event === "mastra_runtime_security")
+      assert.equal(proof?.status, "pass", errors)
+      assert.equal(proof.pid, child.pid)
+      assert.equal(proof.RAILWAY_DEPLOYMENT_ID, "isolated-production-image-ci")
+      assert.equal(proof.controls.length, 12)
+      assert.ok(proof.controls.every((control) => control.passed))
+      console.log(
+        "PASS: actual healthy Mastra serving PID matches startup runtime attestation",
+      )
+    }
     for (const path of ["/api/agents", "/api/workflows"]) {
       const metadata = await request(path)
       assert.equal(metadata.status, 200)

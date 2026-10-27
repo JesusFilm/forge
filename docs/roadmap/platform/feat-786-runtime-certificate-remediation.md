@@ -149,3 +149,17 @@ restore, indexing, import or model invocation is part of this work.
 ## Managed Node image legacy-directory hardening
 
 The final Railway JFOF source release proves the managed-builder correction: install libatomic1 before the last CA cleanup, suppress duplicate step outputs and later deploy apt layers, and replace the two excluded root payloads with non-PEM distrust markers. Apply the same two-file config/helper to the root Node Railpack path so surviving lower-layer aliases cannot restore trust. Keep real Web content builds and dashboard commands; no private build credential moves. Independently verify every Web replica after the normal PR-to-main release. Keep this ticket in progress for remaining audit rows.
+
+## Mastra startup attestation without SSH
+
+Railway SSH/SFTP closes before inspection. Add a final-image NODE_OPTIONS preload
+that runs in the serving process before application imports and emits a sanitized
+`mastra_runtime_security` record with deployment/replica/source identity, executable
+SHA256, patched release/decoder marker, benign roundtrip and twelve independent
+Node/OpenSSL trust controls. Timeout or connectivity failure is not certificate
+rejection. Fail startup on any unsuccessful check; preserve the existing command,
+PostgreSQL/DuckDB, single replica, private networking and flags. Actual-image CI
+must prove the serving PID and block application startup under disabled TLS.
+Normal PR-to-main release and exact live log/health evidence remain required.
+See `docs/plans/2026-10-27-mastra-startup-security-attestation.md`. Keep this fleet
+ticket in progress for the remaining external audit rows.
