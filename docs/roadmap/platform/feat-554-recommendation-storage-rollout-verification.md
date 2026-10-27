@@ -102,12 +102,32 @@ The initial broader test timeout is retained alongside its unchanged isolated
 passing rerun. All three main workflows passed, and both actual Admin roles
 were verified on the exact merged revision at 03:18–03:19 UTC, with healthy
 responses, compact mode and correct runner roles. The worker retains 16 GB
-with no recorded OOM or limit events. No cleanup has yet run on this repair.
-The current 26-family inventory is 65,913, including 17,593 now-expired Watch
+with no recorded OOM or limit events. Cleanup had not resumed at that snapshot;
+subsequent windows and the stop are recorded below. The then-current 26-family
+inventory was 65,913, including 17,593 expired Watch
 exposures; the fixed cohort remains 37,442. Extra expired session links remain
 at least 1,001, while the one pending erasure is not stored-expired eligible.
 Keep this ticket in progress with the same ordinary-cycle requirement and
 remaining inventory.
+
+## October 27 resumed cleanup failure
+
+The [resumed cleanup and root-delete failure](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-resumed-cleanup-and-root-delete-failure)
+records 350 new request roots and 5,000 expired Watch rows across two windows
+on the selection repair. The second window's third pass failed after 50
+committed roots; its 150-root total preserves that partial commit. Later
+windows were cancelled without replay. Today's known manual root total is
+850, including three failed partial attempts. All manual work still earns
+zero daily-cycle credit, and the historical 301 roots remain separate.
+
+The root-delete operation failed with an unknown Prisma request error at
+855 ms after admission with 853 ms; exact SQL/client/CPU cause remains
+unproved. Astra is investigating this distinct early phase. Neither window
+establishes that the rewritten projection selector ran. Keep the original
+missing post-health/filesystem check separate from the later healthy
+read-only follow-up. No memory gate was reinstated. Further manual cleanup
+requires a reviewed correction and a new coordinated window; the ordinary
+daily scheduler remains enabled and this ticket remains in progress.
 
 ## October 27 pre-work deadline correction
 

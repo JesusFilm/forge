@@ -961,8 +961,9 @@ diagnostic hashes, compact mode, correct runner roles and health 200/ok. The
 worker enforced 16 GB, used about 3.592 GB at that sample and recorded zero OOM
 or memory-limit events. Health probes do not establish live-request reliability.
 
-No cleanup has run on this repair yet; the latest committed total remains 500
-roots across six post-resize attempts, including two failed partial attempts.
+At the 03:18–03:19 UTC release snapshot, no cleanup had run on this repair;
+the then-known total was 500 roots across six post-resize attempts, including
+two failed partial attempts.
 The fixed October 26 cohort remains 37,442. The moving inventory now contains
 65,913 expired rows across the 26 health families, including 17,593 Watch
 exposures whose stored expiry has passed; none was over 24 hours overdue at
@@ -980,7 +981,8 @@ wrapper do not resume those records, and retries create new records. The 301
 historical committed roots remain preserved and are not new deletions. The
 exception is bound to the reviewed identities and state fingerprints; fresh
 per-pass overlap checks still cover new work from the live daily scheduler.
-Parent coordinates the next bounded window with the separate Web rollout.
+Parent coordinated the first bounded window with the separate Web rollout;
+its outcome and the later failure are recorded below.
 Keep feat-554 in progress with its ordinary-cycle requirement.
 
 The [normal release receipt](https://github.com/JesusFilm/forge/pull/2926#issuecomment-6433027360)
@@ -991,6 +993,58 @@ release artifacts against manifest SHA256
 The subsequent historical execution review is bound to receipt SHA256
 `ea8da655385f2969aa10dcff602b95e7802b6086912448fd8b753c6b6d326207`;
 it does not mutate old records or grant ordinary-cycle credit.
+
+### October 27 resumed cleanup and root-delete failure
+
+The first window on `50cb6a3e` completed two normal budget yields, committing
+200 request roots and 2,000 stored-expired Watch exposures. Both wrapper and
+durable ledgers matched every counter with no error or unknown outcome.
+Independent review accepted the dated evidence, including the exact fresh
+readiness receipt. Peak worker memory was 7.261 GB of its enforced 16 GB, with
+zero OOM or limit events. The fixed cohort fell 37,442 to 37,198; the moving
+26-family inventory fell 72,167 to 69,963. These inventory changes are not
+substitutes for committed deletion counters.
+
+The next window attempted three distinct passes. The first two yielded
+normally and committed 50 roots each. The third committed another 50 roots
+and 1,000 Watch exposures before an actual `delete_request_roots` failure.
+The authoritative window total is **150 roots and 3,000 Watch exposures**;
+the early success-only total of 100 roots omits the failed partial commit.
+Both ledgers retain the third failure and its committed counters. All later
+windows in the finite series were cancelled without invocation or replay.
+Today's cumulative known manual request-root count is 850, including three
+failed partial attempts across releases. The 301 historical orphan-run roots
+remain separate and unchanged. Manual work earns zero ordinary-cycle credit.
+
+Natural diagnostics identify root-delete ordinal 17, operation stage,
+`PrismaClientUnknownRequestError`, with 853 ms at admission and 855 ms in the
+failed operation; SQLSTATE is unavailable. The previous 50-root chunk took
+1,337 ms in its operation, 1,387 ms overall, with 2,247 ms at admission.
+This localizes the failure but does not prove its SQL, lock, client or CPU
+cause. The 750 ms admission floor does not guarantee an admitted operation
+will finish. No timeout or admission-floor increase is established as a fix.
+
+The second window's original postcheck remains false: its final release-probe
+helper failed before emitting the actual-health report, so the subsequent
+filesystem observation was also absent. This is not evidence of a runtime
+revision mismatch. A separately archived 04:06:50 UTC read-only follow-up found
+both actual roles healthy on `50cb6a3e` with unchanged process identities and
+about 7.926 GB PGDATA available. That later observation does not replace the
+original missing postcheck. Peak worker memory was 7.636 GB of 16 GB with no
+OOM or CPU-counter reset.
+
+The fixed cohort fell 37,198 to 36,997 and the moving 26-family count fell
+71,755 to 69,109; extra expiry categories remain separately recorded. The
+backlog is unresolved. Counters from both windows cover early phases and do
+not establish execution of the rewritten projection-decision selector or
+progress in later phases. Shared-worker CPU and health latency remain proxies;
+there is no causal production-efficiency claim.
+
+Astra owns the bounded root-deletion investigation and repair. Further manual
+cleanup requires reviewed evidence, normal deployment of any code correction
+and a new parent-coordinated window. The daily production scheduler remains
+enabled. Preserve the stopped series, partial commits, separate failed
+postcheck and truthful feat-554 acceptance.
 
 ## Dependencies, indexes and older PRs
 
