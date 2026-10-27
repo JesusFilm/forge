@@ -17,6 +17,37 @@ tags:
   - "operations"
 ---
 
+## October 27 capacity increase and resumed cleanup
+
+The user removed the operator-imposed 4 GB and no-rising-memory admission rules
+and authorized additional worker headroom. The existing production worker's
+memory limit was increased from 8 to 16 GB, with CPU unchanged at 8. Actual
+container enforcement and the API agree; the same process and deployment
+continued without restart or redeploy. Direct memory/OOM tracking replaces any
+Datadog prerequisite; no arbitrary replacement reserve applies.
+
+The first pass on the reviewed `ce23241a9` runtime committed 50 expired request
+roots, then yielded. All durable counters matched the CLI, and the manual wrapper
+succeeded without an error in 4,510 ms. Post-pass services were healthy, with
+zero OOM events, no lock waiters or long transactions and 8,030,261,248 free
+PGDATA bytes. The measured fixed cohort fell from 39,390 to 39,299; the later
+rolling expired inventory was 41,761 across 26 families. These inventories do
+not cover every cleanup category and do not prove complete drainage.
+
+The [current receipt and continuation policy](../../reports/2026-10-02-recommendation-roadmap-closeout.md#october-27-worker-capacity-and-resumed-deletion)
+supersede the old memory and stop-on-any-yield operator rules. Bounded distinct
+passes may continue after positive committed progress and matching ledgers;
+actual errors or uncertain results stop the window. The daily scheduler remains
+enabled. Keep this ticket in progress: October 23 supplies the only accepted
+ordinary loaded failure-free cycle, and manual passes add zero credit.
+
+The next window stopped after one failed pass at 00:21 UTC. Both ledgers
+record 100 further committed roots and a transaction-expiry failure (854 ms
+allowed, 870 ms elapsed); the exact failing statement is not retained. The
+fixed cohort then measured 38,861 and rolling current expiry 41,548. Services
+remained healthy on 16 GB capacity without OOM events. No second pass or replay
+followed; Astra is investigating the residual transaction-budget defect.
+
 ## October 27 pre-work deadline correction
 
 An isolated PostgreSQL regression reproduced an additional boundary bug: after
@@ -50,12 +81,13 @@ long transactions; no physical reclamation or whole-backlog completion follows.
 
 The user-requested GPT-6 Astra task owns the active repair and backlog follow-up;
 the previous storage task retains the existing daily read-only monitor. Manual
-drain remains HOLD from the 23:08 worker memory reading of 4,573,614,080 bytes,
-above the 4 GB gate; no second admission sample or manual pass followed. Bounded
-memory diagnosis continues without weakening that guard. Keep this ticket in
+drain was held at the 23:08 worker memory reading of 4,573,614,080 bytes,
+above the former 4 GB gate; no second sample or pass followed in that window.
+The later user decision and capacity/deletion receipt above supersede that hold.
+Keep this ticket in
 progress and retain October 23's one accepted cycle; manual work supplies no
 ordinary-cycle credit. The [active closeout plan](../../plans/2026-10-02-002-recommendation-roadmap-final-closeout-plan.md#october-27-retention-repair-and-astra-handoff)
-records the superseding backlog authorization and unchanged admission limits.
+records the superseding backlog authorization and current operating policy.
 
 ## October 26 follow-up: continuing deletion with failures
 
