@@ -156,6 +156,14 @@ the RU intro Short at 08:30 (Kyiv = Sofia time), instead of 13:00 / 21:00. EN un
 RU Shorts unchanged. These yt-ru rows carry the note "RU morning test"; new rows for those days
 get the same times and note.
 
+## RU Shorts: no 21:00 (from 2026-10-27)
+
+Analytics, week Oct 18–24: RU Shorts at 13:00 / 17:00 got ~700–1,200 views, the three at
+21:00 got under 35 each (all intros, so slot and type are mixed). RU Shorts go at 13:00 or
+17:00; RU intros on long-form days stay at 08:30 (morning test). EN Shorts keep 21:00 (the
+best EN Short that week was at 21:00). One control point kept: the Bleeding Woman verse RU at
+21:00 on Oct 27.
+
 ## Facebook slot
 
 At most one Facebook post a day (from 2026-10-19). Which Short gets it (Lyuba,
