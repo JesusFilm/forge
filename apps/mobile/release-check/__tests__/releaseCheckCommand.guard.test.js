@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 /* global afterAll, describe, expect, it, require */
-// The `/release-check` command is what a QA engineer's Claude follows. A mode,
+// The `/qa-release-check` command is what a QA engineer's Claude follows. A mode,
 // flag, or field name that drifts from the runner breaks it with no other test.
 const { spawnSync } = require("node:child_process")
 const fs = require("node:fs")
@@ -19,7 +19,7 @@ const RELEASE_CHECK_DIR = path.join(__dirname, "..")
 const COMMAND_FILE = path.join(
   RELEASE_CHECK_DIR,
   "../../..",
-  ".claude/commands/release-check.md",
+  ".claude/commands/qa-release-check.md",
 )
 const COMMAND = fs.readFileSync(COMMAND_FILE, "utf8")
 const QA_COMMAND = fs.readFileSync(
@@ -221,7 +221,7 @@ async function knownNames() {
   return namesOfSchema(SCHEMA, "", names)
 }
 
-describe("the /release-check command", () => {
+describe("the /qa-release-check command", () => {
   it("names only runner modes, and only each mode's own flags", () => {
     expect(unknownModeForms(COMMAND)).toEqual([])
     expect(unknownFlags(COMMAND)).toEqual([])
@@ -452,7 +452,7 @@ const WAIT_CASES = [
   },
 ]
 
-describe("the /release-check wait loop", () => {
+describe("the /qa-release-check wait loop", () => {
   it("has one valid sh block with the node -e body and its runId and start argv", () => {
     expect(WAIT_BODY).toEqual(expect.stringContaining("process.argv[1]"))
     expect(WAIT_BODY).toEqual(expect.stringContaining("process.argv[2]"))
@@ -505,19 +505,19 @@ describe("the /release-check wait loop", () => {
 })
 
 // `/qa-runner` asks for a journey's brief, then hands over to step 7 of
-// `/release-check`. The two files name each other's steps by number.
+// `/qa-release-check`. The two files name each other's steps by number.
 describe("the /qa-runner command", () => {
   it("names only runner modes and flags", () => {
     expect(unknownModeForms(QA_COMMAND)).toEqual([])
     expect(unknownFlags(QA_COMMAND)).toEqual([])
   })
 
-  it("hands over to the Journey step that /release-check still has as step 7", () => {
+  it("hands over to the Journey step that /qa-release-check still has as step 7", () => {
     expect(QA_COMMAND).toContain('follows step 7 ("Journey")')
     expect(COMMAND).toMatch(/^7\. \*\*Journey\*\* \(`journey <journey id>`\)/m)
   })
 
-  it("keeps the brief at its step 3, which /release-check step 7.1 names", () => {
+  it("keeps the brief at its step 3, which /qa-release-check step 7.1 names", () => {
     expect(COMMAND).toContain("step 3 of `.claude/commands/qa-runner.md`")
     expect(QA_COMMAND).toMatch(/^3\. Get the journey's brief:/m)
   })

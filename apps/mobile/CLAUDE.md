@@ -302,7 +302,7 @@ change made after boot needs a Metro restart to take effect.
 `apps/mobile/release-check/` holds the release check runner. It builds the app
 from the current commit, runs fixed Maestro journeys on its own five test
 devices behind a local read-only server, and writes a local report. Start it
-with the repo command `/release-check`, or with
+with the repo command `/qa-release-check`, or with
 `node apps/mobile/release-check/cli.mjs <mode>`. The guide is
 `apps/mobile/release-check/README.md`.
 
@@ -312,7 +312,7 @@ with the repo command `/release-check`, or with
   feedback or searches to production. Write or repair a journey only through
   `node apps/mobile/release-check/cli.mjs session up|try|down`. The repo
   command `/qa-runner` asks what the journey must do, then follows
-  `/release-check journey <journey id>`, which gives the full steps from the
+  `/qa-release-check journey <journey id>`, which gives the full steps from the
   branch to the pull request. QA engineers use them too.
 - **A new screen or sheet needs a root `testID="screen-<screen id>"`.**
   `app/__tests__/screenRootTestId.guard.test.js` fails without it. It also needs

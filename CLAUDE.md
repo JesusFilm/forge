@@ -127,7 +127,7 @@ resume; current privacy, eligibility and operational obligations remain binding.
 
 - Colocate tests: `Component.test.tsx` next to `Component.tsx`.
 - Use `vitest` for unit tests, Playwright for web e2e.
-- Mobile release check (native end-to-end journeys with Maestro on five local simulators and emulators): `apps/mobile/release-check/`. Start with the repo command `/release-check`, and read the "Release check" section of `apps/mobile/CLAUDE.md` and `apps/mobile/release-check/README.md`. To create or change a journey, use `/qa-runner` (mobile release check only, not web or TV); it asks what the journey must do, then follows `/release-check journey <journey id>`.
+- Mobile release check (native end-to-end journeys with Maestro on five local simulators and emulators): `apps/mobile/release-check/`. Start with the repo command `/qa-release-check`, and read the "Release check" section of `apps/mobile/CLAUDE.md` and `apps/mobile/release-check/README.md`. To create or change a journey, use `/qa-runner` (mobile release check only, not web or TV); it asks what the journey must do, then follows `/qa-release-check journey <journey id>`.
 - Test behaviour, not implementation.
 - For frontend changes, verify the change did not degrade page-loading performance. Visual browser smoke proves behavior, not load impact; add timing, trace, Web Vitals/Lighthouse, network/resource timing, or equivalent evidence when rendering, hydration, media, routing, or client-side initialization changed. See `docs/solutions/conventions/frontend-change-page-load-performance-verification.md`.
 
