@@ -8,6 +8,8 @@ const loadTracePageMock = vi.fn()
 const loadDetailMock = vi.fn()
 const loadSignedExposureMock = vi.fn()
 const loadAnonymousExposureMock = vi.fn()
+const loadHistoryExposureMock = vi.fn()
+const configuredReaderMock = vi.fn()
 const redirectMock = vi.fn((destination: string) => {
   throw new Error(`REDIRECT:${destination}`)
 })
@@ -23,6 +25,12 @@ vi.mock("@/services/recommendations/admin-ops/watch-exposure.service", () => ({
     loadSignedExposureMock(...args),
   loadAnonymousWatchExposureBreakdown: (...args: unknown[]) =>
     loadAnonymousExposureMock(...args),
+  loadAnonymousWatchExposureBreakdownFromHistory: (...args: unknown[]) =>
+    loadHistoryExposureMock(...args),
+}))
+
+vi.mock("@/services/recommendations/event-history/reader-runtime", () => ({
+  getConfiguredWatchExposureHistoryReader: () => configuredReaderMock(),
 }))
 
 vi.mock("@/config/env", () => ({
@@ -315,6 +323,8 @@ describe("Admin Recommendations pages", () => {
     vi.clearAllMocks()
     loadSignedExposureMock.mockResolvedValue([])
     loadAnonymousExposureMock.mockResolvedValue({ rows: [], truncated: false })
+    loadHistoryExposureMock.mockResolvedValue({ rows: [], truncated: false })
+    configuredReaderMock.mockReturnValue(null)
     loadOverviewMock.mockResolvedValue(overview)
     loadTracePageMock.mockResolvedValue({
       window: overview.window,
@@ -389,6 +399,117 @@ describe("Admin Recommendations pages", () => {
     expect(html).toContain('value="watch-exposure-v2" selected=""')
     expect(html).toContain("and policy watch-exposure-v2")
     expect(html).toContain("Exposure rows are scoped")
+  })
+
+  it("shows anonymous reader failure while preserving signed results", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    loadAnonymousExposureMock.mockRejectedValue(
+      new Error("secret provider detail"),
+    )
+    loadSignedExposureMock.mockResolvedValue([
+      {
+        surface: "watch-home",
+        block: "for-you",
+        presentation: "recommendation-list",
+        placement: "primary",
+        policyVersion: "watch-for-you-v1",
+        position: 0,
+        served: 1,
+        rendered: 0,
+        eligible: 0,
+        selected: 0,
+        eligibleSelected: 0,
+        selectionWithoutImpression: 0,
+        repeats: null,
+        duplicateRate: null,
+        ctr: null,
+        occlusionAware: 0,
+        visibilityUnknown: 0,
+      },
+    ])
+    const html = renderToStaticMarkup(await RecommendationsPage())
+    expect(html).toContain("Anonymous exposure aggregation unavailable")
+    expect(html).toContain("watch-for-you-v1")
+    expect(html).not.toContain("secret provider detail")
+  })
+
+  it("shows signed reader failure while preserving anonymous results", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    loadSignedExposureMock.mockRejectedValue(
+      new Error("private database detail"),
+    )
+    loadAnonymousExposureMock.mockResolvedValue({
+      truncated: false,
+      rows: [
+        {
+          surface: "watch-home",
+          block: "hero",
+          presentation: "hero-card",
+          placement: "primary",
+          policyVersion: "watch-exposure-v2",
+          position: 0,
+          served: 1,
+          rendered: 0,
+          eligible: 0,
+          selected: 0,
+          eligibleSelected: 0,
+          selectionWithoutImpression: 0,
+          repeats: 0,
+          duplicateRate: null,
+          ctr: null,
+          occlusionAware: 0,
+          visibilityUnknown: 0,
+        },
+      ],
+    })
+    const html = renderToStaticMarkup(await RecommendationsPage())
+    expect(html).toContain("Signed exposure aggregation unavailable")
+    expect(html).toContain("watch-exposure-v2")
+    expect(html).not.toContain("private database detail")
+  })
+
+  it("uses the gated history reader without falling back on its failure", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    const client = { watchExposureBreakdown: vi.fn() }
+    configuredReaderMock.mockReturnValue(client)
+    loadHistoryExposureMock.mockRejectedValue(new Error("provider secret"))
+    const html = renderToStaticMarkup(await RecommendationsPage())
+    expect(loadHistoryExposureMock).toHaveBeenCalledWith(
+      client,
+      undefined,
+      undefined,
+    )
+    expect(loadAnonymousExposureMock).not.toHaveBeenCalled()
+    expect(html).toContain("Anonymous exposure aggregation unavailable")
+    expect(html).toContain("Background export failures")
+    expect(html).not.toContain("provider secret")
+  })
+
+  it("starts signed and anonymous exposure reads in parallel", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    let finishSigned!: (value: unknown[]) => void
+    let finishAnonymous!: (value: {
+      rows: unknown[]
+      truncated: boolean
+    }) => void
+    loadSignedExposureMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishSigned = resolve
+      }),
+    )
+    loadAnonymousExposureMock.mockReturnValue(
+      new Promise((resolve) => {
+        finishAnonymous = resolve
+      }),
+    )
+    const pending = RecommendationsPage()
+    await vi.waitFor(() => {
+      expect(loadSignedExposureMock).toHaveBeenCalledOnce()
+      expect(loadAnonymousExposureMock).toHaveBeenCalledOnce()
+    })
+    finishSigned([])
+    finishAnonymous({ rows: [], truncated: false })
+    await expect(pending).resolves.toBeDefined()
   })
 
   it.each(["24h", "7d", "29d"])(
