@@ -149,9 +149,12 @@ export function createRecommendationEventDispatcher(options: Options) {
       attemptedEvents,
       confirmedEvents,
       failedEvents: { ...failedEvents },
-      // A missing or interrupted acknowledgement cannot prove non-persistence.
+      // A missing, invalid or interrupted acknowledgement cannot prove non-persistence.
       unknownOutcomeEvents:
-        failedEvents.timeout + failedEvents.transport + failedEvents.unknown,
+        failedEvents.timeout +
+        failedEvents.transport +
+        failedEvents.response +
+        failedEvents.unknown,
       capacityDroppedEvents,
       invalidDroppedEvents,
       preparationDroppedEvents,
@@ -270,7 +273,12 @@ export function createRecommendationEventDispatcher(options: Options) {
           failedEvents[code] += count
           for (const event of events) family(event.family).failed++
           recordArms("failed")
-          if (code === "timeout" || code === "transport" || code === "unknown")
+          if (
+            code === "timeout" ||
+            code === "transport" ||
+            code === "response" ||
+            code === "unknown"
+          )
             recordArms("unknownOutcome")
         },
       )

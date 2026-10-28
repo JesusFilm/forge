@@ -25,9 +25,12 @@ Own priced dedicated service configuration, deployment coordination and release 
 ## Evidence
 
 Actual service qualification and release verification are pending. Organization
-access is awaiting discussion of the architectural rationale. No service
-configuration, regional price, purchase, provisioning, production gate change,
-data cutover or release verification is established.
+access was declined pending a comparison with PostgreSQL retention and
+compaction. The [storage options report](../../reports/2026-10-28-recommendation-storage-options.md)
+records the measured tradeoffs, public pricing limitations and remaining
+qualification. No service configuration, actual organizational or regional
+quote, purchase, provisioning, production gate change, data cutover or release
+verification is established.
 
 Preliminary local dispatch testing used ten batches of 90 envelopes, each with
 an 8 KiB synthetic payload. Eight requests were admitted and two dropped at the
