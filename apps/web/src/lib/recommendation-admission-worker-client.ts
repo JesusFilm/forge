@@ -9,6 +9,8 @@ import {
   COMMAND_TIMEOUT_MS,
   observeAdmissionFailure,
   PLAYBACK_CONTEXT_COMMAND_TIMEOUT_MS,
+  type AdmissionFailureReason,
+  type AdmissionWorkerDiagnostic,
   type RecommendationAdmissionNamespace,
   type RecommendationMutationAdmissionResult,
 } from "./recommendation-redis-admission"
@@ -22,8 +24,18 @@ const absoluteNow = () => performance.timeOrigin + performance.now()
 type Pending = {
   deadlineAt: number
   timer: ReturnType<typeof setTimeout>
-  resolve: (result: RecommendationMutationAdmissionResult) => void
+  resolve: (outcome: AdmissionOutcome) => void
 }
+
+type AdmissionOutcome = {
+  result: RecommendationMutationAdmissionResult
+  diagnostic: AdmissionWorkerDiagnostic | null
+}
+
+const failed = (diagnostic: AdmissionFailureReason): AdmissionOutcome => ({
+  result: unavailable(),
+  diagnostic: { stage: "worker", reason: diagnostic },
+})
 
 export function createAdmissionWorkerClient({
   workerFile = resolve(
@@ -49,12 +61,12 @@ export function createAdmissionWorkerClient({
     void current?.terminate()
   }
 
-  function settle(id: number, result: RecommendationMutationAdmissionResult) {
+  function settle(id: number, outcome: AdmissionOutcome) {
     const item = pending.get(id)
     if (!item) return
     clearTimeout(item.timer)
     pending.delete(id)
-    item.resolve(result)
+    item.resolve(outcome)
     if (pending.size === 0) {
       if (retiring) destroy()
       else {
@@ -68,16 +80,35 @@ export function createAdmissionWorkerClient({
     id: number
     result: RecommendationMutationAdmissionResult | null
     finishedAt: number
+    diagnostic?: AdmissionWorkerDiagnostic
   }) {
     const item = pending.get(message.id)
     if (!item) return
     const onTime =
       Number.isFinite(message.finishedAt) &&
       message.finishedAt <= item.deadlineAt
-    settle(
-      message.id,
-      onTime && message.result ? message.result : unavailable(),
-    )
+    if (!onTime) {
+      settle(message.id, failed("worker_late_result"))
+    } else if (!message.result) {
+      settle(
+        message.id,
+        message.diagnostic
+          ? { result: unavailable(), diagnostic: message.diagnostic }
+          : failed("worker_no_result"),
+      )
+    } else {
+      settle(message.id, {
+        result: message.result,
+        diagnostic:
+          !message.result.allowed &&
+          message.result.reason === "admission_unavailable"
+            ? (message.diagnostic ?? {
+                stage: "worker",
+                reason: "redis_unavailable",
+              })
+            : null,
+      })
+    }
   }
 
   function start() {
@@ -95,14 +126,26 @@ export function createAdmissionWorkerClient({
     })
     worker = current
     port.on("message", receive)
-    const fail = () => {
+    const fail = (
+      reason: "worker_error" | "worker_exit",
+      exitCode?: number,
+    ) => {
       if (worker !== current) return
+      // An idle worker can exit with no HTTP caller to carry a failure log.
+      // Keep lifecycle fields numeric or fixed strings; never log Error text.
+      try {
+        console.info(
+          `event=recommendation.admission_worker reason=${reason} exitCode=${Number.isInteger(exitCode) ? exitCode : "unknown"} pendingCount=${pending.size}`,
+        )
+      } catch {
+        // Diagnostics must not change admission behavior.
+      }
       retryAt = Date.now() + 1_000
-      for (const id of pending.keys()) settle(id, unavailable())
+      for (const id of pending.keys()) settle(id, failed(reason))
       destroy()
     }
-    current.on("error", fail)
-    current.on("exit", fail)
+    current.on("error", () => fail("worker_error"))
+    current.on("exit", (code) => fail("worker_exit", code))
   }
 
   return {
@@ -111,13 +154,17 @@ export function createAdmissionWorkerClient({
       aggregateKey: string,
       namespace: RecommendationAdmissionNamespace,
     ): Promise<RecommendationMutationAdmissionResult> {
-      if (
-        !redisUrl ||
-        retiring ||
-        Date.now() < retryAt ||
-        pending.size >= maxPending
-      ) {
-        observeAdmissionFailure("worker", "unavailable")
+      const refused: AdmissionFailureReason | null = !redisUrl
+        ? "redis_missing"
+        : retiring
+          ? "worker_retiring"
+          : Date.now() < retryAt
+            ? "retry_backoff"
+            : pending.size >= maxPending
+              ? "pending_capacity"
+              : null
+      if (refused) {
+        observeAdmissionFailure("worker", refused)
         return Promise.resolve(unavailable())
       }
       const totalBudget =
@@ -127,50 +174,48 @@ export function createAdmissionWorkerClient({
           : COMMAND_TIMEOUT_MS)
       const deadlineAt = absoluteNow() + totalBudget
       const id = ++nextId
-      return new Promise<RecommendationMutationAdmissionResult>(
-        (resolveResult) => {
-          const timer = setTimeout(() => {
-            // A blocked page-rendering loop can run timers before queued message
-            // callbacks. Read already-completed results before declaring timeout.
-            if (port) {
-              let queued
-              while (port && (queued = receiveMessageOnPort(port)))
-                receive(queued.message)
-            }
-            if (!pending.has(id)) return
-            retiring = true
-            retryAt = Date.now() + 1_000
-            settle(id, unavailable())
-          }, totalBudget)
-          pending.set(id, {
-            deadlineAt,
-            timer,
-            resolve: resolveResult,
-          })
-          try {
-            if (!worker) start()
-            worker?.ref()
-            port?.ref()
-            port?.postMessage({
-              id,
-              clientKey,
-              aggregateKey,
-              namespace,
-              deadlineAt,
-            })
-          } catch {
-            retiring = true
-            retryAt = Date.now() + 1_000
-            settle(id, unavailable())
+      return new Promise<AdmissionOutcome>((resolveResult) => {
+        const timer = setTimeout(() => {
+          // A blocked page-rendering loop can run timers before queued message
+          // callbacks. Read already-completed results before declaring timeout.
+          if (port) {
+            let queued
+            while (port && (queued = receiveMessageOnPort(port)))
+              receive(queued.message)
           }
-        },
-      ).then((result) => {
+          if (!pending.has(id)) return
+          retiring = true
+          retryAt = Date.now() + 1_000
+          settle(id, failed("worker_timeout"))
+        }, totalBudget)
+        pending.set(id, {
+          deadlineAt,
+          timer,
+          resolve: resolveResult,
+        })
+        try {
+          if (!worker) start()
+          worker?.ref()
+          port?.ref()
+          port?.postMessage({
+            id,
+            clientKey,
+            aggregateKey,
+            namespace,
+            deadlineAt,
+          })
+        } catch {
+          retiring = true
+          retryAt = Date.now() + 1_000
+          settle(id, failed("worker_dispatch_error"))
+        }
+      }).then(({ result, diagnostic }) => {
         // This continuation belongs to the calling HTTP request, unlike the
         // shared MessagePort listener created by the worker's first caller.
         if (!result.allowed && result.reason === "admission_unavailable") {
           observeAdmissionFailure(
-            "worker",
-            "unavailable",
+            diagnostic?.stage ?? "worker",
+            diagnostic?.reason ?? "unavailable",
             absoluteNow() - (deadlineAt - totalBudget),
             totalBudget,
           )
@@ -179,7 +224,7 @@ export function createAdmissionWorkerClient({
       })
     },
     close() {
-      for (const id of pending.keys()) settle(id, unavailable())
+      for (const id of pending.keys()) settle(id, failed("worker_closed"))
       destroy()
     },
   }

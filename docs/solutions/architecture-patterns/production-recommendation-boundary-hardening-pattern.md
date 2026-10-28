@@ -1,7 +1,7 @@
 ---
 title: "Harden a production recommendation slice at every irreversible boundary"
 date: "2026-08-26"
-last_updated: "2026-09-23"
+last_updated: "2026-10-29"
 category: "architecture-patterns"
 module: "apps/admin and apps/web recommendations"
 problem_type: "architecture_pattern"
@@ -413,6 +413,14 @@ TIME, EVAL, Redis-clock rejection or subsequent client backoff. Log fixed stage
 and reason values plus clamped durations; exclude raw errors, Redis URLs, keys,
 headers and capabilities. Isolate logging failures from admission behavior.
 Do not count both a backoff and its load-unavailable observation as two requests.
+
+Worker-thread console logs do not carry the calling Web request's logging
+context. Return a fixed diagnostic stage and reason with an unavailable worker
+result, then emit it from that request's continuation. Classify refusals before
+dispatch separately from worker exit, timeout and late results. Log an idle
+worker's exit code and pending count because no request may be present to carry
+its failure. Keep raw worker errors and Redis connection details out of both
+logs, and leave the public `admission_unavailable` response unchanged.
 
 A Redis TIME sample has round-trip uncertainty. Computing the Lua deadline as
 `redisTime + (commandBudget - elapsedTime)` deliberately uses a conservative
