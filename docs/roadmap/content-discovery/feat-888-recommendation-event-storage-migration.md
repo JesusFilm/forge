@@ -35,7 +35,7 @@ scope, five-minute learning freshness, continued valid serving during event-stor
 outages, and unchanged retention. The owner subsequently accepted a dedicated
 Forge ClickHouse service, a bounded temporary PostgreSQL outbox, and unexpired
 history backfill, then a 24-hour outage buffering target. Automatic durable
-retry during outages is required. Queue qualification, measured buffer sizing
+retry during outages is required. Sink qualification, measured buffer sizing
 and exact delivery guarantees are engineering work; priced infrastructure and
 release choices remain open. The owner rejected repeating the architecture
 recommendation as a confirmation question. The duration is a planning

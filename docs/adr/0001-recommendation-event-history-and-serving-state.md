@@ -21,12 +21,13 @@ Migration and replay preserve recorded expiry rather than extending history.
 The owner also selected a dedicated Forge ClickHouse service in the existing
 organizational account, a bounded temporary PostgreSQL forwarding outbox, and
 backfill of still-unexpired history. The outbox permits operational admission
-and pending delivery to commit together; acknowledgement by a qualified durable
-downstream queue permits its payload to leave PostgreSQL. Delivery retries run
+and pending delivery to commit together. The implementation uses the outbox as
+the durable pending queue and deletes its payload only after ClickHouse confirms
+persistence. This avoids an additional remote pending-payload erasure surface;
+the trade-off is PostgreSQL carrying backlog during sink outages. Delivery retries run
 in the background while valid recommendations continue serving. The owner set
 a 24-hour outage tolerance target at measured peak traffic. It does not reset
-event expiry or authorize dropping pending events at hour 24. Qualifying queue
-technology, actual buffer/catch-up capacity and durability is engineering work;
+event expiry or authorize dropping pending events at hour 24. Qualifying actual buffer/catch-up capacity and durability is engineering work;
 pricing remains unresolved.
 
 This trades immediate cross-store visibility and single-database transactions
