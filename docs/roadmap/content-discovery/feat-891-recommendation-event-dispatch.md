@@ -3,7 +3,7 @@ id: "feat-891"
 title: "Send event history asynchronously and measure delivery failures"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-28"
 duration: 3
 depends_on: ["feat-889", "feat-890"]
@@ -44,4 +44,30 @@ Producer calls occur only after operational commit in feat-892/893.
 
 ## Evidence
 
-Implementation pending.
+Implemented in `apps/admin/src/services/recommendations/event-history/dispatch.ts`
+and `runtime.ts`. `dispatchRecommendationEventsAfterCommit(events): void` starts
+one ClickHouse insert before returning, and the Next runtime registers that
+already-started promise with `after(promise)`. The worker factory exposes
+`drain()` and `close()` for its owner to await at graceful shutdown. Producer
+calls after operational commit belong to feat-892/893.
+
+`RECOMMENDATION_EVENT_EXPORT_ENABLED` defaults to `false`. Enabled export needs
+the ClickHouse endpoint, database, username and password. The validated timeout
+defaults to 10 seconds; concurrency defaults to eight requests and 8 MiB of
+in-flight encoded envelopes. At saturation, invalid input, expiry or missing
+configuration, dispatch drops immediately and records the event count. There is
+no queue or forwarding write. Configuration, transport and observer failures do
+not fail a completed viewer operation.
+
+`snapshot()` and one plain-string aggregate log per minute report process-local,
+process-lifetime attempted and confirmed event counts, bounded failure reasons,
+unknown outcomes, drops, in-flight requests/bytes, durations and family totals.
+They cannot enumerate events lost to a process crash. The aggregate interval is
+unreferenced and `close()` clears it.
+
+Focused dispatch/runtime tests cover immediate start, unresolved HTTP,
+exactly-one failure attempt, full-batch accounting, saturation/recovery,
+disabled and invalid configuration, expiry, sensitive-field rejection, Next
+lifetime registration, observer safety and interval cleanup. Scoped ESLint and
+the full Admin typecheck passed. The commit hook ran lint-staged and a
+repository-wide Prettier check.
