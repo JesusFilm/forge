@@ -31,8 +31,9 @@ record exact committed counters as `SKIPPED` / `budget_yield`, leave the oldest
 backlog unknown, and require bounded continuation. It does not prove the
 production tail latency or a universal safe margin.
 
-Check the minimum remaining time both before requesting a connection and after
-the advisory lock is acquired. An admitted operation still receives the full
+Check the minimum remaining time before requesting a connection, immediately
+after acquisition before the first query, and after the advisory lock is acquired.
+An admitted operation still receives the full
 remaining timeout and can genuinely exhaust it; the threshold does not
 guarantee terminal time. A pre-work yield can be recorded separately from a
 lock skip and from a completed success; it must not advance the success
@@ -73,3 +74,20 @@ still propagates; a conditional failure fallback preserves any terminal state
 already committed. Unit coverage includes lost acknowledgements for both yield
 and success. The native suite also proves genuine in-transaction timeouts remain
 failed while preserving earlier committed work.
+
+## October 28: acquisition acknowledgement before the first query
+
+One recorded phase had 1,444 ms remaining and spent 1,624 ms acquiring its
+transaction before attempting the advisory-lock query. The post-lock guard is
+too late for that boundary. Recheck the same nonterminal admission threshold
+immediately on callback entry, before any query. This avoids dispatch into an
+already exhausted transaction; acquisition rejection still propagates as a
+real failure. Terminal admission remains unchanged.
+
+The native PostgreSQL regression delays callback delivery until the real
+transaction expires: without the guard, the first query produces P2028; with
+the guard, the attempt durably yields without changing the success watermark.
+The injected delay proves boundary behavior, not the provider's latency cause.
+The other five October 28 failures occurred at different stages and remain
+unexplained. Use the allowlisted `post_acquisition_admission` diagnostic stage;
+old frozen parser bundles require refresh before future authorized use.
