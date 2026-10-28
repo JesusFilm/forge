@@ -217,6 +217,55 @@ export async function readCompactCtrVisitAt(
     WHERE v.id = ${visitId}::uuid AND v.created_at <= ${asOf}
   `)
   if (!row) return null
+  return decodeCompactCtrVisit(row, asOf)
+}
+
+type CompactCtrRow = {
+  visit_id: string
+  experiment_id: string
+  browser_unit_digest: string | null
+  summary: unknown
+}
+
+const MAX_COMPACT_REPORT_VISITS = 100_000
+
+/** One bounded query for all live visits at a report cutoff. A legacy gap or
+ * oversized cohort is unavailable, never a partial measured sample. */
+export async function readCompactCtrVisitsAt(
+  tx: Prisma.TransactionClient,
+  experimentId: string,
+  asOf: Date,
+): Promise<
+  | { status: "available"; visits: RawCtrVisit[] }
+  | { status: "unavailable"; reason: "missing_live_snapshot" | "visit_limit" }
+> {
+  const rows = await tx.$queryRaw<
+    (CompactCtrRow & { has_snapshot: boolean })[]
+  >(
+    Prisma.sql`
+      SELECT v.id AS visit_id, v.experiment_id, v.browser_unit_digest,
+        latest.summary, (latest.summary IS NOT NULL) AS has_snapshot
+      FROM recommendation_precomputed_visit v
+      LEFT JOIN LATERAL (
+        SELECT summary FROM recommendation_precomputed_ctr_measurement
+        WHERE visit_id = v.id AND accepted_at <= ${asOf}
+        ORDER BY accepted_at DESC, revision DESC LIMIT 1
+      ) latest ON true
+      WHERE v.experiment_id = ${experimentId} AND v.created_at <= ${asOf}
+      ORDER BY v.id LIMIT ${MAX_COMPACT_REPORT_VISITS + 1}
+    `,
+  )
+  if (rows.length > MAX_COMPACT_REPORT_VISITS)
+    return { status: "unavailable", reason: "visit_limit" }
+  if (rows.some((row) => !row.has_snapshot))
+    return { status: "unavailable", reason: "missing_live_snapshot" }
+  return {
+    status: "available",
+    visits: rows.map((row) => decodeCompactCtrVisit(row, asOf)),
+  }
+}
+
+function decodeCompactCtrVisit(row: CompactCtrRow, asOf: Date): RawCtrVisit {
   const state = advanceCompactPendingCutoff(row.summary, asOf)
   const string = (key: string): string => {
     const value = state[key]
