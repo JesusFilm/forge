@@ -3,7 +3,7 @@ id: "feat-891"
 title: "Send event history asynchronously and measure delivery failures"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-28"
 duration: 3
 depends_on: ["feat-889", "feat-890"]

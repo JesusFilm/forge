@@ -514,6 +514,31 @@ export const env = createEnv({
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_CLICKHOUSE_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_CLICKHOUSE_TEST_URL: z.string().url().optional(),
+    RECOMMENDATION_EVENT_EXPORT_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
+    RECOMMENDATION_CLICKHOUSE_ENDPOINT: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_DATABASE: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_USERNAME: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_PASSWORD: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(30_000)
+      .default(10_000),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(64)
+      .default(8),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_048_576)
+      .max(67_108_864)
+      .default(8_388_608),
     // Opt-in real-database proof for the push campaign claim indexes and the
     // push retention purge. Test-only; production never branches on it.
     PUSH_DB_TEST: z.enum(["1"]).optional(),
@@ -1130,6 +1155,29 @@ export const env = createEnv({
     ),
     RECOMMENDATION_CLICKHOUSE_TEST_URL: emptyToUndefined(
       process.env.RECOMMENDATION_CLICKHOUSE_TEST_URL,
+    ),
+    RECOMMENDATION_EVENT_EXPORT_ENABLED:
+      process.env.RECOMMENDATION_EVENT_EXPORT_ENABLED,
+    RECOMMENDATION_CLICKHOUSE_ENDPOINT: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_ENDPOINT,
+    ),
+    RECOMMENDATION_CLICKHOUSE_DATABASE: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_DATABASE,
+    ),
+    RECOMMENDATION_CLICKHOUSE_USERNAME: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_USERNAME,
+    ),
+    RECOMMENDATION_CLICKHOUSE_PASSWORD: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_PASSWORD,
+    ),
+    RECOMMENDATION_CLICKHOUSE_TIMEOUT_MS: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_TIMEOUT_MS,
+    ),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT: emptyToUndefined(
+      process.env.RECOMMENDATION_EVENT_MAX_IN_FLIGHT,
+    ),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT_BYTES: emptyToUndefined(
+      process.env.RECOMMENDATION_EVENT_MAX_IN_FLIGHT_BYTES,
     ),
     PUSH_DB_TEST: emptyToUndefined(process.env.PUSH_DB_TEST),
     RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
