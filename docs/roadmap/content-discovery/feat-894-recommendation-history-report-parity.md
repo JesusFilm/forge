@@ -89,3 +89,29 @@ fallback, click, impression, and playback/outcome counters needed by
 ClickHouse can then serve explicitly incomplete historical drilldown, while
 the compact state supports live/final reports and one-way archive without a
 permanent second raw history store. No report authority has switched yet.
+
+Compact measurement qualification slice (default off): migration `0167` adds
+`recommendation_precomputed_ctr_measurement` with `(visit_id, revision)` key,
+`accepted_at`, and a derived JSON summary. The summary contains the existing
+per-visit CTR/engagement counters, eligibility/arm/delivery flags, pending
+deadlines and cutoff ceiling; it does not copy browser, request, item, episode,
+consent, session, token, or payload identifiers. The visit foreign key
+cascades snapshots when the 29-day operational root is archived and purged;
+the existing archive totals and PG-only browser clusters remain the long-lived
+measurement authority. A flag gates transaction-local snapshots at admission,
+delivery/link, evidence, selection, claim, and outcome commits. Snapshot
+revision selection supports earlier report cutoffs; finalized pending counts
+advance across hard-until time without another write and stop at the cohort
+ceiling. Real PostgreSQL tests compare selected derived values with the native
+reader for public selection and corrected playback outcome, and verify replay
+and rollback do not advance snapshots.
+
+This is shadow qualification, not a reader cutover. Legacy rows lack earlier
+snapshot lineage, full differential parity for late/unqualified evidence,
+cluster moments and archive transitions is not yet established, and added
+transaction cost at production scale is unmeasured. `ctr-report.ts`,
+`engagement-report.ts`, `visit-clicks.ts`, `ctr-evidence.ts`,
+`engagement-evidence.ts`, and `visit-retention.ts` still read operational raw
+evidence. Keep the flag off and feat-894 in-progress until those dependencies
+and rollback safety are qualified; ClickHouse delivery loss is not a source
+of live report authority.

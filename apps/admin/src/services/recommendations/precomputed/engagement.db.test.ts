@@ -14,6 +14,11 @@ import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
 import {
+  capturePrecomputedCtrMeasurement,
+  readPrecomputedCtrMeasurementAt,
+} from "./compact-accounting"
+import { rawCtrVisitSql, type RawCtrVisit } from "./ctr-evidence"
+import {
   declareFixturePrecomputedCtrPolicy,
   evaluatePrivatePrecomputedCtr,
 } from "./ctr-report"
@@ -381,6 +386,52 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "keeps corrected engagement snapshots at their original report cutoffs",
+      async () => {
+        const id = await freshVisit()
+        const episode = await playback(
+          await selection(id, new Date(now.getTime() - 60_000)),
+        )
+        const beforeCorrection = new Date(now.getTime() - 30_000)
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, beforeCorrection),
+        )
+        await outcome(episode, {
+          qualified: false,
+          milliseconds: 0,
+          coverage: "complete",
+          revision: 2,
+          at: new Date(now.getTime() - 20_000),
+        })
+        const afterCorrection = new Date(now.getTime() - 10_000)
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, afterCorrection),
+        )
+        for (const [cutoff, revision] of [
+          [beforeCorrection, 1],
+          [afterCorrection, 2],
+        ] as const) {
+          const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+            rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, cutoff),
+          )
+          const shadow = await readPrecomputedCtrMeasurementAt(
+            prisma,
+            id,
+            cutoff,
+          )
+          expect(shadow?.revision).toBe(revision)
+          expect(shadow?.summary).toMatchObject({
+            qualified_playbacks: native.qualified_playbacks.toString(),
+            active_playback_milliseconds:
+              native.active_playback_milliseconds.toString(),
+          })
+        }
+      },
+    )
+
     it("uses the latest revision before qualification, excludes future outcomes, and does not count other classifiers", async () => {
       const id = await freshVisit()
       const episode = await playback(
@@ -468,6 +519,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       const delivered = await selection(id, new Date(now.getTime() - days(2)))
       await playback(delivered, { milliseconds: 90_000 })
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(
+            tx,
+            id,
+            new Date(now.getTime() - days(2) + 10_000),
+          ),
+        )
+        expect(
+          await readPrecomputedCtrMeasurementAt(prisma, id, now),
+        ).not.toBeNull()
+      }
       const before = await report()
       await prisma.$transaction((tx) =>
         purgeExpiredPrecomputedVisitRoots(tx, now, 100),
@@ -498,6 +561,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         engagedVisits: 1n,
         activePlaybackMilliseconds: 90_000n,
       })
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1")
+        expect(
+          await readPrecomputedCtrMeasurementAt(prisma, id, now),
+        ).toBeNull()
     })
 
     it("reads the real outcome service's deduplicated active playback in both variants", async () => {
@@ -574,6 +641,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             reason: "terminal-fact",
           }),
         ).resolves.toMatchObject({ status: "published" })
+        if (
+          env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1"
+        ) {
+          const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+            rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, now),
+          )
+          const shadow = await readPrecomputedCtrMeasurementAt(prisma, id, now)
+          expect(shadow?.summary).toMatchObject({
+            qualified_playbacks: native.qualified_playbacks.toString(),
+            active_playback_milliseconds:
+              native.active_playback_milliseconds.toString(),
+          })
+        }
       }
       const result = await report()
       for (const arm of ["control", "challenger"] as const) {
@@ -632,6 +712,39 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         1 / 60,
       )
     })
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "advances finalized pending measurement at hard-until without a new event",
+      async () => {
+        const id = await freshVisit()
+        const delivered = await selection(id, new Date(now.getTime() - 60_000))
+        const episode = await playback(delivered, { noOutcome: true })
+        await prisma.recommendationPlaybackEpisode.update({
+          where: { id: episode.id },
+          data: { hardUntil: new Date(now.getTime() + 30_000) },
+        })
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, now),
+        )
+        const later = new Date(now.getTime() + 60_000)
+        const [nativeAtCapture] = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, now),
+        )
+        const [nativeLater] = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, later),
+        )
+        expect(nativeAtCapture.pending_playbacks).toBe(1n)
+        expect(nativeLater.pending_playbacks).toBe(0n)
+        expect(
+          (await readPrecomputedCtrMeasurementAt(prisma, id, now))?.summary,
+        ).toMatchObject({ pending_playbacks: "1" })
+        expect(
+          (await readPrecomputedCtrMeasurementAt(prisma, id, later))?.summary,
+        ).toMatchObject({ pending_playbacks: "0" })
+      },
+    )
 
     it("keeps old archived engagement unknown while CTR remains available", async () => {
       await prisma.recommendationPrecomputedCtrCluster.create({

@@ -35,6 +35,10 @@ import {
 } from "./visit-admission"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
 import {
+  capturePrecomputedCtrMeasurement,
+  readPrecomputedCtrMeasurementAt,
+} from "./compact-accounting"
+import {
   declareFixturePrecomputedCtrPolicy,
   evaluatePrivatePrecomputedCtr,
 } from "./ctr-report"
@@ -671,6 +675,100 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(report.eligible.notAttempted).toBe(2)
       expect(report.eligible.byArm[first.arm!].empty).toBe(1)
     })
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "captures admission and correction as distinct derived snapshots",
+      async () => {
+        const visitId = randomUUID()
+        const input = {
+          visitId,
+          now: new Date(Date.now() - 500),
+          browserDigest: "a".repeat(64),
+          consentReceiptDigest: null,
+          profileTokenDigest: null,
+          seedMediaId: sourceVideoId,
+          locale: "en",
+          audioLanguageSlug: "english",
+          trafficCategory: "ordinary_browser" as const,
+          enrollmentMode: "private_test" as const,
+          caller,
+        }
+        const admission = await admitPrivatePrecomputedVisit(prisma, input)
+        expect(admission.status).toBe("eligible")
+        await recordPrivatePrecomputedVisitDelivery(prisma, {
+          visitId,
+          browserDigest: input.browserDigest,
+          result: "empty",
+          actualStrategy: null,
+          requestId: null,
+          fallbackReason: null,
+          caller,
+        })
+        const snapshots = await prisma.$queryRaw<
+          Array<{
+            revision: number
+            accepted_at: Date
+            summary: { delivery_result: string; accepted_selections: string }
+          }>
+        >`SELECT revision, accepted_at, summary FROM recommendation_precomputed_ctr_measurement
+        WHERE visit_id = ${visitId}::uuid ORDER BY revision`
+        expect(snapshots).toMatchObject([
+          {
+            revision: 1,
+            summary: {
+              delivery_result: "not_attempted",
+              accepted_selections: "0",
+            },
+          },
+          {
+            revision: 2,
+            summary: { delivery_result: "empty", accepted_selections: "0" },
+          },
+        ])
+        expect(
+          await readPrecomputedCtrMeasurementAt(
+            prisma,
+            visitId,
+            snapshots[0].accepted_at,
+          ),
+        ).toMatchObject({
+          revision: 1,
+          summary: { delivery_result: "not_attempted" },
+        })
+        expect(
+          await readPrecomputedCtrMeasurementAt(
+            prisma,
+            visitId,
+            snapshots[1].accepted_at,
+          ),
+        ).toMatchObject({ revision: 2, summary: { delivery_result: "empty" } })
+        await recordPrivatePrecomputedVisitDelivery(prisma, {
+          visitId,
+          browserDigest: input.browserDigest,
+          result: "empty",
+          actualStrategy: null,
+          requestId: null,
+          fallbackReason: null,
+          caller,
+        })
+        const count = async () =>
+          (
+            await prisma.$queryRaw<Array<{ n: bigint }>>`
+              SELECT count(*)::bigint AS n FROM recommendation_precomputed_ctr_measurement
+              WHERE visit_id = ${visitId}::uuid`
+          )[0].n
+        expect(await count()).toBe(2n)
+        await expect(
+          prisma.$transaction(async (tx) => {
+            await capturePrecomputedCtrMeasurement(tx, visitId, new Date())
+            throw new Error("fixture_rollback")
+          }),
+        ).rejects.toThrow("fixture_rollback")
+        expect(await count()).toBe(2n)
+      },
+    )
 
     it("deduplicates concurrent first-tab retries to one eligible visit and arm", async () => {
       const visitId = randomUUID()
