@@ -15,6 +15,15 @@ const MAX_BATCH_BYTES = 1_048_576
 const MAX_RESPONSE_BYTES = 33_554_432
 const MAX_IDS = 100
 const MAX_ID_BYTES = 19_100
+const EXPIRY_SWEEP_READ_SETTINGS = {
+  max_execution_time: "8",
+  max_rows_to_read: "1000000",
+  read_overflow_mode: "throw",
+  max_result_rows: "101",
+  result_overflow_mode: "throw",
+  max_memory_usage: "268435456",
+  max_threads: "2",
+}
 const WATCH_REPORT_SETTINGS = {
   max_execution_time: "3",
   timeout_before_checking_execution_speed: "0",
@@ -54,6 +63,14 @@ export type RecommendationClickHouseClient = {
     family: RecommendationEventFamily
     logicalIds: readonly string[]
   }): Promise<void>
+  // Call only after the producer/backfill lineage is closed for these IDs.
+  // maxOriginalExpiry must cover every possible revision, including late writes.
+  // A terminal marker remains until a separate certified retirement protocol.
+  sweepClosedExpired(input: {
+    family: RecommendationEventFamily
+    entries: readonly { logicalId: string; maxOriginalExpiry: Date }[]
+    now: Date
+  }): Promise<{ swept: string[]; pending: string[] }>
   watchExposureBreakdown(
     input: WatchExposureBreakdownInput,
   ): Promise<WatchExposureAggregate>
@@ -140,6 +157,15 @@ FORMAT JSONEachRow`
 const ERASURE_SQL = `INSERT INTO recommendation_event_erasure (family, logical_id) FORMAT JSONEachRow\n`
 const DELETE_SQL = `DELETE FROM recommendation_event_history
 WHERE family = {family:String} AND logical_id IN (__IDS__)`
+const PHYSICAL_DELETE_SQL = `ALTER TABLE recommendation_event_history DELETE
+WHERE family = {family:String} AND logical_id IN (__IDS__)`
+const EXPIRED_IDS_SQL = `SELECT logical_id, max(expires_at) AS max_expiry
+FROM recommendation_event_history
+WHERE family = {family:String} AND logical_id IN (__IDS__)
+GROUP BY logical_id
+ORDER BY logical_id FORMAT JSONEachRow`
+const REMAINING_SQL = `SELECT count() AS count FROM recommendation_event_history
+WHERE family = {family:String} AND logical_id IN (__IDS__) FORMAT JSONEachRow`
 const CONFLICT_SQL = `SELECT toUInt32(sum(variants > 1)) AS conflicts FROM (
   SELECT logical_id, revision,
     uniqExact(tuple(occurred_at, accepted_at, expires_at, payload_digest, payload)) AS variants
@@ -671,6 +697,104 @@ export function createRecommendationClickHouseClient(
           })
         }
         return { rows: rows.slice(0, 128), truncated: rows.length > 128 }
+      })
+    },
+    async sweepClosedExpired({ family, entries, now }) {
+      return withDeadline(async (signal) => {
+        if (
+          !Array.isArray(entries) ||
+          entries.some((entry) => !entry || typeof entry !== "object")
+        )
+          throw new RecommendationClickHouseError("invalid_input")
+        const logicalIds = entries.map((entry) => entry.logicalId)
+        validIds(family, logicalIds)
+        if (
+          !(now instanceof Date) ||
+          Number.isNaN(now.getTime()) ||
+          entries.some(
+            (entry) =>
+              !(entry.maxOriginalExpiry instanceof Date) ||
+              Number.isNaN(entry.maxOriginalExpiry.getTime()),
+          )
+        )
+          throw new RecommendationClickHouseError("invalid_input")
+        const query = withIds(EXPIRED_IDS_SQL, family, logicalIds)
+        const result = await execute(
+          signal,
+          query.sql,
+          query.params,
+          EXPIRY_SWEEP_READ_SETTINGS,
+        )
+        const storedMaxExpiry = new Map<string, string>()
+        if (result !== "") {
+          for (const line of result.trimEnd().split("\n")) {
+            let row: unknown
+            try {
+              row = JSON.parse(line)
+            } catch {
+              throw new RecommendationClickHouseError("response")
+            }
+            if (
+              !row ||
+              typeof row !== "object" ||
+              Object.keys(row).sort().join(",") !== "logical_id,max_expiry" ||
+              !("logical_id" in row) ||
+              typeof row.logical_id !== "string" ||
+              !logicalIds.includes(row.logical_id) ||
+              storedMaxExpiry.has(row.logical_id) ||
+              !("max_expiry" in row) ||
+              typeof row.max_expiry !== "string" ||
+              Number.isNaN(new Date(row.max_expiry).getTime()) ||
+              new Date(row.max_expiry).toISOString() !== row.max_expiry
+            )
+              throw new RecommendationClickHouseError("response")
+            storedMaxExpiry.set(row.logical_id, row.max_expiry)
+          }
+        }
+        const cutoff = now.toISOString()
+        const swept = entries
+          .filter(
+            (entry) =>
+              entry.maxOriginalExpiry.toISOString() <= cutoff &&
+              (storedMaxExpiry.get(entry.logicalId) ?? "") <= cutoff,
+          )
+          .map((entry) => entry.logicalId)
+        if (swept.length === 0) return { swept, pending: [...logicalIds] }
+        const rows =
+          swept
+            .map((id) => JSON.stringify({ family, logical_id: id }))
+            .join("\n") + "\n"
+        const marker = await execute(signal, ERASURE_SQL + rows)
+        if (marker !== "") throw new RecommendationClickHouseError("response")
+        const deletion = withIds(PHYSICAL_DELETE_SQL, family, swept)
+        const deleted = await execute(signal, deletion.sql, deletion.params, {
+          mutations_sync: "2",
+        })
+        if (deleted !== "") throw new RecommendationClickHouseError("response")
+        const remaining = withIds(REMAINING_SQL, family, swept)
+        const verification = await execute(
+          signal,
+          remaining.sql,
+          remaining.params,
+          EXPIRY_SWEEP_READ_SETTINGS,
+        )
+        try {
+          const row: unknown = JSON.parse(verification.trim())
+          if (
+            !row ||
+            typeof row !== "object" ||
+            Object.keys(row).join(",") !== "count" ||
+            !("count" in row) ||
+            (row.count !== 0 && row.count !== "0")
+          )
+            throw new Error()
+        } catch {
+          throw new RecommendationClickHouseError("response")
+        }
+        return {
+          swept,
+          pending: logicalIds.filter((id) => !swept.includes(id)),
+        }
       })
     },
     async erase({ family, logicalIds }) {

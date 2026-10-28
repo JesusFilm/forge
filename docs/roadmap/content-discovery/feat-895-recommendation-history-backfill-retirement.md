@@ -30,5 +30,72 @@ five-second attempt deadline, 750 ms phase admission, exact committed ledger
 counts, continuation and overdue health for compact backlog. An isolated local
 PostgreSQL fixture proves pagination, live/expired boundaries, failed child
 rollback and budget yield. Backfill qualification, privacy erasure propagation,
-reader cutover, rollback and physical retirement remain unimplemented; no
+reader cutover, rollback and production physical retirement remain unimplemented; no
 production lifecycle claim follows from this local proof.
+
+The disabled ClickHouse client now offers `sweepClosedExpired` as a bounded
+primitive for at most 100 explicitly closed `(family, logicalId)` values. It
+requires each ID's source-side maximum original expiry and checks it against
+the **maximum original expiry across every stored revision and physical
+variant**, returning still-live IDs as pending. An ID with no stored row is
+also fenced once its source expiry passes, before an unknown in-flight INSERT
+can arrive. It installs a terminal read
+fence before running `ALTER TABLE ... DELETE` with `mutations_sync=2`, then
+verifies no active history rows remain. This avoids per-row TTL resurrection:
+an older long-lived revision remains available to historical `asOf` reads
+until its own expiry, even if the latest revision expired earlier. The marker
+also suppresses a server INSERT that completes after cleanup; a repeated
+sweep removes that late row once its original expiry passes. A late correction
+with a future expiry stays physically pending but remains unreadable behind
+the marker. A timeout or uncertain mutation response is **not** a confirmed
+physical-cleanup receipt; the marker stays and the job must reconcile.
+Preflight and verification reads cap physical scans at one million rows,
+256 MiB, two threads, 101 result rows and eight server seconds inside the
+client's existing operation deadline. The mutation itself may still run after
+HTTP abort and can rewrite large unpartitioned parts even for one ID; no
+universal mutation deadline or production cost bound is claimed.
+
+On pinned ClickHouse 25.8.15.35, ten generic real-database tests exercise
+canonical revisions/conflicts, historical cutoff, expiry, privacy erasure,
+whole-ID cleanup, late expired INSERT replay, a late future-expiry correction,
+and an initially absent row. After synchronous mutation the owned fixture had zero active
+`system.parts` rows for its history table. A separate owned
+`event_expiry_physical_test` database with `old_parts_lifetime=1` showed
+`system.mutations.is_done=1`, `parts_to_do=0`, and no remaining
+`system.parts` entry after the old part cleanup. These observations establish
+the local active-part rewrite and eventual local part removal, not immediate
+removal of inactive parts under the production setting, provider backup purge,
+or filesystem-space savings. ClickHouse documents that lightweight `DELETE`
+only masks rows until a later merge, whereas `ALTER TABLE ... DELETE` rewrites
+affected parts; TTL deletion also waits for merges. See the
+[ALTER DELETE](https://clickhouse.com/docs/reference/statements/alter/delete),
+[lightweight DELETE](https://clickhouse.com/docs/reference/statements/delete),
+and [TTL](https://clickhouse.com/docs/concepts/features/operations/delete/ttl)
+references.
+
+This primitive is **not wired to a scheduled job or enabled**. A caller must
+first certify that the producer/backfill lineage for each ID is closed and
+that every earlier HTTP INSERT with an unknown result has either completed or
+been independently reconciled. The minimum certificate needs an operational
+per-ID generation fence rejecting new corrections and backfill, a closed
+checkpoint for all known source pages, and a drained/reconciled inventory of
+all dispatched query IDs and unknown outcomes, plus the maximum original
+expiry of every possible revision. The current client does not
+persist query IDs or expose such a certificate. The generic envelope has no finite maximum
+remote completion delay, so client abort or a fixed marker TTL cannot certify
+that. Retirement of the terminal marker needs that closure certificate plus
+a final zero-row/part check and a rule rejecting later corrections/backfill
+for the closed ID. Until those pieces exist, marker retention is unbounded and
+the finite control-metadata lifecycle remains an explicit feat-895/896 gate;
+before marker release, the generic and Watch readers must also floor their
+caller-supplied `now` at actual wall time so a stale caller cannot expose an
+expired late row. Once a certified maximum possible expiry is past, a late
+row cannot be logically live even after marker release; physical cleanup of
+such late rows still needs a recurring reconciliation pass. This is a
+source-certified retirement condition, not a fixed TTL. Until it is wired,
+the method must not be scheduled or used as production retention. No producer
+or PostgreSQL schema was changed, no production DDL was applied, and the
+feature remains default-off. The current exported safe fields omit
+profile/session/browser digests and content-action destination artifact IDs;
+profile disable/reset affects private influence and linkage, not contextual
+analytics, so this slice adds no new consent gate or privacy journal.

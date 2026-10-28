@@ -4,6 +4,11 @@
 -- correction cannot revive an older version across partitions.
 -- accepted_at is the admission time of this immutable revision. Historical
 -- reads select only revisions admitted by their requested as-of cutoff.
+-- Do not add a per-row expiry TTL: deleting a short-lived latest revision
+-- while an older long-lived revision remains would resurrect the older row.
+-- The bounded closed-ID sweep installs a read fence, then rewrites affected
+-- active parts only after certified source and stored variants have reached
+-- original expiry. Source closure and marker retirement remain external gates.
 CREATE TABLE IF NOT EXISTS recommendation_event_history
 (
     family LowCardinality(String),
