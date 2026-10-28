@@ -61,9 +61,28 @@ envelope errors retain `invalid_input` classification without surfacing input.
 Eligibility correction exports use the finalization worker's dispatcher or the
 profile reconciliation batch's worker dispatcher, with one drain at each
 bounded worker boundary.
-Complete diagnostic trace/source evidence and corresponding readers still
-need a field-by-field contract. The current candidate-run and stage exports
-remain bounded summaries, not complete archival trace payloads.
+The diagnostic writer follow-up uses a shared allowlisted codec for live and
+backfill request, served-item, candidate-run and stage envelopes. It preserves
+the committed request/run creation time, original issuance time (including a
+null failed issuance), per-record expiry, persisted stage time and stable
+logical IDs. It carries validated delivery diagnostics, safe served
+presentation/provenance and reviewed semantic, curated, profile, co-watch,
+baseline and composition-input source scalars. Unknown fields, signed image
+URLs, profile projection digests, arbitrary source provenance and private
+viewing-mode maps are omitted with explicit redacted coverage. A checkpointed
+backfill reader expands one bounded root at a time, limits output to 100
+events/1 MiB, and resumes by request ID and within-root offset; it does not
+queue live exports. Service tests compare identical live/backfill envelopes for
+legacy and packed traces; PostgreSQL tests compare precomputed live output to
+the saved row and bounded page reader. The gate remains off by default.
+
+This remains partial archival coverage by design: redacted or unknown source
+maps cannot be reconstructed from ClickHouse, and a dropped best-effort batch
+may leave a gap. Authenticated operator/detail and usefulness readers still
+need a bounded history adapter with explicit unavailable/incomplete coverage,
+plus parity/backfill checkpoints and privacy/erasure decisions before any raw
+PostgreSQL diagnostic payload is removed. Existing report and compact-state
+retirement work remains in this ticket and feats 894–895.
 
 Compact-state retirement remains: replace request/item roots with issuance,
 capability and replay binding columns (`delivery_jti`, `signing_kid`,

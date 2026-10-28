@@ -1,0 +1,139 @@
+import { describe, expect, it, vi } from "vitest"
+import { readRecommendationTraceHistoryPage } from "./trace-backfill"
+
+const createdAt = new Date("2026-10-28T02:00:01.000Z")
+const expiresAt = new Date("2026-11-26T02:00:00.000Z")
+const request = {
+  id: "request-1",
+  manifestId: "manifest-1",
+  strategyVersion: "strategy-v1",
+  seedMediaId: "video-0",
+  locale: "en",
+  result: "SERVED",
+  state: "ISSUED",
+  fallbackReason: null,
+  expectedItemCount: 0,
+  retrievalLatencyMs: 17,
+  responseBytes: 100,
+  experimentAssignmentId: null,
+  createdAt,
+  issuedAt: createdAt,
+  expiresAt,
+  servedItemPayload: null,
+  deliveryDiagnostics: null,
+  items: [],
+  candidateRun: {
+    id: "run-1",
+    requestId: "request-1",
+    createdAt,
+    expiresAt,
+    purpose: "watch",
+    contextVersion: "context-v1",
+    generatorVersion: "generator-v1",
+    unionVersion: "union-v1",
+    eligibilityVersion: "eligibility-v1",
+    rankerVersion: "ranker-v1",
+    composerVersion: "composer-v1",
+    candidateEligibilityParity: "passed",
+    rankerParity: "passed",
+    nominatedCount: 2,
+    canonicalizedCount: 2,
+    deduplicatedCount: 2,
+    rejectedCount: 0,
+    scoredCount: 2,
+    orderedCount: 2,
+    requestedCount: 6,
+    composedCount: 0,
+    shortfallReason: "insufficient_candidates",
+    evidenceComplete: true,
+    fallbackReason: null,
+    tracePayload: null,
+    stageEvidence: [0, 1, 2].map((ordinal) => ({
+      id: `stage-${ordinal}`,
+      runId: "run-1",
+      stage: "scored",
+      ordinal,
+      candidateKey: `semantic:${ordinal}:video-${ordinal}`,
+      targetMediaId: `video-${ordinal}`,
+      sourceGenerator: "semantic",
+      sourceRank: ordinal + 1,
+      sourceScore: 0.9,
+      normalizedScore: 0.9,
+      rrfScore: 0.1,
+      deterministicScore: 1,
+      finalPosition: ordinal,
+      reasonCodes: [],
+      sourceEvidence: [],
+      createdAt,
+      expiresAt,
+    })),
+  },
+}
+
+describe("bounded recommendation trace backfill", () => {
+  it("resumes within one root without re-emitting prior identities", async () => {
+    const findFirst = vi.fn(async () => request)
+    const findUnique = vi.fn(async () => request)
+    const db = { recommendationRequest: { findFirst, findUnique } } as never
+    const first = await readRecommendationTraceHistoryPage(db, null, {
+      maxEvents: 2,
+    })
+    expect(first.events.map((event) => event.logicalId)).toEqual([
+      "request-1",
+      "run-1",
+    ])
+    expect(first.cursor).toEqual({
+      kind: "within",
+      requestId: "request-1",
+      offset: 2,
+    })
+    const second = await readRecommendationTraceHistoryPage(db, first.cursor, {
+      maxEvents: 2,
+    })
+    expect(second.events.map((event) => event.logicalId)).toEqual([
+      "stage-0",
+      "stage-1",
+    ])
+    const third = await readRecommendationTraceHistoryPage(db, second.cursor, {
+      maxEvents: 2,
+    })
+    expect(third.events.map((event) => event.logicalId)).toEqual(["stage-2"])
+    expect(third.cursor).toEqual({ kind: "after", requestId: "request-1" })
+    expect(findFirst).toHaveBeenCalledTimes(1)
+    expect(findUnique).toHaveBeenCalledTimes(2)
+  })
+
+  it("caps emitted bytes and rejects unbounded roots", async () => {
+    const db = {
+      recommendationRequest: {
+        findFirst: vi.fn(async () => request),
+        findUnique: vi.fn(),
+      },
+    } as never
+    const page = await readRecommendationTraceHistoryPage(db, null, {
+      maxEvents: 100,
+      maxBytes: 900,
+    })
+    expect(page.events.length).toBeGreaterThan(0)
+    expect(Buffer.byteLength(JSON.stringify(page.events))).toBeLessThan(1_200)
+    const oversized = {
+      ...request,
+      candidateRun: {
+        ...request.candidateRun,
+        stageEvidence: Array.from({ length: 449 }, (_, i) => ({
+          ...request.candidateRun.stageEvidence[0],
+          id: `stage-${i}`,
+        })),
+      },
+    }
+    const bad = {
+      recommendationRequest: {
+        findFirst: vi.fn(async () => oversized),
+        findUnique: vi.fn(),
+      },
+    } as never
+    await expect(readRecommendationTraceHistoryPage(bad, null)).rejects.toThrow(
+      /stage limit/,
+    )
+  })
+})

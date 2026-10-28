@@ -5,6 +5,11 @@ vi.mock("./event-history/runtime", async (importOriginal) => ({
   dispatchPreparedRecommendationEventsAfterCommit: history.dispatch,
 }))
 import { runRecommendationRetrievalQuery } from "./delivery.service"
+import {
+  encodeRecommendationHistoryPage,
+  storedCandidateStageRows,
+} from "./event-history/trace-codec"
+import { createRecommendationEventDispatcher } from "./event-history/dispatch"
 
 import { input, makeHarness } from "./delivery.service.test-helpers"
 
@@ -14,6 +19,74 @@ afterEach(() => {
 })
 
 describe("RecommendationDeliveryService persistence and deadlines", () => {
+  it("keeps a committed viewer result when served-history preparation fails and transport stalls", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-08-19T03:00:00.000Z"))
+    const harness = makeHarness({ servedItemFormat: "packed" })
+    const originalCreate =
+      harness.tx.recommendationRequest.create.getMockImplementation()!
+    harness.tx.recommendationRequest.create.mockImplementation(
+      async (args) => ({
+        ...(await originalCreate(args)),
+        servedItemPayload: { version: 1, items: {} },
+      }),
+    )
+    const insert = vi.fn(() => new Promise<void>(() => undefined))
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+      now: () => new Date("2026-08-19T03:01:00.000Z").getTime(),
+    })
+    history.dispatch.mockImplementation((family, prepare, count) =>
+      dispatcher.dispatchPrepared(family, prepare, count),
+    )
+    await expect(
+      harness.service.deliver(input("stage-trace-seed")),
+    ).resolves.toMatchObject({
+      result: "served",
+    })
+    expect(dispatcher.snapshot().preparationDroppedEvents).toBe(1)
+    expect(dispatcher.snapshot().byFamily["served-item"]?.dropped).toBe(1)
+    expect(insert).toHaveBeenCalled()
+    expect(insert.mock.calls.length).toBe(
+      dispatcher.snapshot().inFlightRequests,
+    )
+  })
+  it.each(["legacy", "packed"] as const)(
+    "exports the exact committed %s request, served item and run identity used by backfill",
+    async (servedItemFormat) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      vi.setSystemTime(new Date("2026-08-19T03:00:00.000Z"))
+      const harness = makeHarness({ servedItemFormat })
+      const live: Array<
+        ReturnType<typeof encodeRecommendationHistoryPage>[number]
+      > = []
+      history.dispatch.mockImplementation((_family, prepare) =>
+        live.push(...prepare()),
+      )
+      const response = await harness.service.deliver(input("stage-trace-seed"))
+      expect(response.result).toBe("served")
+      const request =
+        await harness.tx.recommendationRequest.create.mock.results[0]!.value
+      const run =
+        await harness.tx.recommendationCandidateRun.create.mock.results[0]!
+          .value
+      const legacyStages = harness.evidenceWrites.flat().map((row) => ({
+        ...row,
+        createdAt: new Date(row.createdAt as string),
+        expiresAt: new Date(row.expiresAt as string),
+      })) as unknown as Parameters<typeof storedCandidateStageRows>[1]
+      const stages = storedCandidateStageRows(run, legacyStages)
+      const backfill = encodeRecommendationHistoryPage([
+        { request, items: request.items, run, stages },
+      ])
+      expect(
+        live.sort((a, b) => a.logicalId.localeCompare(b.logicalId)),
+      ).toEqual(backfill.sort((a, b) => a.logicalId.localeCompare(b.logicalId)))
+      expect(backfill[0]?.occurredAt).toBe(request.createdAt.toISOString())
+      expect(backfill[0]?.payload.issuedAt).toBe(request.issuedAt.toISOString())
+      expect(request.items).toHaveLength(1)
+    },
+  )
   it("exports the committed request latency when the clock advances before commit returns", async () => {
     let clock = 1_000
     const harness = makeHarness({ nowMilliseconds: () => clock })
@@ -157,7 +230,6 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
 
     expect(delivery.result).toBe("served")
     expect(tx.recommendationCandidateRun.create).toHaveBeenCalledWith({
-      select: { id: true },
       data: expect.objectContaining({
         requestId: delivery.requestId,
         purpose: "watch",
@@ -615,6 +687,7 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
       reason: "issuance_failed",
     })
     expect(issuance.tx.recommendationRequest.create).toHaveBeenCalledWith({
+      include: { items: true },
       data: expect.objectContaining({
         id: expect.any(String),
         state: "ISSUANCE_FAILED",

@@ -4,6 +4,8 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import type { RecommendationEventEnvelope } from "../event-history/envelope"
+import { encodeRecommendationHistoryPage } from "../event-history/trace-codec"
+import { readRecommendationTraceHistoryPage } from "../event-history/trace-backfill"
 const exportedHistory = vi.hoisted(() => ({
   events: [] as RecommendationEventEnvelope[],
 }))
@@ -13,7 +15,8 @@ vi.mock("../event-history/runtime", async (importOriginal) => ({
     family: string,
     prepare: () => RecommendationEventEnvelope[],
   ) => {
-    if (family === "experiment-visit") exportedHistory.events.push(...prepare())
+    if (["experiment-visit", "request", "served-item"].includes(family))
+      exportedHistory.events.push(...prepare())
   },
 }))
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
@@ -226,6 +229,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         where: { id: delivery.requestId! },
         include: { items: true },
       })
+      const expectedHistory = encodeRecommendationHistoryPage([
+        {
+          request: saved,
+          items: saved.items,
+          run: null,
+          stages: [],
+        },
+      ])
+      expect(
+        exportedHistory.events.filter(
+          (event) =>
+            (event.family === "request" && event.logicalId === saved.id) ||
+            (event.family === "served-item" &&
+              event.payload.requestId === saved.id),
+        ),
+      ).toEqual(expectedHistory)
+      const backfill = await readRecommendationTraceHistoryPage(
+        prisma,
+        { kind: "within", requestId: saved.id, offset: 0 },
+        { now: saved.createdAt },
+      )
+      expect(backfill.events).toEqual(expectedHistory)
       expect(saved.experimentAssignmentId).toBeNull()
       expect(saved.strategyVersion).toBe("precomputed-watch-preview-v1")
       expect(saved.servedItemPayload).toMatchObject({ version: 1 })
