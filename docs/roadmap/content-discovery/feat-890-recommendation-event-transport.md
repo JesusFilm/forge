@@ -28,29 +28,37 @@ Implemented `apps/admin/src/services/recommendations/event-history/clickhouse.ts
 and its `clickhouse.sql` schema. The configured HTTPS endpoint is fixed at
 construction; test-only HTTP is limited to loopback. The client uses bound SQL
 parameters for up to 100 explicit logical IDs, batches inserts to 100 events
-and 1 MiB, limits responses to 32 MiB, and applies a hard 10-second default
-deadline to both request and response body. It sets `async_insert=0` and
+and 1 MiB, limits responses to 32 MiB, and applies one hard 10-second default
+deadline across the complete insert/read/erase operation, including every
+request and response body. Timed-out body streams are cancelled. It sets
+`async_insert=0` and
 `wait_end_of_query=1`, accepts only a complete empty HTTP 200 insert response,
 and never retries internally. Transport errors expose a typed code without
 server text, credentials or payloads.
 
 The append-only MergeTree preserves conflicting same-revision digests through
-background merges. Reads group all physical duplicates by identity/revision,
-reject any conflicting revision, select the latest revision, then apply its
-original expiry. Terminal erasure markers suppress reads and later inserts;
+background merges. `acceptedAt` is the acceptance time of each immutable
+revision. At a report cutoff, reads first exclude later-accepted revisions,
+then group physical duplicates by identity/revision, reject conflicts, select
+the latest eligible revision, and apply its original expiry. The original
+event receivedAt remains a family payload field when needed. Terminal erasure
+markers suppress reads at historical cutoffs and later inserts;
 the erasure operation also requests synchronous lightweight deletion. Physical
 deletion after an already in-flight insert, backup removal and cross-store
-generation fencing remain feat-895 work and are not claimed here. There is no
-TTL that could revive an older revision after a newer one expires.
+generation fencing remain feat-895 work and are not claimed here. Physical TTL
+or purge is not implemented yet and remains a feat-895 release gate. There is no
+row TTL that could revive an older revision after a newer one expires.
 
-Nine HTTP boundary tests and five real ClickHouse tests passed locally against
+Eleven HTTP boundary tests and six real ClickHouse tests passed locally against
 `clickhouse/clickhouse-server:25.8.15.35` at image digest
 `sha256:d01390d78c277f72b961599ca7cbeedd25b13a1833e44cb608a2fbff8bcf7fb6`.
 The real tests exercise regrouped duplicate deliveries, a partial-batch
-replay, corrections, conflicting digests after `OPTIMIZE ... FINAL`, expiry
-ordering and repeated erasure. HTTP tests exercise ambiguous 200/failed
-responses, invalid success status, oversized input, malformed output and a
-stalled body deadline. Scoped lint, Prettier and full Admin typecheck passed.
+replay, corrections, an earlier report cutoff, conflicting digests after
+`OPTIMIZE ... FINAL`, expiry ordering and repeated erasure. HTTP tests exercise
+ambiguous 200/failed responses, invalid success status, oversized input,
+malformed output, stalled body cancellation and a shared deadline across
+sequential insert and erasure calls. Scoped lint, Prettier and full Admin
+typecheck passed.
 
 CI wiring still required: start an isolated loopback ClickHouse container from
 the pinned image above with database `event_clickhouse_test`, user `event_test`,

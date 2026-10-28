@@ -69,6 +69,7 @@ FROM (
     any(payload) AS canonical_payload
   FROM recommendation_event_history
   WHERE family = {family:String} AND logical_id IN (__IDS__)
+    AND accepted_at <= {as_of:String}
     AND logical_id NOT IN (
       SELECT logical_id FROM recommendation_event_erasure
       WHERE family = {family:String} AND logical_id IN (__IDS__)
@@ -169,6 +170,11 @@ function responseText(
   return (async () => {
     if (!response.body) return ""
     const reader = response.body.getReader()
+    const onAbort = () => {
+      void reader.cancel().catch(() => {})
+    }
+    signal.addEventListener("abort", onAbort, { once: true })
+    if (signal.aborted) onAbort()
     const chunks: Uint8Array[] = []
     let bytes = 0
     try {
@@ -182,6 +188,7 @@ function responseText(
         chunks.push(next.value)
       }
     } finally {
+      signal.removeEventListener("abort", onAbort)
       reader.releaseLock()
     }
     return new TextDecoder("utf-8", { fatal: true }).decode(
@@ -197,7 +204,31 @@ export function createRecommendationClickHouseClient(
   const transport = config.fetch ?? fetch
   const timeoutMs = config.timeoutMs ?? 10_000
 
+  async function withDeadline<T>(
+    work: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T> {
+    const controller = new AbortController()
+    const timeout = () => new RecommendationClickHouseError("timeout")
+    let onAbort: () => void = () => {}
+    const expired = new Promise<never>((_, reject) => {
+      onAbort = () => reject(timeout())
+      controller.signal.addEventListener("abort", onAbort, { once: true })
+    })
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      return await Promise.race([work(controller.signal), expired])
+    } catch (error) {
+      if (controller.signal.aborted) throw timeout()
+      throw error
+    } finally {
+      clearTimeout(timer)
+      controller.abort()
+      controller.signal.removeEventListener("abort", onAbort)
+    }
+  }
+
   async function execute(
+    signal: AbortSignal,
     sql: string,
     params: Record<string, string> = {},
     settings: Record<string, string> = {},
@@ -212,55 +243,36 @@ export function createRecommendationClickHouseClient(
       url.searchParams.set(`param_${key}`, value)
     for (const [key, value] of Object.entries(settings))
       url.searchParams.set(key, value)
-    const controller = new AbortController()
-    let timedOut = false
-    const timer = setTimeout(() => {
-      timedOut = true
-      controller.abort()
-    }, timeoutMs)
+    if (signal.aborted) throw new RecommendationClickHouseError("timeout")
     try {
-      const result = await Promise.race([
-        (async () => {
-          const response = await transport(url, {
-            method: "POST",
-            redirect: "error",
-            headers: {
-              "X-ClickHouse-User": config.username,
-              "X-ClickHouse-Key": config.password,
-              "Content-Type": "text/plain; charset=utf-8",
-            },
-            body: sql,
-            signal: controller.signal,
-          })
-          const body = await responseText(response, controller.signal)
-          if (
-            response.status !== 200 ||
-            response.headers.has("X-ClickHouse-Exception-Code")
-          )
-            throw new RecommendationClickHouseError("transport")
-          return body
-        })(),
-        new Promise<never>((_, reject) =>
-          controller.signal.addEventListener(
-            "abort",
-            () => reject(new RecommendationClickHouseError("timeout")),
-            { once: true },
-          ),
-        ),
-      ])
-      return result
-    } catch (error) {
-      if (error instanceof RecommendationClickHouseError) throw error
-      throw new RecommendationClickHouseError(
-        timedOut ? "timeout" : "transport",
+      const response = await transport(url, {
+        method: "POST",
+        redirect: "error",
+        headers: {
+          "X-ClickHouse-User": config.username,
+          "X-ClickHouse-Key": config.password,
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+        body: sql,
+        signal,
+      })
+      const body = await responseText(response, signal)
+      if (signal.aborted) throw new RecommendationClickHouseError("timeout")
+      if (
+        response.status !== 200 ||
+        response.headers.has("X-ClickHouse-Exception-Code")
       )
-    } finally {
-      controller.abort()
-      clearTimeout(timer)
+        throw new RecommendationClickHouseError("transport")
+      return body
+    } catch (error) {
+      if (signal.aborted) throw new RecommendationClickHouseError("timeout")
+      if (error instanceof RecommendationClickHouseError) throw error
+      throw new RecommendationClickHouseError("transport")
     }
   }
 
   async function erased(
+    signal: AbortSignal,
     family: RecommendationEventFamily,
     ids: readonly string[],
   ): Promise<boolean> {
@@ -269,7 +281,7 @@ export function createRecommendationClickHouseClient(
       family,
       ids,
     )
-    const rows = await execute(query.sql, query.params)
+    const rows = await execute(signal, query.sql, query.params)
     try {
       const parsed: unknown = JSON.parse(rows.trim())
       if (typeof parsed !== "object" || parsed === null || !("count" in parsed))
@@ -286,11 +298,12 @@ export function createRecommendationClickHouseClient(
   }
 
   async function assertNoConflicts(
+    signal: AbortSignal,
     family: RecommendationEventFamily,
     ids: readonly string[],
   ): Promise<void> {
     const query = withIds(CONFLICT_SQL, family, ids)
-    const result = await execute(query.sql, query.params)
+    const result = await execute(signal, query.sql, query.params)
     try {
       const row: unknown = JSON.parse(result.trim())
       if (
@@ -311,142 +324,153 @@ export function createRecommendationClickHouseClient(
 
   return {
     async insert(events) {
-      if (
-        !Array.isArray(events) ||
-        events.length < 1 ||
-        events.length > MAX_BATCH_EVENTS
-      )
-        throw new RecommendationClickHouseError("invalid_input")
-      let rows = ""
-      const identities = new Map<string, string>()
-      for (const event of events) {
-        let valid: RecommendationEventEnvelope
-        try {
-          valid = parseRecommendationEventEnvelope(JSON.stringify(event))
-        } catch {
+      return withDeadline(async (signal) => {
+        if (
+          !Array.isArray(events) ||
+          events.length < 1 ||
+          events.length > MAX_BATCH_EVENTS
+        )
           throw new RecommendationClickHouseError("invalid_input")
+        let rows = ""
+        const identities = new Map<string, string>()
+        for (const event of events) {
+          let valid: RecommendationEventEnvelope
+          try {
+            valid = parseRecommendationEventEnvelope(JSON.stringify(event))
+          } catch {
+            throw new RecommendationClickHouseError("invalid_input")
+          }
+          if (
+            Buffer.byteLength(JSON.stringify(valid)) > MAX_EVENT_ENVELOPE_BYTES
+          )
+            throw new RecommendationClickHouseError("invalid_input")
+          const identity = `${valid.family}\0${valid.logicalId}\0${valid.revision}`
+          const fingerprint = `${valid.occurredAt}\0${valid.acceptedAt}\0${valid.expiresAt}\0${valid.payloadDigest}`
+          if (
+            identities.has(identity) &&
+            identities.get(identity) !== fingerprint
+          )
+            throw new RecommendationClickHouseError("conflict")
+          identities.set(identity, fingerprint)
+          rows +=
+            JSON.stringify({
+              family: valid.family,
+              logical_id: valid.logicalId,
+              revision: valid.revision,
+              occurred_at: valid.occurredAt,
+              accepted_at: valid.acceptedAt,
+              expires_at: valid.expiresAt,
+              payload_digest: valid.payloadDigest,
+              payload: JSON.stringify(valid.payload),
+            }) + "\n"
+          if (
+            Buffer.byteLength(INSERT_SQL) + Buffer.byteLength(rows) >
+            MAX_BATCH_BYTES
+          )
+            throw new RecommendationClickHouseError("invalid_input")
         }
-        if (Buffer.byteLength(JSON.stringify(valid)) > MAX_EVENT_ENVELOPE_BYTES)
-          throw new RecommendationClickHouseError("invalid_input")
-        const identity = `${valid.family}\0${valid.logicalId}\0${valid.revision}`
-        const fingerprint = `${valid.occurredAt}\0${valid.acceptedAt}\0${valid.expiresAt}\0${valid.payloadDigest}`
-        if (
-          identities.has(identity) &&
-          identities.get(identity) !== fingerprint
-        )
-          throw new RecommendationClickHouseError("conflict")
-        identities.set(identity, fingerprint)
-        rows +=
-          JSON.stringify({
-            family: valid.family,
-            logical_id: valid.logicalId,
-            revision: valid.revision,
-            occurred_at: valid.occurredAt,
-            accepted_at: valid.acceptedAt,
-            expires_at: valid.expiresAt,
-            payload_digest: valid.payloadDigest,
-            payload: JSON.stringify(valid.payload),
-          }) + "\n"
-        if (
-          Buffer.byteLength(INSERT_SQL) + Buffer.byteLength(rows) >
-          MAX_BATCH_BYTES
-        )
-          throw new RecommendationClickHouseError("invalid_input")
-      }
-      // A suppression marker is terminal for this logical ID. The relay must also
-      // fence its in-flight generations; feat-895 reconciles late physical writes.
-      const groups = new Map<RecommendationEventFamily, string[]>()
-      for (const event of events)
-        groups.set(event.family, [
-          ...(groups.get(event.family) ?? []),
-          event.logicalId,
-        ])
-      for (const [family, ids] of groups)
-        if (await erased(family, [...new Set(ids)]))
-          throw new RecommendationClickHouseError("conflict")
-      for (const [family, ids] of groups)
-        await assertNoConflicts(family, [...new Set(ids)])
-      const result = await execute(INSERT_SQL + rows)
-      if (result !== "") throw new RecommendationClickHouseError("response")
-      for (const [family, ids] of groups)
-        await assertNoConflicts(family, [...new Set(ids)])
-      for (const [family, ids] of groups)
-        if (await erased(family, [...new Set(ids)]))
-          throw new RecommendationClickHouseError("conflict")
+        // A suppression marker is terminal for this logical ID. The relay must also
+        // fence its in-flight generations; feat-895 reconciles late physical writes.
+        const groups = new Map<RecommendationEventFamily, string[]>()
+        for (const event of events)
+          groups.set(event.family, [
+            ...(groups.get(event.family) ?? []),
+            event.logicalId,
+          ])
+        for (const [family, ids] of groups)
+          if (await erased(signal, family, [...new Set(ids)]))
+            throw new RecommendationClickHouseError("conflict")
+        for (const [family, ids] of groups)
+          await assertNoConflicts(signal, family, [...new Set(ids)])
+        const result = await execute(signal, INSERT_SQL + rows)
+        if (result !== "") throw new RecommendationClickHouseError("response")
+        for (const [family, ids] of groups)
+          await assertNoConflicts(signal, family, [...new Set(ids)])
+        for (const [family, ids] of groups)
+          if (await erased(signal, family, [...new Set(ids)]))
+            throw new RecommendationClickHouseError("conflict")
+      })
     },
     async read({ family, logicalIds, asOf }) {
-      validIds(family, logicalIds)
-      if (!(asOf instanceof Date) || Number.isNaN(asOf.getTime()))
-        throw new RecommendationClickHouseError("invalid_input")
-      const query = withIds(READ_SQL, family, logicalIds)
-      const result = await execute(query.sql, query.params)
-      const events: RecommendationEventEnvelope[] = []
-      if (result === "") return events
-      for (const line of result.trimEnd().split("\n")) {
-        let row: Record<string, unknown>
-        try {
-          row = JSON.parse(line)
-        } catch {
-          throw new RecommendationClickHouseError("response")
+      return withDeadline(async (signal) => {
+        validIds(family, logicalIds)
+        if (!(asOf instanceof Date) || Number.isNaN(asOf.getTime()))
+          throw new RecommendationClickHouseError("invalid_input")
+        const query = withIds(READ_SQL, family, logicalIds)
+        const result = await execute(signal, query.sql, {
+          ...query.params,
+          as_of: asOf.toISOString(),
+        })
+        const events: RecommendationEventEnvelope[] = []
+        if (result === "") return events
+        for (const line of result.trimEnd().split("\n")) {
+          let row: Record<string, unknown>
+          try {
+            row = JSON.parse(line)
+          } catch {
+            throw new RecommendationClickHouseError("response")
+          }
+          if (
+            !row ||
+            typeof row !== "object" ||
+            Array.isArray(row) ||
+            Object.keys(row).sort().join(",") !==
+              "accepted_at,conflicts,expires_at,latest_revision,logical_id,occurred_at,payload,payload_digest" ||
+            typeof row.logical_id !== "string" ||
+            !logicalIds.includes(row.logical_id) ||
+            !Number.isSafeInteger(row.latest_revision) ||
+            typeof row.conflicts !== "number" ||
+            !Number.isSafeInteger(row.conflicts) ||
+            row.conflicts < 0 ||
+            typeof row.payload !== "string" ||
+            typeof row.payload_digest !== "string"
+          )
+            throw new RecommendationClickHouseError("response")
+          if (row.conflicts > 0)
+            throw new RecommendationClickHouseError("conflict")
+          let envelope: RecommendationEventEnvelope
+          try {
+            envelope = parseRecommendationEventEnvelope(
+              JSON.stringify({
+                version: 1,
+                family,
+                logicalId: row.logical_id,
+                revision: row.latest_revision,
+                occurredAt: row.occurred_at,
+                acceptedAt: row.accepted_at,
+                expiresAt: row.expires_at,
+                payloadDigest: row.payload_digest,
+                payload: JSON.parse(row.payload),
+              }),
+            )
+          } catch {
+            throw new RecommendationClickHouseError("response")
+          }
+          if (envelope.expiresAt > asOf.toISOString()) events.push(envelope)
         }
         if (
-          !row ||
-          typeof row !== "object" ||
-          Array.isArray(row) ||
-          Object.keys(row).sort().join(",") !==
-            "accepted_at,conflicts,expires_at,latest_revision,logical_id,occurred_at,payload,payload_digest" ||
-          typeof row.logical_id !== "string" ||
-          !logicalIds.includes(row.logical_id) ||
-          !Number.isSafeInteger(row.latest_revision) ||
-          typeof row.conflicts !== "number" ||
-          !Number.isSafeInteger(row.conflicts) ||
-          row.conflicts < 0 ||
-          typeof row.payload !== "string" ||
-          typeof row.payload_digest !== "string"
+          events.length > logicalIds.length ||
+          new Set(events.map((event) => event.logicalId)).size !== events.length
         )
           throw new RecommendationClickHouseError("response")
-        if (row.conflicts > 0)
-          throw new RecommendationClickHouseError("conflict")
-        let envelope: RecommendationEventEnvelope
-        try {
-          envelope = parseRecommendationEventEnvelope(
-            JSON.stringify({
-              version: 1,
-              family,
-              logicalId: row.logical_id,
-              revision: row.latest_revision,
-              occurredAt: row.occurred_at,
-              acceptedAt: row.accepted_at,
-              expiresAt: row.expires_at,
-              payloadDigest: row.payload_digest,
-              payload: JSON.parse(row.payload),
-            }),
-          )
-        } catch {
-          throw new RecommendationClickHouseError("response")
-        }
-        if (envelope.expiresAt > asOf.toISOString()) events.push(envelope)
-      }
-      if (
-        events.length > logicalIds.length ||
-        new Set(events.map((event) => event.logicalId)).size !== events.length
-      )
-        throw new RecommendationClickHouseError("response")
-      return events
+        return events
+      })
     },
     async erase({ family, logicalIds }) {
-      validIds(family, logicalIds)
-      const rows =
-        logicalIds
-          .map((id) => JSON.stringify({ family, logical_id: id }))
-          .join("\n") + "\n"
-      const marker = await execute(ERASURE_SQL + rows)
-      if (marker !== "") throw new RecommendationClickHouseError("response")
-      const query = withIds(DELETE_SQL, family, logicalIds)
-      const result = await execute(query.sql, query.params, {
-        lightweight_deletes_sync: "2",
+      return withDeadline(async (signal) => {
+        validIds(family, logicalIds)
+        const rows =
+          logicalIds
+            .map((id) => JSON.stringify({ family, logical_id: id }))
+            .join("\n") + "\n"
+        const marker = await execute(signal, ERASURE_SQL + rows)
+        if (marker !== "") throw new RecommendationClickHouseError("response")
+        const query = withIds(DELETE_SQL, family, logicalIds)
+        const result = await execute(signal, query.sql, query.params, {
+          lightweight_deletes_sync: "2",
+        })
+        if (result !== "") throw new RecommendationClickHouseError("response")
       })
-      if (result !== "") throw new RecommendationClickHouseError("response")
     },
   }
 }

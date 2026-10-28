@@ -100,6 +100,7 @@ describe("recommendation ClickHouse HTTP boundary", () => {
   })
 
   it("rejects a stalled response body within the overall deadline", async () => {
+    const cancel = vi.fn()
     const client = createRecommendationClickHouseClient({
       ...config,
       timeoutMs: 100,
@@ -108,11 +109,91 @@ describe("recommendation ClickHouse HTTP boundary", () => {
           ? new Response('{"count":"0"}\n')
           : String(init?.body).startsWith("SELECT toUInt32(")
             ? new Response('{"conflicts":0}\n')
-            : new Response(new ReadableStream({ start() {} }), { status: 200 }),
+            : new Response(new ReadableStream({ start() {}, cancel }), {
+                status: 200,
+              }),
     })
     await expect(client.insert([event])).rejects.toMatchObject({
       code: "timeout",
     })
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+  })
+
+  it("shares one deadline across all insert checks and aborts the in-flight request", async () => {
+    let active = 0
+    const fetch = vi.fn(async (_url: URL, init: RequestInit) => {
+      active++
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const signal = init.signal
+          const onAbort = () => {
+            clearTimeout(timer)
+            reject(new Error("aborted"))
+          }
+          const timer = setTimeout(() => {
+            signal?.removeEventListener("abort", onAbort)
+            resolve()
+          }, 30)
+          signal?.addEventListener("abort", onAbort, { once: true })
+        })
+        return new Response(
+          String(init.body).startsWith("SELECT uniqExact(")
+            ? '{"count":"0"}\n'
+            : String(init.body).startsWith("SELECT toUInt32(")
+              ? '{"conflicts":0}\n'
+              : "",
+        )
+      } finally {
+        active--
+      }
+    })
+    const client = createRecommendationClickHouseClient({
+      ...config,
+      timeoutMs: 100,
+      fetch,
+    })
+    await expect(client.insert([event])).rejects.toMatchObject({
+      code: "timeout",
+    })
+    await vi.waitFor(() => expect(active).toBe(0))
+    const callsAtTimeout = fetch.mock.calls.length
+    expect(callsAtTimeout).toBeLessThan(5)
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    expect(fetch).toHaveBeenCalledTimes(callsAtTimeout)
+  })
+
+  it("shares the deadline between erasure marker and physical deletion", async () => {
+    let active = 0
+    const fetch = vi.fn(async (_url: URL, init: RequestInit) => {
+      active++
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const signal = init.signal
+          const onAbort = () => {
+            clearTimeout(timer)
+            reject(new Error("aborted"))
+          }
+          const timer = setTimeout(() => {
+            signal?.removeEventListener("abort", onAbort)
+            resolve()
+          }, 100)
+          signal?.addEventListener("abort", onAbort, { once: true })
+        })
+        return new Response("")
+      } finally {
+        active--
+      }
+    })
+    const client = createRecommendationClickHouseClient({
+      ...config,
+      timeoutMs: 160,
+      fetch,
+    })
+    await expect(
+      client.erase({ family: "watch-exposure", logicalIds: ["watch:one"] }),
+    ).rejects.toMatchObject({ code: "timeout" })
+    await vi.waitFor(() => expect(active).toBe(0))
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 
   it("bounds requested IDs before network I/O", async () => {
