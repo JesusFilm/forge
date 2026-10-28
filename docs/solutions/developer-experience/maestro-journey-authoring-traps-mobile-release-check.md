@@ -22,7 +22,7 @@ tags:
 
 The mobile release check (feat-798, added in PR #2919) runs fixed Maestro journeys from `apps/mobile/release-check/journeys/` on five test devices. Claude wrote and repaired the journeys through `node apps/mobile/release-check/cli.mjs session up|try|down` on the five test devices: the iPhone SE, the iPhone 17 Pro Max, the iPad Pro 13, and the Android phone and tablet emulators. Each trap below cost at least one failed try, or gave a pass that proved nothing.
 
-The journeys keep a short comment at each place where a trap occurs. The README's journey rules (`apps/mobile/release-check/README.md`, section "Write or repair a journey") hold only the single-quote rule of trap 1. No file in the repo states the other rules, so a new journey on a new screen meets the same traps again.
+The journeys keep a short comment at each place where a trap occurs. The README's journey rules (`apps/mobile/release-check/README.md`, section "Write or repair a journey") hold only the single-quote rule of trap 1, and they link to this doc for the others. This doc is the only place that states the other rules, so read it before a new journey on a new screen meets the same traps again.
 
 The planning sweep had already noted one layout trap (session history): the iPad shows its tab bar at the top, so a step that depends on a bottom tab bar fails there. One script must work on five layouts.
 

@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-10-21"
 duration: 10
 depends_on: []
-blocks: []
+blocks:
+  - "feat-888"
 tags:
   - "mobile"
   - "infrastructure"
