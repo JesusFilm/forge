@@ -17,6 +17,23 @@ tags:
   - "operations"
 ---
 
+## October 28 failures and acquisition admission
+
+The [ordinary-cycle failure report](../../reports/2026-10-28-recommendation-retention-failures.md)
+records 542 durable successes, 107 safe yields and six genuine P2028 failures.
+The cycle committed 8,411 request roots and 457,098 Watch deletions; the 26
+health types had zero more-than-24-hour expiry at the dated snapshot, with
+6.961 GB free PGDATA. Aggregate ledger agreement does not identify individual
+attempts. These failures remain visible despite later successes.
+
+One phase spent 1,624 ms acquiring a transaction with only 1,444 ms remaining,
+then attempted the advisory-lock query before checking its budget. The
+[narrow repair](../../plans/2026-10-28-retention-acquisition-admission.md) adds
+post-acquisition admission without widening timeouts or converting actual
+errors into yields. The other failures and underlying delay causes remain
+open. Keep this ticket in progress and the daily observer active. October 23
+and October 27 still satisfy the two-cycle gate; do not reset that acceptance.
+
 ## October 27 second qualifying ordinary cycle
 
 The [independently reviewed ordinary-cycle report](../../reports/2026-10-27-recommendation-retention-cycle.md)

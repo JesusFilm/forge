@@ -1200,6 +1200,129 @@ describe("recommendation retention service", () => {
   })
 
   it.each([4_250, 5_000, 5_001])(
+    "yields without querying an acquired transaction after %i ms",
+    async (elapsed) => {
+      const { prisma, transaction } = buildPrisma()
+      let clock = 0
+      const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+      const acquiredQuery = vi.fn(retentionQuery())
+      prisma.$transaction.mockImplementationOnce(async (callback) => {
+        clock = elapsed
+        return callback({ ...transaction, $queryRaw: acquiredQuery })
+      })
+      try {
+        await expect(
+          purgeExpiredRecommendationRequests(prisma as never),
+        ).resolves.toMatchObject({
+          status: "yielded",
+          rootsDeleted: 0,
+          rowCounts: {},
+          oldestExpiredAtAfter: null,
+          overdueAfterRun: null,
+          continuationRequired: true,
+        })
+        expect(acquiredQuery).not.toHaveBeenCalled()
+        expect(
+          transaction.recommendationRequest.findMany,
+        ).not.toHaveBeenCalled()
+        expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+        expect(
+          await prisma.recommendationRetentionRun.findUnique(),
+        ).toMatchObject({
+          status: "SKIPPED",
+          rootsDeleted: 0,
+          rowCounts: {},
+        })
+      } finally {
+        now.mockRestore()
+      }
+    },
+  )
+
+  it("preserves acknowledged deletions when acquisition exhausts the next phase budget", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    let delayed = false
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const acquiredQuery = vi.fn(retentionQuery())
+    prisma.$transaction.mockImplementation(async (callback) => {
+      if (
+        !delayed &&
+        transaction.recommendationRequest.deleteMany.mock.calls.length > 0
+      ) {
+        delayed = true
+        clock += 1_624
+        return callback({ ...transaction, $queryRaw: acquiredQuery })
+      }
+      const result = await callback(transaction)
+      if (
+        !delayed &&
+        transaction.recommendationRequest.deleteMany.mock.calls.length > 0
+      )
+        clock = 3_556
+      return result
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).resolves.toMatchObject({
+        status: "yielded",
+        rootsDeleted: 2,
+        rowCounts: { requests: 2 },
+        oldestExpiredAtAfter: null,
+        overdueAfterRun: null,
+        continuationRequired: true,
+      })
+      expect(delayed).toBe(true)
+      expect(acquiredQuery).not.toHaveBeenCalled()
+      expect(
+        transaction.recommendationTraceAccessAudit.deleteMany,
+      ).not.toHaveBeenCalled()
+      expect(
+        await prisma.recommendationRetentionRun.findUnique(),
+      ).toMatchObject({
+        status: "SKIPPED",
+        rootsDeleted: 2,
+        rowCounts: { requests: 2 },
+      })
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("keeps rejected acquisition failed even after the budget expires", async () => {
+    const { prisma } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {})
+    const error = new Prisma.PrismaClientKnownRequestError(
+      "owned acquisition failure",
+      {
+        code: "P2028",
+        clientVersion: "6.19.3",
+      },
+    )
+    prisma.$transaction.mockImplementationOnce(async () => {
+      clock = 5_001
+      throw error
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toBe(error)
+      expect(
+        await prisma.recommendationRetentionRun.findUnique(),
+      ).toMatchObject({
+        status: "FAILED",
+      })
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1)
+    } finally {
+      now.mockRestore()
+      logged.mockRestore()
+    }
+  })
+
+  it.each([4_250, 5_000, 5_001])(
     "yields before domain work when successful configuration consumes %i ms",
     async (elapsed) => {
       const { prisma, transaction } = buildPrisma()
@@ -1728,7 +1851,10 @@ describe("recommendation retention service", () => {
           fallbackLedger: null,
         },
         failed: [
-          { label: "select_request_roots" },
+          {
+            label: "select_request_roots",
+            stage: "post_acquisition_admission",
+          },
           { label: "terminal_budget_yield" },
         ],
         terminal: { label: "terminal_budget_yield" },
