@@ -8,7 +8,8 @@ server, and writes one local report. The plan is
 `docs/plans/2026-10-21-1206-feat-mobile-release-check-runner-plan.md`, and the
 ticket is `docs/roadmap/platform/feat-798-mobile-release-check-runner.md`.
 
-The runner gives no release decision. The mobile owner reads the report,
+The runner gives no release decision. The mobile owner (the `owner` of
+`docs/roadmap/platform/feat-798-mobile-release-check-runner.md`) reads the report,
 decides the release, and tells the QA engineers.
 
 ## Before the first run
@@ -225,7 +226,8 @@ repair one only through the authoring session, never with `maestro` itself:
 
 ### Ask Claude for a journey
 
-In Claude Code, at the repo root, type `/qa-runner`. You can add what you
+Before your first journey, set up the Mac ("Before the first run" above). Then,
+in Claude Code, at the repo root, type `/qa-runner`. You can add what you
 want, for example `/qa-runner add a journey that opens More and checks the
 About row`, or `/qa-runner repair play-video`. The command covers only this
 mobile release check, not the web app or the TV app. It asks for what it does
@@ -241,7 +243,11 @@ A good brief gives:
 - what it must not tap: a control that opens a web page, Share, Send, or
   sign-in (the release check runs signed out);
 - the platforms, when it runs only on iOS or only on Android;
-- any search that it types.
+- any search that it types. A new search needs your local admin with
+  production-like data: `apps/mobile/CLAUDE.md` ("Admin endpoint resolution")
+  says how to start it, and `apps/admin/CLAUDE.md` ("Video database backup and
+  clone") how to restore the data. Without access to the backups, ask the
+  mobile owner.
 
 For a repair, give the run folder or the failing step.
 
