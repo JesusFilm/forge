@@ -21,6 +21,7 @@ export type LanguageSheetProps = {
   downloadedDubDocumentId: string | null
   onLanguageChange: (variantSlug: string) => void
   onClose: () => void
+  testID?: string
 }
 
 export function LanguageSheetContent({
@@ -29,6 +30,7 @@ export function LanguageSheetContent({
   downloadedDubDocumentId,
   onLanguageChange,
   onClose,
+  testID,
 }: LanguageSheetProps) {
   const t = useT("Watch")
   const uiTag = useUiTag()
@@ -65,6 +67,7 @@ export function LanguageSheetContent({
 
   return (
     <SearchableListSheet
+      testID={testID}
       rows={variants}
       activeId={activeVariantSlug}
       getSelectionId={getSelectionId}

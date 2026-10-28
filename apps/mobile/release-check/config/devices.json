@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "namePrefix": "Forge RC",
+  "devices": [
+    {
+      "id": "iphone-se",
+      "platform": "ios",
+      "name": "Forge RC iPhone SE",
+      "deviceType": "com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation",
+      "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+      "lane": "ios"
+    },
+    {
+      "id": "iphone-17-pro-max",
+      "platform": "ios",
+      "name": "Forge RC iPhone 17 Pro Max",
+      "deviceType": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max",
+      "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+      "lane": "ios"
+    },
+    {
+      "id": "ipad-pro-13",
+      "platform": "ios",
+      "name": "Forge RC iPad Pro 13",
+      "deviceType": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB",
+      "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+      "lane": "ios"
+    },
+    {
+      "id": "android-phone",
+      "platform": "android",
+      "avd": "forge_rc_phone",
+      "profile": "pixel_7",
+      "image": "system-images;android-35;google_apis;arm64-v8a",
+      "consolePort": 5640,
+      "lane": "androidPhone"
+    },
+    {
+      "id": "android-tablet",
+      "platform": "android",
+      "avd": "forge_rc_tablet",
+      "profile": "pixel_tablet",
+      "image": "system-images;android-35;google_apis;arm64-v8a",
+      "consolePort": 5642,
+      "lane": "androidTablet"
+    }
+  ],
+  "pins": {
+    "locale": "en_US",
+    "timezone": "Etc/UTC",
+    "memoryMb": 4096,
+    "hwKeyboard": false,
+    "gpuMode": "host",
+    "imageRevision": 9,
+    "emulatorVersion": "35.2.10"
+  },
+  "tools": {
+    "maestro": "2.11.0",
+    "javaMajor": 17
+  },
+  "downloads": {
+    "androidImageMb": 1697
+  },
+  "gate": {
+    "reserveMb": 4096,
+    "estimates": {
+      "ios": {
+        "memoryMb": 4608,
+        "load": 2
+      },
+      "android": {
+        "memoryMb": 6144,
+        "load": 3
+      }
+    },
+    "maxLoadPerCore": 1,
+    "settleMs": 180000,
+    "pollMs": 10000,
+    "waitLimitMs": 900000
+  }
+}

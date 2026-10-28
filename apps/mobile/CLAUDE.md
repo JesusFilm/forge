@@ -297,6 +297,30 @@ full env (and the fallback on a fresh solo clone with no other checkout) is
 BEFORE `expo start` — Expo inlines `EXPO_PUBLIC_*` at bundler startup, so a
 change made after boot needs a Metro restart to take effect.
 
+## Release check (feat-798)
+
+`apps/mobile/release-check/` holds the release check runner. It builds the app
+from the current commit, runs fixed Maestro journeys on its own five test
+devices behind a local read-only server, and writes a local report. Start it
+with the repo command `/release-check`, or with
+`node apps/mobile/release-check/cli.mjs <mode>`. The guide is
+`apps/mobile/release-check/README.md`.
+
+- **Never call `maestro` directly.** Never boot, stop, erase, or install on a
+  `Forge RC …` simulator or a `forge_rc_…` emulator. These are the runner's own
+  devices. A bare Maestro call can run on another session's build and send real
+  feedback or searches to production. Write or repair a journey only through
+  `node apps/mobile/release-check/cli.mjs session up|try|down`.
+- **A new screen or sheet needs a root `testID="screen-<screen id>"`.**
+  `app/__tests__/screenRootTestId.guard.test.js` fails without it. It also needs
+  a journey that asserts that test ID, or an entry in
+  `release-check/config/not-tested.json`; otherwise `check-screens` fails the
+  release check.
+- **A new `EXPO_PUBLIC_*` key or a new GraphQL root field needs a class.** Put
+  the key in `release-check/config/test-settings.json` and the field in
+  `release-check/config/operations.json`. The release check's jest guards fail
+  until each one has a class.
+
 ## Publishing an EAS Update
 
 Use the scripts. Both name their EAS environment and disable dotenv, so a
