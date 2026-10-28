@@ -8,7 +8,8 @@ start_date: "2026-10-28"
 duration: 1
 depends_on:
   - "feat-798"
-blocks: []
+blocks:
+  - "feat-901"
 tags:
   - "mobile"
   - "infrastructure"
@@ -36,7 +37,7 @@ rg -n "COCOAPODS_MISSING" apps/mobile/release-check/lib apps/mobile/release-chec
 
 ## What To Build
 
-- A `journey <journey id>` form of `/release-check` with fixed steps: a branch, session tries on one device of each platform that the journey runs on, a class-based reaction to each failed try, `check-lists` and `check-screens`, `record-search` after `session down` for a new search, one commit, a partial check on all five devices, and a pull request that the mobile owner merges.
+- A `journey <journey id>` form of `/release-check` with fixed steps: a branch, session tries on the iPhone SE, the iPad, and the Android phone, on the platforms that the journey runs on, a class-based reaction to each failed try, `check-lists` and `check-screens`, `record-search` after `session down` for a new search, one commit, a partial check on all five devices, and a pull request that the mobile owner merges.
 - A journey change may change only `not-tested.json`, `screens.json`, and `search-answers.json`. The mobile owner keeps the other four lists.
 - `session up` and `record-search` build HEAD while a journey file or one of those three lists has uncommitted changes, because the build checks out the commit. `run` still refuses them.
 - `setup --check` runs `pod --version` with the build's PATH and Ruby settings, and names the fix for a missing `pod` or for an rbenv shim with no gem.

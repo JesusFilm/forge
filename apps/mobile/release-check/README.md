@@ -8,7 +8,8 @@ server, and writes one local report. The plan is
 `docs/plans/2026-10-21-1206-feat-mobile-release-check-runner-plan.md`, and the
 ticket is `docs/roadmap/platform/feat-798-mobile-release-check-runner.md`.
 
-The runner gives no release decision. The mobile owner reads the report,
+The runner gives no release decision. The mobile owner (the `owner` of
+`docs/roadmap/platform/feat-798-mobile-release-check-runner.md`) reads the report,
 decides the release, and tells the QA engineers.
 
 ## Before the first run
@@ -223,8 +224,42 @@ repair one only through the authoring session, never with `maestro` itself:
 3. `node apps/mobile/release-check/cli.mjs session down` runs the log check and
    stops the device and the server.
 
+### Ask Claude for a journey
+
+Before your first journey, set up the Mac ("Before the first run" above). Then,
+in Claude Code, at the repo root, type `/qa-runner`. You can add what you
+want, for example `/qa-runner add a journey that opens More and checks the
+About row`, or `/qa-runner repair play-video`. The command covers only this
+mobile release check, not the web app or the TV app. It asks for what it does
+not know, shows you the brief, and then follows the steps below.
+
+A good brief gives:
+
+- the journey id: lowercase letters, digits, and hyphens, for example
+  `more-about-row`;
+- where it starts: a cold launch of the app, or a `forgemobile://` link;
+- the steps, in order, with the words that the screen shows;
+- what to check after each step: a screen, a text, or a state;
+- what it must not tap: a control that opens a web page, Share, Send, or
+  sign-in (the release check runs signed out);
+- the platforms, when it runs only on iOS or only on Android;
+- any search that it types. A new search needs your local admin with
+  production-like data: `apps/mobile/CLAUDE.md` ("Admin endpoint resolution")
+  says how to start it, and `apps/admin/CLAUDE.md` ("Video database backup and
+  clone") how to restore the data. Without access to the backups, ask the
+  mobile owner.
+
+For a repair, give the run folder or the failing step.
+
+Without `/qa-runner`, describe the journey in one message, and then send
+`/release-check journey <journey id>` as the next message. That command takes
+only the id.
+
+### The steps
+
 A QA engineer or the mobile owner can write or repair a journey. The repo
-Claude command `/release-check journey <journey id>` follows these steps:
+Claude commands `/qa-runner` and `/release-check journey <journey id>` follow
+these steps:
 
 1. Work on a branch, never on `main`.
 2. Try the journey through the session on `iphone-se`, `ipad-pro-13`, and
