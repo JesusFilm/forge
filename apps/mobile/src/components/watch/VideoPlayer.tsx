@@ -777,6 +777,14 @@ export function VideoPlayer({
         </Animated.View>
       )}
 
+      {hasStarted && (
+        <View
+          testID="player-first-frame"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
+      )}
+
       {awaitingAutostart && <PlayerLoadingVeil />}
 
       {/* R16: distinct connecting state — dim + spinner under the chrome,

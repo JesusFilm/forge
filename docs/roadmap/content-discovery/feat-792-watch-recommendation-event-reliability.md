@@ -78,3 +78,17 @@ both repeat writes and lose event coverage.
 - After normal rollout, compare route 503 counts and sampled Admin mutation
   latency, main-pool waits and replay volume against pre-change intervals.
   Report database pressure attribution and event-recording recovery separately.
+
+## 28 Oct residual selection follow-up
+
+After the exposure receipt releases, a retained selection trace
+`6ae103f2000000000dbf3f58af28f561` showed Web aborting its Admin request at
+700 ms while Admin completed the selection at about 728 ms. The browser's
+800 ms navigation deadline was also its request-abort deadline. Keep the
+800 ms navigation cap, but allow the idempotent keepalive event request to
+finish under a 2-second Web-to-Admin budget and a 3-second browser budget.
+Page departure after navigation must not abort that request. Both recommendation
+card surfaces use this rule; focused tests cover late acknowledgement and
+single navigation. The separate intermittent Redis admission and SQL stalls
+remain under investigation and must be measured during rollout before closing
+this ticket.

@@ -80,19 +80,21 @@ export default function ReaderTranslationRoute() {
   let body
   if (state.status === "ready") {
     body = (
-      <TranslationPicker
-        tokens={tokens}
-        background={background}
-        catalog={state.catalog}
-        activeId={request.translationId}
-        viewerLanguages={viewerLanguages}
-        offline={request.offline}
-        downloads={services.downloads}
-        onPick={onPick}
-        confirmPick={confirmPick}
-        onPressDownload={openTranslationDownload}
-        onClose={close}
-      />
+      <View testID="screen-reader-translation" style={{ flex: 1 }}>
+        <TranslationPicker
+          tokens={tokens}
+          background={background}
+          catalog={state.catalog}
+          activeId={request.translationId}
+          viewerLanguages={viewerLanguages}
+          offline={request.offline}
+          downloads={services.downloads}
+          onPick={onPick}
+          confirmPick={confirmPick}
+          onPressDownload={openTranslationDownload}
+          onClose={close}
+        />
+      </View>
     )
   } else if (state.status === "failed") {
     body = (

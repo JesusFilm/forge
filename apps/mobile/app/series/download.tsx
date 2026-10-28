@@ -546,6 +546,7 @@ export default function SeriesDownloadRoute() {
 
   return (
     <ScrollView
+      testID="screen-series-download"
       contentContainerStyle={[
         styles.scrollContent,
         { paddingBottom: insets.bottom + 24 },

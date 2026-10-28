@@ -1,0 +1,91 @@
+# Open the player settings and change the speed and the quality. The settings
+# sheet is a React Native Modal that the player hosts (screen-player-settings).
+appId: org.jesusfilm.forgewatch
+name: player-settings
+---
+- launchApp:
+    permissions:
+      notifications: deny
+    label: Launch the app
+- extendedWaitUntil:
+    visible:
+      id: screen-tab-home
+    timeout: 60000
+    label: Home shows
+- openLink:
+    link: forgemobile://watch/the-birth-of-jesus
+    label: Open the birth of Jesus video
+# iOS can ask before it opens a forgemobile:// link.
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: Open
+          optional: true
+          label: Accept the iOS prompt to open the link
+    label: Accept the iOS link prompt
+- extendedWaitUntil:
+    visible:
+      id: screen-watch
+    timeout: 30000
+    label: The watch page shows
+- extendedWaitUntil:
+    visible:
+      id: player-first-frame
+    timeout: 60000
+    label: The video plays
+# The controls hide 3 seconds after a tap while the video plays, and the
+# pause button sits at the player's center. So the journey waits until the
+# controls hide, then taps the center twice: once to show them, once to pause.
+- extendedWaitUntil:
+    notVisible:
+      text: Pause
+    timeout: 10000
+    label: The player controls hide
+- tapOn:
+    text: Toggle player controls
+    repeat: 2
+    delay: 1000
+    label: Show the controls and pause the video
+- tapOn:
+    text: Video settings
+    label: Open the player settings
+- extendedWaitUntil:
+    visible:
+      id: screen-player-settings
+    timeout: 10000
+    label: The player settings show
+- tapOn:
+    text: Playback speed
+    label: Open the speed list
+- tapOn:
+    text: "1.5×"
+    label: Pick 1.5 times speed
+# The root rows read only their titles, so the journey checks each pick by
+# its selected state in the list.
+- assertVisible:
+    text: "1.5×"
+    selected: true
+    label: The 1.5 times speed is selected
+- tapOn:
+    text: Back
+    label: Go back to the settings list
+- tapOn:
+    text: Quality
+    label: Open the quality list
+- tapOn:
+    text: Low \(480p\)
+    label: Pick the low quality
+- assertVisible:
+    text: Low \(480p\)
+    selected: true
+    label: The low quality is selected
+- tapOn:
+    text: Close
+    label: Close the player settings
+- extendedWaitUntil:
+    notVisible:
+      id: screen-player-settings
+    timeout: 10000
+    label: The player settings close

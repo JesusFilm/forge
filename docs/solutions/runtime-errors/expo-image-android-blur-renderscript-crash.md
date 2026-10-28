@@ -40,7 +40,7 @@ On Android, the app crashed in native code when the Search tab opened. The six b
 
 ## Symptoms
 
-- The Android app closes when the Search tab opens. The mobile release check (feat-786, unmerged as of this writing) labels the attempt `app_crashed` at the step "Search shows", and the failure screenshot shows the Android launcher.
+- The Android app closes when the Search tab opens. The mobile release check (feat-798, unmerged as of this writing) labels the attempt `app_crashed` at the step "Search shows", and the failure screenshot shows the Android launcher.
 - It happened in 1 of 12 Search-tab opens on the `android-phone` emulator (API 35), 0 of 2 on `android-tablet`, and 0 of 14 on the iOS devices (release check runs, 2026-10-22).
 - The logcat crash buffer has `Fatal signal 5 (SIGTRAP)` on thread `glide-source-th`, with this stack:
 

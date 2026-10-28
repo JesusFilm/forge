@@ -183,11 +183,14 @@ describe("retention phase diagnostics", () => {
     expect(JSON.stringify(diagnostic)).not.toMatch(/secret|sensitive|raw-sql/)
   })
 
-  it("round-trips the post-configuration admission stage", () => {
+  it.each([
+    "post_acquisition_admission",
+    "post_configuration_admission",
+  ] as const)("round-trips the %s stage", (stage) => {
     const recorder = createRetentionPhaseRecorder()
     recorder.failed({
       ...timing(1),
-      stage: "post_configuration_admission",
+      stage,
       operationMs: null,
     })
     const diagnostic = recorder.diagnostic(
@@ -201,9 +204,7 @@ describe("retention phase diagnostics", () => {
         suppressedPriorMinute: 0,
       }),
     )
-    expect(parsed?.failed).toMatchObject([
-      { stage: "post_configuration_admission", operationMs: null },
-    ])
+    expect(parsed?.failed).toMatchObject([{ stage, operationMs: null }])
   })
 
   it("never serializes arbitrary error text, codes or metadata", () => {
