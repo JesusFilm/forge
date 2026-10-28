@@ -308,7 +308,25 @@ jobs:
         run: >-
           pnpm --filter @forge/admin exec vitest run
           src/services/recommendations/watch-compact-admission.db.test.ts
+          src/services/recommendations/watch-compact-retention.db.test.ts
           --no-file-parallelism
+      - name: Create owned compact Watch retention database
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_watch_retention_test'
+      - name: Apply migrations to compact Watch retention database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_retention_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise compact Watch retention against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_retention_test
+          WATCH_COMPACT_RETENTION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin exec vitest run
+          src/services/recommendations/watch-compact-retention.db.test.ts
+          --no-file-parallelism
+          --testTimeout=60000
       - name: Create owned Co-watch PostgreSQL fixtures
         env:
           PGPASSWORD: postgres
