@@ -111,3 +111,24 @@ legacy PostgreSQL detail path remains the default, and raw payload writes
 cannot yet retire: a previously retired candidate trace no longer provides
 all stage identities, which the new reader marks incomplete, and usefulness,
 other recent-history and privacy readers still require their own cutovers.
+
+The default-off `history` candidate format writes a version-2 run with only an
+ordered, bounded array of opaque stage IDs. It keeps the run summary, versions
+and parity fields, and sends the same redacted in-memory stage snapshots after
+the operational transaction commits. It writes neither packed `trace_payload`
+nor legacy stage rows. The operator reader uses the manifest to name every
+missing stage after a lost export; a disabled reader explicitly reports
+incomplete history. Legacy and version-1 packed traces keep their existing
+reads and are not deleted. Backfill refuses a version-2 run whose stage payload
+was lost rather than claiming a complete page from absent PostgreSQL JSON. A
+real PostgreSQL fixture proves the constraint rejects duplicate manifest IDs,
+the operator reads complete exported history after stage-row removal, and a
+missing export is reported by exact ID. The owned one-stage PostgreSQL fixture
+measured 53 bytes for the manifest against 792 bytes for its packed payload;
+this is a local allocation sample, not a production saving claim. The operator read has a
+3.5-second whole-operation ceiling in addition to the adapter's per-call
+abort, so stage pagination cannot multiply the page's remote wait.
+Within-root backfill cursors now bind to a SHA-256 digest of the full redacted
+envelope sequence. A changed or disappeared source refuses resume with a typed
+error, preventing a stage reorder or deletion from silently advancing the
+offset; the coordinator must restart or reconcile that root.

@@ -1422,9 +1422,11 @@ export class RecommendationDeliveryService {
               }),
             )
             committedCandidateRows = evidenceRows
-            const compactTrace =
-              (this.deps.candidateTraceFormat ??
-                env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) === "compact"
+            const traceFormat =
+              this.deps.candidateTraceFormat ??
+              env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT
+            const compactTrace = traceFormat === "compact"
+            const historyTrace = traceFormat === "history"
             const tracePayload = compactTrace
               ? candidateTracePayload(evidenceRows)
               : null
@@ -1462,12 +1464,17 @@ export class RecommendationDeliveryService {
                   fallbackReason: candidateRunFallbackReason,
                   traceFormatVersion: compactTrace
                     ? CANDIDATE_TRACE_FORMAT_VERSION
-                    : null,
+                    : historyTrace
+                      ? 2
+                      : null,
                   tracePayload: tracePayload ?? undefined,
+                  stageIds: historyTrace
+                    ? evidenceRows.map((row) => row.id)
+                    : [],
                   expiresAt,
                 },
               })
-            if (compactTrace) {
+            if (compactTrace || historyTrace) {
               committedRun = await timeRecommendationOperation(
                 "candidate_evidence.insert",
                 createCandidateRun,
@@ -1494,7 +1501,7 @@ export class RecommendationDeliveryService {
                 expiresAt,
               },
             })
-            if (!compactTrace && evidenceRows.length > 0) {
+            if (!compactTrace && !historyTrace && evidenceRows.length > 0) {
               await persistCandidateStageEvidence(tx, evidenceRows)
             }
             if (requestState === RecommendationRequestState.ISSUED) {

@@ -46,6 +46,7 @@ export function usesCompactCandidateTrace(
   }
   if (run.traceFormatVersion == null && !run.hasTracePayload) return false
   if (run.traceFormatVersion === 1 && run.hasTracePayload) return true
+  if (run.traceFormatVersion === 2 && !run.hasTracePayload) return false
   throw new Error("Unsupported recommendation candidate trace format")
 }
 
@@ -158,6 +159,7 @@ export async function loadRecommendationRequestDetail(
         run.id,
         run.trace_format_version AS "traceFormatVersion",
         (run.trace_payload IS NOT NULL) AS "hasTracePayload",
+        run.stage_ids AS "stageIds",
         run.legacy_detail_retired_at AS "legacyDetailRetiredAt",
         run.purpose,
         run.context_version AS "contextVersion",
@@ -260,7 +262,9 @@ export async function loadRecommendationRequestDetail(
             ) stage`
         : Prisma.sql`FROM recommendation_candidate_stage_evidence stage`
       const candidateStages =
-        candidateRun && !candidateRun.legacyDetailRetiredAt
+        candidateRun &&
+        candidateRun.traceFormatVersion !== 2 &&
+        !candidateRun.legacyDetailRetiredAt
           ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
           SELECT
             stage.id,
@@ -705,13 +709,31 @@ export async function loadRecommendationRequestDetail(
   )
   if (!data) return null
   const detail = mapRecommendationRequestDetail(data)
-  if (!historyReader) return detail
+  if (!historyReader)
+    return data.candidateRun?.traceFormatVersion === 2
+      ? {
+          ...detail,
+          historicalTrace: {
+            status: "incomplete",
+            missing: ["history:reader-disabled"],
+            request: null,
+            servedItems: [],
+            candidateRun: null,
+            stages: [],
+          },
+        }
+      : detail
   const historicalTrace = await readOperatorRecommendationTrace(historyReader, {
     requestId: data.root.id,
     itemIds: data.items.map((item) => item.id),
     runId: data.candidateRun?.id ?? null,
-    stageIds: data.candidateStages.map((stage) => stage.id),
-    stageIdentitiesComplete: !data.candidateRun?.legacyDetailRetiredAt,
+    stageIds:
+      data.candidateRun?.traceFormatVersion === 2
+        ? data.candidateRun.stageIds
+        : data.candidateStages.map((stage) => stage.id),
+    stageIdentitiesComplete:
+      data.candidateRun?.traceFormatVersion === 2 ||
+      !data.candidateRun?.legacyDetailRetiredAt,
     asOf: now,
   })
   // The remote read runs after the first transaction has released its locks.
@@ -743,11 +765,13 @@ export async function loadRecommendationRequestDetail(
         id: string
         traceFormatVersion: number | null
         hasTracePayload: boolean
+        stageIds: string[]
         legacyDetailRetiredAt: Date | null
       }>
     >(Prisma.sql`
       SELECT id, trace_format_version AS "traceFormatVersion",
         (trace_payload IS NOT NULL) AS "hasTracePayload",
+        stage_ids AS "stageIds",
         legacy_detail_retired_at AS "legacyDetailRetiredAt"
       FROM recommendation_candidate_run
       WHERE request_id = ${data.root.id}
@@ -763,6 +787,8 @@ export async function loadRecommendationRequestDetail(
         (originalRun ? originalRun.traceFormatVersion : undefined) ||
       currentRun?.hasTracePayload !==
         (originalRun ? originalRun.hasTracePayload : undefined) ||
+      JSON.stringify(currentRun?.stageIds) !==
+        JSON.stringify(originalRun?.stageIds) ||
       currentRun?.legacyDetailRetiredAt?.getTime() !==
         originalRun?.legacyDetailRetiredAt?.getTime()
     )

@@ -99,3 +99,11 @@ feature remains default-off. The current exported safe fields omit
 profile/session/browser digests and content-action destination artifact IDs;
 profile disable/reset affects private influence and linkage, not contextual
 analytics, so this slice adds no new consent gate or privacy journal.
+
+Newly enabled candidate history-only runs can omit retained diagnostic stage
+JSON while preserving an ordered stage-ID manifest. Existing legacy rows and
+version-1 packed payloads are deliberately retained. Their deletion still
+requires bounded backfill and digest reconciliation, a verified rollback
+reader, privacy erasure propagation, and evidence that all downstream
+diagnostic consumers read exported history. A lost best-effort export is
+reported as missing history and cannot be recovered from a history-only run.

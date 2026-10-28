@@ -588,10 +588,11 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
-    // Activate only after every serving replica and rollback image can read
-    // both legacy stage rows and compact run payloads.
+    // Opt-in history mode needs the operator history reader and export enabled;
+    // absent/lost export remains explicit incomplete coverage, never a serve failure.
+    // Keep rollback images able to read all three run formats.
     RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
-      .enum(["legacy", "compact"])
+      .enum(["legacy", "compact", "history"])
       .default("legacy"),
     // Mixed readers and the rollback image must continue to understand packed items.
     // Explicit legacy stops new packed writes without rewriting retained requests.

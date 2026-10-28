@@ -241,6 +241,38 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       ).toBe(0)
     })
 
+    it("commits only a bounded identity manifest for history-only traces", async () => {
+      const harness = makeHarness({
+        database: prisma,
+        candidateTraceFormat: "history",
+      })
+      harness.retrieve.mockResolvedValue(semanticCandidates(12))
+      const seed = `history-only-${randomUUID()}`
+      seeds.push(seed)
+      const response = await harness.service.deliver(input(seed))
+      expect(response.result).toBe("served")
+      const run = await prisma.recommendationCandidateRun.findUniqueOrThrow({
+        where: { requestId: response.requestId! },
+      })
+      expect(run.traceFormatVersion).toBe(2)
+      expect(run.tracePayload).toBeNull()
+      expect(run.stageIds.length).toBeGreaterThan(12)
+      expect(new Set(run.stageIds).size).toBe(run.stageIds.length)
+      expect(
+        await prisma.recommendationCandidateStageEvidence.count({
+          where: { runId: run.id },
+        }),
+      ).toBe(0)
+      const detail = await loadRecommendationRequestDetail(prisma, {
+        requestId: response.requestId!,
+        actorDigest: "b".repeat(64),
+      })
+      expect(detail?.historicalTrace).toMatchObject({
+        status: "incomplete",
+        missing: ["history:reader-disabled"],
+      })
+    })
+
     it("preserves every evidence field against createMany and observes the commit", async () => {
       const harness = makeHarness({ database: prisma })
       harness.retrieve.mockResolvedValue(semanticCandidates(32))
