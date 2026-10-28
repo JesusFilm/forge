@@ -36,6 +36,7 @@ import { RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS } from "./token.service"
 import { recordFirstEligiblePromotionExposure } from "./promotion/service"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import { lockPrivatePrecomputedRequestEvidence } from "./precomputed/visit-selection"
+import { capturePrecomputedCtrMeasurementForRequest } from "./precomputed/compact-accounting"
 
 const Event = z
   .object({
@@ -463,6 +464,15 @@ export class RecommendationEvidenceService {
         })
         receipts.push({ eventId: event.eventId, status: "accepted" })
       }
+      if (
+        receipts.some((receipt) => receipt.status === "accepted") ||
+        reconciledSelection
+      )
+        await capturePrecomputedCtrMeasurementForRequest(
+          tx,
+          item.requestId,
+          evidenceWatermark,
+        )
       return { receipts, reconciledSelection, evidenceWatermark }
     })
     dispatchPreparedRecommendationEventsAfterCommit(

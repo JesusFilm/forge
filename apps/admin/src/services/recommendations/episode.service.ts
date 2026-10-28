@@ -48,6 +48,7 @@ import {
 } from "./finalization/job"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import { matchesPrivateVisitBrowser } from "./precomputed/visit-selection"
+import { capturePrecomputedCtrMeasurementForRequest } from "./precomputed/compact-accounting"
 import { checkPrecomputedBaselineClickBrowser } from "./precomputed/incumbent-baseline"
 import type {
   DeliveryCapabilityBinding,
@@ -411,6 +412,12 @@ export class RecommendationEpisodeService {
               expiresAt: item.request.expiresAt,
             },
           })
+          if (reconciliation.count === 1)
+            await capturePrecomputedCtrMeasurementForRequest(
+              tx,
+              item.requestId,
+              attributionEligibleAt!,
+            )
           return {
             status: "replay" as const,
             selectionId: existing.id,
@@ -480,6 +487,7 @@ export class RecommendationEpisodeService {
           expiresAt: item.request.expiresAt,
         },
       })
+      await capturePrecomputedCtrMeasurementForRequest(tx, item.requestId, now)
       return {
         status: "accepted" as const,
         selectionId,
@@ -814,6 +822,11 @@ export class RecommendationEpisodeService {
           "Recommendation episode claim conflicted",
         )
       }
+      await capturePrecomputedCtrMeasurementForRequest(
+        tx,
+        selection.request.id,
+        now,
+      )
       return getNextRecommendationEventDispatcher().isEnabled()
         ? tx.recommendationPlaybackEpisode.findUnique({
             where: { id: selection.episode!.id },

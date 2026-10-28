@@ -598,6 +598,9 @@ export const env = createEnv({
     // Private saved-result Watch preview; never changes the public serving pointer.
     RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: z.enum(["1"]).optional(),
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED: z
+      .enum(["1"])
+      .optional(),
     WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().min(32).optional(),
     WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
     WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
@@ -1231,6 +1234,9 @@ export const env = createEnv({
     ),
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED,
     ),
     WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: emptyToUndefined(
       process.env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,

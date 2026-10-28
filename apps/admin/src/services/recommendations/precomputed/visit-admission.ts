@@ -18,6 +18,7 @@ import { verifyPrecomputedSourceEligibility } from "./watch-reader"
 import { PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID } from "./watch-delivery"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { capturePrecomputedCtrMeasurement } from "./compact-accounting"
 import { dispatchPreparedRecommendationEventsAfterCommit } from "../event-history/runtime"
 import {
   experimentVisitHistoryEvent,
@@ -401,7 +402,8 @@ export async function admitPrivatePrecomputedVisit(
           inserted.count === 1 &&
           visit.historyRevision &&
           visit.historyAcceptedAt
-        )
+        ) {
+          await capturePrecomputedCtrMeasurement(tx, visit.id, now)
           committedVisit = {
             kind: "admission",
             visitId: visit.id,
@@ -422,6 +424,7 @@ export async function admitPrivatePrecomputedVisit(
             deliveryRequestId: visit.deliveryRequestId,
             fallbackReason: visit.fallbackReason,
           }
+        }
         return result(
           input,
           visit.eligibility === "eligible" ? "eligible" : "excluded",
@@ -670,6 +673,8 @@ export async function recordPrecomputedVisitDelivery(
                 : visit.fallbackReason,
             }
         }
+        if (committedVisit || committedLink)
+          await capturePrecomputedCtrMeasurement(tx, visit.id, now)
         return "recorded"
       },
       Date.now,
