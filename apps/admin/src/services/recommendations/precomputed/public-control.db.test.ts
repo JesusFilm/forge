@@ -4,6 +4,19 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import type { RecommendationEventEnvelope } from "../event-history/envelope"
+const exportedHistory = vi.hoisted(() => ({
+  events: [] as RecommendationEventEnvelope[],
+}))
+vi.mock("../event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: (
+    family: string,
+    prepare: () => RecommendationEventEnvelope[],
+  ) => {
+    if (family === "experiment-visit") exportedHistory.events.push(...prepare())
+  },
+}))
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import {
   assertIsolatedPrecomputedControlFixture,
@@ -334,6 +347,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       })
       const input = { ...visitInput(), now: experiment.endsAt }
+      exportedHistory.events.length = 0
       const routing = await readControlRouting(prisma)
       expect(routing).not.toBeNull()
       const result = await deliverPrecomputedPublicWatchVisit(
@@ -353,6 +367,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: input.visitId },
         }),
       ).toBe(0)
+      expect(
+        exportedHistory.events.filter(
+          (event) => event.logicalId === `ab-visit:${input.visitId}`,
+        ),
+      ).toEqual([])
     })
 
     it("keeps a technical incumbent recovery in the original challenger arm with a bound request", async () => {
@@ -536,6 +555,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         version: 3,
         retainedExperimentId: experimentId,
       })
+      const afterRollback = { ...visitInput() }
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          afterRollback,
+          tokenService,
+        ),
+      ).toMatchObject({ disposition: "inactive" })
+      expect(
+        exportedHistory.events.filter(
+          (event) => event.logicalId === `ab-visit:${afterRollback.visitId}`,
+        ),
+      ).toEqual([])
       expect(
         await prisma.$transaction((tx) =>
           purgeExpiredPrecomputedVisitRoots(
@@ -765,6 +797,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         })
         if (seen.has(arm)) continue
         const visit = { ...visitInput(), browserDigest }
+        exportedHistory.events.length = 0
         const delivered = await deliverPrecomputedPublicWatchVisit(
           prisma,
           visit,
@@ -778,6 +811,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           measurementStatus: "recorded",
           arm: arm.toLowerCase(),
         })
+        const committedVisit =
+          await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+            where: { id: visit.visitId },
+          })
+        expect(committedVisit.historyRevision).toBeGreaterThanOrEqual(1)
+        expect(committedVisit.historyAcceptedAt).not.toBeNull()
+        expect(
+          exportedHistory.events
+            .filter((event) => event.logicalId === `ab-visit:${visit.visitId}`)
+            .map((event) => event.revision),
+        ).toEqual([1, 2])
         if (arm === "CHALLENGER") {
           expect(delivered.delivery?.result).toBe("empty")
           challengerBrowser = browserDigest
@@ -788,6 +832,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           tokenService,
         )
         expect(replay.arm).toBe(delivered.arm)
+        const replayedVisit =
+          await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+            where: { id: visit.visitId },
+          })
+        expect(replayedVisit.historyRevision).toBe(
+          committedVisit.historyRevision,
+        )
+        expect(
+          exportedHistory.events
+            .filter((event) => event.logicalId === `ab-visit:${visit.visitId}`)
+            .map((event) => event.revision),
+        ).toEqual([1, 2])
         seen.add(arm)
       }
       expect(seen.size).toBe(2)
@@ -856,6 +912,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             where: { id: excluded.visitId },
           }),
         ).toBe(0)
+        expect(
+          exportedHistory.events.filter(
+            (event) => event.logicalId === `ab-visit:${excluded.visitId}`,
+          ),
+        ).toEqual([])
       }
       const report = await evaluatePublicPrecomputedCtr(prisma, {
         experimentId: publicId,

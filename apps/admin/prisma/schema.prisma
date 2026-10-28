@@ -6976,6 +6976,8 @@ model RecommendationPrecomputedVisit {
   actualStrategy String? @map("actual_strategy") @db.VarChar(64)
   deliveryRequestId String? @map("delivery_request_id") @db.VarChar(191)
   fallbackReason String? @map("fallback_reason") @db.VarChar(64)
+  historyRevision Int? @map("history_revision")
+  historyAcceptedAt DateTime? @map("history_accepted_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   requests RecommendationPrecomputedVisitRequest[]
@@ -7032,6 +7034,8 @@ model RecommendationPrecomputedBaselineVisit {
   locale String @db.VarChar(32)
   audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
   deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  historyRevision Int? @map("history_revision")
+  historyAcceptedAt DateTime? @map("history_accepted_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
   requests RecommendationPrecomputedBaselineVisitRequest[]

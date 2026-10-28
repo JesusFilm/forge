@@ -63,3 +63,29 @@ The generic read-by-ID client now applies the later of report `asOf` and current
 time to original expiry, so historical cutoffs cannot revive expired data.
 Signed exposure, A/B CTR/engagement, usefulness, and archive parity remain
 unfinished in feat-894; keep this ticket in-progress.
+
+Visit producer slice: `event-history/experiment-producers.ts` emits only
+redacted A/B and incumbent-baseline visit revisions and request links. New
+`history_revision` / `history_accepted_at` columns on operational visits are
+nullable for pre-cutover rows, so unknown legacy correction times are not
+backdated to admission. `visit-admission.ts`, `public-watch.ts`, and
+`incumbent-baseline.ts` capture newly committed rows, monotonic delivery
+summary changes, and new links inside the transaction, then start one
+best-effort prepared export after commit. Replays, rejected links, and rolled
+back transactions do not create a fresh fact. The current public path does
+not persist early excluded outcomes; those remain unrecorded and are not
+fabricated as historical visits. Export loss does not change operational
+admission or the signed A/B report authority.
+
+Next reader/retirement slice: `precomputed/ctr-evidence.ts` still reads raw
+visits, request links, selections, and impressions; `engagement-evidence.ts`
+joins links through requests, selections, episodes, and outcome revisions.
+`visit-retention.ts` archives per-browser clustered counters before deleting
+raw visits and links. Keep these active PostgreSQL accounting paths until a
+transactionally maintained, bounded compact per-visit attribution state
+preserves the eligibility/arm, browser cluster, exact linked-request cutoff,
+fallback, click, impression, and playback/outcome counters needed by
+`ctr-report.ts`, `engagement-report.ts`, and `incumbent-baseline.ts`.
+ClickHouse can then serve explicitly incomplete historical drilldown, while
+the compact state supports live/final reports and one-way archive without a
+permanent second raw history store. No report authority has switched yet.
