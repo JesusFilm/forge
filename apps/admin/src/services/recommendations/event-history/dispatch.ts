@@ -4,6 +4,7 @@ import {
 } from "./clickhouse"
 import {
   parseRecommendationEventEnvelope,
+  RecommendationEventEnvelopeError,
   RECOMMENDATION_EVENT_FAMILIES,
   type RecommendationEventEnvelope,
   type RecommendationEventFamily,
@@ -68,7 +69,9 @@ const failureReasons: DispatchFailureReason[] = [
 ]
 
 function reason(error: unknown): DispatchFailureReason {
-  return error instanceof RecommendationClickHouseError ? error.code : "unknown"
+  if (error instanceof RecommendationClickHouseError) return error.code
+  if (error instanceof RecommendationEventEnvelopeError) return error.code
+  return "unknown"
 }
 
 /** Process-local observations. A crash can lose both events and unflushed counts. */
@@ -251,6 +254,38 @@ export function createRecommendationEventDispatcher(options: Options) {
     safelyObserve()
   }
 
+  function dispatchPrepared(
+    eventFamily: RecommendationEventFamily,
+    prepare: () => readonly RecommendationEventEnvelope[],
+    expectedCount = 1,
+  ): void {
+    if (
+      !RECOMMENDATION_EVENT_FAMILIES.includes(eventFamily) ||
+      !Number.isSafeInteger(expectedCount) ||
+      expectedCount < 1 ||
+      expectedCount > 100
+    )
+      return
+    if (closed || !options.client) {
+      if (options.disabledReason === "configuration")
+        configurationDroppedEvents += expectedCount
+      else disabledDroppedEvents += expectedCount
+      family(eventFamily).dropped += expectedCount
+      safelyObserve()
+      return
+    }
+    try {
+      const events = prepare()
+      if (events.some((event) => event.family !== eventFamily)) {
+        recordPreparationFailure(eventFamily, expectedCount)
+        return
+      }
+      if (events.length) dispatch(events)
+    } catch {
+      recordPreparationFailure(eventFamily, expectedCount)
+    }
+  }
+
   async function drain(): Promise<void> {
     await Promise.all([...pending])
   }
@@ -263,6 +298,7 @@ export function createRecommendationEventDispatcher(options: Options) {
 
   return {
     dispatch,
+    dispatchPrepared,
     snapshot,
     drain,
     close,

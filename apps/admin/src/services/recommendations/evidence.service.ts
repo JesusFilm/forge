@@ -1,8 +1,14 @@
 import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomUUID } from "node:crypto"
-import { recommendationHistoryEvent } from "./event-history/producers"
-import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
+import {
+  recommendationHistoryEvent,
+  selectionAttributionCorrectionEvent,
+} from "./event-history/producers"
+import {
+  dispatchPreparedRecommendationEventsAfterCommit,
+  getNextRecommendationEventDispatcher,
+} from "./event-history/runtime"
 import {
   RecommendationAuditKind,
   RecommendationExperimentArm,
@@ -463,8 +469,33 @@ export class RecommendationEvidenceService {
         })
         receipts.push({ eventId: event.eventId, status: "accepted" })
       }
-      return { receipts, reconciledSelection, evidenceWatermark }
+      const selectionSnapshot =
+        reconciledSelection &&
+        getNextRecommendationEventDispatcher().isEnabled()
+          ? await tx.recommendationSelection.findUnique({
+              where: { itemId: item.id },
+            })
+          : null
+      return {
+        receipts,
+        reconciledSelection,
+        evidenceWatermark,
+        selectionSnapshot,
+      }
     })
+    if (result.reconciledSelection) {
+      dispatchPreparedRecommendationEventsAfterCommit("selection", () => {
+        const selection = result.selectionSnapshot
+        if (!selection?.attributionEligibleAt)
+          throw new Error("Selection correction snapshot missing")
+        return [
+          selectionAttributionCorrectionEvent({
+            ...selection,
+            attributionEligibleAt: selection.attributionEligibleAt,
+          }),
+        ]
+      })
+    }
     dispatchPreparedRecommendationEventsAfterCommit(
       "evidence",
       () =>

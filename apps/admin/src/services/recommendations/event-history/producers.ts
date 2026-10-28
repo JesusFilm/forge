@@ -142,6 +142,26 @@ const fields = {
     "learningEligible",
     "receivedAt",
   ],
+  correction: [
+    "decisionId",
+    "sourceKey",
+    "sourceType",
+    "outcomeId",
+    "contentActionId",
+    "selectionId",
+    "policyVersion",
+    "actorClass",
+    "state",
+    "reasonCodes",
+    "eligibleScopes",
+    "contributionWeight",
+    "contributionOrdinal",
+    "distinctSupport",
+    "identityConcentration",
+    "inputDigest",
+    "evidenceWatermark",
+    "decidedAt",
+  ],
 } as const
 
 type ProducerFamily = keyof typeof fields
@@ -159,5 +179,34 @@ export function recommendationHistoryEvent(input: {
     ...input,
     family: input.family as RecommendationEventFamily,
     allowedFields: fields[input.family],
+  })
+}
+
+export function selectionAttributionCorrectionEvent(selection: {
+  id: string
+  requestId: string
+  itemId: string
+  eventId: string
+  payloadDigest: string
+  occurredAt: Date
+  receivedAt: Date
+  expiresAt: Date
+  attributionEligibleAt: Date
+}): RecommendationEventEnvelope {
+  return recommendationHistoryEvent({
+    family: "selection",
+    logicalId: selection.id,
+    revision: 2,
+    occurredAt: selection.occurredAt,
+    acceptedAt: selection.attributionEligibleAt,
+    expiresAt: selection.expiresAt,
+    payload: {
+      requestId: selection.requestId,
+      itemId: selection.itemId,
+      eventId: selection.eventId,
+      payloadDigest: selection.payloadDigest,
+      attributionEligibleAt: selection.attributionEligibleAt.toISOString(),
+      receivedAt: selection.receivedAt.toISOString(),
+    },
   })
 }

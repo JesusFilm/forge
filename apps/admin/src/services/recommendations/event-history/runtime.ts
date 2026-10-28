@@ -102,14 +102,11 @@ export function dispatchPreparedRecommendationEventsAfterCommit(
   prepare: () => readonly RecommendationEventEnvelope[],
   expectedCount = 1,
 ): void {
-  const dispatcher = getNextRecommendationEventDispatcher()
-  if (!dispatcher.isEnabled()) return
-  try {
-    const events = prepare()
-    if (events.length) dispatcher.dispatch(events)
-  } catch {
-    dispatcher.recordPreparationFailure(family, expectedCount)
-  }
+  getNextRecommendationEventDispatcher().dispatchPrepared(
+    family,
+    prepare,
+    expectedCount,
+  )
 }
 
 export function createConfiguredWorkerRecommendationEventDispatcher() {

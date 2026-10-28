@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   createRecommendationEventEnvelope,
   parseRecommendationEventEnvelope,
+  RecommendationEventEnvelopeError,
 } from "./envelope"
 
 const input = {
@@ -83,5 +84,28 @@ describe("recommendation event envelope", () => {
         }),
       ),
     ).toThrow("digest")
+  })
+
+  it("reports malformed JSON and unsafe payloads as sanitized invalid input", () => {
+    for (const parse of [
+      () => parseRecommendationEventEnvelope('{"payload":'),
+      () =>
+        createRecommendationEventEnvelope({
+          ...input,
+          payload: { sessionDigest: "private-value" },
+          allowedFields: ["sessionDigest"],
+        }),
+    ]) {
+      try {
+        parse()
+        throw new Error("Expected invalid input")
+      } catch (error) {
+        expect(error).toBeInstanceOf(RecommendationEventEnvelopeError)
+        expect((error as RecommendationEventEnvelopeError).code).toBe(
+          "invalid_input",
+        )
+        expect(String(error)).not.toContain("private-value")
+      }
+    }
   })
 })
