@@ -65,6 +65,7 @@ export type RetentionPhaseStage =
   | "unavailable"
   | "admission"
   | "acquire"
+  | "post_acquisition_admission"
   | "advisory_lock"
   | "post_lock_admission"
   | "configure_timeout"
@@ -97,6 +98,7 @@ const PHASE_STAGE_SET: ReadonlySet<string> = new Set([
   "unavailable",
   "admission",
   "acquire",
+  "post_acquisition_admission",
   "advisory_lock",
   "post_lock_admission",
   "configure_timeout",

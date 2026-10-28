@@ -305,6 +305,11 @@ export async function purgeExpiredRecommendationRequests(
       const result = await prisma.$transaction(
         async (tx) => {
           timing.acquisitionMs = performance.now() - stageStarted
+          timing.stage = "post_acquisition_admission"
+          stageStarted = performance.now()
+          // Acquisition can consume the budget before even the lock query.
+          if (!options.terminal && deadline - Date.now() <= minimumAdmissionMs)
+            throw new RetentionBudgetYield()
           timing.stage = "advisory_lock"
           stageStarted = performance.now()
           const [lock] = await tx.$queryRaw<

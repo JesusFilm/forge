@@ -31,8 +31,9 @@ record exact committed counters as `SKIPPED` / `budget_yield`, leave the oldest
 backlog unknown, and require bounded continuation. It does not prove the
 production tail latency or a universal safe margin.
 
-Check the minimum remaining time both before requesting a connection and after
-the advisory lock is acquired. An admitted operation still receives the full
+Check the minimum remaining time before requesting a connection, immediately
+after acquisition before the first query, and after the advisory lock is acquired.
+An admitted operation still receives the full
 remaining timeout and can genuinely exhaust it; the threshold does not
 guarantee terminal time. A pre-work yield can be recorded separately from a
 lock skip and from a completed success; it must not advance the success
