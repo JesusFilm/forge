@@ -109,6 +109,10 @@ type VideoPlayerProps = {
    *  chrome remounts when the reader cover returns (feat-553 KTD10), and a
    *  paused video must then show its controls, not the autostart veil. */
   started?: boolean
+  /** The player holds this request's source. False while the last video's
+   *  source is still loaded (a video opened over the floating window), so the
+   *  last video's playback never counts as this one's start. */
+  holdsSource?: boolean
   /** Cast wiring, owned by the surface that published the playback request and
    *  forwarded by the host. Null once that surface is gone: its unmount already
    *  ended the session (KTD7), so the floating window is local playback only. */
@@ -156,6 +160,7 @@ export function VideoPlayer({
   autostart = false,
   adopted = false,
   started = false,
+  holdsSource = true,
   cast = null,
   feedbackContext = null,
 }: VideoPlayerProps) {
@@ -172,6 +177,7 @@ export function VideoPlayer({
   // with nothing left to clear it (the live read alone covers only a playing one).
   const [hasStarted, setHasStarted] = useState(() => {
     if (adopted || started) return true
+    if (!holdsSource) return false
     try {
       return player.playing
     } catch {
@@ -196,9 +202,9 @@ export function VideoPlayer({
   const resolvedPoster = resolveImageUrl(posterUrl)
 
   useEffect(() => {
-    if (isPlaying && !hasStarted) setHasStarted(true)
+    if (isPlaying && holdsSource && !hasStarted) setHasStarted(true)
     onPlayingChange?.(isPlaying)
-  }, [isPlaying, hasStarted, onPlayingChange])
+  }, [isPlaying, holdsSource, hasStarted, onPlayingChange])
 
   // Ended-playback poster (covers the often-black last frame under Replay).
   const { ended, posterFade } = useEndedPosterFade(player, isPlaying)

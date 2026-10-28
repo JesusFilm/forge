@@ -556,6 +556,9 @@ function ActivePlaybackHost({
   // What the player verifiably HOLDS (applied, not merely requested): the
   // admission fallback below may only trust `player.playing` for this source.
   const appliedSourceUrlRef = useRef<string | null>(null)
+  // The same fact for render: the chrome reads it to tell this video's start
+  // from the last video's playback, which runs until the swap applies.
+  const [appliedSourceUrl, setAppliedSourceUrl] = useState<string | null>(null)
   // The one swap the arming block below classified as position-preserving,
   // recorded as the exact URL pair so the adapter can recognise the same swap
   // and stand its own resume down. Declared here because the adapter options
@@ -601,6 +604,7 @@ function ActivePlaybackHost({
         armsPictureInPicture: true,
         onSourceApplied: (url) => {
           appliedSourceUrlRef.current = url
+          setAppliedSourceUrl(url)
         },
         // Reads the decision the arming block ALREADY made, rather than
         // recomputing it: render runs before effects, so by the time this
@@ -2023,6 +2027,12 @@ function ActivePlaybackHost({
                 // already played arms no veil then (KTD10).
                 started={
                   coverStartKeyRef.current === videoKey && startedRef.current
+                }
+                holdsSource={
+                  adoptable ||
+                  (request.streamingUrl != null &&
+                    appliedSourceUrl != null &&
+                    sameStreamSource(appliedSourceUrl, request.streamingUrl))
                 }
                 cast={slotOwned ? (request.cast ?? null) : null}
                 feedbackContext={feedbackContext}
