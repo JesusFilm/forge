@@ -8,6 +8,7 @@ export type NativePlayerOption = {
   label: string
   detail: string
   url: string
+  confirmationMessage?: string
 }
 
 export type NativePlayerMoment = {

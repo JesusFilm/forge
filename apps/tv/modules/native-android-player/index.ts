@@ -10,6 +10,7 @@ export type NativeAndroidPlayerOption = {
   url: string
   disabled?: boolean
   searchText?: string
+  confirmationMessage?: string
 }
 
 export type NativeAndroidPlayerMoment = {

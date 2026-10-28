@@ -330,6 +330,8 @@ function SearchBodyNativeTvos({
         colorScheme="dark"
         accentColor={WATCH_THEME.accent}
         showTitle
+        showTitleOverlay={false}
+        showSubtitle
         emptyStateText="Search films, series, and topics"
         searchingText="Searching…"
         noResultsText="No results found"

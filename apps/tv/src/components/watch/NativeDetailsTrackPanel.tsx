@@ -1,11 +1,12 @@
 import { useMemo } from "react"
+import { Platform } from "react-native"
 import { useWatchSession } from "../../contexts/WatchSessionProvider"
 import { validateStreamingUrl } from "../../lib/validateUrl"
-import { AndroidTrackChoice } from "./AndroidTrackChoice"
+import { NativeTrackChoice } from "./NativeTrackChoice"
 import type { TrackChoiceOption } from "./androidTrackChoiceSession"
 import { deriveSubtitlePanelState, type DetailsDataState } from "./panelState"
 
-export function AndroidDetailsTrackPanel({
+export function NativeDetailsTrackPanel({
   kind,
   dataState,
   onRetry,
@@ -60,7 +61,10 @@ export function AndroidDetailsTrackPanel({
           ? "No languages available"
           : null
   return (
-    <AndroidTrackChoice
+    <NativeTrackChoice
+      nativeModuleName={
+        Platform.OS === "android" ? "NativeAndroidPlayer" : "NativeSwiftPlayer"
+      }
       title={kind === "audio" ? "Audio Language" : "Subtitles"}
       options={options}
       selected={
