@@ -33,13 +33,13 @@ ClickHouse event-store migration, with an explicit grill-with-docs interview
 before implementation. On 28 October the owner accepted recommendation/Watch
 scope, five-minute learning freshness, continued valid serving during event-store
 outages, and unchanged retention. The owner subsequently accepted a dedicated
-Forge ClickHouse service, a bounded temporary PostgreSQL outbox, and unexpired
-history backfill, then a 24-hour outage buffering target. Automatic durable
-retry during outages is required. Sink qualification, measured buffer sizing
-and exact delivery guarantees are engineering work; priced infrastructure and
-release choices remain open. The owner rejected repeating the architecture
-recommendation as a confirmation question. The duration is a planning
-placeholder, not a delivery commitment.
+Forge ClickHouse service and unexpired history backfill. The latest owner
+direction supersedes the earlier outbox and 24-hour buffering proposal: send
+directly to ClickHouse without awaiting in the caller, measure failures and
+defer retries/queues. Failed historical exports may be lost. Preserve reliable
+operational admission, playback and privacy controls. Sink qualification,
+measured failure/latency/resource behavior and priced infrastructure remain
+engineering work. The duration is a planning placeholder, not a commitment.
 
 ## Entry points
 
@@ -66,6 +66,6 @@ parity, release through the normal PR-to-main flow, and measure actual
 PostgreSQL retirement and storage effects. Preserve the running experiment,
 privacy controls, expiry, playback attribution, and recommendation serving.
 
-No implementation, infrastructure purchase, data cutover, or production deletion
-has occurred under this ticket. Existing capacity work in platform feat-554 and
+Local implementation is underway; no infrastructure purchase, data cutover or
+production deletion has occurred under this ticket. Capacity work in platform feat-554 and
 feat-756 remains independent and open; this migration does not complete it.

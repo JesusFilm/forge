@@ -3812,40 +3812,6 @@ model RecommendationRequest {
   @@map("recommendation_request")
 }
 
-/// Temporary forwarding payloads only; acknowledged events are removed rather than retained here.
-model RecommendationEventOutbox {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  family        String    @db.VarChar(48)
-  logicalId     String    @map("logical_id") @db.VarChar(191)
-  revision      Int
-  payloadDigest String    @map("payload_digest") @db.Char(64)
-  envelope      Json      @db.JsonB
-  envelopeBytes Int       @map("envelope_bytes")
-  expiresAt     DateTime  @map("expires_at") @db.Timestamptz()
-  dueAt         DateTime  @default(now()) @map("due_at") @db.Timestamptz()
-  leaseToken    String?   @map("lease_token") @db.Uuid
-  leasedUntil   DateTime? @map("leased_until") @db.Timestamptz()
-  attempts      Int       @default(0)
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
-
-  @@unique([family, logicalId, revision], map: "recommendation_event_outbox_identity_key")
-  @@index([dueAt, createdAt], map: "recommendation_event_outbox_due_idx")
-  @@index([expiresAt], map: "recommendation_event_outbox_expiry_idx")
-  @@index([leasedUntil], map: "recommendation_event_outbox_lease_idx")
-  @@map("recommendation_event_outbox")
-}
-
-/// One locked row serializes capacity admission and tracks only pending payloads.
-model RecommendationEventOutboxCapacity {
-  id            Int @id
-  pendingEvents Int @default(0) @map("pending_events")
-  pendingBytes  BigInt @default(0) @map("pending_bytes")
-  maxEvents     Int @map("max_events")
-  maxBytes      BigInt @map("max_bytes")
-
-  @@map("recommendation_event_outbox_capacity")
-}
-
 /// Request-owned, bounded execution summary for the permanent candidate seam.
 /// It carries no viewer/session secret and expires exactly with its request.
 model RecommendationCandidateRun {
