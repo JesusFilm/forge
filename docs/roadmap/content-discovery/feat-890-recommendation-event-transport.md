@@ -1,6 +1,6 @@
 ---
 id: "feat-890"
-title: "Persist canonical event history through durable transport"
+title: "Persist canonical recommendation event history in ClickHouse"
 owner: "nisal"
 priority: "P1"
 status: "complete"
