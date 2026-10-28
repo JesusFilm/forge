@@ -3,7 +3,7 @@ id: "feat-688"
 title: "Order the Watch surface deadline pairs"
 owner: "vlad"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-12"
 duration: 1
 depends_on: []
@@ -39,3 +39,11 @@ feat-687 fixes the content-action pair only. The same browser-aborts-before-the-
 ## Tracking
 
 - Found while validating FGE-188 (feat-687).
+- 2026-10-27: feat-792's event-recording repair replaces both 700 ms browser
+  literals with named, ordered deadlines and includes an ordering test.
+  Successful Admin exposure writes had sampled p95 1.63 seconds in the
+  01:40–02:00 UTC window. Successful issuance had sampled p50 0.662 seconds,
+  p95 2.287 seconds and max 3.670 seconds across 186 retained spans from
+  26 Oct 06:00–18:40 UTC. These are APM samples, not population rates.
+  Keep this ticket in progress until the production deadline pairs are
+  verified after rollout.

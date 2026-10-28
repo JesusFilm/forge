@@ -135,6 +135,253 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       await db.$disconnect()
     })
 
+    it("commits fifty roots then yields before repeating observed expensive root work", async () => {
+      const now = new Date()
+      const createdAt = new Date(now.getTime() - 30 * day)
+      const prefix = randomUUID()
+      const ids = Array.from(
+        { length: 100 },
+        (_, i) => `${prefix}-${String(i).padStart(3, "0")}`,
+      )
+      const liveId = `${prefix}-live`
+      await db.recommendationRequest.createMany({
+        data: [...ids, liveId].map((id) => ({
+          id,
+          contractVersion: "semantic-recommendation-v1",
+          surfaceVersion: "watch-below-player-v1",
+          manifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+          strategyVersion: COWATCH_MMR_TRIAL_MANIFEST.strategyVersion,
+          classifierVersion: "legacy-position-v0",
+          sessionDigest: compositionDigest(id),
+          locale: "en",
+          seedMediaId: "fixture-seed",
+          expectedItemCount: 0,
+          result: "EMPTY",
+          createdAt,
+          expiresAt: new Date(now.getTime() + (id === liveId ? day : -day)),
+        })),
+      })
+      // The later chunk models work exceeding its remaining budget. Without
+      // observed-cost admission it starts, times out and rolls back. No such
+      // work should be dispatched by the protected invocation.
+      await db.$executeRawUnsafe(
+        "CREATE TABLE owned_root_work (id text PRIMARY KEY)",
+      )
+      await db.$executeRaw(
+        Prisma.sql`INSERT INTO owned_root_work SELECT unnest(${ids.slice(50)}::text[])`,
+      )
+      await db.$executeRawUnsafe(`
+        CREATE FUNCTION owned_root_work_delay() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN
+          IF EXISTS (SELECT 1 FROM owned_root_work WHERE id = OLD.id) THEN
+            PERFORM pg_sleep(0.05);
+          END IF;
+          RETURN OLD;
+        END $$
+      `)
+      await db.$executeRawUnsafe(
+        `CREATE TRIGGER owned_root_work_delay BEFORE DELETE ON recommendation_request FOR EACH ROW EXECUTE FUNCTION owned_root_work_delay()`,
+      )
+      const removeDelay = async () => {
+        await db.$executeRawUnsafe(
+          "DROP TRIGGER IF EXISTS owned_root_work_delay ON recommendation_request",
+        )
+        await db.$executeRawUnsafe(
+          "DROP FUNCTION IF EXISTS owned_root_work_delay()",
+        )
+        await db.$executeRawUnsafe("DROP TABLE IF EXISTS owned_root_work")
+      }
+      const priorHealth = await readRecommendationRetentionHealth(db, now)
+      let rootDeletes = 0
+      const delayedTransaction = async <T>(
+        callback: (tx: Prisma.TransactionClient) => Promise<T>,
+        options?: { maxWait?: number; timeout?: number },
+      ): Promise<T> => {
+        let deletedRoots = false
+        const result = await db.$transaction(
+          (tx) =>
+            callback(
+              new Proxy(tx, {
+                get(target, property) {
+                  if (property !== "recommendationRequest")
+                    return Reflect.get(target, property)
+                  return new Proxy(target.recommendationRequest, {
+                    get(requests, method) {
+                      if (method !== "deleteMany")
+                        return Reflect.get(requests, method)
+                      return async (
+                        args: Prisma.RecommendationRequestDeleteManyArgs,
+                      ) => {
+                        rootDeletes += 1
+                        deletedRoots = true
+                        return requests.deleteMany(args)
+                      }
+                    },
+                  })
+                },
+              }),
+            ),
+          options,
+        )
+        if (deletedRoots && rootDeletes === 1) {
+          // Model expensive acknowledged work after the real commit. This
+          // measures admission/avoided dispatch, not PostgreSQL CPU savings.
+          await new Promise((resolve) => setTimeout(resolve, 3_000))
+        }
+        return result
+      }
+      const delayedDb = new Proxy(db, {
+        get(target, property) {
+          return property === "$transaction"
+            ? delayedTransaction
+            : Reflect.get(target, property)
+        },
+      })
+      try {
+        const result = await purgeExpiredRecommendationRequests(
+          delayedDb,
+          now,
+          100,
+          "stored-expiry-only",
+        )
+        expect(rootDeletes).toBe(1)
+        expect(result).toMatchObject({
+          status: "yielded",
+          rootsDeleted: 50,
+          rowCounts: { requests: 50 },
+          oldestExpiredAtAfter: null,
+          overdueAfterRun: null,
+          continuationRequired: true,
+        })
+        expect(
+          await db.recommendationRetentionRun.findUniqueOrThrow({
+            where: { id: result.runId },
+          }),
+        ).toMatchObject({
+          status: "SKIPPED",
+          reasonCode: "budget_yield",
+          rootsDeleted: 50,
+          rowCounts: { requests: 50 },
+          oldestExpiredAtAfter: null,
+        })
+        expect(
+          await db.recommendationRequest.count({ where: { id: { in: ids } } }),
+        ).toBe(50)
+        expect(
+          (await readRecommendationRetentionHealth(db, now)).latestSuccessAt,
+        ).toEqual(priorHealth.latestSuccessAt)
+        await removeDelay()
+        const next = await purgeExpiredRecommendationRequests(
+          db,
+          now,
+          100,
+          "stored-expiry-only",
+        )
+        expect(next.rootsDeleted).toBe(50)
+        expect(
+          await db.recommendationRequest.count({ where: { id: { in: ids } } }),
+        ).toBe(0)
+        expect(
+          await db.recommendationRequest.count({ where: { id: liveId } }),
+        ).toBe(1)
+      } finally {
+        await removeDelay()
+        await db.recommendationRequest.deleteMany({
+          where: { id: { in: [...ids, liveId] } },
+        })
+      }
+    }, 15_000)
+
+    it("yields before domain work after configuration acknowledgement outlives the native transaction", async () => {
+      const now = new Date()
+      const priorHealth = await readRecommendationRetentionHealth(db, now)
+      const priorSuccesses = await db.recommendationRetentionRun.count({
+        where: { status: "SUCCEEDED" },
+      })
+      let delayed = false
+      let domainReads = 0
+      const delayedTransaction = <T>(
+        callback: (tx: Prisma.TransactionClient) => Promise<T>,
+        options?: { maxWait?: number; timeout?: number },
+      ): Promise<T> =>
+        db.$transaction(
+          (tx) =>
+            callback(
+              new Proxy(tx, {
+                get(target, property, receiver) {
+                  if (property === "$queryRaw")
+                    return async (sql: Prisma.Sql) => {
+                      const result = await target.$queryRaw(sql)
+                      if (
+                        !delayed &&
+                        sql.sql.includes("set_config('statement_timeout'")
+                      ) {
+                        delayed = true
+                        // Let the actual Prisma transaction expire after successful SQL
+                        // configuration, before its acknowledgement reaches the service.
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 5_100),
+                        )
+                      }
+                      return result
+                    }
+                  if (property === "recommendationRequest")
+                    return new Proxy(target.recommendationRequest, {
+                      get(model, method, modelReceiver) {
+                        if (method === "findMany")
+                          return (
+                            ...args: Parameters<typeof model.findMany>
+                          ) => {
+                            domainReads++
+                            return model.findMany(...args)
+                          }
+                        return Reflect.get(model, method, modelReceiver)
+                      },
+                    })
+                  return Reflect.get(target, property, receiver)
+                },
+              }),
+            ),
+          options,
+        )
+      const delayedDb = new Proxy(db, {
+        get(target, property, receiver) {
+          return property === "$transaction"
+            ? delayedTransaction
+            : Reflect.get(target, property, receiver)
+        },
+      })
+      const result = await purgeExpiredRecommendationRequests(delayedDb, now)
+      expect(delayed).toBe(true)
+      expect(domainReads).toBe(0)
+      expect(result).toMatchObject({
+        status: "yielded",
+        rootsDeleted: 0,
+        rowCounts: {},
+        oldestExpiredAtAfter: null,
+        overdueAfterRun: null,
+        continuationRequired: true,
+      })
+      expect(
+        await db.recommendationRetentionRun.findUniqueOrThrow({
+          where: { id: result.runId },
+        }),
+      ).toMatchObject({
+        status: "SKIPPED",
+        reasonCode: "budget_yield",
+        rootsDeleted: 0,
+        rowCounts: {},
+        oldestExpiredAtAfter: null,
+      })
+      expect(
+        await db.recommendationRetentionRun.count({
+          where: { status: "SUCCEEDED" },
+        }),
+      ).toBe(priorSuccesses)
+      expect(await readRecommendationRetentionHealth(db, now)).toEqual(
+        priorHealth,
+      )
+    })
+
     it("reaches expired request roots while a loaded standalone backlog continues", async () => {
       const pageSize = 25
       const now = new Date()

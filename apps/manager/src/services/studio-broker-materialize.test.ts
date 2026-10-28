@@ -105,7 +105,6 @@ it.each(["missing-rendition", "gap", "too-many-segments", "unavailable-tail"])(
       durationInFrames: Math.round(((endMs - startMs) * 30) / 1000),
       tracks: [{ id: "video", kind: "visual" }],
       components: [],
-      packRevisionIds: [],
       items: [
         {
           id: "clip",

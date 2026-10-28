@@ -1,3 +1,8 @@
+import {
+  isRetentionDecisionObservation,
+  safeRetentionDecisionObservation,
+  type RetentionDecisionObservation,
+} from "./retention-operation-diagnostics"
 import { Prisma } from "@prisma/client"
 import { RecommendationConflictError } from "./errors"
 
@@ -63,6 +68,7 @@ export type RetentionPhaseStage =
   | "advisory_lock"
   | "post_lock_admission"
   | "configure_timeout"
+  | "post_configuration_admission"
   | "operation"
   | "counter_update"
   | "commit_acknowledgement"
@@ -94,6 +100,7 @@ const PHASE_STAGE_SET: ReadonlySet<string> = new Set([
   "advisory_lock",
   "post_lock_admission",
   "configure_timeout",
+  "post_configuration_admission",
   "operation",
   "counter_update",
   "commit_acknowledgement",
@@ -249,10 +256,17 @@ export function createRetentionPhaseRecorder() {
         outcome: "succeeded" | "failed" | "not_attempted"
         elapsedMs: number | null
       },
+      decisionOperation?: RetentionDecisionObservation | null,
     ) {
       return {
         event: "recommendation_retention_phase_failure" as const,
-        version: 1 as const,
+        version: decisionOperation === undefined ? (1 as const) : (2 as const),
+        ...(decisionOperation === undefined
+          ? {}
+          : {
+              decisionOperation:
+                safeRetentionDecisionObservation(decisionOperation),
+            }),
         mode,
         errors: {
           phase: normalizedRetentionError(errors.phase),
@@ -410,9 +424,18 @@ export function parseRetentionPhaseFailureLog(
       "terminal",
       "fallbackLedger",
       "suppressedPriorMinute",
+      ...(typeof value === "object" &&
+      value !== null &&
+      "version" in value &&
+      value.version === 2
+        ? ["decisionOperation"]
+        : []),
     ]) ||
     value.event !== "recommendation_retention_phase_failure" ||
-    value.version !== 1 ||
+    (value.version !== 1 && value.version !== 2) ||
+    (value.version === 2 &&
+      value.decisionOperation !== null &&
+      !isRetentionDecisionObservation(value.decisionOperation)) ||
     (value.mode !== "scheduled" && value.mode !== "stored-expiry-only") ||
     !exactKeys(value.errors, ["phase", "terminal", "fallbackLedger"]) ||
     !safeError(value.errors.phase) ||

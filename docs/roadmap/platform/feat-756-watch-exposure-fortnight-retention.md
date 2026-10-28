@@ -16,6 +16,30 @@ tags:
   - "retention"
 ---
 
+## October 27 first expiry-wave evidence
+
+The [ordinary-cycle and Watch-capacity report](../../reports/2026-10-27-recommendation-retention-cycle.md)
+records 74,558 committed Watch deletions during the failure-free scheduled cycle.
+A separate bounded 17:27 UTC read found 92,617 already expired rows, 285,843
+further expiries by the October 28 daily wake, and 498,507 in the following day.
+The 876,967-row horizon did not reach its cap. Oldest stored expiry was after
+the completed cycle's success cutoff; no persisted expiry was rewritten.
+
+Watch relation allocation was 8,483,897,344 bytes; PGDATA had 7,478,304,768 bytes
+free, with WAL 201,326,592 bytes and no observed lock waiters or long transactions.
+These dated measurements and estimated dead tuples do not prove physical
+recovery, usable free pages or a causal capacity forecast. The collection had
+complete frames and a successful exit but nonempty unclassified CLI stderr;
+the report preserves the local receipt-classification correction and provenance
+limits.
+
+Keep this ticket in progress for the larger approaching wave's actual drainage
+and capacity. The existing daily observer should reconcile its committed
+deletions, remaining oldest/overdue rows and relation/PGDATA/WAL headroom, or
+coordinate protection if margin is inadequate. No additional fixed count of
+daily cycles is required. Feat-554's two-cycle gate is met, while its separate
+continued operational-margin obligation also remains open.
+
 ## Problem
 
 `watch_surface_exposure` occupied 7,247,331,328 bytes on October 22, 2026,

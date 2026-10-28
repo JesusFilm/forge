@@ -73,16 +73,16 @@ final class NativeFeedbackQrController: UIViewController {
     if presentingViewController == nil { onClose?() }
   }
 
-  func update(rows: [String], code: String?, loading: Bool, error: Bool) {
+  func update(rows: [String], code: String?, loading: Bool, error: Bool, simulator: Bool, hostedSimulator: Bool) {
     guard isViewLoaded else { return }
     image.image = Self.qrImage(rows)
-    reference.text = code.map { "Reference \($0)" }
+    reference.text = simulator ? (hostedSimulator ? "Simulator test" : "Simulator test · LOCAL-PREVIEW") : code.map { "Reference \($0)" }
     retry.isHidden = !error
     message.text = error
-      ? "Verified feedback is unavailable. Please try again."
+      ? (simulator ? (hostedSimulator ? "Simulator feedback is unavailable. Check the signed link." : "Local feedback is unavailable. Check the simulator configuration.") : "Verified feedback is unavailable. Please try again.")
       : loading || image.image == nil
         ? "Verifying this TV…"
-        : "Scan with your phone to report an issue or share an idea."
+        : (simulator ? (hostedSimulator ? "Simulator test — feedback goes to the TV beta team. Scan with your phone to send a report." : "Scan with your phone. Reports save locally; sending to Linear is optional.") : "Scan with your phone to report an issue or share an idea.")
   }
 
   private static func qrImage(_ rows: [String]) -> UIImage? {

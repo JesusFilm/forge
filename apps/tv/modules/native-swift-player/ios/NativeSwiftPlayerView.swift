@@ -207,6 +207,8 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   var feedbackVisible = false
   var feedbackRows: [String] = []
   var feedbackReference: String?
+  var feedbackSimulator = false
+  var feedbackHostedSimulator = false
   var feedbackLoading = false
   var feedbackError = false
 
@@ -1123,7 +1125,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
       rows: feedbackRows,
       code: feedbackReference,
       loading: feedbackLoading,
-      error: feedbackError
+      error: feedbackError,
+      simulator: feedbackSimulator,
+      hostedSimulator: feedbackHostedSimulator
     )
   }
 

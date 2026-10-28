@@ -1,3 +1,4 @@
+import { createRetentionDecisionObservation } from "./retention-operation-diagnostics"
 import { Prisma } from "@prisma/client"
 import { describe, expect, it } from "vitest"
 import {
@@ -29,6 +30,114 @@ function timing(ordinal: number): RetentionPhaseTiming {
 }
 
 describe("retention phase diagnostics", () => {
+  it("round-trips version two observations while preserving strict version one input", () => {
+    const recorder = createRetentionPhaseRecorder()
+    for (let i = 1; i <= 4; i++) recorder.completed(timing(i))
+    recorder.failed({ ...timing(5), stage: "operation" })
+    recorder.failed({ ...timing(6), stage: "commit_acknowledgement" }, true)
+    const operation = createRetentionDecisionObservation("manual-cli")
+    operation.record("select")
+    operation.record("selected", 100)
+    operation.record("update")
+    const observed = operation.finish(false)
+    const event = {
+      ...recorder.diagnostic(
+        "stored-expiry-only",
+        { phase: new Error("private") },
+        { outcome: "succeeded", elapsedMs: 1 },
+        observed,
+      ),
+      suppressedPriorMinute: 0,
+    }
+    const line = formatRetentionPhaseFailureLog(event)
+    expect(Buffer.byteLength(line)).toBeLessThan(8192)
+    expect(parseRetentionPhaseFailureLog(line)).toEqual(event)
+    expect(event.version).toBe(2)
+    const old = {
+      ...recorder.diagnostic(
+        "scheduled",
+        { phase: new Error("private") },
+        { outcome: "succeeded", elapsedMs: 1 },
+      ),
+      suppressedPriorMinute: 0,
+    }
+    expect(old.version).toBe(1)
+    expect(
+      parseRetentionPhaseFailureLog(formatRetentionPhaseFailureLog(old)),
+    ).toEqual(old)
+    for (const extra of [
+      { sql: "private" },
+      { selectedCount: 5001 },
+      { loopDelayMaxMs: -1 },
+      { heapLimitBytes: "private" },
+      { executionContext: "private" },
+      { gcAttribution: "confirmed" },
+    ]) {
+      expect(
+        parseRetentionPhaseFailureLog(
+          formatRetentionPhaseFailureLog({
+            ...event,
+            decisionOperation: { ...observed, ...extra },
+          } as never),
+        ),
+      ).toBeNull()
+    }
+    const missing = { ...event.decisionOperation }
+    delete missing.loopDelayMaxMs
+    expect(
+      parseRetentionPhaseFailureLog(
+        formatRetentionPhaseFailureLog({
+          ...event,
+          decisionOperation: missing,
+        } as never),
+      ),
+    ).toBeNull()
+    expect(parseRetentionPhaseFailureLog(line + " ".repeat(8192))).toBeNull()
+    expect(line).not.toMatch(/private|requestId|projectionGenerationId|stack/)
+  })
+
+  it("keeps a fully populated numeric envelope below the existing byte cap", () => {
+    const recorder = createRetentionPhaseRecorder()
+    const maximum = { ...timing(1) }
+    for (const key of Object.keys(maximum) as Array<
+      keyof RetentionPhaseTiming
+    >) {
+      if (key !== "label" && key !== "stage")
+        maximum[key] = Number.MAX_SAFE_INTEGER
+    }
+    for (let i = 0; i < 4; i++) recorder.completed(maximum)
+    recorder.failed(maximum)
+    recorder.failed(maximum, true)
+    const operation =
+      createRetentionDecisionObservation("scheduled-job").finish(false)
+    const maximumOperation = Object.fromEntries(
+      Object.entries(operation).map(([key, value]) => [
+        key,
+        typeof value === "number" || value === null
+          ? key.endsWith("Count")
+            ? 5000
+            : Number.MAX_SAFE_INTEGER
+          : value,
+      ]),
+    )
+    const event = {
+      ...recorder.diagnostic(
+        "stored-expiry-only",
+        {
+          phase: new Error(),
+          terminal: new Error(),
+          fallbackLedger: new Error(),
+        },
+        { outcome: "not_attempted", elapsedMs: Number.MAX_SAFE_INTEGER },
+        maximumOperation as typeof operation,
+      ),
+      suppressedPriorMinute: Number.MAX_SAFE_INTEGER,
+    }
+    const line = formatRetentionPhaseFailureLog(event)
+    expect(Buffer.byteLength(line)).toBeLessThanOrEqual(8192)
+    expect(parseRetentionPhaseFailureLog(line)).toEqual(event)
+  })
+
   it("bounds timing and keeps only four completed predecessors plus a failed phase", () => {
     const recorder = createRetentionPhaseRecorder()
     for (let ordinal = 1; ordinal <= 8; ordinal++)
@@ -72,6 +181,29 @@ describe("retention phase diagnostics", () => {
       elapsedMs: 1,
     })
     expect(JSON.stringify(diagnostic)).not.toMatch(/secret|sensitive|raw-sql/)
+  })
+
+  it("round-trips the post-configuration admission stage", () => {
+    const recorder = createRetentionPhaseRecorder()
+    recorder.failed({
+      ...timing(1),
+      stage: "post_configuration_admission",
+      operationMs: null,
+    })
+    const diagnostic = recorder.diagnostic(
+      "stored-expiry-only",
+      { phase: new Error("terminal failure after yield") },
+      { outcome: "succeeded", elapsedMs: 1 },
+    )
+    const parsed = parseRetentionPhaseFailureLog(
+      formatRetentionPhaseFailureLog({
+        ...diagnostic,
+        suppressedPriorMinute: 0,
+      }),
+    )
+    expect(parsed?.failed).toMatchObject([
+      { stage: "post_configuration_admission", operationMs: null },
+    ])
   })
 
   it("never serializes arbitrary error text, codes or metadata", () => {

@@ -102,6 +102,8 @@ class NativeAndroidPlayerView(
   var feedbackVisible = false
   var feedbackRows: List<String> = emptyList()
   var feedbackReference: String? = null
+  var feedbackSimulator = false
+  var feedbackHostedSimulator = false
   var feedbackLoading = false
   var feedbackError = false
 
@@ -774,7 +776,7 @@ class NativeAndroidPlayerView(
       return
     }
     if (existing != null) {
-      existing.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError)
+      existing.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError, feedbackSimulator, feedbackHostedSimulator)
       return
     }
     if (currentDialog != null || released) return
@@ -792,7 +794,7 @@ class NativeAndroidPlayerView(
     )
     currentDialog = dialog
     dialog.show()
-    dialog.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError)
+    dialog.update(feedbackRows, feedbackReference, feedbackLoading, feedbackError, feedbackSimulator, feedbackHostedSimulator)
   }
 
   override fun onPlaybackStateChanged(playbackState: Int) {
