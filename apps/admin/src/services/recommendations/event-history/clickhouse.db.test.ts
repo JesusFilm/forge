@@ -17,13 +17,14 @@ describe.skipIf(!run)(
       revision = 1,
       payload = "first",
       expiresAt = "2099-11-11T00:00:00.000Z",
+      acceptedAt = "2099-10-28T00:00:01.000Z",
     ) =>
       createRecommendationEventEnvelope({
         family: "watch-exposure",
         logicalId,
         revision,
         occurredAt: new Date("2099-10-28T00:00:00.000Z"),
-        acceptedAt: new Date("2099-10-28T00:00:01.000Z"),
+        acceptedAt: new Date(acceptedAt),
         expiresAt: new Date(expiresAt),
         payload: { kind: payload },
         allowedFields: ["kind"],
@@ -86,6 +87,32 @@ describe.skipIf(!run)(
       ).toEqual([correction])
     })
 
+    it("uses only revisions accepted by the report cutoff", async () => {
+      const first = make("watch:as-of")
+      const later = make(
+        "watch:as-of",
+        2,
+        "corrected",
+        "2099-11-11T00:00:00.000Z",
+        "2099-10-29T00:00:01.000Z",
+      )
+      await client.insert([first, later])
+      expect(
+        await client.read({
+          family: "watch-exposure",
+          logicalIds: ["watch:as-of"],
+          asOf: new Date("2099-10-28T12:00:00.000Z"),
+        }),
+      ).toEqual([first])
+      expect(
+        await client.read({
+          family: "watch-exposure",
+          logicalIds: ["watch:as-of"],
+          asOf: new Date("2099-10-30T00:00:00.000Z"),
+        }),
+      ).toEqual([later])
+    })
+
     it("retains same-revision conflicts even after physical merge", async () => {
       await client.insert([make("watch:conflict", 1, "one")])
       await expect(
@@ -96,7 +123,7 @@ describe.skipIf(!run)(
         client.read({
           family: "watch-exposure",
           logicalIds: ["watch:conflict"],
-          asOf: new Date("2099-10-30"),
+          asOf: new Date("2099-10-28T12:00:00.000Z"),
         }),
       ).rejects.toMatchObject({
         code: "conflict",
@@ -146,7 +173,7 @@ describe.skipIf(!run)(
         await client.read({
           family: "watch-exposure",
           logicalIds: ["watch:erased"],
-          asOf: new Date("2099-10-30"),
+          asOf: new Date("2099-10-28T12:00:00.000Z"),
         }),
       ).toEqual([])
       await expect(client.insert([value])).rejects.toMatchObject({
