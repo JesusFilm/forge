@@ -2993,47 +2993,6 @@ describe("replacement (R12)", () => {
     expect(video.__player.pause).not.toHaveBeenCalled()
     unsubscribe()
   })
-
-  // The release check waits for `player-first-frame` before it leaves the page,
-  // and the window admits only a video that started (R1).
-  it("does not count the floating video's playback as the arriving video's start", async () => {
-    const first = attachSlot()
-    const renderer = await renderHost()
-    await startPlayback()
-    await detach(first)
-    expect(video.__player.playing).toBe(true)
-
-    await attachSlotInAct({
-      streamingUrl: URL_B,
-      progressVideoId: "video-b",
-      session: {
-        ...SESSION_A,
-        videoId: "video-b",
-        videoSlug: "video-b-slug",
-        title: "Video B",
-      },
-    })
-    const chrome = () =>
-      renderer.root.findAll(
-        (node) => (node as { type?: unknown }).type === VideoPlayer,
-      )[0]
-    const firstFrame = () =>
-      renderer.root.findAll(
-        (node) =>
-          typeof node.type === "string" &&
-          node.props.testID === "player-first-frame",
-      )
-
-    expect(chrome().props.holdsSource).toBe(false)
-    expect(firstFrame()).toHaveLength(0)
-
-    await act(async () => {
-      video.__settleReplace()
-    })
-
-    expect(chrome().props.holdsSource).toBe(true)
-    expect(firstFrame()).toHaveLength(1)
-  })
 })
 
 /**

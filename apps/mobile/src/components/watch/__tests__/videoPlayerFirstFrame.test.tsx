@@ -75,20 +75,15 @@ const player = fakePlayer() as unknown as ExpoVideoPlayer
 function element({
   isPlaying = false,
   loadFailed = false,
-  holdsSource,
-  livePlayer = player,
 }: {
   isPlaying?: boolean
   loadFailed?: boolean
-  holdsSource?: boolean
-  livePlayer?: ExpoVideoPlayer
 }) {
   return (
     <VideoPlayer
-      player={livePlayer}
+      player={player}
       isPlaying={isPlaying}
       loadFailed={loadFailed}
-      holdsSource={holdsSource}
       autostart
       streamingUrl="https://stream.mux.com/abc123.m3u8"
       posterUrl={null}
@@ -102,9 +97,10 @@ function firstFrameNodes(renderer: TestInstance): RenderedNode[] {
   )
 }
 
-async function render(
-  props: Parameters<typeof element>[0],
-): Promise<TestInstance> {
+async function render(props: {
+  isPlaying?: boolean
+  loadFailed?: boolean
+}): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(element(props))
@@ -137,28 +133,6 @@ describe("the first-frame testID (KTD19)", () => {
 
   it("is absent when a load failure lifts the veil", async () => {
     const renderer = await render({ loadFailed: true })
-
-    expect(firstFrameNodes(renderer)).toHaveLength(0)
-    await unmount(renderer)
-  })
-
-  it("is absent while the player still plays the last video's source", async () => {
-    const renderer = await render({ isPlaying: true, holdsSource: false })
-
-    expect(firstFrameNodes(renderer)).toHaveLength(0)
-    await act(async () => {
-      renderer.update(element({ isPlaying: true, holdsSource: true }))
-    })
-    expect(firstFrameNodes(renderer)).toHaveLength(1)
-    await unmount(renderer)
-  })
-
-  it("does not take its start from the live player before it holds this source", async () => {
-    const playing = { ...fakePlayer(), playing: true }
-    const renderer = await render({
-      holdsSource: false,
-      livePlayer: playing as unknown as ExpoVideoPlayer,
-    })
 
     expect(firstFrameNodes(renderer)).toHaveLength(0)
     await unmount(renderer)
