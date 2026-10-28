@@ -418,6 +418,11 @@ jobs:
           WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: precomputed-ci-fixture-human-proof-secret
         run: |
           pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed src/app/api/internal/mastra/precomputed-recommendations/route.test.ts --no-file-parallelism --maxWorkers=1
+          RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED=1 \
+            pnpm --filter @forge/admin exec vitest run \
+            src/services/recommendations/precomputed/watch-delivery.db.test.ts \
+            src/services/recommendations/precomputed/engagement.db.test.ts \
+            --no-file-parallelism
           pnpm --filter @forge/admin test:precomputed-integration
           env -u RECOMMENDATION_PRECOMPUTED_TEST_ENABLED -u RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED \
             pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed/public-control.db.test.ts \
