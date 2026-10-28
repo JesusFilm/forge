@@ -452,8 +452,8 @@ export function createRecommendationClickHouseClient(
             throw new RecommendationClickHouseError("invalid_input")
           rows.push(row)
         }
-        // A suppression marker is terminal for this logical ID. The relay must also
-        // fence its in-flight generations; feat-895 reconciles late physical writes.
+        // A suppression marker is terminal for this logical ID. The lifecycle
+        // owner also fences source writes and reconciles late physical writes.
         const groups = new Map<RecommendationEventFamily, string[]>()
         for (const event of events)
           groups.set(event.family, [
@@ -484,14 +484,16 @@ export function createRecommendationClickHouseClient(
           Number.isNaN(now.getTime())
         )
           throw new RecommendationClickHouseError("invalid_input")
-        const expiryCutoff = new Date(
-          Math.max(asOf.getTime(), now.getTime()),
-        ).toISOString()
         const query = withIds(READ_SQL, family, logicalIds)
         const result = await execute(signal, query.sql, {
           ...query.params,
           as_of: asOf.toISOString(),
         })
+        // Historical acceptance never grants access past current expiry, even
+        // when the caller's clock is stale or expiry passes during the request.
+        const expiryCutoff = new Date(
+          Math.max(asOf.getTime(), now.getTime(), Date.now()),
+        ).toISOString()
         const events: RecommendationEventEnvelope[] = []
         if (result === "") return events
         for (const line of result.trimEnd().split("\n")) {
@@ -582,7 +584,7 @@ export function createRecommendationClickHouseClient(
         const params = {
           start: start.toISOString(),
           end: end.toISOString(),
-          now: now.toISOString(),
+          now: new Date(Math.max(now.getTime(), Date.now())).toISOString(),
           as_of: asOf.toISOString(),
           filter: filter ? "1" : "0",
           surface: filter?.surface ?? "",

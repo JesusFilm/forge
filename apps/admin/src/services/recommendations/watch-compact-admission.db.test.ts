@@ -316,12 +316,12 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
     ).toEqual([oldExpiry.toISOString(), oldExpiry.toISOString()])
     expect(
       [firstPage.events[0], secondPage.events[0]].find(
-        (row) => row.logicalId === eventId,
+        (row) => row.logicalId === storedLegacy.id,
       )?.revision,
     ).toBe(2)
     expect(
       [firstPage.events[0], secondPage.events[0]].find(
-        (row) => row.logicalId === eventId,
+        (row) => row.logicalId === storedLegacy.id,
       ),
     ).toMatchObject({
       acceptedAt: backfillAt.toISOString(),
@@ -362,11 +362,22 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
       { eventId: newFact.eventId, status: "repeat" },
       { eventId: compactReplay.eventId, status: "replay" },
     ])
+    const [oldStored, newStored, replayStored] = await Promise.all([
+      prisma.watchSurfaceExposure.findUniqueOrThrow({
+        where: { eventId: oldFact.eventId },
+      }),
+      prisma.watchSurfaceExposure.findUniqueOrThrow({
+        where: { eventId: newFact.eventId },
+      }),
+      prisma.watchSurfaceEventReceipt.findUniqueOrThrow({
+        where: { eventId: compactReplay.eventId },
+      }),
+    ])
     expect(exportControl.dispatch).toHaveBeenCalledWith([
-      expect.objectContaining({ logicalId: oldFact.eventId }),
-      expect.objectContaining({ logicalId: newFact.eventId }),
+      expect.objectContaining({ logicalId: oldStored.id }),
+      expect.objectContaining({ logicalId: newStored.id }),
       expect.objectContaining({
-        logicalId: compactReplay.eventId,
+        logicalId: replayStored.rankId,
         revision: 2,
       }),
     ])
@@ -573,10 +584,14 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
         await recordWatchSurfaceExposureBatch(prisma, caller, [event], now),
       ).toEqual([{ eventId, status: "accepted" }])
       expect(await observed).toBe(1)
+      const stored = await prisma.watchSurfaceEventReceipt.findUniqueOrThrow({
+        where: { eventId },
+      })
       expect(exportControl.dispatch).toHaveBeenCalledWith([
         expect.objectContaining({
           family: "watch-exposure",
-          logicalId: eventId,
+          logicalId: stored.rankId,
+          payload: expect.objectContaining({ eventId }),
           revision: 1,
         }),
       ])

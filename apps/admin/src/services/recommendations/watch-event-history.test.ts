@@ -34,7 +34,7 @@ describe("Watch history codec", () => {
     )
     expect(correction).toMatchObject({
       family: "watch-exposure",
-      logicalId: fact.eventId,
+      logicalId: fact.rankId,
       revision: 3,
       acceptedAt: "2026-10-29T00:00:00.000Z",
       expiresAt: fact.expiresAt.toISOString(),
@@ -46,6 +46,26 @@ describe("Watch history codec", () => {
       },
     })
     expect(correction.payload).not.toHaveProperty("revision")
+  })
+
+  it("keeps one source incarnation across corrections but separates a reused caller event ID", () => {
+    const original = encodeWatchHistoryFact(fact, fact.receivedAt)
+    const correction = encodeWatchHistoryFact(
+      { ...fact, revision: 4, duplicateCount: 3 },
+      new Date("2026-10-29T00:00:00.000Z"),
+    )
+    const newIncarnation = encodeWatchHistoryFact(
+      {
+        ...fact,
+        rankId: "00000000-0000-4000-8000-000000000004",
+        revision: 1,
+        duplicateCount: 0,
+      },
+      new Date("2026-10-30T00:00:00.000Z"),
+    )
+    expect(correction.logicalId).toBe(original.logicalId)
+    expect(newIncarnation.logicalId).not.toBe(original.logicalId)
+    expect(newIncarnation.payload.eventId).toBe(fact.eventId)
   })
 
   it("groups same card and kind but distinguishes replay payloads", () => {

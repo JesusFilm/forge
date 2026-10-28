@@ -53,3 +53,16 @@ receipt/item/window tables occupied 19,824,640 bytes after `VACUUM ANALYZE`,
 or prior bloat. It proves neither production savings nor filesystem reclamation;
 remaining admission/replay state still has a substantial storage cost.
 Production allocation and ordinary-cycle evidence remain pending.
+
+Watch history now keys each immutable revision by the server-owned rank ID:
+legacy receipts use the exposure row ID, compact receipts retain their rank ID,
+and backfill reuses the same ID. The caller event ID remains in the payload and
+public receipt. A later accepted incarnation can reuse that caller ID after the
+earlier receipt expires without inheriting its higher revision or erasure
+marker. The codec unit suite (4 tests), isolated PostgreSQL admission suite
+(7 tests), and isolated ClickHouse canonical/report suite (11 tests) cover
+corrections, mixed legacy/compact export, backfill, expiry, and an erased old
+incarnation. This identity change needs no remote data migration because the
+history transport is still disabled. Privacy marker retirement still requires
+the source-closure and maximum-expiry certificate in feat-895; receipt expiry
+alone is insufficient.
