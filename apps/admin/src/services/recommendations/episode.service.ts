@@ -1,5 +1,8 @@
 import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
-import { recommendationHistoryEvent } from "./event-history/producers"
+import {
+  recommendationHistoryEvent,
+  selectionAttributionCorrectionEvent,
+} from "./event-history/producers"
 import {
   dispatchPreparedRecommendationEventsAfterCommit,
   getNextRecommendationEventDispatcher,
@@ -421,6 +424,10 @@ export class RecommendationEpisodeService {
           return {
             status: "replay" as const,
             selectionId: existing.id,
+            selectionCorrection:
+              reconciliation.count === 1 && attributionEligibleAt
+                ? { ...existing, attributionEligibleAt }
+                : null,
             attributionEligible:
               existing.attributionEligibleAt != null ||
               reconciliation.count === 1,
@@ -491,34 +498,44 @@ export class RecommendationEpisodeService {
       return {
         status: "accepted" as const,
         selectionId,
+        selectionSnapshot: createdSelection,
         episodeSnapshot: createdSelection.episode!,
         attributionEligible: impression != null,
         attributionReconciled: false,
         evidenceWatermark: attributionEligibleAt ?? now,
       }
     })
+    if (result.status === "replay" && result.selectionCorrection) {
+      dispatchPreparedRecommendationEventsAfterCommit("selection", () => [
+        selectionAttributionCorrectionEvent(result.selectionCorrection!),
+      ])
+    }
     if (result.status === "accepted") {
+      dispatchPreparedRecommendationEventsAfterCommit("selection", () => [
+        recommendationHistoryEvent({
+          family: "selection",
+          logicalId: selectionId,
+          revision: result.selectionSnapshot.attributionEligibleAt ? 2 : 1,
+          occurredAt,
+          acceptedAt:
+            result.selectionSnapshot.attributionEligibleAt ??
+            result.selectionSnapshot.receivedAt,
+          expiresAt: item.request.expiresAt,
+          payload: {
+            requestId: item.requestId,
+            itemId: item.id,
+            eventId: input.eventId,
+            payloadDigest: digest,
+            attributionEligibleAt:
+              result.selectionSnapshot.attributionEligibleAt?.toISOString() ??
+              null,
+            receivedAt: result.selectionSnapshot.receivedAt.toISOString(),
+          },
+        }),
+      ])
       dispatchPreparedRecommendationEventsAfterCommit(
-        "selection",
+        "playback-episode",
         () => [
-          recommendationHistoryEvent({
-            family: "selection",
-            logicalId: selectionId,
-            revision: 1,
-            occurredAt,
-            acceptedAt: now,
-            expiresAt: item.request.expiresAt,
-            payload: {
-              requestId: item.requestId,
-              itemId: item.id,
-              eventId: input.eventId,
-              payloadDigest: digest,
-              attributionEligibleAt: result.attributionEligible
-                ? result.evidenceWatermark.toISOString()
-                : null,
-              receivedAt: now.toISOString(),
-            },
-          }),
           recommendationHistoryEvent({
             family: "playback-episode",
             logicalId: episodeId,
@@ -543,7 +560,6 @@ export class RecommendationEpisodeService {
             },
           }),
         ],
-        2,
       )
     }
     if (result.status === "conflict") {

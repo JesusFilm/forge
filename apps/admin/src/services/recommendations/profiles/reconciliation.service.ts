@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/db/client"
 import { createRecommendationIntegrityService } from "../integrity.service"
+import { createConfiguredWorkerRecommendationEventDispatcher } from "../event-history/runtime"
 import {
   dispatchRecommendationProfileProjection,
   RECOMMENDATION_PROFILE_PROJECTION_MAX_ATTEMPTS,
@@ -44,12 +45,28 @@ type Source = Readonly<{
   sourceId: string
 }>
 
+const historyDispatcher = createConfiguredWorkerRecommendationEventDispatcher()
+
 export async function runRecommendationProfileReconciliationBatch(
   overrides: Partial<ReconciliationDependencies> = {},
   now = new Date(),
 ): Promise<RecommendationProfileReconciliationResult> {
+  try {
+    return await runBatch(overrides, now, historyDispatcher)
+  } finally {
+    await historyDispatcher.drain()
+  }
+}
+
+async function runBatch(
+  overrides: Partial<ReconciliationDependencies>,
+  now: Date,
+  historyDispatcher: ReturnType<
+    typeof createConfiguredWorkerRecommendationEventDispatcher
+  >,
+): Promise<RecommendationProfileReconciliationResult> {
   const db = overrides.prisma ?? defaultPrisma
-  const integrity = createRecommendationIntegrityService(db)
+  const integrity = createRecommendationIntegrityService(db, historyDispatcher)
   const deps: ReconciliationDependencies = {
     prisma: db,
     classifyOutcome: (id) => integrity.classifyPlaybackOutcome(id),

@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { RecommendationEventEnvelope } from "./event-history/envelope"
+const history = vi.hoisted(() => ({ dispatch: vi.fn() }))
+vi.mock("./event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: history.dispatch,
+}))
 import {
   RecommendationIntegrityService,
   type RecommendationEligibilityReceipt,
@@ -7,6 +13,7 @@ import {
 
 const NOW = new Date("2026-08-25T12:00:00.000Z")
 const EXPIRES = new Date("2026-09-23T12:00:00.000Z")
+afterEach(() => history.dispatch.mockReset())
 
 function fixture() {
   const tx = {
@@ -50,7 +57,10 @@ function fixture() {
   return { prisma, tx }
 }
 
-function playbackReuseFixture(initialPopulation = 5) {
+function playbackReuseFixture(
+  initialPopulation = 5,
+  historyDispatcher?: { dispatchPrepared: ReturnType<typeof vi.fn> },
+) {
   const { prisma, tx } = fixture()
   const outcome = {
     id: "outcome-reuse",
@@ -109,8 +119,10 @@ function playbackReuseFixture(initialPopulation = 5) {
     prisma: prisma as never,
     now: () => NOW,
     newId: () => `decision-reuse-${++sequence}`,
+    historyDispatcher,
   })
   return {
+    prisma,
     tx,
     outcome,
     classify: () => service.classifyPlaybackOutcome(outcome.id),
@@ -171,6 +183,66 @@ function playbackReuseFixture(initialPopulation = 5) {
 }
 
 describe("RecommendationIntegrityService", () => {
+  it("uses the worker-owned dispatcher after commit when one is provided", async () => {
+    const dispatchPrepared = vi.fn()
+    const source = playbackReuseFixture(5, { dispatchPrepared })
+    let committed = false
+    source.prisma.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(source.tx)
+      committed = true
+      return result
+    })
+    dispatchPrepared.mockImplementation(
+      (family: string, prepare: () => RecommendationEventEnvelope[]) => {
+        expect(committed).toBe(true)
+        expect(family).toBe("correction")
+        expect(prepare()).toHaveLength(1)
+      },
+    )
+    await source.classify()
+    expect(dispatchPrepared).toHaveBeenCalledTimes(1)
+    expect(history.dispatch).not.toHaveBeenCalled()
+  })
+
+  it("exports changed eligibility revisions after commit and omits unchanged replay", async () => {
+    const source = playbackReuseFixture()
+    let committed = false
+    source.prisma.$transaction.mockImplementation(async (callback) => {
+      const result = await callback(source.tx)
+      committed = true
+      return result
+    })
+    const revisions: number[] = []
+    const payloads: string[] = []
+    history.dispatch.mockImplementation((family, prepare) => {
+      if (family !== "correction") return
+      expect(committed).toBe(true)
+      for (const event of prepare()) {
+        revisions.push(event.revision)
+        payloads.push(JSON.stringify(event.payload))
+        expect(event.acceptedAt).toBe(NOW.toISOString())
+        expect(event.expiresAt).toBe(EXPIRES.toISOString())
+      }
+    })
+    await source.classify()
+    committed = false
+    await source.classify()
+    source.exceedContributionCap()
+    committed = false
+    await source.classify()
+    expect(revisions).toEqual([1, 2])
+    expect(payloads.join(" ")).not.toContain("a".repeat(64))
+  })
+
+  it("does not export a decision from a rolled-back classification", async () => {
+    const source = playbackReuseFixture()
+    source.prisma.$transaction.mockImplementation(async (callback) => {
+      await callback(source.tx)
+      throw new Error("commit failed")
+    })
+    await expect(source.classify()).rejects.toThrow("commit failed")
+    expect(history.dispatch).not.toHaveBeenCalled()
+  })
   it.each([false, true])(
     "preserves the exact legacy receipt with ambient drift=%s",
     async (drift) => {
