@@ -310,7 +310,9 @@ with the repo command `/release-check`, or with
   `Forge RC …` simulator or a `forge_rc_…` emulator. These are the runner's own
   devices. A bare Maestro call can run on another session's build and send real
   feedback or searches to production. Write or repair a journey only through
-  `node apps/mobile/release-check/cli.mjs session up|try|down`.
+  `node apps/mobile/release-check/cli.mjs session up|try|down`. The repo
+  command `/release-check journey <journey id>` gives the full steps, from the
+  branch to the pull request; QA engineers use it too.
 - **A new screen or sheet needs a root `testID="screen-<screen id>"`.**
   `app/__tests__/screenRootTestId.guard.test.js` fails without it. It also needs
   a journey that asserts that test ID, or an entry in

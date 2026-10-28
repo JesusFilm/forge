@@ -13,6 +13,7 @@ import {
   markWorkflowRunStarted,
 } from "@/services/workflow-run-log.service"
 import { createRecommendationOutcomeService } from "../outcome.service"
+import { createConfiguredWorkerRecommendationEventDispatcher } from "../event-history/runtime"
 import { dispatchPlaybackOutcomeToRecommendationConsumer } from "../playback-outcome-consumer"
 import {
   runRecommendationEpisodeFinalization,
@@ -56,6 +57,7 @@ const RECOVERY_INTERVAL_MS = 60 * 1_000
 // avoids scanning the entire workflow ledger for every recovery page.
 const ACTIVE_WAKE_LOOKBACK_MS = 7 * 60 * 60 * 1_000
 const MAX_RECOVERY_PAGES = 10
+const historyDispatcher = createConfiguredWorkerRecommendationEventDispatcher()
 
 type ActiveFinalizationRun = {
   id: string
@@ -181,7 +183,10 @@ export async function runRecommendationEpisodeFinalizationJob(
   if (input.ledgerRunId) await markWorkflowRunStarted(input.ledgerRunId)
   try {
     const reason = input.reason === "episode-opened" ? "timeout" : input.reason
-    const result = await createRecommendationOutcomeService(prisma).finalize({
+    const result = await createRecommendationOutcomeService(
+      prisma,
+      historyDispatcher,
+    ).finalize({
       episodeId: input.episodeId,
       generation: input.generation,
       reason,
@@ -280,6 +285,10 @@ export async function runRecommendationEpisodeFinalizationJob(
       await markWorkflowRunFailed(input.ledgerRunId, error).catch(() => {})
     }
     throw error
+  } finally {
+    // The operational finalization has already committed. The worker owns
+    // this bounded attempt until it settles; no viewer waits on the insert.
+    await historyDispatcher.drain()
   }
 }
 

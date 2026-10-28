@@ -1,4 +1,4 @@
-Run the mobile release check. The runner builds the app from the current commit, runs the fixed journeys on its own five test devices behind a local read-only server, and writes a local report. The runner is `apps/mobile/release-check/cli.mjs`. This command only asks for consent, starts the runner, and summarizes the report. Read `apps/mobile/release-check/README.md` for the full guide.
+Run the mobile release check. The runner builds the app from the current commit, runs the fixed journeys on its own five test devices behind a local read-only server, and writes a local report. The runner is `apps/mobile/release-check/cli.mjs`. This command asks for consent, starts the runner, summarizes the report, and guides the work on one journey. Read `apps/mobile/release-check/README.md` for the full guide.
 
 `$ARGUMENTS` selects one mode. Accept only these forms:
 
@@ -9,13 +9,14 @@ Run the mobile release check. The runner builds the app from the current commit,
 - `stop`: stop the running check.
 - `recover`: clean up after a runner that stopped before it wrote its report.
 - `setup`: check the Mac's tools and the five test devices, and create what is missing.
+- `journey <journey id>`: write a new journey or repair one, try it on the test devices, and prepare a pull request.
 
 For any other value, show this list and stop. Pass no other flag to the runner.
 
 ## Rules
 
 - Never call `maestro` yourself. Never boot, stop, erase, or install on a simulator named `Forge RC …` or an emulator named `forge_rc_…`. The runner is the only way to drive them.
-- Never edit a file in `apps/mobile/release-check/config/`. The mobile owner changes the lists through a commit.
+- Edit a file in `apps/mobile/release-check/config/` only in step 7, and only the three lists that step names. The mobile owner changes the other lists through a commit.
 - Give no release decision. Report what the summary says. The mobile owner decides the release and tells the QA engineers.
 - A yes covers only the exact command line that you showed. When anything changes (a new commit, a new plan, other journeys), show the plan again and ask again.
 - Read the plan, the run state, and the result from the JSON output (`plan --json`, `status --json`, and `summary.json`), not from the text.
@@ -84,6 +85,34 @@ For any other value, show this list and stop. Pass no other flag to the runner.
    - Any other value: "It removes the stale lock. It does not stop a test device." For a `session` lock, also say that `session down` stops the session's test device, and that the person runs it.
 
    On a clear yes, run that line. If it refuses, show the refusal and stop. If its output names a `Summary:` path, do step 2.9 with that run folder. Otherwise show its text, and tell the person to read `runner.log` and `events.jsonl` in the run folder.
+
+7. **Journey** (`journey <journey id>`): write or repair the file `apps/mobile/release-check/journeys/<journey id>.yaml`. A QA engineer or the mobile owner can do this.
+   1. Check the id against `^[a-z0-9-]+$`. If it does not match, show it, and stop. When the file exists, this is a repair. Otherwise it is a new journey.
+   2. Read the current branch and the uncommitted changes with git. If the branch is main, ask the person for a branch name, and suggest `fix/release-check-<journey id>` for a repair or `feat/release-check-<journey id>` for a new journey. Create the branch from an up-to-date main. If the branch is not main and has commits that are not on main, show them, and ask whether to continue on this branch or to create a new branch from main: an open pull request of another journey can be on it. If uncommitted changes exist outside the journey file and the three lists of step 7.9, show them, and stop. Never commit to main.
+   3. Read the section "Write or repair a journey" in `apps/mobile/release-check/README.md`, and `docs/solutions/developer-experience/maestro-journey-authoring-traps-mobile-release-check.md`. For a new journey, also read two journeys that cover similar screens. For a repair, read the failure first: use the run folder that the person names, or `run.runDir` from `status --json`. In its `summary.json`, read the `attempts` of the journey on each device, with `class` and `failedStep`, and look at the `screenshot` of the last attempt.
+   4. Write or change the journey file. Follow every rule in the README section. If the journey needs a test ID that the app does not have, stop: an app change is the mobile owner's decision.
+   5. Try the journey on `iphone-se` first, or on `android-phone` for a journey that runs only on Android (step 7.8). Show these three lines with that device id, and ask: "Try the journey on <device> with these commands? (yes/no)". A yes covers these lines on that device, and `session try` again after each change to the journey file.
+      - `node apps/mobile/release-check/cli.mjs session up --device <device>`
+      - `node apps/mobile/release-check/cli.mjs session try <journey id>`
+      - `node apps/mobile/release-check/cli.mjs session down`
+
+      Run `session up`. When no checked build of the commit exists, it builds one first, which can take 45 minutes. Uncommitted changes to journey files and to the three lists of step 7.9 do not block that build. If it refuses (for example `LOCK_HELD`, `DIRTY_BUILD_INPUTS`, or `HOST_CAPACITY`), show the refusal, and stop.
+
+   6. Run `session try`. It checks every journey file with the journey rules, then runs the journey and prints each step. When it fails, read its failed step, its class, and its screenshot, and act on the class:
+      - `selector_not_found`, or a failure that the screenshot shows as a mistake in the journey: change the journey file, and run `session try` again.
+      - `missing_search_answer`: do step 7.10.
+      - `device_unresponsive`, `driver_failed`, `rate_limited`, or `upstream_error`: run `session try` again with no change.
+      - `app_crashed`, `app_unresponsive`, `memory_pressure_kill`, `request_blocked`, or a screenshot that shows wrong app behavior: run `session down`, show the failure to the person, and stop. An app bug or a blocked request is the mobile owner's decision.
+
+      Never remove or weaken a check only to make the journey pass. After 5 failed tries on one device, run `session down`, show the last failure to the person, and stop.
+
+   7. When the journey passes, run `session down`. It runs the log check. If the log check did not pass, show its `findings`, and stop: a write or a search reached production.
+   8. Do steps 7.5 to 7.7 again on `ipad-pro-13` and on `android-phone`, but only on a platform that the journey runs on. `session try` does not check this. A journey with the Maestro tag platform:ios or platform:android runs only on that platform, and a journey does not run where `config/screens.json` hides its screens (for example Explore on Android). When you are not sure, leave that platform out here: the partial check in step 7.12 runs the journey on its own devices only. Each device gets its own yes.
+   9. Run `node apps/mobile/release-check/cli.mjs check-lists` and `node apps/mobile/release-check/cli.mjs check-screens`. Both must pass. Change only these three lists, and only as the journey needs: in `config/not-tested.json`, remove an entry when the journey now covers it, and add an entry with its platforms and a reason when the journey leaves out a step on purpose (for example a control that opens a web page); add an alert or a native sheet with no test ID to `config/screens.json`, and record search answers in `config/search-answers.json` (step 7.10).
+   10. When the journey types a search, it carries the Maestro tag search. When a try fails with the class `missing_search_answer`, run `session down` first, because `record-search` needs the lock that the session holds. If the log check did not pass, show its `findings`, and stop. Then the person starts a local admin with production-like data at `http://localhost:3003`. Show `node apps/mobile/release-check/cli.mjs record-search`, and ask for a yes. It boots test devices, and it checks each result against production. If it refuses, show the refusal, and stop. Then do step 7.5 again on the same device.
+   11. Commit only the files that changed: the journey file and each changed list. Name each file in `git add` and in `git commit`. Use a conventional message, for example `fix(mobile): repair the <journey id> journey`. Commit when every device of steps 7.5 to 7.8 passes, not after each try: each new commit needs a new build of each platform before the partial check, about 45 minutes for each platform.
+   12. Do step 2 with `run <journey id>`, a partial check on all five devices. It must pass on each device that the journey runs on. When it fails on a device, do steps 7.5 to 7.7 on that device, commit the change, and do this step again. When the label is `flaky` and the session try on that device passes with no change, do not repeat the partial check: show the result to the person, and stop. The mobile owner decides about a flaky journey.
+   13. Ask the person before you push. Then push the branch, and open a pull request against main. In its description, give the partial check's `scope`, `result`, and the `label` of the journey on each device. The mobile owner reviews and merges it. Never merge it yourself.
 
 ## Notes
 

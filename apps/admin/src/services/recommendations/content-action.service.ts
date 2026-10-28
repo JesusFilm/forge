@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto"
+import { recommendationHistoryEvent } from "./event-history/producers"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
 import {
   RecommendationContentActionActorClass,
   RecommendationContentActionClass,
@@ -188,8 +190,9 @@ export class RecommendationContentActionService {
     const payloadDigest = recommendationEvidenceDigest(parsed)
     const newId = this.deps.newId ?? randomUUID
     const newAuditId = this.deps.newAuditId ?? randomUUID
+    let destinationAuditId: string | null = null
 
-    return this.deps.prisma.$transaction(async (tx) => {
+    const result = await this.deps.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(
           hashtextextended(${`${parsed.sessionDigest}:${parsed.eventId}`}, 372)
@@ -204,7 +207,7 @@ export class RecommendationContentActionService {
         },
       })
       if (existing) {
-        const status =
+        const status: "replay" | "conflict" =
           existing.payloadDigest === payloadDigest ? "replay" : "conflict"
         await tx.recommendationContentAction.update({
           where: { id: existing.id },
@@ -249,14 +252,45 @@ export class RecommendationContentActionService {
           expiresAt: lineage.expiresAt,
         },
       })
+      destinationAuditId = created.destinationAuditId
       return {
         actionId: created.id,
         eventId: parsed.eventId,
-        status: "accepted",
+        status: "accepted" as const,
         matched: created.requestId != null,
         late: created.late,
       }
     })
+    if (result.status === "accepted") {
+      dispatchPreparedRecommendationEventsAfterCommit("content-action", () => [
+        recommendationHistoryEvent({
+          family: "content-action",
+          logicalId: result.actionId,
+          revision: 1,
+          occurredAt,
+          acceptedAt: now,
+          expiresAt: lineage.expiresAt,
+          payload: {
+            actionId: result.actionId,
+            eventId: parsed.eventId,
+            requestId: lineage.requestId,
+            itemId: lineage.itemId,
+            episodeId: lineage.episodeId,
+            targetMediaId: parsed.mediaId,
+            actionClass: ACTION_CLASS[parsed.actionClass],
+            actionKind: ACTION_KIND[parsed.actionKind],
+            actorClass: ACTOR_CLASS[parsed.actorClass],
+            purpose: PURPOSE[parsed.purpose],
+            candidateGenerator: lineage.candidateGenerator,
+            destinationAuditId,
+            late: lineage.late,
+            learningEligible: false,
+            receivedAt: now.toISOString(),
+          },
+        }),
+      ])
+    }
+    return result
   }
 
   async eraseDestination(input: {

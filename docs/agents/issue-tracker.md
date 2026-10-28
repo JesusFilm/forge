@@ -13,4 +13,4 @@ PR's closing reference. Local feat IDs are not GitHub issue numbers.
 
 Specs live in `docs/plans/`. For the event-history migration, use
 `docs/plans/2026-10-28-recommendation-event-storage-spec.md` and parent
-`docs/roadmap/content-discovery/feat-888-recommendation-event-storage-migration.md`.
+`docs/roadmap/content-discovery/feat-897-recommendation-event-storage-migration.md`.

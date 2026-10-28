@@ -16,8 +16,10 @@ const { pruneDeviceLogs, readAttemptOutput } = require("./journeys/results")
 const { shownPlatforms } = require("./journeys/screens")
 const {
   ADMIN_SCHEMA_PATH,
+  CONFIG_DIR,
   JOURNEYS_DIR,
   LIST_FILES,
+  REPO_ROOT,
   SKIPPED_FOLDERS,
   journeyRulesRefusal,
   readJson,
@@ -39,6 +41,21 @@ const DOWN_WAIT_MS = 2 * MINUTE
 const LIVE_STATES = new Set(["starting", "ready", "stopping"])
 const STOP_SIGNALS = ["SIGTERM", "SIGINT", "SIGHUP"]
 const JOURNEY_ID = /^[a-z0-9][a-z0-9-]*$/
+// The build checks out the commit and never reads these files, so a journey
+// being written does not block a new build. `run` still refuses them (plan.js).
+const AUTHORING_DIR = `${path.relative(REPO_ROOT, JOURNEYS_DIR)}/`
+const AUTHORING_LISTS = [
+  LIST_FILES.notTested,
+  LIST_FILES.screens,
+  LIST_FILES.searchAnswers,
+].map((file) => path.relative(REPO_ROOT, path.join(CONFIG_DIR, file)))
+
+function buildInputChanges(dirty) {
+  return dirty.filter(
+    (file) =>
+      !file.startsWith(AUTHORING_DIR) && !AUTHORING_LISTS.includes(file),
+  )
+}
 
 class SessionError extends Error {
   constructor(code, message, { refused = false } = {}) {
@@ -143,7 +160,7 @@ async function checkedBuild(deps, { platforms, signal }) {
     pruneBuilds(deps.home, commit, deps.now())
     return { commit, buildDir, artifacts, built: [] }
   }
-  const dirty = await deps.git.dirty()
+  const dirty = buildInputChanges(await deps.git.dirty())
   if (dirty.length > 0) {
     const shown = dirty.slice(0, 10).join(", ")
     throw new SessionError(

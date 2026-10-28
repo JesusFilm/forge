@@ -6,7 +6,10 @@ import {
   type RecommendationClickHouseClient,
 } from "./clickhouse"
 import { createRecommendationEventDispatcher } from "./dispatch"
-import type { RecommendationEventEnvelope } from "./envelope"
+import type {
+  RecommendationEventEnvelope,
+  RecommendationEventFamily,
+} from "./envelope"
 
 type RuntimeSettings = {
   enabled: boolean
@@ -91,6 +94,22 @@ export function dispatchRecommendationEventsAfterCommit(
   events: readonly RecommendationEventEnvelope[],
 ): void {
   getNextRecommendationEventDispatcher().dispatch(events)
+}
+
+/** Build only when enabled; malformed optional history never fails a commit. */
+export function dispatchPreparedRecommendationEventsAfterCommit(
+  family: RecommendationEventFamily,
+  prepare: () => readonly RecommendationEventEnvelope[],
+  expectedCount = 1,
+): void {
+  const dispatcher = getNextRecommendationEventDispatcher()
+  if (!dispatcher.isEnabled()) return
+  try {
+    const events = prepare()
+    if (events.length) dispatcher.dispatch(events)
+  } catch {
+    dispatcher.recordPreparationFailure(family, expectedCount)
+  }
 }
 
 export function createConfiguredWorkerRecommendationEventDispatcher() {

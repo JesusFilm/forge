@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto"
+import { recommendationHistoryEvent } from "./event-history/producers"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
 import {
   Prisma,
   RecommendationAuditKind,
@@ -269,6 +271,12 @@ export class RecommendationPlaybackService {
       acceptedTerminal: boolean
       hasTerminal: boolean
       acceptedTimedOut: boolean
+      facts: Array<{
+        event: RecommendationPlaybackEvent
+        digest: string
+        sequence: number
+        late: boolean
+      }>
     }
     try {
       transactionResult = await withRecommendationSerializableRetry(
@@ -298,6 +306,12 @@ export class RecommendationPlaybackService {
               }> = []
               const receipts = new Map<string, RecommendationPlaybackReceipt>()
               let hasTerminal = false
+              const exportedFacts: Array<{
+                event: RecommendationPlaybackEvent
+                digest: string
+                sequence: number
+                late: boolean
+              }> = []
               const existingFacts =
                 await tx.recommendationPlaybackFact.findMany({
                   where: {
@@ -459,6 +473,7 @@ export class RecommendationPlaybackService {
                     late,
                     expiresAt: locked.expiresAt,
                   })
+                  exportedFacts.push({ event, digest, sequence, late })
                   if (locked.requestId) {
                     evidenceAudits.push({
                       requestId: locked.requestId,
@@ -538,6 +553,7 @@ export class RecommendationPlaybackService {
                 acceptedTimedOut:
                   pending.length > 0 &&
                   locked.state === RecommendationEpisodeState.TIMED_OUT,
+                facts: exportedFacts,
               }
             },
             { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -563,6 +579,31 @@ export class RecommendationPlaybackService {
       }
       throw error
     }
+
+    dispatchPreparedRecommendationEventsAfterCommit("playback-fact", () =>
+      transactionResult.facts.map(({ event, digest, sequence, late }) =>
+        recommendationHistoryEvent({
+          family: "playback-fact",
+          logicalId: `${episode.id}:${event.eventId}`,
+          revision: 1,
+          occurredAt: new Date(event.occurredAt),
+          acceptedAt: now,
+          expiresAt: episode.expiresAt,
+          payload: {
+            episodeId: episode.id,
+            requestId: episode.requestId,
+            itemId: episode.itemId,
+            eventId: event.eventId,
+            sequence,
+            kind: event.kind,
+            payloadDigest: digest,
+            late,
+            receivedAt: now.toISOString(),
+            fact: event.payload,
+          },
+        }),
+      ),
+    )
 
     if (
       transactionResult.acceptedFact &&

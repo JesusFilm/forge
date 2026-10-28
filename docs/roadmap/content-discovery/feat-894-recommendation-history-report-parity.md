@@ -7,7 +7,7 @@ status: "in-progress"
 start_date: "2026-10-28"
 duration: 3
 depends_on: ["feat-892", "feat-893"]
-blocks: ["feat-888", "feat-895"]
+blocks: ["feat-897", "feat-895"]
 tags: ["recommendations", "storage", "clickhouse", "admin"]
 ---
 
@@ -17,7 +17,7 @@ Own CTR/engagement/history adapters, visit admission/archive integration and ope
 
 ## Context
 
-- Parent: [feat-888](feat-888-recommendation-event-storage-migration.md).
+- Parent: [feat-897](feat-897-recommendation-event-storage-migration.md).
 - Specification: [event storage migration](../../plans/2026-10-28-recommendation-event-storage-spec.md).
 - Read `AGENTS.md`, `apps/admin/AGENTS.md`, relevant `apps/admin/CLAUDE.md` guidance and `docs/analytics-and-recommendation-policy.md`.
 - Duration is a planning placeholder. Completion requires integrated tests and receipts for this scope; production claims belong to feat-896.
