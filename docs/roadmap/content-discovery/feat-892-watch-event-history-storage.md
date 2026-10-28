@@ -6,14 +6,14 @@ priority: "P1"
 status: "not-started"
 start_date: "2026-10-28"
 duration: 3
-depends_on: ["feat-889", "feat-890"]
+depends_on: ["feat-889", "feat-890", "feat-891"]
 blocks: ["feat-888", "feat-894", "feat-895"]
 tags: ["recommendations", "storage", "clickhouse", "admin"]
 ---
 
 ## Scope and acceptance
 
-Own `watch-surface-exposure.service.ts`, anonymous history read adapter, compact Watch admission schema/migration and relevant tests. Separate immutable history payloads from served-manifest bindings and event replay/conflict identity. Preserve V2 exact issued binding, original 14-day or legacy expiry, batch limits and accepted/replay/repeat/conflict responses. Commit new accepted events and outbox atomically. Reports need canonical first-event ranking and duplicate-count semantics. Backfill preparation must retain all still-unexpired records. Prove PostgreSQL payload/index reduction without weakening binding/replay checks. Coordinate schema changes after feat-889 merges; do not retire original rows until feat-895 parity/cutover gate.
+Own `watch-surface-exposure.service.ts`, anonymous history adapter, compact Watch admission schema/migration and tests. Separate historical payloads from served bindings and replay/conflict authority. Preserve exact V2 bindings, original 14-day or legacy expiry, batch limits and accepted/replay/repeat/conflict responses. Commit operational admission first, then dispatch history without awaiting network delivery; no forwarding store. Export failures are measured and may lose history under the owner's policy. Preserve canonical first-event ranking and duplicate-count semantics for delivered events, with explicit incomplete coverage. Keep legacy binding authority until recorded expiry where original manifests cannot be reconstructed. Prepare bounded unexpired backfill and prove allocation reduction without weakening admission. Do not retire original rows before feat-895 qualification.
 
 ## Context
 

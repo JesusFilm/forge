@@ -1,402 +1,219 @@
 # Recommendation event storage migration
 
-Status: implementation authorized 28 October 2026; production qualification pending.
-Owner: Nisal. Started: 28 October 2026, Pacific/Auckland.
-Roadmap: [feat-888](../roadmap/content-discovery/feat-888-recommendation-event-storage-migration.md).
-Repository baseline: `c46657d0f484ab06e29800fa1622134f41d78c68`.
+Status: implementation authorized; updated to the owner's asynchronous,
+best-effort delivery direction on 28 October 2026. Production is not switched.
+Owner: Nisal. Roadmap: [feat-888](../roadmap/content-discovery/feat-888-recommendation-event-storage-migration.md).
+Integration: `codex/recommendation-event-storage-integration` in an isolated
+worktree. Preserve the dirty primary checkout.
 
-## Owner direction already established
+## Latest owner decision takes precedence
 
-- Move event history away from the serving PostgreSQL database, with ClickHouse
-  as the proposed primary event store rather than a permanent additional copy.
-- Recommendation calculations can read the event store through a backend API;
-  small derived profiles and recommendation lists can remain in serving storage.
-- Write a specification through grill-with-docs, then deliver the agreed change
-  through implementation, review, normal deployment, and verification.
-- Preserve the dirty primary checkout. This specification lives in an isolated
-  worktree based on current main.
+Move recommendation and Watch event history out of serving PostgreSQL into a
+dedicated Forge ClickHouse service in the existing organizational account.
+Keep compact operational authority and derived recommendation state in serving
+storage. Preserve current retention, privacy, playback and active A/B behavior.
 
-The owner accepted decisions 1–7 and the 24-hour outage target in decision 9
-on 28 October. Decision 8 must prioritize durable waiting and automatic retry
-while serving continues. The owner correctly challenged the repeated Q8 as an
-implementation recommendation rather than a meaningful owner decision. Resolve
-the technical mechanism through engineering evidence instead of repeating a
-rubber-stamp question; no provider purchase approval is inferred from that reply.
-Exact table ownership, outbox capacity, delivery guarantees,
-physical retirement, infrastructure sizing and cost still need resolution.
-The owner subsequently requested `implement-spec` execution. Implement the
-accepted behavior and resolve engineering details in the task graph below.
-Infrastructure purchase, cutover and storage claims require concrete evidence;
-implementation authorization does not establish those facts.
+The owner explicitly clarified: start sending directly to ClickHouse immediately
+without awaiting the response in the caller. A retry queue was considered, then
+deferred with "for now just don't worry about it if it fails" and a request to
+measure failures. Make one bounded background attempt; count its outcome and
+continue. Do not enqueue, retry automatically or store a PostgreSQL forwarding
+payload on either the success or failure path.
 
-## Vocabulary and ownership
+This supersedes the earlier outbox-first, durable retry and 24-hour outage-buffer
+requirements. They are withdrawn for this version, not completed. Remove the
+undeployed local outbox prototype. Redis and Cloudflare buffering are possible
+later work and are not part of this release.
 
-Use the existing [Recommendations glossary](../../CONCEPTS.md#recommendations).
-Do not create a second competing root glossary. Update that glossary as new
-terms are agreed; keep technology and implementation decisions in this spec and
-ADRs rather than glossary definitions.
+Events can be lost on failure or process death before delivery. Observed failure
+counters cannot enumerate every crash loss. Do not claim guaranteed delivery,
+lossless history, complete-through watermarks or a low measured failure rate
+before observations exist. This tolerance concerns historical-event export;
+operational admission, playback, privacy and erasure remain reliable controls.
 
-The existing domain distinguishes Recommendation Evidence, Recommendation
-Playback Episode, Recommendation Outcome Revision, Recommendation Profile
-Projection, and Recommendation Served Item. The agreed Recommendation Event
-History includes recommendation interactions and Watch playback/exposure for
-both A/B strategies, including source-neutral playback. Search analytics and
-other unrelated product-event stores are outside this migration.
+## Retained scope and decisions
 
-Recommendation Serving State and Recommendation Learning Freshness name the
-derived delivery state and eligibility-to-usable-state delay. The canonical
-glossary defines these without prescribing storage technology.
+- Cover recommendation interactions and Watch playback/exposure for current and
+  editorial strategies, including source-neutral playback. Unrelated product
+  events/search analytics, GA and Datadog integrations remain outside scope.
+- Target usable learning within five minutes of eligibility-ready delivered
+  feedback under normal operation. Measure delivery loss separately. Preserve
+  immediate session exclusions and complete operational playback finality.
+- Continue serving valid derived results during ClickHouse outages, subject to
+  original expiry, publication/playability, exact audio/language and viewer
+  controls. Missing exported feedback must not invalidate independent serving.
+- Preserve original retention: 14 days for new anonymous Watch exposures,
+  recorded legacy expiry, 29 days for request/trace history and existing
+  family-specific periods. Backfill never renews expiry.
+- Backfill still-unexpired history with original IDs, revisions and timestamps.
+  Bounded checkpointed migration/reconciliation is distinct from the no-retry
+  policy for live event export.
+- Preserve the active A/B's sticky assignments, cohort dates, attribution and
+  published immutable reports. Keep necessary compact operational accounting;
+  disclose missing analytical coverage instead of treating a partial sample as
+  a complete experiment or inferring a winner from it.
+- Obtain the actual dedicated service configuration and price before purchase.
+  ClickHouse organization access has been requested from Tatai. No service is
+  provisioned and no savings are established.
 
-## Grounding already checked
-
-- The 28 October 06:27 NZDT capacity snapshot measured 41.11 GB of database
-  allocation and 7.48 GB of filesystem headroom. Watch exposure allocation was
-  8.48 GB, including 5.32 GB of indexes. These are dated measurements, not a new
-  live inventory or a guaranteed savings estimate. The subsequent Railway CLI
-  read was unauthorized and returned no fresh capacity evidence.
-- Watch V2 evidence must match an issued served binding, inherits its expiry,
-  and supports event identity/replay checks. Its table is used for both
-  operational admission and analytical reporting. Moving the table requires
-  preserving both responsibilities, not merely redirecting report queries.
-- `playback-outcome-consumer.ts` reads published outcomes and episodes from
-  PostgreSQL before downstream profile feedback. Co-watch projection reads
-  canonical outcome revisions with eligibility and suppression checks.
-- Profile projection currently has a five-minute coalescing setting and a
-  five-minute reconciliation schedule. These settings are not a demonstrated
-  end-to-end freshness guarantee.
-- New anonymous Watch exposures have 14-day retention. Existing exposure rows
-  retain their recorded expiry. Shared recommendation request/trace retention
-  is 29 days; other families have their own lifetimes. Migration does not itself
-  authorize extending those periods or reviving expired evidence.
-- The public editorial-versus-current A/B is running. Revision 3 was refreshed
-  on 28 October and contains 86,765 eligible visits. Preserve assignment,
-  attribution, cohort dates, outcome revisions and existing immutable reports.
-  The cohort ends 20 November 11:05 NZDT, with a 24-hour late-event window.
-- Core main `d1bc3afa80ab9b2f224a07cf81adb9e8594b6071` declares Cloudflare
-  Queues feeding ClickHouse Cloud for short-link events. Its checked redirect
-  schema has no TTL; its consumer drops batches when unconfigured and has no
-  application event identity in the checked row schema. Reusing its general
-  architecture does not establish suitability of those semantics for Forge.
-
-## Decision tree
-
-1. Event ownership boundary — accepted: recommendation and Watch history.
-   - Exact table/reader inventory and rollout slices can now be developed.
-2. Required freshness — accepted: five-minute normal-operation target from
-   eligibility-ready feedback, preserving immediate session exclusions.
-   - Projection cadence, lag measurements and serving strategy are next.
-3. Outage behavior — accepted: retain valid serving and durably buffer events.
-   - Buffer capacity, acknowledgement and recovery contracts remain open.
-4. Retention intent — accepted: preserve existing recorded expiry and policies.
-   - Partitioning, TTL and erasure implementation can now be developed.
-5. Operational isolation — accepted: dedicated Forge service in the existing
-   organizational account; exact sizing and cost remain unverified.
-6. Durable handoff boundary — accepted: bounded temporary PostgreSQL outbox.
-7. Historical continuity — accepted: backfill still-unexpired in-scope history.
-8. Outage recovery — accepted intent: durable pending events and background
-   retry while valid serving continues. Queue technology and scheduled recovery
-   are engineering work, not another owner confirmation gate. Complete storage
-   exhaustion remains unresolved pending capacity evidence.
-9. Buffer outage horizon — accepted: 24 hours at measured peak traffic, subject
-   to original event expiry. Actual peak input, space and catch-up requirements
-   must be measured; acceptance of the target does not establish capacity.
-10. Exact infrastructure and budget — depends on measured outbox/sink sizing.
-
-- Establish sink ownership, outbox capacity, access, latency and actual incremental
-  cost. A hosting preference does not authorize an unpriced purchase.
-
-11. Migration and rollback — detailed design depends on decisions 8–10.
-    - Define duplicates, corrections, erasure propagation, reconciliation,
-      cutover and rollback while preserving the ongoing A/B.
-12. Release acceptance — depends on migration design and measured baseline.
-    - Define parity, serving performance, freshness, durable recovery,
-      PostgreSQL retirement, physical headroom and total operating cost.
-
-## First decision round — accepted 28 October 2026
-
-The owner answered recommended for all four questions.
-
-1. Move recommendation and Watch playback/exposure history, covering both
-   current and editorial recommendation paths. Unrelated search/product stores
-   and the configured GA/Datadog integrations are unchanged.
-2. Target eligibility-ready feedback becoming usable within five minutes under
-   normal operation. Preserve immediate session exclusions and current playback
-   finality rules. This is a target to implement and measure, not existing proof.
-3. Continue serving valid derived results while new events are durably buffered
-   during event-store outages. Show freshness and recover with bounded work.
-   Expiry, deletion, reset and other viewer controls still take effect; cached
-   state cannot override those controls.
-4. Preserve current expiry horizons: 14 days for new anonymous exposures, the
-   recorded expiry on legacy exposure rows, 29 days for shared recommendation
-   request/trace history and existing family-specific rules elsewhere. A replay
-   or migration does not restart retention. Longer history is a separate decision.
-
-The architectural trade-off is recorded in
+Use `CONCEPTS.md` vocabulary and
 [ADR 0001](../adr/0001-recommendation-event-history-and-serving-state.md).
 
-## Infrastructure and handoff findings
+## Core comparison
 
-Core's production configuration demonstrates ClickHouse Cloud with a separate
-Cloudflare queue for short-link events; its configuration is evidence of a
-pattern, not Forge capacity or a required provider choice. Forge already requires
-a durable temporary PostgreSQL outbox and owns a PostgreSQL-backed worker.
+Checked `JesusFilm/core` main `dbf87798b90965cc0dd4c3e98935e6853e8ffc87`.
+Journeys' `fireCaptureEvent` calls Plausible without awaiting or adding retry
+logic in that helper. Short links instead use a background Cloudflare Queue
+send under `waitUntil`, log enqueue failures without delaying redirects, and
+retry failed ClickHouse inserts in the consumer. Production specifies three
+retries and a dead-letter queue. Core therefore has multiple patterns; Forge's
+one-attempt policy follows the owner's explicit choice.
 
-Engineering decision, 28 October: use that bounded outbox as the durable queue
-and deliver directly to ClickHouse. This preserves the accepted waiting/retry
-behavior while removing a remote pending-payload erasure surface. The earlier
-managed-queue candidate was not an owner-selected vendor. Outbox payloads now
-remain until confirmed ClickHouse persistence, instead of an intermediate queue
-acknowledgement. They are temporary pending work, not a retained history copy.
+Core source paths:
 
-This increases how often PostgreSQL carries backlog during sink outages. The
-accepted managed-queue design already required a 24-hour PostgreSQL buffer for
-queue outages; the direct path still has to prove that budget under live load.
-If it cannot, quantify additional capacity or an external buffer before purchase
-or cutover. A second external payload store is not part of this implementation.
+- `libs/journeys/ui/src/libs/plausibleHelpers/plausibleHelpers.ts`
+- `workers/short-links-redirect/src/index.ts`
+- `workers/short-links-redirect/src/queue.ts`
+- `workers/short-links-redirect/wrangler.toml`
 
-The fresh read-only 28 October 00:57 UTC snapshot found 7,357,292,544 bytes free
-on a 48,891,670,528-byte filesystem and 41,318,291,135 bytes of database
-allocation. Watch exposure occupied 8,582,479,872 bytes, including
-5,381,455,872 bytes of indexes. A bounded trailing-24-hour scan found 391,960
-Watch rows present, with a largest five-minute bucket of 4,303. That is one
-observed window, not the total in-scope peak or a future throughput guarantee.
-Encoded outbox size, allocated index/maintenance overhead, playback-fact/A-B
-arrival peaks and recovered throughput still need measurement.
-
-ClickHouse plan, region, always-on capacity, compression, storage and existing
-contract determine the price. The dedicated service has not been provisioned.
-The work-account sign-in reaches new-account completion; organization access was
-requested from its owner. Public default-region prices are not a service quote.
-
-## Confirmed implementation choice
+## Delivery behavior
 
 ```text
-Authenticated event admission
-  -> transaction: compact operational state + bounded PostgreSQL outbox
-  -> existing worker: leased bounded delivery with retry
-  -> ClickHouse: confirmed persisted event history
-  -> idempotent canonical projections and reports
-  -> compact serving state
+Existing operational admission commits
+  -> start ClickHouse send immediately
+  -> caller continues without awaiting network completion
+
+Background attempt
+  -> confirmed persistence: count success
+  -> error / timeout: count failure or unknown outcome
+  -> no queue, automatic retry or persistent forwarding payload
 ```
 
-## Second decision round — accepted and clarified 28 October 2026
+Send only after the existing operational transaction commits. Network I/O never
+runs inside that transaction; a rolled-back event is not exported. The caller
+still awaits necessary operational writes. Their authority is not removed by
+the nonblocking history export.
 
-5. Accepted: dedicated Forge ClickHouse service in the existing organizational
-   account to isolate compute, scaling and service incidents. Establish the
-   actual priced configuration before provisioning.
-6. Accepted: a bounded temporary PostgreSQL forwarding outbox until a durable
-   sink confirms persistence, with prompt deletion after acknowledgement and
-   explicit storage/age limits. No permanent duplicate event history. Exact
-   atomicity and replay contracts remain engineering work.
-7. Accepted: backfill still-unexpired in-scope history in bounded batches,
-   preserving original identity and expiry, and keep the current A/B's cohort
-   and reports intact. Never restore already-expired data.
-8. Owner clarification: wait and retry in the background while serving
-   continues; investigate temporary storage and scheduled retry, including a
-   Redis queue. This establishes the recovery intent, not a choice of Redis or
-   permission to acknowledge an event that no durable store accepted. Interpret
-   continued serving as continued viewer/recommendation service with delayed
-   event processing, subject to existing serving dependencies and validity.
-9. Accepted: a 24-hour outage design target at measured peak traffic, with
-   early alerts and bounded catch-up. This is a minimum outage tolerance target,
-   not a new event expiry or permission to discard pending events at hour 24.
-   Original expiry and erasure still apply. The owner challenged the repeated
-   Q8 as lacking a meaningful decision; the technical recommendation below is
-   for engineering qualification rather than another approval question.
+Start the promise immediately and register it with the runtime's background
+lifetime support. Next request paths can use `after(promise)` with an already
+started promise. Worker callers require an owned background lifetime/drain path.
+Catch all rejections, including failure-reporting errors. Graceful draining does
+not guarantee survival of process crashes.
 
-## Durable delivery and recovery
+Bound encoded bytes, batch size, response bytes, overall deadline and concurrent
+in-flight work. Saturation counts as a capacity drop: do not wait for a slot or
+create a hidden queue. Defaults remain disabled until qualification. The caller
+does not await the network even if ClickHouse never responds.
 
-### Business behavior
+Inside the background attempt, use confirmed synchronous insertion or async
+insertion with `wait_for_async_insert=1`. Caller nonblocking behavior does not
+require unconfirmed server acknowledgements. A timeout can mean the server
+stored the event but its reply was lost; distinguish this from confirmed failure.
 
-An eligible submitted event is accepted once operational admission and its
-pending outbox payload commit together. The HTTP response does not wait for
-ClickHouse. Valid recommendations continue serving within their existing
-privacy, expiry, eligibility and dependency constraints. Reports and learning
-show lag while the sink is unavailable. Failure to commit admission is a visible
-persistence failure, never a successful fallback acknowledgement.
+### Measurements
 
-The worker recovers after restart without manual intervention. A one-minute
-scheduled sweep reclaims expired leases and retries due rows with increasing
-delay and jitter. Each page, statement, request, batch and concurrency setting
-has a bound. No network request occurs inside the admission transaction. Large
-event bodies stay out of workflow arguments/logs.
+Observe attempted event count, confirmed successes, failures by bounded reason,
+timeout/unknown outcomes, capacity drops, in-flight count/bytes and duration.
+Use bounded labels such as family and validated A/B arm where available; no
+payloads or per-event IDs in logs/metric labels. Reuse telemetry independent of
+ClickHouse, so delivery failure cannot hide its own instrumentation.
 
-### Handoff and replay
+Report observed failure rate over an explicit window against attempted events,
+with unresolved outcomes and coverage gaps separate. Restarts can lose unflushed
+observations. Missing instrumentation is not zero failures. Compare family/arm
+distributions before interpreting learning or A/B changes. No permanent raw
+history table is introduced just to measure transport.
 
-1. The producer validates the family-specific schema and redaction, immutable
-   identity, authority, original timestamps/expiry and revision. Commit its
-   compact operational state and envelope in one PostgreSQL transaction.
-2. Lease a bounded due page, commit the lease transaction, then deliver through
-   authenticated ClickHouse HTTP with a hard deadline. Use synchronous insert,
-   or asynchronous insert with acknowledgement only after durable flush.
-3. Remove only payloads whose sink persistence was confirmed, fenced by the
-   current lease token. A timeout or ambiguous response retains pending work.
-   Stable identity/revision plus canonical reads prevent duplicate effects.
-4. Acknowledge each projection/report stage separately. Sink persistence does
-   not prove learning or an A/B report has caught up.
-5. On expiry or erasure, remove pending payload under its own legitimate
-   disposition. A quarantined/corrupt event remains a visible failure requiring
-   repair. There is no finite retry count that silently discards valid events.
+## History and operational ownership
 
-The 24-hour target is outage tolerance, not an event TTL or a discard deadline.
-Original expiry always wins. If finite capacity is exhausted, stop admission
-with a bounded explicit persistence error and alert; keep independent serving
-paths available. Never consume reserved serving space to hide event loss.
+Keep compact issued request/item bindings, one-use handoff/replay identity,
+open episode state and bounded unfinalized facts, current eligibility/privacy
+fences, active A/B attribution and compact archived-measurement counters.
+Profiles, vectors, lists and co-watch graphs remain serving state. Replace raw
+source foreign keys only with equivalent lineage and current revalidation.
 
-### Canonical history and complete-through evidence
+Move retained payloads for requests/traces, served items, rendered/impression
+facts, selections, playback episodes/facts/outcome revisions, content actions,
+anonymous Watch exposures and A/B visits/links. Readers include recent history,
+profile/co-watch, CTR/engagement, usefulness extraction and authorized operator
+trace/exposure views. Renaming a permanent raw-history copy is not migration.
 
-Use stable `(family, logicalId, revision)` and an immutable envelope digest.
-Canonical reads select a consistent revision before filtering deletion/expiry;
-ClickHouse background replacement or TTL timing is not the correctness boundary.
-Corrections retain their original identity/partition/expiry. Logical duplicate
-and conflict semantics must survive regrouped retry batches and backfill.
+Watch V2 served rows enforce live admission. Replace them with compact authority;
+keep pre-cutover bindings until recorded expiry where their original manifest
+cannot be reconstructed. Preserve replay/conflict and batch response semantics.
 
-A plain allocated sequence does not establish commit order or a safe global
-watermark. For readers needing a complete snapshot, use a transactional stream
-cursor with compact terminal markers, or prove an equivalent bounded barrier.
-Only confirmed persistence establishes delivered history. Expired/erased
-terminal dispositions remain distinct, and quarantined gaps prevent a false
-complete-through claim. Playback finalization must have every admitted fact
-through its episode watermark; final A/B reports require the source cutoff to
-be complete. Oldest-pending age alone must not be labeled complete-through.
+Playback finalization uses complete bounded operational facts and a committed
+episode sequence, not an assumed-complete ClickHouse sample. Export loss may
+reduce analytical coverage; it must not produce a falsely valid playback
+outcome. Preserve necessary A/B accounting and report coverage honestly.
 
-### Privacy and expiry
+## Canonical history, privacy and expiry
 
-Pending payloads are locally removable in the same privacy-control transaction.
-Before starting remote delivery, recheck the applicable generation/erasure fence.
-A worker may already have copied a payload or begun an insert when erasure wins;
-track bounded in-flight work and reconcile remote deletion after possible late
-completion. Serving, projection and authorized history reads immediately apply
-current privacy controls while physical cleanup is confirmed separately.
+Stable `(family, logicalId, revision)`, payload digest and original timestamps
+survive duplicate submissions and backfill. Select the consistent latest
+revision before filtering deletion/expiry. Background merge or TTL timing is
+not the correctness boundary. Same-revision conflicts are visible failures.
+Duplicate transport or backfill must not double-count delivered history.
 
-TTL and PostgreSQL DELETE do not prove immediate physical removal from storage
-or backups. Preserve existing obligations and classify delayed/failed erasure
-truthfully. A later replay cannot recreate erased data or extend original expiry.
+Apply privacy fences before export and history/projection reads. Bound in-flight
+inserts and reconcile remote deletion after possible late completion. Erasure
+and privacy control work remains reliable and independently tracked; allowing
+lost analytics does not authorize failed deletion. TTL and SQL DELETE do not
+prove immediate physical removal from backups.
 
-### Capacity and catch-up calculation
+Report unavailable, stale or incomplete history distinctly. Operational
+database, GraphQL, playback and eligibility errors remain real failures.
+Historical export failure is measured separately and does not fail a completed
+viewer action.
 
-Measure admitted peak arrival rate by family, encoded event bytes and allocated
-outbox bytes with its actual indexes. Include revisions and sustained bursts;
-A/B visit counts are not a substitute for total event throughput.
+## Migration, rollback and capacity
 
-```text
-T = 86,400 seconds
-pending events = peak admitted events/second * T
-outbox bytes = sum(per-family pending events * allocated bytes/event) * margin
-catch-up seconds = pending events / (recovery events/second - live events/second)
-```
+Build disabled transport and compact state first. Backfill unexpired rows in
+bounded checkpointed pages. Reconcile delivered identities/digests, original
+expiry and fixed-as-of reports. Separate accepted live export loss from data
+corruption or backfill defects; never manufacture parity.
 
-Choose a measured burst margin, and reserve WAL, vacuum/bloat, retry updates and
-non-event growth separately. Catch-up needs recovery throughput greater than
-ongoing input while serving remains healthy. The 7.36 GB free-space observation
-is not an outbox allocation. Configure hard byte/event caps plus early age/space
-alerts; prove capacity and catch-up before enabling the migrated production path.
+Use separate export and reader gates. Retain temporary legacy history only
+through a defined qualification/cutover window. Before compact-only writes,
+establish a bounded rollback source or safe forward-fix path. Retire old
+payloads/indexes only after reader, privacy and A/B dependencies are safe.
 
-### Engineering evidence and decisions still needed
+The 28 October 00:57 UTC read-only snapshot found 41,318,291,135 bytes of database
+allocation and 7,357,292,544 bytes free on its filesystem. Watch exposures used
+8,582,479,872 bytes, including 5,381,455,872 bytes of indexes. The trailing-day
+scan found 391,960 currently present Watch rows and a largest five-minute bucket
+of 4,303. These partial, dated observations are not a full traffic peak or
+savings estimate.
 
-Qualify exact family codecs/readers, current-revision conflicts, snapshot
-barriers, admission/lease contention, physical outbox allocation, sustained
-recovery and the priced dedicated service. Present only concrete spending or
-product trade-offs to the owner. Queue selection and retry mechanics are routine
-engineering choices under the implementation authorization.
+Measure encoded sizes, concurrent send memory/latency, sink ingestion/query
+capacity, surviving compact state and actual storage/cost changes. The withdrawn
+24-hour buffering target is not a release requirement. Database page reuse,
+reduced allocation and physical filesystem reclamation are separate claims.
 
-Sources:
+## Implementation and release
 
-- [PostgreSQL queue-like skip-locked reads](https://www.postgresql.org/docs/18/sql-select.html)
-- [PostgreSQL transaction and sequence behavior](https://www.postgresql.org/docs/18/transaction-iso.html)
-- [ClickHouse asynchronous inserts](https://clickhouse.com/docs/optimize/asynchronous-inserts)
-- [ClickHouse pricing](https://clickhouse.com/pricing/)
+| Ticket   | Work                                                      | Depends on                             |
+| -------- | --------------------------------------------------------- | -------------------------------------- |
+| feat-889 | Bounded redacted event envelope                           | —                                      |
+| feat-890 | ClickHouse schema and confirmed insert/read               | feat-889                               |
+| feat-891 | Nonblocking one-attempt dispatch and failure measurements | feat-889, feat-890                     |
+| feat-892 | Anonymous Watch history and compact admission             | feat-889, feat-890, feat-891           |
+| feat-893 | Recommendation/playback history and serving projections   | feat-889, feat-890, feat-891           |
+| feat-894 | A/B and authorized operator reporting                     | feat-892, feat-893                     |
+| feat-895 | Privacy, backfill, reconciliation and retirement          | feat-891, feat-892, feat-893, feat-894 |
+| feat-896 | Priced service, release and measured storage effects      | feat-895                               |
 
-## Constraints carried forward
+Use implement-spec's isolated implementer worktrees, merger handoffs, TDD and
+independent standards/spec review. Test observable submission, dispatch,
+history, projection/report and privacy/backfill boundaries. Use real isolated
+databases for atomicity and canonical queries, external HTTP boundary stubs for
+failures. Prove caller completion before unresolved delivery, one attempt on
+failure, no forwarding store, bounded saturation and truthful counters.
 
-- Preserve exact audio/language, publication/playability, canonical duplicate
-  exclusions, attribution, profile opt-out/reset/erasure and per-record expiry.
-- Accepted missing content coverage remains separate from actual server,
-  persistence and playback failures. Storage migration does not alter ranking
-  policy or experiment variants.
-- Keep daily cleanup and the existing capacity observer running during design.
-  Their unresolved operational-margin obligations remain independent.
-- Use normal reviewed PR-to-main deployment. Preserve unrelated code and docs.
-- Distinguish reduced PostgreSQL row/index requirements, physically reclaimed
-  filesystem space, and total system cost. Validate each claimed benefit.
-
-## Implementation graph and acceptance
-
-The owner requested implementation on 28 October. Use one integration branch,
-`codex/recommendation-event-storage-integration`, based on current main, with
-isolated child worktrees. The repository's `docs/roadmap/` tracker remains the
-source of ticket status. The parent feat-888 stays in progress until every
-required child and actual release verification is complete.
-
-| Ticket   | Work                                                           | Depends on                             |
-| -------- | -------------------------------------------------------------- | -------------------------------------- |
-| feat-889 | Event envelope and bounded transactional outbox                | —                                      |
-| feat-890 | ClickHouse schema and confirmed HTTP persistence               | feat-889                               |
-| feat-891 | Worker relay, recovery, health and capacity controls           | feat-889, feat-890                     |
-| feat-892 | Anonymous Watch history with compact admission state           | feat-889, feat-890                     |
-| feat-893 | Recommendation/playback history and serving projections        | feat-889, feat-890                     |
-| feat-894 | A/B, trace and operator reporting parity                       | feat-892, feat-893                     |
-| feat-895 | Privacy, backfill, reconciliation and retirement               | feat-891, feat-892, feat-893, feat-894 |
-| feat-896 | Priced infrastructure, release and measured storage acceptance | feat-895                               |
-
-The ticket files define exact ownership, entrypoints and acceptance. Child
-completion needs tested code integrated into this branch; the release ticket
-also requires actual deployment and operational evidence. This decomposition
-preserves the complete accepted scope, including source-neutral playback and
-both A/B variants. A queue prototype or anonymous-exposure-only migration does
-not complete feat-888.
-
-### Test boundaries
-
-Use behavior tests at the existing authenticated event submission interfaces,
-the transactional pending-event store and delivery worker, bounded history
-reader interfaces, projection/report output, and privacy/backfill operational
-entrypoints. These are the observable boundaries of the accepted requirements;
-the owner's standing authorization covers routine implementation/test choices.
-Use the requested TDD red/green loop with real isolated PostgreSQL where atomic
-commit, leasing, caps, migration or concurrent replay is the behavior under test.
-Stub external HTTP only at its public boundary; qualify actual provider behavior
-separately. Preserve existing API shapes and test expiry, duplicates, corrections,
-rollback, late events, outages and recovery before cutover.
-
-### Storage ownership
-
-The read/write inventory found transactional responsibilities in raw tables.
-Retain compact live authority for issued request/item bindings, one-use selection
-handoff and replay identity, open playback episodes and bounded unfinalized fact
-material, current eligibility/privacy/erasure fences, active A/B visit attribution
-and archived-measurement counters. Derived profiles, vectors, recommendation
-lists and co-watch graphs remain serving state. Their raw source foreign keys
-need explicit replacement before source history retirement.
-
-Move retained payload history for requests/traces, served items, rendered and
-impression facts, selections, playback facts/episodes/outcome revisions, content
-actions, anonymous Watch exposures and A/B visits/links. Readers include recent
-context/history, finalization, profile/co-watch projection and reconciliation,
-precomputed CTR/engagement, usefulness extraction and operator trace/exposure
-views. Operational retention is bounded by capability/finality/attribution needs;
-renaming a permanent history copy does not meet the storage goal.
-
-### Release gates
-
-- Atomic accepted event and outbox commit; rollback leaves neither, outages keep
-  committed events pending, and capacity rejection is an explicit failure.
-- Stable logical identity, revision and original expiry survive replay and
-  backfill. No duplicate learning/reporting effects or resurrected erased data.
-- Complete-through evidence prevents finalization or final reports from reading
-  partial asynchronous history. Immediate session exclusions stay synchronous.
-- Cross-store fixed-as-of parity covers both active A/B arms and source-neutral
-  playback. Preserve sticky assignments and immutable published reports.
-- Outbox/ClickHouse retention and erasure, including pending payloads, pass
-  privacy qualification. A provider TTL or merge process alone is insufficient.
-- Measured peak input, allocated outbox overhead, sink capacity, resource budgets
-  and catch-up throughput demonstrate the 24-hour target with earlier alerts.
-- Reviewed green integration PR, normal PR-to-main deployment, actual HTTP and
-  worker revision verification, then bounded release observations.
-- History retirement reduces measured PostgreSQL allocation/growth; report
-  physical filesystem headroom and total system cost separately. Preserve the
-  daily retention observer and open capacity obligations until their own proof.
-
-Infrastructure prices, full event capacity and cross-store erasure remain
-qualification work. They are not grounds to claim the migration is deployed or
-to bypass the normal release path.
+Release requires reviewed green code, all required CI checks, normal PR-to-main
+deployment and actual Admin HTTP/worker revision verification. Qualify serving
+performance, playback/A/B authority, privacy, expiry, delivered-feedback
+freshness and explicit loss observations. Measure actual PostgreSQL retirement,
+filesystem headroom and total cost separately. Preserve the independent daily
+retention monitor and open capacity work. Feat-888 remains in progress until
+the entire implementation and actual release evidence are complete.

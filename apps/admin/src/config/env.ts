@@ -512,8 +512,6 @@ export const env = createEnv({
     WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
     // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
-    RECOMMENDATION_OUTBOX_DB_TEST: z.enum(["1"]).optional(),
-    RECOMMENDATION_OUTBOX_TEST_DATABASE_URL: z.string().url().optional(),
     RECOMMENDATION_CLICKHOUSE_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_CLICKHOUSE_TEST_URL: z.string().url().optional(),
     // Opt-in real-database proof for the push campaign claim indexes and the
@@ -1126,12 +1124,6 @@ export const env = createEnv({
     WATCH_SEARCH_DB_TEST: emptyToUndefined(process.env.WATCH_SEARCH_DB_TEST),
     RECOMMENDATION_DB_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_DB_TEST,
-    ),
-    RECOMMENDATION_OUTBOX_DB_TEST: emptyToUndefined(
-      process.env.RECOMMENDATION_OUTBOX_DB_TEST,
-    ),
-    RECOMMENDATION_OUTBOX_TEST_DATABASE_URL: emptyToUndefined(
-      process.env.RECOMMENDATION_OUTBOX_TEST_DATABASE_URL,
     ),
     RECOMMENDATION_CLICKHOUSE_DB_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_CLICKHOUSE_DB_TEST,

@@ -13,7 +13,7 @@ tags: ["recommendations", "storage", "clickhouse", "admin"]
 
 ## Scope and acceptance
 
-Own bounded operator backfill/reconciliation/cutover tooling, durable privacy erasure/correction propagation, read fences, retention integration and rollback runbook. Backfill all still-unexpired in-scope history with original IDs/times/expiry; page/checkpoint without large transactions and cap production work. Privacy reset/delete/destination erasure wins over delayed inserts and corrections. Qualify pending-payload erasure and physical expiry; no resurrection and no silent lost events. Reconcile canonical counts/digests/as-of reports before reader cutover, and remove old history payload/index allocation only after dependencies and rollback horizon are safe. Keep honest failure ledgers and retention-health types. No direct local deploy, unbounded purge or production fault injection.
+Own bounded backfill/reconciliation/cutover tooling, reliable privacy erasure propagation, read fences, retention and rollback. Backfill still-unexpired history with original IDs/times/expiry in checkpointed bounded pages. Privacy reset/delete/destination erasure wins over in-flight inserts and corrections; qualify logical suppression and physical expiry separately. The owner's tolerance for failed analytics does not authorize failed privacy controls. Reconcile delivered/backfilled identities, digests and as-of output; distinguish explicit live export loss from backfill defects. Retire old payload/index allocation only after dependencies and rollback are safe. Preserve truthful failure/retention evidence. No direct local deployment, unbounded purge or production fault injection.
 
 ## Context
 

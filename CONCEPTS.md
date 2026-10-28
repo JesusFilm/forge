@@ -1075,12 +1075,6 @@ lists derived for recommendation delivery. Its validity remains subject to
 viewer controls, expiry and content eligibility independently of the availability
 of new Recommendation Event History.
 
-### Pending Recommendation Event
-
-A recommendation or Watch observation durably accepted for delivery but not yet
-confirmed in Recommendation Event History. Its identity, provenance and original
-expiry remain unchanged while delivery is retried.
-
 ### Recommendation Learning Freshness
 
 The elapsed time between viewing evidence becoming eligible for learning and

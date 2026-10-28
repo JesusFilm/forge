@@ -13,7 +13,7 @@ tags: ["recommendations", "storage", "clickhouse", "admin"]
 
 ## Scope and acceptance
 
-Own precomputed CTR/engagement/history evidence adapters, visit admission/archive integration and operator trace/exposure readers. Preserve the active editorial/current experiment, sticky assignments, eligibility/qualification/delivery result, request links, selected/claimed/engaged attribution, late cutoff, immutable revisions and archived cluster/totals fences. Fixed-as-of per-visit parity must hold across stores, including duplicate and corrected events. Report explicit lag; never finalize an incomplete report. Preserve 14-day anonymous coverage disclosure, detail-read authorization/auditing and error visibility. Update capacity table inventories to distinguish serving state, outbox and ClickHouse history.
+Own CTR/engagement/history adapters, visit admission/archive integration and operator trace/exposure readers. Preserve the active experiment, sticky assignment, operational qualification/attribution, late cutoff, immutable revisions and archived counter fences. Fixed-as-of parity applies to successfully delivered/backfilled evidence, including duplicates/corrections; accepted live export loss must remain explicit coverage loss. Keep necessary compact A/B accounting and never label a partial analytical sample as complete. Preserve 14-day anonymous coverage disclosure, authorization/auditing and error visibility. Distinguish serving authority from ClickHouse history in storage inventories; there is no forwarding store.
 
 ## Context
 
