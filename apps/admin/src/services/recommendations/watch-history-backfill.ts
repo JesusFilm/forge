@@ -45,9 +45,10 @@ export async function readUnexpiredWatchHistoryPage(
           receivedAt: row.receivedAt,
           expiresAt: row.expiresAt,
           duplicateCount: row.duplicateCount,
-          revision: 1,
+          // Legacy duplicate_count is the only durable correction sequence.
+          revision: row.duplicateCount + 1,
         },
-        row.receivedAt,
+        row.duplicateCount > 0 ? now : row.receivedAt,
       ),
     ),
     nextCursor:

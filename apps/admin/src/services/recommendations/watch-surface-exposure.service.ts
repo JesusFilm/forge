@@ -50,7 +50,13 @@ type ParsedEvent = Omit<WatchSurfaceExposureEvent, "occurredAt"> & {
   occurredAt: Date
 }
 
-type StoredEvent = ParsedEvent & { repeated: boolean }
+type StoredEvent = ParsedEvent & {
+  id: string
+  receivedAt: Date
+  expiresAt: Date
+  duplicateCount: number
+  repeated: boolean
+}
 
 function parseEvent(raw: unknown, now: Date): ParsedEvent {
   if (Buffer.byteLength(JSON.stringify(raw)) > 2048) {
@@ -399,9 +405,10 @@ export async function issueWatchSurfaceDelivery(
 }
 
 async function assertIssuedEvents(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   events: ParsedEvent[],
   now: Date,
+  includeCompact = false,
 ) {
   const issuedEvents = events.filter(
     (event) => event.policyVersion === "watch-exposure-v2",
@@ -418,6 +425,17 @@ async function assertIssuedEvents(
       expiresAt: { gt: now },
     },
   })
+  const compact = includeCompact
+    ? await prisma.watchSurfaceIssuedWindow.findMany({
+        where: {
+          windowId: {
+            in: [...new Set(issuedEvents.map((event) => event.windowId))],
+          },
+          expiresAt: { gt: now },
+        },
+        include: { items: true },
+      })
+    : []
   for (const event of issuedEvents) {
     const binding = served.find(
       (row) =>
@@ -429,11 +447,24 @@ async function assertIssuedEvents(
         row.position === event.position &&
         row.itemPath === event.itemPath,
     )
-    if (!binding)
+    const compactBinding = compact.find(
+      (row) =>
+        row.windowId === event.windowId &&
+        row.surface === event.surface &&
+        row.block === event.block &&
+        row.presentation === event.presentation &&
+        row.placement === event.placement &&
+        row.items.some(
+          (item) =>
+            item.position === event.position &&
+            item.itemPath === event.itemPath,
+        ),
+    )
+    if (!binding && !compactBinding)
       throw new RecommendationInputError(
         "Watch exposure has no issued served binding",
       )
-    expiries.set(event.eventId, binding.expiresAt)
+    expiries.set(event.eventId, (binding ?? compactBinding)!.expiresAt)
   }
   return expiries
 }
@@ -467,7 +498,7 @@ export async function recordWatchSurfaceExposureBatch(
     // their original authority until their recorded expiry instead of guessing.
     const [compactWindows, compactReceipts, oldRows] = await Promise.all([
       prisma.watchSurfaceIssuedWindow.findMany({
-        where: { windowId: { in: windows } },
+        where: { windowId: { in: windows }, expiresAt: { gt: now } },
         select: { windowId: true },
       }),
       prisma.watchSurfaceEventReceipt.findMany({
@@ -475,47 +506,76 @@ export async function recordWatchSurfaceExposureBatch(
         select: { eventId: true },
       }),
       prisma.watchSurfaceExposure.findMany({
-        where: {
-          OR: [
-            { eventId: { in: ids }, expiresAt: { gt: now } },
-            {
-              windowId: { in: windows },
-              kind: "served",
-              expiresAt: { gt: now },
-            },
-          ],
-        },
-        select: { eventId: true, windowId: true, kind: true },
-        take: 165,
+        where: { eventId: { in: ids } },
+        select: { eventId: true },
       }),
     ])
     const newWindows = new Set(compactWindows.map((row) => row.windowId))
     const newReceipts = new Set(compactReceipts.map((row) => row.eventId))
     if (
-      oldRows.some((row) =>
-        row.kind === "served"
-          ? !newWindows.has(row.windowId)
-          : !newReceipts.has(row.eventId),
-      )
+      windows.some((id) => !newWindows.has(id)) ||
+      oldRows.some((row) => !newReceipts.has(row.eventId))
     )
-      return recordLegacyWatchSurfaceExposureBatch(prisma, events, now)
+      return recordMixedWatchSurfaceExposureBatch(prisma, events, now)
     return recordCompactWatchSurfaceExposureBatch(prisma, events, now)
   }
   return recordLegacyWatchSurfaceExposureBatch(prisma, events, now)
 }
 
-async function recordLegacyWatchSurfaceExposureBatch(
+async function recordMixedWatchSurfaceExposureBatch(
   prisma: PrismaClient,
   events: ParsedEvent[],
   now: Date,
 ): Promise<WatchSurfaceExposureReceipt[]> {
-  const issuedExpiries = await assertIssuedEvents(prisma, events, now)
+  const windows = [...new Set(events.map((event) => event.windowId))].sort()
+  const exported: WatchHistoryFact[] = []
+  const receipts = await prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '3000ms'")
+      for (const windowId of windows)
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${windowId}, 373))`
+      return recordLegacyWatchSurfaceExposureBatch(
+        tx,
+        events,
+        now,
+        true,
+        exported,
+      )
+    },
+    { timeout: 4000, maxWait: 3000 },
+  )
+  dispatchWatchFacts(exported, now)
+  return receipts
+}
+
+async function recordLegacyWatchSurfaceExposureBatch(
+  prisma: PrismaClient | Prisma.TransactionClient,
+  events: ParsedEvent[],
+  now: Date,
+  includeCompact = false,
+  exportFacts?: WatchHistoryFact[],
+): Promise<WatchSurfaceExposureReceipt[]> {
+  const issuedExpiries = await assertIssuedEvents(
+    prisma,
+    events,
+    now,
+    includeCompact,
+  )
   const unique = new Map<string, ParsedEvent>()
   for (const event of events) {
     if (!unique.has(event.eventId)) unique.set(event.eventId, event)
   }
+  const compactRows = includeCompact
+    ? await prisma.watchSurfaceEventReceipt.findMany({
+        where: { eventId: { in: [...unique.keys()] } },
+      })
+    : []
+  const compactById = new Map(compactRows.map((row) => [row.eventId, row]))
+  const legacyUnique = [...unique.values()].filter(
+    (event) => !compactById.has(event.eventId),
+  )
   const inserted = await prisma.watchSurfaceExposure.createManyAndReturn({
-    data: [...unique.values()].map((event) => ({
+    data: legacyUnique.map((event) => ({
       ...event,
       expiresAt:
         issuedExpiries.get(event.eventId) ??
@@ -525,14 +585,16 @@ async function recordLegacyWatchSurfaceExposureBatch(
     select: { eventId: true },
   })
   const insertedIds = new Set(inserted.map(({ eventId }) => eventId))
-  const ids = [...unique.keys()]
-  const stored = await prisma.$queryRaw<StoredEvent[]>`
-    SELECT e.event_id AS "eventId", e.window_id AS "windowId",
+  const ids = legacyUnique.map((event) => event.eventId)
+  const stored = ids.length
+    ? await prisma.$queryRaw<StoredEvent[]>`
+    SELECT e.id, e.event_id AS "eventId", e.window_id AS "windowId",
            e.surface, e.block, e.presentation, e.placement,
            e.policy_version AS "policyVersion", e.position,
            e.item_path AS "itemPath", e.kind,
            e.visibility_capability AS "visibilityCapability",
-           e.occurred_at AS "occurredAt",
+           e.occurred_at AS "occurredAt", e.received_at AS "receivedAt",
+           e.expires_at AS "expiresAt", e.duplicate_count AS "duplicateCount",
            EXISTS (
              SELECT 1 FROM watch_surface_exposure earlier
              WHERE earlier.window_id = e.window_id
@@ -550,10 +612,39 @@ async function recordLegacyWatchSurfaceExposureBatch(
     FROM watch_surface_exposure e
     WHERE e.event_id IN (${Prisma.join(ids.map((id) => Prisma.sql`${id}::uuid`))})
   `
+    : []
   const storedById = new Map(stored.map((event) => [event.eventId, event]))
+  const compactRepeated = new Set<string>()
+  if (includeCompact) {
+    for (const eventId of insertedIds) {
+      const event = unique.get(eventId)!
+      const row = storedById.get(eventId)!
+      const [earlier] = await prisma.$queryRaw<Array<{ repeated: boolean }>>`
+        SELECT EXISTS (
+          SELECT 1 FROM watch_surface_event_receipt
+          WHERE window_id = ${row.windowId}::uuid
+            AND group_digest = ${watchGroupDigest(event)}
+            AND (occurred_at, received_at, rank_id::text) <
+                (${row.occurredAt}, ${row.receivedAt}, ${row.id})
+        ) AS repeated
+      `
+      if (earlier.repeated) compactRepeated.add(eventId)
+    }
+  }
   const firstSeen = new Set<string>()
   const replayCounts = new Map<string, number>()
   const receipts = events.map((event): WatchSurfaceExposureReceipt => {
+    const compact = compactById.get(event.eventId)
+    if (compact) {
+      const status =
+        compact.exactDigest === watchExactDigest(event) ? "replay" : "conflict"
+      if (status === "replay")
+        replayCounts.set(
+          event.eventId,
+          (replayCounts.get(event.eventId) ?? 0) + 1,
+        )
+      return { eventId: event.eventId, status }
+    }
     const row = storedById.get(event.eventId)
     if (!row) throw new RecommendationInputError("Watch exposure write missing")
     const first = !firstSeen.has(event.eventId)
@@ -562,7 +653,10 @@ async function recordLegacyWatchSurfaceExposureBatch(
     if (!sameEvent(row, event)) {
       status = "conflict"
     } else if (first && insertedIds.has(event.eventId)) {
-      status = row.repeated ? "repeat" : "accepted"
+      status =
+        row.repeated || compactRepeated.has(event.eventId)
+          ? "repeat"
+          : "accepted"
     } else {
       status = "replay"
       replayCounts.set(
@@ -574,6 +668,7 @@ async function recordLegacyWatchSurfaceExposureBatch(
   })
   const replayIdsByCount = new Map<number, string[]>()
   for (const [eventId, count] of replayCounts) {
+    if (compactById.has(eventId)) continue
     replayIdsByCount.set(count, [
       ...(replayIdsByCount.get(count) ?? []),
       eventId,
@@ -584,6 +679,53 @@ async function recordLegacyWatchSurfaceExposureBatch(
       where: { eventId: { in: eventIds } },
       data: { duplicateCount: { increment: count } },
     })
+  }
+  for (const [eventId, count] of replayCounts) {
+    if (!compactById.has(eventId)) continue
+    const row = await prisma.watchSurfaceEventReceipt.update({
+      where: { eventId },
+      data: {
+        duplicateCount: { increment: count },
+        revision: { increment: 1 },
+      },
+    })
+    if (watchAdmissionMode() === "shadow")
+      await prisma.watchSurfaceExposure.updateMany({
+        where: { eventId },
+        data: { duplicateCount: { increment: count } },
+      })
+    compactById.set(eventId, row)
+  }
+  if (exportFacts) {
+    const allowed = new Set(
+      receipts
+        .filter((receipt) => receipt.status !== "conflict")
+        .map((receipt) => receipt.eventId),
+    )
+    for (const eventId of allowed) {
+      const compact = compactById.get(eventId)
+      if (compact) {
+        exportFacts.push({
+          ...unique.get(eventId)!,
+          rankId: compact.rankId,
+          receivedAt: compact.receivedAt,
+          expiresAt: compact.expiresAt,
+          duplicateCount: compact.duplicateCount,
+          revision: compact.revision,
+        })
+        continue
+      }
+      const row = storedById.get(eventId)!
+      const total = row.duplicateCount + (replayCounts.get(eventId) ?? 0)
+      exportFacts.push({
+        ...unique.get(eventId)!,
+        rankId: row.id,
+        receivedAt: row.receivedAt,
+        expiresAt: row.expiresAt,
+        duplicateCount: total,
+        revision: total + 1,
+      })
+    }
   }
   return receipts
 }

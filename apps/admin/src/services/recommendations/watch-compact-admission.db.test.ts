@@ -266,25 +266,26 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
     expect(
       await recordWatchSurfaceExposureBatch(prisma, caller, [event], now),
     ).toEqual([{ eventId, status: "accepted" }])
-    expect(
-      (
-        await prisma.watchSurfaceExposure.findUniqueOrThrow({
-          where: { eventId },
-        })
-      ).expiresAt,
-    ).toEqual(oldExpiry)
+    const storedLegacy = await prisma.watchSurfaceExposure.findUniqueOrThrow({
+      where: { eventId },
+    })
+    expect(storedLegacy.expiresAt).toEqual(oldExpiry)
     expect(
       await prisma.watchSurfaceEventReceipt.count({ where: { eventId } }),
     ).toBe(0)
+    expect(
+      await recordWatchSurfaceExposureBatch(prisma, caller, [event], now),
+    ).toEqual([{ eventId, status: "replay" }])
+    const backfillAt = new Date(now.getTime() + 86_400_000)
     const firstPage = await readUnexpiredWatchHistoryPage(
       prisma,
-      now,
+      backfillAt,
       undefined,
       1,
     )
     const secondPage = await readUnexpiredWatchHistoryPage(
       prisma,
-      now,
+      backfillAt,
       firstPage.nextCursor!,
       1,
     )
@@ -293,6 +294,160 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
     expect(
       [firstPage.events[0], secondPage.events[0]].map((row) => row.expiresAt),
     ).toEqual([oldExpiry.toISOString(), oldExpiry.toISOString()])
+    expect(
+      [firstPage.events[0], secondPage.events[0]].find(
+        (row) => row.logicalId === eventId,
+      )?.revision,
+    ).toBe(2)
+    expect(
+      [firstPage.events[0], secondPage.events[0]].find(
+        (row) => row.logicalId === eventId,
+      ),
+    ).toMatchObject({
+      acceptedAt: backfillAt.toISOString(),
+      payload: { receivedAt: storedLegacy.receivedAt.toISOString() },
+    })
+    const compact = await issueWatchSurfaceDelivery(
+      prisma,
+      caller,
+      { manifest, attemptId: randomUUID() },
+      now,
+    )
+    const oldFact = { ...event, eventId: randomUUID(), kind: "rendered" }
+    const newFact = {
+      ...event,
+      eventId: randomUUID(),
+      windowId: compact.windowId!,
+    }
+    const compactReplay = { ...newFact, eventId: randomUUID() }
+    expect(
+      await recordWatchSurfaceExposureBatch(
+        prisma,
+        caller,
+        [compactReplay],
+        now,
+      ),
+    ).toEqual([{ eventId: compactReplay.eventId, status: "accepted" }])
+    exportControl.enabled = true
+    exportControl.dispatch.mockClear()
+    expect(
+      await recordWatchSurfaceExposureBatch(
+        prisma,
+        caller,
+        [oldFact, newFact, compactReplay],
+        now,
+      ),
+    ).toEqual([
+      { eventId: oldFact.eventId, status: "accepted" },
+      { eventId: newFact.eventId, status: "repeat" },
+      { eventId: compactReplay.eventId, status: "replay" },
+    ])
+    expect(exportControl.dispatch).toHaveBeenCalledWith([
+      expect.objectContaining({ logicalId: oldFact.eventId }),
+      expect.objectContaining({ logicalId: newFact.eventId }),
+      expect.objectContaining({
+        logicalId: compactReplay.eventId,
+        revision: 2,
+      }),
+    ])
+    exportControl.enabled = false
+    expect(
+      await prisma.watchSurfaceExposure.count({
+        where: { eventId: { in: [oldFact.eventId, newFact.eventId] } },
+      }),
+    ).toBe(2)
+    expect(
+      await prisma.watchSurfaceEventReceipt.count({
+        where: { eventId: { in: [oldFact.eventId, newFact.eventId] } },
+      }),
+    ).toBe(0)
+    expect(
+      await prisma.watchSurfaceExposure.count({
+        where: { eventId: compactReplay.eventId },
+      }),
+    ).toBe(0)
+    const v1WindowId = randomUUID()
+    const firstV1 = {
+      ...event,
+      eventId: randomUUID(),
+      windowId: v1WindowId,
+      policyVersion: "watch-exposure-v1",
+    }
+    expect(
+      await recordWatchSurfaceExposureBatch(prisma, caller, [firstV1], now),
+    ).toEqual([{ eventId: firstV1.eventId, status: "accepted" }])
+    const laterV1 = {
+      ...firstV1,
+      eventId: randomUUID(),
+      occurredAt: new Date(now.getTime() + 1).toISOString(),
+    }
+    expect(
+      await recordWatchSurfaceExposureBatch(
+        prisma,
+        caller,
+        [{ ...oldFact, eventId: randomUUID() }, laterV1],
+        new Date(now.getTime() + 1),
+      ),
+    ).toMatchObject([
+      { eventId: expect.any(String) },
+      { eventId: laterV1.eventId, status: "repeat" },
+    ])
+    const rejected = [
+      { ...oldFact, eventId: randomUUID() },
+      { ...newFact, eventId: randomUUID() },
+    ]
+    await prisma.$executeRawUnsafe(
+      `CREATE OR REPLACE FUNCTION "${schema}".reject_mixed_watch() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.kind = 'selected' THEN RAISE EXCEPTION 'mixed write blocked'; END IF; RETURN NEW; END $$`,
+    )
+    await prisma.$executeRawUnsafe(
+      `CREATE TRIGGER reject_mixed_watch BEFORE INSERT ON "${schema}".watch_surface_exposure FOR EACH ROW EXECUTE FUNCTION "${schema}".reject_mixed_watch()`,
+    )
+    try {
+      await expect(
+        recordWatchSurfaceExposureBatch(prisma, caller, rejected, now),
+      ).rejects.toThrow()
+      expect(
+        await prisma.watchSurfaceExposure.count({
+          where: { eventId: { in: rejected.map(({ eventId }) => eventId) } },
+        }),
+      ).toBe(0)
+    } finally {
+      await prisma.$executeRawUnsafe(
+        `DROP TRIGGER reject_mixed_watch ON "${schema}".watch_surface_exposure`,
+      )
+    }
+  })
+
+  it("preserves an unpurged expired legacy V1 event ID", async () => {
+    const eventId = randomUUID()
+    const event = {
+      eventId,
+      windowId: randomUUID(),
+      surface: "watch-search",
+      block: "results",
+      presentation: "result-list",
+      placement: "search-results",
+      policyVersion: "watch-exposure-v1",
+      position: 0,
+      itemPath: "/watch/example.html",
+      kind: "selected",
+      visibilityCapability: null,
+      occurredAt: now.toISOString(),
+    }
+    await prisma.watchSurfaceExposure.create({
+      data: {
+        ...event,
+        occurredAt: now,
+        receivedAt: now,
+        expiresAt: new Date(now.getTime() - 1),
+      },
+    })
+    expect(
+      await recordWatchSurfaceExposureBatch(prisma, caller, [event], now),
+    ).toEqual([{ eventId, status: "replay" }])
+    expect(
+      await prisma.watchSurfaceEventReceipt.count({ where: { eventId } }),
+    ).toBe(0)
   })
 
   it("admits the full 64-event V1 limit with stable first/repeat order", async () => {
@@ -408,7 +563,7 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
           [{ ...event, eventId: randomUUID() }],
           now,
         ),
-      ).toMatchObject([{ status: "repeat" }])
+      ).toMatchObject([{ eventId: expect.any(String) }])
     } finally {
       exportControl.enabled = false
       exportControl.dispatch.mockReset()

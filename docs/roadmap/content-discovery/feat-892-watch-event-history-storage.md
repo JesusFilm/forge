@@ -30,6 +30,8 @@ Qualification uses `WATCH_COMPACT_ADMISSION_MODE=shadow` to retain the legacy
 report source while exercising compact receipts; `compact` stops new full-row
 writes after the reader and rollback path are qualified. The legacy V2 binding
 remains authoritative through its recorded expiry. The production gate remains
-off; physical retirement, reader cutover and measured allocation belong to
-subsequent tickets. Central retention wiring is pending integration with the
-shared retention service.
+off; mixed batches that contain a pre-cutover V2 binding use one locked legacy
+transaction until those bindings expire. Physical retirement, reader cutover,
+exact historical replay timing and measured allocation belong to subsequent
+tickets. Central retention wiring is pending integration with the shared
+retention service.

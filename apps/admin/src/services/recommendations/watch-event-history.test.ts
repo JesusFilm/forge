@@ -49,12 +49,11 @@ describe("Watch history codec", () => {
   })
 
   it("groups same card and kind but distinguishes replay payloads", () => {
-    expect(watchGroupDigest(fact)).toBe(
-      watchGroupDigest({
-        ...fact,
-        occurredAt: new Date("2026-10-28T00:01:00.000Z"),
-      }),
-    )
+    const changedAt = {
+      ...fact,
+      occurredAt: new Date("2026-10-28T00:01:00.000Z"),
+    }
+    expect(watchGroupDigest(fact)).toBe(watchGroupDigest(changedAt))
     expect(watchExactDigest(fact)).not.toBe(
       watchExactDigest({
         ...fact,
