@@ -514,6 +514,8 @@ export const env = createEnv({
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_OUTBOX_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_OUTBOX_TEST_DATABASE_URL: z.string().url().optional(),
+    RECOMMENDATION_CLICKHOUSE_DB_TEST: z.enum(["1"]).optional(),
+    RECOMMENDATION_CLICKHOUSE_TEST_URL: z.string().url().optional(),
     // Opt-in real-database proof for the push campaign claim indexes and the
     // push retention purge. Test-only; production never branches on it.
     PUSH_DB_TEST: z.enum(["1"]).optional(),
@@ -1130,6 +1132,12 @@ export const env = createEnv({
     ),
     RECOMMENDATION_OUTBOX_TEST_DATABASE_URL: emptyToUndefined(
       process.env.RECOMMENDATION_OUTBOX_TEST_DATABASE_URL,
+    ),
+    RECOMMENDATION_CLICKHOUSE_DB_TEST: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_DB_TEST,
+    ),
+    RECOMMENDATION_CLICKHOUSE_TEST_URL: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_TEST_URL,
     ),
     PUSH_DB_TEST: emptyToUndefined(process.env.PUSH_DB_TEST),
     RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
