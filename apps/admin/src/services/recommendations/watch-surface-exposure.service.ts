@@ -9,8 +9,7 @@ import {
 } from "./errors"
 import { recommendationTraffic } from "./traffic"
 import { env } from "@/config/env"
-import { dispatchRecommendationEventsAfterCommit } from "./event-history/runtime"
-import type { RecommendationEventEnvelope } from "./event-history/envelope"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
 import {
   encodeWatchHistoryFact,
   watchExactDigest,
@@ -150,22 +149,11 @@ function digestUuid(value: string): string {
 
 function dispatchWatchFacts(facts: WatchHistoryFact[], acceptedAt: Date): void {
   if (env.WATCH_EVENT_EXPORT_ENABLED !== "true" || facts.length === 0) return
-  const envelopes: RecommendationEventEnvelope[] = []
-  for (const fact of facts) {
-    try {
-      envelopes.push(encodeWatchHistoryFact(fact, acceptedAt))
-    } catch {
-      // Optional history must not change completed operational admission.
-      console.warn("watch_event_export_prepare_failed")
-    }
-  }
-  if (envelopes.length) {
-    try {
-      dispatchRecommendationEventsAfterCommit(envelopes)
-    } catch {
-      console.warn("watch_event_export_dispatch_failed")
-    }
-  }
+  dispatchPreparedRecommendationEventsAfterCommit(
+    "watch-exposure",
+    () => facts.map((fact) => encodeWatchHistoryFact(fact, acceptedAt)),
+    facts.length,
+  )
 }
 
 function watchAdmissionMode(): "legacy" | "shadow" | "compact" {

@@ -4,10 +4,31 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
-const exportControl = vi.hoisted(() => ({ enabled: false, dispatch: vi.fn() }))
+const exportControl = vi.hoisted(() => ({
+  enabled: false,
+  dispatch: vi.fn(),
+  prepareFailure: vi.fn(),
+}))
 
 vi.mock("./event-history/runtime", () => ({
-  dispatchRecommendationEventsAfterCommit: exportControl.dispatch,
+  dispatchPreparedRecommendationEventsAfterCommit: (
+    _family: string,
+    prepare: () => unknown[],
+    expectedCount: number,
+  ) => {
+    let envelopes: unknown[]
+    try {
+      envelopes = prepare()
+    } catch {
+      exportControl.prepareFailure(expectedCount)
+      return
+    }
+    try {
+      exportControl.dispatch(envelopes)
+    } catch {
+      // The real dispatcher observes optional transport failures internally.
+    }
+  },
 }))
 
 vi.mock("@/config/env", async (importOriginal) => {
@@ -442,9 +463,16 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
         expiresAt: new Date(now.getTime() - 1),
       },
     })
-    expect(
-      await recordWatchSurfaceExposureBatch(prisma, caller, [event], now),
-    ).toEqual([{ eventId, status: "replay" }])
+    exportControl.enabled = true
+    exportControl.prepareFailure.mockClear()
+    try {
+      expect(
+        await recordWatchSurfaceExposureBatch(prisma, caller, [event], now),
+      ).toEqual([{ eventId, status: "replay" }])
+      expect(exportControl.prepareFailure).toHaveBeenCalledWith(1)
+    } finally {
+      exportControl.enabled = false
+    }
     expect(
       await prisma.watchSurfaceEventReceipt.count({ where: { eventId } }),
     ).toBe(0)

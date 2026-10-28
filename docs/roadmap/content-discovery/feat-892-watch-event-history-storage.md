@@ -35,3 +35,6 @@ transaction until those bindings expire. Physical retirement, reader cutover,
 exact historical replay timing and measured allocation belong to subsequent
 tickets. Central retention wiring is pending integration with the shared
 retention service.
+Optional history encoding runs after admission commits and only when the
+dispatcher is enabled; preparation failures are counted separately from
+viewer-action success.
