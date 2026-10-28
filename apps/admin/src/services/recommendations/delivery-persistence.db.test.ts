@@ -158,14 +158,20 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         })
         expect(detail?.candidateExecution).not.toBeNull()
         const execution = detail!.candidateExecution!
-        const stageIds = execution.stages.map((stage) => stage.id)
+        const stageIds = execution.stages.map(
+          (stage) => (stage as typeof stage & { id: string }).id,
+        )
         expect(stageIds.every((id) => id.length > 0)).toBe(true)
         expect(new Set(stageIds).size).toBe(stageIds.length)
         details.push({
           ...execution,
           // Separate issuances intentionally mint distinct immutable stage IDs.
           // Compare the diagnostic content while retaining identity assertions.
-          stages: execution.stages.map(({ id: _id, ...stage }) => stage),
+          stages: execution.stages.map((value, index) => {
+            const { id, ...stage } = value as typeof value & { id: string }
+            expect(id).toBe(stageIds[index])
+            return stage
+          }),
         })
       }
       const stages = details[0]!.stages
