@@ -559,6 +559,7 @@ export default function WatchVideoScreen() {
             // one thing that unmounts it if the showcase ever runs above it.
             overlayVisible={playerState.isVisible || decoderClaimed}
             bottomFadeColor={WATCH_THEME.below}
+            scrimVariant="detail"
           />
 
           <View style={styles.heroContent}>
