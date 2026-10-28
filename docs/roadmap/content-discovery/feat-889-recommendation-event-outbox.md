@@ -52,9 +52,10 @@ the implementation commit.
 All ten database cases also passed when run separately with `-t`. A remote
 `outbox_test` URL failed the fixture guard before database connection or cleanup.
 
-CI integration still required: provision a disposable loopback PostgreSQL
-database named `outbox_test`, apply migration 0164, set
-`RECOMMENDATION_OUTBOX_DB_TEST=1` and
-`RECOMMENDATION_OUTBOX_TEST_DATABASE_URL=postgresql://.../outbox_test`, then run
-the colocated `outbox.db.test.ts` suite. Its default skip is not CI proof;
-the local owned-container run above is the current behavior receipt.
+CI now provisions a disposable loopback PostgreSQL database named `outbox_test`
+with `ON_ERROR_STOP=1`, applies migration 0164, and explicitly runs both
+colocated suites with `RECOMMENDATION_OUTBOX_DB_TEST=1` and the owned test URL.
+After integration, Prisma Client generation and both focused suites passed
+against the owned PostgreSQL 18 fixture: 14 tests passed, including all 10
+database cases. The default skip is not counted as proof. Production migration,
+relay wiring, and sink qualification remain for dependent tickets.
