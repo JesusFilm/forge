@@ -135,6 +135,7 @@ async function runStep(steps, name, command, args, options) {
 }
 
 module.exports = {
+  PASSTHROUGH_KEYS,
   TestBuildError,
   buildEnv,
   defaultAndroidHome,

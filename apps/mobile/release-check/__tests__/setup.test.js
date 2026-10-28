@@ -47,9 +47,12 @@ function writeAvd(avdHome, name, settings) {
   return path.join(folder, "config.ini")
 }
 
-// A Mac with Xcode, Java 17, the Android SDK, and Maestro at `maestro`.
+// A Mac with Xcode, Java 17, the Android SDK, Maestro, and CocoaPods. `pod` is
+// a version, null (not on PATH), "shim" (an rbenv shim with no gem), or
+// "broken" (a pod outside rbenv that does not run).
 function fakeMac({
   maestro = config.tools.maestro,
+  pod = "1.16.2",
   imageInstalled = true,
   simulators = [],
   sdkInstall = "ok",
@@ -84,12 +87,22 @@ function fakeMac({
   fs.mkdirSync(avdHome, { recursive: true })
   const bin = path.join(home, "bin")
   writeExecutable(path.join(bin, "maestro"))
+  const shims = path.join(home, ".rbenv", "shims")
+  if (pod === "shim") writeExecutable(path.join(shims, "pod"))
+  else if (pod !== null) writeExecutable(path.join(bin, "pod"))
 
   const calls = []
+  const envs = {}
   const runtime = SE.runtime
-  async function runChild(command, args) {
+  async function runChild(command, args, options = {}) {
     const line = [command, ...args].join(" ")
     calls.push(line)
+    envs[line] = options.env
+    if (command.endsWith("/pod")) {
+      return pod === "shim" || pod === "broken"
+        ? result({ code: 127, stderr: "rbenv: pod: command not found\n" })
+        : result({ stdout: `${pod}\n` })
+    }
     if (command === "/usr/bin/xcodebuild" && args[0] === "-version") {
       return result({ stdout: "Xcode 26.5\nBuild version 17F42\n" })
     }
@@ -166,9 +179,10 @@ function fakeMac({
   const sourceEnv = {
     HOME: home,
     ANDROID_HOME: sdk,
-    PATH: `${bin}:/usr/bin:/bin`,
+    PATH: `${shims}:${bin}:/usr/bin:/bin`,
+    RBENV_VERSION: "3.3.6",
   }
-  return { avdHome, calls, home, runChild, sdk, sourceEnv }
+  return { avdHome, bin, calls, envs, home, runChild, sdk, shims, sourceEnv }
 }
 
 function simulator(device, runtime) {
@@ -208,6 +222,91 @@ describe("setup --check", () => {
     expect(fs.readdirSync(mac.avdHome)).toEqual([])
     expect(fs.existsSync(path.join(mac.sdk, IMAGE_DIR))).toBe(false)
   })
+
+  it("names CocoaPods and its install command when pod is not on PATH", async () => {
+    const mac = fakeMac({ pod: null })
+    const out = jest.fn()
+
+    const exitCode = await setupCommand(
+      { flags: { check: true } },
+      { runChild: mac.runChild, sourceEnv: mac.sourceEnv, config, out },
+    )
+
+    expect(exitCode).toBe(1)
+    const text = out.mock.calls[0][0]
+    expect(text).toContain(
+      "CocoaPods is not installed; the iOS build runs pod install.",
+    )
+    expect(text).toContain("Run: brew install cocoapods")
+  })
+
+  it("runs pod with the build's PATH and Ruby settings, and names the gem install for an rbenv shim with no gem", async () => {
+    const mac = fakeMac({ pod: "shim" })
+
+    const setup = await runSetup({
+      runChild: mac.runChild,
+      sourceEnv: mac.sourceEnv,
+      config,
+      check: true,
+    })
+
+    const pod = path.join(mac.shims, "pod")
+    expect(setup.problems).toEqual([
+      {
+        code: "COCOAPODS_MISSING",
+        message: `${pod} --version printed no version; the rbenv Ruby that it runs has no CocoaPods gem.`,
+        command: "gem install cocoapods && rbenv rehash",
+        deviceId: null,
+      },
+    ])
+    expect(mac.envs[`${pod} --version`]).toMatchObject({
+      PATH: mac.sourceEnv.PATH,
+      RBENV_VERSION: "3.3.6",
+      LANG: "en_US.UTF-8",
+    })
+    expect(setup.observed.cocoapods).toBeNull()
+  })
+
+  it("names a pod outside rbenv that does not run, with no install command", async () => {
+    const mac = fakeMac({ pod: "broken" })
+
+    const setup = await runSetup({
+      runChild: mac.runChild,
+      sourceEnv: mac.sourceEnv,
+      config,
+      check: true,
+    })
+
+    const pod = path.join(mac.bin, "pod")
+    expect(setup.problems).toEqual([
+      {
+        code: "COCOAPODS_MISSING",
+        message: `${pod} --version printed no version; reinstall CocoaPods there, or remove it from PATH.`,
+        command: null,
+        deviceId: null,
+      },
+    ])
+  })
+
+  it.each([
+    ["1.16.2", "1.16.2"],
+    ["a prerelease", "1.17.0.beta.1"],
+  ])(
+    "records the CocoaPods version when pod answers with %s",
+    async (_name, pod) => {
+      const mac = fakeMac({ pod })
+
+      const setup = await runSetup({
+        runChild: mac.runChild,
+        sourceEnv: mac.sourceEnv,
+        config,
+        check: true,
+      })
+
+      expect(setup.problems).toEqual([])
+      expect(setup.observed.cocoapods).toBe(pod)
+    },
+  )
 })
 
 describe("setup", () => {
