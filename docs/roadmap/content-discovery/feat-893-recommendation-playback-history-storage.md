@@ -98,3 +98,16 @@ pointers, profile/co-watch contributions, A/B visit/assignment/link/click
 accounting and authorized operator reads still depend on PostgreSQL history.
 Reader replacement, parity/backfill and actual storage retirement follow in
 this ticket and feats 894–895; this ticket stays in progress.
+
+The authorized operator request-detail path now has an independent, default-off
+ClickHouse reader gate. It captures the active request, served-item, candidate
+run and stage identities in a PostgreSQL snapshot, releases that transaction
+before bounded remote reads, then rechecks the request under a new lock and
+records the trace-access audit before returning. The detail page shows safe
+exported payloads and identifies missing exported records; remote failures
+remain errors. A real PostgreSQL test proves request deletion can finish while
+the remote read is stalled and that the deleted root is not returned. The
+legacy PostgreSQL detail path remains the default, and raw payload writes
+cannot yet retire: a previously retired candidate trace no longer provides
+all stage identities, which the new reader marks incomplete, and usefulness,
+other recent-history and privacy readers still require their own cutovers.

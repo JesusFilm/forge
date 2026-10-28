@@ -519,6 +519,9 @@ export const env = createEnv({
     RECOMMENDATION_WATCH_HISTORY_READER_ENABLED: z
       .enum(["true", "false"])
       .default("false"),
+    RECOMMENDATION_OPERATOR_TRACE_READER_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
     RECOMMENDATION_EVENT_EXPORT_ENABLED: z
       .enum(["true", "false"])
       .default("false"),
@@ -1174,6 +1177,8 @@ export const env = createEnv({
     ),
     RECOMMENDATION_WATCH_HISTORY_READER_ENABLED:
       process.env.RECOMMENDATION_WATCH_HISTORY_READER_ENABLED,
+    RECOMMENDATION_OPERATOR_TRACE_READER_ENABLED:
+      process.env.RECOMMENDATION_OPERATOR_TRACE_READER_ENABLED,
     RECOMMENDATION_EVENT_EXPORT_ENABLED:
       process.env.RECOMMENDATION_EVENT_EXPORT_ENABLED,
     WATCH_EVENT_EXPORT_ENABLED: process.env.WATCH_EVENT_EXPORT_ENABLED,

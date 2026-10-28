@@ -160,7 +160,7 @@ const sourceKeys: Record<string, readonly string[]> = {
   ],
 }
 
-function safeSource(value: unknown) {
+export function safeTraceSource(value: unknown) {
   const source = record(value)
   if (!source) return { value: null, redacted: true }
   const generator = source.generator
@@ -197,14 +197,14 @@ function safeSource(value: unknown) {
 
 function safeSources(value: unknown) {
   if (!Array.isArray(value)) return { values: [], redacted: true }
-  const bounded = value.slice(0, 16).map(safeSource)
+  const bounded = value.slice(0, 16).map(safeTraceSource)
   return {
     values: bounded.map((source) => source.value),
     redacted: value.length > 16 || bounded.some((source) => source.redacted),
   }
 }
 
-function safePresentation(input: unknown) {
+export function safeTracePresentation(input: unknown) {
   const source = record(input)
   if (!source) return { value: {}, redacted: true }
   const scalarKeys = [
@@ -257,7 +257,7 @@ function safePresentation(input: unknown) {
   return { value, redacted }
 }
 
-function safeProvenance(value: unknown) {
+export function safeTraceProvenance(value: unknown) {
   const source = record(value)
   if (!source) return { value: {}, redacted: true }
   const scalarKeys = [
@@ -369,8 +369,8 @@ export function servedItemHistoryEvent(
       candidateProvenance: Prisma.JsonValue
     },
   )
-  const presentation = safePresentation(hydrated.presentation)
-  const provenance = safeProvenance(hydrated.candidateProvenance)
+  const presentation = safeTracePresentation(hydrated.presentation)
+  const provenance = safeTraceProvenance(hydrated.candidateProvenance)
   return recommendationHistoryEvent({
     family: "served-item",
     logicalId: item.id,

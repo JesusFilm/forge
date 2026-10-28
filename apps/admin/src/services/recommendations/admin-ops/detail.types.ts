@@ -72,6 +72,7 @@ export type RecommendationEpisodeDetail = Readonly<{
 }>
 
 export type RecommendationRequestDetailData = Readonly<{
+  historicalTrace?: import("../event-history/trace-reader").OperatorRecommendationTraceHistory
   id: string
   contractVersion: string
   surfaceVersion: string
@@ -496,6 +497,7 @@ export type DetailPersonalizationRow = Readonly<{
 }>
 
 export type DetailCandidateStageRow = Readonly<{
+  id: string
   stage: RecommendationRequestDetailData["candidateExecution"] extends infer T
     ? NonNullable<T> extends { stages: Array<infer S> }
       ? S extends { stage: infer U }
