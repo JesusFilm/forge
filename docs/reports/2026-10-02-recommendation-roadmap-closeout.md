@@ -19,6 +19,20 @@ Baseline: main `b01e0ddca`, including
 [2533](https://github.com/JesusFilm/forge/pull/2533) and
 [2537](https://github.com/JesusFilm/forge/pull/2537).
 
+## October 28 ordinary-cycle failure follow-up
+
+The [bounded failure report](2026-10-28-recommendation-retention-failures.md)
+records six genuine failures alongside 8,411 committed request roots and
+457,098 Watch deletions. All 26 health types had zero more-than-24-hour expiry
+at the dated snapshot; PGDATA free space was 6.961 GB. One proven admission gap
+allows a query after acquisition exhausts the cleanup budget. Its narrow repair
+does not explain the other five failures or the underlying delays.
+
+October 23 and October 27 acceptance is preserved. Feat-554's continued margin
+and feat-756's larger-wave obligations remain open, with the existing daily
+observer active. No manual cleanup or new production capacity change followed
+this bounded diagnosis. Local validation does not establish release recovery.
+
 ## October 27 current storage acceptance
 
 The [ordinary-cycle and capacity report](2026-10-27-recommendation-retention-cycle.md)
