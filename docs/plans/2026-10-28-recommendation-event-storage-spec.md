@@ -22,7 +22,7 @@ while serving continues. The owner correctly challenged the repeated Q8 as an
 implementation recommendation rather than a meaningful owner decision. Resolve
 the technical mechanism through engineering evidence instead of repeating a
 rubber-stamp question; no provider purchase approval is inferred from that reply.
-Exact table ownership, queue qualification and capacity, delivery guarantees,
+Exact table ownership, outbox capacity, delivery guarantees,
 physical retirement, infrastructure sizing and cost still need resolution.
 The owner subsequently requested `implement-spec` execution. Implement the
 accepted behavior and resolve engineering details in the task graph below.
@@ -100,9 +100,9 @@ glossary defines these without prescribing storage technology.
 9. Buffer outage horizon — accepted: 24 hours at measured peak traffic, subject
    to original event expiry. Actual peak input, space and catch-up requirements
    must be measured; acceptance of the target does not establish capacity.
-10. Exact infrastructure and budget — depends on queue and measured sizing.
+10. Exact infrastructure and budget — depends on measured outbox/sink sizing.
 
-- Establish queue ownership, capacity, access, latency and actual incremental
+- Establish sink ownership, outbox capacity, access, latency and actual incremental
   cost. A hosting preference does not authorize an unpriced purchase.
 
 11. Migration and rollback — detailed design depends on decisions 8–10.
@@ -136,44 +136,48 @@ The architectural trade-off is recorded in
 
 ## Infrastructure and handoff findings
 
-Core's checked production Terraform declares one ClickHouse Cloud replica with
-8 GiB memory in AWS `us-east-2`, always on. The documented Plausible target
-shares that service with the short-link `redirects` database using separate
-database users. This is configuration evidence; live capacity, access, contracted
-pricing and readiness for Forge are unverified. A separate database provides
-namespace/permission separation but does not establish independent compute or
-failure isolation.
+Core's production configuration demonstrates ClickHouse Cloud with a separate
+Cloudflare queue for short-link events; its configuration is evidence of a
+pattern, not Forge capacity or a required provider choice. Forge already requires
+a durable temporary PostgreSQL outbox and owns a PostgreSQL-backed worker.
 
-The focused Forge code/config search found no existing recommendation ClickHouse
-or Cloudflare Queue integration. Existing PostgreSQL transactions coordinate
-event admission, identity, sequence and downstream processing; crossing stores
-requires an explicit durable handoff. A bounded outbox is one candidate: it
-holds only unforwarded payloads until durable queue acceptance and is distinct
-from retained event history. Its byte/age caps, duplicate keys, acknowledgement
-semantics and behavior when full still need specification.
+Engineering decision, 28 October: use that bounded outbox as the durable queue
+and deliver directly to ClickHouse. This preserves the accepted waiting/retry
+behavior while removing a remote pending-payload erasure surface. The earlier
+managed-queue candidate was not an owner-selected vendor. Outbox payloads now
+remain until confirmed ClickHouse persistence, instead of an intermediate queue
+acknowledgement. They are temporary pending work, not a retained history copy.
 
-Cloudflare documents at-least-once queue delivery, a 25 GB backlog limit per
-queue, and paid-plan retention configurable up to 14 days. A queue is finite;
-neither an indefinite outage buffer nor exactly-once application effects can be
-assumed. An accepted event's original expiry still applies during replay.
-Queue acknowledgements must not claim that learning or analytics have caught up.
+This increases how often PostgreSQL carries backlog during sink outages. The
+accepted managed-queue design already required a 24-hour PostgreSQL buffer for
+queue outages; the direct path still has to prove that budget under live load.
+If it cannot, quantify additional capacity or an external buffer before purchase
+or cutover. A second external payload store is not part of this implementation.
 
-Current public prices are available, but a Forge quote has not been established:
-Cloudflare operations are billed per message and size, including retries;
-ClickHouse charges separately for compute and storage. Region, plan, steady
-traffic, catch-up capacity, compression, concurrency and existing contracts all
-affect the estimate. Do not treat the default-region price as a quote for Core's
-region or choose a spending cap without the owner.
+The fresh read-only 28 October 00:57 UTC snapshot found 7,357,292,544 bytes free
+on a 48,891,670,528-byte filesystem and 41,318,291,135 bytes of database
+allocation. Watch exposure occupied 8,582,479,872 bytes, including
+5,381,455,872 bytes of indexes. A bounded trailing-24-hour scan found 391,960
+Watch rows present, with a largest five-minute bucket of 4,303. That is one
+observed window, not the total in-scope peak or a future throughput guarantee.
+Encoded outbox size, allocated index/maintenance overhead, playback-fact/A-B
+arrival peaks and recovered throughput still need measurement.
 
-Sources checked 28 October 2026:
+ClickHouse plan, region, always-on capacity, compression, storage and existing
+contract determine the price. The dedicated service has not been provisioned.
+The work-account sign-in reaches new-account completion; organization access was
+requested from its owner. Public default-region prices are not a service quote.
 
-- [Core production configuration](https://github.com/JesusFilm/core/blob/d1bc3afa80ab9b2f224a07cf81adb9e8594b6071/infrastructure/environments/prod/main.tf)
-- [Core ClickHouse module](https://github.com/JesusFilm/core/blob/d1bc3afa80ab9b2f224a07cf81adb9e8594b6071/infrastructure/modules/clickhouse/service/main.tf)
-- [Core module defaults](https://github.com/JesusFilm/core/blob/d1bc3afa80ab9b2f224a07cf81adb9e8594b6071/infrastructure/modules/clickhouse/service/variables.tf)
-- [Cloudflare delivery guarantees](https://developers.cloudflare.com/queues/reference/delivery-guarantees/)
-- [Cloudflare limits](https://developers.cloudflare.com/queues/platform/limits/)
-- [Cloudflare pricing](https://developers.cloudflare.com/queues/platform/pricing/)
-- [ClickHouse pricing](https://clickhouse.com/pricing)
+## Confirmed implementation choice
+
+```text
+Authenticated event admission
+  -> transaction: compact operational state + bounded PostgreSQL outbox
+  -> existing worker: leased bounded delivery with retry
+  -> ClickHouse: confirmed persisted event history
+  -> idempotent canonical projections and reports
+  -> compact serving state
+```
 
 ## Second decision round — accepted and clarified 28 October 2026
 
@@ -181,7 +185,7 @@ Sources checked 28 October 2026:
    account to isolate compute, scaling and service incidents. Establish the
    actual priced configuration before provisioning.
 6. Accepted: a bounded temporary PostgreSQL forwarding outbox until a durable
-   queue confirms acceptance, with prompt deletion after acknowledgement and
+   sink confirms persistence, with prompt deletion after acknowledgement and
    explicit storage/age limits. No permanent duplicate event history. Exact
    atomicity and replay contracts remain engineering work.
 7. Accepted: backfill still-unexpired in-scope history in bounded batches,
@@ -200,161 +204,108 @@ Sources checked 28 October 2026:
    Q8 as lacking a meaningful decision; the technical recommendation below is
    for engineering qualification rather than another approval question.
 
-## Outage recovery design — proposed implementation of decision 8
+## Durable delivery and recovery
 
 ### Business behavior
 
-An eligible submitted event can be accepted while ClickHouse or the managed
-queue is unavailable if the admission transaction and pending-event store can
-commit. The viewer receives a bounded response after durable acceptance; the
-HTTP request does not remain open waiting for downstream recovery. Reports and
-learning may lag, while valid Recommendation Serving State remains usable.
+An eligible submitted event is accepted once operational admission and its
+pending outbox payload commit together. The HTTP response does not wait for
+ClickHouse. Valid recommendations continue serving within their existing
+privacy, expiry, eligibility and dependency constraints. Reports and learning
+show lag while the sink is unavailable. Failure to commit admission is a visible
+persistence failure, never a successful fallback acknowledgement.
 
-Pending delivery survives process restart. Automatic recovery is required;
-normal outage recovery must not depend on somebody pressing a retry button.
-Delayed reporting is explicit. Original expiry, erasure and privacy generation
-apply before every replay and before using derived state.
+The worker recovers after restart without manual intervention. A one-minute
+scheduled sweep reclaims expired leases and retries due rows with increasing
+delay and jitter. Each page, statement, request, batch and concurrency setting
+has a bound. No network request occurs inside the admission transaction. Large
+event bodies stay out of workflow arguments/logs.
 
-### Proposed flow
+### Handoff and replay
 
-1. Validate the event, its authority and replay identity. Commit required
-   operational state and a Pending Recommendation Event together in PostgreSQL.
-2. A worker leases bounded pages of due outbox rows and publishes them to a
-   durable managed queue. Remove the payload only after confirmed acceptance
-   under the selected queue's documented durability and retention contract.
-3. A queue consumer batches events into ClickHouse. Acknowledge messages after
-   confirmed persistence. An ambiguous response may cause replay of the same
-   event ID; canonical readers and processors must apply each logical event
-   once, including revision/correction semantics.
-4. Incremental jobs derive profile/co-watch state and analytics from accepted
-   history. Serve compact valid results through the existing backend.
-5. A recurring recovery sweep finds due outbox entries and expired worker leases
-   independently of a successful enqueue notification. Proposed sweep cadence:
-   one minute, with bounded concurrency and increasing retry delays with jitter.
-   Transient outages remain retryable; malformed/conflicting events require a
-   visible bounded quarantine and repair path rather than an infinite hot loop.
+1. The producer validates the family-specific schema and redaction, immutable
+   identity, authority, original timestamps/expiry and revision. Commit its
+   compact operational state and envelope in one PostgreSQL transaction.
+2. Lease a bounded due page, commit the lease transaction, then deliver through
+   authenticated ClickHouse HTTP with a hard deadline. Use synchronous insert,
+   or asynchronous insert with acknowledgement only after durable flush.
+3. Remove only payloads whose sink persistence was confirmed, fenced by the
+   current lease token. A timeout or ambiguous response retains pending work.
+   Stable identity/revision plus canonical reads prevent duplicate effects.
+4. Acknowledge each projection/report stage separately. Sink persistence does
+   not prove learning or an A/B report has caught up.
+5. On expiry or erasure, remove pending payload under its own legitimate
+   disposition. A quarantined/corrupt event remains a visible failure requiring
+   repair. There is no finite retry count that silently discards valid events.
 
-The existing Admin worker and PostgreSQL-backed workflow runtime can host the
-relay and recovery sweep; the current profile reconciliation scheduler provides
-a local example. Its existing five-minute cadence is not itself the proposed
-one-minute relay cadence. Large payloads must live in the bounded outbox, not be
-duplicated indefinitely in workflow logs or arguments.
+The 24-hour target is outage tolerance, not an event TTL or a discard deadline.
+Original expiry always wins. If finite capacity is exhausted, stop admission
+with a bounded explicit persistence error and alert; keep independent serving
+paths available. Never consume reserved serving space to hide event loss.
 
-| Failure                                          | Durable owner and proposed recovery                                                                          |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| ClickHouse unavailable                           | Managed queue retains pending messages; consumer retries with backoff.                                       |
-| Managed queue unavailable                        | PostgreSQL outbox retains events; relay and recovery sweep retry.                                            |
-| Worker crashes before sending                    | Expired lease makes the same outbox entry eligible again.                                                    |
-| Queue/ClickHouse committed but response was lost | Replay the stable identity; avoid duplicate learning or reporting effects.                                   |
-| All eligible durable stores cannot accept        | Cannot confirm durable acceptance. Exact overflow policy remains open; foreground retries must stay bounded. |
+### Canonical history and complete-through evidence
 
-No architecture provides unlimited waiting with finite disk or memory. Age/byte
-alerts must precede exhaustion and explicit rate admission must protect serving
-headroom. An expired or erased payload must not be resurrected merely to empty
-a queue. Losing an unexpired event due to retry exhaustion or queue retention
-is a measurement/delivery failure, not successful processing.
+Use stable `(family, logicalId, revision)` and an immutable envelope digest.
+Canonical reads select a consistent revision before filtering deletion/expiry;
+ClickHouse background replacement or TTL timing is not the correctness boundary.
+Corrections retain their original identity/partition/expiry. Logical duplicate
+and conflict semantics must survive regrouped retry batches and backfill.
 
-### Redis option and current evidence
+A plain allocated sequence does not establish commit order or a safe global
+watermark. For readers needing a complete snapshot, use a transactional stream
+cursor with compact terminal markers, or prove an equivalent bounded barrier.
+Only confirmed persistence establishes delivered history. Expired/erased
+terminal dispositions remain distinct, and quarantined gaps prevent a false
+complete-through claim. Playback finalization must have every admitted fact
+through its episode watermark; final A/B reports require the source cutoff to
+be complete. Oldest-pending age alone must not be labeled complete-through.
 
-Redis with BullMQ can provide scheduled retries and exponential backoff, but
-its persistence and no-eviction policy must be configured and verified. The
-current Admin package uses `ioredis` and PostgreSQL-backed `workflow`; BullMQ is
-not an installed dependency. The shared Redis client disables its in-process
-offline queue and allows one retry per command. These client settings do not
-establish the server's persistence, replica durability, eviction or spare memory.
-No live Redis persistence inventory was obtained in this investigation.
+### Privacy and expiry
 
-BullMQ's production guidance requires persistence and `noeviction`. Redis AOF
-with once-per-second synchronization can still lose recent acknowledged writes
-on a crash. A Redis queue would therefore need an explicitly accepted durability
-contract or retained upstream replay evidence; it cannot silently replace the
-durable acceptance promise with an ordinary cache write.
+Pending payloads are locally removable in the same privacy-control transaction.
+Before starting remote delivery, recheck the applicable generation/erasure fence.
+A worker may already have copied a payload or begun an insert when erasure wins;
+track bounded in-flight work and reconcile remote deletion after possible late
+completion. Serving, projection and authorized history reads immediately apply
+current privacy controls while physical cleanup is confirmed separately.
 
-Engineering recommendation: use the approved PostgreSQL outbox plus Cloudflare
-Queues as the first managed-queue candidate, with relay/recovery in the existing
-worker. Redis is an alternative queue implementation to price and qualify if
-needed, not an additional third fallback store by default. Actual regional
-availability, queue capacity, retention, erasure behavior and network access
-remain required implementation checks.
-
-Sources checked 28 October 2026:
-
-- `apps/admin/src/infra/redis.ts`
-- `apps/admin/src/workflows/recommendationProfileReconciliation.ts`
-- `apps/admin/src/services/recommendations/profiles/reconciliation.job.ts`
-- `apps/admin/package.json`
-- [BullMQ production guidance](https://docs.bullmq.io/guide/going-to-production)
-- [BullMQ retry behavior](https://docs.bullmq.io/guide/retrying-failing-jobs)
-- [Redis persistence choices](https://redis.io/docs/latest/operate/rs/databases/configure/database-persistence/)
-
-## Engineering qualification following decisions 8 and 9
-
-Do not ask the owner to reapprove the outbox/queue/worker diagram. Establish
-feasibility and price, then surface only material choices with concrete
-consequences. The 24-hour target does not authorize unlimited PostgreSQL growth.
+TTL and PostgreSQL DELETE do not prove immediate physical removal from storage
+or backups. Preserve existing obligations and classify delayed/failed erasure
+truthfully. A later replay cannot recreate erased data or extend original expiry.
 
 ### Capacity and catch-up calculation
 
-For each event family, measure an admitted peak arrival rate `lambda` in
-events/second and encoded event size distribution. Measure allocated bytes per
-outbox event with its actual indexes separately from queue message bytes.
-Include sustained bursts and event revisions; A/B visit counts are not a proxy
-for total event throughput.
-
-For a conservative constant-rate sizing envelope, without taking credit for
-expiry during the outage:
+Measure admitted peak arrival rate by family, encoded event bytes and allocated
+outbox bytes with its actual indexes. Include revisions and sustained bursts;
+A/B visit counts are not a substitute for total event throughput.
 
 ```text
 T = 86,400 seconds
-pending events = lambda * T
-required outbox bytes = pending events * measured outbox bytes/event * margin
-required queue bytes = pending events * measured queue bytes/event * margin
+pending events = peak admitted events/second * T
+outbox bytes = sum(per-family pending events * allocated bytes/event) * margin
 catch-up seconds = pending events / (recovery events/second - live events/second)
 ```
 
-Use per-family sums for mixed payload sizes. Record the selected safety margin
-and its measured burst basis. The catch-up equation only has a finite positive
-result when recovery throughput exceeds ongoing input; qualify that throughput
-under serving and database resource limits. Add WAL, vacuum/bloat, lease/retry
-updates and non-event growth reserves to the PostgreSQL disk budget. The dated
-7.48 GB free-space observation is not a validated outbox allocation.
+Choose a measured burst margin, and reserve WAL, vacuum/bloat, retry updates and
+non-event growth separately. Catch-up needs recovery throughput greater than
+ongoing input while serving remains healthy. The 7.36 GB free-space observation
+is not an outbox allocation. Configure hard byte/event caps plus early age/space
+alerts; prove capacity and catch-up before enabling the migrated production path.
 
-Qualify each failure domain separately: queue unavailability puts the backlog
-in PostgreSQL; ClickHouse unavailability puts it in the queue. Queue retention
-must cover outage plus catch-up and operational margin, subject to application
-expiry. A 24-hour queue TTL alone cannot demonstrate recovery from a 24-hour
-outage. If measured capacity cannot meet the target, present the actual
-capacity/cost alternatives before provisioning or cutover.
+### Engineering evidence and decisions still needed
 
-### Delivery qualification
+Qualify exact family codecs/readers, current-revision conflicts, snapshot
+barriers, admission/lease contention, physical outbox allocation, sustained
+recovery and the priced dedicated service. Present only concrete spending or
+product trade-offs to the owner. Queue selection and retry mechanics are routine
+engineering choices under the implementation authorization.
 
-Cloudflare supports HTTP pull consumers from existing infrastructure; a
-Railway worker can therefore consume the queue without introducing a new
-Cloudflare-hosted application. Producer HTTP support, scoped credentials and
-the full acknowledgement path must also be validated. Cloudflare documents
-permanent deletion after retry exhaustion when no dead-letter queue exists.
-Consequently default retries alone do not satisfy the accepted outage behavior.
+Sources:
 
-Use a durable dead-letter destination and monitored bounded recovery, and avoid
-burning message retries during a known downstream outage. Verify primary and
-dead-letter retention, retry limits, poison-event isolation and replay before
-claiming the 24-hour target. Events remain pending until confirmed ClickHouse
-persistence or a legitimate expiry/erasure disposition. Lost accepted events
-are failures, not a completed delivery. A dead-letter queue alone does not
-establish automatic recovery or indefinite storage.
-
-Sources checked 28 October 2026:
-
-- [Cloudflare HTTP pull consumers](https://developers.cloudflare.com/queues/configuration/pull-consumers/)
-- [Cloudflare dead-letter queues](https://developers.cloudflare.com/queues/configuration/dead-letter-queues/)
-- [Cloudflare queue limits](https://developers.cloudflare.com/queues/platform/limits/)
-
-### Remaining owner decision frontier
-
-No repeat of Q8 or Q9 is needed. Obtain measured sizing, a priced configuration
-and migration alternatives before asking about spending, storage exhaustion
-trade-offs or rollout timing. Exact contracts, inventory and validation are
-engineering work and should not become a list of rubber-stamp questions.
+- [PostgreSQL queue-like skip-locked reads](https://www.postgresql.org/docs/18/sql-select.html)
+- [PostgreSQL transaction and sequence behavior](https://www.postgresql.org/docs/18/transaction-iso.html)
+- [ClickHouse asynchronous inserts](https://clickhouse.com/docs/optimize/asynchronous-inserts)
+- [ClickHouse pricing](https://clickhouse.com/pricing/)
 
 ## Constraints carried forward
 
@@ -380,7 +331,7 @@ required child and actual release verification is complete.
 | Ticket   | Work                                                           | Depends on                             |
 | -------- | -------------------------------------------------------------- | -------------------------------------- |
 | feat-889 | Event envelope and bounded transactional outbox                | —                                      |
-| feat-890 | ClickHouse schema and qualified HTTP transport                 | feat-889                               |
+| feat-890 | ClickHouse schema and confirmed HTTP persistence               | feat-889                               |
 | feat-891 | Worker relay, recovery, health and capacity controls           | feat-889, feat-890                     |
 | feat-892 | Anonymous Watch history with compact admission state           | feat-889, feat-890                     |
 | feat-893 | Recommendation/playback history and serving projections        | feat-889, feat-890                     |
@@ -436,9 +387,9 @@ renaming a permanent history copy does not meet the storage goal.
   partial asynchronous history. Immediate session exclusions stay synchronous.
 - Cross-store fixed-as-of parity covers both active A/B arms and source-neutral
   playback. Preserve sticky assignments and immutable published reports.
-- Outbox/queue/ClickHouse retention and erasure, including queued payloads, pass
+- Outbox/ClickHouse retention and erasure, including pending payloads, pass
   privacy qualification. A provider TTL or merge process alone is insufficient.
-- Measured peak input, allocated outbox overhead, queue bytes, resource budgets
+- Measured peak input, allocated outbox overhead, sink capacity, resource budgets
   and catch-up throughput demonstrate the 24-hour target with earlier alerts.
 - Reviewed green integration PR, normal PR-to-main deployment, actual HTTP and
   worker revision verification, then bounded release observations.
@@ -446,6 +397,6 @@ renaming a permanent history copy does not meet the storage goal.
   physical filesystem headroom and total system cost separately. Preserve the
   daily retention observer and open capacity obligations until their own proof.
 
-Infrastructure prices, live capacity and selective queued-payload erasure remain
+Infrastructure prices, full event capacity and cross-store erasure remain
 qualification work. They are not grounds to claim the migration is deployed or
 to bypass the normal release path.

@@ -13,7 +13,7 @@ tags: ["recommendations", "storage", "clickhouse", "admin"]
 
 ## Scope and acceptance
 
-Own new event-history worker/runtime/health modules, workflow scheduler integration, validated environment settings and isolated worker tests. Relay bounded outbox batches, remove forwarded payload only after qualified queue acceptance, consume into ClickHouse and ack only confirmed rows. Recover expired leases with a one-minute sweep; retry with bounded concurrency/backoff, visible quarantine and DLQ recovery. Keep accepted events pending during outages without hot loops or default retry exhaustion loss. Expose pending count/bytes/oldest age, delivery/failure/watermark and complete-through status with no payload logging. Protect serving headroom. Settings default disabled until the full path is qualified. Enforce 24-hour sizing through measured limits rather than assumed capacity. Preserve existing workflow runner roles and build/recovery checks.
+Own new event-history worker/runtime/health modules, workflow scheduler integration, validated environment settings and isolated worker tests. Deliver bounded outbox batches directly into ClickHouse and remove only sink-confirmed payloads. Recover expired leases with a one-minute sweep; retry with bounded concurrency/backoff, visible quarantine and recovery. Keep accepted events pending during outages without hot loops or finite retry exhaustion loss. Expose pending count/bytes/oldest age, delivery/failure/watermark and complete-through status with no payload logging. Protect serving headroom. Settings default disabled until the full path is qualified. Enforce 24-hour sizing through measured limits rather than assumed capacity. Preserve existing workflow runner roles and build/recovery checks.
 
 ## Context
 
