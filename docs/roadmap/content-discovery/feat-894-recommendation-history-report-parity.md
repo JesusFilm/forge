@@ -38,6 +38,10 @@ caps, and strict output decoding. The dated production snapshot's 391,960
 Watch rows/day implies about 5.5 million rows in 14 days before corrections.
 The local fixture does not qualify the 3-second query budget at that scale;
 14-day production latency and memory remain an explicit feat-896 release gate.
+Pre-cutover legacy duplicate corrections are backfilled with checkpoint
+acceptance time because their original correction admission time is unavailable;
+historical `asOf` reports before that checkpoint cannot reconstruct those
+corrections exactly.
 
 `admin-ops/watch-exposure.service.ts` maps this query to the existing anonymous
 breakdown fields and returns `coverage: best_effort_incomplete`; V1 served stays
