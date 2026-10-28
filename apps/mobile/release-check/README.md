@@ -51,6 +51,10 @@ Mac, and it never restarts the adb server or CoreSimulatorService.
 
 ## Run a release check
 
+Run the check on the commit that the mobile owner names for the release
+(`git checkout <sha>`), with no uncommitted changes in the app. The runner
+tests the current commit.
+
 The easy way is the repo Claude command `/release-check`. It shows the consent
 text, asks for a yes, starts the run, waits until the run ends (for 7 hours at
 most), and summarizes `summary.json`. It also has `status`, `stop`, `recover`,
@@ -118,8 +122,9 @@ devices, binds local ports, and writes under
    a Datadog token, a listed Mux Data key, the production update channel, or a
    missing Firebase off setting, or when the server address is missing. The
    Mux Data key check finds nothing while `muxDataEnvKeyDigests` in
-   `config/test-settings.json` is empty. The mobile owner adds the digest of
-   each production key before the first full release run.
+   `config/test-settings.json` is empty. It is empty because production sets
+   no Mux Data key (`check-settings`, 2026-10-27). When production sets a key,
+   the mobile owner adds its digest.
 5. **Probe and journeys.** The settings probe runs first on each device, and a
    failed probe stops the run. Then each journey runs on every device of each
    platform that shows its screens, from cleared app data. A failed journey
@@ -238,8 +243,10 @@ Claude command `/release-check journey <journey id>` follows these steps:
    checks each result against production, so the local admin must hold
    production-like data. The mobile owner changes the other lists.
 5. Commit the journey and its list changes. Then run a partial check of the
-   journey on all five devices (`run --journey <journey id>`). Each new commit
-   needs a new build, about 45 minutes for each platform.
+   journey on all five devices: `/release-check run <journey id>` in Claude
+   Code, or add `--journey <journey id>` to the run command that `plan`
+   prints. Each new commit needs a new build, about 45 minutes for each
+   platform.
 6. Open a pull request with the partial check's result. The mobile owner
    reviews and merges it.
 
@@ -251,9 +258,13 @@ Before you write a journey, read
 It names the Maestro traps that cost failed tries, for example text that must
 match in full, iOS 26 taps outside a sheet, and the iPad sheet edge.
 
-Each journey follows these rules. `check-lists` checks most of them, and `run`,
-`record-search`, and `session try` refuse a journey file that breaks one of
-those checks:
+Each journey follows these rules. `check-lists` checks the safety rules: the
+`launchApp` permissions and `clearState`, `openLink` links, `runScript` and
+`evalScript`, `${...}`, a backslash after a double quote, and `runFlow` files.
+`run`, `record-search`, and `session try` refuse a journey file that breaks
+one of them. No check enforces the other rules, for example step labels,
+web-page controls, and the `search` tag, so the pull request review checks
+them. The rules:
 
 - Give every step a `label`. A Known-Bug entry matches the label, not the step
   number.
