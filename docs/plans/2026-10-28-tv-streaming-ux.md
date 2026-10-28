@@ -125,3 +125,51 @@ this TV ticket is now feat-889. Historical runtime and performance evidence is
 retained. The Android performance gate remains open pending targeted verification
 of the affected detail-loading path; no passing result is inferred from noisy
 development-launcher startup samples.
+
+### Targeted Android detail-load follow-up
+
+The same Android 14 ARM64 emulator and installed native client ran three
+alternating baseline/candidate pairs through the actual Hermes/Apollo path. Each
+read used `GetVideoBySlug`, `locale: en`, `slug: jesus`, `fetchPolicy: no-cache`,
+and returned 2,309 dubs. Each payload was normalized ten times from distinct raw
+objects, outside the WeakMap cache. Runtime-only CDP probes restored the fetch
+wrapper after each measurement; application source was unchanged.
+
+| Measurement                                | Baseline                          | Candidate                         |
+| ------------------------------------------ | --------------------------------- | --------------------------------- |
+| Query durations                            | 1,189.68 / 1,932.51 / 1,597.39 ms | 1,259.66 / 1,301.23 / 2,981.25 ms |
+| Fresh normalization median (30 per source) | 5.390 ms                          | 6.104 ms                          |
+| Consumer requests per query                | 1 / 1 / 1                         | 1 / 1 / 1                         |
+| Full decoded response                      | 1,247,888 bytes                   | 1,428,023 bytes                   |
+| Full response, local gzip                  | 273,632 bytes                     | 276,560 bytes                     |
+
+The added median normalization work is 0.715 ms. The slow third candidate query
+spent 2,954.70 ms in transport; the remaining query work was 26.55 ms versus
+25.23 ms for its paired baseline. There was no repeated query slowdown above
+the predeclared max(10%, 200 ms) threshold. The full Apollo query adds 2,928
+compressed bytes (1.070%); its `__typename` fields differ from the earlier
+minimal payload experiment. The exploratory under-1% payload expectation was
+**not met** by 0.070 percentage points and is not relabeled passed. Canonical
+edition identity is required for the warning; no data is removed to fit that
+exploratory expectation.
+
+The primary agent and independent GPT-6.1 Sol coordinator consider this
+satisfactory bounded evidence for the changed data path with a known payload
+cost. It does not prove whole-startup equivalence or change the original
+inconclusive startup result. The historical harness remains unpassed; no
+checkpoint was edited to hide that result. Source/current-main TV files match
+the earlier baseline and native-code build evidence remains applicable.
+
+Raw plans, probes, all samples, and exact byte counts are retained beneath the
+original harness `android-runtime/detail-perf-20261029/` directory.
+
+### Publication checks
+
+The branch was synchronized with `origin/main` at `23ac5d040`. TV typecheck,
+ESLint with zero warnings, and all 192 Jest suites / 2,425 tests passed again.
+Generated local Codex chat exports are excluded from formatting while their
+contents are preserved. The shell account lacks repository write access; the
+connected GitHub account has maintain/push access. PR #2954 was created through
+that connection and its fetched tree was verified byte-identical to local
+`65b1b0a637bc57a782683076049782fb55563aaf`. GitHub CI and the merge decision
+remain separate from the historical startup/performance limitation.

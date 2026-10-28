@@ -75,3 +75,13 @@ journeys pass. The English screenshot checklist is ready. Keep this ticket
 and positive/negative deltas retained in the plan and harness evidence. Do not
 turn this limitation into a passing performance claim. The combined Chromecast
 APK is prepared; the owner explicitly chose to leave installation for later.
+
+## Publication review — 2026-10-29
+
+PR #2954 contains the integrated changes. Refreshed TV static checks and all
+2,425 tests pass. Targeted Android detail-path measurements show 0.715 ms added
+median normalization work, one request per query, and 2,928 extra gzip bytes
+(1.070%). The approximate under-1% payload expectation was not met; the earlier
+whole-startup measurement remains inconclusive. Keep the historical performance
+gate and this ticket open until the limitation is explicitly accepted for merge
+or reproducible startup evidence resolves it. See the plan for all measurements.
