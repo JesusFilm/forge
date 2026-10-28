@@ -31,20 +31,19 @@ name: bible-verse-select
       id: screen-reader
     timeout: 20000
     label: The pushed reader shows
-# The first open plays a swipe demonstration over the verse. A tap skips it.
+# The first open plays a swipe demonstration over the verse. A tap that skips
+# it can land as the demonstration ends and select the verse, so this journey
+# waits for the end. The other Bible journeys check the skip tap.
 - extendedWaitUntil:
     visible:
       id: bible-swipe-demo
     timeout: 15000
     label: The swipe demonstration shows
-- tapOn:
-    id: bible-swipe-demo
-    label: Skip the swipe demonstration
 - extendedWaitUntil:
     notVisible:
       id: bible-swipe-demo
-    timeout: 10000
-    label: The swipe demonstration closes
+    timeout: 20000
+    label: The swipe demonstration ends
 - assertVisible:
     text: Verse 2 of 2
     label: The counter shows the last verse

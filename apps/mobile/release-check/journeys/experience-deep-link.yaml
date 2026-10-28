@@ -143,8 +143,13 @@ name: experience-deep-link
                 direction: LEFT
                 label: Swipe the quotes to the next card
           label: Swipe the quotes to the partner card
-      - assertVisible:
-          text: Join Our Bible Study
+      # On a tablet the card is taller than the screen, so the link can sit
+      # below the screen's bottom edge.
+      - scrollUntilVisible:
+          element:
+            text: Join Our Bible Study
+          direction: DOWN
+          timeout: 15000
           label: The Bible study partner link shows
     label: Check the Bible study partner link on Android
 # The quiz page is a third-party web page, so the journey never opens it.

@@ -147,19 +147,37 @@ name: more-and-feedback
       id: player-first-frame
     timeout: 60000
     label: The video plays
-# The controls hide 3 seconds after a tap while the video plays, and the
-# pause button sits at the player's center. So the journey waits until the
-# controls hide, then taps the center twice: once to show them, once to pause.
-- extendedWaitUntil:
-    notVisible:
-      text: Pause
-    timeout: 10000
-    label: The player controls hide
-- tapOn:
-    text: Toggle player controls
-    repeat: 2
-    delay: 1000
-    label: Show the controls and pause the video
+# The pause button sits at the player's center. A tap there shows the
+# controls when they hide and pauses when they show, and they hide 3 seconds
+# after a tap. So each pass waits for them to hide, then taps twice.
+- repeat:
+    while:
+      notVisible:
+        text: Play
+    times: 3
+    commands:
+      - repeat:
+          while:
+            visible:
+              text: Pause
+          times: 8
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: player-controls-never-shown
+                timeout: 1000
+                optional: true
+                label: Wait a moment for the controls to hide
+          label: Wait until the controls hide
+      - tapOn:
+          text: Toggle player controls
+          repeat: 2
+          delay: 1000
+          label: Show the controls and pause the video
+    label: Pause the video
+- assertVisible:
+    text: Play
+    label: The video pauses
 - tapOn:
     text: Video settings
     label: Open the player settings
