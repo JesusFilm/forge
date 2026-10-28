@@ -8,7 +8,8 @@ start_date: "2026-10-28"
 duration: 1
 depends_on:
   - "feat-798"
-blocks: []
+blocks:
+  - "feat-901"
 tags:
   - "mobile"
   - "infrastructure"

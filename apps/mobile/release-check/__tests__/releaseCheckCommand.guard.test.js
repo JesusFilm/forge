@@ -22,6 +22,10 @@ const COMMAND_FILE = path.join(
   ".claude/commands/release-check.md",
 )
 const COMMAND = fs.readFileSync(COMMAND_FILE, "utf8")
+const QA_COMMAND = fs.readFileSync(
+  path.join(RELEASE_CHECK_DIR, "../../..", ".claude/commands/qa-runner.md"),
+  "utf8",
+)
 const SCHEMA = readJson(
   path.join(RELEASE_CHECK_DIR, "schema", "summary.schema.json"),
 )
@@ -497,5 +501,30 @@ describe("the /release-check wait loop", () => {
     expect(waitExit(output, RUN_ID, hours(7) + 60)).toBe(0)
     expect(waitExit("", RUN_ID, hours(6.9))).toBe(1)
     expect(waitExit("", RUN_ID, hours(7) + 60)).toBe(0)
+  })
+})
+
+// `/qa-runner` asks for a journey's brief, then hands over to step 7 of
+// `/release-check`. The two files name each other's steps by number.
+describe("the /qa-runner command", () => {
+  it("names only runner modes and flags", () => {
+    expect(unknownModeForms(QA_COMMAND)).toEqual([])
+    expect(unknownFlags(QA_COMMAND)).toEqual([])
+  })
+
+  it("hands over to the Journey step that /release-check still has as step 7", () => {
+    expect(QA_COMMAND).toContain('follows step 7 ("Journey")')
+    expect(COMMAND).toMatch(/^7\. \*\*Journey\*\* \(`journey <journey id>`\)/m)
+  })
+
+  it("keeps the brief at its step 3, which /release-check step 7.1 names", () => {
+    expect(COMMAND).toContain("step 3 of `.claude/commands/qa-runner.md`")
+    expect(QA_COMMAND).toMatch(/^3\. Get the journey's brief:/m)
+  })
+
+  it("covers only the mobile release check, not the web or TV app", () => {
+    expect(QA_COMMAND).toContain("`apps/mobile/release-check/`")
+    expect(QA_COMMAND).toContain("It does not cover the web app (`apps/web`")
+    expect(QA_COMMAND).toContain("the TV app (`apps/tv`)")
   })
 })
