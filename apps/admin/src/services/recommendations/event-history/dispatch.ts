@@ -19,6 +19,15 @@ export type DispatchFailureReason =
   | "conflict"
   | "unknown"
 
+type ExperimentArm = "control" | "challenger"
+type ExperimentArmCounts = {
+  attempted: number
+  confirmed: number
+  failed: number
+  unknownOutcome: number
+  dropped: number
+}
+
 export type DispatchSnapshot = Readonly<{
   window: "process_lifetime"
   windowStartedAt: string
@@ -44,6 +53,9 @@ export type DispatchSnapshot = Readonly<{
       { attempted: number; confirmed: number; failed: number; dropped: number }
     >
   >
+  // Only validated assignment/visit envelopes with a known arm are attributed.
+  // Preparation/configuration drops and process-crash losses lack this coverage.
+  byExperimentArm: Record<ExperimentArm, ExperimentArmCounts>
 }>
 
 type Options = {
@@ -108,6 +120,22 @@ export function createRecommendationEventDispatcher(options: Options) {
       { attempted: number; confirmed: number; failed: number; dropped: number }
     >
   > = {}
+  const experimentArms: Record<ExperimentArm, ExperimentArmCounts> = {
+    control: {
+      attempted: 0,
+      confirmed: 0,
+      failed: 0,
+      unknownOutcome: 0,
+      dropped: 0,
+    },
+    challenger: {
+      attempted: 0,
+      confirmed: 0,
+      failed: 0,
+      unknownOutcome: 0,
+      dropped: 0,
+    },
+  }
   const pending = new Set<Promise<void>>()
   let closed = false
   const family = (name: RecommendationEventFamily) =>
@@ -138,6 +166,10 @@ export function createRecommendationEventDispatcher(options: Options) {
       byFamily: Object.fromEntries(
         Object.entries(families).map(([key, value]) => [key, { ...value }]),
       ),
+      byExperimentArm: {
+        control: { ...experimentArms.control },
+        challenger: { ...experimentArms.challenger },
+      },
     }
   }
 
@@ -174,6 +206,14 @@ export function createRecommendationEventDispatcher(options: Options) {
       return
     }
     let bytes = 0
+    const armCounts: Record<ExperimentArm, number> = {
+      control: 0,
+      challenger: 0,
+    }
+    const recordArms = (metric: keyof ExperimentArmCounts) => {
+      experimentArms.control[metric] += armCounts.control
+      experimentArms.challenger[metric] += armCounts.challenger
+    }
     try {
       if (count < 1 || count > 100)
         throw new RecommendationClickHouseError("invalid_input")
@@ -182,6 +222,13 @@ export function createRecommendationEventDispatcher(options: Options) {
         const valid = parseRecommendationEventEnvelope(json)
         if (Date.parse(valid.expiresAt) <= now())
           throw new RecommendationClickHouseError("invalid_input")
+        if (
+          (valid.family === "experiment-visit" ||
+            valid.family === "experiment-assignment") &&
+          (valid.payload.arm === "control" ||
+            valid.payload.arm === "challenger")
+        )
+          armCounts[valid.payload.arm]++
         bytes += Buffer.byteLength(json)
       }
       if (bytes > 1_048_576)
@@ -194,6 +241,7 @@ export function createRecommendationEventDispatcher(options: Options) {
     if (pending.size >= maxRequests || inFlightBytes + bytes > maxBytes) {
       capacityDroppedEvents += count
       for (const event of events) family(event.family).dropped++
+      recordArms("dropped")
       safelyObserve()
       return
     }
@@ -201,6 +249,7 @@ export function createRecommendationEventDispatcher(options: Options) {
     inFlightEvents += count
     inFlightBytes += bytes
     for (const event of events) family(event.family).attempted++
+    recordArms("attempted")
     const began = now()
     // Promise.resolve().then would defer the network start; call insert now.
     let started: Promise<void>
@@ -214,11 +263,15 @@ export function createRecommendationEventDispatcher(options: Options) {
         () => {
           confirmedEvents += count
           for (const event of events) family(event.family).confirmed++
+          recordArms("confirmed")
         },
         (error: unknown) => {
           const code = reason(error)
           failedEvents[code] += count
           for (const event of events) family(event.family).failed++
+          recordArms("failed")
+          if (code === "timeout" || code === "transport" || code === "unknown")
+            recordArms("unknownOutcome")
         },
       )
       .then(() => {
