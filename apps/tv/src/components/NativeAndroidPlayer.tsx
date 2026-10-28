@@ -28,6 +28,7 @@ import {
 import { formatCitationReference } from "./watch/detailsAdapters"
 import { deriveSubtitlePanelState } from "./watch/panelState"
 import { nativeAndroidSessionOwnsPlayback } from "./watch/nativeAndroidSession"
+import { audioSwitchConfirmation } from "./watch/dubEditionSwitch"
 import { useFeedbackQr } from "./feedback/useFeedbackQr"
 
 type NativeViewComponent = React.ComponentType<NativeAndroidPlayerViewProps>
@@ -189,9 +190,17 @@ export function NativeAndroidPlayer({
             url: validateStreamingUrl(variant.hls) ? variant.hls! : "",
             disabled: !validateStreamingUrl(variant.hls),
             searchText: `${variant.languageSlug ?? ""} ${variant.languageBcp47 ?? ""}`,
+            confirmationMessage: audioSwitchConfirmation(
+              { editionId: session.activeVariant?.editionId },
+              variant,
+            ),
           })) ?? [])
         : [],
-    [sessionOwnsPlayback, session.video?.variants],
+    [
+      sessionOwnsPlayback,
+      session.video?.variants,
+      session.activeVariant?.editionId,
+    ],
   )
   const subtitleState = deriveSubtitlePanelState(
     session.activeVariantMediaState,

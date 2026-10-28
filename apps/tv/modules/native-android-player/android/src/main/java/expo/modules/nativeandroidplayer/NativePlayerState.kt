@@ -89,8 +89,25 @@ internal data class NativeChoiceRow(
   val detail: String = "",
   val disabled: Boolean = false,
   val pinned: Boolean = false,
-  val searchText: String = ""
+  val searchText: String = "",
+  val confirmationMessage: String? = null
 )
+
+/** A pending choice is never committed until it is explicitly accepted. */
+internal class NativeChoiceConfirmation {
+  private var pendingId: String? = null
+
+  fun request(id: String, message: String?): String? {
+    pendingId = if (message.isNullOrBlank()) null else id
+    return if (pendingId == null) id else null
+  }
+
+  fun resolve(accepted: Boolean): String? {
+    val id = pendingId
+    pendingId = null
+    return if (accepted) id else null
+  }
+}
 
 internal fun filterNativeChoices(rows: List<NativeChoiceRow>, query: String): List<NativeChoiceRow> {
   val term = query.trim().lowercase(Locale.ROOT)

@@ -9,6 +9,7 @@ private struct NativeListRow {
   let detail: String?
   let selected: Bool
   let selectable: Bool
+  var confirmationMessage: String? = nil
 }
 
 private final class NativeOptionsNavigationController: UINavigationController {
@@ -28,6 +29,7 @@ private final class NativeOptionsController: UITableViewController, UISearchResu
   private let selectedId: String?
   private let onSelect: (String) -> Void
   private var visibleRows: [NativeListRow]
+  private var confirmation = NativeChoiceConfirmation()
 
   init(
     title: String,
@@ -117,7 +119,33 @@ private final class NativeOptionsController: UITableViewController, UISearchResu
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     let row = visibleRows[indexPath.row]
     guard row.selectable else { return }
-    onSelect(row.id)
+    if let id = confirmation.request(id: row.id, message: row.confirmationMessage) {
+      commitChoice(id)
+      return
+    }
+    let alert = UIAlertController(
+      title: "Switch audio language?",
+      message: row.confirmationMessage,
+      preferredStyle: .alert
+    )
+    let cancel = UIAlertAction(title: "Cancel", style: .cancel) { [weak self] _ in
+      _ = self?.confirmation.resolve(accepted: false)
+    }
+    alert.addAction(cancel)
+    alert.addAction(UIAlertAction(title: "Continue", style: .default) { [weak self, weak alert] _ in
+      guard let self,
+            let id = self.confirmation.resolve(accepted: true),
+            self.viewIfLoaded?.window != nil else { return }
+      // Dismiss the confirmation first, so the following dismissal closes the
+      // option list rather than only its presented alert.
+      alert?.dismiss(animated: true) { [weak self] in self?.commitChoice(id) }
+    })
+    alert.preferredAction = cancel
+    present(alert, animated: true)
+  }
+
+  private func commitChoice(_ id: String) {
+    onSelect(id)
     dismiss(animated: true)
   }
 
@@ -137,6 +165,7 @@ private final class NativeOptionsController: UITableViewController, UISearchResu
 
   override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
     if presses.contains(where: { $0.type == .menu }) {
+      _ = confirmation.resolve(accepted: false)
       dismiss(animated: true)
       return
     }
@@ -1132,6 +1161,8 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
   }
 
   private func presentLanguages() {
+    let expectedAudioId = selectedAudioId
+    let expectedSource = sourceUrl
     let sortedOptions = audioOptions.sorted { left, right in
       let byLabel = left.label.localizedCaseInsensitiveCompare(right.label)
       if byLabel != .orderedSame { return byLabel == .orderedAscending }
@@ -1140,7 +1171,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
       return left.id < right.id
     }
     let rows = sortedOptions.map {
-      NativeListRow(id: $0.id, title: $0.label, detail: $0.detail, selected: $0.id == selectedAudioId, selectable: true)
+      NativeListRow(id: $0.id, title: $0.label, detail: $0.detail,
+        selected: $0.id == selectedAudioId, selectable: true,
+        confirmationMessage: $0.confirmationMessage)
     }
     presentList(
       title: "Audio Language",
@@ -1148,7 +1181,9 @@ public final class NativeSwiftPlayerView: ExpoView, AVPlayerViewControllerDelega
       selectedId: selectedAudioId,
       searchPlaceholder: "Search audio languages"
     ) { [weak self] id in
-      self?.onAudioChange(["id": id])
+      guard let self, self.selectedAudioId == expectedAudioId,
+            self.sourceUrl == expectedSource else { return }
+      self.onAudioChange(["id": id])
     }
   }
 

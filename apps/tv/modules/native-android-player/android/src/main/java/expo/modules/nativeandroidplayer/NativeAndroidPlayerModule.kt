@@ -18,6 +18,7 @@ class NativePlayerOption : Record {
   @Field var disabled: Boolean = false
   @Field var searchText: String = ""
   @Field var pinned: Boolean = false
+  @Field var confirmationMessage: String? = null
 }
 
 class NativePlayerMoment : Record {
