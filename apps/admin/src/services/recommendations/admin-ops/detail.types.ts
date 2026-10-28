@@ -450,6 +450,7 @@ export type DetailCandidateRunRow = Readonly<{
   id: string
   traceFormatVersion: number | null
   hasTracePayload: boolean
+  stageIds: string[]
   legacyDetailRetiredAt: Date | null
   purpose: string
   contextVersion: string

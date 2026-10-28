@@ -165,6 +165,66 @@ describe("RecommendationDeliveryService persistence and deadlines", () => {
     expect(payload.stages[0]).not.toHaveProperty("expiresAt")
   })
 
+  it("persists only ordered stage identities while exporting full in-memory stages in history mode", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-08-19T03:00:00.000Z"))
+    const harness = makeHarness({ candidateTraceFormat: "history" })
+    const exported: Array<
+      ReturnType<typeof encodeRecommendationHistoryPage>[number]
+    > = []
+    history.dispatch.mockImplementation((_family, prepare) =>
+      exported.push(...prepare()),
+    )
+    const response = await harness.service.deliver(input("history-stage-seed"))
+    expect(response.result).toBe("served")
+    expect(harness.evidenceWrites).toHaveLength(0)
+    const run =
+      await harness.tx.recommendationCandidateRun.create.mock.results[0]!.value
+    expect(run.traceFormatVersion).toBe(2)
+    expect(run.tracePayload).toBeUndefined()
+    expect(run.stageIds.length).toBeGreaterThan(0)
+    expect(new Set(run.stageIds).size).toBe(run.stageIds.length)
+    expect(
+      exported
+        .filter((event) => run.stageIds.includes(event.logicalId))
+        .map((event) => event.logicalId),
+    ).toEqual(run.stageIds)
+  })
+
+  it("keeps history-mode export postcommit and one-shot when the transport stalls", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-08-19T03:00:00.000Z"))
+    const harness = makeHarness({ candidateTraceFormat: "history" })
+    const insert = vi.fn(() => new Promise<void>(() => undefined))
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+      now: () => new Date("2026-08-19T03:01:00.000Z").getTime(),
+    })
+    history.dispatch.mockImplementation((family, prepare, count) => {
+      expect(harness.transactions).toContain("issued")
+      dispatcher.dispatchPrepared(family, prepare, count)
+    })
+    await expect(
+      harness.service.deliver(input("history-transport-seed")),
+    ).resolves.toMatchObject({
+      result: "served",
+    })
+    expect(insert).toHaveBeenCalled()
+    const attempts = insert.mock.calls.length
+    await Promise.resolve()
+    expect(insert).toHaveBeenCalledTimes(attempts)
+
+    const rollback = makeHarness({ candidateTraceFormat: "history" })
+    rollback.prisma.$transaction.mockRejectedValue(new Error("rolled back"))
+    history.dispatch.mockClear()
+    await expect(
+      rollback.service.deliver(input("history-rollback-seed")),
+    ).resolves.toMatchObject({
+      result: "unavailable",
+    })
+    expect(history.dispatch).not.toHaveBeenCalled()
+  })
+
   it("signs fresh capabilities before one atomic complete ISSUED commit", async () => {
     const harness = makeHarness()
     const { service, requests, transactions, acquire } = harness

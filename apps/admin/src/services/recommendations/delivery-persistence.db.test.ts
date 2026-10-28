@@ -157,7 +157,22 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           actorDigest: "a".repeat(64),
         })
         expect(detail?.candidateExecution).not.toBeNull()
-        details.push(detail!.candidateExecution)
+        const execution = detail!.candidateExecution!
+        const stageIds = execution.stages.map(
+          (stage) => (stage as typeof stage & { id: string }).id,
+        )
+        expect(stageIds.every((id) => id.length > 0)).toBe(true)
+        expect(new Set(stageIds).size).toBe(stageIds.length)
+        details.push({
+          ...execution,
+          // Separate issuances intentionally mint distinct immutable stage IDs.
+          // Compare the diagnostic content while retaining identity assertions.
+          stages: execution.stages.map((value, index) => {
+            const { id, ...stage } = value as typeof value & { id: string }
+            expect(id).toBe(stageIds[index])
+            return stage
+          }),
+        })
       }
       const stages = details[0]!.stages
       expect(new Set(stages.map((stage) => stage.stage))).toEqual(
@@ -239,6 +254,38 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
           where: { seedMediaId: invalidSeed },
         }),
       ).toBe(0)
+    })
+
+    it("commits only a bounded identity manifest for history-only traces", async () => {
+      const harness = makeHarness({
+        database: prisma,
+        candidateTraceFormat: "history",
+      })
+      harness.retrieve.mockResolvedValue(semanticCandidates(12))
+      const seed = `history-only-${randomUUID()}`
+      seeds.push(seed)
+      const response = await harness.service.deliver(input(seed))
+      expect(response.result).toBe("served")
+      const run = await prisma.recommendationCandidateRun.findUniqueOrThrow({
+        where: { requestId: response.requestId! },
+      })
+      expect(run.traceFormatVersion).toBe(2)
+      expect(run.tracePayload).toBeNull()
+      expect(run.stageIds.length).toBeGreaterThan(12)
+      expect(new Set(run.stageIds).size).toBe(run.stageIds.length)
+      expect(
+        await prisma.recommendationCandidateStageEvidence.count({
+          where: { runId: run.id },
+        }),
+      ).toBe(0)
+      const detail = await loadRecommendationRequestDetail(prisma, {
+        requestId: response.requestId!,
+        actorDigest: "b".repeat(64),
+      })
+      expect(detail?.historicalTrace).toMatchObject({
+        status: "incomplete",
+        missing: ["history:reader-disabled"],
+      })
     })
 
     it("preserves every evidence field against createMany and observes the commit", async () => {

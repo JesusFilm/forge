@@ -71,6 +71,46 @@ const request = {
 }
 
 describe("bounded recommendation trace backfill", () => {
+  it("refuses to invent missing history-only stage payloads", async () => {
+    const historyOnly = {
+      ...request,
+      candidateRun: {
+        ...request.candidateRun,
+        traceFormatVersion: 2,
+        tracePayload: null,
+        stageIds: ["stage-0", "stage-1", "stage-2"],
+        stageEvidence: [],
+      },
+    }
+    const tx = {
+      recommendationRequest: {
+        findFirst: vi.fn(async ({ select }: { select?: unknown }) =>
+          select ? { id: request.id, expiresAt } : historyOnly,
+        ),
+        findUnique: vi.fn(async ({ select }: { select?: unknown }) =>
+          select ? { id: request.id, expiresAt } : historyOnly,
+        ),
+      },
+      $queryRaw: vi.fn(async () => [
+        {
+          requestBytes: 100n,
+          runBytes: 100n,
+          itemCount: 0n,
+          itemBytes: 0n,
+          stageCount: 0n,
+          stageBytes: 0n,
+        },
+      ]),
+    }
+    const db = {
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never
+    await expect(
+      readRecommendationTraceHistoryPage(db, null),
+    ).rejects.toMatchObject({
+      code: "history_only_stage_payload_unavailable",
+    })
+  })
   it("resumes within one root without re-emitting prior identities", async () => {
     const findFirst = vi.fn(async ({ select }: { select?: unknown }) =>
       select ? { id: request.id, expiresAt } : request,
@@ -101,10 +141,11 @@ describe("bounded recommendation trace backfill", () => {
       "request-1",
       "run-1",
     ])
-    expect(first.cursor).toEqual({
+    expect(first.cursor).toMatchObject({
       kind: "within",
       requestId: "request-1",
       offset: 2,
+      sourceDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
     })
     const second = await readRecommendationTraceHistoryPage(db, first.cursor, {
       maxEvents: 2,
@@ -120,6 +161,67 @@ describe("bounded recommendation trace backfill", () => {
     expect(third.cursor).toEqual({ kind: "after", requestId: "request-1" })
     expect(findFirst).toHaveBeenCalledTimes(1)
     expect(findUnique).toHaveBeenCalledTimes(5)
+  })
+
+  it("refuses a resumed root whose exported source sequence changed", async () => {
+    let current = request
+    const tx = {
+      recommendationRequest: {
+        findFirst: vi.fn(async ({ select }: { select?: unknown }) =>
+          select ? { id: request.id, expiresAt } : current,
+        ),
+        findUnique: vi.fn(async ({ select }: { select?: unknown }) =>
+          select ? { id: request.id, expiresAt } : current,
+        ),
+      },
+      $queryRaw: vi.fn(async () => [
+        {
+          requestBytes: 100n,
+          runBytes: 100n,
+          itemCount: 0n,
+          itemBytes: 0n,
+          stageCount: 3n,
+          stageBytes: 300n,
+        },
+      ]),
+    }
+    const db = {
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never
+    const first = await readRecommendationTraceHistoryPage(db, null, {
+      maxEvents: 2,
+    })
+    current = {
+      ...request,
+      candidateRun: {
+        ...request.candidateRun,
+        stageEvidence: request.candidateRun.stageEvidence.slice(1),
+      },
+    }
+    await expect(
+      readRecommendationTraceHistoryPage(db, first.cursor, { maxEvents: 2 }),
+    ).rejects.toMatchObject({
+      code: "history_source_changed",
+    })
+  })
+
+  it("refuses an expired or deleted within-root cursor rather than advancing it", async () => {
+    const tx = {
+      recommendationRequest: {
+        findUnique: vi.fn(async () => null),
+      },
+    }
+    const db = {
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never
+    await expect(
+      readRecommendationTraceHistoryPage(db, {
+        kind: "within",
+        requestId: "request-1",
+        offset: 2,
+        sourceDigest: "a".repeat(64),
+      }),
+    ).rejects.toMatchObject({ code: "history_source_unavailable" })
   })
 
   it("caps emitted bytes and rejects unbounded roots", async () => {

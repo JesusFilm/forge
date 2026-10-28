@@ -248,6 +248,10 @@ export async function readOperatorRecommendationTrace(
     throw new RecommendationClickHouseError("invalid_input")
 
   let responseBytes = 0
+  // The adapter caps each call separately. A stage manifest can require five
+  // evidence batches, so cap the whole operator read as well. The adapter's
+  // own 3s abort bounds the single request still in flight after this fires.
+  const deadlineAt = Date.now() + 3_500
   const read = async (
     family: RecommendationEventFamily,
     ids: readonly string[],
@@ -255,11 +259,18 @@ export async function readOperatorRecommendationTrace(
     const found = new Map<string, RecommendationEventEnvelope>()
     for (let offset = 0; offset < ids.length; offset += 100) {
       const batch = ids.slice(offset, offset + 100)
-      const rows = await client.read({
-        family,
-        logicalIds: batch,
-        asOf: input.asOf,
-      })
+      const remainingMs = deadlineAt - Date.now()
+      if (remainingMs <= 0) throw new RecommendationClickHouseError("timeout")
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const rows = await Promise.race([
+        client.read({ family, logicalIds: batch, asOf: input.asOf }),
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () => reject(new RecommendationClickHouseError("timeout")),
+            remainingMs,
+          )
+        }),
+      ]).finally(() => clearTimeout(timer))
       for (const row of rows) {
         responseBytes += Buffer.byteLength(JSON.stringify(row))
         if (responseBytes > 8_388_608)

@@ -121,6 +121,39 @@ describe("recommendation event dispatch", () => {
     expect(dispatcher.snapshot().confirmedEvents).toBe(0)
   })
 
+  it("counts an invalid acknowledgement as unknown persistence without retrying", async () => {
+    const visit = createRecommendationEventEnvelope({
+      family: "experiment-visit",
+      logicalId: "ab-visit:ambiguous-ack",
+      revision: 1,
+      occurredAt: new Date(event.occurredAt),
+      acceptedAt: new Date(event.acceptedAt),
+      expiresAt: new Date(event.expiresAt),
+      payload: { arm: "control" },
+      allowedFields: ["arm"],
+    })
+    const insert = vi
+      .fn()
+      .mockRejectedValue(new RecommendationClickHouseError("response"))
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+    })
+
+    expect(dispatcher.dispatch([visit])).toBeUndefined()
+    await dispatcher.close()
+
+    expect(insert).toHaveBeenCalledTimes(1)
+    expect(dispatcher.snapshot()).toMatchObject({
+      attemptedEvents: 1,
+      confirmedEvents: 0,
+      failedEvents: { response: 1 },
+      unknownOutcomeEvents: 1,
+      byExperimentArm: {
+        control: { attempted: 1, confirmed: 0, failed: 1, unknownOutcome: 1 },
+      },
+    })
+  })
+
   it("measures delivery loss by validated experiment arm without creating arbitrary labels", async () => {
     const visit = (id: string, arm: string) =>
       createRecommendationEventEnvelope({

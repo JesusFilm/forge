@@ -109,7 +109,7 @@ export function makeHarness(
     curatedFallback?: boolean
     profileComparison?: boolean
     database?: PrismaClient
-    candidateTraceFormat?: "legacy" | "compact"
+    candidateTraceFormat?: "legacy" | "compact" | "history"
     servedItemFormat?: "legacy" | "packed"
     study?: Pick<
       import("./delivery.types").DeliveryDependencies,

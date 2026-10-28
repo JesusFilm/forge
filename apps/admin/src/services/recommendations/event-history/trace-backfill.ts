@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import { createHash } from "node:crypto"
 import {
   RecommendationInputError,
   RecommendationInternalStateError,
@@ -14,7 +15,14 @@ import {
 
 export type RecommendationTraceBackfillCursor =
   | Readonly<{ kind: "after"; requestId: string }>
-  | Readonly<{ kind: "within"; requestId: string; offset: number }>
+  // Offset zero may select an explicit root before any event is emitted.
+  // Every resumed nonzero offset must carry the source digest.
+  | Readonly<{
+      kind: "within"
+      requestId: string
+      offset: number
+      sourceDigest?: string
+    }>
 
 const include = {
   items: { orderBy: [{ position: "asc" }, { id: "asc" }], take: 65 },
@@ -65,7 +73,11 @@ export async function readRecommendationTraceHistoryPage(
     cursor?.kind === "within" &&
     (!Number.isSafeInteger(cursor.offset) ||
       cursor.offset < 0 ||
-      cursor.offset > 514)
+      cursor.offset > 514 ||
+      (cursor.offset > 0 &&
+        !/^[a-f0-9]{64}$/.test(cursor.sourceDigest ?? "")) ||
+      (cursor.sourceDigest !== undefined &&
+        !/^[a-f0-9]{64}$/.test(cursor.sourceDigest)))
   )
     throw new RecommendationInputError("Invalid history cursor")
 
@@ -137,14 +149,9 @@ export async function readRecommendationTraceHistoryPage(
     },
   )
   if (lookup.kind === "unavailable") {
-    if (!lookup.candidate)
-      return cursor?.kind === "within"
-        ? {
-            events: [],
-            cursor: { kind: "after", requestId: cursor.requestId },
-            done: false,
-          }
-        : { events: [], cursor, done: true }
+    if (cursor?.kind === "within")
+      throw new RecommendationInternalStateError("history_source_unavailable")
+    if (!lookup.candidate) return { events: [], cursor, done: true }
     return {
       events: [],
       cursor: { kind: "after", requestId: lookup.candidate.id },
@@ -167,6 +174,29 @@ export async function readRecommendationTraceHistoryPage(
       (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
   )
   const total = 1 + root.items.length + (run ? 1 + stages.length : 0)
+  const eventAt = (index: number) =>
+    index === 0
+      ? requestHistoryEvent(root)
+      : index <= root.items.length
+        ? servedItemHistoryEvent(root, root.items[index - 1]!)
+        : index === root.items.length + 1 && run
+          ? candidateRunHistoryEvent(run)
+          : stageHistoryEvent(
+              root.id,
+              stages[index - root.items.length - (run ? 2 : 1)]!,
+            )
+  // Bind pagination to the full redacted envelope sequence, including IDs,
+  // revisions and payload digests. No private source JSON enters the cursor.
+  const digest = createHash("sha256")
+  for (let index = 0; index < total; index++)
+    digest.update(JSON.stringify(eventAt(index)))
+  const sourceDigest = digest.digest("hex")
+  if (
+    cursor?.kind === "within" &&
+    cursor.sourceDigest !== undefined &&
+    cursor.sourceDigest !== sourceDigest
+  )
+    throw new RecommendationInternalStateError("history_source_changed")
   let offset = cursor?.kind === "within" ? cursor.offset : 0
   if (offset >= total)
     return {
@@ -177,17 +207,7 @@ export async function readRecommendationTraceHistoryPage(
   const events: RecommendationEventEnvelope[] = []
   let bytes = 0
   while (offset < total && events.length < maxEvents) {
-    const event =
-      offset === 0
-        ? requestHistoryEvent(root)
-        : offset <= root.items.length
-          ? servedItemHistoryEvent(root, root.items[offset - 1]!)
-          : offset === root.items.length + 1 && run
-            ? candidateRunHistoryEvent(run)
-            : stageHistoryEvent(
-                root.id,
-                stages[offset - root.items.length - (run ? 2 : 1)]!,
-              )
+    const event = eventAt(offset)
     const size = Buffer.byteLength(JSON.stringify(event))
     if (bytes + size > maxBytes) {
       if (events.length === 0)
@@ -204,7 +224,7 @@ export async function readRecommendationTraceHistoryPage(
     events,
     cursor:
       offset < total
-        ? { kind: "within", requestId: root.id, offset }
+        ? { kind: "within", requestId: root.id, offset, sourceDigest }
         : { kind: "after", requestId: root.id },
     done: false,
   }

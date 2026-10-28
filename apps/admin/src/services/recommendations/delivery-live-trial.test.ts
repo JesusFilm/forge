@@ -104,6 +104,7 @@ describe("controlled live trial delivery", () => {
         expect.objectContaining({ clientDeliveryContract }),
       )
       expect(h.tx.recommendationRequest.create).toHaveBeenCalledWith({
+        include: { items: true },
         data: expect.objectContaining({
           experimentAssignmentId: assignment.assignmentId,
           fallbackReason: "client_contract_unsupported",
@@ -164,6 +165,7 @@ describe("controlled live trial delivery", () => {
       })
       expect(h.composeCowatchTrial).not.toHaveBeenCalled()
       expect(h.tx.recommendationRequest.create).toHaveBeenCalledWith({
+        include: { items: true },
         data: expect.objectContaining({
           experimentAssignmentId: assignment.assignmentId,
         }),
@@ -191,6 +193,7 @@ describe("controlled live trial delivery", () => {
         ),
       ).toBe(true)
       expect(h.tx.recommendationRequest.create).toHaveBeenCalledWith({
+        include: { items: true },
         data: expect.objectContaining({
           experimentAssignmentId: assignment.assignmentId,
           fallbackReason: reason,

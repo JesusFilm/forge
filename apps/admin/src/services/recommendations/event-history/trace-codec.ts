@@ -68,7 +68,9 @@ type RunRow = Readonly<{
   shortfallReason: string | null
   evidenceComplete: boolean
   fallbackReason: string | null
+  traceFormatVersion?: number | null
   tracePayload?: unknown
+  stageIds?: readonly string[]
 }>
 
 type StageRow = Readonly<{
@@ -490,6 +492,17 @@ export function storedCandidateStageRows(
   run: RunRow,
   legacyRows: readonly StageRow[],
 ): StageRow[] {
+  if (run.traceFormatVersion === 2) {
+    if (!Array.isArray(run.stageIds))
+      throw new RecommendationInternalStateError(
+        "history_only_stage_manifest_invalid",
+      )
+    if ((run.stageIds?.length ?? 0) > 0)
+      throw new RecommendationInternalStateError(
+        "history_only_stage_payload_unavailable",
+      )
+    return []
+  }
   if (run.tracePayload == null) {
     if (legacyRows.length > 448)
       throw new RecommendationInternalStateError("history_stage_limit")

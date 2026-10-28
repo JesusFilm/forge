@@ -21,6 +21,30 @@ function event(
 }
 
 describe("operator recommendation history reader", () => {
+  it("caps the whole paged read even when a later adapter call stalls", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] })
+    vi.setSystemTime(at)
+    try {
+      const read = vi.fn(async ({ family }: { family: string }) =>
+        family === "request" ? [] : new Promise<never>(() => undefined),
+      )
+      const pending = readOperatorRecommendationTrace({ read } as never, {
+        requestId: "request-1",
+        itemIds: [],
+        runId: "run-1",
+        stageIds: Array.from({ length: 448 }, (_, index) => `stage-${index}`),
+        asOf: at,
+      })
+      const rejected = expect(pending).rejects.toThrow(
+        "Recommendation ClickHouse timeout",
+      )
+      await vi.advanceTimersByTimeAsync(3_500)
+      await rejected
+      expect(read).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it("reads bounded exported identities and marks a missing stage incomplete", async () => {
     const events = [
       event("request", "request-1", {

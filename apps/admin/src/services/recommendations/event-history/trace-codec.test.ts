@@ -333,6 +333,28 @@ describe("committed recommendation history codecs", () => {
       stageHistoryEvent(request.id, storedCandidateStageRows(run, [stage])[0]!),
     ).toEqual(encoded)
     expect(() =>
+      storedCandidateStageRows(
+        {
+          ...run,
+          traceFormatVersion: 2,
+          stageIds: [stage.id],
+          tracePayload: null,
+        },
+        [],
+      ),
+    ).toThrow("history_only_stage_payload_unavailable")
+    expect(
+      storedCandidateStageRows(
+        {
+          ...run,
+          traceFormatVersion: 2,
+          stageIds: [],
+          tracePayload: null,
+        },
+        [],
+      ),
+    ).toEqual([])
+    expect(() =>
       encodeRecommendationHistoryPage(
         Array.from({ length: 257 }, () => ({
           request,
