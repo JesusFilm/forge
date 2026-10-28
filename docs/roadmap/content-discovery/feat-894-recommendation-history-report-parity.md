@@ -93,12 +93,12 @@ The isolated local `event_watch_reader_test` ClickHouse database (image
 `clickhouse/clickhouse-server:25.8.15.35`) exercises corrections, physical
 duplicates, reversed insertion/rank order, historical cutoffs, current expiry,
 erasure, conflicts after `OPTIMIZE FINAL`, filtered conflicts, policy/path/window
-separation, and filter-before-cap with 130 groups. This new suite is not yet
-wired to CI. Physical TTL and cross-store privacy fencing remain feat-895 gates.
+separation, and filter-before-cap with 130 groups. The owned real ClickHouse
+fixture runs in CI. Physical TTL and cross-store privacy fencing remain feat-895 gates.
 The generic read-by-ID client now applies the later of report `asOf` and current
 time to original expiry, so historical cutoffs cannot revive expired data.
-Signed exposure, A/B CTR/engagement, usefulness, and archive parity remain
-unfinished in feat-894; keep this ticket in-progress.
+Signed exposure, A/B CTR/engagement cutover, usefulness, and archive parity
+remain unfinished in feat-894; keep this ticket in-progress.
 
 Visit producer slice: `event-history/experiment-producers.ts` emits only
 redacted A/B and incumbent-baseline visit revisions and request links. New
