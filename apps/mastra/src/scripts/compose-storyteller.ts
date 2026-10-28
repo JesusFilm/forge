@@ -274,6 +274,26 @@ const STORIES: Record<
     ],
     out: "Lost Sheep",
   },
+  "lumo-luke-9-transfiguration": {
+    // No setting: "about eight days after Jesus said this" points back to
+    // 9:18-27, which the card does not show; the previous episode (Peter's
+    // Confession, JESUS film) covered it, so the opening links back instead.
+    terms: [
+      "Transfiguration, the",
+      "Transfiguration, The",
+      "Moses",
+      "Elijah",
+      "Hermon",
+      "Tabor",
+      "Booth",
+      "Booths",
+      "Tabernacles, Feast of",
+      "Cloud",
+      "Exodus",
+      "THE TRANSFIGURATION.",
+    ],
+    out: "Transfiguration",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the

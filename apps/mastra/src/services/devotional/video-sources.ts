@@ -403,6 +403,33 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-15-lost.ru.vtt" },
     },
   },
+  {
+    // The Transfiguration sits inside segment 2610 (Luke 9:18-62). EN «About
+    // eight days» starts at 123.7 (9:27 «kingdom of God» ends at 112.85, music
+    // between); «what they had seen» ends at 219.2 and 9:37 «The next day»
+    // starts at 220.5 (speech bursts on the isolated dialogue, 2026-10-28).
+    key: "lumo-luke-9-transfiguration",
+    index: 1013,
+    mediaComponentId: "6_GOLuke2610",
+    title: "The Transfiguration",
+    film: "lumo",
+    passage: { reference: "Luke 9:28-36", osisRef: "Luke.9.28-Luke.9.36" },
+    window: { startSec: 123.4, lengthSec: 96.4 },
+    // RU «Примерно восемь дней» starts at 123.6; «что видели» ends at 220.1
+    // and «На следующий день» starts at 220.95.
+    windowByLang: { ru: { startSec: 123.3, lengthSec: 97.3 } },
+    // ~97s ×1.05 → ~92s on screen, plus a breath.
+    maxVideoCardSec: 94,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-9-transfiguration.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-9-transfiguration.ru.vtt" },
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))

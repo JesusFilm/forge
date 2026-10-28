@@ -32,6 +32,8 @@ const OSIS_TO_NUMBER: Record<string, number> = {
   Zeph: 36,
   "2Tim": 55,
   "1Pet": 60,
+  "2Cor": 47,
+  "2Pet": 61,
 }
 
 /** Standard Russian citation title per Gospel (falls back to the API name). */
@@ -60,6 +62,8 @@ const ENGLISH_NAME_TO_OSIS: Record<string, string> = {
   Zephaniah: "Zeph",
   "2Timothy": "2Tim",
   "1Peter": "1Pet",
+  "2Corinthians": "2Cor",
+  "2Peter": "2Pet",
 }
 
 export type SynodalPassage = {
