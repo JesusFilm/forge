@@ -24,6 +24,182 @@ const config = {
 }
 
 describe("recommendation ClickHouse HTTP boundary", () => {
+  it("runs a fixed bounded anonymous Watch aggregate without caller SQL", async () => {
+    const fetch = vi.fn(
+      async (_url: URL, init: RequestInit) =>
+        new Response(
+          String(init.body).startsWith(
+            "SELECT toUInt32(countIf(conflicts > 0))",
+          )
+            ? '{"conflicts":0}\n'
+            : "",
+          { status: 200 },
+        ),
+    )
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await client.watchExposureBreakdown({
+      start: new Date("2026-10-27T00:00:00.000Z"),
+      end: new Date("2026-10-28T00:00:00.000Z"),
+      now: new Date("2026-10-28T00:00:00.000Z"),
+      filter: {
+        surface: "watch-home' OR TRUE --",
+        block: "hero",
+        presentation: "hero-card",
+      },
+    })
+    expect(fetch).toHaveBeenCalledTimes(2)
+    const [url, init] = fetch.mock.calls[1]
+    expect(String(init.body)).not.toContain("watch-home' OR TRUE --")
+    expect(url.searchParams.get("param_surface")).toBe("watch-home' OR TRUE --")
+    expect(url.searchParams.get("max_execution_time")).toBe("3")
+    expect(url.searchParams.get("max_rows_to_read")).toBe("20000000")
+    expect(init.redirect).toBe("error")
+  })
+  it("rejects malformed anonymous aggregate output without leaking provider text", async () => {
+    const fetch = vi.fn(
+      async (_url: URL, init: RequestInit) =>
+        new Response(
+          String(init.body).startsWith(
+            "SELECT toUInt32(countIf(conflicts > 0))",
+          )
+            ? '{"conflicts":0}\n'
+            : '{"provider":"secret payload"}\n',
+          { status: 200 },
+        ),
+    )
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await expect(
+      client.watchExposureBreakdown({
+        start: new Date("2026-10-27T00:00:00.000Z"),
+        end: new Date("2026-10-28T00:00:00.000Z"),
+        now: new Date("2026-10-28T00:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({
+      code: "response",
+      message: "Recommendation ClickHouse response",
+    })
+  })
+  it("never revives currently expired history at an old as-of cutoff", async () => {
+    const expired = createRecommendationEventEnvelope({
+      family: "watch-exposure",
+      logicalId: "watch:historical",
+      revision: 1,
+      occurredAt: new Date("2026-10-27T00:00:00.000Z"),
+      acceptedAt: new Date("2026-10-27T00:00:01.000Z"),
+      expiresAt: new Date("2026-10-28T00:00:00.000Z"),
+      payload: { kind: "served" },
+      allowedFields: ["kind"],
+    })
+    const fetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            logical_id: expired.logicalId,
+            latest_revision: 1,
+            conflicts: 0,
+            occurred_at: expired.occurredAt,
+            accepted_at: expired.acceptedAt,
+            expires_at: expired.expiresAt,
+            payload_digest: expired.payloadDigest,
+            payload: JSON.stringify(expired.payload),
+          }) + "\n",
+          { status: 200 },
+        ),
+    )
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await expect(
+      client.read({
+        family: "watch-exposure",
+        logicalIds: [expired.logicalId],
+        asOf: new Date("2026-10-27T12:00:00.000Z"),
+        now: new Date("2026-10-29T00:00:00.000Z"),
+      }),
+    ).resolves.toEqual([])
+  })
+  it("uses the actual current time for historical reads when now is omitted", async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date("2026-10-29T00:00:00.000Z"))
+      const fetch = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              logical_id: event.logicalId,
+              latest_revision: 1,
+              conflicts: 0,
+              occurred_at: event.occurredAt,
+              accepted_at: event.acceptedAt,
+              expires_at: "2026-10-28T12:00:00.000Z",
+              payload_digest: event.payloadDigest,
+              payload: JSON.stringify(event.payload),
+            }) + "\n",
+            { status: 200 },
+          ),
+      )
+      const client = createRecommendationClickHouseClient({ ...config, fetch })
+      await expect(
+        client.read({
+          family: "watch-exposure",
+          logicalIds: [event.logicalId],
+          asOf: new Date("2026-10-28T06:00:00.000Z"),
+        }),
+      ).resolves.toEqual([])
+      expect(fetch).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+  it("shares one deadline across the aggregate and conflict audit", async () => {
+    vi.useFakeTimers()
+    let active = 0
+    const fetch = vi.fn(
+      (_url: URL, init: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          active++
+          const signal = init.signal!
+          const onAbort = () => {
+            clearTimeout(timer)
+            signal.removeEventListener("abort", onAbort)
+            active--
+            reject(new DOMException("aborted", "AbortError"))
+          }
+          signal.addEventListener("abort", onAbort, { once: true })
+          const timer = setTimeout(() => {
+            signal.removeEventListener("abort", onAbort)
+            active--
+            resolve(
+              new Response(
+                String(init.body).startsWith(
+                  "SELECT toUInt32(countIf(conflicts > 0))",
+                )
+                  ? '{"conflicts":0}\n'
+                  : "",
+                { status: 200 },
+              ),
+            )
+          }, 60)
+        }),
+    )
+    try {
+      const client = createRecommendationClickHouseClient({
+        ...config,
+        fetch,
+        timeoutMs: 100,
+      })
+      const result = client.watchExposureBreakdown({
+        start: new Date("2026-10-27T00:00:00.000Z"),
+        end: new Date("2026-10-28T00:00:00.000Z"),
+        now: new Date("2026-10-28T00:00:00.000Z"),
+      })
+      const rejected = expect(result).rejects.toMatchObject({ code: "timeout" })
+      await vi.advanceTimersByTimeAsync(100)
+      await rejected
+      expect(fetch).toHaveBeenCalledTimes(2)
+      expect(active).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it("confirms a bounded synchronous insert only after a clean complete response", async () => {
     const fetch = vi.fn(
       async (_url: URL, init: RequestInit) =>

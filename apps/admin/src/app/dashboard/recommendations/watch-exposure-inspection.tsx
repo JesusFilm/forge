@@ -59,12 +59,16 @@ export function WatchExposureInspection({
   replays,
   window,
   selection,
+  signedUnavailable,
+  anonymousUnavailable,
 }: {
   rows: WatchExposureBreakdown[] | null
   truncated: boolean
   replays: number | null
   window: "24h" | "7d" | "29d"
   selection: ReturnType<typeof resolveWatchExposureInspectionFilter>
+  signedUnavailable: boolean
+  anonymousUnavailable: boolean
 }) {
   const complete = WATCH_EXPOSURE_REGISTRY.filter(
     (entry) => entry.complete,
@@ -129,6 +133,22 @@ export function WatchExposureInspection({
           {WATCH_SURFACE_EXPOSURE_RETENTION_DAYS} days. Signed recommendation
           delivery evidence uses the selected window.
         </p>
+        <p>
+          ClickHouse anonymous history, when enabled, covers only facts that
+          were successfully delivered or backfilled. Background export failures
+          may leave this sample incomplete; no complete measurement is claimed.
+        </p>
+        {signedUnavailable && (
+          <p role="alert">
+            Signed exposure aggregation unavailable. Signed counts are withheld.
+          </p>
+        )}
+        {anonymousUnavailable && (
+          <p role="alert">
+            Anonymous exposure aggregation unavailable. Anonymous counts are
+            withheld.
+          </p>
+        )}
         {window === "29d" && (
           <p role="status">
             Partial anonymous history: the anonymous report is limited to the
@@ -182,7 +202,11 @@ export function WatchExposureInspection({
         {rows === null ? (
           <p>Exposure aggregation unavailable. Counts are withheld.</p>
         ) : rows.length === 0 ? (
-          <p>No measured Watch exposure events in this window.</p>
+          <p>
+            {signedUnavailable || anonymousUnavailable
+              ? "No rows from the available exposure source; unavailable counts are withheld."
+              : "No measured Watch exposure events in this window."}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
