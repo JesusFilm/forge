@@ -18,6 +18,12 @@ import { verifyPrecomputedSourceEligibility } from "./watch-reader"
 import { PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID } from "./watch-delivery"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "../event-history/runtime"
+import {
+  experimentVisitHistoryEvent,
+  visitRequestHistoryEvent,
+  type VisitSnapshot,
+} from "../event-history/experiment-producers"
 
 export const PRECOMPUTED_VISIT_ASSIGNMENT_POLICY = "browser-sha256-50-v1"
 export const PRECOMPUTED_VISIT_ELIGIBILITY_POLICY =
@@ -260,7 +266,8 @@ export async function admitPrivatePrecomputedVisit(
   if (deadlineAt <= Date.now())
     return result(input, "unavailable", "visit_deadline_exhausted")
   try {
-    return await runRecommendationDeliveryTransaction(
+    let committedVisit: VisitSnapshot | null = null
+    const admission = await runRecommendationDeliveryTransaction(
       prisma,
       deadlineAt,
       async (tx) => {
@@ -370,8 +377,10 @@ export async function admitPrivatePrecomputedVisit(
           deliveryResult: "not_attempted",
           createdAt: now,
           expiresAt: new Date(now.getTime() + RAW_VISIT_MS),
+          historyRevision: 1,
+          historyAcceptedAt: now,
         } as const
-        await tx.recommendationPrecomputedVisit.createMany({
+        const inserted = await tx.recommendationPrecomputedVisit.createMany({
           data: [data],
           skipDuplicates: true,
         })
@@ -388,6 +397,31 @@ export async function admitPrivatePrecomputedVisit(
           visit.browserUnitDigest !== browserUnitDigest
         )
           return result(input, "unavailable", "visit_identity_conflict")
+        if (
+          inserted.count === 1 &&
+          visit.historyRevision &&
+          visit.historyAcceptedAt
+        )
+          committedVisit = {
+            kind: "admission",
+            visitId: visit.id,
+            experimentId: visit.experimentId,
+            revision: visit.historyRevision,
+            occurredAt: visit.createdAt,
+            acceptedAt: visit.historyAcceptedAt,
+            expiresAt: visit.expiresAt,
+            sourceVideoId: visit.sourceVideoId,
+            locale: visit.locale,
+            audioLanguageSlug: visit.audioLanguageSlug,
+            eligibility: visit.eligibility,
+            qualification: visit.qualification,
+            exclusionReason: visit.exclusionReason,
+            arm: visit.arm,
+            deliveryResult: visit.deliveryResult,
+            actualStrategy: visit.actualStrategy,
+            deliveryRequestId: visit.deliveryRequestId,
+            fallbackReason: visit.fallbackReason,
+          }
         return result(
           input,
           visit.eligibility === "eligible" ? "eligible" : "excluded",
@@ -404,6 +438,18 @@ export async function admitPrivatePrecomputedVisit(
       },
       Date.now,
     )
+    if (committedVisit) {
+      const snapshot = committedVisit
+      try {
+        dispatchPreparedRecommendationEventsAfterCommit(
+          "experiment-visit",
+          () => [experimentVisitHistoryEvent(snapshot)],
+        )
+      } catch {
+        console.warn("[recommendation-event-history] visit_export_unavailable")
+      }
+    }
+    return admission
   } catch {
     return result(input, "unavailable", "visit_persistence_unavailable")
   }
@@ -444,12 +490,15 @@ export async function recordPrecomputedVisitDelivery(
   )
     return "unavailable"
   try {
+    let committedVisit: VisitSnapshot | null = null
+    let committedLink: Parameters<typeof visitRequestHistoryEvent>[0] | null =
+      null
     const deadlineAt = Math.min(
       input.deadlineAt ?? Infinity,
       Date.now() + 2_000,
     )
     if (deadlineAt <= Date.now()) return "unavailable"
-    return await runRecommendationDeliveryTransaction(
+    const status = await runRecommendationDeliveryTransaction(
       prisma,
       deadlineAt,
       async (tx) => {
@@ -523,27 +572,37 @@ export async function recordPrecomputedVisitDelivery(
             request.expiresAt <= now
           )
             return "conflict"
-          await tx.recommendationPrecomputedVisitRequest.createMany({
-            data: [
-              {
-                requestId: input.requestId,
-                visitId: visit.id,
-                createdAt: now,
-                expiresAt: new Date(
-                  Math.min(
-                    visit.expiresAt.getTime(),
-                    request.expiresAt.getTime(),
+          const insertedLink =
+            await tx.recommendationPrecomputedVisitRequest.createMany({
+              data: [
+                {
+                  requestId: input.requestId,
+                  visitId: visit.id,
+                  createdAt: now,
+                  expiresAt: new Date(
+                    Math.min(
+                      visit.expiresAt.getTime(),
+                      request.expiresAt.getTime(),
+                    ),
                   ),
-                ),
-              },
-            ],
-            skipDuplicates: true,
-          })
+                },
+              ],
+              skipDuplicates: true,
+            })
           const binding =
             await tx.recommendationPrecomputedVisitRequest.findUniqueOrThrow({
               where: { requestId: input.requestId },
             })
           if (binding.visitId !== visit.id) return "conflict"
+          if (insertedLink.count === 1)
+            committedLink = {
+              scope: "ab",
+              visitId: visit.id,
+              requestId: binding.requestId,
+              occurredAt: binding.createdAt,
+              acceptedAt: binding.createdAt,
+              expiresAt: binding.expiresAt,
+            }
         }
         const priority = {
           not_attempted: 0,
@@ -559,10 +618,12 @@ export async function recordPrecomputedVisitDelivery(
         const preserveFallback =
           visit.fallbackReason == null && input.fallbackReason != null
         if (replaceSummary || preserveFallback) {
-          await tx.recommendationPrecomputedVisit.updateMany({
+          const nextRevision = (visit.historyRevision ?? 0) + 1
+          const updated = await tx.recommendationPrecomputedVisit.updateMany({
             where: {
               id: visit.id,
               deliveryResult: visit.deliveryResult,
+              historyRevision: visit.historyRevision,
             },
             data: {
               ...(replaceSummary
@@ -575,13 +636,71 @@ export async function recordPrecomputedVisitDelivery(
               ...(preserveFallback
                 ? { fallbackReason: input.fallbackReason }
                 : {}),
+              historyRevision: nextRevision,
+              historyAcceptedAt: now,
             },
           })
+          if (updated.count === 1)
+            committedVisit = {
+              kind: "delivery",
+              visitId: visit.id,
+              experimentId: visit.experimentId,
+              revision: nextRevision,
+              occurredAt: visit.createdAt,
+              acceptedAt: now,
+              expiresAt: visit.expiresAt,
+              sourceVideoId: visit.sourceVideoId,
+              locale: visit.locale,
+              audioLanguageSlug: visit.audioLanguageSlug,
+              eligibility: visit.eligibility,
+              qualification: visit.qualification,
+              exclusionReason: visit.exclusionReason,
+              arm: visit.arm,
+              deliveryResult: replaceSummary
+                ? input.result
+                : visit.deliveryResult,
+              actualStrategy: replaceSummary
+                ? input.actualStrategy
+                : visit.actualStrategy,
+              deliveryRequestId: replaceSummary
+                ? input.requestId
+                : visit.deliveryRequestId,
+              fallbackReason: preserveFallback
+                ? input.fallbackReason
+                : visit.fallbackReason,
+            }
         }
         return "recorded"
       },
       Date.now,
     )
+    if (status === "recorded") {
+      const snapshot = committedVisit
+      const link = committedLink
+      if (snapshot)
+        try {
+          dispatchPreparedRecommendationEventsAfterCommit(
+            "experiment-visit",
+            () => [experimentVisitHistoryEvent(snapshot)],
+          )
+        } catch {
+          console.warn(
+            "[recommendation-event-history] visit_export_unavailable",
+          )
+        }
+      if (link)
+        try {
+          dispatchPreparedRecommendationEventsAfterCommit(
+            "experiment-visit",
+            () => [visitRequestHistoryEvent(link)],
+          )
+        } catch {
+          console.warn(
+            "[recommendation-event-history] visit_link_export_unavailable",
+          )
+        }
+    }
+    return status
   } catch {
     return "unavailable"
   }
