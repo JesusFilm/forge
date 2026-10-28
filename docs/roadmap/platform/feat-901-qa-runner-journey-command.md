@@ -20,6 +20,8 @@ tags:
 
 ## Entry Points — Read These First
 
+**Renamed on 2026-10-29:** the repo command `/release-check` is now `/qa-release-check`, in `.claude/commands/qa-release-check.md`.
+
 1. `.claude/commands/qa-runner.md`: the QA-facing command. It keeps to the mobile release check, asks for the journey's brief, and then follows step 7 of `/release-check`.
 2. `.claude/commands/release-check.md`, step 7 ("Journey"): the procedure, and step 7.1, which asks for the brief when the conversation lacks it.
 3. `apps/mobile/release-check/README.md`, section "Write or repair a journey", subsection "Ask Claude for a journey".

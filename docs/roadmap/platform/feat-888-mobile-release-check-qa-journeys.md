@@ -21,6 +21,8 @@ The mobile release check (feat-798) gave the QA engineers a way to run the check
 
 ## Entry Points — Read These First
 
+**Renamed on 2026-10-29:** the repo command `/release-check` is now `/qa-release-check`, in `.claude/commands/qa-release-check.md`.
+
 1. `.claude/commands/release-check.md`, step 7: the `journey <journey id>` form that a QA engineer's Claude follows.
 2. `apps/mobile/release-check/README.md`, section "Write or repair a journey": the journey rules and the short form of step 7.
 3. `apps/mobile/release-check/lib/session.js`, `checkedBuild`: the build of HEAD that a session needs, and the files that do not block a new build.

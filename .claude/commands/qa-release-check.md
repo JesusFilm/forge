@@ -96,7 +96,7 @@ For any other value, show this list and stop. Pass no other flag to the runner.
       - `node apps/mobile/release-check/cli.mjs session try <journey id>`
       - `node apps/mobile/release-check/cli.mjs session down`
 
-      Run `session up`. When no checked build of the commit exists, it builds one first, which can take 45 minutes. Uncommitted changes to journey files and to the three lists of step 7.9 do not block that build. If it refuses (for example `LOCK_HELD`, `DIRTY_BUILD_INPUTS`, `HOST_CAPACITY`, or `DEVICE_MISSING`, which needs `/release-check setup`), show the refusal, and stop.
+      Run `session up`. When no checked build of the commit exists, it builds one first, which can take 45 minutes. Uncommitted changes to journey files and to the three lists of step 7.9 do not block that build. If it refuses (for example `LOCK_HELD`, `DIRTY_BUILD_INPUTS`, `HOST_CAPACITY`, or `DEVICE_MISSING`, which needs `/qa-release-check setup`), show the refusal, and stop.
 
    6. Run `session try`. It checks every journey file with the journey rules, then runs the journey and prints each step. When it fails, read its failed step, its class, and its screenshot, and act on the class:
       - `selector_not_found`, or a failure that the screenshot shows as a mistake in the journey: change the journey file, and run `session try` again.

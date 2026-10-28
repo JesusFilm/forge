@@ -56,7 +56,7 @@ Run the check on the commit that the mobile owner names for the release
 (`git checkout <sha>`), with no uncommitted changes in the app. The runner
 tests the current commit.
 
-The easy way is the repo Claude command `/release-check`. It shows the consent
+The easy way is the repo Claude command `/qa-release-check`. It shows the consent
 text, asks for a yes, starts the run, waits until the run ends (for 7 hours at
 most), and summarizes `summary.json`. It also has `status`, `stop`, `recover`,
 and `setup` forms, and it asks for a yes before each command that changes
@@ -252,13 +252,13 @@ A good brief gives:
 For a repair, give the run folder or the failing step.
 
 Without `/qa-runner`, describe the journey in one message, and then send
-`/release-check journey <journey id>` as the next message. That command takes
+`/qa-release-check journey <journey id>` as the next message. That command takes
 only the id.
 
 ### The steps
 
 A QA engineer or the mobile owner can write or repair a journey. The repo
-Claude commands `/qa-runner` and `/release-check journey <journey id>` follow
+Claude commands `/qa-runner` and `/qa-release-check journey <journey id>` follow
 these steps:
 
 1. Work on a branch, never on `main`.
@@ -278,7 +278,7 @@ these steps:
    checks each result against production, so the local admin must hold
    production-like data. The mobile owner changes the other lists.
 5. Commit the journey and its list changes. Then run a partial check of the
-   journey on all five devices: `/release-check run <journey id>` in Claude
+   journey on all five devices: `/qa-release-check run <journey id>` in Claude
    Code, or add `--journey <journey id>` to the run command that `plan`
    prints. Each new commit needs a new build, about 45 minutes for each
    platform.
