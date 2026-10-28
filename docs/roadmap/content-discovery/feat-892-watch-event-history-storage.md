@@ -3,7 +3,7 @@ id: "feat-892"
 title: "Move anonymous Watch history behind compact admission state"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-28"
 duration: 3
 depends_on: ["feat-889", "feat-890", "feat-891"]
@@ -24,4 +24,17 @@ Own `watch-surface-exposure.service.ts`, anonymous history adapter, compact Watc
 
 ## Evidence
 
-Implementation pending.
+Compact admission, typed Watch envelopes, bounded backfill paging and an
+isolated PostgreSQL admission fixture are implemented behind default-off gates.
+Qualification uses `WATCH_COMPACT_ADMISSION_MODE=shadow` to retain the legacy
+report source while exercising compact receipts; `compact` stops new full-row
+writes after the reader and rollback path are qualified. The legacy V2 binding
+remains authoritative through its recorded expiry. The production gate remains
+off; mixed batches that contain a pre-cutover V2 binding use one locked legacy
+transaction until those bindings expire. Physical retirement, reader cutover,
+exact historical replay timing and measured allocation belong to subsequent
+tickets. Central retention wiring is pending integration with the shared
+retention service.
+Optional history encoding runs after admission commits and only when the
+dispatcher is enabled; preparation failures are counted separately from
+viewer-action success.

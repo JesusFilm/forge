@@ -4502,6 +4502,52 @@ model WatchSurfaceExposure {
   @@map("watch_surface_exposure")
 }
 
+/// Issued V2 admission authority. No viewer identity or report history lives here.
+model WatchSurfaceIssuedWindow {
+  windowId       String                   @id @map("window_id") @db.Uuid
+  manifestDigest String                   @map("manifest_digest") @db.Char(64)
+  surface        String                   @db.VarChar(40)
+  block          String                   @db.VarChar(40)
+  presentation   String                   @db.VarChar(40)
+  placement      String                   @db.VarChar(64)
+  issuedAt       DateTime                 @map("issued_at")
+  expiresAt      DateTime                 @map("expires_at")
+  itemCount      Int                      @map("item_count") @db.SmallInt
+  items          WatchSurfaceIssuedItem[]
+
+  @@index([expiresAt, windowId])
+  @@map("watch_surface_issued_window")
+}
+
+model WatchSurfaceIssuedItem {
+  windowId      String                   @map("window_id") @db.Uuid
+  position      Int                      @db.SmallInt
+  itemPath      String                   @map("item_path") @db.VarChar(512)
+  servedEventId String                   @unique @map("served_event_id") @db.Uuid
+  window        WatchSurfaceIssuedWindow @relation(fields: [windowId], references: [windowId], onDelete: Cascade)
+
+  @@id([windowId, position, itemPath])
+  @@map("watch_surface_issued_item")
+}
+
+/// Digest receipts preserve exact replay and rank order without event JSON.
+model WatchSurfaceEventReceipt {
+  eventId        String   @id @map("event_id") @db.Uuid
+  windowId       String   @map("window_id") @db.Uuid
+  exactDigest    String   @map("exact_digest") @db.Char(64)
+  groupDigest    String   @map("group_digest") @db.Char(64)
+  occurredAt     DateTime @map("occurred_at")
+  receivedAt     DateTime @map("received_at")
+  rankId         String   @map("rank_id") @db.Uuid
+  duplicateCount Int      @default(0) @map("duplicate_count")
+  revision       Int      @default(1)
+  expiresAt      DateTime @map("expires_at")
+
+  @@index([windowId, groupDigest, occurredAt, receivedAt, rankId])
+  @@index([expiresAt, eventId])
+  @@map("watch_surface_event_receipt")
+}
+
 /// Selection and one-use handoff authority commit together. The browser keeps
 /// the raw nonce for replay-safe handoff; Admin stores only its digest.
 model RecommendationSelection {
