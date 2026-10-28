@@ -15,6 +15,7 @@ execution: code
 - **Objective:** Before a TestFlight build or an over-the-air update goes out, the mobile owner or a QA engineer runs one command on their own Mac and gets one report. The report shows if the release works on a small iPhone, a large iPhone, an iPad, an Android phone, and an Android tablet.
 - **Means:** A runner in `apps/mobile/release-check/` builds the app in its own worktree outside the repo, runs fixed Maestro journeys on its own test devices behind a local read-only server, and writes a local report. A repo Claude command asks for consent and starts the runner (KTD1, KTD2, KTD7, R1, R3).
 - **Product authority:** The mobile owner (urim) owns the runner, the journeys, the saved search answers, the test settings list, the Known-Bug List, the Not-Tested List, and the release decision. QA engineers run the check and share the report. `apps/admin` does not change. This plan covers the runner core only; later areas are context (see How This Work Fits Together).
+  - **Superseded on 2026-10-28 (feat-888) and 2026-10-29 (feat-901):** QA engineers also write and repair journeys, with `/qa-runner`, and may change `not-tested.json`, `screens.json`, and `search-answers.json` in a pull request that the mobile owner reviews and merges. The mobile owner keeps the other lists and the release decision.
 - **Execution profile:** U1 is a spike on the mobile owner's Mac and comes first, because four device-level facts decide U4, U5, and U7. U2, U8, and U3 need no devices and can run beside the spike. The device units (U4 to U7, U9, U10) follow, then the journeys (U11), the command and documents (U12), and the first full release run (U13).
 - **Stop conditions:** Stop and ask the mobile owner when a U1 check fails, when the fingerprint check in the Verification Contract shows a changed runtime version, when the app needs a production read that is not on the read-only field list and that may write, or when evidence shows that a session-settled decision cannot work.
 - **Who finishes:** `ce-work` implements U1 to U12. The mobile owner runs the device checks, fills the production values in the test settings list (this needs an Expo login), records the saved search answers, files tickets for the known bugs, and runs U13. Only the mobile owner merges.
@@ -38,10 +39,13 @@ A test run must not put data into production. The mobile owner is adding Firebas
 
 The mobile owner is not the only person who runs the check. QA engineers run it on their own Macs, with their own Claude subscriptions, and most of them do not run local admin.
 
+**Superseded on 2026-10-28 (feat-888) and 2026-10-29 (feat-901):** QA engineers can run their own local admin, and a QA engineer who adds a search journey records its answers.
+
 ### Actors
 
 - A1. Mobile owner: runs the check, records the saved search answers, keeps the test settings list, the Known-Bug List, and the Not-Tested List, decides the release, and tells the QA engineers the decision.
 - A2. QA engineer: runs the check on their own Mac, then reads and shares the report.
+  - **Superseded on 2026-10-28 (feat-888) and 2026-10-29 (feat-901):** A2 also writes and repairs journeys and records the search answers that those journeys need. A1 keeps the test settings list, the Known-Bug List, and the release decision.
 - A3. Claude command: asks for consent, starts the runner, and summarizes the report.
 - A4. Runner: builds the app, manages the test devices, runs the journeys and checks, and writes the report.
 - A5. Read-only server: forwards listed reads to production admin, never forwards a write, and answers search from saved answers.
@@ -161,6 +165,7 @@ Starter journeys, which come first within R19:
   - **Trigger:** A search journey changes, or a saved answer names a video that is no longer in production.
   - **Actors:** A1, A4
   - **Steps:** The mobile owner starts local admin and runs the runner's record step. The record step runs the search journeys against local admin and saves every search that the app sends, including the searches that the app makes by itself. The mobile owner commits the saved answers.
+  - **Superseded on 2026-10-28 (feat-888) and 2026-10-29 (feat-901):** The person who adds or changes a search journey records its answers, from their own local admin with production-like data, in a pull request that the mobile owner merges.
   - **Outcome:** Search journeys run without local admin on every Mac.
   - **Covered by:** R14
 - F3. A screen is added to the app.
