@@ -19,6 +19,8 @@ You need an Apple silicon Mac with these tools:
 - **The Android SDK** at `$ANDROID_HOME` or `~/Library/Android/sdk`, with
   `cmdline-tools/latest`.
 - **Java 17** (`/usr/libexec/java_home -v 17` must answer).
+- **CocoaPods** (`brew install cocoapods`). The iOS build runs `pod install`
+  with your shell's `PATH` and Ruby settings, so `pod --version` must answer.
 - **Maestro 2.11.0.** Install it with
   `curl -fsSL "https://get.maestro.mobile.dev" | MAESTRO_VERSION=2.11.0 bash`,
   or set `MAESTRO_BIN` to a 2.11.0 binary when another version must stay on
@@ -188,15 +190,15 @@ To share a report, zip its run folder (every link in it is relative) or paste
 
 ## The lists
 
-| File                         | What it holds                                                                    | How it changes                                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `config/test-settings.json`  | Each `EXPO_PUBLIC_*` key in one class: copied from production, test value, unset | The mobile owner runs `check-settings` (needs an Expo login) and commits production's values            |
-| `config/operations.json`     | Each GraphQL root field the app sends: read-only, saved answer, success, blocked | A jest guard fails on a new root field until it has a class                                             |
-| `config/search-answers.json` | The saved answers for every search that the search journeys send                 | The mobile owner runs `record-search` against local admin and commits the file                          |
-| `config/known-bugs.json`     | Known failures: journey, devices, step label, failure class, and ticket          | The mobile owner adds an entry from a proposed one, with a ticket, and removes it when the bug is fixed |
-| `config/not-tested.json`     | Screens and steps that the journeys leave out on purpose, with a reason          | Add an entry with platforms and a reason when a journey cannot cover something                          |
-| `config/screens.json`        | Alerts and native sheets that have no test ID, and the rules that hide a screen  | Add an entry when a new alert or native sheet appears                                                   |
-| `config/devices.json`        | The five devices, their pins, and the memory and load limits                     | Change it only with the mobile owner                                                                    |
+| File                         | What it holds                                                                    | How it changes                                                                                                                             |
+| ---------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `config/test-settings.json`  | Each `EXPO_PUBLIC_*` key in one class: copied from production, test value, unset | The mobile owner runs `check-settings` (needs an Expo login) and commits production's values                                               |
+| `config/operations.json`     | Each GraphQL root field the app sends: read-only, saved answer, success, blocked | A jest guard fails on a new root field until it has a class                                                                                |
+| `config/search-answers.json` | The saved answers for every search that the search journeys send                 | The person who adds or changes a search journey runs `record-search` against a local admin with production-like data, and commits the file |
+| `config/known-bugs.json`     | Known failures: journey, devices, step label, failure class, and ticket          | The mobile owner adds an entry from a proposed one, with a ticket, and removes it when the bug is fixed                                    |
+| `config/not-tested.json`     | Screens and steps that the journeys leave out on purpose, with a reason          | Add an entry with platforms and a reason when a journey cannot cover something, and remove it when a journey covers it                     |
+| `config/screens.json`        | Alerts and native sheets that have no test ID, and the rules that hide a screen  | Add an entry when a new alert or native sheet appears                                                                                      |
+| `config/devices.json`        | The five devices, their pins, and the memory and load limits                     | Change it only with the mobile owner                                                                                                       |
 
 `node apps/mobile/release-check/cli.mjs check-lists` checks all of them, and
 `check-screens` fails when a screen or sheet that a platform shows has no
@@ -215,6 +217,26 @@ repair one only through the authoring session, never with `maestro` itself:
    the journey there and prints each step, and the screenshot of a failure.
 3. `node apps/mobile/release-check/cli.mjs session down` runs the log check and
    stops the device and the server.
+
+A QA engineer or the mobile owner can write or repair a journey. The repo
+Claude command `/release-check journey <journey id>` follows these steps:
+
+1. Work on a branch, never on `main`.
+2. Try the journey through the session on `iphone-se`, `android-phone`, and
+   `ipad-pro-13`. The layouts differ: for example, the iPad shows its tab bar
+   at the top and some sheets as popovers.
+3. Run `check-lists` and `check-screens`. Change `config/not-tested.json`,
+   `config/screens.json`, or `config/search-answers.json` when the journey
+   needs it. `record-search` checks each result against production, so the
+   local admin must hold production-like data. The mobile owner changes the
+   other lists.
+4. Commit the journey and its list changes. Then run a partial check of the
+   journey on all five devices (`run --journey <journey id>`).
+5. Open a pull request with the partial check's result. The mobile owner
+   reviews and merges it.
+
+A journey that needs a new test ID in the app is an app change, not a journey
+change. The mobile owner decides it.
 
 Before you write a journey, read
 `docs/solutions/developer-experience/maestro-journey-authoring-traps-mobile-release-check.md`.
