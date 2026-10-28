@@ -197,6 +197,12 @@ script_<story>_ru_read.txt; closing verse <ref>; voices <main>/<depth>`.
   (`feat(devotional): <story> source, cues and story entry`), and push the
   branch to the fork (`lyubavasilierrra/forge`). Never push `origin`.
 - Send Lyuba both scripts (paths, plus the text in the message) and stop.
+- The review doc is a Claude Doc with five tabs in this order: Intro, Русский,
+  English, Verses, Shorts (Lyuba, 2026-10-28). The Shorts tab is a table of the
+  3-4 proposed Shorts (intro + film-verse always, plus the reflection/verse turn
+  and an insight only when strong), one row each:
+  format | script of the short (the exact on-screen and spoken lines) | visual
+  (footage, cards, motion). She approves the Shorts together with the scripts.
 
 ## Do not, before she approves
 
