@@ -24,6 +24,13 @@ Own bounded backfill/reconciliation/cutover tooling, reliable privacy erasure pr
 
 ## Evidence
 
+Canonical history reads use actual response-time expiry even when a caller
+supplies an older clock. Watch aggregates floor their expiry cutoff at actual
+query-start time while preserving the requested historical acceptance cutoff.
+HTTP boundary tests cover stale caller clocks, expiry during an in-flight read,
+and stricter caller cutoffs. This is a prerequisite for future certified marker
+retirement; it does not itself authorize removal of erasure markers.
+
 The Watch compact retention portion now uses bounded scheduled phases for
 expired receipts, issued items and empty issued windows. It preserves the
 five-second attempt deadline, 750 ms phase admission, exact committed ledger
@@ -73,27 +80,27 @@ affected parts; TTL deletion also waits for merges. See the
 and [TTL](https://clickhouse.com/docs/concepts/features/operations/delete/ttl)
 references.
 
-This primitive is **not wired to a scheduled job or enabled**. A caller must
-first certify that the producer/backfill lineage for each ID is closed and
-that every earlier HTTP INSERT with an unknown result has either completed or
-been independently reconciled. The minimum certificate needs an operational
-per-ID generation fence rejecting new corrections and backfill, a closed
-checkpoint for all known source pages, and a drained/reconciled inventory of
-all dispatched query IDs and unknown outcomes, plus the maximum original
-expiry of every possible revision. The current client does not
-persist query IDs or expose such a certificate. The generic envelope has no finite maximum
-remote completion delay, so client abort or a fixed marker TTL cannot certify
-that. Retirement of the terminal marker needs that closure certificate plus
-a final zero-row/part check and a rule rejecting later corrections/backfill
-for the closed ID. Until those pieces exist, marker retention is unbounded and
-the finite control-metadata lifecycle remains an explicit feat-895/896 gate;
-before marker release, the generic and Watch readers must also floor their
-caller-supplied `now` at actual wall time so a stale caller cannot expose an
-expired late row. Once a certified maximum possible expiry is past, a late
-row cannot be logically live even after marker release; physical cleanup of
-such late rows still needs a recurring reconciliation pass. This is a
-source-certified retirement condition, not a fixed TTL. Until it is wired,
-the method must not be scheduled or used as production retention. No producer
+This primitive is **not wired to a scheduled job or enabled**. Its caller must
+certify a closed producer/backfill lineage and a maximum original expiry over
+every possible revision, including unknown in-flight INSERTs. The certificate
+must identify a stable source incarnation; an expired receipt for a reusable
+caller ID does not establish permanent closure. Source certificate generation
+and durable job progress remain unimplemented.
+
+The current primitive retains its terminal marker. A future retirement protocol
+can release that marker once the certified maximum possible expiry is past:
+actual-wall-time filtering then keeps even a late INSERT logically expired.
+The generic and Watch readers now apply that time floor. Before the certified
+expiry, the marker must remain. This logical condition does not require claiming
+that an aborted HTTP INSERT stopped, and does not prove physical completion.
+Late expired rows still need recurring physical reconciliation. A zero-row check
+proves the observed state at that check; claiming no later physical arrival
+requires separate server-query completion evidence. Provider backup retention
+and inactive-part removal are also distinct.
+
+There is no arbitrary fixed marker TTL, scheduled remote sweep or automatic
+certificate in this slice. The finite control-metadata lifecycle and production
+retention wiring remain open feat-895/896 gates. No producer
 or PostgreSQL schema was changed, no production DDL was applied, and the
 feature remains default-off. The current exported safe fields omit
 profile/session/browser digests and content-action destination artifact IDs;
