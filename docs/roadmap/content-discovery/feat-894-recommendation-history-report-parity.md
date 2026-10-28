@@ -115,3 +115,26 @@ transaction cost at production scale is unmeasured. `ctr-report.ts`,
 evidence. Keep the flag off and feat-894 in-progress until those dependencies
 and rollback safety are qualified; ClickHouse delivery loss is not a source
 of live report authority.
+
+Compact decoder qualification now reconstructs a typed live `RawCtrVisit`
+from a revision accepted by the fixed report cutoff, joined only to the
+operational visit's experiment/browser identity. It returns `null` for a
+legacy visit without a snapshot and rejects malformed summaries rather than
+turning either into zero. Real PostgreSQL comparisons cover corrected
+engagement at two cutoffs, pending hard-until transition, eligible/excluded
+and both-arm visit rows, and the raw-to-archive boundary. The existing report
+revision and archive totals remain unchanged after purge; compact snapshots
+are deleted with the visit. This is narrower than complete report parity.
+
+Current snapshot capture still derives each revision from `rawCtrVisitSql`.
+Therefore the operational visit's eligibility/arm/browser digest and exact
+request links, served items, selections, impressions, playback episode state,
+and accepted outcome revisions must remain available through the live
+correction and archive horizons. Removing those raw rows before an incremental
+compact updater and full differential report/cluster qualification would lose
+future correction ability. A current-state-only backfill cannot invent earlier
+`accepted_at` revisions for pre-cutover visits. No separate compact report
+reader gate is added or enabled yet: late/unqualified evidence, browser-cluster
+moments, legacy/backfill cutoffs, callback transaction latency at expected
+volume, and archive/replay parity still need qualification. Published report
+revisions remain immutable.

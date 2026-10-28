@@ -10,6 +10,11 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
+import {
+  capturePrecomputedCtrMeasurement,
+  readCompactCtrVisitAt,
+} from "./compact-accounting"
+import { rawCtrVisitSql, type RawCtrVisit } from "./ctr-evidence"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
 import { PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY } from "./public-control"
 import { matchesPrivateVisitBrowser } from "./visit-selection"
@@ -266,6 +271,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expiresAt: new Date(now.getTime() + days(28)),
         eligibility: "excluded",
       })
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        const activeVisits =
+          await prisma.recommendationPrecomputedVisit.findMany({
+            where: { experimentId },
+            select: { id: true },
+          })
+        for (const { id } of activeVisits) {
+          await prisma.$transaction((tx) =>
+            capturePrecomputedCtrMeasurement(tx, id, now),
+          )
+          const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+            rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, now),
+          )
+          expect(await readCompactCtrVisitAt(prisma, id, now)).toEqual(native)
+        }
+      }
       const first = await evaluatePrivatePrecomputedCtr(prisma, {
         experimentId,
         operator,

@@ -136,6 +136,86 @@ export async function readPrecomputedCtrMeasurementAt(
     : null
 }
 
+/** Qualification decoder for a live visit. Missing pre-cutover snapshots stay
+ * missing; this never infers past acceptance from current operational state. */
+export async function readCompactCtrVisitAt(
+  prisma: PrismaClient,
+  visitId: string,
+  asOf: Date,
+): Promise<RawCtrVisit | null> {
+  const [row] = await prisma.$queryRaw<
+    Array<{
+      visit_id: string
+      experiment_id: string
+      browser_unit_digest: string | null
+      summary: unknown
+    }>
+  >(Prisma.sql`
+    SELECT v.id AS visit_id, v.experiment_id, v.browser_unit_digest,
+      measurement.summary
+    FROM recommendation_precomputed_visit v
+    JOIN LATERAL (
+      SELECT summary FROM recommendation_precomputed_ctr_measurement
+      WHERE visit_id = v.id AND accepted_at <= ${asOf}
+      ORDER BY accepted_at DESC, revision DESC LIMIT 1
+    ) measurement ON true
+    WHERE v.id = ${visitId}::uuid
+  `)
+  if (!row) return null
+  const state = advanceCompactPendingCutoff(row.summary, asOf)
+  const string = (key: string): string => {
+    const value = state[key]
+    if (typeof value !== "string")
+      throw new Error("precomputed_compact_summary_invalid")
+    return value
+  }
+  const nullableString = (key: string): string | null => {
+    const value = state[key]
+    if (value !== null && typeof value !== "string")
+      throw new Error("precomputed_compact_summary_invalid")
+    return value
+  }
+  const boolean = (key: string): boolean => {
+    const value = state[key]
+    if (typeof value !== "boolean")
+      throw new Error("precomputed_compact_summary_invalid")
+    return value
+  }
+  const count = (key: string): bigint => {
+    const value = string(key)
+    if (!/^(0|[1-9][0-9]*)$/.test(value))
+      throw new Error("precomputed_compact_summary_invalid")
+    return BigInt(value)
+  }
+  return {
+    visit_id: row.visit_id,
+    experiment_id: row.experiment_id,
+    browser_unit_digest: row.browser_unit_digest,
+    arm: nullableString("arm"),
+    eligibility: string("eligibility"),
+    qualification: string("qualification"),
+    exclusion_reason: nullableString("exclusion_reason"),
+    delivery_result: string("delivery_result"),
+    accepted_selections: count("accepted_selections"),
+    qualified_impressions: count("qualified_impressions"),
+    matched_selections: count("matched_selections"),
+    actual_fallback: boolean("actual_fallback"),
+    private_recovery_attempt: boolean("private_recovery_attempt"),
+    unlinked_delivered: boolean("unlinked_delivered"),
+    unversioned: boolean("unversioned"),
+    qualified_playbacks: count("qualified_playbacks"),
+    active_playback_milliseconds: count("active_playback_milliseconds"),
+    claimed_playbacks: count("claimed_playbacks"),
+    observed_playbacks: count("observed_playbacks"),
+    complete_playbacks: count("complete_playbacks"),
+    partial_playbacks: count("partial_playbacks"),
+    missing_outcome_playbacks: count("missing_outcome_playbacks"),
+    missing_coverage_playbacks: count("missing_coverage_playbacks"),
+    pending_playbacks: count("pending_playbacks"),
+    invalid_playbacks: count("invalid_playbacks"),
+  }
+}
+
 export function advanceCompactPendingCutoff(
   summary: unknown,
   asOf: Date,
