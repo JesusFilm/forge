@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createRecommendationEventEnvelope } from "./envelope"
 
 const { after, config } = vi.hoisted(() => ({
@@ -27,6 +27,11 @@ const event = createRecommendationEventEnvelope({
 })
 
 describe("recommendation event runtime", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-28T00:01:00.000Z"))
+  })
+  afterEach(() => vi.useRealTimers())
   it("passes an already-started promise to Next after", async () => {
     const insert = vi.fn().mockResolvedValue(undefined)
     const runtime = createNextRecommendationEventDispatcher({

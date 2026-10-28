@@ -4562,6 +4562,7 @@ model RecommendationPlaybackEpisode {
   /// because Prisma cannot express the `IS NOT NULL` predicate.
   finalizationDueAt    DateTime?                  @map("finalization_due_at")
   nextFactSequence     Int                        @default(1) @map("next_fact_sequence")
+  historyRevision      Int                        @default(1) @map("history_revision")
   replayCount          Int                        @default(0) @map("replay_count")
   transportReplayCount Int                        @default(0) @map("transport_replay_count")
   conflictCount        Int                        @default(0) @map("conflict_count")
