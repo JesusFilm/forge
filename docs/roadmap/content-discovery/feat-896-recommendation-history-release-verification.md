@@ -24,4 +24,22 @@ Own priced dedicated service configuration, deployment coordination and release 
 
 ## Evidence
 
-Implementation pending.
+Actual service qualification and release verification are pending. Organization
+access is awaiting discussion of the architectural rationale. No service
+configuration, regional price, purchase, provisioning, production gate change,
+data cutover or release verification is established.
+
+Preliminary local dispatch testing used ten batches of 90 envelopes, each with
+an 8 KiB synthetic payload. Eight requests were admitted and two dropped at the
+configured concurrency limit: 720 events were confirmed and 180 capacity-dropped
+without retry. Replacing repeated full-buffer byte counting with cumulative
+encoded-row byte counts reduced synchronous dispatch preparation from 72–97 ms
+to 27–36 ms in that fixture. The 8 MiB tracked envelope limit is not a bound on
+whole-process memory. This fixture does not establish production caller latency,
+headroom or an observed production failure rate.
+
+Local Watch allocation and report-capacity receipts remain qualified by
+feat-892/894: the compact representation used 18.96% less allocation for one
+38,000-event fixture, while a one-million-row ClickHouse report exceeded the
+three-second query bound. The real reporting horizon, PostgreSQL retirement,
+filesystem reclamation and total operating cost remain unproved.

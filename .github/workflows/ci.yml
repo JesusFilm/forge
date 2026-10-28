@@ -422,6 +422,7 @@ jobs:
             pnpm --filter @forge/admin exec vitest run \
             src/services/recommendations/precomputed/watch-delivery.db.test.ts \
             src/services/recommendations/precomputed/engagement.db.test.ts \
+            src/services/recommendations/precomputed/ctr-report.db.test.ts \
             --no-file-parallelism
           pnpm --filter @forge/admin test:precomputed-integration
           env -u RECOMMENDATION_PRECOMPUTED_TEST_ENABLED -u RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED \
