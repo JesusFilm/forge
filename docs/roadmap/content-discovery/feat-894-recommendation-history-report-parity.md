@@ -89,6 +89,14 @@ ClickHouse covers successfully delivered/backfilled facts only. No historical
 watermark or complete-measurement claim is fabricated. The old PostgreSQL
 anonymous reader remains available for parity and rollback.
 
+Operator request detail has a separate default-off historical reader gate. It
+uses the current permissioned page and access audit, fetches only IDs captured
+from an active operational request, and displays missing exports as incomplete
+coverage. The PostgreSQL transaction is closed during remote I/O and a fresh
+request fence precedes the access audit and response. The existing PostgreSQL
+detail remains the default for parity and rollback; no complete-history or
+production-readiness claim follows from this bounded reader slice.
+
 The isolated local `event_watch_reader_test` ClickHouse database (image
 `clickhouse/clickhouse-server:25.8.15.35`) exercises corrections, physical
 duplicates, reversed insertion/rank order, historical cutoffs, current expiry,
@@ -143,11 +151,87 @@ reader for public selection and corrected playback outcome, and verify replay
 and rollback do not advance snapshots.
 
 This is shadow qualification, not a reader cutover. Legacy rows lack earlier
-snapshot lineage, full differential parity for late/unqualified evidence,
-cluster moments and archive transitions is not yet established, and added
-transaction cost at production scale is unmeasured. `ctr-report.ts`,
+snapshot lineage, full differential parity and added transaction cost at
+production scale remain unproven. `ctr-report.ts`,
 `engagement-report.ts`, `visit-clicks.ts`, `ctr-evidence.ts`,
 `engagement-evidence.ts`, and `visit-retention.ts` still read operational raw
 evidence. Keep the flag off and feat-894 in-progress until those dependencies
 and rollback safety are qualified; ClickHouse delivery loss is not a source
 of live report authority.
+
+Compact decoder qualification now reconstructs a typed live `RawCtrVisit`
+from a revision accepted by the fixed report cutoff, joined only to the
+operational visit's experiment/browser identity. It returns `null` for a
+legacy visit without a snapshot and rejects malformed summaries rather than
+turning either into zero. Real PostgreSQL comparisons cover corrected
+engagement at two cutoffs, pending hard-until transition, eligible/excluded
+and both-arm visit rows, and the raw-to-archive boundary. The existing report
+revision and archive totals remain unchanged after purge; compact snapshots
+are deleted with the visit. This is narrower than complete report parity.
+
+Current snapshot capture still derives each revision from `rawCtrVisitSql`.
+Therefore the operational visit's eligibility/arm/browser digest and exact
+request links, served items, selections, impressions, playback episode state,
+and accepted outcome revisions must remain available through the live
+correction and archive horizons. Removing those raw rows before an incremental
+compact updater and full differential report/cluster qualification would lose
+future correction ability. A current-state-only backfill cannot invent earlier
+`accepted_at` revisions for pre-cutover visits. No separate compact report
+reader gate is added or enabled yet: complete browser-cluster moments,
+legacy/backfill cutoffs, callback transaction latency at expected volume,
+and archive/replay parity still need qualification. Published report revisions
+remain immutable.
+
+Further local qualification: the compact decoder now raises the existing
+typed `RecommendationInternalStateError` for malformed internal state. A
+fixed-cutoff coverage query reports missing live revisions as `unavailable`;
+a current-state checkpoint can make its own acceptance instant available but
+does not make an earlier interval available or alter any published report.
+Captures serialize under the visit lock and clamp a late-arriving callback's
+older clock to the last committed snapshot acceptance instant; the same
+effective cutoff is used for raw derivation and pending deadlines. A real
+PostgreSQL regression test caught the prior revision-2 backdating failure.
+Real PostgreSQL tests compare full compact/native rows with unqualified and
+future classifier outcomes, a late-event cutoff, and a post-report-cutoff click
+whose first checkpoint is later than the earlier immutable report. A separate
+test proves that an impression received after the cutoff increases matched
+selections only in the later compact and native revisions. A five-visit fixture
+across two control browsers, one challenger browser, and one excluded
+visit agrees with raw CTR counts and independent-browser counts; archived
+browser totals and the published report remain equal after the two oldest
+visits cascade. The focused CTR/engagement PostgreSQL suites pass 21/21 with
+the compact capture flag enabled.
+
+A one-off local transaction measurement loaded 200 visits, 100 with a linked
+selection, then measured 30 separate captures on linked visits in the owned
+PostgreSQL 18 fixture: a trivial transaction plus `SELECT 1` had median
+2.15 ms, while capture transactions had median 8.23 ms and p95 17.03 ms.
+A second run loaded 10,000 visits (100 linked selections) and measured 30
+linked captures: the trivial transaction median was 3.38 ms; capture median
+was 16.15 ms and p95 was 33.81 ms. The fixture has no concurrent writers,
+only 10,000 rows and no Railway resource limits; this is a local per-visit
+cost receipt, not a production
+latency qualification or a reason to enable the flag. The existing serving
+budget remains 3 seconds. Full report cutover still needs an incremental
+updater or retained operational lineage, a bounded bulk reader, legacy
+coverage strategy, and representative high-volume/concurrent measurements.
+
+Exact lineage required by the current recomputation query through the live
+correction horizon: visit `id`, `experiment_id`, `browser_unit_digest`, `arm`,
+`eligibility`, `qualification`, `exclusion_reason`, `delivery_result`,
+`fallback_reason`, `created_at`, `expires_at`; experiment `ends_at` and
+`challenger_manifest_id`; policy `late_event_cutoff_hours`; visit-request
+`visit_id`, `request_id`, `created_at`; request `id`, `manifest_id`,
+`generation`; served-item `id`, `request_id`; impression `item_id`,
+`received_at`; selection `id`, `request_id`, `item_id`, `received_at`;
+episode `id`, `selection_id`, `request_id`, `item_id`, `state`, `hard_until`,
+`conflict_count`, `generation`, `claimed_at`, `discovery_source`; and outcome
+`id`, `episode_id`, `request_id`, `item_id`, `classifier_version`,
+`revision`, `created_at`, `generation`, `qualified_view`,
+`active_coverage`, `active_playback_milliseconds`. Request/item payload
+presentation, provenance, canonical path, capability/token material, and
+client event payload digests are not read by CTR/engagement recomputation;
+their separate serving, integrity, privacy and retention needs must be checked
+before removal. The operational browser digest is needed for cluster
+accounting and erasure, remains PostgreSQL-only, and is never exported in
+the compact snapshot.

@@ -69,3 +69,11 @@ privacy controls, expiry, playback attribution, and recommendation serving.
 Local implementation is underway; no infrastructure purchase, data cutover or
 production deletion has occurred under this ticket. Capacity work in platform feat-554 and
 feat-756 remains independent and open; this migration does not complete it.
+
+Draft PR #2950 checkpoint `d44c3f2c000d44953938d6d0f328e84952a60ff7`
+passed all applicable CI checks, including the repaired PostgreSQL fixture and
+real ClickHouse job. This is an intermediate checkpoint, not final independent
+review or release verification. Later integration heads require their own
+checks. Remaining reader, compact playback/learning, privacy lifecycle,
+backfill/retirement and service qualification work stays open in the dependent
+tickets.
