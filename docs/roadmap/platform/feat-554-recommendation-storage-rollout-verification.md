@@ -27,7 +27,7 @@ health types had zero more-than-24-hour expiry at the dated snapshot, with
 attempts. These failures remain visible despite later successes.
 
 One phase spent 1,624 ms acquiring a transaction with only 1,444 ms remaining,
-then issued a query before checking its budget. The
+then attempted the advisory-lock query before checking its budget. The
 [narrow repair](../../plans/2026-10-28-retention-acquisition-admission.md) adds
 post-acquisition admission without widening timeouts or converting actual
 errors into yields. The other failures and underlying delay causes remain

@@ -10,6 +10,9 @@ larger Watch expiry wave. No additional fixed number of clean days is imposed.
 
 The October 28 15:15 UTC read-only snapshot covered the 10:30–15:15 UTC window.
 All 16 original frames were present and their manifest hashes verified.
+The collection command exited zero with nonempty, unclassified stderr retained
+by hash. Complete frames do not explain that stderr or establish a SQL/provider
+error; the failure counts below come from the returned ledger data.
 
 | Observation                                 | Result                                              |
 | ------------------------------------------- | --------------------------------------------------- |
@@ -78,6 +81,11 @@ delay itself or resolve the other five failures. Release verification and later
 ordinary evidence must be recorded separately; local tests are not production
 resolution or cycle credit. The existing daily observer stays active and the
 expired temporary outage monitor stays paused. No manual cleanup was started.
+
+Frozen manual/operator parser bundles that predate the new
+`post_acquisition_admission` stage must be refreshed and independently reviewed
+before any future authorized manual diagnostic dispatch. The current source
+parser accepts the new stage; no manual dispatch is authorized by this repair.
 
 Evidence manifests, verified against the retained originals:
 
