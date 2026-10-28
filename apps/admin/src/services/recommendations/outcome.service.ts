@@ -490,9 +490,10 @@ export class RecommendationOutcomeService {
         ),
       "finalize",
     )
-    if (publishedRows.length && this.deps.eventDispatcher?.isEnabled()) {
-      try {
-        this.deps.eventDispatcher.dispatch(
+    if (publishedRows.length) {
+      this.deps.eventDispatcher?.dispatchPrepared(
+        "outcome",
+        () =>
           publishedRows.map((row) =>
             recommendationHistoryEvent({
               family: "outcome",
@@ -524,20 +525,15 @@ export class RecommendationOutcomeService {
               },
             }),
           ),
-        )
-      } catch {
-        this.deps.eventDispatcher.recordPreparationFailure(
-          "outcome",
-          publishedRows.length,
-        )
-      }
+        publishedRows.length,
+      )
     }
     const committedFinality =
       finalizedEpisode as FinalizedEpisodeSnapshot | null
-    if (committedFinality && this.deps.eventDispatcher?.isEnabled()) {
-      try {
+    if (committedFinality) {
+      this.deps.eventDispatcher?.dispatchPrepared("playback-episode", () => {
         const { row, state, revision } = committedFinality
-        this.deps.eventDispatcher.dispatch([
+        return [
           recommendationHistoryEvent({
             family: "playback-episode",
             logicalId: row.id,
@@ -561,10 +557,8 @@ export class RecommendationOutcomeService {
               finalizedAt: now.toISOString(),
             },
           }),
-        ])
-      } catch {
-        this.deps.eventDispatcher.recordPreparationFailure("playback-episode")
-      }
+        ]
+      })
     }
     return result
   }

@@ -73,6 +73,7 @@ import {
   runRecommendationEpisodeFinalization,
   runRecommendationEpisodeFinalizationRecovery,
 } from "@/workflows/recommendationEpisodeFinalization"
+import { createRecommendationIntegrityService } from "@/services/recommendations/integrity.service"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -261,6 +262,10 @@ describe("recommendation episode finalization job", () => {
     })
 
     expect(classifyPlaybackOutcome).toHaveBeenCalledWith("active-outcome")
+    expect(createRecommendationIntegrityService).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ dispatchPrepared: expect.any(Function) }),
+    )
     expect(dispatchRecommendationProfileFeedback).toHaveBeenCalledWith({
       sessionDigest: "a".repeat(64),
       profileId: "profile-1",

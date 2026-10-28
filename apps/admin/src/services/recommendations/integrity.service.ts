@@ -1,4 +1,7 @@
 import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
+import { recommendationHistoryEvent } from "./event-history/producers"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
+import type { createRecommendationEventDispatcher } from "./event-history/dispatch"
 import { createHash, randomUUID } from "node:crypto"
 import {
   Prisma,
@@ -6,6 +9,7 @@ import {
   RecommendationEligibilitySourceType,
   RecommendationEligibilityState,
   RecommendationEpisodeState,
+  type RecommendationEligibilityDecision,
   type PrismaClient,
 } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/db/client"
@@ -41,6 +45,10 @@ type IntegrityDependencies = {
   prisma: PrismaClient
   now?: () => Date
   newId?: () => string
+  historyDispatcher?: Pick<
+    ReturnType<typeof createRecommendationEventDispatcher>,
+    "dispatchPrepared"
+  >
 }
 
 export type RecommendationEligibilityReceipt = Readonly<{
@@ -62,6 +70,48 @@ type SourceMeasures = Readonly<{
   identityConcentration: number
 }>
 
+function exportCommittedEligibilityDecision(
+  row: RecommendationEligibilityDecision | null,
+  dispatcher?: IntegrityDependencies["historyDispatcher"],
+): void {
+  if (!row) return
+  const dispatch = dispatcher
+    ? dispatcher.dispatchPrepared.bind(dispatcher)
+    : dispatchPreparedRecommendationEventsAfterCommit
+  dispatch("correction", () => [
+    recommendationHistoryEvent({
+      family: "correction",
+      logicalId: `eligibility:${createHash("sha256")
+        .update(`${row.sourceKey}:${row.policyVersion}`)
+        .digest("hex")}`,
+      revision: row.revision,
+      occurredAt: row.evidenceWatermark ?? row.decidedAt,
+      acceptedAt: row.decidedAt,
+      expiresAt: row.expiresAt,
+      payload: {
+        decisionId: row.id,
+        sourceKey: row.sourceKey,
+        sourceType: row.sourceType,
+        outcomeId: row.outcomeId,
+        contentActionId: row.contentActionId,
+        selectionId: row.selectionId,
+        policyVersion: row.policyVersion,
+        actorClass: row.actorClass,
+        state: row.state,
+        reasonCodes: row.reasonCodes,
+        eligibleScopes: row.eligibleScopes,
+        contributionWeight: row.contributionWeight,
+        contributionOrdinal: row.contributionOrdinal,
+        distinctSupport: row.distinctSupport,
+        identityConcentration: row.identityConcentration,
+        inputDigest: row.inputDigest,
+        evidenceWatermark: row.evidenceWatermark?.toISOString() ?? null,
+        decidedAt: row.decidedAt.toISOString(),
+      },
+    }),
+  ])
+}
+
 /**
  * Projection-side classifier. Finalized outcomes are classified by their
  * durable consumer; eligible selection/impression pairs are classified by a
@@ -76,9 +126,11 @@ export class RecommendationIntegrityService {
     outcomeId: string,
   ): Promise<RecommendationEligibilityReceipt> {
     const sourceKey = sourceKeyFor("playback_outcome", outcomeId)
-    return withRecommendationSerializableRetry(() =>
+    let published: RecommendationEligibilityDecision | null = null
+    const receipt = await withRecommendationSerializableRetry(() =>
       this.deps.prisma.$transaction(
         async (tx) => {
+          published = null
           await lockSource(tx, sourceKey)
           const outcome = await tx.recommendationOutcomeRevision.findUnique({
             where: { id: outcomeId },
@@ -227,20 +279,27 @@ export class RecommendationIntegrityService {
             evidenceWatermark,
             decidedAt: this.deps.now?.() ?? new Date(),
             expiresAt: outcome.expiresAt,
+            onCreated: (row) => {
+              published = row
+            },
           })
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       ),
     )
+    exportCommittedEligibilityDecision(published, this.deps.historyDispatcher)
+    return receipt
   }
 
   async classifyContentAction(
     actionId: string,
   ): Promise<RecommendationEligibilityReceipt> {
     const sourceKey = sourceKeyFor("content_action", actionId)
-    return withRecommendationSerializableRetry(() =>
+    let published: RecommendationEligibilityDecision | null = null
+    const receipt = await withRecommendationSerializableRetry(() =>
       this.deps.prisma.$transaction(
         async (tx) => {
+          published = null
           await lockSource(tx, sourceKey)
           const action = await tx.recommendationContentAction.findUnique({
             where: { id: actionId },
@@ -316,11 +375,16 @@ export class RecommendationIntegrityService {
             evidenceWatermark,
             decidedAt: this.deps.now?.() ?? new Date(),
             expiresAt: action.expiresAt,
+            onCreated: (row) => {
+              published = row
+            },
           })
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       ),
     )
+    exportCommittedEligibilityDecision(published, this.deps.historyDispatcher)
+    return receipt
   }
 
   async classifySelection(
@@ -328,9 +392,11 @@ export class RecommendationIntegrityService {
   ): Promise<RecommendationEligibilityReceipt> {
     const sourceKey = sourceKeyFor("selection", selectionId)
     const now = this.deps.now?.() ?? new Date()
-    return withRecommendationSerializableRetry(() =>
+    let published: RecommendationEligibilityDecision | null = null
+    const receipt = await withRecommendationSerializableRetry(() =>
       this.deps.prisma.$transaction(
         async (tx) => {
+          published = null
           await lockSource(tx, sourceKey)
           const selection = await tx.recommendationSelection.findUnique({
             where: { id: selectionId },
@@ -454,11 +520,16 @@ export class RecommendationIntegrityService {
             evidenceWatermark,
             decidedAt: now,
             expiresAt: selection.expiresAt,
+            onCreated: (row) => {
+              published = row
+            },
           })
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       ),
     )
+    exportCommittedEligibilityDecision(published, this.deps.historyDispatcher)
+    return receipt
   }
 }
 
@@ -643,6 +714,7 @@ async function writeDecision(
     evidenceWatermark: Date | null
     decidedAt: Date
     expiresAt: Date
+    onCreated?: (row: RecommendationEligibilityDecision) => void
   },
 ): Promise<RecommendationEligibilityReceipt> {
   const previous = await tx.recommendationEligibilityDecision.findFirst({
@@ -761,6 +833,7 @@ async function writeDecision(
       expiresAt: input.expiresAt,
     },
   })
+  input.onCreated?.(created)
   return {
     id: created.id,
     sourceKey: input.sourceKey,
@@ -824,6 +897,7 @@ function actionWeight(actionClass: string): number {
 
 export function createRecommendationIntegrityService(
   prisma: PrismaClient = defaultPrisma,
+  historyDispatcher?: IntegrityDependencies["historyDispatcher"],
 ) {
-  return new RecommendationIntegrityService({ prisma })
+  return new RecommendationIntegrityService({ prisma, historyDispatcher })
 }

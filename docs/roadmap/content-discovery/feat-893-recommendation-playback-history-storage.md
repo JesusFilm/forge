@@ -45,10 +45,25 @@ before any PostgreSQL raw columns can be removed. The opaque destination audit
 ID is exported; destination erasure leaves it intact and remote history holds
 no artifact type or ID. Feat-895 still must provide erasure fencing for any
 future identity-bearing export and prove remote physical deletion semantics.
-Selection attribution reconciliation after first export, complete diagnostic
-trace/source evidence, content-action updates and mutable eligibility/learning
-decisions still need explicit correction revisions. The current candidate-run
-and stage exports are bounded summaries, not complete archival trace payloads.
+Selection attribution now uses a deterministic revision: a pending selection
+is revision 1, and one with a persisted `attribution_eligible_at` is revision 2
+whether the impression preceded creation or was reconciled later. Both evidence
+and selection-replay reconciliation export revision 2 only after commit. The
+persisted attribution timestamp is its acceptance time. Eligibility decisions
+export their existing immutable policy revisions after classification commits;
+unchanged receipts do not re-export. Episode claim/finality and outcome
+publication already use committed revisions. Content-action replay counters and
+destination artifact erasure do not change exported fields. Misconfigured
+enabled export counts eligible family drops without preparing payloads;
+deliberately disabled export is measured separately. Request export uses the
+committed latency even if the clock advances while commit returns. Typed
+envelope errors retain `invalid_input` classification without surfacing input.
+Eligibility correction exports use the finalization worker's dispatcher or the
+profile reconciliation batch's worker dispatcher, with one drain at each
+bounded worker boundary.
+Complete diagnostic trace/source evidence and corresponding readers still
+need a field-by-field contract. The current candidate-run and stage exports
+remain bounded summaries, not complete archival trace payloads.
 
 Compact-state retirement remains: replace request/item roots with issuance,
 capability and replay binding columns (`delivery_jti`, `signing_kid`,

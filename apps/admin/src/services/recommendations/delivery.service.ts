@@ -1502,67 +1502,66 @@ export class RecommendationDeliveryService {
         ).then(() => {
           const acceptedRequest =
             committedRequest as RecommendationRequest | null
-          dispatchPreparedRecommendationEventsAfterCommit(
-            "request",
-            () => [
-              recommendationHistoryEvent({
-                family: "request",
-                logicalId: requestId,
-                revision: 1,
-                occurredAt: now,
-                acceptedAt: acceptedRequest?.createdAt ?? now,
-                expiresAt,
-                payload: {
-                  requestId,
-                  manifestId: manifest.id,
-                  strategyVersion: manifest.strategyVersion,
-                  seedMediaId,
-                  locale,
-                  result: dbResult,
-                  state: requestState,
-                  fallbackReason: reason,
-                  expectedItemCount: prepared.length,
-                  issuedAt:
-                    requestState === RecommendationRequestState.ISSUED
-                      ? now.toISOString()
-                      : null,
-                  retrievalLatencyMs: Math.max(
-                    0,
-                    nowMilliseconds() - retrievalStartedAt,
-                  ),
-                  responseBytes,
-                  experimentAssignmentId:
-                    experiment.assignment?.assignmentId ?? null,
-                },
-              }),
-              ...prepared.map((entry) =>
-                recommendationHistoryEvent({
-                  family: "served-item",
-                  logicalId: entry.id,
-                  revision: 1,
-                  occurredAt: now,
-                  acceptedAt: acceptedRequest?.createdAt ?? now,
-                  expiresAt,
-                  payload: {
-                    requestId,
-                    itemId: entry.id,
-                    position: entry.position,
-                    targetMediaId: entry.candidate.videoId,
-                    candidateGenerator: selectedCandidateGenerator(
-                      entry.sources,
-                    ),
-                    audioLanguageSlug,
-                    videoSlug: entry.candidate.videoSlug,
-                    videoTitle: entry.candidate.videoTitle,
-                    startSeconds: entry.candidate.startSeconds,
-                    endSeconds: entry.candidate.endSeconds,
-                    durationSeconds: entry.candidate.durationSeconds ?? null,
-                  },
-                }),
-              ),
-            ],
-            prepared.length + 1,
-          )
+          dispatchPreparedRecommendationEventsAfterCommit("request", () => [
+            recommendationHistoryEvent({
+              family: "request",
+              logicalId: requestId,
+              revision: 1,
+              occurredAt: now,
+              acceptedAt: acceptedRequest?.createdAt ?? now,
+              expiresAt,
+              payload: {
+                requestId,
+                manifestId: manifest.id,
+                strategyVersion: manifest.strategyVersion,
+                seedMediaId,
+                locale,
+                result: dbResult,
+                state: requestState,
+                fallbackReason: reason,
+                expectedItemCount: prepared.length,
+                issuedAt:
+                  requestState === RecommendationRequestState.ISSUED
+                    ? now.toISOString()
+                    : null,
+                retrievalLatencyMs: acceptedRequest?.retrievalLatencyMs,
+                responseBytes,
+                experimentAssignmentId:
+                  experiment.assignment?.assignmentId ?? null,
+              },
+            }),
+          ])
+          if (prepared.length)
+            dispatchPreparedRecommendationEventsAfterCommit(
+              "served-item",
+              () =>
+                prepared.map((entry) =>
+                  recommendationHistoryEvent({
+                    family: "served-item",
+                    logicalId: entry.id,
+                    revision: 1,
+                    occurredAt: now,
+                    acceptedAt: acceptedRequest?.createdAt ?? now,
+                    expiresAt,
+                    payload: {
+                      requestId,
+                      itemId: entry.id,
+                      position: entry.position,
+                      targetMediaId: entry.candidate.videoId,
+                      candidateGenerator: selectedCandidateGenerator(
+                        entry.sources,
+                      ),
+                      audioLanguageSlug,
+                      videoSlug: entry.candidate.videoSlug,
+                      videoTitle: entry.candidate.videoTitle,
+                      startSeconds: entry.candidate.startSeconds,
+                      endSeconds: entry.candidate.endSeconds,
+                      durationSeconds: entry.candidate.durationSeconds ?? null,
+                    },
+                  }),
+                ),
+              prepared.length,
+            )
           dispatchPreparedRecommendationEventsAfterCommit("evidence", () => [
             recommendationHistoryEvent({
               family: "evidence",
