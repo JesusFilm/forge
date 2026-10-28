@@ -294,17 +294,29 @@ async function checkCocoaPods(ctx) {
     : null
   const version =
     result?.code === 0
-      ? (/^\d+\.\d+\.\d+$/m.exec(String(result.stdout))?.[0] ?? null)
+      ? (/^\d+\.\d+\.\d+\S*$/m.exec(String(result.stdout))?.[0] ?? null)
       : null
   ctx.observed.cocoapods = version
   if (version) return
+  if (!bin) {
+    ctx.problems.push(
+      problem(
+        "COCOAPODS_MISSING",
+        "CocoaPods is not installed; the iOS build runs pod install.",
+        "brew install cocoapods",
+      ),
+    )
+    return
+  }
+  // A Homebrew install cannot help here: the shim stays first on PATH.
+  const shim = path.basename(path.dirname(bin)) === "shims"
   ctx.problems.push(
     problem(
       "COCOAPODS_MISSING",
-      bin
-        ? `${bin} --version printed no version; the iOS build runs pod install.`
-        : "CocoaPods is not installed; the iOS build runs pod install.",
-      "brew install cocoapods",
+      shim
+        ? `${bin} --version printed no version; the rbenv Ruby that it runs has no CocoaPods gem.`
+        : `${bin} --version printed no version; reinstall CocoaPods there, or remove it from PATH.`,
+      shim ? "gem install cocoapods && rbenv rehash" : null,
     ),
   )
 }
