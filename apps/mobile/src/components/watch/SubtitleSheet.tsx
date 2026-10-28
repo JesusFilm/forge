@@ -28,6 +28,7 @@ export type SubtitleSheetProps = {
     isUserSelection: boolean,
   ) => void
   onClose: () => void
+  testID?: string
 }
 
 export function SubtitleSheetContent({
@@ -36,6 +37,7 @@ export function SubtitleSheetContent({
   activeSubtitleSlug,
   onSubtitleChange,
   onClose,
+  testID,
 }: SubtitleSheetProps) {
   const typography = useTypography()
   const t = useT("Watch")
@@ -74,7 +76,7 @@ export function SubtitleSheetContent({
 
   if (subtitles.length === 0) {
     return (
-      <View style={styles.emptyContainer}>
+      <View testID={testID} style={styles.emptyContainer}>
         <Ionicons
           name="chatbubble-ellipses-outline"
           size={48}
@@ -105,6 +107,7 @@ export function SubtitleSheetContent({
 
   return (
     <SearchableListSheet
+      testID={testID}
       rows={subtitles}
       activeId={activeSubtitleSlug}
       getSelectionId={getSelectionId}

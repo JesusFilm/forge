@@ -60,6 +60,7 @@ const LIST_END_GAP = 24
 export type LibraryDownloadsProps = {
   /** A series slug to open and scroll to once, from `/downloads?series=`. */
   focusSeriesSlug?: string
+  testID?: string
 }
 
 /** Kept as data, so the toast takes the UI language at render. */
@@ -78,7 +79,10 @@ type FocusLayout = {
 
 /** The full downloads list, with its top bar, selection mode and deletion.
  *  Its one host is the root `app/downloads.tsx` route. */
-export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
+export function LibraryDownloads({
+  focusSeriesSlug,
+  testID,
+}: LibraryDownloadsProps) {
   const typography = useTypography()
   const t = useT("Library")
   const router = useRouter()
@@ -394,7 +398,7 @@ export function LibraryDownloads({ focusSeriesSlug }: LibraryDownloadsProps) {
   const hasRecords = isReady && offlineRecords.length > 0
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID={testID} style={layout.screenContainer}>
       {/* Inside this root so the delete sheet's scrim dims it too. */}
       <ScreenTopBar title={t("downloadsTitle")} showBack />
       <ScrollView

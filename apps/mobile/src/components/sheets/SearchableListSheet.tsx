@@ -91,6 +91,7 @@ export type SearchableListSheetProps<T> = {
   // The RUM prefix for the row and clear-search taps. The row label carries
   // translated text, so Datadog must not name the tap from it (KTD15).
   actionName?: string
+  testID?: string
 }
 
 function accessibleName(
@@ -128,6 +129,7 @@ export function SearchableListSheet<T>({
   renderActiveAccessory,
   colors = DEFAULT_LIST_SHEET_COLORS,
   actionName = "list-sheet",
+  testID,
 }: SearchableListSheetProps<T>) {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
@@ -428,7 +430,7 @@ export function SearchableListSheet<T>({
   )
 
   return (
-    <View style={styles.container}>
+    <View testID={testID} style={styles.container}>
       <View style={{ height: listHeight }}>
         <FlashList
           data={filtered}

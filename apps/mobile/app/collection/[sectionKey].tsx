@@ -395,7 +395,7 @@ function CollectionPlayerContent({
   }
 
   return (
-    <View style={layout.screenContainer}>
+    <View testID="screen-collection" style={layout.screenContainer}>
       {/* Sticky 16:9 player */}
       <View style={[styles.playerContainer, { height: playerHeight }]}>
         <VideoView

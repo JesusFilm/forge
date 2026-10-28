@@ -1877,6 +1877,20 @@ A message a person sends from inside an app — the Watch feedback form on web, 
 
 It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all. A mobile report of the translation kind also names the UI Locale that the app showed, and no other kind sends it; the kind shows only when that UI Locale is not English.
 
+## Mobile release checks
+
+### Release Check
+
+One run of the mobile release check runner before a TestFlight build or an over-the-air update goes out. It builds the app from the current commit, runs every Journey on five local test devices, and writes one report. Every failure fails the run, including a known bug and a flaky Journey. The report gives no release decision; the mobile owner makes it.
+
+### Journey
+
+One fixed, scripted path through the mobile app that a Release Check runs on every test device. It follows the same steps on each run, and it picks content by position where it can.
+
+### Not-Tested List
+
+The repo list of the screens and sheets that no Journey covers on purpose, each with a reason. The Release Check fails when a screen or sheet has no Journey and is not on this list, so a new screen cannot drop out of coverage without a decision.
+
 ## Flagged ambiguities
 
 - "Contextual Watch Route" and "canonical Watch URL" are not synonyms: the contextual route preserves collection navigation, while the Standalone Watch Route owns discovery, social, and sharing identity.
