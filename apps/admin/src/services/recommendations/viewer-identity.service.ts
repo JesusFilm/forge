@@ -16,7 +16,6 @@ import {
   unlinkPushViewerIdentities,
   type PushIdentityUnlinkResult,
 } from "@/services/push/identity-unlink.service"
-import { dispatchRecommendationProfileProjection } from "./profiles/job"
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/
 const digest = (token: string) =>
@@ -30,7 +29,7 @@ function consumer(caller: Principal | null): Principal {
   return { ...caller, recommendationViewerVerified: true }
 }
 
-/** The handle proves possession of this installation's server-owned profile.
+/** The handle proves possession of this installation's operational identity.
  * A separate random session token keeps operational playback sessions bounded;
  * clients retain it through playback and rotate it after 24 hours of inactivity.
  * Neither credential is an account ID or a device fingerprint.
@@ -55,51 +54,31 @@ export class RecommendationViewerService {
     return {
       caller: verifiedCaller,
       sessionDigest: digest(sessionToken),
-      profileTokenDigest: viewer.profileDigest,
-      consentReceiptDigest: viewer.consentReceiptDigest,
+      profileTokenDigest: null,
+      consentReceiptDigest: null,
       viewer,
     }
   }
 
   async bootstrap(caller: Principal | null) {
-    const verifiedCaller = consumer(caller)
+    consumer(caller)
     const viewerToken = mint()
     const sessionToken = mint()
-    const consentReceiptDigest = digest(mint())
-    const profileDigest = digest(mint())
     const expiresAt = new Date(Date.now() + 180 * 86_400_000)
-    // The identity and its initial profile commit together. A failed response
-    // cannot expose an orphan handle with authority over a partial profile.
-    await this.prisma.$transaction(async (tx) => {
-      const service = new RecommendationProfileService({
-        prisma: this.prisma,
-        transaction: tx,
-      })
-      await service.transition({
-        caller: verifiedCaller,
-        contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
-        consentContractVersion: RECOMMENDATION_CONSENT_CONTRACT,
-        action: "grant",
-        consentChoice: "personalization",
-        sessionDigest: digest(sessionToken),
-        existingProfileDigest: null,
-        proposedProfileDigest: profileDigest,
-        proposedConsentReceiptDigest: consentReceiptDigest,
-      })
-      await tx.recommendationViewer.create({
-        data: {
-          tokenDigest: digest(viewerToken),
-          profileDigest,
-          consentReceiptDigest,
-          expiresAt,
-        },
-      })
+    await this.prisma.recommendationViewer.create({
+      data: {
+        tokenDigest: digest(viewerToken),
+        profileDigest: null,
+        // Legacy non-null column; no consent receipt is created or used.
+        consentReceiptDigest: digest(mint()),
+        expiresAt,
+      },
     })
     return {
       viewerToken,
       sessionToken,
       expiresAt: expiresAt.toISOString(),
-      personalization: true,
+      personalization: false,
     }
   }
 
@@ -129,8 +108,8 @@ export class RecommendationViewerService {
             caller: identity.caller,
             contractVersion: RECOMMENDATION_PROFILE_CONTRACT,
             sessionDigest: identity.sessionDigest,
-            consentReceiptDigest: identity.consentReceiptDigest,
-            profileDigest: identity.profileTokenDigest,
+            consentReceiptDigest: identity.viewer.consentReceiptDigest,
+            profileDigest: identity.viewer.profileDigest,
           })
         : await this.prisma.$transaction(async (tx) => {
             // Serialize pointer changes across all sessions for this installation.
@@ -138,7 +117,7 @@ export class RecommendationViewerService {
             const current = await tx.recommendationViewer.findUniqueOrThrow({
               where: { tokenDigest: identity.viewer.tokenDigest },
             })
-            const proposedProfileDigest = digest(mint())
+            const proposedProfileDigest = null
             const proposedConsentReceiptDigest = digest(mint())
             const result = await new RecommendationProfileService({
               prisma: this.prisma,
@@ -194,18 +173,6 @@ export class RecommendationViewerService {
           privacyGeneration: receipt.erasureGeneration,
         })
         .catch(() => undefined)
-    }
-    if (
-      receipt.profileId &&
-      receipt.privacyGeneration != null &&
-      receipt.state === "active" &&
-      receipt.erasureGeneration == null
-    ) {
-      void dispatchRecommendationProfileProjection({
-        sessionDigest: identity.sessionDigest,
-        profileId: receipt.profileId,
-        privacyGeneration: receipt.privacyGeneration,
-      }).catch(() => undefined)
     }
     return {
       state: receipt.state,

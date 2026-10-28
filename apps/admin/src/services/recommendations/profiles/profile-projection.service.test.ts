@@ -231,278 +231,6 @@ describe("recommendation profile projection service", () => {
     expect(sessionSql).not.toMatch(/qualified_outcome|durable/i)
   })
 
-  it("publishes all projection contributions with one set-based insert", async () => {
-    const executeRaw = vi.fn().mockResolvedValue(1)
-    const queryRaw = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ generation: 1 }])
-    const transaction = vi.fn(async (work) =>
-      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
-    )
-    const sourceExpiresAt = new Date("2026-09-01T00:00:00.000Z")
-
-    await publishDatabaseProfileProjection(
-      { $transaction: transaction } as never,
-      {
-        scope: "session",
-        sessionDigest: "a".repeat(64),
-        profileId: null,
-        privacyGeneration: null,
-        now: NOW,
-        inputDigest: "b".repeat(64),
-        projection: {
-          durableInterests: [],
-          sessionIntent: null,
-          explicitPreferences: [],
-          negativeEvidence: [],
-          contributionCount: 3,
-          cohortQuality: 0.5,
-        },
-        durableEvidence: [],
-        sessionEvidence: ["one", "two", "three"].map((sourceId) => ({
-          sourceId,
-          sourceType: "selection" as const,
-          targetMediaId: `video-${sourceId}`,
-          weight: 1,
-          occurredAt: NOW,
-          sourceExpiresAt,
-          eligibilityPolicyVersion: null,
-          outcomeClassifierVersion: null,
-        })),
-      },
-    )
-
-    const contributionInserts = executeRaw.mock.calls.filter(([query]) =>
-      query.strings
-        .join(" ")
-        .includes("INSERT INTO recommendation_profile_projection_contribution"),
-    )
-    expect(contributionInserts).toHaveLength(1)
-    expect(
-      contributionInserts[0]![0].strings.join(" ").match(/\),\s*\(/g),
-    ).toHaveLength(2)
-  })
-
-  it("retries a serializable publication conflict before failing the profile run", async () => {
-    const executeRaw = vi.fn().mockResolvedValue(1)
-    const queryRaw = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ generation: 1 }])
-    const conflict = Object.assign(new Error("serialization conflict"), {
-      code: "P2034",
-    })
-    const transaction = vi
-      .fn()
-      .mockRejectedValueOnce(conflict)
-      .mockImplementationOnce(async (work) =>
-        work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
-      )
-
-    await expect(
-      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
-        scope: "session",
-        sessionDigest: "a".repeat(64),
-        profileId: null,
-        privacyGeneration: null,
-        now: NOW,
-        inputDigest: "b".repeat(64),
-        projection: {
-          durableInterests: [],
-          sessionIntent: null,
-          explicitPreferences: [],
-          negativeEvidence: [],
-          contributionCount: 0,
-          cohortQuality: 0,
-        },
-        durableEvidence: [],
-        sessionEvidence: [],
-      }),
-    ).resolves.toMatchObject({ status: "published", generation: 1 })
-    expect(transaction).toHaveBeenCalledTimes(2)
-  })
-
-  it("publishes an empty replacement instead of replaying contaminated interests", async () => {
-    const executeRaw = vi.fn().mockResolvedValue(1)
-    const queryRaw = vi
-      .fn()
-      .mockResolvedValueOnce([
-        {
-          id: "interest-generation",
-          generation: 8,
-          pointerGeneration: 8,
-        },
-      ])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ generation: 9 }])
-    const transaction = vi.fn(async (work) =>
-      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
-    )
-
-    await expect(
-      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
-        scope: "session",
-        sessionDigest: "a".repeat(64),
-        profileId: null,
-        privacyGeneration: null,
-        now: NOW,
-        inputDigest: "stale-empty-input",
-        projection: {
-          durableInterests: [],
-          sessionIntent: null,
-          explicitPreferences: [],
-          negativeEvidence: [],
-          contributionCount: 0,
-          cohortQuality: 0,
-        },
-        durableEvidence: [],
-        sessionEvidence: [],
-      }),
-    ).resolves.toMatchObject({
-      status: "published",
-      generation: 9,
-      replay: false,
-    })
-    // The shared-vector writer takes an additional advisory lock. Count
-    // publication statements independently of the configured lock shape.
-    expect(
-      executeRaw.mock.calls.filter(
-        ([query]) => !query.strings.join(" ").includes("pg_advisory_xact_lock"),
-      ),
-    ).toHaveLength(3)
-  })
-
-  it("rejects a repair publisher when the expected pointer moved", async () => {
-    const executeRaw = vi.fn().mockResolvedValue(1)
-    const queryRaw = vi.fn().mockResolvedValueOnce([
-      {
-        id: "newer-generation",
-        generation: 9,
-        pointerGeneration: 9,
-      },
-    ])
-    const transaction = vi.fn(async (work) =>
-      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
-    )
-
-    await expect(
-      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
-        scope: "session",
-        sessionDigest: "a".repeat(64),
-        profileId: null,
-        privacyGeneration: null,
-        now: NOW,
-        inputDigest: "b".repeat(64),
-        projection: {
-          durableInterests: [],
-          sessionIntent: null,
-          explicitPreferences: [],
-          negativeEvidence: [],
-          contributionCount: 0,
-          cohortQuality: 0,
-        },
-        durableEvidence: [],
-        sessionEvidence: [],
-        expectedPointer: {
-          generationId: "expected-generation",
-          pointerGeneration: 8,
-        },
-      }),
-    ).rejects.toMatchObject({ code: "profile_projection_pointer_fenced" })
-  })
-
-  it("rejects a first publisher when an expected-absent pointer appeared", async () => {
-    const executeRaw = vi.fn().mockResolvedValue(1)
-    const queryRaw = vi.fn().mockResolvedValueOnce([
-      {
-        id: "concurrent-generation",
-        generation: 1,
-        pointerGeneration: 1,
-      },
-    ])
-    const transaction = vi.fn(async (work) =>
-      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
-    )
-
-    await expect(
-      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
-        scope: "session",
-        sessionDigest: "a".repeat(64),
-        profileId: null,
-        privacyGeneration: null,
-        now: NOW,
-        inputDigest: "c".repeat(64),
-        projection: {
-          durableInterests: [],
-          sessionIntent: null,
-          explicitPreferences: [],
-          negativeEvidence: [],
-          contributionCount: 0,
-          cohortQuality: 0,
-        },
-        durableEvidence: [],
-        sessionEvidence: [],
-        expectedPointer: { generationId: null, pointerGeneration: 0 },
-      }),
-    ).rejects.toMatchObject({ code: "profile_projection_pointer_fenced" })
-  })
-
-  it("rejects publication when current eligibility changes after projection input loads", async () => {
-    const executeRaw = vi.fn().mockResolvedValue(1)
-    const queryRaw = vi
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([
-        {
-          sourceId: "selection-new-revision",
-          targetMediaId: "video-new",
-          weight: 1,
-          occurredAt: NOW,
-          sourceExpiresAt: new Date("2026-09-01T00:00:00.000Z"),
-          eligibilityPolicyVersion: "recommendation-integrity-v1",
-          outcomeClassifierVersion: null,
-          eligibilityDecisionId: "decision-2",
-          eligibilityRevision: 2,
-          eligibilityInputDigest: "c".repeat(64),
-          eligibilityDecidedAt: NOW,
-          evidenceWatermark: NOW,
-        },
-      ])
-    const transaction = vi.fn(async (work) =>
-      work({ $executeRaw: executeRaw, $queryRaw: queryRaw }),
-    )
-
-    await expect(
-      publishDatabaseProfileProjection({ $transaction: transaction } as never, {
-        scope: "session",
-        sessionDigest: "a".repeat(64),
-        profileId: null,
-        privacyGeneration: null,
-        now: NOW,
-        inputDigest: "b".repeat(64),
-        evidenceSnapshotDigest: "d".repeat(64),
-        projection: {
-          durableInterests: [],
-          sessionIntent: null,
-          explicitPreferences: [],
-          negativeEvidence: [],
-          contributionCount: 0,
-          cohortQuality: 0,
-        },
-        durableEvidence: [],
-        sessionEvidence: [],
-      }),
-    ).rejects.toMatchObject({ code: "profile_projection_input_fenced" })
-    expect(
-      executeRaw.mock.calls.filter(
-        ([query]) => !query.strings.join(" ").includes("pg_advisory_xact_lock"),
-      ),
-    ).toHaveLength(0)
-  })
-
   it("keeps source expiry in the deterministic rebuild input", async () => {
     const publish = vi.fn().mockResolvedValue({
       status: "published",
@@ -548,4 +276,29 @@ describe("recommendation profile projection service", () => {
       }),
     )
   })
+})
+
+it("refuses direct profile publication before any database read or write", async () => {
+  const transaction = vi.fn()
+  await expect(
+    publishDatabaseProfileProjection({ $transaction: transaction } as never, {
+      scope: "session",
+      sessionDigest: "a".repeat(64),
+      profileId: null,
+      privacyGeneration: null,
+      now: NOW,
+      inputDigest: "b".repeat(64),
+      projection: {
+        durableInterests: [],
+        sessionIntent: null,
+        explicitPreferences: [],
+        negativeEvidence: [],
+        contributionCount: 0,
+        cohortQuality: 0,
+      },
+      durableEvidence: [],
+      sessionEvidence: [],
+    }),
+  ).rejects.toThrow("retired")
+  expect(transaction).not.toHaveBeenCalled()
 })

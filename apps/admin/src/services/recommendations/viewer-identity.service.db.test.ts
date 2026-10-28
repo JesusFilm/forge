@@ -118,7 +118,7 @@ afterAll(async () => {
 describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
   "cookie-free viewer lifecycle",
   () => {
-    it("bootstraps a profile, preserves session continuity, resets history and keeps opt-out", async () => {
+    it("bootstraps only installation identity and preserves playback sessions across retired transitions", async () => {
       const viewer = await service.bootstrap(caller)
       handles.push(viewer.viewerToken)
       expect(viewer.viewerToken).toMatch(/^[A-Za-z0-9_-]{43}$/)
@@ -127,17 +127,17 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
         viewer.viewerToken,
         viewer.sessionToken,
       )
-      expect(initial.profileTokenDigest).toBeTruthy()
+      expect(initial.profileTokenDigest).toBeNull()
       expect(
         await service.transition(caller, { ...viewer, action: "status" }),
-      ).toMatchObject({ personalization: true })
+      ).toMatchObject({ personalization: false })
       await service.transition(caller, { ...viewer, action: "reset" })
       const reset = await service.resolve(
         caller,
         viewer.viewerToken,
         viewer.sessionToken,
       )
-      expect(reset.profileTokenDigest).not.toBe(initial.profileTokenDigest)
+      expect(reset.profileTokenDigest).toBeNull()
       expect(reset.sessionDigest).toBe(initial.sessionDigest)
       await service.transition(caller, { ...viewer, action: "withdraw" })
       expect(
@@ -150,7 +150,7 @@ describe.skipIf(process.env.RECOMMENDATION_DB_TEST !== "1")(
       await service.transition(caller, { ...viewer, action: "grant" })
       expect(
         await service.transition(caller, { ...viewer, action: "status" }),
-      ).toMatchObject({ personalization: true })
+      ).toMatchObject({ personalization: false })
       await service.transition(caller, { ...viewer, action: "delete" })
       expect(
         await service.transition(caller, { ...viewer, action: "status" }),

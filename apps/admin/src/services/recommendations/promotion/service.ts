@@ -1,4 +1,8 @@
 import {
+  requireContentOnlyManifest,
+  BEHAVIORAL_RETIREMENT_REASON,
+} from "../behavioral-retirement"
+import {
   RecommendationOwnerReleaseOperator,
   type OwnerReleaseOperatorInput,
 } from "./owner-operator"
@@ -82,7 +86,11 @@ type ExecutionResult =
     }>
   | Readonly<{
       status: "fenced"
-      reason: "run_missing" | "claim_lost" | "pointer_changed"
+      reason:
+        | "run_missing"
+        | "claim_lost"
+        | "pointer_changed"
+        | "behavioral_recommendations_retired"
     }>
 
 export class RecommendationPromotionService {
@@ -121,6 +129,7 @@ export class RecommendationPromotionService {
     maxExposureBps: number
   }) {
     requirePermission(input.actor, "operate:recommendation-experiments")
+    requireContentOnlyManifest(input.manifestId)
     if (!input.actor.id) throw new ForbiddenError("Permission denied")
     if (
       !Number.isInteger(input.maxExposureBps) ||
@@ -220,6 +229,8 @@ export class RecommendationPromotionService {
 
   async createRun(input: CreatePromotionRunInput) {
     authorizeRunRequest(input)
+    if (!isRollback(input.action))
+      requireContentOnlyManifest(input.targetManifestId)
     if (
       !isRollback(input.action) &&
       input.targetManifestId === HYBRID_PERSONALIZED_MANIFEST_ID
@@ -446,6 +457,25 @@ export class RecommendationPromotionService {
 
         const action = policyAction(run.action)
         const rollback = isRollback(action)
+        if (
+          !rollback &&
+          ![
+            "semantic-transcript-pgvector-v1",
+            "semantic-experiment-aa-v1",
+          ].includes(run.targetManifestId)
+        ) {
+          await fencePromotionRun(
+            tx,
+            run.id,
+            input,
+            now,
+            BEHAVIORAL_RETIREMENT_REASON,
+          )
+          return {
+            status: "fenced",
+            reason: BEHAVIORAL_RETIREMENT_REASON,
+          } as const
+        }
         if (rollback && pointer.activeOwnerReleaseId) {
           await lockOwnerReleaseForRevocation(tx, pointer.activeOwnerReleaseId)
         }

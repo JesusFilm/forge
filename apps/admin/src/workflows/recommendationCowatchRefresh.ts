@@ -2,7 +2,7 @@ import { getWorkflowMetadata, sleep } from "workflow"
 
 export async function runRecommendationCowatchRefreshScheduler(
   input: { ledgerRunId?: string } = {},
-): Promise<never> {
+): Promise<void> {
   "use workflow"
   await stepMarkRecommendationCowatchRefreshStarted(input)
   while (true) {
@@ -14,6 +14,10 @@ export async function runRecommendationCowatchRefreshScheduler(
     } catch {
       // Keep the durable scheduler alive after a temporary database or batch
       // failure. The null heartbeat makes unavailable evidence explicit.
+    }
+    if (result?.status === "retired") {
+      await stepCompleteBehavioralRetirement(input)
+      return
     }
     const next = await stepRecordRecommendationCowatchRefreshHeartbeat(
       input,
@@ -59,4 +63,20 @@ async function stepRecordRecommendationCowatchRefreshHeartbeat(
     result,
   })
   return nextRunAt
+}
+
+async function stepCompleteBehavioralRetirement(input: {
+  ledgerRunId?: string
+}): Promise<void> {
+  "use step"
+  if (!input.ledgerRunId) return
+  const { prisma } = await import("@/db/client")
+  await prisma.workflowRun.updateMany({
+    where: { id: input.ledgerRunId, status: { in: ["QUEUED", "RUNNING"] } },
+    data: {
+      status: "CANCELLED",
+      finishedAt: new Date(),
+      summary: "Behavioral recommendations retired.",
+    },
+  })
 }

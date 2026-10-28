@@ -159,7 +159,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       return { claim, input, recorder }
     }
 
-    it("feeds a durable mode preference and candidate performance from accepted preview facts", async () => {
+    it("keeps accepted preview facts without learning a durable mode preference", async () => {
       const viewer = await identity(1)
       const first = await watch(viewer.digest, "watched-one")
       await watch(viewer.digest, "watched-two")
@@ -169,17 +169,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await prisma.recommendationViewingModeEvidence.count({
           where: { profileId: viewer.profile.id },
         }),
-      ).toBe(3)
-      const evidence =
-        await prisma.recommendationViewingModeEvidence.findUniqueOrThrow({
+      ).toBe(0)
+      expect(
+        await prisma.recommendationPlaybackFact.count({
           where: { episodeId: first.claim.episodeId },
-        })
-      expect(evidence).toMatchObject({
-        soundOffQualified: true,
-        soundOnQualified: false,
-        previewMilliseconds: 30_000,
-        factWatermark: 1,
-      })
+        }),
+      ).toBe(1)
       const load = () =>
         prisma.$transaction((tx) =>
           loadViewingModeAffinity(tx, {
@@ -188,37 +183,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             now,
           }),
         )
-      expect(await load()).toMatchObject({
-        qualifiedVideos: 3,
-        soundOffPreference: 1,
-        confidence: 1,
-        candidates: [],
-      })
-      for (let index = 2; index <= 21; index++) {
-        const contributor = await identity(index)
-        await watch(contributor.digest, "candidate", index <= 19 ? 30 : 3)
-      }
-      const mode = await load()
-      expect(mode?.candidates).toEqual([
-        {
-          mediaId: "candidate",
-          viewers: 20,
-          qualifiedViewers: 18,
-          affinity: expect.closeTo(2 * (20 / 24 - 0.5)),
-        },
-      ])
-      // Conflicting replay invalidates an already materialized contribution.
-      await first.recorder.record({
-        ...first.input,
-        events: [
-          {
-            ...first.input.events[0]!,
-            payload: { ...first.input.events[0]!.payload, preview: false },
-          },
-        ],
-      })
-      expect(await load()).toMatchObject({ qualifiedVideos: 2 })
-      // Erasure removes both profile-facing and aggregate performance influence.
+      expect(await load()).toBeNull()
+      // Historical erasure remains valid while accepted facts stay operational.
       await new RecommendationProfileService({
         prisma,
         now: () => now,

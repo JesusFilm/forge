@@ -1,5 +1,21 @@
 # Recommendation roadmap closeout
 
+## October 29 scope change: retire behavioral recommendations
+
+The owner has retired viewer profiles, co-watch and behavioral background learners
+and explicitly authorized deletion of their old production rows. The new
+[feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+is in progress. It preserves semantic/metadata lanes, native identity, playback
+and current precomputed A/B evidence. Earlier instructions below to restore or
+refresh co-watch are historical; they cannot reopen the retired product scope.
+
+Release A must stop writers and verify every HTTP/worker revision and old runtime
+run before authorized cleanup. No deployment, deletion or recovered bytes are
+claimed by this planning entry. Existing retention-cycle evidence keeps its
+original meaning; the final inventory and release receipts will follow separately.
+
+## Earlier closeout inventory
+
 Owner authorization: October 2, 2026 (Pacific/Auckland). The reconciled scope is
 **11 complete, 25 cancelled and four open** across 40 ticket paths. The October 23
 addition is platform feat-756, the directly related fortnightly Watch exposure

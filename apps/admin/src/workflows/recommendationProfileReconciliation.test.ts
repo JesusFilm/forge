@@ -4,6 +4,8 @@ const workflow = vi.hoisted(() => ({
   getWorkflowMetadata: vi.fn(() => ({ workflowRunId: "runtime-459" })),
   sleep: vi.fn(),
 }))
+const database = vi.hoisted(() => ({ workflowRun: { updateMany: vi.fn() } }))
+vi.mock("@/db/client", () => ({ prisma: database }))
 const reconciliation = vi.hoisted(() => ({
   markRecommendationProfileReconciliationSchedulerStarted: vi.fn(),
   nextRecommendationProfileReconciliationRunAt: vi.fn(),
@@ -28,6 +30,31 @@ describe("profile reconciliation workflow", () => {
     reconciliation.markRecommendationProfileReconciliationSchedulerStarted.mockResolvedValue(
       undefined,
     )
+  })
+
+  it("terminates a resumed retired learner without scheduling another cycle", async () => {
+    reconciliation.runRecommendationProfileReconciliationFromScheduler.mockResolvedValue(
+      { retired: true },
+    )
+    database.workflowRun.updateMany.mockResolvedValue({ count: 1 })
+    await runRecommendationProfileReconciliationScheduler({
+      ledgerRunId: "scheduler-ledger-459",
+    })
+    expect(database.workflowRun.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "scheduler-ledger-459",
+        status: { in: ["QUEUED", "RUNNING"] },
+      },
+      data: {
+        status: "CANCELLED",
+        finishedAt: expect.any(Date),
+        summary: "Behavioral recommendations retired.",
+      },
+    })
+    expect(workflow.sleep).not.toHaveBeenCalled()
+    expect(
+      reconciliation.recordRecommendationProfileReconciliationHeartbeat,
+    ).not.toHaveBeenCalled()
   })
 
   it("runs a bounded batch, records its aggregate heartbeat, then sleeps", async () => {

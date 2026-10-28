@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
-import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
 import { WatchRecommendationVerification } from "@/components/recommendations/WatchRecommendationVerification"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "@/components/recommendations/useEligibleRecommendationImpression"
@@ -1177,7 +1176,6 @@ export function WatchSemanticRecommendations({
           {recommendationExplanation}
         </p>
       ) : null}
-      <RecommendationPersonalizationControl />
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>

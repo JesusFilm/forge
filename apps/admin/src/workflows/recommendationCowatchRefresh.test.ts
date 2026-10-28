@@ -4,6 +4,8 @@ const workflow = vi.hoisted(() => ({
   getWorkflowMetadata: vi.fn(() => ({ workflowRunId: "runtime-573" })),
   sleep: vi.fn(),
 }))
+const database = vi.hoisted(() => ({ workflowRun: { updateMany: vi.fn() } }))
+vi.mock("@/db/client", () => ({ prisma: database }))
 const reconciliation = vi.hoisted(() => ({
   markRecommendationCowatchRefreshSchedulerStarted: vi.fn(),
   nextRecommendationCowatchRefreshRunAt: vi.fn(),
@@ -25,6 +27,31 @@ describe("co-watch refresh workflow", () => {
     reconciliation.markRecommendationCowatchRefreshSchedulerStarted.mockResolvedValue(
       undefined,
     )
+  })
+
+  it("terminates a resumed retired learner without scheduling another cycle", async () => {
+    reconciliation.runRecommendationCowatchRefreshFromScheduler.mockResolvedValue(
+      { status: "retired" },
+    )
+    database.workflowRun.updateMany.mockResolvedValue({ count: 1 })
+    await runRecommendationCowatchRefreshScheduler({
+      ledgerRunId: "scheduler-ledger-573",
+    })
+    expect(database.workflowRun.updateMany).toHaveBeenCalledWith({
+      where: {
+        id: "scheduler-ledger-573",
+        status: { in: ["QUEUED", "RUNNING"] },
+      },
+      data: {
+        status: "CANCELLED",
+        finishedAt: expect.any(Date),
+        summary: "Behavioral recommendations retired.",
+      },
+    })
+    expect(workflow.sleep).not.toHaveBeenCalled()
+    expect(
+      reconciliation.recordRecommendationCowatchRefreshHeartbeat,
+    ).not.toHaveBeenCalled()
   })
 
   it("runs a bounded batch, records its aggregate heartbeat, then sleeps", async () => {

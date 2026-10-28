@@ -564,15 +564,10 @@ describe("RecommendationEpisodeService", () => {
           }),
         }),
       )
-      await vi.waitFor(() => expect(dispatchProfileFeedback).toHaveBeenCalled())
+      await vi.waitFor(() => expect(classifySelection).toHaveBeenCalled())
       expect(classifySelection).toHaveBeenCalledWith("direct-id-2")
-      expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
-      expect(dispatchProfileFeedback).toHaveBeenCalledWith({
-        sessionDigest: "a".repeat(64),
-        profileId: "profile-direct",
-        privacyGeneration: 7,
-        evidenceWatermark: new Date(eligibleAt),
-      })
+      expect(classifySelection).toHaveBeenCalledOnce()
+      expect(dispatchProfileFeedback).not.toHaveBeenCalled()
     },
   )
 
