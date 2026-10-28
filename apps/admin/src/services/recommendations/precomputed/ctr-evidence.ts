@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client"
 import { visitEngagementSql } from "./engagement-evidence"
+import { RecommendationInternalStateError } from "../errors"
 
 export type RawCtrVisit = {
   visit_id: string
@@ -167,14 +168,29 @@ export async function archivePrecomputedCtrVisits(
   tx: Prisma.TransactionClient,
   visits: readonly { id: string; experimentId: string }[],
   now: Date,
+  compactRows?: readonly RawCtrVisit[],
 ): Promise<void> {
   if (visits.length === 0) return
   const ids = visits.map((visit) => visit.id)
-  const rows = await tx.$queryRaw<RawCtrVisit[]>(
-    rawCtrVisitSql(Prisma.sql`v.id = ANY(${ids}::uuid[])`, now),
-  )
+  const rows =
+    compactRows ??
+    (await tx.$queryRaw<RawCtrVisit[]>(
+      rawCtrVisitSql(Prisma.sql`v.id = ANY(${ids}::uuid[])`, now),
+    ))
   if (rows.length !== visits.length)
-    throw new Error("precomputed_ctr_archive_visit_mismatch")
+    throw new RecommendationInternalStateError(
+      "precomputed_ctr_archive_visit_mismatch",
+    )
+  const expected = new Map(
+    visits.map(({ id, experimentId }) => [id, experimentId]),
+  )
+  if (
+    new Set(rows.map((row) => row.visit_id)).size !== rows.length ||
+    rows.some((row) => expected.get(row.visit_id) !== row.experiment_id)
+  )
+    throw new RecommendationInternalStateError(
+      "precomputed_ctr_archive_visit_mismatch",
+    )
   const inserted = await tx.$queryRaw<Array<{ visit_id: string }>>(Prisma.sql`
     INSERT INTO recommendation_precomputed_ctr_archived_visit (visit_id, experiment_id)
     SELECT v.id, v.experiment_id FROM recommendation_precomputed_visit v
