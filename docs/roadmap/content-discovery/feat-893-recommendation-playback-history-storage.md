@@ -24,6 +24,33 @@ Own recommendation delivery/evidence/episode/playback/outcome/content-action wri
 
 ## Evidence
 
+The opt-in compact operational recency slice adds a versioned episode
+watermark, nonlate-start receipt/expiry, any-late flag and a bounded count of
+up to 64 scalar active intervals. Playback acceptance updates the root and
+interval rows with sequenced facts under the existing episode lock in one
+transaction. A root with existing facts never adopts compact state merely
+because the reader gate turns on; a compact root continues capturing if the
+gate turns off, so a later rollback/re-enable cannot leave a false complete
+watermark. The default-off reader uses compact rows only when the persisted
+watermark and interval count match the episode; legacy/incomplete roots retain
+native fact authority. The source-neutral and recent-context readers share
+the same 24-hour received-at, 3-second union, start, late, expiry, integrity,
+privacy and 32-root fences. Raw facts still drive finalization, rebuild and
+the other A/B/profile readers, and no raw facts are removed by this slice.
+An owned PostgreSQL test compares native and compact exclusions across exact
+and under-threshold durations, overlap, future/expired/out-of-window receipts,
+late and missing starts, plus legacy and incomplete-state fallback. Another
+tests transaction rollback and mode transitions at playback acceptance.
+At a local 32-root/64-interval fixture, paired median read times were 14.49ms
+native and 14.55ms compact. Raw fact rows occupied 581,632 bytes (of which
+85,088 were JSON payload values); the additional compact interval rows
+occupied 163,837 bytes. These are PostgreSQL `pg_column_size` sums on this
+fixture, excluding index and page overhead. This additive shadow fixture is a
+correctness/latency receipt, not a storage-savings or production claim.
+Before raw retirement, reconcile every legacy root and make missing compact
+state a hard refusal rather than relying on native fallback; preserve the
+remaining finality, rebuild, correction, A/B and privacy gates.
+
 First writer slice: request and ordered served-item summaries from both live
 and precomputed issuance paths; bounded candidate-stage trace fields; accepted
 render/impression and selection facts; source-neutral and attributed episode

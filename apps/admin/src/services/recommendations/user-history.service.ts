@@ -22,6 +22,7 @@ export async function getUserWatchHistory(
     profileTokenDigest: string | null
     locale: string
     now: Date
+    compactRecencyReaderEnabled?: boolean
   },
 ): Promise<UserWatchHistory> {
   if (!input.profileTokenDigest) return []
@@ -36,7 +37,7 @@ export async function getUserWatchHistory(
         AND profile.state = 'active' AND profile.expires_at > ${input.now}
       ORDER BY (link.session_digest = ${input.sessionDigest}) DESC, link.expires_at DESC, link.session_digest
       LIMIT 8
-    ), ${recentPlaybackCtes(input.now)}, episodes AS MATERIALIZED (
+    ), ${recentPlaybackCtes(input.now, input.compactRecencyReaderEnabled)}, episodes AS MATERIALIZED (
       SELECT episode.* FROM scoped_sessions session
       CROSS JOIN LATERAL (
         SELECT e.id, e.media_id, e.next_fact_sequence, e.finalized_at

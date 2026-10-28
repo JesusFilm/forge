@@ -4609,6 +4609,13 @@ model RecommendationPlaybackEpisode {
   /// because Prisma cannot express the `IS NOT NULL` predicate.
   finalizationDueAt    DateTime?                  @map("finalization_due_at")
   nextFactSequence     Int                        @default(1) @map("next_fact_sequence")
+  recencyFormatVersion Int                        @default(0) @map("recency_format_version")
+  recencyFactWatermark Int                        @default(0) @map("recency_fact_watermark")
+  recencyIntervalCount Int                        @default(0) @map("recency_interval_count")
+  recencyHasStart       Boolean                    @default(false) @map("recency_has_start")
+  recencyStartReceivedAt DateTime?                 @map("recency_start_received_at") @db.Timestamptz(6)
+  recencyStartExpiresAt DateTime?                  @map("recency_start_expires_at") @db.Timestamptz(6)
+  recencyHasLate        Boolean                    @default(false) @map("recency_has_late")
   historyRevision      Int                        @default(1) @map("history_revision")
   replayCount          Int                        @default(0) @map("replay_count")
   transportReplayCount Int                        @default(0) @map("transport_replay_count")
@@ -4620,6 +4627,7 @@ model RecommendationPlaybackEpisode {
   expiresAt            DateTime                   @map("expires_at")
 
   facts                   RecommendationPlaybackFact[]                   @relation("RecommendationPlaybackFactEpisode")
+  recencyIntervals        RecommendationPlaybackRecencyInterval[]
   outcomes                RecommendationOutcomeRevision[]                @relation("RecommendationOutcomeRevisionEpisode")
   contentActions          RecommendationContentAction[]                  @relation("RecommendationContentActionEpisode")
   submissionBudgets       RecommendationCapabilitySubmissionBudget[]     @relation("RecommendationCapabilitySubmissionEpisode")
@@ -4638,6 +4646,21 @@ model RecommendationPlaybackEpisode {
   @@index([finalizedAt, id], map: "recommendation_episode_finalized_idx")
   @@index([expiresAt])
   @@map("recommendation_playback_episode")
+}
+
+/// Bounded scalar operational intervals for immediate 24-hour exclusion.
+/// Raw facts remain authoritative for finalization and rebuild.
+model RecommendationPlaybackRecencyInterval {
+  episodeId     String                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  sequence      Int
+  receivedAt    DateTime                      @map("received_at") @db.Timestamptz(6)
+  intervalStart DateTime                      @map("interval_start") @db.Timestamptz(6)
+  intervalEnd   DateTime                      @map("interval_end") @db.Timestamptz(6)
+  expiresAt     DateTime                      @map("expires_at") @db.Timestamptz(6)
+
+  @@id([episodeId, sequence])
+  @@map("recommendation_playback_recency_interval")
 }
 
 /// Append-only raw fact. The server-assigned sequence is monotonic per episode;

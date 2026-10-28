@@ -45,6 +45,7 @@ import {
   type EpisodeCapabilityBinding,
 } from "./token.service"
 import { projectViewingModeEvidence } from "./viewing-mode.service"
+import { preparePlaybackRecencyCapture } from "./playback-recency"
 
 const FACT_LIMITS: Readonly<
   Record<RecommendationPlaybackEvent["kind"], number>
@@ -85,6 +86,7 @@ type PlaybackDependencies = {
   dispatchFinalization?: RecommendationFinalizationWake
   now?: () => Date
   newId?: () => string
+  compactRecencyCaptureEnabled?: boolean
 }
 
 type PlaybackInput = {
@@ -425,6 +427,17 @@ export class RecommendationPlaybackService {
 
                 const nextFactSequence =
                   locked.nextFactSequence + pending.length
+                const recencyCapture = preparePlaybackRecencyCapture({
+                  episode: locked,
+                  existingFactCount: existingCount,
+                  pending: pending.map(({ event }, index) => ({
+                    event,
+                    sequence: locked.nextFactSequence + index,
+                    late: now > locked.activeUntil,
+                  })),
+                  receivedAt: now,
+                  enabled: this.deps.compactRecencyCaptureEnabled,
+                })
                 const reserved =
                   await tx.recommendationPlaybackEpisode.updateMany({
                     where: {
@@ -434,6 +447,7 @@ export class RecommendationPlaybackService {
                     },
                     data: {
                       nextFactSequence,
+                      ...recencyCapture?.episodeUpdate,
                       ...(replayCount > 0
                         ? { transportReplayCount: { increment: replayCount } }
                         : {}),
@@ -493,6 +507,11 @@ export class RecommendationPlaybackService {
                 await tx.recommendationPlaybackFact.createMany({
                   data: factRows,
                 })
+                if (recencyCapture?.intervals.length) {
+                  await tx.recommendationPlaybackRecencyInterval.createMany({
+                    data: recencyCapture.intervals,
+                  })
+                }
                 if (evidenceAudits.length > 0) {
                   await tx.recommendationEvidenceAudit.createMany({
                     data: evidenceAudits,

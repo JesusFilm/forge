@@ -43,6 +43,7 @@ export async function getRecommendationRecentContext(
     allowDurableProfileLinks: boolean
     locale: string
     now: Date
+    compactRecencyReaderEnabled?: boolean
   },
 ): Promise<RecommendationRecentContext> {
   if (!/^[a-f0-9]{64}$/.test(input.sessionDigest)) return { videos: [] }
@@ -119,7 +120,7 @@ export async function getRecommendationRecentContext(
         AND selection.occurred_at >= ${windowStart}
         AND selection.occurred_at <= ${input.now}
     ),
-    ${recentPlaybackCtes(input.now)},
+    ${recentPlaybackCtes(input.now, input.compactRecencyReaderEnabled)},
     served_videos AS MATERIALIZED (
       SELECT
         item.target_media_id AS "targetMediaId",
