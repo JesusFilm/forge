@@ -17,6 +17,12 @@ export class RecommendationOutboxConflictError extends Error {
   }
 }
 
+export class RecommendationOutboxConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+  }
+}
+
 export type OutboxLimits = { maxEvents: number; maxBytes: number }
 export type ClaimedRecommendationEvent = {
   id: string
@@ -27,7 +33,7 @@ export type ClaimedRecommendationEvent = {
 
 function positiveBound(value: number, name: string, ceiling: number): void {
   if (!Number.isSafeInteger(value) || value < 1 || value > ceiling)
-    throw new Error(`Invalid ${name}`)
+    throw new RecommendationOutboxConfigurationError(`Invalid ${name}`)
 }
 
 function validDate(value: Date): void {
@@ -67,7 +73,9 @@ export async function enqueueRecommendationEvent(
     capacity.max_events !== limits.maxEvents ||
     capacity.max_bytes !== BigInt(limits.maxBytes)
   )
-    throw new Error("Outbox capacity configuration differs from existing store")
+    throw new RecommendationOutboxConfigurationError(
+      "Outbox capacity configuration differs from existing store",
+    )
   const [existing] = await tx.$queryRaw<Array<{ envelope: unknown }>>`
     SELECT envelope FROM recommendation_event_outbox
     WHERE family = ${valid.family} AND logical_id = ${valid.logicalId} AND revision = ${valid.revision}

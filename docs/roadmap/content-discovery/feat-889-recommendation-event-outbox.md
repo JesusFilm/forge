@@ -40,10 +40,21 @@ relay, producers, transport and physical retirement belong to dependent
 tickets.
 
 Verification: envelope tests were written red before the codec; real-store
-behavior tests were written before the store implementation. Thirteen focused tests
+behavior tests were written before the store implementation. Fourteen focused tests
 passed against a disposable PostgreSQL 18 container with only migration 0164
 applied, covering transaction rollback, duplicate/conflict, concurrent cap,
 lease retry/fencing, concurrent `SKIP LOCKED`, fresh-client recovery, defer,
-expiry and byte cap. `prisma generate`, scoped lint and focused tests passed
+expiry and byte cap. Each database case resets only the owned fixture tables,
+so filtered `-t` runs exercise the same assertions independently. `prisma
+generate`, scoped lint and focused tests passed
 using the repository's pinned Node 24.22.1. Full Admin typecheck passed before
 the implementation commit.
+All ten database cases also passed when run separately with `-t`. A remote
+`outbox_test` URL failed the fixture guard before database connection or cleanup.
+
+CI integration still required: provision a disposable loopback PostgreSQL
+database named `outbox_test`, apply migration 0164, set
+`RECOMMENDATION_OUTBOX_DB_TEST=1` and
+`RECOMMENDATION_OUTBOX_TEST_DATABASE_URL=postgresql://.../outbox_test`, then run
+the colocated `outbox.db.test.ts` suite. Its default skip is not CI proof;
+the local owned-container run above is the current behavior receipt.

@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
+import { env } from "@/config/env"
 import { createRecommendationEventEnvelope } from "./envelope"
 import {
   acknowledgeRecommendationEvents,
@@ -10,13 +11,13 @@ import {
   disposeExpiredRecommendationEvents,
   enqueueRecommendationEvent,
   getRecommendationOutboxUsage,
+  RecommendationOutboxConfigurationError,
 } from "./outbox"
 
-const run = process.env.RECOMMENDATION_OUTBOX_DB_TEST === "1"
+const run = env.RECOMMENDATION_OUTBOX_DB_TEST === "1"
 describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
-  const db = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
-  })
+  let db: PrismaClient
+  let databaseUrl: string
   const limits = { maxEvents: 3, maxBytes: 50_000 }
   const at = new Date("2099-10-28T01:00:01.000Z")
   let ordinal = 0
@@ -33,16 +34,28 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
       ...overrides,
     })
   beforeAll(async () => {
-    // The test runner supplies an owned disposable database with only this migration applied.
-    if (new URL(process.env.DATABASE_URL!).pathname !== "/outbox_test")
-      throw new Error(
-        "Outbox integration tests require the disposable outbox_test database",
-      )
+    if (!env.RECOMMENDATION_OUTBOX_TEST_DATABASE_URL)
+      throw new Error("Owned outbox test database URL required")
+    const url = new URL(env.RECOMMENDATION_OUTBOX_TEST_DATABASE_URL)
+    if (
+      !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname) ||
+      url.pathname !== "/outbox_test" ||
+      url.search ||
+      url.hash ||
+      !["postgres:", "postgresql:"].includes(url.protocol)
+    )
+      throw new Error("Owned loopback outbox_test database required")
+    databaseUrl = url.toString()
+    db = new PrismaClient({
+      adapter: new PrismaPg({ connectionString: databaseUrl }),
+    })
     await db.$connect()
+  })
+  beforeEach(async () => {
     await db.$executeRaw`TRUNCATE recommendation_event_outbox, recommendation_event_outbox_capacity`
   })
   afterAll(async () => {
-    await db.$disconnect()
+    await db?.$disconnect()
   })
 
   it("commits with the caller transaction and leaves no outbox entry on rollback", async () => {
@@ -89,11 +102,11 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
     ).rejects.toThrow("identity conflicts")
     expect(
       (await db.$transaction((tx) => getRecommendationOutboxUsage(tx))).events,
-    ).toBe(2)
+    ).toBe(1)
   })
 
   it("enforces event and byte caps atomically under concurrent admission", async () => {
-    const candidates = [envelope(), envelope(), envelope()]
+    const candidates = [envelope(), envelope(), envelope(), envelope()]
     const results = await Promise.allSettled(
       candidates.map((event) =>
         db.$transaction((tx) => enqueueRecommendationEvent(tx, event, limits)),
@@ -101,16 +114,20 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
     )
     expect(
       results.filter((result) => result.status === "fulfilled"),
-    ).toHaveLength(1)
+    ).toHaveLength(3)
     expect(
       results.filter((result) => result.status === "rejected"),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
     expect(
       (await db.$transaction((tx) => getRecommendationOutboxUsage(tx))).events,
     ).toBe(3)
   })
 
   it("leases bounded due rows, fences stale acknowledgements, and retries after expiry", async () => {
+    for (let i = 0; i < 3; i++)
+      await db.$transaction((tx) =>
+        enqueueRecommendationEvent(tx, envelope(), limits),
+      )
     const first = await db.$transaction((tx) =>
       claimRecommendationEvents(tx, { now: at, limit: 2, leaseMs: 1000 }),
     )
@@ -164,6 +181,10 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
   })
 
   it("disposes original-expired pending rows and releases capacity", async () => {
+    for (let i = 0; i < 2; i++)
+      await db.$transaction((tx) =>
+        enqueueRecommendationEvent(tx, envelope(), limits),
+      )
     const expiredAt = new Date("2099-11-12T01:00:00.000Z")
     expect(
       await db.$transaction((tx) =>
@@ -254,7 +275,7 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
       }),
     )
     const restarted = new PrismaClient({
-      adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
+      adapter: new PrismaPg({ connectionString: databaseUrl }),
     })
     try {
       const replay = await restarted.$transaction((tx) =>
@@ -283,8 +304,6 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
   it("enforces the measured serialized byte cap", async () => {
     const event = envelope()
     const bytes = Buffer.byteLength(JSON.stringify(event))
-    // Fixture reconfiguration is safe only while this owned outbox is empty.
-    await db.$executeRaw`DELETE FROM recommendation_event_outbox_capacity WHERE id = 1`
     const byteLimits = { maxEvents: 3, maxBytes: bytes }
     expect(
       await db.$transaction((tx) =>
@@ -296,5 +315,26 @@ describe.skipIf(!run)("recommendation event outbox on owned PostgreSQL", () => {
         enqueueRecommendationEvent(tx, envelope(), byteLimits),
       ),
     ).rejects.toThrow("capacity exhausted")
+  })
+
+  it("rejects invalid or inconsistent caps with a typed configuration error", async () => {
+    const event = envelope()
+    await expect(
+      db.$transaction((tx) =>
+        enqueueRecommendationEvent(tx, event, {
+          maxEvents: 0,
+          maxBytes: 50_000,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(RecommendationOutboxConfigurationError)
+    await db.$transaction((tx) => enqueueRecommendationEvent(tx, event, limits))
+    await expect(
+      db.$transaction((tx) =>
+        enqueueRecommendationEvent(tx, envelope(), {
+          maxEvents: 4,
+          maxBytes: limits.maxBytes,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(RecommendationOutboxConfigurationError)
   })
 })
