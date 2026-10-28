@@ -61,9 +61,30 @@ envelope errors retain `invalid_input` classification without surfacing input.
 Eligibility correction exports use the finalization worker's dispatcher or the
 profile reconciliation batch's worker dispatcher, with one drain at each
 bounded worker boundary.
-Complete diagnostic trace/source evidence and corresponding readers still
-need a field-by-field contract. The current candidate-run and stage exports
-remain bounded summaries, not complete archival trace payloads.
+The diagnostic writer follow-up uses a shared allowlisted codec for live and
+backfill request, served-item, candidate-run and stage envelopes. It preserves
+the committed request/run creation time, original issuance time (including a
+null failed issuance), per-record expiry, persisted stage time and stable
+logical IDs. It carries validated delivery diagnostics, safe served
+presentation/provenance and reviewed semantic, curated, profile, co-watch,
+baseline and composition-input source scalars. Unknown fields, signed image
+URLs, profile projection digests, arbitrary source provenance and private
+viewing-mode maps are omitted with explicit redacted coverage. A checkpointed
+backfill reader preflights complete SQL row sizes and child counts in the same
+repeatable-read snapshot before loading JSON, expands one bounded root at a
+time, limits output to 100 events/1 MiB, and resumes by request ID and
+within-root offset; it does not queue live exports. A PostgreSQL test rejects
+an oversized legacy item without hydrating its payload. Service tests compare identical live/backfill envelopes for
+legacy and packed traces; PostgreSQL tests compare precomputed live output to
+the saved row and bounded page reader. The gate remains off by default.
+
+This remains partial archival coverage by design: redacted or unknown source
+maps cannot be reconstructed from ClickHouse, and a dropped best-effort batch
+may leave a gap. Authenticated operator/detail and usefulness readers still
+need a bounded history adapter with explicit unavailable/incomplete coverage,
+plus parity/backfill checkpoints and privacy/erasure decisions before any raw
+PostgreSQL diagnostic payload is removed. Existing report and compact-state
+retirement work remains in this ticket and feats 894–895.
 
 Compact-state retirement remains: replace request/item roots with issuance,
 capability and replay binding columns (`delivery_jti`, `signing_kid`,
@@ -77,3 +98,16 @@ pointers, profile/co-watch contributions, A/B visit/assignment/link/click
 accounting and authorized operator reads still depend on PostgreSQL history.
 Reader replacement, parity/backfill and actual storage retirement follow in
 this ticket and feats 894–895; this ticket stays in progress.
+
+The authorized operator request-detail path now has an independent, default-off
+ClickHouse reader gate. It captures the active request, served-item, candidate
+run and stage identities in a PostgreSQL snapshot, releases that transaction
+before bounded remote reads, then rechecks the request under a new lock and
+records the trace-access audit before returning. The detail page shows safe
+exported payloads and identifies missing exported records; remote failures
+remain errors. A real PostgreSQL test proves request deletion can finish while
+the remote read is stalled and that the deleted root is not returned. The
+legacy PostgreSQL detail path remains the default, and raw payload writes
+cannot yet retire: a previously retired candidate trace no longer provides
+all stage identities, which the new reader marks incomplete, and usefulness,
+other recent-history and privacy readers still require their own cutovers.

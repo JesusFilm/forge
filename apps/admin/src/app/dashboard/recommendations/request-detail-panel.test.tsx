@@ -177,6 +177,25 @@ function hybridDetail(): RecommendationRequestDetailData {
 }
 
 describe("RecommendationRequestDetailPanel", () => {
+  it("discloses missing exported diagnostics to an operator", () => {
+    const detail: RecommendationRequestDetailData = {
+      ...hybridDetail(),
+      historicalTrace: {
+        status: "incomplete",
+        missing: ["request:request-1", "evidence:stage-1"],
+        request: null,
+        servedItems: [],
+        candidateRun: null,
+        stages: [],
+      },
+    }
+    const html = renderToStaticMarkup(
+      <RecommendationRequestDetailPanel detail={detail} />,
+    )
+    expect(html).toContain("Historical export incomplete: 2 missing record(s).")
+    expect(html).toContain("evidence:stage-1")
+  })
+
   it("orders hybrid proof from summary through final slate, ancestry, and lifecycle", () => {
     const html = renderToStaticMarkup(
       <RecommendationRequestDetailPanel detail={hybridDetail()} />,

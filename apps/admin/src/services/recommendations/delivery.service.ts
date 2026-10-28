@@ -15,6 +15,8 @@ import {
   RecommendationDeliveryResult,
   RecommendationRequestState,
   type RecommendationRequest,
+  type RecommendationServedItem,
+  type RecommendationCandidateRun,
 } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import {
@@ -99,7 +101,12 @@ import {
 } from "./promotion/owner-authority"
 import { nominationEligibilityReasons } from "./eligibility"
 import { servedSnapshotCreate } from "./served-item-payload"
-import { recommendationHistoryEvent } from "./event-history/producers"
+import {
+  requestHistoryEvent,
+  servedItemHistoryEvents,
+  candidateRunHistoryEvent,
+  stageHistoryEvent,
+} from "./event-history/trace-codec"
 import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
 import {
   readDeliveryDiagnostics,
@@ -1188,7 +1195,10 @@ export class RecommendationDeliveryService {
               : RecommendationDeliveryResult.UNAVAILABLE
 
       let committedCandidateRows: CandidateEvidenceRow[] = []
-      let committedRequest: RecommendationRequest | null = null
+      let committedRequest:
+        | (RecommendationRequest & { items: RecommendationServedItem[] })
+        | null = null
+      let committedRun: RecommendationCandidateRun | null = null
       const persistRequest = (
         requestState: RecommendationRequestState,
         responseBytes: number | null,
@@ -1252,6 +1262,7 @@ export class RecommendationDeliveryService {
               })
             }
             committedRequest = await tx.recommendationRequest.create({
+              include: { items: true },
               data: {
                 id: requestId,
                 contractVersion: RECOMMENDATION_CONTRACTS.delivery,
@@ -1419,7 +1430,6 @@ export class RecommendationDeliveryService {
               : null
             const createCandidateRun = () =>
               tx.recommendationCandidateRun.create({
-                select: { id: true },
                 data: {
                   id: candidateRunId,
                   requestId,
@@ -1458,13 +1468,13 @@ export class RecommendationDeliveryService {
                 },
               })
             if (compactTrace) {
-              await timeRecommendationOperation(
+              committedRun = await timeRecommendationOperation(
                 "candidate_evidence.insert",
                 createCandidateRun,
                 evidenceRows.length,
               )
             } else {
-              await createCandidateRun()
+              committedRun = await createCandidateRun()
             }
             await tx.recommendationPersonalizationDecision.create({
               data: {
@@ -1500,95 +1510,24 @@ export class RecommendationDeliveryService {
           },
           nowMilliseconds,
         ).then(() => {
-          const acceptedRequest =
-            committedRequest as RecommendationRequest | null
+          const acceptedRequest = committedRequest as
+            | (RecommendationRequest & { items: RecommendationServedItem[] })
+            | null
           dispatchPreparedRecommendationEventsAfterCommit("request", () => [
-            recommendationHistoryEvent({
-              family: "request",
-              logicalId: requestId,
-              revision: 1,
-              occurredAt: now,
-              acceptedAt: acceptedRequest?.createdAt ?? now,
-              expiresAt,
-              payload: {
-                requestId,
-                manifestId: manifest.id,
-                strategyVersion: manifest.strategyVersion,
-                seedMediaId,
-                locale,
-                result: dbResult,
-                state: requestState,
-                fallbackReason: reason,
-                expectedItemCount: prepared.length,
-                issuedAt:
-                  requestState === RecommendationRequestState.ISSUED
-                    ? now.toISOString()
-                    : null,
-                retrievalLatencyMs: acceptedRequest?.retrievalLatencyMs,
-                responseBytes,
-                experimentAssignmentId:
-                  experiment.assignment?.assignmentId ?? null,
-              },
-            }),
+            requestHistoryEvent(acceptedRequest!),
           ])
           if (prepared.length)
             dispatchPreparedRecommendationEventsAfterCommit(
               "served-item",
               () =>
-                prepared.map((entry) =>
-                  recommendationHistoryEvent({
-                    family: "served-item",
-                    logicalId: entry.id,
-                    revision: 1,
-                    occurredAt: now,
-                    acceptedAt: acceptedRequest?.createdAt ?? now,
-                    expiresAt,
-                    payload: {
-                      requestId,
-                      itemId: entry.id,
-                      position: entry.position,
-                      targetMediaId: entry.candidate.videoId,
-                      candidateGenerator: selectedCandidateGenerator(
-                        entry.sources,
-                      ),
-                      audioLanguageSlug,
-                      videoSlug: entry.candidate.videoSlug,
-                      videoTitle: entry.candidate.videoTitle,
-                      startSeconds: entry.candidate.startSeconds,
-                      endSeconds: entry.candidate.endSeconds,
-                      durationSeconds: entry.candidate.durationSeconds ?? null,
-                    },
-                  }),
+                servedItemHistoryEvents(
+                  acceptedRequest!,
+                  acceptedRequest!.items,
                 ),
               prepared.length,
             )
           dispatchPreparedRecommendationEventsAfterCommit("evidence", () => [
-            recommendationHistoryEvent({
-              family: "evidence",
-              logicalId: candidateRunId,
-              revision: 1,
-              occurredAt: now,
-              acceptedAt: acceptedRequest?.createdAt ?? now,
-              expiresAt,
-              payload: {
-                requestId,
-                candidateRunId,
-                kind: "candidate-run",
-                purpose: context.purpose,
-                generatorVersion: platform.versions.generator,
-                rankerVersion: platform.versions.ranker,
-                composerVersion: platform.versions.composer,
-                nominatedCount: platform.counts.nominated,
-                rejectedCount: platform.counts.rejected,
-                scoredCount: platform.counts.scored,
-                orderedCount: platform.counts.ordered,
-                requestedCount,
-                composedCount,
-                shortfallReason,
-                fallbackReason: candidateRunFallbackReason,
-                evidenceComplete,
-              },
-            }),
+            candidateRunHistoryEvent(committedRun!),
           ])
           for (
             let offset = 0;
@@ -1598,32 +1537,7 @@ export class RecommendationDeliveryService {
             const rows = committedCandidateRows.slice(offset, offset + 100)
             dispatchPreparedRecommendationEventsAfterCommit(
               "evidence",
-              () =>
-                rows.map((row) =>
-                  recommendationHistoryEvent({
-                    family: "evidence",
-                    logicalId: row.id,
-                    revision: 1,
-                    occurredAt: row.createdAt,
-                    acceptedAt: row.createdAt,
-                    expiresAt: row.expiresAt,
-                    payload: {
-                      requestId,
-                      candidateRunId,
-                      stage: row.stage,
-                      ordinal: row.ordinal,
-                      targetMediaId: row.targetMediaId,
-                      sourceGenerator: row.sourceGenerator,
-                      sourceRank: row.sourceRank,
-                      sourceScore: row.sourceScore,
-                      normalizedScore: row.normalizedScore,
-                      rrfScore: row.rrfScore,
-                      deterministicScore: row.deterministicScore,
-                      finalPosition: row.finalPosition,
-                      reasonCodes: row.reasonCodes,
-                    },
-                  }),
-                ),
+              () => rows.map((row) => stageHistoryEvent(requestId, row)),
               rows.length,
             )
           }

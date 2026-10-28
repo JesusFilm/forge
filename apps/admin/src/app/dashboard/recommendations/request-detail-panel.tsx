@@ -16,6 +16,58 @@ export function RecommendationRequestDetailPanel({
 }) {
   return (
     <div className="grid gap-6">
+      {detail.historicalTrace ? (
+        <section
+          className="app-card p-4"
+          aria-labelledby="historical-trace-heading"
+        >
+          <h2 id="historical-trace-heading" className="text-lg font-medium">
+            Exported diagnostic history
+          </h2>
+          <p className="mt-1 text-[13px] text-[var(--color-text-muted)]">
+            {detail.historicalTrace.status === "incomplete"
+              ? `Historical export incomplete: ${detail.historicalTrace.missing.length} missing record(s).`
+              : "All expected exported records are present. Unsafe source fields remain redacted by the export contract."}
+          </p>
+          {detail.historicalTrace.missing.length > 0 ? (
+            <p className="mt-2 break-all text-[12px] text-[var(--color-text-muted)]">
+              Missing: {detail.historicalTrace.missing.join(", ")}
+            </p>
+          ) : null}
+          <div className="mt-3 grid gap-2">
+            {[
+              detail.historicalTrace.request,
+              ...detail.historicalTrace.servedItems,
+              detail.historicalTrace.candidateRun,
+              ...detail.historicalTrace.stages,
+            ]
+              .filter((entry) => entry !== null)
+              .map((entry) => (
+                <details
+                  key={`${entry.family}:${entry.logicalId}`}
+                  className="rounded border border-[var(--color-hairline)] p-2"
+                >
+                  <summary className="cursor-pointer break-all text-[12px]">
+                    {entry.family} · {entry.logicalId} · revision{" "}
+                    {entry.revision}
+                  </summary>
+                  <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-all text-[11px]">
+                    {JSON.stringify(
+                      {
+                        occurredAt: entry.occurredAt,
+                        acceptedAt: entry.acceptedAt,
+                        expiresAt: entry.expiresAt,
+                        payload: entry.payload,
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
+                </details>
+              ))}
+          </div>
+        </section>
+      ) : null}
       <section
         aria-labelledby="request-summary-heading"
         className="app-card p-4"

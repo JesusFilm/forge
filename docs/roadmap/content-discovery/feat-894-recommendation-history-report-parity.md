@@ -89,6 +89,14 @@ ClickHouse covers successfully delivered/backfilled facts only. No historical
 watermark or complete-measurement claim is fabricated. The old PostgreSQL
 anonymous reader remains available for parity and rollback.
 
+Operator request detail has a separate default-off historical reader gate. It
+uses the current permissioned page and access audit, fetches only IDs captured
+from an active operational request, and displays missing exports as incomplete
+coverage. The PostgreSQL transaction is closed during remote I/O and a fresh
+request fence precedes the access audit and response. The existing PostgreSQL
+detail remains the default for parity and rollback; no complete-history or
+production-readiness claim follows from this bounded reader slice.
+
 The isolated local `event_watch_reader_test` ClickHouse database (image
 `clickhouse/clickhouse-server:25.8.15.35`) exercises corrections, physical
 duplicates, reversed insertion/rank order, historical cutoffs, current expiry,

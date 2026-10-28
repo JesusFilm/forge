@@ -4,6 +4,8 @@ import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import type { RecommendationEventEnvelope } from "../event-history/envelope"
+import { encodeRecommendationHistoryPage } from "../event-history/trace-codec"
+import { readRecommendationTraceHistoryPage } from "../event-history/trace-backfill"
 const exportedHistory = vi.hoisted(() => ({
   events: [] as RecommendationEventEnvelope[],
 }))
@@ -13,7 +15,8 @@ vi.mock("../event-history/runtime", async (importOriginal) => ({
     family: string,
     prepare: () => RecommendationEventEnvelope[],
   ) => {
-    if (family === "experiment-visit") exportedHistory.events.push(...prepare())
+    if (["experiment-visit", "request", "served-item"].includes(family))
+      exportedHistory.events.push(...prepare())
   },
 }))
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
@@ -230,6 +233,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         where: { id: delivery.requestId! },
         include: { items: true },
       })
+      const expectedHistory = encodeRecommendationHistoryPage([
+        {
+          request: saved,
+          items: saved.items,
+          run: null,
+          stages: [],
+        },
+      ])
+      expect(
+        exportedHistory.events.filter(
+          (event) =>
+            (event.family === "request" && event.logicalId === saved.id) ||
+            (event.family === "served-item" &&
+              event.payload.requestId === saved.id),
+        ),
+      ).toEqual(expectedHistory)
+      const backfill = await readRecommendationTraceHistoryPage(
+        prisma,
+        { kind: "within", requestId: saved.id, offset: 0 },
+        { now: saved.createdAt },
+      )
+      expect(backfill.events).toEqual(expectedHistory)
       expect(saved.experimentAssignmentId).toBeNull()
       expect(saved.strategyVersion).toBe("precomputed-watch-preview-v1")
       expect(saved.servedItemPayload).toMatchObject({ version: 1 })
@@ -293,6 +318,50 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: empty.requestId! },
         }),
       ).toMatchObject({ expectedItemCount: 0, result: "EMPTY" })
+
+      // Legacy item JSON is independently unbounded in the old schema. The
+      // refusal path may fetch only scalar sizes, never this payload.
+      await prisma.recommendationServedItem.update({
+        where: { id: oneSaved.items[0]!.id },
+        data: { presentation: { padding: "x".repeat(9 * 1_048_576) } },
+      })
+      const hydrated = vi.fn()
+      const boundedDb = {
+        $transaction: (
+          work: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          options: { isolationLevel: Prisma.TransactionIsolationLevel },
+        ) =>
+          prisma.$transaction(
+            async (tx) =>
+              work({
+                recommendationRequest: {
+                  findUnique: async (args: {
+                    where: { id: string }
+                    include?: unknown
+                  }) => {
+                    if (args.include) {
+                      hydrated()
+                      throw new Error("Unbounded payload was hydrated")
+                    }
+                    return tx.recommendationRequest.findUnique({
+                      where: args.where,
+                      select: { id: true, expiresAt: true },
+                    })
+                  },
+                },
+                $queryRaw: tx.$queryRaw.bind(tx),
+              } as unknown as Prisma.TransactionClient),
+            options,
+          ),
+      } as unknown as PrismaClient
+      await expect(
+        readRecommendationTraceHistoryPage(
+          boundedDb,
+          { kind: "within", requestId: oneSaved.id, offset: 0 },
+          { now: oneSaved.createdAt },
+        ),
+      ).rejects.toMatchObject({ code: "history_root_byte_limit" })
+      expect(hydrated).not.toHaveBeenCalled()
     })
 
     it("treats changed exact audio as valid empty but an absent source row as technical", async () => {
