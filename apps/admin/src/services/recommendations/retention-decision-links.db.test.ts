@@ -265,6 +265,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           result: "EMPTY",
           deliveryJti: randomUUID(),
           signingKid: "fixture",
+          // Keep creation and expiry on the same fixed fixture clock.
+          createdAt: now,
           issuedAt: now,
           expiresAt: futureAt,
         })),
@@ -279,6 +281,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           projectionVersion: "fixture",
           projectionGenerationNumber: 1,
           interestCount: 1,
+          createdAt: now,
           expiresAt: futureAt,
         })),
       })
