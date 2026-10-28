@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
 import { createRecommendationClickHouseClient } from "./clickhouse"
 import { createRecommendationEventEnvelope } from "./envelope"
+import { encodeWatchHistoryFact } from "../watch-event-history"
 
 const run = env.RECOMMENDATION_CLICKHOUSE_DB_TEST === "1"
 describe.skipIf(!run)("anonymous Watch report on isolated ClickHouse", () => {
@@ -205,6 +206,67 @@ describe.skipIf(!run)("anonymous Watch report on isolated ClickHouse", () => {
       }),
     ])
     expect(await report()).toEqual({ rows: [], truncated: false })
+  })
+
+  it("keeps a reused caller event ID visible after the old incarnation expires and is erased", async () => {
+    const eventId = "00000000-0000-4000-8000-000000000001"
+    const base = {
+      eventId,
+      windowId: "window-reused-event-id",
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+      placement: "primary",
+      policyVersion: "watch-exposure-v2",
+      position: 0,
+      itemPath: "/watch/one.html",
+      kind: "eligible",
+      visibilityCapability: null,
+    }
+    const old = encodeWatchHistoryFact(
+      {
+        ...base,
+        rankId: "old-watch-rank",
+        occurredAt: new Date("2099-10-27T12:00:00.000Z"),
+        receivedAt: new Date("2099-10-27T12:00:01.000Z"),
+        expiresAt: new Date("2099-10-27T23:00:00.000Z"),
+        duplicateCount: 6,
+        revision: 7,
+      },
+      new Date("2099-10-27T12:02:00.000Z"),
+    )
+    const current = encodeWatchHistoryFact(
+      {
+        ...base,
+        rankId: "new-watch-rank",
+        occurredAt: new Date("2099-10-27T13:00:00.000Z"),
+        receivedAt: new Date("2099-10-27T13:00:01.000Z"),
+        expiresAt: new Date("2099-11-10T00:00:00.000Z"),
+        duplicateCount: 0,
+        revision: 1,
+      },
+      new Date("2099-10-27T13:02:00.000Z"),
+    )
+    await client.insert([old, current])
+    expect((await report()).rows).toMatchObject([
+      { eligible: 1, duplicates: 0 },
+    ])
+    expect(
+      await client.read({
+        family: "watch-exposure",
+        logicalIds: [current.logicalId],
+        asOf: end,
+        now: end,
+      }),
+    ).toMatchObject([{ logicalId: current.logicalId, payload: { eventId } }])
+
+    await client.erase({
+      family: "watch-exposure",
+      logicalIds: [old.logicalId],
+    })
+    expect((await report()).rows).toMatchObject([
+      { eligible: 1, duplicates: 0 },
+    ])
   })
 
   it("does not expose currently expired data through a historical cutoff", async () => {

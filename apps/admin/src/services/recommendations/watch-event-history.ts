@@ -122,7 +122,9 @@ export function encodeWatchHistoryFact(
     const { revision, ...payload } = fact
     return createRecommendationEventEnvelope({
       family: "watch-exposure",
-      logicalId: fact.eventId,
+      // Server-owned row incarnation, stable across replay/correction and
+      // distinct if a caller reuses an eventId after receipt expiry.
+      logicalId: fact.rankId,
       revision,
       occurredAt: fact.occurredAt,
       acceptedAt,
