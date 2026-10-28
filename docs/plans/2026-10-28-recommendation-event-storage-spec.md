@@ -2,7 +2,7 @@
 
 Status: implementation authorized; updated to the owner's asynchronous,
 best-effort delivery direction on 28 October 2026. Production is not switched.
-Owner: Nisal. Roadmap: [feat-888](../roadmap/content-discovery/feat-888-recommendation-event-storage-migration.md).
+Owner: Nisal. Roadmap: [feat-897](../roadmap/content-discovery/feat-897-recommendation-event-storage-migration.md).
 Integration: `codex/recommendation-event-storage-integration` in an isolated
 worktree. Preserve the dirty primary checkout.
 
@@ -215,5 +215,5 @@ deployment and actual Admin HTTP/worker revision verification. Qualify serving
 performance, playback/A/B authority, privacy, expiry, delivered-feedback
 freshness and explicit loss observations. Measure actual PostgreSQL retirement,
 filesystem headroom and total cost separately. Preserve the independent daily
-retention monitor and open capacity work. Feat-888 remains in progress until
+retention monitor and open capacity work. Feat-897 remains in progress until
 the entire implementation and actual release evidence are complete.

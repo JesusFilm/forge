@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-10-28"
 duration: 3
 depends_on: []
-blocks: ["feat-888", "feat-890", "feat-891", "feat-892", "feat-893"]
+blocks: ["feat-897", "feat-890", "feat-891", "feat-892", "feat-893"]
 tags: ["recommendations", "storage", "clickhouse", "admin"]
 ---
 
@@ -29,7 +29,7 @@ There is no retry queue or 24-hour outage buffer in this version.
 
 ## Context and evidence
 
-- Parent: [feat-888](feat-888-recommendation-event-storage-migration.md).
+- Parent: [feat-897](feat-897-recommendation-event-storage-migration.md).
 - Specification: [event storage migration](../../plans/2026-10-28-recommendation-event-storage-spec.md).
 - Four envelope behavior tests cover stable serialization/digests, bounded
   payloads, unsafe fields and tampered/malformed envelopes.

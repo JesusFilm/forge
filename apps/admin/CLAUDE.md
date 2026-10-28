@@ -20,7 +20,10 @@ See the origin docs for full context:
 
 - Next.js 16+ App Router with TypeScript strict mode
 - GraphQL Yoga + Pothos (with Prisma + scope-auth plugins) — single API at `/api/graphql`
-- Prisma 6.x + PostgreSQL + pgvector (HNSW index) — sole data access layer
+- Prisma 6.x + PostgreSQL + pgvector (HNSW index) — operational storage.
+  Recommendation event history uses the bounded ClickHouse adapter under
+  `src/services/recommendations/event-history/`; follow
+  `docs/analytics-and-recommendation-policy.md` for export failure semantics.
 - Admin login goes through the standalone `apps/auth` OAuth/OIDC provider and
   creates an admin-local signed session. Admin must not depend on shared
   `.jesusfilm.org` cookies or host admin-local credential handlers.
