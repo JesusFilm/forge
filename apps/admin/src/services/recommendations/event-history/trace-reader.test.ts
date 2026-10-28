@@ -25,7 +25,9 @@ describe("operator recommendation history reader", () => {
     vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] })
     vi.setSystemTime(at)
     try {
-      const read = vi.fn(async () => new Promise<never>(() => undefined))
+      const read = vi.fn(async ({ family }: { family: string }) =>
+        family === "request" ? [] : new Promise<never>(() => undefined),
+      )
       const pending = readOperatorRecommendationTrace({ read } as never, {
         requestId: "request-1",
         itemIds: [],
@@ -38,7 +40,7 @@ describe("operator recommendation history reader", () => {
       )
       await vi.advanceTimersByTimeAsync(3_500)
       await rejected
-      expect(read).toHaveBeenCalledTimes(1)
+      expect(read).toHaveBeenCalledTimes(2)
     } finally {
       vi.useRealTimers()
     }
