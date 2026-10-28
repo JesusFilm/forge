@@ -48,7 +48,9 @@ if (!privateRequestMarkerDdl)
  * Runtime-backed tests need the complete current recommendation schema, even
  * when their own feature predates a column selected by today's Prisma client.
  * Historical upgrade tests deliberately keep their separate fixed chains.
- * Watch surface and unrelated catalog migrations have their own fixtures.
+ * Compact Watch admission has no catalog dependency and is required by the
+ * shared retention sweep. Other Watch and catalog migrations have their own
+ * fixtures.
  * The 0127 legacy-stage retirement names public explicitly. Resolve that
  * qualifier through the fixture's search_path so its lock, run update and
  * truncation execute against the isolated schema instead of public.
@@ -62,6 +64,7 @@ export const recommendationRuntimeBaseMigrationSql = readdirSync(migrationRoot)
       // precomputed slice tests its migrations with the full Admin chain.
       !name.includes("recommendation_precomputed") &&
       (name.includes("recommendation") ||
+        name === "0164_watch_event_history_admission" ||
         name === "0057_semantic_control_readiness"),
   )
   .sort()

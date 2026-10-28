@@ -31,7 +31,9 @@ registry filter and 128-group cap, chooses each event ID's latest accepted revis
 `asOf`, then applies current original expiry and terminal erasure. It ranks
 facts by original occurredAt/receivedAt/rankId within exact
 window/surface/block/presentation/placement/policy/position/path/kind partitions.
-The cohort and received cutoff match the existing PostgreSQL query. The HTTP
+The received cutoff matches the existing PostgreSQL query. The in-window cohort
+is implicit in the final fact filter, so the report no longer rescans all
+canonical facts to construct a distinct window set. The HTTP
 client uses fixed parameterized SQL, one operation deadline, a three-second
 server query limit, 20-million physical-row scan / 1 GiB memory / 129-result
 caps, and strict output decoding. The dated production snapshot's 391,960
@@ -42,6 +44,40 @@ Pre-cutover legacy duplicate corrections are backfilled with checkpoint
 acceptance time because their original correction admission time is unavailable;
 historical `asOf` reports before that checkpoint cannot reconstruct those
 corrections exactly.
+
+Capacity investigation on the isolated ClickHouse 25.8.15.35 container used
+the actual typed reader and its unchanged 3-second operation/server deadlines,
+20-million scanned-row limit, 1 GiB memory cap, and two-thread setting. On a
+clean 400,000-row synthetic Watch fixture, removing the duplicate revision
+aggregation and redundant cohort scan and enabling in-order aggregation
+returned the expected 100,000 served/rendered/eligible/selected counts in
+2,755 ms client elapsed. The main query read 400,000 rows in 2,117 ms with
+491,497,847 bytes peak memory; the exact conflict audit separately read
+400,000 rows in 601 ms with 365,693,203 bytes peak. The previous query
+timed out at 400,000 rows in the same local setup. All ten real ClickHouse
+Watch semantic tests pass, including historical acceptance, erasure, physical
+same-revision conflicts, filtered conflicts and filter-before-cap.
+
+This is a bounded improvement, not 14-day capacity qualification. At 1,000,000
+synthetic rows, the actual reader still timed out at 3,005 ms; the
+`system.query_log` main-query record was `ExceptionWhileProcessing`,
+3,200 ms, 940,672 `read_rows`, 877,332,058 bytes `memory_usage`, exception
+code 159. The 400,000-row result has only ~245 ms of client deadline
+headroom and cannot support a production scale claim. The fixture has one
+repeated surface/block and no correction density, and the local container's
+CPU, memory, and load do not represent Railway sizing. The report scans history
+and the independent conflict audit each time; this work adds no stored summary
+or second authoritative stream. A same-table materialized tuple of Watch
+JSON fields fed to `argMax` backfilled one million rows, but the main query
+reached 1,011,484,933 bytes peak before timing out. A two-stage
+`GROUP BY` on Watch item/kind followed by item aggregation removed window
+sorting and passed the ten semantic tests, but at one million rows it reached
+1,033,241,604 bytes peak after only 817,792 reads. Both experiments were
+discarded and no projection or materialized column is in the shipped schema.
+The generic real ClickHouse suite (six canonical/read/erase tests) and 16
+client unit tests also pass. Before enabling the 14-day reader, feat-896 needs an actual
+resource-sized load test and a design that preserves exact as-of revision and
+conflict semantics within the existing budget. No production DDL was applied.
 
 `admin-ops/watch-exposure.service.ts` maps this query to the existing anonymous
 breakdown fields and returns `coverage: best_effort_incomplete`; V1 served stays
@@ -57,12 +93,12 @@ The isolated local `event_watch_reader_test` ClickHouse database (image
 `clickhouse/clickhouse-server:25.8.15.35`) exercises corrections, physical
 duplicates, reversed insertion/rank order, historical cutoffs, current expiry,
 erasure, conflicts after `OPTIMIZE FINAL`, filtered conflicts, policy/path/window
-separation, and filter-before-cap with 130 groups. This new suite is not yet
-wired to CI. Physical TTL and cross-store privacy fencing remain feat-895 gates.
+separation, and filter-before-cap with 130 groups. The owned real ClickHouse
+fixture runs in CI. Physical TTL and cross-store privacy fencing remain feat-895 gates.
 The generic read-by-ID client now applies the later of report `asOf` and current
 time to original expiry, so historical cutoffs cannot revive expired data.
-Signed exposure, A/B CTR/engagement, usefulness, and archive parity remain
-unfinished in feat-894; keep this ticket in-progress.
+Signed exposure, A/B CTR/engagement cutover, usefulness, and archive parity
+remain unfinished in feat-894; keep this ticket in-progress.
 
 Visit producer slice: `event-history/experiment-producers.ts` emits only
 redacted A/B and incumbent-baseline visit revisions and request links. New

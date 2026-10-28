@@ -24,6 +24,7 @@ const WATCH_REPORT_SETTINGS = {
   result_overflow_mode: "throw",
   max_memory_usage: "1073741824",
   max_threads: "2",
+  optimize_aggregation_in_order: "1",
 }
 
 export class RecommendationClickHouseError extends Error {
@@ -387,7 +388,8 @@ export function createRecommendationClickHouseClient(
           events.length > MAX_BATCH_EVENTS
         )
           throw new RecommendationClickHouseError("invalid_input")
-        let rows = ""
+        const rows: string[] = []
+        let bytes = Buffer.byteLength(INSERT_SQL)
         const identities = new Map<string, string>()
         for (const event of events) {
           let valid: RecommendationEventEnvelope
@@ -408,7 +410,7 @@ export function createRecommendationClickHouseClient(
           )
             throw new RecommendationClickHouseError("conflict")
           identities.set(identity, fingerprint)
-          rows +=
+          const row =
             JSON.stringify({
               family: valid.family,
               logical_id: valid.logicalId,
@@ -419,11 +421,10 @@ export function createRecommendationClickHouseClient(
               payload_digest: valid.payloadDigest,
               payload: JSON.stringify(valid.payload),
             }) + "\n"
-          if (
-            Buffer.byteLength(INSERT_SQL) + Buffer.byteLength(rows) >
-            MAX_BATCH_BYTES
-          )
+          bytes += Buffer.byteLength(row)
+          if (bytes > MAX_BATCH_BYTES)
             throw new RecommendationClickHouseError("invalid_input")
+          rows.push(row)
         }
         // A suppression marker is terminal for this logical ID. The relay must also
         // fence its in-flight generations; feat-895 reconciles late physical writes.
@@ -438,7 +439,7 @@ export function createRecommendationClickHouseClient(
             throw new RecommendationClickHouseError("conflict")
         for (const [family, ids] of groups)
           await assertNoConflicts(signal, family, [...new Set(ids)])
-        const result = await execute(signal, INSERT_SQL + rows)
+        const result = await execute(signal, INSERT_SQL + rows.join(""))
         if (result !== "") throw new RecommendationClickHouseError("response")
         for (const [family, ids] of groups)
           await assertNoConflicts(signal, family, [...new Set(ids)])
