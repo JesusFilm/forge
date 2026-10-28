@@ -65,6 +65,13 @@ unknown outcomes, drops, in-flight requests/bytes, durations and family totals.
 They cannot enumerate events lost to a process crash. The aggregate interval is
 unreferenced and `close()` clears it.
 
+Validated assignment/visit envelopes also report bounded `control` and
+`challenger` counts for attempts, confirmations, failures, unknown outcomes and
+capacity drops. Unknown arm strings never become labels. Invalid batches,
+preparation/configuration drops and process-crash losses cannot be attributed
+to an arm by this observation; these counters do not establish complete A/B
+coverage. Operational experiment measurement remains separate from export.
+
 Focused dispatch/runtime tests cover immediate start, unresolved HTTP,
 exactly-one failure attempt, full-batch accounting, saturation/recovery,
 disabled and invalid configuration, expiry, sensitive-field rejection, Next
