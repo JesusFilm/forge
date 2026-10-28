@@ -24,6 +24,32 @@ const config = {
 }
 
 describe("recommendation ClickHouse HTTP boundary", () => {
+  it("rejects an invalid closed-ID sweep before making any remote change", async () => {
+    const fetch = vi.fn(async () => new Response("", { status: 200 }))
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await expect(
+      client.sweepClosedExpired({
+        family: "watch-exposure",
+        entries: [
+          {
+            logicalId: "watch:one",
+            maxOriginalExpiry: new Date(event.expiresAt),
+          },
+        ],
+        now: new Date(Number.NaN),
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input" })
+    await expect(
+      client.sweepClosedExpired({
+        family: "watch-exposure",
+        entries: [
+          { logicalId: "watch:one", maxOriginalExpiry: new Date(Number.NaN) },
+        ],
+        now: new Date("2026-11-12T00:00:00.000Z"),
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input" })
+    expect(fetch).not.toHaveBeenCalled()
+  })
   it("runs a fixed bounded anonymous Watch aggregate without caller SQL", async () => {
     const fetch = vi.fn(
       async (_url: URL, init: RequestInit) =>
