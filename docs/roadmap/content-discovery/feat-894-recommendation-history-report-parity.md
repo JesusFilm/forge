@@ -235,3 +235,29 @@ their separate serving, integrity, privacy and retention needs must be checked
 before removal. The operational browser digest is needed for cluster
 accounting and erasure, remains PostgreSQL-only, and is never exported in
 the compact snapshot.
+
+Default-off compact A/B report reader qualification: a single bounded
+PostgreSQL query selects each live visit's latest accepted measurement at the
+fixed report cutoff and decodes at most 100,000 visits; a missing pre-cutover
+snapshot or a larger live cohort returns explicit `unavailable`, never a
+partial sample or a fabricated earlier checkpoint. The separate
+`RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED` gate uses these
+derived rows for the same CTR/engagement totals and browser-cluster moments,
+combined with the existing archived totals/clusters. The already-published
+final report is returned before reader selection and remains immutable.
+The real PostgreSQL CTR suite compares gated compact and native CTR arm rows,
+engagement rows and uncertainty after live and archived cluster accounting;
+it also checks missing legacy coverage, one-way finalization and a fixed
+cutoff. All 11 full-file tests pass with compact capture enabled. A separate
+10,000-visit local fixture bulk read took 466 ms in the owned PostgreSQL 18
+container; the 100,000-visit cap, transaction timeout and this single-machine
+measurement are bounded behavior, not production-scale latency proof.
+
+Archive capture remains the existing native path: current snapshot capture
+still recomputes from the exact operational lineage listed above, and
+post-cutover correction, replay and retention safety are not yet proven for
+retiring that lineage. The report reader gate is off in production. Legacy
+visits without an accepted checkpoint at the requested `asOf` remain
+unavailable; current state is never backdated. Qualification of the full
+active cohort, concurrent callback cost, larger live volumes, and safe raw
+retirement remain release work in feat-896/feat-895.

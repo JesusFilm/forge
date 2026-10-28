@@ -13,6 +13,7 @@ import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import {
   capturePrecomputedCtrMeasurement,
   readCompactCtrVisitAt,
+  readCompactCtrVisitsAt,
 } from "./compact-accounting"
 import { rawCtrVisitSql, type RawCtrVisit } from "./ctr-evidence"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
@@ -53,6 +54,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     let controlBrowser: string
     let oldVisitId: string
     let oldRequestId: string
+
+    async function withCompactReader<T>(run: () => Promise<T>): Promise<T> {
+      const key = "RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED"
+      const prior = Object.getOwnPropertyDescriptor(env, key)
+      Object.defineProperty(env, key, { configurable: true, value: "1" })
+      try {
+        return await run()
+      } finally {
+        if (prior) Object.defineProperty(env, key, prior)
+        else Reflect.deleteProperty(env, key)
+      }
+    }
 
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
@@ -278,6 +291,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         eligibility: "excluded",
       })
       if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        expect(
+          await prisma.$transaction((tx) =>
+            readCompactCtrVisitsAt(tx, experimentId, now),
+          ),
+        ).toMatchObject({
+          status: "unavailable",
+          reason: "missing_live_snapshot",
+        })
+        expect(
+          await withCompactReader(() =>
+            evaluatePrivatePrecomputedCtr(prisma, {
+              experimentId,
+              operator,
+              now,
+            }),
+          ),
+        ).toEqual({ status: "unavailable", reason: "missing_live_snapshot" })
+        expect(
+          await prisma.recommendationPrecomputedCtrReport.count({
+            where: { experimentId },
+          }),
+        ).toBe(0)
         const compactClusters = new Map<
           string,
           { visits: number; clicks: number }
@@ -311,6 +346,20 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           { visits: 1, clicks: 0 },
           { visits: 1, clicks: 0 },
         ])
+        const bulk = await prisma.$transaction((tx) =>
+          readCompactCtrVisitsAt(tx, experimentId, now),
+        )
+        expect(bulk).toMatchObject({ status: "available" })
+        if (bulk.status !== "available") throw new Error("Missing bulk state")
+        const native = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(
+            Prisma.sql`v.experiment_id = ${experimentId} AND v.created_at <= ${now}`,
+            now,
+          ),
+        )
+        expect(
+          bulk.visits.sort((a, b) => a.visit_id.localeCompare(b.visit_id)),
+        ).toEqual(native.sort((a, b) => a.visit_id.localeCompare(b.visit_id)))
       }
       const first = await evaluatePrivatePrecomputedCtr(prisma, {
         experimentId,
@@ -409,6 +458,21 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           reviewer: null,
         }),
       ).rejects.toThrow()
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        const compact = await withCompactReader(() =>
+          evaluatePrivatePrecomputedCtr(prisma, {
+            experimentId,
+            operator,
+            now,
+          }),
+        )
+        expect(compact.status).toBe("available")
+        if (compact.status !== "available" || first.status !== "available")
+          throw new Error("Missing compact comparison")
+        expect(compact.report.byArm).toEqual(first.report.byArm)
+        expect(compact.report.engagement).toEqual(first.report.engagement)
+        expect(compact.report.uncertainty).toEqual(first.report.uncertainty)
+      }
     })
 
     it("archives an accepted selection that holds the evidence fence before purge", async () => {
@@ -483,6 +547,178 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).toMatchObject({ eligibleVisits: 1n, clickedVisits: 1n })
     })
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "finalizes a fully captured compact cohort once and reuses its immutable report",
+      async () => {
+        const frozen =
+          await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+            where: { id: experimentId },
+            include: { ctrPolicy: true },
+          })
+        const finalExperimentId = `compact-final-${randomUUID()}`
+        await prisma.recommendationPrecomputedExperiment.create({
+          data: {
+            id: finalExperimentId,
+            generationId: frozen.generationId,
+            controlManifestId: frozen.controlManifestId,
+            challengerManifestId: frozen.challengerManifestId,
+            controlManifestDigest: frozen.controlManifestDigest,
+            controlRoutingDigest: frozen.controlRoutingDigest,
+            sourceSetDigest: frozen.sourceSetDigest,
+            assignmentPolicyVersion: frozen.assignmentPolicyVersion,
+            eligibilityPolicyVersion: frozen.eligibilityPolicyVersion,
+            deliveryPolicyVersion: frozen.deliveryPolicyVersion,
+            configurationDigest: frozen.configurationDigest,
+            state: "closed",
+            startsAt: new Date(now.getTime() - days(4)),
+            endsAt: new Date(now.getTime() - days(2)),
+            expiresAt: new Date(now.getTime() + days(363)),
+          },
+        })
+        await prisma.recommendationPrecomputedCtrPolicy.create({
+          data: {
+            experimentId: finalExperimentId,
+            version: frozen.ctrPolicy!.version,
+            method: frozen.ctrPolicy!.method,
+            settings: frozen.ctrPolicy!.settings!,
+            lateEventCutoffHours: frozen.ctrPolicy!.lateEventCutoffHours,
+            settingsDigest: frozen.ctrPolicy!.settingsDigest,
+            authority: "fixture_only",
+          },
+        })
+        const id = randomUUID()
+        await prisma.recommendationPrecomputedVisit.create({
+          data: {
+            id,
+            experimentId: finalExperimentId,
+            browserUnitDigest: "b".repeat(64),
+            sourceVideoId: "source-video",
+            locale: "en",
+            audioLanguageSlug: "english",
+            eligibility: "eligible",
+            qualification: "unverified_browser",
+            arm: RecommendationExperimentArm.CONTROL,
+            createdAt: new Date(now.getTime() - days(3)),
+            expiresAt: new Date(now.getTime() + days(26)),
+          },
+        })
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, now),
+        )
+        const final = await withCompactReader(() =>
+          evaluatePrivatePrecomputedCtr(prisma, {
+            experimentId: finalExperimentId,
+            operator,
+            now,
+          }),
+        )
+        expect(final).toMatchObject({
+          status: "available",
+          report: {
+            revision: 1,
+            isFinal: true,
+            byArm: {
+              control: {
+                eligibleVisits: 1,
+                clickedVisits: 0,
+                independentBrowsers: 1,
+              },
+            },
+            engagement: {
+              byArm: { control: { measuredVisits: 1, engagedVisits: 0 } },
+            },
+          },
+        })
+        expect(
+          await withCompactReader(() =>
+            evaluatePrivatePrecomputedCtr(prisma, {
+              experimentId: finalExperimentId,
+              operator,
+              now: new Date(now.getTime() + days(1)),
+            }),
+          ),
+        ).toEqual(final)
+        expect(
+          await prisma.recommendationPrecomputedCtrReport.count({
+            where: { experimentId: finalExperimentId },
+          }),
+        ).toBe(1)
+      },
+    )
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "bulk-loads a bounded 10,000-visit compact cohort without per-visit queries",
+      async () => {
+        const frozen =
+          await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+            where: { id: experimentId },
+          })
+        const bulkExperimentId = `compact-bulk-${randomUUID()}`
+        await prisma.recommendationPrecomputedExperiment.create({
+          data: {
+            id: bulkExperimentId,
+            generationId: frozen.generationId,
+            controlManifestId: frozen.controlManifestId,
+            challengerManifestId: frozen.challengerManifestId,
+            controlManifestDigest: frozen.controlManifestDigest,
+            controlRoutingDigest: frozen.controlRoutingDigest,
+            sourceSetDigest: frozen.sourceSetDigest,
+            assignmentPolicyVersion: frozen.assignmentPolicyVersion,
+            eligibilityPolicyVersion: frozen.eligibilityPolicyVersion,
+            deliveryPolicyVersion: frozen.deliveryPolicyVersion,
+            configurationDigest: frozen.configurationDigest,
+            state: "closed",
+            startsAt: frozen.startsAt,
+            endsAt: frozen.endsAt,
+            expiresAt: frozen.expiresAt,
+          },
+        })
+        const ids = Array.from({ length: 10_000 }, () => randomUUID())
+        await prisma.recommendationPrecomputedVisit.createMany({
+          data: ids.map((id) => ({
+            id,
+            experimentId: bulkExperimentId,
+            browserUnitDigest: "c".repeat(64),
+            sourceVideoId: "source-video",
+            locale: "en",
+            audioLanguageSlug: "english",
+            eligibility: "eligible" as const,
+            qualification: "unverified_browser",
+            arm: RecommendationExperimentArm.CONTROL,
+            createdAt: new Date(now.getTime() - days(1)),
+            expiresAt: new Date(now.getTime() + days(28)),
+          })),
+        })
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, ids[0], now),
+        )
+        await prisma.$executeRaw(Prisma.sql`
+        INSERT INTO recommendation_precomputed_ctr_measurement
+          (visit_id, revision, accepted_at, summary)
+        SELECT v.id, 1, ${now}, seed.summary
+        FROM recommendation_precomputed_visit v
+        CROSS JOIN (
+          SELECT summary FROM recommendation_precomputed_ctr_measurement
+          WHERE visit_id = ${ids[0]}::uuid
+        ) seed
+        WHERE v.experiment_id = ${bulkExperimentId} AND v.id <> ${ids[0]}::uuid
+      `)
+        const started = performance.now()
+        const bulk = await prisma.$transaction((tx) =>
+          readCompactCtrVisitsAt(tx, bulkExperimentId, now),
+        )
+        const elapsedMs = Math.round(performance.now() - started)
+        expect(bulk).toMatchObject({ status: "available" })
+        if (bulk.status !== "available") throw new Error("Missing bulk state")
+        expect(bulk.visits).toHaveLength(10_000)
+        console.info(`compact bulk reader: 10,000 visits in ${elapsedMs} ms`)
+      },
+    )
 
     it("keeps a private request private when purge removes its link after an initial read", async () => {
       const browserDigest = "8".repeat(64)
