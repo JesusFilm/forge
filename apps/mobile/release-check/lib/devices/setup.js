@@ -10,6 +10,7 @@ const path = require("node:path")
 
 const { EXIT } = require("../contract")
 const { run } = require("../proc")
+const { PASSTHROUGH_KEYS } = require("../testBuild/env")
 const android = require("./android")
 const inventoryLib = require("./inventory")
 const { isExecutable, resolveOnPath } = inventoryLib
@@ -277,6 +278,37 @@ async function checkMaestro(ctx) {
   }
 }
 
+// The iOS build runs `pod install` with the shell's PATH and Ruby settings, so
+// the check runs `pod` the same way: an rbenv shim with no gem fails here.
+async function checkCocoaPods(ctx) {
+  const env = { LANG: "en_US.UTF-8" }
+  for (const key of PASSTHROUGH_KEYS) {
+    if (ctx.sourceEnv[key]) env[key] = ctx.sourceEnv[key]
+  }
+  const bin = resolveOnPath("pod", ctx.sourceEnv.PATH)
+  const result = bin
+    ? await ctx.runChild(bin, ["--version"], {
+        env,
+        timeoutMs: CHECK_TIMEOUT_MS,
+      })
+    : null
+  const version =
+    result?.code === 0
+      ? (/^\d+\.\d+\.\d+$/m.exec(String(result.stdout))?.[0] ?? null)
+      : null
+  ctx.observed.cocoapods = version
+  if (version) return
+  ctx.problems.push(
+    problem(
+      "COCOAPODS_MISSING",
+      bin
+        ? `${bin} --version printed no version; the iOS build runs pod install.`
+        : "CocoaPods is not installed; the iOS build runs pod install.",
+      "brew install cocoapods",
+    ),
+  )
+}
+
 async function readObservedKeyboard(ctx) {
   const result = await ctx.runChild(
     "/usr/bin/defaults",
@@ -523,6 +555,7 @@ async function runSetup(options = {}) {
 
   const xcode = await checkXcode(ctx)
   const iosReady = xcode ? await checkIosPlatform(ctx) : new Set()
+  await checkCocoaPods(ctx)
   await readObservedKeyboard(ctx)
   const javaHome = await checkJava(ctx)
   if (javaHome)
