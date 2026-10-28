@@ -265,6 +265,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           result: "EMPTY",
           deliveryJti: randomUUID(),
           signingKid: "fixture",
+          createdAt: now,
           issuedAt: now,
           expiresAt: futureAt,
         })),
