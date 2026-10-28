@@ -3,7 +3,7 @@ id: "feat-889"
 title: "Commit accepted events to a bounded durable outbox"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-28"
 duration: 3
 depends_on: []
@@ -24,4 +24,26 @@ Own `apps/admin/src/services/recommendations/event-history/envelope.ts`, `outbox
 
 ## Evidence
 
-Implementation pending.
+Implemented in `apps/admin/src/services/recommendations/event-history/` and
+`apps/admin/prisma/migrations/0164_recommendation_event_outbox/`. The version-1
+envelope has stable family/logical ID/revision, original occurrence, acceptance
+and expiry timestamps, a canonical payload digest, approved top-level fields,
+sensitive-key rejection and a 128 KiB serialized bound. Family producers still
+own semantic privacy validation and redaction before building envelopes.
+
+The outbox is a temporary forwarding store. It joins the caller's Prisma
+transaction, locks a singleton capacity row for atomic event/byte admission,
+uses bounded `FOR UPDATE SKIP LOCKED` claims, fences acknowledgement and defer
+with lease tokens, and disposes rows at their original expiry. Acknowledged
+payloads are deleted; no permanent event-history copy is created here. The
+relay, producers, transport and physical retirement belong to dependent
+tickets.
+
+Verification: envelope tests were written red before the codec; real-store
+behavior tests were written before the store implementation. Thirteen focused tests
+passed against a disposable PostgreSQL 18 container with only migration 0164
+applied, covering transaction rollback, duplicate/conflict, concurrent cap,
+lease retry/fencing, concurrent `SKIP LOCKED`, fresh-client recovery, defer,
+expiry and byte cap. `prisma generate`, scoped lint and focused tests passed
+using the repository's pinned Node 24.22.1. Full Admin typecheck passed before
+the implementation commit.
