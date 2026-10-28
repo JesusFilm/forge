@@ -31,8 +31,7 @@ parameters for up to 100 explicit logical IDs, batches inserts to 100 events
 and 1 MiB, limits responses to 32 MiB, and applies one hard 10-second default
 deadline across the complete insert/read/erase operation, including every
 request and response body. Timed-out body streams are cancelled. It sets
-`async_insert=0` and
-`wait_end_of_query=1`, accepts only a complete empty HTTP 200 insert response,
+`async_insert=0` and `wait_end_of_query=1`, accepts only a complete empty HTTP 200 insert response,
 and never retries internally. Transport errors expose a typed code without
 server text, credentials or payloads.
 
@@ -60,12 +59,11 @@ malformed output, stalled body cancellation and a shared deadline across
 sequential insert and erasure calls. Scoped lint, Prettier and full Admin
 typecheck passed.
 
-CI wiring still required: start an isolated loopback ClickHouse container from
-the pinned image above with database `event_clickhouse_test`, user `event_test`,
-password `event_test_password` and host port `18123`; apply `clickhouse.sql`;
-set `RECOMMENDATION_CLICKHOUSE_DB_TEST=1` and
-`RECOMMENDATION_CLICKHOUSE_TEST_URL=http://127.0.0.1:18123/`; run the colocated
-`clickhouse.db.test.ts` suite. Its default skip does not count as CI proof.
+The `recommendation-clickhouse-integration` CI job now starts an isolated
+container from the pinned image above, applies `clickhouse.sql`, and runs the
+envelope, HTTP boundary and real-engine tests with
+`RECOMMENDATION_CLICKHOUSE_DB_TEST=1`. This job has not yet run on a PR; the
+local real-engine receipt above remains the current execution evidence.
 
 Protocol basis: [ClickHouse asynchronous inserts](https://clickhouse.com/docs/optimize/asynchronous-inserts),
 [HTTP interface](https://clickhouse.com/docs/interfaces/http), and
