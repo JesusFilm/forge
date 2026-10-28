@@ -33,8 +33,13 @@ remains authoritative through its recorded expiry. The production gate remains
 off; mixed batches that contain a pre-cutover V2 binding use one locked legacy
 transaction until those bindings expire. Physical retirement, reader cutover,
 exact historical replay timing and measured allocation belong to subsequent
-tickets. Central retention wiring is pending integration with the shared
-retention service.
+tickets.
 Optional history encoding runs after admission commits and only when the
 dispatcher is enabled; preparation failures are counted separately from
 viewer-action success.
+Bounded scheduled retention now drains compact receipts (100), issued items
+(100), and only empty expired windows (25) through separate admitted phases.
+The run ledger counts committed rows, reports remaining expired compact state,
+and yields without advancing the success watermark. Isolated PostgreSQL tests
+cover multiple pages, live rows, a failed child transaction, and a pre-work
+budget yield. Storage allocation and production-cycle evidence remain pending.

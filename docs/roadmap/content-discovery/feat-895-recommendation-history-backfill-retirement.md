@@ -3,7 +3,7 @@ id: "feat-895"
 title: "Reconcile and retire PostgreSQL history with privacy-safe replay"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-28"
 duration: 3
 depends_on: ["feat-891", "feat-892", "feat-893", "feat-894"]
@@ -24,4 +24,11 @@ Own bounded backfill/reconciliation/cutover tooling, reliable privacy erasure pr
 
 ## Evidence
 
-Implementation pending.
+The Watch compact retention portion now uses bounded scheduled phases for
+expired receipts, issued items and empty issued windows. It preserves the
+five-second attempt deadline, 750 ms phase admission, exact committed ledger
+counts, continuation and overdue health for compact backlog. An isolated local
+PostgreSQL fixture proves pagination, live/expired boundaries, failed child
+rollback and budget yield. Backfill qualification, privacy erasure propagation,
+reader cutover, rollback and physical retirement remain unimplemented; no
+production lifecycle claim follows from this local proof.

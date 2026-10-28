@@ -33,6 +33,14 @@ import {
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 import {
+  purgeExpiredWatchCompactItemPage,
+  purgeExpiredWatchCompactReceiptPage,
+  purgeExpiredWatchCompactWindowPage,
+  WATCH_COMPACT_ITEM_PAGE_SIZE,
+  WATCH_COMPACT_RECEIPT_PAGE_SIZE,
+  WATCH_COMPACT_WINDOW_PAGE_SIZE,
+} from "./watch-compact-retention"
+import {
   createRetentionPhaseRecorder,
   formatRetentionPhaseFailureLog,
   retentionDiagnosticLogLimiter,
@@ -499,6 +507,30 @@ export async function purgeExpiredRecommendationRequests(
         })
         rowCounts.expiredWatchSurfaceExposures = deleted.count
         return exposures.length
+      },
+    )
+    const expiredWatchReceiptPageSize = await phase(
+      "watch_compact_receipt_page",
+      async (tx) => {
+        const deleted = await purgeExpiredWatchCompactReceiptPage(tx, now)
+        rowCounts.expiredWatchEventReceipts = deleted
+        return deleted
+      },
+    )
+    const expiredWatchItemPageSize = await phase(
+      "watch_compact_item_page",
+      async (tx) => {
+        const deleted = await purgeExpiredWatchCompactItemPage(tx, now)
+        rowCounts.expiredWatchIssuedItems = deleted
+        return deleted
+      },
+    )
+    const expiredWatchWindowPageSize = await phase(
+      "watch_compact_window_page",
+      async (tx) => {
+        const deleted = await purgeExpiredWatchCompactWindowPage(tx, now)
+        rowCounts.expiredWatchIssuedWindows = deleted
+        return deleted
       },
     )
     const directActions = await phase("select_direct_actions", (tx) =>
@@ -1168,6 +1200,8 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredPrecomputedExperiment,
       oldestExpiredPrecomputedBaselineRun,
       oldestExpiredWatchExposure,
+      oldestExpiredWatchReceipt,
+      oldestExpiredWatchWindow,
       oldestExpiredAction,
       oldestExpiredDecision,
       oldestExpiredControlEvaluation,
@@ -1222,6 +1256,16 @@ export async function purgeExpiredRecommendationRequests(
         tx.watchSurfaceExposure.findFirst({
           where: { expiresAt: { lte: now } },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.watchSurfaceEventReceipt.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { eventId: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.watchSurfaceIssuedWindow.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { windowId: "asc" }],
           select: { expiresAt: true },
         }),
         tx.recommendationContentAction.findFirst({
@@ -1336,6 +1380,8 @@ export async function purgeExpiredRecommendationRequests(
       oldestExpiredPrecomputedExperiment?.expiresAt,
       oldestExpiredPrecomputedBaselineRun?.expiresAt,
       oldestExpiredWatchExposure?.expiresAt,
+      oldestExpiredWatchReceipt?.expiresAt,
+      oldestExpiredWatchWindow?.expiresAt,
       oldestExpiredAction?.expiresAt,
       oldestExpiredDecision?.expiresAt,
       oldestExpiredControlEvaluation?.expiresAt,
@@ -1383,6 +1429,11 @@ export async function purgeExpiredRecommendationRequests(
       precomputedPurge.baselineRunPageFull ||
       precomputedGenerationPurge.pageFull ||
       expiredWatchExposurePageSize === WATCH_EXPOSURE_RETENTION_PAGE_SIZE ||
+      expiredWatchReceiptPageSize === WATCH_COMPACT_RECEIPT_PAGE_SIZE ||
+      expiredWatchItemPageSize === WATCH_COMPACT_ITEM_PAGE_SIZE ||
+      expiredWatchWindowPageSize === WATCH_COMPACT_WINDOW_PAGE_SIZE ||
+      oldestExpiredWatchReceipt != null ||
+      oldestExpiredWatchWindow != null ||
       directActionIds.length === batchSize ||
       standaloneEpisodesProcessed < standaloneEpisodeIds.length ||
       standaloneEpisodeIds.length === standaloneEpisodePageSize ||
@@ -1704,6 +1755,8 @@ export async function readRecommendationRetentionHealth(
         (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM watch_surface_exposure WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM watch_surface_event_receipt WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM watch_surface_issued_window WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_visit WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_baseline_visit WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_baseline_run

@@ -51,7 +51,6 @@ import {
   issueWatchSurfaceDelivery,
   recordWatchSurfaceExposureBatch,
 } from "./watch-surface-exposure.service"
-import { purgeExpiredWatchCompactAdmission } from "./watch-compact-retention"
 import { readUnexpiredWatchHistoryPage } from "./watch-history-backfill"
 
 const baseUrl = env.DATABASE_URL
@@ -596,16 +595,5 @@ describe.skipIf(!run)("compact Watch admission on isolated PostgreSQL", () => {
       exportControl.enabled = false
       exportControl.dispatch.mockReset()
     }
-  })
-
-  it("purges only expired compact receipts and their issued windows in one page", async () => {
-    const result = await prisma.$transaction((tx) =>
-      purgeExpiredWatchCompactAdmission(
-        tx,
-        new Date("2026-11-12T00:00:00.000Z"),
-        1,
-      ),
-    )
-    expect(result).toEqual({ receipts: 1, windows: 1 })
   })
 })
