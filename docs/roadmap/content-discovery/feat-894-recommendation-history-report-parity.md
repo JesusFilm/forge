@@ -253,7 +253,7 @@ cutoff. All 11 full-file tests pass with compact capture enabled. A separate
 container; the 100,000-visit cap, transaction timeout and this single-machine
 measurement are bounded behavior, not production-scale latency proof.
 
-Archive capture remains the existing native path: current snapshot capture
+The default archive path remains native: current snapshot capture
 still recomputes from the exact operational lineage listed above, and
 post-cutover correction, replay and retention safety are not yet proven for
 retiring that lineage. The report reader gate is off in production. Legacy
@@ -261,6 +261,27 @@ visits without an accepted checkpoint at the requested `asOf` remain
 unavailable; current state is never backdated. Qualification of the full
 active cohort, concurrent callback cost, larger live volumes, and safe raw
 retirement remain release work in feat-896/feat-895.
+
+Archive qualification (default off): the separate
+`RECOMMENDATION_PRECOMPUTED_COMPACT_ARCHIVE_READER_ENABLED` gate selects a
+transactional compact archive only when measurement capture is also enabled.
+Under the existing exclusive experiment fence, retention bulk-checks the
+latest revision for every visit in its bounded deletion page, validates each
+present summary before deciding a fallback, and refuses a revision accepted
+after retention `now`. For a complete eligible page it checkpoints every visit
+at `now` inside the same transaction, verifies the new revision and acceptance
+clock, and feeds decoded rows into the unchanged archive totals/browser
+cluster aggregator before cascading deletion. Missing legacy snapshots,
+future-accepted revisions, or capture-off take explicit native authority;
+malformed present state aborts and rolls back rather than becoming a partial
+archive. Real PostgreSQL tests compare exact native-versus-compact totals and
+browser clusters for a 30-visit page, live/final CTR and engagement across
+purge, replay, and malformed mixed-page rollback. On the owned local fixture,
+the same 30-visit page took 69–112 ms for native archive (rolled back) and
+183–239 ms for compact checkpoint/archive across two runs; this is added work, not a production latency
+or CPU-efficiency claim. Capture still executes `rawCtrVisitSql` per visit, so
+raw request/selection/impression/playback/outcome lineage remains required for
+corrections and this gate must stay off pending cutover qualification.
 
 Archive cutoff guard: archived visit totals have no per-archive acceptance
 timestamp. With the compact reader gate on, an explicit `asOf` and any

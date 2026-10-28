@@ -395,9 +395,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           tx,
           new Date(now.getTime() + 60_000),
           100,
+          [],
+          false,
+          { archiveReader: "compact" },
         ),
       )
       expect(purge.visitsDeleted).toBe(2)
+      expect(purge.archiveSource).toBe(
+        env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1"
+          ? "compact"
+          : "native_capture_off",
+      )
       expect(
         await prisma.recommendationPrecomputedCtrArchivedVisit.count({
           where: { experimentId },
@@ -658,12 +666,20 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             },
           },
         })
-        await prisma.$transaction((tx) =>
+        const archived = await prisma.$transaction((tx) =>
           purgeExpiredPrecomputedVisitRoots(
             tx,
             new Date(now.getTime() + 120_000),
             100,
+            [],
+            false,
+            { archiveReader: "compact" },
           ),
+        )
+        expect(archived.archiveSource).toBe(
+          env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1"
+            ? "compact"
+            : "native_capture_off",
         )
         expect(
           await prisma.recommendationPrecomputedCtrArchivedVisit.count({
@@ -775,12 +791,20 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         privatePrecomputedVisitId: id,
         precomputedVisitLink: { visitId: id },
       })
-      await prisma.$transaction((tx) =>
+      const archived = await prisma.$transaction((tx) =>
         purgeExpiredPrecomputedVisitRoots(
           tx,
           new Date(now.getTime() + 120_000),
           100,
+          [],
+          false,
+          { archiveReader: "compact" },
         ),
+      )
+      expect(archived.archiveSource).toBe(
+        env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1"
+          ? "native_missing_snapshot"
+          : "native_capture_off",
       )
       const after = await prisma.recommendationRequest.findUniqueOrThrow({
         where: { id: issued.requestId },
@@ -1361,6 +1385,159 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             native,
           )
         }
+      },
+    )
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "uses native archive authority when the latest checkpoint was accepted after retention now",
+      async () => {
+        const id = await visit({
+          arm: RecommendationExperimentArm.CONTROL,
+          browser: "7".repeat(64),
+          createdAt: new Date(now.getTime() - days(2)),
+          expiresAt: new Date(now.getTime() - days(1)),
+        })
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(
+            tx,
+            id,
+            new Date(now.getTime() + 60_000),
+          ),
+        )
+        const result = await prisma.$transaction((tx) =>
+          purgeExpiredPrecomputedVisitRoots(tx, now, 100, [], false, {
+            archiveReader: "compact",
+          }),
+        )
+        expect(result.archiveSource).toBe("native_cutoff_ineligible")
+        expect(
+          await prisma.recommendationPrecomputedCtrArchivedVisit.count({
+            where: { visitId: id },
+          }),
+        ).toBe(1)
+      },
+    )
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "measures native and checkpointed compact archive work on the same bounded page",
+      async () => {
+        const ids = await Promise.all(
+          Array.from({ length: 30 }, (_, index) =>
+            visit({
+              arm: RecommendationExperimentArm.CONTROL,
+              browser: index.toString(16).padStart(64, "0"),
+              createdAt: new Date(now.getTime() - days(2)),
+              expiresAt: new Date(now.getTime() - days(1)),
+            }),
+          ),
+        )
+        for (const id of ids)
+          await prisma.$transaction((tx) =>
+            capturePrecomputedCtrMeasurement(tx, id, now),
+          )
+        const rollback = new Error("rollback native benchmark")
+        let nativeTotals: unknown
+        let nativeClusters: unknown
+        const nativeStarted = performance.now()
+        await expect(
+          prisma.$transaction(async (tx) => {
+            await purgeExpiredPrecomputedVisitRoots(tx, now, 100, [], false, {
+              archiveReader: "native",
+            })
+            nativeTotals = await tx.recommendationPrecomputedCtrTotals.findMany(
+              {
+                where: { experimentId },
+                orderBy: { arm: "asc" },
+              },
+            )
+            nativeClusters =
+              await tx.recommendationPrecomputedCtrCluster.findMany({
+                where: { experimentId },
+                orderBy: { browserUnitDigest: "asc" },
+              })
+            throw rollback
+          }),
+        ).rejects.toBe(rollback)
+        const nativeMs = Math.round(performance.now() - nativeStarted)
+        const compactStarted = performance.now()
+        const compact = await prisma.$transaction(
+          (tx) =>
+            purgeExpiredPrecomputedVisitRoots(tx, now, 100, [], false, {
+              archiveReader: "compact",
+            }),
+          { timeout: 10_000 },
+        )
+        const compactMs = Math.round(performance.now() - compactStarted)
+        expect(compact.archiveSource).toBe("compact")
+        expect(compact.visitsDeleted).toBe(ids.length)
+        expect(
+          await prisma.recommendationPrecomputedCtrTotals.findMany({
+            where: { experimentId },
+            orderBy: { arm: "asc" },
+          }),
+        ).toEqual(nativeTotals)
+        expect(
+          await prisma.recommendationPrecomputedCtrCluster.findMany({
+            where: { experimentId },
+            orderBy: { browserUnitDigest: "asc" },
+          }),
+        ).toEqual(nativeClusters)
+        expect(
+          await prisma.recommendationPrecomputedCtrArchivedVisit.count({
+            where: { visitId: { in: ids } },
+          }),
+        ).toBe(ids.length)
+        console.info(
+          `archive qualification, ${ids.length} visits: native rollback ${nativeMs} ms, compact checkpoint ${compactMs} ms`,
+        )
+      },
+    )
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "rolls back a mixed legacy and malformed compact archive page",
+      async () => {
+        const malformed = await visit({
+          arm: RecommendationExperimentArm.CONTROL,
+          browser: "6".repeat(64),
+          createdAt: new Date(now.getTime() - days(2)),
+          expiresAt: new Date(now.getTime() - days(1)),
+        })
+        const legacy = await visit({
+          arm: RecommendationExperimentArm.CHALLENGER,
+          browser: "5".repeat(64),
+          createdAt: new Date(now.getTime() - days(2)),
+          expiresAt: new Date(now.getTime() - days(1)),
+        })
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, malformed, now),
+        )
+        await prisma.$executeRaw(Prisma.sql`
+          UPDATE recommendation_precomputed_ctr_measurement
+          SET summary = '{}'::jsonb WHERE visit_id = ${malformed}::uuid
+        `)
+        await expect(
+          prisma.$transaction((tx) =>
+            purgeExpiredPrecomputedVisitRoots(tx, now, 100, [], false, {
+              archiveReader: "compact",
+            }),
+          ),
+        ).rejects.toThrow("precomputed_compact_summary_invalid")
+        expect(
+          await prisma.recommendationPrecomputedVisit.count({
+            where: { id: { in: [malformed, legacy] } },
+          }),
+        ).toBe(2)
+        expect(
+          await prisma.recommendationPrecomputedCtrArchivedVisit.count({
+            where: { visitId: { in: [malformed, legacy] } },
+          }),
+        ).toBe(0)
       },
     )
   },

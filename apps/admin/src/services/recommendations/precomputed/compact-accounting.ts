@@ -328,6 +328,85 @@ function decodeCompactCtrVisit(row: CompactCtrRow, asOf: Date): RawCtrVisit {
   }
 }
 
+/** Archive preflight/read for only the locked deletion page. The latest
+ * revision is inspected even when it is newer than the requested cutoff, so
+ * an earlier stale revision can never be mistaken for current authority. */
+export async function readCompactCtrArchiveVisitsAt(
+  tx: Prisma.TransactionClient,
+  visits: readonly { id: string; experimentId: string }[],
+  asOf: Date,
+): Promise<
+  | {
+      status: "available"
+      visits: Array<{ row: RawCtrVisit; revision: number; acceptedAt: Date }>
+    }
+  | { status: "unavailable"; reason: "missing_snapshot" | "cutoff_ineligible" }
+> {
+  if (visits.length === 0) return { status: "available", visits: [] }
+  const ids = visits.map(({ id }) => id)
+  const rows = await tx.$queryRaw<
+    Array<
+      CompactCtrRow & {
+        revision: number | null
+        accepted_at: Date | null
+      }
+    >
+  >(Prisma.sql`
+    SELECT v.id AS visit_id, v.experiment_id, v.browser_unit_digest,
+      latest.summary, latest.revision, latest.accepted_at
+    FROM recommendation_precomputed_visit v
+    LEFT JOIN LATERAL (
+      SELECT summary, revision, accepted_at
+      FROM recommendation_precomputed_ctr_measurement
+      WHERE visit_id = v.id ORDER BY revision DESC LIMIT 1
+    ) latest ON true
+    WHERE v.id = ANY(${ids}::uuid[])
+  `)
+  if (rows.length !== visits.length)
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_visit_mismatch",
+    )
+  const expected = new Map(
+    visits.map(({ id, experimentId }) => [id, experimentId]),
+  )
+  for (const row of rows)
+    if (expected.get(row.visit_id) !== row.experiment_id)
+      throw new RecommendationInternalStateError(
+        "precomputed_compact_visit_mismatch",
+      )
+  const decoded: Array<{
+    row: RawCtrVisit
+    revision: number
+    acceptedAt: Date
+  }> = []
+  let missing = false
+  let future = false
+  for (const row of rows) {
+    if (row.revision === null || row.accepted_at === null) {
+      missing = true
+      continue
+    }
+    const acceptedAfterCutoff = row.accepted_at > asOf
+    // A future-accepted revision cannot be used at asOf, but still validate
+    // its stored shape at its own acceptance clock before any page fallback.
+    decoded.push({
+      row: decodeCompactCtrVisit(
+        row,
+        acceptedAfterCutoff ? row.accepted_at : asOf,
+      ),
+      revision: row.revision,
+      acceptedAt: row.accepted_at,
+    })
+    future ||= acceptedAfterCutoff
+  }
+  if (missing) return { status: "unavailable", reason: "missing_snapshot" }
+  if (future) return { status: "unavailable", reason: "cutoff_ineligible" }
+  return {
+    status: "available",
+    visits: decoded,
+  }
+}
+
 export function advanceCompactPendingCutoff(
   summary: unknown,
   asOf: Date,

@@ -621,10 +621,45 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expect(await readCompactCtrVisitAt(prisma, id, now)).toEqual(
           nativeBeforeArchive,
         )
+        const [stored] = await prisma.$queryRaw<Array<{ summary: unknown }>>(
+          Prisma.sql`SELECT summary FROM recommendation_precomputed_ctr_measurement
+            WHERE visit_id = ${id}::uuid ORDER BY revision DESC LIMIT 1`,
+        )
+        await prisma.$executeRaw(Prisma.sql`
+          UPDATE recommendation_precomputed_ctr_measurement
+          SET summary = '{}'::jsonb WHERE visit_id = ${id}::uuid
+        `)
+        await expect(
+          prisma.$transaction((tx) =>
+            purgeExpiredPrecomputedVisitRoots(tx, now, 100, [], false, {
+              archiveReader: "compact",
+            }),
+          ),
+        ).rejects.toThrow("precomputed_compact_summary_invalid")
+        expect(
+          await prisma.recommendationPrecomputedVisit.count({ where: { id } }),
+        ).toBe(1)
+        expect(
+          await prisma.recommendationPrecomputedCtrArchivedVisit.count({
+            where: { visitId: id },
+          }),
+        ).toBe(0)
+        await prisma.$executeRaw(Prisma.sql`
+          UPDATE recommendation_precomputed_ctr_measurement
+          SET summary = ${JSON.stringify(stored.summary)}::jsonb
+          WHERE visit_id = ${id}::uuid
+        `)
       }
       const before = await report()
-      await prisma.$transaction((tx) =>
-        purgeExpiredPrecomputedVisitRoots(tx, now, 100),
+      const archived = await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedVisitRoots(tx, now, 100, [], false, {
+          archiveReader: "compact",
+        }),
+      )
+      expect(archived.archiveSource).toBe(
+        env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1"
+          ? "compact"
+          : "native_capture_off",
       )
       await prisma.$transaction((tx) =>
         purgeExpiredPrecomputedVisitRoots(tx, now, 100),
