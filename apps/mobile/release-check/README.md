@@ -222,17 +222,25 @@ A QA engineer or the mobile owner can write or repair a journey. The repo
 Claude command `/release-check journey <journey id>` follows these steps:
 
 1. Work on a branch, never on `main`.
-2. Try the journey through the session on `iphone-se`, `android-phone`, and
-   `ipad-pro-13`. The layouts differ: for example, the iPad shows its tab bar
-   at the top and some sheets as popovers.
-3. Run `check-lists` and `check-screens`. Change `config/not-tested.json`,
+2. Try the journey through the session on `iphone-se`, `ipad-pro-13`, and
+   `android-phone`, but only on the platforms that the journey runs on: a
+   `platform:ios` or `platform:android` tag, or a screen that
+   `config/screens.json` hides, leaves a platform out, and `session try` does
+   not check this. The layouts differ: for example, the iPad shows its tab bar
+   at the top and some sheets as popovers. Uncommitted changes to journey
+   files and to the three lists below do not block the session's build.
+3. When a try fails because the app crashed, stopped answering, or did the
+   wrong thing, stop and tell the mobile owner. Never weaken a check only to
+   make a journey pass.
+4. Run `check-lists` and `check-screens`. Change `config/not-tested.json`,
    `config/screens.json`, or `config/search-answers.json` when the journey
-   needs it. `record-search` checks each result against production, so the
-   local admin must hold production-like data. The mobile owner changes the
-   other lists.
-4. Commit the journey and its list changes. Then run a partial check of the
-   journey on all five devices (`run --journey <journey id>`).
-5. Open a pull request with the partial check's result. The mobile owner
+   needs it. `record-search` needs the lock, so run `session down` first. It
+   checks each result against production, so the local admin must hold
+   production-like data. The mobile owner changes the other lists.
+5. Commit the journey and its list changes. Then run a partial check of the
+   journey on all five devices (`run --journey <journey id>`). Each new commit
+   needs a new build, about 45 minutes for each platform.
+6. Open a pull request with the partial check's result. The mobile owner
    reviews and merges it.
 
 A journey that needs a new test ID in the app is an app change, not a journey
