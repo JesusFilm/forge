@@ -10,11 +10,13 @@ import {
 import { Client } from "pg"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { RecommendationOutcomeService } from "../outcome.service"
+import { RecommendationInternalStateError } from "../errors"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
 import {
   capturePrecomputedCtrMeasurement,
+  qualifyCompactCtrCoverageAt,
   readCompactCtrVisitAt,
   readPrecomputedCtrMeasurementAt,
 } from "./compact-accounting"
@@ -390,13 +392,60 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     it.skipIf(
       env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
     )(
+      "orders serialized compact revisions even when an earlier callback clock arrives last",
+      async () => {
+        const id = await freshVisit()
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, now),
+        )
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(
+            tx,
+            id,
+            new Date(now.getTime() - 1_000),
+          ),
+        )
+        expect(
+          await readPrecomputedCtrMeasurementAt(prisma, id, now),
+        ).toMatchObject({ revision: 2, acceptedAt: now })
+        expect(
+          await readPrecomputedCtrMeasurementAt(
+            prisma,
+            id,
+            new Date(now.getTime() - 1_000),
+          ),
+        ).toBeNull()
+      },
+    )
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
       "keeps a missing legacy snapshot distinct from zero and rejects corrupt compact state",
       async () => {
         const id = await freshVisit()
+        const beforeCheckpoint = new Date(now.getTime() - 1)
+        expect(
+          await qualifyCompactCtrCoverageAt(prisma, experimentId, now),
+        ).toMatchObject({
+          status: "unavailable",
+          liveVisits: 1n,
+          missingSnapshots: 1n,
+        })
         expect(await readCompactCtrVisitAt(prisma, id, now)).toBeNull()
         await prisma.$transaction((tx) =>
           capturePrecomputedCtrMeasurement(tx, id, now),
         )
+        expect(
+          await qualifyCompactCtrCoverageAt(
+            prisma,
+            experimentId,
+            beforeCheckpoint,
+          ),
+        ).toMatchObject({ status: "unavailable", missingSnapshots: 1n })
+        expect(
+          await qualifyCompactCtrCoverageAt(prisma, experimentId, now),
+        ).toMatchObject({ status: "available", missingSnapshots: 0n })
         await prisma.recommendationPrecomputedCtrMeasurement.update({
           where: { visitId_revision: { visitId: id, revision: 1 } },
           data: { summary: { pending_playbacks: "0" } },
@@ -404,6 +453,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await expect(readCompactCtrVisitAt(prisma, id, now)).rejects.toThrow(
           "precomputed_compact_summary_invalid",
         )
+        await expect(
+          readCompactCtrVisitAt(prisma, id, now),
+        ).rejects.toBeInstanceOf(RecommendationInternalStateError)
       },
     )
 
@@ -482,6 +534,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         at: new Date(now.getTime() - 1),
         classifier: "legacy-position-v0",
       })
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, now),
+        )
+        const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, now),
+        )
+        expect(await readCompactCtrVisitAt(prisma, id, now)).toEqual(native)
+      }
       const engagement = (await report()).engagement?.byArm.control
       expect(engagement).toMatchObject({ engagedVisits: 0, engagedViewRate: 0 })
       expect(engagement?.activeWatchMinutes).toBeCloseTo(1 / 60)
@@ -729,6 +790,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         where: { id: episode.id },
         data: { state: RecommendationEpisodeState.CLAIMED },
       })
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, now),
+        )
+        const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, now),
+        )
+        expect(await readCompactCtrVisitAt(prisma, id, now)).toEqual(native)
+      }
       const result = await report()
       expect(result.isFinal).toBe(true)
       expect(result.engagement?.byArm.control).toMatchObject({

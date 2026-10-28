@@ -1,5 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { env } from "@/config/env"
+import { RecommendationInternalStateError } from "../errors"
 import { rawCtrVisitSql, type RawCtrVisit } from "./ctr-evidence"
 
 /** Shadow only: reports and retention keep their established raw authority. */
@@ -14,10 +15,23 @@ export async function capturePrecomputedCtrMeasurement(
     WHERE id = ${visitId}::uuid FOR UPDATE
   `)
   if (locked.length !== 1) return
+  const [latest] = await tx.$queryRaw<
+    Array<{ revision: number; accepted_at: Date }>
+  >(Prisma.sql`
+    SELECT revision, accepted_at FROM recommendation_precomputed_ctr_measurement
+    WHERE visit_id = ${visitId}::uuid ORDER BY revision DESC LIMIT 1
+  `)
+  // The visit lock serializes captures. A callback that waited behind a later
+  // clock cannot backdate its accepted revision before the committed one.
+  const effectiveAcceptedAt =
+    latest && latest.accepted_at > acceptedAt ? latest.accepted_at : acceptedAt
   const rows = await tx.$queryRaw<RawCtrVisit[]>(
-    rawCtrVisitSql(Prisma.sql`v.id = ${visitId}::uuid`, acceptedAt),
+    rawCtrVisitSql(Prisma.sql`v.id = ${visitId}::uuid`, effectiveAcceptedAt),
   )
-  if (rows.length !== 1) throw new Error("precomputed_compact_visit_mismatch")
+  if (rows.length !== 1)
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_visit_mismatch",
+    )
   const row = rows[0]
   const derived = {
     arm: row.arm,
@@ -50,7 +64,7 @@ export async function capturePrecomputedCtrMeasurement(
       COALESCE(policy.late_event_cutoff_hours, 672) * interval '1 hour') AS cutoff_ceiling_at,
       array_agg(episode.hard_until) FILTER (
         WHERE episode.state IN ('finalized', 'timed_out')
-          AND episode.hard_until > LEAST(${acceptedAt}, v.expires_at,
+          AND episode.hard_until > LEAST(${effectiveAcceptedAt}, v.expires_at,
             experiment.ends_at + COALESCE(policy.late_event_cutoff_hours, 672) * interval '1 hour')
       ) AS pending_deadlines
     FROM recommendation_precomputed_visit v
@@ -59,18 +73,21 @@ export async function capturePrecomputedCtrMeasurement(
     LEFT JOIN recommendation_precomputed_visit_request link ON link.visit_id = v.id
     LEFT JOIN recommendation_selection selection ON selection.request_id = link.request_id
       AND selection.received_at >= link.created_at
-      AND selection.received_at <= LEAST(${acceptedAt}, v.expires_at,
+      AND selection.received_at <= LEAST(${effectiveAcceptedAt}, v.expires_at,
         experiment.ends_at + COALESCE(policy.late_event_cutoff_hours, 672) * interval '1 hour')
     LEFT JOIN recommendation_playback_episode episode ON episode.selection_id = selection.id
       AND episode.request_id = selection.request_id AND episode.item_id = selection.item_id
       AND episode.claimed_at >= selection.received_at
-      AND episode.claimed_at <= LEAST(${acceptedAt}, v.expires_at,
+      AND episode.claimed_at <= LEAST(${effectiveAcceptedAt}, v.expires_at,
         experiment.ends_at + COALESCE(policy.late_event_cutoff_hours, 672) * interval '1 hour')
       AND episode.discovery_source = 'recommendation'
     WHERE v.id = ${visitId}::uuid
     GROUP BY v.expires_at, experiment.ends_at, policy.late_event_cutoff_hours
   `)
-  if (!pending) throw new Error("precomputed_compact_pending_mismatch")
+  if (!pending)
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_pending_mismatch",
+    )
   const cutoffCeiling = pending.cutoff_ceiling_at.getTime()
   const summary = JSON.stringify(
     {
@@ -79,22 +96,18 @@ export async function capturePrecomputedCtrMeasurement(
         date.toISOString(),
       ),
       captured_cutoff_at: new Date(
-        Math.min(acceptedAt.getTime(), cutoffCeiling),
+        Math.min(effectiveAcceptedAt.getTime(), cutoffCeiling),
       ).toISOString(),
       cutoff_ceiling_at: pending.cutoff_ceiling_at.toISOString(),
     },
     (_key, value: unknown) =>
       typeof value === "bigint" ? value.toString() : value,
   )
-  const [latest] = await tx.$queryRaw<Array<{ revision: number }>>(Prisma.sql`
-    SELECT revision FROM recommendation_precomputed_ctr_measurement
-    WHERE visit_id = ${visitId}::uuid ORDER BY revision DESC LIMIT 1
-  `)
   await tx.$executeRaw(Prisma.sql`
     INSERT INTO recommendation_precomputed_ctr_measurement
       (visit_id, revision, accepted_at, summary)
     VALUES (${visitId}::uuid, ${(latest?.revision ?? 0) + 1},
-      ${acceptedAt}, ${summary}::jsonb)
+      ${effectiveAcceptedAt}, ${summary}::jsonb)
   `)
 }
 
@@ -136,6 +149,48 @@ export async function readPrecomputedCtrMeasurementAt(
     : null
 }
 
+/** A checkpoint only covers live visits whose own revision was accepted by
+ * the requested cutoff. Archived totals are evaluated by the report reader. */
+export async function qualifyCompactCtrCoverageAt(
+  prisma: PrismaClient,
+  experimentId: string,
+  asOf: Date,
+): Promise<
+  | { status: "available"; liveVisits: bigint; missingSnapshots: 0n }
+  | {
+      status: "unavailable"
+      reason: "missing_live_snapshot"
+      liveVisits: bigint
+      missingSnapshots: bigint
+    }
+> {
+  const [row] = await prisma.$queryRaw<
+    Array<{ live_visits: bigint; missing_snapshots: bigint }>
+  >(Prisma.sql`
+    SELECT count(*) AS live_visits,
+      count(*) FILTER (WHERE accepted.visit_id IS NULL) AS missing_snapshots
+    FROM recommendation_precomputed_visit v
+    LEFT JOIN LATERAL (
+      SELECT visit_id FROM recommendation_precomputed_ctr_measurement
+      WHERE visit_id = v.id AND accepted_at <= ${asOf}
+      ORDER BY accepted_at DESC, revision DESC LIMIT 1
+    ) accepted ON true
+    WHERE v.experiment_id = ${experimentId} AND v.created_at <= ${asOf}
+  `)
+  if (!row)
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_coverage_missing",
+    )
+  return row.missing_snapshots === 0n
+    ? { status: "available", liveVisits: row.live_visits, missingSnapshots: 0n }
+    : {
+        status: "unavailable",
+        reason: "missing_live_snapshot",
+        liveVisits: row.live_visits,
+        missingSnapshots: row.missing_snapshots,
+      }
+}
+
 /** Qualification decoder for a live visit. Missing pre-cutover snapshots stay
  * missing; this never infers past acceptance from current operational state. */
 export async function readCompactCtrVisitAt(
@@ -159,32 +214,40 @@ export async function readCompactCtrVisitAt(
       WHERE visit_id = v.id AND accepted_at <= ${asOf}
       ORDER BY accepted_at DESC, revision DESC LIMIT 1
     ) measurement ON true
-    WHERE v.id = ${visitId}::uuid
+    WHERE v.id = ${visitId}::uuid AND v.created_at <= ${asOf}
   `)
   if (!row) return null
   const state = advanceCompactPendingCutoff(row.summary, asOf)
   const string = (key: string): string => {
     const value = state[key]
     if (typeof value !== "string")
-      throw new Error("precomputed_compact_summary_invalid")
+      throw new RecommendationInternalStateError(
+        "precomputed_compact_summary_invalid",
+      )
     return value
   }
   const nullableString = (key: string): string | null => {
     const value = state[key]
     if (value !== null && typeof value !== "string")
-      throw new Error("precomputed_compact_summary_invalid")
+      throw new RecommendationInternalStateError(
+        "precomputed_compact_summary_invalid",
+      )
     return value
   }
   const boolean = (key: string): boolean => {
     const value = state[key]
     if (typeof value !== "boolean")
-      throw new Error("precomputed_compact_summary_invalid")
+      throw new RecommendationInternalStateError(
+        "precomputed_compact_summary_invalid",
+      )
     return value
   }
   const count = (key: string): bigint => {
     const value = string(key)
     if (!/^(0|[1-9][0-9]*)$/.test(value))
-      throw new Error("precomputed_compact_summary_invalid")
+      throw new RecommendationInternalStateError(
+        "precomputed_compact_summary_invalid",
+      )
     return BigInt(value)
   }
   return {
@@ -221,7 +284,9 @@ export function advanceCompactPendingCutoff(
   asOf: Date,
 ): Record<string, unknown> {
   if (!summary || typeof summary !== "object" || Array.isArray(summary))
-    throw new Error("precomputed_compact_summary_invalid")
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_summary_invalid",
+    )
   const state = summary as Record<string, unknown>
   if (
     typeof state.pending_playbacks !== "string" ||
@@ -229,7 +294,9 @@ export function advanceCompactPendingCutoff(
     typeof state.captured_cutoff_at !== "string" ||
     typeof state.cutoff_ceiling_at !== "string"
   )
-    throw new Error("precomputed_compact_summary_invalid")
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_summary_invalid",
+    )
   const captured = Date.parse(state.captured_cutoff_at)
   const cutoff = Math.min(asOf.getTime(), Date.parse(state.cutoff_ceiling_at))
   const pending = Number(state.pending_playbacks)
@@ -239,13 +306,20 @@ export function advanceCompactPendingCutoff(
     !Number.isFinite(cutoff) ||
     cutoff < captured
   )
-    throw new Error("precomputed_compact_summary_invalid")
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_summary_invalid",
+    )
   const elapsed = state.pending_deadlines.filter((deadline) => {
     if (typeof deadline !== "string" || !Number.isFinite(Date.parse(deadline)))
-      throw new Error("precomputed_compact_summary_invalid")
+      throw new RecommendationInternalStateError(
+        "precomputed_compact_summary_invalid",
+      )
     const at = Date.parse(deadline)
     return at > captured && at <= cutoff
   }).length
-  if (elapsed > pending) throw new Error("precomputed_compact_summary_invalid")
+  if (elapsed > pending)
+    throw new RecommendationInternalStateError(
+      "precomputed_compact_summary_invalid",
+    )
   return { ...state, pending_playbacks: String(pending - elapsed) }
 }

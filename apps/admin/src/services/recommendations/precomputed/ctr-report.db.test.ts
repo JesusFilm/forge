@@ -266,12 +266,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       await visit({
         arm: RecommendationExperimentArm.CONTROL,
+        browser: "b".repeat(64),
+        createdAt: new Date(now.getTime() - days(1)),
+        expiresAt: new Date(now.getTime() + days(28)),
+      })
+      await visit({
+        arm: RecommendationExperimentArm.CONTROL,
         browser: "a".repeat(64),
         createdAt: new Date(now.getTime() - days(1)),
         expiresAt: new Date(now.getTime() + days(28)),
         eligibility: "excluded",
       })
       if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        const compactClusters = new Map<
+          string,
+          { visits: number; clicks: number }
+        >()
         const activeVisits =
           await prisma.recommendationPrecomputedVisit.findMany({
             where: { experimentId },
@@ -284,8 +294,23 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
             rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, now),
           )
-          expect(await readCompactCtrVisitAt(prisma, id, now)).toEqual(native)
+          const compact = await readCompactCtrVisitAt(prisma, id, now)
+          expect(compact).toEqual(native)
+          if (compact?.eligibility === "eligible") {
+            const key = `${compact.arm}:${compact.browser_unit_digest}`
+            const cluster = compactClusters.get(key) ?? { visits: 0, clicks: 0 }
+            cluster.visits += 1
+            cluster.clicks += Number(compact.accepted_selections > 0n)
+            compactClusters.set(key, cluster)
+          }
         }
+        expect(
+          [...compactClusters.values()].sort((a, b) => b.visits - a.visits),
+        ).toEqual([
+          { visits: 2, clicks: 1 },
+          { visits: 1, clicks: 0 },
+          { visits: 1, clicks: 0 },
+        ])
       }
       const first = await evaluatePrivatePrecomputedCtr(prisma, {
         experimentId,
@@ -299,8 +324,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           isFinal: false,
           outcome: "inconclusive",
           byArm: {
-            control: { eligibleVisits: 2, clickedVisits: 1, visitCtr: 0.5 },
-            challenger: { eligibleVisits: 1, clickedVisits: 0 },
+            control: {
+              eligibleVisits: 3,
+              clickedVisits: 1,
+              visitCtr: 1 / 3,
+              independentBrowsers: 2,
+              effectiveBrowsers: 1.8,
+            },
+            challenger: {
+              eligibleVisits: 1,
+              clickedVisits: 0,
+              independentBrowsers: 1,
+              effectiveBrowsers: null,
+            },
           },
           exclusions: { automation: 1 },
         },
@@ -512,6 +548,20 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         operator,
         now: new Date(now.getTime() + 3_600_000),
       })
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        const checkpointAt = new Date(now.getTime() + 3_600_000)
+        expect(await readCompactCtrVisitAt(prisma, id, now)).toBeNull()
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, checkpointAt),
+        )
+        const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, checkpointAt),
+        )
+        expect(await readCompactCtrVisitAt(prisma, id, checkpointAt)).toEqual(
+          native,
+        )
+        expect(await readCompactCtrVisitAt(prisma, id, now)).toBeNull()
+      }
       expect(after).toMatchObject({
         status: "available",
         report: {
@@ -991,5 +1041,53 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).toBe(0)
     })
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "keeps an impression received after the report cutoff out of the earlier snapshot",
+      async () => {
+        const id = await visit({
+          arm: RecommendationExperimentArm.CONTROL,
+          browser: "e".repeat(64),
+          createdAt: new Date(now.getTime() - days(1)),
+          expiresAt: new Date(now.getTime() + days(1)),
+        })
+        const issued = await selection(id, new Date(now.getTime() - 60_000))
+        const before = new Date(now.getTime() + 10_000)
+        const after = new Date(now.getTime() + 30_000)
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, before),
+        )
+        await prisma.recommendationImpression.create({
+          data: {
+            requestId: issued.requestId,
+            itemId: issued.itemId,
+            capabilityJti: randomUUID(),
+            eventId: randomUUID(),
+            payloadDigest: "f".repeat(64),
+            visibilityPolicy: "watch-below-player-v1",
+            occurredAt: new Date(now.getTime() + 20_000),
+            receivedAt: new Date(now.getTime() + 20_000),
+            expiresAt: issued.expiry,
+          },
+        })
+        await prisma.$transaction((tx) =>
+          capturePrecomputedCtrMeasurement(tx, id, after),
+        )
+        for (const [cutoff, matched] of [
+          [before, 0n],
+          [after, 1n],
+        ] as const) {
+          const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+            rawCtrVisitSql(Prisma.sql`v.id = ${id}::uuid`, cutoff),
+          )
+          expect(native.matched_selections).toBe(matched)
+          expect(await readCompactCtrVisitAt(prisma, id, cutoff)).toEqual(
+            native,
+          )
+        }
+      },
+    )
   },
 )
