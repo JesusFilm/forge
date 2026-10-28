@@ -175,6 +175,95 @@ describe("recommendation ClickHouse HTTP boundary", () => {
       vi.useRealTimers()
     }
   })
+  it.each(["2026-10-28T06:00:00.000Z", "2026-10-29T00:00:00.000Z"])(
+    "rechecks actual expiry after the response with initial clock %s",
+    async (clock) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      try {
+        vi.setSystemTime(new Date(clock))
+        const fetch = vi.fn(async () => {
+          vi.setSystemTime(new Date("2026-10-29T00:00:00.000Z"))
+          return new Response(
+            [
+              {
+                logicalId: "watch:expired",
+                expiresAt: "2026-10-28T12:00:00.000Z",
+              },
+              { logicalId: "watch:live", expiresAt: event.expiresAt },
+            ]
+              .map(({ logicalId, expiresAt }) =>
+                JSON.stringify({
+                  logical_id: logicalId,
+                  latest_revision: 1,
+                  conflicts: 0,
+                  occurred_at: event.occurredAt,
+                  accepted_at: event.acceptedAt,
+                  expires_at: expiresAt,
+                  payload_digest: event.payloadDigest,
+                  payload: JSON.stringify(event.payload),
+                }),
+              )
+              .join("\n") + "\n",
+            { status: 200 },
+          )
+        })
+        const client = createRecommendationClickHouseClient({
+          ...config,
+          fetch,
+        })
+        const rows = await client.read({
+          family: "watch-exposure",
+          logicalIds: ["watch:expired", "watch:live"],
+          asOf: new Date("2026-10-28T06:00:00.000Z"),
+          now: new Date("2026-10-28T06:00:00.000Z"),
+        })
+        expect(rows.map((row) => row.logicalId)).toEqual(["watch:live"])
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
+  it.each([
+    ["2026-10-28T00:00:00.000Z", "2026-10-29T00:00:00.000Z"],
+    ["2026-10-30T00:00:00.000Z", "2026-10-30T00:00:00.000Z"],
+  ])(
+    "floors Watch expiry at actual time without changing as-of (%s)",
+    async (now, cutoff) => {
+      vi.useFakeTimers({ toFake: ["Date"] })
+      try {
+        vi.setSystemTime(new Date("2026-10-29T00:00:00.000Z"))
+        const fetch = vi.fn(
+          async (_url: URL, init: RequestInit) =>
+            new Response(
+              String(init.body).startsWith(
+                "SELECT toUInt32(countIf(conflicts > 0))",
+              )
+                ? '{"conflicts":0}\n'
+                : "",
+              { status: 200 },
+            ),
+        )
+        const client = createRecommendationClickHouseClient({
+          ...config,
+          fetch,
+        })
+        await client.watchExposureBreakdown({
+          start: new Date("2026-10-27T00:00:00.000Z"),
+          end: new Date("2026-10-28T00:00:00.000Z"),
+          now: new Date(now),
+        })
+        expect(fetch).toHaveBeenCalledTimes(2)
+        for (const [url] of fetch.mock.calls) {
+          expect(url.searchParams.get("param_now")).toBe(cutoff)
+          expect(url.searchParams.get("param_as_of")).toBe(
+            "2026-10-28T00:00:00.000Z",
+          )
+        }
+      } finally {
+        vi.useRealTimers()
+      }
+    },
+  )
   it("shares one deadline across the aggregate and conflict audit", async () => {
     vi.useFakeTimers()
     let active = 0
