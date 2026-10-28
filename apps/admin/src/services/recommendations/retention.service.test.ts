@@ -145,6 +145,18 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
       deleteMany: vi.fn(async () => ({ count: 0 })),
       findFirst: vi.fn(async () => null),
     },
+    watchSurfaceEventReceipt: {
+      findMany: vi.fn(async (): Promise<Array<{ eventId: string }>> => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    watchSurfaceIssuedItem: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    watchSurfaceIssuedWindow: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async (): Promise<{ expiresAt: Date } | null> => null),
+    },
     recommendationServedItem: { count: count() },
     recommendationRenderedFact: { count: count() },
     recommendationImpression: { count: count() },
@@ -784,6 +796,73 @@ describe("recommendation retention service", () => {
       rowCounts: { expiredStandaloneEpisodes: 1 },
       oldestExpiredAtAfter: "2026-09-15T00:00:00.000Z",
       overdueAfterRun: true,
+      batchLimitReached: true,
+    })
+  })
+
+  it("counts a full compact receipt page and requests continuation", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+    transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
+    transaction.recommendationViewer.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    transaction.$queryRaw.mockReset().mockImplementation(retentionQuery())
+    transaction.watchSurfaceEventReceipt.findMany.mockResolvedValue(
+      Array.from({ length: 100 }, (_, index) => ({
+        eventId: `event-${index}`,
+      })),
+    )
+    transaction.watchSurfaceEventReceipt.deleteMany.mockResolvedValue({
+      count: 100,
+    })
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, now, 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      rowCounts: { expiredWatchEventReceipts: 100 },
+      batchLimitReached: true,
+    })
+  })
+
+  it("continues for an expired compact window after a partial child page", async () => {
+    const { prisma, transaction } = buildPrisma()
+    const now = new Date("2026-09-17T00:00:00.000Z")
+    const expiredAt = new Date(now.getTime() - 60_000)
+    transaction.recommendationRequest.findMany.mockResolvedValue([])
+    transaction.recommendationContentAction.findMany.mockResolvedValue([])
+    transaction.recommendationPlaybackEpisode.findMany.mockResolvedValue([])
+    transaction.recommendationShadowEvaluation.findMany.mockResolvedValue([])
+    transaction.recommendationViewer.findMany.mockResolvedValue([])
+    transaction.recommendationProfile.findMany.mockReset().mockResolvedValue([])
+    const normalQuery = retentionQuery()
+    transaction.$queryRaw
+      .mockReset()
+      .mockImplementation(async (query: Prisma.Sql) =>
+        query.sql.includes("JOIN watch_surface_issued_item AS item")
+          ? [
+              {
+                windowId: "window-1",
+                position: 0,
+                itemPath: "/watch/item.html",
+              },
+            ]
+          : await normalQuery(query),
+      )
+    transaction.watchSurfaceIssuedItem.deleteMany.mockResolvedValue({
+      count: 1,
+    })
+    transaction.watchSurfaceIssuedWindow.findFirst.mockResolvedValue({
+      expiresAt: expiredAt,
+    })
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never, now, 1),
+    ).resolves.toMatchObject({
+      status: "succeeded",
+      rowCounts: { expiredWatchIssuedItems: 1 },
+      oldestExpiredAtAfter: expiredAt.toISOString(),
       batchLimitReached: true,
     })
   })
@@ -1807,6 +1886,12 @@ describe("recommendation retention service", () => {
     )
     expect(healthQuery?.strings.join("?")).toContain(
       "watch_surface_exposure WHERE expires_at <=",
+    )
+    expect(healthQuery?.strings.join("?")).toContain(
+      "watch_surface_event_receipt WHERE expires_at <=",
+    )
+    expect(healthQuery?.strings.join("?")).toContain(
+      "watch_surface_issued_window WHERE expires_at <=",
     )
 
     prisma.$queryRaw.mockResolvedValueOnce([
