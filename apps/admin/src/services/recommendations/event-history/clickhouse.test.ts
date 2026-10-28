@@ -1,0 +1,159 @@
+import { describe, expect, it, vi } from "vitest"
+import { createRecommendationEventEnvelope } from "./envelope"
+import {
+  createRecommendationClickHouseClient,
+  RecommendationClickHouseError,
+} from "./clickhouse"
+
+const event = createRecommendationEventEnvelope({
+  family: "watch-exposure",
+  logicalId: "watch:one",
+  revision: 1,
+  occurredAt: new Date("2026-10-28T00:00:00.000Z"),
+  acceptedAt: new Date("2026-10-28T00:00:01.000Z"),
+  expiresAt: new Date("2026-11-11T00:00:00.000Z"),
+  payload: { videoId: "safe" },
+  allowedFields: ["videoId"],
+})
+
+const config = {
+  endpoint: "https://clickhouse.example.test:8443/",
+  database: "events",
+  username: "ingest",
+  password: "secret",
+}
+
+describe("recommendation ClickHouse HTTP boundary", () => {
+  it("confirms a bounded synchronous insert only after a clean complete response", async () => {
+    const fetch = vi.fn(
+      async (_url: URL, init: RequestInit) =>
+        new Response(
+          String(init.body).startsWith("SELECT uniqExact(")
+            ? '{"count":"0"}\n'
+            : String(init.body).startsWith("SELECT toUInt32(")
+              ? '{"conflicts":0}\n'
+              : "",
+          { status: 200 },
+        ),
+    )
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await expect(client.insert([event])).resolves.toBeUndefined()
+    expect(fetch).toHaveBeenCalledTimes(5)
+    const [url, init] = fetch.mock.calls[2]
+    expect(url.searchParams.get("async_insert")).toBe("0")
+    expect(url.searchParams.get("wait_end_of_query")).toBe("1")
+    expect(init.redirect).toBe("error")
+    expect(init.headers).toMatchObject({
+      "X-ClickHouse-User": "ingest",
+      "X-ClickHouse-Key": "secret",
+    })
+    expect(init.body).toContain('"logical_id":"watch:one"')
+  })
+
+  it.each([
+    new Response("partial", { status: 200 }),
+    new Response("failed secret", { status: 500 }),
+  ])(
+    "rejects ambiguous or failed insert responses without leaking provider text",
+    async (response) => {
+      const client = createRecommendationClickHouseClient({
+        ...config,
+        fetch: async (_url, init) =>
+          String(init?.body).startsWith("SELECT uniqExact(")
+            ? new Response('{"count":"0"}\n')
+            : String(init?.body).startsWith("SELECT toUInt32(")
+              ? new Response('{"conflicts":0}\n')
+              : response,
+      })
+      await expect(client.insert([event])).rejects.toMatchObject({
+        code: response.status === 200 ? "response" : "transport",
+      })
+    },
+  )
+
+  it("rejects overlarge batches before network I/O", async () => {
+    const fetch = vi.fn()
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await expect(client.insert(Array(101).fill(event))).rejects.toBeInstanceOf(
+      RecommendationClickHouseError,
+    )
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("rejects conflicting identities in one batch before network I/O", async () => {
+    const fetch = vi.fn()
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    const changed = createRecommendationEventEnvelope({
+      family: "watch-exposure",
+      logicalId: "watch:one",
+      revision: 1,
+      occurredAt: new Date("2026-10-28T00:00:00.000Z"),
+      acceptedAt: new Date("2026-10-28T00:00:01.000Z"),
+      expiresAt: new Date("2026-11-11T00:00:00.000Z"),
+      payload: { videoId: "different" },
+      allowedFields: ["videoId"],
+    })
+    await expect(client.insert([event, changed])).rejects.toMatchObject({
+      code: "conflict",
+    })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("rejects a stalled response body within the overall deadline", async () => {
+    const client = createRecommendationClickHouseClient({
+      ...config,
+      timeoutMs: 100,
+      fetch: async (_url, init) =>
+        String(init?.body).startsWith("SELECT uniqExact(")
+          ? new Response('{"count":"0"}\n')
+          : String(init?.body).startsWith("SELECT toUInt32(")
+            ? new Response('{"conflicts":0}\n')
+            : new Response(new ReadableStream({ start() {} }), { status: 200 }),
+    })
+    await expect(client.insert([event])).rejects.toMatchObject({
+      code: "timeout",
+    })
+  })
+
+  it("bounds requested IDs before network I/O", async () => {
+    const fetch = vi.fn()
+    const client = createRecommendationClickHouseClient({ ...config, fetch })
+    await expect(
+      client.read({
+        family: "watch-exposure",
+        logicalIds: Array.from({ length: 101 }, (_, i) => `id:${i}`),
+        asOf: new Date(),
+      }),
+    ).rejects.toMatchObject({ code: "invalid_input" })
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it("rejects an incomplete canonical row rather than treating it as absent", async () => {
+    const client = createRecommendationClickHouseClient({
+      ...config,
+      fetch: async () => new Response('{"logical_id":"watch:one"}\n'),
+    })
+    await expect(
+      client.read({
+        family: "watch-exposure",
+        logicalIds: ["watch:one"],
+        asOf: new Date("2026-10-30"),
+      }),
+    ).rejects.toMatchObject({ code: "response" })
+  })
+
+  it("does not accept an unexpected success status as persistence proof", async () => {
+    const client = createRecommendationClickHouseClient({
+      ...config,
+      fetch: async (_url, init) =>
+        String(init.body).startsWith("SELECT uniqExact(")
+          ? new Response('{"count":"0"}\n')
+          : String(init.body).startsWith("SELECT toUInt32(")
+            ? new Response('{"conflicts":0}\n')
+            : new Response(null, { status: 204 }),
+    })
+    await expect(client.insert([event])).rejects.toMatchObject({
+      code: "transport",
+    })
+  })
+})
