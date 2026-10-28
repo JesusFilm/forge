@@ -1,5 +1,5 @@
 ---
-id: "feat-888"
+id: "feat-897"
 title: "Move recommendation event history out of serving PostgreSQL"
 owner: "nisal"
 priority: "P1"
