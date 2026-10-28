@@ -121,6 +121,91 @@ describe("recommendation event dispatch", () => {
     expect(dispatcher.snapshot().confirmedEvents).toBe(0)
   })
 
+  it("measures delivery loss by validated experiment arm without creating arbitrary labels", async () => {
+    const visit = (id: string, arm: string) =>
+      createRecommendationEventEnvelope({
+        ...event,
+        family: "experiment-visit",
+        logicalId: `ab-visit:${id}`,
+        occurredAt: new Date(event.occurredAt),
+        acceptedAt: new Date(event.acceptedAt),
+        expiresAt: new Date(event.expiresAt),
+        payload: { arm },
+        allowedFields: ["arm"],
+      })
+    const control = visit("control", "control")
+    const challenger = visit("challenger", "challenger")
+    let fail!: (reason: unknown) => void
+    const insert = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise<void>((_resolve, reject) => (fail = reject)),
+      )
+      .mockResolvedValue(undefined)
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+      maxInFlight: 1,
+    })
+    dispatcher.dispatch([control, challenger])
+    dispatcher.dispatch([control, visit("unknown", "untrusted-label")])
+    fail(new RecommendationClickHouseError("timeout"))
+    await dispatcher.drain()
+    dispatcher.dispatch([control, challenger])
+    await dispatcher.drain()
+
+    expect(dispatcher.snapshot().byExperimentArm).toEqual({
+      control: {
+        attempted: 2,
+        confirmed: 1,
+        failed: 1,
+        unknownOutcome: 1,
+        dropped: 1,
+      },
+      challenger: {
+        attempted: 2,
+        confirmed: 1,
+        failed: 1,
+        unknownOutcome: 1,
+        dropped: 0,
+      },
+    })
+    expect(insert).toHaveBeenCalledTimes(2)
+    expect(JSON.stringify(dispatcher.snapshot())).not.toContain(
+      "untrusted-label",
+    )
+    await dispatcher.close()
+  })
+
+  it("does not attribute other families or invalid batches to experiment arms", async () => {
+    const withArm = (family: typeof event.family) =>
+      createRecommendationEventEnvelope({
+        ...event,
+        family,
+        occurredAt: new Date(event.occurredAt),
+        acceptedAt: new Date(event.acceptedAt),
+        expiresAt: new Date(event.expiresAt),
+        payload: { arm: "control" },
+        allowedFields: ["arm"],
+      })
+    const insert = vi.fn().mockResolvedValue(undefined)
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+    })
+    dispatcher.dispatch([withArm("request")])
+    dispatcher.dispatch([
+      withArm("experiment-visit"),
+      { ...withArm("experiment-visit"), payloadDigest: "invalid" },
+    ])
+    await dispatcher.drain()
+
+    expect(insert).toHaveBeenCalledTimes(1)
+    expect(dispatcher.snapshot().confirmedEvents).toBe(1)
+    expect(dispatcher.snapshot().invalidDroppedEvents).toBe(2)
+    expect(dispatcher.snapshot().byExperimentArm.control.attempted).toBe(0)
+    expect(dispatcher.snapshot().byExperimentArm.control.dropped).toBe(0)
+    await dispatcher.close()
+  })
+
   it("classifies typed envelope rejection as invalid input", async () => {
     const dispatcher = createRecommendationEventDispatcher({
       client: {
