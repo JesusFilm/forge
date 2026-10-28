@@ -512,6 +512,45 @@ export const env = createEnv({
     WATCH_SEARCH_DB_TEST: z.enum(["1"]).optional(),
     // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
+    RECOMMENDATION_CLICKHOUSE_DB_TEST: z.enum(["1"]).optional(),
+    WATCH_COMPACT_DB_TEST: z.enum(["1"]).optional(),
+    WATCH_COMPACT_RETENTION_DB_TEST: z.enum(["1"]).optional(),
+    RECOMMENDATION_CLICKHOUSE_TEST_URL: z.string().url().optional(),
+    RECOMMENDATION_WATCH_HISTORY_READER_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
+    RECOMMENDATION_OPERATOR_TRACE_READER_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
+    RECOMMENDATION_EVENT_EXPORT_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
+    WATCH_EVENT_EXPORT_ENABLED: z.enum(["true", "false"]).default("false"),
+    WATCH_COMPACT_ADMISSION_MODE: z
+      .enum(["legacy", "shadow", "compact"])
+      .default("legacy"),
+    RECOMMENDATION_CLICKHOUSE_ENDPOINT: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_DATABASE: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_USERNAME: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_PASSWORD: z.string().min(1).optional(),
+    RECOMMENDATION_CLICKHOUSE_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(100)
+      .max(30_000)
+      .default(10_000),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(64)
+      .default(8),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_048_576)
+      .max(67_108_864)
+      .default(8_388_608),
     // Opt-in real-database proof for the push campaign claim indexes and the
     // push retention purge. Test-only; production never branches on it.
     PUSH_DB_TEST: z.enum(["1"]).optional(),
@@ -549,10 +588,11 @@ export const env = createEnv({
       .enum(["true", "false"])
       .optional()
       .default("false"),
-    // Activate only after every serving replica and rollback image can read
-    // both legacy stage rows and compact run payloads.
+    // Opt-in history mode needs the operator history reader and export enabled;
+    // absent/lost export remains explicit incomplete coverage, never a serve failure.
+    // Keep rollback images able to read all three run formats.
     RECOMMENDATION_CANDIDATE_TRACE_FORMAT: z
-      .enum(["legacy", "compact"])
+      .enum(["legacy", "compact", "history"])
       .default("legacy"),
     // Mixed readers and the rollback image must continue to understand packed items.
     // Explicit legacy stops new packed writes without rewriting retained requests.
@@ -562,6 +602,18 @@ export const env = createEnv({
     // Private saved-result Watch preview; never changes the public serving pointer.
     RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: z.enum(["1"]).optional(),
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED: z
+      .enum(["1"])
+      .optional(),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED: z
+      .enum(["1"])
+      .optional(),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_ARCHIVE_READER_ENABLED: z
+      .enum(["1"])
+      .optional(),
+    RECOMMENDATION_COMPACT_PLAYBACK_RECENCY_READER_ENABLED: z
+      .enum(["1"])
+      .optional(),
     WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().min(32).optional(),
     WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
     WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
@@ -1123,6 +1175,45 @@ export const env = createEnv({
     RECOMMENDATION_DB_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_DB_TEST,
     ),
+    RECOMMENDATION_CLICKHOUSE_DB_TEST: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_DB_TEST,
+    ),
+    WATCH_COMPACT_DB_TEST: emptyToUndefined(process.env.WATCH_COMPACT_DB_TEST),
+    WATCH_COMPACT_RETENTION_DB_TEST: emptyToUndefined(
+      process.env.WATCH_COMPACT_RETENTION_DB_TEST,
+    ),
+    RECOMMENDATION_CLICKHOUSE_TEST_URL: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_TEST_URL,
+    ),
+    RECOMMENDATION_WATCH_HISTORY_READER_ENABLED:
+      process.env.RECOMMENDATION_WATCH_HISTORY_READER_ENABLED,
+    RECOMMENDATION_OPERATOR_TRACE_READER_ENABLED:
+      process.env.RECOMMENDATION_OPERATOR_TRACE_READER_ENABLED,
+    RECOMMENDATION_EVENT_EXPORT_ENABLED:
+      process.env.RECOMMENDATION_EVENT_EXPORT_ENABLED,
+    WATCH_EVENT_EXPORT_ENABLED: process.env.WATCH_EVENT_EXPORT_ENABLED,
+    WATCH_COMPACT_ADMISSION_MODE: process.env.WATCH_COMPACT_ADMISSION_MODE,
+    RECOMMENDATION_CLICKHOUSE_ENDPOINT: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_ENDPOINT,
+    ),
+    RECOMMENDATION_CLICKHOUSE_DATABASE: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_DATABASE,
+    ),
+    RECOMMENDATION_CLICKHOUSE_USERNAME: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_USERNAME,
+    ),
+    RECOMMENDATION_CLICKHOUSE_PASSWORD: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_PASSWORD,
+    ),
+    RECOMMENDATION_CLICKHOUSE_TIMEOUT_MS: emptyToUndefined(
+      process.env.RECOMMENDATION_CLICKHOUSE_TIMEOUT_MS,
+    ),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT: emptyToUndefined(
+      process.env.RECOMMENDATION_EVENT_MAX_IN_FLIGHT,
+    ),
+    RECOMMENDATION_EVENT_MAX_IN_FLIGHT_BYTES: emptyToUndefined(
+      process.env.RECOMMENDATION_EVENT_MAX_IN_FLIGHT_BYTES,
+    ),
     PUSH_DB_TEST: emptyToUndefined(process.env.PUSH_DB_TEST),
     RECOMMENDATION_DELIVERY_DB_FIXTURE: emptyToUndefined(
       process.env.RECOMMENDATION_DELIVERY_DB_FIXTURE,
@@ -1158,6 +1249,18 @@ export const env = createEnv({
     ),
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: emptyToUndefined(
       process.env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_COMPACT_ARCHIVE_READER_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_COMPACT_ARCHIVE_READER_ENABLED,
+    ),
+    RECOMMENDATION_COMPACT_PLAYBACK_RECENCY_READER_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_COMPACT_PLAYBACK_RECENCY_READER_ENABLED,
     ),
     WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: emptyToUndefined(
       process.env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,

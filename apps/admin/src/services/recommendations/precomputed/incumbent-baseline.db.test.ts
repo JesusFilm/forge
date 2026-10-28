@@ -4,6 +4,19 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import type { RecommendationEventEnvelope } from "../event-history/envelope"
+const exportedHistory = vi.hoisted(() => ({
+  events: [] as RecommendationEventEnvelope[],
+}))
+vi.mock("../event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: (
+    family: string,
+    prepare: () => RecommendationEventEnvelope[],
+  ) => {
+    if (family === "experiment-visit") exportedHistory.events.push(...prepare())
+  },
+}))
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import * as incumbentService from "../delivery.service"
 import {
@@ -155,6 +168,11 @@ describe.skipIf(!fixtureReady)(
       expect(await prisma.recommendationPrecomputedBaselineVisit.count()).toBe(
         0,
       )
+      expect(
+        exportedHistory.events.filter(
+          (event) => event.logicalId === `baseline-visit:${visitId}`,
+        ),
+      ).toEqual([])
 
       const issuedAt = Math.floor(now.getTime() / 1_000)
       const payload = Buffer.from(
@@ -211,6 +229,16 @@ describe.skipIf(!fixtureReady)(
         expect(
           await prisma.recommendationPrecomputedBaselineVisit.count(),
         ).toBe(1)
+        const admitted =
+          await prisma.recommendationPrecomputedBaselineVisit.findUniqueOrThrow(
+            { where: { id: visitId } },
+          )
+        expect(admitted.historyRevision).toBe(2)
+        expect(
+          exportedHistory.events
+            .filter((event) => event.logicalId === `baseline-visit:${visitId}`)
+            .map((event) => event.revision),
+        ).toEqual([1, 2])
         expect(
           await loadPrecomputedIncumbentBaselineReport(
             prisma,

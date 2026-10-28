@@ -14,6 +14,9 @@ import {
   RecommendationAuditKind,
   RecommendationDeliveryResult,
   RecommendationRequestState,
+  type RecommendationRequest,
+  type RecommendationServedItem,
+  type RecommendationCandidateRun,
 } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
 import {
@@ -98,6 +101,13 @@ import {
 } from "./promotion/owner-authority"
 import { nominationEligibilityReasons } from "./eligibility"
 import { servedSnapshotCreate } from "./served-item-payload"
+import {
+  requestHistoryEvent,
+  servedItemHistoryEvents,
+  candidateRunHistoryEvent,
+  stageHistoryEvent,
+} from "./event-history/trace-codec"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
 import {
   readDeliveryDiagnostics,
   type SemanticRetrievalDiagnostics,
@@ -1184,6 +1194,11 @@ export class RecommendationDeliveryService {
               ? RecommendationDeliveryResult.EMPTY
               : RecommendationDeliveryResult.UNAVAILABLE
 
+      let committedCandidateRows: CandidateEvidenceRow[] = []
+      let committedRequest:
+        | (RecommendationRequest & { items: RecommendationServedItem[] })
+        | null = null
+      let committedRun: RecommendationCandidateRun | null = null
       const persistRequest = (
         requestState: RecommendationRequestState,
         responseBytes: number | null,
@@ -1246,7 +1261,8 @@ export class RecommendationDeliveryService {
                 now: this.deps.now?.() ?? new Date(),
               })
             }
-            await tx.recommendationRequest.create({
+            committedRequest = await tx.recommendationRequest.create({
+              include: { items: true },
               data: {
                 id: requestId,
                 contractVersion: RECOMMENDATION_CONTRACTS.delivery,
@@ -1405,15 +1421,17 @@ export class RecommendationDeliveryService {
                 expiresAt,
               }),
             )
-            const compactTrace =
-              (this.deps.candidateTraceFormat ??
-                env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT) === "compact"
+            committedCandidateRows = evidenceRows
+            const traceFormat =
+              this.deps.candidateTraceFormat ??
+              env.RECOMMENDATION_CANDIDATE_TRACE_FORMAT
+            const compactTrace = traceFormat === "compact"
+            const historyTrace = traceFormat === "history"
             const tracePayload = compactTrace
               ? candidateTracePayload(evidenceRows)
               : null
             const createCandidateRun = () =>
               tx.recommendationCandidateRun.create({
-                select: { id: true },
                 data: {
                   id: candidateRunId,
                   requestId,
@@ -1446,19 +1464,24 @@ export class RecommendationDeliveryService {
                   fallbackReason: candidateRunFallbackReason,
                   traceFormatVersion: compactTrace
                     ? CANDIDATE_TRACE_FORMAT_VERSION
-                    : null,
+                    : historyTrace
+                      ? 2
+                      : null,
                   tracePayload: tracePayload ?? undefined,
+                  stageIds: historyTrace
+                    ? evidenceRows.map((row) => row.id)
+                    : [],
                   expiresAt,
                 },
               })
-            if (compactTrace) {
-              await timeRecommendationOperation(
+            if (compactTrace || historyTrace) {
+              committedRun = await timeRecommendationOperation(
                 "candidate_evidence.insert",
                 createCandidateRun,
                 evidenceRows.length,
               )
             } else {
-              await createCandidateRun()
+              committedRun = await createCandidateRun()
             }
             await tx.recommendationPersonalizationDecision.create({
               data: {
@@ -1478,7 +1501,7 @@ export class RecommendationDeliveryService {
                 expiresAt,
               },
             })
-            if (!compactTrace && evidenceRows.length > 0) {
+            if (!compactTrace && !historyTrace && evidenceRows.length > 0) {
               await persistCandidateStageEvidence(tx, evidenceRows)
             }
             if (requestState === RecommendationRequestState.ISSUED) {
@@ -1493,7 +1516,39 @@ export class RecommendationDeliveryService {
             }
           },
           nowMilliseconds,
-        )
+        ).then(() => {
+          const acceptedRequest = committedRequest as
+            | (RecommendationRequest & { items: RecommendationServedItem[] })
+            | null
+          dispatchPreparedRecommendationEventsAfterCommit("request", () => [
+            requestHistoryEvent(acceptedRequest!),
+          ])
+          if (prepared.length)
+            dispatchPreparedRecommendationEventsAfterCommit(
+              "served-item",
+              () =>
+                servedItemHistoryEvents(
+                  acceptedRequest!,
+                  acceptedRequest!.items,
+                ),
+              prepared.length,
+            )
+          dispatchPreparedRecommendationEventsAfterCommit("evidence", () => [
+            candidateRunHistoryEvent(committedRun!),
+          ])
+          for (
+            let offset = 0;
+            offset < committedCandidateRows.length;
+            offset += 100
+          ) {
+            const rows = committedCandidateRows.slice(offset, offset + 100)
+            dispatchPreparedRecommendationEventsAfterCommit(
+              "evidence",
+              () => rows.map((row) => stageHistoryEvent(requestId, row)),
+              rows.length,
+            )
+          }
+        })
 
       const persistObservedRequest = (
         state: Parameters<typeof persistRequest>[0],

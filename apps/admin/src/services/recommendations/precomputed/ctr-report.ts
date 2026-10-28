@@ -3,12 +3,16 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "@/services/errors"
+import { env } from "@/config/env"
+import { RecommendationInternalStateError } from "../errors"
 import {
+  addCtrVisit,
   blankCtrTotals,
   ctrTotalFields,
   rawCtrVisitSql,
   type CtrTotals,
 } from "./ctr-evidence"
+import { readCompactCtrVisitsAt } from "./compact-accounting"
 import {
   buildEngagementReport,
   type PrecomputedEngagementReport,
@@ -397,6 +401,128 @@ async function readEvidence(
   return { totals, moments, engagementMoments }
 }
 
+/** Compact report authority is a bounded, all-or-unavailable live snapshot
+ * read. Archived counters and browser clusters stay the same operational
+ * authority used by the native reader. */
+async function readCompactEvidence(
+  tx: Prisma.TransactionClient,
+  experimentId: string,
+  asOf: Date,
+) {
+  const compact = await readCompactCtrVisitsAt(tx, experimentId, asOf)
+  if (compact.status === "unavailable") return compact
+  const [archivedTotals, archivedClusters] = await Promise.all([
+    tx.recommendationPrecomputedCtrTotals.findMany({ where: { experimentId } }),
+    tx.recommendationPrecomputedCtrCluster.findMany({
+      where: { experimentId },
+    }),
+  ])
+  const totals: Record<Arm | "excluded", CtrTotals> = {
+    control: blankCtrTotals(),
+    challenger: blankCtrTotals(),
+    excluded: blankCtrTotals(),
+  }
+  const clusters = new Map<
+    string,
+    { arm: Arm; visits: bigint; clicks: bigint; engaged: bigint }
+  >()
+  const addCluster = (
+    arm: Arm,
+    digest: string,
+    visits: bigint,
+    clicks: bigint,
+    engaged: bigint,
+  ) => {
+    const key = `${arm}\0${digest}`
+    const cluster = clusters.get(key) ?? {
+      arm,
+      visits: 0n,
+      clicks: 0n,
+      engaged: 0n,
+    }
+    cluster.visits += visits
+    cluster.clicks += clicks
+    cluster.engaged += engaged
+    clusters.set(key, cluster)
+  }
+  for (const row of compact.visits) {
+    const arm = row.eligibility === "eligible" ? row.arm : "excluded"
+    if (arm !== "control" && arm !== "challenger" && arm !== "excluded")
+      throw new RecommendationInternalStateError("precomputed_ctr_invalid_arm")
+    // Native live totals reserve unversioned counting for archived rows.
+    addCtrVisit(totals[arm], { ...row, unversioned: false })
+    if (arm === "excluded") continue
+    if (!row.browser_unit_digest)
+      throw new RecommendationInternalStateError(
+        "precomputed_ctr_missing_browser",
+      )
+    addCluster(
+      arm,
+      row.browser_unit_digest,
+      1n,
+      row.accepted_selections > 0n ? 1n : 0n,
+      row.qualified_playbacks > 0n ? 1n : 0n,
+    )
+  }
+  for (const row of archivedTotals) {
+    if (
+      row.arm !== "control" &&
+      row.arm !== "challenger" &&
+      row.arm !== "excluded"
+    )
+      throw new RecommendationInternalStateError("precomputed_ctr_invalid_arm")
+    for (const field of ctrTotalFields) totals[row.arm][field] += row[field]
+  }
+  for (const row of archivedClusters)
+    addCluster(
+      row.arm === "CONTROL" ? "control" : "challenger",
+      row.browserUnitDigest,
+      row.eligibleVisits,
+      row.clickedVisits,
+      row.engagedVisits,
+    )
+  const moments = { control: blankMoments(), challenger: blankMoments() }
+  const engagementMoments = {
+    control: blankMoments(),
+    challenger: blankMoments(),
+  }
+  for (const arm of ["control", "challenger"] as const) {
+    const armClusters = [...clusters.values()].filter((row) => row.arm === arm)
+    const sum = (field: "visits" | "clicks" | "engaged") =>
+      armClusters.reduce((total, row) => total + row[field], 0n)
+    const products = (
+      first: "visits" | "clicks" | "engaged",
+      second: "visits" | "clicks" | "engaged",
+    ) =>
+      armClusters.reduce((total, row) => total + row[first] * row[second], 0n)
+    moments[arm] = {
+      browsers: armClusters.length,
+      eligibleVisits: safe(sum("visits")),
+      clickedVisits: safe(sum("clicks")),
+      sumVisitsSquared: safe(products("visits", "visits")),
+      sumClicksSquared: safe(products("clicks", "clicks")),
+      sumVisitsClicks: safe(products("visits", "clicks")),
+      actualFallbackVisits: safe(totals[arm].actualFallbackVisits),
+      unlinkedDeliveredVisits: safe(totals[arm].unlinkedDeliveredVisits),
+    }
+    engagementMoments[arm] = {
+      ...moments[arm],
+      clickedVisits: safe(sum("engaged")),
+      sumClicksSquared: safe(products("engaged", "engaged")),
+      sumVisitsClicks: safe(products("visits", "engaged")),
+    }
+    if (
+      moments[arm].eligibleVisits !== safe(totals[arm].eligibleVisits) ||
+      moments[arm].clickedVisits !== safe(totals[arm].clickedVisits) ||
+      engagementMoments[arm].clickedVisits !== safe(totals[arm].engagedVisits)
+    )
+      throw new RecommendationInternalStateError(
+        "precomputed_ctr_cluster_totals_mismatch",
+      )
+  }
+  return { status: "available" as const, totals, moments, engagementMoments }
+}
+
 function armReport(
   totals: CtrTotals,
   moments: CtrArmMoments,
@@ -523,11 +649,28 @@ async function evaluatePrecomputedCtrReport(
           status: "available",
           report: latest.result as unknown as PrecomputedCtrReport,
         } as const
-      const { totals, moments, engagementMoments } = await readEvidence(
-        tx,
-        input.experimentId,
-        asOf,
+      // The archive stores only cumulative totals, without an accepted-at
+      // timestamp. An explicit older cutoff cannot place those totals on its
+      // timeline. A default current cutoff is taken after the exclusive fence,
+      // so every committed archive is already within that cutoff.
+      if (
+        env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED === "1" &&
+        input.now !== undefined &&
+        (await tx.recommendationPrecomputedCtrArchivedVisit.count({
+          where: { experimentId: input.experimentId },
+        })) > 0
       )
+        return {
+          status: "unavailable",
+          reason: "archive_cutoff_unverifiable",
+        } as const
+      const evidence =
+        env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED === "1"
+          ? await readCompactEvidence(tx, input.experimentId, asOf)
+          : await readEvidence(tx, input.experimentId, asOf)
+      if ("reason" in evidence)
+        return { status: "unavailable", reason: evidence.reason } as const
+      const { totals, moments, engagementMoments } = evidence
       const finalAt = new Date(
         experiment.endsAt.getTime() + settings.lateEventCutoffHours * 3_600_000,
       )
@@ -1026,7 +1169,13 @@ export async function evaluatePublicPrecomputedCtr(
   }
   return evaluatePrecomputedCtrReport(prisma, {
     ...input,
-    now,
+    // The compact reader samples a current cutoff after taking the evidence
+    // fence. Preserve the native report's existing Web collection clock.
+    now:
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED === "1" &&
+      input.now === undefined
+        ? undefined
+        : now,
     evidenceBasis: livePublic
       ? "live_public"
       : experiment?.eligibilityPolicyVersion ===

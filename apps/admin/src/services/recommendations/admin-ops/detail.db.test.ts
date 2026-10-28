@@ -8,6 +8,8 @@ import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixtur
 import { loadRecommendationRequestDetail } from "./detail.service"
 import { loadRecommendationProfileReconciliationOverview } from "./profile-reconciliation.service"
 import { RECOMMENDATION_TRACE_ACCESS_REASON } from "./shared"
+import { vi } from "vitest"
+import { recommendationHistoryEvent } from "../event-history/producers"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const migrationSql = recommendationRuntimeMigrationSql
@@ -528,6 +530,211 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(compactOnly?.candidateExecution).toEqual(
         detail?.candidateExecution,
       )
+    })
+
+    it("reports missing export, releases the snapshot lock before remote I/O, and fences deletion", async () => {
+      const actorDigest = "e".repeat(64)
+      const auditCount = async () =>
+        Number(
+          (
+            await client.query(
+              `SELECT count(*) AS count FROM recommendation_trace_access_audit WHERE request_id = 'admin-trace-request' AND actor_digest = $1`,
+              [actorDigest],
+            )
+          ).rows[0].count,
+        )
+      expect(await auditCount()).toBe(0)
+      const historical = [
+        recommendationHistoryEvent({
+          family: "request",
+          logicalId: "admin-trace-request",
+          revision: 1,
+          occurredAt: now,
+          acceptedAt: now,
+          expiresAt: new Date(expiresAt),
+          payload: { requestId: "admin-trace-request", state: "issued" },
+        }),
+        recommendationHistoryEvent({
+          family: "served-item",
+          logicalId: "admin-trace-item",
+          revision: 1,
+          occurredAt: now,
+          acceptedAt: now,
+          expiresAt: new Date(expiresAt),
+          payload: {
+            requestId: "admin-trace-request",
+            itemId: "admin-trace-item",
+            position: 0,
+            presentationCoverage: "complete",
+          },
+        }),
+        recommendationHistoryEvent({
+          family: "evidence",
+          logicalId: "admin-trace-candidate-run",
+          revision: 1,
+          occurredAt: now,
+          acceptedAt: now,
+          expiresAt: new Date(expiresAt),
+          payload: {
+            requestId: "admin-trace-request",
+            candidateRunId: "admin-trace-candidate-run",
+            kind: "candidate-run",
+          },
+        }),
+        recommendationHistoryEvent({
+          family: "evidence",
+          logicalId: "admin-trace-candidate-stage",
+          revision: 1,
+          occurredAt: now,
+          acceptedAt: now,
+          expiresAt: new Date(expiresAt),
+          payload: {
+            requestId: "admin-trace-request",
+            candidateRunId: "admin-trace-candidate-run",
+            kind: "candidate-stage",
+            stage: "composed",
+            ordinal: 0,
+            reasonCodes: [],
+            sourceEvidence: [],
+          },
+        }),
+      ]
+      const complete = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+        historyReader: {
+          read: vi.fn(async ({ logicalIds }: { logicalIds: string[] }) =>
+            historical.filter((event) => logicalIds.includes(event.logicalId)),
+          ),
+        } as never,
+      })
+      expect(complete?.historicalTrace).toMatchObject({
+        status: "complete",
+        stages: [
+          expect.objectContaining({ logicalId: "admin-trace-candidate-stage" }),
+        ],
+      })
+      expect(await auditCount()).toBe(1)
+
+      const missingReader = { read: vi.fn().mockResolvedValue([]) }
+      const incomplete = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+        historyReader: missingReader as never,
+      })
+      expect(incomplete?.historicalTrace).toMatchObject({
+        status: "incomplete",
+        missing: expect.arrayContaining([
+          "request:admin-trace-request",
+          "served-item:admin-trace-item",
+          "evidence:admin-trace-candidate-run",
+        ]),
+      })
+      expect(await auditCount()).toBe(2)
+      const packedAllocation = await client.query<{ payloadBytes: number }>(`
+        SELECT pg_column_size(trace_payload) AS "payloadBytes"
+        FROM recommendation_candidate_run
+        WHERE id = 'admin-trace-candidate-run'
+      `)
+      await client.query(`UPDATE recommendation_candidate_run
+        SET trace_format_version = 2,
+          trace_payload = NULL,
+          stage_ids = ARRAY['admin-trace-candidate-stage']::text[]
+        WHERE id = 'admin-trace-candidate-run'`)
+      const allocation = await client.query<{ manifestBytes: number }>(`
+        SELECT pg_column_size(stage_ids) AS "manifestBytes"
+        FROM recommendation_candidate_run
+        WHERE id = 'admin-trace-candidate-run'
+      `)
+      expect(allocation.rows[0]!.manifestBytes).toBeLessThan(
+        packedAllocation.rows[0]!.payloadBytes,
+      )
+      await expect(
+        client.query(`UPDATE recommendation_candidate_run
+        SET stage_ids = ARRAY['admin-trace-candidate-stage', 'admin-trace-candidate-stage']::text[]
+        WHERE id = 'admin-trace-candidate-run'`),
+      ).rejects.toThrow()
+      await client.query(`DELETE FROM recommendation_candidate_stage_evidence
+        WHERE run_id = 'admin-trace-candidate-run'`)
+      const readerDisabled = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+      })
+      expect(readerDisabled?.candidateExecution?.stages).toEqual([])
+      expect(readerDisabled?.historicalTrace).toMatchObject({
+        status: "incomplete",
+        missing: ["history:reader-disabled"],
+      })
+      const reconstructed = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+        historyReader: {
+          read: vi.fn(async ({ logicalIds }: { logicalIds: string[] }) =>
+            historical.filter((event) => logicalIds.includes(event.logicalId)),
+          ),
+        } as never,
+      })
+      expect(reconstructed?.historicalTrace).toMatchObject({
+        status: "complete",
+        stages: [
+          expect.objectContaining({ logicalId: "admin-trace-candidate-stage" }),
+        ],
+      })
+      const historyOnly = await loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+        historyReader: missingReader as never,
+      })
+      expect(historyOnly?.candidateExecution?.stages).toEqual([])
+      expect(historyOnly?.historicalTrace).toMatchObject({
+        status: "incomplete",
+        missing: expect.arrayContaining([
+          "evidence:admin-trace-candidate-stage",
+        ]),
+      })
+      expect(await auditCount()).toBe(5)
+      await expect(
+        loadRecommendationRequestDetail(prisma, {
+          requestId: "admin-trace-request",
+          actorDigest,
+          now,
+          historyReader: {
+            read: vi.fn().mockRejectedValue(new Error("history_unavailable")),
+          } as never,
+        }),
+      ).rejects.toThrow("history_unavailable")
+      expect(await auditCount()).toBe(5)
+
+      let release!: () => void
+      let began!: () => void
+      const started = new Promise<void>((resolve) => {
+        began = resolve
+      })
+      const stalled = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const read = vi.fn(async () => {
+        began()
+        await stalled
+        return []
+      })
+      const pending = loadRecommendationRequestDetail(prisma, {
+        requestId: "admin-trace-request",
+        actorDigest,
+        now,
+        historyReader: { read } as never,
+      })
+      await started
+      await client.query(
+        `DELETE FROM recommendation_request WHERE id = 'admin-trace-request'`,
+      )
+      release()
+      expect(await pending).toBeNull()
     })
   },
 )

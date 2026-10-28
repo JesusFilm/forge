@@ -20,6 +20,7 @@ import {
 } from "./ctr-report"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { capturePrecomputedCtrMeasurement } from "./compact-accounting"
 import {
   assertIsolatedPrecomputedControlFixture,
   loadPrecomputedPublicControl,
@@ -42,6 +43,13 @@ import {
   admitPrecomputedIncumbentBaseline,
   recordPrecomputedIncumbentBaselineDelivery,
 } from "./incumbent-baseline"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "../event-history/runtime"
+import {
+  baselineVisitHistoryEvent,
+  experimentVisitHistoryEvent,
+  type BaselineSnapshot,
+  type VisitSnapshot,
+} from "../event-history/experiment-producers"
 
 const RAW_VISIT_MS = 29 * 86_400_000
 const HEX_DIGEST = /^[a-f0-9]{64}$/
@@ -86,6 +94,10 @@ type Admission = Omit<
   PrecomputedPublicWatchVisitResult,
   "measurementStatus" | "delivery"
 >
+
+type CommittedVisitHistory =
+  | { scope: "baseline"; snapshot: BaselineSnapshot }
+  | { scope: "ab"; snapshot: VisitSnapshot }
 
 function inactive(
   input: PrecomputedPublicWatchVisitInput,
@@ -137,7 +149,8 @@ async function admitPublicVisit(
     }
   const now = input.now ?? new Date()
   try {
-    return await runRecommendationDeliveryTransaction(
+    let committedHistory: CommittedVisitHistory | null = null
+    const admission = await runRecommendationDeliveryTransaction<Admission>(
       prisma,
       deadlineAt,
       async (tx) => {
@@ -156,6 +169,8 @@ async function admitPublicVisit(
             now,
           })
           if (!baseline) return inactive(input, null)
+          if (baseline.history)
+            committedHistory = { scope: "baseline", snapshot: baseline.history }
           return {
             ...inactive(input, baseline.reason),
             disposition: "baseline",
@@ -317,7 +332,7 @@ async function admitPublicVisit(
           configurationDigest: experiment.configurationDigest,
           challengerProbability: 0.5,
         })
-        await tx.recommendationPrecomputedVisit.createMany({
+        const inserted = await tx.recommendationPrecomputedVisit.createMany({
           data: [
             {
               id: input.visitId,
@@ -334,6 +349,8 @@ async function admitPublicVisit(
               deliveryResult: "not_attempted",
               createdAt: now,
               expiresAt: new Date(now.getTime() + RAW_VISIT_MS),
+              historyRevision: 1,
+              historyAcceptedAt: now,
             },
           ],
           skipDuplicates: true,
@@ -358,6 +375,36 @@ async function admitPublicVisit(
             status: "unavailable",
             reason: "visit_identity_conflict",
           }
+        if (
+          inserted.count === 1 &&
+          visit.historyRevision &&
+          visit.historyAcceptedAt
+        ) {
+          await capturePrecomputedCtrMeasurement(tx, visit.id, now)
+          committedHistory = {
+            scope: "ab",
+            snapshot: {
+              kind: "admission",
+              visitId: visit.id,
+              experimentId: visit.experimentId,
+              revision: visit.historyRevision,
+              occurredAt: visit.createdAt,
+              acceptedAt: visit.historyAcceptedAt,
+              expiresAt: visit.expiresAt,
+              sourceVideoId: visit.sourceVideoId,
+              locale: visit.locale,
+              audioLanguageSlug: visit.audioLanguageSlug,
+              eligibility: visit.eligibility,
+              qualification: visit.qualification,
+              exclusionReason: visit.exclusionReason,
+              arm: visit.arm,
+              deliveryResult: visit.deliveryResult,
+              actualStrategy: visit.actualStrategy,
+              deliveryRequestId: visit.deliveryRequestId,
+              fallbackReason: visit.fallbackReason,
+            },
+          }
+        }
         return {
           ...base,
           status: "eligible",
@@ -370,6 +417,24 @@ async function admitPublicVisit(
       },
       Date.now,
     )
+    const history = committedHistory as CommittedVisitHistory | null
+    if (history) {
+      try {
+        dispatchPreparedRecommendationEventsAfterCommit(
+          "experiment-visit",
+          () => [
+            history.scope === "ab"
+              ? experimentVisitHistoryEvent(history.snapshot)
+              : baselineVisitHistoryEvent(history.snapshot),
+          ],
+        )
+      } catch {
+        console.warn(
+          "[recommendation-event-history] public_visit_export_unavailable",
+        )
+      }
+    }
+    return admission
   } catch {
     return {
       ...inactive(input, "visit_persistence_unavailable"),

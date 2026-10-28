@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto"
+import { recommendationHistoryEvent } from "./event-history/producers"
+import type { createWorkerRecommendationEventDispatcher } from "./event-history/runtime"
 import {
   Prisma,
   RecommendationEpisodeState,
+  type RecommendationPlaybackEpisode,
+  type RecommendationOutcomeRevision,
   type PrismaClient,
 } from "@prisma/client"
 import { prisma as defaultPrisma } from "@/db/client"
@@ -16,6 +20,7 @@ import {
   type LegacyPositionOutcome,
 } from "./contracts"
 import { recommendationEvidenceDigest } from "./evidence.service"
+import { capturePrecomputedCtrMeasurementForRequest } from "./precomputed/compact-accounting"
 import { RecommendationConflictError } from "./errors"
 import {
   lockRecommendationEpisode,
@@ -26,6 +31,7 @@ type OutcomeDependencies = {
   prisma: PrismaClient
   now?: () => Date
   newId?: () => string
+  eventDispatcher?: ReturnType<typeof createWorkerRecommendationEventDispatcher>
 }
 
 export type FrozenPlaybackFact = {
@@ -209,10 +215,19 @@ export class RecommendationOutcomeService {
   async finalize(input: FinalizationInput) {
     const now = this.deps.now?.() ?? new Date()
     const newId = this.deps.newId ?? randomUUID
-    return withRecommendationSerializableRetry(
+    let publishedRows: RecommendationOutcomeRevision[] = []
+    type FinalizedEpisodeSnapshot = {
+      row: RecommendationPlaybackEpisode
+      state: RecommendationEpisodeState
+      revision: number
+    }
+    let finalizedEpisode: FinalizedEpisodeSnapshot | null = null
+    const result = await withRecommendationSerializableRetry(
       () =>
         this.deps.prisma.$transaction(
           async (tx) => {
+            publishedRows = []
+            finalizedEpisode = null
             await lockRecommendationEpisode(tx, input.episodeId)
             const episode = await tx.recommendationPlaybackEpisode.findUnique({
               where: { id: input.episodeId },
@@ -404,6 +419,7 @@ export class RecommendationOutcomeService {
                   expiresAt: episode.expiresAt,
                 },
               })
+              publishedRows.push(published)
               results.push({
                 status: "published",
                 id: published.id,
@@ -422,6 +438,7 @@ export class RecommendationOutcomeService {
                   where: {
                     id: episode.id,
                     generation: episode.generation,
+                    historyRevision: episode.historyRevision,
                   },
                   data: allClassifiersAlreadyPublished
                     ? { finalizationDueAt: null }
@@ -431,6 +448,7 @@ export class RecommendationOutcomeService {
                           : RecommendationEpisodeState.TIMED_OUT,
                         finalizedAt: now,
                         finalizationDueAt: null,
+                        historyRevision: { increment: 1 },
                       },
                 },
               )
@@ -438,6 +456,15 @@ export class RecommendationOutcomeService {
                 throw new RecommendationConflictError(
                   "Recommendation outcome generation conflicted",
                 )
+              }
+              if (!allClassifiersAlreadyPublished) {
+                finalizedEpisode = {
+                  row: episode,
+                  state: hasTerminal
+                    ? RecommendationEpisodeState.FINALIZED
+                    : RecommendationEpisodeState.TIMED_OUT,
+                  revision: episode.historyRevision + 1,
+                }
               }
             }
             const primary =
@@ -449,6 +476,12 @@ export class RecommendationOutcomeService {
               (result) =>
                 result.classifierVersion === ACTIVE_WATCH_PROXY_VERSION,
             )
+            if (publishedRows.length && episode.requestId)
+              await capturePrecomputedCtrMeasurementForRequest(
+                tx,
+                episode.requestId,
+                now,
+              )
             return {
               status: results.some((result) => result.status === "published")
                 ? ("published" as const)
@@ -464,6 +497,77 @@ export class RecommendationOutcomeService {
         ),
       "finalize",
     )
+    if (publishedRows.length) {
+      this.deps.eventDispatcher?.dispatchPrepared(
+        "outcome",
+        () =>
+          publishedRows.map((row) =>
+            recommendationHistoryEvent({
+              family: "outcome",
+              logicalId: `${row.episodeId}:${row.classifierVersion}`,
+              revision: row.revision,
+              occurredAt: row.createdAt,
+              acceptedAt: row.createdAt,
+              expiresAt: row.expiresAt,
+              payload: {
+                outcomeId: row.id,
+                episodeId: row.episodeId,
+                requestId: row.requestId,
+                itemId: row.itemId,
+                classifierVersion: row.classifierVersion,
+                factWatermark: row.factWatermark,
+                inputDigest: row.inputDigest,
+                supersedesId: row.supersedesId,
+                qualifiedView: row.qualifiedView,
+                viewQualityWeight: row.viewQualityWeight,
+                viewQualityWeightReason: row.viewQualityWeightReason,
+                activePlaybackMilliseconds: row.activePlaybackMilliseconds,
+                activeIntervals: row.activeIntervals,
+                durationSeconds: row.durationSeconds,
+                durationCohort: row.durationCohort,
+                activeCoverage: row.activeCoverage,
+                reasons: row.reasons,
+                generation: row.generation,
+                learningEligible: row.learningEligible,
+              },
+            }),
+          ),
+        publishedRows.length,
+      )
+    }
+    const committedFinality =
+      finalizedEpisode as FinalizedEpisodeSnapshot | null
+    if (committedFinality) {
+      this.deps.eventDispatcher?.dispatchPrepared("playback-episode", () => {
+        const { row, state, revision } = committedFinality
+        return [
+          recommendationHistoryEvent({
+            family: "playback-episode",
+            logicalId: row.id,
+            revision,
+            occurredAt: now,
+            acceptedAt: now,
+            expiresAt: row.expiresAt,
+            payload: {
+              episodeId: row.id,
+              requestId: row.requestId,
+              itemId: row.itemId,
+              selectionId: row.selectionId,
+              mediaId: row.mediaId,
+              discoverySource: row.discoverySource,
+              state,
+              generation: row.generation,
+              nextFactSequence: row.nextFactSequence,
+              historyRevision: revision,
+              activeUntil: row.activeUntil.toISOString(),
+              hardUntil: row.hardUntil.toISOString(),
+              finalizedAt: now.toISOString(),
+            },
+          }),
+        ]
+      })
+    }
+    return result
   }
 
   async rebuildProjection(input: { episodeId: string; generation: number }) {
@@ -533,6 +637,9 @@ export class RecommendationOutcomeService {
 
 export function createRecommendationOutcomeService(
   prisma: PrismaClient = defaultPrisma,
+  eventDispatcher?: ReturnType<
+    typeof createWorkerRecommendationEventDispatcher
+  >,
 ) {
-  return new RecommendationOutcomeService({ prisma })
+  return new RecommendationOutcomeService({ prisma, eventDispatcher })
 }

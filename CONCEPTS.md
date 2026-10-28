@@ -1061,6 +1061,26 @@ an Eligible Recommendation Impression, was selected, or produced an ordered
 playback fact. Evidence is attributed through its Recommendation Request and
 served-item lineage rather than inferred later from unrelated analytics.
 
+### Recommendation Event History
+
+The retained account of recommendation interactions and Watch exposure and
+playback observations, including playback without recommendation attribution.
+It covers both current and saved-generation recommendation strategies while
+preserving each observation's identity, provenance and expiry.
+
+### Recommendation Serving State
+
+The currently usable profiles, shared viewing relationships and recommendation
+lists derived for recommendation delivery. Its validity remains subject to
+viewer controls, expiry and content eligibility independently of the availability
+of new Recommendation Event History.
+
+### Recommendation Learning Freshness
+
+The elapsed time between viewing evidence becoming eligible for learning and
+its incorporation into usable Recommendation Serving State. It excludes the
+time needed to collect sufficient playback evidence and establish eligibility.
+
 ### Recommendation Playback Episode
 
 A source-neutral root for append-only playback evidence, claimed once for one

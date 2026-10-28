@@ -2,6 +2,14 @@ import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomUUID } from "node:crypto"
 import {
+  recommendationHistoryEvent,
+  selectionAttributionCorrectionEvent,
+} from "./event-history/producers"
+import {
+  dispatchPreparedRecommendationEventsAfterCommit,
+  getNextRecommendationEventDispatcher,
+} from "./event-history/runtime"
+import {
   RecommendationAuditKind,
   RecommendationExperimentArm,
   RecommendationExperimentAssignmentState,
@@ -34,6 +42,7 @@ import { RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS } from "./token.service"
 import { recordFirstEligiblePromotionExposure } from "./promotion/service"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import { lockPrivatePrecomputedRequestEvidence } from "./precomputed/visit-selection"
+import { capturePrecomputedCtrMeasurementForRequest } from "./precomputed/compact-accounting"
 
 const Event = z
   .object({
@@ -461,8 +470,85 @@ export class RecommendationEvidenceService {
         })
         receipts.push({ eventId: event.eventId, status: "accepted" })
       }
-      return { receipts, reconciledSelection, evidenceWatermark }
+      const selectionSnapshot =
+        reconciledSelection &&
+        getNextRecommendationEventDispatcher().isEnabled()
+          ? await tx.recommendationSelection.findUnique({
+              where: { itemId: item.id },
+            })
+          : null
+      if (
+        receipts.some((receipt) => receipt.status === "accepted") ||
+        reconciledSelection
+      )
+        await capturePrecomputedCtrMeasurementForRequest(
+          tx,
+          item.requestId,
+          evidenceWatermark,
+        )
+      return {
+        receipts,
+        reconciledSelection,
+        evidenceWatermark,
+        selectionSnapshot,
+      }
     })
+    if (result.reconciledSelection) {
+      dispatchPreparedRecommendationEventsAfterCommit("selection", () => {
+        const selection = result.selectionSnapshot
+        if (!selection?.attributionEligibleAt)
+          throw new Error("Selection correction snapshot missing")
+        return [
+          selectionAttributionCorrectionEvent({
+            ...selection,
+            attributionEligibleAt: selection.attributionEligibleAt,
+          }),
+        ]
+      })
+    }
+    dispatchPreparedRecommendationEventsAfterCommit(
+      "evidence",
+      () =>
+        input.events.flatMap((event) => {
+          if (
+            !result.receipts.some(
+              (receipt) =>
+                receipt.eventId === event.eventId &&
+                receipt.status === "accepted",
+            )
+          )
+            return []
+          const acceptedAt = result.evidenceWatermark
+          return [
+            recommendationHistoryEvent({
+              family: "evidence",
+              logicalId: `${item.id}:${event.kind}`,
+              revision: 1,
+              occurredAt: new Date(event.occurredAt),
+              acceptedAt,
+              expiresAt: item.request.expiresAt,
+              payload: {
+                requestId: item.requestId,
+                itemId: item.id,
+                eventId: event.eventId,
+                kind: event.kind,
+                payloadDigest: recommendationEvidenceDigest(event),
+                visibilityPolicy:
+                  event.kind === "impression"
+                    ? item.request.surfaceVersion
+                    : null,
+                visibilityCapability:
+                  event.kind === "impression"
+                    ? (event.payload.visibilityCapability ?? "unknown")
+                    : null,
+                receivedAt: acceptedAt.toISOString(),
+              },
+            }),
+          ]
+        }),
+      result.receipts.filter((receipt) => receipt.status === "accepted")
+        .length || 1,
+    )
     if (result.reconciledSelection) {
       void this.classifyAndDispatchSelectionFeedback({
         itemId: item.id,

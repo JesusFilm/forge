@@ -21,7 +21,9 @@ const migrations = readdirSync(migrationRoot)
     return (
       (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
       name === "0082_user_recommendation_identity" ||
-      name === "0096_recommendation_recent_episode_index"
+      name === "0096_recommendation_recent_episode_index" ||
+      name === "0165_recommendation_episode_history_revision" ||
+      name === "0171_recommendation_playback_recency"
     )
   })
   .sort()
@@ -509,6 +511,204 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           now,
         }),
       ).toEqual({ videos: [] })
+    })
+
+    it("matches raw recency from complete compact intervals and falls back for legacy or incomplete roots", async () => {
+      const sessionDigest = "7".repeat(64)
+      const profileTokenDigest = "4".repeat(64)
+      await admin.query(
+        `INSERT INTO recommendation_profile
+        (id, token_digest, privacy_generation, choice, state, expires_at, updated_at, created_at)
+        VALUES ('compact-diff-profile', $1, 1, 'durable_allowed', 'active',
+          '2027-02-01T00:00:00Z', $2, '2026-08-25T00:00:00Z')`,
+        [profileTokenDigest, now],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_session_link
+        (id, profile_id, privacy_generation, session_digest, linked_at, expires_at)
+        VALUES ('compact-diff-link', 'compact-diff-profile', 1, $1,
+          '2026-08-25T00:00:00Z', '2026-08-27T00:00:00Z')`,
+        [sessionDigest],
+      )
+      await insertStandalonePlayback({
+        id: "compact-exact",
+        sessionDigest,
+        activeMilliseconds: 3000,
+      })
+      await insertStandalonePlayback({
+        id: "compact-under",
+        sessionDigest,
+        activeMilliseconds: 2999,
+      })
+      await insertStandalonePlayback({
+        id: "compact-overlap",
+        sessionDigest,
+        activeMilliseconds: 2000,
+      })
+      await insertStandalonePlayback({
+        id: "compact-future",
+        sessionDigest,
+        receivedAt: "2026-08-26T13:00:00.000Z",
+      })
+      await insertStandalonePlayback({
+        id: "compact-expired-fact",
+        sessionDigest,
+        factExpiresAt: now.toISOString(),
+      })
+      await insertStandalonePlayback({
+        id: "compact-late",
+        sessionDigest,
+        late: true,
+      })
+      await insertStandalonePlayback({
+        id: "compact-no-start",
+        sessionDigest,
+        kind: "playback_attempt",
+      })
+      await insertStandalonePlayback({
+        id: "compact-outside-window",
+        sessionDigest,
+        createdAt: "2026-08-25T11:59:00.000Z",
+      })
+      await insertStandalonePlayback({ id: "legacy-fallback", sessionDigest })
+      await admin.query(`INSERT INTO recommendation_playback_fact
+        (id, episode_id, event_id, capability_jti, payload_digest, sequence,
+          kind, payload, occurred_at, received_at, expires_at)
+        VALUES ('compact-overlap-second', 'compact-overlap', 'compact-overlap-second',
+          'compact-overlap', repeat('e', 64), 3, 'playback_active_visible_playing',
+          '{"activeMilliseconds":2000}'::jsonb, '2026-08-26T11:00:03Z',
+          '2026-08-26T11:00:03Z', '2026-09-24T12:00:00Z')`)
+      const read = (compactRecencyReaderEnabled: boolean) =>
+        getRecommendationRecentContext(prisma, {
+          locale: "en",
+          sessionDigest,
+          profileTokenDigest: null,
+          allowDurableProfileLinks: false,
+          now,
+          compactRecencyReaderEnabled,
+        })
+      const readHistory = (compactRecencyReaderEnabled: boolean) =>
+        getUserWatchHistory(prisma, {
+          locale: "en",
+          sessionDigest,
+          profileTokenDigest,
+          now,
+          compactRecencyReaderEnabled,
+        })
+      const expected = await read(false)
+      const expectedHistory = await readHistory(false)
+      expect(
+        expected.videos.map((video) => video.targetMediaId).sort(),
+      ).toEqual(["compact-exact", "compact-overlap", "legacy-fallback"])
+      await admin.query(`
+        INSERT INTO recommendation_playback_recency_interval
+          (episode_id, sequence, received_at, interval_start, interval_end, expires_at)
+        SELECT episode_id, sequence, received_at,
+          occurred_at - (payload->>'activeMilliseconds')::double precision * interval '1 millisecond',
+          occurred_at, expires_at
+        FROM recommendation_playback_fact
+        WHERE episode_id LIKE 'compact-%'
+          AND kind = 'playback_active_visible_playing' AND NOT late
+          AND (payload->>'activeMilliseconds')::double precision BETWEEN 1 AND 60000;
+        UPDATE recommendation_playback_episode episode SET
+          recency_format_version = 1,
+          next_fact_sequence = (SELECT max(sequence) + 1 FROM recommendation_playback_fact fact WHERE fact.episode_id = episode.id),
+          recency_fact_watermark = (SELECT max(sequence) FROM recommendation_playback_fact fact WHERE fact.episode_id = episode.id),
+          recency_has_start = EXISTS (SELECT 1 FROM recommendation_playback_fact fact WHERE fact.episode_id = episode.id AND fact.kind = 'playback_start' AND NOT late),
+          recency_start_received_at = (SELECT received_at FROM recommendation_playback_fact fact WHERE fact.episode_id = episode.id AND fact.kind = 'playback_start' AND NOT late),
+          recency_start_expires_at = (SELECT expires_at FROM recommendation_playback_fact fact WHERE fact.episode_id = episode.id AND fact.kind = 'playback_start' AND NOT late),
+          recency_has_late = EXISTS (SELECT 1 FROM recommendation_playback_fact fact WHERE fact.episode_id = episode.id AND late),
+          recency_interval_count = (SELECT count(*) FROM recommendation_playback_recency_interval interval_row WHERE interval_row.episode_id = episode.id)
+        WHERE id LIKE 'compact-%';
+      `)
+      expect(await read(true)).toEqual(expected)
+      expect(await readHistory(true)).toEqual(expectedHistory)
+      await admin.query(`UPDATE recommendation_playback_episode
+        SET recency_interval_count = 2 WHERE id = 'compact-exact'`)
+      expect(await read(true)).toEqual(expected)
+      expect(await readHistory(true)).toEqual(expectedHistory)
+    })
+
+    it("measures paired native and compact recency at the 32-root, 64-interval bound", async () => {
+      const sessionDigest = "5".repeat(64)
+      await admin.query(
+        `INSERT INTO recommendation_playback_episode
+        (id, media_id, session_digest, state, created_at, claimed_at, active_until,
+          hard_until, expires_at, next_fact_sequence)
+        SELECT 'recency-perf-' || root, 'recency-perf-' || root, $1, 'claimed',
+          '2026-08-26T11:00:00Z', '2026-08-26T11:00:00Z',
+          '2026-08-26T15:00:00Z', '2026-08-26T17:00:00Z',
+          '2026-09-24T12:00:00Z', 66
+        FROM generate_series(1, 32) root`,
+        [sessionDigest],
+      )
+      await admin.query(`INSERT INTO recommendation_playback_fact
+        (id, episode_id, event_id, capability_jti, payload_digest, sequence,
+          kind, payload, occurred_at, received_at, expires_at)
+        SELECT episode.id || '-' || sequence, episode.id, episode.id || '-' || sequence,
+          episode.id, repeat('e', 64), sequence,
+          CASE WHEN sequence = 1 THEN 'playback_start' ELSE 'playback_active_visible_playing' END,
+          CASE WHEN sequence = 1 THEN '{"positionSeconds":0}'::jsonb
+            ELSE '{"activeMilliseconds":1000}'::jsonb END,
+          '2026-08-26T11:00:00Z'::timestamptz + (sequence - 1) * interval '1 second',
+          '2026-08-26T11:00:00Z'::timestamptz + (sequence - 1) * interval '1 second',
+          '2026-09-24T12:00:00Z'
+        FROM recommendation_playback_episode episode
+        CROSS JOIN generate_series(1, 65) sequence
+        WHERE episode.id LIKE 'recency-perf-%'`)
+      const read = (compactRecencyReaderEnabled: boolean) =>
+        getRecommendationRecentContext(prisma, {
+          locale: "en",
+          sessionDigest,
+          profileTokenDigest: null,
+          allowDurableProfileLinks: false,
+          now,
+          compactRecencyReaderEnabled,
+        })
+      const raw = await read(false)
+      await admin.query(`INSERT INTO recommendation_playback_recency_interval
+        (episode_id, sequence, received_at, interval_start, interval_end, expires_at)
+        SELECT episode_id, sequence, received_at,
+          occurred_at - interval '1 second', occurred_at, expires_at
+        FROM recommendation_playback_fact
+        WHERE episode_id LIKE 'recency-perf-%' AND sequence > 1;
+        UPDATE recommendation_playback_episode SET recency_format_version = 1,
+          recency_fact_watermark = 65, recency_interval_count = 64,
+          recency_has_start = true,
+          recency_start_received_at = '2026-08-26T11:00:00Z',
+          recency_start_expires_at = '2026-09-24T12:00:00Z'
+        WHERE id LIKE 'recency-perf-%';`)
+      expect(await read(true)).toEqual(raw)
+      const measure = async (compact: boolean) => {
+        const samples: number[] = []
+        for (let index = 0; index < 5; index += 1) {
+          const start = performance.now()
+          expect(await read(compact)).toEqual(raw)
+          samples.push(performance.now() - start)
+        }
+        return samples.sort((a, b) => a - b)[2]
+      }
+      const bytes = await admin.query<{
+        rawPayloadBytes: string
+        rawFactRowBytes: string
+        compactRowBytes: string
+      }>(`
+        SELECT
+          (SELECT sum(pg_column_size(fact.payload))::text FROM recommendation_playback_fact fact
+            WHERE fact.episode_id LIKE 'recency-perf-%') AS "rawPayloadBytes",
+          (SELECT sum(pg_column_size(fact))::text FROM recommendation_playback_fact fact
+            WHERE fact.episode_id LIKE 'recency-perf-%') AS "rawFactRowBytes",
+          (SELECT sum(pg_column_size(interval_row))::text FROM recommendation_playback_recency_interval interval_row
+            WHERE interval_row.episode_id LIKE 'recency-perf-%') AS "compactRowBytes"`)
+      console.log("Recency additive local qualification", {
+        roots: 32,
+        activeIntervalsPerRoot: 64,
+        nativeMedianMs: await measure(false),
+        compactMedianMs: await measure(true),
+        rawPayloadBytes: Number(bytes.rows[0]?.rawPayloadBytes),
+        rawFactRowBytes: Number(bytes.rows[0]?.rawFactRowBytes),
+        compactRowBytes: Number(bytes.rows[0]?.compactRowBytes),
+      })
     })
 
     it("retains accepted starts buffered before issuance or with an ahead client clock", async () => {

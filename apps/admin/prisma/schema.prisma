@@ -3842,6 +3842,7 @@ model RecommendationCandidateRun {
   fallbackReason             String?               @map("fallback_reason") @db.VarChar(64)
   traceFormatVersion         Int?                  @map("trace_format_version")
   tracePayload               Json?                 @map("trace_payload") @db.JsonB
+  stageIds                   String[]              @default([]) @map("stage_ids")
   legacyDetailRetiredAt       DateTime?             @map("legacy_detail_retired_at")
   createdAt                  DateTime              @default(now()) @map("created_at")
   expiresAt                  DateTime              @map("expires_at")
@@ -4502,6 +4503,52 @@ model WatchSurfaceExposure {
   @@map("watch_surface_exposure")
 }
 
+/// Issued V2 admission authority. No viewer identity or report history lives here.
+model WatchSurfaceIssuedWindow {
+  windowId       String                   @id @map("window_id") @db.Uuid
+  manifestDigest String                   @map("manifest_digest") @db.Char(64)
+  surface        String                   @db.VarChar(40)
+  block          String                   @db.VarChar(40)
+  presentation   String                   @db.VarChar(40)
+  placement      String                   @db.VarChar(64)
+  issuedAt       DateTime                 @map("issued_at")
+  expiresAt      DateTime                 @map("expires_at")
+  itemCount      Int                      @map("item_count") @db.SmallInt
+  items          WatchSurfaceIssuedItem[]
+
+  @@index([expiresAt, windowId])
+  @@map("watch_surface_issued_window")
+}
+
+model WatchSurfaceIssuedItem {
+  windowId      String                   @map("window_id") @db.Uuid
+  position      Int                      @db.SmallInt
+  itemPath      String                   @map("item_path") @db.VarChar(512)
+  servedEventId String                   @unique @map("served_event_id") @db.Uuid
+  window        WatchSurfaceIssuedWindow @relation(fields: [windowId], references: [windowId], onDelete: Cascade)
+
+  @@id([windowId, position, itemPath])
+  @@map("watch_surface_issued_item")
+}
+
+/// Digest receipts preserve exact replay and rank order without event JSON.
+model WatchSurfaceEventReceipt {
+  eventId        String   @id @map("event_id") @db.Uuid
+  windowId       String   @map("window_id") @db.Uuid
+  exactDigest    String   @map("exact_digest") @db.Char(64)
+  groupDigest    String   @map("group_digest") @db.Char(64)
+  occurredAt     DateTime @map("occurred_at")
+  receivedAt     DateTime @map("received_at")
+  rankId         String   @map("rank_id") @db.Uuid
+  duplicateCount Int      @default(0) @map("duplicate_count")
+  revision       Int      @default(1)
+  expiresAt      DateTime @map("expires_at")
+
+  @@index([windowId, groupDigest, occurredAt, receivedAt, rankId])
+  @@index([expiresAt, eventId])
+  @@map("watch_surface_event_receipt")
+}
+
 /// Selection and one-use handoff authority commit together. The browser keeps
 /// the raw nonce for replay-safe handoff; Admin stores only its digest.
 model RecommendationSelection {
@@ -4562,6 +4609,14 @@ model RecommendationPlaybackEpisode {
   /// because Prisma cannot express the `IS NOT NULL` predicate.
   finalizationDueAt    DateTime?                  @map("finalization_due_at")
   nextFactSequence     Int                        @default(1) @map("next_fact_sequence")
+  recencyFormatVersion Int                        @default(0) @map("recency_format_version")
+  recencyFactWatermark Int                        @default(0) @map("recency_fact_watermark")
+  recencyIntervalCount Int                        @default(0) @map("recency_interval_count")
+  recencyHasStart       Boolean                    @default(false) @map("recency_has_start")
+  recencyStartReceivedAt DateTime?                 @map("recency_start_received_at") @db.Timestamptz(6)
+  recencyStartExpiresAt DateTime?                  @map("recency_start_expires_at") @db.Timestamptz(6)
+  recencyHasLate        Boolean                    @default(false) @map("recency_has_late")
+  historyRevision      Int                        @default(1) @map("history_revision")
   replayCount          Int                        @default(0) @map("replay_count")
   transportReplayCount Int                        @default(0) @map("transport_replay_count")
   conflictCount        Int                        @default(0) @map("conflict_count")
@@ -4572,6 +4627,7 @@ model RecommendationPlaybackEpisode {
   expiresAt            DateTime                   @map("expires_at")
 
   facts                   RecommendationPlaybackFact[]                   @relation("RecommendationPlaybackFactEpisode")
+  recencyIntervals        RecommendationPlaybackRecencyInterval[]
   outcomes                RecommendationOutcomeRevision[]                @relation("RecommendationOutcomeRevisionEpisode")
   contentActions          RecommendationContentAction[]                  @relation("RecommendationContentActionEpisode")
   submissionBudgets       RecommendationCapabilitySubmissionBudget[]     @relation("RecommendationCapabilitySubmissionEpisode")
@@ -4590,6 +4646,21 @@ model RecommendationPlaybackEpisode {
   @@index([finalizedAt, id], map: "recommendation_episode_finalized_idx")
   @@index([expiresAt])
   @@map("recommendation_playback_episode")
+}
+
+/// Bounded scalar operational intervals for immediate 24-hour exclusion.
+/// Raw facts remain authoritative for finalization and rebuild.
+model RecommendationPlaybackRecencyInterval {
+  episodeId     String                        @map("episode_id")
+  episode       RecommendationPlaybackEpisode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  sequence      Int
+  receivedAt    DateTime                      @map("received_at") @db.Timestamptz(6)
+  intervalStart DateTime                      @map("interval_start") @db.Timestamptz(6)
+  intervalEnd   DateTime                      @map("interval_end") @db.Timestamptz(6)
+  expiresAt     DateTime                      @map("expires_at") @db.Timestamptz(6)
+
+  @@id([episodeId, sequence])
+  @@map("recommendation_playback_recency_interval")
 }
 
 /// Append-only raw fact. The server-assigned sequence is monotonic per episode;
@@ -6929,13 +7000,30 @@ model RecommendationPrecomputedVisit {
   actualStrategy String? @map("actual_strategy") @db.VarChar(64)
   deliveryRequestId String? @map("delivery_request_id") @db.VarChar(191)
   fallbackReason String? @map("fallback_reason") @db.VarChar(64)
+  historyRevision Int? @map("history_revision")
+  historyAcceptedAt DateTime? @map("history_accepted_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   requests RecommendationPrecomputedVisitRequest[]
+  measurementSnapshots RecommendationPrecomputedCtrMeasurement[]
 
   @@index([experimentId, eligibility, arm, createdAt], map: "recommendation_precomputed_visit_report_idx")
   @@index([expiresAt, id], map: "recommendation_precomputed_visit_expiry_idx")
   @@map("recommendation_precomputed_visit")
+}
+
+/// Derived per-visit report state captured at each accepted operational change.
+/// No request, item, episode, browser, or payload identifiers are copied here.
+model RecommendationPrecomputedCtrMeasurement {
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  revision Int
+  acceptedAt DateTime @map("accepted_at") @db.Timestamptz(6)
+  summary Json @db.JsonB
+
+  @@id([visitId, revision])
+  @@index([visitId, acceptedAt], map: "recommendation_precomputed_ctr_measurement_cutoff_idx")
+  @@map("recommendation_precomputed_ctr_measurement")
 }
 
 /// A thin request-to-visit lineage for retries and later click attribution.
@@ -6985,6 +7073,8 @@ model RecommendationPrecomputedBaselineVisit {
   locale String @db.VarChar(32)
   audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
   deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  historyRevision Int? @map("history_revision")
+  historyAcceptedAt DateTime? @map("history_accepted_at") @db.Timestamptz(6)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
   requests RecommendationPrecomputedBaselineVisitRequest[]

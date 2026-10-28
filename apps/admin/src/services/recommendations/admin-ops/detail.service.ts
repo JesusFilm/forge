@@ -2,6 +2,9 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { mapRecommendationRequestDetail } from "./detail.mapper"
 import { shadowSlateProvenanceSql } from "./shadow-slate-provenance"
 import { withRecommendationSerializableRetry } from "../transaction-retry"
+import { getConfiguredOperatorTraceHistoryReader } from "../event-history/reader-runtime"
+import { readOperatorRecommendationTrace } from "../event-history/trace-reader"
+import type { RecommendationClickHouseClient } from "../event-history/clickhouse"
 import type {
   DetailAuditRow,
   DetailCandidateRunRow,
@@ -43,6 +46,7 @@ export function usesCompactCandidateTrace(
   }
   if (run.traceFormatVersion == null && !run.hasTracePayload) return false
   if (run.traceFormatVersion === 1 && run.hasTracePayload) return true
+  if (run.traceFormatVersion === 2 && !run.hasTracePayload) return false
   throw new Error("Unsupported recommendation candidate trace format")
 }
 
@@ -53,10 +57,17 @@ export function usesCompactCandidateTrace(
  */
 export async function loadRecommendationRequestDetail(
   prisma: PrismaClient,
-  input: { requestId: string; actorDigest: string; now?: Date },
+  input: {
+    requestId: string
+    actorDigest: string
+    now?: Date
+    historyReader?: Pick<RecommendationClickHouseClient, "read">
+  },
 ): Promise<RecommendationRequestDetailData | null> {
   if (!boundedRecommendationIdentifier.test(input.requestId)) return null
   if (!boundedRecommendationActorDigest.test(input.actorDigest)) return null
+  const historyReader =
+    input.historyReader ?? getConfiguredOperatorTraceHistoryReader()
   const now = input.now ?? new Date()
   const auditExpiresAt = new Date(
     now.getTime() +
@@ -148,6 +159,7 @@ export async function loadRecommendationRequestDetail(
         run.id,
         run.trace_format_version AS "traceFormatVersion",
         (run.trace_payload IS NOT NULL) AS "hasTracePayload",
+        run.stage_ids AS "stageIds",
         run.legacy_detail_retired_at AS "legacyDetailRetiredAt",
         run.purpose,
         run.context_version AS "contextVersion",
@@ -250,9 +262,12 @@ export async function loadRecommendationRequestDetail(
             ) stage`
         : Prisma.sql`FROM recommendation_candidate_stage_evidence stage`
       const candidateStages =
-        candidateRun && !candidateRun.legacyDetailRetiredAt
+        candidateRun &&
+        candidateRun.traceFormatVersion !== 2 &&
+        !candidateRun.legacyDetailRetiredAt
           ? await tx.$queryRaw<DetailCandidateStageRow[]>(Prisma.sql`
           SELECT
+            stage.id,
             stage.stage,
             stage.ordinal,
             left(stage.candidate_key, 191) AS "candidateKey",
@@ -663,15 +678,16 @@ export async function loadRecommendationRequestDetail(
       LIMIT 1
     `,
       )
-      await tx.recommendationTraceAccessAudit.create({
-        data: {
-          requestId: root.id,
-          actorDigest: input.actorDigest,
-          reasonCode: RECOMMENDATION_TRACE_ACCESS_REASON,
-          accessedAt: now,
-          expiresAt: auditExpiresAt,
-        },
-      })
+      if (!historyReader)
+        await tx.recommendationTraceAccessAudit.create({
+          data: {
+            requestId: root.id,
+            actorDigest: input.actorDigest,
+            reasonCode: RECOMMENDATION_TRACE_ACCESS_REASON,
+            accessedAt: now,
+            expiresAt: auditExpiresAt,
+          },
+        })
       return {
         root,
         experimentEvaluation,
@@ -692,7 +708,107 @@ export async function loadRecommendationRequestDetail(
     },
   )
   if (!data) return null
-  return mapRecommendationRequestDetail(data)
+  const detail = mapRecommendationRequestDetail(data)
+  if (!historyReader)
+    return data.candidateRun?.traceFormatVersion === 2
+      ? {
+          ...detail,
+          historicalTrace: {
+            status: "incomplete",
+            missing: ["history:reader-disabled"],
+            request: null,
+            servedItems: [],
+            candidateRun: null,
+            stages: [],
+          },
+        }
+      : detail
+  const historicalTrace = await readOperatorRecommendationTrace(historyReader, {
+    requestId: data.root.id,
+    itemIds: data.items.map((item) => item.id),
+    runId: data.candidateRun?.id ?? null,
+    stageIds:
+      data.candidateRun?.traceFormatVersion === 2
+        ? data.candidateRun.stageIds
+        : data.candidateStages.map((stage) => stage.id),
+    stageIdentitiesComplete:
+      data.candidateRun?.traceFormatVersion === 2 ||
+      !data.candidateRun?.legacyDetailRetiredAt,
+    asOf: now,
+  })
+  // The remote read runs after the first transaction has released its locks.
+  // Revalidate the root under a fresh lock before recording successful access.
+  const stillActive = await readConsistently(async (tx) => {
+    const recheckAt = input.now ?? new Date()
+    const current = await tx.$queryRaw<
+      Array<{
+        id: string
+        state: string
+        result: string
+        issuedAt: Date | null
+      }>
+    >(Prisma.sql`
+      SELECT id, state::text, result::text, issued_at AS "issuedAt"
+      FROM recommendation_request
+      WHERE id = ${data.root.id} AND expires_at > ${recheckAt}
+      FOR SHARE
+    `)
+    if (!current.length) return false
+    if (
+      current[0].state !== data.root.state ||
+      current[0].result !== data.root.result ||
+      current[0].issuedAt?.getTime() !== data.root.issuedAt?.getTime()
+    )
+      return false
+    const currentRuns = await tx.$queryRaw<
+      Array<{
+        id: string
+        traceFormatVersion: number | null
+        hasTracePayload: boolean
+        stageIds: string[]
+        legacyDetailRetiredAt: Date | null
+      }>
+    >(Prisma.sql`
+      SELECT id, trace_format_version AS "traceFormatVersion",
+        (trace_payload IS NOT NULL) AS "hasTracePayload",
+        stage_ids AS "stageIds",
+        legacy_detail_retired_at AS "legacyDetailRetiredAt"
+      FROM recommendation_candidate_run
+      WHERE request_id = ${data.root.id}
+        AND expires_at > ${recheckAt}
+      LIMIT 1
+      FOR SHARE
+    `)
+    const currentRun = currentRuns[0] ?? null
+    const originalRun = data.candidateRun
+    if (
+      currentRun?.id !== (originalRun?.id ?? undefined) ||
+      currentRun?.traceFormatVersion !==
+        (originalRun ? originalRun.traceFormatVersion : undefined) ||
+      currentRun?.hasTracePayload !==
+        (originalRun ? originalRun.hasTracePayload : undefined) ||
+      JSON.stringify(currentRun?.stageIds) !==
+        JSON.stringify(originalRun?.stageIds) ||
+      currentRun?.legacyDetailRetiredAt?.getTime() !==
+        originalRun?.legacyDetailRetiredAt?.getTime()
+    )
+      return false
+    await tx.recommendationTraceAccessAudit.create({
+      data: {
+        requestId: data.root.id,
+        actorDigest: input.actorDigest,
+        reasonCode: RECOMMENDATION_TRACE_ACCESS_REASON,
+        accessedAt: recheckAt,
+        expiresAt: new Date(
+          recheckAt.getTime() +
+            RECOMMENDATION_TRACE_ACCESS_RETENTION_DAYS *
+              RECOMMENDATION_OPS_DAY_MS,
+        ),
+      },
+    })
+    return true
+  })
+  return stillActive ? { ...detail, historicalTrace } : null
 }
 
 function boundedJsonNumber(key: string, minimum: number, maximum: number) {

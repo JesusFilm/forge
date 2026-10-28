@@ -3,6 +3,22 @@ import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import type { RecommendationEventEnvelope } from "../event-history/envelope"
+import { encodeRecommendationHistoryPage } from "../event-history/trace-codec"
+import { readRecommendationTraceHistoryPage } from "../event-history/trace-backfill"
+const exportedHistory = vi.hoisted(() => ({
+  events: [] as RecommendationEventEnvelope[],
+}))
+vi.mock("../event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: (
+    family: string,
+    prepare: () => RecommendationEventEnvelope[],
+  ) => {
+    if (["experiment-visit", "request", "served-item"].includes(family))
+      exportedHistory.events.push(...prepare())
+  },
+}))
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import { deliverPrecomputedWatchPreview } from "./watch-delivery"
 import { readPrecomputedWatchChoices } from "./watch-reader"
@@ -21,6 +37,10 @@ import {
   recordPrivatePrecomputedVisitDelivery,
 } from "./visit-admission"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
+import {
+  capturePrecomputedCtrMeasurement,
+  readPrecomputedCtrMeasurementAt,
+} from "./compact-accounting"
 import {
   declareFixturePrecomputedCtrPolicy,
   evaluatePrivatePrecomputedCtr,
@@ -213,6 +233,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         where: { id: delivery.requestId! },
         include: { items: true },
       })
+      const expectedHistory = encodeRecommendationHistoryPage([
+        {
+          request: saved,
+          items: saved.items,
+          run: null,
+          stages: [],
+        },
+      ])
+      expect(
+        exportedHistory.events.filter(
+          (event) =>
+            (event.family === "request" && event.logicalId === saved.id) ||
+            (event.family === "served-item" &&
+              event.payload.requestId === saved.id),
+        ),
+      ).toEqual(expectedHistory)
+      const backfill = await readRecommendationTraceHistoryPage(
+        prisma,
+        { kind: "within", requestId: saved.id, offset: 0 },
+        { now: saved.createdAt },
+      )
+      expect(backfill.events).toEqual(expectedHistory)
       expect(saved.experimentAssignmentId).toBeNull()
       expect(saved.strategyVersion).toBe("precomputed-watch-preview-v1")
       expect(saved.servedItemPayload).toMatchObject({ version: 1 })
@@ -276,6 +318,50 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: empty.requestId! },
         }),
       ).toMatchObject({ expectedItemCount: 0, result: "EMPTY" })
+
+      // Legacy item JSON is independently unbounded in the old schema. The
+      // refusal path may fetch only scalar sizes, never this payload.
+      await prisma.recommendationServedItem.update({
+        where: { id: oneSaved.items[0]!.id },
+        data: { presentation: { padding: "x".repeat(9 * 1_048_576) } },
+      })
+      const hydrated = vi.fn()
+      const boundedDb = {
+        $transaction: (
+          work: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          options: { isolationLevel: Prisma.TransactionIsolationLevel },
+        ) =>
+          prisma.$transaction(
+            async (tx) =>
+              work({
+                recommendationRequest: {
+                  findUnique: async (args: {
+                    where: { id: string }
+                    include?: unknown
+                  }) => {
+                    if (args.include) {
+                      hydrated()
+                      throw new Error("Unbounded payload was hydrated")
+                    }
+                    return tx.recommendationRequest.findUnique({
+                      where: args.where,
+                      select: { id: true, expiresAt: true },
+                    })
+                  },
+                },
+                $queryRaw: tx.$queryRaw.bind(tx),
+              } as unknown as Prisma.TransactionClient),
+            options,
+          ),
+      } as unknown as PrismaClient
+      await expect(
+        readRecommendationTraceHistoryPage(
+          boundedDb,
+          { kind: "within", requestId: oneSaved.id, offset: 0 },
+          { now: oneSaved.createdAt },
+        ),
+      ).rejects.toMatchObject({ code: "history_root_byte_limit" })
+      expect(hydrated).not.toHaveBeenCalled()
     })
 
     it("treats changed exact audio as valid empty but an absent source row as technical", async () => {
@@ -590,6 +676,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     it("deduplicates a visit retry and retains valid empty delivery in its assigned arm", async () => {
+      exportedHistory.events.length = 0
       const visitId = randomUUID()
       const admission = {
         visitId,
@@ -604,6 +691,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         caller,
       }
       const first = await admitPrivatePrecomputedVisit(prisma, admission)
+      const admittedRow =
+        await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+          where: { id: visitId },
+        })
+      expect(admittedRow.historyRevision).toBe(1)
+      expect(admittedRow.historyAcceptedAt).toEqual(admittedRow.createdAt)
+      expect(
+        exportedHistory.events.filter(
+          (event) => event.logicalId === `ab-visit:${visitId}`,
+        ),
+      ).toMatchObject([{ revision: 1, payload: { kind: "admission" } }])
       expect(await admitPrivatePrecomputedVisit(prisma, admission)).toEqual(
         first,
       )
@@ -621,6 +719,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           caller,
         }),
       ).toBe("recorded")
+      const correctedRow =
+        await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+          where: { id: visitId },
+        })
+      expect(correctedRow.historyRevision).toBe(2)
+      expect(correctedRow.historyAcceptedAt!.getTime()).toBeGreaterThanOrEqual(
+        admittedRow.createdAt.getTime(),
+      )
+      expect(
+        exportedHistory.events
+          .filter((event) => event.logicalId === `ab-visit:${visitId}`)
+          .map((event) => event.revision),
+      ).toEqual([1, 2])
       const report = await loadPrivatePrecomputedVisitDiagnostics(prisma, {
         experimentId: privateExperimentId,
         reviewer: { id: "fixture-admin", role: "ADMIN" },
@@ -633,6 +744,100 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(report.eligible.notAttempted).toBe(2)
       expect(report.eligible.byArm[first.arm!].empty).toBe(1)
     })
+
+    it.skipIf(
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1",
+    )(
+      "captures admission and correction as distinct derived snapshots",
+      async () => {
+        const visitId = randomUUID()
+        const input = {
+          visitId,
+          now: new Date(Date.now() - 500),
+          browserDigest: "a".repeat(64),
+          consentReceiptDigest: null,
+          profileTokenDigest: null,
+          seedMediaId: sourceVideoId,
+          locale: "en",
+          audioLanguageSlug: "english",
+          trafficCategory: "ordinary_browser" as const,
+          enrollmentMode: "private_test" as const,
+          caller,
+        }
+        const admission = await admitPrivatePrecomputedVisit(prisma, input)
+        expect(admission.status).toBe("eligible")
+        await recordPrivatePrecomputedVisitDelivery(prisma, {
+          visitId,
+          browserDigest: input.browserDigest,
+          result: "empty",
+          actualStrategy: null,
+          requestId: null,
+          fallbackReason: null,
+          caller,
+        })
+        const snapshots = await prisma.$queryRaw<
+          Array<{
+            revision: number
+            accepted_at: Date
+            summary: { delivery_result: string; accepted_selections: string }
+          }>
+        >`SELECT revision, accepted_at, summary FROM recommendation_precomputed_ctr_measurement
+        WHERE visit_id = ${visitId}::uuid ORDER BY revision`
+        expect(snapshots).toMatchObject([
+          {
+            revision: 1,
+            summary: {
+              delivery_result: "not_attempted",
+              accepted_selections: "0",
+            },
+          },
+          {
+            revision: 2,
+            summary: { delivery_result: "empty", accepted_selections: "0" },
+          },
+        ])
+        expect(
+          await readPrecomputedCtrMeasurementAt(
+            prisma,
+            visitId,
+            snapshots[0].accepted_at,
+          ),
+        ).toMatchObject({
+          revision: 1,
+          summary: { delivery_result: "not_attempted" },
+        })
+        expect(
+          await readPrecomputedCtrMeasurementAt(
+            prisma,
+            visitId,
+            snapshots[1].accepted_at,
+          ),
+        ).toMatchObject({ revision: 2, summary: { delivery_result: "empty" } })
+        await recordPrivatePrecomputedVisitDelivery(prisma, {
+          visitId,
+          browserDigest: input.browserDigest,
+          result: "empty",
+          actualStrategy: null,
+          requestId: null,
+          fallbackReason: null,
+          caller,
+        })
+        const count = async () =>
+          (
+            await prisma.$queryRaw<Array<{ n: bigint }>>`
+              SELECT count(*)::bigint AS n FROM recommendation_precomputed_ctr_measurement
+              WHERE visit_id = ${visitId}::uuid`
+          )[0].n
+        expect(await count()).toBe(2n)
+        await expect(
+          prisma.$transaction(async (tx) => {
+            await capturePrecomputedCtrMeasurement(tx, visitId, new Date())
+            throw new Error("fixture_rollback")
+          }),
+        ).rejects.toThrow("fixture_rollback")
+        expect(await count()).toBe(2n)
+      },
+    )
 
     it("deduplicates concurrent first-tab retries to one eligible visit and arm", async () => {
       const visitId = randomUUID()
@@ -719,6 +924,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(new Set(links.map((link) => link.requestId))).toEqual(
         new Set([first.requestId, second.requestId]),
       )
+      expect(
+        new Set(
+          exportedHistory.events
+            .filter(
+              (event) =>
+                event.payload.kind === "request-link" &&
+                event.payload.visitId === challenger!.visitId,
+            )
+            .map((event) => event.payload.requestId),
+        ),
+      ).toEqual(new Set([first.requestId, second.requestId]))
     })
 
     it("keeps challenger delivery on the frozen generation after a newer build", async () => {

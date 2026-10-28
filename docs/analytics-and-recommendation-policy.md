@@ -82,6 +82,26 @@ latest 14 days, including when the surrounding recommendation report selects
 29-day measurement. Continue to report expiry backlog, genuine cleanup
 failures and filesystem capacity separately from public serving health.
 
+## Best-effort recommendation history export
+
+Owner decision: October 28, 2026. Recommendation and anonymous Watch history
+export starts one bounded ClickHouse attempt after operational admission commits.
+The caller continues without awaiting the network response. Record confirmed
+success, failures, unknown outcomes and capacity drops independently of
+ClickHouse. Failed exports may be lost; this release has no retry queue or
+PostgreSQL forwarding payload. Process-local counters cannot enumerate every
+loss during a crash, so report observed failure rates with their time window
+and coverage limitations.
+
+This replaces earlier durable-export and outage-buffer requirements for live
+historical events. Export failure does not fail a completed viewer action.
+Operational admission, playback finality, privacy and erasure remain reliable
+controls; their failures retain the classifications above. Preserve current
+retention and active A/B authority, and disclose missing analytical coverage.
+Bounded backfill and erasure reconciliation are distinct from live event export.
+The migration specification is
+[recommendation event storage](plans/2026-10-28-recommendation-event-storage-spec.md).
+
 ## Roadmap scope after October 2 closeout
 
 The owner's final closeout request authorizes retiring obsolete or optional

@@ -1,4 +1,10 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { RecommendationEventEnvelope } from "./event-history/envelope"
+const history = vi.hoisted(() => ({ dispatch: vi.fn() }))
+vi.mock("./event-history/runtime", () => ({
+  dispatchPreparedRecommendationEventsAfterCommit: history.dispatch,
+  getNextRecommendationEventDispatcher: () => ({ isEnabled: () => true }),
+}))
 import { randomBytes } from "node:crypto"
 import {
   RecommendationTokenInvalidError,
@@ -75,6 +81,17 @@ function harness(
       ),
     },
     recommendationSelection: {
+      findUnique: vi.fn(async () => ({
+        id: "selection-1",
+        requestId: "request-1",
+        itemId: "item-1",
+        eventId: "selection-event-1",
+        payloadDigest: "b".repeat(64),
+        occurredAt: new Date("2026-04-20T02:59:00.000Z"),
+        receivedAt: new Date("2026-04-20T02:59:01.000Z"),
+        expiresAt: item.request.expiresAt,
+        attributionEligibleAt: new Date("2026-04-20T03:00:00.000Z"),
+      })),
       updateMany: vi.fn(async () => {
         if (selectionEligible) return { count: 0 }
         selectionEligible = true
@@ -162,6 +179,8 @@ const validInput = {
     },
   ],
 }
+
+afterEach(() => history.dispatch.mockReset())
 
 describe("RecommendationEvidenceService", () => {
   it.each([
@@ -404,6 +423,43 @@ describe("RecommendationEvidenceService", () => {
     })
     expect(classifySelection).toHaveBeenCalledWith("selection-1")
     expect(classifySelection).toHaveBeenCalledBefore(dispatchProfileFeedback)
+  })
+
+  it("exports the persisted second selection revision only after impression reconciliation commits", async () => {
+    const { service, prisma, tx } = harness()
+    let committed = false
+    prisma.$transaction.mockImplementation(async (work) => {
+      const result = await work(tx)
+      committed = true
+      return result
+    })
+    const selections: Array<{ revision: number; acceptedAt: string }> = []
+    history.dispatch.mockImplementation(
+      (family: string, prepare: () => RecommendationEventEnvelope[]) => {
+        if (family !== "selection") return
+        expect(committed).toBe(true)
+        selections.push(
+          ...prepare().map(({ revision, acceptedAt }) => ({
+            revision,
+            acceptedAt,
+          })),
+        )
+      },
+    )
+    await service.record({
+      ...validInput,
+      events: [
+        {
+          ...validInput.events[0]!,
+          kind: "impression",
+          eventId: "late-impression",
+          payload: { visibilityPolicy: "watch-below-player-v1" },
+        },
+      ],
+    })
+    expect(selections).toEqual([
+      { revision: 2, acceptedAt: "2026-04-20T03:00:00.000Z" },
+    ])
   })
 
   it.each([

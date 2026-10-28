@@ -109,7 +109,7 @@ export function makeHarness(
     curatedFallback?: boolean
     profileComparison?: boolean
     database?: PrismaClient
-    candidateTraceFormat?: "legacy" | "compact"
+    candidateTraceFormat?: "legacy" | "compact" | "history"
     servedItemFormat?: "legacy" | "packed"
     study?: Pick<
       import("./delivery.types").DeliveryDependencies,
@@ -141,8 +141,19 @@ export function makeHarness(
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         const state = String(data.state ?? "PREPARED")
         transactions.push(state.toLowerCase())
-        requests.set(String(data.id), { ...data, state })
-        return data
+        const createdAt = new Date("2026-08-19T03:00:01.000Z")
+        const items = (
+          (data.items as { create?: Array<Record<string, unknown>> })?.create ??
+          []
+        ).map((item) => ({
+          ...item,
+          requestId: data.id,
+          expiresAt: data.expiresAt,
+          createdAt,
+        }))
+        const row = { ...data, state, createdAt, items }
+        requests.set(String(data.id), { ...data, state, createdAt })
+        return row
       }),
       updateMany: vi.fn(
         async ({ where, data }: { where: { id: string }; data: object }) => {
@@ -153,7 +164,10 @@ export function makeHarness(
       ),
     },
     recommendationCandidateRun: {
-      create: vi.fn(async (_input: { data: Record<string, unknown> }) => ({})),
+      create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
+        ...data,
+        createdAt: new Date("2026-08-19T03:00:01.000Z"),
+      })),
     },
     recommendationPersonalizationDecision: {
       create: vi.fn(

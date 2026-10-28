@@ -2,9 +2,16 @@ import { randomUUID } from "node:crypto"
 import { env } from "@/config/env"
 import type { Principal } from "@/auth/principal"
 import {
+  requestHistoryEvent,
+  servedItemHistoryEvents,
+} from "../event-history/trace-codec"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "../event-history/runtime"
+import {
   RecommendationAuditKind,
   RecommendationDeliveryResult,
   RecommendationRequestState,
+  type RecommendationRequest,
+  type RecommendationServedItem,
   type PrismaClient,
 } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
@@ -207,6 +214,9 @@ async function deliverPrecomputedWatch(
     if (responseBytes > MAX_DELIVERY_RESPONSE_BYTES)
       return unavailable("precomputed_response_oversized", read.generationId)
     sourceRecheckStarted = true
+    let committedRequest:
+      | (RecommendationRequest & { items: RecommendationServedItem[] })
+      | null = null
     await runRecommendationDeliveryTransaction(
       prisma,
       deadlineAt,
@@ -216,7 +226,8 @@ async function deliverPrecomputedWatch(
         if (!(await verifyPrecomputedSourceEligibility(tx, input)))
           throw new Error("source_unavailable")
         sourceRecheckPassed = true
-        await tx.recommendationRequest.create({
+        committedRequest = await tx.recommendationRequest.create({
+          include: { items: true },
           data: {
             id: requestId,
             contractVersion: RECOMMENDATION_CONTRACTS.delivery,
@@ -295,6 +306,18 @@ async function deliverPrecomputedWatch(
       },
       Date.now,
     )
+    const acceptedRequest = committedRequest as
+      | (RecommendationRequest & { items: RecommendationServedItem[] })
+      | null
+    dispatchPreparedRecommendationEventsAfterCommit("request", () => [
+      requestHistoryEvent(acceptedRequest!),
+    ])
+    if (prepared.length)
+      dispatchPreparedRecommendationEventsAfterCommit(
+        "served-item",
+        () => servedItemHistoryEvents(acceptedRequest!, acceptedRequest!.items),
+        prepared.length,
+      )
     return response
   } catch (error) {
     return unavailable(

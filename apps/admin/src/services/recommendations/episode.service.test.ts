@@ -1,5 +1,14 @@
 import { createHash } from "node:crypto"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import type { RecommendationEventEnvelope } from "./event-history/envelope"
+const history = vi.hoisted(() => ({ dispatch: vi.fn(), enabled: false }))
+vi.mock("./event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: history.dispatch,
+  getNextRecommendationEventDispatcher: () => ({
+    isEnabled: () => history.enabled,
+  }),
+}))
 import { RecommendationEpisodeService } from "./episode.service"
 import { recommendationEvidenceDigest } from "./evidence.service"
 import { RecommendationBindingError } from "./errors"
@@ -10,6 +19,11 @@ const caller = {
   fleet: false,
   rateLimitBucketKey: "test-web-consumer-key",
 }
+
+afterEach(() => {
+  history.enabled = false
+  history.dispatch.mockReset()
+})
 
 describe("RecommendationEpisodeService", () => {
   it.each(["direct", "search", "share", "acquisition", "editorial"] as const)(
@@ -496,7 +510,24 @@ describe("RecommendationEpisodeService", () => {
         },
         recommendationSelection: {
           findUnique: vi.fn(async () => null),
-          create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
+          create: vi.fn(
+            async ({ data }: { data: Record<string, unknown> }) => ({
+              ...data,
+              id: "direct-id-1",
+              receivedAt: new Date("2026-04-20T03:00:00.000Z"),
+              episode: {
+                id: "episode-direct",
+                createdAt: new Date("2026-04-20T03:00:00.000Z"),
+                expiresAt: item.request.expiresAt,
+                state: "PENDING",
+                generation: 1,
+                nextFactSequence: 1,
+                historyRevision: 1,
+                activeUntil: new Date("2026-04-20T07:00:00.000Z"),
+                hardUntil: new Date("2026-04-20T09:00:00.000Z"),
+              },
+            }),
+          ),
         },
         recommendationImpression: {
           findUnique: vi.fn(async () => ({
@@ -522,6 +553,20 @@ describe("RecommendationEpisodeService", () => {
       }
       const dispatchProfileFeedback = vi.fn(async () => undefined)
       const classifySelection = vi.fn(async () => undefined)
+      const selectionRevisions: Array<{
+        revision: number
+        acceptedAt: string
+      }> = []
+      history.dispatch.mockImplementation(
+        (family: string, prepare: () => RecommendationEventEnvelope[]) => {
+          if (family !== "selection") return
+          selectionRevisions.push(
+            ...prepare()
+              .filter((event) => event.family === "selection")
+              .map(({ revision, acceptedAt }) => ({ revision, acceptedAt })),
+          )
+        },
+      )
       const service = new RecommendationEpisodeService({
         prisma: prisma as never,
         tokenService: {
@@ -555,6 +600,9 @@ describe("RecommendationEpisodeService", () => {
           claimNonce: "direct-fresh-claim-nonce",
         }),
       ).resolves.toMatchObject({ status: "accepted" })
+      expect(selectionRevisions).toEqual([
+        { revision: 2, acceptedAt: eligibleAt },
+      ])
 
       expect(tx.recommendationSelection.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -797,8 +845,14 @@ describe("RecommendationEpisodeService", () => {
         recommendationSelection: {
           findUnique: vi.fn(async () => ({
             id: "selection-1",
+            requestId: "request-1",
+            itemId: "item-1",
+            eventId: "selection-1",
             payloadDigest: existingDigest,
             attributionEligibleAt: null,
+            occurredAt: new Date(selectionInput.occurredAt),
+            receivedAt: new Date("2026-04-20T03:00:00.000Z"),
+            expiresAt: item.request.expiresAt,
           })),
           updateMany: vi.fn(async () => ({ count: 1 })),
         },
@@ -849,6 +903,19 @@ describe("RecommendationEpisodeService", () => {
       })
 
       impression = { receivedAt: new Date(impressionAt) }
+      history.enabled = true
+      const corrections: Array<{ revision: number; acceptedAt: string }> = []
+      history.dispatch.mockImplementation(
+        (family: string, prepare: () => RecommendationEventEnvelope[]) => {
+          if (family === "selection")
+            corrections.push(
+              ...prepare().map(({ revision, acceptedAt }) => ({
+                revision,
+                acceptedAt,
+              })),
+            )
+        },
+      )
       await expect(service.select(selectionInput)).resolves.toMatchObject({
         status: "replay",
         claimNonce: selectionInput.claimNonce,
@@ -857,6 +924,7 @@ describe("RecommendationEpisodeService", () => {
         where: { id: "selection-1", attributionEligibleAt: null },
         data: { attributionEligibleAt: new Date(eligibleAt) },
       })
+      expect(corrections).toEqual([{ revision: 2, acceptedAt: eligibleAt }])
 
       existingDigest = "f".repeat(64)
       await expect(service.select(selectionInput)).resolves.toMatchObject({

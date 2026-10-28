@@ -11,6 +11,12 @@ import { PRECOMPUTED_PUBLIC_CONTROL_ID } from "./public-control"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
 import { readControlRouting } from "./visit-admission"
 import { verifyPrecomputedSourceEligibility } from "./watch-reader"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "../event-history/runtime"
+import {
+  baselineVisitHistoryEvent,
+  visitRequestHistoryEvent,
+  type BaselineSnapshot,
+} from "../event-history/experiment-producers"
 
 const HOUR_MS = 3_600_000
 const WINDOW_MS = 7 * 24 * HOUR_MS
@@ -214,7 +220,11 @@ export type BaselineAdmissionInput = {
 export async function admitPrecomputedIncumbentBaseline(
   tx: Prisma.TransactionClient,
   input: BaselineAdmissionInput,
-): Promise<{ baselineId: string; reason: string | null } | null> {
+): Promise<{
+  baselineId: string
+  reason: string | null
+  history?: BaselineSnapshot
+} | null> {
   const [pointer] = await tx.$queryRaw<Array<{ mode: string }>>`
     SELECT mode FROM recommendation_precomputed_public_control
     WHERE id = ${PRECOMPUTED_PUBLIC_CONTROL_ID} FOR SHARE`
@@ -260,7 +270,7 @@ export async function admitPrecomputedIncumbentBaseline(
     run.id,
     input.browserDigest,
   )
-  await tx.recommendationPrecomputedBaselineVisit.createMany({
+  const inserted = await tx.recommendationPrecomputedBaselineVisit.createMany({
     data: [
       {
         id: input.visitId,
@@ -271,6 +281,8 @@ export async function admitPrecomputedIncumbentBaseline(
         audioLanguageSlug: input.audioLanguageSlug,
         createdAt: input.now,
         expiresAt: new Date(input.now.getTime() + RAW_MS),
+        historyRevision: 1,
+        historyAcceptedAt: input.now,
       },
     ],
     skipDuplicates: true,
@@ -287,7 +299,27 @@ export async function admitPrecomputedIncumbentBaseline(
     visit.audioLanguageSlug !== input.audioLanguageSlug
   )
     return { ...base, reason: "visit_identity_conflict" }
-  return { ...base, reason: null }
+  return {
+    ...base,
+    reason: null,
+    ...(inserted.count === 1 && visit.historyRevision && visit.historyAcceptedAt
+      ? {
+          history: {
+            kind: "admission" as const,
+            visitId: visit.id,
+            runId: visit.runId,
+            revision: visit.historyRevision,
+            occurredAt: visit.createdAt,
+            acceptedAt: visit.historyAcceptedAt,
+            expiresAt: visit.expiresAt,
+            sourceVideoId: visit.sourceVideoId,
+            locale: visit.locale,
+            audioLanguageSlug: visit.audioLanguageSlug,
+            deliveryResult: visit.deliveryResult,
+          },
+        }
+      : {}),
+  }
 }
 
 export async function recordPrecomputedIncumbentBaselineDelivery(
@@ -305,7 +337,10 @@ export async function recordPrecomputedIncumbentBaselineDelivery(
   assertWebRecommendationCaller(input.caller)
   if (!HEX_DIGEST.test(input.browserDigest)) return "unavailable"
   try {
-    return await runRecommendationDeliveryTransaction(
+    let committedVisit: BaselineSnapshot | null = null
+    let committedLink: Parameters<typeof visitRequestHistoryEvent>[0] | null =
+      null
+    const status = await runRecommendationDeliveryTransaction(
       prisma,
       input.deadlineAt,
       async (tx) => {
@@ -336,22 +371,23 @@ export async function recordPrecomputedIncumbentBaselineDelivery(
             request.expiresAt <= now
           )
             return "conflict"
-          await tx.recommendationPrecomputedBaselineVisitRequest.createMany({
-            data: [
-              {
-                requestId: input.requestId,
-                visitId: visit.id,
-                createdAt: now,
-                expiresAt: new Date(
-                  Math.min(
-                    visit.expiresAt.getTime(),
-                    request.expiresAt.getTime(),
+          const insertedLink =
+            await tx.recommendationPrecomputedBaselineVisitRequest.createMany({
+              data: [
+                {
+                  requestId: input.requestId,
+                  visitId: visit.id,
+                  createdAt: now,
+                  expiresAt: new Date(
+                    Math.min(
+                      visit.expiresAt.getTime(),
+                      request.expiresAt.getTime(),
+                    ),
                   ),
-                ),
-              },
-            ],
-            skipDuplicates: true,
-          })
+                },
+              ],
+              skipDuplicates: true,
+            })
           const link =
             await tx.recommendationPrecomputedBaselineVisitRequest.findUniqueOrThrow(
               {
@@ -359,6 +395,15 @@ export async function recordPrecomputedIncumbentBaselineDelivery(
               },
             )
           if (link.visitId !== visit.id) return "conflict"
+          if (insertedLink.count === 1)
+            committedLink = {
+              scope: "baseline",
+              visitId: visit.id,
+              requestId: link.requestId,
+              occurredAt: link.createdAt,
+              acceptedAt: link.createdAt,
+              expiresAt: link.expiresAt,
+            }
         }
         const priority = {
           not_attempted: 0,
@@ -370,15 +415,67 @@ export async function recordPrecomputedIncumbentBaselineDelivery(
         if (
           priority[input.result] >
           (priority[visit.deliveryResult as keyof typeof priority] ?? -1)
-        )
-          await tx.recommendationPrecomputedBaselineVisit.update({
-            where: { id: visit.id },
-            data: { deliveryResult: input.result },
-          })
+        ) {
+          const nextRevision = (visit.historyRevision ?? 0) + 1
+          const updated =
+            await tx.recommendationPrecomputedBaselineVisit.updateMany({
+              where: {
+                id: visit.id,
+                deliveryResult: visit.deliveryResult,
+                historyRevision: visit.historyRevision,
+              },
+              data: {
+                deliveryResult: input.result,
+                historyRevision: nextRevision,
+                historyAcceptedAt: now,
+              },
+            })
+          if (updated.count === 1)
+            committedVisit = {
+              kind: "delivery",
+              visitId: visit.id,
+              runId: visit.runId,
+              revision: nextRevision,
+              occurredAt: visit.createdAt,
+              acceptedAt: now,
+              expiresAt: visit.expiresAt,
+              sourceVideoId: visit.sourceVideoId,
+              locale: visit.locale,
+              audioLanguageSlug: visit.audioLanguageSlug,
+              deliveryResult: input.result,
+            }
+        }
         return "recorded"
       },
       Date.now,
     )
+    if (status === "recorded") {
+      const snapshot = committedVisit
+      const link = committedLink
+      if (snapshot)
+        try {
+          dispatchPreparedRecommendationEventsAfterCommit(
+            "experiment-visit",
+            () => [baselineVisitHistoryEvent(snapshot)],
+          )
+        } catch {
+          console.warn(
+            "[recommendation-event-history] baseline_visit_export_unavailable",
+          )
+        }
+      if (link)
+        try {
+          dispatchPreparedRecommendationEventsAfterCommit(
+            "experiment-visit",
+            () => [visitRequestHistoryEvent(link)],
+          )
+        } catch {
+          console.warn(
+            "[recommendation-event-history] baseline_link_export_unavailable",
+          )
+        }
+    }
+    return status
   } catch {
     return "unavailable"
   }

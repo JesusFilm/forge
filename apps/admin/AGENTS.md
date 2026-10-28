@@ -7,7 +7,10 @@ Full context in `apps/admin/CLAUDE.md`. Both files stay aligned.
 - Canonical content/admin service for apps/web, apps/mobile, apps/tv, and
   apps/manager-owned read models.
 - Custom GraphQL API via Yoga + Pothos at `/api/graphql`.
-- Prisma + Postgres + pgvector — sole data access layer.
+- Prisma + Postgres + pgvector own operational storage. Recommendation event
+  history uses the bounded ClickHouse adapter under
+  `src/services/recommendations/event-history/`; follow
+  `docs/analytics-and-recommendation-policy.md` for export failure semantics.
 - Admin treats `apps/auth` as the Jesus Film SSO authority and creates an
   admin-local session after issuer/audience/scope verification.
 - useworkflow for durable background jobs.

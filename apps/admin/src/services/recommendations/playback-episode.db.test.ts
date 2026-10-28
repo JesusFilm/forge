@@ -12,7 +12,15 @@ import { randomUUID } from "node:crypto"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest"
 import { env } from "@/config/env"
 import {
   recommendationPrecomputedMigrationSql,
@@ -58,6 +66,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     let current = startedAt
     let client: Client
     let prisma: PrismaClient
+    const recencyOwnedEpisodeIds: string[] = []
 
     beforeAll(async () => {
       client = new Client({ connectionString: env.DATABASE_URL })
@@ -87,12 +96,142 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       })
     })
 
-    afterAll(async () => {
-      await prisma?.$disconnect()
-      if (!client) return
-      await client.query("RESET search_path")
-      await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
-      await client.end()
+    it("keeps legacy roots native across opt-in and rolls back compact capture with facts", async () => {
+      // Keep this fixture outside the other tests' rolling 24-hour overview.
+      let moment = new Date(startedAt.getTime() - 3 * 86_400_000)
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "recency-test",
+              status: "active",
+              key: Buffer.alloc(32, 9).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenService = {
+        activeKid: keyring.active.kid,
+        ...createRecommendationTokenService({
+          keyring,
+          readRevokedKids: async () => [],
+          now: () => moment,
+        }),
+      }
+      const episodeService = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+        now: () => moment,
+        newId: randomUUID,
+        newClaimNonce: randomUUID,
+      })
+      const makeClaim = async (mediaId: string) => {
+        const sessionDigest = "6".repeat(64)
+        const context = await episodeService.issueContext({
+          caller,
+          sessionDigest,
+          mediaId,
+          discoverySource: "direct",
+        })
+        const claim = await episodeService.claim({
+          caller,
+          sessionDigest,
+          mediaId,
+          claimNonce: context.claimNonce,
+        })
+        recencyOwnedEpisodeIds.push(claim.episodeId)
+        return { ...claim, sessionDigest, mediaId }
+      }
+      const record = (
+        claim: Awaited<ReturnType<typeof makeClaim>>,
+        enabled: boolean,
+        eventId: string,
+        kind:
+          | "playback_attempt"
+          | "playback_start"
+          | "playback_active_visible_playing",
+      ) =>
+        new RecommendationPlaybackService({
+          prisma,
+          tokenService,
+          now: () => moment,
+          newId: randomUUID,
+          compactRecencyCaptureEnabled: enabled,
+        }).record({
+          caller,
+          contractVersion: "recommendation-evidence-v1",
+          capability: claim.capability,
+          episodeId: claim.episodeId,
+          sessionDigest: claim.sessionDigest,
+          mediaId: claim.mediaId,
+          events: [
+            {
+              eventId,
+              kind,
+              occurredAt: moment.toISOString(),
+              payload:
+                kind === "playback_attempt"
+                  ? { initiation: "manual" }
+                  : kind === "playback_start"
+                    ? { positionSeconds: 0 }
+                    : { activeMilliseconds: 3000, coverage: "complete" },
+            },
+          ],
+        })
+      const legacy = await makeClaim("recency-legacy")
+      await record(legacy, false, "attempt", "playback_attempt")
+      moment = new Date(moment.getTime() + 3000)
+      await record(legacy, true, "start", "playback_start")
+      await record(legacy, true, "active", "playback_active_visible_playing")
+      expect(
+        await prisma.recommendationPlaybackEpisode.findUniqueOrThrow({
+          where: { id: legacy.episodeId },
+          select: { recencyFormatVersion: true, recencyFactWatermark: true },
+        }),
+      ).toEqual({ recencyFormatVersion: 0, recencyFactWatermark: 0 })
+      expect(
+        await prisma.recommendationPlaybackRecencyInterval.count({
+          where: { episodeId: legacy.episodeId },
+        }),
+      ).toBe(0)
+
+      const missing = await makeClaim("recency-missing-old-facts")
+      await prisma.recommendationPlaybackEpisode.update({
+        where: { id: missing.episodeId },
+        data: { nextFactSequence: 2 },
+      })
+      await record(missing, true, "attempt", "playback_attempt")
+      expect(
+        await prisma.recommendationPlaybackEpisode.findUniqueOrThrow({
+          where: { id: missing.episodeId },
+          select: { recencyFormatVersion: true },
+        }),
+      ).toEqual({ recencyFormatVersion: 0 })
+
+      const rolledBack = await makeClaim("recency-rollback")
+      await client.query(`CREATE FUNCTION fail_recency_insert() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN RAISE EXCEPTION 'recency fixture rejection'; END $$;
+        CREATE TRIGGER fail_recency_insert BEFORE INSERT ON recommendation_playback_recency_interval
+        FOR EACH ROW EXECUTE FUNCTION fail_recency_insert();`)
+      try {
+        await expect(
+          record(rolledBack, true, "active", "playback_active_visible_playing"),
+        ).rejects.toThrow("recency fixture rejection")
+      } finally {
+        await client.query(`DROP TRIGGER fail_recency_insert ON recommendation_playback_recency_interval;
+          DROP FUNCTION fail_recency_insert();`)
+      }
+      expect(
+        await prisma.recommendationPlaybackEpisode.findUniqueOrThrow({
+          where: { id: rolledBack.episodeId },
+          select: { nextFactSequence: true, recencyFormatVersion: true },
+        }),
+      ).toEqual({ nextFactSequence: 1, recencyFormatVersion: 0 })
+      expect(
+        await prisma.recommendationPlaybackFact.count({
+          where: { episodeId: rolledBack.episodeId },
+        }),
+      ).toBe(0)
     })
 
     it("publishes superseding revisions and rebuilds exactly from standalone immutable facts", async () => {
@@ -141,6 +280,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         tokenService,
         now: () => current,
         newId,
+        compactRecencyCaptureEnabled: true,
       })
       current = new Date(startedAt.getTime() + 20_000)
       await playbackService.record({
@@ -183,6 +323,56 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           },
         ],
       })
+      expect(
+        await prisma.recommendationPlaybackEpisode.findUniqueOrThrow({
+          where: { id: claim.episodeId },
+          select: {
+            recencyFormatVersion: true,
+            recencyFactWatermark: true,
+            recencyIntervalCount: true,
+            recencyHasStart: true,
+            recencyHasLate: true,
+          },
+        }),
+      ).toMatchObject({
+        recencyFormatVersion: 1,
+        recencyFactWatermark: 4,
+        recencyIntervalCount: 1,
+        recencyHasStart: true,
+        recencyHasLate: false,
+      })
+      expect(
+        await prisma.recommendationPlaybackRecencyInterval.findMany({
+          where: { episodeId: claim.episodeId },
+          select: { sequence: true },
+        }),
+      ).toEqual([{ sequence: 3 }])
+      await expect(
+        playbackService.record({
+          caller,
+          contractVersion: "recommendation-evidence-v1",
+          capability: claim.capability,
+          episodeId: claim.episodeId,
+          sessionDigest: "a".repeat(64),
+          mediaId: "direct-media",
+          events: [
+            {
+              eventId: "active-first",
+              kind: "playback_active_visible_playing",
+              occurredAt: new Date(startedAt.getTime() + 10_000).toISOString(),
+              payload: { activeMilliseconds: 10_000, coverage: "complete" },
+            },
+          ],
+        }),
+      ).resolves.toEqual([
+        { eventId: "active-first", status: "replay", sequence: 3 },
+      ])
+      expect(
+        await prisma.recommendationPlaybackEpisode.findUniqueOrThrow({
+          where: { id: claim.episodeId },
+          select: { recencyFactWatermark: true, recencyIntervalCount: true },
+        }),
+      ).toEqual({ recencyFactWatermark: 4, recencyIntervalCount: 1 })
       const outcomeService = new RecommendationOutcomeService({
         prisma,
         now: () => current,
@@ -196,7 +386,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       expect(first).toMatchObject({ status: "published", factWatermark: 4 })
 
       current = new Date(startedAt.getTime() + 4.5 * 60 * 60 * 1_000)
-      await playbackService.record({
+      await new RecommendationPlaybackService({
+        prisma,
+        tokenService,
+        now: () => current,
+        newId,
+        compactRecencyCaptureEnabled: false,
+      }).record({
         caller,
         contractVersion: "recommendation-evidence-v1",
         capability: claim.capability,
@@ -211,6 +407,22 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             payload: { activeMilliseconds: 10_000, coverage: "complete" },
           },
         ],
+      })
+      expect(
+        await prisma.recommendationPlaybackEpisode.findUniqueOrThrow({
+          where: { id: claim.episodeId },
+          select: {
+            recencyFormatVersion: true,
+            recencyFactWatermark: true,
+            recencyIntervalCount: true,
+            recencyHasLate: true,
+          },
+        }),
+      ).toMatchObject({
+        recencyFormatVersion: 1,
+        recencyFactWatermark: 5,
+        recencyIntervalCount: 1,
+        recencyHasLate: true,
       })
       const [racedA, racedB] = await Promise.all([
         outcomeService.finalize({
@@ -394,6 +606,22 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         revision: 2,
         factWatermark: 3,
       })
+    })
+
+    afterEach(async () => {
+      if (prisma && recencyOwnedEpisodeIds.length) {
+        await prisma.recommendationPlaybackEpisode.deleteMany({
+          where: { id: { in: recencyOwnedEpisodeIds.splice(0) } },
+        })
+      }
+    })
+
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      if (!client) return
+      await client.query("RESET search_path")
+      await client.query(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+      await client.end()
     })
 
     it("serializes concurrent transport replays before assigning receipt ordinals", async () => {

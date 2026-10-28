@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import { RecommendationOutcomeService } from "./outcome.service"
+import { createRecommendationEventDispatcher } from "./event-history/dispatch"
+import type { RecommendationEventEnvelope } from "./event-history/envelope"
 
 const expiresAt = new Date("2026-09-17T03:00:00.000Z")
 const now = new Date("2026-08-19T09:00:00.000Z")
@@ -26,6 +28,11 @@ function episode(facts: ReturnType<typeof fact>[]) {
     id: "episode-1",
     requestId: "request-1",
     itemId: "item-1",
+    selectionId: "selection-1",
+    mediaId: "media-1",
+    discoverySource: "recommendation",
+    nextFactSequence: facts.length + 1,
+    historyRevision: 2,
     generation: 2,
     state: "CLAIMED",
     activeUntil: new Date("2026-08-19T07:00:00.000Z"),
@@ -41,6 +48,7 @@ function harness(input: {
   latest?: Record<string, unknown> | null
   exact?: Record<string, unknown> | null
   current?: ReturnType<typeof episode> | null
+  eventDispatcher?: ReturnType<typeof createRecommendationEventDispatcher>
 }) {
   const current =
     input.current === undefined ? episode(input.facts) : input.current
@@ -50,14 +58,26 @@ function harness(input: {
     $queryRaw: vi.fn(async () => [{ locked: true }]),
     recommendationPlaybackEpisode: {
       findUnique: vi.fn(async () => current),
-      updateMany: vi.fn(async () => ({ count: 1 })),
+      updateMany: vi.fn(
+        async (_args?: {
+          data?: { historyRevision?: { increment: number } }
+        }) => ({ count: 1 }),
+      ),
     },
     recommendationOutcomeRevision: {
       findUnique: vi.fn(async () => input.exact ?? null),
-      findFirst: vi.fn(async () => input.latest ?? null),
+      findFirst: vi.fn(
+        async (_args?: { where?: { classifierVersion: string } }) =>
+          input.latest ?? null,
+      ),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
         created.push(data)
-        return data
+        return {
+          ...data,
+          activeIntervals: Array.isArray(data.activeIntervals)
+            ? data.activeIntervals
+            : null,
+        }
       }),
     },
   }
@@ -70,11 +90,128 @@ function harness(input: {
     prisma: prisma as never,
     now: () => now,
     newId: () => "outcome-2",
+    eventDispatcher: input.eventDispatcher,
   })
   return { service, prisma, tx, created }
 }
 
 describe("RecommendationOutcomeService", () => {
+  it("assigns distinct episode revisions when classifier revisions diverge", async () => {
+    const current = episode([
+      fact(1, "playback_start", { positionSeconds: 0 }),
+      fact(2, "playback_end", {
+        reason: "ended",
+        positionSeconds: 60,
+        durationSeconds: 60,
+        progress: 1,
+        completed: true,
+      }),
+    ])
+    const batches: RecommendationEventEnvelope[][] = []
+    const dispatcher = createRecommendationEventDispatcher({
+      client: {
+        insert: vi.fn(async (events) => {
+          batches.push([...events])
+        }),
+      },
+      now: () => now.getTime(),
+    })
+    const { service, tx } = harness({
+      facts: current.facts,
+      current,
+      eventDispatcher: dispatcher,
+    })
+    tx.recommendationPlaybackEpisode.findUnique.mockImplementation(
+      async () => ({ ...current, facts: [...current.facts] }),
+    )
+    tx.recommendationPlaybackEpisode.updateMany.mockImplementation(
+      async (args) => {
+        current.historyRevision += args?.data?.historyRevision?.increment ?? 0
+        return { count: 1 }
+      },
+    )
+    await service.finalize({
+      episodeId: current.id,
+      generation: 2,
+      reason: "terminal-fact",
+    })
+    current.facts.push(
+      fact(3, "playback_active_visible_playing", {
+        activeMilliseconds: 1000,
+        coverage: "complete",
+      }),
+    )
+    current.nextFactSequence = 4
+    tx.recommendationOutcomeRevision.findFirst.mockImplementation(
+      async (args) => ({
+        id:
+          args?.where?.classifierVersion === "legacy-position-v0"
+            ? "legacy-old"
+            : "active-old",
+        revision:
+          args?.where?.classifierVersion === "legacy-position-v0" ? 1 : 4,
+        factWatermark: 2,
+        inputDigest: "old",
+      }),
+    )
+    await service.finalize({
+      episodeId: current.id,
+      generation: 2,
+      reason: "terminal-fact",
+    })
+    await dispatcher.drain()
+    const finality = batches
+      .flat()
+      .filter((event) => event.family === "playback-episode")
+    expect(finality.map((event) => event.revision)).toEqual([3, 4])
+    expect(finality[1]?.payload.historyRevision).toBe(4)
+  })
+  it("starts published outcome and finality exports after commit without waiting for the sink", async () => {
+    const pending: Array<() => void> = []
+    const insert = vi.fn(
+      (_events: readonly RecommendationEventEnvelope[]) =>
+        new Promise<void>((resolve) => {
+          pending.push(resolve)
+        }),
+    )
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+      now: () => now.getTime(),
+    })
+    const { service, prisma } = harness({
+      facts: [
+        fact(1, "playback_start", { positionSeconds: 0 }),
+        fact(2, "playback_end", {
+          reason: "ended",
+          positionSeconds: 60,
+          durationSeconds: 60,
+          progress: 1,
+          completed: true,
+        }),
+      ],
+      eventDispatcher: dispatcher,
+    })
+    await expect(
+      service.finalize({
+        episodeId: "episode-1",
+        generation: 2,
+        reason: "terminal-fact",
+      }),
+    ).resolves.toMatchObject({ status: "published" })
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(insert).toHaveBeenCalledTimes(2)
+    const outcomeBatch = insert.mock.calls[0]?.[0]
+    expect(outcomeBatch).toHaveLength(2)
+    expect(outcomeBatch[0]).toMatchObject({ family: "outcome", revision: 1 })
+    const finalityBatch = insert.mock.calls[1]?.[0]
+    expect(finalityBatch[0]).toMatchObject({
+      family: "playback-episode",
+      revision: 3,
+      payload: { nextFactSequence: 3, state: "FINALIZED" },
+    })
+    pending.forEach((resolve) => resolve())
+    await dispatcher.drain()
+  })
   it("retries a serializable conflict before publishing", async () => {
     const { service, prisma } = harness({ facts: [] })
     prisma.$transaction.mockRejectedValueOnce(
@@ -241,7 +378,7 @@ describe("RecommendationOutcomeService", () => {
     ).resolves.toMatchObject({ status: "existing", revision: 1 })
     expect(tx.recommendationOutcomeRevision.create).not.toHaveBeenCalled()
     expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
-      where: { id: "episode-1", generation: 2 },
+      where: { id: "episode-1", generation: 2, historyRevision: 2 },
       data: { finalizationDueAt: null },
     })
   })
@@ -300,11 +437,12 @@ describe("RecommendationOutcomeService", () => {
       factWatermark: 3,
     })
     expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
-      where: { id: "episode-1", generation: 2 },
+      where: { id: "episode-1", generation: 2, historyRevision: 2 },
       data: {
         state: "FINALIZED",
         finalizedAt: now,
         finalizationDueAt: null,
+        historyRevision: { increment: 1 },
       },
     })
   })
@@ -362,11 +500,12 @@ describe("RecommendationOutcomeService", () => {
       ]),
     })
     expect(tx.recommendationPlaybackEpisode.updateMany).toHaveBeenCalledWith({
-      where: { id: "episode-1", generation: 2 },
+      where: { id: "episode-1", generation: 2, historyRevision: 2 },
       data: {
         state: "TIMED_OUT",
         finalizedAt: now,
         finalizationDueAt: null,
+        historyRevision: { increment: 1 },
       },
     })
   })

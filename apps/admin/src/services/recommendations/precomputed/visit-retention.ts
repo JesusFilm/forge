@@ -1,7 +1,16 @@
 import { Prisma } from "@prisma/client"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
 import { archivePrecomputedCtrVisits } from "./ctr-evidence"
+import type { RawCtrVisit } from "./ctr-evidence"
 import { loadPrecomputedIncumbentBaselineReport } from "./incumbent-baseline"
+import { env } from "@/config/env"
+import { RecommendationInternalStateError } from "../errors"
+import {
+  capturePrecomputedCtrMeasurement,
+  readCompactCtrArchiveVisitsAt,
+} from "./compact-accounting"
+
+type ArchiveOptions = { archiveReader?: "compact" | "native" }
 
 /** Bound each daily pass to the shared recommendation retention batch size. */
 export async function purgeExpiredPrecomputedVisitRoots(
@@ -10,6 +19,7 @@ export async function purgeExpiredPrecomputedVisitRoots(
   batchSize: number,
   requestIds: readonly string[] = [],
   finalizeOnlyStoredExpired = false,
+  options: ArchiveOptions = {},
 ) {
   // Freeze compact baseline totals before any 29-day raw evidence is removed.
   // A seven-day collection window plus one-day click cutoff leaves ample
@@ -117,7 +127,51 @@ export async function purgeExpiredPrecomputedVisitRoots(
     },
     select: { id: true, experimentId: true },
   })
-  await archivePrecomputedCtrVisits(tx, current, now)
+  let archiveSource = "native_gate_off"
+  let compactRows: RawCtrVisit[] | undefined
+  const requestedReader =
+    options.archiveReader ??
+    (env.RECOMMENDATION_PRECOMPUTED_COMPACT_ARCHIVE_READER_ENABLED === "1"
+      ? "compact"
+      : "native")
+  if (current.length > 0 && requestedReader === "compact") {
+    if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED !== "1") {
+      archiveSource = "native_capture_off"
+    } else {
+      const prior = await readCompactCtrArchiveVisitsAt(tx, current, now)
+      if (prior.status === "unavailable") {
+        archiveSource = `native_${prior.reason}`
+      } else {
+        const priorRevision = new Map(
+          prior.visits.map(({ row, revision }) => [row.visit_id, revision]),
+        )
+        // The existing snapshots can be stale after a time-only transition.
+        // Reconcile inside the deletion transaction, under the same fence.
+        for (const { id } of [...current].sort((a, b) =>
+          a.id.localeCompare(b.id),
+        ))
+          await capturePrecomputedCtrMeasurement(tx, id, now)
+        const fresh = await readCompactCtrArchiveVisitsAt(tx, current, now)
+        if (
+          fresh.status !== "available" ||
+          fresh.visits.some(({ row, revision, acceptedAt }) => {
+            const previous = priorRevision.get(row.visit_id)
+            return (
+              previous === undefined ||
+              revision !== previous + 1 ||
+              acceptedAt.getTime() !== now.getTime()
+            )
+          })
+        )
+          throw new RecommendationInternalStateError(
+            "precomputed_compact_archive_checkpoint_mismatch",
+          )
+        compactRows = fresh.visits.map(({ row }) => row)
+        archiveSource = "compact"
+      }
+    }
+  }
+  await archivePrecomputedCtrVisits(tx, current, now, compactRows)
   const visitsDeleted = await tx.recommendationPrecomputedVisit.deleteMany({
     where: {
       id: { in: current.map(({ id }) => id) },
@@ -172,6 +226,7 @@ export async function purgeExpiredPrecomputedVisitRoots(
   ).count
   return {
     visitsDeleted: visitsDeleted.count,
+    archiveSource,
     experimentsDeleted: experimentsDeleted.count,
     controlEventsDeleted: eventsDeleted,
     launchCapacityReceiptsDeleted,

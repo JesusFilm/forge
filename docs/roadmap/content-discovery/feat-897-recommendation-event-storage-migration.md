@@ -1,0 +1,79 @@
+---
+id: "feat-897"
+title: "Move recommendation event history out of serving PostgreSQL"
+owner: "nisal"
+priority: "P1"
+status: "in-progress"
+start_date: "2026-10-28"
+duration: 14
+depends_on:
+  [
+    "feat-889",
+    "feat-890",
+    "feat-891",
+    "feat-892",
+    "feat-893",
+    "feat-894",
+    "feat-895",
+    "feat-896",
+  ]
+blocks: []
+tags:
+  - "recommendations"
+  - "storage"
+  - "clickhouse"
+  - "admin"
+---
+
+## Problem
+
+Raw recommendation and Watch evidence, its indexes, and its cleanup share the
+serving PostgreSQL database. The owner authorized designing and shipping a
+ClickHouse event-store migration, with an explicit grill-with-docs interview
+before implementation. On 28 October the owner accepted recommendation/Watch
+scope, five-minute learning freshness, continued valid serving during event-store
+outages, and unchanged retention. The owner subsequently accepted a dedicated
+Forge ClickHouse service and unexpired history backfill. The latest owner
+direction supersedes the earlier outbox and 24-hour buffering proposal: send
+directly to ClickHouse without awaiting in the caller, measure failures and
+defer retries/queues. Failed historical exports may be lost. Preserve reliable
+operational admission, playback and privacy controls. Sink qualification,
+measured failure/latency/resource behavior and priced infrastructure remain
+engineering work. The duration is a planning placeholder, not a commitment.
+
+## Entry points
+
+- `docs/plans/2026-10-28-recommendation-event-storage-spec.md`
+- `CONCEPTS.md` — Recommendations vocabulary.
+- `docs/analytics-and-recommendation-policy.md`
+- `apps/admin/src/services/recommendations/watch-surface-exposure.service.ts`
+- `apps/admin/src/services/recommendations/playback-outcome-consumer.ts`
+- `apps/admin/src/services/recommendations/profiles/profile-projection.service.ts`
+- `apps/admin/src/services/recommendations/cowatch/projection.service.ts`
+- `apps/admin/src/services/recommendations/precomputed/engagement-evidence.ts`
+
+## Grep these
+
+`WatchSurfaceExposure`, `RecommendationPlaybackFact`,
+`RecommendationOutcomeRevision`, `readPlaybackOutcomeEnvelope`,
+`loadCowatchSourceRows`, `RECOMMENDATION_PROFILE_PROJECTION_COALESCE_MS`.
+
+## Delivery
+
+Implementation was authorized on 28 October via `implement-spec`. Execute the
+linked task graph on `codex/recommendation-event-storage-integration`, validate event and report
+parity, release through the normal PR-to-main flow, and measure actual
+PostgreSQL retirement and storage effects. Preserve the running experiment,
+privacy controls, expiry, playback attribution, and recommendation serving.
+
+Local implementation is underway; no infrastructure purchase, data cutover or
+production deletion has occurred under this ticket. Capacity work in platform feat-554 and
+feat-756 remains independent and open; this migration does not complete it.
+
+Draft PR #2950 checkpoint `d44c3f2c000d44953938d6d0f328e84952a60ff7`
+passed all applicable CI checks, including the repaired PostgreSQL fixture and
+real ClickHouse job. This is an intermediate checkpoint, not final independent
+review or release verification. Later integration heads require their own
+checks. Remaining reader, compact playback/learning, privacy lifecycle,
+backfill/retirement and service qualification work stays open in the dependent
+tickets.

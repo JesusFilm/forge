@@ -133,6 +133,60 @@ jobs:
       - name: Verify generated code
         run: pnpm turbo run generate --filter=@forge/admin-graphql && git diff --exit-code packages/admin-graphql/src/admin-graphql-env.d.ts
 
+  recommendation-clickhouse-integration:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/admin')
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:25.8.15.35@sha256:d01390d78c277f72b961599ca7cbeedd25b13a1833e44cb608a2fbff8bcf7fb6
+        env:
+          CLICKHOUSE_DB: event_clickhouse_test
+          CLICKHOUSE_USER: event_test
+          CLICKHOUSE_PASSWORD: event_test_password
+          CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: "1"
+        ports:
+          - 18123:8123
+        options: >-
+          --health-cmd "clickhouse-client --user event_test --password event_test_password --query 'SELECT 1'"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply owned ClickHouse fixture schemas
+        run: |
+          docker exec "${{ job.services.clickhouse.id }}" clickhouse-client \
+            --user event_test --password event_test_password \
+            --query 'CREATE DATABASE IF NOT EXISTS event_watch_reader_test'
+          for fixture_database in event_clickhouse_test event_watch_reader_test; do
+            docker exec -i "${{ job.services.clickhouse.id }}" clickhouse-client \
+              --user event_test --password event_test_password \
+              --database "$fixture_database" --multiquery \
+              < apps/admin/src/services/recommendations/event-history/clickhouse.sql
+          done
+      - name: Exercise history codec, HTTP boundary and canonical ClickHouse behavior
+        env:
+          RECOMMENDATION_CLICKHOUSE_DB_TEST: "1"
+          RECOMMENDATION_CLICKHOUSE_TEST_URL: http://127.0.0.1:18123/
+        run: >-
+          pnpm --filter @forge/admin exec vitest run
+          src/services/recommendations/event-history/envelope.test.ts
+          src/services/recommendations/event-history/clickhouse.test.ts
+          src/services/recommendations/event-history/clickhouse.db.test.ts
+          src/services/recommendations/event-history/watch-exposure-reader.db.test.ts
+          --no-file-parallelism
+
   admin-schema-drift:
     runs-on: ubuntu-latest
     needs: affected
@@ -247,6 +301,32 @@ jobs:
           src/services/recommendations/delivery-persistence.db.test.ts
           src/db/recommendation-wait-sampler.db.test.ts
           --no-file-parallelism
+      - name: Exercise compact Watch admission against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          WATCH_COMPACT_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin exec vitest run
+          src/services/recommendations/watch-compact-admission.db.test.ts
+          src/services/recommendations/watch-compact-retention.db.test.ts
+          --no-file-parallelism
+      - name: Create owned compact Watch retention database
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_watch_retention_test'
+      - name: Apply migrations to compact Watch retention database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_retention_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise compact Watch retention against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_watch_retention_test
+          WATCH_COMPACT_RETENTION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin exec vitest run
+          src/services/recommendations/watch-compact-retention.db.test.ts
+          --no-file-parallelism
+          --testTimeout=60000
       - name: Create owned Co-watch PostgreSQL fixtures
         env:
           PGPASSWORD: postgres
@@ -338,6 +418,12 @@ jobs:
           WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: precomputed-ci-fixture-human-proof-secret
         run: |
           pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed src/app/api/internal/mastra/precomputed-recommendations/route.test.ts --no-file-parallelism --maxWorkers=1
+          RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED=1 \
+            pnpm --filter @forge/admin exec vitest run \
+            src/services/recommendations/precomputed/watch-delivery.db.test.ts \
+            src/services/recommendations/precomputed/engagement.db.test.ts \
+            src/services/recommendations/precomputed/ctr-report.db.test.ts \
+            --no-file-parallelism
           pnpm --filter @forge/admin test:precomputed-integration
           env -u RECOMMENDATION_PRECOMPUTED_TEST_ENABLED -u RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED \
             pnpm --filter @forge/admin exec vitest run src/services/recommendations/precomputed/public-control.db.test.ts \
@@ -781,6 +867,7 @@ jobs:
       - affected
       - admin-graphql-generate
       - admin-schema-drift
+      - recommendation-clickhouse-integration
       - web-redis-integration
       - auth-postgres-integration
       - rag-postgres-integration
