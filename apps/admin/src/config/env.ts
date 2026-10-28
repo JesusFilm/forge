@@ -516,6 +516,9 @@ export const env = createEnv({
     WATCH_COMPACT_DB_TEST: z.enum(["1"]).optional(),
     WATCH_COMPACT_RETENTION_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_CLICKHOUSE_TEST_URL: z.string().url().optional(),
+    RECOMMENDATION_WATCH_HISTORY_READER_ENABLED: z
+      .enum(["true", "false"])
+      .default("false"),
     RECOMMENDATION_EVENT_EXPORT_ENABLED: z
       .enum(["true", "false"])
       .default("false"),
@@ -1166,6 +1169,8 @@ export const env = createEnv({
     RECOMMENDATION_CLICKHOUSE_TEST_URL: emptyToUndefined(
       process.env.RECOMMENDATION_CLICKHOUSE_TEST_URL,
     ),
+    RECOMMENDATION_WATCH_HISTORY_READER_ENABLED:
+      process.env.RECOMMENDATION_WATCH_HISTORY_READER_ENABLED,
     RECOMMENDATION_EVENT_EXPORT_ENABLED:
       process.env.RECOMMENDATION_EVENT_EXPORT_ENABLED,
     WATCH_EVENT_EXPORT_ENABLED: process.env.WATCH_EVENT_EXPORT_ENABLED,

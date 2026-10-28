@@ -5,12 +5,26 @@ import {
   type RecommendationEventEnvelope,
   type RecommendationEventFamily,
 } from "./envelope"
+import {
+  WATCH_EXPOSURE_BREAKDOWN_SQL,
+  WATCH_EXPOSURE_CONFLICT_SQL,
+} from "./watch-exposure-query"
 
 const MAX_BATCH_EVENTS = 100
 const MAX_BATCH_BYTES = 1_048_576
 const MAX_RESPONSE_BYTES = 33_554_432
 const MAX_IDS = 100
 const MAX_ID_BYTES = 19_100
+const WATCH_REPORT_SETTINGS = {
+  max_execution_time: "3",
+  timeout_before_checking_execution_speed: "0",
+  max_rows_to_read: "20000000",
+  read_overflow_mode: "throw",
+  max_result_rows: "129",
+  result_overflow_mode: "throw",
+  max_memory_usage: "1073741824",
+  max_threads: "2",
+}
 
 export class RecommendationClickHouseError extends Error {
   constructor(
@@ -33,11 +47,53 @@ export type RecommendationClickHouseClient = {
     family: RecommendationEventFamily
     logicalIds: readonly string[]
     asOf: Date
+    now?: Date
   }): Promise<RecommendationEventEnvelope[]>
   erase(input: {
     family: RecommendationEventFamily
     logicalIds: readonly string[]
   }): Promise<void>
+  watchExposureBreakdown(
+    input: WatchExposureBreakdownInput,
+  ): Promise<WatchExposureAggregate>
+}
+
+export type WatchExposureBreakdownInput = {
+  start: Date
+  end: Date
+  now: Date
+  asOf?: Date
+  filter?: {
+    surface: string
+    block: string
+    presentation: string
+    placement?: string
+    policyVersion?: string
+  }
+}
+
+export type WatchExposureAggregateRow = {
+  surface: string
+  block: string
+  presentation: string
+  placement: string
+  policyVersion: string
+  position: number
+  served: number
+  rendered: number
+  eligible: number
+  selected: number
+  eligibleSelected: number
+  repeats: number
+  acceptedAttempts: number
+  duplicates: number
+  occlusionAware: number
+  visibilityUnknown: number
+}
+
+export type WatchExposureAggregate = {
+  rows: WatchExposureAggregateRow[]
+  truncated: boolean
 }
 
 type Config = {
@@ -391,11 +447,19 @@ export function createRecommendationClickHouseClient(
             throw new RecommendationClickHouseError("conflict")
       })
     },
-    async read({ family, logicalIds, asOf }) {
+    async read({ family, logicalIds, asOf, now = new Date() }) {
       return withDeadline(async (signal) => {
         validIds(family, logicalIds)
-        if (!(asOf instanceof Date) || Number.isNaN(asOf.getTime()))
+        if (
+          !(asOf instanceof Date) ||
+          Number.isNaN(asOf.getTime()) ||
+          !(now instanceof Date) ||
+          Number.isNaN(now.getTime())
+        )
           throw new RecommendationClickHouseError("invalid_input")
+        const expiryCutoff = new Date(
+          Math.max(asOf.getTime(), now.getTime()),
+        ).toISOString()
         const query = withIds(READ_SQL, family, logicalIds)
         const result = await execute(signal, query.sql, {
           ...query.params,
@@ -446,7 +510,7 @@ export function createRecommendationClickHouseClient(
           } catch {
             throw new RecommendationClickHouseError("response")
           }
-          if (envelope.expiresAt > asOf.toISOString()) events.push(envelope)
+          if (envelope.expiresAt > expiryCutoff) events.push(envelope)
         }
         if (
           events.length > logicalIds.length ||
@@ -454,6 +518,158 @@ export function createRecommendationClickHouseClient(
         )
           throw new RecommendationClickHouseError("response")
         return events
+      })
+    },
+    async watchExposureBreakdown({ start, end, now, asOf = end, filter }) {
+      return withDeadline(async (signal) => {
+        if (
+          !(start instanceof Date) ||
+          Number.isNaN(start.getTime()) ||
+          !(end instanceof Date) ||
+          Number.isNaN(end.getTime()) ||
+          !(now instanceof Date) ||
+          Number.isNaN(now.getTime()) ||
+          !(asOf instanceof Date) ||
+          Number.isNaN(asOf.getTime()) ||
+          start >= end ||
+          end > asOf ||
+          asOf > now ||
+          end.getTime() - start.getTime() > 14 * 86_400_000 ||
+          (filter !== undefined &&
+            ([
+              filter.surface,
+              filter.block,
+              filter.presentation,
+              filter.placement,
+              filter.policyVersion,
+            ].some(
+              (value) =>
+                value !== undefined &&
+                (typeof value !== "string" || Buffer.byteLength(value) > 128),
+            ) ||
+              !filter.surface ||
+              !filter.block ||
+              !filter.presentation))
+        )
+          throw new RecommendationClickHouseError("invalid_input")
+        const params = {
+          start: start.toISOString(),
+          end: end.toISOString(),
+          now: now.toISOString(),
+          as_of: asOf.toISOString(),
+          filter: filter ? "1" : "0",
+          surface: filter?.surface ?? "",
+          block: filter?.block ?? "",
+          presentation: filter?.presentation ?? "",
+          has_placement: filter?.placement === undefined ? "0" : "1",
+          placement: filter?.placement ?? "",
+          has_policy: filter?.policyVersion === undefined ? "0" : "1",
+          policy: filter?.policyVersion ?? "",
+        }
+        const result = await execute(
+          signal,
+          WATCH_EXPOSURE_BREAKDOWN_SQL,
+          params,
+          WATCH_REPORT_SETTINGS,
+        )
+        const audit = await execute(
+          signal,
+          WATCH_EXPOSURE_CONFLICT_SQL,
+          params,
+          WATCH_REPORT_SETTINGS,
+        )
+        try {
+          const parsed: unknown = JSON.parse(audit.trim())
+          if (
+            !parsed ||
+            typeof parsed !== "object" ||
+            !("conflicts" in parsed) ||
+            Object.keys(parsed).length !== 1 ||
+            typeof parsed.conflicts !== "number" ||
+            !Number.isSafeInteger(parsed.conflicts) ||
+            parsed.conflicts < 0
+          )
+            throw new Error()
+          if (parsed.conflicts > 0)
+            throw new RecommendationClickHouseError("conflict")
+        } catch (error) {
+          if (error instanceof RecommendationClickHouseError) throw error
+          throw new RecommendationClickHouseError("response")
+        }
+        const rows: WatchExposureAggregateRow[] = []
+        if (result === "") return { rows, truncated: false }
+        const lines = result.trimEnd().split("\n")
+        if (lines.length > 129)
+          throw new RecommendationClickHouseError("response")
+        for (const line of lines) {
+          let row: Record<string, unknown>
+          try {
+            row = JSON.parse(line)
+          } catch {
+            throw new RecommendationClickHouseError("response")
+          }
+          const keys = [
+            "surface",
+            "block",
+            "presentation",
+            "placement",
+            "policy_version",
+            "position",
+            "served",
+            "rendered",
+            "eligible",
+            "selected",
+            "eligible_selected",
+            "repeats",
+            "accepted_attempts",
+            "duplicates",
+            "occlusion_aware",
+            "visibility_unknown",
+          ]
+          if (
+            !row ||
+            typeof row !== "object" ||
+            Array.isArray(row) ||
+            Object.keys(row).sort().join(",") !== keys.sort().join(",")
+          )
+            throw new RecommendationClickHouseError("response")
+          const string = (key: string) => {
+            if (typeof row[key] !== "string" || !row[key])
+              throw new RecommendationClickHouseError("response")
+            return row[key] as string
+          }
+          const number = (key: string) => {
+            const value = row[key]
+            const parsed =
+              typeof value === "number"
+                ? value
+                : typeof value === "string" && /^\d+$/.test(value)
+                  ? Number(value)
+                  : NaN
+            if (!Number.isSafeInteger(parsed) || parsed < 0)
+              throw new RecommendationClickHouseError("response")
+            return parsed
+          }
+          rows.push({
+            surface: string("surface"),
+            block: string("block"),
+            presentation: string("presentation"),
+            placement: string("placement"),
+            policyVersion: string("policy_version"),
+            position: number("position"),
+            served: number("served"),
+            rendered: number("rendered"),
+            eligible: number("eligible"),
+            selected: number("selected"),
+            eligibleSelected: number("eligible_selected"),
+            repeats: number("repeats"),
+            acceptedAttempts: number("accepted_attempts"),
+            duplicates: number("duplicates"),
+            occlusionAware: number("occlusion_aware"),
+            visibilityUnknown: number("visibility_unknown"),
+          })
+        }
+        return { rows: rows.slice(0, 128), truncated: rows.length > 128 }
       })
     },
     async erase({ family, logicalIds }) {

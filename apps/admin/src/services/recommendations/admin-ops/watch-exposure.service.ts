@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
+import type { RecommendationClickHouseClient } from "../event-history/clickhouse"
 import { WATCH_SURFACE_EXPOSURE_RETENTION_MS } from "../watch-surface-exposure-retention"
 import { resolveRecommendationOpsWindow } from "./shared"
 
@@ -46,6 +47,56 @@ export type WatchExposureRegistryFilter = {
   presentation: string
   placement?: string
   policyVersion?: string
+}
+
+/** The ClickHouse sample can omit failed live exports; it is never a complete cohort claim. */
+export async function loadAnonymousWatchExposureBreakdownFromHistory(
+  client: Pick<RecommendationClickHouseClient, "watchExposureBreakdown">,
+  rawWindow?: string | string[],
+  filter?: WatchExposureRegistryFilter,
+): Promise<
+  AnonymousWatchExposureBreakdown & { coverage: "best_effort_incomplete" }
+> {
+  const requested = resolveRecommendationOpsWindow(rawWindow)
+  const start = new Date(
+    Math.max(
+      requested.start.getTime(),
+      requested.end.getTime() - WATCH_SURFACE_EXPOSURE_RETENTION_MS,
+    ),
+  )
+  const result = await client.watchExposureBreakdown({
+    start,
+    end: requested.end,
+    now: requested.end,
+    asOf: requested.end,
+    filter,
+  })
+  return {
+    coverage: "best_effort_incomplete",
+    truncated: result.truncated,
+    rows: result.rows.map((row) => ({
+      surface: row.surface,
+      block: row.block,
+      presentation: row.presentation,
+      placement: row.placement,
+      policyVersion: row.policyVersion,
+      position: row.position,
+      served: row.policyVersion === "watch-exposure-v2" ? row.served : null,
+      rendered: row.rendered,
+      eligible: row.eligible,
+      selected: row.selected,
+      eligibleSelected: row.eligibleSelected,
+      selectionWithoutImpression: row.selected - row.eligibleSelected,
+      repeats: row.repeats,
+      duplicateRate:
+        row.acceptedAttempts + row.duplicates > 0
+          ? row.duplicates / (row.acceptedAttempts + row.duplicates)
+          : null,
+      ctr: row.eligible > 0 ? row.eligibleSelected / row.eligible : null,
+      occlusionAware: row.occlusionAware,
+      visibilityUnknown: row.visibilityUnknown,
+    })),
+  }
 }
 
 export async function loadWatchExposureBreakdown(

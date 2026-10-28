@@ -2,10 +2,60 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { describe, expect, it, vi } from "vitest"
 import {
   loadAnonymousWatchExposureBreakdown,
+  loadAnonymousWatchExposureBreakdownFromHistory,
   loadWatchExposureBreakdown,
 } from "./watch-exposure.service"
 
 describe("Watch exposure inspection", () => {
+  it("maps the delivered anonymous sample without presenting it as complete", async () => {
+    const watchExposureBreakdown = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          surface: "watch-home",
+          block: "hero",
+          presentation: "hero-card",
+          placement: "primary",
+          policyVersion: "watch-exposure-v2",
+          position: 0,
+          served: 2,
+          rendered: 0,
+          eligible: 1,
+          selected: 1,
+          eligibleSelected: 0,
+          repeats: 0,
+          acceptedAttempts: 2,
+          duplicates: 1,
+          occlusionAware: 0,
+          visibilityUnknown: 1,
+        },
+      ],
+      truncated: false,
+    })
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-10-28T00:00:00.000Z"))
+    try {
+      const result = await loadAnonymousWatchExposureBreakdownFromHistory(
+        { watchExposureBreakdown },
+        "29d",
+      )
+      expect(result.rows[0]).toMatchObject({
+        served: 2,
+        eligibleSelected: 0,
+        selectionWithoutImpression: 1,
+        duplicateRate: 1 / 3,
+        ctr: 0,
+      })
+      expect(result.coverage).toBe("best_effort_incomplete")
+      expect(watchExposureBreakdown).toHaveBeenCalledWith(
+        expect.objectContaining({
+          start: new Date("2026-10-14T00:00:00.000Z"),
+          end: new Date("2026-10-28T00:00:00.000Z"),
+        }),
+      )
+    } finally {
+      vi.useRealTimers()
+    }
+  })
   it.each([
     { preset: "24h", anonymousDays: 1, signedDays: 1 },
     { preset: "7d", anonymousDays: 7, signedDays: 7 },

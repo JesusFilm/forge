@@ -164,12 +164,17 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Apply owned ClickHouse fixture schema
-        run: >-
-          docker exec -i "${{ job.services.clickhouse.id }}"
-          clickhouse-client --user event_test --password event_test_password
-          --database event_clickhouse_test --multiquery
-          < apps/admin/src/services/recommendations/event-history/clickhouse.sql
+      - name: Apply owned ClickHouse fixture schemas
+        run: |
+          docker exec "${{ job.services.clickhouse.id }}" clickhouse-client \
+            --user event_test --password event_test_password \
+            --query 'CREATE DATABASE IF NOT EXISTS event_watch_reader_test'
+          for fixture_database in event_clickhouse_test event_watch_reader_test; do
+            docker exec -i "${{ job.services.clickhouse.id }}" clickhouse-client \
+              --user event_test --password event_test_password \
+              --database "$fixture_database" --multiquery \
+              < apps/admin/src/services/recommendations/event-history/clickhouse.sql
+          done
       - name: Exercise history codec, HTTP boundary and canonical ClickHouse behavior
         env:
           RECOMMENDATION_CLICKHOUSE_DB_TEST: "1"
@@ -179,6 +184,7 @@ jobs:
           src/services/recommendations/event-history/envelope.test.ts
           src/services/recommendations/event-history/clickhouse.test.ts
           src/services/recommendations/event-history/clickhouse.db.test.ts
+          src/services/recommendations/event-history/watch-exposure-reader.db.test.ts
           --no-file-parallelism
 
   admin-schema-drift:
@@ -294,6 +300,14 @@ jobs:
           src/services/recommendations/viewing-mode.service.db.test.ts
           src/services/recommendations/delivery-persistence.db.test.ts
           src/db/recommendation-wait-sampler.db.test.ts
+          --no-file-parallelism
+      - name: Exercise compact Watch admission against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          WATCH_COMPACT_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin exec vitest run
+          src/services/recommendations/watch-compact-admission.db.test.ts
           --no-file-parallelism
       - name: Create owned Co-watch PostgreSQL fixtures
         env:

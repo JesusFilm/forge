@@ -41,7 +41,9 @@ import {
 import {
   loadWatchExposureBreakdown,
   loadAnonymousWatchExposureBreakdown,
+  loadAnonymousWatchExposureBreakdownFromHistory,
 } from "@/services/recommendations/admin-ops/watch-exposure.service"
+import { getConfiguredWatchExposureHistoryReader } from "@/services/recommendations/event-history/reader-runtime"
 
 type RecommendationsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -122,44 +124,63 @@ export default async function RecommendationsPage({
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces, playback, watchExposures] = await Promise.all([
-    loadRecommendationOverview(prisma, {
-      window: params.window,
-    }),
-    canReadTraces
-      ? loadRecommendationTracePage(prisma, {
-          window: params.window,
-          requestState: params.state,
-          fallbackReason: params.fallback,
-          evidenceState: params.evidence,
-          cursor: params.cursor,
-        })
-      : null,
-    canReadTraces
-      ? loadPlaybackEvidenceOverview(prisma, { window: params.window }).catch(
-          () => null,
-        )
-      : null,
-    exposureSelection.invalid
-      ? null
-      : Promise.all([
-          loadWatchExposureBreakdown(
+  const [overview, traces, playback, signedExposure, anonymousExposure] =
+    await Promise.all([
+      loadRecommendationOverview(prisma, {
+        window: params.window,
+      }),
+      canReadTraces
+        ? loadRecommendationTracePage(prisma, {
+            window: params.window,
+            requestState: params.state,
+            fallbackReason: params.fallback,
+            evidenceState: params.evidence,
+            cursor: params.cursor,
+          })
+        : null,
+      canReadTraces
+        ? loadPlaybackEvidenceOverview(prisma, { window: params.window }).catch(
+            () => null,
+          )
+        : null,
+      exposureSelection.invalid
+        ? null
+        : loadWatchExposureBreakdown(
             prisma,
             params.window,
             exposureSelection.filter,
-          ),
-          loadAnonymousWatchExposureBreakdown(
-            prisma,
-            params.window,
-            exposureSelection.filter,
-          ),
-        ])
-          .then(([signed, anonymous]) => ({
-            rows: [...signed, ...anonymous.rows],
-            truncated: anonymous.truncated,
-          }))
-          .catch(() => null),
-  ])
+          )
+            .then((rows) => ({ rows, unavailable: false as const }))
+            .catch(() => ({ rows: [], unavailable: true as const })),
+      exposureSelection.invalid
+        ? null
+        : (async () => {
+            try {
+              const reader = getConfiguredWatchExposureHistoryReader()
+              const data = reader
+                ? await loadAnonymousWatchExposureBreakdownFromHistory(
+                    reader,
+                    params.window,
+                    exposureSelection.filter,
+                  )
+                : await loadAnonymousWatchExposureBreakdown(
+                    prisma,
+                    params.window,
+                    exposureSelection.filter,
+                  )
+              return { ...data, unavailable: false as const }
+            } catch {
+              return { rows: [], truncated: false, unavailable: true as const }
+            }
+          })(),
+    ])
+  const watchExposures =
+    signedExposure && anonymousExposure
+      ? {
+          rows: [...signedExposure.rows, ...anonymousExposure.rows],
+          truncated: anonymousExposure.truncated,
+        }
+      : null
 
   return (
     <div className="flex flex-col gap-6">
@@ -216,6 +237,8 @@ export default async function RecommendationsPage({
         replays={overview.counts?.replays ?? null}
         window={overview.window.preset}
         selection={exposureSelection}
+        signedUnavailable={signedExposure?.unavailable ?? false}
+        anonymousUnavailable={anonymousExposure?.unavailable ?? false}
       />
       <OperationalTruth overview={overview} />
       <EligibilityTruth overview={overview} />
