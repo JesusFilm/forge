@@ -649,6 +649,21 @@ async function evaluatePrecomputedCtrReport(
           status: "available",
           report: latest.result as unknown as PrecomputedCtrReport,
         } as const
+      // The archive stores only cumulative totals, without an accepted-at
+      // timestamp. An explicit older cutoff cannot place those totals on its
+      // timeline. A default current cutoff is taken after the exclusive fence,
+      // so every committed archive is already within that cutoff.
+      if (
+        env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED === "1" &&
+        input.now !== undefined &&
+        (await tx.recommendationPrecomputedCtrArchivedVisit.count({
+          where: { experimentId: input.experimentId },
+        })) > 0
+      )
+        return {
+          status: "unavailable",
+          reason: "archive_cutoff_unverifiable",
+        } as const
       const evidence =
         env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED === "1"
           ? await readCompactEvidence(tx, input.experimentId, asOf)
@@ -1154,7 +1169,13 @@ export async function evaluatePublicPrecomputedCtr(
   }
   return evaluatePrecomputedCtrReport(prisma, {
     ...input,
-    now,
+    // The compact reader samples a current cutoff after taking the evidence
+    // fence. Preserve the native report's existing Web collection clock.
+    now:
+      env.RECOMMENDATION_PRECOMPUTED_COMPACT_REPORT_READER_ENABLED === "1" &&
+      input.now === undefined
+        ? undefined
+        : now,
     evidenceBasis: livePublic
       ? "live_public"
       : experiment?.eligibilityPolicyVersion ===

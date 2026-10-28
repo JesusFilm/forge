@@ -261,3 +261,13 @@ visits without an accepted checkpoint at the requested `asOf` remain
 unavailable; current state is never backdated. Qualification of the full
 active cohort, concurrent callback cost, larger live volumes, and safe raw
 retirement remain release work in feat-896/feat-895.
+
+Archive cutoff guard: archived visit totals have no per-archive acceptance
+timestamp. With the compact reader gate on, an explicit `asOf` and any
+archived visit now return `archive_cutoff_unverifiable` before a new report
+revision is written. A current cutoff sampled after the exclusive evidence
+fence remains supported, and an already-published final report still returns
+immutably. The real PostgreSQL regression archives evidence at a later clock
+than the requested cutoff, checks unavailable/no new revision, then checks a
+current report and published-final read. This guard does not invent archive
+timing or change the native report authority.

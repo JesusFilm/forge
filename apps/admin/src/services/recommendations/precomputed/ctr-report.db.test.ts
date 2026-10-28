@@ -391,7 +391,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       })
       const purge = await prisma.$transaction((tx) =>
-        purgeExpiredPrecomputedVisitRoots(tx, now, 100),
+        purgeExpiredPrecomputedVisitRoots(
+          tx,
+          new Date(now.getTime() + 60_000),
+          100,
+        ),
       )
       expect(purge.visitsDeleted).toBe(2)
       expect(
@@ -422,6 +426,29 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         now,
       })
       expect(after).toEqual(first)
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        const revisionCount =
+          await prisma.recommendationPrecomputedCtrReport.count({
+            where: { experimentId },
+          })
+        expect(
+          await withCompactReader(() =>
+            evaluatePrivatePrecomputedCtr(prisma, {
+              experimentId,
+              operator,
+              now,
+            }),
+          ),
+        ).toEqual({
+          status: "unavailable",
+          reason: "archive_cutoff_unverifiable",
+        })
+        expect(
+          await prisma.recommendationPrecomputedCtrReport.count({
+            where: { experimentId },
+          }),
+        ).toBe(revisionCount)
+      }
       await expect(
         prisma.recommendationPrecomputedVisit.create({
           data: {
@@ -463,7 +490,6 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           evaluatePrivatePrecomputedCtr(prisma, {
             experimentId,
             operator,
-            now,
           }),
         )
         expect(compact.status).toBe("available")
@@ -602,7 +628,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             qualification: "unverified_browser",
             arm: RecommendationExperimentArm.CONTROL,
             createdAt: new Date(now.getTime() - days(3)),
-            expiresAt: new Date(now.getTime() + days(26)),
+            expiresAt: new Date(now.getTime() + 60_000),
           },
         })
         await prisma.$transaction((tx) =>
@@ -632,12 +658,24 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             },
           },
         })
+        await prisma.$transaction((tx) =>
+          purgeExpiredPrecomputedVisitRoots(
+            tx,
+            new Date(now.getTime() + 120_000),
+            100,
+          ),
+        )
+        expect(
+          await prisma.recommendationPrecomputedCtrArchivedVisit.count({
+            where: { experimentId: finalExperimentId },
+          }),
+        ).toBe(1)
         expect(
           await withCompactReader(() =>
             evaluatePrivatePrecomputedCtr(prisma, {
               experimentId: finalExperimentId,
               operator,
-              now: new Date(now.getTime() + days(1)),
+              now,
             }),
           ),
         ).toEqual(final)
