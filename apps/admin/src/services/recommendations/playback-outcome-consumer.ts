@@ -6,6 +6,7 @@ import {
   type PlaybackDiscoverySource,
 } from "./contracts"
 import { createRecommendationIntegrityService } from "./integrity.service"
+import type { createRecommendationEventDispatcher } from "./event-history/dispatch"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import { dispatchRecommendationProfileFeedback } from "./profiles/job"
 
@@ -79,11 +80,16 @@ export async function readPlaybackOutcomeEnvelope(
 export async function dispatchPlaybackOutcomeToRecommendationConsumer(
   outcomeId: string,
   prisma: PrismaClient = defaultPrisma,
+  historyDispatcher?: Pick<
+    ReturnType<typeof createRecommendationEventDispatcher>,
+    "dispatchPrepared"
+  >,
 ): Promise<void> {
   const envelope = await readPlaybackOutcomeEnvelope(outcomeId, prisma)
   if (!envelope) return
   const receipt = await createRecommendationIntegrityService(
     prisma,
+    historyDispatcher,
   ).classifyPlaybackOutcome(envelope.outcomeId)
   if (
     receipt.state !== "eligible" ||

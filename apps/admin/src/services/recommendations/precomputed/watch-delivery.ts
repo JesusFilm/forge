@@ -300,58 +300,60 @@ async function deliverPrecomputedWatch(
       Date.now,
     )
     const acceptedRequest = committedRequest as RecommendationRequest | null
-    dispatchPreparedRecommendationEventsAfterCommit(
-      "request",
-      () => [
-        recommendationHistoryEvent({
-          family: "request",
-          logicalId: requestId,
-          revision: 1,
-          occurredAt: now,
-          acceptedAt: acceptedRequest?.createdAt ?? now,
-          expiresAt,
-          payload: {
-            requestId,
-            manifestId: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID,
-            strategyVersion: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID,
-            seedMediaId: input.seedMediaId,
-            locale: input.locale,
-            result: response.result,
-            state: RecommendationRequestState.ISSUED,
-            fallbackReason: read.coverageGap,
-            expectedItemCount: items.length,
-            issuedAt: now.toISOString(),
-            retrievalLatencyMs: Math.max(0, Date.now() - now.getTime()),
-            responseBytes,
-            experimentAssignmentId: null,
-          },
-        }),
-        ...prepared.map((entry) =>
-          recommendationHistoryEvent({
-            family: "served-item",
-            logicalId: entry.id,
-            revision: 1,
-            occurredAt: now,
-            acceptedAt: acceptedRequest?.createdAt ?? now,
-            expiresAt,
-            payload: {
-              requestId,
-              itemId: entry.id,
-              position: entry.position,
-              targetMediaId: entry.choice.videoId,
-              candidateGenerator: "precomputed",
-              audioLanguageSlug: input.audioLanguageSlug,
-              videoSlug: entry.choice.videoSlug,
-              videoTitle: entry.choice.videoTitle,
-              startSeconds: 0,
-              endSeconds: null,
-              durationSeconds: entry.choice.durationSeconds,
-            },
-          }),
-        ),
-      ],
-      prepared.length + 1,
-    )
+    dispatchPreparedRecommendationEventsAfterCommit("request", () => [
+      recommendationHistoryEvent({
+        family: "request",
+        logicalId: requestId,
+        revision: 1,
+        occurredAt: now,
+        acceptedAt: acceptedRequest?.createdAt ?? now,
+        expiresAt,
+        payload: {
+          requestId,
+          manifestId: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID,
+          strategyVersion: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID,
+          seedMediaId: input.seedMediaId,
+          locale: input.locale,
+          result: response.result,
+          state: RecommendationRequestState.ISSUED,
+          fallbackReason: read.coverageGap,
+          expectedItemCount: items.length,
+          issuedAt: now.toISOString(),
+          retrievalLatencyMs: acceptedRequest?.retrievalLatencyMs,
+          responseBytes,
+          experimentAssignmentId: null,
+        },
+      }),
+    ])
+    if (prepared.length)
+      dispatchPreparedRecommendationEventsAfterCommit(
+        "served-item",
+        () =>
+          prepared.map((entry) =>
+            recommendationHistoryEvent({
+              family: "served-item",
+              logicalId: entry.id,
+              revision: 1,
+              occurredAt: now,
+              acceptedAt: acceptedRequest?.createdAt ?? now,
+              expiresAt,
+              payload: {
+                requestId,
+                itemId: entry.id,
+                position: entry.position,
+                targetMediaId: entry.choice.videoId,
+                candidateGenerator: "precomputed",
+                audioLanguageSlug: input.audioLanguageSlug,
+                videoSlug: entry.choice.videoSlug,
+                videoTitle: entry.choice.videoTitle,
+                startSeconds: 0,
+                endSeconds: null,
+                durationSeconds: entry.choice.durationSeconds,
+              },
+            }),
+          ),
+        prepared.length,
+      )
     return response
   } catch (error) {
     return unavailable(

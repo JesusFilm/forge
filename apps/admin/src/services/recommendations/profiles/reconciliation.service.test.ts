@@ -1,8 +1,17 @@
 import type { PrismaClient } from "@prisma/client"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+const workerHistory = vi.hoisted(() => ({
+  dispatchPrepared: vi.fn(),
+  drain: vi.fn(async () => undefined),
+}))
+vi.mock("../event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../event-history/runtime")>()),
+  createConfiguredWorkerRecommendationEventDispatcher: () => workerHistory,
+}))
 import { runRecommendationProfileReconciliationBatch } from "./reconciliation.service"
 
 const NOW = new Date("2026-09-06T23:30:00.000Z")
+beforeEach(() => vi.clearAllMocks())
 
 function sqlText(value: unknown): string {
   if (
@@ -122,6 +131,7 @@ describe("profile eligibility reconciliation", () => {
       "SET LOCAL jit = off",
       "SET LOCAL max_parallel_workers_per_gather = 0",
     ])
+    expect(workerHistory.drain).toHaveBeenCalledTimes(1)
   })
 
   it("does no work when another bounded batch owns the advisory lock", async () => {

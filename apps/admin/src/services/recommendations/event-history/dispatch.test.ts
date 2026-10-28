@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createRecommendationEventEnvelope } from "./envelope"
+import {
+  createRecommendationEventEnvelope,
+  RecommendationEventEnvelopeError,
+} from "./envelope"
 import { createRecommendationEventDispatcher } from "./dispatch"
 import { RecommendationClickHouseError } from "./clickhouse"
 
@@ -20,6 +23,37 @@ describe("recommendation event dispatch", () => {
     vi.setSystemTime(new Date("2026-10-28T00:01:00.000Z"))
   })
   afterEach(() => vi.useRealTimers())
+  it("counts eligible prepared events when configuration is missing without preparing payloads", async () => {
+    const prepare = vi.fn(() => [event])
+    const misconfigured = createRecommendationEventDispatcher({
+      client: null,
+      disabledReason: "configuration",
+    })
+    misconfigured.dispatchPrepared("selection", prepare, 2)
+    expect(prepare).not.toHaveBeenCalled()
+    expect(misconfigured.snapshot().configurationDroppedEvents).toBe(2)
+    expect(misconfigured.snapshot().byFamily.selection?.dropped).toBe(2)
+
+    const deliberatelyDisabled = createRecommendationEventDispatcher({
+      client: null,
+    })
+    deliberatelyDisabled.dispatchPrepared("selection", prepare, 1)
+    expect(prepare).not.toHaveBeenCalled()
+    expect(deliberatelyDisabled.snapshot().disabledDroppedEvents).toBe(1)
+    expect(deliberatelyDisabled.snapshot().configurationDroppedEvents).toBe(0)
+    await Promise.all([misconfigured.close(), deliberatelyDisabled.close()])
+  })
+
+  it("rejects a prepared batch declared under the wrong family", async () => {
+    const insert = vi.fn().mockResolvedValue(undefined)
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+    })
+    dispatcher.dispatchPrepared("request", () => [event])
+    expect(insert).not.toHaveBeenCalled()
+    expect(dispatcher.snapshot().preparationDroppedEvents).toBe(1)
+    await dispatcher.close()
+  })
   it("starts immediately and returns before the insert settles", async () => {
     let settle!: () => void
     const insert = vi.fn(
@@ -85,6 +119,21 @@ describe("recommendation event dispatch", () => {
     expect(dispatcher.snapshot().attemptedEvents).toBe(2)
     expect(dispatcher.snapshot().failedEvents.timeout).toBe(2)
     expect(dispatcher.snapshot().confirmedEvents).toBe(0)
+  })
+
+  it("classifies typed envelope rejection as invalid input", async () => {
+    const dispatcher = createRecommendationEventDispatcher({
+      client: {
+        insert: vi
+          .fn()
+          .mockRejectedValue(
+            new RecommendationEventEnvelopeError("Invalid event JSON"),
+          ),
+      },
+    })
+    dispatcher.dispatch([event])
+    await dispatcher.drain()
+    expect(dispatcher.snapshot().failedEvents.invalid_input).toBe(1)
   })
 
   it("keeps observer and registration faults outside the delivery promise", async () => {

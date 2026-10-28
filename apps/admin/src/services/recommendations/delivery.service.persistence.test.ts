@@ -1,13 +1,41 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+const history = vi.hoisted(() => ({ dispatch: vi.fn() }))
+vi.mock("./event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: history.dispatch,
+}))
 import { runRecommendationRetrievalQuery } from "./delivery.service"
 
 import { input, makeHarness } from "./delivery.service.test-helpers"
 
 afterEach(() => {
   vi.useRealTimers()
+  history.dispatch.mockReset()
 })
 
 describe("RecommendationDeliveryService persistence and deadlines", () => {
+  it("exports the committed request latency when the clock advances before commit returns", async () => {
+    let clock = 1_000
+    const harness = makeHarness({ nowMilliseconds: () => clock })
+    harness.prisma.$transaction.mockImplementation(async (work) => {
+      const result = await work(harness.tx)
+      clock += 5_000
+      return result
+    })
+    let exportedLatency: number | null = null
+    history.dispatch.mockImplementation((family, prepare) => {
+      if (family !== "request") return
+      exportedLatency = prepare()[0]?.payload.retrievalLatencyMs as number
+    })
+    const response = await harness.service.deliver(input("clock-advance"))
+    const committed = harness.requests.get(response.requestId!) as {
+      retrievalLatencyMs: number
+    }
+    expect(exportedLatency).toBe(committed.retrievalLatencyMs)
+    expect(history.dispatch.mock.calls.map(([family]) => family)).toContain(
+      "served-item",
+    )
+  })
   it.each(["legacy", "packed"] as const)(
     "records audio and unknown stages on an empty %s request",
     async (servedItemFormat) => {

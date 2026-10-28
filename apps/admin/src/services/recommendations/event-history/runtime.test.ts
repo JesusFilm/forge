@@ -48,7 +48,9 @@ describe("recommendation event runtime", () => {
     const disabled = createWorkerRecommendationEventDispatcher({
       enabled: false,
     })
-    disabled.dispatch([event])
+    const prepare = vi.fn(() => [event])
+    disabled.dispatchPrepared("request", prepare)
+    expect(prepare).not.toHaveBeenCalled()
     expect(disabled.snapshot().disabledDroppedEvents).toBe(1)
     await disabled.close()
   })
@@ -61,7 +63,9 @@ describe("recommendation event runtime", () => {
 
   it("records missing enabled configuration as a drop", async () => {
     const runtime = createConfiguredWorkerRecommendationEventDispatcher()
-    runtime.dispatch([event])
+    const prepare = vi.fn(() => [event])
+    runtime.dispatchPrepared("request", prepare)
+    expect(prepare).not.toHaveBeenCalled()
     expect(runtime.snapshot().configurationDroppedEvents).toBe(1)
     await runtime.close()
   })

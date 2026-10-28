@@ -3,6 +3,19 @@ import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import type { RecommendationEventEnvelope } from "../event-history/envelope"
+const exportedHistory = vi.hoisted(() => ({
+  events: [] as RecommendationEventEnvelope[],
+}))
+vi.mock("../event-history/runtime", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../event-history/runtime")>()),
+  dispatchPreparedRecommendationEventsAfterCommit: (
+    family: string,
+    prepare: () => RecommendationEventEnvelope[],
+  ) => {
+    if (family === "experiment-visit") exportedHistory.events.push(...prepare())
+  },
+}))
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import { deliverPrecomputedWatchPreview } from "./watch-delivery"
 import { readPrecomputedWatchChoices } from "./watch-reader"
@@ -590,6 +603,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     it("deduplicates a visit retry and retains valid empty delivery in its assigned arm", async () => {
+      exportedHistory.events.length = 0
       const visitId = randomUUID()
       const admission = {
         visitId,
@@ -604,6 +618,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         caller,
       }
       const first = await admitPrivatePrecomputedVisit(prisma, admission)
+      const admittedRow =
+        await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+          where: { id: visitId },
+        })
+      expect(admittedRow.historyRevision).toBe(1)
+      expect(admittedRow.historyAcceptedAt).toEqual(admittedRow.createdAt)
+      expect(
+        exportedHistory.events.filter(
+          (event) => event.logicalId === `ab-visit:${visitId}`,
+        ),
+      ).toMatchObject([{ revision: 1, payload: { kind: "admission" } }])
       expect(await admitPrivatePrecomputedVisit(prisma, admission)).toEqual(
         first,
       )
@@ -621,6 +646,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           caller,
         }),
       ).toBe("recorded")
+      const correctedRow =
+        await prisma.recommendationPrecomputedVisit.findUniqueOrThrow({
+          where: { id: visitId },
+        })
+      expect(correctedRow.historyRevision).toBe(2)
+      expect(correctedRow.historyAcceptedAt!.getTime()).toBeGreaterThanOrEqual(
+        admittedRow.createdAt.getTime(),
+      )
+      expect(
+        exportedHistory.events
+          .filter((event) => event.logicalId === `ab-visit:${visitId}`)
+          .map((event) => event.revision),
+      ).toEqual([1, 2])
       const report = await loadPrivatePrecomputedVisitDiagnostics(prisma, {
         experimentId: privateExperimentId,
         reviewer: { id: "fixture-admin", role: "ADMIN" },
@@ -719,6 +757,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(new Set(links.map((link) => link.requestId))).toEqual(
         new Set([first.requestId, second.requestId]),
       )
+      expect(
+        new Set(
+          exportedHistory.events
+            .filter(
+              (event) =>
+                event.payload.kind === "request-link" &&
+                event.payload.visitId === challenger!.visitId,
+            )
+            .map((event) => event.payload.requestId),
+        ),
+      ).toEqual(new Set([first.requestId, second.requestId]))
     })
 
     it("keeps challenger delivery on the frozen generation after a newer build", async () => {

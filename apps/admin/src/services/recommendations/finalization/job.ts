@@ -199,6 +199,7 @@ export async function runRecommendationEpisodeFinalizationJob(
         await dispatchPlaybackOutcomeToRecommendationConsumer(
           result.activeOutcomeId,
           prisma,
+          historyDispatcher,
         )
       } catch (error) {
         // Re-arm the episode recovery ledger before surfacing the failure.
