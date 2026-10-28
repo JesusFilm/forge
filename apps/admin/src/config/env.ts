@@ -513,10 +513,15 @@ export const env = createEnv({
     // Opt-in isolated-schema migration/constraint proof for feat-368 U1.
     RECOMMENDATION_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_CLICKHOUSE_DB_TEST: z.enum(["1"]).optional(),
+    WATCH_COMPACT_DB_TEST: z.enum(["1"]).optional(),
     RECOMMENDATION_CLICKHOUSE_TEST_URL: z.string().url().optional(),
     RECOMMENDATION_EVENT_EXPORT_ENABLED: z
       .enum(["true", "false"])
       .default("false"),
+    WATCH_EVENT_EXPORT_ENABLED: z.enum(["true", "false"]).default("false"),
+    WATCH_COMPACT_ADMISSION_MODE: z
+      .enum(["legacy", "shadow", "compact"])
+      .default("legacy"),
     RECOMMENDATION_CLICKHOUSE_ENDPOINT: z.string().min(1).optional(),
     RECOMMENDATION_CLICKHOUSE_DATABASE: z.string().min(1).optional(),
     RECOMMENDATION_CLICKHOUSE_USERNAME: z.string().min(1).optional(),
@@ -1153,11 +1158,14 @@ export const env = createEnv({
     RECOMMENDATION_CLICKHOUSE_DB_TEST: emptyToUndefined(
       process.env.RECOMMENDATION_CLICKHOUSE_DB_TEST,
     ),
+    WATCH_COMPACT_DB_TEST: emptyToUndefined(process.env.WATCH_COMPACT_DB_TEST),
     RECOMMENDATION_CLICKHOUSE_TEST_URL: emptyToUndefined(
       process.env.RECOMMENDATION_CLICKHOUSE_TEST_URL,
     ),
     RECOMMENDATION_EVENT_EXPORT_ENABLED:
       process.env.RECOMMENDATION_EVENT_EXPORT_ENABLED,
+    WATCH_EVENT_EXPORT_ENABLED: process.env.WATCH_EVENT_EXPORT_ENABLED,
+    WATCH_COMPACT_ADMISSION_MODE: process.env.WATCH_COMPACT_ADMISSION_MODE,
     RECOMMENDATION_CLICKHOUSE_ENDPOINT: emptyToUndefined(
       process.env.RECOMMENDATION_CLICKHOUSE_ENDPOINT,
     ),

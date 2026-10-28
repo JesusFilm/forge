@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import type { Principal } from "@/auth/principal"
@@ -8,6 +8,15 @@ import {
   RecommendationInputError,
 } from "./errors"
 import { recommendationTraffic } from "./traffic"
+import { env } from "@/config/env"
+import { dispatchRecommendationEventsAfterCommit } from "./event-history/runtime"
+import type { RecommendationEventEnvelope } from "./event-history/envelope"
+import {
+  encodeWatchHistoryFact,
+  watchExactDigest,
+  watchGroupDigest,
+  type WatchHistoryFact,
+} from "./watch-event-history"
 import { WATCH_SURFACE_EXPOSURE_RETENTION_MS } from "./watch-surface-exposure-retention"
 import { registeredAnonymousWatchSurface } from "./watch-surface-registry"
 
@@ -133,6 +142,30 @@ function digestUuid(value: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-5${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`
 }
 
+function dispatchWatchFacts(facts: WatchHistoryFact[], acceptedAt: Date): void {
+  if (env.WATCH_EVENT_EXPORT_ENABLED !== "true" || facts.length === 0) return
+  const envelopes: RecommendationEventEnvelope[] = []
+  for (const fact of facts) {
+    try {
+      envelopes.push(encodeWatchHistoryFact(fact, acceptedAt))
+    } catch {
+      // Optional history must not change completed operational admission.
+      console.warn("watch_event_export_prepare_failed")
+    }
+  }
+  if (envelopes.length) {
+    try {
+      dispatchRecommendationEventsAfterCommit(envelopes)
+    } catch {
+      console.warn("watch_event_export_dispatch_failed")
+    }
+  }
+}
+
+function watchAdmissionMode(): "legacy" | "shadow" | "compact" {
+  return env.WATCH_COMPACT_ADMISSION_MODE ?? "legacy"
+}
+
 /** Only the authenticated origin may issue an already verified source manifest. */
 export async function issueWatchSurfaceDelivery(
   prisma: PrismaClient,
@@ -218,6 +251,113 @@ export async function issueWatchSurfaceDelivery(
     occurredAt: now,
     expiresAt: new Date(now.getTime() + WATCH_SURFACE_EXPOSURE_RETENTION_MS),
   }))
+  if (watchAdmissionMode() !== "legacy") {
+    const digest = createHash("sha256").update(binding).digest("hex")
+    const facts: WatchHistoryFact[] = rows.map((row) => ({
+      ...row,
+      rankId: randomUUID(),
+      receivedAt: now,
+      duplicateCount: 0,
+      revision: 1,
+    }))
+    const receipt = await prisma.$transaction(
+      async (tx): Promise<WatchSurfaceDeliveryReceipt> => {
+        await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '3000ms'")
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${windowId}, 373))`
+        const legacy = await tx.watchSurfaceExposure.findMany({
+          where: { windowId, kind: "served" },
+          orderBy: { position: "asc" },
+        })
+        if (legacy.length) {
+          const matches =
+            legacy.length === rows.length &&
+            legacy.every(
+              (row) =>
+                rows.some((expected) => expected.eventId === row.eventId) &&
+                row.expiresAt > now,
+            )
+          return {
+            windowId,
+            disposition: "measured",
+            status: matches ? "replay" : "conflict",
+            items: matches
+              ? manifest.items
+              : legacy.map(({ position, itemPath }) => ({
+                  position,
+                  itemPath,
+                })),
+          }
+        }
+        const existing = await tx.watchSurfaceIssuedWindow.findUnique({
+          where: { windowId },
+          include: { items: true },
+        })
+        if (existing) {
+          const matches =
+            existing.manifestDigest === digest &&
+            existing.expiresAt > now &&
+            existing.itemCount === rows.length &&
+            existing.items.length === rows.length &&
+            existing.items.every((item) =>
+              rows.some(
+                (row) =>
+                  row.eventId === item.servedEventId &&
+                  row.position === item.position &&
+                  row.itemPath === item.itemPath,
+              ),
+            )
+          return {
+            windowId,
+            disposition: "measured",
+            status: matches ? "replay" : "conflict",
+            items: matches
+              ? manifest.items
+              : existing.items.map(({ position, itemPath }) => ({
+                  position,
+                  itemPath,
+                })),
+          }
+        }
+        await tx.watchSurfaceIssuedWindow.create({
+          data: {
+            windowId,
+            manifestDigest: digest,
+            surface: manifest.surface,
+            block: manifest.block,
+            presentation: manifest.presentation,
+            placement: manifest.placement,
+            issuedAt: now,
+            expiresAt: rows[0].expiresAt,
+            itemCount: rows.length,
+            items: {
+              create: rows.map(({ position, itemPath, eventId }) => ({
+                position,
+                itemPath,
+                servedEventId: eventId,
+              })),
+            },
+          },
+        })
+        if (watchAdmissionMode() === "shadow")
+          await tx.watchSurfaceExposure.createMany({
+            data: rows.map((row, index) => ({
+              ...row,
+              id: facts[index].rankId,
+              receivedAt: now,
+            })),
+          })
+        return {
+          windowId,
+          disposition: "measured",
+          status: "accepted",
+          items: manifest.items,
+        }
+      },
+      { timeout: 4000, maxWait: 3000 },
+    )
+    if (receipt.status === "accepted") dispatchWatchFacts(facts, now)
+    return receipt
+  }
   return prisma.$transaction(
     async (tx): Promise<WatchSurfaceDeliveryReceipt> => {
       await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '3000ms'")
@@ -314,6 +454,61 @@ export async function recordWatchSurfaceExposureBatch(
     throw new RecommendationInputError("Watch exposure batch is invalid")
   }
   const events = raw.map((event) => parseEvent(event, now))
+  if (watchAdmissionMode() !== "legacy") {
+    const ids = [...new Set(events.map((event) => event.eventId))]
+    const windows = [
+      ...new Set(
+        events
+          .filter((event) => event.policyVersion === "watch-exposure-v2")
+          .map((event) => event.windowId),
+      ),
+    ]
+    // Pre-cutover rows lack the signed manifest source version and expiry. Keep
+    // their original authority until their recorded expiry instead of guessing.
+    const [compactWindows, compactReceipts, oldRows] = await Promise.all([
+      prisma.watchSurfaceIssuedWindow.findMany({
+        where: { windowId: { in: windows } },
+        select: { windowId: true },
+      }),
+      prisma.watchSurfaceEventReceipt.findMany({
+        where: { eventId: { in: ids } },
+        select: { eventId: true },
+      }),
+      prisma.watchSurfaceExposure.findMany({
+        where: {
+          OR: [
+            { eventId: { in: ids }, expiresAt: { gt: now } },
+            {
+              windowId: { in: windows },
+              kind: "served",
+              expiresAt: { gt: now },
+            },
+          ],
+        },
+        select: { eventId: true, windowId: true, kind: true },
+        take: 165,
+      }),
+    ])
+    const newWindows = new Set(compactWindows.map((row) => row.windowId))
+    const newReceipts = new Set(compactReceipts.map((row) => row.eventId))
+    if (
+      oldRows.some((row) =>
+        row.kind === "served"
+          ? !newWindows.has(row.windowId)
+          : !newReceipts.has(row.eventId),
+      )
+    )
+      return recordLegacyWatchSurfaceExposureBatch(prisma, events, now)
+    return recordCompactWatchSurfaceExposureBatch(prisma, events, now)
+  }
+  return recordLegacyWatchSurfaceExposureBatch(prisma, events, now)
+}
+
+async function recordLegacyWatchSurfaceExposureBatch(
+  prisma: PrismaClient,
+  events: ParsedEvent[],
+  now: Date,
+): Promise<WatchSurfaceExposureReceipt[]> {
   const issuedExpiries = await assertIssuedEvents(prisma, events, now)
   const unique = new Map<string, ParsedEvent>()
   for (const event of events) {
@@ -393,12 +588,212 @@ export async function recordWatchSurfaceExposureBatch(
   return receipts
 }
 
+async function recordCompactWatchSurfaceExposureBatch(
+  prisma: PrismaClient,
+  events: ParsedEvent[],
+  now: Date,
+): Promise<WatchSurfaceExposureReceipt[]> {
+  const windows = [...new Set(events.map((event) => event.windowId))].sort()
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const exported: WatchHistoryFact[] = []
+    try {
+      const receipts = await prisma.$transaction(
+        async (tx): Promise<WatchSurfaceExposureReceipt[]> => {
+          await tx.$executeRawUnsafe("SET LOCAL statement_timeout = '3000ms'")
+          for (const windowId of windows)
+            await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${windowId}, 373))`
+          const issued = await tx.watchSurfaceIssuedWindow.findMany({
+            where: { windowId: { in: windows }, expiresAt: { gt: now } },
+            include: { items: true },
+          })
+          const expiries = new Map<string, Date>()
+          for (const event of events) {
+            if (event.policyVersion !== "watch-exposure-v2") continue
+            const binding = issued.find(
+              (row) =>
+                row.windowId === event.windowId &&
+                row.surface === event.surface &&
+                row.block === event.block &&
+                row.presentation === event.presentation &&
+                row.placement === event.placement &&
+                row.items.some(
+                  (item) =>
+                    item.position === event.position &&
+                    item.itemPath === event.itemPath,
+                ),
+            )
+            if (!binding)
+              throw new RecommendationInputError(
+                "Watch exposure has no issued served binding",
+              )
+            expiries.set(event.eventId, binding.expiresAt)
+          }
+          const unique = new Map<string, ParsedEvent>()
+          for (const event of events)
+            if (!unique.has(event.eventId)) unique.set(event.eventId, event)
+          const existing = await tx.watchSurfaceEventReceipt.findMany({
+            where: { eventId: { in: [...unique.keys()] } },
+          })
+          const existingById = new Map(
+            existing.map((row) => [row.eventId, row]),
+          )
+          const inserted = new Set<string>()
+          for (const event of unique.values()) {
+            if (existingById.has(event.eventId)) continue
+            const rankId = randomUUID()
+            const row = await tx.watchSurfaceEventReceipt.create({
+              data: {
+                eventId: event.eventId,
+                windowId: event.windowId,
+                exactDigest: watchExactDigest(event),
+                groupDigest: watchGroupDigest(event),
+                occurredAt: event.occurredAt,
+                receivedAt: now,
+                rankId,
+                expiresAt:
+                  expiries.get(event.eventId) ??
+                  new Date(now.getTime() + WATCH_SURFACE_EXPOSURE_RETENTION_MS),
+              },
+            })
+            existingById.set(event.eventId, row)
+            inserted.add(event.eventId)
+            if (watchAdmissionMode() === "shadow")
+              await tx.watchSurfaceExposure.create({
+                data: {
+                  ...event,
+                  id: rankId,
+                  receivedAt: now,
+                  expiresAt: row.expiresAt,
+                },
+              })
+            exported.push({
+              ...event,
+              rankId,
+              receivedAt: now,
+              expiresAt: row.expiresAt,
+              duplicateCount: 0,
+              revision: 1,
+            })
+          }
+          const firstSeen = new Set<string>()
+          const replayCounts = new Map<string, number>()
+          const result: WatchSurfaceExposureReceipt[] = []
+          for (const event of events) {
+            const row = existingById.get(event.eventId)!
+            let status: WatchSurfaceExposureReceipt["status"]
+            if (row.exactDigest !== watchExactDigest(event)) status = "conflict"
+            else if (
+              !firstSeen.has(event.eventId) &&
+              inserted.has(event.eventId)
+            ) {
+              const earlier = await tx.watchSurfaceEventReceipt.findFirst({
+                where: {
+                  windowId: event.windowId,
+                  groupDigest: row.groupDigest,
+                  OR: [
+                    { occurredAt: { lt: row.occurredAt } },
+                    {
+                      occurredAt: row.occurredAt,
+                      receivedAt: { lt: row.receivedAt },
+                    },
+                    {
+                      occurredAt: row.occurredAt,
+                      receivedAt: row.receivedAt,
+                      rankId: { lt: row.rankId },
+                    },
+                  ],
+                },
+                select: { eventId: true },
+              })
+              const legacyEarlier = await tx.watchSurfaceExposure.findFirst({
+                where: {
+                  windowId: event.windowId,
+                  surface: event.surface,
+                  block: event.block,
+                  presentation: event.presentation,
+                  placement: event.placement,
+                  policyVersion: event.policyVersion,
+                  position: event.position,
+                  itemPath: event.itemPath,
+                  kind: event.kind,
+                  OR: [
+                    { occurredAt: { lt: row.occurredAt } },
+                    {
+                      occurredAt: row.occurredAt,
+                      receivedAt: { lt: row.receivedAt },
+                    },
+                    {
+                      occurredAt: row.occurredAt,
+                      receivedAt: row.receivedAt,
+                      id: { lt: row.rankId },
+                    },
+                  ],
+                },
+                select: { eventId: true },
+              })
+              status = earlier || legacyEarlier ? "repeat" : "accepted"
+            } else {
+              status = "replay"
+              replayCounts.set(
+                event.eventId,
+                (replayCounts.get(event.eventId) ?? 0) + 1,
+              )
+            }
+            firstSeen.add(event.eventId)
+            result.push({ eventId: event.eventId, status })
+          }
+          for (const [eventId, count] of replayCounts) {
+            const row = await tx.watchSurfaceEventReceipt.update({
+              where: { eventId },
+              data: {
+                duplicateCount: { increment: count },
+                revision: { increment: 1 },
+              },
+            })
+            if (watchAdmissionMode() === "shadow")
+              await tx.watchSurfaceExposure.update({
+                where: { eventId },
+                data: { duplicateCount: { increment: count } },
+              })
+            const event = unique.get(eventId)!
+            exported.push({
+              ...event,
+              rankId: row.rankId,
+              receivedAt: row.receivedAt,
+              expiresAt: row.expiresAt,
+              duplicateCount: row.duplicateCount,
+              revision: row.revision,
+            })
+          }
+          return result
+        },
+        { timeout: 4000, maxWait: 3000 },
+      )
+      dispatchWatchFacts(exported, now)
+      return receipts
+    } catch (error) {
+      if (
+        attempt === 0 &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      )
+        continue
+      throw error
+    }
+  }
+  throw new RecommendationInputError("Watch exposure collision")
+}
+
 export async function recordWatchSurfaceExposure(
   prisma: PrismaClient,
   caller: Principal | null,
   raw: unknown,
   now = new Date(),
 ): Promise<WatchSurfaceExposureReceipt> {
+  if (watchAdmissionMode() !== "legacy")
+    return (
+      await recordWatchSurfaceExposureBatch(prisma, caller, [raw], now)
+    )[0]
   assertWebRecommendationCaller(caller)
   const event = parseEvent(raw, now)
   const issuedExpiries = await assertIssuedEvents(prisma, [event], now)
