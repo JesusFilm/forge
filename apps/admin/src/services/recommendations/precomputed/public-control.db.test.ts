@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto"
-import { PrismaClient, type Prisma } from "@prisma/client"
+import { PrismaClient, Prisma } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -29,6 +29,8 @@ import {
   startSavedPrecomputedPublicExperiment,
 } from "./public-control"
 import { readControlRouting } from "./visit-admission"
+import { readPrecomputedCtrMeasurementAt } from "./compact-accounting"
+import { rawCtrVisitSql, type RawCtrVisit } from "./ctr-evidence"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
 import { deliverPrecomputedPublicWatchVisit } from "./public-watch"
 import * as incumbentService from "../delivery.service"
@@ -865,13 +867,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           readRevokedKids: async () => [],
         }),
       }
+      const clickableInput = {
+        ...visitInput(),
+        seedMediaId: linkedSource,
+        browserDigest: challengerBrowser,
+      }
       const clickable = await deliverPrecomputedPublicWatchVisit(
         prisma,
-        {
-          ...visitInput(),
-          seedMediaId: linkedSource,
-          browserDigest: challengerBrowser,
-        },
+        clickableInput,
         tokens,
       )
       expect(clickable).toMatchObject({
@@ -898,6 +901,26 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       expect((await episode.select(selectionInput)).status).toBe("accepted")
       expect((await episode.select(selectionInput)).status).toBe("replay")
+      if (env.RECOMMENDATION_PRECOMPUTED_COMPACT_MEASUREMENT_ENABLED === "1") {
+        const asOf = new Date()
+        const [native] = await prisma.$queryRaw<RawCtrVisit[]>(
+          rawCtrVisitSql(
+            Prisma.sql`v.id = ${clickableInput.visitId}::uuid`,
+            asOf,
+          ),
+        )
+        const shadow = await readPrecomputedCtrMeasurementAt(
+          prisma,
+          clickableInput.visitId,
+          asOf,
+        )
+        expect(native.accepted_selections).toBe(1n)
+        expect(shadow?.summary).toMatchObject({
+          accepted_selections: native.accepted_selections.toString(),
+          qualified_impressions: native.qualified_impressions.toString(),
+          claimed_playbacks: native.claimed_playbacks.toString(),
+        })
+      }
       for (const trafficCategory of ["declared_crawler", "unknown"] as const) {
         const excluded = { ...visitInput(), trafficCategory }
         expect(

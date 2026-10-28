@@ -1,18 +1,12 @@
 // Fixed server-side report. Revision acceptance precedes latest selection;
 // original expiry and terminal erasure apply to the selected revision.
 export const WATCH_EXPOSURE_BREAKDOWN_SQL = `WITH
-revision_rows AS (
-  SELECT logical_id, revision,
-    any(occurred_at) AS canonical_occurred_at,
-    any(expires_at) AS canonical_expires_at,
-    any(payload) AS canonical_payload
+canonical AS (
+  SELECT logical_id,
+    argMax(tuple(occurred_at, expires_at, payload), revision) AS selected_revision
   FROM recommendation_event_history
   WHERE family = 'watch-exposure' AND accepted_at <= {as_of:String}
-  GROUP BY logical_id, revision
-), canonical AS (
-  SELECT logical_id,
-    argMax(tuple(canonical_occurred_at, canonical_expires_at, canonical_payload), revision) AS selected_revision
-  FROM revision_rows GROUP BY logical_id
+  GROUP BY logical_id
 ), current_facts AS (
   SELECT logical_id,
     tupleElement(selected_revision, 1) AS occurred_at,
@@ -35,15 +29,6 @@ revision_rows AS (
       SELECT logical_id FROM recommendation_event_erasure
       WHERE family = 'watch-exposure'
     )
-), cohort AS (
-  SELECT DISTINCT window_id FROM current_facts
-  WHERE occurred_at >= {start:String} AND occurred_at < {end:String}
-    AND received_at < {end:String}
-    AND ({filter:UInt8} = 0 OR
-      (surface = {surface:String} AND block = {block:String}
-       AND presentation = {presentation:String}
-       AND ({has_placement:UInt8} = 0 OR placement = {placement:String})
-       AND ({has_policy:UInt8} = 0 OR policy_version = {policy:String})))
 ), ranked AS (
   SELECT fact.*,
     row_number() OVER (
@@ -51,7 +36,7 @@ revision_rows AS (
         policy_version, position, item_path, kind
       ORDER BY occurred_at, received_at, rank_id
     ) AS ordinal
-  FROM current_facts fact INNER JOIN cohort USING (window_id)
+  FROM current_facts fact
   WHERE occurred_at < {end:String} AND received_at < {end:String}
     AND ({filter:UInt8} = 0 OR
       (surface = {surface:String} AND block = {block:String}

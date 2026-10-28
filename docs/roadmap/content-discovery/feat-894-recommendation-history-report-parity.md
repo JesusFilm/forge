@@ -31,7 +31,9 @@ registry filter and 128-group cap, chooses each event ID's latest accepted revis
 `asOf`, then applies current original expiry and terminal erasure. It ranks
 facts by original occurredAt/receivedAt/rankId within exact
 window/surface/block/presentation/placement/policy/position/path/kind partitions.
-The cohort and received cutoff match the existing PostgreSQL query. The HTTP
+The received cutoff matches the existing PostgreSQL query. The in-window cohort
+is implicit in the final fact filter, so the report no longer rescans all
+canonical facts to construct a distinct window set. The HTTP
 client uses fixed parameterized SQL, one operation deadline, a three-second
 server query limit, 20-million physical-row scan / 1 GiB memory / 129-result
 caps, and strict output decoding. The dated production snapshot's 391,960
@@ -42,6 +44,40 @@ Pre-cutover legacy duplicate corrections are backfilled with checkpoint
 acceptance time because their original correction admission time is unavailable;
 historical `asOf` reports before that checkpoint cannot reconstruct those
 corrections exactly.
+
+Capacity investigation on the isolated ClickHouse 25.8.15.35 container used
+the actual typed reader and its unchanged 3-second operation/server deadlines,
+20-million scanned-row limit, 1 GiB memory cap, and two-thread setting. On a
+clean 400,000-row synthetic Watch fixture, removing the duplicate revision
+aggregation and redundant cohort scan and enabling in-order aggregation
+returned the expected 100,000 served/rendered/eligible/selected counts in
+2,755 ms client elapsed. The main query read 400,000 rows in 2,117 ms with
+491,497,847 bytes peak memory; the exact conflict audit separately read
+400,000 rows in 601 ms with 365,693,203 bytes peak. The previous query
+timed out at 400,000 rows in the same local setup. All ten real ClickHouse
+Watch semantic tests pass, including historical acceptance, erasure, physical
+same-revision conflicts, filtered conflicts and filter-before-cap.
+
+This is a bounded improvement, not 14-day capacity qualification. At 1,000,000
+synthetic rows, the actual reader still timed out at 3,005 ms; the
+`system.query_log` main-query record was `ExceptionWhileProcessing`,
+3,200 ms, 940,672 `read_rows`, 877,332,058 bytes `memory_usage`, exception
+code 159. The 400,000-row result has only ~245 ms of client deadline
+headroom and cannot support a production scale claim. The fixture has one
+repeated surface/block and no correction density, and the local container's
+CPU, memory, and load do not represent Railway sizing. The report scans history
+and the independent conflict audit each time; this work adds no stored summary
+or second authoritative stream. A same-table materialized tuple of Watch
+JSON fields fed to `argMax` backfilled one million rows, but the main query
+reached 1,011,484,933 bytes peak before timing out. A two-stage
+`GROUP BY` on Watch item/kind followed by item aggregation removed window
+sorting and passed the ten semantic tests, but at one million rows it reached
+1,033,241,604 bytes peak after only 817,792 reads. Both experiments were
+discarded and no projection or materialized column is in the shipped schema.
+The generic real ClickHouse suite (six canonical/read/erase tests) and 16
+client unit tests also pass. Before enabling the 14-day reader, feat-896 needs an actual
+resource-sized load test and a design that preserves exact as-of revision and
+conflict semantics within the existing budget. No production DDL was applied.
 
 `admin-ops/watch-exposure.service.ts` maps this query to the existing anonymous
 breakdown fields and returns `coverage: best_effort_incomplete`; V1 served stays
@@ -89,3 +125,29 @@ fallback, click, impression, and playback/outcome counters needed by
 ClickHouse can then serve explicitly incomplete historical drilldown, while
 the compact state supports live/final reports and one-way archive without a
 permanent second raw history store. No report authority has switched yet.
+
+Compact measurement qualification slice (default off): migration `0167` adds
+`recommendation_precomputed_ctr_measurement` with `(visit_id, revision)` key,
+`accepted_at`, and a derived JSON summary. The summary contains the existing
+per-visit CTR/engagement counters, eligibility/arm/delivery flags, pending
+deadlines and cutoff ceiling; it does not copy browser, request, item, episode,
+consent, session, token, or payload identifiers. The visit foreign key
+cascades snapshots when the 29-day operational root is archived and purged;
+the existing archive totals and PG-only browser clusters remain the long-lived
+measurement authority. A flag gates transaction-local snapshots at admission,
+delivery/link, evidence, selection, claim, and outcome commits. Snapshot
+revision selection supports earlier report cutoffs; finalized pending counts
+advance across hard-until time without another write and stop at the cohort
+ceiling. Real PostgreSQL tests compare selected derived values with the native
+reader for public selection and corrected playback outcome, and verify replay
+and rollback do not advance snapshots.
+
+This is shadow qualification, not a reader cutover. Legacy rows lack earlier
+snapshot lineage, full differential parity for late/unqualified evidence,
+cluster moments and archive transitions is not yet established, and added
+transaction cost at production scale is unmeasured. `ctr-report.ts`,
+`engagement-report.ts`, `visit-clicks.ts`, `ctr-evidence.ts`,
+`engagement-evidence.ts`, and `visit-retention.ts` still read operational raw
+evidence. Keep the flag off and feat-894 in-progress until those dependencies
+and rollback safety are qualified; ClickHouse delivery loss is not a source
+of live report authority.

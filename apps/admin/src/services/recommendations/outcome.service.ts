@@ -20,6 +20,7 @@ import {
   type LegacyPositionOutcome,
 } from "./contracts"
 import { recommendationEvidenceDigest } from "./evidence.service"
+import { capturePrecomputedCtrMeasurementForRequest } from "./precomputed/compact-accounting"
 import { RecommendationConflictError } from "./errors"
 import {
   lockRecommendationEpisode,
@@ -475,6 +476,12 @@ export class RecommendationOutcomeService {
               (result) =>
                 result.classifierVersion === ACTIVE_WATCH_PROXY_VERSION,
             )
+            if (publishedRows.length && episode.requestId)
+              await capturePrecomputedCtrMeasurementForRequest(
+                tx,
+                episode.requestId,
+                now,
+              )
             return {
               status: results.some((result) => result.status === "published")
                 ? ("published" as const)

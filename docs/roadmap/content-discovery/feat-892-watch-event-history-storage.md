@@ -42,4 +42,14 @@ Bounded scheduled retention now drains compact receipts (100), issued items
 The run ledger counts committed rows, reports remaining expired compact state,
 and yields without advancing the success watermark. Isolated PostgreSQL tests
 cover multiple pages, live rows, a failed child transaction, and a pre-work
-budget yield. Storage allocation and production-cycle evidence remain pending.
+budget yield. The shared recommendation test schema includes the compact Watch
+tables because ordinary recommendation retention now sweeps them; the existing
+profile candidate/projection PostgreSQL CI entry point passes all 20 tests.
+
+A local synthetic comparison used 2,000 six-item windows and 38,000 Watch
+events: the original exposure table occupied 24,461,312 bytes and the compact
+receipt/item/window tables occupied 19,824,640 bytes after `VACUUM ANALYZE`,
+18.96% less. This fixture has no production skew, duplicates, concurrent traffic
+or prior bloat. It proves neither production savings nor filesystem reclamation;
+remaining admission/replay state still has a substantial storage cost.
+Production allocation and ordinary-cycle evidence remain pending.

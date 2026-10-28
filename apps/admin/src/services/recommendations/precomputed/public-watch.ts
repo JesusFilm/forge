@@ -20,6 +20,7 @@ import {
 } from "./ctr-report"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { capturePrecomputedCtrMeasurement } from "./compact-accounting"
 import {
   assertIsolatedPrecomputedControlFixture,
   loadPrecomputedPublicControl,
@@ -378,7 +379,8 @@ async function admitPublicVisit(
           inserted.count === 1 &&
           visit.historyRevision &&
           visit.historyAcceptedAt
-        )
+        ) {
+          await capturePrecomputedCtrMeasurement(tx, visit.id, now)
           committedHistory = {
             scope: "ab",
             snapshot: {
@@ -402,6 +404,7 @@ async function admitPublicVisit(
               fallbackReason: visit.fallbackReason,
             },
           }
+        }
         return {
           ...base,
           status: "eligible",

@@ -24,6 +24,7 @@ const WATCH_REPORT_SETTINGS = {
   result_overflow_mode: "throw",
   max_memory_usage: "1073741824",
   max_threads: "2",
+  optimize_aggregation_in_order: "1",
 }
 
 export class RecommendationClickHouseError extends Error {

@@ -6981,10 +6981,25 @@ model RecommendationPrecomputedVisit {
   createdAt DateTime @default(now()) @map("created_at")
   expiresAt DateTime @map("expires_at")
   requests RecommendationPrecomputedVisitRequest[]
+  measurementSnapshots RecommendationPrecomputedCtrMeasurement[]
 
   @@index([experimentId, eligibility, arm, createdAt], map: "recommendation_precomputed_visit_report_idx")
   @@index([expiresAt, id], map: "recommendation_precomputed_visit_expiry_idx")
   @@map("recommendation_precomputed_visit")
+}
+
+/// Derived per-visit report state captured at each accepted operational change.
+/// No request, item, episode, browser, or payload identifiers are copied here.
+model RecommendationPrecomputedCtrMeasurement {
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  revision Int
+  acceptedAt DateTime @map("accepted_at") @db.Timestamptz(6)
+  summary Json @db.JsonB
+
+  @@id([visitId, revision])
+  @@index([visitId, acceptedAt], map: "recommendation_precomputed_ctr_measurement_cutoff_idx")
+  @@map("recommendation_precomputed_ctr_measurement")
 }
 
 /// A thin request-to-visit lineage for retries and later click attribution.
