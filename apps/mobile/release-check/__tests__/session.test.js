@@ -418,6 +418,66 @@ describe("build folders", () => {
     },
   )
 
+  it("makes a new build while a journey and its three lists have uncommitted changes", async () => {
+    const home = tempDir("release-check-session-")
+    const builds = []
+    const { deps } = baseDeps(home, CONFIG_DIR, {
+      git: {
+        head: async () => COMMIT,
+        dirty: async () => [
+          "apps/mobile/release-check/journeys/new-journey.yaml",
+          "apps/mobile/release-check/config/not-tested.json",
+          "apps/mobile/release-check/config/screens.json",
+          "apps/mobile/release-check/config/search-answers.json",
+        ],
+        show: async () => ADMIN_SCHEMA_SDL,
+      },
+      build: {
+        checkArtifact: async () => ({ findings: [] }),
+        buildTestApps: async ({ buildDir, platforms }) => {
+          builds.push(platforms)
+          const app = path.join(buildDir, "ios", "forgewatch.app")
+          fs.mkdirSync(app, { recursive: true })
+          return { ok: true, platforms: { ios: { artifact: app } } }
+        },
+      },
+    })
+
+    const build = await checkedBuild(deps, {
+      platforms: ["ios"],
+      signal: new AbortController().signal,
+    })
+
+    expect(builds).toEqual([["ios"]])
+    expect(build.built).toEqual(["ios"])
+  })
+
+  it("refuses a new build for an app change or a test settings change, and names only those files", async () => {
+    const home = tempDir("release-check-session-")
+    const { deps } = baseDeps(home, CONFIG_DIR, {
+      git: {
+        head: async () => COMMIT,
+        dirty: async () => [
+          "apps/mobile/release-check/journeys/new-journey.yaml",
+          "apps/mobile/release-check/config/test-settings.json",
+          "apps/mobile/src/lib/config.ts",
+        ],
+        show: async () => ADMIN_SCHEMA_SDL,
+      },
+    })
+
+    const refused = await checkedBuild(deps, {
+      platforms: ["ios"],
+      signal: new AbortController().signal,
+    }).catch((error) => error)
+
+    expect(refused).toMatchObject({ code: "DIRTY_BUILD_INPUTS", refused: true })
+    expect(refused.message).toContain(
+      "Commit or stash these files: apps/mobile/release-check/config/test-settings.json, apps/mobile/src/lib/config.ts",
+    )
+    expect(refused.message).not.toContain("new-journey.yaml")
+  })
+
   it("removes no build while a run holds the lock", async () => {
     const home = tempDir("release-check-session-")
     otherBuilds(home)
