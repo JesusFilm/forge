@@ -70,9 +70,11 @@ presentation/provenance and reviewed semantic, curated, profile, co-watch,
 baseline and composition-input source scalars. Unknown fields, signed image
 URLs, profile projection digests, arbitrary source provenance and private
 viewing-mode maps are omitted with explicit redacted coverage. A checkpointed
-backfill reader expands one bounded root at a time, limits output to 100
-events/1 MiB, and resumes by request ID and within-root offset; it does not
-queue live exports. Service tests compare identical live/backfill envelopes for
+backfill reader preflights complete SQL row sizes and child counts in the same
+repeatable-read snapshot before loading JSON, expands one bounded root at a
+time, limits output to 100 events/1 MiB, and resumes by request ID and
+within-root offset; it does not queue live exports. A PostgreSQL test rejects
+an oversized legacy item without hydrating its payload. Service tests compare identical live/backfill envelopes for
 legacy and packed traces; PostgreSQL tests compare precomputed live output to
 the saved row and bounded page reader. The gate remains off by default.
 

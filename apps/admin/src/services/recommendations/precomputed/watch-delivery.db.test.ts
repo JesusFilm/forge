@@ -318,6 +318,50 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { id: empty.requestId! },
         }),
       ).toMatchObject({ expectedItemCount: 0, result: "EMPTY" })
+
+      // Legacy item JSON is independently unbounded in the old schema. The
+      // refusal path may fetch only scalar sizes, never this payload.
+      await prisma.recommendationServedItem.update({
+        where: { id: oneSaved.items[0]!.id },
+        data: { presentation: { padding: "x".repeat(9 * 1_048_576) } },
+      })
+      const hydrated = vi.fn()
+      const boundedDb = {
+        $transaction: (
+          work: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          options: { isolationLevel: Prisma.TransactionIsolationLevel },
+        ) =>
+          prisma.$transaction(
+            async (tx) =>
+              work({
+                recommendationRequest: {
+                  findUnique: async (args: {
+                    where: { id: string }
+                    include?: unknown
+                  }) => {
+                    if (args.include) {
+                      hydrated()
+                      throw new Error("Unbounded payload was hydrated")
+                    }
+                    return tx.recommendationRequest.findUnique({
+                      where: args.where,
+                      select: { id: true, expiresAt: true },
+                    })
+                  },
+                },
+                $queryRaw: tx.$queryRaw.bind(tx),
+              } as unknown as Prisma.TransactionClient),
+            options,
+          ),
+      } as unknown as PrismaClient
+      await expect(
+        readRecommendationTraceHistoryPage(
+          boundedDb,
+          { kind: "within", requestId: oneSaved.id, offset: 0 },
+          { now: oneSaved.createdAt },
+        ),
+      ).rejects.toMatchObject({ code: "history_root_byte_limit" })
+      expect(hydrated).not.toHaveBeenCalled()
     })
 
     it("treats changed exact audio as valid empty but an absent source row as technical", async () => {

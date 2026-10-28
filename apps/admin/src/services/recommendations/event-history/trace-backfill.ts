@@ -1,4 +1,8 @@
-import type { Prisma, PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
+import {
+  RecommendationInputError,
+  RecommendationInternalStateError,
+} from "../errors"
 import type { RecommendationEventEnvelope } from "./envelope"
 import {
   candidateRunHistoryEvent,
@@ -24,6 +28,17 @@ const include = {
   },
 } satisfies Prisma.RecommendationRequestInclude
 
+const ROOT_BYTE_LIMIT = 8 * 1_048_576
+
+type RootSize = {
+  requestBytes: bigint
+  runBytes: bigint
+  itemCount: bigint
+  itemBytes: bigint
+  stageCount: bigint
+  stageBytes: bigint
+}
+
 /** One bounded request root per read. The returned cursor is caller-checkpointed. */
 export async function readRecommendationTraceHistoryPage(
   prisma: PrismaClient,
@@ -45,59 +60,105 @@ export async function readRecommendationTraceHistoryPage(
     maxBytes < 1 ||
     maxBytes > 1_048_576
   )
-    throw new Error("Invalid bounded history page")
+    throw new RecommendationInputError("Invalid bounded history page")
   if (
     cursor?.kind === "within" &&
     (!Number.isSafeInteger(cursor.offset) ||
       cursor.offset < 0 ||
       cursor.offset > 514)
   )
-    throw new Error("Invalid history cursor")
+    throw new RecommendationInputError("Invalid history cursor")
 
-  const root =
-    cursor?.kind === "within"
-      ? await prisma.recommendationRequest.findUnique({
-          where: { id: cursor.requestId },
-          include,
-        })
-      : await prisma.recommendationRequest.findFirst({
-          where: {
-            expiresAt: { gt: now },
-            ...(cursor ? { id: { gt: cursor.requestId } } : {}),
-          },
-          orderBy: { id: "asc" },
-          include,
-        })
-  if (!root)
-    return cursor?.kind === "within"
-      ? {
-          events: [],
-          cursor: { kind: "after", requestId: cursor.requestId },
-          done: false,
-        }
-      : { events: [], cursor, done: true }
-  if (root.expiresAt <= now)
+  // Size every SQL row, including legacy item JSON, before Prisma transfers
+  // any payload. Preflight and hydration share the same repeatable-read view.
+  const lookup = await prisma.$transaction(
+    async (tx) => {
+      const candidate =
+        cursor?.kind === "within"
+          ? await tx.recommendationRequest.findUnique({
+              where: { id: cursor.requestId },
+              select: { id: true, expiresAt: true },
+            })
+          : await tx.recommendationRequest.findFirst({
+              where: {
+                expiresAt: { gt: now },
+                ...(cursor ? { id: { gt: cursor.requestId } } : {}),
+              },
+              orderBy: { id: "asc" },
+              select: { id: true, expiresAt: true },
+            })
+      if (!candidate || candidate.expiresAt <= now)
+        return { kind: "unavailable" as const, candidate }
+      const [size] = await tx.$queryRaw<RootSize[]>`
+        SELECT
+          octet_length(row_to_json(r)::text)::bigint AS "requestBytes",
+          coalesce(octet_length(row_to_json(cr)::text), 0)::bigint AS "runBytes",
+          i.item_count AS "itemCount",
+          i.item_bytes AS "itemBytes",
+          s.stage_count AS "stageCount",
+          s.stage_bytes AS "stageBytes"
+        FROM recommendation_request r
+        LEFT JOIN recommendation_candidate_run cr ON cr.request_id = r.id
+        CROSS JOIN LATERAL (
+          SELECT count(*)::bigint AS item_count,
+            coalesce(sum(octet_length(row_to_json(si)::text)), 0)::bigint AS item_bytes
+          FROM recommendation_served_item si WHERE si.request_id = r.id
+        ) i
+        CROSS JOIN LATERAL (
+          SELECT count(*)::bigint AS stage_count,
+            coalesce(sum(octet_length(row_to_json(se)::text)), 0)::bigint AS stage_bytes
+          FROM recommendation_candidate_stage_evidence se WHERE se.run_id = cr.id
+        ) s
+        WHERE r.id = ${candidate.id}
+      `
+      if (!size)
+        throw new RecommendationInternalStateError("history_root_changed")
+      if (size.itemCount > 64n)
+        throw new RecommendationInternalStateError("history_item_limit")
+      if (size.stageCount > 448n)
+        throw new RecommendationInternalStateError("history_stage_limit")
+      if (
+        size.requestBytes + size.runBytes + size.itemBytes + size.stageBytes >
+        BigInt(ROOT_BYTE_LIMIT)
+      )
+        throw new RecommendationInternalStateError("history_root_byte_limit")
+      const root = await tx.recommendationRequest.findUnique({
+        where: { id: candidate.id },
+        include,
+      })
+      if (!root)
+        throw new RecommendationInternalStateError("history_root_changed")
+      return { kind: "ready" as const, root }
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      maxWait: 2_000,
+      timeout: 10_000,
+    },
+  )
+  if (lookup.kind === "unavailable") {
+    if (!lookup.candidate)
+      return cursor?.kind === "within"
+        ? {
+            events: [],
+            cursor: { kind: "after", requestId: cursor.requestId },
+            done: false,
+          }
+        : { events: [], cursor, done: true }
     return {
       events: [],
-      cursor: { kind: "after", requestId: root.id },
+      cursor: { kind: "after", requestId: lookup.candidate.id },
       done: false,
     }
-  if (root.items.length > 64) throw new Error("Served item page exceeds limit")
+  }
+  const root = lookup.root
+  if (root.items.length > 64)
+    throw new RecommendationInternalStateError("history_item_limit")
   const run = root.candidateRun
   if (run && run.stageEvidence.length > 448)
-    throw new Error("Candidate trace exceeds stage limit")
-  if (
-    Buffer.byteLength(
-      JSON.stringify({
-        servedItemPayload: root.servedItemPayload,
-        deliveryDiagnostics: root.deliveryDiagnostics,
-        tracePayload: run?.tracePayload,
-        stageEvidence: run?.stageEvidence,
-      }),
-    ) >
-    8 * 1_048_576
-  )
-    throw new Error("Recommendation history root exceeds byte limit")
+    throw new RecommendationInternalStateError("history_stage_limit")
+  if (Buffer.byteLength(JSON.stringify(root)) > ROOT_BYTE_LIMIT)
+    throw new RecommendationInternalStateError("history_root_byte_limit")
   const stages = run ? storedCandidateStageRows(run, run.stageEvidence) : []
   stages.sort(
     (a, b) =>
@@ -130,7 +191,9 @@ export async function readRecommendationTraceHistoryPage(
     const size = Buffer.byteLength(JSON.stringify(event))
     if (bytes + size > maxBytes) {
       if (events.length === 0)
-        throw new Error("History event exceeds page byte limit")
+        throw new RecommendationInternalStateError(
+          "history_event_page_byte_limit",
+        )
       break
     }
     events.push(event)

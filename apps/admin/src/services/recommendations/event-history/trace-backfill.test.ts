@@ -72,9 +72,28 @@ const request = {
 
 describe("bounded recommendation trace backfill", () => {
   it("resumes within one root without re-emitting prior identities", async () => {
-    const findFirst = vi.fn(async () => request)
-    const findUnique = vi.fn(async () => request)
-    const db = { recommendationRequest: { findFirst, findUnique } } as never
+    const findFirst = vi.fn(async ({ select }: { select?: unknown }) =>
+      select ? { id: request.id, expiresAt } : request,
+    )
+    const findUnique = vi.fn(async ({ select }: { select?: unknown }) =>
+      select ? { id: request.id, expiresAt } : request,
+    )
+    const tx = {
+      recommendationRequest: { findFirst, findUnique },
+      $queryRaw: vi.fn(async () => [
+        {
+          requestBytes: 100n,
+          runBytes: 100n,
+          itemCount: 0n,
+          itemBytes: 0n,
+          stageCount: 3n,
+          stageBytes: 300n,
+        },
+      ]),
+    }
+    const db = {
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never
     const first = await readRecommendationTraceHistoryPage(db, null, {
       maxEvents: 2,
     })
@@ -100,15 +119,28 @@ describe("bounded recommendation trace backfill", () => {
     expect(third.events.map((event) => event.logicalId)).toEqual(["stage-2"])
     expect(third.cursor).toEqual({ kind: "after", requestId: "request-1" })
     expect(findFirst).toHaveBeenCalledTimes(1)
-    expect(findUnique).toHaveBeenCalledTimes(2)
+    expect(findUnique).toHaveBeenCalledTimes(5)
   })
 
   it("caps emitted bytes and rejects unbounded roots", async () => {
-    const db = {
+    const tx = {
       recommendationRequest: {
-        findFirst: vi.fn(async () => request),
-        findUnique: vi.fn(),
+        findFirst: vi.fn(async () => ({ id: request.id, expiresAt })),
+        findUnique: vi.fn(async () => request),
       },
+      $queryRaw: vi.fn(async () => [
+        {
+          requestBytes: 100n,
+          runBytes: 100n,
+          itemCount: 0n,
+          itemBytes: 0n,
+          stageCount: 3n,
+          stageBytes: 300n,
+        },
+      ]),
+    }
+    const db = {
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
     } as never
     const page = await readRecommendationTraceHistoryPage(db, null, {
       maxEvents: 100,
@@ -126,14 +158,70 @@ describe("bounded recommendation trace backfill", () => {
         })),
       },
     }
-    const bad = {
+    const badTx = {
       recommendationRequest: {
-        findFirst: vi.fn(async () => oversized),
-        findUnique: vi.fn(),
+        findFirst: vi.fn(async () => ({ id: request.id, expiresAt })),
+        findUnique: vi.fn(async () => oversized),
       },
+      $queryRaw: vi.fn(async () => [
+        {
+          requestBytes: 100n,
+          runBytes: 100n,
+          itemCount: 0n,
+          itemBytes: 0n,
+          stageCount: 449n,
+          stageBytes: 300n,
+        },
+      ]),
+    }
+    const bad = {
+      $transaction: async (work: (client: typeof badTx) => unknown) =>
+        work(badTx),
     } as never
-    await expect(readRecommendationTraceHistoryPage(bad, null)).rejects.toThrow(
-      /stage limit/,
-    )
+    await expect(
+      readRecommendationTraceHistoryPage(bad, null),
+    ).rejects.toMatchObject({
+      code: "history_stage_limit",
+    })
+  })
+
+  it("rejects an oversized packed root before hydration", async () => {
+    const hydrate = vi.fn()
+    const tx = {
+      recommendationRequest: {
+        findFirst: vi.fn(async () => ({ id: request.id, expiresAt })),
+        findUnique: hydrate,
+      },
+      $queryRaw: vi.fn(async () => [
+        {
+          requestBytes: 9n * 1_048_576n,
+          runBytes: 0n,
+          itemCount: 0n,
+          itemBytes: 0n,
+          stageCount: 0n,
+          stageBytes: 0n,
+        },
+      ]),
+    }
+    const db = {
+      $transaction: async (work: (client: typeof tx) => unknown) => work(tx),
+    } as never
+    await expect(
+      readRecommendationTraceHistoryPage(db, null),
+    ).rejects.toMatchObject({
+      code: "history_root_byte_limit",
+    })
+    expect(hydrate).not.toHaveBeenCalled()
+  })
+
+  it("classifies invalid page parameters without reading storage", async () => {
+    const transaction = vi.fn()
+    const db = { $transaction: transaction } as never
+    await expect(
+      readRecommendationTraceHistoryPage(db, null, { maxEvents: 101 }),
+    ).rejects.toMatchObject({
+      code: "invalid_input",
+    })
+    expect(transaction).not.toHaveBeenCalled()
   })
 })

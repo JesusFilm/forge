@@ -1,4 +1,8 @@
 import { readDeliveryDiagnostics } from "../delivery-diagnostics"
+import {
+  RecommendationInputError,
+  RecommendationInternalStateError,
+} from "../errors"
 import { servedSnapshotValue } from "../served-item-payload"
 import type { Prisma } from "@prisma/client"
 import { recommendationHistoryEvent } from "./producers"
@@ -488,19 +492,21 @@ export function storedCandidateStageRows(
 ): StageRow[] {
   if (run.tracePayload == null) {
     if (legacyRows.length > 448)
-      throw new Error("Candidate trace exceeds stage limit")
+      throw new RecommendationInternalStateError("history_stage_limit")
     return [...legacyRows]
   }
   const payload = record(run.tracePayload)
   if (!payload || !Array.isArray(payload.stages) || payload.stages.length > 448)
-    throw new Error("Unsupported bounded candidate trace")
+    throw new RecommendationInternalStateError("history_packed_trace_invalid")
   return payload.stages.map((value) => {
     const stage = record(value)
     if (!stage || typeof stage.createdAt !== "string")
-      throw new Error("Invalid packed candidate stage")
+      throw new RecommendationInternalStateError("history_packed_stage_invalid")
     const createdAt = new Date(stage.createdAt)
     if (Number.isNaN(createdAt.getTime()))
-      throw new Error("Invalid packed stage time")
+      throw new RecommendationInternalStateError(
+        "history_packed_stage_time_invalid",
+      )
     return {
       ...stage,
       runId: run.id,
@@ -522,14 +528,18 @@ export function encodeRecommendationHistoryPage(
   records: readonly PageRecord[],
 ): RecommendationEventEnvelope[] {
   if (records.length > 256)
-    throw new Error("Recommendation history page exceeds limit")
+    throw new RecommendationInputError(
+      "Recommendation history page exceeds limit",
+    )
   const events: RecommendationEventEnvelope[] = []
   let bytes = 0
   const append = (event: RecommendationEventEnvelope) => {
     events.push(event)
     bytes += Buffer.byteLength(JSON.stringify(event))
     if (events.length > 256 || bytes > 1_048_576)
-      throw new Error("Recommendation history page exceeds limit")
+      throw new RecommendationInputError(
+        "Recommendation history page exceeds limit",
+      )
   }
   for (const record of records) {
     append(requestHistoryEvent(record.request))
