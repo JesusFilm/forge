@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto"
 import { env } from "@/config/env"
 import type { Principal } from "@/auth/principal"
+import { recommendationHistoryEvent } from "../event-history/producers"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "../event-history/runtime"
 import {
   RecommendationAuditKind,
   RecommendationDeliveryResult,
   RecommendationRequestState,
+  type RecommendationRequest,
   type PrismaClient,
 } from "@prisma/client"
 import { buildCanonicalWatchVideoPath } from "@forge/watch-url-policy/routes"
@@ -207,6 +210,7 @@ async function deliverPrecomputedWatch(
     if (responseBytes > MAX_DELIVERY_RESPONSE_BYTES)
       return unavailable("precomputed_response_oversized", read.generationId)
     sourceRecheckStarted = true
+    let committedRequest: RecommendationRequest | null = null
     await runRecommendationDeliveryTransaction(
       prisma,
       deadlineAt,
@@ -216,7 +220,7 @@ async function deliverPrecomputedWatch(
         if (!(await verifyPrecomputedSourceEligibility(tx, input)))
           throw new Error("source_unavailable")
         sourceRecheckPassed = true
-        await tx.recommendationRequest.create({
+        committedRequest = await tx.recommendationRequest.create({
           data: {
             id: requestId,
             contractVersion: RECOMMENDATION_CONTRACTS.delivery,
@@ -294,6 +298,59 @@ async function deliverPrecomputedWatch(
         })
       },
       Date.now,
+    )
+    const acceptedRequest = committedRequest as RecommendationRequest | null
+    dispatchPreparedRecommendationEventsAfterCommit(
+      "request",
+      () => [
+        recommendationHistoryEvent({
+          family: "request",
+          logicalId: requestId,
+          revision: 1,
+          occurredAt: now,
+          acceptedAt: acceptedRequest?.createdAt ?? now,
+          expiresAt,
+          payload: {
+            requestId,
+            manifestId: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID,
+            strategyVersion: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID,
+            seedMediaId: input.seedMediaId,
+            locale: input.locale,
+            result: response.result,
+            state: RecommendationRequestState.ISSUED,
+            fallbackReason: read.coverageGap,
+            expectedItemCount: items.length,
+            issuedAt: now.toISOString(),
+            retrievalLatencyMs: Math.max(0, Date.now() - now.getTime()),
+            responseBytes,
+            experimentAssignmentId: null,
+          },
+        }),
+        ...prepared.map((entry) =>
+          recommendationHistoryEvent({
+            family: "served-item",
+            logicalId: entry.id,
+            revision: 1,
+            occurredAt: now,
+            acceptedAt: acceptedRequest?.createdAt ?? now,
+            expiresAt,
+            payload: {
+              requestId,
+              itemId: entry.id,
+              position: entry.position,
+              targetMediaId: entry.choice.videoId,
+              candidateGenerator: "precomputed",
+              audioLanguageSlug: input.audioLanguageSlug,
+              videoSlug: entry.choice.videoSlug,
+              videoTitle: entry.choice.videoTitle,
+              startSeconds: 0,
+              endSeconds: null,
+              durationSeconds: entry.choice.durationSeconds,
+            },
+          }),
+        ),
+      ],
+      prepared.length + 1,
     )
     return response
   } catch (error) {

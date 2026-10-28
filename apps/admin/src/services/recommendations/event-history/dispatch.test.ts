@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createRecommendationEventEnvelope } from "./envelope"
 import { createRecommendationEventDispatcher } from "./dispatch"
 import { RecommendationClickHouseError } from "./clickhouse"
@@ -15,6 +15,10 @@ const event = createRecommendationEventEnvelope({
 })
 
 describe("recommendation event dispatch", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date("2026-10-28T00:01:00.000Z"))
+  })
   afterEach(() => vi.useRealTimers())
   it("starts immediately and returns before the insert settles", async () => {
     let settle!: () => void
@@ -133,6 +137,18 @@ describe("recommendation event dispatch", () => {
     dispatcher.dispatch([event, event])
     expect(dispatcher.snapshot().configurationDroppedEvents).toBe(2)
     expect(dispatcher.snapshot().disabledDroppedEvents).toBe(0)
+  })
+
+  it("measures a failed producer preparation without a send", () => {
+    const insert = vi.fn()
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+    })
+    dispatcher.recordPreparationFailure("selection")
+    expect(dispatcher.snapshot().preparationDroppedEvents).toBe(1)
+    expect(dispatcher.snapshot().byFamily.selection?.dropped).toBe(1)
+    expect(dispatcher.snapshot().attemptedEvents).toBe(0)
+    expect(insert).not.toHaveBeenCalled()
   })
 
   it("stops aggregate logging on close", async () => {

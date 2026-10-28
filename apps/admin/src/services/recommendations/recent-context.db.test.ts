@@ -21,7 +21,8 @@ const migrations = readdirSync(migrationRoot)
     return (
       (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
       name === "0082_user_recommendation_identity" ||
-      name === "0096_recommendation_recent_episode_index"
+      name === "0096_recommendation_recent_episode_index" ||
+      name === "0165_recommendation_episode_history_revision"
     )
   })
   .sort()

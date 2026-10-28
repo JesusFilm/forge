@@ -4,6 +4,7 @@ import {
 } from "./clickhouse"
 import {
   parseRecommendationEventEnvelope,
+  RECOMMENDATION_EVENT_FAMILIES,
   type RecommendationEventEnvelope,
   type RecommendationEventFamily,
 } from "./envelope"
@@ -27,6 +28,7 @@ export type DispatchSnapshot = Readonly<{
   unknownOutcomeEvents: number
   capacityDroppedEvents: number
   invalidDroppedEvents: number
+  preparationDroppedEvents: number
   disabledDroppedEvents: number
   configurationDroppedEvents: number
   lifetimeRegistrationFailures: number
@@ -86,6 +88,7 @@ export function createRecommendationEventDispatcher(options: Options) {
   let confirmedEvents = 0
   let capacityDroppedEvents = 0
   let invalidDroppedEvents = 0
+  let preparationDroppedEvents = 0
   let disabledDroppedEvents = 0
   let configurationDroppedEvents = 0
   let lifetimeRegistrationFailures = 0
@@ -120,6 +123,7 @@ export function createRecommendationEventDispatcher(options: Options) {
         failedEvents.timeout + failedEvents.transport + failedEvents.unknown,
       capacityDroppedEvents,
       invalidDroppedEvents,
+      preparationDroppedEvents,
       disabledDroppedEvents,
       configurationDroppedEvents,
       lifetimeRegistrationFailures,
@@ -231,6 +235,22 @@ export function createRecommendationEventDispatcher(options: Options) {
     safelyObserve()
   }
 
+  function recordPreparationFailure(
+    eventFamily: RecommendationEventFamily,
+    count = 1,
+  ): void {
+    if (
+      !Number.isSafeInteger(count) ||
+      count < 1 ||
+      count > 100 ||
+      !RECOMMENDATION_EVENT_FAMILIES.includes(eventFamily)
+    )
+      return
+    preparationDroppedEvents += count
+    family(eventFamily).dropped += count
+    safelyObserve()
+  }
+
   async function drain(): Promise<void> {
     await Promise.all([...pending])
   }
@@ -241,5 +261,12 @@ export function createRecommendationEventDispatcher(options: Options) {
     await drain()
   }
 
-  return { dispatch, snapshot, drain, close }
+  return {
+    dispatch,
+    snapshot,
+    drain,
+    close,
+    recordPreparationFailure,
+    isEnabled: () => !closed && options.client != null,
+  }
 }

@@ -1,6 +1,8 @@
 import { ownerReleaseInfluenceAllowed } from "./promotion/owner-influence"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomUUID } from "node:crypto"
+import { recommendationHistoryEvent } from "./event-history/producers"
+import { dispatchPreparedRecommendationEventsAfterCommit } from "./event-history/runtime"
 import {
   RecommendationAuditKind,
   RecommendationExperimentArm,
@@ -463,6 +465,49 @@ export class RecommendationEvidenceService {
       }
       return { receipts, reconciledSelection, evidenceWatermark }
     })
+    dispatchPreparedRecommendationEventsAfterCommit(
+      "evidence",
+      () =>
+        input.events.flatMap((event) => {
+          if (
+            !result.receipts.some(
+              (receipt) =>
+                receipt.eventId === event.eventId &&
+                receipt.status === "accepted",
+            )
+          )
+            return []
+          const acceptedAt = result.evidenceWatermark
+          return [
+            recommendationHistoryEvent({
+              family: "evidence",
+              logicalId: `${item.id}:${event.kind}`,
+              revision: 1,
+              occurredAt: new Date(event.occurredAt),
+              acceptedAt,
+              expiresAt: item.request.expiresAt,
+              payload: {
+                requestId: item.requestId,
+                itemId: item.id,
+                eventId: event.eventId,
+                kind: event.kind,
+                payloadDigest: recommendationEvidenceDigest(event),
+                visibilityPolicy:
+                  event.kind === "impression"
+                    ? item.request.surfaceVersion
+                    : null,
+                visibilityCapability:
+                  event.kind === "impression"
+                    ? (event.payload.visibilityCapability ?? "unknown")
+                    : null,
+                receivedAt: acceptedAt.toISOString(),
+              },
+            }),
+          ]
+        }),
+      result.receipts.filter((receipt) => receipt.status === "accepted")
+        .length || 1,
+    )
     if (result.reconciledSelection) {
       void this.classifyAndDispatchSelectionFeedback({
         itemId: item.id,

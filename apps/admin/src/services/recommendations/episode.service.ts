@@ -1,4 +1,9 @@
 import { observeRecommendationRuntime } from "@/lib/recommendation-runtime-observation"
+import { recommendationHistoryEvent } from "./event-history/producers"
+import {
+  dispatchPreparedRecommendationEventsAfterCommit,
+  getNextRecommendationEventDispatcher,
+} from "./event-history/runtime"
 import { RecommendationSurfaceSchema } from "./token.service"
 import { createHash, randomBytes, randomUUID } from "node:crypto"
 import {
@@ -124,26 +129,53 @@ export class RecommendationEpisodeService {
 
     // U5 attributes a push open to this episode, so the caller needs its id.
     const episodeId = newId()
-    await this.deps.prisma.recommendationPlaybackEpisode.create({
-      data: {
-        id: episodeId,
-        requestId: null,
-        itemId: null,
-        selectionId: null,
-        contextVersion: PLAYBACK_CONTEXT_VERSION,
-        discoverySource: parsed.discoverySource,
-        provenance: parsed.provenance,
-        claimNonceDigest,
-        handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
-        mediaId: parsed.mediaId,
-        sessionDigest: parsed.sessionDigest,
-        state: RecommendationEpisodeState.PENDING,
-        activeUntil,
-        hardUntil,
-        finalizationDueAt: null,
-        expiresAt: new Date(now.getTime() + EPISODE_RETENTION_MS),
-      },
-    })
+    const createdEpisode =
+      await this.deps.prisma.recommendationPlaybackEpisode.create({
+        data: {
+          id: episodeId,
+          requestId: null,
+          itemId: null,
+          selectionId: null,
+          contextVersion: PLAYBACK_CONTEXT_VERSION,
+          discoverySource: parsed.discoverySource,
+          provenance: parsed.provenance,
+          claimNonceDigest,
+          handoffExpiresAt: new Date(now.getTime() + HANDOFF_LIFETIME_MS),
+          mediaId: parsed.mediaId,
+          sessionDigest: parsed.sessionDigest,
+          state: RecommendationEpisodeState.PENDING,
+          activeUntil,
+          hardUntil,
+          finalizationDueAt: null,
+          expiresAt: new Date(now.getTime() + EPISODE_RETENTION_MS),
+        },
+      })
+
+    dispatchPreparedRecommendationEventsAfterCommit("playback-episode", () => [
+      recommendationHistoryEvent({
+        family: "playback-episode",
+        logicalId: episodeId,
+        revision: 1,
+        occurredAt: now,
+        acceptedAt: createdEpisode.createdAt,
+        expiresAt: createdEpisode.expiresAt,
+        payload: {
+          episodeId,
+          requestId: null,
+          itemId: null,
+          selectionId: null,
+          mediaId: parsed.mediaId,
+          discoverySource: parsed.discoverySource,
+          state: createdEpisode.state,
+          generation: createdEpisode.generation,
+          nextFactSequence: createdEpisode.nextFactSequence,
+          historyRevision: createdEpisode.historyRevision,
+          activeUntil: createdEpisode.activeUntil.toISOString(),
+          hardUntil: createdEpisode.hardUntil.toISOString(),
+          finalizedAt: null,
+        },
+      }),
+    ])
 
     return { episodeId, claimNonce, contextVersion: PLAYBACK_CONTEXT_VERSION }
   }
@@ -405,7 +437,7 @@ export class RecommendationEpisodeService {
           evidenceWatermark: now,
         }
       }
-      await tx.recommendationSelection.create({
+      const createdSelection = await tx.recommendationSelection.create({
         data: {
           id: selectionId,
           requestId: item.requestId,
@@ -451,11 +483,61 @@ export class RecommendationEpisodeService {
       return {
         status: "accepted" as const,
         selectionId,
+        episodeSnapshot: createdSelection.episode!,
         attributionEligible: impression != null,
         attributionReconciled: false,
         evidenceWatermark: attributionEligibleAt ?? now,
       }
     })
+    if (result.status === "accepted") {
+      dispatchPreparedRecommendationEventsAfterCommit(
+        "selection",
+        () => [
+          recommendationHistoryEvent({
+            family: "selection",
+            logicalId: selectionId,
+            revision: 1,
+            occurredAt,
+            acceptedAt: now,
+            expiresAt: item.request.expiresAt,
+            payload: {
+              requestId: item.requestId,
+              itemId: item.id,
+              eventId: input.eventId,
+              payloadDigest: digest,
+              attributionEligibleAt: result.attributionEligible
+                ? result.evidenceWatermark.toISOString()
+                : null,
+              receivedAt: now.toISOString(),
+            },
+          }),
+          recommendationHistoryEvent({
+            family: "playback-episode",
+            logicalId: episodeId,
+            revision: 1,
+            occurredAt: now,
+            acceptedAt: result.episodeSnapshot.createdAt,
+            expiresAt: result.episodeSnapshot.expiresAt,
+            payload: {
+              episodeId,
+              requestId: item.requestId,
+              itemId: item.id,
+              selectionId,
+              mediaId: item.targetMediaId,
+              discoverySource: "recommendation",
+              state: result.episodeSnapshot.state,
+              generation: result.episodeSnapshot.generation,
+              nextFactSequence: result.episodeSnapshot.nextFactSequence,
+              historyRevision: result.episodeSnapshot.historyRevision,
+              activeUntil: result.episodeSnapshot.activeUntil.toISOString(),
+              hardUntil: result.episodeSnapshot.hardUntil.toISOString(),
+              finalizedAt: null,
+            },
+          }),
+        ],
+        2,
+      )
+    }
     if (result.status === "conflict") {
       return {
         status: result.status,
@@ -685,7 +767,7 @@ export class RecommendationEpisodeService {
       { issuedAt: now, signingKid: this.deps.tokenService.activeKid },
     )
 
-    await this.deps.prisma.$transaction(async (tx) => {
+    const claimedEpisode = await this.deps.prisma.$transaction(async (tx) => {
       if (
         !(await lockRecommendationAssignmentCapabilityFence(
           tx,
@@ -724,6 +806,7 @@ export class RecommendationEpisodeService {
           hardUntil,
           finalizationDueAt: activeUntil,
           claimedAt: now,
+          historyRevision: { increment: 1 },
         },
       })
       if (opened.count !== 1) {
@@ -731,7 +814,43 @@ export class RecommendationEpisodeService {
           "Recommendation episode claim conflicted",
         )
       }
+      return getNextRecommendationEventDispatcher().isEnabled()
+        ? tx.recommendationPlaybackEpisode.findUnique({
+            where: { id: selection.episode!.id },
+          })
+        : null
     })
+
+    if (claimedEpisode) {
+      dispatchPreparedRecommendationEventsAfterCommit(
+        "playback-episode",
+        () => [
+          recommendationHistoryEvent({
+            family: "playback-episode",
+            logicalId: claimedEpisode.id,
+            revision: claimedEpisode.historyRevision,
+            occurredAt: now,
+            acceptedAt: now,
+            expiresAt: claimedEpisode.expiresAt,
+            payload: {
+              episodeId: claimedEpisode.id,
+              requestId: claimedEpisode.requestId,
+              itemId: claimedEpisode.itemId,
+              selectionId: claimedEpisode.selectionId,
+              mediaId: claimedEpisode.mediaId,
+              discoverySource: claimedEpisode.discoverySource,
+              state: claimedEpisode.state,
+              generation: claimedEpisode.generation,
+              nextFactSequence: claimedEpisode.nextFactSequence,
+              historyRevision: claimedEpisode.historyRevision,
+              activeUntil: claimedEpisode.activeUntil.toISOString(),
+              hardUntil: claimedEpisode.hardUntil.toISOString(),
+              finalizedAt: null,
+            },
+          }),
+        ],
+      )
+    }
 
     scheduleRecommendationEpisodeFinalization(this.deps.dispatchFinalization, {
       episodeId: selection.episode.id,
@@ -855,7 +974,7 @@ export class RecommendationEpisodeService {
       { issuedAt: now, signingKid: this.deps.tokenService.activeKid },
     )
 
-    await this.deps.prisma.$transaction(async (tx) => {
+    const claimedEpisode = await this.deps.prisma.$transaction(async (tx) => {
       const opened = await tx.recommendationPlaybackEpisode.updateMany({
         where: {
           id: context.id,
@@ -872,6 +991,7 @@ export class RecommendationEpisodeService {
           hardUntil,
           finalizationDueAt: activeUntil,
           claimedAt: now,
+          historyRevision: { increment: 1 },
         },
       })
       if (opened.count !== 1) {
@@ -879,7 +999,43 @@ export class RecommendationEpisodeService {
           "Recommendation episode claim conflicted",
         )
       }
+      return getNextRecommendationEventDispatcher().isEnabled()
+        ? tx.recommendationPlaybackEpisode.findUnique({
+            where: { id: context.id },
+          })
+        : null
     })
+
+    if (claimedEpisode) {
+      dispatchPreparedRecommendationEventsAfterCommit(
+        "playback-episode",
+        () => [
+          recommendationHistoryEvent({
+            family: "playback-episode",
+            logicalId: claimedEpisode.id,
+            revision: claimedEpisode.historyRevision,
+            occurredAt: now,
+            acceptedAt: now,
+            expiresAt: claimedEpisode.expiresAt,
+            payload: {
+              episodeId: claimedEpisode.id,
+              requestId: null,
+              itemId: null,
+              selectionId: null,
+              mediaId: claimedEpisode.mediaId,
+              discoverySource: claimedEpisode.discoverySource,
+              state: claimedEpisode.state,
+              generation: claimedEpisode.generation,
+              nextFactSequence: claimedEpisode.nextFactSequence,
+              historyRevision: claimedEpisode.historyRevision,
+              activeUntil: claimedEpisode.activeUntil.toISOString(),
+              hardUntil: claimedEpisode.hardUntil.toISOString(),
+              finalizedAt: null,
+            },
+          }),
+        ],
+      )
+    }
 
     scheduleRecommendationEpisodeFinalization(this.deps.dispatchFinalization, {
       episodeId: context.id,

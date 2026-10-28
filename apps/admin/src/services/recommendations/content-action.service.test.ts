@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
+const history = vi.hoisted(() => ({ dispatch: vi.fn() }))
+vi.mock("./event-history/runtime", () => ({
+  dispatchPreparedRecommendationEventsAfterCommit: history.dispatch,
+}))
 import { RecommendationContentActionService } from "./content-action.service"
+import { createRecommendationEventDispatcher } from "./event-history/dispatch"
+import { RecommendationClickHouseError } from "./event-history/clickhouse"
 
 const webCaller = {
   id: null,
@@ -11,7 +17,10 @@ const webCaller = {
 const systemCaller = { id: null, role: "SYSTEM" as const }
 const now = new Date("2026-08-25T12:30:00.000Z")
 
-function harness({ matchedEpisode = false } = {}) {
+function harness({
+  matchedEpisode = false,
+  onCommit,
+}: { matchedEpisode?: boolean; onCommit?: () => void } = {}) {
   const rows = new Map<string, Record<string, unknown>>()
   const episode = {
     id: "episode-1",
@@ -77,9 +86,11 @@ function harness({ matchedEpisode = false } = {}) {
     recommendationContentAction: {
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
-    $transaction: vi.fn(async (work: (client: typeof tx) => unknown) =>
-      work(tx),
-    ),
+    $transaction: vi.fn(async (work: (client: typeof tx) => unknown) => {
+      const result = await work(tx)
+      onCommit?.()
+      return result
+    }),
   }
   const service = new RecommendationContentActionService({
     prisma: prisma as never,
@@ -111,6 +122,70 @@ const directShare = {
 }
 
 describe("RecommendationContentActionService", () => {
+  it("exports a committed action once, after commit, without private destination or session data", async () => {
+    history.dispatch.mockClear()
+    const { service } = harness({
+      onCommit: () => {
+        committed = true
+      },
+    })
+    let committed = false
+    history.dispatch.mockImplementationOnce((_family, prepare) => {
+      expect(committed).toBe(true)
+      return prepare()
+    })
+    await service.record(directShare)
+    expect(history.dispatch).toHaveBeenCalledTimes(1)
+    expect(history.dispatch.mock.calls[0]?.[0]).toBe("content-action")
+    const events = history.dispatch.mock.calls[0]?.[1]()
+    expect(events[0]).toMatchObject({
+      family: "content-action",
+      logicalId: "action-1",
+      revision: 1,
+    })
+    expect(JSON.stringify(events)).not.toMatch(
+      /session|browser|destinationArtifact/i,
+    )
+    expect(committed).toBe(true)
+    await service.record(directShare)
+    expect(history.dispatch).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not export a rolled-back action", async () => {
+    history.dispatch.mockClear()
+    const { service, prisma } = harness()
+    prisma.$transaction.mockRejectedValueOnce(new Error("rollback"))
+    await expect(service.record(directShare)).rejects.toThrow("rollback")
+    expect(history.dispatch).not.toHaveBeenCalled()
+  })
+
+  it("returns the committed action before a failed history insert settles and never retries", async () => {
+    history.dispatch.mockClear()
+    let fail!: (error: Error) => void
+    const insert = vi.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          fail = reject
+        }),
+    )
+    const dispatcher = createRecommendationEventDispatcher({
+      client: { insert },
+      now: () => now.getTime(),
+    })
+    history.dispatch.mockImplementationOnce((_family, prepare) =>
+      dispatcher.dispatch(prepare()),
+    )
+    const { service } = harness()
+    await expect(service.record(directShare)).resolves.toMatchObject({
+      status: "accepted",
+    })
+    expect(insert).toHaveBeenCalledTimes(1)
+    expect(dispatcher.snapshot().inFlightEvents).toBe(1)
+    fail(new RecommendationClickHouseError("transport"))
+    await dispatcher.drain()
+    expect(dispatcher.snapshot().failedEvents.transport).toBe(1)
+    expect(insert).toHaveBeenCalledTimes(1)
+  })
   it("records direct actions as unmatched and never fabricates recommendation attribution", async () => {
     const { service, tx, prisma } = harness()
 
@@ -222,6 +297,7 @@ describe("RecommendationContentActionService", () => {
   })
 
   it("clears a deleted destination reference while retaining its opaque audit id", async () => {
+    history.dispatch.mockClear()
     const { service, prisma } = harness()
 
     await service.record({
@@ -247,5 +323,8 @@ describe("RecommendationContentActionService", () => {
         destinationDeletedAt: now,
       },
     })
+    const exported = history.dispatch.mock.calls[0]?.[1]()[0]
+    expect(exported.payload.destinationAuditId).toBe("destination-audit-1")
+    expect(JSON.stringify(exported)).not.toContain("course-1")
   })
 })
