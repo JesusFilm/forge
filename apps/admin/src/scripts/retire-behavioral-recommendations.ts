@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises"
 import { Client } from "pg"
 import { env } from "../config/env"
+import { parseRetirementArguments } from "./retire-behavioral-recommendations-args"
 import {
   parseRetirementCutoverProof,
   RetirementAdmissionError,
@@ -10,41 +11,9 @@ import {
   runBehavioralRetirementWindow,
 } from "../services/recommendations/behavioral-retirement-cleanup"
 
-function args(): Record<string, string> {
-  const parsed: Record<string, string> = {}
-  const allowed = new Set([
-    "operation-id",
-    "release-a",
-    "cutover-proof",
-    "proof-sha256",
-    "batch-size",
-    "max-batches",
-    "execute",
-  ])
-  for (const arg of process.argv.slice(2)) {
-    const match = /^--([a-z-]+)(?:=(.+))?$/.exec(arg)
-    if (!match || !allowed.has(match[1]) || match[1] in parsed)
-      throw new RetirementAdmissionError("Invalid retirement CLI argument")
-    parsed[match[1]] = match[2] ?? "true"
-  }
-  if (
-    parsed.execute !== "true" ||
-    !parsed["operation-id"] ||
-    !parsed["release-a"] ||
-    !parsed["cutover-proof"] ||
-    !parsed["proof-sha256"] ||
-    !parsed["batch-size"] ||
-    !parsed["max-batches"]
-  )
-    throw new RetirementAdmissionError(
-      "Explicit source-bound execution acknowledgement required",
-    )
-  return parsed
-}
-
 async function main(): Promise<number> {
   try {
-    const input = args()
+    const input = parseRetirementArguments(process.argv.slice(2))
     const sourceCommit = process.env.RAILWAY_GIT_COMMIT_SHA
     if (!sourceCommit || !/^[a-f0-9]{40}$/.test(sourceCommit))
       throw new RetirementAdmissionError(
