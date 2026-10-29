@@ -3,7 +3,7 @@ id: "feat-907"
 title: "Restore Manager automations on Admin"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-28"
 duration: 5
 depends_on: []
@@ -65,8 +65,7 @@ share lease-fenced orchestration; the dedicated service bearer grants no
 operator/session authority. See
 `docs/reports/2026-10-28-pr870-mastra-dry-run-recovery.md` for the exact contract,
 red regression evidence, deterministic workflow proof and integration limits.
-The parent feature remains in progress for root's final Admin/browser/PR review
-and integration work.
+This isolated unit handed final Admin/browser/PR review and integration to root.
 
 ## Foundation review repair unit — 2026-10-28
 
@@ -77,5 +76,13 @@ locking before manual lease recovery; atomic admission for both manual lanes;
 and strictly future wall-clock scheduling across IANA gaps/folds. See
 `docs/reports/2026-10-28-feat890-foundation-review-repairs.md` for reproduction,
 verification and exact integration boundaries. This unit adds no schema,
-generated-client, lockfile, OAuth or Docker changes. Parent status remains in
-progress for root's final integration and independent review.
+generated-client, lockfile, OAuth or Docker changes. Root completed integration
+and independent review after this handoff.
+
+## Final local integration — 2026-10-29
+
+Implementation, independent source reviews, production builds and deterministic
+HTTP/GraphQL/PostgreSQL acceptance are complete. Configuration and execution
+flags retain their defaults. The declared PR stack and exact verification limits
+are recorded in `docs/reports/2026-10-29-automation-pr-stack-validation.md`.
+Remote CI and PR publication are tracked by the recovery task.

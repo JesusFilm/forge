@@ -7,11 +7,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (October 29, 2026)
 
 - **Total tickets:** 992
-- **Complete:** 751
+- **Complete:** 753
 - **Cancelled:** 43
-- **In progress:** 82
+- **In progress:** 81
 - **Not started:** 57
-- **Blocked:** 59
+- **Blocked:** 58
 - **Overdue and open:** 174
 
 ## Feature Index
@@ -387,8 +387,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-887](media-generation/feat-887-release-shorts-editor-to-production.md)                | Release the recovered Shorts editor to production                     | tataihono | P1       | 2026-10-28 | 1    | 2026-10-28 | complete    |
 | [feat-892](media-generation/feat-892-subtitle-source-artifact-execution-recovery.md)        | Recover subtitle source artifact execution                            | vlad      | P1       | 2026-10-28 | 2    | 2026-10-29 | complete    |
 | [feat-906](media-generation/feat-906-manager-automation-response-errors.md)                 | Manager automation response errors                                    | vlad      | P1       | 2026-10-28 | 1    | 2026-10-28 | complete    |
-| [feat-907](media-generation/feat-907-manager-admin-automation-backend.md)                   | Restore Manager automations on Admin                                  | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | in-progress |
-| [feat-908](media-generation/feat-908-manager-mastra-enrichment-execution-recovery.md)       | Recover durable Manager to Mastra enrichment execution                | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | blocked     |
+| [feat-907](media-generation/feat-907-manager-admin-automation-backend.md)                   | Restore Manager automations on Admin                                  | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | complete    |
+| [feat-908](media-generation/feat-908-manager-mastra-enrichment-execution-recovery.md)       | Recover durable Manager to Mastra enrichment execution                | vlad      | P1       | 2026-10-28 | 5    | 2026-11-01 | complete    |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
