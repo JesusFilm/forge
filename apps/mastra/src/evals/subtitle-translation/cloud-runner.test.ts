@@ -71,6 +71,7 @@ describe("cloud subtitle eval cell runner", () => {
       "apps/mastra/src/services/subtitle-enrichment/types.ts",
       "apps/mastra/src/services/subtitle-enrichment/vtt.ts",
       "apps/mastra/src/services/subtitle-enrichment/run.ts",
+      "apps/mastra/src/services/subtitle-enrichment/transcript.ts",
       "apps/mastra/src/evals/subtitle-translation/cloud-runner.ts",
       "apps/mastra/src/evals/subtitle-translation/metrics.ts",
       "apps/mastra/src/evals/subtitle-translation/review-evidence.ts",

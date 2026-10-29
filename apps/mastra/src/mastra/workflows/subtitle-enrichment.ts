@@ -7,6 +7,15 @@ import { env, getOpenRouterApiKey } from "../../config/env"
 import { isValidServiceBearer } from "../../server/service-bearer"
 import { isSubtitleArtifactStorageProductionReady } from "../../services/subtitle-enrichment/storage"
 import {
+  runSubtitleSource,
+  SubtitleSourceError,
+  SubtitleSourceInputSchema,
+  SubtitleSourceSchema,
+  SubtitleSourceSummarySchema,
+  type RunSubtitleSourceDeps,
+  type SubtitleSourceSummary,
+} from "../../services/subtitle-enrichment/source"
+import {
   SubtitleLanguageResultSchema,
   SubtitleTranslationContextSchema,
   type SubtitleLanguageResult,
@@ -30,6 +39,9 @@ export const SubtitleEnrichmentInputSchema = z
       .max(100)
       .default([])
       .describe("Target subtitle languages to generate."),
+    source: SubtitleSourceSchema.optional().describe(
+      "Optional approved source artifact reuse or Mux subtitle acquisition before translation.",
+    ),
     model: z
       .string()
       .min(1)
@@ -40,6 +52,22 @@ export const SubtitleEnrichmentInputSchema = z
     ),
   })
   .strict()
+  .superRefine((input, context) => {
+    if (
+      input.source &&
+      !SubtitleSourceInputSchema.safeParse({
+        assetId: input.assetId,
+        sourceLanguage: input.sourceLanguage,
+        source: input.source,
+      }).success
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "Subtitle source identity or language is invalid.",
+        path: ["source"],
+      })
+    }
+  })
 
 export type SubtitleEnrichmentInput = z.output<
   typeof SubtitleEnrichmentInputSchema
@@ -51,6 +79,9 @@ const SubtitleEnrichmentFailureReasonSchema = z.enum([
   "provider_config_missing",
   "storage_failed",
   "all_languages_failed",
+  "source_invalid",
+  "source_failed",
+  "source_config_missing",
 ])
 
 const SubtitleEnrichmentSuccessSchema = z
@@ -60,6 +91,7 @@ const SubtitleEnrichmentSuccessSchema = z
     languages: z.array(SubtitleLanguageResultSchema),
     succeeded: z.number().int().nonnegative(),
     failed: z.number().int().nonnegative(),
+    source: SubtitleSourceSummarySchema.optional(),
   })
   .strict()
 
@@ -71,6 +103,7 @@ const SubtitleEnrichmentFailureSchema = z
     retryable: z.boolean(),
     message: z.string().optional(),
     languages: z.array(SubtitleLanguageResultSchema).optional(),
+    source: SubtitleSourceSummarySchema.optional(),
   })
   .strict()
 
@@ -92,6 +125,7 @@ type WorkflowOptions = {
   apiKey?: string
   run?: typeof runSubtitleEnrichment
   deps?: RunSubtitleEnrichmentDeps
+  sourceDeps?: RunSubtitleSourceDeps
 }
 
 type RouteHandlerInput = {
@@ -116,6 +150,7 @@ function failure(
     retryable: boolean
     message?: string
     languages?: SubtitleLanguageResult[]
+    source?: SubtitleSourceSummary
   },
 ): SubtitleEnrichmentFailure {
   return {
@@ -125,6 +160,7 @@ function failure(
     retryable: options.retryable,
     ...(options.message ? { message: options.message } : {}),
     ...(options.languages ? { languages: options.languages } : {}),
+    ...(options.source ? { source: options.source } : {}),
   }
 }
 
@@ -137,6 +173,7 @@ function hasProviderWork(input: SubtitleEnrichmentInput): boolean {
 function summarizeSuccess(
   mastraRunId: string,
   languages: SubtitleLanguageResult[],
+  source?: SubtitleSourceSummary,
 ): SubtitleEnrichmentResult {
   const succeeded = languages.filter(
     (result) => result.status === "completed",
@@ -148,6 +185,7 @@ function summarizeSuccess(
       mastraRunId,
       retryable: true,
       languages,
+      source,
       message: "Subtitle enrichment failed for all target languages.",
     })
   }
@@ -158,6 +196,7 @@ function summarizeSuccess(
     languages,
     succeeded,
     failed,
+    ...(source ? { source } : {}),
   }
 }
 
@@ -195,25 +234,53 @@ export async function runSubtitleEnrichmentWorkflow(
     })
   }
 
+  let source: SubtitleSourceSummary | undefined
   try {
-    const languages = await (options.run ?? runSubtitleEnrichment)(
-      {
-        assetId: input.assetId,
-        sourceLanguage: input.sourceLanguage,
-        targetLanguages: input.targetLanguages,
-        model: input.model ?? env.SUBTITLE_ENRICHMENT_MODEL,
-        apiKey,
-        timeoutMs: env.SUBTITLE_ENRICHMENT_TIMEOUT_MS,
-        concurrency: env.SUBTITLE_ENRICHMENT_CONCURRENCY,
-        translationContext: input.translationContext,
-      },
-      options.deps,
-    )
-    return summarizeSuccess(mastraRunId, languages)
+    if (input.source) {
+      const result = await runSubtitleSource(
+        {
+          assetId: input.assetId,
+          sourceLanguage: input.sourceLanguage,
+          source: input.source,
+        },
+        {
+          readArtifact: options.deps?.readArtifact,
+          writeArtifact: options.deps?.writeArtifact,
+          ...options.sourceDeps,
+        },
+      )
+      source = result.summary
+    }
+    const languages =
+      input.source && input.targetLanguages.length === 0
+        ? []
+        : await (options.run ?? runSubtitleEnrichment)(
+            {
+              assetId: input.assetId,
+              sourceLanguage: input.sourceLanguage,
+              targetLanguages: input.targetLanguages,
+              model: input.model ?? env.SUBTITLE_ENRICHMENT_MODEL,
+              apiKey,
+              timeoutMs: env.SUBTITLE_ENRICHMENT_TIMEOUT_MS,
+              concurrency: env.SUBTITLE_ENRICHMENT_CONCURRENCY,
+              translationContext: input.translationContext,
+            },
+            options.deps,
+          )
+    return summarizeSuccess(mastraRunId, languages, source)
   } catch (error) {
+    if (error instanceof SubtitleSourceError) {
+      return failure(error.reason, {
+        mastraRunId,
+        retryable: error.retryable,
+        message: error.message,
+        source,
+      })
+    }
     return failure("storage_failed", {
       mastraRunId,
       retryable: true,
+      source,
       message:
         error instanceof Error
           ? error.message
@@ -343,10 +410,12 @@ function routeStatusForResult(result: SubtitleEnrichmentResult): number {
   if (result.reason === "invalid_input") return 400
   if (
     result.reason === "config_missing" ||
-    result.reason === "provider_config_missing"
+    result.reason === "provider_config_missing" ||
+    result.reason === "source_config_missing"
   ) {
     return 503
   }
+  if (result.reason === "source_invalid") return 400
   return 502
 }
 

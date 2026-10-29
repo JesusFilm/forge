@@ -9,6 +9,7 @@ export const SUBTITLE_EVAL_WORKFLOW_POLICY_FILES = [
   "apps/mastra/src/services/subtitle-enrichment/types.ts",
   "apps/mastra/src/services/subtitle-enrichment/vtt.ts",
   "apps/mastra/src/services/subtitle-enrichment/run.ts",
+  "apps/mastra/src/services/subtitle-enrichment/transcript.ts",
   "apps/mastra/src/evals/subtitle-translation/cloud-runner.ts",
   "apps/mastra/src/evals/subtitle-translation/metrics.ts",
   "apps/mastra/src/evals/subtitle-translation/review-evidence.ts",
@@ -19,4 +20,4 @@ export const SUBTITLE_EVAL_WORKFLOW_POLICY_FILES = [
 
 // Update only after the byte-pin test confirms this exact ordered file set.
 export const SUBTITLE_EVAL_WORKFLOW_POLICY_DIGEST =
-  "12ed5350c47fee269ba8a8bdaec70b635e177691238f9749071cb4b50412a22d"
+  "3e46dd8c3b82e3b32560d5a645c08f5b2795284e3cc997b50cc68a96dc243f62"

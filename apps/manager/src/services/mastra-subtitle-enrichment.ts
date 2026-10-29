@@ -26,7 +26,24 @@ export type MastraSubtitleEnrichmentInput = {
   targetLanguages: string[]
   model?: string
   translationContext?: MastraSubtitleTranslationContext
+  source?:
+    | { kind: "transcript_artifact" }
+    | { kind: "subtitle_artifact" }
+    | { kind: "mux"; muxAssetId: string }
 }
+
+const SourceSummarySchema = z
+  .object({
+    kind: z.enum(["transcript_artifact", "subtitle_artifact", "mux"]),
+    language: z.string().min(1),
+    segmentCount: z.number().int().positive(),
+    artifactKeys: z
+      .object({ transcript: z.string().min(1), subtitles: z.string().min(1) })
+      .strict(),
+  })
+  .strict()
+
+export type MastraSubtitleSourceSummary = z.infer<typeof SourceSummarySchema>
 
 export type MastraSubtitleEnrichmentResult =
   | {
@@ -35,6 +52,7 @@ export type MastraSubtitleEnrichmentResult =
       languages: LanguageResult[]
       succeeded: number
       failed: number
+      source?: MastraSubtitleSourceSummary
     }
   | {
       ok: false
@@ -47,10 +65,14 @@ export type MastraSubtitleEnrichmentResult =
         | "provider_config_missing"
         | "storage_failed"
         | "all_languages_failed"
+        | "source_invalid"
+        | "source_failed"
+        | "source_config_missing"
       retryable: boolean
       mastraRunId?: string
       message?: string
       languages?: LanguageResult[]
+      source?: MastraSubtitleSourceSummary
     }
 
 export type LaunchMastraSubtitleEnrichmentOptions = {
@@ -84,6 +106,7 @@ const SuccessSchema = z
     languages: z.array(LanguageResultSchema),
     succeeded: z.number().int().nonnegative(),
     failed: z.number().int().nonnegative(),
+    source: SourceSummarySchema.optional(),
   })
   .strict()
 
@@ -97,10 +120,14 @@ const FailureSchema = z
       "provider_config_missing",
       "storage_failed",
       "all_languages_failed",
+      "source_invalid",
+      "source_failed",
+      "source_config_missing",
     ]),
     retryable: z.boolean(),
     message: z.string().optional(),
     languages: z.array(LanguageResultSchema).optional(),
+    source: SourceSummarySchema.optional(),
   })
   .strict()
 
@@ -137,6 +164,7 @@ export async function launchMastraSubtitleEnrichment(
       new URL("/forge-subtitle-enrichment", baseUrl),
       {
         method: "POST",
+        redirect: "error",
         headers: {
           authorization: `Bearer ${bearer}`,
           "content-type": "application/json",
@@ -145,6 +173,7 @@ export async function launchMastraSubtitleEnrichment(
           assetId: input.assetId,
           sourceLanguage: input.sourceLanguage,
           targetLanguages: input.targetLanguages,
+          ...(input.source ? { source: input.source } : {}),
           ...(input.model ? { model: input.model } : {}),
           ...(input.translationContext
             ? { translationContext: input.translationContext }
@@ -152,8 +181,12 @@ export async function launchMastraSubtitleEnrichment(
         }),
         signal: AbortSignal.timeout(
           options.timeoutMs ??
-            env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS ??
-            300_000,
+            (input.source?.kind === "mux"
+              ? Math.max(
+                  env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS ?? 300_000,
+                  1_200_000,
+                )
+              : (env.MASTRA_SUBTITLE_ENRICHMENT_TIMEOUT_MS ?? 300_000)),
         ),
       },
     )
@@ -169,6 +202,18 @@ export async function launchMastraSubtitleEnrichment(
     await response.json().catch(() => undefined),
   )
   if (result) {
+    if (
+      result.source &&
+      (result.source.kind !== input.source?.kind ||
+        result.source.artifactKeys.transcript !==
+          `${input.assetId}/transcript.json` ||
+        result.source.artifactKeys.subtitles !==
+          `${input.assetId}/subtitles.vtt`)
+    )
+      return { ok: false, reason: "parse_error", retryable: false }
+    if (result.ok && input.source && !result.source) {
+      return { ok: false, reason: "parse_error", retryable: false }
+    }
     return result
   }
 
