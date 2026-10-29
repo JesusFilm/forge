@@ -12,6 +12,7 @@ import {
   RetirementAdmissionError,
   RetirementBatchFailureError,
   RetirementUncertainCommitError,
+  assertRetiredWorkflowRuntimesTerminal,
   runBehavioralRetirementWindow,
   RETIREMENT_PHASES,
   type RetirementCutoverProof,
@@ -32,6 +33,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     let db: PrismaClient
     let connected = false
     let ownedWorkflowSchema = false
+    let ownedWorkflowStatus = false
     let ownedWorkflowTable = false
     let ownedTestSchema = false
     const baseUrl = env.DATABASE_URL
@@ -163,11 +165,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         throw new Error("Refusing to adopt a preexisting workflow schema")
       await target.query("CREATE SCHEMA workflow")
       ownedWorkflowSchema = true
+      await target.query(`CREATE TYPE workflow.status AS ENUM
+        ('pending', 'running', 'completed', 'failed', 'cancelled')`)
+      ownedWorkflowStatus = true
       await target.query(`CREATE TABLE workflow.workflow_runs (
-        id text PRIMARY KEY, name text NOT NULL, status text NOT NULL,
+        id text PRIMARY KEY, name text NOT NULL, status workflow.status NOT NULL,
         completed_at timestamptz
       )`)
       ownedWorkflowTable = true
+      await target.query(`CREATE INDEX workflow_runs_status_idx
+        ON workflow.workflow_runs (status)`)
+      await target.query(`CREATE INDEX workflow_runs_name_idx
+        ON workflow.workflow_runs (name)`)
     }
 
     beforeAll(async () => {
@@ -201,6 +210,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           await client.query(`DROP SCHEMA "${schema}" CASCADE`)
         if (ownedWorkflowTable)
           await client.query("DROP TABLE workflow.workflow_runs")
+        if (ownedWorkflowStatus) await client.query("DROP TYPE workflow.status")
         if (ownedWorkflowSchema)
           await client.query("DROP SCHEMA workflow RESTRICT")
         await client.end()
@@ -264,6 +274,59 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       })
       expect((await run()).status).toBe("complete")
+    })
+
+    it("refuses nullable or expanded runtime status contracts before checking active rows", async () => {
+      await client.query("BEGIN")
+      try {
+        await client.query(
+          "ALTER TABLE workflow.workflow_runs ALTER COLUMN status DROP NOT NULL",
+        )
+        await expect(
+          assertRetiredWorkflowRuntimesTerminal(client),
+        ).rejects.toBeInstanceOf(RetirementAdmissionError)
+      } finally {
+        await client.query("ROLLBACK")
+      }
+
+      await client.query("BEGIN")
+      try {
+        await client.query(`CREATE TYPE workflow.status_future AS ENUM
+          ('pending', 'running', 'completed', 'failed', 'cancelled', 'paused')`)
+        await client.query(`ALTER TABLE workflow.workflow_runs
+          ALTER COLUMN status TYPE workflow.status_future
+          USING status::text::workflow.status_future`)
+        await expect(
+          assertRetiredWorkflowRuntimesTerminal(client),
+        ).rejects.toBeInstanceOf(RetirementAdmissionError)
+      } finally {
+        await client.query("ROLLBACK")
+      }
+      expect(await db.recommendationBehavioralRetirementBatch.count()).toBe(0)
+    })
+
+    it("refuses a terminal runtime with the wrong workflow name", async () => {
+      const runtimeId = randomUUID()
+      const ledger = await db.workflowRun.create({
+        data: {
+          id: randomUUID(),
+          runtimeRunId: runtimeId,
+          workflowKey: "recommendation-profile-projection",
+          trigger: "MANUAL",
+          status: "QUEUED",
+        },
+      })
+      await client.query(
+        "INSERT INTO workflow.workflow_runs (id, name, status) VALUES ($1, $2, 'failed')",
+        [runtimeId, "workflow//./src/workflows/unrelated//runUnrelated"],
+      )
+      await expect(
+        assertRetiredWorkflowRuntimesTerminal(client),
+      ).rejects.toBeInstanceOf(RetirementAdmissionError)
+      await db.workflowRun.delete({ where: { id: ledger.id } })
+      await client.query("DELETE FROM workflow.workflow_runs WHERE id = $1", [
+        runtimeId,
+      ])
     })
 
     it("refuses an orphan runtime or a missing runtime join", async () => {
