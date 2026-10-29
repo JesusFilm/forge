@@ -1,3 +1,4 @@
+import { refuseBehavioralRecommendations } from "../behavioral-retirement"
 import { createHash } from "node:crypto"
 import {
   Prisma,
@@ -11,7 +12,6 @@ import { prisma } from "@/db/client"
 import { runRecommendationShadowEvaluation } from "@/workflows/recommendationShadowEvaluation"
 import { RECOMMENDATION_RAW_RETENTION_DAYS } from "../contracts"
 import { RecommendationConflictError } from "../errors"
-import { COWATCH_SHADOW_GENERATOR_KEY } from "../cowatch/graph"
 
 export const RECOMMENDATION_SHADOW_EVALUATION_WORKFLOW_KEY =
   "recommendation-shadow-evaluation"
@@ -52,6 +52,7 @@ export async function dispatchRecommendationShadowEvaluation(
   input: DispatchInput,
   options: Readonly<{ actorId?: string; client?: Client; now?: Date }> = {},
 ): Promise<ShadowDispatchReceipt> {
+  if (input.generatorKey !== "semantic-aa-v1") refuseBehavioralRecommendations()
   const client = options.client ?? prisma
   const now = options.now ?? new Date()
   const evaluation =
@@ -59,11 +60,8 @@ export async function dispatchRecommendationShadowEvaluation(
       where: { id: input.evaluationId },
     })
   if (
-    input.generatorKey === COWATCH_SHADOW_GENERATOR_KEY
-      ? !/^[a-f0-9]{64}$/.test(input.cowatchGenerationId ?? "") ||
-        evaluation.cowatchGenerationId !== input.cowatchGenerationId
-      : input.cowatchGenerationId !== undefined ||
-        evaluation.cowatchGenerationId != null
+    input.cowatchGenerationId !== undefined ||
+    evaluation.cowatchGenerationId != null
   ) {
     throw new RecommendationConflictError(
       "The shadow dispatch does not match its exact graph generation",

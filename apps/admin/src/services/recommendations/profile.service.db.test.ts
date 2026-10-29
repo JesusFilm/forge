@@ -50,9 +50,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     const now = new Date("2026-08-30T12:00:00.000Z")
     const sessionDigest = "1".repeat(64)
     const firstProfileDigest = "a".repeat(64)
-    const secondProfileDigest = "b".repeat(64)
+
     const firstConsentDigest = "c".repeat(64)
-    const secondConsentDigest = "d".repeat(64)
+
     let admin: Client
     let adminConnected = false
     let prisma: PrismaClient
@@ -82,134 +82,34 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
     })
 
-    it("serializes stale-cookie grants and lets withdrawal fence the only profile", async () => {
+    it("concurrent stale grants and resets cannot create or renew profiles", async () => {
       const service = new RecommendationProfileService({
         prisma,
         now: () => now,
-        newId: randomUUID,
-        newAuditId: randomUUID,
       })
-      const transition = (
-        proposedProfileDigest: string,
-        proposedConsentReceiptDigest: string,
-      ) =>
-        service.transition({
-          caller: webCaller,
-          contractVersion: "recommendation-profile-v1",
-          consentContractVersion: "recommendation-consent-v1",
-          action: "grant",
-          consentChoice: "personalization",
-          sessionDigest,
-          existingConsentReceiptDigest: null,
-          proposedConsentReceiptDigest,
-          existingProfileDigest: null,
-          proposedProfileDigest,
-        })
-
-      const grants = await Promise.all([
-        transition(firstProfileDigest, firstConsentDigest),
-        transition(secondProfileDigest, secondConsentDigest),
-      ])
-      expect(grants.every((grant) => grant.state === "active")).toBe(true)
-
-      const [profiles, links, grantsRecorded, activeReceipts] =
-        await Promise.all([
-          prisma.recommendationProfile.findMany(),
-          prisma.recommendationProfileSessionLink.findMany(),
-          prisma.recommendationConsentTransition.count({
-            where: { kind: "GRANT" },
+      const receipts = await Promise.all(
+        Array.from({ length: 8 }, (_, i) =>
+          service.transition({
+            caller: webCaller,
+            contractVersion: "recommendation-profile-v1",
+            action: i % 2 ? "reset" : "grant",
+            sessionDigest,
+            existingProfileDigest: null,
+            proposedProfileDigest: firstProfileDigest,
+            proposedConsentReceiptDigest: firstConsentDigest,
           }),
-          prisma.recommendationConsentReceipt.findMany({
-            where: { state: "ACTIVE", choice: "PERSONALIZATION" },
-          }),
-        ])
-      expect(profiles).toHaveLength(1)
-      expect(links).toHaveLength(1)
-      expect(grantsRecorded).toBe(1)
-      expect(activeReceipts).toHaveLength(1)
-
-      const activeProfile = profiles[0]!
-      const activeConsent = activeReceipts[0]!
-      await service.transition({
-        caller: webCaller,
-        contractVersion: "recommendation-profile-v1",
-        consentContractVersion: "recommendation-consent-v1",
-        action: "withdraw",
-        consentChoice: "essential_only",
-        sessionDigest,
-        existingConsentReceiptDigest: activeConsent.tokenDigest,
-        proposedConsentReceiptDigest: "e".repeat(64),
-        existingProfileDigest: activeProfile.tokenDigest,
-        proposedProfileDigest: null,
-      })
-
-      await expect(
-        Promise.all([
-          prisma.recommendationProfile.count({ where: { state: "ACTIVE" } }),
-          prisma.recommendationProfileSessionLink.count(),
-          prisma.recommendationConsentReceipt.count({
-            where: { state: "ACTIVE", choice: "PERSONALIZATION" },
-          }),
-        ]),
-      ).resolves.toEqual([0, 0, 0])
-    })
-
-    it("allows only one reset across two sessions linked to one profile", async () => {
-      const service = new RecommendationProfileService({
-        prisma,
-        now: () => now,
-        newId: randomUUID,
-        newAuditId: randomUUID,
-      })
-      const firstSession = "2".repeat(64)
-      const secondSession = "3".repeat(64)
-      const originalDigest = "f".repeat(64)
-      const original = await service.transition({
-        caller: webCaller,
-        contractVersion: "recommendation-profile-v1",
-        action: "grant",
-        sessionDigest: firstSession,
-        existingProfileDigest: null,
-        proposedProfileDigest: originalDigest,
-      })
-      expect(original.state).toBe("active")
-      await service.transition({
-        caller: webCaller,
-        contractVersion: "recommendation-profile-v1",
-        action: "grant",
-        sessionDigest: secondSession,
-        existingProfileDigest: originalDigest,
-        proposedProfileDigest: null,
-      })
-
-      const reset = (session: string, digest: string) =>
-        service.transition({
-          caller: webCaller,
-          contractVersion: "recommendation-profile-v1",
-          action: "reset",
-          sessionDigest: session,
-          existingProfileDigest: originalDigest,
-          proposedProfileDigest: digest,
-        })
-      const resets = await Promise.allSettled([
-        reset(firstSession, "8".repeat(64)),
-        reset(secondSession, "9".repeat(64)),
-      ])
-
-      expect(
-        resets.filter(({ status }) => status === "fulfilled"),
-      ).toHaveLength(1)
-      expect(resets.filter(({ status }) => status === "rejected")).toHaveLength(
-        1,
+        ),
       )
-      await expect(
-        Promise.all([
-          prisma.recommendationProfile.count({ where: { state: "ACTIVE" } }),
-          prisma.recommendationConsentTransition.count({
-            where: { kind: "RESET" },
-          }),
-        ]),
-      ).resolves.toEqual([1, 1])
+      expect(
+        receipts.every(
+          (receipt) =>
+            receipt.state === "session_only" &&
+            receipt.cookieDisposition === "clear",
+        ),
+      ).toBe(true)
+      expect(await prisma.recommendationProfile.count()).toBe(0)
+      expect(await prisma.recommendationConsentReceipt.count()).toBe(0)
+      expect(await prisma.recommendationProfileSessionLink.count()).toBe(0)
     })
 
     it("waits behind withdrawal fencing and rejects personalized evidence after the profile is revoked", async () => {
@@ -221,19 +121,16 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       })
       const evidenceSessionDigest = "4".repeat(64)
       const profileDigest = "5".repeat(64)
-      const grant = await profileService.transition({
-        caller: webCaller,
-        contractVersion: "recommendation-profile-v1",
-        action: "grant",
-        sessionDigest: evidenceSessionDigest,
-        existingProfileDigest: null,
-        proposedProfileDigest: profileDigest,
+      const historical = await prisma.recommendationProfile.create({
+        data: {
+          tokenDigest: profileDigest,
+          privacyGeneration: 1,
+          choice: "DURABLE_ALLOWED",
+          state: "ACTIVE",
+          expiresAt: new Date(now.getTime() + 86_400_000),
+        },
       })
-      expect(grant).toMatchObject({
-        state: "active",
-        privacyGeneration: 1,
-      })
-      expect(grant.profileId).not.toBeNull()
+      const grant = { profileId: historical.id }
 
       const expiresAt = new Date(now.getTime() + 86_400_000)
       await admin.query(

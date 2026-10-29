@@ -1,6 +1,21 @@
 # Recommendation and analytics policy
 
-Product decision: September 10, 2026. This document supersedes consent
+## October 29, 2026: semantic and metadata recommendations
+
+The owner has retired co-watch, viewer interest profiles and behavioral background
+learning. Keep content semantics, metadata/editorial pools, video content summaries,
+ordinary playback and the current semantic/precomputed A/B measurement. Native
+installation identity remains necessary for playback and push; it is not a learned
+profile. Earlier instructions to create, refresh, personalize or restore co-watch
+are superseded by this decision. Retained historical receipts do not authorize
+reactivation. See [feat-902](roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+for the staged runtime retirement, authorized data deletion and release evidence.
+
+Removing these learners does not establish that all raw events are unnecessary:
+playback, measurement and expiry still consume evidence. Keep those consumer needs
+separate from the paused ClickHouse design and measure storage savings after cleanup.
+
+Historical product decision: September 10, 2026. This document superseded consent
 prerequisites in earlier recommendation and analytics plans, tickets, research
 recommendations, and runbooks.
 

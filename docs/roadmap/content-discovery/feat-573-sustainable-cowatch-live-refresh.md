@@ -3,7 +3,7 @@ id: "feat-573"
 title: "Sustain live co-watch with bounded graph refresh"
 owner: "nisal"
 priority: "P1"
-status: "in-progress"
+status: "cancelled"
 start_date: "2026-10-01"
 duration: 3
 depends_on:
@@ -12,7 +12,14 @@ blocks: []
 tags: [admin, recommendations, cowatch, retention]
 ---
 
-## Problem
+## Owner scope change — October 29, 2026
+
+Cancelled by the owner’s decision to remove co-watch and behavioral learners.
+`feat-902` retires the runtime before deleting its historical rows. Historical
+refresh failures and incomplete acceptance below remain evidence; this
+cancellation does not turn them into a successful release.
+
+## Historical Problem
 
 The owner-approved direct release in feat-565 uses a current immutable graph with
 at most 24-hour publication freshness and earlier dependency expiry. Its initial

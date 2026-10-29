@@ -964,6 +964,18 @@ Under a Slot Cover, a started video becomes a Mini Player Session and keeps play
 
 ## Recommendations
 
+### Viewer Interest Profile (retired)
+
+A learned representation of a viewer's activity. Retired by the October 29, 2026
+product decision, along with behavioral projection and co-watch learning. Do not
+confuse it with a native installation credential or a video's content summary.
+
+### Video Content Profile
+
+A summary of a video's transcript and metadata used to build content-based
+recommendations (`RecommendationPrecomputedContentProfile`). It describes content,
+not a viewer, and remains part of the semantic/metadata architecture.
+
 ### Video Connection
 
 A meaningful relationship between Videos based on similarity, useful viewing

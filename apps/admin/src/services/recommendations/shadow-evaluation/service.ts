@@ -1,3 +1,4 @@
+import { requireContentOnlyManifest } from "../behavioral-retirement"
 import { persistCompositionObservation } from "../composition/service"
 import {
   cowatchTrialCandidateReadiness,
@@ -60,6 +61,7 @@ export async function createShadowEvaluation(
     cowatchGenerationId?: string
   },
 ) {
+  requireContentOnlyManifest(input.manifestId)
   const now = input.now ?? new Date()
   const samplingVersion =
     input.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID

@@ -800,7 +800,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
 
     it.skipIf(!USE_DETERMINISTIC_FIXTURE)(
-      "serves shared profile nominations in packed requests with reader parity and expiry cleanup",
+      "ignores retained shared profiles while serving packed semantic requests with reader parity and expiry cleanup",
       async () => {
         const candidateInput = {
           sessionDigest: "e".repeat(64),
@@ -873,13 +873,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             profileTokenDigest: "a".repeat(64),
           })
           expect(result.result).toBe("served")
-          expect(harness.retrieveProfile).toHaveBeenCalledOnce()
-          expect(harness.retrieveProfile).toHaveBeenCalledWith(
-            expect.objectContaining({
-              sessionDigest: "e".repeat(64),
-              profileTokenDigest: "a".repeat(64),
-            }),
-          )
+          expect(harness.retrieveProfile).not.toHaveBeenCalled()
           requestIds.push(result.requestId!)
           const request = await prisma.recommendationRequest.findUniqueOrThrow({
             where: { id: result.requestId! },
@@ -892,7 +886,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             request.items.some(
               (item) => item.candidateGenerator === "multi-interest-profile",
             ),
-          ).toBe(true)
+          ).toBe(false)
           const restored = request.items.map((item) => {
             const value = servedSnapshotValue(request.servedItemPayload, item)
             return {
@@ -915,7 +909,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 "multi-interest-profile",
               ),
             ),
-          ).toBe(true)
+          ).toBe(false)
           const detail = await loadRecommendationRequestDetail(prisma, {
             requestId: result.requestId!,
             actorDigest: "a".repeat(64),

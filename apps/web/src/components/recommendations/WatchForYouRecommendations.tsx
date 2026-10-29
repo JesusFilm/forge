@@ -91,7 +91,7 @@ export function WatchForYouRecommendations({
   sectionKey?: string | null
   navigate?: (href: string) => void
 }) {
-  const t = useTranslations("WatchHome")
+  const t = useTranslations("Recommendations")
   const root = useRef<HTMLElement>(null)
   const [near, setNear] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -454,7 +454,7 @@ export function WatchForYouRecommendations({
         id="watch-for-you-heading"
         className="mb-6 text-2xl font-bold tracking-tight md:text-3xl"
       >
-        {title?.trim() || t("forYou")}
+        {title?.trim() || t("heading")}
       </h2>
       <div className="flex gap-4 overflow-x-auto pb-3 md:grid md:grid-cols-3 xl:grid-cols-6">
         {delivery

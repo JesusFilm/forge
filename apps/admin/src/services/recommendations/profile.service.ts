@@ -1,11 +1,8 @@
-import { randomUUID } from "node:crypto"
 import {
   Prisma,
   RecommendationConsentChoice,
   RecommendationConsentReceiptState,
-  RecommendationConsentTransitionKind,
   RecommendationExperimentAssignmentState,
-  RecommendationProfileChoice,
   RecommendationProfileErasureState,
   RecommendationProfileState,
   type PrismaClient,
@@ -14,10 +11,7 @@ import { z } from "zod"
 import type { Principal } from "@/auth/principal"
 import { prisma as defaultPrisma } from "@/db/client"
 import { assertWebRecommendationCaller } from "./caller"
-import {
-  RECOMMENDATION_PROFILE_CONTRACT,
-  RECOMMENDATION_PROFILE_SESSION_LINK_HOURS,
-} from "./contracts"
+import { RECOMMENDATION_PROFILE_CONTRACT } from "./contracts"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { redactShadowRunsForProfileGeneration } from "./shadow-evaluation/service"
 import { eraseProfileProjectionInfluence } from "./profiles/privacy"
@@ -97,14 +91,6 @@ type TransitionAuthorityInput = Pick<
   | "existingProfileDigest"
 >
 
-function daysAfter(now: Date, days: number) {
-  return new Date(now.getTime() + days * 86_400_000)
-}
-
-function hoursAfter(now: Date, hours: number) {
-  return new Date(now.getTime() + hours * 3_600_000)
-}
-
 function sessionOnly(
   cookieDisposition: RecommendationProfileReceipt["cookieDisposition"],
   erasure?: { profileId: string; generation: number },
@@ -134,36 +120,6 @@ function sessionOnly(
   }
 }
 
-function activeReceipt(
-  profile: ActiveProfile,
-  cookieDisposition: "keep" | "set",
-  erasure?: { profileId: string; generation: number },
-  consent: {
-    expiresAt: Date | null
-    cookieDisposition: RecommendationProfileReceipt["consentCookieDisposition"]
-  } = { expiresAt: null, cookieDisposition: "keep" },
-): RecommendationProfileReceipt {
-  return {
-    state: "active",
-    choice: "durable_allowed",
-    privacyGeneration: profile.privacyGeneration,
-    expiresAt: profile.expiresAt.toISOString(),
-    erasureState: erasure ? "pending" : "not_required",
-    cookieDisposition,
-    consentChoice: consent.expiresAt ? "personalization" : "undecided",
-    consentContractVersion: RECOMMENDATION_CONSENT_CONTRACT,
-    consentExpiresAt: consent.expiresAt?.toISOString() ?? null,
-    consentCookieDisposition: consent.cookieDisposition,
-    profileId: erasure?.profileId ?? profile.id,
-    erasureGeneration: erasure?.generation ?? null,
-  }
-}
-
-/**
- * Consent/profile control plane. No method is called by recommendation
- * delivery or player startup. Candidate projection consumers must call
- * assertPublishableGeneration immediately before atomic publication.
- */
 export class RecommendationProfileService {
   constructor(private readonly deps: ProfileDependencies) {}
 
@@ -202,157 +158,16 @@ export class RecommendationProfileService {
         "Recommendation profile status input is invalid",
       )
     }
-    const now = this.deps.now?.() ?? new Date()
-    if (!input.consentReceiptDigest) return sessionOnly("clear")
-    const consent =
-      await this.deps.prisma.recommendationConsentReceipt.findUnique({
-        where: { tokenDigest: input.consentReceiptDigest },
-      })
-    if (
-      !consent ||
-      consent.state !== RecommendationConsentReceiptState.ACTIVE ||
-      consent.tokenDigest == null ||
-      consent.contractVersion !== RECOMMENDATION_CONSENT_CONTRACT ||
-      consent.expiresAt <= now
-    ) {
-      if (consent?.state === RecommendationConsentReceiptState.ACTIVE) {
-        await this.deps.prisma.recommendationConsentReceipt.updateMany({
-          where: {
-            id: consent.id,
-            state: RecommendationConsentReceiptState.ACTIVE,
-          },
-          data: {
-            tokenDigest: null,
-            profileId: null,
-            state: RecommendationConsentReceiptState.EXPIRED,
-            revokedAt: now,
-            revokeReason: "expired_or_contract_stale",
-          },
-        })
-      }
-      return sessionOnly("clear", undefined, {
-        choice: "undecided",
-        expiresAt: null,
-        cookieDisposition: "clear",
-      })
-    }
-    if (consent.choice === RecommendationConsentChoice.ESSENTIAL_ONLY) {
-      return sessionOnly("clear", undefined, {
-        choice: "essential_only",
-        expiresAt: consent.expiresAt,
-        cookieDisposition: "keep",
-      })
-    }
-    if (!input.profileDigest) {
-      await this.revokeConsentReceipt(
-        consent.id,
-        "missing_profile_receipt",
-        now,
-      )
-      return sessionOnly("clear", undefined, {
-        choice: "undecided",
-        expiresAt: null,
-        cookieDisposition: "clear",
-      })
-    }
-    const profile = await this.deps.prisma.recommendationProfile.findUnique({
-      where: { tokenDigest: input.profileDigest },
-    })
-    if (
-      !profile ||
-      consent.profileId !== profile.id ||
-      consent.privacyGeneration !== profile.privacyGeneration ||
-      profile.state !== RecommendationProfileState.ACTIVE ||
-      profile.tokenDigest == null
-    ) {
-      await this.revokeConsentReceipt(
-        consent.id,
-        "profile_generation_mismatch",
-        now,
-      )
-      return sessionOnly("clear", undefined, {
-        choice: "undecided",
-        expiresAt: null,
-        cookieDisposition: "clear",
-      })
-    }
-    return this.transaction(async (tx) => {
-      await this.lockProfileAuthority(tx, profile.id)
-      const [lockedProfile, lockedConsent] = await Promise.all([
-        tx.recommendationProfile.findUnique({ where: { id: profile.id } }),
-        tx.recommendationConsentReceipt.findUnique({
-          where: { id: consent.id },
-        }),
-      ])
-      if (
-        !lockedProfile ||
-        lockedProfile.state !== RecommendationProfileState.ACTIVE ||
-        lockedProfile.tokenDigest == null ||
-        lockedProfile.tokenDigest !== input.profileDigest ||
-        !lockedConsent ||
-        lockedConsent.state !== RecommendationConsentReceiptState.ACTIVE ||
-        lockedConsent.tokenDigest == null ||
-        lockedConsent.profileId !== lockedProfile.id ||
-        lockedConsent.privacyGeneration !== lockedProfile.privacyGeneration ||
-        lockedConsent.expiresAt <= now
-      ) {
-        await this.revokeConsentReceipt(
-          consent.id,
-          "profile_generation_mismatch",
-          now,
-          tx,
-        )
-        return sessionOnly("clear", undefined, {
-          choice: "undecided",
-          expiresAt: null,
-          cookieDisposition: "clear",
-        })
-      }
-      if (lockedProfile.expiresAt <= now) {
-        await this.fenceProfile(tx, lockedProfile, "expire", now)
-        await tx.recommendationConsentReceipt.updateMany({
-          where: {
-            id: lockedConsent.id,
-            state: RecommendationConsentReceiptState.ACTIVE,
-          },
-          data: {
-            tokenDigest: null,
-            profileId: null,
-            state: RecommendationConsentReceiptState.EXPIRED,
-            revokedAt: now,
-            revokeReason: "profile_expired",
-          },
-        })
-        await tx.recommendationConsentTransition.create({
-          data: {
-            auditId: this.deps.newAuditId?.() ?? randomUUID(),
-            profileId: lockedProfile.id,
-            kind: RecommendationConsentTransitionKind.EXPIRE,
-            fromGeneration: lockedProfile.privacyGeneration,
-            toGeneration: null,
-            erasureState: RecommendationProfileErasureState.PENDING,
-            occurredAt: now,
-            expiresAt: daysAfter(now, RECOMMENDATION_PROFILE_AUDIT_DAYS),
-          },
-        })
-        return sessionOnly(
-          "clear",
-          {
-            profileId: lockedProfile.id,
-            generation: lockedProfile.privacyGeneration,
-          },
-          {
-            choice: "undecided",
-            expiresAt: null,
-            cookieDisposition: "clear",
-          },
-        )
-      }
-      await this.linkSession(tx, lockedProfile, input.sessionDigest, now)
-      return activeReceipt(lockedProfile, "keep", undefined, {
-        expiresAt: lockedConsent.expiresAt,
-        cookieDisposition: "keep",
-      })
+    return this.transition({
+      caller: input.caller,
+      contractVersion: input.contractVersion,
+      consentContractVersion: input.consentContractVersion,
+      action: "withdraw",
+      sessionDigest: input.sessionDigest,
+      existingConsentReceiptDigest: input.consentReceiptDigest,
+      existingProfileDigest: input.profileDigest,
+      proposedProfileDigest: null,
+      proposedConsentReceiptDigest: null,
     })
   }
 
@@ -371,264 +186,60 @@ export class RecommendationProfileService {
       existingProfileDigest: input.existingProfileDigest,
       proposedProfileDigest: input.proposedProfileDigest,
     })
-    if (
-      parsed.proposedProfileDigest != null &&
-      parsed.proposedProfileDigest === parsed.existingProfileDigest
-    ) {
-      throw new RecommendationInputError(
-        "A proposed recommendation profile identity must be freshly generated",
-      )
-    }
-    if (
-      parsed.consentChoice != null &&
-      (parsed.consentContractVersion !== RECOMMENDATION_CONSENT_CONTRACT ||
-        parsed.proposedConsentReceiptDigest == null ||
-        parsed.proposedConsentReceiptDigest ===
-          parsed.existingConsentReceiptDigest ||
-        (parsed.action === "grant" &&
-          parsed.consentChoice !== "personalization") ||
-        ((parsed.action === "withdraw" || parsed.action === "delete") &&
-          parsed.consentChoice !== "essential_only") ||
-        (parsed.action === "reset" &&
-          parsed.consentChoice !== "personalization"))
-    ) {
-      throw new RecommendationInputError(
-        "The recommendation consent transition is invalid",
-      )
-    }
     const now = this.deps.now?.() ?? new Date()
-    return this.transaction(async (tx) => {
-      await tx.$executeRaw`
-        SELECT pg_advisory_xact_lock(
-          hashtextextended(${`recommendation-profile:${parsed.sessionDigest}`}, 378)
+    // Retired clients may still send grant/reset. They can erase old state but
+    // can never create a new profile or renew a session link.
+    let erasure: { profileId: string; generation: number } | undefined
+    if (parsed.existingProfileDigest || parsed.existingConsentReceiptDigest) {
+      await this.transaction(async (tx) => {
+        const authority = await this.resolveTransitionAuthority(
+          tx,
+          { ...parsed, action: "withdraw" },
+          now,
         )
-      `
-      let authority = await this.resolveTransitionAuthority(tx, parsed, now)
-      const lockedProfileId = authority.profileId
-      if (lockedProfileId) {
-        await this.lockProfileAuthority(tx, lockedProfileId)
-        authority = await this.resolveTransitionAuthority(tx, parsed, now)
-        if (
-          authority.profileId != null &&
-          authority.profileId !== lockedProfileId
-        ) {
-          throw new RecommendationConflictError(
-            "The recommendation profile authority changed during the transition",
-          )
-        }
-      }
-      const active = authority.active
-
-      const commitConsent = async (
-        receipt: RecommendationProfileReceipt,
-        profile: ActiveProfile | null,
-      ): Promise<RecommendationProfileReceipt> => {
-        if (parsed.consentChoice == null) return receipt
-        if (profile) {
-          await tx.recommendationConsentReceipt.updateMany({
-            where: {
-              profileId: profile.id,
-              privacyGeneration: profile.privacyGeneration,
-              state: RecommendationConsentReceiptState.ACTIVE,
-            },
-            data: {
-              tokenDigest: null,
-              profileId: null,
-              state: RecommendationConsentReceiptState.REVOKED,
-              revokedAt: now,
-              revokeReason: "receipt_replaced",
-            },
+        if (authority.profileId) {
+          await this.lockProfileAuthority(tx, authority.profileId)
+          const current = await tx.recommendationProfile.findUnique({
+            where: { id: authority.profileId },
           })
+          if (
+            current?.state === RecommendationProfileState.ACTIVE &&
+            current.tokenDigest
+          ) {
+            await this.fenceProfile(tx, current, "withdraw", now)
+            erasure = {
+              profileId: current.id,
+              generation: current.privacyGeneration,
+            }
+          }
         }
         if (parsed.existingConsentReceiptDigest) {
           await tx.recommendationConsentReceipt.updateMany({
-            where: {
-              tokenDigest: parsed.existingConsentReceiptDigest,
-              state: RecommendationConsentReceiptState.ACTIVE,
-            },
+            where: { tokenDigest: parsed.existingConsentReceiptDigest },
             data: {
               tokenDigest: null,
               profileId: null,
               state: RecommendationConsentReceiptState.REVOKED,
               revokedAt: now,
-              revokeReason: `choice_${parsed.consentChoice}`,
+              revokeReason: "behavioral_recommendations_retired",
             },
           })
         }
-        const expiresAt = daysAfter(now, RECOMMENDATION_PROFILE_DAYS)
-        await tx.recommendationConsentReceipt.create({
-          data: {
-            tokenDigest: parsed.proposedConsentReceiptDigest!,
-            contractVersion: RECOMMENDATION_CONSENT_CONTRACT,
-            choice:
-              parsed.consentChoice === "personalization"
-                ? RecommendationConsentChoice.PERSONALIZATION
-                : RecommendationConsentChoice.ESSENTIAL_ONLY,
-            state: RecommendationConsentReceiptState.ACTIVE,
-            profileId: profile?.id ?? null,
-            privacyGeneration: profile?.privacyGeneration ?? 0,
-            expiresAt,
-          },
-        })
-        return {
-          ...receipt,
-          consentChoice: parsed.consentChoice,
-          consentExpiresAt: expiresAt.toISOString(),
-          consentCookieDisposition: "set",
-        }
-      }
-
-      if (parsed.action === "grant") {
-        if (active) {
-          await this.linkSession(tx, active, parsed.sessionDigest, now)
-          return commitConsent(activeReceipt(active, "keep"), active)
-        }
-        if (!parsed.proposedProfileDigest) {
-          throw new RecommendationInputError(
-            "A fresh recommendation profile identity is required",
-          )
-        }
-        const created = await tx.recommendationProfile.create({
-          data: {
-            id: this.deps.newId?.() ?? randomUUID(),
-            tokenDigest: parsed.proposedProfileDigest,
-            privacyGeneration: 1,
-            choice: RecommendationProfileChoice.DURABLE_ALLOWED,
-            state: RecommendationProfileState.ACTIVE,
-            purpose: "personalization",
-            expiresAt: daysAfter(now, RECOMMENDATION_PROFILE_DAYS),
-            erasureState: RecommendationProfileErasureState.NOT_REQUIRED,
-          },
-        })
-        await this.linkSession(tx, created, parsed.sessionDigest, now)
-        await tx.recommendationConsentTransition.create({
-          data: {
-            auditId: this.deps.newAuditId?.() ?? randomUUID(),
-            profileId: created.id,
-            kind: RecommendationConsentTransitionKind.GRANT,
-            fromGeneration: null,
-            toGeneration: 1,
-            choice: RecommendationProfileChoice.DURABLE_ALLOWED,
-            occurredAt: now,
-            expiresAt: daysAfter(now, RECOMMENDATION_PROFILE_AUDIT_DAYS),
-          },
-        })
-        return commitConsent(activeReceipt(created, "set"), created)
-      }
-
-      if (!active) {
-        if (parsed.action === "withdraw" || parsed.action === "delete") {
-          return commitConsent(sessionOnly("clear"), null)
-        }
-        throw new RecommendationConflictError(
-          "The active recommendation profile identity is unavailable",
-        )
-      }
-
-      if (parsed.action === "reset") {
-        if (!parsed.proposedProfileDigest) {
-          throw new RecommendationInputError(
-            "A fresh recommendation profile identity is required",
-          )
-        }
-        const oldGeneration = active.privacyGeneration
-        await this.fenceProfile(tx, active, "reset", now)
-        const created = await tx.recommendationProfile.create({
-          data: {
-            id: this.deps.newId?.() ?? randomUUID(),
-            tokenDigest: parsed.proposedProfileDigest,
-            privacyGeneration: oldGeneration + 1,
-            choice: RecommendationProfileChoice.DURABLE_ALLOWED,
-            state: RecommendationProfileState.ACTIVE,
-            purpose: "personalization",
-            expiresAt: daysAfter(now, RECOMMENDATION_PROFILE_DAYS),
-            erasureState: RecommendationProfileErasureState.NOT_REQUIRED,
-          },
-        })
-        await this.linkSession(tx, created, parsed.sessionDigest, now)
-        await tx.recommendationConsentTransition.create({
-          data: {
-            auditId: this.deps.newAuditId?.() ?? randomUUID(),
-            profileId: active.id,
-            kind: RecommendationConsentTransitionKind.RESET,
-            fromGeneration: oldGeneration,
-            toGeneration: oldGeneration + 1,
-            choice: RecommendationProfileChoice.DURABLE_ALLOWED,
-            erasureState: RecommendationProfileErasureState.PENDING,
-            occurredAt: now,
-            expiresAt: daysAfter(now, RECOMMENDATION_PROFILE_AUDIT_DAYS),
-          },
-        })
-        return commitConsent(
-          activeReceipt(created, "set", {
-            profileId: active.id,
-            generation: oldGeneration,
-          }),
-          created,
-        )
-      }
-
-      const generation = active.privacyGeneration
-      await this.fenceProfile(tx, active, parsed.action, now)
-      await tx.recommendationConsentTransition.create({
-        data: {
-          auditId: this.deps.newAuditId?.() ?? randomUUID(),
-          profileId: active.id,
-          kind:
-            parsed.action === "withdraw"
-              ? RecommendationConsentTransitionKind.WITHDRAW
-              : RecommendationConsentTransitionKind.DELETE,
-          fromGeneration: generation,
-          toGeneration: null,
-          choice: null,
-          erasureState: RecommendationProfileErasureState.PENDING,
-          occurredAt: now,
-          expiresAt: daysAfter(now, RECOMMENDATION_PROFILE_AUDIT_DAYS),
-        },
       })
-      return commitConsent(
-        sessionOnly("clear", {
-          profileId: active.id,
-          generation,
-        }),
-        null,
-      )
+    }
+    return sessionOnly("clear", erasure, {
+      choice: "undecided",
+      expiresAt: null,
+      cookieDisposition: "clear",
     })
   }
 
   async assertPublishableGeneration(
-    profileId: string,
-    privacyGeneration: number,
+    _profileId: string,
+    _privacyGeneration: number,
   ): Promise<void> {
-    if (
-      !profileId ||
-      !Number.isInteger(privacyGeneration) ||
-      privacyGeneration < 1
-    ) {
-      throw new RecommendationInputError(
-        "Recommendation profile generation fence is invalid",
-      )
-    }
-    const now = this.deps.now?.() ?? new Date()
-    const profile = await this.deps.prisma.recommendationProfile.findUnique({
-      where: { id: profileId },
-    })
-    if (
-      profile?.state === RecommendationProfileState.ACTIVE &&
-      profile.tokenDigest != null &&
-      profile.privacyGeneration === privacyGeneration &&
-      profile.expiresAt > now
-    ) {
-      return
-    }
-    await this.deps.prisma.recommendationProfile
-      .updateMany({
-        where: { id: profileId },
-        data: { staleWorkerRejections: { increment: 1 } },
-      })
-      .catch(() => undefined)
     throw new RecommendationConflictError(
-      "Recommendation profile generation is stale or revoked",
+      "Behavioral recommendations have been retired",
     )
   }
 
@@ -732,25 +343,6 @@ export class RecommendationProfileService {
     await this.deps.prisma.recommendationProfile.update({
       where: { id: profile.id },
       data: { deletionDrillAt: this.deps.now?.() ?? new Date() },
-    })
-  }
-
-  private async revokeConsentReceipt(
-    id: string,
-    reason: string,
-    now: Date,
-    client: Pick<PrismaClient, "recommendationConsentReceipt"> = this.deps
-      .prisma,
-  ): Promise<void> {
-    await client.recommendationConsentReceipt.updateMany({
-      where: { id, state: RecommendationConsentReceiptState.ACTIVE },
-      data: {
-        tokenDigest: null,
-        profileId: null,
-        state: RecommendationConsentReceiptState.REVOKED,
-        revokedAt: now,
-        revokeReason: reason,
-      },
     })
   }
 
@@ -922,37 +514,6 @@ export class RecommendationProfileService {
         ? first
         : null
     return { profileId: first?.id ?? null, active }
-  }
-
-  private async linkSession(
-    client: Pick<PrismaClient, "recommendationProfileSessionLink">,
-    profile: ActiveProfile,
-    sessionDigest: string,
-    now: Date,
-  ) {
-    const expiresAt = new Date(
-      Math.min(
-        profile.expiresAt.getTime(),
-        hoursAfter(now, RECOMMENDATION_PROFILE_SESSION_LINK_HOURS).getTime(),
-      ),
-    )
-    await client.recommendationProfileSessionLink.upsert({
-      where: {
-        profileId_privacyGeneration_sessionDigest: {
-          profileId: profile.id,
-          privacyGeneration: profile.privacyGeneration,
-          sessionDigest,
-        },
-      },
-      create: {
-        profileId: profile.id,
-        privacyGeneration: profile.privacyGeneration,
-        sessionDigest,
-        linkedAt: now,
-        expiresAt,
-      },
-      update: { expiresAt },
-    })
   }
 }
 

@@ -1,5 +1,5 @@
 import { ownerReleaseInfluenceAllowedSql } from "../promotion/owner-influence"
-import { createHash, randomUUID } from "node:crypto"
+
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import {
@@ -12,10 +12,8 @@ import {
 } from "../integrity-policy"
 import {
   buildCowatchGraph,
-  COWATCH_FEATURE_VERSION,
   COWATCH_DURABLE_LINEAGE_VERSION,
   COWATCH_LEGACY_LINEAGE_VERSION,
-  COWATCH_PROJECTION_VERSION,
   CowatchWorkOverflowError,
   type CowatchOutcome,
 } from "./graph"
@@ -28,7 +26,7 @@ import {
 
 const MAX_SOURCE_ROWS = 50_000
 const SOURCE_WINDOW_DAYS = 180
-const GENERATION_RETENTION_DAYS = 29
+
 const CLASSIFIER_VERSION = "active-watch-proxy-v1"
 export const COWATCH_PUBLICATION_LOCK_ID = 387_000_001
 
@@ -414,220 +412,16 @@ function graphRowJsonWidths(graph: ReturnType<typeof buildCowatchGraph>) {
   }
 }
 
-function publicationAdmissionRefusal(
-  prepared: Prepared,
-  admission: CowatchPublicationAdmission,
-): string | null {
-  if (prepared.status !== "ready")
-    return "publication_admission_population_unavailable"
-  if (prepared.graph.generation !== admission.expectedGeneration)
-    return "publication_admission_generation_changed"
-  const { graph } = prepared
-  const actual = {
-    rawSourceCount: prepared.rawSourceCount,
-    sourceCount: graph.sources.length,
-    attemptedPairCount: graph.attemptedPairCount,
-    contributionCount: graph.contributions.length,
-    edgeCount: graph.edges.length,
-    publicationRowCount:
-      1 +
-      graph.sources.length +
-      graph.contributions.length +
-      graph.edges.length,
-  }
-  for (const key of Object.keys(actual) as Array<keyof typeof actual>)
-    if (actual[key] > admission.limits[key])
-      return "publication_admission_count_exceeded"
-  const widths = graphRowJsonWidths(graph)
-  for (const key of ["sources", "contributions", "edges"] as const) {
-    const limit = admission.limits.graphRowJsonBytes[key]
-    if (widths[key].maximum > limit.maximum || widths[key].total > limit.total)
-      return "publication_admission_width_exceeded"
-  }
-  return null
-}
-
 /** Atomically publishes only a complete immutable generation, always shadow. */
 export async function publishCowatchShadowGeneration(
   prisma: PrismaClient,
-  now: Date = new Date(),
-  sourceWindow?: CowatchSourceWindow,
-  admission?: CowatchPublicationAdmission,
-  capacity?: CowatchPublicationCapacity,
-  publicationFence?: (tx: Prisma.TransactionClient) => Promise<void>,
+  _now: Date = new Date(),
+  _sourceWindow?: CowatchSourceWindow,
+  _admission?: CowatchPublicationAdmission,
+  _capacity?: CowatchPublicationCapacity,
+  _publicationFence?: (tx: Prisma.TransactionClient) => Promise<void>,
 ): Promise<CowatchPublication> {
-  const validatedAdmission =
-    admission === undefined
-      ? undefined
-      : parseCowatchPublicationAdmission(admission, now, sourceWindow)
-  return prisma.$transaction(
-    async (tx) => {
-      // Publication repeats the preflight source read in its own bounded
-      // transaction; do not reintroduce the five-second statement limit here.
-      await tx.$executeRaw(Prisma.sql`SET LOCAL statement_timeout = 0`)
-      await tx.$executeRaw(Prisma.sql`SET LOCAL lock_timeout = '1000ms'`)
-      await tx.$executeRaw(Prisma.sql`SET LOCAL jit = off`)
-      // One publisher across all scopes bounds concurrent write amplification.
-      // Refuse before source work rather than queueing behind another rebuild.
-      const [lock] = await tx.$queryRaw<Array<{ locked: boolean }>>`
-        SELECT pg_try_advisory_xact_lock(${COWATCH_PUBLICATION_LOCK_ID}::bigint) AS locked
-      `
-      if (!lock?.locked) {
-        throw new RecommendationConflictError(
-          "A co-watch publication is already running; retry the same source scope after it completes",
-        )
-      }
-      if (publicationFence) await publicationFence(tx)
-      const prepared = await prepareCowatchGeneration(tx, now, sourceWindow)
-      const receipt = populationReceipt(prepared, now, sourceWindow)
-      // Same repeatable-read snapshot and global publication lock as the writes.
-      // A separate preflight cannot freeze current eligibility or privacy state.
-      if (validatedAdmission) {
-        const refusal = publicationAdmissionRefusal(
-          prepared,
-          validatedAdmission,
-        )
-        if (refusal)
-          return {
-            ...receipt,
-            status: "admission_refused",
-            decisionReason: refusal,
-          }
-      }
-      if (prepared.status !== "ready")
-        return { ...receipt, status: prepared.status }
-      const { source, graph } = prepared
-      const profileByOutcome = new Map(
-        source.map((row) => [row.outcomeId, row]),
-      )
-      const safeEdges = graph.edges.filter((edge) => edge.eligible)
-      const decisionReason =
-        graph.qualifiedOutcomes === 0
-          ? "no_eligible_finalized_outcomes"
-          : safeEdges.length === 0
-            ? "insufficient_supported_edges"
-            : "controlled_evaluation_required_feat_505"
-      const existing = await tx.recommendationCowatchGeneration.findUnique({
-        where: { id: graph.generation },
-        select: { id: true, publishedAt: true },
-      })
-      if (existing) {
-        return {
-          ...receipt,
-          status: "unchanged",
-          publishedAt: existing.publishedAt,
-          decisionReason,
-        }
-      }
-      if (capacity) await assertCowatchPublicationCapacity(tx, capacity)
-      const publishedAt = new Date()
-      const expiresAt = new Date(
-        publishedAt.getTime() + GENERATION_RETENTION_DAYS * 86_400_000,
-      )
-      await tx.recommendationCowatchGeneration.create({
-        data: {
-          id: graph.generation,
-          projectionVersion: COWATCH_PROJECTION_VERSION,
-          lineageVersion: sourceWindow
-            ? COWATCH_DURABLE_LINEAGE_VERSION
-            : COWATCH_LEGACY_LINEAGE_VERSION,
-          featureVersion: COWATCH_FEATURE_VERSION,
-          sourceCount: graph.qualifiedOutcomes,
-          contributionCount: graph.contributions.length,
-          edgeCount: graph.edges.length,
-          distinctViewerCount: graph.uniqueViewers,
-          windowEnd: sourceWindow?.windowEnd ?? now,
-          windowStart: sourceWindow?.windowStart ?? null,
-          evaluationAsOf: sourceWindow?.evaluationAsOf ?? null,
-          sourceWindowVersion:
-            sourceWindow?.version ?? COWATCH_LEGACY_SOURCE_WINDOW_VERSION,
-          rawSourceCount: source.length,
-          attemptedPairCount: graph.attemptedPairCount,
-          terminalDecision: "no_promotion",
-          decisionReason,
-          publishedAt,
-          expiresAt,
-        },
-      })
-      for (let offset = 0; offset < graph.sources.length; offset += 500) {
-        await tx.recommendationCowatchSourceContribution.createMany({
-          data: graph.sources.slice(offset, offset + 500).map((row) => ({
-            id: randomUUID(),
-            generationId: graph.generation,
-            outcomeId: row.outcomeId,
-            eligibilityDecisionId: row.eligibilityDecisionId!,
-            eligibilityRevision: row.eligibilityRevision!,
-            eligibilityPolicyVersion: row.eligibilityPolicyVersion!,
-            viewerProfileId:
-              profileByOutcome.get(row.outcomeId)?.profileId ?? null,
-            viewerPrivacyGeneration: sourceWindow
-              ? (profileByOutcome.get(row.outcomeId)?.privacyGeneration ?? null)
-              : null,
-            mediaId: row.mediaId,
-            sessionDigest: row.sessionDigest,
-            viewerKeyDigest: createHash("sha256")
-              .update(row.viewerKey)
-              .digest("hex"),
-            qualityWeight: row.qualityWeight,
-            occurredAt: row.occurredAt,
-            expiresAt: row.expiresAt < expiresAt ? row.expiresAt : expiresAt,
-          })),
-        })
-      }
-      for (let offset = 0; offset < graph.contributions.length; offset += 500) {
-        await tx.recommendationCowatchContribution.createMany({
-          data: graph.contributions.slice(offset, offset + 500).map((row) => ({
-            id: randomUUID(),
-            generationId: graph.generation,
-            sourceOutcomeId: row.sourceOutcomeId,
-            targetOutcomeId: row.targetOutcomeId,
-            viewerProfileId:
-              profileByOutcome.get(row.sourceOutcomeId)?.profileId ?? null,
-            sourceMediaId: row.sourceMediaId,
-            targetMediaId: row.targetMediaId,
-            sessionDigest: row.sessionDigest,
-            viewerKeyDigest: createHash("sha256")
-              .update(row.viewerKey)
-              .digest("hex"),
-            gapMs: row.gapMs,
-            qualityWeight: row.qualityWeight,
-            recencyWeight: row.recencyWeight,
-            effectiveWeight: row.effectiveWeight,
-            expiresAt,
-          })),
-        })
-      }
-      for (let offset = 0; offset < graph.edges.length; offset += 500) {
-        await tx.recommendationCowatchEdge.createMany({
-          data: graph.edges.slice(offset, offset + 500).map((edge) => ({
-            id: randomUUID(),
-            generationId: graph.generation,
-            sourceMediaId: edge.sourceMediaId,
-            targetMediaId: edge.targetMediaId,
-            sessionSupport: edge.sessionSupport,
-            distinctViewerSupport: edge.distinctViewerSupport,
-            confidence: edge.confidence,
-            popularityCorrectedLift: edge.popularityCorrectedLift,
-            recencyWeight: edge.recencyWeight,
-            qualityWeight: edge.qualityWeight,
-            effectiveWeight: edge.effectiveWeight,
-            contamination: edge.contamination,
-            eligible: edge.eligible,
-          })),
-        })
-      }
-      return {
-        ...receipt,
-        status: "published",
-        publishedAt,
-        decisionReason,
-      }
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
-      timeout: 30_000,
-    },
-  )
+  throw new Error("Behavioral recommendations have been retired")
 }
 
 function describeSourceWindow(now: Date, scope?: CowatchSourceWindow) {

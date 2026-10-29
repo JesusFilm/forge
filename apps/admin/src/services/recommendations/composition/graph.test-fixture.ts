@@ -1,12 +1,17 @@
 import { randomUUID } from "node:crypto"
 import type { PrismaClient } from "@prisma/client"
-import { publishCowatchShadowGeneration } from "../cowatch/projection.service"
+import {
+  buildCowatchGraph,
+  COWATCH_DURABLE_LINEAGE_VERSION,
+  type CowatchOutcome,
+} from "../cowatch/graph"
 import { RECOMMENDATION_INTEGRITY_POLICY_VERSION } from "../integrity-policy"
 import { compositionDigest } from "./policy"
 let ordinal = 0
 const day = 86_400_000
 
-/** Actual finite projection from eligible outcomes in an owned disposable DB. */
+/** Historical graph fixture for real retention/privacy constraints. Production
+ * publication is retired; fixture rows are created directly in the owned DB. */
 export async function compositionGraphFixture(
   db: PrismaClient,
   request?: {
@@ -40,6 +45,8 @@ export async function compositionGraphFixture(
       expiresAt,
     },
   })
+  const outcomes: CowatchOutcome[] = []
+  const privateOutcomes = new Set<string>()
   for (let viewer = 0; viewer < 10; viewer++) {
     for (const [position, mediaId] of (viewer < 5
       ? [mediaA, mediaB]
@@ -110,27 +117,129 @@ export async function compositionGraphFixture(
           expiresAt,
         },
       })
+      const outcomeId = `${episodeId}-r1`
+      if (viewer === 0) privateOutcomes.add(outcomeId)
+      outcomes.push({
+        outcomeId,
+        episodeId,
+        revision: 1,
+        mediaId,
+        sessionDigest: compositionDigest(`${id}-${viewer}`),
+        viewerKey:
+          viewer === 0
+            ? `profile:${profile.id}:1`
+            : `session:${compositionDigest(`${id}-${viewer}`)}`,
+        occurredAt,
+        qualified: true,
+        finalized: true,
+        integrityEligible: true,
+        eligibilityDecisionId: `${episodeId}-eligible`,
+        eligibilityRevision: 1,
+        eligibilityPolicyVersion: RECOMMENDATION_INTEGRITY_POLICY_VERSION,
+        qualityWeight: 1,
+        expiresAt,
+      })
     }
   }
-  const publication = await publishCowatchShadowGeneration(db, now, {
-    version: "episode-event-window-v1",
+  const window = {
+    version: "episode-event-window-v1" as const,
     windowStart: start,
     windowEnd: new Date(start.getTime() + 1_800_000),
     evaluationAsOf: now,
-  })
-  if (
-    publication.status !== "published" ||
-    !publication.generation ||
-    !publication.publishedAt
+  }
+  const graph = buildCowatchGraph(
+    outcomes,
+    now,
+    window,
+    COWATCH_DURABLE_LINEAGE_VERSION,
   )
-    throw new Error("Owned composition graph publication failed")
+  const graphExpiry = new Date(now.getTime() + 29 * day)
+  await db.$transaction(async (tx) => {
+    await tx.recommendationCowatchGeneration.create({
+      data: {
+        id: graph.generation,
+        projectionVersion: graph.projectionVersion,
+        featureVersion: graph.featureVersion,
+        lineageVersion: COWATCH_DURABLE_LINEAGE_VERSION,
+        sourceCount: graph.qualifiedOutcomes,
+        contributionCount: graph.contributions.length,
+        edgeCount: graph.edges.length,
+        distinctViewerCount: graph.uniqueViewers,
+        windowStart: window.windowStart,
+        windowEnd: window.windowEnd,
+        evaluationAsOf: now,
+        sourceWindowVersion: window.version,
+        rawSourceCount: outcomes.length,
+        attemptedPairCount: graph.attemptedPairCount,
+        terminalDecision: "no_promotion",
+        decisionReason: "historical_retention_fixture",
+        publishedAt: now,
+        expiresAt: graphExpiry,
+      },
+    })
+    await tx.recommendationCowatchSourceContribution.createMany({
+      data: graph.sources.map((row) => ({
+        id: randomUUID(),
+        generationId: graph.generation,
+        outcomeId: row.outcomeId,
+        eligibilityDecisionId: row.eligibilityDecisionId!,
+        eligibilityRevision: row.eligibilityRevision!,
+        eligibilityPolicyVersion: row.eligibilityPolicyVersion!,
+        viewerProfileId: privateOutcomes.has(row.outcomeId) ? profile.id : null,
+        viewerPrivacyGeneration: privateOutcomes.has(row.outcomeId) ? 1 : null,
+        mediaId: row.mediaId,
+        sessionDigest: row.sessionDigest,
+        viewerKeyDigest: compositionDigest(row.viewerKey),
+        qualityWeight: row.qualityWeight,
+        occurredAt: row.occurredAt,
+        expiresAt: row.expiresAt < graphExpiry ? row.expiresAt : graphExpiry,
+      })),
+    })
+    await tx.recommendationCowatchContribution.createMany({
+      data: graph.contributions.map((row) => ({
+        id: randomUUID(),
+        generationId: graph.generation,
+        sourceOutcomeId: row.sourceOutcomeId,
+        targetOutcomeId: row.targetOutcomeId,
+        viewerProfileId: privateOutcomes.has(row.sourceOutcomeId)
+          ? profile.id
+          : null,
+        sourceMediaId: row.sourceMediaId,
+        targetMediaId: row.targetMediaId,
+        sessionDigest: row.sessionDigest,
+        viewerKeyDigest: compositionDigest(row.viewerKey),
+        gapMs: row.gapMs,
+        qualityWeight: row.qualityWeight,
+        recencyWeight: row.recencyWeight,
+        effectiveWeight: row.effectiveWeight,
+        expiresAt: graphExpiry,
+      })),
+    })
+    await tx.recommendationCowatchEdge.createMany({
+      data: graph.edges.map((edge) => ({
+        id: randomUUID(),
+        generationId: graph.generation,
+        sourceMediaId: edge.sourceMediaId,
+        targetMediaId: edge.targetMediaId,
+        sessionSupport: edge.sessionSupport,
+        distinctViewerSupport: edge.distinctViewerSupport,
+        confidence: edge.confidence,
+        popularityCorrectedLift: edge.popularityCorrectedLift,
+        recencyWeight: edge.recencyWeight,
+        qualityWeight: edge.qualityWeight,
+        effectiveWeight: edge.effectiveWeight,
+        contamination: edge.contamination,
+        eligible: edge.eligible,
+      })),
+    })
+  })
   return {
     mediaA,
     mediaB,
     mediaC,
-    generationId: publication.generation,
+    generationId: graph.generation,
     profileId: profile.id,
-    now: new Date(publication.publishedAt.getTime() + 1000),
+    now: new Date(now.getTime() + 1000),
     expiresAt,
   }
 }

@@ -2,7 +2,7 @@ import { once } from "node:events"
 import { randomBytes } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
 import { getRedisClient } from "@/infra/redis"
@@ -30,13 +30,8 @@ import {
   RecommendationDeliveryService,
   runRecommendationRetrievalQuery,
 } from "./delivery.service"
-import { getLiveProfileCandidates } from "./candidates/profile-candidate.service"
-import {
-  runCandidatePlatform,
-  runSemanticCandidatePlatform,
-} from "./orchestration"
+import { runSemanticCandidatePlatform } from "./orchestration"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
-import { getRecommendationRecentContext } from "./recent-context.service"
 import { createRecommendationDeliveryDependencies } from "./delivery.factory"
 import { createRecommendationTokenService } from "./token.service"
 import { getEligibleRecommendationVideoIds } from "@/services/scene-recommendations-retriever"
@@ -1018,9 +1013,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             evidenceComplete: false,
             composedCount: 6,
           },
-          personalizationDecision: {
-            effectiveManifestId: "semantic-candidate-platform-v1",
-          },
+          personalizationDecision: null,
         })
         expect(saved.items).toHaveLength(6)
         console.info(
@@ -1029,7 +1022,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       },
     )
 
-    it("keeps complete hybrid retrieval, composition, signing, persistence, and serialization inside 1.5s", async () => {
+    it("keeps complete semantic delivery inside 1.5s while ignoring historical profile authority", async () => {
       expect(fixtureKind).toBe(
         DELIVERY_FIXTURE_MODE === "production_snapshot"
           ? "production_snapshot"
@@ -1054,12 +1047,15 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         readRevokedKids: async () => [],
         now: () => benchmarkNow,
       })
+      const retiredBehavioralDependency = vi.fn(() => {
+        throw new Error("Retired behavioral dependency invoked")
+      })
       const service = new RecommendationDeliveryService({
         prisma,
         admission: {
           acquire: async () => ({
             allowed: true as const,
-            leaseId: "hybrid-db-benchmark",
+            leaseId: "semantic-db-benchmark",
           }),
           release: async () => undefined,
         },
@@ -1094,64 +1090,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           ),
         recheckCached: async (items) => [...items],
         orchestrate: runSemanticCandidatePlatform,
-        orchestrateHybrid: runCandidatePlatform,
-        authorizeProfile: async (input) => {
-          const receipt = await prisma.recommendationConsentReceipt.findUnique({
-            where: { tokenDigest: input.consentReceiptDigest },
-            include: { profile: true },
-          })
-          return Boolean(
-            receipt?.profile?.tokenDigest === input.profileTokenDigest &&
-            receipt.state === "ACTIVE" &&
-            receipt.choice === "PERSONALIZATION" &&
-            receipt.privacyGeneration === receipt.profile?.privacyGeneration,
-          )
-        },
-        assignExperiment: async () => ({
-          assignment: {
-            assignmentId: "delivery-benchmark-assignment",
-            experimentId: "delivery-benchmark-experiment",
-            experimentVersion: "delivery-benchmark-experiment-v1",
-            experimentGeneration: 1,
-            arm: "challenger",
-            effectiveManifestId: HYBRID_PERSONALIZED_MANIFEST_ID,
-            assignmentProbability: 0.1,
-            configurationDigest: "a".repeat(64),
-          },
-          bypassReason: null,
-        }),
-        retrieveProfile: (input) =>
-          runRecommendationRetrievalQuery(
-            prisma,
-            input.deadlineAt,
-            (scopedPrisma) =>
-              getLiveProfileCandidates(scopedPrisma, {
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest: input.profileTokenDigest,
-                now: input.now,
-                context: {
-                  surface: RECOMMENDATION_CONTRACTS.surface,
-                  purpose: "watch",
-                  locale: input.locale,
-                  audioLanguageSlug: input.audioLanguageSlug,
-                  seedMediaId: input.seedMediaId,
-                  manifestId: input.manifestId,
-                },
-              }),
-          ),
-        resolveRecentContext: (input) =>
-          runRecommendationRetrievalQuery(
-            prisma,
-            input.deadlineAt,
-            (scopedPrisma) =>
-              getRecommendationRecentContext(scopedPrisma, {
-                sessionDigest: input.sessionDigest,
-                profileTokenDigest: input.profileTokenDigest,
-                allowDurableProfileLinks: input.allowDurableProfileLinks,
-                locale: input.locale,
-                now: input.now,
-              }),
-          ),
+        // Old callers and stored hybrid manifests cannot revive these lanes.
+        orchestrateHybrid: retiredBehavioralDependency,
+        authorizeProfile: retiredBehavioralDependency,
+        assignExperiment: retiredBehavioralDependency,
+        retrieveProfile: retiredBehavioralDependency,
+        resolveRecentContext: retiredBehavioralDependency,
         tokenService: {
           activeKid: signingKey.kid,
           signDeliveryCapability: signer.signDeliveryCapability,
@@ -1165,7 +1109,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
             id: null,
             role: "CONSUMER_BEARER",
             fleet: false,
-            rateLimitBucketKey: "hybrid-delivery-db-benchmark",
+            rateLimitBucketKey: "semantic-delivery-db-benchmark",
           },
           seedMediaId: seed[0]!.id,
           locale: "en",
@@ -1187,14 +1131,19 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           new Set(run.response.items.map((item) => item.targetMediaId)).size,
         ).toBe(6)
-        expect(run.response.personalization?.executionMode).toBe(
-          "hybrid_personalized",
-        )
+        expect(run.response.personalization).toMatchObject({
+          executionMode: "semantic_contextual",
+          lane: "semantic_control",
+          interestCount: 0,
+          sessionIntentPresent: false,
+        })
         expect(
           run.response.items.some(
-            (item) => item.candidateGenerator === "multi-interest-profile",
+            (item) =>
+              item.candidateGenerator === "multi-interest-profile" ||
+              item.candidateGenerator === "directional-cowatch",
           ),
-        ).toBe(true)
+        ).toBe(false)
         expect(
           run.response.items.every(
             (item) => item.capability.split(".").length === 3,
@@ -1203,6 +1152,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(
           Buffer.byteLength(JSON.stringify(run.response)),
         ).toBeLessThanOrEqual(MAX_DELIVERY_RESPONSE_BYTES)
+        expect(retiredBehavioralDependency).not.toHaveBeenCalled()
+        expect(
+          await prisma.recommendationPersonalizationDecision.findUnique({
+            where: { requestId: run.response.requestId! },
+          }),
+        ).toBeNull()
         const persisted = await prisma.recommendationCandidateRun.findUnique({
           where: { requestId: run.response.requestId! },
         })
@@ -1214,7 +1169,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       }
 
       console.info(
-        `[recommendations] event=hybrid_complete_service_benchmark fixture=${fixtureKind} cold_ms=${Math.ceil(cold.elapsedMs)} warm_ms=${Math.ceil(warm.elapsedMs)} composed=${cold.response.items.length} unique=${new Set(cold.response.items.map((item) => item.targetMediaId)).size} shortfall=${cold.response.shortfallReason ?? "none"}`,
+        `[recommendations] event=semantic_complete_service_benchmark fixture=${fixtureKind} cold_ms=${Math.ceil(cold.elapsedMs)} warm_ms=${Math.ceil(warm.elapsedMs)} composed=${cold.response.items.length} unique=${new Set(cold.response.items.map((item) => item.targetMediaId)).size} shortfall=${cold.response.shortfallReason ?? "none"}`,
       )
     })
 

@@ -1,5 +1,12 @@
 # Co-watch restoration and bounded refresh
 
+> Superseded operating instructions — October 29, 2026. The owner retired viewer
+> profiles, co-watch and behavioral learning. Do not activate or restart them.
+> Semantic/metadata recommendations, content summaries and current A/B evidence
+> remain in scope. [feat-902](../roadmap/content-discovery/feat-902-semantic-metadata-only-recommendations.md)
+> owns runtime retirement and authorized data cleanup. The earlier material below
+> is retained as historical evidence, not current activation authority.
+
 The explicit no-study owner decision in feat-565 remains in force. This release
 does not create a study, claim measured usefulness, revive G4/G5/G6, or relax
 privacy, deletion, source integrity or expiry. Initial investigation and subsequent

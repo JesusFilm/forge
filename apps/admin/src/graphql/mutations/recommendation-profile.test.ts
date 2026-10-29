@@ -47,19 +47,20 @@ beforeEach(() => {
     erasureGeneration: null,
   })
   transitionMock.mockResolvedValue({
-    state: "active",
-    choice: "durable_allowed",
-    privacyGeneration: 1,
-    expiresAt: "2027-02-21T00:00:00.000Z",
-    erasureState: "not_required",
-    cookieDisposition: "set",
-    consentChoice: "personalization",
+    state: "session_only",
+    choice: "session_only",
+    privacyGeneration: null,
+    expiresAt: null,
+    erasureState: "pending",
+    cookieDisposition: "clear",
+    consentChoice: "undecided",
     consentContractVersion: "recommendation-consent-v1",
-    consentExpiresAt: "2027-02-21T00:00:00.000Z",
-    consentCookieDisposition: "set",
+    consentExpiresAt: null,
+    consentCookieDisposition: "clear",
     profileId: "private-profile-id",
-    erasureGeneration: null,
+    erasureGeneration: 1,
   })
+  completeErasureMock.mockResolvedValue(true)
   dispatchProjectionMock.mockResolvedValue({ queued: true })
 })
 
@@ -84,21 +85,23 @@ describe("recommendation profile resolvers", () => {
       consentReceiptDigest: null,
     })
     expect(result).not.toHaveProperty("tokenDigest")
+    expect(result).not.toHaveProperty("profileId")
+    expect(result).not.toHaveProperty("erasureGeneration")
     await Promise.resolve()
     expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 
-  it("schedules status projection only for an active personalized receipt", async () => {
+  it("schedules historical erasure on status without restarting a learner", async () => {
     statusMock.mockResolvedValueOnce({
-      state: "active",
-      choice: "durable_allowed",
-      privacyGeneration: 3,
-      expiresAt: "2027-02-21T00:00:00.000Z",
-      erasureState: "not_required",
-      cookieDisposition: "keep",
-      consentChoice: "personalization",
+      state: "session_only",
+      choice: "session_only",
+      privacyGeneration: null,
+      expiresAt: null,
+      erasureState: "pending",
+      cookieDisposition: "clear",
+      consentChoice: "undecided",
       profileId: "private-profile-id",
-      erasureGeneration: null,
+      erasureGeneration: 3,
     })
 
     await mutation("recommendationProfileStatus")(
@@ -113,12 +116,12 @@ describe("recommendation profile resolvers", () => {
     )
 
     await vi.waitFor(() => {
-      expect(dispatchProjectionMock).toHaveBeenCalledWith({
-        sessionDigest: "a".repeat(64),
+      expect(completeErasureMock).toHaveBeenCalledWith({
         profileId: "private-profile-id",
         privacyGeneration: 3,
       })
     })
+    expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 
   it("does not schedule a projection for an Essential-only receipt", async () => {
@@ -176,12 +179,14 @@ describe("recommendation profile resolvers", () => {
       proposedConsentReceiptDigest: null,
     })
     expect(result).not.toHaveProperty("tokenDigest")
+    expect(result).not.toHaveProperty("profileId")
+    expect(result).not.toHaveProperty("erasureGeneration")
     await vi.waitFor(() => {
-      expect(dispatchProjectionMock).toHaveBeenCalledWith({
-        sessionDigest: "a".repeat(64),
+      expect(completeErasureMock).toHaveBeenCalledWith({
         profileId: "private-profile-id",
         privacyGeneration: 1,
       })
     })
+    expect(dispatchProjectionMock).not.toHaveBeenCalled()
   })
 })
