@@ -1,6 +1,6 @@
 # Manager production image workspace closure repair
 
-Scope: PR #1087 only, starting from published head `06c0a6da69f6716a4c0b29fe234c80ae9aef7914`; accepted source `567a83e8066028dc6c4ba0bd9065c1335331084f` remains an ancestor. Track implementation in feat-789; feat-788 is complete.
+Scope: PR #1087 only, starting from published head `06c0a6da69f6716a4c0b29fe234c80ae9aef7914`; accepted source `567a83e8066028dc6c4ba0bd9065c1335331084f` remains an ancestor. Track implementation in feat-910; feat-909 is complete.
 
 ## Plan and bounded design
 
@@ -23,6 +23,6 @@ No callable Compound Engineering skill/workflow is installed in this session. Th
 
 The source worktree build/smoke and eight engine-route tests pass. The independent staged workspace's frozen offline filtered install adds 1,055 packages from the existing cache with zero downloads and an unchanged lockfile; its real SDK resolution, Manager build/typecheck and standalone smoke pass after including the two JSON fixtures. The failed intermediate staged build is retained as evidence of that second omission. Initial smoke assertion expected 401 for the service-only engine endpoint; the corrected smoke preserves its existing 403 and all prior exact 401 assertions.
 
-Docker discovery found only an inaccessible default socket; noninteractive sudo is unavailable and no accessible isolated `/mnt` builder was found. No actual Docker build was attempted. Root storage had about 28 GiB free versus 874 GiB on the owned `/mnt` filesystem. Preserve the actual Docker build, trust/media verification and network-disabled smoke gates for exact-candidate CI; the parent's published-head package-build successes close the previous package gap only. feat-789 implementation is complete, with fresh independent acceptance and publication reserved to the parent.
+Docker discovery found only an inaccessible default socket; noninteractive sudo is unavailable and no accessible isolated `/mnt` builder was found. No actual Docker build was attempted. Root storage had about 28 GiB free versus 874 GiB on the owned `/mnt` filesystem. Preserve the actual Docker build, trust/media verification and network-disabled smoke gates for exact-candidate CI; the parent's published-head package-build successes close the previous package gap only. feat-910 implementation is complete, with fresh independent acceptance and publication reserved to the parent.
 
 Durable learning extends `docs/solutions/build-errors/pnpm-patched-dependencies-filtered-docker-install-20260611.md`: validate the exact staged filesystem through install, build and compiled runtime, including typechecked test fixtures, rather than inferring image closure from full-checkout package checks.

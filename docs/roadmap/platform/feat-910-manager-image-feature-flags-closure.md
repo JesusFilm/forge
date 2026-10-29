@@ -1,5 +1,5 @@
 ---
-id: "feat-789"
+id: "feat-910"
 title: "Include feature flags in the Manager production image"
 owner: "vlad"
 priority: "P1"
@@ -16,7 +16,7 @@ tags:
 
 ## Problem
 
-PR #1087 head `06c0a6da69f6716a4c0b29fe234c80ae9aef7914` passes the CI gate and all package checks, including Manager and Mastra builds, but Manager production-image job `120774159042` in run `40060965249` fails during Next compilation: `apps/manager/src/lib/enrichment-engine.ts` cannot resolve `@forge/feature-flags`. The Docker stage omits the new workspace dependency. Completed feat-788 remains bounded source acceptance.
+PR #1087 head `06c0a6da69f6716a4c0b29fe234c80ae9aef7914` passes the CI gate and all package checks, including Manager and Mastra builds, but Manager production-image job `120774159042` in run `40060965249` fails during Next compilation: `apps/manager/src/lib/enrichment-engine.ts` cannot resolve `@forge/feature-flags`. The Docker stage omits the new workspace dependency. Completed feat-909 remains bounded source acceptance.
 
 ## Entry Points — Read These First
 

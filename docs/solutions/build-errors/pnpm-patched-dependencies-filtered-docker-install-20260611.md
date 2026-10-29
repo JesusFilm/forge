@@ -70,7 +70,7 @@ both Remotion prebundles. Package tests alone do not prove that manifests,
 ambient types, source imports, and runtime workspace symlinks are present in
 the container's staged filesystem.
 
-## Manager feature-flags closure (PR #1087, feat-789)
+## Manager feature-flags closure (PR #1087, feat-910)
 
 Manager's package build passed in the complete monorepo, but its production
 image failed during Next compilation with `Can't resolve '@forge/feature-flags'`.

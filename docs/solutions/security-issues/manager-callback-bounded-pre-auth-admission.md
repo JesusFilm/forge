@@ -8,7 +8,7 @@ tags:
   - resource-bounds
   - proxy-trust
 related_features:
-  - feat-788
+  - feat-909
 ---
 
 # Bounded callback admission before authentication
