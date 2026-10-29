@@ -273,8 +273,9 @@ async function installContentEmbeddingContractAuthority(
   )
 }
 
-async function installHybridDeliveryAuthority(client: Client): Promise<void> {
-  const projectionMedia = await client.query<{ video_id: string }>(`
+// Keep retained playback and fenced assignment history; retired cookies have no backing profile or consent rows.
+async function installRetiredHybridHistory(client: Client): Promise<void> {
+  const historyMedia = await client.query<{ video_id: string }>(`
     SELECT transcript.video_id
     FROM video_transcript transcript
     JOIN video_transcript_chunk chunk
@@ -287,59 +288,13 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
     ORDER BY transcript.video_id
     LIMIT 1
   `)
-  const projectionMediaId = projectionMedia.rows[0]?.video_id
-  if (!projectionMediaId) {
+  const historyMediaId = historyMedia.rows[0]?.video_id
+  if (!historyMediaId) {
     throw new Error(
-      "Explicit delivery fixture has no non-seed vector video for hybrid profile retrieval.",
+      "Explicit delivery fixture has no non-seed vector video for retained playback history.",
     )
   }
-  await client.query(
-    `INSERT INTO recommendation_profile (
-      id, token_digest, privacy_generation, choice, state, expires_at,
-      updated_at
-    ) VALUES (
-      'delivery-benchmark-profile', $1, 1, 'durable_allowed', 'active',
-      '2030-01-01T00:00:00.000Z', '2026-08-27T00:00:00.000Z'
-    )`,
-    [BENCHMARK_PROFILE_TOKEN_DIGEST],
-  )
-  await client.query(
-    `INSERT INTO recommendation_profile_projection_generation (
-      id, manifest_id, scope, profile_id, privacy_generation, generation,
-      state, projection_version, clustering_version,
-      eligibility_policy_version, outcome_classifier_version,
-      input_window_start, input_window_end, input_watermark, input_digest,
-      contribution_count, durable_interest_count, coverage, stability,
-      cohort_quality, retention_days, published_at, expires_at
-    ) VALUES (
-      'delivery-benchmark-projection', 'multi-interest-profile-shadow-v1',
-      'durable', 'delivery-benchmark-profile', 1, 1, 'published',
-      'multi-interest-profile-projection-v1',
-      'deterministic-farthest-first-medoids-v1',
-      'recommendation-integrity-v1', 'active-watch-proxy-v1',
-      '2026-08-26T00:00:00.000Z', '2026-08-27T00:00:00.000Z',
-      '2026-08-27T00:00:00.000Z', $1, 1, 1, 1, 1, 0.9, 180,
-      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z'
-    )`,
-    ["7".repeat(64)],
-  )
-  await client.query(
-    `INSERT INTO recommendation_profile_interest (
-      id, generation_id, kind, interest_ordinal, medoid_media_id,
-      medoid_source_digest, embedding, weight, support_count, stability,
-      expires_at
-    )
-    SELECT
-      'delivery-benchmark-interest', 'delivery-benchmark-projection',
-      'durable', 0, $1::varchar(191), $2, avg(chunk.embedding), 1, 1, 1,
-      '2030-01-01T00:00:00.000Z'
-    FROM video_transcript transcript
-    JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
-    WHERE transcript.video_id::text = $1::text
-      AND chunk.embedding IS NOT NULL
-    GROUP BY transcript.video_id`,
-    [projectionMediaId, "8".repeat(64)],
-  )
+
   await client.query(
     `INSERT INTO recommendation_playback_episode (
       id, media_id, session_digest, state, capability_jti, signing_kid,
@@ -350,7 +305,7 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
       '2026-08-27T02:00:00.000Z', '2026-08-27T03:00:00.000Z', 1,
       '2026-08-27T00:00:00.000Z', '2026-08-27T00:00:00.000Z',
       '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
-    [projectionMediaId, BENCHMARK_SESSION_DIGEST],
+    [historyMediaId, BENCHMARK_SESSION_DIGEST],
   )
   await client.query(
     `INSERT INTO recommendation_outcome_revision (
@@ -380,42 +335,7 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
       '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
     ["2".repeat(64)],
   )
-  await client.query(
-    `INSERT INTO recommendation_profile_projection_contribution (
-      id, generation_id, kind, source_id_digest, source_outcome_id,
-      target_media_id, interest_ordinal, weight,
-      eligibility_policy_version, outcome_classifier_version,
-      source_eligibility_decision_id, source_eligibility_revision,
-      privacy_generation, occurred_at, expires_at
-    ) VALUES ('delivery-benchmark-contribution',
-      'delivery-benchmark-projection', 'qualified_outcome', $1,
-      'delivery-benchmark-outcome', $2, 0, 1,
-      'recommendation-integrity-v1', 'active-watch-proxy-v1',
-      'delivery-benchmark-decision', 1, 1,
-      '2026-08-27T00:00:00.000Z', '2030-01-01T00:00:00.000Z')`,
-    ["3".repeat(64), projectionMediaId],
-  )
-  await client.query(
-    `INSERT INTO recommendation_profile_projection_pointer (
-      scope_digest, scope, profile_id, privacy_generation, generation_id,
-      pointer_generation, updated_at
-    ) VALUES (
-      $1, 'durable', 'delivery-benchmark-profile', 1,
-      'delivery-benchmark-projection', 1, '2026-08-27T00:00:00.000Z'
-    )`,
-    ["9".repeat(64)],
-  )
-  await client.query(
-    `INSERT INTO recommendation_consent_receipt (
-      id, token_digest, contract_version, choice, state, profile_id,
-      privacy_generation, expires_at, updated_at
-    ) VALUES (
-      'delivery-benchmark-consent', $1, 'recommendation-consent-v1',
-      'personalization', 'active', 'delivery-benchmark-profile', 1,
-      '2030-01-01T00:00:00.000Z', '2026-08-27T00:00:00.000Z'
-    )`,
-    [BENCHMARK_CONSENT_RECEIPT_DIGEST],
-  )
+
   await client.query(
     `INSERT INTO recommendation_experiment (
       id, experiment_version, surface_version, control_manifest_id,
@@ -438,12 +358,13 @@ async function installHybridDeliveryAuthority(client: Client): Promise<void> {
     `INSERT INTO recommendation_experiment_assignment (
       id, experiment_id, unit_kind, unit_digest, profile_id,
       privacy_generation, arm, assignment_probability, configuration_digest,
-      generation, assigned_at, expires_at
+      generation, assigned_at, expires_at, state, fenced_at, fence_reason
     ) VALUES (
       'delivery-benchmark-assignment', 'delivery-benchmark-experiment',
-      'anonymous_profile', $1, 'delivery-benchmark-profile', 1,
+      'anonymous_profile', $1, NULL, NULL,
       'challenger', 0.1, $2, 1, '2026-08-27T00:00:00.000Z',
-      '2030-01-01T00:00:00.000Z'
+      '2030-01-01T00:00:00.000Z', 'fenced',
+      '2026-08-27T00:00:00.000Z', 'behavioral_retirement'
     )`,
     [BENCHMARK_PROFILE_TOKEN_DIGEST, "a".repeat(64)],
   )
@@ -531,7 +452,7 @@ async function prepareExplicitDeliveryFixture(
             `CREATE VIEW "${fixtureSchema}"."${table}" AS SELECT * FROM public."${table}"`,
           )
         }
-        await installHybridDeliveryAuthority(client)
+        await installRetiredHybridHistory(client)
         const snapshotUrl = new URL(databaseUrl)
         snapshotUrl.searchParams.delete("options")
         snapshotUrl.searchParams.set("schema", fixtureSchema)
@@ -701,7 +622,7 @@ async function prepareExplicitDeliveryFixture(
         ],
       )
     }
-    await installHybridDeliveryAuthority(client)
+    await installRetiredHybridHistory(client)
     await installIncompatibleNearerChunks(client)
     await installWrongAudioNearerChunks(client)
     const fixtureUrl = new URL(databaseUrl)
@@ -1021,7 +942,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       },
     )
 
-    it("keeps complete semantic delivery inside 1.5s while ignoring historical profile authority", async () => {
+    it("keeps complete semantic delivery inside 1.5s with retired credentials and fenced history", async () => {
       expect(fixtureKind).toBe(
         DELIVERY_FIXTURE_MODE === "production_snapshot"
           ? "production_snapshot"
@@ -1166,6 +1087,19 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           evidenceComplete: true,
         })
       }
+
+      expect(
+        await prisma.recommendationExperimentAssignment.findUniqueOrThrow({
+          where: { id: "delivery-benchmark-assignment" },
+        }),
+      ).toMatchObject({
+        unitKind: "ANONYMOUS_PROFILE",
+        arm: "CHALLENGER",
+        state: "FENCED",
+        profileId: null,
+        privacyGeneration: null,
+        fenceReason: "behavioral_retirement",
+      })
 
       console.info(
         `[recommendations] event=semantic_complete_service_benchmark fixture=${fixtureKind} cold_ms=${Math.ceil(cold.elapsedMs)} warm_ms=${Math.ceil(warm.elapsedMs)} composed=${cold.response.items.length} unique=${new Set(cold.response.items.map((item) => item.targetMediaId)).size} shortfall=${cold.response.shortfallReason ?? "none"}`,
