@@ -1,13 +1,11 @@
-import { requireContentOnlyManifest } from "../behavioral-retirement"
-import { persistCompositionObservation } from "../composition/service"
 import {
-  cowatchTrialCandidateReadiness,
-  requireCowatchShadowBinding,
-} from "./cowatch-readiness"
+  requireContentOnlyManifest,
+  refuseBehavioralRecommendations,
+} from "../behavioral-retirement"
+import { persistCompositionObservation } from "../composition/service"
 import { randomUUID } from "node:crypto"
 import {
   Prisma,
-  RecommendationProfileState,
   RecommendationShadowEvaluationState,
   RecommendationShadowRunState,
   type PrismaClient,
@@ -62,6 +60,7 @@ export async function createShadowEvaluation(
   },
 ) {
   requireContentOnlyManifest(input.manifestId)
+  if (input.cowatchGenerationId) refuseBehavioralRecommendations()
   const now = input.now ?? new Date()
   const samplingVersion =
     input.manifestId === COWATCH_MMR_TRIAL_MANIFEST_ID
@@ -81,18 +80,6 @@ export async function createShadowEvaluation(
         Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${evaluationId}, 565))::text`,
       )
     }
-    await requireCowatchShadowBinding(
-      tx,
-      {
-        id: evaluationId,
-        manifestId: input.manifestId,
-        generatorVersion: input.generatorVersion,
-        cowatchGenerationId: input.cowatchGenerationId ?? null,
-        requestedSampleSize,
-        samplingVersion,
-      },
-      now,
-    )
     const manifest = await tx.recommendationStrategyManifest.findUnique({
       where: { id: input.manifestId },
       select: { id: true, enabled: true },
@@ -210,172 +197,53 @@ export async function sampleShadowEvaluationContexts(
           createdCount: 0,
         }
     }
-    type SampledRequest = {
-      id: string
-      createdAt: Date
-      expiresAt: Date
-      candidateRunId: string
-      projectionId?: string | null
-      projectionVersion?: string | null
-      projectionDigest?: string | null
-      projectionPublishedAt?: Date | null
-      projectionProfileId?: string | null
-      privacyGeneration?: number | null
-    }
-    const sampled: SampledRequest[] =
-      input.contextSource === "profile"
-        ? await tx.$queryRaw<SampledRequest[]>(Prisma.sql`
-            SELECT
-              request.id,
-              request.created_at AS "createdAt",
-              LEAST(
-                request.expires_at,
-                COALESCE(projection.expires_at, request.expires_at)
-              ) AS "expiresAt",
-              candidate.id AS "candidateRunId",
-              projection.id AS "projectionId",
-              projection.projection_version AS "projectionVersion",
-              projection.input_digest AS "projectionDigest",
-              projection.published_at AS "projectionPublishedAt",
-              projection.profile_id AS "projectionProfileId",
-              projection.privacy_generation AS "privacyGeneration"
-            FROM recommendation_request request
-            JOIN recommendation_candidate_run candidate
-              ON candidate.request_id = request.id
-            LEFT JOIN LATERAL (
-              SELECT chosen.*
-              FROM (
-                SELECT generation.*, 0 AS priority
-                FROM recommendation_profile_session_link link
-                JOIN recommendation_profile profile
-                  ON profile.id = link.profile_id
-                  AND profile.state = 'active'
-                  AND profile.privacy_generation = link.privacy_generation
-                  AND profile.expires_at > ${now}
-                JOIN recommendation_profile_projection_pointer pointer
-                  ON pointer.scope = 'durable'
-                  AND pointer.profile_id = profile.id
-                  AND pointer.privacy_generation = profile.privacy_generation
-                JOIN recommendation_profile_projection_generation generation
-                  ON generation.id = pointer.generation_id
-                  AND generation.state = 'published'
-                  AND generation.expires_at > ${now}
-                  ${
-                    trial
-                      ? Prisma.sql`AND generation.scope = 'durable'
-                    AND generation.profile_id = profile.id
-                    AND generation.privacy_generation = profile.privacy_generation
-                    AND generation.durable_interest_count > 0`
-                      : Prisma.empty
-                  }
-                WHERE link.session_digest = request.session_digest
-                  AND link.expires_at > ${now}
-                UNION ALL
-                SELECT generation.*, 1 AS priority
-                FROM recommendation_profile_projection_pointer pointer
-                JOIN recommendation_profile_projection_generation generation
-                  ON generation.id = pointer.generation_id
-                  AND generation.state = 'published'
-                  AND generation.expires_at > ${now}
-                WHERE pointer.scope = 'session'
-                  AND pointer.session_digest = request.session_digest
-                  ${trial ? Prisma.sql`AND false` : Prisma.empty}
-              ) chosen
-              ORDER BY chosen.priority, chosen.generation DESC, chosen.id
-              LIMIT 1
-            ) projection ON true
-            WHERE request.state = 'issued'
-              AND request.created_at >= ${evaluation.windowStart}
-              AND request.created_at < ${evaluation.windowEnd}
-              AND request.expires_at > ${now}
-              ${
-                trial
-                  ? Prisma.sql`AND projection.id IS NOT NULL
-                AND request.locale = 'en'
-                AND NOT EXISTS (
-                  SELECT 1 FROM recommendation_served_item item
-                  WHERE item.request_id = request.id
-                    AND (CASE WHEN request.served_item_payload IS NULL
-                      THEN item.presentation
-                      ELSE request.served_item_payload -> 'items' -> item.id -> 'presentation'
-                    END)->>'audioLanguageSlug' IS DISTINCT FROM 'english'
-                )`
-                  : Prisma.empty
-              }
-              AND EXISTS (
-                SELECT 1 FROM recommendation_served_item item
-                WHERE item.request_id = request.id
-              )
-            ORDER BY md5(${evaluation.id} || ':' || request.id), request.id
-            LIMIT ${evaluation.requestedSampleSize}
-          `)
-        : await tx.$queryRaw<SampledRequest[]>(Prisma.sql`
-      SELECT
-        request.id,
-        request.created_at AS "createdAt",
-        request.expires_at AS "expiresAt",
-        candidate.id AS "candidateRunId"
+    if (input.contextSource === "profile") refuseBehavioralRecommendations()
+    const sampled = await tx.$queryRaw<
+      Array<{
+        id: string
+        createdAt: Date
+        expiresAt: Date
+        candidateRunId: string
+      }>
+    >(Prisma.sql`
+      SELECT request.id, request.created_at AS "createdAt",
+        request.expires_at AS "expiresAt", candidate.id AS "candidateRunId"
       FROM recommendation_request request
-      JOIN recommendation_candidate_run candidate
-        ON candidate.request_id = request.id
+      JOIN recommendation_candidate_run candidate ON candidate.request_id = request.id
       WHERE request.state = 'issued'
         AND request.created_at >= ${evaluation.windowStart}
         AND request.created_at < ${evaluation.windowEnd}
         AND request.expires_at > ${now}
-        AND EXISTS (
-          SELECT 1
-          FROM recommendation_served_item item
-          WHERE item.request_id = request.id
-        )
+        AND EXISTS (SELECT 1 FROM recommendation_served_item item WHERE item.request_id = request.id)
       ORDER BY md5(${evaluation.id} || ':' || request.id), request.id
       LIMIT ${evaluation.requestedSampleSize}
     `)
-    const rows = sampled.map((request, sampleOrdinal) => {
-      const profileContext = input.contextSource === "profile"
-      const contextProjectionRef = profileContext
-        ? (request.projectionId ?? null)
-        : request.candidateRunId
-      const contextProjectionVersion = profileContext
-        ? (request.projectionVersion ?? evaluation.contextVersion)
-        : evaluation.contextVersion
-      return {
-        id: randomUUID(),
-        evaluationId: evaluation.id,
-        requestId: request.id,
-        liveCandidateRunId: request.candidateRunId,
-        projectionProfileId: profileContext
-          ? (request.projectionProfileId ?? null)
-          : null,
-        privacyGeneration: profileContext
-          ? (request.privacyGeneration ?? null)
-          : null,
+    const rows = sampled.map((request, sampleOrdinal) => ({
+      id: randomUUID(),
+      evaluationId: evaluation.id,
+      requestId: request.id,
+      liveCandidateRunId: request.candidateRunId,
+      projectionProfileId: null,
+      privacyGeneration: null,
+      sampleOrdinal,
+      samplingDigest: digestShadowValue([
+        evaluation.id,
+        request.id,
+        evaluation.samplingVersion,
         sampleOrdinal,
-        samplingDigest: digestShadowValue([
-          evaluation.id,
-          request.id,
-          evaluation.samplingVersion,
-          sampleOrdinal,
-        ]),
-        contextProjectionRef,
-        contextProjectionVersion,
-        contextProjectionDigest: contextProjectionRef
-          ? profileContext && request.projectionDigest
-            ? request.projectionDigest
-            : digestShadowValue([
-                contextProjectionRef,
-                contextProjectionVersion,
-                evaluation.eligibilityVersion,
-              ])
-          : null,
-        eligibilityVersion: evaluation.eligibilityVersion,
-        retentionPolicyVersion: evaluation.retentionPolicyVersion,
-        inputCapturedAt:
-          profileContext && request.projectionPublishedAt
-            ? request.projectionPublishedAt
-            : request.createdAt,
-        expiresAt: request.expiresAt,
-      }
-    })
+      ]),
+      contextProjectionRef: request.candidateRunId,
+      contextProjectionVersion: evaluation.contextVersion,
+      contextProjectionDigest: digestShadowValue([
+        request.candidateRunId,
+        evaluation.contextVersion,
+        evaluation.eligibilityVersion,
+      ]),
+      eligibilityVersion: evaluation.eligibilityVersion,
+      retentionPolicyVersion: evaluation.retentionPolicyVersion,
+      inputCapturedAt: request.createdAt,
+      expiresAt: request.expiresAt,
+    }))
     const created =
       rows.length === 0
         ? { count: 0 }
@@ -616,9 +484,6 @@ export async function executeClaimedShadowRun(
           eligibilityVersion: true,
         },
       },
-      projectionProfile: {
-        select: { state: true, privacyGeneration: true },
-      },
       request: {
         select: {
           id: true,
@@ -659,11 +524,7 @@ export async function executeClaimedShadowRun(
   ) {
     return { status: "fenced", reason: "claim_generation_changed" }
   }
-  if (
-    run.projectionProfileId != null &&
-    (run.projectionProfile?.state !== RecommendationProfileState.ACTIVE ||
-      run.projectionProfile.privacyGeneration !== run.privacyGeneration)
-  ) {
+  if (run.projectionProfileId != null) {
     await redactAndFenceShadowRun(prisma, run.id, {
       generation: run.generation,
       claimId: input.claimId,
@@ -789,23 +650,7 @@ export async function executeClaimedShadowRun(
   })
 
   const published = await prisma.$transaction(async (tx) => {
-    // Match erasure's root-first ordering before taking the run, graph and
-    // composition locks. A reset cannot hold the profile while we hold its graph.
-    if (run.projectionProfileId) {
-      const [profile] = await tx.$queryRaw<
-        Array<{ state: string; privacyGeneration: number; expiresAt: Date }>
-      >(Prisma.sql`
-        SELECT state::text, privacy_generation AS "privacyGeneration", expires_at AS "expiresAt"
-        FROM recommendation_profile WHERE id = ${run.projectionProfileId} FOR SHARE
-      `)
-      if (
-        !profile ||
-        profile.state !== "active" ||
-        profile.privacyGeneration !== run.privacyGeneration ||
-        profile.expiresAt <= now
-      )
-        return false
-    }
+    // Old profile-bound rows remain fenced; current shadow evaluation is content-only.
     await tx.$queryRaw(
       Prisma.sql`SELECT id FROM recommendation_request WHERE id = ${run.requestId} FOR SHARE`,
     )
@@ -993,7 +838,7 @@ export async function completeShadowEvaluation(
           : evaluation.runs.length > evaluation.requestedSampleSize ||
               evaluation.runs.length > 500
             ? "cowatch_trial_sample_overflow"
-            : await cowatchTrialCandidateReadiness(tx, evaluation, now)
+            : "behavioral_recommendations_retired"
         : "cowatch_controlled_evaluation_required"
     const decision =
       evaluation.generatorVersion === COWATCH_SHADOW_GENERATOR_KEY &&

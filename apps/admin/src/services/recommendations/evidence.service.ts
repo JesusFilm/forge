@@ -168,7 +168,7 @@ export class RecommendationEvidenceService {
             manifestId: true,
             privatePrecomputedVisitId: true,
             experimentAssignment: {
-              include: { experiment: true, profile: true },
+              include: { experiment: true },
             },
             promotionSlateFence: true,
           },

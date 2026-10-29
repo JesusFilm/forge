@@ -233,7 +233,7 @@ describe("shadow evaluation service", () => {
     })
   })
 
-  it("binds profile shadow runs to the exact published privacy generation without exposing membership", async () => {
+  it("refuses retired profile shadow sampling before reading or writing identity state", async () => {
     const tx = {
       recommendationShadowEvaluation: {
         findUnique: vi.fn().mockResolvedValue({
@@ -279,19 +279,12 @@ describe("shadow evaluation service", () => {
         expectedGeneration: 2,
         now: NOW,
       }),
-    ).resolves.toMatchObject({ status: "sampled", createdCount: 1 })
-
-    const created =
-      tx.recommendationShadowRun.createMany.mock.calls[0]![0].data[0]
-    expect(created).toMatchObject({
-      contextProjectionRef: "projection-1",
-      contextProjectionVersion: "multi-interest-profile-projection-v1",
-      contextProjectionDigest: "d".repeat(64),
-      projectionProfileId: "private-profile-1",
-      privacyGeneration: 7,
-      inputCapturedAt: new Date("2026-08-25T08:59:00.000Z"),
+    ).rejects.toMatchObject({
+      code: "conflict",
+      message: "behavioral_recommendations_retired",
     })
-    expect(JSON.stringify(created)).not.toMatch(/tokenDigest|cookie|embedding/)
+    expect(tx.$queryRaw).not.toHaveBeenCalled()
+    expect(tx.recommendationShadowRun.createMany).not.toHaveBeenCalled()
   })
 
   it("claims one pending run with an evaluation-generation fence", async () => {

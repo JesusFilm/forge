@@ -53,18 +53,11 @@ describe("recommendation recent context", () => {
     })
     expect(queryRaw).toHaveBeenCalledOnce()
     expect(queryRaw.mock.calls[0]).toContain("a".repeat(64))
-    expect(queryRaw.mock.calls[0]).toContain(null)
-    expect(queryRaw.mock.calls[0]).toContain(false)
     expect(queryRaw.mock.calls[0]).toContain("fr")
     const queryShape = String(queryRaw.mock.calls[0]?.[0])
-    expect(queryShape).toMatch(/CROSS JOIN LATERAL/)
-    expect(queryShape).toMatch(
-      /GREATEST\(link\.linked_at, profile\.created_at\) AS authorization_start/,
-    )
-    expect(queryShape).toMatch(
-      /root\.created_at >= session\.authorization_start/,
-    )
-    expect(queryShape).toMatch(/ORDER BY root\.created_at DESC, root\.id DESC/)
+    expect(queryShape).toMatch(/WITH scoped_sessions AS MATERIALIZED/)
+    expect(queryShape).toMatch(/AS session_digest/)
+    expect(queryShape).toMatch(/AS authorization_start/)
     expect(queryShape).toMatch(/selection\.attribution_eligible_at IS NOT NULL/)
     expect(queryRaw.mock.calls[0]).toContain(
       MAX_RECENT_CONTEXT_REQUESTS_PER_SESSION,
