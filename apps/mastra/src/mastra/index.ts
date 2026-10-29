@@ -88,6 +88,10 @@ import {
   handleDailyDevotionalRouteRequest,
 } from "./workflows/daily-devotional"
 import {
+  creativeReviewWorkflow,
+  handleCreativeReviewRouteRequest,
+} from "./workflows/creative-review"
+import {
   devotionalApproveWorkflow,
   devotionalContentWorkflow,
   devotionalProduceWorkflow,
@@ -182,6 +186,7 @@ export const mastra = new Mastra({
     smartCropRepairWorkflow,
     instagramAiChristianDiscoveryWorkflow,
     dailyDevotionalWorkflow,
+    creativeReviewWorkflow,
     videoFirstDevotionalWorkflow,
     devotionalSourceWorkflow,
     devotionalContentWorkflow,
@@ -480,6 +485,21 @@ export const mastra = new Mastra({
         method: "POST",
         handler: async (c) => {
           const outcome = await handleDailyDevotionalRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            readJson: () => c.req.json(),
+          })
+
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-creative-review", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handleCreativeReviewRouteRequest({
             authHeader: c.req.header("authorization"),
             serviceKeys,
             readJson: () => c.req.json(),

@@ -522,6 +522,20 @@ OpenRouter key is configured), `generation_failed` (502, carries the failing
 production video-search contract is confirmed at exec time and the search client
 is an injectable seam.
 
+### Creative review (two models)
+
+`POST /forge-creative-review` (service bearer) and the `creative-review`
+workflow review a Daily Bible Pause draft (`kind`: `script`, `shorts` or
+`carousel`) with one model and revise it with another: GPT
+(`openai/gpt-6.1-sol`) reviews against the kind's rubric and the house rules,
+Claude (`anthropic/claude-fable-5.1`) revises and says, per suggestion, why it
+took or rejected it. Both run through `createDevotionalLlm` (OpenRouter). Pass
+the owner's decisions as `locked` (one per line): without them both models
+talked the owner's approved picks out of a carousel on the first run. The
+logic is `services/devotional/creative-review.ts`; story sessions run the same
+code with `src/scripts/creative-review.ts`. The carousel rules it reviews
+against are in `docs/devotional-carousel-playbook.md`.
+
 ### Narration cache and the video render
 
 The section above describes the TEXT pipeline. A devotional is also a rendered
